@@ -52,7 +52,8 @@ dependencies = [
     # every tool round thinks from scratch and nothing fails
     # (docs/contributing/gotchas.md, a0ec99d2).
     "langchain-openai>=1.6.6",
-    "posthog>=7.58,<8",
+    # 7.59 reads POSTHOG_RELEASE_ID, which links an exception to its release.
+    "posthog>=7.59,<8",
 ]
 
 [project.optional-dependencies]

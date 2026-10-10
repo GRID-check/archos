@@ -975,6 +975,15 @@ export interface GridConfig {
      * recordings a month of the free tier run out.
      */
     replaySampleRate: string;
+    /**
+     * The PostHog release the backend image belongs to
+     * (`grid-oib:posthogReleaseId`, default empty). Not a commit: the id
+     * `PostHog/resolve-release` prints, which the deploy workflow sets per run
+     * with `pulumi config set`. The Python tiers get it as `POSTHOG_RELEASE_ID`,
+     * which posthog-python sends as `$release_id`, so error tracking links each
+     * exception to the release by id. Empty = no release link.
+     */
+    releaseId: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2689,6 +2698,7 @@ export function loadConfig(): GridConfig {
       logsEnabled: posthogLogsEnabled,
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
+      releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
     },
 
     internal: {

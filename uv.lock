@@ -260,7 +260,7 @@ requires-dist = [
     { name = "nvidia-nat-profiler", specifier = "==1.9.0" },
     { name = "nvidia-sphinx-theme", marker = "extra == 'docs'", specifier = ">=0.0.9.post1" },
     { name = "pillow", specifier = ">=12.2.0,<13" },
-    { name = "posthog", specifier = ">=7.58,<8" },
+    { name = "posthog", specifier = ">=7.59,<8" },
     { name = "pre-commit", marker = "extra == 'dev'", specifier = ">=3.5.0" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.3.4" },
     { name = "pygments", specifier = ">=2.20.0,<3" },

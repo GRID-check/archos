@@ -137,6 +137,16 @@ def test_every_event_carries_the_super_properties_and_no_geoip(sent: list[dict[s
     assert properties["$geoip_disable"] is True
 
 
+def test_the_deploys_release_id_links_every_event(sent: list[dict[str, Any]], monkeypatch: pytest.MonkeyPatch) -> None:
+    # The deploy resolves the PostHog release and hands its id over in this
+    # variable; the SDK reads it when the client is built (ci.md).
+    monkeypatch.setenv("POSTHOG_RELEASE_ID", "0193f5a6-release")
+    posthog_client.capture_exception(ValueError("x"))
+
+    assert sent[0]["properties"]["$release_id"] == "0193f5a6-release"
+    assert "release" not in sent[0]["properties"]
+
+
 def test_an_exception_without_a_user_mints_no_person_and_marks_our_frames(sent: list[dict[str, Any]]) -> None:
     from aiq_agent.observability import trace_context
 

@@ -76,7 +76,9 @@ issue links to the trace that produced it. The event is personless.
 `environment` and `service` are super properties of the client, so every
 Python event carries them, and frames under `aiq_agent` and `aiq_api` are
 marked in-app. posthog-python has no `logging` integration (it ships Django,
-Flask, Celery and ASGI ones), which is why this handler is ours.
+Flask, Celery and ASGI ones), which is why this handler is ours. The release
+is `$release_id`, which the SDK reads from `POSTHOG_RELEASE_ID`; the staging
+deploy resolves it ([`ci.md`](../contributing/ci.md#posthog-releases-and-source-maps)).
 `posthog_client` scrubs presigned URLs from every event's text on the way out,
 because `str(httpx.HTTPStatusError)` embeds the request URL.
 
@@ -103,7 +105,5 @@ posthog-js and posthog-node share.
 
 - Source maps are not uploaded, so browser stacks are minified. That needs
   `productionBrowserSourceMaps` or `@posthog/nextjs-config` and a CI step.
-- `POSTHOG_RELEASE_ID` (PostHog's release link) is not set; the commit travels as
-  the `release` property instead.
 - err2issue is gone from the Pulumi program (the sink, its collector pipeline, its
   NetworkPolicy and image pin); a stack's leftover `err2issue*` keys are ignored.

@@ -26,13 +26,14 @@ exception is a message, not an exception, and PostHog groups by stack.
 
 The exception itself (type, message, stack: the SDK builds the ``$exception``
 event), and beside it the logger name, the formatted log message, the log call
-site, the release (``GRID_GIT_SHA``) as ``trace_context`` derives it for
-Langfuse, and, when the error happened inside
-a traced run, the trace id as ``$ai_trace_id`` and ``langfuse_trace_id``. Langfuse
-exports that trace to PostHog as ``langfuse observation`` events, so an issue in
-Error tracking links to the trace that produced it
+site, and, when the error happened inside a traced run, the trace id as
+``$ai_trace_id`` and ``langfuse_trace_id``. Langfuse exports that trace to
+PostHog as ``langfuse observation`` events, so an issue in Error tracking links
+to the trace that produced it
 (https://posthog.com/docs/ai-observability/link-error-tracking). The
-environment and the service are the client's super properties, on every event.
+environment and the service are the client's super properties, on every event,
+and the release is the SDK's ``$release_id``, read from ``POSTHOG_RELEASE_ID``,
+which the deploy sets to the PostHog release it resolved for the backend image.
 
 The event is personless: the log record names no user, and looking one up on an
 error path would be a second thing that can fail. Tenant text never travels:
@@ -71,7 +72,6 @@ from types import TracebackType
 
 from aiq_agent.common.log_redaction import scrub_presigned_urls
 from aiq_agent.observability import posthog_client
-from aiq_agent.observability import trace_context
 
 #: Per fingerprint: a burst of 3, then one more every 5 minutes. A hot loop on
 #: one site therefore costs at most 3 + 288/day = ~9K a month, so ten distinct
@@ -137,14 +137,12 @@ def event_properties(record: logging.LogRecord) -> dict[str, str]:
         "log_message": _message(record),
         "log_origin": f"{record.pathname}:{record.lineno}",
     }
-    # Environment and service are on every event already (the client's super
-    # properties); the release is here until the deploy sets POSTHOG_RELEASE_ID.
-    optional = {"release": trace_context.langfuse_release()}
+    # Environment and service are the client's super properties, and the
+    # release is the SDK's ``$release_id``: neither is repeated here.
     trace_id = _current_trace_id()
     if trace_id:
-        optional["$ai_trace_id"] = trace_id
-        optional["langfuse_trace_id"] = trace_id
-    properties.update({key: value for key, value in optional.items() if value})
+        properties["$ai_trace_id"] = trace_id
+        properties["langfuse_trace_id"] = trace_id
     return properties
 
 

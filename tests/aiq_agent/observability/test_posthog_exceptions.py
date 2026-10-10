@@ -92,10 +92,8 @@ def test_a_logged_exception_is_captured_with_its_context(sent, log, monkeypatch)
     assert properties["logger"] == log.name
     assert properties["log_message"] == "ingest of %s failed"
     assert properties["log_level"] == "ERROR"
-    assert properties["release"] == "abc1234"
-    # The client's super properties carry these on every event, not each handler.
-    assert "environment" not in properties
-    assert "service" not in properties
+    # The client carries these on every event (super properties, $release_id).
+    assert {"release", "environment", "service"}.isdisjoint(properties)
     assert properties["$ai_trace_id"] == properties["langfuse_trace_id"] == f"{trace_id:032x}"
 
 

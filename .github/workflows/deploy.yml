@@ -317,6 +317,31 @@ jobs:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
           GH_TOKEN: ${{ github.token }} # GHCR tag lookups
 
+      # The PostHog release of the backend image, whose id posthog-python sends
+      # as `$release_id` (POSTHOG_RELEASE_ID) so error tracking links each
+      # Python exception to it. Release `grid-agent` at the commit the backend
+      # image was built from, not the deployed commit: a re-deploy of the same
+      # image resolves the same release, and the pods do not roll for it. The
+      # action resolves nothing and outputs an empty id without the secret (a
+      # fork, a repository without PostHog), and a PostHog outage must not block
+      # a deploy. docs/contributing/ci.md#posthog-releases-and-source-maps
+      - name: Name the backend release
+        id: backend-release
+        run: |
+          tag="${BACKEND_IMAGE_REF##*:}"
+          echo "version=${tag#sha-}" >> "$GITHUB_OUTPUT"
+
+      - name: Resolve the backend's PostHog release
+        id: posthog-release
+        continue-on-error: true
+        uses: PostHog/resolve-release@52d3bea6f86a713545874057b7d4bfebb6b5f367 # v1.0.0
+        with:
+          api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          project-id: ${{ vars.POSTHOG_PROJECT_ID }}
+          host: ${{ vars.POSTHOG_CLI_HOST || 'https://eu.posthog.com' }}
+          release-name: grid-agent
+          release-version: ${{ steps.backend-release.outputs.version }}
+
       - name: Validate plan (CRD schemas + policy pack)
         working-directory: deploy/pulumi
         run: |
@@ -326,6 +351,7 @@ jobs:
           pulumi config set grid-oib:backendImage "$BACKEND_IMAGE_REF"
           pulumi config set grid-oib:frontendImage "$FRONTEND_IMAGE_REF"
           pulumi config set grid-oib:webImage "$WEB_IMAGE_REF"
+          [ -z "$POSTHOG_RELEASE_ID" ] || pulumi config set grid-oib:posthogReleaseId "$POSTHOG_RELEASE_ID"
           # `--json` puts the plan on stdout, but policy-pack violations are NOT
           # part of it — a mandatory CrossGuard failure shows up as a bare
           # "error: preview failed" with the reason nowhere in the JSON. On
@@ -341,6 +367,7 @@ jobs:
           node scripts/validate-crs.mjs .plan.json
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # The apply runs on THIS runner, right after the gates, against the same
       # pinned image refs. Because the state backend is Pulumi Cloud, the update
@@ -357,9 +384,11 @@ jobs:
           pulumi config set grid-oib:backendImage "$BACKEND_IMAGE_REF"
           pulumi config set grid-oib:frontendImage "$FRONTEND_IMAGE_REF"
           pulumi config set grid-oib:webImage "$WEB_IMAGE_REF"
+          [ -z "$POSTHOG_RELEASE_ID" ] || pulumi config set grid-oib:posthogReleaseId "$POSTHOG_RELEASE_ID"
           pulumi up --yes
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+          POSTHOG_RELEASE_ID: ${{ steps.posthog-release.outputs.release-id }}
 
       # Best effort: a missing output must not turn a finished deploy red.
       - name: Record what was deployed
