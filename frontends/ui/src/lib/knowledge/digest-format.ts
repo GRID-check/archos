@@ -43,9 +43,24 @@ export function formatBoundedDigest(
   items: DigestLineItem[],
   maxChars: number
 ): string | null {
-  if (items.length === 0) return null
+  return formatBoundedDigestWithKept(header, items, maxChars).digest
+}
+
+/**
+ * {@link formatBoundedDigest} that also says which items made it into the
+ * text, in order: an item that is blank, or past the budget, is not in `kept`.
+ * For a caller that must name what it injected (the platform lessons' trace
+ * metadata), where "the first N of the list" would be a guess.
+ */
+export function formatBoundedDigestWithKept<T extends DigestLineItem>(
+  header: string,
+  items: T[],
+  maxChars: number
+): { digest: string | null; kept: T[] } {
+  if (items.length === 0) return { digest: null, kept: [] }
 
   const lines: string[] = [header]
+  const kept: T[] = []
   let used = header.length
   for (const item of items) {
     const content = item.content.replace(/\s+/g, ' ').trim()
@@ -54,8 +69,9 @@ export function formatBoundedDigest(
     const line = `- [${item.tags.join(' | ')}] "${escaped}"`
     if (used + line.length + 1 > maxChars) break
     lines.push(line)
+    kept.push(item)
     used += line.length + 1
   }
 
-  return lines.length > 1 ? lines.join('\n') : null
+  return lines.length > 1 ? { digest: lines.join('\n'), kept } : { digest: null, kept: [] }
 }

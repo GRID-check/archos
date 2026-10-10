@@ -10,6 +10,7 @@ from collections.abc import Iterator
 
 import pytest
 
+from aiq_agent.common.platform_lessons import LessonsResolution
 from aiq_agent.knowledge.restricted_use import RestrictedUse
 from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import reset_restricted_use
@@ -60,7 +61,7 @@ def stubs(monkeypatch):
     }
 
     def lessons(_conversation_id):
-        return calls["lessons"]
+        return LessonsResolution(digest=calls["lessons"], arm="off")
 
     def digest(*, project_id, organization_id, query, restricted_collections=(), user_id=None):
         calls["digest_args"] = (project_id, organization_id, query)
@@ -80,7 +81,7 @@ def stubs(monkeypatch):
             tasks_allowed=calls["tasks_allowed"],
         )
 
-    monkeypatch.setattr(context_mod, "get_platform_lessons_digest", lessons)
+    monkeypatch.setattr(context_mod, "resolve_platform_lessons", lessons)
     monkeypatch.setattr(context_mod, "fetch_memory_digest", digest)
     monkeypatch.setattr(context_mod, "resolve_turn_flags", turn_flags)
     monkeypatch.setattr(context_mod, "get_user_message_id_from_context", lambda: "msg-1")
@@ -221,6 +222,7 @@ class TestLoadTurnContext:
 
         def slow_lessons(_cid):
             time.sleep(0.05)
+            return LessonsResolution(digest=None, arm="off")
 
         def slow_digest(**_kw):
             time.sleep(0.05)
@@ -229,7 +231,7 @@ class TestLoadTurnContext:
             await asyncio.sleep(0.05)
             return TurnFlags(enabled_stages=frozenset())
 
-        monkeypatch.setattr(context_mod, "get_platform_lessons_digest", slow_lessons)
+        monkeypatch.setattr(context_mod, "resolve_platform_lessons", slow_lessons)
         monkeypatch.setattr(context_mod, "fetch_memory_digest", slow_digest)
         monkeypatch.setattr(context_mod, "resolve_turn_flags", slow_flags)
         started = time.perf_counter()
@@ -350,7 +352,7 @@ class TestBffTurnContext:
         def fail(_cid):
             raise RuntimeError("lessons unavailable")
 
-        monkeypatch.setattr(context_mod, "get_platform_lessons_digest", fail)
+        monkeypatch.setattr(context_mod, "resolve_platform_lessons", fail)
         monkeypatch.setattr(
             context_mod, "fetch_turn_context", lambda *_a, **_kw: ContextBlocks("PROFILE", None, "POLICY")
         )
@@ -398,7 +400,7 @@ class TestBffTurnContext:
         async def lessons(_cid):
             started.set()
             await release.wait()
-            return "LESSONS"
+            return LessonsResolution(digest="LESSONS", arm="off")
 
         def fetch(*_a, **_kw):
             return ContextBlocks("PROFILE", "MEMORY", "POLICY")
@@ -418,6 +420,68 @@ class TestBffTurnContext:
             timeout=1,
         )
         assert context.project_context == "PROFILE\n\nMEMORY"
+
+
+class TestLessonsReachTheTrace:
+    """The arm and the lessons are recorded in the turn's own context, not the gather child's."""
+
+    LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+
+    async def test_the_arm_and_the_lesson_ids_are_on_the_turns_trace_metadata(self, stubs, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.setattr(
+            context_mod,
+            "resolve_platform_lessons",
+            lambda _cid: LessonsResolution(digest="LESSONS", arm="treated", lesson_ids=(self.LESSON_A,)),
+        )
+        context = await load_turn_context(
+            _request(project_id="p1", organization_id="org"),
+            conversation_id="c1",
+            query_text="q",
+            resolve_stages=True,
+        )
+        assert context.platform_lessons == "LESSONS"
+        assert snapshot_contributions()["metadata"] == {"lessons_arm": "treated", "lesson_ids": self.LESSON_A}
+        reset_contributions()
+
+    async def test_a_holdout_turn_records_the_arm_and_injects_nothing(self, stubs, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.setattr(
+            context_mod, "resolve_platform_lessons", lambda _cid: LessonsResolution(digest=None, arm="holdout")
+        )
+        context = await load_turn_context(
+            _request(project_id="p1", organization_id="org"),
+            conversation_id="c1",
+            query_text="q",
+            resolve_stages=True,
+        )
+        assert context.platform_lessons is None
+        assert snapshot_contributions()["metadata"] == {"lessons_arm": "holdout"}
+        reset_contributions()
+
+    async def test_a_failed_lookup_claims_no_arm(self, stubs, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        def fail(_cid):
+            raise RuntimeError("lessons unavailable")
+
+        reset_contributions()
+        monkeypatch.setattr(context_mod, "resolve_platform_lessons", fail)
+        await load_turn_context(
+            _request(project_id="p1", organization_id="org"),
+            conversation_id="c1",
+            query_text="q",
+            resolve_stages=True,
+        )
+        assert snapshot_contributions()["metadata"] == {"lessons_arm": "off"}
+        reset_contributions()
 
 
 def test_turn_identity_is_the_parsed_request_in_ledger_shape():
