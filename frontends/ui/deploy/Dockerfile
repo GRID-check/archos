@@ -122,7 +122,19 @@ RUN rm -f .env .env.local .env.*.local .env.development .env.production 2>/dev/n
 
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN bun run build
+# Source maps for PostHog error tracking, built only when this build can also
+# upload them: a project id AND the key mounted as a BuildKit secret (the CI
+# push build passes both; a fork, a pull request or a plain `docker build`
+# passes neither and builds exactly as before). `GRID_SOURCEMAPS` is read by
+# next.config.ts. The secret is a mount, never a build arg: an arg is written
+# into the image history. The project id is not secret and may be an arg.
+ARG POSTHOG_PROJECT_ID=""
+
+RUN --mount=type=secret,id=posthog_cli_api_key,required=false \
+    if [ -n "$POSTHOG_PROJECT_ID" ] && [ -s /run/secrets/posthog_cli_api_key ]; then \
+      export GRID_SOURCEMAPS=1; \
+    fi; \
+    bun run build
 
 # The deploy-time WorkOS Jobs (deploy/pulumi/src/app/workos-authz-jobs.ts) run
 # TypeScript scripts, and the runner keeps neither bun nor tsx. Bundle each to
@@ -135,6 +147,17 @@ RUN for script in provision-workos-authz migrate-folder-grants-to-workos; do \
 
 # Remove devDependencies — keeps dev-only packages out of the production image
 RUN bun install --frozen-lockfile --production --ignore-scripts
+
+# Inject PostHog chunk ids into the built files and upload their source maps
+# (release = the commit being built, the same GRID_GIT_SHA the runner stage
+# reports), then delete the maps so the image never serves them. It runs here
+# because the injection edits the files the runner stage copies, and last in
+# the stage because GRID_GIT_SHA changes on every commit: declared earlier, it
+# would invalidate the build layers above it. With no key it uploads nothing and
+# only checks that no map is left. deploy/upload-sourcemaps.sh has the contract.
+ARG GRID_GIT_SHA=""
+RUN --mount=type=secret,id=posthog_cli_api_key,required=false \
+    sh deploy/upload-sourcemaps.sh .next
 
 # =============================================================================
 # Stage 4: Production Runner

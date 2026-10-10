@@ -384,6 +384,22 @@ jobs:
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
 
+      # A PostHog annotation "deploy dev <sha>": when the cluster started running
+      # this commit, for error tracking and the self-driving inbox to date a
+      # regression by. Skipped without the secret (a fork, or a repository that
+      # has not set PostHog up), and best effort: a PostHog outage must not turn
+      # a finished deploy red. A bare re-deploy (no imageTag, no CI run) is
+      # marked with the triggering commit although each service resolves its own
+      # newest image; only a CI deploy or a rollback names the sha exactly.
+      # docs/contributing/ci.md#posthog-releases-and-source-maps
+      - name: Mark the deploy in PostHog
+        continue-on-error: true
+        run: deploy/pulumi/scripts/posthog-annotate.sh dev "$IMAGE_TAG"
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
+
   # Mirrors the staging job above (same runner, checkout action/version,
   # toolchain setup, working directories, secret mechanism, plan gates and
   # error handling) against the fully-configured prod stack. All staging-only
@@ -502,3 +518,17 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           PULUMI_ACCESS_TOKEN: ${{ secrets.PULUMI_ACCESS_TOKEN }}
+
+      # The same marker as staging's, with the tag the stack file pins (the
+      # promoted develop commit), not the merge commit of the promotion PR: the
+      # latter has no image and no release in PostHog.
+      - name: Mark the deploy in PostHog
+        continue-on-error: true
+        working-directory: deploy/pulumi
+        run: |
+          tag="$(sed -n 's/^  grid-oib:imageTag: *//p' Pulumi.prod.yaml | tr -d '"' | tr -d "'")"
+          ./scripts/posthog-annotate.sh prod "$tag"
+        env:
+          POSTHOG_API_KEY: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          POSTHOG_PROJECT_ID: ${{ vars.POSTHOG_PROJECT_ID }}
+          POSTHOG_CLI_HOST: ${{ vars.POSTHOG_CLI_HOST }}
