@@ -86,7 +86,9 @@ export default async function ProjectLayout({
     if (!current) notFound()
     // Whether the banner of a paused or closed project offers the way out of
     // it; an active project has no banner, so asks nothing.
-    const canChangeStatus = current.status !== 'active' && (await holdsManageEvenWhenClosed(session, id))
+    // An outage asking it hides the control rather than failing the page.
+    const canChangeStatus =
+      current.status !== 'active' && (await holdsManageEvenWhenClosed(session, id).catch(() => false))
 
     return (
       <>

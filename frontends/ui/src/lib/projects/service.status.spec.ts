@@ -106,6 +106,18 @@ describe('setProjectStatus', () => {
     expect(recordAuditEvent).not.toHaveBeenCalled()
   })
 
+  it('closes a project whose Beginn lies ahead in the Beginn\'s month: nothing earlier fits', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', startedOn: '2027-03-01' }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'closed' }))
+
+    await setProjectStatus(session, 'p1', { status: 'closed', outcome: 'cancelled', endedOn: '2027-03' }, undefined, NOW)
+    expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'active', expect.objectContaining({ endedOn: '2027-03-01' }))
+
+    await expect(
+      setProjectStatus(session, 'p1', { status: 'closed', outcome: 'cancelled', endedOn: '2027-04' }, undefined, NOW)
+    ).rejects.toMatchObject({ status: 400, details: { reason: 'abschluss-in-future' } })
+  })
+
   it('pauses with the moment, and resumes; each under its own name', async () => {
     setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1', name: 'Seestadt D12', status: 'paused', pausedAt: NOW }))
     await setProjectStatus(session, 'p1', { status: 'paused' }, undefined, NOW)

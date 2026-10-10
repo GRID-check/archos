@@ -89,7 +89,9 @@ references, and the chip and banner say which.
 Steckbrief: the Steckbrief edits the Beginn only (`PUT …/steckbrief` refuses an
 `endedOn`), and a running project shows „laufend" where the Abschluss would be.
 Closing names the month, defaulting to this one, not after it and not before the
-Beginn (400 `abschluss-in-future` / `abschluss-before-beginn`). A closed project
+Beginn (400 `abschluss-in-future` / `abschluss-before-beginn`); when the Beginn
+lies ahead (a competition lost before the commission would have started), its
+month is the one that fits (`abschlussBounds`). A closed project
 always has one (CHECK). A reopen keeps the stored month as the next close's
 suggestion; no surface and no period search reads it while the project runs
 (`abschlussOf`). This amends ADR-0091's "closing pre-fills Abschluss".

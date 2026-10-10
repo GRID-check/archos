@@ -167,9 +167,12 @@ describe('ProjectLifecycleCard', () => {
     expect(screen.getByLabelText('Completion')).toHaveValue('2025-06')
     await userEvent.click(screen.getByRole('radio', { name: /Not realized/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
-    // Step two: the debrief.
+    // Step two: the debrief, which stays mounted (hidden) while another step shows.
     expect(await screen.findByTestId('closing-debrief')).toBeInTheDocument()
+    expect(screen.getByTestId('close-step-keep')).toBeVisible()
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
+    expect(screen.getByTestId('close-step-keep')).not.toBeVisible()
+    expect(screen.getByTestId('closing-debrief')).toBeInTheDocument()
     // Step three: nothing to clear out, so one button closes.
     expect(await screen.findByText('Piloti proposes nothing to remove.')).toBeInTheDocument()
     expect(statusPuts(fetchMock)).toEqual([])
@@ -179,14 +182,16 @@ describe('ProjectLifecycleCard', () => {
     expect(refresh).toHaveBeenCalled()
   })
 
-  test('refuses an Abschluss before the Beginn, and will not go on', async () => {
+  test('a project whose Beginn lies ahead closes in the Beginn\'s month, and offers nothing earlier', async () => {
     vi.stubGlobal('fetch', vi.fn(async () => Response.json({ items: [], considered: 0, aiUsed: false, aiError: null })))
-    // A Beginn entered for a commission that starts later: this month, offered as the Abschluss, lies before it.
     render(<ProjectLifecycleCard projectId="p1" lifecycle={{ ...ACTIVE, startedOn: '2099-01' }} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Close project' }))
-    expect(await screen.findByText('The completion lies before the start in the project profile.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+    const month = await screen.findByLabelText('Completion')
+    expect(month).toHaveValue('2099-01')
+    expect(month).toHaveAttribute('min', '2099-01')
+    expect(month).toHaveAttribute('max', '2099-01')
+    expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled()
   })
 
   test('a closed project says how and when it ended, and offers to reopen it', async () => {

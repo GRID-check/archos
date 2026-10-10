@@ -29,7 +29,7 @@ export const projectFromWire = (value: unknown): CitationProject | undefined => 
   return {
     id: projectId,
     name: trimmed(name) ?? '',
-    status: status === 'closed' ? 'closed' : 'active',
+    status: status === 'closed' || status === 'paused' ? status : 'active',
     landNote: trimmed(landNote) ?? null,
   }
 }

@@ -119,6 +119,18 @@ describe('CloseProjectDialog', () => {
     expect(onClose).toHaveBeenCalledWith({ outcome: 'completed', endedOn: '2026-09' })
   })
 
+  test('when the close fails after the clear-out, a retry only closes: nothing is binned twice', async () => {
+    const fetchMock = stub(proposal())
+    const onClose = vi.fn(async () => false).mockResolvedValueOnce(false).mockResolvedValueOnce(true)
+    await renderAtCleanup(onClose)
+
+    await userEvent.click(await screen.findByRole('button', { name: 'Move 2 to the bin and close' }))
+    expect(posted(fetchMock)).toHaveLength(1)
+    await userEvent.click(await screen.findByRole('button', { name: 'Close project' }))
+    expect(posted(fetchMock)).toHaveLength(1)
+    expect(onClose).toHaveBeenCalledTimes(2)
+  })
+
   test('does not close when clearing out failed', async () => {
     const fetchMock = vi.fn(async (url: string, init?: RequestInit) =>
       url === '/api/projects/p1/cleanup' && init?.method === 'POST'

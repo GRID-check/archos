@@ -119,6 +119,23 @@ export function lifecycleViewOf(project: LifecycleRow): ProjectLifecycleView {
   }
 }
 
+/**
+ * The months a close may name as the Abschluss: from the Beginn to this month.
+ * When the Beginn lies ahead, a commission that ends before it starts (a
+ * competition not won, say) ends in the Beginn's month, the one month that is
+ * neither before it nor invented.
+ */
+export function abschlussBounds(startedOn: Month | null, thisMonth: Month): { min: Month | null; max: Month } {
+  return { min: startedOn, max: startedOn && startedOn > thisMonth ? startedOn : thisMonth }
+}
+
+/** The month a close offers first: an earlier close's, when it still fits, else the latest allowed. */
+export function defaultAbschluss(suggested: Month | null, startedOn: Month | null, thisMonth: Month): Month {
+  const { min, max } = abschlussBounds(startedOn, thisMonth)
+  if (suggested && suggested <= max && (!min || suggested >= min)) return suggested
+  return max
+}
+
 /** Whether a project's schedules fire: only an active one's. Paused and closed record a skipped run, so resuming resumes them. */
 export function runsOnSchedule(project: { status?: ProjectStatus | string | null } | null | undefined): boolean {
   return project?.status === 'active'

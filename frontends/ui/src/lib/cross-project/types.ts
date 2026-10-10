@@ -11,6 +11,7 @@
 import { z } from 'zod'
 import { PERMIT_RECORD_KINDS, PERMIT_REQUIREMENT_KINDS } from '@/lib/db/schema/permit-records'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS } from '@/lib/documents/tag-vocabulary'
+import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-status'
 
 /**
  * How many projects one search call searches at most: one collection search
@@ -29,9 +30,8 @@ export const CROSS_PROJECT_MAX_PERMITS = 8
 /** How many of one permit record's requirements a search returns: the ones that matched. */
 export const CROSS_PROJECT_MAX_PERMIT_REQUIREMENTS = 6
 
-/** A project's life stage (ADR-0090). */
-export const PROJECT_STATUSES = ['active', 'closed'] as const
-export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
+/** A project's life stage (ADR-0098): the lifecycle's own list, so the wire cannot drift from it. */
+export { PROJECT_STATUSES, type ProjectStatus }
 
 /**
  * Which projects a search covers: every one in reach ordered by likeness to the

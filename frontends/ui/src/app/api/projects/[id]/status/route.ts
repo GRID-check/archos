@@ -9,18 +9,20 @@ import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { setProjectStatus } from '@/lib/projects/service'
 import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
-import { PROJECT_OUTCOMES } from '@/lib/projects/project-status'
+import { abschlussOf, PROJECT_OUTCOMES } from '@/lib/projects/project-status'
 
 const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
 
 const statusSchema = z.discriminatedUnion('status', [
-  z.object({ status: z.literal('active') }),
-  z.object({ status: z.literal('paused') }),
-  z.object({
-    status: z.literal('closed'),
-    outcome: z.enum(PROJECT_OUTCOMES),
-    endedOn: monthSchema,
-  }),
+  z.object({ status: z.literal('active') }).strict(),
+  z.object({ status: z.literal('paused') }).strict(),
+  z
+    .object({
+      status: z.literal('closed'),
+      outcome: z.enum(PROJECT_OUTCOMES),
+      endedOn: monthSchema,
+    })
+    .strict(),
 ])
 
 export const PUT = apiRoute<{ id: string }>(
@@ -34,7 +36,7 @@ export const PUT = apiRoute<{ id: string }>(
       closedAt: project.closedAt?.toISOString() ?? null,
       closedBy: project.closedBy,
       closedOutcome: project.closedOutcome,
-      endedOn: dateToMonth(project.endedOn),
+      endedOn: dateToMonth(abschlussOf(project)),
     }
   },
   { authz: { enforcedBy: 'setProjectStatus (requireProjectAccess project:manage, evenWhenClosed)' } }

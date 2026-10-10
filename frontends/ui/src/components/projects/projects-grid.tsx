@@ -100,15 +100,18 @@ export function ProjectsGrid({
   const statusOptions = PROJECT_STATUS_FILTERS.filter(
     (option) => option === 'active' || option === 'all' || statusCounts[option] > 0
   )
+  // A segment that emptied (its last project moved) is gone, so it is no longer
+  // what the list shows either.
+  const activeFilter: ProjectStatusFilter = statusOptions.includes(statusFilter) ? statusFilter : 'all'
 
   const needle = query.trim().toLowerCase()
   const isSearching = needle.length > 0
 
   const filtered = useMemo(() => {
-    const inStatus = showStatusFilter ? filterProjectsByStatus(projects, statusFilter) : projects
+    const inStatus = showStatusFilter ? filterProjectsByStatus(projects, activeFilter) : projects
     if (!needle) return inStatus
     return inStatus.filter((project) => project.name.toLowerCase().includes(needle))
-  }, [projects, needle, statusFilter, showStatusFilter])
+  }, [projects, needle, activeFilter, showStatusFilter])
   const emptyInStatus = showStatusFilter && !isSearching && filtered.length === 0
 
   // One helper serves both modes: zero rail slots turns the split into "order
@@ -160,7 +163,7 @@ export function ProjectsGrid({
       {showStatusFilter && (
         <ToggleGroup
           type="single"
-          value={statusFilter}
+          value={activeFilter}
           onValueChange={(value) => {
             if (isProjectStatusFilter(value)) setStatusFilter(value)
           }}
@@ -191,7 +194,7 @@ export function ProjectsGrid({
         ) : emptyInStatus ? (
           <EmptyState
             variant="bare"
-            title={t(`list.noneInFilter.${statusFilter === 'all' ? 'active' : statusFilter}`)}
+            title={t(`list.noneInFilter.${activeFilter === 'all' ? 'active' : activeFilter}`)}
             description={t('list.noneInFilter.description')}
             action={
               <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
@@ -252,7 +255,7 @@ export function ProjectsGrid({
                     MINUS the rail, so an "all" heading would sit above a count
                     that disagrees with the page. */}
                 <SectionHeading id="projects-more" count={rest.length}>
-                  {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${statusFilter}`)}
+                  {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${activeFilter}`)}
                 </SectionHeading>
                 <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
               </section>

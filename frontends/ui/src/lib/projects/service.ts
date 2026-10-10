@@ -31,12 +31,12 @@ import type {
 } from '@/lib/db/schema'
 import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
 import {
+  abschlussBounds,
   canTransition,
   isProjectClosed,
   keptWhenClosed,
   openToOrganizationWhenClosed,
   type ProjectOutcome,
-  type ProjectStatus,
 } from './project-status'
 import { dateToMonth, monthToDate, type Month } from './month'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
@@ -414,10 +414,10 @@ export async function setProjectStatus(
   return project
 }
 
-/** The Abschluss a close names, or a 400: not after this month, not before the Beginn. */
+/** The Abschluss a close names, or a 400: within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
 function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, now: Date): Month {
-  const thisMonth = dateToMonth(now)
-  if (thisMonth && endedOn > thisMonth) {
+  const { max } = abschlussBounds(startedOn, dateToMonth(now) as Month)
+  if (endedOn > max) {
     throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
   }
   if (startedOn && endedOn < startedOn) {

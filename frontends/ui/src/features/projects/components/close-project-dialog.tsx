@@ -36,7 +36,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CLEANUP_PARTIALLY_UNDONE_REASON } from '@/lib/projects/cleanup-types'
 import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
-import type { ProjectLifecycleView, ProjectOutcome } from '@/lib/projects/project-status'
+import { abschlussBounds, defaultAbschluss, type ProjectLifecycleView, type ProjectOutcome } from '@/lib/projects/project-status'
 import type { ClosingChoice } from '../lib/use-project-lifecycle'
 
 export interface CloseProjectDialogProps {
@@ -69,7 +69,7 @@ export function CloseProjectDialog({
   const [step, setStep] = useState(0)
   const [furthest, setFurthest] = useState(0)
   const [outcome, setOutcome] = useState<ProjectOutcome>('completed')
-  const [endedOn, setEndedOn] = useState<string>(lifecycle.suggestedEndedOn ?? thisMonth)
+  const [endedOn, setEndedOn] = useState<string>(() => defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, thisMonth))
   const [load, setLoad] = useState<Load>({ state: 'loading' })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [pending, setPending] = useState(false)
@@ -82,7 +82,7 @@ export function CloseProjectDialog({
     setStep(0)
     setFurthest(0)
     setOutcome('completed')
-    setEndedOn(lifecycle.suggestedEndedOn ?? (dateToMonth(new Date()) as Month))
+    setEndedOn(defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, dateToMonth(new Date()) as Month))
     setLoad({ state: 'loading' })
     setError(false)
     fetch(`/api/projects/${projectId}/cleanup/proposal`, {
@@ -105,11 +105,12 @@ export function CloseProjectDialog({
     return () => {
       cancelled = true
     }
-  }, [open, projectId, locale, lifecycle.suggestedEndedOn])
+  }, [open, projectId, locale, lifecycle.suggestedEndedOn, lifecycle.startedOn])
 
   const proposal = load.state === 'ready' ? load.proposal : null
   const items = proposal?.items ?? []
-  const abschlussError = abschlussProblem(endedOn, lifecycle.startedOn, thisMonth)
+  const bounds = abschlussBounds(lifecycle.startedOn, thisMonth)
+  const abschlussError = abschlussProblem(endedOn, bounds)
   const last = step === STEPS.length - 1
 
   const goTo = (index: number): void => {
@@ -147,6 +148,9 @@ export function CloseProjectDialog({
           setError({ partialIn: partiallyUndoneIn(await res.json().catch(() => null)) })
           return
         }
+        // Binned: what is left to retry, should the close itself fail, is the close.
+        setSelected(new Set())
+        setLoad({ state: 'ready', proposal: { ...proposal, items: [] } })
       }
       if (await onClose({ outcome, endedOn })) onOpenChange(false)
     } catch {
@@ -204,8 +208,8 @@ export function CloseProjectDialog({
                 type="month"
                 className="w-48"
                 value={endedOn}
-                min={lifecycle.startedOn ?? undefined}
-                max={thisMonth}
+                min={bounds.min ?? undefined}
+                max={bounds.max}
                 onChange={(event) => setEndedOn(event.target.value)}
                 aria-invalid={abschlussError !== null}
               />
@@ -227,7 +231,11 @@ export function CloseProjectDialog({
           </div>
         )}
 
-        {step === 1 && <div data-testid="close-step-keep">{children}</div>}
+        {/* Kept mounted while another step shows: a half-written lesson and a
+            reading of the documents (a paid call) survive „Zurück" and „Weiter". */}
+        <div data-testid="close-step-keep" hidden={step !== 1}>
+          {children}
+        </div>
 
         {step === 2 && (
           <div className="space-y-3 text-sm" data-testid="close-step-cleanup">
@@ -322,11 +330,11 @@ export function CloseProjectDialog({
   )
 }
 
-/** Why an Abschluss cannot be taken, or null: it must be a month, not after this one, not before the Beginn. */
-function abschlussProblem(endedOn: string, startedOn: Month | null, thisMonth: Month): 'invalid' | 'future' | 'beforeStart' | null {
+/** Why an Abschluss cannot be taken, or null: it must be a month within `abschlussBounds`. */
+function abschlussProblem(endedOn: string, bounds: { min: Month | null; max: Month }): 'invalid' | 'future' | 'beforeStart' | null {
   if (!isMonth(endedOn)) return 'invalid'
-  if (endedOn > thisMonth) return 'future'
-  if (startedOn && endedOn < startedOn) return 'beforeStart'
+  if (endedOn > bounds.max) return 'future'
+  if (bounds.min && endedOn < bounds.min) return 'beforeStart'
   return null
 }
 

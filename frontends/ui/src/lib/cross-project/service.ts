@@ -115,9 +115,9 @@ function party(caller: CrossProjectCaller): HandOutParty {
   }
 }
 
-/** A project's status (ADR-0090). */
+/** A project's status (ADR-0098): active, paused or closed; anything unreadable reads as active. */
 export function projectStatusOf(project: Pick<Project, 'status'>): ProjectStatus {
-  return project.status === 'closed' ? 'closed' : 'active'
+  return project.status === 'closed' || project.status === 'paused' ? project.status : 'active'
 }
 
 /**
