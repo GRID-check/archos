@@ -1,88 +1,112 @@
-import { beforeEach, describe, expect, test, vi } from 'vitest'
+import type { OnRequestErrorBeforeCaptureContext, OnRequestErrorOptions } from '@posthog/next'
+import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
-const captureServerException = vi.fn(() => true)
-vi.mock('./posthog-server', () => ({
-  captureServerException: (...args: unknown[]) => captureServerException(...(args as [])),
+// The capture itself is `@posthog/next`'s; what is ours is the options it is
+// built with, so the spec records them instead of running the package.
+const createOnRequestError = vi.fn((_options: OnRequestErrorOptions) => async () => {})
+vi.mock('@posthog/next', () => ({
+  createOnRequestError: (options: OnRequestErrorOptions) => createOnRequestError(options),
 }))
 
 import {
   REQUEST_ERROR_BURST,
   REQUEST_ERROR_WINDOW_MS,
-  reportRequestError,
-  resetRequestErrorLimiterForTests,
+  beforeCapture,
+  requestErrorHandler,
+  requestErrorOptions,
+  resetRequestErrorHandlerForTests,
 } from './request-error'
+import { scrubServerEvent } from './scrub-server-event'
 
-const request = { path: '/api/projects/p-1/files?token=secret&q=Brandschutz', method: 'POST', headers: {} }
+const request = { path: '/api/projects/p-1/files', method: 'POST', headers: {} }
 const context = {
-  routerKind: 'App Router' as const,
+  routerKind: 'App Router',
   routePath: '/api/projects/[projectId]/files',
-  routeType: 'route' as const,
-  revalidateReason: undefined,
+  routeType: 'route',
 }
 
-describe('reportRequestError', () => {
+const capture = (
+  error: unknown,
+  routePath = context.routePath
+): OnRequestErrorBeforeCaptureContext => ({
+  error,
+  request,
+  context: { ...context, routePath },
+  properties: {},
+})
+
+describe('request errors through @posthog/next', () => {
   beforeEach(() => {
-    resetRequestErrorLimiterForTests()
+    resetRequestErrorHandlerForTests()
+    createOnRequestError.mockClear()
     vi.spyOn(console, 'warn').mockImplementation(() => {})
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_HOST', 'https://eu.i.posthog.com/')
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', 'phc_test')
   })
 
-  test('sends route, method and type, with no query string and no user lookup', () => {
-    const failure = Object.assign(new Error('boom'), { digest: 'abc123' })
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.useRealTimers()
+  })
 
-    expect(reportRequestError(failure, request, context)).toBe(true)
+  test('is off, and builds nothing, while PostHog is not configured', () => {
+    vi.stubEnv('NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN', '')
 
-    expect(captureServerException).toHaveBeenCalledTimes(1)
-    const [sent, distinctId, properties] = captureServerException.mock.calls[0] as unknown as [
-      unknown,
-      string | null,
-      Record<string, unknown>,
-    ]
-    expect(sent).toBe(failure)
-    expect(distinctId).toBeNull()
-    expect(properties).toMatchObject({
-      source: 'bff-on-request-error',
-      route_path: '/api/projects/[projectId]/files',
-      route_type: 'route',
-      router_kind: 'App Router',
-      request_method: 'POST',
-      request_path: '/api/projects/p-1/files',
-      digest: 'abc123',
+    expect(requestErrorOptions()).toBeNull()
+    expect(requestErrorHandler()).toBeNull()
+    expect(createOnRequestError).not.toHaveBeenCalled()
+  })
+
+  test('builds one handler from the runtime settings, the scrubber and no GeoIP', () => {
+    const first = requestErrorHandler()
+    const second = requestErrorHandler()
+
+    expect(first).not.toBeNull()
+    expect(second).toBe(first)
+    expect(createOnRequestError).toHaveBeenCalledTimes(1)
+    expect(createOnRequestError.mock.calls[0]?.[0]).toMatchObject({
+      apiKey: 'phc_test',
+      host: 'https://eu.i.posthog.com',
+      serverOptions: { disableGeoip: true, before_send: scrubServerEvent },
+      beforeCapture,
     })
-    expect(JSON.stringify(properties)).not.toContain('secret')
-    expect(JSON.stringify(properties)).not.toContain('Brandschutz')
   })
 
   test.each(['Not found', 'Not found: project', 'Forbidden', 'Unauthorized access'])(
     'an authorization denial (%s) is not an exception',
     (message) => {
-      expect(reportRequestError(new Error(message), request, context)).toBe(false)
-      expect(captureServerException).not.toHaveBeenCalled()
-    },
+      expect(beforeCapture(capture(new Error(message)))).toBe(false)
+    }
   )
 
-  test('one fingerprint gets a burst per window, then nothing until the window ends', () => {
-    const failure = new Error('database is down')
-    const start = 1_000_000
+  test('adds where it came from, and takes a thrown non-Error value', () => {
+    vi.stubEnv('OTEL_SERVICE_NAME', 'grid-ui')
 
-    const sent = Array.from({ length: REQUEST_ERROR_BURST + 20 }, () =>
-      reportRequestError(failure, request, context, start),
-    ).filter(Boolean)
-    expect(sent).toHaveLength(REQUEST_ERROR_BURST)
+    expect(beforeCapture(capture('plain string'))).toMatchObject({
+      source: 'bff-on-request-error',
+      service: 'grid-ui',
+    })
+  })
+
+  test('one fingerprint gets a burst per window, then nothing until the window ends', () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(1_000_000)
+    const failure = new Error('database is down')
+
+    const admitted = Array.from({ length: REQUEST_ERROR_BURST + 20 }, () =>
+      beforeCapture(capture(failure))
+    ).filter((result) => result !== false)
+    expect(admitted).toHaveLength(REQUEST_ERROR_BURST)
     expect(console.warn).toHaveBeenCalledTimes(1)
 
-    expect(reportRequestError(failure, request, context, start + REQUEST_ERROR_WINDOW_MS)).toBe(true)
+    vi.setSystemTime(1_000_000 + REQUEST_ERROR_WINDOW_MS)
+    expect(beforeCapture(capture(failure))).not.toBe(false)
   })
 
   test('another route or another message has its own budget', () => {
-    const now = 1_000_000
-    for (let i = 0; i < REQUEST_ERROR_BURST + 5; i += 1) {
-      reportRequestError(new Error('a'), request, context, now)
-    }
-    expect(reportRequestError(new Error('b'), request, context, now)).toBe(true)
-    expect(reportRequestError(new Error('a'), request, { ...context, routePath: '/other' }, now)).toBe(true)
-  })
+    for (let i = 0; i < REQUEST_ERROR_BURST + 5; i += 1) beforeCapture(capture(new Error('a')))
 
-  test('reports a thrown non-Error value', () => {
-    expect(reportRequestError('plain string', request, context)).toBe(true)
+    expect(beforeCapture(capture(new Error('b')))).not.toBe(false)
+    expect(beforeCapture(capture(new Error('a'), '/other'))).not.toBe(false)
   })
 })

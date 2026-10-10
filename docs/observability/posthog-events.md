@@ -60,8 +60,8 @@ scheduled run, and cannot be trusted to survive a redirect or to be unblocked.
 | `budget_blocked` | the refused user | `blocked_scope` (`organization`, `member`, `project`), `unit` (`credit`, `token`), `organization_id` | `lib/budgets/budget-events.ts`, called by `app/api/auth/websocket-scope/route.ts`. Once per person and scope per hour |
 | `budget_threshold_crossed` | personless | `scope`, `window` (`day`, `month`), `pct` (`80` or `100`), `unit`, `subject_id` (the project id for a project budget, else absent), `organization_id` | `lib/budgets/budget-events.ts`, called by `app/api/internal/usage/route.ts` after the ledger write. Once per scope, window and threshold; the dedupe key is in the shared cache and starts with the organization |
 
-`$exception` events from the server come from `captureServerException`
-(`lib/analytics/request-error.ts`, for Next.js request errors; see
+`$exception` events from the server come from `@posthog/next`'s request-error
+capture, configured in `lib/analytics/request-error.ts` (see
 [`error-tracking.md`](error-tracking.md)), not from this table.
 
 ## Browser events

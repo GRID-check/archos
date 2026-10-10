@@ -18,14 +18,16 @@ const registerShutdownHook = (hook: () => Promise<void>): void => {
  * go to PostHog error tracking, replacing the console-to-OTLP-to-err2issue path
  * (ADR-0031, ADR-0098). A named export, not a registration: Next calls it
  * whether or not `register()` returned early, so a deployment without an OTLP
- * collector still reports. Node only: `posthog-node` does not run on Edge.
- * What is sent, and what is deliberately not: `lib/analytics/request-error`.
+ * collector still reports. Node only: the configuration imports server code
+ * (the scrubber, the authz check) that the Edge bundle must not pull in.
+ * The capture is `@posthog/next`'s `createOnRequestError`; our configuration of
+ * it (settings, scrubber, what is skipped): `lib/analytics/request-error`.
  */
 export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   try {
-    const { reportRequestError } = await import("./lib/analytics/request-error");
-    reportRequestError(error, request, context);
+    const { requestErrorHandler } = await import("./lib/analytics/request-error");
+    await requestErrorHandler()?.(error, request, context);
   } catch (failure) {
     // Reporting an error must never raise a second one on the request's path.
     console.error("[posthog] could not report a request error:", failure);
