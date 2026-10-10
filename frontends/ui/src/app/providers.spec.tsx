@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AppConfig } from '@/shared/context'
-import { identifyPosthog, resetPosthog } from '@/lib/analytics/posthog'
+import { identifyPosthog, resetPosthog, setPosthogOrganization } from '@/lib/analytics/posthog'
 import { Providers } from './providers'
 
 const layoutState = {
@@ -33,6 +33,7 @@ const authState = {
   isLoading: false,
   authRequired: false,
   user: null as { id: string; email?: string; name?: string } | null,
+  organizationId: undefined as string | undefined,
 }
 
 vi.mock('@/adapters/auth', () => ({
@@ -44,9 +45,10 @@ vi.mock('@/adapters/auth', () => ({
 }))
 
 vi.mock('@/lib/analytics/posthog', () => ({
-  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '' },
+  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '', sessionReplay: false, replaySampleRate: 0 },
   initPosthogClient: vi.fn(),
   identifyPosthog: vi.fn(),
+  setPosthogOrganization: vi.fn(),
   resetPosthog: vi.fn(),
   isPosthogEnabled: vi.fn(() => true),
 }))
@@ -177,6 +179,56 @@ describe('Providers', () => {
       authState.authRequired = false
       authState.isAuthenticated = false
       authState.user = null
+      authState.organizationId = undefined
+    })
+
+    // The Langfuse audit (docs/observability/langfuse-audit-2026-10.md) flagged
+    // identify() sending email and name. The WorkOS user id is the whole identity.
+    test('identifies with the WorkOS user id only, never email or name', () => {
+      signedInAs('user-a')
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+
+      expect(identifyPosthog).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(identifyPosthog).mock.calls[0]).toEqual(['user-a'])
+    })
+
+    test('stamps the organization after identifying, and follows an organization switch', () => {
+      signedInAs('user-a')
+      authState.organizationId = 'org_1'
+      const view = render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(setPosthogOrganization).toHaveBeenLastCalledWith('org_1')
+      expect(vi.mocked(identifyPosthog).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(setPosthogOrganization).mock.invocationCallOrder[0]!
+      )
+
+      authState.organizationId = 'org_2'
+      view.rerender(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(setPosthogOrganization).toHaveBeenLastCalledWith('org_2')
+      // A switch inside one session is not a new person.
+      expect(identifyPosthog).toHaveBeenCalledTimes(1)
+    })
+
+    test('does not stamp an organization while signed out', () => {
+      signedOut()
+      authState.organizationId = 'org_1'
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(setPosthogOrganization).not.toHaveBeenCalled()
     })
 
     // A session lost WITHOUT `handleSignOut` — expiry, a failed refresh — used
@@ -192,7 +244,7 @@ describe('Providers', () => {
           <div>content</div>
         </Providers>
       )
-      expect(identifyPosthog).toHaveBeenCalledWith('user-a', expect.anything())
+      expect(identifyPosthog).toHaveBeenCalledWith('user-a')
 
       signedOut()
       view.rerender(
@@ -228,7 +280,7 @@ describe('Providers', () => {
       )
 
       // The reset already happened on the way out, so user-b starts clean.
-      expect(identifyPosthog).toHaveBeenCalledWith('user-b', expect.anything())
+      expect(identifyPosthog).toHaveBeenCalledWith('user-b')
     })
 
     test('does not reset on a first render that was never authenticated', () => {

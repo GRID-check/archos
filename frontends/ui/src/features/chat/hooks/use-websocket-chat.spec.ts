@@ -72,7 +72,9 @@ const client = vi.hoisted(() => ({
   newestFrameAge: vi.fn().mockResolvedValue(null),
 }))
 vi.mock('@/adapters/api/conversations-client', () => ({ conversationsClient: client }))
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useChatStore } from '../store'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
@@ -192,6 +194,21 @@ describe('a question', () => {
     const question = messages().find((message) => message.messageType === 'user')!
     expect(sentOf('user_message')[0]).toMatchObject({ reasoning_effort: 'xhigh' })
     expect(useChatStore.getState().turns[question.id]?.effort).toBe('xhigh')
+  })
+
+  it('tells PostHog a turn started, by its shape alone', () => {
+    const { result } = open(conversationOf(CONVERSATION))
+
+    act(() => void result.current.sendMessage('Wie lang darf der Fluchtweg sein?', { reasoningEffort: 'xhigh' }))
+
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('chat_message_sent', {
+      has_attachments: false,
+      effort: 'xhigh',
+      data_source_count: 1,
+    })
+    // The question is never an event property.
+    expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Fluchtweg')
   })
 
   it("does not make a file that is merely open in a peek the turn's focus", () => {

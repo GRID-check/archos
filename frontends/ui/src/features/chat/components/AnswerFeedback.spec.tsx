@@ -1,6 +1,7 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { AnswerFeedback } from './AnswerFeedback'
 import { __clearAnswerFeedbackCache } from '../hooks/use-answer-feedback'
 
@@ -12,12 +13,15 @@ vi.mock('../store', () => ({
   }),
 }))
 
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
+
 const okJson = (body: unknown): Response =>
   ({ ok: true, status: 200, json: async () => body }) as unknown as Response
 
 const mockFetch = vi.fn()
 
 beforeEach(() => {
+  vi.mocked(capturePosthog).mockClear()
   __clearAnswerFeedbackCache()
   mockFetch.mockReset()
   // Default: hydration finds nothing, writes succeed.
@@ -333,6 +337,45 @@ describe('AnswerFeedback', () => {
 
       // The selected thumb is still unmistakable: ink fill, not a tint.
       expect(downThumb().className).toMatch(/bg-foreground/)
+    })
+  })
+
+  describe('PostHog', () => {
+    test('records the verdict and the reason chip, once per change, and never the words', async () => {
+      const user = userEvent.setup()
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+
+      await user.click(downThumb())
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', { verdict: 'down', reason: null }),
+      )
+
+      await user.click(screen.getByRole('radio', { name: 'Wrong source' }))
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', {
+          verdict: 'down',
+          reason: 'wrong_source',
+        }),
+      )
+
+      // The note saves the same vote again: no third event, and the words stay home.
+      await user.type(screen.getByLabelText('Anything else?'), 'Brüstungshöhe nicht gefunden.')
+      await user.click(screen.getByRole('button', { name: 'Send note' }))
+      await waitFor(() => expect(postCalls()).toHaveLength(3))
+      expect(capturePosthog).toHaveBeenCalledTimes(2)
+      expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Brüstungshöhe')
+    })
+
+    test('records nothing for a retraction or a rejected vote', async () => {
+      const user = userEvent.setup()
+      render(<AnswerFeedback messageId="msg_1" conversationId="conv_1" />)
+      await user.click(upThumb())
+      await waitFor(() => expect(capturePosthog).toHaveBeenCalledTimes(1))
+
+      vi.mocked(capturePosthog).mockClear()
+      await user.click(upThumb())
+      await waitFor(() => expect(deleteCalls()).toHaveLength(1))
+      expect(capturePosthog).not.toHaveBeenCalled()
     })
   })
 

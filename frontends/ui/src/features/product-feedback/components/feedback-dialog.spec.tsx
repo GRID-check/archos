@@ -1,8 +1,14 @@
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { describe, expect, test, vi } from 'vitest'
+import { beforeEach, describe, expect, test, vi } from 'vitest'
 import type { SubmitProductFeedbackRequest, SubmitProductFeedbackResult } from '@/lib/product-feedback/client'
+import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
 import { FeedbackDialog } from './feedback-dialog'
+
+vi.mock('@/lib/analytics/posthog', () => ({
+  capturePosthog: vi.fn(),
+  sendPosthogSupportMessage: vi.fn(async () => true),
+}))
 
 const ok: SubmitProductFeedbackResult = {
   ok: true,
@@ -88,5 +94,45 @@ describe('FeedbackDialog', () => {
   test('says where a reply would go', () => {
     setup()
     expect(screen.getByText(/maria@buero\.test/)).toBeInTheDocument()
+  })
+
+  describe('PostHog', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+    })
+
+    test('also opens a Support ticket and records the kind once the report is stored', async () => {
+      const { user } = setup()
+
+      await user.click(screen.getByRole('radio', { name: /Idea/ }))
+      await user.type(message(), 'Please add an export for plan lists.')
+      await user.click(send())
+
+      await waitFor(() => expect(sendPosthogSupportMessage).toHaveBeenCalledTimes(1))
+      expect(sendPosthogSupportMessage).toHaveBeenCalledWith('[idea] Please add an export for plan lists.')
+      // The event carries the kind and never the words.
+      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'idea' })
+    })
+
+    test('does not involve PostHog when the report was not stored', async () => {
+      const { user } = setup({ ok: false, reason: 'failed' })
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(send())
+
+      await screen.findByRole('alert')
+      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
+      expect(capturePosthog).not.toHaveBeenCalled()
+    })
+
+    test('still thanks the reporter when PostHog Support is unavailable', async () => {
+      vi.mocked(sendPosthogSupportMessage).mockResolvedValueOnce(false)
+      const { user } = setup()
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(send())
+
+      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
+    })
   })
 })

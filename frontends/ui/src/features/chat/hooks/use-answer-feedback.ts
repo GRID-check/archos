@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import type { AnswerFeedbackReason, AnswerFeedbackVerdict } from '@/lib/db/schema/answer-feedback'
+import { capturePosthog } from '@/lib/analytics/posthog'
 
 /** The client-side view of the caller's vote on one answer. */
 export interface AnswerFeedbackState {
@@ -158,6 +159,16 @@ export function useAnswerFeedback(
                 })
             if (res.ok) {
               updateCache(conversationId, messageId, next)
+              // The vote and its reason chip, never the comment or the expected
+              // answer: those are the voter's words (and may quote a restricted
+              // folder), and the Langfuse mirror keeps them out for the same reason.
+              // A note saved on top of the same vote is the same vote, not another.
+              if (next && (previous?.verdict !== next.verdict || previous?.reason !== next.reason)) {
+                capturePosthog('answer_feedback_submitted', {
+                  verdict: next.verdict,
+                  reason: next.reason,
+                })
+              }
             } else {
               setState(previous) // revert the optimistic update
             }
