@@ -347,7 +347,13 @@ describe('AnswerFeedback', () => {
 
       await user.click(downThumb())
       await waitFor(() =>
-        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', { verdict: 'down', reason: null }),
+        expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', {
+          verdict: 'down',
+          reason: null,
+          // Joins the vote to its turn and to the Langfuse score for it.
+          message_id: 'msg_1',
+          conversation_id: 'conv_1',
+        }),
       )
 
       await user.click(screen.getByRole('radio', { name: 'Wrong source' }))
@@ -355,6 +361,8 @@ describe('AnswerFeedback', () => {
         expect(capturePosthog).toHaveBeenCalledWith('answer_feedback_submitted', {
           verdict: 'down',
           reason: 'wrong_source',
+          message_id: 'msg_1',
+          conversation_id: 'conv_1',
         }),
       )
 

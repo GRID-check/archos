@@ -16,6 +16,8 @@ import type { CardDecision, CardInteractions } from '@/features/grid-cards/card-
 import { errorConcernsTheThread, getErrorMeta } from '../lib/error-registry'
 import { foldTurnEvents, initialTurnView, stopTurnView, type TurnView } from '../lib/turn-fold'
 import { projectTurn } from '../lib/turn-projection'
+import { answerCompletionOf, type AnswerCompletion } from '../lib/answer-analytics'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { shownTextOf } from './answer-reveal-store'
 import { useLayoutStore } from '@/features/layout/store'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
@@ -344,6 +346,16 @@ export const mergeRemoteMessages = (
   return { messages: [...reconciled, ...keptLocalOnly].sort(compareThreadOrder), added }
 }
 
+/**
+ * Report that the asker's turn ended. Here, in the store, because this is the
+ * one place every ending passes through: the fold's terminal, the reader's Stop
+ * and a turn failed from outside the fold. A turn watched from another tab is
+ * not counted (only the asker's page set `currentUserMessageId`).
+ */
+const reportAnswerCompleted = (completion: AnswerCompletion): void => {
+  capturePosthog('answer_completed', { ...completion })
+}
+
 const createNewConversation = (userId: string): Conversation => ({
   id: `s_${uuidv4().replace(/-/g, '_')}`,
   userId,
@@ -459,6 +471,18 @@ export const createMessagesSlice: StateCreator<
         answerDurationMs,
         draft: state.composerDrafts[conversation.id] ?? '',
       })
+      // Before the early exit below: a turn that fails before it wrote a word
+      // changes no message and is still an ending.
+      const completion =
+        state.currentUserMessageId === view.turnId
+          ? answerCompletionOf(
+              view,
+              previous,
+              projection.messages.find((message) => message.id === view.messageId),
+              answerDurationMs
+            )
+          : null
+      if (completion) effects.push(() => reportAnswerCompleted(completion))
       // A terminal can settle an answer without changing what it shows (a
       // Stop keeps the text on screen, `turn-fold.ts`): it is still persisted.
       if (projection.messages === conversation.messages && !projection.settled) continue
@@ -559,7 +583,19 @@ export const createMessagesSlice: StateCreator<
       // thread notes failed turns as they are marked; without it the turn read
       // as lost („Antwort wird geholt") until the server had been asked.
       if (marked.phase !== 'failed') {
-        set({ turns: { ...get().turns, [turnId]: { ...marked, phase: 'failed' } } }, false, 'failTurn:mark')
+        const failed: TurnView = { ...marked, phase: 'failed' }
+        const { currentUserMessageId, currentTurnStartedAt, currentConversation: open } = get()
+        const completion =
+          currentUserMessageId === turnId
+            ? answerCompletionOf(
+                failed,
+                marked,
+                open?.messages.find((message) => message.id === marked.messageId),
+                currentTurnStartedAt === null ? undefined : Math.max(1, Date.now() - currentTurnStartedAt)
+              )
+            : null
+        set({ turns: { ...get().turns, [turnId]: failed } }, false, 'failTurn:mark')
+        if (completion) reportAnswerCompleted(completion)
       }
       const { turns, currentConversation, conversations } = get()
       const view = turns[turnId]

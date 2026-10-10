@@ -39,6 +39,13 @@ export const profile: typeof en.profile = {
     label: 'Technische Herleitung anzeigen',
     hint: 'Zeigt die einzelnen technischen Schritte (welcher Agent bzw. welches Werkzeug lief). Standardmäßig aus — normalerweise sehen Sie die verständliche Herleitung.',
   },
+  usageAnalytics: {
+    title: 'Nutzungsanalyse',
+    description:
+      'Piloti misst, wie das Produkt genutzt wird (Seitenaufrufe, Klicks, Fehler und maskierte Bildschirmaufzeichnungen), um Probleme zu finden und zu beheben.',
+    label: 'Nutzungsanalyse teilen',
+    hint: 'Gilt für diesen Browser und wirkt sofort. Ausgeschaltet sendet dieser Browser nichts.',
+  },
   security: {
     title: 'Sicherheit & Sitzungen',
     description: 'Wo Sie angemeldet sind und wie Ihr Konto geschützt ist.',

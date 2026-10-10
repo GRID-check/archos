@@ -25,7 +25,7 @@ describe('capturePosthogException', () => {
 
   test('forwards the error and its properties once the client is initialized', async () => {
     const { capturePosthogException, initPosthogClient } = await import('./posthog')
-    initPosthogClient({ host: 'https://eu.i.posthog.com', projectToken: 'phc_test', sessionReplay: false, replaySampleRate: 0 })
+    initPosthogClient({ host: 'https://eu.i.posthog.com', projectToken: 'phc_test', sessionReplay: false, replaySampleRate: 0, proxy: false })
     const failure = new Error('boom')
 
     capturePosthogException(failure, { source: 'route-error-boundary' })

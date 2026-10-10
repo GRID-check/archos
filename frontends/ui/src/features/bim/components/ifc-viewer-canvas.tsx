@@ -82,6 +82,7 @@ import type { Camera, RenderOptions, Renderer, Scene } from '@ifc-lite/renderer'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import type { BimViewerElement, Rgba } from '../lib/model-index'
 import { MeasureOverlay } from '../lib/measure-overlay'
 import {
@@ -666,6 +667,7 @@ export function IfcViewerCanvas({
     }
 
     const run = async () => {
+      const startedAt = performance.now()
       report({ phase: 'downloading', percent: 0, meshCount: 0 })
       try {
         // Aborted on unmount. Without a signal, leaving the page mid-download
@@ -814,6 +816,14 @@ export function IfcViewerCanvas({
         fittedOnLoadRef.current = true
         setReady(true)
         report({ phase: 'ready', percent: 100, meshCount })
+        // The model is on screen: how big it was and how long the reader waited
+        // (download, parse, geometry). Two numbers, no model name.
+        if (!cancelled) {
+          capturePosthog('ifc_model_opened', {
+            element_count: elementsRef.current.length,
+            load_ms: Math.round(performance.now() - startedAt),
+          })
+        }
         requestFrame()
       } catch (error) {
         // An aborted fetch is this component being unmounted, not a failure the
