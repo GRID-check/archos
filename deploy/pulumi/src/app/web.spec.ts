@@ -14,7 +14,7 @@ import { baseStackConfig } from "../test-support/stack-config";
  * CrashLoopBackOff that plans clean.
  */
 
-type Container = { name: string; command?: string[] };
+type Container = { name: string; command?: string[]; env?: Array<{ name: string; value?: string }> };
 let container: Container | undefined;
 
 pulumi.runtime.setMocks(
@@ -57,5 +57,43 @@ describe("the web Deployment", () => {
     // The runner stage copies dist/ and node_modules/ by name; a new top-level
     // directory the entry lives in has to be copied too.
     expect(dockerfile).toMatch(/^COPY --from=builder .* \/app\/runtime \.\/runtime$/m);
+  });
+});
+
+/**
+ * The landing site's PostHog pair. The pages are prerendered and the image has
+ * no env files, so `/web-analytics.js` reads `PUBLIC_POSTHOG_*` from the pod's
+ * environment per request; a Deployment that never carries them leaves web
+ * analytics off on every stack and plans clean.
+ */
+describe("the web Deployment's PostHog env", () => {
+  const POSTHOG = {
+    "grid-oib:posthogHost": "https://eu.i.posthog.com",
+    "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
+  };
+
+  async function webEnv(values: Record<string, string>) {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), "grid-oib:observabilityEnabled": "false", ...values });
+    const { loadConfig } = await import("../config");
+    const { installWeb } = await import("./web");
+    const provider = new k8s.Provider("test", { kubeconfig: "apiVersion: v1" });
+    const web = installWeb(loadConfig(), provider, "grid", [], []);
+    await new Promise((resolve) => web.deployment.id.apply(resolve));
+    return (container?.env ?? []).filter((e) => e.name.startsWith("PUBLIC_POSTHOG_"));
+  }
+
+  it("carries the pair the stack configures", async () => {
+    expect(await webEnv(POSTHOG)).toEqual([
+      { name: "PUBLIC_POSTHOG_HOST", value: "https://eu.i.posthog.com" },
+      { name: "PUBLIC_POSTHOG_PROJECT_TOKEN", value: "phc_test_token" },
+    ]);
+  });
+
+  it.each([
+    ["host", { "grid-oib:posthogProjectToken": POSTHOG["grid-oib:posthogProjectToken"] }],
+    ["token", { "grid-oib:posthogHost": POSTHOG["grid-oib:posthogHost"] }],
+    ["both", {}],
+  ])("carries nothing without the %s, never a half-configured pod", async (_what, values) => {
+    expect(await webEnv(values)).toEqual([]);
   });
 });

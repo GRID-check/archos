@@ -54,7 +54,7 @@ const de = {
       datenschutz: {
         title: 'Datenschutzerklärung – Piloti',
         description:
-          'Wie die Piloti-Website mit Ihren Daten umgeht: keine Cookies, kein Tracking, welche Dienste beteiligt sind und welche Anbieter die Piloti-Anwendung nutzt.',
+          'Wie die Piloti-Website mit Ihren Daten umgeht: welche Reichweitenmessung wir einsetzen und was sie speichert, welche Dienste beteiligt sind und welche Anbieter die Piloti-Anwendung nutzt.',
       },
       warum: {
         title: 'Warum Piloti: KI für Architekturbüros in Österreich',
@@ -590,7 +590,11 @@ const de = {
       sections: [
         {
           heading: 'Diese Website',
-          html: 'Die öffentlichen Seiten dieser Website setzen <strong>keine Cookies</strong> und verwenden <strong>keine Tracking- oder Analysewerkzeuge</strong>. Schriften und Skripte werden von unserem eigenen Server geladen; es werden keine Inhalte von Drittanbietern eingebunden.',
+          html: 'Die öffentlichen Seiten dieser Website messen wir mit PostHog (siehe nächster Abschnitt). Schriften und Skripte der Seiten selbst werden von unserem eigenen Server geladen; das Mess-Skript lädt PostHog nach, sonst werden keine Inhalte von Drittanbietern eingebunden. Wir setzen keine Werbe-Cookies und kein Tracking über mehrere Websites hinweg ein.',
+        },
+        {
+          heading: 'Reichweitenmessung mit PostHog',
+          html: 'Wir messen die Nutzung der öffentlichen Seiten mit PostHog (PostHog, Inc.; Rechenzentrum in Frankfurt am Main): Seitenaufrufe, Herkunft (Referrer, UTM-Parameter), Klicks, Ladezeiten (Web Vitals), Klick- und Scroll-Heatmaps, Browser- und Gerätetyp sowie den ungefähren Standort aus der IP-Adresse; die IP-Adresse selbst wird nicht gespeichert. Es entstehen keine Personenprofile, Sitzungen werden nicht aufgezeichnet und es werden keine Umfragen eingeblendet. Dafür legt PostHog ein Cookie und einen Eintrag im lokalen Speicher Ihres Browsers an (Schlüssel „ph_…“, konkret „ph_&lt;Projekt-Token&gt;_posthog“, mit einer zufälligen Kennung; Laufzeit 365&nbsp;Tage). Das Cookie gilt für die gesamte Domain, damit wir den Weg von dieser Website bis zur Anmeldung in der Piloti-Anwendung zusammenhängend auswerten können. Sendet Ihr Browser „Do Not Track“, messen wir nichts. Die Daten werden bis zu 12&nbsp;Monate gespeichert. PostHog verarbeitet sie in unserem Auftrag (Art.&nbsp;28 DSGVO); als US-Konzern kann PostHog, Inc. aus den USA zugreifen, Grundlage sind das EU-US Data Privacy Framework und Standardvertragsklauseln. Rechtsgrundlage ist unser berechtigtes Interesse, die Website zu verbessern (Art.&nbsp;6 Abs.&nbsp;1 lit.&nbsp;f DSGVO); für die Speicherung auf Ihrem Gerät gilt §&nbsp;165 Abs.&nbsp;3 TKG 2021. Sie können der Messung jederzeit per E-Mail widersprechen.',
         },
         {
           heading: 'Hosting und Server-Logs',
@@ -606,7 +610,7 @@ const de = {
         },
         {
           heading: 'Anmeldung und Piloti-Anwendung',
-          html: 'Mit „Anmelden“ verlassen Sie diese Website und gelangen zur Piloti-Anwendung; dort gilt deren eigene Datenschutzerklärung. Kurz vorab: Die Anmeldung läuft über WorkOS, Inc. (USA). KI-Anfragen werden über OpenRouter, Inc. (USA) an Modellanbieter weitergeleitet, die ihren Sitz auch außerhalb der EU haben können. Wir selbst trainieren keine KI-Modelle mit Ihren Daten.',
+          html: 'Mit „Anmelden“ verlassen Sie diese Website und gelangen zur Piloti-Anwendung; dort gilt deren eigene Datenschutzerklärung. Kurz vorab: Die Anmeldung läuft über WorkOS, Inc. (USA). KI-Anfragen werden über OpenRouter, Inc. (USA) an Modellanbieter weitergeleitet, die ihren Sitz auch außerhalb der EU haben können. Produktanalyse, Fehlererfassung, Umfragen und Support der Anwendung laufen über PostHog (Rechenzentrum in Frankfurt am Main). Wir selbst trainieren keine KI-Modelle mit Ihren Daten.',
         },
         {
           heading: 'Redaktionsbereich',
@@ -697,7 +701,7 @@ const en: typeof de = {
       datenschutz: {
         title: 'Privacy policy – Piloti',
         description:
-          'How the Piloti website handles your data: no cookies, no tracking, which services are involved, and which providers the Piloti application relies on.',
+          'How the Piloti website handles your data: which audience measurement we use and what it stores, which services are involved, and which providers the Piloti application relies on.',
       },
       warum: {
         title: 'Why Piloti: AI for architecture firms in Austria',
@@ -1206,7 +1210,11 @@ const en: typeof de = {
       sections: [
         {
           heading: 'This website',
-          html: 'The public pages of this website set <strong>no cookies</strong> and use <strong>no tracking or analytics tools</strong>. Fonts and scripts are served from our own server; no third-party content is embedded.',
+          html: 'We measure how the public pages of this website are used with PostHog (see the next section). Fonts and scripts of the pages themselves are served from our own server; the measurement script is loaded from PostHog, and no other third-party content is embedded. We use no advertising cookies and no tracking across several websites.',
+        },
+        {
+          heading: 'Audience measurement with PostHog',
+          html: 'We measure use of the public pages with PostHog (PostHog, Inc.; data centre in Frankfurt, Germany): page views, origin (referrer, UTM parameters), clicks, load times (web vitals), click and scroll heatmaps, browser and device type, and the approximate location derived from the IP address; the IP address itself is not stored. No person profiles are created, sessions are not recorded and no surveys are shown. For this, PostHog sets a cookie and an entry in your browser’s local storage (key “ph_…”, specifically “ph_&lt;project token&gt;_posthog”, holding a random identifier; lifetime 365&nbsp;days). The cookie applies to the whole domain so that we can follow the path from this website to sign-in in the Piloti application as one. If your browser sends “Do Not Track”, we measure nothing. The data is kept for up to 12&nbsp;months. PostHog processes it on our behalf (Art.&nbsp;28 GDPR); as a US group, PostHog, Inc. may access it from the US, based on the EU-US Data Privacy Framework and standard contractual clauses. The legal basis is our legitimate interest in improving the website (Art.&nbsp;6(1)(f) GDPR); for storage on your device, §&nbsp;165(3) TKG 2021 applies. You may object to the measurement at any time by email.',
         },
         {
           heading: 'Hosting and server logs',
@@ -1222,7 +1230,7 @@ const en: typeof de = {
         },
         {
           heading: 'Sign-in and the Piloti application',
-          html: '“Sign in” takes you from this website to the Piloti application, which has its own privacy policy. In short: sign-in is handled by WorkOS, Inc. (USA). AI requests are routed through OpenRouter, Inc. (USA) to model providers that may be based outside the EU. We do not train AI models on your data.',
+          html: '“Sign in” takes you from this website to the Piloti application, which has its own privacy policy. In short: sign-in is handled by WorkOS, Inc. (USA). AI requests are routed through OpenRouter, Inc. (USA) to model providers that may be based outside the EU. Product analytics, error tracking, surveys and support in the application run through PostHog (data centre in Frankfurt, Germany). We do not train AI models on your data.',
         },
         {
           heading: 'Editorial area',
