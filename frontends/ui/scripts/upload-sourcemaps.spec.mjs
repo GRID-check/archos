@@ -25,8 +25,8 @@ import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest
  *  - the upload names the commit being built as the release, so an error's
  *    release is the `GRID_GIT_SHA` the running container reports;
  *  - the key is read from the secret mount and never reaches an argument list;
- *  - the build fails if a `.map` survives, because Next serves `.next/static`
- *    to anyone and the map carries the original source.
+ *  - no `.map` survives in the served trees, uploaded or not, because Next
+ *    serves `.next/static` to anyone and the map carries the original source.
  */
 
 const UI_ROOT = path.resolve(import.meta.dirname, '..')
@@ -119,11 +119,12 @@ describe('upload-sourcemaps.sh without PostHog configured', () => {
     expect(r.calls).toEqual([])
   })
 
-  it('fails the build when a map would be served anyway', () => {
+  it('deletes a map Next built on its own, so it never ships', () => {
     const { next } = buildTree()
     const r = run(next, {})
-    expect(r.status).not.toBe(0)
-    expect(r.stderr).toContain('would ship')
+    expect(r.status).toBe(0)
+    expect(r.calls).toEqual([])
+    expect(existsSync(path.join(next, 'static/chunks/app.js.map'))).toBe(false)
   })
 })
 
@@ -178,12 +179,12 @@ describe('upload-sourcemaps.sh with PostHog configured', () => {
     expect(run(next, { ...configured, STUB_FAIL: '1' }).status).not.toBe(0)
   })
 
-  it('fails the build when the CLI leaves a map in the served tree', () => {
+  it('deletes a map the CLI left in the served tree', () => {
     writeFileSync(KEY_FILE, 'phx_secret')
     const { next } = buildTree()
     const r = run(next, { ...configured, STUB_KEEP_MAPS: '1' })
-    expect(r.status).not.toBe(0)
-    expect(r.stderr).toContain('would ship')
+    expect(r.status).toBe(0)
+    expect(existsSync(path.join(next, 'static/chunks/app.js.map'))).toBe(false)
   })
 
   it('fails the build when no chunk id was injected, since no stack frame could be matched', () => {

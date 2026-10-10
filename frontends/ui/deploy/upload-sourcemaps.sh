@@ -25,14 +25,15 @@
 # the EU app host, https://eu.posthog.com), POSTHOG_CLI_VERSION,
 # POSTHOG_API_KEY_FILE (tests only).
 #
-# Without a project id or a key it uploads nothing and still checks that no map
-# is left, so a fork, a pull request and a local `docker build` all pass.
+# Without a project id or a key it uploads nothing, so a fork, a pull request
+# and a local `docker build` all pass.
 #
-# Source maps are served by Next from `.next/static` the moment they exist
-# (`productionBrowserSourceMaps`), i.e. to anyone, with the original source in
-# them. `--delete-after` removes them after the upload; the check at the end
-# fails the build if one survived, so a CLI that changes that behaviour cannot
-# publish the source.
+# Source maps are served by Next from `.next/static` the moment they exist, i.e.
+# to anyone, with the original source in them. Next emits some even without
+# `productionBrowserSourceMaps` (a Turbopack chunk did, found by this script's
+# first CI run), so every path ends by deleting whatever map is left in the
+# served trees, uploaded or not, and then checks that none survived.
+# `--delete-after` removes the uploaded ones first; the prune catches the rest.
 set -eu
 
 dir="${1:-.next}"
@@ -45,6 +46,13 @@ sha="${GRID_GIT_SHA:-}"
 
 # Only these two trees are ever served or loaded; `.next/cache` is build state.
 served_dirs="$dir/static $dir/server"
+
+prune_maps() {
+  for tree in $served_dirs; do
+    [ -d "$tree" ] || continue
+    find "$tree" -name '*.map' -type f -exec rm -f {} +
+  done
+}
 
 assert_no_maps() {
   leftover=""
@@ -63,6 +71,7 @@ assert_no_maps() {
 
 if [ -z "$project_id" ] || [ ! -s "$key_file" ]; then
   echo "PostHog source maps: no project id or no key, nothing to upload"
+  prune_maps
   assert_no_maps
   exit 0
 fi
@@ -89,6 +98,7 @@ posthog-cli --host "$host" sourcemap process \
   --release-version "$sha" \
   --delete-after
 
+prune_maps
 assert_no_maps
 
 # The injection is what ties a stack frame to the uploaded map. If it did
