@@ -23,6 +23,7 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { findOrganization } from '@/lib/organizations/repository'
+import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import { fileProductFeedbackIssue } from './github'
 import {
@@ -42,6 +43,26 @@ import {
   type SubmitProductFeedbackInput,
   type SubmittedProductFeedbackView,
 } from './types'
+
+/**
+ * The words that may leave for PostHog Support: the report masked against the
+ * office's policy, and only for a reporter who agreed to be contacted. The
+ * stored report stays as typed (platform owners triage it); this copy is the
+ * only one a third party receives, so a failure to mask answers `null` rather
+ * than the raw text.
+ */
+async function relayTextFor(
+  session: AuthorizedSession,
+  input: SubmitProductFeedbackInput
+): Promise<string | null> {
+  if (!input.allowContact) return null
+  try {
+    return (await maskChatText(session.organizationId, input.message)).text
+  } catch (error) {
+    console.error('[product-feedback] relay text not masked; no Support ticket for this report:', error)
+    return null
+  }
+}
 
 /**
  * Store one report from the caller, announce it to the platform owners and,
@@ -79,7 +100,12 @@ export async function submitProductFeedback(
     await fileProductFeedbackIssue(report)
   }
 
-  return { id: report.id, kind: report.kind, createdAt: report.createdAt.toISOString() }
+  return {
+    id: report.id,
+    kind: report.kind,
+    createdAt: report.createdAt.toISOString(),
+    relayText: await relayTextFor(session, input),
+  }
 }
 
 // ---------------------------------------------------------------------------

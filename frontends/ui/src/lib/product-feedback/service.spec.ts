@@ -18,6 +18,7 @@ vi.mock('@/lib/db/tenant-context', () => ({
 vi.mock('@/lib/organizations/repository', () => ({ findOrganization: vi.fn() }))
 vi.mock('./announce', () => ({ announceProductFeedback: vi.fn() }))
 vi.mock('./github', () => ({ fileProductFeedbackIssue: vi.fn() }))
+vi.mock('@/lib/upload-screening/service', () => ({ maskChatText: vi.fn() }))
 vi.mock('./repository', () => ({
   PRODUCT_FEEDBACK_LIST_LIMIT: 2,
   insertProductFeedback: vi.fn(),
@@ -32,6 +33,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { findOrganization } from '@/lib/organizations/repository'
+import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import { fileProductFeedbackIssue } from './github'
 import * as repository from './repository'
@@ -86,6 +88,7 @@ beforeEach(() => {
   vi.mocked(repository.insertProductFeedback).mockResolvedValue(stored())
   vi.mocked(findOrganization).mockResolvedValue({ displayName: 'Büro Nord' } as never)
   vi.mocked(announceProductFeedback).mockResolvedValue({ status: 'announced', recipients: 2 })
+  vi.mocked(maskChatText).mockImplementation(async (_organizationId, text) => ({ text }) as never)
   vi.mocked(fileProductFeedbackIssue).mockResolvedValue({ status: 'filed', number: 7, url: 'https://github.test/7' })
   vi.mocked(repository.countProductFeedbackByStatus).mockResolvedValue({
     new: 1,
@@ -122,7 +125,42 @@ describe('submitProductFeedback', () => {
     const view = await submitProductFeedback(session, input)
 
     expect(announceProductFeedback).toHaveBeenCalledWith(stored(), 'Büro Nord')
-    expect(view).toEqual({ id: stored().id, kind: 'bug', createdAt: at.toISOString() })
+    expect(view).toEqual({
+      id: stored().id,
+      kind: 'bug',
+      createdAt: at.toISOString(),
+      relayText: 'Der Upload bleibt bei 99 % stehen.',
+    })
+  })
+
+  it('answers with the message masked against the caller organization policy, never as typed', async () => {
+    vi.mocked(maskChatText).mockResolvedValue({ text: 'Honorar [maskiert] zu hoch' } as never)
+
+    const view = await submitProductFeedback(session, { ...input, message: 'Honorar 48.000 EUR zu hoch' })
+
+    expect(maskChatText).toHaveBeenCalledWith('org_tenant', 'Honorar 48.000 EUR zu hoch')
+    expect(view.relayText).toBe('Honorar [maskiert] zu hoch')
+    // The stored record is what the reporter typed; platform owners triage that.
+    expect(repository.insertProductFeedback).toHaveBeenCalledWith(
+      expect.objectContaining({ message: 'Honorar 48.000 EUR zu hoch' }),
+    )
+  })
+
+  it('hands nothing to relay when the reporter did not agree to be contacted', async () => {
+    const view = await submitProductFeedback(session, { ...input, allowContact: false })
+
+    expect(view.relayText).toBeNull()
+    expect(maskChatText).not.toHaveBeenCalled()
+  })
+
+  it('hands nothing to relay, rather than the raw text, when the policy cannot be read', async () => {
+    vi.mocked(maskChatText).mockRejectedValue(new Error('settings unavailable'))
+    vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const view = await submitProductFeedback(session, input)
+
+    expect(view.relayText).toBeNull()
+    expect(repository.insertProductFeedback).toHaveBeenCalledTimes(1)
   })
 
   it('hands the stored report to the GitHub filing, which decides by kind', async () => {

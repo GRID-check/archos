@@ -43,6 +43,28 @@ Announcing fails open. The report is stored first, and a WorkOS failure while
 resolving the roster is logged instead of costing the reporter their
 confirmation.
 
+## The Support ticket in PostHog
+
+When PostHog is configured and its Support product is on for the project, the
+browser also opens a Support ticket for the report, so the person answering
+tickets and the session replay sit in one place
+(`sendPosthogSupportMessage` in `lib/analytics/posthog.ts`). The first message
+is `[<kind>] #<report id> <page path>`, a newline, then the text. The id is the
+key back to the stored report and **Platform → Feedback**.
+
+- **The text is the server's, masked.** `POST /api/feedback/reports` answers
+  `{ id, kind, createdAt, relayText }`. `relayText` is the message after
+  `maskChatText`, the same pass a vote's comment goes through against the
+  office's „Sensible Daten" policy (ADR-0086). The stored report keeps what was
+  typed; only this copy leaves for a third party. The dialog never sends its own
+  textarea.
+- **No ticket without consent.** `relayText` is `null` when the reporter did not
+  tick "You may contact me about this" (a ticket is a thread that answers the
+  reporter), and also when the policy could not be read: no text means no
+  ticket, never an unmasked one. Their report still reaches the triage page and
+  the platform owners' inbox.
+- Best effort. The ticket runs beside the stored report and cannot fail it.
+
 ## Bug reports become GitHub issues
 
 A report of kind `bug` is also filed as an issue in the repository named by

@@ -43,6 +43,21 @@ export async function submitProductFeedback(
 }
 
 /**
+ * The first message of a Support ticket for a stored report: the kind, the
+ * report id (the key to the Postgres record and the triage page), the page,
+ * then the server-masked text. The id is what lets whoever answers the ticket
+ * find the report, and the page and the replay find the rest.
+ */
+export function supportTicketText(
+  kind: ProductFeedbackKind,
+  reportId: string,
+  pagePath: string | null,
+  relayText: string
+): string {
+  return `[${kind}] #${reportId}${pagePath ? ` ${pagePath}` : ''}\n${relayText}`
+}
+
+/**
  * What the browser can tell a triager without the reporter typing it. Read at
  * send time so it describes the moment of the report, and never the query
  * string or host — a path is enough to find the page, and a query can carry
