@@ -912,6 +912,10 @@
     "de": "Ein Klick auf eine Zeile der Aufträge-Liste öffnet jetzt den Lauf selbst, mit denselben Runden, Quellen und Fundstellen wie im Verlauf, und einem Link in diesen Verlauf."
   },
   {
+    "en": "Closing a project now asks how it ended, completed or not realized, and in which month, then what the office keeps, then what to clear out, one step at a time.",
+    "de": "Beim Abschließen eines Projekts werden Sie jetzt Schritt für Schritt gefragt, ob es fertiggestellt oder nicht realisiert wurde und in welchem Monat, was das Büro behält und was aussortiert werden soll."
+  },
+  {
     "en": "Closing a project now asks what it should leave the office. The dialog shows the facts Piloti compares projects by, names the ones still open, and lists the project's recorded decisions.",
     "de": "Beim Schließen eines Projekts wird jetzt gefragt, was das Büro verlassen soll. Der Dialog zeigt die Fakten, anhand derer Piloti Projekte vergleicht, nennt die noch offenen Punkte und listet die erfassten Entscheidungen des Projekts auf."
   },
@@ -1608,6 +1612,10 @@
     "de": "Übersichten enthalten nochmals eine Zusammenfassung und die wichtigsten Punkte, und Vorschläge für Folgefragen ergeben sich aus konkreten Lücken in der Antwort."
   },
   {
+    "en": "Pausing, closing and reopening are offered from the project's overview menu and from the notice at the top of a paused or closed project, and the project switcher no longer lists every closed project of the office.",
+    "de": "Pausieren, Schließen und Wiederöffnen stehen im Menü der Projektübersicht sowie über den Hinweis oben in einem pausierten oder geschlossenen Projekt zur Verfügung, und der Projektwechsler listet nicht mehr jedes geschlossene Projekt des Büros auf."
+  },
+  {
     "en": "People who are invited or join an existing project also get the tours, once each, on their first visit.",
     "de": "Auch wer eingeladen wird oder einem bestehenden Projekt beitritt, bekommt die Touren, jeweils einmal beim ersten Besuch."
   },
@@ -1814,6 +1822,10 @@
   {
     "en": "Project memory now takes your feedback into account: when a thumbs-down comment contradicts a stored note, that note is marked less reliable in your project. Nothing is deleted, and pinned notes are exempt.",
     "de": "Das Projektgedächtnis berücksichtigt jetzt Ihr Feedback: Widerspricht ein negativer Kommentar einer gespeicherten Notiz, wird diese Notiz in Ihrem Projekt als weniger verlässlich markiert. Gelöscht wird nichts, und angeheftete Notizen sind ausgenommen."
+  },
+  {
+    "en": "Projects closed before this release are marked as completed. If one was never built, reopen it and close it again as not realized.",
+    "de": "Projekte, die vor diesem Release geschlossen wurden, sind als abgeschlossen markiert. Wenn eines davon nie gebaut wurde, öffnen Sie es erneut und schließen Sie es wieder als nicht realisiert."
   },
   {
     "en": "Prüfbuch confirmations on an IFC model still under review, and the number of such files in a folder in the Papierkorb, are no longer shown to colleagues who may not see the model or the file.",
@@ -2210,6 +2222,10 @@
   {
     "en": "The cited passage is highlighted in the document again, survives a reload, and „Zitat kopieren“ copies the quote rather than only the bibliographic reference.",
     "de": "Die zitierte Stelle ist im Dokument wieder markiert, übersteht ein Neuladen, und „Zitat kopieren“ liefert das Zitat statt nur der Literaturangabe."
+  },
+  {
+    "en": "The completion month of a project is now set when you close it. A running project shows \"ongoing\", and a month typed into one earlier is no longer shown; it is offered again when you close the project.",
+    "de": "Der Fertigstellungsmonat eines Projekts wird jetzt beim Schließen festgelegt. Bei laufenden Projekten wird „laufend“ angezeigt; ein zuvor eingetragener Monat wird nicht mehr angezeigt und beim Schließen erneut vorgeschlagen."
   },
   {
     "en": "The compliance check now takes requirements only from the Richtlinien and evidence only from your own documents, including the office archive. A requirement can no longer count as documented just because the Richtlinie states it.",
@@ -2826,6 +2842,10 @@
   {
     "en": "You can now hand Piloti recurring work in the chat: „prüf das jeden Montag“ creates a schedule that keeps running. Creating one needs the permission to manage schedules in the project.",
     "de": "Sie können Piloti im Chat jetzt auch wiederkehrende Arbeit übergeben: „prüf das jeden Montag“ legt einen Zeitplan an, der immer wieder läuft. Dafür braucht es die Berechtigung, Zeitpläne im Projekt zu verwalten."
+  },
+  {
+    "en": "You can now pause a project that is waiting, for a permit or a client decision. It leaves your active projects and its scheduled tasks are skipped until you resume it, without making it read-only or visible to the whole office.",
+    "de": "Sie können ein Projekt, das auf eine Genehmigung oder eine Entscheidung des Auftraggebers wartet, jetzt pausieren. Es wird aus Ihren aktiven Projekten entfernt und geplante Aufgaben werden übersprungen, bis Sie es fortsetzen – ohne es schreibgeschützt zu machen oder für das gesamte Büro sichtbar zu machen."
   },
   {
     "en": "You can now send feedback to the Piloti team from anywhere in the app: report a bug, suggest an idea, leave praise or ask a question from the avatar menu or the new button next to the inbox.",
