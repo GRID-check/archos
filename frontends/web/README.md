@@ -18,12 +18,15 @@ npm run dev        # http://localhost:4321
 |-------------------|----------------------|----------------------------------------------------|
 | `PUBLIC_APP_URL`  | `https://app.piloti.at` | Base URL of the app. Read at **runtime** by the `/sign-in` endpoint, which 302s to `/?sign-in` there — the app's root bounces logged-out visitors back to this site, so the bare URL would be a loop. Injected per stack by the Kubernetes deployment; one image serves every host. |
 | `PUBLIC_SITE_URL` | `https://piloti.at` | Canonical site URL for OG/sitemap metadata (public). Baked at build. Prod default is deliberate: dev canonicalizing to prod is harmless — dev should not be indexed anyway. |
+| `PUBLIC_POSTHOG_HOST` / `PUBLIC_POSTHOG_PROJECT_TOKEN` | _(unset)_ | PostHog web analytics (page views, referrer and UTM, web vitals, heatmaps; no replay, no person profiles). Read at **runtime** by the `/web-analytics.js` route that every page loads; with either unset the route answers an empty script and the browser contacts nobody. Injected from `grid-oib:posthogHost` / `posthogProjectToken` by the Kubernetes deployment. The privacy policy in `src/i18n/ui.ts` describes exactly what this sends: change them together. |
 | `HOST` / `PORT`   | `0.0.0.0` / `4321`   | Node adapter listen address (runtime)              |
 
 Only `PUBLIC_SITE_URL` is read at **build time** (it ends up in the prerendered
 HTML); the Docker build accepts it as a build arg (see `Dockerfile`).
-`PUBLIC_APP_URL` must stay a runtime value — baking an app host into the
-static HTML is how the production landing page once linked at the dev app.
+`PUBLIC_APP_URL` and the `PUBLIC_POSTHOG_*` pair must stay runtime values —
+baking an app host into the static HTML is how the production landing page once
+linked at the dev app, and a token read in a layout is baked as `undefined`
+because the image builds with no env files.
 
 ## Blog
 

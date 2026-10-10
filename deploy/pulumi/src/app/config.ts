@@ -258,6 +258,23 @@ export function posthogEnv(cfg: GridConfig): EnvVar[] {
 }
 
 /**
+ * The landing site's PostHog pair (`PUBLIC_POSTHOG_HOST`,
+ * `PUBLIC_POSTHOG_PROJECT_TOKEN`), or nothing unless both are configured: the
+ * same stack keys the other runtimes read, under the names the Astro tier uses.
+ * `frontends/web/src/pages/web-analytics.js.ts` reads them per request (the
+ * pages are prerendered and the image builds with no env files) and answers an
+ * empty script without them. Exported for `web.spec.ts`.
+ */
+export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
+  const { host, projectToken } = cfg.posthog;
+  if (host === "" || projectToken === "") return [];
+  return [
+    { name: "PUBLIC_POSTHOG_HOST", value: host },
+    { name: "PUBLIC_POSTHOG_PROJECT_TOKEN", value: projectToken },
+  ];
+}
+
+/**
  * Backend environment shared by every role of the image. Postgres DSNs
  * everywhere (never SQLite) — the hard precondition for durability and any
  * future replica. The admission caps are the

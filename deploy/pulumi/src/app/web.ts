@@ -8,6 +8,7 @@ import {
   toResourceRequirements,
   webImage,
 } from "../config";
+import { webPosthogEnv } from "./config";
 import { commonLabels } from "../platform/namespaces";
 import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
@@ -24,7 +25,9 @@ export interface Web {
 /**
  * Landing site (frontends/web): Astro on the Node standalone adapter. The pages
  * are prerendered at build time (static HTML + assets served by the adapter),
- * with SSR routes for the Keystatic admin. No database, no app secrets, no
+ * with SSR routes for the Keystatic admin, the sign-in hand-off and the
+ * analytics script, which read their settings from the env below per request.
+ * No database, no app secrets, no
  * cross-service calls — so unlike the frontend tier this workload has no
  * dependency on `grid-secrets`. It DOES carry the registry imagePullSecrets:
  * the web image is pulled from the same registry as the other app images, so
@@ -84,6 +87,11 @@ export function installWeb(
                     name: "PUBLIC_APP_URL",
                     value: `https://${cfg.ingress.appDomain}`,
                   },
+                  // PostHog web analytics, off unless both are set. Read per
+                  // request by the /web-analytics.js route, not baked into the
+                  // prerendered pages: the same pair the app tier reads as
+                  // NEXT_PUBLIC_POSTHOG_* (grid-oib:posthogHost, posthogProjectToken).
+                  ...webPosthogEnv(cfg),
                 ],
                 resources: toResourceRequirements(cfg.web.resources),
                 lifecycle: shutdown.lifecycle,
