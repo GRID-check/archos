@@ -35,6 +35,7 @@ import {
   initPosthogClient,
   isPosthogEnabled,
   resetPosthog,
+  setPosthogOrganization,
 } from '@/lib/analytics/posthog'
 
 interface ProvidersProps {
@@ -55,16 +56,23 @@ const isThemeMode = (value: unknown): value is ThemeMode =>
  * restored its session on each page load; sign-out resets PostHog in the auth
  * action before AuthKit redirects. Everything no-ops while analytics is
  * unconfigured (fail-open).
+ *
+ * The identity is the WorkOS user id and nothing else: no email, no name (the
+ * Langfuse audit flagged those). The WorkOS organization rides along as an
+ * `organization_id` property on every event, because group analytics is a paid
+ * add-on (`lib/analytics/posthog.ts`). PostHog keeps nothing in the browser
+ * (`persistence: 'memory'`), so every full page load identifies again; the
+ * effect below runs once per load for exactly that reason.
  */
 const PostHogIdentitySync = (): null => {
-  const { authRequired, isAuthenticated, user } = useAuth()
+  const { authRequired, isAuthenticated, user, organizationId } = useAuth()
   const { posthog: posthogConfig = DISABLED_POSTHOG_CONFIG } = useAppConfig()
   const previousDistinctId = useRef<string | null>(null)
   const distinctId = authRequired && isAuthenticated && user?.id ? user.id : null
 
   useEffect(() => {
-    initPosthogClient(posthogConfig.host, posthogConfig.projectToken)
-  }, [posthogConfig.host, posthogConfig.projectToken])
+    initPosthogClient(posthogConfig)
+  }, [posthogConfig])
 
   useEffect(() => {
     if (!distinctId) {
@@ -83,12 +91,16 @@ const PostHogIdentitySync = (): null => {
     if (!isPosthogEnabled() || previousDistinctId.current === distinctId) return
 
     if (previousDistinctId.current) resetPosthog()
-    identifyPosthog(distinctId, {
-      email: user?.email ?? undefined,
-      name: user?.name ?? undefined,
-    })
+    identifyPosthog(distinctId)
     previousDistinctId.current = distinctId
-  }, [distinctId, user?.email, user?.name])
+  }, [distinctId])
+
+  // After the identify effect above (same commit, declaration order), and again
+  // whenever the member switches organization without a new sign-in.
+  useEffect(() => {
+    if (!distinctId || !isPosthogEnabled()) return
+    setPosthogOrganization(organizationId)
+  }, [distinctId, organizationId])
 
   return null
 }

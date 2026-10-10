@@ -39,6 +39,7 @@ import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import { useTranslations } from '@/i18n'
 import {
   documentParameters,
@@ -634,7 +635,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   }
 
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', REPLAY_BLOCK_CLASS, className)}>
       {/* `flex-wrap`: this row holds a page count, a "jump to the passage"
           button and the zoom group, and on a phone — where each of those grows
           to the 44px touch floor — they add up past the viewport. Unwrapped, the
@@ -1131,7 +1132,7 @@ const PdfFallbackFrame: FC<{
 }> = ({ src, title, page, hasPassage, className }) => {
   const t = useTranslations('knowledge')
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', REPLAY_BLOCK_CLASS, className)}>
       {hasPassage && (
         <p className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
           <AlertTriangle aria-hidden className="size-3.5" />

@@ -38,6 +38,7 @@ import { Spinner } from '@/components/ui/spinner'
 import { Textarea } from '@/components/ui/textarea'
 import { useModifierLabel } from '@/components/shell/shortcut-keys'
 import { useTranslations } from '@/i18n'
+import { capturePosthog, sendPosthogSupportMessage } from '@/lib/analytics/posthog'
 import {
   captureFeedbackContext,
   submitProductFeedback,
@@ -68,6 +69,20 @@ export interface FeedbackDialogProps {
   userEmail?: string | null
   /** Injected by previews and specs; the app uses the real client. */
   submit?: (request: SubmitProductFeedbackRequest) => Promise<SubmitProductFeedbackResult>
+}
+
+/**
+ * After the first-party record exists, tell PostHog too: the product event (the
+ * kind only, never the words) and, when the project has Support switched on, a
+ * new Support ticket carrying the report so it lands in the same inbox as the
+ * replay it can link to. Fire-and-forget by design: the Postgres record, the
+ * inbox fan-out and the GitHub filing stay the source of truth, and nothing
+ * here may delay or fail the thank-you. Both calls no-op while PostHog is off.
+ * No email or name is sent.
+ */
+function relayToPosthog(kind: ProductFeedbackKind, message: string): void {
+  capturePosthog('product_feedback_submitted', { kind })
+  void sendPosthogSupportMessage(`[${kind}] ${message}`)
 }
 
 type Phase = { kind: 'form' } | { kind: 'sending' } | { kind: 'sent' }
@@ -128,6 +143,7 @@ export function FeedbackDialog({
     })
     if (result.ok) {
       setPhase({ kind: 'sent' })
+      relayToPosthog(kind, message.trim())
       return
     }
     setPhase({ kind: 'form' })

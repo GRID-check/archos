@@ -81,6 +81,7 @@ import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import type { Camera, RenderOptions, Renderer, Scene } from '@ifc-lite/renderer'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
 import type { BimViewerElement, Rgba } from '../lib/model-index'
 import { MeasureOverlay } from '../lib/measure-overlay'
 import {
@@ -1725,7 +1726,7 @@ export function IfcViewerCanvas({
       reaches the canvas underneath and the viewport behaves exactly as it did
       when it was one element.
     */
-    <div className={cn('relative', className)}>
+    <div className={cn('relative', REPLAY_BLOCK_CLASS, className)}>
       <canvas
         ref={canvasRef}
         className={cn(

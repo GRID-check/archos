@@ -34,7 +34,7 @@ vi.mock('@/adapters/api/turn-socket', () => ({
   },
 }))
 const posthogSessionId = vi.hoisted(() => vi.fn((): string | null => null))
-vi.mock('@/lib/analytics/posthog', () => ({ getPosthogSessionId: posthogSessionId }))
+vi.mock('@/lib/analytics/posthog', () => ({ getPosthogSessionId: posthogSessionId, capturePosthog: vi.fn() }))
 vi.mock('@/adapters/auth', () => ({
   useAuth: () => ({ user: { id: 'user-1', name: 'Max' }, authRequired: false, isLoading: false }),
 }))
@@ -75,6 +75,7 @@ const client = vi.hoisted(() => ({
 }))
 vi.mock('@/adapters/api/conversations-client', () => ({ conversationsClient: client }))
 
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useChatStore } from '../store'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
@@ -205,6 +206,21 @@ describe('a question', () => {
     posthogSessionId.mockReturnValueOnce('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
     act(() => void result.current.sendMessage('Zweite Frage'))
     expect(sentOf('user_message')[1]).toMatchObject({ posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
+  })
+
+  it('tells PostHog a turn started, by its shape alone', () => {
+    const { result } = open(conversationOf(CONVERSATION))
+
+    act(() => void result.current.sendMessage('Wie lang darf der Fluchtweg sein?', { reasoningEffort: 'xhigh' }))
+
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('chat_message_sent', {
+      has_attachments: false,
+      effort: 'xhigh',
+      data_source_count: 1,
+    })
+    // The question is never an event property.
+    expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Fluchtweg')
   })
 
   it("does not make a file that is merely open in a peek the turn's focus", () => {

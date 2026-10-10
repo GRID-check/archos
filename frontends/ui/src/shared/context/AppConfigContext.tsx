@@ -11,7 +11,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import type { PostHogConfig } from '@/lib/analytics/posthog'
+import type { PostHogConfig } from '@/lib/analytics/posthog-config'
 
 /**
  * File upload configuration for validation limits

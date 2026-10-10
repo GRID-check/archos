@@ -33,6 +33,7 @@ import { getLocale } from '@/i18n/server'
 import { getDictionary } from '@/i18n'
 import './globals.css'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { postHogConfigFromEnv } from '@/lib/analytics/posthog-config'
 
 const geistSans = Geist({
   subsets: ['latin'],
@@ -191,10 +192,9 @@ const getAppConfig = async (): Promise<AppConfig> => {
     // files, so a client-side `process.env.NEXT_PUBLIC_*` read would bake
     // `undefined` into the bundle and silently disable analytics on every
     // deployed environment. Empty values keep the client disabled (fail-open).
-    posthog: {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '',
-      projectToken: process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '',
-    },
+    // Replay is opt-in and sampled (`posthog-config.ts`); both switches are read
+    // here for the same reason as the host and token.
+    posthog: postHogConfigFromEnv(process.env),
   }
 }
 

@@ -68,6 +68,13 @@ describe('PdfDocumentView', () => {
     expect(screen.queryByTestId('pdf-page-placeholder')).toBeNull()
   })
 
+  it('blocks the document from the session recorder, pages and text layer alike', async () => {
+    state.pages = [{ items: [] }]
+    const { container } = render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    expect(container.firstElementChild).toHaveClass('ph-no-capture')
+  })
+
   it('renders one frame per page of the document', async () => {
     state.pages = [{ items: [] }, { items: [] }, { items: [] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)

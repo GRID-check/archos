@@ -16,8 +16,8 @@ describe('capturePosthogException', () => {
   })
 
   test('is a silent no-op while analytics is disabled', async () => {
-    const { capturePosthogException, initPosthogClient } = await import('./posthog')
-    initPosthogClient('', '')
+    const { DISABLED_POSTHOG_CONFIG, capturePosthogException, initPosthogClient } = await import('./posthog')
+    initPosthogClient(DISABLED_POSTHOG_CONFIG)
 
     expect(() => capturePosthogException(new Error('boom'), { source: 'x' })).not.toThrow()
     expect(captureException).not.toHaveBeenCalled()
@@ -25,7 +25,7 @@ describe('capturePosthogException', () => {
 
   test('forwards the error and its properties once the client is initialized', async () => {
     const { capturePosthogException, initPosthogClient } = await import('./posthog')
-    initPosthogClient('https://eu.i.posthog.com', 'phc_test')
+    initPosthogClient({ host: 'https://eu.i.posthog.com', projectToken: 'phc_test', sessionReplay: false, replaySampleRate: 0 })
     const failure = new Error('boom')
 
     capturePosthogException(failure, { source: 'route-error-boundary' })
