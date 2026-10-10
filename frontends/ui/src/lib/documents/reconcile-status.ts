@@ -12,6 +12,7 @@
  * wiped the in-memory job registry) and terminal states are written back.
  */
 
+import { announceIngestsFinished } from '@/lib/analytics/ingest-events'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
 import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
@@ -742,6 +743,29 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
       if (!ref) return
       const meta = extractMetadata(await listingFor(row.collectionName), ref)
       if (meta) metaByRow.set(row.id, meta)
+    })
+  )
+
+  // Tell PostHog which uploads came to rest, once the counts are in. The same
+  // rows `settled` names: the ones THIS read moved, so a concurrent read that
+  // lost the race announces nothing (`lib/analytics/ingest-events.ts`).
+  const rowsById = new Map(rows.map((row) => [row.id, row]))
+  announceIngestsFinished(
+    organizationId,
+    settled.flatMap(([id, resolution]) => {
+      const row = rowsById.get(id)
+      if (!row || resolution.status === 'pending') return []
+      const meta = metaByRow.get(id)
+      return [
+        {
+          filename: row.filename,
+          updatedAt: row.updatedAt,
+          status: resolution.status,
+          screening: 'screeningOutcome' in resolution ? resolution.screeningOutcome : undefined,
+          pageCount: meta?.pageCount,
+          chunkCount: meta?.chunkCount,
+        },
+      ]
     })
   )
 

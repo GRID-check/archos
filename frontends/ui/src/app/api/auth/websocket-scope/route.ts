@@ -27,6 +27,7 @@ import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 import { isWebSearchEnabledForOrg } from '@/lib/organizations/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
+import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
 import { isAuthzError } from '@/lib/auth-utils'
 import { isAuthRequired } from '@/lib/backend-proxy'
 
@@ -121,6 +122,16 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
         : null
 
     if (budgetStatus?.blocked) {
+      // `budget_blocked` for PostHog (ADR-0098), once per person and scope per
+      // hour. Not awaited: the refusal answers exactly as fast as before.
+      if (organizationId && session && budgetStatus.blockedScope) {
+        void announceBudgetBlocked({
+          organizationId,
+          userId: session.userId,
+          scope: budgetStatus.blockedScope,
+          unit: budgetStatus.unit,
+        })
+      }
       return NextResponse.json(
         {
           error: 'Budget exhausted',

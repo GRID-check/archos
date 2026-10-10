@@ -60,6 +60,9 @@ vi.mock('@/lib/conversations/repository', () => ({
   findConversationTenancy: vi.fn(),
 }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 vi.mock('./repository', () => ({
   findRequestById: vi.fn(),
   insertMentionRequests: vi.fn(),
@@ -606,6 +609,40 @@ describe('releaseRequest (spec MN-9.2)', () => {
 
     await expect(releaseRequest(session, 'req_1')).rejects.toBeInstanceOf(NotFoundError)
     expect(resolveRequests).not.toHaveBeenCalled()
+  })
+
+  it('reports mention_released to PostHog as the releaser, with the resource type only', async () => {
+    vi.mocked(findRequestById).mockResolvedValue(requestRow())
+    vi.mocked(resolveRequests).mockResolvedValue([requestRow({ status: 'released' })])
+    vi.mocked(listOpenRequestsForResource).mockResolvedValue([])
+
+    await releaseRequest(session, 'req_1')
+
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'mention_released',
+      distinctId: 'user_me',
+      organizationId: 'org_1',
+      properties: { resource_type: 'conversation' },
+    })
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('Atrium')
+  })
+
+  it('reports nothing when the request had already settled (nothing was released)', async () => {
+    vi.mocked(findRequestById).mockResolvedValue(requestRow())
+    vi.mocked(resolveRequests).mockResolvedValue([])
+    vi.mocked(listOpenRequestsForResource).mockResolvedValue([])
+
+    await releaseRequest(session, 'req_1')
+
+    expect(captureServer).not.toHaveBeenCalled()
+  })
+
+  it('reports nothing for a request from another organization', async () => {
+    vi.mocked(findRequestById).mockResolvedValue(requestRow({ organizationId: 'org_other' }))
+
+    await expect(releaseRequest(session, 'req_1')).rejects.toBeInstanceOf(NotFoundError)
+    expect(captureServer).not.toHaveBeenCalled()
   })
 })
 

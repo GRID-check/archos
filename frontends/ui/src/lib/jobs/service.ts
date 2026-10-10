@@ -20,6 +20,7 @@ import 'server-only'
 // Explicit, not the `crypto` global: this module is server-only and the global
 // is not guaranteed in every Node/test environment the service is loaded in.
 import { randomUUID } from 'node:crypto'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
@@ -943,7 +944,25 @@ export async function fireScheduledJob(
     }
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
-  if (isActiveTaskRunStatus(run.status)) return { fired: true, jobId: run.backendJobId ?? undefined }
+  if (isActiveTaskRunStatus(run.status)) {
+    // `job_run_started` (ADR-0098): the schedule fired and the backend took the
+    // run. Personless — nobody pressed anything, the scheduler did — and only
+    // for a run that is live: a skip is a `task_runs` row, not a start. The
+    // matching `job_run_finished` comes from `recordRunOutcome`, under the id
+    // `run_id` here, so the two join into one run's duration and result.
+    captureServer({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: definition.organizationId,
+      properties: {
+        job_id: definition.id,
+        run_id: run.id,
+        trigger: 'schedule',
+        output: definition.kind === 'deep-research' ? 'deep-research' : 'chat',
+      },
+    })
+    return { fired: true, jobId: run.backendJobId ?? undefined }
+  }
   return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
 }
 

@@ -1,5 +1,6 @@
 import { handleAuth } from '@workos-inc/authkit-nextjs'
 import { type NextRequest, NextResponse } from 'next/server'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { tenantSlotRoute } from '@/lib/db/tenant-context'
 
 /**
@@ -22,7 +23,39 @@ import { tenantSlotRoute } from '@/lib/db/tenant-context'
 const redirectUri = process.env.WORKOS_REDIRECT_URI ?? process.env.NEXT_PUBLIC_WORKOS_REDIRECT_URI
 const baseURL = redirectUri ? new URL(redirectUri).origin : undefined
 
-const authkitCallback = handleAuth({ returnPathname: '/app/projects', baseURL })
+/**
+ * An account WorkOS created this recently is a first sign-in. WorkOS creates
+ * the user at sign-up and sends them straight to this callback, so a minute or
+ * two separates the two; the window is generous for a slow email-verification
+ * step, and a returning user's account is days old at least.
+ */
+const NEW_USER_WINDOW_MS = 10 * 60_000
+
+/**
+ * `user_signed_in` for PostHog (ADR-0098), from the server because this is the
+ * one place a sign-in is certain: the browser lands on the app after the
+ * redirect with nothing that says a login happened. `authenticationMethod` is
+ * WorkOS's own enum (`SSO`, `Password`, `GoogleOAuth`, …), no identity.
+ * Fire-and-forget: `captureServer` queues and never throws, so the redirect is
+ * exactly as fast and as certain as before.
+ */
+type HandleAuthOptions = NonNullable<Parameters<typeof handleAuth>[0]>
+type SignInData = Parameters<NonNullable<HandleAuthOptions['onSuccess']>>[0]
+
+const announceSignIn = ({ user, organizationId, authenticationMethod }: SignInData): void => {
+  const createdAt = Date.parse(user.createdAt)
+  captureServer({
+    event: 'user_signed_in',
+    distinctId: user.id,
+    organizationId: organizationId ?? null,
+    properties: {
+      method: authenticationMethod,
+      is_new_user: Number.isNaN(createdAt) ? undefined : Date.now() - createdAt < NEW_USER_WINDOW_MS,
+    },
+  })
+}
+
+const authkitCallback = handleAuth({ returnPathname: '/app/projects', baseURL, onSuccess: announceSignIn })
 
 /**
  * A request that carries neither `code` nor `state` is not a returning

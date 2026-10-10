@@ -17,6 +17,9 @@ vi.mock('@/lib/workos/client', () => ({
   }),
 }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 import { POST } from './route'
 
 const request = (body: unknown): Request =>
@@ -59,5 +62,34 @@ describe('POST /api/organizations', () => {
     expect(res.status).toBe(500)
     const body = await res.json()
     expect(body).toEqual({ error: 'create-failed' })
+  })
+
+  it('reports organization_created to PostHog as the creator, carrying no name', async () => {
+    await POST(request({ name: 'Acme' }))
+
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'organization_created',
+      distinctId: 'user_1',
+      organizationId: 'org_new',
+    })
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('Acme')
+  })
+
+  it('reports nothing when the organization was not created', async () => {
+    createOrganization.mockRejectedValue(new Error('boom'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await POST(request({ name: 'Acme' }))
+
+    expect(captureServer).not.toHaveBeenCalled()
+  })
+
+  it('reports nothing when self-serve creation is disabled', async () => {
+    process.env.GRID_DISABLE_SELF_SERVE_ORGS = 'true'
+
+    await POST(request({ name: 'Acme' }))
+
+    expect(captureServer).not.toHaveBeenCalled()
   })
 })

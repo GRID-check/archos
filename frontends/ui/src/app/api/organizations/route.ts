@@ -15,6 +15,7 @@
 import { NextResponse } from 'next/server'
 import { refreshSession } from '@workos-inc/authkit-nextjs'
 import { z } from 'zod'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { publicApiRoute } from '@/lib/api/handler'
 import { BadRequestError, UnauthorizedError } from '@/lib/api/errors'
 import { getWorkOS } from '@/lib/workos/client'
@@ -86,6 +87,14 @@ export const POST = publicApiRoute(
         targetId: organization.id,
         metadata: { name },
         request,
+      })
+      // The server is the truth for this event (ADR-0098): the browser's copy
+      // fired only if the response arrived and the tab survived to read it.
+      // Fire-and-forget; no name, nothing but the ids.
+      captureServer({
+        event: 'organization_created',
+        distinctId: session.user.id,
+        organizationId: organization.id,
       })
       return { organizationId: organization.id }
     } catch (error) {

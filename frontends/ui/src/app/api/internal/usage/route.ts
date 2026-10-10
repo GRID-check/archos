@@ -10,6 +10,7 @@ import { COST_SOURCES, USAGE_ACTIVITIES } from '@/lib/db/schema'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withTenant } from '@/lib/db/tenant-context'
 import { recordUsageEvents } from '@/lib/budgets/service'
+import { announceBudgetThresholds } from '@/lib/budgets/budget-events'
 
 const usageEventSchema = z.object({
   model: z.string().max(200).nullable().optional(),
@@ -84,6 +85,15 @@ export const POST = internalApiRoute(
       }))
       )
     )
+    // `budget_threshold_crossed` for PostHog (ADR-0098): the ledger just grew,
+    // so this is the moment a limit can have been crossed. Not awaited and
+    // never throwing, so the tracker's flush returns exactly as fast as before,
+    // and it reads nothing at all while PostHog is off.
+    void announceBudgetThresholds({
+      organizationId: batch.organizationId,
+      userId: batch.userId ?? null,
+      projectId: batch.projectId ?? null,
+    })
     return { recorded }
   },
   { status: 202, tenancy: { fromPayload: 'body.organizationId' } }

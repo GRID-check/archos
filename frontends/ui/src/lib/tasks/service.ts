@@ -17,6 +17,7 @@
  */
 
 import 'server-only'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { ApiError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -364,6 +365,33 @@ async function fileResultFor(
 }
 
 /**
+ * `job_run_finished` for PostHog (ADR-0098): how a run ended and how long it
+ * took, for every kind of run (a schedule, a "run now", a delegated question).
+ * The requester is the distinct id, because the run is theirs even when the
+ * schedule fired it; `job_id` is null for a run with no definition behind it.
+ * Ids, statuses and a duration: never the title, the plan or the report.
+ * Fire-and-forget, so an unreachable PostHog changes nothing here.
+ */
+function announceRunFinished(run: TaskRun, outcome: TaskOutcome, closed: TaskRun): void {
+  const startedAt = new Date(run.startedAt ?? run.createdAt).getTime()
+  const durationMs = Date.now() - startedAt
+  captureServer({
+    event: 'job_run_finished',
+    distinctId: run.requesterUserId,
+    organizationId: run.organizationId,
+    properties: {
+      job_id: run.definitionId,
+      run_id: run.id,
+      status: outcome.status,
+      trigger: run.trigger,
+      output: run.kind,
+      filing_status: closed.filingStatus,
+      duration_ms: Number.isFinite(durationMs) ? Math.max(0, durationMs) : undefined,
+    },
+  })
+}
+
+/**
  * The ONE outcome recorder: close the run, file as the requester, tell them it
  * ended. Replaces the two recorders (`recordJobOutcome` for a run found via
  * `job_runs`, `recordTaskOutcome` for a delegated task) whose only difference
@@ -400,6 +428,10 @@ export async function recordRunOutcome(
     ? await completeActiveRunForOutcome(run, outcome)
     : await completeRunForOutcome(run, outcome)
   if (!completed) return { notified: false, filed: null, closed: false }
+
+  // The worker's report closes unconditionally so a retry still reaches the
+  // inbox; the event is sent once, for the report that found the run active.
+  if (options.onlyIfActive || isActiveTaskRunStatus(run.status)) announceRunFinished(run, outcome, completed.run)
 
   const type: InboxItemType = outcome.status === 'success' ? 'job.completed' : 'job.failed'
   const anchor = run.backendJobId ?? run.id
