@@ -915,3 +915,70 @@ class TestUsagePipelineWiring:
             assert "grid_usage_attributes" in positions
             assert "langfuse_trace_attributes" not in positions
             assert positions["grid_usage_attributes"] < positions["header_redaction"]
+
+
+class TestPosthogSessionLink:
+    """Langfuse's PostHog export reads ``trace.metadata.$posthog_session_id`` as the event's ``$session_id``."""
+
+    SESSION = "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70"
+
+    def test_the_metadata_key_is_the_one_langfuse_reads(self):
+        from aiq_agent.observability.langfuse_trace_attributes import METADATA_PREFIX
+        from aiq_agent.observability.langfuse_trace_attributes import POSTHOG_SESSION_METADATA_KEY
+
+        assert POSTHOG_SESSION_METADATA_KEY == "$posthog_session_id"
+        assert f"{METADATA_PREFIX}{POSTHOG_SESSION_METADATA_KEY}" == "langfuse.trace.metadata.$posthog_session_id"
+
+    @pytest.mark.parametrize(
+        "value",
+        [SESSION, SESSION.upper(), f"  {SESSION} "],
+    )
+    def test_a_uuid_v7_is_accepted_and_normalized(self, value):
+        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+
+        assert posthog_session_id_or_none(value) == self.SESSION
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            42,
+            "",
+            "not-a-session",
+            "0199d7f2-5b3a-4c4e-9a1d-3e8f2b6c5d70",  # UUIDv4: the version nibble is 4
+            "0199d7f2-5b3a-7c4e-1a1d-3e8f2b6c5d70",  # wrong variant
+            "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70-extra",
+            "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70\n<script>",
+        ],
+    )
+    def test_anything_else_is_not_a_session_id(self, value):
+        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+
+        assert posthog_session_id_or_none(value) is None
+
+    def test_it_rides_the_identity_switch_and_lands_in_the_turns_metadata(self, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
+        assert record_posthog_session(self.SESSION) is False
+        assert snapshot_contributions() is None
+
+        monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, "true")
+        assert record_posthog_session("nope") is False
+        assert record_posthog_session(self.SESSION) is True
+        assert snapshot_contributions()["metadata"] == {"$posthog_session_id": self.SESSION}
+        reset_contributions()
+
+    def test_the_span_attribute_is_the_trace_metadata_namespace(self):
+        from aiq_agent.observability.langfuse_trace_attributes import langfuse_attributes_for
+
+        attributes = langfuse_attributes_for(
+            organization_id=None,
+            project_id=None,
+            conversation_id=None,
+            contributed={"metadata": {"$posthog_session_id": self.SESSION}, "tags": []},
+        )
+        assert attributes == {"langfuse.trace.metadata.$posthog_session_id": self.SESSION}

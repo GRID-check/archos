@@ -349,6 +349,34 @@ describe('optional fields, by what the hello accepts', () => {
     expect(latest().sent).toEqual([bareStop])
   })
 
+  describe('the PostHog session id on a question', () => {
+    const question = {
+      type: 'user_message',
+      conversation_id: 'conv_1',
+      message_id: 'm1',
+      text: 'Welche Höhe gilt?',
+      posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+    } as const
+    const { posthog_session_id: _session, ...bareQuestion } = question
+
+    it('goes to a server whose hello names it', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['user_message.posthog_session_id'] } })
+      socket.send(question)
+      expect(latest().sent).toEqual([question])
+    })
+
+    it('is left out for a server whose hello does not, and the question still goes', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      socket.send(question)
+      expect(latest().sent).toEqual([bareQuestion])
+    })
+  })
+
   it('takes a hello naming fields this page has never heard of', async () => {
     const { socket, statuses } = setup()
     await socket.connect()
