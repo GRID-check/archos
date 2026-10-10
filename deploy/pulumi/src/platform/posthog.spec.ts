@@ -182,15 +182,15 @@ describe("the Python tiers' PostHog pair", () => {
     expect(loadConfig().posthog.logsEnabled).toBe(false);
   });
 
-  it("keeps session replay off unless the stack opts in, sampled at 0.2 by default", () => {
+  it("records every session by default, and a stack can sample down or switch replay off", () => {
     pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...POSTHOG });
-    expect(loadConfig().posthog).toMatchObject({ sessionReplay: false, replaySampleRate: "0.2" });
+    expect(loadConfig().posthog).toMatchObject({ sessionReplay: true, replaySampleRate: "1" });
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
       ...POSTHOG,
-      "grid-oib:posthogSessionReplay": "true",
+      "grid-oib:posthogSessionReplay": "false",
       "grid-oib:posthogReplaySampleRate": "0.05",
     });
-    expect(loadConfig().posthog).toMatchObject({ sessionReplay: true, replaySampleRate: "0.05" });
+    expect(loadConfig().posthog).toMatchObject({ sessionReplay: false, replaySampleRate: "0.05" });
   });
 });

@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-10
 decision-makers: Platform
 consulted: Product, Fachbereich
@@ -79,8 +79,8 @@ What goes where:
 | Runtime scores, user votes, review and judge scores | Langfuse **and** PostHog | Same integration: `langfuse score` events |
 | Session ↔ trace | PostHog | The browser's PostHog session id rides the chat turn into trace metadata `$posthog_session_id`, which the integration maps to `$session_id` |
 | Product analytics | PostHog | `posthog-js` (browser), `posthog-node` (BFF) |
-| Exceptions | PostHog error tracking | Browser autocapture, BFF `onRequestError`, and a Python logging handler for caught-and-logged exceptions. Supersedes err2issue (ADR-0031) once accepted |
-| Logs | PostHog Logs (WARN and above) | A second exporter on the existing collector, behind a stack key. Aspire stays the live pane |
+| Exceptions | PostHog error tracking | Browser autocapture, BFF `onRequestError`, and a Python logging handler for caught-and-logged exceptions. err2issue (ADR-0031) is deleted |
+| Logs | PostHog Logs (WARN and above) | An exporter on the existing collector, behind a stack key. The Aspire dashboard (ADR-0029) is deleted; the collector stays, and traces are read in Langfuse |
 | Surveys | PostHog Surveys | Defined in PostHog; votes on answers keep their own UI |
 | Support | PostHog Support (`posthog.conversations`) | The product-feedback dialog also opens a support conversation |
 | Alerts | PostHog | Error-tracking, log and insight alerts |
@@ -107,9 +107,13 @@ What goes where:
   analytics event. Turn volume times observations per turn has to stay under 1M
   events a month, together with everything else.
 * Bad, because a third party now receives behavioural data and masked session
-  recordings. That needs PostHog's DPA, the sub-processor list, and updated legal
-  copy. Today the copy says "no tracking or analytics tools". Replay stays off
-  until those are done.
+  recordings. That needs PostHog's DPA and a notice to the customer
+  organizations that a sub-processor was added. The privacy notice and the
+  landing site's copy now name PostHog, the cookie and the opt-out; they rest on
+  legitimate interest without a consent banner, which counsel should confirm.
+* Bad, because the live in-memory pane is gone with Aspire: INFO logs are read
+  with `kubectl logs`, and the OTel meters (`grid.queue.*`, `grid.provider.*`)
+  have no sink until one is chosen.
 * Bad, because some PostHog AI features (PostHog AI, Replay Vision, self-driving
   agents) run inference with US model providers whatever the project region.
   They need the organization's AI-data-processing consent, which is a business
@@ -152,10 +156,10 @@ What goes where:
 
 ## More Information
 
-* Supersedes on acceptance: ADR-0031 (err2issue). Amends ADR-0029 (Aspire stays
-  the live pane, and logs also go to PostHog) and ADR-0089 (Langfuse stays the LLM
-  observability store, and PostHog becomes where LLM data is joined with
-  everything else).
+* Supersedes ADR-0031 (err2issue) and ADR-0029 (the Aspire dashboard; the OTel
+  collector it introduced stays, feeding Langfuse and PostHog Logs). Amends
+  ADR-0089: Langfuse stays the LLM observability store, and PostHog becomes where
+  LLM data is joined with everything else.
 * ADR-0007 (no local identity sync) is untouched. PostHog's WorkOS warehouse
   source is a read-only copy in PostHog for analysis, not a mirror our code reads.
   Whether to connect it is in the migration plan.

@@ -278,8 +278,9 @@ The one-off tag-backfill script runs **outside** the NAT runtime, so it builds a
 | `FRONTEND_PORT` | No | `3000` | Docker host port mapping for the frontend container. |
 | `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED` | No | `false` | Fallback that shows the project-level Knowledge page (nav section plus the `/knowledge` route) when `GRID_ENFORCE_FEATURE_FLAGS` is off. With enforcement on, the per-org `project-knowledge-page` WorkOS flag decides instead. The platform owner's base-knowledge manager is independent of this. Frontend service. |
 | `NEXT_PUBLIC_POSTHOG_HOST` | No | _(unset)_ | Public PostHog host (e.g. `https://eu.i.posthog.com`). Read by the BFF per request into `AppConfig`, so no rebuild is needed to change it. Unset (or unset token) keeps the browser client disabled — no events leave the browser. Frontend service. On Kubernetes it is set from the Pulumi stack key `grid-oib:posthogHost`. |
-| `NEXT_PUBLIC_POSTHOG_SESSION_REPLAY` | No | `false` | `true`/`1` lets the browser record sessions: all inputs and all text masked, images, canvases and embeds blocked, the PDF and IFC viewers excluded (`ph-no-capture`), no console or network bodies, URL query strings stripped (`frontends/ui/src/lib/analytics/posthog.ts`). Off until the legal copy covers recording (ADR-0098). Read by the BFF per request. On Kubernetes, `grid-oib:posthogSessionReplay`. Frontend service. |
-| `NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE` | No | `0.2` | Share of sessions recorded while replay is on, 0..1; an invalid value falls back to 0.2. Keeps recordings inside PostHog's 5K/month free tier. On Kubernetes, `grid-oib:posthogReplaySampleRate`. Frontend service. |
+| `NEXT_PUBLIC_POSTHOG_SESSION_REPLAY` | No | `true` | `false`/`0` stops the browser recording sessions. While on: all inputs and all text masked, images, video, canvases and embeds blocked, the PDF and IFC viewers excluded (`ph-no-capture`), anything carrying a signed URL (`sig=`) blocked, request headers recorded without credentials or `x-grid-*`, bodies only for failed requests outside the credentials, internal, auth and audit-portal endpoints, URL query strings stripped (`frontends/ui/src/lib/analytics/posthog.ts`). Named in the privacy notice. Read by the BFF per request. On Kubernetes, `grid-oib:posthogSessionReplay` (default true). Frontend service. |
+| `NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE` | No | `1` | Share of sessions recorded while replay is on, 0..1; an invalid value falls back to 1. Lower it when PostHog's 5K recordings a month run out (the $0 billing limit drops the rest). On Kubernetes, `grid-oib:posthogReplaySampleRate`. Frontend service. |
+| `NEXT_PUBLIC_POSTHOG_PROXY` | No | `true` | Browser events and the SDK's assets go through the app's own `/ingest` relay (`frontends/ui/src/app/ingest/[...path]/route.ts`), which forwards an allow-list of headers (never cookies) to `NEXT_PUBLIC_POSTHOG_HOST` read at runtime, so ad blockers do not drop them. `false`/`0` sends the browser straight to the PostHog host. Read by the BFF per request. Frontend service. |
 | `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` | No | _(unset)_ | Public PostHog project token (`phc_…`). Public by design (it ships in the client bundle), so it lives in plain config, not in secrets. Same runtime-plumbing and fail-open behaviour as `NEXT_PUBLIC_POSTHOG_HOST`. On Kubernetes it is set from the Pulumi stack key `grid-oib:posthogProjectToken`. |
 
 ---
@@ -407,23 +408,19 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 | `LANGCHAIN_TRACING_V2` | No | — | Set to `true` to enable LangSmith tracing. |
 | `WANDB_API_KEY` | No | — | Weights & Biases API key for experiment tracking. |
 
-## Observability (ADR-0029, Kubernetes/Pulumi-injected)
+## Observability (OTel collector, Kubernetes/Pulumi-injected)
 
 These are set by the Pulumi stack on the respective Deployments — not part of
-`deploy/.env`. In Compose they are unset and tracing no-ops. Pulumi injects them
-only when the observability tier is actually deployed (`observabilityEnabled`
-AND its config dependencies — `docs/deployment/kubernetes.md` §9); otherwise
-they stay unset and no producer exports.
+`deploy/.env`. In Compose they are unset and export no-ops. Pulumi injects them
+only when the collector is deployed: `observabilityEnabled` and at least one
+consumer (Langfuse, or `posthogLogsEnabled`) — `docs/deployment/kubernetes.md`
+§9; otherwise they stay unset and no producer exports.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (JS exporter appends `/v1/traces` per spec). Unset → frontend instrumentation no-ops. |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | No | unset | OTLP/HTTP collector endpoint. Python tiers get the FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts as-is); the frontend gets the BASE URL (its log exporter appends `/v1/logs`; the BFF exports no traces). Unset → frontend log export no-ops. |
 | `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. |
 | `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
-
-The Aspire ingestion key is NOT an env var on producers — it lives in the
-Kubernetes Secret `aspire-dashboard-secrets`, referenced only by the collector and the
-dashboard (see `docs/deployment/kubernetes.md` §9).
 
 ## PostHog (ADR-0098)
 

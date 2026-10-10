@@ -964,12 +964,16 @@ export interface GridConfig {
     logsEnabled: boolean;
     /**
      * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
-     * default off). Recording is masked and sampled, but it is the one
-     * capability that sees the screen, so a stack opts in on purpose and only
-     * after the legal copy says so (ADR-0098).
+     * default on, like the browser's own default). Text and inputs are masked,
+     * the PDF and IFC viewers, media and signed URLs are blocked, and the privacy
+     * notice names it (ADR-0098). Nothing records while PostHog itself is off.
      */
     sessionReplay: boolean;
-    /** Share of sessions recorded when replay is on, 0..1 (`grid-oib:posthogReplaySampleRate`). */
+    /**
+     * Share of sessions recorded when replay is on, 0..1
+     * (`grid-oib:posthogReplaySampleRate`, default 1). Lower it when the 5K
+     * recordings a month of the free tier run out.
+     */
     replaySampleRate: string;
   };
 
@@ -2683,8 +2687,8 @@ export function loadConfig(): GridConfig {
       host: posthogHost,
       projectToken: posthogProjectToken,
       logsEnabled: posthogLogsEnabled,
-      sessionReplay: bool(cfg, "posthogSessionReplay", false),
-      replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "0.2",
+      sessionReplay: bool(cfg, "posthogSessionReplay", true),
+      replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
     },
 
     internal: {
