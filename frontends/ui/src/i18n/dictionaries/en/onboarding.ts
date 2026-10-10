@@ -66,7 +66,7 @@ export const onboarding = {
       },
       createProject: {
         title: 'Start with a project',
-        body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat in which Piloti works, citing every source from building law and your own files. A short setup asks about the building, then we show you around inside.',
+        body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat where Piloti works with you. Every source is cited, whether building law or your own files. A short setup asks about the building, then we show you around inside.',
       },
       archiv: {
         title: 'Office filing',
@@ -99,7 +99,7 @@ export const onboarding = {
         body: 'Every building gets a space like this one. Here is where the work happens.',
       },
       projectChat: {
-        title: 'Ask Piloti',
+        title: 'Work with Piloti',
         body: 'Talk to Piloti about this building in plain language, or hand it a task. It works from your files, Office filing and building law, and cites each source.',
       },
       projectFiles: {

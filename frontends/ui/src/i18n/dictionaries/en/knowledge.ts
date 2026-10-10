@@ -43,7 +43,7 @@ export const knowledge = {
   },
   stateHints: {
     ingested: 'Fully searchable by the assistant.',
-    stale: 'The file was replaced since it was indexed; answers still reflect the previous version until the next sync.',
+    stale: 'The file was replaced since it was indexed; until the next sync, Piloti answers from the previous revision.',
     pending: 'Uploaded but not processed yet — the assistant cannot use it until an ingest worker has finished it.',
     failed: 'Processing did not finish. It is not retried until the file changes; select it and use Re-index to try again.',
     removed: 'The corpus no longer lists this document, but its indexed content is still searchable. Delete it to clear it.',

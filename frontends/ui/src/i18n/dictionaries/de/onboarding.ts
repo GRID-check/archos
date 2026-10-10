@@ -68,7 +68,7 @@ export const onboarding: typeof en.onboarding = {
       },
       createProject: {
         title: 'Alles beginnt mit einem Projekt',
-        body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti arbeitet und jede Quelle belegt, aus Baurecht und den Unterlagen des Projekts. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
+        body: 'Ein Projekt umfasst ein Gebäude: seine Dokumente, die Beteiligten, Aufgaben und Recherchen sowie einen Chat, in dem Piloti mit Ihnen arbeitet. Jede Quelle ist belegt, ob Baurecht oder Ihre eigenen Unterlagen. Eine kurze Einrichtung fragt nach dem Gebäude, danach zeigen wir Ihnen das Projekt.',
       },
       archiv: {
         title: 'Büroablage',
@@ -101,7 +101,7 @@ export const onboarding: typeof en.onboarding = {
         body: 'Jedes Gebäude bekommt einen Raum wie diesen. Hier findet die Arbeit statt.',
       },
       projectChat: {
-        title: 'Frag Piloti',
+        title: 'Mit Piloti arbeiten',
         body: 'Sprechen Sie in Ihren Worten mit Piloti über dieses Gebäude oder übergeben Sie ihm eine Aufgabe. Es arbeitet mit Ihren Dateien, der Büroablage und dem Baurecht und zitiert jede Quelle.',
       },
       projectFiles: {

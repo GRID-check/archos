@@ -6,8 +6,11 @@
  * in flight, one pending, four failed (two in `Pläne`, two in `Details`), one
  * held by the content screen, one agent report at rest, and five photos of the
  * site that Piloti read but could not place in a document type (three carry
- * what the camera wrote). Two earlier Fassungen sit in `03_Einreichung/alt`,
- * named with their index, so the brief has revision series to name.
+ * what the camera wrote). Three earlier Fassungen sit in `03_Einreichung/alt`,
+ * named with their index and linked to their newer one (`fassung`), one of them
+ * a failed read. The brief counts one entry per document (ADR-0097), so none of
+ * the three is counted, summed into the pages, or listed under failures: the
+ * root reads „35 von 44 Dokumenten gelesen“ although the corpus holds 48 files.
  *
  * Tags come ONLY from `lib/documents/tag-vocabulary.ts`. Unknown values are null,
  * not guesses: a document still being read has no tags yet, a failed one's are
@@ -18,6 +21,7 @@ import type { FileItem, FolderItem } from '@/features/documents/file-types'
 import type { DocumentAuthor } from '@/lib/documents/document-authors'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
 import type { DocumentTypeTag, DisciplineTag } from '@/lib/documents/tag-vocabulary'
+import { EMPTY_FASSUNG, type FassungFacts, type FassungRef } from '@/lib/documents/fassung'
 
 type ContentType = 'text' | 'table' | 'image' | 'chart' | 'drawing'
 
@@ -40,6 +44,8 @@ interface DocSpec {
   topics?: readonly string[] | null
   /** What the camera wrote, for a photo. */
   capture?: PhotoCapture | null
+  /** The confirmed Fassung links, as the listing carries them. */
+  fassung?: FassungFacts | null
 }
 
 const PDF = 'application/pdf'
@@ -66,8 +72,23 @@ function doc(spec: DocSpec): FileItem {
     topics: spec.topics ? [...spec.topics] : null,
     capture: spec.capture ?? null,
     authoredBy: spec.authoredBy ?? 'user',
+    ...(spec.fassung ? { fassung: spec.fassung } : {}),
   }
 }
+
+/** Three Fassung chains: the current one lists its history, each older one what replaced it. */
+const EG_C: FassungRef = { id: 'd-03-02', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' }
+const EG_B: FassungRef = { id: 'd-03-alt-1', filename: 'EG_Grundriss_Index_B_2026-07-02.pdf' }
+const SCHNITT_B: FassungRef = { id: 'd-03-04', filename: 'Schnitt_B-B_Index_B.pdf' }
+const SCHNITT_A: FassungRef = { id: 'd-03-alt-2', filename: 'Schnitt_B-B_Index_A.pdf' }
+const STELLPLATZ_A: FassungRef = { id: 'd-03-08', filename: 'Stellplatzplan_UG_Index_A.pdf' }
+const STELLPLATZ_VORABZUG: FassungRef = { id: 'd-03-alt-3', filename: 'Stellplatzplan_UG_Vorabzug.pdf' }
+const current = (older: FassungRef): FassungFacts => ({
+  ...EMPTY_FASSUNG,
+  supersedes: [older],
+  history: [{ ...older, createdAt: null, changeSummary: null }],
+})
+const replacedBy = (newer: FassungRef): FassungFacts => ({ ...EMPTY_FASSUNG, supersededBy: newer })
 
 export const PROJECT_NAME = 'Wohnbau Seestadt Nord'
 
@@ -174,7 +195,10 @@ export const FILES: FileItem[] = [
     status: 'completed', createdAt: '2026-08-14T15:30:00Z', fileSize: 3_200_000,
     pageCount: 1, chunkCount: 12, contentTypes: ['drawing', 'text'], tags: ['Grundriss', 'Brandschutz'],
     summary: 'Grundriss Erdgeschoß Index C mit Fluchtwegen, Brandabschnitten und Stellplatzzufahrt.',
-    topics: ['Fluchtweg', 'Brandabschnitt', 'Stellplatzzufahrt'],
+    // The last topic is 40 characters, the longest Piloti writes
+    // (`MAX_TOPIC_LENGTH`): its chip truncates instead of widening the page.
+    topics: ['Fluchtweg', 'Brandabschnitt', 'Stellplatzzufahrt', 'Brandabschnitte zwischen Tiefgarage & UG'],
+    fassung: current(EG_B),
   }),
   doc({
     id: 'd-03-03', filename: 'Regelgeschoss_Grundriss_Index_B.pdf', folderId: 'f-03-plaene',
@@ -189,6 +213,7 @@ export const FILES: FileItem[] = [
     pageCount: 1, chunkCount: 6, contentTypes: ['drawing'], tags: ['Schnitt'],
     summary: 'Gebäudeschnitt B-B durch das Stiegenhaus mit Lichtkuppel und Rauchabzug.',
     topics: ['Rauchabzug', 'Stiegenhaus'],
+    fassung: current(SCHNITT_A),
   }),
   doc({
     id: 'd-03-05', filename: 'Ansicht_Ost_Index_B.pdf', folderId: 'f-03-plaene',
@@ -211,6 +236,7 @@ export const FILES: FileItem[] = [
     status: 'completed', createdAt: '2026-07-30T13:25:00Z', fileSize: 980_000,
     pageCount: 1, chunkCount: 4, contentTypes: ['drawing'], tags: ['Grundriss'],
     summary: 'Tiefgaragenplan mit 38 Stellplätzen, Rampe und Brandabschnittsgrenzen.',
+    fassung: current(STELLPLATZ_VORABZUG),
   }),
 
   // 03_Einreichung/alt: the earlier Fassungen an office keeps, named with their index.
@@ -220,12 +246,22 @@ export const FILES: FileItem[] = [
     pageCount: 1, chunkCount: 12, contentTypes: ['drawing', 'text'], tags: ['Grundriss', 'Brandschutz'],
     summary: 'Grundriss Erdgeschoß Index B mit Fluchtwegen und Brandabschnitten, noch ohne Stellplatzzufahrt.',
     topics: ['Fluchtweg', 'Brandabschnitt'],
+    fassung: replacedBy(EG_C),
   }),
   doc({
     id: 'd-03-alt-2', filename: 'Schnitt_B-B_Index_A.pdf', folderId: 'f-03-alt',
     status: 'completed', createdAt: '2026-06-18T11:30:00Z', fileSize: 1_350_000,
     pageCount: 1, chunkCount: 6, contentTypes: ['drawing'], tags: ['Schnitt'],
     summary: 'Gebäudeschnitt B-B durch das Stiegenhaus, Rauchabzug noch als Fenster.',
+    fassung: replacedBy(SCHNITT_B),
+  }),
+  // A replaced Fassung that failed to read: never listed under „Hier sind Sie
+  // gefragt“, never re-read by „Alle erneut lesen“.
+  doc({
+    id: STELLPLATZ_VORABZUG.id, filename: STELLPLATZ_VORABZUG.filename, folderId: 'f-03-alt',
+    status: 'failed', createdAt: '2026-07-12T08:00:00Z', fileSize: 940_000,
+    errorMessage: 'Datei ist beschädigt: Querverweistabelle fehlt',
+    fassung: replacedBy(STELLPLATZ_A),
   }),
 
   // 03_Einreichung/Gutachten: one in flight.

@@ -45,6 +45,10 @@
  * has its page thumbnail already rendered while the badge still says
  * "Processing", because a PDF preview is produced at upload time and the rest of
  * ingestion runs after it.
+ *
+ * `?variant=fassungen` renders documents with Fassungen (ADR-0097): the count
+ * beside the name, the one badge on an older Fassung, in cards and in the list,
+ * with older Fassungen hidden and shown. See `fassungen-fixture.tsx`.
  */
 
 import type { JSX } from 'react'
@@ -58,6 +62,7 @@ import { projectSearchScope } from '@/features/documents/lib/file-shelf'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { LayoutGrid, List } from 'lucide-react'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
+import { FassungenFixture } from './fassungen-fixture'
 
 function makeFile(id: string, filename: string, summary: string, extra: Record<string, unknown> = {}): FileItem {
   return {
@@ -246,6 +251,7 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folders-list') return <FoldersInListViewFixture />
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
+  if (variant === 'fassungen') return <FassungenFixture />
   return <FileBrowserFixtures />
 }
 

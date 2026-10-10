@@ -200,12 +200,12 @@ describe('FilePreviewPane', () => {
       <FilePreviewPane file={{ ...failed, versionState: 'published', versionCount: 2 }} projectId="proj-1" />
     )
     expect(screen.getByText("Piloti couldn't read this document, so search can't find it.")).toBeInTheDocument()
-    expect(screen.getByText(/still use the previous version/)).toBeInTheDocument()
+    expect(screen.getByText(/still use the previous revision/)).toBeInTheDocument()
     unmount()
 
     // A first upload that failed has no previous version to speak of.
     render(<FilePreviewPane file={{ ...failed, versionState: 'published', versionCount: 1 }} projectId="proj-1" />)
-    expect(screen.queryByText(/still use the previous version/)).toBeNull()
+    expect(screen.queryByText(/still use the previous revision/)).toBeNull()
   })
 
   it('offers an expand affordance for a PDF once its preview URL has loaded', async () => {
@@ -375,7 +375,7 @@ describe('FilePreviewPane', () => {
     it('says the state beside the name once the document has a history', () => {
       render(<FilePreviewPane file={{ ...mockFile, versionState: 'in_review', versionCount: 2 }} />)
 
-      // „Freigabe und Fassungen" is last in the rail and shut; the one WORD
+      // „Fassungen und Freigabe" lives in the rail and is shut; the one WORD
       // belongs with the name, so nobody scrolls a rail to its end to learn
       // whether the office stands behind the document in front of them.
       expect(screen.getByTestId('file-preview-lifecycle-badge')).toHaveTextContent('In review')
@@ -888,7 +888,7 @@ describe('FilePreviewPane', () => {
       render(<FilePreviewPane file={{ ...mockFile, tags: [] }} projectId="proj-1" />)
 
       const panel = within(screen.getByRole('region', { name: 'Read by Piloti' }))
-      expect(panel.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(panel.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
 
       await userEvent.click(panel.getByRole('button', { name: 'Assign' }))
 
@@ -898,7 +898,7 @@ describe('FilePreviewPane', () => {
     it('offers a read-only viewer of an untagged document no Assign', () => {
       render(<FilePreviewPane file={{ ...mockFile, tags: [] }} projectId="proj-1" canManage={false} />)
 
-      expect(screen.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Assign' })).toBeNull()
     })
 
@@ -1411,7 +1411,7 @@ describe('FilePreviewPane', () => {
 
       expect(screen.getByText('Ein Brandschutzkonzept.')).toBeInTheDocument()
       expect(screen.queryByText(/still reading this document/i)).toBeNull()
-      expect(screen.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
     })
   })
 

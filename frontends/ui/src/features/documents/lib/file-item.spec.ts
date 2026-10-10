@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { FileItem } from '../components/project-file-workspace'
-import { refreshedFileFields } from './file-item'
+import { refreshedFileFields, toFileItem } from './file-item'
 
 const file = (overrides: Partial<FileItem> = {}): FileItem => ({
   id: 'doc-1',
@@ -61,5 +61,15 @@ describe('refreshedFileFields', () => {
 
   it('keeps trailing metadata a read has not caught up with', () => {
     expect(refreshedFileFields(file(), { status: 'completed', summary: null })).toBeNull()
+  })
+})
+
+describe('toFileItem revisionFacts', () => {
+  it('carries the title-block facts from the wire row, and null when the row has none', () => {
+    const facts = { documentNumber: 'A-101', revision: 'C', revisionDate: '2026-03-14', page: 2 }
+
+    expect(toFileItem({ ...file(), revisionFacts: facts }).revisionFacts).toEqual(facts)
+    // A row from a listing that did not read the sheet says nothing, and the item says `null`.
+    expect(toFileItem(file()).revisionFacts).toBeNull()
   })
 })

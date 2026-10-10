@@ -24,7 +24,7 @@ import {
   lifecycleNeedsReader,
   lifecycleProgress,
   lifecycleRequestFor,
-  lifecycleWaiting,
+  lifecycleMeaning,
   reviewOpRequiresComment,
   showsVersionStateBadge,
 } from './document-lifecycle'
@@ -234,7 +234,7 @@ describe('lifecycleProgress — the track', () => {
   })
 
   it('puts a sent-back version where it actually is: at the draft, stopped', () => {
-    // Not a fifth stage. „Änderungen erbeten" is a draft that has been round
+    // Not a fifth stage. „Änderungen angefordert“ is a draft that has been round
     // once, and the next move is a new version rather than a step forward.
     expect(lifecycleProgress(version('changes_requested'), 'active')).toMatchObject({
       reached: 1,
@@ -268,17 +268,23 @@ describe('lifecycleProgress — the track', () => {
   })
 })
 
-describe('lifecycleWaiting — one place decides what a state waits for', () => {
-  it('names the submitter only where the row records one', () => {
-    expect(lifecycleWaiting(version('in_review', 'user_anna'), 'active')).toEqual({
-      key: 'inReviewBy',
-      submitterUserId: 'user_anna',
-    })
-    expect(lifecycleWaiting(version('in_review'), 'active')).toEqual({ key: 'inReview' })
+describe('lifecycleMeaning — one place decides what a state means for answers', () => {
+  it('says a published version is the basis, whether or not another stands behind it', () => {
+    expect(lifecycleMeaning(version('published'), 'active', { live: false })).toBe('published')
+    expect(lifecycleMeaning(version('published'), 'active', { live: true })).toBe('published')
+  })
+
+  it('tells a pending version apart by whether a published one stands behind it', () => {
+    // „Piloti antwortet aus der veröffentlichten Fassung" is only true when
+    // there is one; without it the honest sentence is that nothing is the basis yet.
+    expect(lifecycleMeaning(version('in_review', 'user_anna'), 'active', { live: true })).toBe('inReviewLive')
+    expect(lifecycleMeaning(version('in_review'), 'active', { live: false })).toBe('inReviewAlone')
+    expect(lifecycleMeaning(version('draft'), 'active', { live: true })).toBe('draftLive')
+    expect(lifecycleMeaning(version('approved'), 'active', { live: false })).toBe('approvedAlone')
   })
 
   it('lets the item win once it is archived, whatever the version says', () => {
-    expect(lifecycleWaiting(version('published'), 'archived')).toEqual({ key: 'archived' })
+    expect(lifecycleMeaning(version('published'), 'archived', { live: true })).toBe('archived')
   })
 
   it('has a leaf for every state, and one for no version at all', () => {
@@ -291,9 +297,10 @@ describe('lifecycleWaiting — one place decides what a state waits for', () => 
       'rejected',
       'superseded',
     ] as const) {
-      expect(lifecycleWaiting(version(state), 'active').key).toBeTruthy()
+      expect(lifecycleMeaning(version(state), 'active', { live: true })).toBeTruthy()
+      expect(lifecycleMeaning(version(state), 'active', { live: false })).toBeTruthy()
     }
-    expect(lifecycleWaiting(null, 'active')).toEqual({ key: 'none' })
+    expect(lifecycleMeaning(null, 'active', { live: false })).toBe('none')
   })
 })
 

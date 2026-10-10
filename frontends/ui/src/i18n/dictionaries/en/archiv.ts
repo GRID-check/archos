@@ -40,7 +40,7 @@ export const archiv = {
     reingestAlreadyDone: 'Already finished',
     reingestConfirmTitle: 'Read “{name}” again?',
     reingestConfirmDescription:
-      'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Answers keep using the current version until the new one is ready.',
+      'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
     reingestConfirmAction: 'Read again',
     menuLabel: 'File actions',
     download: 'Download',

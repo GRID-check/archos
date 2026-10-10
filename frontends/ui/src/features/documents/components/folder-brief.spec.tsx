@@ -1,33 +1,29 @@
 /**
- * The folder brief's revision section, as a reader meets it: which name series
- * exist, which Fassungen a person has confirmed, and the one button that
- * confirms a series.
+ * The folder brief as a reader meets it: the numbers add up, what needs them
+ * comes first, the rest is folded to one line, and a long chip never breaks the
+ * card. What is counted is specced in `../lib/folder-knowledge.spec.ts`.
  *
- * The series grammar and `isSeriesConfirmed` are specced in
- * `../lib/revision-series.spec.ts` and `../lib/folder-knowledge.spec.ts`. Here
- * only what the section renders for each state, and what it sends.
- *
- * The copy is German, as in the planning office (`I18nProvider` with
- * `fixedLocale`, as the sibling specs do).
+ * English, the default locale of an unprovided test tree.
  */
 
 import type { ComponentProps } from 'react'
 import { describe, expect, it, vi } from 'vitest'
-import { act, render, screen, within } from '@/test-utils'
+import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { I18nProvider } from '@/i18n'
-import type { FassungFacts } from '@/lib/documents/fassung'
-import type { FileItem } from '../file-types'
-import { buildFolderBrief, type FolderBrief } from '../lib/folder-knowledge'
-import { FolderBrief as FolderBriefView } from './folder-brief'
+import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import type { FileItem, FolderItem } from '../file-types'
+import { buildFolderBrief } from '../lib/folder-knowledge'
+import { FolderBrief } from './folder-brief'
 
-const file = (overrides: Partial<FileItem> & { id: string }): FileItem => ({
+let seq = 0
+const file = (overrides: Partial<FileItem>): FileItem => ({
+  id: `f${(seq += 1)}`,
   filename: 'doc.pdf',
   displayName: null,
   fileSize: 1,
   contentType: 'application/pdf',
   status: 'ready',
-  folderId: null,
+  folderId: 'P',
   createdAt: '2026-01-01T00:00:00.000Z',
   errorMessage: null,
   summary: null,
@@ -40,138 +36,130 @@ const file = (overrides: Partial<FileItem> & { id: string }): FileItem => ({
   ...overrides,
 })
 
-/** Two name series: EG Grundriss (A, B, C) and Schnitt AA (A, B). */
-const grundriss = (overrides: { a?: FassungFacts; b?: FassungFacts } = {}): FileItem[] => [
-  file({ id: 'ga', filename: 'EG_Grundriss_Index_A_2026-01-10.pdf', fassung: overrides.a ?? null }),
-  file({ id: 'gb', filename: 'EG_Grundriss_Index_B_2026-02-10.pdf', fassung: overrides.b ?? null }),
-  file({ id: 'gc', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' }),
-]
-const schnitt = (): FileItem[] => [
-  file({ id: 'sa', filename: 'Schnitt_AA_idx-A.pdf' }),
-  file({ id: 'sb', filename: 'Schnitt_AA_idx-B.pdf' }),
-]
-const replacedBy = (newer: FileItem): FassungFacts => ({
-  supersededBy: { id: newer.id, filename: newer.filename },
-  supersedes: [],
-  suggestion: null,
-  changeSummary: null,
-})
+const FOLDERS: FolderItem[] = [{ id: 'P', parentId: null, name: 'Pläne', path: 'Pläne' }]
+const LONG_TOPIC = 'Brandabschnittsbildung zwischen Tiefgarage'
 
-const briefOf = (files: FileItem[]): FolderBrief => buildFolderBrief(files, [], null)
+/** Three read, one failed, one held, one report Piloti never reads: 5 meant to read, 6 in all. */
+const CORPUS: FileItem[] = [
+  file({ tags: ['Grundriss', 'Brandschutz'], topics: [LONG_TOPIC] }),
+  file({ tags: ['Grundriss'] }),
+  file({ tags: ['Schnitt'] }),
+  file({ status: 'failed' }),
+  file({ status: 'quarantined' }),
+  file({ status: 'stored' }),
+]
 
-const view = (brief: FolderBrief, extra: Partial<ComponentProps<typeof FolderBriefView>> = {}) => (
-  <I18nProvider initialLocale="de" fixedLocale>
-    <FolderBriefView
-      brief={brief}
+const renderBrief = (
+  files: FileItem[] = CORPUS,
+  props: Partial<ComponentProps<typeof FolderBrief>> = {}
+) => {
+  const onSelect = vi.fn()
+  render(
+    <FolderBrief
+      brief={buildFolderBrief(files, FOLDERS, null)}
       folderName={null}
       shelfKind="project"
-      onSelect={vi.fn()}
+      onSelect={onSelect}
       onOpenFolder={vi.fn()}
+      onReadAgain={vi.fn()}
       collapsed={false}
       onCollapsedChange={vi.fn()}
-      {...extra}
+      missing={[{ role: 'grundbuchauszug', label: 'Land register extract', bauwerkName: null }]}
+      {...props}
     />
-  </I18nProvider>
-)
-
-/** The series row whose current document is named `filename`. */
-const rowFor = (filename: string): HTMLElement => {
-  const row = screen.getAllByTestId('folder-brief-series').find((li) => within(li).queryByText(filename))
-  if (!row) throw new Error(`no series row for ${filename}`)
-  return row
+  )
+  return { onSelect }
 }
 
-const confirmButtons = () => screen.queryAllByRole('button', { name: 'Bestätigen' })
-
-function deferred<T>() {
-  let resolve!: (value: T) => void
-  const promise = new Promise<T>((res) => {
-    resolve = res
-  })
-  return { promise, resolve }
-}
-
-describe('FolderBrief revision section', () => {
-  it('offers one „Bestätigen" per unconfirmed series when onConfirmSeries is passed', () => {
-    render(view(briefOf([...grundriss(), ...schnitt()]), { onConfirmSeries: vi.fn().mockResolvedValue(undefined) }))
-
-    expect(screen.getAllByTestId('folder-brief-series')).toHaveLength(2)
-    expect(confirmButtons()).toHaveLength(2)
+describe('FolderBrief — the numbers add up', () => {
+  it('puts only the documents Piloti is meant to read in the legend, so it sums to the headline', () => {
+    renderBrief()
+    expect(screen.getByText(/3 of 5 documents read/)).toBeInTheDocument()
+    const legendCounts = ['readable', 'failed', 'held'].map((state) =>
+      Number(screen.getByTestId(`folder-brief-state-${state}`).textContent?.match(/\d+/)?.[0])
+    )
+    expect(legendCounts.reduce((a, b) => a + b, 0)).toBe(5)
+    // The report is named beside the legend, plainly as an extra.
+    expect(screen.getByTestId('folder-brief-state-unindexed')).toHaveTextContent(
+      'plus 1 not in the knowledge base'
+    )
   })
 
-  it('offers no confirm button, but still lists the series, when onConfirmSeries is absent', () => {
-    render(view(briefOf([...grundriss(), ...schnitt()])))
+  it('counts one document with three Fassungen once, and never asks to re-read a replaced one', () => {
+    const ref = (id: string) => ({ id, filename: `${id}.pdf` })
+    renderBrief([
+      file({ id: 'c', tags: ['Grundriss'], fassung: { ...EMPTY_FASSUNG, supersedes: [ref('b')] } }),
+      file({
+        id: 'b',
+        status: 'failed',
+        fassung: { ...EMPTY_FASSUNG, supersededBy: ref('c'), supersedes: [ref('a')] },
+      }),
+      file({ id: 'a', fassung: { ...EMPTY_FASSUNG, supersededBy: ref('b') } }),
+    ])
+    expect(screen.getByText(/The document is read/)).toBeInTheDocument()
+    expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('folder-brief-read-again')).not.toBeInTheDocument()
+  })
+})
 
-    expect(screen.getAllByTestId('folder-brief-series')).toHaveLength(2)
-    expect(confirmButtons()).toHaveLength(0)
+describe('FolderBrief — what needs the reader comes first', () => {
+  it('orders the body by what the reader has to do, and folds the reference sections', () => {
+    renderBrief()
+    const body = document.getElementById('folder-brief-body')!
+    const order = [...body.children].map(
+      (section) => section.getAttribute('data-testid') ?? section.getAttribute('aria-labelledby')
+    )
+    expect(order).toEqual([
+      'folder-brief-needs',
+      'folder-brief-missing',
+      'folder-brief-about',
+      'folder-brief-where',
+    ])
+    expect(screen.getByTestId('folder-brief-about')).toHaveAttribute('data-state', 'closed')
+    expect(screen.queryByTestId('folder-brief-types')).not.toBeInTheDocument()
   })
 
-  it('calls onConfirmSeries with the series of the row whose button was clicked', async () => {
-    const user = userEvent.setup()
-    const onConfirmSeries = vi.fn().mockResolvedValue(undefined)
-    const brief = briefOf([...grundriss(), ...schnitt()])
-    render(view(brief, { onConfirmSeries }))
-
-    await user.click(within(rowFor('Schnitt_AA_idx-B.pdf')).getByRole('button', { name: 'Bestätigen' }))
-
-    expect(onConfirmSeries).toHaveBeenCalledTimes(1)
-    const schnittSeries = brief.revisionSeries.find((series) => series.key === 'schnitt aa.pdf')
-    expect(onConfirmSeries).toHaveBeenCalledWith(schnittSeries)
+  it('names what a folded section holds on its one line, and opens on a click', async () => {
+    renderBrief()
+    const toggle = screen.getByTestId('folder-brief-about-toggle')
+    expect(toggle).toHaveTextContent('Grundriss · Schnitt · Brandschutz')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+    await userEvent.click(toggle)
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('folder-brief-types')).toBeInTheDocument()
   })
 
-  it('disables every confirm button while one confirmation is pending, and enables them when it settles', async () => {
-    const user = userEvent.setup()
-    const pending = deferred<void>()
-    const onConfirmSeries = vi.fn(() => pending.promise)
-    render(view(briefOf([...grundriss(), ...schnitt()]), { onConfirmSeries }))
+  it('gives each „Show" its own accessible name', () => {
+    renderBrief()
+    expect(
+      within(screen.getByTestId('folder-brief-needs-failed')).getByRole('button', {
+        name: 'Show the failed document',
+      })
+    ).toBeInTheDocument()
+    expect(
+      within(screen.getByTestId('folder-brief-needs-held')).getByRole('button', {
+        name: 'Show the held-back document',
+      })
+    ).toBeInTheDocument()
+  })
+})
 
-    await user.click(confirmButtons()[0])
-
-    expect(confirmButtons()).toHaveLength(2)
-    for (const button of confirmButtons()) expect(button).toBeDisabled()
-
-    await act(async () => pending.resolve())
-
-    for (const button of confirmButtons()) expect(button).toBeEnabled()
+describe('FolderBrief — chips', () => {
+  it('labels the type and discipline families, so they are told apart by a word', async () => {
+    renderBrief()
+    await userEvent.click(screen.getByTestId('folder-brief-about-toggle'))
+    const types = screen.getByTestId('folder-brief-types')
+    expect(within(types).getByText('Document type')).toBeInTheDocument()
+    expect(within(types).getByText('Discipline')).toBeInTheDocument()
   })
 
-  it('shows „bestätigt" and no button for a series whose older Fassungen are all confirmed', () => {
-    const [a, b, c] = grundriss()
-    const confirmed = [{ ...a, fassung: replacedBy(c) }, { ...b, fassung: replacedBy(c) }, c]
-    render(view(briefOf([...confirmed, ...schnitt()]), { onConfirmSeries: vi.fn().mockResolvedValue(undefined) }))
-
-    const row = rowFor('EG_Grundriss_Index_C_2026-08-14.pdf')
-    expect(within(row).getByTestId('folder-brief-series-confirmed')).toHaveTextContent('bestätigt')
-    expect(within(row).queryByRole('button', { name: 'Bestätigen' })).toBeNull()
-    // The unconfirmed series beside it still has its button, and only that one.
-    expect(confirmButtons()).toHaveLength(1)
-    expect(within(rowFor('Schnitt_AA_idx-B.pdf')).getByRole('button', { name: 'Bestätigen' })).toBeInTheDocument()
-  })
-
-  it('keeps the button while only some of the older Fassungen are confirmed', () => {
-    const [a, b, c] = grundriss()
-    const partly = [{ ...a, fassung: replacedBy(c) }, b, c]
-    render(view(briefOf(partly), { onConfirmSeries: vi.fn().mockResolvedValue(undefined) }))
-
-    const row = rowFor('EG_Grundriss_Index_C_2026-08-14.pdf')
-    expect(within(row).queryByTestId('folder-brief-series-confirmed')).toBeNull()
-    expect(within(row).getByRole('button', { name: 'Bestätigen' })).toBeInTheDocument()
-  })
-
-  it('renders the confirmed-only line when there is no series but a confirmed link exists elsewhere', () => {
-    const newer = file({ id: 'new', filename: 'Plan_Neu.pdf' })
-    const older = file({ id: 'old', filename: 'Plan_Alt.pdf', fassung: replacedBy(newer) })
-    render(view(briefOf([older, newer]), { onConfirmSeries: vi.fn().mockResolvedValue(undefined) }))
-
-    const section = screen.getByTestId('folder-brief-revisions')
-    expect(section).toHaveTextContent('Eine ältere Fassung ist bestätigt ersetzt.')
-    expect(within(section).queryAllByTestId('folder-brief-series')).toHaveLength(0)
-    expect(confirmButtons()).toHaveLength(0)
-  })
-
-  it('renders no revision section when there are neither series nor confirmed links', () => {
-    render(view(briefOf([file({ id: 'only', filename: 'Plan_Einzeln.pdf', tags: ['Grundriss'] })])))
-
-    expect(screen.queryByTestId('folder-brief-revisions')).toBeNull()
+  it('truncates a long topic inside the chip, keeps its count, and carries the full text on hover', async () => {
+    renderBrief()
+    await userEvent.click(screen.getByTestId('folder-brief-about-toggle'))
+    const chip = screen.getByTestId(`folder-brief-topic-${LONG_TOPIC}`)
+    expect(chip).toHaveClass('max-w-full')
+    expect(within(chip).getByText(LONG_TOPIC)).toHaveClass('truncate')
+    expect(within(chip).getByText('1')).toBeInTheDocument()
+    expect(chip.getAttribute('title')).toContain(LONG_TOPIC)
   })
 })

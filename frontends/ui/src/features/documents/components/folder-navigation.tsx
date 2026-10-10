@@ -558,20 +558,26 @@ export function FolderCard({
                 {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
               </div>
             )}
+            {/* The read state on its own line under the name, never sharing
+                the footer: there, in a two-column phone grid or a four-column
+                desktop one, the count and the time took the width and „Alles
+                gelesen" was clipped to nothing — the one thing feld72 opened
+                folders to find out. */}
+            <FolderReadState tally={knowledge} className="mt-1 flex min-w-0 max-w-full" />
           </div>
         </GridTileBody>
-        <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
-          <span className="shrink-0 tabular-nums">{t('folders.items', { count: String(itemCount) })}</span>
-          {lastModified && (
-            <>
-              <span aria-hidden className="text-muted-foreground/40">
-                ·
-              </span>
-              <TimeAgo date={lastModified} locale={locale} className="shrink-0 tabular-nums" />
-            </>
-          )}
-          <span className="flex-1" />
-          <FolderReadState tally={knowledge} className="min-w-0 truncate" />
+        <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
+          <span className="min-w-0 truncate tabular-nums">
+            {t('folders.items', { count: itemCount })}
+            {lastModified && (
+              <>
+                <span aria-hidden className="mx-1.5 text-muted-foreground/40">
+                  ·
+                </span>
+                <TimeAgo date={lastModified} locale={locale} className="tabular-nums" />
+              </>
+            )}
+          </span>
         </GridTileFooter>
       </button>
     </GridTileShell>

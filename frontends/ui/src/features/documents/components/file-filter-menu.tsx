@@ -2,6 +2,7 @@
 
 import type { JSX } from 'react'
 import type { ReactNode } from 'react'
+import { useId } from 'react'
 import { ArrowDownNarrowWide, ArrowUpNarrowWide, SlidersHorizontal } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
@@ -250,17 +251,32 @@ export function FileFilterMenu({
             }
             label={t('lifecycle.filter')}
           />
-          {/* The one control here that WIDENS. An archived document is not in
-              the listing at all — `lifecycle = 'active'` is in the query — so
-              this is the only way back to one, and it says „auch" rather than
-              „nur" so nobody reads it as a narrowing. */}
+        </FilterSection>
+
+        <Separator />
+        {/* The two controls here that WIDEN, together and worded alike, under
+            „Auch zeigen" so nobody reads either as a narrowing. A retired
+            document is not in the listing at all (`lifecycle = 'active'` is in
+            the query), so this is the only way back to one. An older Fassung is
+            one entry with its current one (ADR-0097) and comes back beside it.
+            Each used to sit in a different section, one of them a heading and a
+            separator spent on a single checkbox. */}
+        <FilterSection label={t('filters.alsoShowLabel')}>
           <CheckRow
             id="file-filter-include-archived"
             checked={filters.includeArchived}
             onChange={() =>
               onFiltersChange({ ...filters, includeArchived: !filters.includeArchived })
             }
-            label={t('lifecycle.archivedFilter')}
+            label={t('filters.alsoShow.retired')}
+          />
+          <CheckRow
+            id="file-filter-older-fassungen"
+            checked={filters.showOlderFassungen}
+            onChange={() =>
+              onFiltersChange({ ...filters, showOlderFassungen: !filters.showOlderFassungen })
+            }
+            label={t('filters.alsoShow.olderFassungen')}
           />
         </FilterSection>
 
@@ -330,9 +346,12 @@ export function FileFilterMenu({
 }
 
 function FilterSection({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  const headingId = useId()
   return (
-    <div className="space-y-1.5">
-      <SectionLabel as="h3">{label}</SectionLabel>
+    <div className="space-y-1.5" role="group" aria-labelledby={headingId}>
+      <SectionLabel as="h3" id={headingId}>
+        {label}
+      </SectionLabel>
       {children}
     </div>
   )

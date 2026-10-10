@@ -349,6 +349,12 @@ export const collaboration = {
      */
     bodyUnavailable: 'This conversation is no longer available to you.',
     inertHint: 'You no longer have access to this.',
+    /**
+     * The next move on a new revision filed under another name: see the two side
+     * by side. Opens the file preview with the comparison open.
+     */
+    compareFassungen: 'Compare revisions',
+    compareFassungenLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription: 'When a colleague asks for your input, it shows up here.',
@@ -427,7 +433,7 @@ export const collaboration = {
         body: 'from {subject} — open it to triage.',
       },
       storageQuotaWarning: {
-        title: 'Your organisation is running out of storage',
+        title: 'Your organization is running out of storage',
         body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',
       },
       /**
@@ -451,11 +457,11 @@ export const collaboration = {
         titleOne: '1 file is waiting in quarantine',
         titleMany: '{count} files are waiting in quarantine',
         titleNone: 'Files in quarantine',
-        body: 'No model has read them. Release or delete them.',
+        body: 'No model has read them. Review them: allow or delete.',
       },
       documentReleaseRequested: {
-        title: '{actor} asks you to release “{subject}”',
-        body: 'The file is in quarantine. Look at it, then release or delete it.',
+        title: '{actor} asks you to review “{subject}”',
+        body: 'The file is in quarantine. Look at it, then allow or delete it.',
       },
       jobCompleted: {
         title: '"{subject}" is done',
@@ -480,11 +486,21 @@ export const collaboration = {
         title: '"{subject}" is waiting for you',
         body: 'Piloti has a question about this task. Answer it in the thread and the run carries on.',
       },
-      // A version of a document is waiting for a decision (ADR-0054).
+      // A revision of a document is waiting for a decision (ADR-0054).
       // {subject} is the document, {actor} whoever submitted it.
       documentReviewRequested: {
         title: '{actor} asked you to review {subject}',
-        body: 'A new version is waiting for your approval.',
+        body: 'A new revision is waiting for your approval.',
+      },
+      // A newer revision (Fassung) of a document you follow, as a sentence about
+      // the person who uploaded it. {actor} is that person, {subject} the
+      // document you follow (without its extension). What changed is the
+      // excerpt below; only without one does `bodyNoExcerpt` say where to look.
+      // `titleNoActor` when nobody in particular did it.
+      documentNewFassung: {
+        title: '{actor} uploaded a new revision of “{subject}”',
+        titleNoActor: 'New revision of “{subject}”',
+        bodyNoExcerpt: 'Open the revision to see what changed.',
       },
       unknown: {
         title: 'Something happened',
@@ -495,7 +511,7 @@ export const collaboration = {
     unknownActor: 'Someone',
     untitledConversation: 'Untitled conversation',
     /**
-     * Triage of a version waiting for a decision, inline on the row: the three
+     * Triage of a revision waiting for a decision, inline on the row: the three
      * decisions without leaving the inbox. Approving carries the same minimum
      * ceremony as on the file (explicit confirmation, never one click); the
      * two refusals carry their words, as the transition table requires.
@@ -506,23 +522,23 @@ export const collaboration = {
       reject: 'Reject',
       changesLabel: 'What needs to change',
       reasonLabel: 'Reason for rejection',
-      approveConfirm: 'I release this version',
-      // The signature mirrors the file pane: which stand is released (the row
-      // names the document, the version number and when the round opened — the
-      // number is required, nothing is released without it) and who acts when.
+      approveConfirm: 'I approve this revision',
+      // The signature mirrors the file pane: which revision is approved (the row
+      // names the document, the revision number and when the round opened — the
+      // number is required, nothing is approved without it) and who acts when.
       // No viewer name is known here, so the acting line is always the
       // date-only form; who asked is already in the title.
-      approveStand: '{subject} · version {number} · as of {date}',
+      approveStand: '{subject} · revision {number} · as of {date}',
       approveActing: 'Acting: {date}',
-      standFailed: 'The current version could not be read — approval is blocked until it is.',
+      standFailed: 'The current revision could not be read — approval is blocked until it is.',
       retry: 'Try again',
       send: 'Send',
       cancel: 'Cancel',
       open: 'Open file',
       decided: 'Decision sent — refreshing.',
       failed: 'That did not go through. Nothing has changed.',
-      stale: 'This has moved on — the current version is in the file.',
-      reload: 'Open current version',
+      stale: 'Someone decided first. The current revision is in the file.',
+      reload: 'Open current revision',
     },
   },
 

@@ -222,7 +222,7 @@ describe('FilePreviewHost', () => {
       // be false. The strip says what is actually true, and still offers the
       // way to the error and the retry for the new file.
       const strip = screen.getByRole('status')
-      expect(strip).toHaveTextContent(/still citing the previous version/i)
+      expect(strip).toHaveTextContent(/still citing the previous revision/i)
       expect(strip).not.toHaveTextContent(/cannot cite/i)
       expect(screen.getByRole('button', { name: 'Details' })).toBeInTheDocument()
     })
@@ -247,7 +247,7 @@ describe('FilePreviewHost', () => {
         })
 
         expect(useFilePreviewStore.getState().file).toMatchObject({ status: 'failed', versionCount: 2 })
-        expect(screen.getByRole('status')).toHaveTextContent(/still citing the previous version/i)
+        expect(screen.getByRole('status')).toHaveTextContent(/still citing the previous revision/i)
       } finally {
         vi.useRealTimers()
         vi.unstubAllGlobals()

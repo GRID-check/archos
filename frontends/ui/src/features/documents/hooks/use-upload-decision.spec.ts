@@ -113,3 +113,114 @@ describe('useUploadDecision — what the operating system left in the folder', (
     expect(result.current.open).toBe(false)
   })
 })
+
+/**
+ * ADR-0097: a name that continues a document already on the shelf is a reason
+ * to ask, even when nothing of that name exists, and the reader's answers
+ * re-plan like a release does.
+ */
+describe('useUploadDecision — Fassungen across names', () => {
+  const answer = (name: string, ids = ['b']) => ({
+    name,
+    candidates: ids.map((id) => ({ id, filename: `${id}.pdf`, displayName: null, label: `Index ${id.toUpperCase()}` })),
+    newer: true,
+    unambiguous: ids.length === 1,
+  })
+  const base = { documents: [] as never[], folders: [], currentFolderId: null }
+
+  it('opens the dialog for a loose new file that continues a document, with the offer ticked', async () => {
+    const sendDirect = vi.fn()
+    const offers = vi.fn(async (names: readonly string[]) => names.map((name) => answer(name)))
+    const { result } = renderHook(() => useUploadDecision())
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+
+    await act(async () => {
+      await result.current.propose({ ...base, files: [file], fassungOffers: offers }, sendDirect)
+    })
+
+    expect(sendDirect).not.toHaveBeenCalled()
+    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'])
+    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toMatchObject({ chosen: true, of: { id: 'b' } }))
+    expect(result.current.open).toBe(true)
+  })
+
+  it('sends a file straight out when nothing is continued, and asks only about names that read as a series', async () => {
+    const sendDirect = vi.fn()
+    const offers = vi.fn(async () => [])
+    const { result } = renderHook(() => useUploadDecision())
+    const files = [new File(['x'], 'Baubeschreibung.pdf'), new File(['x'], 'EG_Grundriss_Index_C.pdf')]
+
+    await act(async () => {
+      await result.current.propose({ ...base, files, fassungOffers: offers }, sendDirect)
+    })
+
+    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'])
+    expect(sendDirect).toHaveBeenCalledWith(files)
+  })
+
+  it('makes no request at all for names without an index or a date', async () => {
+    const offers = vi.fn(async () => [])
+    const { result } = renderHook(() => useUploadDecision())
+
+    await act(async () => {
+      await result.current.propose({ ...base, files: [new File(['x'], 'Baubeschreibung.pdf')], fassungOffers: offers }, vi.fn())
+    })
+
+    expect(offers).not.toHaveBeenCalled()
+  })
+
+  it('uploads as it always did when the probe cannot answer: an offer is a convenience, never a gate', async () => {
+    const sendDirect = vi.fn()
+    const { result } = renderHook(() => useUploadDecision())
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+
+    await act(async () => {
+      await result.current.propose(
+        { ...base, files: [file], fassungOffers: vi.fn().mockRejectedValue(new Error('offline')) },
+        sendDirect
+      )
+    })
+
+    expect(sendDirect).toHaveBeenCalledWith([file])
+  })
+
+  it('re-plans on a change: one file, a whole group, and a picked candidate', async () => {
+    const offers = vi.fn(async (names: readonly string[]) => names.map((name) => answer(name, ['b', 'a'])))
+    const { result } = renderHook(() => useUploadDecision())
+    const first = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const second = new File(['x'], 'OG_Grundriss_Index_C.pdf')
+
+    await act(async () => {
+      await result.current.propose({ ...base, files: [first, second], fassungOffers: offers }, vi.fn())
+    })
+    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toBeDefined())
+    const chosen = () => result.current.plan?.files.map((file) => file.fassungOf?.chosen)
+
+    expect(chosen()).toEqual([false, false])
+    act(() => result.current.changeFassung({ files: [first, second], chosen: true }))
+    expect(chosen()).toEqual([true, true])
+    act(() => result.current.changeFassung({ files: [second], chosen: false }))
+    expect(chosen()).toEqual([true, false])
+    act(() => result.current.changeFassung({ files: [second], targetId: 'a' }))
+    expect(result.current.plan?.files[1].fassungOf).toMatchObject({ of: { id: 'a' }, chosen: true })
+  })
+
+  it('carries the answers into the settled plan the upload applies', async () => {
+    const offers = vi.fn(async (names: readonly string[]) => names.map((name) => answer(name)))
+    const { result } = renderHook(() => useUploadDecision())
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+
+    await act(async () => {
+      await result.current.propose({ ...base, files: [file], fassungOffers: offers }, vi.fn())
+    })
+    await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toBeDefined())
+    act(() => result.current.changeFassung({ files: [file], chosen: false }))
+
+    let settled: Awaited<ReturnType<typeof result.current.settle>> = null
+    await act(async () => {
+      settled = await result.current.settle()
+    })
+
+    expect(settled!.plan.files[0].fassungOf?.chosen).toBe(false)
+  })
+})

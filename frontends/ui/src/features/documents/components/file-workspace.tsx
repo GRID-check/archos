@@ -29,6 +29,7 @@ import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
 import { useBriefCollapsed } from '../hooks/use-brief-collapsed'
 import { useBulkReingest } from '../hooks/use-bulk-reingest'
+import { useCompareParam } from '../hooks/use-compare-param'
 import { useMissingDocuments } from '../hooks/use-missing-documents'
 import { buildFolderBrief, selectInBrief, type BriefSelection } from '../lib/folder-knowledge'
 import type { DocumentWireRow } from '../lib/file-item'
@@ -53,9 +54,7 @@ import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
 import { FolderBrief } from './folder-brief'
-import { requestFassungLink } from '../lib/fassung-request'
-import type { RevisionSeries } from '../lib/revision-series'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import { withoutOlderFassungen } from '../lib/fassung-chain'
 import { FileSearchField } from './file-search-bar'
 import { FolderAccessDialog } from './folder-access-dialog'
 import { FolderUploadDialog } from './folder-upload-dialog'
@@ -187,8 +186,22 @@ export function FileWorkspace({
    * returns, and the card, the list row and the preview header all read the
    * same `files` — they carry the change in the same frame the dialog closes.
    */
+  /*
+   * The preview opens ANOTHER document of this shelf by id (a Fassung in its
+   * timeline). The handler is part of `handlers`, which the preview channel
+   * takes, and the channel's `open` is built from `handlers`: so the handler
+   * reaches `files` and `open` through refs and the object stays one value.
+   */
+  const filesRef = useRef(files)
+  const openRef = useRef<(file: FileItem) => void>(() => undefined)
   const handlers = useMemo<PreviewHandlers>(
     () => ({
+      onOpenDocument: (id) => {
+        const file = filesRef.current.find((candidate) => candidate.id === id)
+        if (file) openRef.current(file)
+      },
+      // A link was confirmed or taken back: the section reports BOTH documents of it.
+      onFassungChanged: (id, fassung) => patchFile(id, { fassung }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),
@@ -205,6 +218,12 @@ export function FileWorkspace({
   )
 
   const channel = usePreviewChannel(shelf, files, handlers)
+  // `?compare=<older>` beside `?doc=`: the inbox's „Fassungen vergleichen“.
+  const compareElement = useCompareParam(files)
+  useEffect(() => {
+    filesRef.current = files
+    openRef.current = channel.open
+  })
   const stage = useModelStage(shelf.showModels, files)
 
   /**
@@ -272,13 +291,24 @@ export function FileWorkspace({
     () => applyFileFilters(files, filters, { canCollaborate, currentUserId: shelf.currentUserId }),
     [files, filters, canCollaborate, shelf.currentUserId]
   )
+  // One entry per document: an older Fassung leaves the listing when its newer
+  // one is listed (`isOlderFassung`). Asked after the other filters, over what
+  // they kept, so an older one whose newer one a filter hid stays visible. The
+  // search runs on `filteredFiles` and applies the same rule to its own matches
+  // in the pane, and the folder tiles count what the listing shows. The brief
+  // is built over the current Fassungen whatever this filter says
+  // (`buildFolderBrief`), so it never counts or re-reads a replaced one.
+  const listedFiles = useMemo(
+    () => withoutOlderFassungen(filteredFiles, filters.showOlderFassungen),
+    [filteredFiles, filters.showOlderFassungen]
+  )
   // A search escapes the folder, so it runs over the corpus.
   const levelFiles = useMemo(
     () =>
       tree.error
-        ? filteredFiles
-        : filteredFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
-    [filteredFiles, selectedFolderId, tree.error]
+        ? listedFiles
+        : listedFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
+    [listedFiles, selectedFolderId, tree.error]
   )
   const tagOptions = useMemo(() => tagOptionsOf(files, locale), [files, locale])
   const briefSurface = useFolderBriefSurface({
@@ -288,7 +318,6 @@ export function FileWorkspace({
     selectedFolderId,
     onOpenFolder: selectFolder,
     onReingested: handlers.onReingested,
-    onPatched: patchFile,
     mayReadAgain: canManage && writableHere,
   })
   const filterEmptyNotice = useFilterEmptyNotice({
@@ -456,6 +485,7 @@ export function FileWorkspace({
             <FileBrowserPane
               files={levelFiles}
               searchFiles={filteredFiles}
+              showOlderFassungen={filters.showOlderFassungen}
               selectedFileId={channel.openId}
               onSelectFile={handleSelectFile}
               isLoading={listing.isLoading || tree.isLoading}
@@ -515,6 +545,7 @@ export function FileWorkspace({
         pending={shelfUpload.decision.pending}
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
+        onFassungChange={shelfUpload.onFassungChange}
       />
 
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
@@ -546,6 +577,8 @@ export function FileWorkspace({
           showModels={shelf.showModels}
           onReingested={handlers.onReingested}
           onTagsUpdated={handlers.onTagsUpdated}
+          onOpenDocument={handlers.onOpenDocument}
+          onFassungChanged={handlers.onFassungChanged}
           onRenamed={handlers.onRenamed}
           onDeleted={handlers.onDeleted}
         />
@@ -568,6 +601,8 @@ export function FileWorkspace({
           canCollaborate={canCollaborate}
         />
       )}
+
+      {compareElement}
     </div>
   )
 }
@@ -578,8 +613,11 @@ export function FileWorkspace({
  *
  * Built from the UNFILTERED corpus: the brief describes the folder, and a
  * filter that hides half of it must not make Piloti appear to know half as
- * much. The slice is drawn from the same subtree the brief counted, so a chip
- * that says „Grundriss 12" opens twelve documents.
+ * much. One entry per document all the same: `buildFolderBrief` leaves out
+ * every older Fassung whose newer one is listed (ADR-0097), so its headline,
+ * pages, chips and „Braucht Sie" agree with the listing. The slice is drawn
+ * from the same subtree the brief counted, so a chip that says „Grundriss 12"
+ * opens twelve documents.
  */
 function useFolderBriefSurface({
   shelf,
@@ -588,7 +626,6 @@ function useFolderBriefSurface({
   selectedFolderId,
   onOpenFolder,
   onReingested,
-  onPatched,
   mayReadAgain,
 }: {
   shelf: FileShelf
@@ -597,7 +634,6 @@ function useFolderBriefSurface({
   selectedFolderId: string | null
   onOpenFolder: (id: string | null) => void
   onReingested: (id: string, status: string) => void
-  onPatched: (id: string, patch: Partial<FileItem>) => void
   mayReadAgain: boolean
 }) {
   const t = useTranslations('files')
@@ -620,34 +656,6 @@ function useFolderBriefSurface({
     if (started > 0) toast.success(t('brief.readAgainDone', { count: started }))
     if (result.failed > 0) toast.error(t('brief.readAgainPartial', { count: result.failed }))
   }, [brief.attention.failed, bulk, t])
-
-  /*
-   * One link per older Fassung, each durable when its request returns: a
-   * failure halfway leaves the confirmed ones confirmed, and says how many.
-   * Patched, not refetched, like the preview's own decisions.
-   */
-  const confirmSeries = useCallback(
-    async (series: RevisionSeries<FileItem>) => {
-      const head = series.current.item
-      let linked = 0
-      let latest: FassungFacts | null = null
-      for (const member of series.older) {
-        try {
-          // The route answers both documents as this reader sees them.
-          const answer = await requestFassungLink(head.id, member.item.id, true)
-          latest = answer.newer
-          onPatched(member.item.id, { fassung: answer.older })
-          linked += 1
-        } catch {
-          toast.error(t('brief.revisionsConfirmError'))
-          break
-        }
-      }
-      if (latest) onPatched(head.id, { fassung: latest })
-      if (linked > 0) toast.success(t('brief.revisionsConfirmDone', { count: linked }))
-    },
-    [onPatched, t]
-  )
 
   const sliceLabel = (current: BriefSelection): string => {
     const what =
@@ -675,7 +683,6 @@ function useFolderBriefSurface({
         collapsed={collapsed}
         onCollapsedChange={setCollapsed}
         missing={missing}
-        onConfirmSeries={mayReadAgain ? confirmSeries : undefined}
       />
     ),
     slice: active

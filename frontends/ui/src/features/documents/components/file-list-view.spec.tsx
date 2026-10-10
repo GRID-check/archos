@@ -235,3 +235,53 @@ describe('FileListView', () => {
     })
   })
 })
+
+describe('FileListView — Fassungen', () => {
+  it('shows the count of a document with older Fassungen on its row', () => {
+    renderList([
+      doc('Gutachten_v3.pdf', {
+        fassung: {
+          supersededBy: null,
+          supersedes: [{ id: 'v1', filename: 'Gutachten_v1.pdf' }],
+          suggestion: null,
+          changeSummary: null,
+          history: [{ id: 'v1', filename: 'Gutachten_v1.pdf', createdAt: null, changeSummary: null }],
+        },
+      }),
+      doc('Lageplan.pdf'),
+    ])
+
+    const rows = screen.getAllByTestId('file-list-row')
+    const withHistory = rows.find((row) => within(row).queryByText('Gutachten_v3.pdf'))!
+    const plain = rows.find((row) => within(row).queryByText('Lageplan.pdf'))!
+    // Beside the name, not in the approval column: the row stays one line tall.
+    const count = within(withHistory).getByTestId('fassung-count')
+    expect(count).toHaveTextContent('2 revisions')
+    expect(count.parentElement).toHaveTextContent('Gutachten_v3.pdf')
+    expect(within(withHistory).getByTestId('file-list-approval-empty')).toBeInTheDocument()
+    expect(within(plain).queryByTestId('fassung-count')).not.toBeInTheDocument()
+  })
+
+  it('marks an older Fassung with one badge naming what replaced it, never „Replaced" beside it', () => {
+    renderList([
+      doc('Gutachten_v1.pdf', {
+        versionState: 'superseded',
+        versionCount: 2,
+        fassung: {
+          supersededBy: { id: 'v3', filename: 'Gutachten_v3.pdf' },
+          supersedes: [],
+          suggestion: null,
+          changeSummary: null,
+        },
+      }),
+    ])
+
+    const row = screen.getByTestId('file-list-row')
+    const badge = within(row).getByTestId('fassung-badge')
+    expect(badge).toHaveTextContent('Older revision')
+    expect(badge).toHaveAttribute('title', 'Replaced by “Gutachten_v3.pdf”')
+    expect(within(row).queryByTestId('document-version-badge')).not.toBeInTheDocument()
+    expect(within(row).queryByText(/^Replaced$|^Superseded$/)).not.toBeInTheDocument()
+    expect(within(row).queryByTestId('fassung-count')).not.toBeInTheDocument()
+  })
+})

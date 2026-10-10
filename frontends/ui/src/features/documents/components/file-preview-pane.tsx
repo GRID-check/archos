@@ -30,6 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
+import type { FassungFacts } from '@/lib/documents/fassung'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { ClampedText } from '@/components/ui/clamped-text'
 import { documentFileUrl } from '@/lib/documents/urls'
@@ -60,12 +61,12 @@ import {
 } from './document-status'
 import { DrawingStructuredDetails } from './drawing-structured-details'
 import { PilotiReading } from './piloti-reading'
-import { FassungPanel } from './fassung-panel'
 import { IngestFailureNotice } from './ingest-failure-notice'
 import { hasStructuredDetail, type DrawingStructured } from '@/lib/documents/drawing-structured'
 import { AssignmentFaces } from './assignment-faces'
 import { AuthorshipLine } from './authorship-line'
-import { DocumentLifecyclePanel } from './document-lifecycle-panel'
+import { DocumentFassungen } from './document-fassungen'
+import { showsFassungenSection } from '../lib/fassung-timeline'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import type {
   DocumentLifecyclePermission,
@@ -101,6 +102,10 @@ interface FilePreviewPaneProps {
    * otherwise switching away and back reverts to the pre-edit tags.
    */
   onTagsUpdated?: (fileId: string, tags: string[], topics?: string[]) => void
+  /** Open another document of this shelf here, from the Fassungen section. */
+  onOpenDocument?: (fileId: string) => void
+  /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
+  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /**
    * Whether the "Indexed by GRID" metadata panel (AI summary, key-value props,
    * editable tags) renders (WorkOS `files-metadata-panel` flag, FB-8). Defaults
@@ -207,6 +212,8 @@ export function FilePreviewPane({
   onClose,
   onReingested,
   onTagsUpdated,
+  onOpenDocument,
+  onFassungChanged,
   onRenamed,
   onDeleted,
   showMetadataPanel = true,
@@ -254,6 +261,21 @@ export function FilePreviewPane({
    * needs no explaining.
    */
   const discussHint = isNeverIndexed(file) ? t('authorship.notInKnowledge') : undefined
+  /**
+   * Review controls are for a project document and a surface that resolved this
+   * reader's lifecycle permissions — the Archiv and the chat peek pass neither,
+   * and a control they cannot honour is worse than none.
+   */
+  const reviewViewer =
+    projectId && lifecyclePermissions ? { permissions: lifecyclePermissions, userId: viewerUserId } : undefined
+  const assigneeNames = Object.fromEntries(
+    (file.assignees ?? []).flatMap((person) => (person.name ? [[person.userId, person.name] as const] : [])),
+  )
+  const fassungenShown = showsFassungenSection({
+    facts: file.fassung ?? null,
+    versionCount: file.versionCount,
+    hasViewer: reviewViewer !== undefined,
+  })
   const storeMode = useFilePreviewStore((state) => state.mode)
   const storeFileId = useFilePreviewStore((state) => state.file?.id)
   const inChat =
@@ -659,7 +681,7 @@ export function FilePreviewPane({
               )}
               {/* WHERE THE DOCUMENT STANDS, at the top with its name.
 
-                „Freigabe und Fassungen" is last in the rail now, which is right
+                „Fassungen und Freigabe" sits in the rail, which is right
                 for the machinery and wrong for the one word: whether the office
                 stands behind this document is a fact about the document, in the
                 class of its name and its type, and a reader should not have to
@@ -1196,9 +1218,6 @@ export function FilePreviewPane({
                         correct it — see `piloti-reading.tsx` for why this is no
                         longer an always-open tag form. */}
                     <PilotiReading file={file} canManage={canManage} onTagsUpdated={onTagsUpdated} />
-                    {/* Where it stands among its Fassungen, and Piloti's
-                        suggestion when it thinks this one replaces another. */}
-                    <FassungPanel file={file} canManage={canManage} />
                   </>
                 ) : (
                   <p className="text-muted-foreground text-xs leading-relaxed">
@@ -1208,13 +1227,50 @@ export function FilePreviewPane({
               </section>
             )}
 
+            {/* FASSUNGEN UND FREIGABE — one section, right under what Piloti
+              made of the document.
+
+              It used to be two: „Fassungen" here (the older documents linked
+              under other names) and „Freigabe und Fassungen" at the bottom of
+              the rail (this document's own uploads and the approval controls).
+              Both were the document's history; neither could be believed alone.
+              Now the header says where the document stands, in words, and the
+              body is one timeline.
+
+              OUTSIDE the indexed section on purpose: a report Piloti wrote is
+              never indexed, and it is exactly the document whose approval is
+              the point. The section is shut at rest and opens itself when
+              something is asked of this reader (a decision, or Piloti's
+              suggestion). Review controls need the reader's lifecycle
+              permissions, which only the Files workspace resolves; the Archiv
+              sheet and the chat peek show the timeline and the suggestion
+              without them. */}
+            {fassungenShown && (
+              <DocumentFassungen
+                key={file.id}
+                file={file}
+                canManage={canManage}
+                viewer={reviewViewer}
+                names={assigneeNames}
+                onOpenDocument={onOpenDocument}
+                onFassungChanged={onFassungChanged}
+                onLifecycleChanged={(summary) =>
+                  onLifecycleChanged?.(file.id, {
+                    versionState: summary.state,
+                    versionCount: summary.versionCount,
+                  })
+                }
+                className={cn(showIndexedHeading && 'mt-4')}
+              />
+            )}
+
             {/* One list of facts, not two.
               Type and size used to sit in a separate block BELOW the tags,
               divorced from the page count and the document type they belong
               with, because one group was behind a feature flag and the other
               was not. The flag now gates ROWS, which is what it was always
               about; the group is whole either way. */}
-            <section className={cn('space-y-2', showIndexedHeading && 'mt-4')}>
+            <section className={cn('space-y-2', (showIndexedHeading || fassungenShown) && 'mt-4')}>
               <SectionLabel as="p" icon={FileCode2} className="font-semibold tracking-[0.05em]">
                 {t('preview.properties')}
               </SectionLabel>
@@ -1371,49 +1427,6 @@ export function FilePreviewPane({
                   </div>
                 )}
               </>
-            )}
-
-            {/* FREIGABE UND FASSUNGEN — last in the rail, and shut.
-
-              It used to lead the rail, open, directly under the identity block.
-              That put a review apparatus — a strip of verbs and the full version
-              history — above the summary and the facts on every file, including
-              the great majority where there is nothing to decide at all: a
-              person's upload is born `published`, so the only control the strip
-              could draw was an unexplained „Archivieren". Ranked by what a
-              reader opens a file FOR, approval and versions come after what the
-              document is and what Piloti made of it, which is where they now
-              are.
-
-              Shut is not hidden. The section still states the stand — the word
-              and the track — without being opened, and it OPENS ITSELF when
-              something is expected of this reader (`lifecycleNeedsReader`), so
-              the one case where this matters does not depend on curiosity.
-
-              Only for a project document, and only where the surface resolved
-              this reader's permissions — the Archiv and the chat peek pass
-              neither, and a review control they cannot honour is worse than no
-              section. */}
-            {projectId && lifecyclePermissions && (
-              <DocumentLifecyclePanel
-                key={file.id}
-                documentId={file.id}
-                filename={file.filename}
-                authoredBy={file.authoredBy}
-                viewer={{ permissions: lifecyclePermissions, userId: viewerUserId }}
-                names={Object.fromEntries(
-                  (file.assignees ?? []).flatMap((person) =>
-                    person.name ? [[person.userId, person.name] as const] : [],
-                  ),
-                )}
-                onChanged={(summary) =>
-                  onLifecycleChanged?.(file.id, {
-                    versionState: summary.state,
-                    versionCount: summary.versionCount,
-                  })
-                }
-                className="mt-4 border-t pt-4"
-              />
             )}
 
             {/* Failure reason + re-ingestion affordance (re-ingest is a mutation,

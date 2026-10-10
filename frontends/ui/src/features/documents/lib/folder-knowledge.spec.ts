@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { DOCUMENT_STATUS_FACTS, type KnownDocumentStatus } from '@/lib/documents/document-status'
-import type { FassungFacts } from '@/lib/documents/fassung'
+import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
 import type { FileItem, FolderItem } from '../file-types'
 import {
   MAX_HOTSPOTS,
   buildFolderBrief,
   emptyTally,
   filesInSubtree,
-  isSeriesConfirmed,
   isUnplaced,
   readShare,
   readStateOf,
@@ -452,7 +451,7 @@ describe('buildFolderBrief', () => {
   it('builds the shelf root from every document', () => {
     const brief = buildFolderBrief(files, TREE, null)
     expect(brief.tally.total).toBe(8)
-    expect(brief.files).toBe(files)
+    expect(brief.files).toEqual(files)
     expect(brief.attention.failed.map((f) => f.id)).toEqual(['f1', 'outside'])
   })
 })
@@ -579,115 +578,137 @@ describe('hotspot ordering holds at large counts', () => {
   })
 })
 
-/** The Fassung facts a person's confirmation leaves on an older document: replaced by `newer`. */
-const replacedBy = (newer: FileItem): FassungFacts => ({
-  supersededBy: { id: newer.id, filename: newer.filename },
-  supersedes: [],
-  suggestion: null,
-  changeSummary: null,
-})
-
-describe('isSeriesConfirmed', () => {
-  const A = file({ id: 'ga', folderId: 'A', filename: 'EG_Grundriss_Index_A_2026-01-10.pdf' })
-  const B = file({ id: 'gb', folderId: 'A', filename: 'EG_Grundriss_Index_B_2026-02-10.pdf' })
-  const C = file({ id: 'gc', folderId: 'A', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' })
-  const seriesOf = (files: FileItem[]) => {
-    const series = buildFolderBrief(files, [folder('A', 'A')], null).revisionSeries
-    expect(series).toHaveLength(1)
-    return series[0]
-  }
-
-  it('is true when every older Fassung is confirmed as replaced by the current one', () => {
-    const series = seriesOf([{ ...A, fassung: replacedBy(C) }, { ...B, fassung: replacedBy(C) }, C])
-    expect(isSeriesConfirmed(series)).toBe(true)
-  })
-
-  it('is false while any older Fassung has no confirmation', () => {
-    const series = seriesOf([{ ...A, fassung: replacedBy(C) }, B, C])
-    expect(isSeriesConfirmed(series)).toBe(false)
-  })
-
-  it('is false when an older Fassung is confirmed as replaced by some other document', () => {
-    const other = file({ id: 'elsewhere', filename: 'Grundriss_neu.pdf' })
-    const series = seriesOf([{ ...A, fassung: replacedBy(C) }, { ...B, fassung: replacedBy(other) }, C])
-    expect(isSeriesConfirmed(series)).toBe(false)
-  })
-
-  it('is false when only the current Fassung carries a confirmation, not the older ones', () => {
-    const series = seriesOf([A, B, { ...C, fassung: replacedBy(A) }])
-    expect(isSeriesConfirmed(series)).toBe(false)
-  })
-})
-
-describe('buildFolderBrief confirmedOlder', () => {
+describe('selectInBrief', () => {
   const FOLDERS = [folder('A', 'A'), folder('D', 'D')]
-  const newer = file({ id: 'new', folderId: 'A', filename: 'Plan_Neu.pdf' })
+  // Under A: a typed readable document with a topic and a photo, a readable
+  // one with a topic and no type, a failed and a held document that carry the
+  // same tag and topic, and a photo that is still being read. D is outside.
+  const typed = file({
+    id: 'typed',
+    folderId: 'A',
+    status: 'ready',
+    tags: ['Grundriss', 'Brandschutz'],
+    topics: ['Attika'],
+    capture: { capturedAt: '2026-05-02T08:00:00Z' },
+  })
+  const untyped = file({ id: 'untyped', folderId: 'A', status: 'ready', tags: ['Brandschutz'], topics: ['Attika', 'Lift'] })
+  const failed = file({ id: 'failed', folderId: 'A', status: 'failed', tags: ['Brandschutz'], topics: ['Attika'] })
+  const held = file({ id: 'held', folderId: 'A', status: 'quarantined', tags: ['Grundriss'] })
+  const reading = file({
+    id: 'reading',
+    folderId: 'A',
+    status: 'processing',
+    capture: { capturedAt: '2026-05-03T08:00:00Z' },
+  })
+  const outside = file({ id: 'outside', folderId: 'D', status: 'ready', tags: ['Brandschutz'], topics: ['Attika'] })
+  const brief = buildFolderBrief([typed, untyped, failed, held, reading, outside], FOLDERS, 'A')
+  const ids = (selection: Parameters<typeof selectInBrief>[1]) => selectInBrief(brief, selection).map((f) => f.id)
 
-  it('lists the subtree documents a person confirmed as replaced, whatever their names', () => {
-    const files = [
-      file({ id: 'x', folderId: 'A', filename: 'Plan_Alt.pdf', fassung: replacedBy(newer) }),
-      newer,
-    ]
-    expect(buildFolderBrief(files, FOLDERS, 'A').confirmedOlder.map((f) => f.id)).toEqual(['x'])
+  it('opens the documents in a read state, and only those of the brief subtree', () => {
+    expect(ids({ kind: 'state', state: 'readable' })).toEqual(['typed', 'untyped'])
+    expect(ids({ kind: 'state', state: 'failed' })).toEqual(['failed'])
+    expect(ids({ kind: 'state', state: 'held' })).toEqual(['held'])
+    expect(ids({ kind: 'state', state: 'reading' })).toEqual(['reading'])
+    expect(ids({ kind: 'state', state: 'unindexed' })).toEqual([])
   })
 
-  it('leaves out documents with no confirmation, and ones that only name the older Fassungen they replace', () => {
-    const files = [
-      file({ id: 'none', folderId: 'A', filename: 'Plan_1.pdf', fassung: null }),
-      file({
-        id: 'supersedes-only',
-        folderId: 'A',
-        filename: 'Plan_2.pdf',
-        fassung: { supersededBy: null, supersedes: [{ id: 'old', filename: 'Plan_0.pdf' }], suggestion: null, changeSummary: null },
-      }),
-      file({
-        id: 'suggestion-only',
-        folderId: 'A',
-        filename: 'Plan_3.pdf',
-        fassung: { supersededBy: null, supersedes: [], suggestion: { of: { id: 'old', filename: 'Plan_0.pdf' }, confidence: 0.8, reason: '', basis: 'name' }, changeSummary: null },
-      }),
-    ]
-    expect(buildFolderBrief(files, FOLDERS, 'A').confirmedOlder).toEqual([])
+  it('opens a tag over readable documents only, the set the chip counted', () => {
+    expect(ids({ kind: 'tag', tag: 'Brandschutz' })).toEqual(['typed', 'untyped'])
+    expect(ids({ kind: 'tag', tag: 'Grundriss' })).toEqual(['typed'])
+    expect(brief.disciplines).toContainEqual({ label: 'Brandschutz', count: 2 })
   })
 
-  it('leaves out a confirmed document outside the brief subtree, and includes it at the shelf root', () => {
-    const files = [file({ id: 'far', folderId: 'D', filename: 'Plan_W.pdf', fassung: replacedBy(newer) })]
-    expect(buildFolderBrief(files, FOLDERS, 'A').confirmedOlder).toEqual([])
-    expect(buildFolderBrief(files, FOLDERS, null).confirmedOlder.map((f) => f.id)).toEqual(['far'])
+  it('opens a topic over readable documents only, the set the chip counted', () => {
+    expect(ids({ kind: 'topic', topic: 'Attika' })).toEqual(['typed', 'untyped'])
+    expect(ids({ kind: 'topic', topic: 'Lift' })).toEqual(['untyped'])
+    expect(brief.topics).toContainEqual({ label: 'Attika', count: 2 })
+  })
+
+  it('opens the readable photos with a capture time', () => {
+    expect(ids({ kind: 'photos' })).toEqual(['typed'])
+    expect(brief.photos?.count).toBe(1)
+  })
+
+  it('opens the readable documents in no document type, the set the brief lists as unplaced', () => {
+    expect(ids({ kind: 'unplaced' })).toEqual(['untyped'])
+    expect(brief.attention.unplaced.map((f) => f.id)).toEqual(['untyped'])
+  })
+
+  it('opens nothing for a tag or topic nobody carries', () => {
+    expect(ids({ kind: 'tag', tag: 'Gibt es nicht' })).toEqual([])
+    expect(ids({ kind: 'topic', topic: 'Gibt es nicht' })).toEqual([])
   })
 })
 
-describe('selectInBrief olderRevisions', () => {
-  const FOLDERS = [folder('A', 'A'), folder('D', 'D')]
-  // A name series A < B < C in folder A; B was also confirmed as replaced by C.
-  const ga = file({ id: 'ga', folderId: 'A', filename: 'EG_Grundriss_Index_A_2026-01-10.pdf' })
-  const gb = file({ id: 'gb', folderId: 'A', filename: 'EG_Grundriss_Index_B_2026-02-10.pdf' })
-  const gc = file({ id: 'gc', folderId: 'A', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' })
-  // Confirmed replaced by C under a name the series grammar cannot see.
-  const px = file({ id: 'px', folderId: 'A', filename: 'Plan_X.pdf', fassung: replacedBy(gc) })
-  // Confirmed replaced by C, but in a folder outside the brief.
-  const pd = file({ id: 'pd', folderId: 'D', filename: 'Plan_D.pdf', fassung: replacedBy(gc) })
-  const files = [ga, { ...gb, fassung: replacedBy(gc) }, gc, px, pd]
+/**
+ * One entry per document (ADR-0097): the brief counts the documents the
+ * listing shows, so a document with three Fassungen is one document, and a
+ * replaced Fassung is never counted, summed, nagged about or re-read.
+ */
+describe('buildFolderBrief over Fassungen', () => {
+  const ref = (id: string) => ({ id, filename: `${id}.pdf` })
+  const fassung = (overrides: Partial<NonNullable<FileItem['fassung']>>): FileItem['fassung'] => ({
+    ...EMPTY_FASSUNG,
+    ...overrides,
+  })
+  const tree = [folder('P', 'Pläne'), folder('ALT', 'alt', 'P'), folder('X', 'Anderswo')]
+  // Index C is current; B and A are older Fassungen of it. B failed to read,
+  // A was read and carries pages and tags that are no longer the basis.
+  const indexC = file({
+    id: 'c',
+    folderId: 'P',
+    status: 'ready',
+    pageCount: 4,
+    tags: ['Grundriss'],
+    topics: ['Fluchtweg'],
+    fassung: fassung({ supersedes: [ref('b')], history: [{ ...ref('b'), createdAt: null, changeSummary: null }, { ...ref('a'), createdAt: null, changeSummary: null }] }),
+  })
+  const indexB = file({ id: 'b', folderId: 'ALT', status: 'failed', fassung: fassung({ supersededBy: ref('c'), supersedes: [ref('a')] }) })
+  const indexA = file({
+    id: 'a',
+    folderId: 'ALT',
+    status: 'ready',
+    pageCount: 30,
+    tags: ['Grundriss'],
+    topics: ['Fluchtweg'],
+    fassung: fassung({ supersededBy: ref('b') }),
+  })
+  const schnitt = file({ id: 's', folderId: 'P', status: 'ready', pageCount: 2, tags: ['Schnitt'] })
+  const corpus = [indexC, indexB, indexA, schnitt]
 
-  it('returns the name-series older members and the confirmed older documents, in listing order', () => {
-    const brief = buildFolderBrief(files, FOLDERS, 'A')
-    expect(selectInBrief(brief, { kind: 'olderRevisions' }).map((f) => f.id)).toEqual(['ga', 'gb', 'px'])
+  it('counts the current Fassung only, in the tally and the pages', () => {
+    const brief = buildFolderBrief(corpus, tree, null)
+    expect(brief.files.map((f) => f.id)).toEqual(['c', 's'])
+    expect(brief.tally).toMatchObject({ total: 2, readable: 2, failed: 0, pages: 6 })
   })
 
-  it('counts a document that is both a name-series older member and confirmed once', () => {
-    const brief = buildFolderBrief(files, FOLDERS, 'A')
-    const ids = selectInBrief(brief, { kind: 'olderRevisions' }).map((f) => f.id)
-    expect(new Set(ids).size).toBe(ids.length)
-    expect(ids.filter((id) => id === 'gb')).toHaveLength(1)
+  it('never lists a replaced Fassung as needing a person, so „Alle erneut lesen" cannot re-read it', () => {
+    const brief = buildFolderBrief(corpus, tree, null)
+    expect(brief.attention.failed).toEqual([])
+    expect(selectInBrief(brief, { kind: 'state', state: 'failed' })).toEqual([])
   })
 
-  it('never includes the current Fassung of a series', () => {
-    const brief = buildFolderBrief(files, FOLDERS, 'A')
-    expect(selectInBrief(brief, { kind: 'olderRevisions' }).map((f) => f.id)).not.toContain('gc')
+  it('counts a chip once per document, and opens the same set it counted', () => {
+    const brief = buildFolderBrief(corpus, tree, null)
+    expect(brief.documentTypes).toContainEqual({ label: 'Grundriss', count: 1 })
+    expect(brief.topics).toContainEqual({ label: 'Fluchtweg', count: 1 })
+    expect(selectInBrief(brief, { kind: 'tag', tag: 'Grundriss' }).map((f) => f.id)).toEqual(['c'])
   })
 
-  it('includes a confirmed document from another folder when the brief is the shelf root', () => {
-    const brief = buildFolderBrief(files, FOLDERS, null)
-    expect(selectInBrief(brief, { kind: 'olderRevisions' }).map((f) => f.id)).toEqual(['ga', 'gb', 'px', 'pd'])
+  it('leaves the older Fassungen out of a folder that holds only them, when the newer one is filed elsewhere', () => {
+    const brief = buildFolderBrief(corpus, tree, 'ALT')
+    expect(brief.tally.total).toBe(0)
+  })
+
+  it('keeps an older Fassung whose newer one is not in the corpus, or it would vanish without a trace', () => {
+    const brief = buildFolderBrief([indexB, indexA], tree, null)
+    // B's newer one is missing, so B counts; A's newer one (B) is listed, so A does not.
+    expect(brief.files.map((f) => f.id)).toEqual(['b'])
+    expect(brief.attention.failed.map((f) => f.id)).toEqual(['b'])
+  })
+
+  it('leaves the folder hotspots without replaced Fassungen too', () => {
+    const brief = buildFolderBrief(corpus, tree, null)
+    expect(brief.hotspots).toEqual([])
   })
 })

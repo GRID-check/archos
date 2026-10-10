@@ -25,6 +25,7 @@ import { listingActionEntries } from './listing-action-entries'
 import { NewFolderDialog } from './new-folder-dialog'
 import { DEFAULT_FILE_SORT, sortFiles, type FileSort } from '../lib/file-sort'
 import { subtreeTallies } from '../lib/folder-knowledge'
+import { withoutOlderFassungen } from '../lib/fassung-chain'
 import {
   FolderBreadcrumbRow,
   FolderBreadcrumbRowSkeleton,
@@ -128,6 +129,11 @@ interface FileBrowserPaneProps {
    */
   searchFiles?: readonly FileItem[]
   /**
+   * Whether older Fassungen are listed. A search keeps one entry per document
+   * too: an older match is dropped when its current Fassung matched as well.
+   */
+  showOlderFassungen?: boolean
+  /**
    * The query and semantic mode, owned by the caller — see {@link FileSearch}.
    * The pane filters and renders results; it does not draw the field, because
    * on the Files page the field lives in the page header, one component above
@@ -170,6 +176,13 @@ interface FileBrowserPaneProps {
   slice?: { files: readonly FileItem[]; label: string; onClear: () => void }
 }
 
+/** The names a document's older Fassungen are stored under: what a search for them should find the document by. */
+function olderFassungNames(file: FileItem): string[] {
+  const facts = file.fassung
+  if (!facts) return []
+  return (facts.history ?? facts.supersedes).map((ref) => ref.filename)
+}
+
 export function FileBrowserPane({
   files,
   selectedFileId,
@@ -179,6 +192,7 @@ export function FileBrowserPane({
   uploadCard,
   folderNav,
   searchFiles,
+  showOlderFassungen = false,
   search,
   view = 'cards',
   showAssignment = false,
@@ -215,19 +229,19 @@ export function FileBrowserPane({
     if (!q) return orderedFiles
     // Both names, deliberately: somebody who renamed a document looks for what
     // they called it, and somebody who uploaded it looks for the file they sent.
-    return sortFiles(
-      (searchFiles ?? files).filter(
-        (f) =>
-          documentDisplayName(f).toLowerCase().includes(q) ||
-          f.filename.toLowerCase().includes(q) ||
-          (f.summary ?? '').toLowerCase().includes(q) ||
-          (f.tags ?? []).some((tag) => tag.toLowerCase().includes(q)) ||
-          (f.topics ?? []).some((topic) => topic.toLowerCase().includes(q))
-      ),
-      sort,
-      locale
+    // The older Fassungen's names count too: a document is found by any name it
+    // has been stored under, and its current entry is the one that answers.
+    const matches = (searchFiles ?? files).filter(
+      (f) =>
+        documentDisplayName(f).toLowerCase().includes(q) ||
+        f.filename.toLowerCase().includes(q) ||
+        (f.summary ?? '').toLowerCase().includes(q) ||
+        (f.tags ?? []).some((tag) => tag.toLowerCase().includes(q)) ||
+        (f.topics ?? []).some((topic) => topic.toLowerCase().includes(q)) ||
+        olderFassungNames(f).some((name) => name.toLowerCase().includes(q))
     )
-  }, [orderedFiles, files, searchFiles, query, sort, locale])
+    return sortFiles(withoutOlderFassungen(matches, showOlderFassungen), sort, locale)
+  }, [orderedFiles, files, searchFiles, query, sort, locale, showOlderFassungen])
 
   const currentFolderId = folderNav?.currentFolderId ?? null
   // A level the reader may only read offers no upload and no new folder
@@ -428,7 +442,10 @@ export function FileBrowserPane({
    * the same folder; the item count is direct children only and needs no walk.
    */
   const folderAggregates = useMemo(() => {
-    const corpus = searchFiles ?? files
+    // One entry per document, like the cards below the tiles: a folder holding
+    // Index A, B and C of one drawing counts one item unless older Fassungen
+    // are asked for (ADR-0097).
+    const corpus = withoutOlderFassungen(searchFiles ?? files, showOlderFassungen)
     const allFolders = folderNav?.folders ?? []
     const counts = new Map<string, number>()
     const bump = (id: string | null | undefined) => {
@@ -437,7 +454,7 @@ export function FileBrowserPane({
     for (const file of corpus) bump(file.folderId)
     for (const folder of allFolders) bump(folder.parentId)
     return { counts, tallies: subtreeTallies(corpus, allFolders) }
-  }, [files, searchFiles, folderNav?.folders])
+  }, [files, searchFiles, folderNav?.folders, showOlderFassungen])
 
   /** Documents + subfolders directly inside `folderId`, for the count line. */
   const folderItemCount = (folderId: string): number => folderAggregates.counts.get(folderId) ?? 0

@@ -40,7 +40,7 @@ export const archiv = {
     reingestAlreadyDone: 'Ist bereits fertig',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
-      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis die neue Fassung fertig ist, stützen sich Antworten weiter auf die bisherige.',
+      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
     reingestConfirmAction: 'Erneut lesen',
     menuLabel: 'Dateiaktionen',
     download: 'Herunterladen',

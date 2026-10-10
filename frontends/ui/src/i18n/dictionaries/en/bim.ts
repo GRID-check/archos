@@ -446,7 +446,7 @@ export const bim = {
     xrayNeedsTarget: 'See through — select an element or open a highlighted answer first',
     view: {
       iso: 'Free',
-      top: 'Top',
+      top: 'Top view',
       north: 'North',
       south: 'South',
       east: 'East',

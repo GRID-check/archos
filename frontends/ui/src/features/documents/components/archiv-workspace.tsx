@@ -103,6 +103,7 @@ export function ArchivWorkspace({
         onComplete,
       }),
     probeNames: probe.archiv,
+    probeFassungen: probe.archivFassungen,
     preview: { kind: 'dialog' },
     cardExtras,
     messages: {

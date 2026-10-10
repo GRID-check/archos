@@ -35,6 +35,7 @@ type OptionalWireField =
   | 'tags'
   | 'topics'
   | 'capture'
+  | 'revisionFacts'
   | 'queueAhead'
   | 'originPath'
   | 'contentHash'
@@ -65,6 +66,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     tags: row.tags ?? null,
     topics: row.topics ?? null,
     capture: row.capture ?? null,
+    revisionFacts: row.revisionFacts ?? null,
     fassung: row.fassung ?? null,
     queueAhead: row.queueAhead ?? null,
     assignees: row.assignees ?? EMPTY_ASSIGNEES,
@@ -104,6 +106,7 @@ const TRAILING_METADATA: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>([
   'tags',
   'topics',
   'capture',
+  'revisionFacts',
 ])
 
 function sameValue(a: unknown, b: unknown): boolean {

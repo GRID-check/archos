@@ -39,11 +39,11 @@ export const nav = {
     org: 'Organization',
   },
   sectionSubtitles: {
-    files: 'The project’s files: documents, drawings and reports, read by Piloti and cited where it uses them.',
+    files: 'This project’s documents. Piloti reads them and cites from them.',
     automation:
       'What Piloti did while you were away, what it will do next, and the skills it does it with.',
     knowledge: 'What the knowledge base currently contains.',
-    settings: 'Project profile, members, memory, and danger zone.',
+    settings: 'Project profile, members, memory and danger zone.',
     intake: 'Guided briefing for this project.',
   },
   /**

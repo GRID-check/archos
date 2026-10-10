@@ -89,7 +89,7 @@ export const projects: typeof en.projects = {
     aiNotice:
       'KI-Vorschlag: erstellt von Piloti aus Dateinamen, Ordnern, Typen und den vorhandenen Zusammenfassungen, ohne den Inhalt der Dateien neu zu lesen. Prüfen Sie jeden Eintrag.',
     aiUnavailable:
-      'Die KI-Prüfung war gerade nicht verfügbar. Die Vorschläge beruhen nur auf festen Regeln, etwa Sperrdateien, „Kopie von …" oder ältere Versionsnummern.',
+      'Die KI-Prüfung war gerade nicht verfügbar. Die Vorschläge beruhen nur auf festen Regeln, etwa Sperrdateien, „Kopie von …“ oder ein älterer Index im Dateinamen.',
     considered: '{count} Dateien geprüft, die Sie bearbeiten dürfen.',
     none: 'Piloti schlägt nichts zum Entfernen vor.',
     unavailable: 'Vorschläge konnten nicht geladen werden. Sie können das Projekt trotzdem abschließen.',
@@ -248,7 +248,7 @@ export const projects: typeof en.projects = {
     createError:
       'Wir konnten dieses Projekt gerade nicht erstellen. Bitte versuchen Sie es in einem Moment erneut.',
     nameLabel: 'Projektname',
-    namePlaceholder: 'z. B. Brandschutzprüfung, Gebäude 3',
+    namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
     templateLabel: 'Mit einer Vorlage beginnen',
     templates: {
       neubauWohnbau: { label: 'Neubau Wohnbau', name: 'Neubau Wohnbau' },
@@ -328,9 +328,9 @@ export const projects: typeof en.projects = {
     loadError: 'Rechercheläufe konnten nicht geladen werden',
     errorTitle: 'Rechercheläufe konnten nicht geladen werden',
     tryAgain: 'Erneut versuchen',
-    emptyTitle: 'Noch keine Rechercheläufe',
+    emptyTitle: 'Noch keine Tiefenrecherchen',
     emptyDescription:
-      'Tiefe Rechercheläufe erscheinen hier, sobald Sie Piloti im Chat eine komplexe Frage stellen. Es arbeitet Dateien, Büroablage und Baurecht durch und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
+      'Tiefenrecherchen erscheinen hier, sobald Sie Piloti im Chat eine umfassende Frage stellen. Es arbeitet Dateien, Büroablage und Baurecht durch und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
     emptyAction: 'Einen Lauf im Chat starten',
     viewReport: 'Bericht ansehen',
     viewProgress: 'Fortschritt ansehen',
@@ -362,7 +362,7 @@ export const projects: typeof en.projects = {
     eyebrowCreate: 'Projekteinrichtung',
     titleFallback: 'Erzählen Sie Piloti von diesem Projekt',
     subtitle:
-      'Etwa 2 Minuten. Piloti nutzt dieses Briefing, um die Arbeit an diesem Gebäude zu fundieren und zu zeigen, welche OIB-Richtlinien gelten.',
+      'Etwa 2 Minuten. Mit diesem Briefing arbeitet Piloti auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
     moduleNav: 'Module',
     moduleNavAria: 'Wizard-Module',
     schnellstart: 'Schnellstart',
@@ -598,7 +598,7 @@ export const projects: typeof en.projects = {
       viewAll: 'Alle ansehen',
       emptyTitle: 'Noch keine Dateien',
       emptyDescription:
-        'Laden Sie Baudokumente hoch — Zeichnungen, Berichte, Auszüge der Bauordnung — damit Piloti Ihr Projekt in seinen Antworten zitieren kann.',
+        'Laden Sie Baudokumente hoch (Zeichnungen, Berichte, Auszüge der Bauordnung), damit Piloti Ihr Projekt in seinen Antworten zitieren kann.',
       emptyAction: 'Dateien hochladen',
     },
   },

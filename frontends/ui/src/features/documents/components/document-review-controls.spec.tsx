@@ -69,7 +69,7 @@ describe('DocumentReviewControls — submitting names its reviewer and its order
     const submit = screen.getByTestId('document-lifecycle-submit')
     expect(submit).toBeDisabled()
     expect(screen.getByTestId('document-review-submit-hint')).toHaveTextContent(
-      'Choose who should review this version.',
+      'Choose who should review this revision.',
     )
     expect(screen.getByTestId('document-review-submit-hint')).toHaveTextContent(
       'State the order in one sentence.',
@@ -154,13 +154,13 @@ describe('DocumentReviewControls — approving signs its stand', () => {
 
     // The act names its Geltungsstand: which version, as of when.
     const stand = screen.getByTestId('document-review-approve-stand')
-    expect(stand).toHaveTextContent('Version 2')
+    expect(stand).toHaveTextContent('Revision 2')
     expect(stand).toHaveTextContent(formatAbsoluteTime('2026-09-03T10:15:00.000Z', 'en'))
     // …the acting person and the moment…
     const acting = screen.getByTestId('document-review-approve-acting')
     expect(acting).toHaveTextContent('DI Huber')
     // …and the signature itself, still unsigned.
-    expect(screen.getByRole('checkbox', { name: 'I release this version' })).not.toBeChecked()
+    expect(screen.getByRole('checkbox', { name: 'I approve this revision' })).not.toBeChecked()
     expect(screen.getByTestId('document-review-approve-send')).toBeDisabled()
   })
 
@@ -177,7 +177,7 @@ describe('DocumentReviewControls — approving signs its stand', () => {
     )
 
     await userEvent.click(screen.getByTestId('document-lifecycle-approve'))
-    await userEvent.click(screen.getByRole('checkbox', { name: 'I release this version' }))
+    await userEvent.click(screen.getByRole('checkbox', { name: 'I approve this revision' }))
     expect(screen.getByTestId('document-review-approve-send')).toBeEnabled()
     await userEvent.click(screen.getByTestId('document-review-approve-send'))
 
@@ -222,8 +222,8 @@ describe('DocumentReviewControls — publishing is its own act', () => {
 
     const section = screen.getByTestId('document-review-publish')
     expect(section).toHaveTextContent('Publication')
-    expect(section).toHaveTextContent('submission set / authority')
-    expect(section).toHaveTextContent('version 2')
+    expect(section).toHaveTextContent('the one Piloti answers from')
+    expect(section).toHaveTextContent('revision 2')
     // Its own section, visually cut off from the row above it.
     expect(section.className).toContain('border-t')
     // …and never a button in the row beside the other gestures. On `approved`
@@ -231,6 +231,67 @@ describe('DocumentReviewControls — publishing is its own act', () => {
     // — which used to be the row's sole occupant here — has its own block.
     const row = container.querySelector('[data-testid="document-review-controls"] > div.flex')
     expect(row).toBeNull()
+  })
+})
+
+describe('DocumentReviewControls — two decisions in view, two behind ⋯', () => {
+  it('shows Approve and Request changes, and keeps Have Piloti revise it and Reject behind the ⋯', async () => {
+    const onAct = vi.fn()
+    render(
+      <DocumentReviewControls
+        version={version('in_review', { submittedBy: 'user_anna' })}
+        lifecycle="active"
+        viewer={editor}
+        onAct={onAct}
+      />,
+    )
+
+    expect(screen.getByTestId('document-lifecycle-approve')).toBeVisible()
+    expect(screen.getByTestId('document-lifecycle-request_changes')).toBeVisible()
+    expect(screen.queryByTestId('document-lifecycle-reject')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('document-lifecycle-delegate_revision')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByTestId('document-review-more'))
+    const reject = await screen.findByTestId('document-lifecycle-reject')
+    expect(reject).toHaveAttribute('data-variant', 'destructive')
+    expect(screen.getByTestId('document-lifecycle-delegate_revision')).toBeInTheDocument()
+
+    // A refusal still asks for its reason before anything is sent.
+    await userEvent.click(reject)
+    expect(onAct).not.toHaveBeenCalled()
+    expect(await screen.findByTestId('document-review-comment')).toBeInTheDocument()
+  })
+
+  it('names the Fassung by the number the reader knows it by, where the surface passes one', async () => {
+    render(
+      <DocumentReviewControls
+        version={version('in_review', { submittedBy: 'user_anna' })}
+        lifecycle="active"
+        viewer={editor}
+        onAct={() => undefined}
+        fassungNumber={5}
+      />,
+    )
+
+    await userEvent.click(screen.getByTestId('document-lifecycle-approve'))
+    expect(screen.getByTestId('document-review-approve-stand')).toHaveTextContent(/\b5 ·/)
+    expect(screen.getByTestId('document-review-approve-stand')).not.toHaveTextContent(/\b2 ·/)
+  })
+
+  it('leaves out the publish heading and blurb where the header already says it, and keeps the button', () => {
+    render(
+      <DocumentReviewControls
+        version={version('approved')}
+        lifecycle="active"
+        viewer={{ permissions: ['project:view', 'project:documents:write'], userId: 'user_me' }}
+        onAct={() => undefined}
+        publishBare
+      />,
+    )
+
+    const section = screen.getByTestId('document-review-publish')
+    expect(section).not.toHaveTextContent('Publication')
+    expect(screen.getByTestId('document-lifecycle-publish')).toBeInTheDocument()
   })
 })
 

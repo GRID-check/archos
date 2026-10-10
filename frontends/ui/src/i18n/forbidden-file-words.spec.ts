@@ -54,6 +54,59 @@ function leaves(node: unknown, path: string, found: Array<[string, string]> = []
   return found
 }
 
+/**
+ * The subtrees that name a Fassung or its approval status (CONTEXT.md,
+ * „Fassung“ and „Freigabe“). One state of a document is a Fassung in German
+ * and a revision in English: English said „version“ in thirty strings while
+ * the newer ones said „revision“, so one reader saw „Revision 2“ on the card
+ * and „Version 2“ in the approval box. A Fassung's number is never „Upload 3“.
+ * The approval state that pairs with „Änderungen anfordern“ is „Änderungen
+ * angefordert“, never „erbeten“, and Piloti answers from a published Fassung
+ * instead of it being a „Grundlage für Antworten“.
+ */
+const FASSUNG_SUBTREES = [
+  'files.lifecycle',
+  'files.preview.fassung',
+  'files.fassungBadge',
+  'files.compare',
+  'chat.cards.documentDraft',
+  'collaboration.inbox.review',
+  'collaboration.inbox.types.documentReviewRequested',
+  'collaboration.inbox.types.documentNewFassung',
+  // The upload dialog asks which files come in as a new Fassung, and the upload
+  // summary says which did.
+  'files.folderUpload',
+  'uploadBatches.summary.files',
+] as const
+
+const FASSUNG_FORBIDDEN: Record<'de' | 'en', RegExp> = {
+  de: /\bVersion(en)?\b|\bUpload \{|erbeten|Grundlage für Antworten/u,
+  en: /\bversions?\b|\bupload \{|\bsuperseded\b|basis for answers/i,
+}
+
+function subtree(dictionary: unknown, path: string): unknown {
+  return path.split('.').reduce<unknown>((node, key) => (node as Record<string, unknown> | undefined)?.[key], dictionary)
+}
+
+describe('a Fassung has one name and its status one word', () => {
+  for (const [locale, dictionary] of [
+    ['de', de],
+    ['en', en],
+  ] as const) {
+    it(`${locale}: no „Version“, „Upload N“ or „erbeten“ where a Fassung is named`, () => {
+      const offenders = FASSUNG_SUBTREES.flatMap((path) => {
+        const node = subtree(dictionary, path)
+        expect(node, `${path} moved; update FASSUNG_SUBTREES`).toBeTypeOf('object')
+        return leaves(node, path)
+      })
+        // A placeholder name is code, not copy: `v{version}` says nothing to a reader.
+        .filter(([, text]) => FASSUNG_FORBIDDEN[locale].test(text.replace(/\{\w+\}/g, '{}')))
+        .map(([path, text]) => `${path}: ${text}`)
+      expect(offenders).toEqual([])
+    })
+  }
+})
+
 describe('file copy never calls a file a plan', () => {
   for (const [locale, dictionary] of [
     ['de', de],

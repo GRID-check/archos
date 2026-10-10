@@ -370,6 +370,11 @@ export const chat: typeof en.chat = {
     previousLocus: 'Vorherige Fundstelle',
     nextLocus: 'Nächste Fundstelle',
     retrievedOnly: 'Gelesen',
+    // Das Dokument ist eine Fassung, die eine Person durch eine neuere ersetzt hat. Die Zitation bleibt wahr
+    // für die Datei, die sie nennt; der Leser soll es nur wissen, bevor er sich darauf verlässt.
+    olderFassung: 'Ältere Fassung – aktuell:',
+    openCurrentFassungAria: 'Aktuelle Fassung öffnen: {name}',
+    currentFassungUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
   },
   breadcrumb: {
     ariaLabel: 'Navigationspfad',
@@ -480,10 +485,10 @@ export const chat: typeof en.chat = {
       fileError: 'Das Ablegen hat nicht geklappt. Bitte erneut versuchen.',
       fileConflict: 'Ein Dokument mit diesem Namen liegt bereits im Projekt.',
       fileAnyway: 'Trotzdem ablegen',
-      // Die Referenz ist abgelegt und eine Person hat die Version
+      // Die Referenz ist abgelegt und eine Person hat die Fassung
       // weitergereicht: nichts erneut zu versuchen und nichts zu bestätigen —
-      // ab hier ist die Dateiablage zuständig.
-      fileSubmitted: 'Dieser Entwurf ist bereits abgelegt. Weiter in der Dateiablage.',
+      // ab hier sind die Dateien zuständig.
+      fileSubmitted: 'Dieser Entwurf ist bereits abgelegt. Weiter unter Dateien.',
       // Die Lesefläche des unabgelegten Entwurfs: Die Bytes liegen im
       // Arbeitsordner des Agenten und kommen über die Entwurfs-Vorschautür des
       // BFF. Ein Lesen, also schreibt sie nichts und bleibt presentational.
@@ -496,17 +501,17 @@ export const chat: typeof en.chat = {
       open: 'Im Projekt öffnen',
       submit: 'Zur Freigabe einreichen',
       submitting: 'Wird eingereicht …',
-      submitted: 'Zur Freigabe eingereicht — wartet auf eine Person',
+      submitted: 'Zur Freigabe eingereicht – wartet auf eine Person',
       // Der Zustand, den eine Person schon gesetzt hat. Kein Knopf: Was jetzt
-      // passiert, entscheidet sie in der Dateiablage.
-      inReview: 'Wartet auf Freigabe',
-      changesRequested: 'Änderungen erbeten',
+      // passiert, entscheidet sie unter Dateien.
+      inReview: 'In Prüfung',
+      changesRequested: 'Änderungen angefordert',
       approved: 'Freigegeben',
       published: 'Veröffentlicht',
       // Eine Fassung, die eine neuere überholt hat: weder Entwurf noch
-      // Freigabe — sie ist gelesen, aber nicht mehr der Stand.
+      // Freigabe — sie ist gelesen, aber nicht mehr die aktuelle.
       ersetzt: 'Ersetzt',
-      error: 'Das Einreichen hat nicht geklappt. Bitte in der Dateiablage erneut versuchen.',
+      error: 'Das Einreichen hat nicht geklappt. Bitte unter Dateien erneut versuchen.',
     },
     // Ein Auftrag, den Piloti nach diesem Gespräch selbständig erledigt
     // (ADR-0051). Die Karte bietet nichts an: die Zeile existiert schon, wenn
@@ -555,7 +560,7 @@ export const chat: typeof en.chat = {
       // ist das alles, was die Karte ehrlich sagen kann, und sie sagt, wo man
       // nachsieht, statt zu raten.
       partial:
-        'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden — sehen Sie in der Dateiablage nach.',
+        'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden – sehen Sie unter Dateien nach.',
       dismissed: 'Verworfen. Es wurde nichts geändert.',
       error: 'Konnte nicht übernommen werden.',
       // Der eine Fall, in dem die Karte nichts auszuführen hat. Der Vorschlag
@@ -671,7 +676,7 @@ export const chat: typeof en.chat = {
         removeExcluded: 'Nicht mehr ausgeschlossen: {name}',
       },
       rahmen: 'Datengrundlage',
-      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie freigeben.',
+      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
     },
     awaitingOther: 'Piloti wartet auf {name}',
     awaitingSomeone: 'Piloti wartet auf eine andere Person',

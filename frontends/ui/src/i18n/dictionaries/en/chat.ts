@@ -372,6 +372,11 @@ export const chat = {
     previousLocus: 'Previous passage',
     nextLocus: 'Next passage',
     retrievedOnly: 'Read',
+    // The cited document is a Fassung a person has since replaced. The citation stays true of the file it names;
+    // the reader should know before relying on it.
+    olderFassung: 'Older revision. Current:',
+    openCurrentFassungAria: 'Open the current revision: {name}',
+    currentFassungUnavailable: 'The current revision cannot be opened.',
   },
   breadcrumb: {
     ariaLabel: 'Conversation breadcrumb',
@@ -483,9 +488,9 @@ export const chat = {
       fileError: 'Filing failed. Please try again.',
       fileConflict: 'A document with this name is already in the project.',
       fileAnyway: 'File anyway',
-      // The reference filed and a person moved the version on: nothing to
+      // The reference filed and a person moved the revision on: nothing to
       // retry and nothing to confirm — the Files pane owns it from here.
-      fileSubmitted: 'This draft has already been filed. Continue in the Files pane.',
+      fileSubmitted: 'This draft has already been filed. Continue in Files.',
       // The unfiled draft's reading surface: the bytes live in the agent's
       // working directory, fetched through the BFF draft-preview door. A read,
       // so it writes nothing and stays presentational.
@@ -496,19 +501,19 @@ export const chat = {
       // From here on the document is in the project.
       filed: 'Filed in the project as a draft',
       open: 'Open in the project',
-      submit: 'Send for approval',
-      submitting: 'Sending …',
-      submitted: 'Sent for approval — waiting for a person',
+      submit: 'Submit for approval',
+      submitting: 'Submitting…',
+      submitted: 'Submitted for approval — waiting for a person',
       // A state a person has already set. No button: what happens next is
       // decided in the Files pane.
-      inReview: 'Awaiting approval',
+      inReview: 'In review',
       changesRequested: 'Changes requested',
       approved: 'Approved',
       published: 'Published',
-      // A version a newer one overtook: neither a draft nor an approval —
-      // it reads, but it is no longer the stand.
-      ersetzt: 'Superseded',
-      error: 'Sending for approval failed. Please try again from the Files pane.',
+      // A revision a newer one overtook: neither a draft nor an approval —
+      // it reads, but it is no longer the current one.
+      ersetzt: 'Replaced',
+      error: 'Submitting for approval failed. Please try again from Files.',
     },
     // Work Piloti has taken on and will finish after this conversation
     // (ADR-0051). The card offers nothing: the row exists by the time it

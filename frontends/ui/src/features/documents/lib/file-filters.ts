@@ -117,6 +117,15 @@ export interface FileFilters {
    * gesture.
    */
   includeArchived: boolean
+  /**
+   * Show the older Fassungen of a document beside its current one.
+   *
+   * Answered by the WORKSPACE, not by `applyFileFilters`: the rule is "an older
+   * Fassung leaves the listing when its newer one is listed" (`fassung-chain.ts`),
+   * and it has to be asked after every other filter, over what those filters
+   * kept. Like `includeArchived` it WIDENS, and the menu says „auch“.
+   */
+  showOlderFassungen: boolean
   /** Empty means every kind — an empty set is "no constraint", never "nothing". */
   kinds: readonly DocumentKind[]
   /** Empty means every status, for the same reason. */
@@ -167,6 +176,7 @@ export const NO_FILE_FILTERS: FileFilters = {
   agentAuthoredOnly: false,
   reviewPendingOnly: false,
   includeArchived: false,
+  showOlderFassungen: false,
   kinds: [],
   statuses: [],
   tags: [],
@@ -187,6 +197,7 @@ export function activeFilterCount(filters: FileFilters, canCollaborate: boolean)
   if (filters.agentAuthoredOnly) count += 1
   if (filters.reviewPendingOnly) count += 1
   if (filters.includeArchived) count += 1
+  if (filters.showOlderFassungen) count += 1
   if (filters.kinds.length > 0) count += 1
   if (filters.statuses.length > 0) count += 1
   if (filters.tags.length > 0) count += 1

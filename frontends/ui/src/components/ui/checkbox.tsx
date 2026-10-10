@@ -2,7 +2,7 @@
 
 import * as React from 'react'
 import * as CheckboxPrimitive from '@radix-ui/react-checkbox'
-import { CheckIcon } from 'lucide-react'
+import { CheckIcon, MinusIcon } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -24,6 +24,11 @@ const Checkbox = React.forwardRef<
       // which is invisible. Re-assert the checked fill under `dark:` so the
       // two conditions compose instead of one silently winning.
       'dark:data-[state=checked]:bg-primary dark:data-[state=checked]:text-primary-foreground',
+      // Half-filled is a state of its own, drawn as filled ink with a dash. It
+      // used to share the unchecked paint and the tick, so a master box over
+      // „some" read as „checked, but disabled" — the one state it exists for.
+      'data-[state=indeterminate]:bg-primary data-[state=indeterminate]:text-primary-foreground data-[state=indeterminate]:border-primary',
+      'dark:data-[state=indeterminate]:bg-primary dark:data-[state=indeterminate]:text-primary-foreground',
       FOCUS_RING,
       'aria-invalid:ring-destructive/20 aria-invalid:border-destructive',
       className
@@ -32,9 +37,11 @@ const Checkbox = React.forwardRef<
   >
     <CheckboxPrimitive.Indicator
       data-slot="checkbox-indicator"
-      className="flex items-center justify-center text-current transition-none"
+      className="group/indicator flex items-center justify-center text-current transition-none"
     >
-      <CheckIcon className="size-3.5" />
+      {/* The indicator carries the root's `data-state`, so one of the two glyphs shows. */}
+      <CheckIcon data-slot="checkbox-check" className="size-3.5 group-data-[state=indeterminate]/indicator:hidden" />
+      <MinusIcon data-slot="checkbox-dash" className="hidden size-3.5 group-data-[state=indeterminate]/indicator:block" />
     </CheckboxPrimitive.Indicator>
   </CheckboxPrimitive.Root>
 ))

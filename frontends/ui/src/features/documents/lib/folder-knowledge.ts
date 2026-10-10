@@ -24,7 +24,7 @@
 import { documentStatusFacts } from '@/lib/documents/document-status'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS, documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import type { FileItem, FolderItem } from '../file-types'
-import { findRevisionSeries, type RevisionSeries } from './revision-series'
+import { withoutOlderFassungen } from './fassung-chain'
 
 /**
  * Where a document stands with Piloti, in the five answers a reader acts on.
@@ -264,18 +264,6 @@ export interface FolderBrief {
   topics: CountedLabel[]
   /** The readable photos with a capture time, and the span they were taken in — null when there are none. */
   photos: PhotoSpan | null
-  /**
-   * Documents in more than one Fassung, each with the one that looks current
-   * (`revision-series.ts`) — a suggestion, never a decision. Over every document
-   * of the subtree a person may see, readable or not.
-   */
-  revisionSeries: RevisionSeries<FileItem>[]
-  /**
-   * Documents a person confirmed are replaced by a newer Fassung
-   * (`FileItem.fassung.supersededBy`), whatever their names — the link the
-   * name grammar cannot see.
-   */
-  confirmedOlder: FileItem[]
 }
 
 export interface PhotoSpan {
@@ -334,12 +322,22 @@ function compareSeverity(a: KnowledgeTally, b: KnowledgeTally): number {
  * Content is only ever read from READABLE documents: a quarantined file's tags
  * describe content the office has not released, and a failed one's are absent
  * or stale. Their existence is counted; what they say is not.
+ *
+ * One entry per document, as the listing shows it (ADR-0097,
+ * `fassung-chain.ts`): an older Fassung whose newer one is in the corpus is
+ * left out before anything is counted, whatever the listing's „Ältere
+ * Fassungen" filter says. Otherwise the headline would count Index A, B and C
+ * as three documents, the pages of a replaced Fassung would be summed, and
+ * „Alle erneut lesen" would re-read a file Piloti no longer answers from.
+ * Asked over the WHOLE corpus, so a newer Fassung filed in another folder
+ * still hides its older one here.
  */
 export function buildFolderBrief(
-  files: readonly FileItem[],
+  allFiles: readonly FileItem[],
   folders: readonly FolderItem[],
   folderId: string | null
 ): FolderBrief {
+  const files = withoutOlderFassungen(allFiles, false)
   const subtree = filesInSubtree(files, folders, folderId)
   const tally = tallyOf(subtree)
 
@@ -394,16 +392,7 @@ export function buildFolderBrief(
       captured.length > 0
         ? { count: captured.length, from: captured[0], to: captured[captured.length - 1], located }
         : null,
-    // A held file's NAME is not shown to everyone (ADR-0086); it never reaches
-    // the listing of a reader who may not see it, so every row here may be named.
-    revisionSeries: findRevisionSeries(subtree),
-    confirmedOlder: subtree.filter((file) => file.fassung?.supersededBy),
   }
-}
-
-/** Whether a person already confirmed every older Fassung of a name series as replaced by its current one. */
-export function isSeriesConfirmed(series: RevisionSeries<FileItem>): boolean {
-  return series.older.every((member) => member.item.fassung?.supersededBy?.id === series.current.item.id)
 }
 
 /**
@@ -463,18 +452,12 @@ export type BriefSelection =
   | { kind: 'topic'; topic: string }
   | { kind: 'unplaced' }
   | { kind: 'photos' }
-  | { kind: 'olderRevisions' }
 
 /**
  * The documents of the brief's subtree a selection opens — the same set the
  * brief counted for it, so a chip that says „Attika 4" opens four documents.
  */
 export function selectInBrief(brief: FolderBrief, selection: BriefSelection): FileItem[] {
-  if (selection.kind === 'olderRevisions') {
-    const older = new Set(brief.revisionSeries.flatMap((series) => series.older.map((member) => member.item.id)))
-    for (const file of brief.confirmedOlder) older.add(file.id)
-    return brief.files.filter((file) => older.has(file.id))
-  }
   return brief.files.filter((file) => matchesBriefSelection(file, selection))
 }
 
@@ -493,9 +476,6 @@ export function matchesBriefSelection(file: FileItem, selection: BriefSelection)
       return readable && Boolean(file.capture?.capturedAt)
     case 'unplaced':
       return isUnplaced(file)
-    case 'olderRevisions':
-      // Needs the series, which one file cannot know: see `selectInBrief`.
-      return false
   }
 }
 

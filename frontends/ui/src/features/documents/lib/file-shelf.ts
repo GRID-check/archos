@@ -14,7 +14,7 @@ import type { ReactNode } from 'react'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../file-types'
 import type { UploadFilesOptions } from '../hooks/use-file-upload'
-import type { DocumentNameMatch } from '@/lib/documents/name-probe-types'
+import type { DocumentNameMatch, FassungCandidateMatch } from '@/lib/documents/name-probe-types'
 import type { DocumentLifecyclePermission } from '@/lib/documents/lifecycle-types'
 import type { TrackedFile } from '../types'
 
@@ -110,6 +110,8 @@ export interface FileShelf {
   useUpload: (input: ShelfUploadInput) => ShelfUploadApi
   /** Which of the shelf's documents already carry these names (upload plan). */
   probeNames: (names: readonly string[]) => Promise<DocumentNameMatch[]>
+  /** Which of the shelf's documents these names would be the next Fassung of (upload plan, ADR-0097). */
+  probeFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>
   /** Where a drop made elsewhere in the app waits for this shelf (project only). */
   handoverKey?: string
   /**

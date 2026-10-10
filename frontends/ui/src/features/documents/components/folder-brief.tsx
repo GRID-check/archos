@@ -1,23 +1,21 @@
 'use client'
 
-import type { JSX } from 'react'
+import type { JSX, ReactNode } from 'react'
 import { useState } from 'react'
-import { ChevronDown, CornerDownRight, RotateCcw, Sparkles } from 'lucide-react'
+import { Camera, ChevronDown, CornerDownRight, RotateCcw, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Chip, ChipCount } from '@/components/ui/chip'
+import { Chip, ChipCount, ChipLabel } from '@/components/ui/chip'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { SectionLabel } from '@/components/ui/section-label'
 import { SegmentMeter, ToneSwatch, type MeterTone } from '@/components/ui/segment-meter'
 import { useLocale, useTranslations } from '@/i18n'
+import { formatDayRange } from '@/lib/format'
 import { cn } from '@/lib/utils'
 import type { BulkReingestProgress } from '../hooks/use-bulk-reingest'
 import { FolderReadState } from './folder-read-state'
-import { revisionLabel, type RevisionSeries } from '../lib/revision-series'
-import type { FileItem } from '../file-types'
-import { documentDisplayName } from '@/lib/documents/display-name'
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import {
-  isSeriesConfirmed,
   readShare,
   type BriefSelection,
   type FolderBrief as FolderBriefData,
@@ -36,8 +34,27 @@ export const READ_STATE_TONE: Record<ReadState, MeterTone> = {
   unindexed: 'muted',
 }
 
-/** The order the legend reads in: what Piloti has, then what is moving, then what needs a person. */
-const LEGEND_ORDER: readonly ReadState[] = ['readable', 'reading', 'failed', 'held', 'unindexed']
+/**
+ * The states Piloti is meant to read, in the order the legend reads them: what
+ * Piloti has, then what is moving, then what needs a person. Their counts add
+ * up to the headline's „von N", which is the whole point of listing them
+ * apart from `unindexed`: a reader who adds up the legend gets the headline.
+ */
+const MEANT_TO_READ: readonly ReadState[] = ['readable', 'reading', 'failed', 'held']
+
+/**
+ * The states the bar and the legend draw. `unindexed` is out of the headline's
+ * denominator (`readShare`), so it is out of the bar too and named as an aside
+ * (`UnindexedAside`), unless it is all there is.
+ */
+function meterStates(tally: KnowledgeTally): readonly ReadState[] {
+  return tally.total - tally.unindexed > 0 ? MEANT_TO_READ : ['unindexed']
+}
+
+/** Whether the documents Piloti never reads are named beside the legend rather than in it. */
+function hasUnindexedAside(tally: KnowledgeTally): boolean {
+  return tally.unindexed > 0 && tally.total - tally.unindexed > 0
+}
 
 export interface FolderBriefProps {
   brief: FolderBriefData
@@ -63,12 +80,6 @@ export interface FolderBriefProps {
    * null when unknown, so an unread list is never presented as "nothing missing".
    */
   missing?: readonly MissingDocument[] | null
-  /**
-   * Confirm a name series: its current Fassung replaces every older one. Absent
-   * when the reader may not write here — the link changes what Piloti answers
-   * from for everybody.
-   */
-  onConfirmSeries?: (series: RevisionSeries<FileItem>) => Promise<void>
 }
 
 /**
@@ -106,7 +117,6 @@ export function FolderBrief({
   collapsed,
   onCollapsedChange,
   missing,
-  onConfirmSeries,
 }: FolderBriefProps): JSX.Element | null {
   const t = useTranslations('files')
   const { tally } = brief
@@ -157,28 +167,27 @@ export function FolderBrief({
 
         <SegmentMeter
           label={meterLabel}
-          segments={LEGEND_ORDER.map((state) => ({ key: state, value: tally[state], tone: READ_STATE_TONE[state] }))}
+          segments={meterStates(tally).map((state) => ({ key: state, value: tally[state], tone: READ_STATE_TONE[state] }))}
         />
 
         <ReadStateLegend tally={tally} onSelect={onSelect} />
       </div>
 
+      {/* Ordered by what the reader has to do: what needs them first, open;
+          then what Piloti is missing, what the folder is about and where the
+          trouble sits, each folded to one line that already names its content.
+          Open in full, the brief was taller than a laptop screen and the
+          listing it introduces started below the fold. */}
       {!collapsed && (
         <div id="folder-brief-body" className="flex flex-col divide-y border-t">
-          <AboutSection brief={brief} onSelect={onSelect} />
           <NeedsYouSection
             brief={brief}
             onSelect={onSelect}
             onReadAgain={onReadAgain}
             readAgainProgress={readAgainProgress}
           />
-          <RevisionSeriesSection
-            series={brief.revisionSeries}
-            confirmedElsewhere={confirmedOutsideSeries(brief)}
-            onSelect={onSelect}
-            onConfirm={onConfirmSeries}
-          />
           {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
+          <AboutSection brief={brief} onSelect={onSelect} />
           <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
         </div>
       )}
@@ -198,16 +207,18 @@ function briefHeadline(tally: KnowledgeTally, t: Translate): string {
 }
 
 function legendSentence(tally: KnowledgeTally, t: Translate): string {
-  return LEGEND_ORDER.filter((state) => tally[state] > 0)
+  const states = meterStates(tally)
+    .filter((state) => tally[state] > 0)
     .map((state) => t(`brief.states.${state}`, { count: tally[state] }))
-    .join(', ')
+  if (hasUnindexedAside(tally)) states.push(t('brief.unindexedAside', { count: tally.unindexed }))
+  return states.join(', ')
 }
 
 /** Each state with documents in it, as swatch + count + word — and a way into exactly those documents. */
 function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect: (s: BriefSelection) => void }) {
   const t = useTranslations('files')
   const { locale } = useLocale()
-  const states = LEGEND_ORDER.filter((state) => tally[state] > 0)
+  const states = meterStates(tally).filter((state) => tally[state] > 0)
   return (
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1">
       {states.map((state) => (
@@ -216,13 +227,27 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
           type="button"
           onClick={() => onSelect({ kind: 'state', state })}
           className="text-muted-foreground hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
-          title={t('brief.showState', { state: t(`brief.states.${state}`, { count: tally[state] }) })}
+          title={t('brief.showState', { state: t(`brief.slice.${state}`) })}
           data-testid={`folder-brief-state-${state}`}
         >
           <ToneSwatch tone={READ_STATE_TONE[state]} />
           <span>{t(`brief.states.${state}`, { count: tally[state] })}</span>
         </button>
       ))}
+      {hasUnindexedAside(tally) && (
+        <button
+          type="button"
+          onClick={() => onSelect({ kind: 'state', state: 'unindexed' })}
+          className="text-muted-foreground/80 hover:bg-accent hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 rounded-md px-1.5 py-0.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          title={t('brief.showState', { state: t('brief.slice.unindexed') })}
+          data-testid="folder-brief-state-unindexed"
+        >
+          <span aria-hidden className="text-muted-foreground/40">
+            ·
+          </span>
+          <span>{t('brief.unindexedAside', { count: tally.unindexed })}</span>
+        </button>
+      )}
       {tally.pages > 0 && (
         <span className="text-muted-foreground/80 ml-auto px-1.5 text-xs tabular-nums">
           {t('brief.pages', { count: tally.pages, formatted: tally.pages.toLocaleString(locale) })}
@@ -232,49 +257,60 @@ function ReadStateLegend({ tally, onSelect }: { tally: KnowledgeTally; onSelect:
   )
 }
 
-/** What Piloti took the documents to be: type and discipline chips, and the kinds of content in them. */
+/**
+ * What Piloti took the documents to be: the document types and disciplines it
+ * assigned, each family under its own label, the topics it recognised, and the
+ * kinds of content in them. Folded to one line by default; the line names the
+ * biggest types, so the folder still says what it is without being opened.
+ */
 function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (s: BriefSelection) => void }) {
   const t = useTranslations('files')
   const { documentTypes, disciplines, contents, tally, topics, photos } = brief
   const { locale } = useLocale()
   if (tally.readable === 0) return null
   const contentNames = contents.map(({ label }) => t(`preview.contentTypeNames.${label}`))
+  const summary =
+    documentTypes.length + disciplines.length > 0
+      ? [...documentTypes, ...disciplines].map(({ label }) => label).join(' · ')
+      : t('brief.noTypes')
   return (
-    <section className="flex flex-col gap-2 px-4 py-3" aria-labelledby="folder-brief-about">
-      <h3 id="folder-brief-about" className="text-muted-foreground text-xs font-medium">
-        {t('brief.aboutTitle')}
-      </h3>
+    <BriefDisclosure id="folder-brief-about" title={t('brief.aboutTitle')} summary={summary}>
       {documentTypes.length === 0 && disciplines.length === 0 ? (
         <p className="text-muted-foreground text-xs leading-relaxed">{t('brief.noTypes')}</p>
       ) : (
-        <div className="flex flex-wrap gap-1.5" data-testid="folder-brief-types">
-          {documentTypes.map(({ label, count }) => (
-            <TagChip key={label} label={label} count={count} onSelect={onSelect} />
-          ))}
-          {disciplines.map(({ label, count }) => (
-            <TagChip key={label} label={label} count={count} onSelect={onSelect} variant="outline" />
-          ))}
+        <div className="flex flex-col gap-2" data-testid="folder-brief-types">
+          {documentTypes.length > 0 && (
+            <ChipFamily label={t('brief.typesLabel')}>
+              {documentTypes.map(({ label, count }) => (
+                <TagChip key={label} label={label} count={count} onSelect={onSelect} />
+              ))}
+            </ChipFamily>
+          )}
+          {disciplines.length > 0 && (
+            <ChipFamily label={t('brief.disciplinesLabel')}>
+              {disciplines.map(({ label, count }) => (
+                <TagChip key={label} label={label} count={count} onSelect={onSelect} variant="outline" />
+              ))}
+            </ChipFamily>
+          )}
         </div>
       )}
       {topics.length > 0 && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-muted-foreground text-xs">{t('brief.topicsTitle')}</p>
-          <div className="flex flex-wrap gap-1.5" data-testid="folder-brief-topics">
-            {topics.map(({ label, count }) => (
-              <Chip key={label} asChild interactive variant="muted" size="sm">
-                <button
-                  type="button"
-                  onClick={() => onSelect({ kind: 'topic', topic: label })}
-                  title={t('brief.showTag', { tag: label })}
-                  data-testid={`folder-brief-topic-${label}`}
-                >
-                  {label}
-                  <ChipCount>{count}</ChipCount>
-                </button>
-              </Chip>
-            ))}
-          </div>
-        </div>
+        <ChipFamily label={t('brief.topicsTitle')} testId="folder-brief-topics">
+          {topics.map(({ label, count }) => (
+            <Chip key={label} asChild interactive variant="muted" size="sm" className="text-foreground/80">
+              <button
+                type="button"
+                onClick={() => onSelect({ kind: 'topic', topic: label })}
+                title={t('brief.showTag', { tag: label })}
+                data-testid={`folder-brief-topic-${label}`}
+              >
+                <ChipLabel>{label}</ChipLabel>
+                <ChipCount>{count}</ChipCount>
+              </button>
+            </Chip>
+          ))}
+        </ChipFamily>
       )}
       {contentNames.length > 0 && (
         <p className="text-muted-foreground text-xs">{t('brief.contains', { list: contentNames.join(' · ') })}</p>
@@ -283,13 +319,76 @@ function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (
         <button
           type="button"
           onClick={() => onSelect({ kind: 'photos' })}
-          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring touch-target self-start rounded-sm text-left text-xs underline-offset-2 transition-colors duration-quick ease-out hover:underline focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+          className="text-muted-foreground hover:text-foreground focus-visible:ring-ring touch-target inline-flex items-center gap-1.5 self-start rounded-sm text-left text-xs underline underline-offset-2 decoration-muted-foreground/40 transition-colors duration-quick ease-out hover:decoration-current focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
           data-testid="folder-brief-photos"
         >
+          <Camera className="size-3.5 shrink-0" aria-hidden />
           {photoLine(photos, locale, t)}
         </button>
       )}
-    </section>
+    </BriefDisclosure>
+  )
+}
+
+/**
+ * One family of chips under its run-in label — „Dokumentart", „Fachbereich",
+ * „Themen" — so a type and a discipline are told apart by a word, not only by
+ * fill against outline.
+ */
+function ChipFamily({ label, testId, children }: { label: string; testId?: string; children: ReactNode }) {
+  return (
+    <div className="flex min-w-0 flex-col gap-1" data-testid={testId}>
+      <p className="text-muted-foreground/80 text-[11px]">{label}</p>
+      <div className="flex min-w-0 flex-wrap gap-1.5 pointer-coarse:gap-2">{children}</div>
+    </div>
+  )
+}
+
+/**
+ * A secondary section of the brief, folded to its title and one line of what
+ * it holds. The heading wraps the trigger (the disclosure pattern): a heading
+ * inside a button is not one a screen reader can jump to.
+ */
+function BriefDisclosure({
+  id,
+  title,
+  summary,
+  children,
+}: {
+  id: string
+  title: string
+  summary: string
+  children: ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} asChild>
+      <section aria-labelledby={id} data-testid={id} data-state={open ? 'open' : 'closed'}>
+        <h3 id={id} className="m-0">
+          <CollapsibleTrigger asChild>
+            <button
+              type="button"
+              className="hover:bg-accent/60 focus-visible:ring-ring group flex w-full min-w-0 items-center gap-3 px-4 py-2.5 text-left transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset motion-reduce:transition-none pointer-coarse:min-h-11"
+              data-testid={`${id}-toggle`}
+            >
+              <span className="text-muted-foreground shrink-0 text-xs font-medium">{title}</span>
+              {/* What the section holds, while it is shut; open, the section says it itself. */}
+              <span className="text-muted-foreground/80 min-w-0 flex-1 truncate text-xs font-normal" aria-hidden={open}>
+                {open ? '' : summary}
+              </span>
+              <ChevronDown
+                className={cn(
+                  'text-muted-foreground size-3.5 shrink-0 transition-transform duration-quick ease-out motion-reduce:transition-none',
+                  open && 'rotate-180'
+                )}
+                aria-hidden
+              />
+            </button>
+          </CollapsibleTrigger>
+        </h3>
+        <CollapsibleContent className="flex flex-col gap-2.5 px-4 pb-3">{children}</CollapsibleContent>
+      </section>
+    </Collapsible>
   )
 }
 
@@ -313,7 +412,7 @@ function TagChip({
         title={t('brief.showTag', { tag: label })}
         data-testid={`folder-brief-tag-${label}`}
       >
-        {label}
+        <ChipLabel>{label}</ChipLabel>
         <ChipCount>{count}</ChipCount>
       </button>
     </Chip>
@@ -344,6 +443,7 @@ function NeedsYouSection({
         <AttentionRow
           tone="destructive"
           text={t('brief.failedLine', { count: failed.length })}
+          showLabel={t('brief.showFailed', { count: failed.length })}
           onShow={() => onSelect({ kind: 'state', state: 'failed' })}
           testId="folder-brief-needs-failed"
         >
@@ -369,6 +469,7 @@ function NeedsYouSection({
         <AttentionRow
           tone="warning"
           text={t('brief.heldLine', { count: held.length })}
+          showLabel={t('brief.showHeld', { count: held.length })}
           onShow={() => onSelect({ kind: 'state', state: 'held' })}
           testId="folder-brief-needs-held"
         />
@@ -378,6 +479,7 @@ function NeedsYouSection({
           tone="muted"
           text={t('brief.unplacedLine', { count: unplaced.length })}
           hint={t('brief.unplacedHint')}
+          showLabel={t('brief.showUnplaced', { count: unplaced.length })}
           onShow={() => onSelect({ kind: 'unplaced' })}
           testId="folder-brief-needs-unplaced"
         />
@@ -390,6 +492,7 @@ function AttentionRow({
   tone,
   text,
   hint,
+  showLabel,
   onShow,
   testId,
   children,
@@ -397,28 +500,37 @@ function AttentionRow({
   tone: MeterTone
   text: string
   hint?: string
+  /** The button's accessible name: three „Anzeigen" in a row are three different things. */
+  showLabel: string
   onShow: () => void
   testId: string
-  children?: React.ReactNode
+  children?: ReactNode
 }) {
   const t = useTranslations('files')
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5" data-testid={testId}>
-      <div className="flex min-w-0 flex-1 basis-60 items-start gap-2">
-        <ToneSwatch tone={tone} className="mt-[3px]" />
-        <div className="min-w-0">
-          <p className="text-foreground text-[13px] leading-snug">{text}</p>
-          {hint && <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">{hint}</p>}
+    <div className="flex items-start gap-2" data-testid={testId}>
+      <ToneSwatch tone={tone} className="mt-[7px]" />
+      {/* The sentence and its own action (re-read) share a column, so on a
+          phone the action wraps under the sentence. „Anzeigen" stays at the
+          end of the first line rather than orphaned on a line of its own. */}
+      <div className="min-w-0 flex-1">
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+          <p className="text-foreground min-w-0 flex-1 basis-48 py-[3px] text-[13px] leading-snug">{text}</p>
+          {children && <div className="flex shrink-0 items-center gap-1.5">{children}</div>}
         </div>
+        {hint && <p className="text-muted-foreground mt-0.5 text-xs leading-relaxed">{hint}</p>}
       </div>
-      {/* Indented by the swatch and its gap, so a row that wraps on a phone
-          puts its buttons under the sentence rather than under the swatch. */}
-      <div className="ml-[18px] flex shrink-0 items-center gap-1.5">
-        {children}
-        <Button type="button" size="sm" variant="ghost" className="h-7" onClick={onShow}>
-          {t('brief.show')}
-        </Button>
-      </div>
+      <Button
+        type="button"
+        size="sm"
+        variant="ghost"
+        className="-mr-2 h-7 shrink-0"
+        onClick={onShow}
+        aria-label={showLabel}
+        title={showLabel}
+      >
+        {t('brief.show')}
+      </Button>
     </div>
   )
 }
@@ -434,11 +546,12 @@ function HotspotSection({
   const t = useTranslations('files')
   if (hotspots.length === 0) return null
   return (
-    <section className="flex flex-col gap-1 px-4 py-3" aria-labelledby="folder-brief-where">
-      <h3 id="folder-brief-where" className="text-muted-foreground mb-1 text-xs font-medium">
-        {t('brief.whereTitle')}
-      </h3>
-      <ul className="flex flex-col">
+    <BriefDisclosure
+      id="folder-brief-where"
+      title={t('brief.whereTitle')}
+      summary={hotspots.map(({ trail }) => trail.join(' / ')).join(' · ')}
+    >
+      <ul className="-mx-1.5 flex flex-col">
         {hotspots.map(({ folder, trail, tally }) => (
           <li key={folder.id}>
             <button
@@ -456,7 +569,7 @@ function HotspotSection({
           </li>
         ))}
       </ul>
-    </section>
+    </BriefDisclosure>
   )
 }
 
@@ -477,18 +590,16 @@ function MissingSection({ missing }: { missing: readonly MissingDocument[] }) {
   const t = useTranslations('files')
   const shown = missing.slice(0, MAX_MISSING_SHOWN)
   const more = missing.length - shown.length
+  const name = (entry: MissingDocument) => (entry.bauwerkName ? `${entry.label} · ${entry.bauwerkName}` : entry.label)
   return (
-    <section className="flex flex-col gap-2 px-4 py-3" aria-labelledby="folder-brief-missing" data-testid="folder-brief-missing">
-      <h3 id="folder-brief-missing" className="text-muted-foreground text-xs font-medium">
-        {t('brief.missingTitle')}
-      </h3>
+    <BriefDisclosure id="folder-brief-missing" title={t('brief.missingTitle')} summary={missing.map(name).join(', ')}>
       <p className="text-foreground text-[13px] leading-snug">{t('brief.missingLead')}</p>
-      <ul className="flex flex-wrap gap-1.5">
+      <ul className="flex min-w-0 flex-wrap gap-1.5 pointer-coarse:gap-2">
         {shown.map((entry) => (
-          <li key={`${entry.role}@${entry.bauwerkName ?? ''}`}>
-            <Chip variant="outline" size="sm">
+          <li key={`${entry.role}@${entry.bauwerkName ?? ''}`} className="min-w-0 max-w-full">
+            <Chip variant="outline" size="sm" title={name(entry)}>
               <ToneSwatch tone="muted" />
-              {entry.bauwerkName ? `${entry.label} · ${entry.bauwerkName}` : entry.label}
+              <ChipLabel>{name(entry)}</ChipLabel>
             </Chip>
           </li>
         ))}
@@ -501,127 +612,11 @@ function MissingSection({ missing }: { missing: readonly MissingDocument[] }) {
         )}
       </ul>
       <p className="text-muted-foreground text-xs leading-relaxed">{t('brief.missingHint')}</p>
-    </section>
+    </BriefDisclosure>
   )
 }
 
-/** „12 Fotos, aufgenommen 3.–20. Sept. 2026" — the span the camera clocks say, not the upload dates. */
+/** „12 Fotos vom 3.–20. Sept. 2026“ — the span the camera clocks say, not the upload dates. */
 function photoLine(photos: PhotoSpan, locale: string, t: Translate): string {
-  const day = (iso: string) =>
-    new Date(`${iso}T12:00:00Z`).toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })
-  const span = photos.from === photos.to ? day(photos.from) : `${day(photos.from)} – ${day(photos.to)}`
-  return t('brief.photos', { count: photos.count, span })
-}
-
-/** Series the brief names before it counts the rest. */
-const MAX_SERIES_SHOWN = 5
-
-/**
- * „Mehrere Fassungen" — documents whose names say they exist in several
- * revisions, and the one Piloti takes to be current, read from index and date
- * (`revision-series.ts`). Nothing is hidden, moved or archived until a person
- * confirms, which is the condition feld72 put on it („nur als Vorschlag mit
- * Rückfrage"). Confirming links each older Fassung to the current one
- * (`fassung-request.ts`): it stays readable, and Piloti answers from the
- * newer. The agent's `list_files` marks the same files the same way.
- *
- * Links a person made across DIFFERENT names (from the preview's suggestion)
- * have no series here; they are counted in one line so the slice still opens
- * every older Fassung.
- */
-function RevisionSeriesSection({
-  series,
-  confirmedElsewhere,
-  onSelect,
-  onConfirm,
-}: {
-  series: readonly RevisionSeries<FileItem>[]
-  confirmedElsewhere: number
-  onSelect: (selection: BriefSelection) => void
-  onConfirm?: (series: RevisionSeries<FileItem>) => Promise<void>
-}) {
-  const t = useTranslations('files')
-  const [confirming, setConfirming] = useState<string | null>(null)
-  if (series.length === 0 && confirmedElsewhere === 0) return null
-  const olderCount = series.reduce((sum, entry) => sum + entry.older.length, 0) + confirmedElsewhere
-  const shown = series.slice(0, MAX_SERIES_SHOWN)
-  const confirm = async (entry: RevisionSeries<FileItem>) => {
-    if (!onConfirm) return
-    setConfirming(entry.key)
-    try {
-      await onConfirm(entry)
-    } finally {
-      setConfirming(null)
-    }
-  }
-  return (
-    <section className="flex flex-col gap-2 px-4 py-3" aria-labelledby="folder-brief-revisions" data-testid="folder-brief-revisions">
-      <h3 id="folder-brief-revisions" className="text-muted-foreground text-xs font-medium">
-        {t('brief.revisionsTitle')}
-      </h3>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-        <p className="text-foreground min-w-0 flex-1 basis-60 text-[13px] leading-snug">
-          {series.length > 0
-            ? t('brief.revisionsLead', { count: series.length })
-            : t('brief.revisionsConfirmedOnly', { count: confirmedElsewhere })}
-        </p>
-        <Button type="button" size="sm" variant="ghost" className="h-7" onClick={() => onSelect({ kind: 'olderRevisions' })}>
-          {t('brief.revisionsShowOlder', { count: olderCount })}
-        </Button>
-      </div>
-      {shown.length > 0 && (
-        <ul className="flex flex-col gap-1.5">
-          {shown.map((entry) => {
-            const confirmed = isSeriesConfirmed(entry)
-            return (
-              <li key={entry.key} className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1 text-xs" data-testid="folder-brief-series">
-                <span className="text-foreground min-w-0 truncate font-medium" title={entry.current.item.filename}>
-                  {documentDisplayName(entry.current.item)}
-                </span>
-                <span className="text-muted-foreground">
-                  {t('brief.revisionsCurrent', { revision: revisionLabel(entry.current.revision) })}
-                  {' · '}
-                  {t('brief.revisionsOlder', {
-                    list: entry.older.map((member) => revisionLabel(member.revision) || member.item.filename).join(', '),
-                  })}
-                </span>
-                {confirmed ? (
-                  <span className="text-success text-xs" data-testid="folder-brief-series-confirmed">
-                    {t('brief.revisionsConfirmed')}
-                  </span>
-                ) : (
-                  onConfirm && (
-                    <Button
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      className="h-6 px-2 text-xs"
-                      disabled={confirming !== null}
-                      onClick={() => void confirm(entry)}
-                      data-testid="folder-brief-series-confirm"
-                    >
-                      {t('brief.revisionsConfirm')}
-                    </Button>
-                  )
-                )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {series.length > shown.length && (
-        <p className="text-muted-foreground text-xs">{t('brief.missingMore', { count: series.length - shown.length })}</p>
-      )}
-      {series.length > 0 && confirmedElsewhere > 0 && (
-        <p className="text-muted-foreground text-xs">{t('brief.revisionsConfirmedOnly', { count: confirmedElsewhere })}</p>
-      )}
-      <p className="text-muted-foreground text-xs leading-relaxed">{t('brief.revisionsHint')}</p>
-    </section>
-  )
-}
-
-/** Confirmed older Fassungen that no name series already lists. */
-function confirmedOutsideSeries(brief: FolderBriefData): number {
-  const inSeries = new Set(brief.revisionSeries.flatMap((entry) => entry.older.map((member) => member.item.id)))
-  return brief.confirmedOlder.filter((file) => !inSeries.has(file.id)).length
+  return t('brief.photos', { count: photos.count, span: formatDayRange(photos.from, photos.to, locale) })
 }

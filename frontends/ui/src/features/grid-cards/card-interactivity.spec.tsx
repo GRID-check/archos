@@ -94,7 +94,7 @@ const SETTLE_CASES: Partial<
     // decision is the submit, and there is no decline. So the case carries the
     // body the lifecycle client parses — a client that stopped agreeing with
     // the route's response shape would fail here rather than settle on nothing.
-    action: 'Send for approval',
+    action: 'Submit for approval',
     response: {
       version: {
         id: 'ver-1',

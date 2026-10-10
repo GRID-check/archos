@@ -61,6 +61,7 @@ const ITEM: InboxItemView = {
   count: 1,
   href: '/app/projects/p1/chat?session=c1',
   subject: 'Atrium',
+  related: null,
   excerpt: null,
   createdAt: '2026-07-29T09:00:00Z',
   updatedAt: '2026-07-29T09:00:00Z',

@@ -87,12 +87,12 @@ export const projects = {
   cleanup: {
     title: 'Close project',
     intro:
-      'Before closing, Piloti can clear out working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
+      'Before closing, Piloti can clear out working copies, replaced revisions, duplicates, temporary files and drafts that were never published. You decide about every item.',
     loading: 'Piloti is going through the files …',
     aiNotice:
       'AI proposal: made by Piloti from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
     aiUnavailable:
-      'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, "Copy of …" or older version numbers.',
+      'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, “Copy of …” or an older index in the file name.',
     considered: '{count} files checked that you may edit.',
     none: 'Piloti proposes nothing to remove.',
     unavailable: 'The proposals could not be loaded. You can still close the project.',
@@ -114,7 +114,7 @@ export const projects = {
       'copy-name': 'Working copy (name)',
       'old-name': 'Marked as old (name)',
       'same-content': 'Same content as an older file',
-      'older-version': 'Older version; a newer one is in the same folder',
+      'older-version': 'Older revision; a newer one is in the same folder',
       'unpublished-draft': 'Draft by Piloti, never published',
     },
   },
@@ -250,7 +250,7 @@ export const projects = {
     nameTooLong: 'Project name must be at most 255 characters.',
     createError: "We couldn't create this project just now. Please try again in a moment.",
     nameLabel: 'Project name',
-    namePlaceholder: 'e.g. Fire safety review, Building 3',
+    namePlaceholder: 'e.g. Apartment building, 12 Main Street',
     templateLabel: 'Start from a template',
     templates: {
       neubauWohnbau: { label: 'New residential build', name: 'New residential build' },
@@ -363,7 +363,7 @@ export const projects = {
     eyebrowCreate: 'Project setup',
     titleFallback: 'Tell Piloti about this project',
     subtitle:
-      'About 2 minutes. Piloti uses this brief to work on this building, and to show which OIB Richtlinien apply.',
+      'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
     schnellstart: 'Quick start',

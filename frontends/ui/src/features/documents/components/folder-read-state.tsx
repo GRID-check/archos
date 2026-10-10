@@ -50,7 +50,8 @@ export function FolderReadState({
       data-state={mark.state}
     >
       <ToneSwatch tone={READ_MARK_TONE[mark.state]} />
-      {t(READ_MARK_KEY[mark.state], { count: mark.count })}
+      {/* Truncates rather than pushing its row: the swatch stays, the words give way. */}
+      <span className="min-w-0 truncate">{t(READ_MARK_KEY[mark.state], { count: mark.count })}</span>
     </span>
   )
 }

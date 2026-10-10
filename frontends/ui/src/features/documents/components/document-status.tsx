@@ -176,6 +176,9 @@ export function DocumentStatusBadge({ status, className, title, queueAhead }: Do
   return (
     <Badge
       variant={documentStatusVariant(status)}
+      // Lets a caller that repaints the ground (the card's frosted overlay)
+      // repaint the ink for the one variant whose ink is white.
+      data-variant={documentStatusVariant(status)}
       className={cn('shrink-0', className)}
       // Defaults to the label itself, so a caller that has to constrain the
       // badge's width (the Files list column, where German "Wird hochgeladen" is

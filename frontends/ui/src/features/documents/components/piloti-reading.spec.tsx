@@ -73,7 +73,7 @@ describe('PilotiReading', () => {
 
       expect(screen.queryByText('Text')).toBeNull()
       expect(screen.queryByText(/pages? read/)).toBeNull()
-      expect(screen.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
     })
 
     it('omits the page part when the count is zero', () => {
@@ -125,7 +125,7 @@ describe('PilotiReading', () => {
       const user = userEvent.setup()
       render(<PilotiReading file={fileFixture({ tags: [] })} canManage />)
 
-      expect(screen.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Correct' })).toBeNull()
 
       await user.click(screen.getByRole('button', { name: 'Assign' }))
@@ -145,7 +145,7 @@ describe('PilotiReading', () => {
     it('shows no Assign to a viewer who cannot manage an untagged document', () => {
       render(<PilotiReading file={fileFixture({ tags: [] })} canManage={false} />)
 
-      expect(screen.getByText('Piloti did not recognise a document type.')).toBeInTheDocument()
+      expect(screen.getByText('Piloti did not recognize a document type.')).toBeInTheDocument()
       expect(screen.queryByRole('button', { name: 'Assign' })).toBeNull()
     })
 

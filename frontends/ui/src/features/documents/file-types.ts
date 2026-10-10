@@ -1,6 +1,7 @@
 import type { DocumentAuthor } from '@/lib/db/schema'
 import type { FassungFacts } from '@/lib/documents/fassung'
 import type { PhotoCapture } from '@/lib/documents/photo-capture'
+import type { RevisionFacts } from '@/lib/documents/revision-facts'
 import type { FolderGrantItem } from '@/adapters/api/folder-access-client'
 import type {
   DocumentLifecycle,
@@ -79,6 +80,12 @@ export interface FileItem {
   topics: string[] | null
   /** EXIF facts of a photo. Coordinates are shown to people with access, never sent to a model. */
   capture: PhotoCapture | null
+  /**
+   * Title-block facts read off the drawing during ingestion (Plannummer, Index,
+   * Datum, Maßstab, Planinhalt). Optional so a listing that did not read them
+   * says nothing; `null` is "read, and the sheet showed none".
+   */
+  revisionFacts?: RevisionFacts | null
   /**
    * Which documents this one replaces or is replaced by, Piloti's suggestion
    * and what changed (CONTEXT.md, „Fassung"). Every reference is a document the

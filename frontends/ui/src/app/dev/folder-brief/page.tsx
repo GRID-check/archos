@@ -7,18 +7,19 @@ import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
  * on folder tiles — the real `FolderBrief` and `FolderCard`, over the
  * „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
  *
- * Seven sections, one per state the brief has to show: the project root, a
+ * Six sections, one per state the brief has to show: the project root, a
  * nested folder with failures, the collapsed header, a folder where everything
- * is read (no „Needs you"), the office shelf's root, the folder tiles with
- * their subtree read state, and Fassungen — the brief's series with a working
- * „Bestätigen" beside the preview's Fassungen panel in its three states.
- * `?section=a|b|c|d|e|f|g` shows just one of them, for captures; the default
- * shows all seven.
+ * is read (no „Needs you"), the office shelf's root, and the folder tiles with
+ * their subtree read state. The corpus holds three replaced Fassungen (one a
+ * failed read); the brief and the tiles count one entry per document, so the
+ * root reads „35 von 44“ over 48 files and no replaced Fassung is listed under
+ * failures. The Fassungen timeline is at `/dev/fassungen`.
+ * `?section=a|b|c|d|e|f` shows just one of them, for captures; the default
+ * shows all six.
  *
  * "Alle erneut lesen" is faked here: it steps a progress object to completion
  * on a timer and changes no document, so the button's busy state can be seen
- * without a backend. „Bestätigen" is faked the same way: it links the series in
- * local state only. The panel's own buttons call the real route and fail here.
+ * without a backend.
  *
  * Not linked from anywhere and 404s outside development.
  */
@@ -28,21 +29,21 @@ import { Suspense, useEffect, useRef, useState } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
 import { FolderCard } from '@/features/documents/components/folder-navigation'
-import { FassungPanel } from '@/features/documents/components/fassung-panel'
 import { buildFolderBrief, subtreeTallies } from '@/features/documents/lib/folder-knowledge'
-import type { FileItem } from '@/features/documents/file-types'
-import type { RevisionSeries } from '@/features/documents/lib/revision-series'
-import { EMPTY_FASSUNG } from '@/lib/documents/fassung'
+import { withoutOlderFassungen } from '@/features/documents/lib/fassung-chain'
 import type { BulkReingestProgress } from '@/features/documents/hooks/use-bulk-reingest'
 import { FILES, FOLDERS, PROJECT_NAME } from './fixtures'
 
-const SECTIONS = ['a', 'b', 'c', 'd', 'e', 'f', 'g'] as const
+const SECTIONS = ['a', 'b', 'c', 'd', 'e', 'f'] as const
 type SectionId = (typeof SECTIONS)[number]
 
 const ROOT_BRIEF = buildFolderBrief(FILES, FOLDERS, null)
 const EINREICHUNG_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-03')
 const GRUNDLAGEN_BRIEF = buildFolderBrief(FILES, FOLDERS, 'f-01')
-const TALLIES = subtreeTallies(FILES, FOLDERS)
+// The tiles count what the listing shows: one entry per document, the three
+// replaced Fassungen in `alt` left out (as `file-browser-pane.tsx` does).
+const LISTED = withoutOlderFassungen(FILES, false)
+const TALLIES = subtreeTallies(LISTED, FOLDERS)
 const ROOT_FOLDERS = FOLDERS.filter((folder) => folder.parentId === null)
 
 const noop = (): void => {}
@@ -123,14 +124,16 @@ function Section({ id, title, children }: { id: SectionId; title: string; childr
 
 /** The direct documents and subfolders a folder's count line names. */
 function itemCountOf(folderId: string): number {
-  const documents = FILES.filter((file) => file.folderId === folderId).length
+  const documents = LISTED.filter((file) => file.folderId === folderId).length
   const subfolders = FOLDERS.filter((folder) => folder.parentId === folderId).length
   return documents + subfolders
 }
 
 function FolderTiles(): JSX.Element {
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+    // Two columns on a phone, four on a desktop: the widths the read state
+    // under each name has to survive.
+    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
       {ROOT_FOLDERS.map((folder) => (
         <FolderCard
           key={folder.id}
@@ -142,94 +145,6 @@ function FolderTiles(): JSX.Element {
           onRenameFolder={resolveFalse}
           onDeleteFolder={resolveFalse}
         />
-      ))}
-    </div>
-  )
-}
-
-const byId = (id: string): FileItem => FILES.find((file) => file.id === id)!
-
-/** A differently named upload Piloti read and took for a newer Fassung of Index C. */
-const SUGGESTED: FileItem = {
-  ...byId('d-03-02'),
-  id: 'd-03-new',
-  filename: 'Erdgeschoss_Einreichung_final.pdf',
-  createdAt: '2026-09-30T10:00:00Z',
-  summary: 'Grundriss Erdgeschoß zur Einreichung mit Fluchtwegen, Brandabschnitten, Stellplatzzufahrt und geändertem Müllraum.',
-  fassung: {
-    ...EMPTY_FASSUNG,
-    suggestion: {
-      of: { id: 'd-03-02', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' },
-      confidence: 0.86,
-      reason: 'Gleiches Geschoß und gleicher Inhalt; zusätzlich ein geänderter Müllraum.',
-      basis: 'content',
-    },
-  },
-}
-
-/** Index C after a person confirmed it replaces Index B. */
-const CONFIRMED: FileItem = {
-  ...byId('d-03-02'),
-  fassung: {
-    ...EMPTY_FASSUNG,
-    supersedes: [{ id: 'd-03-alt-1', filename: 'EG_Grundriss_Index_B_2026-07-02.pdf' }],
-    changeSummary: {
-      text: '- Stellplatzzufahrt neu an der Nordseite\n- Brandabschnitt zwischen Stiege A und Tiefgarage verschoben\n- Index und Datum aktualisiert',
-      basis: { id: 'd-03-alt-1', filename: 'EG_Grundriss_Index_B_2026-07-02.pdf' },
-    },
-  },
-}
-
-/** Index B, replaced. */
-const SUPERSEDED: FileItem = {
-  ...byId('d-03-alt-1'),
-  fassung: { ...EMPTY_FASSUNG, supersededBy: { id: 'd-03-02', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' } },
-}
-
-/** The 03_Einreichung brief with a „Bestätigen" that links a series in local state. */
-function LiveFassungBrief(): JSX.Element {
-  const [files, setFiles] = useState<FileItem[]>(FILES)
-  const brief = buildFolderBrief(files, FOLDERS, 'f-03')
-  const confirm = async (series: RevisionSeries<FileItem>): Promise<void> => {
-    const head = series.current.item
-    const older = new Set(series.older.map((member) => member.item.id))
-    await new Promise((resolve) => setTimeout(resolve, 400))
-    setFiles((current) =>
-      current.map((file) =>
-        older.has(file.id)
-          ? { ...file, fassung: { ...EMPTY_FASSUNG, supersededBy: { id: head.id, filename: head.filename } } }
-          : file
-      )
-    )
-  }
-  return (
-    <FolderBrief
-      brief={brief}
-      folderName="03_Einreichung"
-      shelfKind="project"
-      onSelect={noop}
-      onOpenFolder={noop}
-      collapsed={false}
-      onCollapsedChange={noop}
-      onConfirmSeries={confirm}
-    />
-  )
-}
-
-function FassungPanels(): JSX.Element {
-  return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      {[
-        { label: 'Vorschlag (anderer Name)', file: SUGGESTED },
-        { label: 'Bestätigt, mit Änderungen', file: CONFIRMED },
-        { label: 'Ersetzt', file: SUPERSEDED },
-      ].map(({ label, file }) => (
-        <div key={file.id} className="bg-card flex flex-col gap-2 rounded-lg border p-4">
-          <p className="text-muted-foreground text-xs">
-            {label} · {file.filename}
-          </p>
-          <FassungPanel file={file} canManage />
-        </div>
       ))}
     </div>
   )
@@ -318,13 +233,6 @@ function FolderBriefPreview(): JSX.Element {
         {shows('f') && (
           <Section id="f" title="Folder tiles">
             <FolderTiles />
-          </Section>
-        )}
-
-        {shows('g') && (
-          <Section id="g" title="Fassungen">
-            <LiveFassungBrief />
-            <FassungPanels />
           </Section>
         )}
       </div>
