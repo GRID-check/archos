@@ -513,6 +513,10 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // env files; a build-time read would bake `undefined` into the bundle).
     { name: "NEXT_PUBLIC_POSTHOG_HOST", value: cfg.posthog.host },
     { name: "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", value: cfg.posthog.projectToken },
+    // Session replay: off unless the stack opts in; the browser masks all text
+    // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
+    { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
+    { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
     // BYOK.
     { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
     sref("GRID_BYOK_LOCAL_KEK"),

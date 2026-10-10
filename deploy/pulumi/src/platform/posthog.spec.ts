@@ -170,7 +170,7 @@ describe("err2issue is switched off by err2issueEnabled", () => {
 
 describe("the Python tiers' PostHog pair", () => {
   const gridCfg = (host: string, projectToken: string) =>
-    ({ posthog: { host, projectToken, logsEnabled: false } }) as unknown as Parameters<typeof posthogEnv>[0];
+    ({ posthog: { host, projectToken, logsEnabled: false, sessionReplay: false, replaySampleRate: "0.2" } }) as unknown as Parameters<typeof posthogEnv>[0];
 
   it("emits both names when both are set", () => {
     expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
@@ -220,5 +220,17 @@ describe("the Python tiers' PostHog pair", () => {
       "grid-oib:observabilityEnabled": "false",
     });
     expect(loadConfig().posthog.logsEnabled).toBe(false);
+  });
+
+  it("keeps session replay off unless the stack opts in, sampled at 0.2 by default", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...POSTHOG });
+    expect(loadConfig().posthog).toMatchObject({ sessionReplay: false, replaySampleRate: "0.2" });
+    pulumi.runtime.setAllConfig({
+      ...baseStackConfig(),
+      ...POSTHOG,
+      "grid-oib:posthogSessionReplay": "true",
+      "grid-oib:posthogReplaySampleRate": "0.05",
+    });
+    expect(loadConfig().posthog).toMatchObject({ sessionReplay: true, replaySampleRate: "0.05" });
   });
 });

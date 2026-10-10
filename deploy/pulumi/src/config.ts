@@ -962,6 +962,15 @@ export interface GridConfig {
      * the cluster, and PostHog's free tier is 10 GB of logs.
      */
     logsEnabled: boolean;
+    /**
+     * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
+     * default off). Recording is masked and sampled, but it is the one
+     * capability that sees the screen, so a stack opts in on purpose and only
+     * after the legal copy says so (ADR-0098).
+     */
+    sessionReplay: boolean;
+    /** Share of sessions recorded when replay is on, 0..1 (`grid-oib:posthogReplaySampleRate`). */
+    replaySampleRate: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2833,6 +2842,8 @@ export function loadConfig(): GridConfig {
       host: posthogHost,
       projectToken: posthogProjectToken,
       logsEnabled: posthogLogsEnabled,
+      sessionReplay: bool(cfg, "posthogSessionReplay", false),
+      replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "0.2",
     },
 
     internal: {
