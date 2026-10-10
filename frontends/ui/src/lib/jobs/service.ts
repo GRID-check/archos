@@ -21,7 +21,7 @@ import 'server-only'
 // is not guaranteed in every Node/test environment the service is loaded in.
 import { randomUUID } from 'node:crypto'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
@@ -38,7 +38,7 @@ import {
   encodeGridBudgetHeader,
   type GridBudgetSnapshot,
 } from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled, SKILLS_FLAG } from '@/lib/workos/feature-flags'
+import { isMemoryReflectionEnabled, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -899,10 +899,12 @@ export async function loadJobForFire(jobId: string): Promise<TaskDefinition | nu
 }
 
 /**
- * The scheduler's gate: disabled definition → `disabled`; with WorkOS flag
- * enforcement the per-org `skills` flag is checked and a failure records a
- * `skipped` run (fail-closed); otherwise the run fires. `fireJob` itself never
- * throws for a skip.
+ * The scheduler's gate: disabled definition → `disabled`; the per-org `skills`
+ * flag is checked and anything short of a yes records a `skipped` run
+ * (fail-closed); otherwise the run fires. The scheduler container claims every
+ * due definition and leaves this decision here, per organization, so revoking
+ * an organization's flag pauses its schedules without a deploy. `fireJob`
+ * itself never throws for a skip.
  */
 export async function fireScheduledJob(
   definition: TaskDefinition,
@@ -925,22 +927,14 @@ export async function fireScheduledJob(
     })
     return { fired: false, reason: 'project-closed' }
   }
-  if (enforcementOn()) {
-    let flagOn = false
-    try {
-      flagOn = await isOrgFeatureEnabled(SKILLS_FLAG, definition.organizationId)
-    } catch {
-      flagOn = false
-    }
-    if (!flagOn) {
-      await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
-        status: 'skipped',
-        backendJobId: null,
-        error: 'Skills feature disabled for organization',
-        conversationId: null,
-      })
-      return { fired: false, reason: 'feature-disabled' }
-    }
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.skills, definition.organizationId))) {
+    await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
+      status: 'skipped',
+      backendJobId: null,
+      error: 'Skills feature disabled for organization',
+      conversationId: null,
+    })
+    return { fired: false, reason: 'feature-disabled' }
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
   if (isActiveTaskRunStatus(run.status)) return { fired: true, jobId: run.backendJobId ?? undefined }

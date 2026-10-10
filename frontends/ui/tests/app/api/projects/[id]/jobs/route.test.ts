@@ -27,7 +27,7 @@ const mockCreate = vi.mocked(createJob)
 
 const asJob = (row: Pick<JobView, 'id' | 'name'>): JobView => row as unknown as JobView
 
-const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: null } = {
+const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: string[] | null } = {
   userId: 'user_1',
   email: 'user@example.com',
   name: null,
@@ -55,11 +55,15 @@ function req(body?: unknown): Request {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // A signed-in deployment: the session's WorkOS claim is the skills gate, and
+  // a session without the claim is the default (off).
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  session.featureFlags = null
   mockSession.mockResolvedValue(session as unknown as AuthorizedSession)
 })
 
 afterEach(() => {
-  delete process.env.GRID_SKILLS_ENABLED
+  vi.unstubAllEnvs()
 })
 
 describe('GET /api/projects/[id]/jobs', () => {
@@ -70,8 +74,8 @@ describe('GET /api/projects/[id]/jobs', () => {
     expect(mockList).not.toHaveBeenCalled()
   })
 
-  it('lists jobs when the env gate is on', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+  it('lists jobs when the skills flag is on', async () => {
+    session.featureFlags = ['skills']
     mockList.mockResolvedValue({ jobs: [asJob({ id: 'job-1', name: 'Weekly' })] })
     const res = await GET(req(), makeParams('proj_1'))
     expect(res.status).toBe(200)
@@ -88,7 +92,7 @@ describe('POST /api/projects/[id]/jobs', () => {
   })
 
   it('returns 400 when the prompt is missing', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     const res = await POST(req({ name: 'no prompt' }), makeParams('proj_1'))
     expect(res.status).toBe(400)
     expect(mockCreate).not.toHaveBeenCalled()
@@ -99,7 +103,7 @@ describe('POST /api/projects/[id]/jobs', () => {
   // caller that still sends one is not refused — the field is dropped, which is
   // what keeps a stale client from 400ing on a question nobody asks any more.
   it('drops an output kind the caller still sends, rather than refusing it', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     mockCreate.mockResolvedValue(asJob({ id: 'job-new', name: 'Weekly' }))
     const res = await POST(req({ ...validBody, output: 'report' }), makeParams('proj_1'))
     expect(res.status).toBe(201)
@@ -107,7 +111,7 @@ describe('POST /api/projects/[id]/jobs', () => {
   })
 
   it('creates a skill-less job (201) on a valid body', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     mockCreate.mockResolvedValue(asJob({ id: 'job-new', name: 'Weekly' }))
     const res = await POST(req(validBody), makeParams('proj_1'))
     expect(res.status).toBe(201)
@@ -120,7 +124,7 @@ describe('POST /api/projects/[id]/jobs', () => {
   })
 
   it('passes an attached skill through when one is named', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     mockCreate.mockResolvedValue(asJob({ id: 'job-new', name: 'Weekly' }))
     await POST(req({ ...validBody, skillName: 'data-table-analysis' }), makeParams('proj_1'))
     expect(mockCreate).toHaveBeenCalledWith(

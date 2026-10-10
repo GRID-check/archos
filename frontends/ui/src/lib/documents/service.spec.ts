@@ -348,7 +348,7 @@ describe('uploadDocument server-side type gate', () => {
   // them in without the capability.
   it('rejects an image with a 400 when the image-upload flag is off (capability on)', async () => {
     vi.mocked(isVlmConfigured).mockResolvedValue(true)
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    vi.stubEnv('REQUIRE_AUTH', 'true')
     const gatedSession = { ...session, featureFlags: [] }
 
     await expect(
@@ -369,7 +369,7 @@ describe('uploadDocument server-side type gate', () => {
     // silent-failure hole the derived capability closes.
     vi.mocked(isVlmConfigured).mockResolvedValue(false)
     vi.stubEnv('FILE_UPLOAD_ACCEPTED_TYPES', '.pdf,.docx,.txt,.md,.png,.jpg,.jpeg')
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    vi.stubEnv('REQUIRE_AUTH', 'true')
     const gatedSession = { ...session, featureFlags: ['image-upload'] }
 
     await expect(
@@ -386,7 +386,7 @@ describe('uploadDocument server-side type gate', () => {
   it('accepts an image when the flag is on AND the VLM capability is confirmed', async () => {
     // No env opt-in needed — the capability alone (plus the flag) admits images.
     vi.mocked(isVlmConfigured).mockResolvedValue(true)
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    vi.stubEnv('REQUIRE_AUTH', 'true')
     const gatedSession = { ...session, featureFlags: ['image-upload'] }
     mockFetch.mockResolvedValue({
       ok: true,

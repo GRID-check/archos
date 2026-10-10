@@ -631,26 +631,16 @@ services:
       # hand-tagged image. It appears in the `[boot]` log line and on the health
       # endpoints, and it is what makes a pilot report nameable.
       - GRID_GIT_SHA=${GRID_GIT_SHA:-}
-      # ── Agent Skills (ADR-0046): dark-launch gate + save-time cron validation ──
-      - GRID_SKILLS_ENABLED=${GRID_SKILLS_ENABLED:-false}
-      # Flag ENFORCEMENT itself. It was on the skill-scheduler and NOT here,
-      # which meant `enforcementOn()` in the BFF read an unset variable no
-      # matter what the operator had configured — the frontend and the
-      # scheduler could disagree about whether WorkOS flags decide anything.
-      # Same default, so nothing moves until an operator sets it.
-      - GRID_ENFORCE_FEATURE_FLAGS=${GRID_ENFORCE_FEATURE_FLAGS:-false}
+      # Features are WorkOS flags per organization, with no env switches
+      # (frontends/ui/src/lib/authz/feature-flags.ts). With REQUIRE_AUTH=true
+      # this stack reads them from its WorkOS environment, exactly as
+      # Kubernetes does; without it, nobody signs in and every rollout
+      # (model surfaces, filing, the post-answer stages, ...) is on while every
+      # entitlement (deep research, tasks, skills, collaboration, the mail
+      # import, BYOK, model configuration) is off.
+      # ── Agent Skills (ADR-0046): save-time cron validation ──
       - GRID_SKILL_MIN_INTERVAL_MINUTES=${GRID_SKILL_MIN_INTERVAL_MINUTES:-15}
-      # ── Collaboration (ADR-0032…0035): shared chats, @-mentions, the inbox ──
-      # Dark-launch gate, default-deny: with it off the inbox nav entry, the
-      # share surfaces and the mention picker do not exist and the
-      # /api/inbox|sharing|mentions|stream routes 403.
-      - GRID_COLLABORATION_ENABLED=${GRID_COLLABORATION_ENABLED:-false}
-      - GRID_MAIL_IMPORT_ENABLED=${GRID_MAIL_IMPORT_ENABLED:-false}
       - GRID_MAIL_IMPORT_MAX_BYTES=${GRID_MAIL_IMPORT_MAX_BYTES:-}
-      # IFC/BIM models (ADR-0045). ON by default; set false to withdraw the
-      # feature without turning on flag enforcement for everything else.
-      - GRID_IFC_MODELS_ENABLED=${GRID_IFC_MODELS_ENABLED:-true}
-      - GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED=${GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED:-true}
       # Extraction bounds. BIM_MAX_IFC_BYTES is also the UPLOAD ceiling for a
       # .ifc — the two must not disagree. Defaults: 250 MB / 200 000 rows.
       - BIM_MAX_IFC_BYTES=${BIM_MAX_IFC_BYTES:-}
@@ -809,9 +799,10 @@ services:
   skill-scheduler:
     # Agent Skills cron scheduler (ADR-0046) — dedicated worker off the frontend
     # image (like the purger). DB-claimed ticks advance each due workflow's
-    # next_run_at, then POST the BFF internal fire endpoint — only when the
-    # skills feature gate is on. Every tick it also POSTs the BFF's run
-    # reconciler, which closes runs whose ending never reached the BFF.
+    # next_run_at, then POST the BFF internal fire endpoint, which skips a
+    # schedule whose organization lacks the `skills` WorkOS flag. Every tick it
+    # also POSTs the BFF's run reconciler, which closes runs whose ending never
+    # reached the BFF.
     build:
       context: ./frontends/ui
       dockerfile: deploy/Dockerfile
@@ -822,8 +813,6 @@ services:
       - GRID_APP_DATABASE_URL=postgresql://grid_app_rw:${SERVICE_PASSWORD_GRIDRUNTIME}@pgbouncer:5432/grid_app
       - FRONTEND_INTERNAL_URL=http://frontend:3000
       - GRID_INTERNAL_API_TOKEN=${SERVICE_PASSWORD_INTERNALTOKEN}
-      - GRID_SKILLS_ENABLED=${GRID_SKILLS_ENABLED:-false}
-      - GRID_ENFORCE_FEATURE_FLAGS=${GRID_ENFORCE_FEATURE_FLAGS:-false}
       - GRID_SKILL_SCHEDULER_POLL_MS=${GRID_SKILL_SCHEDULER_POLL_MS:-30000}
       - GRID_SKILL_SCHEDULER_BATCH=${GRID_SKILL_SCHEDULER_BATCH:-20}
       - GRID_SKILL_RUNS_RETENTION_DAYS=${GRID_SKILL_RUNS_RETENTION_DAYS:-90}

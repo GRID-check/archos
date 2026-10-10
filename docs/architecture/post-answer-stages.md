@@ -318,6 +318,9 @@ primitive gives them one.
 - Otherwise: `GRID_MEMORY_REFLECTION_ENABLED`, **default ON**
   (`feature-flags.ts:86`).
 
+*(Superseded: the gate is the per-org flag alone now, read per turn, with no
+`GRID_ENFORCE_FEATURE_FLAGS` and no `GRID_MEMORY_REFLECTION_ENABLED`; see §7.8.)*
+
 Two things to note. First, **the kill switch takes effect at the next socket
 handshake, not the next turn** — a long-lived tab keeps the old decision.
 Second, `configs/config_oib_openrouter.yml:799-804` claims the runtime gate is
@@ -351,7 +354,6 @@ class StageSpec:
     id: str  # stable wire identity, e.g. "follow_ups"
     agent_group: AgentGroup  # model selection, org override, BYOK credential
     flag_slug: str  # WorkOS slug, e.g. "post-answer-follow-ups"
-    env_default: str  # e.g. "GRID_STAGE_FOLLOW_UPS_ENABLED"
     timeout_s: float  # HARD asyncio bound on the whole handler
     gate: Callable[[TurnFacts], GateDecision]  # deterministic; no LLM
     handler: Callable[[StageContext], Awaitable[StagePayload | None]]
@@ -769,7 +771,6 @@ FOLLOW_UPS = StageSpec(
     id="follow_ups",
     agent_group=AgentGroup.FOLLOW_UPS,  # new member; mirror in agent-groups.ts
     flag_slug="post-answer-follow-ups",
-    env_default="GRID_STAGE_FOLLOW_UPS_ENABLED",
     timeout_s=20.0,
     gate=_follow_ups_gate,
     handler=_run_follow_ups,
@@ -1160,13 +1161,16 @@ for memory.
 
 Per stage, config-driven, no deploy:
 
-1. **`StageSpec.flag_slug`** → a per-org WorkOS flag, evaluated in
-   `isPostAnswerStageEnabled(orgId, stageId)` next to `isMemoryReflectionEnabled`
-   (`lib/workos/feature-flags.ts:80-87`), same fail-closed semantics.
-2. **`StageSpec.env_default`** → the non-enforcement fallback, same as
-   `GRID_MEMORY_REFLECTION_ENABLED`. New stages default **OFF**; `memory-reflection`
-   keeps its default **ON** so this refactor changes no behaviour.
-3. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
+1. **`StageSpec.flag_slug`** → a per-org WorkOS flag, mirrored in
+   `POST_ANSWER_STAGE_FLAGS` and evaluated by `enabledPostAnswerStages`
+   (`lib/workos/feature-flags.ts`), fail-closed. Every stage flag is a
+   **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
+   signs in runs every stage. There is no env fallback: the
+   `StageSpec.env_default` field and the `GRID_MEMORY_REFLECTION_ENABLED` /
+   `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
+   enforcement became unconditional. A new stage ships with its flag created
+   OFF in WorkOS.
+2. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
    reflection is today (`register.py:794-799`). Flag ∧ capability, per the
    doctrine in `AGENTS.md`.
 

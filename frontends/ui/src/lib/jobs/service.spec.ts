@@ -13,9 +13,9 @@ vi.mock('@/lib/authz/projects', () => ({
   requireProjectAccess: vi.fn().mockResolvedValue({ role: 'project-admin' }),
 }))
 
-vi.mock('@/lib/authz/feature-flags', () => ({
+vi.mock('@/lib/authz/feature-flags', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/authz/feature-flags')>()),
   requireSkillsEnabled: vi.fn().mockReturnValue(null),
-  enforcementOn: vi.fn().mockReturnValue(false),
 }))
 
 vi.mock('@/lib/conversations/repository', () => ({
@@ -58,7 +58,6 @@ vi.mock('@/lib/request-context', () => ({
 vi.mock('@/lib/workos/feature-flags', () => ({
   isOrgFeatureEnabled: vi.fn(),
   isMemoryReflectionEnabled: vi.fn(async () => true),
-  SKILLS_FLAG: 'skills',
 }))
 
 vi.mock('@/lib/projects/memory-service', () => ({
@@ -93,7 +92,7 @@ vi.mock('./backend-client', async (importActual) => {
 })
 
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { computeCollectionScope } from '@/lib/collection-scope'
@@ -209,7 +208,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-admin' } as never)
   vi.mocked(requireSkillsEnabled).mockReturnValue(null)
-  vi.mocked(enforcementOn).mockReturnValue(false)
+  vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
   vi.mocked(findProjectInOrg).mockResolvedValue({ collectionName: 'proj_x' } as never)
   vi.mocked(computeCollectionScope).mockReturnValue(['proj_x'])
   vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
@@ -690,8 +689,7 @@ describe('fireScheduledJob', () => {
     expect(submitJob).not.toHaveBeenCalled()
   })
 
-  it('fails closed when the org feature flag is off under enforcement', async () => {
-    vi.mocked(enforcementOn).mockReturnValue(true)
+  it('fails closed when the org feature flag is off — the only schedules gate there is', async () => {
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
 
     const result = await fireScheduledJob(definitionRow())

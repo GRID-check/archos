@@ -50,7 +50,7 @@ vi.mock('@/lib/model-config/backend-key', () => ({
 const recordAuditEvent = vi.fn()
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: (event: unknown) => recordAuditEvent(event) }))
 vi.mock('@/lib/workos/client', () => ({ getWorkOS: vi.fn() }))
-vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn(), WEB_SEARCH_FLAG: 'web-search' }))
+vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 
 const isZdrApplicableForOrg = vi.fn(async (_organizationId: string) => true)
 vi.mock('@/lib/model-config/org-catalog', () => ({
@@ -83,6 +83,7 @@ describe('PUT /api/organization/model-config/zdr', () => {
     vi.clearAllMocks()
     session.role = 'admin'
     session.featureFlags = ['runtime-model-config']
+    vi.stubEnv('REQUIRE_AUTH', 'true')
     stored.settings = {}
     isZdrApplicableForOrg.mockResolvedValue(true)
   })
@@ -97,7 +98,6 @@ describe('PUT /api/organization/model-config/zdr', () => {
   })
 
   it('refuses when the model-configuration flag is off for the org', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
     session.featureFlags = []
     expect((await put({ enabled: false })).status).toBe(403)
     expect(upsertOrganization).not.toHaveBeenCalled()

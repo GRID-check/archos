@@ -23,12 +23,7 @@ import { getEffectiveMaxUploadBytes } from '@/lib/storage/upload-limit'
 import { getGridSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
-import {
-  FEATURE_FLAGS,
-  isFeatureEnabled,
-  isIfcModelsEnabled,
-  type KnownFeatureFlag,
-} from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getLocale } from '@/i18n/server'
 import { getDictionary } from '@/i18n'
 import './globals.css'
@@ -107,29 +102,15 @@ export const metadata: Metadata = {
 /**
  * Whether standalone image upload is offered to this session (WorkOS
  * `image-upload` flag, FB-15a). Read tolerantly — an unauthenticated route or a
- * session-lookup failure must never break the layout; it just falls back to the
- * flag's default (fail-open when enforcement is off, so images are offered).
+ * session-lookup failure must never break the layout; it reads as a session
+ * without the claim (off where people sign in, on where nobody does).
  */
 const isImageUploadEnabled = async (): Promise<boolean> =>
   isSessionFlagEnabled(FEATURE_FLAGS.imageUpload)
 
-/**
- * Whether IFC model upload is offered to this session (WorkOS `ifc-models`).
- *
- * Read through `isIfcModelsEnabled`, not the flag directly: this feature is
- * dark-launched, so with enforcement off it needs `GRID_IFC_MODELS_ENABLED`
- * rather than falling open like the cosmetic flags do.
- */
-const isIfcUploadEnabled = async (): Promise<boolean> => {
-  try {
-    return await runWithTenantSlot(async () => {
-      const session = await getGridSession()
-      return isIfcModelsEnabled(session ?? { featureFlags: null })
-    })
-  } catch {
-    return isIfcModelsEnabled({ featureFlags: null })
-  }
-}
+/** Whether IFC model upload is offered to this session (WorkOS `ifc-models`). */
+const isIfcUploadEnabled = async (): Promise<boolean> =>
+  isSessionFlagEnabled(FEATURE_FLAGS.ifcModels)
 
 const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> => {
   try {
@@ -138,8 +119,7 @@ const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> =>
     // slot is open — with none, into an ambient binding that does not survive.
     return await runWithTenantSlot(async () => {
       const session = await getGridSession()
-      if (!session) return isFeatureEnabled({ featureFlags: null }, flag)
-      return isFeatureEnabled(session, flag)
+      return isFeatureEnabled(session ?? { featureFlags: null }, flag)
     })
   } catch {
     return isFeatureEnabled({ featureFlags: null }, flag)

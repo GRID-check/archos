@@ -22,7 +22,6 @@ import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { permissionsForOrgRole } from '@/lib/authz/permissions'
-import { enforcementOn } from '@/lib/authz/feature-flags'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
 
 export interface PinnedRequester {
@@ -35,15 +34,15 @@ export interface PinnedRequester {
  * The session the requester would have if they were signed in right now, or
  * `null` when they are no longer a member of the organization.
  *
- * Feature flags: under enforcement the flags are resolved per organization
- * (the JWT claim a live session carries is per user+org, and the org-level
- * answer is what the fleet-wide kill switch means); without enforcement the
- * gates read the environment and ignore the session, so `null` there is the
- * same thing a live session without the claim reports.
+ * Feature flags are resolved per organization (the JWT claim a live session
+ * carries is per user+org, and the org-level answer is what the fleet-wide
+ * kill switch means). Where nobody authenticates the gates ignore the claim, so
+ * the empty set `enabledFlagsForOrganization` answers without a WorkOS key is
+ * never read.
  *
  * EVERY flag the organization has, not the one the first caller needed. This
  * resolved only `agent-authored-documents`, and asked for it with the slug and
- * the organization swapped, so under enforcement every pinned session carried
+ * the organization swapped, so every pinned session carried
  * no flags at all. A scheduled report could then never file
  * (`isAgentAuthoredDocumentsEnabled` read the empty set), and the mail import
  * (ADR-0085), which files through the upload path's `image-upload` gate, would
@@ -57,7 +56,7 @@ export async function resolvePinnedRequesterSession(
   // nothing here today; the caller refuses rather than guesses a role.
   if (!membership || !membership.role) return null
 
-  const featureFlags = enforcementOn() ? await enabledFlagsForOrganization(requester.organizationId) : null
+  const featureFlags = await enabledFlagsForOrganization(requester.organizationId)
 
   return {
     userId: requester.userId,

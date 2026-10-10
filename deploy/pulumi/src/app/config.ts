@@ -545,7 +545,6 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "GRID_PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
     { name: "GRID_DISABLE_SELF_SERVE_ORGS", value: String(cfg.auth.disableSelfServeOrgs) },
     { name: "GRID_AUDIT_LOGS_ENABLED", value: String(cfg.auth.auditLogsEnabled) },
-    { name: "GRID_ENFORCE_FEATURE_FLAGS", value: String(cfg.auth.enforceFeatureFlags) },
     // Bug reports → GitHub issues. Both or neither: the repo variable is the
     // switch the BFF reads, and without it the token is never used.
     ...(cfg.feedbackIssues.enabled
@@ -560,35 +559,11 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // drop every streaming answer in flight on each deploy. Must stay inside the
     // pod's terminationGracePeriodSeconds (see ROLLOUT.frontend in rollout.ts).
     { name: "GRID_SHUTDOWN_DRAIN_MS", value: String(FRONTEND_DRAIN_SECONDS * 1000) },
-    // Agent Skills + Jobs (ADR-0046). Frontend AND scheduler: the tabs, every
-    // /api/skills and /api/projects/[id]/jobs route, and the worker's start
-    // gate all read GRID_SKILLS_ENABLED.
-    { name: "GRID_SKILLS_ENABLED", value: String(cfg.skills.enabled) },
+    // Agent Skills + Jobs (ADR-0046). Whether the feature exists for an
+    // organization is its `skills` WorkOS flag, like every other feature
+    // (`frontends/ui/src/lib/authz/feature-flags.ts`); only the scheduling
+    // floor is deployment configuration.
     { name: "GRID_SKILL_MIN_INTERVAL_MINUTES", value: String(cfg.skills.minIntervalMinutes) },
-    // Collaboration (ADR-0032…0035). Frontend-only: the inbox, the share
-    // surfaces and the mention picker are BFF/UI concerns, so no worker or the
-    // backend needs this. Without it the feature is invisible even on a
-    // deployment carrying its code — which is exactly the dark-launch contract.
-    { name: "GRID_COLLABORATION_ENABLED", value: String(cfg.collaboration.enabled) },
-    // Outlook archive import (ADR-0085). Read by the routes that start and
-    // complete an import; the bff-jobs pods inherit it with the rest of this
-    // block, and the filing job does not re-check it, so turning it off stops
-    // new imports and lets a running one finish.
-    { name: "GRID_MAIL_IMPORT_ENABLED", value: String(cfg.mailImport.enabled) },
-    // IFC/BIM models (ADR-0045). Frontend-only: extraction runs in the BFF
-    // process and the viewer in the browser, so neither the worker nor the
-    // backend needs it. Default-deny for the same reason as collaboration —
-    // this one renders compliance verdicts.
-    { name: "GRID_IFC_MODELS_ENABLED", value: String(cfg.ifcModels.enabled) },
-    // Agent-authored documents. Frontend-only: the filing seam lives in the BFF
-    // (`lib/documents/generated.ts`) and no worker or backend path reaches it.
-    // Default ON — the tenant-facing lever is the `project:documents:generate`
-    // permission; this is the operator's, for stopping filing across every
-    // tenant at once without touching a role.
-    {
-      name: "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED",
-      value: String(cfg.agentAuthoredDocuments.enabled),
-    },
     // Storage-quota alerting (ADR-0042). Read by the sweep behind
     // /api/internal/storage/alerts, which the storage-alerts CronJob calls — so
     // it belongs to the frontend even though nothing renders it. Escalation to
@@ -597,12 +572,6 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
       name: "GRID_STORAGE_ALERT_THRESHOLD_PERCENT",
       value: String(cfg.storageAlerts.thresholdPercent),
     },
-    // Memory reflection (project-memory-design.md §3.5). Frontend-only: the BFF
-    // consults it at the WS upgrade and forwards the decision to the backend as
-    // a header. Default-on like the feature itself — consulted only while
-    // enforceFeatureFlags is off; with enforcement on, the per-org
-    // `memory-reflection` WorkOS flag decides instead.
-    { name: "GRID_MEMORY_REFLECTION_ENABLED", value: String(cfg.memory.reflectionEnabled) },
     // Office → PDF rendition (ADR-0070). Frontend-only: the BFF is the one
     // converter; the backend receives the finished PDF as `preview_ref`, and
     // for Word/presentation/.xls/.ods also as `extraction_ref`, the only
@@ -755,8 +724,6 @@ export function schedulerEnv(w: AppWiring): EnvVar[] {
     sref("GRID_APP_DATABASE_URL"),
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
     sref("GRID_INTERNAL_API_TOKEN"),
-    { name: "GRID_SKILLS_ENABLED", value: String(cfg.skills.enabled) },
-    { name: "GRID_ENFORCE_FEATURE_FLAGS", value: String(cfg.auth.enforceFeatureFlags) },
     { name: "GRID_SKILL_SCHEDULER_POLL_MS", value: String(APP_DEFAULTS.schedulerPollMs) },
     { name: "GRID_SKILL_SCHEDULER_BATCH", value: String(APP_DEFAULTS.schedulerBatch) },
     { name: "GRID_SKILL_RUNS_RETENTION_DAYS", value: String(APP_DEFAULTS.skillRunsRetentionDays) },

@@ -220,11 +220,9 @@ Enablement (two gates):
   (`frontends/ui/src/lib/workos/feature-flags.ts`), evaluated by the BFF at the
   WS upgrade and forwarded to the backend as the
   `x-grid-feature-memory-reflection` header (fail-closed: absent header → off).
-  With `GRID_ENFORCE_FEATURE_FLAGS=true` the per-org `memory-reflection`
-  **WorkOS feature flag** is the source of truth. Without enforcement the gate
-  follows `GRID_MEMORY_REFLECTION_ENABLED` and **defaults ON** — reflection is
-  a shipped core capability, not a dark-launched product gate, so it behaves
-  like every non-dark feature in environments without the flag product.
+  The per-org `memory-reflection` **WorkOS feature flag** is the source of
+  truth, with no env fallback. It is a rollout flag, so a deployment where
+  nobody signs in (`REQUIRE_AUTH` not `true`) runs reflection for every turn.
 
 Safety limits (see [memory-reflection-audit.md](./memory-reflection-audit.md)):
 - **Project scope only** — the autonomous stage never writes `organization`-scoped

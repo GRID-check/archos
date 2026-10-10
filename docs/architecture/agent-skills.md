@@ -30,10 +30,9 @@ workflow scheduler, and a job is what a saved research brief used to be. API
 surfaces are tabulated in `docs/api/python-endpoints.md` and
 `docs/api/bff-routes.md`.
 
-Feature gate: `FEATURE_FLAGS.skills` (`skills` in WorkOS) with the dark-launch
-env fallback `GRID_SKILLS_ENABLED` (default off) while
-`GRID_ENFORCE_FEATURE_FLAGS` is off — `isSkillsEnabled` /
-`requireSkillsEnabled` in `frontends/ui/src/lib/authz/feature-flags.ts`. Jobs
+Feature gate: `FEATURE_FLAGS.skills` (`skills` in WorkOS), an entitlement with
+no env fallback — `isSkillsEnabled` / `requireSkillsEnabled` in
+`frontends/ui/src/lib/authz/feature-flags.ts`. Jobs
 ride the same flag: the two ship as one feature and are turned on together, so
 a second flag would only add a way for them to disagree.
 
@@ -1066,14 +1065,14 @@ Piloti "no" about reaches the run rather than a log line.
 
 Plain-Node worker (purger idiom: CommonJS, `postgres` client, `.spec.mjs`
 tests), compose service `skill-scheduler` (container `grid-skill-scheduler`)
-running `node scheduler/index.js` off the frontend image. It fires schedules
-(steps 1–3 below) only when the deployment gate is on
-(`GRID_SKILLS_ENABLED=true` or `GRID_ENFORCE_FEATURE_FLAGS=true`), read
-case-insensitively exactly as the BFF reads it, so `TRUE` cannot enable the UI
-while silently skipping the schedules. With the gate off it does not exit: it
-stays up as the clock of the two sweeps (steps 4 and 5), because runs exist without
-Agent Skills — a chat question escalated to deep research is a `task_runs` row
-with no definition behind it (ADR-0062).
+running `node scheduler/index.js` off the frontend image. It claims and fires
+every due schedule (steps 1–3 below); there is no deployment gate. The BFF's
+fire endpoint (`fireScheduledJob`) checks the organization's `skills` WorkOS
+flag and records a `skipped` run when it is off, the same per-organization
+answer the Automation section reads, so the UI and the worker cannot disagree.
+The container is also the clock of the two sweeps (steps 4 and 5), because runs
+exist without Agent Skills — a chat question escalated to deep research is a
+`task_runs` row with no definition behind it (ADR-0062).
 
 Tick (default 30 s), with a reentrancy guard so a slow tick never overlaps the
 next interval:
@@ -1167,7 +1166,6 @@ renaming them is a deployment change with no user-visible gain.
 
 | Variable | Service | Default | Purpose |
 |---|---|---|---|
-| `GRID_SKILLS_ENABLED` | frontend, skill-scheduler | `false` | Dark-launch fallback gate while flags are unenforced; also the scheduler's schedules gate (the run reconciler runs regardless) |
 | `GRID_RUN_RECONCILE_STALE_MINUTES` | frontend | `10` | A still-active run is asked about once nothing has checked it for this long |
 | `GRID_RUN_RECONCILE_UNKNOWN_GRACE_MINUTES` | frontend | `120` | A run whose job cannot be found is closed as failed once this old |
 | `GRID_SKILL_SCHEDULER_POLL_MS` | skill-scheduler | `30000` | Tick interval |
