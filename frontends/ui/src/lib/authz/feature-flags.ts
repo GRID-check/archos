@@ -47,7 +47,8 @@
  * only one worth rehearsing.
  *
  * Every slug below must exist in BOTH WorkOS environments, or it is off for
- * everybody (runbook: docs/deployment/workos-provisioning.md).
+ * everybody: `task fe:provision:flags` checks that, read-only (runbook:
+ * docs/deployment/workos-provisioning.md).
  */
 
 import type { GridSession } from '@/lib/auth/types'

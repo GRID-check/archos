@@ -464,8 +464,9 @@ Rollout order (per environment): 1) create the flag in the WorkOS dashboard
 (Feature Flags — flag create/update events are covered by WorkOS's own event
 log), in BOTH environments and in the same change that adds the slug to the
 registry, 2) target the organizations that should have it (dashboard, or
-`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). Tokens
-minted before a change carry the old claim — users pick it up at their
+`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
+fe:provision:flags` lists every registry slug missing from an environment
+(read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
 organizations in both; `byok-llm` enabled for ALL in Staging, OFF in
@@ -512,7 +513,11 @@ redeploy.
 
 **A registry flag absent from WorkOS is off for everybody.** The registry is
 TypeScript and the flags are remote state, so `task verify` cannot see across
-the gap. **Create the flag in both environments in the same change.**
+the gap. `task fe:provision:flags` can: it lists the environment's flags
+read-only, fails on any registry slug missing there, and reports (without
+failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
+against Staging; Production has no key in CI, so run it there by hand with the
+Production key. **Create the flag in both environments in the same change.**
 
 ##### What the flip changed, and what it deliberately did not
 
@@ -680,6 +685,7 @@ Three things follow, and each has cost somebody an afternoon:
    `provision:workos-env` lists every registry flag missing from WorkOS as
    MANUAL rather than attempting it. Create them, target the intended orgs
    (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY).
+   `task fe:provision:flags` then confirms every registry slug exists.
 9. BYOK (ADR-0022): WorkOS Vault needs no per-environment setup — objects
    are created lazily under each org's key context. Enterprise tenants
    wanting customer-managed KEKs (Vault BYOK: AWS KMS / Azure Key Vault /
