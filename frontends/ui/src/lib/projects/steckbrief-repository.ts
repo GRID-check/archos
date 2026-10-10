@@ -5,10 +5,11 @@
  */
 
 import 'server-only'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import { projectPeople, projects, type ProjectPersonRow } from '@/lib/db/schema'
+import type { ProjectStatus } from './project-status'
 
 /** Most people one project lists. Far above any real project team; a bound, not a quota. */
 export const PROJECT_PEOPLE_LIMIT = 500
@@ -16,13 +17,14 @@ export const PROJECT_PEOPLE_LIMIT = 500
 export interface ProjectPeriodRow {
   startedOn: string | null
   endedOn: string | null
+  status: ProjectStatus
 }
 
 export async function findProjectPeriod(projectId: string, organizationId: string): Promise<ProjectPeriodRow | null> {
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
-      .select({ startedOn: projects.startedOn, endedOn: projects.endedOn })
+      .select({ startedOn: projects.startedOn, endedOn: projects.endedOn, status: projects.status })
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId), isNull(projects.deletedAt)))
       .limit(1)
@@ -33,15 +35,30 @@ export async function findProjectPeriod(projectId: string, organizationId: strin
 export async function updateProjectPeriod(
   projectId: string,
   organizationId: string,
-  period: ProjectPeriodRow
+  startedOn: string | null
 ): Promise<ProjectPeriodRow | null> {
   const db = getDb()
+  // The Beginn only (ADR-0098). A running project may still hold the month it
+  // was last closed in, as the next close's suggestion; one a new Beginn would
+  // put before itself is dropped rather than refused, since nobody sees it.
   const [row] = await withTenant({ organizationId }, () =>
     db
       .update(projects)
-      .set({ startedOn: period.startedOn, endedOn: period.endedOn })
-      .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId), isNull(projects.deletedAt)))
-      .returning({ startedOn: projects.startedOn, endedOn: projects.endedOn })
+      .set({
+        startedOn,
+        endedOn: sql`CASE WHEN ${projects.status} <> 'closed' AND ${projects.endedOn} < ${startedOn}::date THEN NULL ELSE ${projects.endedOn} END`,
+      })
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNull(projects.deletedAt),
+          // A close that committed after the service's access check: the row is
+          // read-only now, so nothing changes (ADR-0090).
+          ne(projects.status, 'closed')
+        )
+      )
+      .returning({ startedOn: projects.startedOn, endedOn: projects.endedOn, status: projects.status })
   )
   return row ?? null
 }

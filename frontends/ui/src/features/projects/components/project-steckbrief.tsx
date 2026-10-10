@@ -69,7 +69,6 @@ export function ProjectSteckbrief({ projectId, steckbrief, accounts = [] }: Proj
   const { locale } = useLocale()
   const router = useRouter()
   const [startedOn, setStartedOn] = useState(steckbrief.startedOn ?? '')
-  const [endedOn, setEndedOn] = useState(steckbrief.endedOn ?? '')
   const [draft, setDraft] = useState<PersonDraft | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [removing, setRemoving] = useState<ProjectPersonView | null>(null)
@@ -100,12 +99,13 @@ export function ProjectSteckbrief({ projectId, steckbrief, accounts = [] }: Proj
     }
   }
 
-  const periodValid = isOrderedPeriod(monthOrNull(startedOn), monthOrNull(endedOn))
+  // The Abschluss is the closing's (ADR-0098): a running project shows
+  // „laufend" where it would be, and only the Beginn is edited here.
+  const projectEnd = steckbrief.endedOn ? monthLabel(steckbrief.endedOn) : t('steckbrief.running')
 
   const savePeriod = async (event: FormEvent): Promise<void> => {
     event.preventDefault()
-    if (!periodValid) return
-    const body = { startedOn: monthOrNull(startedOn), endedOn: monthOrNull(endedOn) }
+    const body = { startedOn: monthOrNull(startedOn) }
     if (await send(`/api/projects/${projectId}/steckbrief`, 'PUT', body)) toast.success(t('steckbrief.periodSaved'))
   }
 
@@ -163,17 +163,15 @@ export function ProjectSteckbrief({ projectId, steckbrief, accounts = [] }: Proj
                   <FieldLabel htmlFor="steckbrief-started">{t('steckbrief.startedOn')}</FieldLabel>
                   <Input id="steckbrief-started" type="month" value={startedOn} onChange={(event) => setStartedOn(event.target.value)} />
                 </Field>
-                <Field>
-                  <FieldLabel htmlFor="steckbrief-ended">{t('steckbrief.endedOn')}</FieldLabel>
-                  <Input id="steckbrief-ended" type="month" value={endedOn} onChange={(event) => setEndedOn(event.target.value)} />
-                </Field>
-                <Button type="submit" variant="outline" size="sm" disabled={pending || !periodValid}>
+                <Button type="submit" variant="outline" size="sm" disabled={pending}>
                   {t('steckbrief.savePeriod')}
                 </Button>
-                {!periodValid && <p className="text-error w-full text-xs">{t('steckbrief.periodInvalid')}</p>}
+                <p className="text-muted-foreground w-full text-xs" data-testid="steckbrief-end">
+                  {t('steckbrief.endedOnRunning', { end: projectEnd })}
+                </p>
               </form>
             ) : (
-              <span data-testid="steckbrief-period">{range(steckbrief.startedOn, steckbrief.endedOn) || t('steckbrief.open')}</span>
+              <span data-testid="steckbrief-period">{`${monthLabel(steckbrief.startedOn)} – ${projectEnd}`}</span>
             )}
           </dd>
         </dl>

@@ -70,6 +70,11 @@ export function projectTouchedAt(project: ResumeCandidate): number {
  *                           activity. Projects absent from the map (or carrying
  *                           an unparseable value) simply have none.
  * @param slots              Rail size; defaults to {@link RESUME_SLOTS}.
+ * @param railable           Which projects may take a rail slot at all. The
+ *                           rail is for work in progress, so the grid admits
+ *                           only active projects (ADR-0098): a paused or closed
+ *                           one is not "where you left off", it keeps its place
+ *                           in the list.
  *
  * Ordering rule, in one sentence: projects the viewer has worked in come first,
  * newest first; the rail is topped up from the remainder by project recency so
@@ -78,7 +83,8 @@ export function projectTouchedAt(project: ResumeCandidate): number {
 export function splitForResume<T extends ResumeCandidate>(
   projects: readonly T[],
   viewerActivity: Readonly<Record<string, string | undefined>> = {},
-  slots: number = RESUME_SLOTS
+  slots: number = RESUME_SLOTS,
+  railable: (project: T) => boolean = () => true
 ): ResumeSplit<T> {
   const railSize = Math.max(0, Math.trunc(slots))
 
@@ -100,10 +106,13 @@ export function splitForResume<T extends ResumeCandidate>(
   // else edited yesterday must not outrank the one this person was writing in
   // last week.
   const ordered = [...active, ...untouched].map((entry) => entry.project)
+  const resume = ordered.filter(railable).slice(0, railSize)
+  const onRail = new Set(resume)
+  const worked = new Set(active.map((entry) => entry.project))
 
   return {
-    resume: ordered.slice(0, railSize),
-    rest: ordered.slice(railSize),
-    basis: active.length > 0 ? 'activity' : 'fallback',
+    resume,
+    rest: ordered.filter((project) => !onRail.has(project)),
+    basis: resume.some((project) => worked.has(project)) ? 'activity' : 'fallback',
   }
 }

@@ -7,6 +7,7 @@
 import type { PageRegion } from '@/features/knowledge/lib/page-region'
 import type { GridCard } from '@/shared/cards/schemas'
 import type { CardInteractions } from '@/features/grid-cards/card-decision'
+import type { ProjectStatus } from '@/lib/projects/project-status'
 import type { DraftMention } from '@/features/collaboration/lib/mention-text'
 import type {
   AnswerConfidenceCappedReason,
@@ -484,7 +485,7 @@ export interface PendingInteraction {
 export interface CitationProject {
   id: string
   name: string
-  status: 'active' | 'closed'
+  status: ProjectStatus
   /**
    * The project's Bundesland as the agent states it, warning included when the
    * Land is not the chat's (ADR-0094). Absent on messages from before it was sent.

@@ -20,13 +20,11 @@ const optionalText = (max: number) =>
     .transform((value) => (value.length > 0 ? value : null))
     .nullable()
 
-/** A period that runs forwards: Abschluss not before Beginn. */
-export const projectPeriodSchema = z
-  .object({ startedOn: monthField, endedOn: monthField })
-  .refine((period) => isOrderedPeriod(period.startedOn, period.endedOn), {
-    message: 'The end lies before the start',
-    path: ['endedOn'],
-  })
+/**
+ * The Beginn, the one end of the period the Steckbrief edits. The Abschluss is
+ * not a field: closing names it (ADR-0098), so a running project has none.
+ */
+export const projectPeriodSchema = z.object({ startedOn: monthField }).strict()
 export type ProjectPeriodInput = z.infer<typeof projectPeriodSchema>
 
 /**
@@ -65,6 +63,7 @@ export interface SteckbriefView {
   /** The profile fact „Adresse / Gemeinde" (`standort_adresse`); edited in the intake wizard. */
   address: string | null
   startedOn: Month | null
+  /** The Abschluss, once the project is closed (ADR-0098); null while it runs. */
   endedOn: Month | null
   people: ProjectPersonView[]
   /** Whether the reader may change the period and the people: false in a closed project. */

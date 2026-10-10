@@ -1,4 +1,4 @@
-import { render, screen } from '@/test-utils'
+import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect } from 'vitest'
 import { ProjectsGrid } from './projects-grid'
@@ -23,6 +23,7 @@ const createProject = (overrides: Partial<Project> = {}): Project =>
     collectionName: 'proj_alpha',
     createdBy: 'user-1',
     workosResourceId: null,
+    status: 'active',
     createdAt: new Date('2026-01-01T00:00:00Z'),
     ...overrides,
   }) as Project
@@ -148,7 +149,7 @@ describe('ProjectsGrid', () => {
     expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument()
   })
 
-  describe('the status filter (ADR-0090)', () => {
+  describe('the status filter (ADR-0098, ADR-0090)', () => {
     const closed = (id: string, name: string): Project =>
       createProject({ id, name, status: 'closed', closedAt: new Date('2026-09-01T00:00:00Z'), closedBy: 'u' })
 
@@ -176,6 +177,42 @@ describe('ProjectsGrid', () => {
       await userEvent.click(screen.getByTestId('project-status-filter-all'))
       expect(screen.getByText('Seestadt')).toBeInTheDocument()
       expect(screen.getByText('Volksschule Grinzing')).toBeInTheDocument()
+    })
+
+    test('offers Ruhend only when a project is paused, and keeps paused and closed projects off the rail', async () => {
+      render(
+        <ProjectsGrid
+          projects={[
+            createProject({ id: 'p1', name: 'Seestadt', status: 'active' }),
+            createProject({ id: 'p2', name: 'Hotel Semmering', status: 'paused', pausedAt: new Date() }),
+            closed('p3', 'Volksschule Grinzing'),
+          ]}
+          docCounts={{}}
+          viewerActivity={{ p2: new Date().toISOString(), p3: new Date().toISOString() }}
+        />,
+      )
+
+      expect(screen.getByTestId('project-status-filter-paused')).toBeInTheDocument()
+      await userEvent.click(screen.getByTestId('project-status-filter-all'))
+      // The viewer worked in the paused and the closed project last, and still
+      // the rail is the active one alone: it is for work in progress.
+      const rail = screen.getByRole('region', { name: 'Your projects' })
+      expect(within(rail).getByText('Seestadt')).toBeInTheDocument()
+      expect(within(rail).queryByText('Hotel Semmering')).not.toBeInTheDocument()
+      expect(within(screen.getByRole('region', { name: 'More projects' })).getByText('Paused')).toBeInTheDocument()
+
+      await userEvent.click(screen.getByTestId('project-status-filter-paused'))
+      expect(screen.getByText('Hotel Semmering')).toBeInTheDocument()
+      expect(screen.queryByText('Seestadt')).not.toBeInTheDocument()
+      expect(screen.queryByRole('region', { name: 'Your projects' })).not.toBeInTheDocument()
+    })
+
+    test('leaves out a segment with nothing in it', () => {
+      render(
+        <ProjectsGrid projects={[createProject({ id: 'p1', name: 'Seestadt' }), closed('p2', 'Lände 3')]} docCounts={{}} />,
+      )
+      expect(screen.queryByTestId('project-status-filter-paused')).not.toBeInTheDocument()
+      expect(screen.getByTestId('project-status-filter-closed')).toBeInTheDocument()
     })
 
     test('opens on all of them when nothing is active', () => {

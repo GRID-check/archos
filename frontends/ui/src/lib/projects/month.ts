@@ -27,6 +27,18 @@ export function dateToMonth(date: string | Date | null | undefined): Month | nul
   return isMonth(month) ? month : null
 }
 
+/**
+ * The month it is now where the office is. Austria-first, like the rest of the
+ * product: a close at 00:30 on the 1st in Vienna names the new month, which
+ * `dateToMonth(new Date())`, reading UTC, would still call the old one.
+ */
+export function currentMonth(now: Date = new Date(), timeZone = 'Europe/Vienna'): Month {
+  const parts = new Intl.DateTimeFormat('en-CA', { timeZone, year: 'numeric', month: '2-digit' }).formatToParts(now)
+  const year = parts.find((part) => part.type === 'year')?.value ?? String(now.getUTCFullYear())
+  const month = parts.find((part) => part.type === 'month')?.value ?? String(now.getUTCMonth() + 1).padStart(2, '0')
+  return `${year}-${month}` as Month
+}
+
 /** Whether a period runs forwards (or is open at either end). */
 export function isOrderedPeriod(from: Month | null, to: Month | null): boolean {
   return from === null || to === null || from <= to

@@ -156,6 +156,7 @@ Consequences, where a reader looks for them.
 | [0095](0095-permitting-memory-is-derived-from-the-documents-at-ingest.md) | Permitting memory is derived from the documents at ingest, read by meaning | Proposed |
 | [0096](0096-a-closed-project-s-experience-is-read-from-its-documents-as-suggestions.md) | A closed project's experience is read from its documents, as suggestions a person confirms | Proposed |
 | [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
+| [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
