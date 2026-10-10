@@ -9,6 +9,11 @@ vi.mock('@/lib/workos/client', () => ({
   getWorkOS: () => ({ userManagement: { listOrganizationMemberships }, authorization: { check } }),
 }))
 vi.mock('./org-role-permissions', () => ({ orgRoleHoldsPermission: vi.fn(async () => false) }))
+// An active project of the organization: the closed-project rule (ADR-0090)
+// reads its tenancy before any FGA check.
+vi.mock('@/lib/projects/repository', () => ({
+  findProjectTenancy: vi.fn(async (id: string) => ({ id, organizationId: 'org_1', deletedAt: null, status: 'active' })),
+}))
 
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { TransientAuthzError } from './errors'
