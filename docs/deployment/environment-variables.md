@@ -470,9 +470,10 @@ sent to Langfuse Cloud, the SDK's default, would be the wrong place.
 whenever the Langfuse tier is deployed; Compose does not (nothing sends traces
 there, see ADR-0044), so they stay unset and both steps no-op.
 
-The Langfuse behind them must run a v4 write mode (`dual` or `events_only`):
-the traces are found through `GET /api/public/v2/observations`, which answers
-404 otherwise.
+The Langfuse behind them runs Langfuse v4 writing events only (`events_only`,
+fixed in `deploy/pulumi/src/platform/langfuse.ts`): the traces are found
+through `GET /api/public/v2/observations`, which answers 404 on a v3 or
+`legacy` Langfuse.
 
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
