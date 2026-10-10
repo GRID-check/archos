@@ -1,10 +1,11 @@
 /**
  * PostHog from the BFF — the server-side twin of `posthog.ts` (ADR-0099).
  *
- * Every server path that sends something to PostHog (answer feedback against
- * an LLM trace, a captured request error, a server-decided product event) goes
- * through this module, so there is one place that decides whether PostHog is
- * on and how a server event is shaped.
+ * Every server path that sends something to PostHog (a server-decided product
+ * event) goes through this module, so there is one place that decides whether
+ * PostHog is on and how a server event is shaped. Request errors are the one
+ * path with a client of its own, `@posthog/next`'s (`request-error.ts`), and it
+ * takes its settings and its scrubber from here.
  *
  * Fail-open like the browser client: it reads the same
  * `NEXT_PUBLIC_POSTHOG_HOST` / `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` the layout
@@ -13,11 +14,16 @@
  * to capture.
  *
  * Server events carry no GeoIP: the caller is our cluster, not the user, so a
- * lookup would attribute every event to the data centre.
+ * lookup would attribute every event to the data centre. They carry the
+ * deployed commit and the service as super properties (`register`), and a
+ * system event has no distinct id at all: posthog-node then sends it under a
+ * fresh id with `$process_person_profile: false`, so no person is minted.
  */
 import 'server-only'
 
 import { PostHog } from 'posthog-node'
+
+import { deployedSha } from '@/lib/boot'
 
 import { scrubServerEvent } from './scrub-server-event'
 
@@ -56,7 +62,8 @@ export type ServerEvent =
 let client: PostHog | null = null
 let resolved = false
 
-const settings = (): { host: string; projectToken: string } | null => {
+/** The host and project token, read at call time; `null` unless both are set. */
+export const posthogServerSettings = (): { host: string; projectToken: string } | null => {
   const host = (process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '').trim().replace(/\/+$/, '')
   const projectToken = (process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '').trim()
   if (!host || !projectToken) return null
@@ -64,12 +71,18 @@ const settings = (): { host: string; projectToken: string } | null => {
 }
 
 /** Whether the BFF sends anything to PostHog: both settings reached it. */
-export const isPosthogServerEnabled = (): boolean => settings() !== null
+export const isPosthogServerEnabled = (): boolean => posthogServerSettings() !== null
+
+/** What every server event carries: the deployed commit and which process sent it. */
+export const serverSuperProperties = (): { release: string; service: string } => ({
+  release: deployedSha(),
+  service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
+})
 
 /** The process-wide client, built on first use; `null` while PostHog is off. */
 export const getPosthogServer = (): PostHog | null => {
   if (resolved) return client
-  const config = settings()
+  const config = posthogServerSettings()
   if (config) {
     client = new PostHog(config.projectToken, {
       host: config.host,
@@ -82,6 +95,8 @@ export const getPosthogServer = (): PostHog | null => {
       flushAt: 20,
       flushInterval: 5_000,
     })
+    // Synchronous for this client (memory persistence is ready at construction).
+    void client.register(serverSuperProperties())
   }
   resolved = true
   return client
@@ -111,35 +126,12 @@ export const captureServer = ({ event, distinctId, organizationId, properties }:
   if (!posthog) return false
   const props: ServerProperties = { ...properties }
   if (organizationId) props.organization_id = organizationId
-  if (distinctId === null) props.$process_person_profile = false
   try {
-    posthog.capture({
-      event,
-      distinctId: distinctId ?? `server:${event}`,
-      properties: props,
-    })
+    // No distinct id for a system action: posthog-node makes the event personless.
+    posthog.capture({ event, distinctId: distinctId ?? undefined, properties: props })
     return true
   } catch (error) {
     console.debug('[posthog] could not queue event', event, error)
-    return false
-  }
-}
-
-/** Queue one `$exception`; whether it was queued. Never throws. */
-export const captureServerException = (
-  error: unknown,
-  distinctId: string | null,
-  properties?: ServerProperties,
-): boolean => {
-  const posthog = getPosthogServer()
-  if (!posthog) return false
-  const props: ServerProperties = { ...properties }
-  if (distinctId === null) props.$process_person_profile = false
-  try {
-    posthog.captureException(error, distinctId ?? undefined, props)
-    return true
-  } catch (failure) {
-    console.debug('[posthog] could not queue exception', failure)
     return false
   }
 }

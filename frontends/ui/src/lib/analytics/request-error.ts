@@ -1,14 +1,20 @@
 /**
- * Server request errors to PostHog error tracking (ADR-0099).
+ * Server request errors to PostHog error tracking, through `@posthog/next` (ADR-0099).
  *
  * Next.js calls `onRequestError` (exported from `instrumentation.ts`) for every
  * error it catches while rendering a page, running a route handler, a server
- * action or the proxy. This module decides what of that reaches PostHog and in
- * what shape; `instrumentation.ts` only forwards, because the file also loads
- * in the Edge runtime where `posthog-node` does not run.
+ * action or the proxy. PostHog's Next.js package does the capture: it builds
+ * the `$exception` with the route, method, digest and the path without its
+ * query, reads the visitor's PostHog cookie for their distinct id and session
+ * (so a server error lands on the same person and replay as the browser's), and
+ * honours the opt-out cookie. What stays here is our configuration of it, which
+ * `instrumentation.ts` cannot hold because it also loads in the Edge runtime:
  *
- * Three decisions live here rather than at the call site:
- *
+ * - **The same settings and scrubber as every other BFF event.** The host and
+ *   token are the ones `posthog-server.ts` reads, at runtime (the image is built
+ *   without them), and the client the package builds gets `scrubServerEvent` as
+ *   its `before_send` and no GeoIP. The package's client sends each exception
+ *   immediately, so there is no queue for the shutdown hook to flush.
  * - **Authorization denials are not errors.** `requireProjectAccess` throws a
  *   plain `Error('Not found')` on a permission denial, and the same signal
  *   routes the visitor to the access screen (`isAuthzError`). Counted as
@@ -16,95 +22,105 @@
  *   its value.
  * - **A hot route cannot burn the free tier.** A failing page that every
  *   client retries is the same exception thousands of times. Each fingerprint
- *   (route, error name, message) is allowed a handful per window; the rest are
- *   dropped, and the first of them leaves one console line so the drop is not
- *   invisible.
- * - **No identity lookup.** The distinct id is the WorkOS user id, but reading
- *   it means decrypting the session cookie through WorkOS, which an error path
- *   must not start. The request headers carry only the sealed session, so the
- *   event is personless (`null`); the browser's own `$exception` for the same
- *   incident is identified.
+ *   (route, error name, message) gets a burst per window from PostHog's own
+ *   `BucketedRateLimiter`; the rest are dropped, and the first drop leaves one
+ *   console line so it is not invisible.
+ *
+ * The package is pre-release (pinned to an exact version in `package.json`).
+ * Its root export resolves `createOnRequestError` only under the `react-server`
+ * condition, which Next applies to everything the instrumentation layer
+ * imports; a plain Node import gets the browser build without it.
  */
 import 'server-only'
 
-import type { Instrumentation } from 'next'
+import { BucketedRateLimiter, type Logger } from '@posthog/core'
+import {
+  createOnRequestError,
+  type NextOnRequestError,
+  type OnRequestErrorBeforeCaptureContext,
+  type OnRequestErrorOptions,
+} from '@posthog/next'
 
 import { isAuthzError } from '@/lib/auth-utils'
-import { deployedSha } from '@/lib/boot'
 
-import { captureServerException } from './posthog-server'
-
-type RequestInfo = Parameters<Instrumentation.onRequestError>[1]
-type RequestContext = Parameters<Instrumentation.onRequestError>[2]
+import { posthogServerSettings, serverSuperProperties } from './posthog-server'
+import { scrubServerEvent } from './scrub-server-event'
 
 /** Events allowed per fingerprint per window. */
 export const REQUEST_ERROR_BURST = 5
 export const REQUEST_ERROR_WINDOW_MS = 5 * 60_000
-/** Distinct fingerprints remembered; the oldest is forgotten past this. */
-const MAX_FINGERPRINTS = 500
 const MESSAGE_FINGERPRINT_LENGTH = 120
 
-const windows = new Map<string, { startedAt: number; count: number }>()
-
-const fingerprintOf = (error: unknown, context: RequestContext): string => {
-  const name = error instanceof Error ? error.name : typeof error
-  const message = error instanceof Error ? error.message : String(error)
-  return `${context.routePath}|${name}|${message.slice(0, MESSAGE_FINGERPRINT_LENGTH)}`
+const quietLogger: Logger = {
+  debug: () => {},
+  info: () => {},
+  warn: (...args: unknown[]) => console.warn('[posthog]', ...args),
+  error: (...args: unknown[]) => console.error('[posthog]', ...args),
+  critical: (...args: unknown[]) => console.error('[posthog]', ...args),
+  createLogger: () => quietLogger,
 }
-
-/** Whether this fingerprint still has room in its window; counts the attempt. */
-const withinBudget = (key: string, now: number): boolean => {
-  const current = windows.get(key)
-  if (!current || now - current.startedAt >= REQUEST_ERROR_WINDOW_MS) {
-    if (!current && windows.size >= MAX_FINGERPRINTS) {
-      const oldest = windows.keys().next().value
-      if (oldest !== undefined) windows.delete(oldest)
-    }
-    windows.set(key, { startedAt: now, count: 1 })
-    return true
-  }
-  current.count += 1
-  if (current.count === REQUEST_ERROR_BURST + 1) {
-    console.warn('[posthog] request error rate-limited:', key.slice(0, 160))
-  }
-  return current.count <= REQUEST_ERROR_BURST
-}
-
-const digestOf = (error: unknown): string | undefined => {
-  if (typeof error !== 'object' || error === null || !('digest' in error)) return undefined
-  return String(error.digest)
-}
-
-/** The path without its query string: a query can carry a token or a search term. */
-const pathWithoutQuery = (path: string): string => path.split('?')[0] ?? path
 
 /**
- * Report one Next.js request error. Returns whether it was queued; never
- * throws, because it runs on the error path of a request that already failed.
+ * The limiter empties a bucket on the call that takes its last token, so a
+ * bucket one larger than the burst admits exactly the burst, and a full refill
+ * per window makes it a fixed window of `REQUEST_ERROR_BURST`.
  */
-export const reportRequestError = (
-  error: unknown,
-  request: Readonly<RequestInfo>,
-  context: Readonly<RequestContext>,
-  now: number = Date.now(),
-): boolean => {
-  if (isAuthzError(error)) return false
-  if (!withinBudget(fingerprintOf(error, context), now)) return false
-  return captureServerException(error, null, {
-    source: 'bff-on-request-error',
-    route_path: context.routePath,
-    route_type: context.routeType,
-    router_kind: context.routerKind,
-    render_source: context.renderSource ?? null,
-    request_method: request.method,
-    request_path: pathWithoutQuery(request.path),
-    digest: digestOf(error) ?? null,
-    release: deployedSha(),
-    service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
+const newLimiter = (): BucketedRateLimiter<string> =>
+  new BucketedRateLimiter<string>({
+    bucketSize: REQUEST_ERROR_BURST + 1,
+    refillRate: REQUEST_ERROR_BURST + 1,
+    refillInterval: REQUEST_ERROR_WINDOW_MS,
+    _logger: quietLogger,
+    _onBucketRateLimited: (key) =>
+      console.warn('[posthog] request error rate-limited:', key.slice(0, 160)),
   })
+
+let limiter = newLimiter()
+let handler: NextOnRequestError | null = null
+
+const fingerprintOf = ({ error, context }: OnRequestErrorBeforeCaptureContext): string => {
+  const name = error instanceof Error ? error.name : typeof error
+  const message = error instanceof Error ? error.message : String(error)
+  return `${context.routePath ?? ''}|${name}|${message.slice(0, MESSAGE_FINGERPRINT_LENGTH)}`
 }
 
-/** Forget every fingerprint so a spec starts with a full budget. */
-export const resetRequestErrorLimiterForTests = (): void => {
-  windows.clear()
+/**
+ * The package's `beforeCapture`: `false` skips the capture, an object is
+ * merged into the event's properties.
+ */
+export const beforeCapture = (
+  capture: OnRequestErrorBeforeCaptureContext
+): Record<string, unknown> | false => {
+  if (isAuthzError(capture.error)) return false
+  if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
+  // The package's client is not ours to `register` on, so the super
+  // properties every other server event carries travel per event here.
+  return { source: 'bff-on-request-error', ...serverSuperProperties() }
+}
+
+/** What `createOnRequestError` is built with; `null` while PostHog is off. */
+export const requestErrorOptions = (): OnRequestErrorOptions | null => {
+  const settings = posthogServerSettings()
+  if (!settings) return null
+  return {
+    apiKey: settings.projectToken,
+    host: settings.host,
+    serverOptions: { disableGeoip: true, before_send: scrubServerEvent },
+    beforeCapture,
+  }
+}
+
+/** The process-wide handler, built on the first error; `null` while PostHog is off. */
+export const requestErrorHandler = (): NextOnRequestError | null => {
+  if (handler) return handler
+  const options = requestErrorOptions()
+  if (!options) return null
+  handler = createOnRequestError(options)
+  return handler
+}
+
+/** Forget the handler and every fingerprint so a spec starts fresh. */
+export const resetRequestErrorHandlerForTests = (): void => {
+  handler = null
+  limiter = newLimiter()
 }

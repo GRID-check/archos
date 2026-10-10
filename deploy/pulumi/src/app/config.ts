@@ -243,14 +243,17 @@ export const BACKEND_CHAT_URL = `http://aiq-agent:${PORT.backend}`;
 
 /**
  * The Python tiers' PostHog pair (`POSTHOG_HOST`, `POSTHOG_PROJECT_TOKEN`), or
- * nothing unless both are configured. Exported for `config.spec.ts`.
+ * nothing unless both are configured, plus `POSTHOG_RELEASE_ID` when the deploy
+ * resolved a release for the backend image (posthog-python reads it itself and
+ * sends it as `$release_id`). Exported for `posthog.spec.ts`.
  */
 export function posthogEnv(cfg: GridConfig): EnvVar[] {
-  const { host, projectToken } = cfg.posthog;
+  const { host, projectToken, releaseId } = cfg.posthog;
   if (host === "" || projectToken === "") return [];
   return [
     { name: "POSTHOG_HOST", value: host },
     { name: "POSTHOG_PROJECT_TOKEN", value: projectToken },
+    ...(releaseId === "" ? [] : [{ name: "POSTHOG_RELEASE_ID", value: releaseId }]),
   ];
 }
 

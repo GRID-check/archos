@@ -130,8 +130,10 @@ describe("PostHog logs in the collector, off", () => {
 });
 
 describe("the Python tiers' PostHog pair", () => {
-  const gridCfg = (host: string, projectToken: string) =>
-    ({ posthog: { host, projectToken, logsEnabled: false, sessionReplay: false, replaySampleRate: "0.2" } }) as unknown as Parameters<typeof posthogEnv>[0];
+  const gridCfg = (host: string, projectToken: string, releaseId = "") =>
+    ({
+      posthog: { host, projectToken, logsEnabled: false, sessionReplay: false, replaySampleRate: "0.2", releaseId },
+    }) as unknown as Parameters<typeof posthogEnv>[0];
 
   it("emits both names when both are set", () => {
     expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x"))).toEqual([
@@ -146,6 +148,16 @@ describe("the Python tiers' PostHog pair", () => {
     ["both", "", ""],
   ])("emits nothing without the %s, never a half-configured pod", (_what, host, token) => {
     expect(posthogEnv(gridCfg(host, token))).toEqual([]);
+  });
+
+  // The id PostHog/resolve-release printed for the backend image, which
+  // posthog-python sends as $release_id (deploy.yml sets the key per run).
+  it("adds the release id the deploy resolved, and only beside the pair", () => {
+    expect(posthogEnv(gridCfg("https://eu.i.posthog.com", "phc_x", "0193f5a6-rel"))).toContainEqual({
+      name: "POSTHOG_RELEASE_ID",
+      value: "0193f5a6-rel",
+    });
+    expect(posthogEnv(gridCfg("", "", "0193f5a6-rel"))).toEqual([]);
   });
 
   it("reaches chat, api, agent-worker and ingest-worker, and nothing when unset", async () => {
@@ -192,5 +204,12 @@ describe("the Python tiers' PostHog pair", () => {
       "grid-oib:posthogReplaySampleRate": "0.05",
     });
     expect(loadConfig().posthog).toMatchObject({ sessionReplay: false, replaySampleRate: "0.05" });
+  });
+
+  it("reads the release id the deploy set, trimmed, and none by default", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...POSTHOG });
+    expect(loadConfig().posthog.releaseId).toBe("");
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...POSTHOG, "grid-oib:posthogReleaseId": " 0193f5a6-rel " });
+    expect(loadConfig().posthog.releaseId).toBe("0193f5a6-rel");
   });
 });

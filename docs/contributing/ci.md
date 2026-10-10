@@ -109,14 +109,15 @@ commit its code came from.
 ## PostHog releases and source maps
 
 Error tracking and the self-driving inbox date a regression by asking which
-commit an exception came from and when the cluster started running it. Two
-pieces of CI answer that. Both are off until the secret and variable below
+commit an exception came from and when the cluster started running it. Three
+pieces of CI answer that. All are off until the secret and variable below
 exist, so a fork, a pull request and a repository without PostHog build and
 deploy exactly as before.
 
 | Piece | Where | What it does |
 |---|---|---|
-| Source maps and release | `image-push` for the frontend image, inside the Docker build (`frontends/ui/deploy/upload-sourcemaps.sh`) | After `next build`, injects a chunk id and the release id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Source maps and release | `image-push` for the frontend image, inside `next build` in the Docker build (`@posthog/nextjs-config`, wired in `frontends/ui/next.config.ts`) | At the end of the build, injects a chunk id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Backend release | `deploy.yml` (staging), before the plan (`PostHog/resolve-release`) | Finds or creates release `grid-agent` at the backend image's commit and hands its id to the Python tiers as `POSTHOG_RELEASE_ID` (below) |
 | Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
 
 | Name | Kind | Value |
@@ -131,20 +132,31 @@ Why it is built this way:
   files the image ships. A step after the build would inject into files the
   image never contained, and the chunk ids in the image would match nothing.
   `PostHog/upload-source-maps` works on a directory of the runner, so it does
-  not fit an image built by BuildKit.
+  not fit an image built by BuildKit. `@posthog/nextjs-config` runs the PostHog
+  CLI from Next's own after-compile hook, which is inside the build.
 - **A BuildKit secret, never a build arg.** An arg is written into the image
-  history. The key reaches the Dockerfile as `--mount=type=secret` and the CLI
-  as its environment. `build-image` passes it only for the frontend image and
-  only from `image-push`; a pull request build has no access and uploads
-  nothing, so unmerged code never creates a release.
-- **The maps are uploaded and not served.** `productionBrowserSourceMaps` makes
-  Next serve `.next/static/**/*.map`, original source included, to anyone.
-  `next.config.ts` turns it on only when `GRID_SOURCEMAPS=1`, which the
-  Dockerfile sets only for the build that also uploads, and the script runs the
-  CLI with `--delete-after` and fails the build if any `.map` is left in
-  `.next/static` or `.next/server`. It fails as well when no chunk id was
-  injected, which would mean the upload matches no stack frame. The runtime
-  config has neither flag.
+  history. The key reaches the Dockerfile as `--mount=type=secret`, and the RUN
+  that builds exports it as `POSTHOG_CLI_API_KEY` for `next.config.ts` and the
+  CLI. `build-image` passes it only for the frontend image and only from
+  `image-push`; a pull request build has no access and uploads nothing, so
+  unmerged code never creates a release.
+- **Off unless it can upload.** `next.config.ts` wraps its config with
+  `withPostHogConfig` (outermost, as the package requires) only when the key
+  and `POSTHOG_PROJECT_ID` are both present, and imports the package only then.
+  Every other build, and the running server, which loads `next.config.ts` too,
+  gets the config as written with no map flags.
+- **The maps are uploaded and not served.** Next serves `.next/static/**/*.map`,
+  original source included, to anyone. The package turns browser maps on only
+  for the uploading build and deletes them after the upload; `next.config.ts`
+  turns server maps on beside it. The same Dockerfile RUN then deletes every
+  `.map` still under `.next/static` or `.next/server` (Turbopack writes some
+  unasked, uploading or not) and fails the build if one survives. It fails as
+  well when it uploaded and no chunk id was injected, which would mean the
+  upload matches no stack frame.
+- **`symbol-set` release mode**, set explicitly: the maps are bound to the
+  release, as the CLI did before the package. The newer `event` mode injects a
+  release id for posthog-js to send per event, which the pinned posthog-js is
+  not known to read.
 - **Why the release is a build commit.** An image whose inputs did not change is
   re-tagged, not rebuilt (above), so an error on such a deploy names the older
   commit that built the code. The deploy marker carries the commit that was
@@ -152,13 +164,18 @@ Why it is built this way:
   the annotation says when users got it.
 - **Chunk ids are content-addressed**, so a rebuild of unchanged files yields
   the same ids and a re-run cannot orphan an earlier upload.
-- The CLI is pinned (`POSTHOG_CLI_VERSION` in the script, 0.18.8) and installed
-  with npm in the builder stage only; it is not in the runtime image.
-- Caching: `ARG GRID_GIT_SHA` comes after the build layers in the Dockerfile's
-  builder stage, so a new commit re-runs the upload step and nothing above it.
-  `POSTHOG_PROJECT_ID` is an arg before `bun run build`: a build with PostHog
-  configured is a different layer from one without, so enabling it never reuses
-  a build that produced no maps.
+- The CLI is the `@posthog/cli` the package depends on (pinned through
+  `@posthog/nextjs-config`, an exact devDependency). Its npm package downloads
+  the binary on first use (`bun install --ignore-scripts` skips its
+  postinstall), which happens inside the build RUN, and the same RUN deletes
+  the binary. It has to: `bun install --production` over an existing
+  `node_modules` does not prune devDependencies (measured with bun 1.3.11), so
+  the later production install would let it ship in the runtime image.
+- Caching: `ARG GRID_GIT_SHA` is declared before `bun run build`, because the
+  release version is read during the build. That costs nothing a rebuild did
+  not already pay: an image is rebuilt only when its inputs changed, and then
+  the build layer re-runs anyway. `POSTHOG_PROJECT_ID` is an arg before the
+  build too, so a build with PostHog configured never reuses one without maps.
 
 An image already in GHCR under its `inputs-<hash>` is not rebuilt when the
 secret is added later, so its maps are never uploaded. Wait for the weekly
@@ -166,13 +183,18 @@ rebuild, or bump `SCHEME` in `ci/image_inputs.py`.
 
 Python (`aiq_agent`) has no source maps; PostHog links its exceptions to a
 release through `POSTHOG_RELEASE_ID`, which the SDK (`posthog>=7.59`) sends as
-`$release_id`. [`PostHog/resolve-release`](https://posthog.com/docs/error-tracking/link-releases/python)
-creates that release and outputs `release-id`; it is not wired in, because the
-backend's environment comes from the Pulumi stack and nothing there takes a
-release id yet. The step would go before `Pulumi up` in `deploy.yml`, with the
-action pinned by commit SHA, `release-name: grid-agent` and
-`release-version` the deployed sha, and its output set as a stack config key the
-program turns into `POSTHOG_RELEASE_ID` on the backend.
+`$release_id`. The staging deploy runs
+[`PostHog/resolve-release`](https://posthog.com/docs/error-tracking/link-releases/python)
+before the plan, for release `grid-agent` at the commit the backend image was
+built from (the sha in `BACKEND_IMAGE_REF`), and sets its `release-id` output as
+the stack key `grid-oib:posthogReleaseId`; the program injects it as
+`POSTHOG_RELEASE_ID` on every Python tier, beside `POSTHOG_HOST` and the token
+and never without them. The image's commit rather than the deployed one, so a
+re-deploy of the same image resolves the same release and the pods do not roll.
+Without the secret the action outputs an empty id and the key is not set; the
+step is `continue-on-error`, so PostHog never blocks a deploy. Prod is not
+wired: its stack has no PostHog configured, so it would have nowhere to send
+the id.
 
 ## Quick merges one after another
 

@@ -41,21 +41,31 @@ side only.
 
 Next calls `onRequestError` for every error it catches in a render, route
 handler, server action or the proxy. It is a named export, so it runs whether or
-not `register()` returned early for want of an OTLP endpoint. The reporting is
-`lib/analytics/request-error.ts`:
+not `register()` returned early for want of an OTLP endpoint. The capture is
+`@posthog/next`'s `createOnRequestError` (pre-release, pinned to an exact
+version); `lib/analytics/request-error.ts` builds it with our configuration:
 
-- Properties: `route_path` (the pattern, `/api/projects/[projectId]/files`),
-  `route_type`, `router_kind`, `render_source`, `request_method`, `request_path`
-  (query string removed), `digest`, `release` (`GRID_GIT_SHA`), `service`.
-- The event is **personless**. The WorkOS user id is only inside the sealed
-  session cookie, and decrypting it is a WorkOS call that an error path must not
-  start.
+- The host and token `posthog-server.ts` reads, at runtime, and a client with
+  `scrubServerEvent` as its `before_send` and no GeoIP. The package builds its
+  own posthog-node client and sends each exception immediately, so nothing is
+  left queued at shutdown.
+- Properties, set by the package: `$pathname` (query string removed),
+  `$http_method`, `nextjs_route_path` (the pattern,
+  `/api/projects/[projectId]/files`), `nextjs_route_type`, `nextjs_router_kind`,
+  `nextjs_render_source`, `nextjs_error_digest`. Ours, from `beforeCapture`:
+  `source`, `release` (`GRID_GIT_SHA`), `service`.
+- The person is the visitor's: the package reads the PostHog cookie the browser
+  writes (`localStorage+cookie` persistence) for the distinct id, the session id
+  and the device id, so a server error sits on the same person and replay as
+  the browser's events. Without the cookie the event is personless. The package
+  skips a visitor whose opt-out is in a cookie, but the browser keeps the
+  profile page's opt-out in localStorage (posthog-js's default), so a server
+  error of an opted-out visitor is still reported under their distinct id.
+  Moving the opt-out to a cookie (`opt_out_capturing_persistence_type`) would
+  forget every opt-out already stored, so it is left as an open decision.
 - Authorization denials are dropped, and each fingerprint (route, error name,
-  message) gets 5 events per 5 minutes.
-- On shutdown, `server.js` runs the functions registered on
-  `globalThis.__gridShutdownHooks` before it exits, up to 2 s after the drain.
-  `instrumentation.ts` registers `shutdownPosthogServer`, which flushes the
-  queue.
+  message) gets 5 events per 5 minutes, through `@posthog/core`'s
+  `BucketedRateLimiter`.
 
 ## Python
 
@@ -69,10 +79,16 @@ idempotent.
 
 It reports an `ERROR` or above record that carries `exc_info`, with the logger
 name, the formatted message (presigned URLs scrubbed), the log call site,
-`release` and `environment` as `trace_context` derives them for Langfuse, and,
+`release` as `trace_context` derives it for Langfuse, and,
 inside a traced run, the trace id as `$ai_trace_id` and `langfuse_trace_id`.
 Langfuse exports that trace to PostHog as `langfuse observation` events, so an
 issue links to the trace that produced it. The event is personless.
+`environment` and `service` are super properties of the client, so every
+Python event carries them, and frames under `aiq_agent` and `aiq_api` are
+marked in-app. posthog-python has no `logging` integration (it ships Django,
+Flask, Celery and ASGI ones), which is why this handler is ours. The release
+is `$release_id`, which the SDK reads from `POSTHOG_RELEASE_ID`; the staging
+deploy resolves it ([`ci.md`](../contributing/ci.md#posthog-releases-and-source-maps)).
 `posthog_client` scrubs presigned URLs from every event's text on the way out,
 because `str(httpx.HTTPStatusError)` embeds the request URL.
 
@@ -88,16 +104,17 @@ from spending it:
 |---|---|
 | Python, per fingerprint (exception type, logger, innermost frame) | burst of 3, then 1 per 5 minutes (about 9K a month at the very worst) |
 | Python, per process | burst of 20, then 1 per minute |
-| BFF, per fingerprint | 5 per 5 minutes |
+| BFF, per fingerprint (route, error name, message) | 5 per 5 minutes |
 | Both | authorization denials are never counted |
 
 A dropped record is still logged everywhere else; it is only not counted again.
+The Python buckets are posthog-python's `BucketedRateLimiter`, the algorithm
+posthog-js and posthog-node share.
 
 ## Not done here
 
-- Source maps are not uploaded, so browser stacks are minified. That needs
-  `productionBrowserSourceMaps` or `@posthog/nextjs-config` and a CI step.
-- `POSTHOG_RELEASE_ID` (PostHog's release link) is not set; the commit travels as
-  the `release` property instead.
+- Source maps are uploaded by the frontend image build only
+  ([`ci.md`](../contributing/ci.md#posthog-releases-and-source-maps)); a local or
+  pull-request build ships minified stacks.
 - err2issue is gone from the Pulumi program (the sink, its collector pipeline, its
   NetworkPolicy and image pin); a stack's leftover `err2issue*` keys are ignored.

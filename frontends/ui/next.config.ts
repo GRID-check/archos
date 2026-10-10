@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { NextConfig } from 'next'
+import type { withPostHogConfig } from '@posthog/nextjs-config'
 import { AVATAR_IMAGE_PATTERNS } from './src/lib/images/avatar-hosts'
 import { LOCAL_IMAGE_PATTERNS } from './src/lib/images/optimizable'
 import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
@@ -19,21 +20,8 @@ import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
  */
 const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 * 1024))
 
-/**
- * Emit source maps, for a build that is about to upload them to PostHog.
- *
- * Set by `deploy/Dockerfile` for the one `next build` whose key and project id
- * are present, and by nothing else: at runtime it is unset, so the server
- * config below carries no map flags and Node pays no source-map cost.
- *
- * Next serves `productionBrowserSourceMaps` from `.next/static` to anyone, with
- * the original source inside, so a build with this on must delete the maps
- * after the upload. `deploy/upload-sourcemaps.sh` does, and fails the build when
- * one survives. Never turn this on in a build that does not run that script.
- */
-const emitSourceMaps = process.env.GRID_SOURCEMAPS === '1'
-
-const nextConfig: NextConfig = {
+/** The config as written; the default export below adds PostHog source maps on the upload path. */
+export const nextConfig: NextConfig = {
   reactStrictMode: true,
 
   // PostHog's endpoints end in a slash (`/e/`, `/s/`, `/flags/`). With the
@@ -42,8 +30,6 @@ const nextConfig: NextConfig = {
   // Both forms are served as written; the site has no other use for the
   // redirect (`trailingSlash` stays unset).
   skipTrailingSlashRedirect: true,
-
-  productionBrowserSourceMaps: emitSourceMaps,
 
   // The build typechecks production code only: tsconfig.build.json leaves the
   // specs and test helpers out of its roots, so a type error in a test cannot
@@ -105,7 +91,6 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['exceljs'],
 
   experimental: {
-    serverSourceMaps: emitSourceMaps,
     serverActions: {
       bodySizeLimit: `${requestBodyLimitMB}mb`,
     },
@@ -195,4 +180,74 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+type PostHogSourcemapConfig = Parameters<typeof withPostHogConfig>[1]
+type NextConfigFunction = (
+  phase: string,
+  context: { defaultConfig: NextConfig }
+) => Promise<NextConfig>
+
+/**
+ * PostHog source maps (`@posthog/nextjs-config`), for the one build that can
+ * upload them, or `null` for every other build and for the running server.
+ *
+ * On only when the image build hands `next build` a personal API key
+ * (`POSTHOG_CLI_API_KEY`, read from a BuildKit secret inside the same RUN,
+ * `deploy/Dockerfile`) and a project id. A fork, a pull request, a local build
+ * and the runtime have neither, and get `nextConfig` exactly as written. With
+ * both, the package turns browser maps on, the PostHog CLI injects chunk ids
+ * into the shipped JavaScript, uploads the maps for release `grid-ui` at the
+ * commit being built (the `GRID_GIT_SHA` the container reports) and deletes
+ * them. The Dockerfile then deletes any map left over and fails the build if
+ * one survives: Next serves `.next/static` to anyone, and a map carries the
+ * original source.
+ *
+ * `symbol-set` binds the uploaded maps to the release, as the CLI did before
+ * this package. Its newer `event` mode injects the release id for posthog-js
+ * to send, which the posthog-js this app pins is not known to do.
+ */
+export const posthogSourcemapConfig = (
+  env: NodeJS.ProcessEnv = process.env
+): PostHogSourcemapConfig | null => {
+  const personalApiKey = env.POSTHOG_CLI_API_KEY?.trim()
+  const projectId = env.POSTHOG_PROJECT_ID?.trim()
+  if (!personalApiKey || !projectId) return null
+  const releaseVersion = env.GRID_GIT_SHA?.trim()
+  if (!releaseVersion) {
+    throw new Error('GRID_GIT_SHA is empty; a PostHog release needs the commit it was built from')
+  }
+  return {
+    personalApiKey,
+    projectId,
+    host: env.POSTHOG_CLI_HOST?.trim() || 'https://eu.posthog.com',
+    sourcemaps: {
+      enabled: true,
+      releaseName: 'grid-ui',
+      releaseVersion,
+      releaseMode: 'symbol-set',
+      deleteAfterUpload: true,
+    },
+  }
+}
+
+/**
+ * The config Next loads, at build time and again at runtime. The package is
+ * imported only on the upload path: it is a devDependency (it brings the CLI
+ * and webpack), absent from the runtime image, which loads this file too.
+ * `withPostHogConfig` is the outermost wrapper, as the package requires, and
+ * server maps are switched on beside it so server stack frames resolve too.
+ */
+export default async function config(
+  phase: string,
+  context: { defaultConfig: NextConfig }
+): Promise<NextConfig> {
+  const posthog = posthogSourcemapConfig()
+  if (!posthog) return nextConfig
+  const { withPostHogConfig } = await import('@posthog/nextjs-config')
+  const withServerMaps: NextConfig = {
+    ...nextConfig,
+    experimental: { ...nextConfig.experimental, serverSourceMaps: true },
+  }
+  // Typed as a NextConfig, returned as the function Next calls with the phase.
+  const wrapped = withPostHogConfig(withServerMaps, posthog) as unknown as NextConfigFunction
+  return wrapped(phase, context)
+}

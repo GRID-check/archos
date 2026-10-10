@@ -6,7 +6,11 @@
    imports ``posthog-node``. ``posthog-js`` is reached only through
    ``frontends/ui/src/lib/analytics/posthog.ts``. A second client is a second
    place deciding whether PostHog is on, which host it talks to and what it may
-   send. That is how a privacy default gets lost.
+   send. That is how a privacy default gets lost. The one bought exception is
+   ``@posthog/next``'s request-error capture, which builds its own posthog-node
+   client: ``frontends/ui/src/lib/analytics/request-error.ts`` is the only module
+   that imports it (and ``@posthog/core``'s rate limiter beside it), and it
+   configures that client from ``posthog-server.ts``'s settings and scrubber.
 2. **LLM data reaches PostHog through Langfuse.** Langfuse's PostHog
    integration exports observations and scores. Our code emits none of
    PostHog's AI-observability events. A ``$ai_generation`` captured from our code
@@ -31,6 +35,7 @@ TS_SUFFIXES = {".ts", ".tsx", ".js", ".mjs", ".cjs"}
 PYTHON_CLIENT = "src/aiq_agent/observability/posthog_client.py"
 BROWSER_CLIENT = "frontends/ui/src/lib/analytics/posthog.ts"
 SERVER_CLIENT = "frontends/ui/src/lib/analytics/posthog-server.ts"
+REQUEST_ERRORS = "frontends/ui/src/lib/analytics/request-error.ts"
 
 _PY_IMPORT = re.compile(r"^\s*(?:from\s+posthog(?:\.\w+)*\s+import|import\s+posthog\b)", re.MULTILINE)
 _TS_IMPORT = re.compile(
@@ -79,7 +84,12 @@ def test_only_the_python_client_imports_the_posthog_sdk() -> None:
 
 
 def test_only_the_two_ts_clients_import_posthog_packages() -> None:
-    allowed = {"posthog-js": BROWSER_CLIENT, "posthog-node": SERVER_CLIENT}
+    allowed = {
+        "posthog-js": BROWSER_CLIENT,
+        "posthog-node": SERVER_CLIENT,
+        "@posthog/next": REQUEST_ERRORS,
+        "@posthog/core": REQUEST_ERRORS,
+    }
     offenders: list[str] = []
     for path in _files(TS_ROOTS, TS_SUFFIXES):
         rel = _rel(path)

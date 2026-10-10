@@ -1,12 +1,13 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 
 const capture = vi.fn()
+const register = vi.fn(async (_properties: Record<string, unknown>) => {})
 const constructed: Array<{ token: string; options: Record<string, unknown> }> = []
 
 vi.mock('posthog-node', () => ({
   PostHog: class {
     capture = capture
-    captureException = vi.fn()
+    register = register
     shutdown = vi.fn(async () => {})
     constructor(token: string, options: Record<string, unknown>) {
       constructed.push({ token, options })
@@ -27,6 +28,7 @@ describe('captureServer', () => {
     vi.unstubAllEnvs()
     vi.restoreAllMocks()
     capture.mockReset()
+    register.mockClear()
     constructed.length = 0
     resetPosthogServerForTests()
   })
@@ -67,16 +69,35 @@ describe('captureServer', () => {
     expect(sent).not.toHaveProperty('groups')
   })
 
-  test('a system action is personless: no person is minted for it', () => {
+  // posthog-node sends an event without a distinct id under a fresh one, with
+  // `$process_person_profile: false` (`_prepareEventMessage`), so no person is minted.
+  test('a system action has no distinct id, which posthog-node makes personless', () => {
     enable()
 
-    captureServer({ event: 'job_run_started', distinctId: null, organizationId: 'org_1', properties: { job_id: 'j1' } })
+    captureServer({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: 'org_1',
+      properties: { job_id: 'j1' },
+    })
 
     expect(capture).toHaveBeenCalledWith({
       event: 'job_run_started',
-      distinctId: 'server:job_run_started',
-      properties: { job_id: 'j1', organization_id: 'org_1', $process_person_profile: false },
+      distinctId: undefined,
+      properties: { job_id: 'j1', organization_id: 'org_1' },
     })
+  })
+
+  test('every event carries the deployed commit and the service as super properties', () => {
+    enable()
+    vi.stubEnv('GRID_GIT_SHA', 'abc1234')
+    vi.stubEnv('OTEL_SERVICE_NAME', 'grid-scheduler')
+
+    getPosthogServer()
+    getPosthogServer()
+
+    expect(register).toHaveBeenCalledTimes(1)
+    expect(register).toHaveBeenCalledWith({ release: 'abc1234', service: 'grid-scheduler' })
   })
 
   test('omits organization_id when the event has no organization', () => {
@@ -106,7 +127,10 @@ describe('captureServer', () => {
 
     expect(constructed).toHaveLength(1)
     expect(constructed[0]?.token).toBe('phc_test')
-    expect(constructed[0]?.options).toMatchObject({ host: 'https://eu.i.posthog.com', disableGeoip: true })
+    expect(constructed[0]?.options).toMatchObject({
+      host: 'https://eu.i.posthog.com',
+      disableGeoip: true,
+    })
     expect(constructed[0]?.options.before_send).toBe(scrubServerEvent)
   })
 
@@ -117,9 +141,15 @@ describe('captureServer', () => {
 
     const sent = beforeSend({
       event: 'user_signed_in',
-      properties: { callback: '/api/auth/callback?code=abc&state=def', image: 'https://x.example/i/1?sig=ff&w=2' },
+      properties: {
+        callback: '/api/auth/callback?code=abc&state=def',
+        image: 'https://x.example/i/1?sig=ff&w=2',
+      },
     })
 
-    expect(sent?.properties).toEqual({ callback: '/api/auth/callback', image: 'https://x.example/i/1?w=2' })
+    expect(sent?.properties).toEqual({
+      callback: '/api/auth/callback',
+      image: 'https://x.example/i/1?w=2',
+    })
   })
 })
