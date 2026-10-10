@@ -291,8 +291,8 @@ What differs is who may (`org:archiv:manage` instead of `project:documents:write
 the collection (`archiv_<orgId>`), the object key prefix (`org/{orgId}/archiv/`), the
 audit action name, and a folder row's `projectId`, which is `null` here.
 
-All routes are gated by the `organization-archiv` feature flag (available to all
-while flag enforcement is off; per-org once on); a disabled org gets `403 { error: 'feature-disabled' }`.
+Every member of an organization reaches these routes; changing the Archiv takes
+`org:archiv:manage`, enforced in the services.
 
 | Method | Path | Auth | Notes | Request | Response |
 |--------|------|------|-------|---------|----------|
@@ -351,10 +351,7 @@ its conversation, so a vote can name an answer with no `messages` row. Whether
 the answer drew on a restricted folder is the server's own mark on that id,
 written at admission (`message_restricted_use`, ADR-0093), never the
 `conversationId` the client sends with the vote, which can only add to it. Voting
-model: re-vote = upsert, toggle-off = `DELETE` (no tombstones). All routes are
-gated by the `answer-feedback` feature flag (available to all while
-`GRID_ENFORCE_FEATURE_FLAGS` is off; stable `feature-disabled` 403 once on).
-Users only ever read/write their **own** votes; when a vote carries a
+model: re-vote = upsert, toggle-off = `DELETE` (no tombstones). Users only ever read/write their **own** votes; when a vote carries a
 `projectId`, `project:view` FGA is additionally enforced.
 
 | Method | Path | Auth | Description | Request | Response |

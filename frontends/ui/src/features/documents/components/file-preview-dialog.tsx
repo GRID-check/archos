@@ -23,7 +23,6 @@ interface FilePreviewDialogProps {
   onRenamed?: (fileId: string, displayName: string | null) => void
   /** The document was deleted in the pane's header menu. */
   onDeleted?: (fileId: string) => void
-  showMetadataPanel?: boolean
   /** Whether an `.ifc` preview offers the model workspace (`ifc-models`). */
   showModels?: boolean
   canCollaborate?: boolean
@@ -65,7 +64,6 @@ export function FilePreviewDialog({
   onTagsUpdated,
   onRenamed,
   onDeleted,
-  showMetadataPanel,
   showModels,
   canCollaborate,
 }: FilePreviewDialogProps) {
@@ -155,7 +153,6 @@ export function FilePreviewDialog({
             onTagsUpdated={onTagsUpdated}
             onRenamed={onRenamed}
             onDeleted={onDeleted}
-            showMetadataPanel={showMetadataPanel}
             showModels={showModels}
             canCollaborate={canCollaborate}
           />

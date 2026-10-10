@@ -51,7 +51,7 @@ def test_the_base_corpus_alone_is_not_a_project() -> None:
 def test_the_office_archive_is_not_a_project() -> None:
     """Live chat scope is base + Archiv + project + session.
 
-    Archiv is fail-open (`organization-archiv`). Treating it as a candidate
+    Every organization has the Archiv in scope. Treating it as a candidate
     left two names after the `s_` exclusion, so a normal project submit
     recorded no commissioning collection and the finished report was never
     filed. The archive is not a project; drop it the same way as `s_`.

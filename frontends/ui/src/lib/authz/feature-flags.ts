@@ -43,44 +43,20 @@ export const FEATURE_FLAGS = {
    * turn and leave it reachable by asking for it as a task.
    */
   taskAutomation: 'task-automation',
-  /** Command palette + global keyboard shortcuts (workspace polish). */
-  keyboardShortcuts: 'keyboard-shortcuts',
   /** Project-level knowledge-base transparency page (nav section). */
   projectKnowledgePage: 'project-knowledge-page',
   /** Per-org BYOK LLM credentials via WorkOS Vault (ADR-0022) — enterprise tier. */
   byokLlm: 'byok-llm',
   /** Platform-layer web-search gate; tenant toggle lives in org settings (ADR-0022). */
   webSearch: 'web-search',
-  /** Self-assessed confidence chip on shallow chat answers (FB-6). */
-  chatConfidenceChip: 'chat-confidence-chip',
-  /** Files preview metadata block: summary/pages/passages/contents rows (FB-8). */
-  filesMetadataPanel: 'files-metadata-panel',
   /** Standalone PNG/JPG image upload via VLM captioning (FB-15a); gates the
    *  accept-list (client) and the server-side upload allow-list (BFF). */
   imageUpload: 'image-upload',
-  /** Fold the Research runs tab into the chat-history panel as a "Deep
-   *  Research" section (FB-10). ON → hide the `research` nav item, redirect
-   *  `/research` to chat, show the Deep Research section in SessionsPanel;
-   *  OFF → keep the legacy Research tab + ResearchRunsList page. */
-  researchInChatHistory: 'research-in-chat-history',
   /** End-of-wizard AI conflict check (FB-13): on Save, an LLM checks the intake
    *  answers for internal contradictions and the user confirms/overrides or
    *  revises. Server-computed in the intake page, prop-drilled to the wizard;
    *  off → the wizard saves exactly as before (no check). */
   wizardConflictCheck: 'wizard-conflict-check',
-  /** Org-wide document Archiv (ADR-0024): a top-level, cross-project document
-   *  store shared by every project in the org. A standard WorkOS feature flag —
-   *  gated per-org by the `organization-archiv` flag when enforcement is on, and
-   *  (like every flag) available to all while enforcement is off. Gates the
-   *  `/archiv` nav entry + page, every BFF `/api/archiv/*` route, and the
-   *  injection of the org archive collection into project retrieval scope. */
-  orgArchiv: 'organization-archiv',
-  /** Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §6): the
-   *  "Was this helpful?" row under assistant answers + the
-   *  `/api/feedback/answers` routes. A standard flag — fail-open while
-   *  enforcement is off; provision it default-off in WorkOS and target the
-   *  orgs that should collect feedback. */
-  answerFeedback: 'answer-feedback',
   /**
    * Collaboration (ADR-0032/0033/0034/0035): shared chats, @-mentions with the
    * agent hand-off, and the inbox. Dark-launched — gated by the per-org
@@ -113,28 +89,6 @@ export const FEATURE_FLAGS = {
    * and degraded to the data explorer, not a deployment capability.
    */
   ifcModels: 'ifc-models',
-  /**
-   * Whether a click on an `.ifc` opens the FILE PREVIEW first, or goes straight
-   * to the full-screen model stage.
-   *
-   * Separate from `ifcModels`, which answers whether the model surfaces exist
-   * at all. This one answers what a click does when they do — and it exists
-   * because that answer used to be decided per surface rather than per product:
-   * Dateien intercepted the click and jumped to the stage, while the Archiv
-   * showed a preview it offered no way out of. Same file, two behaviours,
-   * depending on where you clicked it.
-   *
-   * ON (the default) — preview first, everywhere, with the stage one button
-   * away. An `.ifc` is then a file like every other file, and the analytical
-   * surface is something you choose rather than something you land in.
-   *
-   * OFF — the stage opens directly, everywhere, including the Archiv, which
-   * could not do it before the stage stopped requiring a project.
-   *
-   * The point of the flag is that "everywhere" holds either way: it moves both
-   * surfaces together or neither.
-   */
-  ifcPreviewFirst: 'ifc-preview-first',
   /**
    * Agent-authored documents: a finished deep-research report and a drawn
    * diagram filed into a project as `documents` rows
@@ -277,28 +231,6 @@ export function isIfcModelsEnabled(session: Pick<GridSession, 'featureFlags'>): 
  */
 export function ifcModelsEnvEnabled(): boolean {
   const raw = (process.env.GRID_IFC_MODELS_ENABLED ?? '').trim().toLowerCase()
-  return raw === '' || !['false', '0', 'no', 'off'].includes(raw)
-}
-
-/**
- * Gate for preview-first `.ifc` handling. With WorkOS flag enforcement it
- * follows the per-org `ifc-preview-first` flag; without enforcement it follows
- * `GRID_IFC_PREVIEW_FIRST`, which **defaults to true**.
- *
- * Its own env switch, the same shape as `isIfcModelsEnabled`, and for the same
- * reason: this is an interaction change on a surface people already use, so a
- * deployment has to be able to put it back without switching flag enforcement
- * on for every other feature at the same time.
- *
- * Fail-open lands on preview-first because that is the safer of the two to be
- * wrong about — a reader who wanted the stage is one button from it, while a
- * reader thrown into a full-screen viewport has lost the preview entirely.
- */
-export function isIfcPreviewFirstEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.ifcPreviewFirst)
-  }
-  const raw = (process.env.GRID_IFC_PREVIEW_FIRST ?? '').trim().toLowerCase()
   return raw === '' || !['false', '0', 'no', 'off'].includes(raw)
 }
 

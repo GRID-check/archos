@@ -1,7 +1,7 @@
 import { type ReactNode } from 'react'
 import { getGridSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
-import { FEATURE_FLAGS, isCollaborationEnabled, isFeatureEnabled } from '@/lib/authz/feature-flags'
+import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -16,27 +16,18 @@ interface ProjectChatPageProps {
  * Project chat route (server shell).
  *
  * Deliberately thin: the interactive chat surface is a client component
- * (ProjectChatClient). This server boundary exists only to resolve the two
- * chat-surface WorkOS feature flags with the session — the same
- * server-computes-`isFeatureEnabled`-then-prop-drills pattern the /app layout
- * uses for `keyboard-shortcuts` — and hand the booleans to the client tree:
- *   - `chat-confidence-chip`     → AgentResponse confidence chip
- *   - `research-in-chat-history` → SessionsPanel Deep Research section (FB-10)
- *   - `answer-feedback`          → AgentResponse per-answer thumbs row (WS-7)
- * All fail open (visible) when enforcement is off. The project layout already
- * guards auth/access, so reaching here implies an authorized session; session
- * lookup is still wrapped defensively so a transient failure never blanks chat.
+ * (ProjectChatClient). This server boundary exists only to resolve what needs
+ * the session — the collaboration gate and the reader's `project:chat` right —
+ * and hand the booleans to the client tree. The project layout already guards
+ * auth/access, so reaching here implies an authorized session; session lookup
+ * is still wrapped defensively so a transient failure never blanks chat.
  */
 const ProjectChatPage = async ({ params }: ProjectChatPageProps): Promise<ReactNode> => {
   return runWithTenantSlot(async () => {
     const { id } = await params
 
-    let showConfidenceChip = true
-    let showResearchInHistory = true
-    let showAnswerFeedback = true
-    // Collaboration is the one gate here that is default-DENY rather than
-    // fail-open: it changes who can see a conversation, so a session-lookup
-    // failure must leave it off (spec NF-7).
+    // Collaboration is default-DENY: it changes who can see a conversation, so
+    // a session-lookup failure must leave it off (spec NF-7).
     let canCollaborate = false
     let organizationId: string | null = null
     // Whether this reader may actually USE the agent here (`project:chat`).
@@ -67,9 +58,6 @@ const ProjectChatPage = async ({ params }: ProjectChatPageProps): Promise<ReactN
       const session = await getGridSession()
       if (session) {
         organizationId = session.organizationId
-        showConfidenceChip = isFeatureEnabled(session, FEATURE_FLAGS.chatConfidenceChip)
-        showResearchInHistory = isFeatureEnabled(session, FEATURE_FLAGS.researchInChatHistory)
-        showAnswerFeedback = isFeatureEnabled(session, FEATURE_FLAGS.answerFeedback)
         canCollaborate = isCollaborationEnabled(session)
         if (session.organizationId && session.organizationMembershipId) {
           try {
@@ -102,9 +90,6 @@ const ProjectChatPage = async ({ params }: ProjectChatPageProps): Promise<ReactN
     return (
       <ProjectChatClient
         projectId={id}
-        showConfidenceChip={showConfidenceChip}
-        showAnswerFeedback={showAnswerFeedback}
-        showResearchInHistory={showResearchInHistory}
         projectName={projectName}
         canCollaborate={canCollaborate}
         canChatInProject={canChatInProject}

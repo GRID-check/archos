@@ -53,7 +53,6 @@ export function usePreviewChannel(
         projectName,
         scope: shelf.documentScope,
         canCollaborate: shelf.canCollaborate,
-        showMetadataPanel: shelf.showMetadataPanel,
         showModels: shelf.showModels,
         lifecyclePermissions: shelf.lifecyclePermissions,
         viewerUserId: shelf.currentUserId,

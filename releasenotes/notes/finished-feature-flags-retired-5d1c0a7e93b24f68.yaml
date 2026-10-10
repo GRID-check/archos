@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Seven finished features no longer sit behind WorkOS flags and are simply on.
+    Delete answer-feedback, chat-confidence-chip, files-metadata-panel,
+    research-in-chat-history, keyboard-shortcuts, organization-archiv,
+    ifc-preview-first and the orphan source-origin-badges from both WorkOS
+    environments, and drop GRID_IFC_PREVIEW_FIRST wherever it is set.

@@ -206,8 +206,9 @@ export default function SessionsPreviewPage() {
           onDeleteSession={() => {}}
           onDeleteAllSessions={() => {}}
           onRenameSession={() => {}}
-          showDeepResearchSection={variant === 'research'}
-          projectId="p-1"
+          // The runs section belongs to a project; the other variants leave it
+          // out so each shows the one state it names.
+          projectId={variant === 'research' ? 'p-1' : undefined}
         />
       </main>
     </div>

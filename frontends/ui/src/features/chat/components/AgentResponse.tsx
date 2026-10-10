@@ -320,24 +320,11 @@ export interface AgentResponseProps {
    */
   showReasoning?: boolean
   /**
-   * Whether the self-assessment ConfidenceChip renders (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Defaults to true so the feature stays
-   * visible with flag enforcement off (fail-open) and existing callers/specs
-   * are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
    * Client-side message identifier of this answer — keys the per-answer
    * thumbs feedback row (WS-7). No feedback row renders when absent (e.g.
    * legacy callers), so existing usages are unaffected.
    */
   messageId?: string
-  /**
-   * Whether the per-answer thumbs feedback row renders (WorkOS
-   * `answer-feedback` flag). Defaults to true (fail-open, matching the other
-   * flag props) — the row still requires a `messageId` to appear.
-   */
-  showAnswerFeedback?: boolean
   /**
    * Whether this answer is still streaming (C6). Drives the blinking caret at
    * the end of the answer body and the partial-markdown stabilizer in the
@@ -936,9 +923,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   skillsActivated,
   skillsHidden,
   showReasoning = false,
-  showConfidenceChip = true,
   messageId,
-  showAnswerFeedback = true,
   isStreaming = false,
   routingDecision,
   readOnly = false,
@@ -1327,16 +1312,14 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     [stages, cards, cardInteractions]
   )
 
-  // What the merged footer's meta row would actually hold. The flags alone are
-  // not the answer: `showConfidenceChip` is on by default but the chip renders
+  // What the merged footer's meta row would actually hold. The chip renders
   // nothing without a level, and the feedback row needs a `messageId` — gating
-  // the row on the flags let it mount as an empty band (bare spacer + its own
-  // gap) on a meta turn that has neither.
+  // the row on anything less let it mount as an empty band (bare spacer + its
+  // own gap) on a meta turn that has neither.
   const hasConfidence =
-    showConfidenceChip &&
-    (answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high')
+    answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high'
   // Rating somebody else's answer is not the reader's to do (readOnly).
-  const hasFeedback = !readOnly && showAnswerFeedback && Boolean(messageId)
+  const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
   // Prüfvermerk is worse than none — and a cards-only turn has no markdown to
   // hand over, so it gets no button that copies ''. While the answer arrives

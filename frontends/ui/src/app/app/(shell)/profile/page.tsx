@@ -10,7 +10,6 @@
 import type { JSX } from 'react'
 import { Building2, UserRound } from 'lucide-react'
 import { withPageSession } from '@/lib/auth/require-auth'
-import { FEATURE_FLAGS, isFeatureEnabled } from '@/lib/authz/feature-flags'
 import { BackLink, ShellContent } from '@/components/shell'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'
@@ -147,7 +146,9 @@ export default async function ProfilePage(): Promise<JSX.Element> {
           <ProfileControls
             authRequired={isAuthRequired()}
             email={session.email}
-            shortcutsAvailable={isFeatureEnabled(session, FEATURE_FLAGS.keyboardShortcuts)}
+            // The /app layout mounts the shortcuts for every session with an
+            // organization, so the toggle shows exactly where they exist.
+            shortcutsAvailable={Boolean(session.organizationId)}
           />
         </div>
       </ShellContent>

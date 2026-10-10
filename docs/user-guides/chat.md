@@ -129,7 +129,7 @@ The list groups chats by day (Today, Yesterday, then the date) with sticky day h
 - **Ellipse**: the chat's research report has expired
 - **Chat bubble**: a plain chat with no deep research
 
-Rename and delete appear on the row on hover or keyboard focus. With the `research-in-chat-history` flag on, a **Deep Research** section above the day groups lists this project's research runs — including headless/CLI ones that never touched this browser — each stating its status in words (*Running*, *Report ready*, *Failed*, *Cancelled*).
+Rename and delete appear on the row on hover or keyboard focus. A **Deep Research** section above the day groups lists this project's research runs — including headless/CLI ones that never touched this browser — each stating its status in words (*Running*, *Report ready*, *Failed*, *Cancelled*).
 
 The footer explains that chats live in this browser and that research reports may expire on the server, warns when browser storage is nearly full (and says what to do about it), and holds **Delete all chats** — the destructive bulk action, kept at the far end of the panel rather than above the list it deletes. It is scoped to the current project.
 
