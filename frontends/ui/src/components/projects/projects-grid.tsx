@@ -80,6 +80,9 @@ function SectionHeading({ id, children, count }: { id: string; children: string;
   )
 }
 
+/** Only work in progress takes a rail slot; a paused or closed project keeps its place in the list (ADR-0098). */
+const isRailable = (project: Project): boolean => project.status === 'active'
+
 export function ProjectsGrid({
   projects,
   docCounts,
@@ -90,9 +93,13 @@ export function ProjectsGrid({
   const [query, setQuery] = useState('')
   const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>(() => defaultProjectStatusFilter(projects))
   const statusCounts = useMemo(() => countByStatus(projects), [projects])
-  // Offered only once there is something to tell apart: a list with no closed
-  // project needs no control that would only ever show one answer.
-  const showStatusFilter = statusCounts.closed > 0
+  // Offered only once there is something to tell apart: a list of active
+  // projects alone needs no control that would only ever show one answer. A
+  // segment with nothing in it is left out, except Aktiv and Alle.
+  const showStatusFilter = statusCounts.closed > 0 || statusCounts.paused > 0
+  const statusOptions = PROJECT_STATUS_FILTERS.filter(
+    (option) => option === 'active' || option === 'all' || statusCounts[option] > 0
+  )
 
   const needle = query.trim().toLowerCase()
   const isSearching = needle.length > 0
@@ -107,7 +114,7 @@ export function ProjectsGrid({
   // One helper serves both modes: zero rail slots turns the split into "order
   // everything by recency", which is exactly what a result list wants too.
   const { resume, rest, basis } = useMemo(
-    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined),
+    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined, isRailable),
     [filtered, viewerActivity, isSearching],
   )
 
@@ -163,7 +170,7 @@ export function ProjectsGrid({
           className="mt-5"
           data-testid="project-status-filter"
         >
-          {PROJECT_STATUS_FILTERS.map((option) => (
+          {statusOptions.map((option) => (
             <ToggleGroupItem key={option} value={option} data-testid={`project-status-filter-${option}`}>
               {t(`list.filter.${option}`)}
               <CountPill>{statusCounts[option]}</CountPill>
@@ -184,7 +191,7 @@ export function ProjectsGrid({
         ) : emptyInStatus ? (
           <EmptyState
             variant="bare"
-            title={statusFilter === 'closed' ? t('list.noneInFilter.closed') : t('list.noneInFilter.active')}
+            title={t(`list.noneInFilter.${statusFilter === 'all' ? 'active' : statusFilter}`)}
             description={t('list.noneInFilter.description')}
             action={
               <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
@@ -219,23 +226,25 @@ export function ProjectsGrid({
           // `gap-8` is the documented gap between major sections; whitespace
           // does the separating, so neither heading needs a rule under it.
           <div className="flex flex-col gap-8 animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
-            <section aria-labelledby="projects-resume">
-              <SectionHeading id="projects-resume">
-                {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
-              </SectionHeading>
-              {/* The staple project card, unchanged — the rail is a selection
-                  and an ordering, not a new kind of card. */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-                {resume.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    docCount={docCounts[project.id] ?? 0}
-                    activityAt={viewerActivity[project.id]}
-                  />
-                ))}
-              </div>
-            </section>
+            {resume.length > 0 && (
+              <section aria-labelledby="projects-resume">
+                <SectionHeading id="projects-resume">
+                  {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
+                </SectionHeading>
+                {/* The staple project card, unchanged — the rail is a selection
+                    and an ordering, not a new kind of card. */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+                  {resume.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      docCount={docCounts[project.id] ?? 0}
+                      activityAt={viewerActivity[project.id]}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {rest.length > 0 && (
               <section aria-labelledby="projects-more">
@@ -243,7 +252,7 @@ export function ProjectsGrid({
                     MINUS the rail, so an "all" heading would sit above a count
                     that disagrees with the page. */}
                 <SectionHeading id="projects-more" count={rest.length}>
-                  {t('list.more.heading')}
+                  {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${statusFilter}`)}
                 </SectionHeading>
                 <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
               </section>

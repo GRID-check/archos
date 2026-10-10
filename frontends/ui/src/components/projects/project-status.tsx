@@ -1,15 +1,17 @@
 'use client'
 
 /**
- * Project status: the derivation helper and the chip (ADR-0090).
+ * Project status: the derivation helper and the chip (ADR-0098, ADR-0090).
  *
- * A project is `active` or `closed` (`projects.status`, migration 0116). A
+ * A project is `active`, `paused` or `closed` (`projects.status`, migrations
+ * 0116 and 0129); a closed one says whether it was completed or not realized. A
  * soft-deleted project never reaches a surface that shows this chip; it lives in
  * the "Recently deleted" panel.
  *
  * Two chips, one decision each:
- *   - {@link ProjectStatusChip}: the project's own status, on the project card
- *     and, for a closed project only, on the list row.
+ *   - {@link ProjectStatusChip}: the project's own status, where a project is
+ *     named (card, row, the Overview's hero), and only when it is NOT active:
+ *     active is the normal case, and a chip on every row says nothing.
  *   - {@link ProjectClosedChip}: on a FILE, wherever it appears, to say which
  *     closed project it belongs to. A file of an active project carries
  *     nothing; the project it is in is the page around it.
@@ -17,17 +19,17 @@
 
 import type { JSX } from 'react'
 import type { CSSProperties } from 'react'
-import { Activity, Lock } from 'lucide-react'
+import { Activity, Lock, PauseCircle } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import type { Project } from '@/lib/db/schema'
-import type { ProjectStatus } from '@/lib/projects/project-status'
+import type { ProjectOutcome, ProjectStatus } from '@/lib/projects/project-status'
 import { useTranslations } from '@/i18n'
 
 export type { ProjectStatus }
 
 /** The display status of a project that reached a surface. */
 export function getProjectStatus(project: Pick<Project, 'status'>): ProjectStatus {
-  return project.status === 'closed' ? 'closed' : 'active'
+  return project.status === 'closed' || project.status === 'paused' ? project.status : 'active'
 }
 
 /**
@@ -41,34 +43,53 @@ const STATUS_STYLE: Record<ProjectStatus, CSSProperties | undefined> = {
       'var(--status-active-tint, color-mix(in oklch, var(--status-active, var(--text-color-feedback-success)) 14%, transparent))',
     color: 'var(--status-active-text, var(--status-active, var(--text-color-feedback-success)))',
   },
+  paused: undefined,
   closed: undefined,
 }
 
-const STATUS_VARIANT: Record<ProjectStatus, 'success' | 'muted'> = {
+const STATUS_VARIANT: Record<ProjectStatus, 'success' | 'muted' | 'outline'> = {
   active: 'success',
+  paused: 'outline',
   closed: 'muted',
 }
 
 const STATUS_ICON: Record<ProjectStatus, typeof Activity> = {
   active: Activity,
+  paused: PauseCircle,
   closed: Lock,
 }
 
 interface ProjectStatusChipProps {
   status: ProjectStatus
+  /** How a closed project ended: a project that was not realized says so. */
+  outcome?: ProjectOutcome | null
   size?: 'sm' | 'md'
 }
 
-/** Small tinted status chip (Aktiv / Abgeschlossen). */
-export function ProjectStatusChip({ status, size = 'md' }: ProjectStatusChipProps): JSX.Element {
+/** Small status chip: Aktiv, Ruhend, Abgeschlossen, or Nicht realisiert. */
+export function ProjectStatusChip({ status, outcome = null, size = 'md' }: ProjectStatusChipProps): JSX.Element {
   const t = useTranslations('projects')
   const Icon = STATUS_ICON[status]
+  const label = status === 'closed' && outcome === 'cancelled' ? t('card.status.cancelled') : t(`card.status.${status}`)
   return (
     <Chip variant={STATUS_VARIANT[status]} size={size} style={STATUS_STYLE[status]}>
       <Icon aria-hidden />
-      {t(`card.status.${status}`)}
+      {label}
     </Chip>
   )
+}
+
+/** The chip a named project carries: none while it is active. */
+export function ProjectStatusMark({
+  project,
+  size = 'sm',
+}: {
+  project: Pick<Project, 'status' | 'closedOutcome'>
+  size?: 'sm' | 'md'
+}): JSX.Element | null {
+  const status = getProjectStatus(project)
+  if (status === 'active') return null
+  return <ProjectStatusChip status={status} outcome={project.closedOutcome} size={size} />
 }
 
 /**

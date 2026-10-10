@@ -106,7 +106,7 @@ export async function resolveShellChrome(): Promise<ShellChrome> {
   if (session.organizationId) {
     try {
       projects = (await listProjects(session as AuthorizedSession))
-        .map((project) => ({ id: project.id, name: project.name }))
+        .map((project) => ({ id: project.id, name: project.name, status: project.status }))
         .sort((a, b) => a.name.localeCompare(b.name))
     } catch {
       projects = []

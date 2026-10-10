@@ -36,11 +36,13 @@ export const projects = {
     filter: {
       label: 'Filter projects by status',
       active: 'Active',
+      paused: 'Paused',
       closed: 'Closed',
       all: 'All',
     },
     noneInFilter: {
       active: 'No active projects',
+      paused: 'No paused projects',
       closed: 'No closed projects',
       description: 'There are no projects in this view.',
       showAll: 'Show all projects',
@@ -56,11 +58,11 @@ export const projects = {
     addressMissing: 'No address yet. It is entered in the brief.',
     period: 'Period',
     startedOn: 'Start',
-    endedOn: 'Completion',
     open: 'open',
-    savePeriod: 'Save period',
-    periodSaved: 'Period saved.',
-    periodInvalid: 'The completion lies before the start.',
+    running: 'ongoing',
+    endedOnRunning: 'Completion: {end}. It is set when the project is closed.',
+    savePeriod: 'Save start',
+    periodSaved: 'Start saved.',
     people: 'People',
     peopleDescription:
       'Everyone who worked on the project, including former staff and external planners without a Piloti account. Only name, function, company and period; Piloti does not use these details in answers.',
@@ -85,9 +87,6 @@ export const projects = {
     error: 'That did not work. Please try again.',
   },
   cleanup: {
-    title: 'Close project',
-    intro:
-      'Before closing, Piloti can clear out working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
     loading: 'Piloti is going through the files …',
     aiNotice:
       'AI proposal: made by Piloti from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
@@ -121,26 +120,78 @@ export const projects = {
   lifecycle: {
     fileChip: '{name} · closed',
     fileChipNoName: 'Closed project',
+    outcome: {
+      completed: 'Completed',
+      cancelled: 'Not realized',
+    },
     banner: {
       title: 'Closed project · read-only',
       closedOn: 'Closed on {date}.',
+      cancelled: 'It was not realized.',
       body: 'Files, folders, the brief and project memory can no longer be changed. You can still ask about it in chat.',
       outsider:
         'You can see this project because closed projects are readable by the whole office. Folders with their own access list stay hidden from you.',
+      pausedTitle: 'Paused project',
+      pausedOn: 'Paused since {date}.',
+      pausedBody: 'Everything stays editable. Scheduled tasks run again once it is resumed.',
     },
     card: {
       heading: 'Project status',
-      activeDescription:
-        'Close the project when the work is done. It stays complete and searchable, becomes read-only and can be read by everyone in the office. Folders with their own access list stay restricted.',
+      track: 'Project lifecycle',
+      activeDescription: 'In progress. Its members work in it, and scheduled tasks run.',
+      pausedDescription:
+        'Waiting, for a permit or a client decision, say. It stays editable and visible only to its members; scheduled tasks do not run, and it is no longer listed under “Active”.',
       closedDescription:
-        'The project is closed and read-only. Reopen it to change files, folders, the brief or project memory. Only its members will see it again.',
+        'Read-only and readable by the whole office, as a reference for future projects. Folders with their own access list stay restricted. Reopened, it is editable again and visible only to its members.',
+      closedFacts: '{outcome} · completion {month}',
       closedOn: 'Closed on {date}',
+      pausedOn: 'Paused since {date}',
+      whichOne: 'Pause when the project is waiting and will go on. Close when the work is over, built or not.',
+      pause: 'Pause',
+      resume: 'Resume',
       close: 'Close project',
       reopen: 'Reopen project',
     },
     closeDialog: {
-      description:
-        'Afterwards nobody can change its files, folders, brief or project memory, and deep research and tasks stop running. Everyone in the office can read it and ask about it. You can reopen it at any time. If the project profile has no completion yet, the current month is entered.',
+      title: 'Close project',
+      stepsLabel: 'Steps',
+      stepProgress: 'Step {current} of {total}',
+      back: 'Back',
+      next: 'Next',
+      steps: {
+        ending: {
+          label: 'Completion',
+          description: 'How the project ended, and when. Both go into the project profile.',
+        },
+        keep: {
+          label: 'What stays',
+          description: 'What this project leaves the office. None of it is required.',
+        },
+        cleanup: {
+          label: 'Clear out',
+          description:
+            'Piloti proposes what the finished project no longer needs: working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
+        },
+      },
+      outcome: {
+        label: 'How did the project end?',
+        completedHint: 'Built or handed over; the work is delivered.',
+        cancelledHint: 'A competition not won, or a commission withdrawn, say.',
+      },
+      endedOn: {
+        label: 'Completion',
+        hint: 'The month the work ended. For a project that ended earlier, enter that month.',
+        invalid: 'Choose a month.',
+        future: 'The completion cannot lie in the future.',
+        beforeStart: 'The completion lies before the start in the project profile.',
+      },
+      changes: {
+        heading: 'What changes',
+        readOnly: 'Files, folders, the brief and project memory become read-only.',
+        office: 'Everyone in the office can read the project and ask about it. Folders with their own access list stay restricted.',
+        stops: 'Deep research and scheduled tasks stop running.',
+        reopen: 'You can reopen it at any time.',
+      },
     },
     debrief: {
       intro:
@@ -214,6 +265,9 @@ export const projects = {
       confirm: 'Reopen',
     },
     toast: {
+      paused: 'Project paused.',
+      resumed: 'Project resumed.',
+      undo: 'Undo',
       closed: 'Project closed.',
       reopened: 'Project reopened.',
       error: 'The project status could not be changed.',
@@ -224,7 +278,9 @@ export const projects = {
       'Planning-office workspace. Add documents and a brief so Piloti can work from this project.',
     status: {
       active: 'Active',
+      paused: 'Paused',
       closed: 'Closed',
+      cancelled: 'Not realized',
     },
     lastActivity: 'Last activity',
     /** The viewer's OWN last message in the project — not the project's. */

@@ -23,15 +23,19 @@ import {
   CalendarDays,
   ClipboardList,
   FileText,
+  Lock,
+  LockOpen,
   MessageSquare,
   MoreHorizontal,
+  PauseCircle,
   Pencil,
+  PlayCircle,
   Trash2,
 } from 'lucide-react'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { BentoCell, BentoGrid, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Button } from '@/components/ui/button'
-import { ProjectStatusChip } from '@/components/projects/project-status'
+import { ProjectStatusMark } from '@/components/projects/project-status'
 import type { SteckbriefView } from '@/lib/projects/steckbrief-types'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes, formatDate } from '@/lib/format'
@@ -39,6 +43,7 @@ import type { ProjectOverviewData } from '../../types'
 import { settingsSectionHref } from '../../lib/settings-sections'
 import { ProjectDeleteDialog } from '../project-delete-dialog'
 import { ProjectLifecycleCard } from '../project-lifecycle-card'
+import { useProjectLifecycle } from '../../lib/use-project-lifecycle'
 import { ProjectRenameDialog } from '../project-rename-dialog'
 import { ProjectSteckbrief, type SteckbriefAccount } from '../project-steckbrief'
 import type { ProjectUsageView } from '../settings/usage-settings'
@@ -50,7 +55,7 @@ import { UsageTile } from './usage-tile'
 export interface ProjectOverviewAccess {
   /** Rename (`project:manage`, refused in a closed project). */
   manage: boolean
-  /** Close, reopen and delete: `project:manage` even when closed (ADR-0090). */
+  /** Pause, resume, close, reopen and delete: `project:manage` even when closed (ADR-0090, ADR-0098). */
   changeStatus: boolean
   /** The closing debrief's confirm and lesson (`project:memory:write`). */
   writeMemory: boolean
@@ -124,15 +129,14 @@ export function ProjectOverview({
             <ProjectSteckbrief projectId={id} steckbrief={steckbrief} accounts={steckbriefAccounts} />
           </BentoCell>
         )}
-        {/* Close or reopen (ADR-0090): the one change a closed project allows. */}
+        {/* The lifecycle (ADR-0098): pause, resume, close, reopen. Reopening is
+            the one change a closed project allows. */}
         {access.changeStatus && (
           <BentoCell span={steckbrief ? 'small' : 'wide'}>
             <ProjectLifecycleCard
               projectId={id}
-              status={data.status}
-              closedAt={data.closedAt}
+              lifecycle={data.lifecycle}
               profile={data.profile}
-              startedOn={steckbrief?.startedOn ?? null}
               canWriteMemory={access.writeMemory}
             />
           </BentoCell>
@@ -156,6 +160,14 @@ function HeroTile({
   const { locale } = useLocale()
   const [renaming, setRenaming] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const lifecycle = useProjectLifecycle({
+    projectId: data.id,
+    lifecycle: data.lifecycle,
+    profile: data.profile,
+    canWriteMemory: access.writeMemory,
+  })
+  const tProjects = useTranslations('projects')
+  const status = data.lifecycle.status
   const projectPath = `/app/projects/${encodeURIComponent(data.id)}`
   const summary = data.profileDisplay?.summary?.trim()
 
@@ -172,6 +184,21 @@ function HeroTile({
         ]
       : []),
     ...(access.manage && access.changeStatus ? [{ type: 'separator' as const }] : []),
+    // The lifecycle's moves from here too, so they are not only at the foot of
+    // the page (ADR-0098); the status card says what each one means.
+    ...(access.changeStatus && status === 'active'
+      ? [{ type: 'item' as const, id: 'pause', label: tProjects('lifecycle.card.pause'), icon: PauseCircle, onSelect: () => void lifecycle.pause() }]
+      : []),
+    ...(access.changeStatus && status === 'paused'
+      ? [{ type: 'item' as const, id: 'resume', label: tProjects('lifecycle.card.resume'), icon: PlayCircle, onSelect: () => void lifecycle.resume() }]
+      : []),
+    ...(access.changeStatus && status !== 'closed'
+      ? [{ type: 'item' as const, id: 'close', label: tProjects('lifecycle.card.close'), icon: Lock, onSelect: lifecycle.requestClose }]
+      : []),
+    ...(access.changeStatus && status === 'closed'
+      ? [{ type: 'item' as const, id: 'reopen', label: tProjects('lifecycle.card.reopen'), icon: LockOpen, onSelect: lifecycle.requestReopen }]
+      : []),
+    ...(access.changeStatus ? [{ type: 'separator' as const }] : []),
     // Deleting stays open in a closed project: it is still the way to remove it.
     ...(access.changeStatus
       ? [
@@ -219,7 +246,7 @@ function HeroTile({
           <p className="text-balance text-2xl font-semibold tracking-tight md:text-3xl">
             {data.name}
           </p>
-          {data.status === 'closed' && <ProjectStatusChip status="closed" size="sm" />}
+          <ProjectStatusMark project={{ status, closedOutcome: data.lifecycle.closedOutcome }} />
         </div>
         <p
           className={
@@ -272,6 +299,7 @@ function HeroTile({
           onOpenChange={setRenaming}
         />
       )}
+      {access.changeStatus && lifecycle.dialogs}
       {access.changeStatus && (
         <ProjectDeleteDialog
           projectId={data.id}

@@ -1188,7 +1188,13 @@ echo "==> 0102 backfill, constraints and down migration verified"
 # once every project is active it goes, and 0115 applies again.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0116 project status and its down migration on grid_app"
-# Down migrations run newest first: 0117's trigger uses 0116's function.
+# Down migrations run newest first: 0129 constrains 0116's status and 0117's
+# period, and 0117's trigger uses 0116's function. 0129 is re-applied and
+# checked after the 0117 block below.
+$MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0129_project_lifecycle.down.sql" >/dev/null || {
+  echo "DOWN MIGRATION 0129 FAILED before the 0116 check — re-run without -q to see the error" >&2
+  exit 1
+}
 $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0117_project_steckbrief.down.sql" >/dev/null || {
   echo "DOWN MIGRATION 0117 FAILED before the 0116 check — re-run without -q to see the error" >&2
   exit 1
@@ -1255,3 +1261,64 @@ $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0117_project_steckbrief.sql" >/dev/nu
 }
 check14 "SELECT relrowsecurity FROM pg_class WHERE relname = 'project_people'" "t" "0116 applies again, with row-level security"
 echo "==> 0117 Steckbrief and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0129: the lifecycle state machine (ADR-0098). Paused carries its
+# date, closed carries its outcome and always an Abschluss; the backfill gives
+# a closed row of before 0129 both; the down turns a paused project active.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0129 project lifecycle and its down migration on grid_app"
+check129() {
+  local got
+  got=$($MIGRATE -tAc "$1")
+  if [ "$got" != "$2" ]; then
+    echo "0129 ASSERTION FAILED: $3" >&2
+    echo "  query: $1" >&2
+    echo "  got:   $got" >&2
+    echo "  want:  $2" >&2
+    exit 1
+  fi
+}
+refused129() {
+  if $MIGRATE -v ON_ERROR_STOP=1 -q -c "$1" >/dev/null 2>&1; then
+    echo "0129 ASSERTION FAILED: $2" >&2
+    exit 1
+  fi
+}
+$MIGRATE -v ON_ERROR_STOP=1 -q <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name, started_on)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000129', 'org_0129', 'Lifecycle 0129', 'user_1', 'proj_0129', '2031-03-01');
+UPDATE projects SET status = 'closed', closed_at = '2030-06-15T10:00:00Z', closed_by = 'user_1'
+  WHERE id = 'aaaaaaaa-0000-4000-8000-000000000129';
+SQL
+$MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0129_project_lifecycle.sql" >/dev/null || {
+  echo "MIGRATION 0129 FAILED — re-run without -q to see the error" >&2
+  exit 1
+}
+P129="id = 'aaaaaaaa-0000-4000-8000-000000000129'"
+check129 "SELECT closed_outcome FROM projects WHERE $P129" "completed" "a closed project of before 0129 is completed"
+check129 "SELECT ended_on FROM projects WHERE $P129" "2031-03-01" "its missing Abschluss is the close month, never before the Beginn"
+refused129 "UPDATE projects SET ended_on = NULL WHERE $P129" "a closed project lost its Abschluss"
+refused129 "UPDATE projects SET closed_outcome = 'abandoned' WHERE $P129" "an unknown outcome was accepted"
+refused129 "UPDATE projects SET status = 'active', closed_at = NULL, closed_by = NULL WHERE $P129" "a project left closed with its outcome standing"
+$MIGRATE -v ON_ERROR_STOP=1 -q -c "UPDATE projects SET status = 'active', closed_at = NULL, closed_by = NULL, closed_outcome = NULL WHERE $P129"
+check129 "SELECT ended_on FROM projects WHERE $P129" "2031-03-01" "a reopen keeps the Abschluss for the next close"
+refused129 "UPDATE projects SET status = 'paused' WHERE $P129" "a paused project without a date"
+refused129 "UPDATE projects SET status = 'archived' WHERE $P129" "an unknown status was accepted"
+$MIGRATE -v ON_ERROR_STOP=1 -q -c "UPDATE projects SET status = 'paused', paused_at = now() WHERE $P129"
+$MIGRATE -v ON_ERROR_STOP=1 -q -c "INSERT INTO project_folders (organization_id, project_id, name, path) VALUES ('org_0129', 'aaaaaaaa-0000-4000-8000-000000000129', 'Plaene', 'Plaene')" >/dev/null || {
+  echo "0129 ASSERTION FAILED: a paused project refused an insert; only a closed one may" >&2
+  exit 1
+}
+$MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0129_project_lifecycle.down.sql" >/dev/null || {
+  echo "DOWN MIGRATION 0129 FAILED — re-run without -q to see the error" >&2
+  exit 1
+}
+check129 "SELECT status FROM projects WHERE $P129" "active" "the down turned the paused project active"
+check129 "SELECT count(*) FROM information_schema.columns WHERE table_name = 'projects' AND column_name IN ('paused_at','closed_outcome')" "0" "the down dropped both columns"
+$MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0129_project_lifecycle.sql" >/dev/null || {
+  echo "MIGRATION 0129 FAILED when re-applied after its down migration" >&2
+  exit 1
+}
+$MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM projects WHERE $P129"
+echo "==> 0129 project lifecycle and down migration verified"

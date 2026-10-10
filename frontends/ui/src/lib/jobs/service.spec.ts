@@ -209,7 +209,7 @@ beforeEach(() => {
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-admin' } as never)
   vi.mocked(requireSkillsEnabled).mockReturnValue(null)
   vi.mocked(enforcementOn).mockReturnValue(false)
-  vi.mocked(findProjectInOrg).mockResolvedValue({ collectionName: 'proj_x' } as never)
+  vi.mocked(findProjectInOrg).mockResolvedValue({ collectionName: 'proj_x', status: 'active' } as never)
   vi.mocked(computeCollectionScope).mockReturnValue(['proj_x'])
   vi.mocked(getEffectiveModelOverrides).mockResolvedValue(null)
   vi.mocked(loadProjectPromptView).mockResolvedValue(null)
@@ -709,6 +709,16 @@ describe('fireScheduledJob', () => {
     expect(result).toEqual({ fired: false, reason: 'project-closed' })
     expect(submitJob).not.toHaveBeenCalled()
     expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped', error: 'Project is closed' })
+  })
+
+  it('skips a schedule whose project is paused, and resumes nothing until it is active again (ADR-0098)', async () => {
+    vi.mocked(findProjectInOrg).mockResolvedValueOnce({ collectionName: 'proj_x', status: 'paused' } as never)
+
+    const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    expect(result).toEqual({ fired: false, reason: 'project-paused' })
+    expect(submitJob).not.toHaveBeenCalled()
+    expect(vi.mocked(repository.insertRun).mock.calls[0][0]).toMatchObject({ status: 'skipped', error: 'Project is paused' })
   })
 
   it('fires and reports the backend id', async () => {

@@ -156,36 +156,79 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     await insertDocument('Werkvertrag.pdf', folder.vertraege, access.restrictedCollectionName(COLLECTION, folder.vertraege))
   })
 
+  /** Back to active from wherever a test left it. */
+  const reset = () =>
+    inTenant(() =>
+      db.execute(sql`
+        UPDATE projects SET status = 'active', paused_at = NULL, closed_at = NULL, closed_by = NULL, closed_outcome = NULL
+        WHERE id = ${projectId}::uuid
+      `)
+    )
+  const reopen = () => repo.setProjectStatusInOrg(projectId, ORG, 'closed', { status: 'active' })
+
   beforeEach(async () => {
     // Every test starts from an active project.
-    await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
+    await reset()
   })
 
   afterAll(async () => {
-    await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
+    await reset()
     await inTenant(() => db.execute(sql`DELETE FROM project_memory WHERE organization_id = ${ORG}`))
     await inTenant(() => db.execute(sql`DELETE FROM documents WHERE organization_id = ${ORG}`))
     await inTenant(() => db.execute(sql`DELETE FROM projects WHERE organization_id = ${ORG}`))
   })
 
-  const close = () => repo.setProjectStatusInOrg(projectId, ORG, { status: 'closed', closedBy: USER, at: new Date() })
+  const close = (from: 'active' | 'paused' = 'active') =>
+    repo.setProjectStatusInOrg(projectId, ORG, from, {
+      status: 'closed',
+      closedBy: USER,
+      at: new Date(),
+      outcome: 'completed',
+      endedOn: '2026-10-01',
+    })
 
-  it('closes once and reopens once, stamping and clearing who and when', async () => {
+  it('closes once and reopens once, stamping and clearing who, when and how', async () => {
     const closed = await close()
-    expect(closed).toMatchObject({ status: 'closed', closedBy: USER })
+    expect(closed).toMatchObject({ status: 'closed', closedBy: USER, closedOutcome: 'completed', endedOn: '2026-10-01' })
     expect(closed?.closedAt).toBeInstanceOf(Date)
     expect(await close()).toBeNull()
 
-    const reopened = await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
-    expect(reopened).toMatchObject({ status: 'active', closedAt: null, closedBy: null })
-    expect(await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })).toBeNull()
+    const reopened = await reopen()
+    expect(reopened).toMatchObject({ status: 'active', closedAt: null, closedBy: null, closedOutcome: null })
+    expect(await reopen()).toBeNull()
   })
 
-  it('refuses a status that is not one, and a closed row that does not say when and by whom', async () => {
+  it('pauses and resumes without touching access, and closes from paused (ADR-0098)', async () => {
+    const paused = await repo.setProjectStatusInOrg(projectId, ORG, 'active', { status: 'paused', at: new Date() })
+    expect(paused).toMatchObject({ status: 'paused' })
+    expect(paused?.pausedAt).toBeInstanceOf(Date)
+    // Writable, and still the members' alone.
+    const parked = await insertFolder('Pausiert', null)
+    await inTenant(() => db.execute(sql`DELETE FROM project_folders WHERE id = ${parked}::uuid`))
+    await expect(authz.requireProjectAccess(session('outsider'), projectId, 'project:view')).rejects.toMatchObject({ status: 404 })
+
+    expect(await repo.setProjectStatusInOrg(projectId, ORG, 'active', { status: 'paused', at: new Date() })).toBeNull()
+    expect(await close('paused')).toMatchObject({ status: 'closed', pausedAt: null })
+    await reopen()
+    expect(await repo.setProjectStatusInOrg(projectId, ORG, 'active', { status: 'paused', at: new Date() })).toMatchObject({ status: 'paused' })
+    expect(await repo.setProjectStatusInOrg(projectId, ORG, 'paused', { status: 'active' })).toMatchObject({ status: 'active', pausedAt: null })
+  })
+
+  it('refuses a status that is not one, a closed row that does not say when, by whom and how, and a paused one without its date', async () => {
+    await expect(
+      inTenant(() =>
+        db.execute(
+          sql`UPDATE projects SET status = 'closed', closed_at = now(), closed_by = ${USER}, ended_on = '2026-10-01' WHERE id = ${projectId}::uuid`
+        )
+      )
+    ).rejects.toThrow()
+    await expect(inTenant(() => db.execute(sql`UPDATE projects SET status = 'paused' WHERE id = ${projectId}::uuid`))).rejects.toThrow()
     await expect(inTenant(() => db.execute(sql`UPDATE projects SET status = 'archived' WHERE id = ${projectId}::uuid`))).rejects.toThrow()
     await expect(
       inTenant(() =>
-        db.execute(sql`UPDATE projects SET status = 'closed', closed_at = now(), closed_by = NULL WHERE id = ${projectId}::uuid`)
+        db.execute(
+          sql`UPDATE projects SET status = 'closed', closed_at = now(), closed_by = NULL, closed_outcome = 'completed', ended_on = '2026-10-01' WHERE id = ${projectId}::uuid`
+        )
       )
     ).rejects.toThrow()
     await expect(
@@ -227,7 +270,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     expect(await access.isFolderVisibleToMember(ORG, projectId, folder.vertraege, 'user_outsider')).toBe(false)
     expect(await access.isFolderVisibleToMember(ORG, projectId, folder.vertraege, 'user_member')).toBe(true)
 
-    await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
+    await reopen()
     expect(await listedFor('member')).toEqual(before.member)
     await expect(authz.requireProjectAccess(session('outsider'), projectId, 'project:view')).rejects.toMatchObject({ status: 404 })
   })
@@ -260,7 +303,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
     // Ingestion finishing for a file uploaded before the close is an update.
     await inTenant(() => db.execute(sql`UPDATE documents SET status = 'completed' WHERE project_id = ${projectId}::uuid`))
 
-    await repo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
+    await reopen()
     await insertDocument('Nachtrag.pdf', null)
   })
 })

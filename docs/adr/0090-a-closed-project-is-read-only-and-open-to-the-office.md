@@ -182,3 +182,4 @@ reopen; the CHECKs; and the trigger. The script also takes 0115 down and up.
 * Folder access: [ADR-0088](0088-folder-access-is-read-write-per-role.md). Authorization: ADR-0038.
 * User guide: [`user-guides/projects.md`](../user-guides/projects.md#closing-a-project).
 * Table: [`database/schema.md`](../database/schema.md#projects).
+* The lifecycle around it (pausing, the outcome of a close, the Abschluss named by closing): [ADR-0098](0098-the-project-lifecycle-is-a-small-state-machine.md), proposed.

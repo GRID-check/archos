@@ -133,7 +133,15 @@ const STECKBRIEF: SteckbriefView = {
 const OVERVIEW_DATA = {
   ...PROFILE_DATA,
   status: 'active' as const,
-  closedAt: null,
+  lifecycle: {
+    status: 'active' as const,
+    pausedAt: null,
+    closedAt: null,
+    closedOutcome: null,
+    endedOn: null,
+    startedOn: '2026-03' as const,
+    suggestedEndedOn: null,
+  },
   name: 'Wohnbau Mariahilf',
   collectionName: 'proj_demo',
   createdAt: '2026-03-01T09:00:00Z',

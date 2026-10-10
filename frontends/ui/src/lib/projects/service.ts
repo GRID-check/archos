@@ -30,7 +30,15 @@ import type {
   ProjectMemoryKind,
 } from '@/lib/db/schema'
 import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
-import { isProjectClosed, keptWhenClosed, openToOrganizationWhenClosed, type ProjectStatus } from './project-status'
+import {
+  canTransition,
+  isProjectClosed,
+  keptWhenClosed,
+  openToOrganizationWhenClosed,
+  type ProjectOutcome,
+  type ProjectStatus,
+} from './project-status'
+import { dateToMonth, monthToDate, type Month } from './month'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
 import { withServedEvidence } from './memory-evidence'
@@ -58,6 +66,7 @@ import {
   setProjectStatusInOrg,
   setProjectWorkosResourceId,
   softDeleteProjectAndEnqueue,
+  type ProjectStatusWrite,
 } from './repository'
 
 /**
@@ -326,46 +335,95 @@ export async function deleteProject(
   return { purgeAfter }
 }
 
+/** A move of the lifecycle as a caller asks for it (ADR-0098). Closing names how and when it ended. */
+export type ProjectStatusChange =
+  | { status: 'active' }
+  | { status: 'paused' }
+  | { status: 'closed'; outcome: ProjectOutcome; endedOn: Month }
+
 /**
- * Close a project, or reopen it (ADR-0090). `project:manage`, asked as if the
- * project were active: it is the one write a closed project allows. Closing
- * deletes and purges nothing; it makes the project read-only and opens it to
- * every member of the organization for reading, with every folder that has its
- * own role list as restricted as before. Both directions are audited. A
- * project already in the requested state is a conflict, so a double click
- * writes one event.
+ * Move a project through its lifecycle (ADR-0098): pause, resume, close,
+ * reopen. `project:manage`, asked as if the project were active: it is the one
+ * write a closed project allows. Closing deletes and purges nothing; it makes
+ * the project read-only and opens it to every member of the organization for
+ * reading, with every folder that has its own role list as restricted as before
+ * (ADR-0090). It names the outcome and the Abschluss month, which may not lie
+ * in the future or before the Beginn.
+ *
+ * A move the lifecycle does not have (pausing a closed project, closing a
+ * closed one) is a 409 `invalid-transition`; so is a move that lost a race, so
+ * a double click writes one event. Every move is audited under its own name.
  */
 export async function setProjectStatus(
   session: AuthorizedSession,
   projectId: string,
-  status: ProjectStatus,
-  request?: Request
+  change: ProjectStatusChange,
+  request?: Request,
+  now: Date = new Date()
 ): Promise<Project> {
   await requireProjectAccess(session, projectId, 'project:manage', { evenWhenClosed: true })
-  const project =
-    status === 'closed'
-      ? await setProjectStatusInOrg(projectId, session.organizationId, {
-          status: 'closed',
-          closedBy: session.userId,
-          at: new Date(),
-        })
-      : await setProjectStatusInOrg(projectId, session.organizationId, { status: 'active' })
-  if (!project) {
-    throw new ConflictError(status === 'closed' ? 'The project is already closed.' : 'The project is not closed.', {
-      reason: status === 'closed' ? 'already-closed' : 'not-closed',
+  const current = await findProjectInOrg(projectId, session.organizationId)
+  if (!current) throw new NotFoundError()
+  const from = current.status
+  if (!canTransition(from, change.status)) {
+    throw new ConflictError(`A ${from} project cannot become ${change.status}.`, {
+      reason: 'invalid-transition',
+      from,
+      to: change.status,
     })
+  }
+
+  const write: ProjectStatusWrite =
+    change.status === 'closed'
+      ? {
+          status: 'closed',
+          at: now,
+          closedBy: session.userId,
+          outcome: change.outcome,
+          endedOn: monthToDate(abschlussOrRefuse(change.endedOn, dateToMonth(current.startedOn), now)),
+        }
+      : change.status === 'paused'
+        ? { status: 'paused', at: now }
+        : { status: 'active' }
+  const project = await setProjectStatusInOrg(projectId, session.organizationId, from, write)
+  if (!project) {
+    throw new ConflictError('The project changed meanwhile.', { reason: 'invalid-transition', from, to: change.status })
   }
 
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
-    action: status === 'closed' ? 'project.closed' : 'project.reopened',
+    // Each move under the name a person would give it. Literals at the call
+    // site, so the audit registry's coverage scan (`schemas.spec.ts`) sees them.
+    action:
+      change.status === 'closed'
+        ? 'project.closed'
+        : change.status === 'paused'
+          ? 'project.paused'
+          : from === 'closed'
+            ? 'project.reopened'
+            : 'project.resumed',
     targetType: 'project',
     targetId: projectId,
-    metadata: { name: project.name },
+    metadata:
+      change.status === 'closed'
+        ? { name: project.name, from, outcome: change.outcome, endedOn: change.endedOn }
+        : { name: project.name, from },
     request,
   })
   return project
+}
+
+/** The Abschluss a close names, or a 400: not after this month, not before the Beginn. */
+function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, now: Date): Month {
+  const thisMonth = dateToMonth(now)
+  if (thisMonth && endedOn > thisMonth) {
+    throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
+  }
+  if (startedOn && endedOn < startedOn) {
+    throw new BadRequestError('The Abschluss cannot lie before the Beginn.', { reason: 'abschluss-before-beginn' })
+  }
+  return endedOn
 }
 
 /** Restore a soft-deleted project during its grace period. */

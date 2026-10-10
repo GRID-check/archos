@@ -105,7 +105,7 @@ class SourceRegion:
 
 
 #: How a project's status reads on the ``Projekt:`` line, and back.
-PROJECT_STATUS_LABELS: dict[str, str] = {"active": "laufend", "closed": "abgeschlossen"}
+PROJECT_STATUS_LABELS: dict[str, str] = {"active": "laufend", "paused": "ruhend", "closed": "abgeschlossen"}
 
 
 class SourceProject(BaseModel):

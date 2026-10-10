@@ -9,7 +9,9 @@ import { PRODUCT_NAME } from '@/lib/brand'
 import { FilePreviewBridge } from '@/features/documents/components/file-preview-host'
 import { ProjectFileDrop } from '@/features/documents/components/project-file-drop'
 import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
-import { ClosedProjectBanner } from '@/features/projects/components/closed-project-banner'
+import { ProjectStatusBanner } from '@/features/projects/components/project-status-banner'
+import { lifecycleViewOf } from '@/lib/projects/project-status'
+import { holdsManageEvenWhenClosed } from '@/lib/projects/settings-access'
 
 interface ProjectLayoutProps {
   children: React.ReactNode
@@ -82,6 +84,9 @@ export default async function ProjectLayout({
     // excludes them by default, so a missing row IS the soft-deleted case.
     const current = await findProjectInOrg(id, session.organizationId)
     if (!current) notFound()
+    // Whether the banner of a paused or closed project offers the way out of
+    // it; an active project has no banner, so asks nothing.
+    const canChangeStatus = current.status !== 'active' && (await holdsManageEvenWhenClosed(session, id))
 
     return (
       <>
@@ -90,7 +95,7 @@ export default async function ProjectLayout({
             "Zurück zu <project>" rather than a path it can only read an id out
             of — including the org-scope rail's own back control. */}
         <NavigationTrailLabel label={current.name} />
-        {/* Which project, and whether it is closed (ADR-0090), for every
+        {/* Which project, and where it stands (ADR-0090, ADR-0098), for every
             surface below: the banner, file previews, chat source chips. */}
         <CurrentProjectProvider
           value={{
@@ -99,9 +104,11 @@ export default async function ProjectLayout({
             status: current.status,
             closedAt: current.closedAt?.toISOString() ?? null,
             readsBecauseClosed: access.readsBecauseClosed,
+            lifecycle: lifecycleViewOf(current),
+            canChangeStatus,
           }}
         >
-          <ClosedProjectBanner />
+          <ProjectStatusBanner />
           <FilePreviewBridge>
             {/* A file dropped on any page of the project lands in its Dateien;
                 a closed project takes none. */}
