@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 
 import { StatusScreen } from '@/components/brand/status-screen'
 import { Button } from '@/components/ui/button'
-import { defaultLocale, getActiveLocale, getDictionary } from '@/i18n'
+import { defaultLocale, getActiveLocale, getDictionary, type Locale } from '@/i18n'
 import { createTranslator } from '@/i18n/translate'
 import { capturePosthogException } from '@/lib/analytics/posthog'
 import { THEME_BOOT_SCRIPT } from './theme-boot'
@@ -43,8 +43,6 @@ export default function GlobalError({
     getActiveLocale,
     () => defaultLocale,
   )
-  const t = createTranslator(getDictionary(locale), 'errors')
-
   useEffect(() => {
     console.error('[global error]', error)
     if (error.digest) return
@@ -57,24 +55,35 @@ export default function GlobalError({
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOT_SCRIPT }} />
       </head>
       <body className="bg-surface-base text-foreground font-sans antialiased">
-        <StatusScreen
-          code={t('appError.code')}
-          title={t('appError.title')}
-          description={t('appError.description')}
-          actions={
-            <>
-              <Button variant="outline" onClick={retry}>
-                {t('appError.action')}
-              </Button>
-              <Button asChild>
-                {/* A plain anchor on purpose: see the header. */}
-                {/* oxlint-disable-next-line next/no-html-link-for-pages -- the root layout crashed, so a full document load is the recovery; client navigation would reuse the broken tree */}
-                <a href="/app/projects">{t('appError.backAction')}</a>
-              </Button>
-            </>
-          }
-        />
+        <GlobalErrorScreen locale={locale} retry={retry} />
       </body>
     </html>
+  )
+}
+
+/**
+ * The screen inside the document this boundary owns, apart from `<html>` so
+ * the `/dev/global-error` preview can render the same thing inside the app.
+ */
+export function GlobalErrorScreen({ locale, retry }: { locale: Locale; retry: () => void }) {
+  const t = createTranslator(getDictionary(locale), 'errors')
+  return (
+    <StatusScreen
+      code={t('appError.code')}
+      title={t('appError.title')}
+      description={t('appError.description')}
+      actions={
+        <>
+          <Button variant="outline" onClick={retry}>
+            {t('appError.action')}
+          </Button>
+          <Button asChild>
+            {/* A plain anchor on purpose: see the header. */}
+            {/* oxlint-disable-next-line next/no-html-link-for-pages -- the root layout crashed, so a full document load is the recovery; client navigation would reuse the broken tree */}
+            <a href="/app/projects">{t('appError.backAction')}</a>
+          </Button>
+        </>
+      }
+    />
   )
 }
