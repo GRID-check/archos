@@ -618,8 +618,9 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 ## Landing Site (web tier, Kubernetes/Pulumi-injected)
 
-The Astro landing service (`frontends/web`) carries no secrets; its only
-deployment knob is where sign-in hands off. One image serves every stack —
+The Astro landing service (`frontends/web`) carries no secrets; its
+deployment knobs are where sign-in hands off and whether PostHog web analytics
+loads (ADR-0098). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered
 HTML (a baked host is how prod once linked at the dev app).
 
@@ -627,3 +628,5 @@ HTML (a baked host is how prod once linked at the dev app).
 |----------|----------|---------|-------------|
 | `PUBLIC_APP_URL` | No | `https://app.piloti.at` | Base URL of the app the landing site's "Anmelden" link hands off to (`GET /sign-in` 302s to `/?sign-in` there). Read at **runtime** by the `/sign-in` endpoint; injected by the Kubernetes deployment from `ingress.appDomain`. Unset falls back to prod, matching `GRID_LANDING_URL`'s fail-safe rule on the app side. |
 | `PUBLIC_SITE_URL` | No | `https://piloti.at` | Canonical site URL for OG/sitemap metadata, baked at build time (`astro.config.mjs`). Prod default on purpose: dev canonicalizing to prod is harmless — dev should not be indexed anyway. |
+| `PUBLIC_POSTHOG_HOST` | No | _(unset)_ | PostHog ingestion host (e.g. `https://eu.i.posthog.com`) for the landing site's web analytics. Read at request time by `/web-analytics.js`, never baked into the prerendered pages. Unset (or unset token): the script is empty and the browser contacts nobody. On Kubernetes, `grid-oib:posthogHost`. Web service. |
+| `PUBLIC_POSTHOG_PROJECT_TOKEN` | No | _(unset)_ | Public project token (`phc_…`), plain config. Same runtime read and fail-open behaviour as `PUBLIC_POSTHOG_HOST`. On Kubernetes, `grid-oib:posthogProjectToken`. Web service. |
