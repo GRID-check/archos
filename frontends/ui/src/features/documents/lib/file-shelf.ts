@@ -124,10 +124,8 @@ export interface FileShelf {
     dropToUpload: string
     ingestionComplete: (name: string) => string
   }
-  /** Passed through to the preview's metadata block, the model flag and IFC click-through. */
-  showMetadataPanel: boolean
+  /** Whether the preview offers the model workspace (`ifc-models`). */
   showModels: boolean
-  previewFirst: boolean
   lifecyclePermissions?: readonly DocumentLifecyclePermission[]
 }
 

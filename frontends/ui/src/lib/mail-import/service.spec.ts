@@ -56,7 +56,7 @@ const session: AuthorizedSession = {
   organizationMembershipId: 'om_1',
   role: 'member',
   permissions: [],
-  featureFlags: null,
+  featureFlags: ['mail-import'],
 }
 
 function row(overrides: Partial<MailImport> = {}): MailImport {
@@ -99,8 +99,8 @@ const IMPORT = row().id
 beforeEach(() => {
   vi.clearAllMocks()
   vi.unstubAllEnvs()
-  vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'false')
-  vi.stubEnv('GRID_MAIL_IMPORT_ENABLED', 'true')
+  // A signed-in deployment whose organization holds `mail-import`.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
 })
 
 describe('the part arithmetic', () => {
@@ -119,9 +119,9 @@ describe('the part arithmetic', () => {
 })
 
 describe('startMailImport', () => {
-  it('refuses when the deployment has not switched the import on', async () => {
-    vi.stubEnv('GRID_MAIL_IMPORT_ENABLED', '')
-    await expect(startMailImport(session, PROJECT, { filename: 'a.pst', sizeBytes: 10 })).rejects.toBeInstanceOf(ForbiddenError)
+  it('refuses when the organization has not been granted the import', async () => {
+    const withoutFlag = { ...session, featureFlags: [] }
+    await expect(startMailImport(withoutFlag, PROJECT, { filename: 'a.pst', sizeBytes: 10 })).rejects.toBeInstanceOf(ForbiddenError)
   })
 
   it('takes only Outlook archives, and only up to the ceiling', async () => {

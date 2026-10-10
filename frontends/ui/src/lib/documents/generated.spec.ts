@@ -214,9 +214,8 @@ beforeEach(() => {
 // stub from leaking into whatever test happens to run next.
 afterEach(() => {
   vi.unstubAllGlobals()
-  // The flag tests stub `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED` and
-  // `GRID_ENFORCE_FEATURE_FLAGS`; leaking either would silently disable filing
-  // for whatever spec runs next in this file.
+  // The flag tests stub `REQUIRE_AUTH`; leaking it would make every later spec
+  // in this file read a session claim it does not carry, and disable filing.
   vi.unstubAllEnvs()
 })
 
@@ -670,15 +669,24 @@ describe('fileGeneratedDocument', () => {
    * at the same seam so every producer rides it.
    */
   describe('the agent-authored-documents feature flag', () => {
-    it('files when nothing has switched it off — unset means on', async () => {
+    it('files where nobody signs in — a rollout is on there', async () => {
       await file()
       expect(admitOrDiscard).toHaveBeenCalledTimes(1)
     })
 
-    it('refuses when the deployment switched it off, before any permission is read', async () => {
-      vi.stubEnv('GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED', 'false')
+    it('refuses when the organization lacks the flag, before any permission is read', async () => {
+      vi.stubEnv('REQUIRE_AUTH', 'true')
 
-      await expect(file()).rejects.toBeInstanceOf(ForbiddenError)
+      await expect(
+        fileGeneratedDocument({
+          session: { ...SESSION, featureFlags: [] },
+          projectId: 'proj-1',
+          producer: 'deep_research',
+          ref: 'run_7',
+          title: 'Brandschutz',
+          render,
+        }),
+      ).rejects.toBeInstanceOf(ForbiddenError)
 
       // Cheapest gate first: a capability the deployment does not have must not
       // spend an FGA round trip, and must not read like a permission somebody
@@ -688,8 +696,8 @@ describe('fileGeneratedDocument', () => {
       expect(s3Send).not.toHaveBeenCalled()
     })
 
-    it('follows the per-org WorkOS flag once enforcement is on', async () => {
-      vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    it('follows the per-org WorkOS flag where people sign in', async () => {
+      vi.stubEnv('REQUIRE_AUTH', 'true')
 
       await expect(
         fileGeneratedDocument({

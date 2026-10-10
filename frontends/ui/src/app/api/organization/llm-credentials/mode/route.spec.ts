@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = {
   userId: 'user-1',
@@ -35,8 +35,11 @@ describe('/api/organization/llm-credentials/mode', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
-    session.featureFlags = null
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
+    session.featureFlags = ['byok-llm']
+    vi.stubEnv('REQUIRE_AUTH', 'true')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('rejects non-admins', async () => {
@@ -61,8 +64,7 @@ describe('/api/organization/llm-credentials/mode', () => {
     )
   })
 
-  it('fails closed under flag enforcement without the byok-llm claim', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
+  it('fails closed without the byok-llm claim', async () => {
     session.featureFlags = []
     expect((await PUT(put({ mode: 'byok' }))).status).toBe(403)
   })

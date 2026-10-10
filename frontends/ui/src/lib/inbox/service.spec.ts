@@ -74,6 +74,9 @@ import {
  * its states — see the `visibleInboxTypes` describe block — rather than
  * accidentally in whichever one the missing field happened to produce.
  */
+/** Whether the organization holds `collaboration`; a test switches it off. */
+let collaborationGranted = true
+
 function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSession {
   return {
     userId: 'user_1',
@@ -84,7 +87,10 @@ function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSess
     organizationMembershipId: 'om_1',
     role: 'admin',
     permissions: [],
-    featureFlags: null,
+    // Read at call time, so the shared `session` below follows the switch too.
+    get featureFlags() {
+      return collaborationGranted ? ['collaboration'] : []
+    },
     ...overrides,
   }
 }
@@ -171,10 +177,11 @@ const reachable = {
 
 beforeEach(() => {
   // Most of this file is about collaboration items, so the default world is a
-  // tenant that HAS collaboration. Flag enforcement is off in tests, so this env
-  // opt-in is what `isCollaborationEnabled` reads. The gate's other state is
-  // exercised explicitly rather than inherited from an unset variable.
-  vi.stubEnv('GRID_COLLABORATION_ENABLED', 'true')
+  // signed-in tenant that HAS collaboration: `isCollaborationEnabled` reads the
+  // session's claim. The gate's other state is exercised explicitly
+  // (`collaborationGranted = false`) rather than inherited from a missing field.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  collaborationGranted = true
   laneScopes.length = 0
   // Not platform staff unless a test says so: the platform lane stays shut.
   vi.mocked(hasPlatformPermission).mockResolvedValue(false)
@@ -543,7 +550,7 @@ describe('mutations are scoped to the caller\'s own inbox', () => {
   // cannot omit it silently.
   it('narrows both mutations to the types the caller may see', async () => {
     // Collaboration off, the way the rest of this file does it.
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markInboxItemsRead).mockResolvedValue(0)
     vi.mocked(repository.archiveInboxItem).mockResolvedValue(false)
 
@@ -697,7 +704,7 @@ describe('the SQL predicates behind the filters', () => {
  */
 describe('visibleInboxTypes gate — the inbox is not collaboration-only', () => {
   it('a tenant WITHOUT collaboration still sees operational items', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await listInbox(makeSession())
 
@@ -710,7 +717,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('a tenant WITHOUT collaboration gets a badge counted over the same set', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await getInboxSummary(makeSession())
 
@@ -730,7 +737,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('"clear all" without collaboration cannot settle collaboration rows', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markAllInboxItemsRead).mockResolvedValue(1)
 
     await markAllRead(makeSession())

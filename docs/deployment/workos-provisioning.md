@@ -416,42 +416,57 @@ drown the admin trail.
 
 ### 6. Feature Flags (native WorkOS product)
 
-Premium/expensive features are gated behind **WorkOS Feature Flags**,
+Every feature switch is a **WorkOS Feature Flag**, per organization,
 delivered in the AuthKit JWT `feature_flags` claim (registry:
-`frontends/ui/src/lib/authz/feature-flags.ts`):
+`frontends/ui/src/lib/authz/feature-flags.ts`). There is one semantic: a flag is
+on exactly when WorkOS says so for the organization, and anything short of a
+yes — a stale token, a slug missing from WorkOS, a failed lookup, no
+organization — is off. There are no env switches and no enforcement toggle.
 
-| Flag slug | Gates |
-|---|---|
-| `runtime-model-config` | Runtime AI model configuration (org page card + all 4 API routes) |
-| `deep-research` | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
-| `byok-llm` | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint (under enforcement) |
-| `web-search` | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
-| `source-origin-badges` | Retired 2026-09 with the research side panel (its only reader was `ReportTab`). The flag still exists in WorkOS; nothing evaluates it |
-| `chat-confidence-chip` | Self-assessed confidence chip on shallow chat answers (FB-6). Server-computed in the chat route, prop-drilled to AgentResponse; off → no chip |
-| `files-metadata-panel` | Files preview ingestion-metadata block: summary/pages/passages/contents rows (FB-8). Server-computed in the files page, prop-drilled to FilePreviewPane; status/type/size rows are never gated |
-| `image-upload` | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
-| `research-in-chat-history` | Fold the Research runs tab into the chat-history panel as a "Deep Research" section (FB-10). Server-computed in the project layout (hide the `research` nav item) and the chat route (SessionsPanel section + `?session=` links into the run's own thread, ADR-0062 — a run that names no conversation gets no link); the `/research` route redirects to chat when on. Off → legacy Research tab + `ResearchRunsList` page remain |
-| `wizard-conflict-check` | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
-| `organization-archiv` | Org-wide document Archiv (ADR-0024): `/app/archiv` page + user-menu entry, `/api/archiv/*` routes, and injection of the `archiv_<orgId>` collection into every project's retrieval scope. A standard flag — while `GRID_ENFORCE_FEATURE_FLAGS` is off it is available to all orgs (fail-open, like every flag); once enforcement is on, target the specific orgs that should have it. Uploads/deletes additionally require the `org:archiv:manage` permission (table §1) |
-| `answer-feedback` | Per-answer thumbs feedback (WS-7 of the click-dummy overhaul spec): the "War das hilfreich?" row under assistant answers (up / down → reason chips) and the `/api/feedback/answers` routes (`lib/feedback/*`, `answer_feedback` table). Server-computed in the chat route, prop-drilled to AgentResponse (same path as `chat-confidence-chip`). A standard fail-open flag. Created 2026-09-18 in **both** environments, **ON for all organizations** — not the default-off this row used to prescribe, because Production had been serving it via fail-open for two months and enforcement would otherwise have withdrawn it |
-| `skills` | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and the `skill-scheduler`'s start gate plus the session-less scheduled-fire path (`SKILLS_FLAG`, `lib/workos/feature-flags.ts`). Dark-launched and **not** fail-open — `isSkillsEnabled` is default-OFF in both directions, so without enforcement the deployment needs `GRID_SKILLS_ENABLED=true` (Pulumi `grid-oib:skillsEnabled`) instead. Created 2026-09-18, **OFF for all organizations in both environments** |
-| `task-automation` | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. A standard fail-open flag, `deep-research` shape. Created 2026-09-18, **OFF for all organizations in both environments** |
-| `collaboration` | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. **Not** fail-open — `isCollaborationEnabled` is default-OFF in both directions, because the feature changes who can READ a conversation; without enforcement the deployment needs `GRID_COLLABORATION_ENABLED=true`. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
-| `mail-import` | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). Dark-launched and **not** fail-open: without enforcement the deployment needs `GRID_MAIL_IMPORT_ENABLED=true` (Pulumi `grid-oib:mailImportEnabled`). **Not created yet in either environment**: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
-| `ifc-models` | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Default-ON via `GRID_IFC_MODELS_ENABLED` without enforcement. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
-| `ifc-preview-first` | Whether a click on an `.ifc` opens the file PREVIEW first (on) or jumps straight to the full-screen model stage (off). Distinct from `ifc-models`, which decides whether the model surfaces exist at all; this one decides what a click does when they do. Read by both file surfaces — a project's Dateien and the org-wide Archiv — from one helper, so it can only ever move them together. Default-ON via `GRID_IFC_PREVIEW_FIRST` without enforcement |
-| `agent-authored-documents` | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI). Default-ON via `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED` without enforcement |
-| `keyboard-shortcuts` | Global keyboard shortcuts, the ⌘/Ctrl+K command palette and the shortcut cheatsheet. Org-level availability; each user can additionally switch shortcuts off in their profile settings, so the flag sets the ceiling rather than the state |
-| `project-knowledge-page` | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. Launches dark: without enforcement it needs `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED=true`. The platform owner's base-knowledge manager is NOT gated by this. OFF for all organizations in both environments |
+The one exception is a deployment that signs nobody in (`REQUIRE_AUTH` not
+`true`: local dev, an anonymous compose stack). It has no claim to read, so
+each flag answers by its **kind** (`FLAG_KINDS` in the registry): a
+**rollout** — shipped to everybody, kept as a kill switch — is ON, an
+**entitlement** — granted per organization because it costs money or widens
+who reads what — is OFF. To exercise an entitlement locally, sign in against
+the Staging WorkOS environment.
 
-Rollout order (per environment): 1) create the flags in the WorkOS
-dashboard (Feature Flags — flag create/update events are covered by
-WorkOS's own event log), 2) target the organizations that should have them
-(dashboard, or `workos.featureFlags.addFlagTarget({ slug, targetId:
-'org_…' })`), 3) set `GRID_ENFORCE_FEATURE_FLAGS=true` in the deployment.
-While the env flag is `false` (default) nothing is gated, so existing
-deployments are unaffected. Once enforced, tokens minted before the rollout
-carry no `feature_flags` claim and fail closed — users pick the flags up at
+| Flag slug | Kind | Gates |
+|---|---|---|
+| `runtime-model-config` | entitlement | Runtime AI model configuration (org page card + all 4 API routes) |
+| `deep-research` | entitlement | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
+| `byok-llm` | entitlement | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint |
+| `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
+| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
+| `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
+| `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
+| `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
+| `collaboration` | entitlement | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. An entitlement because the feature changes who can READ a conversation. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
+| `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
+| `ifc-models` | rollout | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
+| `agent-authored-documents` | rollout | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI) |
+| `project-knowledge-page` | rollout | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. The platform owner's base-knowledge manager is NOT gated by this. OFF for all organizations in both environments |
+| `memory-reflection` | rollout | The post-answer memory-reflection stage, read per TURN by the agent tier (`GET /api/internal/stages`). ON for all organizations in both environments |
+| `post-answer-follow-ups` | rollout | The post-answer follow-up-questions stage, read the same way. ON for all organizations in both environments, and the only source of follow-up questions since the in-answer card was retired |
+
+**Retired flags (delete them from WorkOS in both environments).** Eight slugs
+exist in WorkOS and nothing in the code reads them any more: the seven finished
+UX rollouts `answer-feedback`, `chat-confidence-chip`, `files-metadata-panel`,
+`research-in-chat-history`, `keyboard-shortcuts`, `organization-archiv` and
+`ifc-preview-first` (ON for all organizations for about three months, so their
+features are simply on now: the Archiv for every member of an organization, the
+keyboard shortcuts for every session with one, the rest for everybody), and
+`source-origin-badges`, whose only reader went with the research side panel. A
+flag left in the dashboard after its code is gone reads like a switch and
+switches nothing.
+
+Rollout order (per environment): 1) create the flag in the WorkOS dashboard
+(Feature Flags — flag create/update events are covered by WorkOS's own event
+log), in BOTH environments and in the same change that adds the slug to the
+registry, 2) target the organizations that should have it (dashboard, or
+`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
+fe:provision:flags` lists every registry slug missing from an environment
+(read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
 organizations in both; `byok-llm` enabled for ALL in Staging, OFF in
@@ -483,34 +498,26 @@ structured-answer rules plus a free-text LLM check, with a "Trotzdem speichern"
 override) — flip it on in Production once the review is signed off and the
 free-text check has been smoke-tested against a configured LLM.
 
-#### Production enforces flags (since 2026-09-18)
+#### Flags are always enforced (since 2026-10)
 
-`grid-oib:enforceFeatureFlags` is **`true`** in BOTH environments. WorkOS is the
-control plane for features now: per organization, per flag, no redeploy.
+`GRID_ENFORCE_FEATURE_FLAGS` was switched on in both stacks on 2026-09-18 and
+then deleted, together with every env fallback that only mattered while it was
+off (`GRID_SKILLS_ENABLED`, `GRID_COLLABORATION_ENABLED`,
+`GRID_MAIL_IMPORT_ENABLED`, `GRID_IFC_MODELS_ENABLED`,
+`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`,
+`GRID_MEMORY_REFLECTION_ENABLED`, `GRID_STAGE_FOLLOW_UPS_ENABLED`). With it on,
+every one of those was dead config in both stacks, and compose and local dev,
+which ran it off, rehearsed a different code path from the one that shipped.
+WorkOS is the control plane for features: per organization, per flag, no
+redeploy.
 
-Staging followed on the same day, and not as tidiness. With enforcement off
-there it rehearsed a different code path from the one Production runs:
-`isFeatureEnabled` fell open, the per-turn capability resolution never ran, and
-a registry flag missing from WorkOS was invisible until Production failed it
-closed. All 20 registry flags are ON for ALL organizations in Staging, so the
-flip was behaviour-preserving there except for `project-knowledge-page`, which
-had no env opt-in and is now visible — which is what that environment is for.
-
-Two things follow, and both bite the next person who adds a feature:
-
-1. **Every env gate with a WorkOS half is inert in Production.**
-   `isFeatureEnabled` no longer fails open, the dark-launch gates
-   (`isSkillsEnabled`, `isCollaborationEnabled`) stop reading
-   `GRID_SKILLS_ENABLED` / `GRID_COLLABORATION_ENABLED`, and the default-ON
-   gates (`isIfcModelsEnabled`, `isIfcPreviewFirstEnabled`,
-   `isAgentAuthoredDocumentsEnabled`) stop defaulting to ON. Changing one of
-   those variables in the Production stack changes nothing there.
-2. **A registry flag absent from WorkOS is off for everybody.** Nothing catches
-   this: the registry is TypeScript, the flags are remote state, and `task
-   verify` cannot see across the gap. Adding a slug to
-   `lib/authz/feature-flags.ts` without creating it in WorkOS ships a feature
-   that is dark in Production and reports nothing about why. **Create the flag
-   in both environments in the same change.**
+**A registry flag absent from WorkOS is off for everybody.** The registry is
+TypeScript and the flags are remote state, so `task verify` cannot see across
+the gap. `task fe:provision:flags` can: it lists the environment's flags
+read-only, fails on any registry slug missing there, and reports (without
+failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
+against Staging; Production has no key in CI, so run it there by hand with the
+Production key. **Create the flag in both environments in the same change.**
 
 ##### What the flip changed, and what it deliberately did not
 
@@ -555,16 +562,9 @@ One WorkOS toggle, per organization or for all, effective at the reader's next
 sign-in (the claim rides the AuthKit JWT). No deploy. That is the point of
 enforcing.
 
-Two env keys stay `"true"` in the Production stack and are *not* leftovers:
-
-- `grid-oib:skillsEnabled` no longer decides whether the Automation section is
-  visible — the `skills` flag does — only whether the `skill-scheduler`
-  Deployment is created at all (`deploy/pulumi/src/app/workers.ts:206`).
-  Keeping it up means re-enabling Automation for one organization stays a
-  dashboard toggle instead of a redeploy, and the scheduler's own per-org flag
-  check keeps every schedule paused meanwhile.
-- `grid-oib:collaborationEnabled` is inert under enforcement, kept truthful in
-  case enforcement is ever lifted.
+There is no stack key to change alongside: the `skill-scheduler` always runs
+and the BFF skips a schedule whose organization lacks `skills`, so re-enabling
+Automation for one organization is the same single toggle.
 
 ##### How a withdrawn capability reaches the agent
 
@@ -597,9 +597,11 @@ Three things follow, and each has cost somebody an afternoon:
   fallback exists for a deployment with no worker, and running it on a
   capability refusal would do the very thing the route just refused.
 - **Every failure path leaves the capability ALLOWED** — an unreachable BFF, a
-  timeout, an older BFF that sends no `features`, a turn with no organization.
-  Withdrawal is a decision somebody made in WorkOS; it is never the shape of a
-  blip. The route behind it is what fails closed.
+  timeout, an older BFF that sends no `features`. Withdrawal is a decision
+  somebody made in WorkOS; it is never the shape of a blip. The route behind it
+  is what fails closed. A turn with no organization is not a failure: the BFF
+  answers it, and its answer is OFF (both are entitlements), the same verdict
+  the submit and task routes reach.
 
 ## Replay into a fresh environment
 
@@ -682,8 +684,8 @@ Three things follow, and each has cost somebody an afternoon:
 8. Feature flags (§6): CREATION stays a dashboard step —
    `provision:workos-env` lists every registry flag missing from WorkOS as
    MANUAL rather than attempting it. Create them, target the intended orgs
-   (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY),
-   then set `GRID_ENFORCE_FEATURE_FLAGS=true`.
+   (`WORKOS_FLAG_TARGETS_JSON` + `--apply` reconciles targeting, ADDITIVELY).
+   `task fe:provision:flags` then confirms every registry slug exists.
 9. BYOK (ADR-0022): WorkOS Vault needs no per-environment setup — objects
    are created lazily under each org's key context. Enterprise tenants
    wanting customer-managed KEKs (Vault BYOK: AWS KMS / Azure Key Vault /

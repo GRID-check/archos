@@ -1494,8 +1494,8 @@ the lookup by document the revision-thread triggers make.
 
 ## answer_feedback (migrations 0020, 0121, 0124)
 
-Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
-`answer-feedback`). One row per (user, assistant answer).
+Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row per
+(user, assistant answer).
 
 - Columns: `organization_id` (denormalized, scopes every query in SQL),
   `project_id` (nullable, **cascade FK** to `projects` so a purged project

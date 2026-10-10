@@ -41,8 +41,8 @@ interface ProfileControlsProps {
   authRequired: boolean
   email?: string | null
   /**
-   * Whether the keyboard-shortcuts feature is available to this org (the
-   * `keyboard-shortcuts` WorkOS flag, resolved server-side). Without it the
+   * Whether the keyboard shortcuts are mounted for this session (they need an
+   * organization to navigate in, see `app/app/layout.tsx`). Without them the
    * per-user toggle is not shown at all.
    */
   shortcutsAvailable?: boolean
@@ -162,7 +162,7 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
         </CardContent>
       </Card>
 
-      {/* Keyboard shortcuts (org flag is the outer gate; toggle is per-user) */}
+      {/* Keyboard shortcuts (an organization is the outer gate; toggle is per-user) */}
       {shortcutsAvailable && <ShortcutSettings />}
 
       {/* Usage analytics: a per-browser opt-out of the PostHog storage and traffic */}

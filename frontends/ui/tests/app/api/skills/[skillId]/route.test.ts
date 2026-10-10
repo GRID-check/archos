@@ -24,7 +24,7 @@ const mockDelete = vi.mocked(deleteSkill)
 
 const asSkill = (row: Pick<Skill, 'id' | 'name'>): Skill => row as unknown as Skill
 
-const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: null } = {
+const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: string[] | null } = {
   userId: 'user_1',
   email: 'user@example.com',
   name: null,
@@ -48,24 +48,28 @@ function req(body?: unknown): Request {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // A signed-in deployment: the session's WorkOS claim is the skills gate, and
+  // a session without the claim is the default (off).
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  session.featureFlags = null
   mockSession.mockResolvedValue(session as unknown as AuthorizedSession)
 })
 
 afterEach(() => {
-  delete process.env.GRID_SKILLS_ENABLED
+  vi.unstubAllEnvs()
 })
 
 describe('PATCH /api/skills/[skillId]', () => {
   it('returns 403 feature-disabled when the skills gate is off (default)', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'false'
+    session.featureFlags = []
     const res = await PATCH(req({ description: 'New.' }), context)
     expect(res.status).toBe(403)
     expect(await res.json()).toEqual({ error: 'feature-disabled', feature: 'skills' })
     expect(mockUpdate).not.toHaveBeenCalled()
   })
 
-  it('patches the org skill when the env gate is on', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+  it('patches the org skill when the skills flag is on', async () => {
+    session.featureFlags = ['skills']
     mockUpdate.mockResolvedValue({ skill: asSkill({ id: 'skill-1', name: 'a' }) })
     const res = await PATCH(req({ description: 'New.' }), context)
     expect(res.status).toBe(200)
@@ -73,7 +77,7 @@ describe('PATCH /api/skills/[skillId]', () => {
   })
 
   it('rejects an invalid name with 400 without reaching the service', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     const res = await PATCH(req({ name: 'UPPER CASE' }), context)
     expect(res.status).toBe(400)
     expect(mockUpdate).not.toHaveBeenCalled()
@@ -82,14 +86,14 @@ describe('PATCH /api/skills/[skillId]', () => {
 
 describe('DELETE /api/skills/[skillId]', () => {
   it('returns 403 feature-disabled when the skills gate is off', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'false'
+    session.featureFlags = []
     const res = await DELETE(req(), context)
     expect(res.status).toBe(403)
     expect(mockDelete).not.toHaveBeenCalled()
   })
 
-  it('deletes the org skill when the env gate is on', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+  it('deletes the org skill when the skills flag is on', async () => {
+    session.featureFlags = ['skills']
     mockDelete.mockResolvedValue({ deleted: true })
     const res = await DELETE(req(), context)
     expect(res.status).toBe(204)

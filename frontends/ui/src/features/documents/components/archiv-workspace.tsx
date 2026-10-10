@@ -18,14 +18,6 @@ interface ArchivWorkspaceProps {
   /** Whether an `.ifc` here can reach the model workspace (`ifc-models`). */
   showModels?: boolean
   /**
-   * Whether a click on an `.ifc` opens the preview first (`ifc-preview-first`).
-   * Threaded to BOTH file surfaces from their pages so it can only ever move
-   * them together.
-   */
-  previewFirst?: boolean
-  /** Gates the ingestion-metadata block, mirroring the project Files tab. */
-  showMetadataPanel?: boolean
-  /**
    * Controls appended at the end of the identity row, after the upload button.
    * The Archiv sheet slots its close control here so the workspace's own
    * header stays the sheet's ONE header instead of gaining a twin above it.
@@ -51,9 +43,7 @@ const OFFICE_TINT = sourceTint('office')
  */
 export function ArchivWorkspace({
   canManage,
-  showMetadataPanel = true,
   showModels = false,
-  previewFirst = true,
   trailingActions,
 }: ArchivWorkspaceProps) {
   const t = useTranslations('archiv')
@@ -109,9 +99,7 @@ export function ArchivWorkspace({
       dropToUpload: t('workspace.dropToUpload'),
       ingestionComplete: (name) => t('toast.ingestionComplete', { name }),
     },
-    showMetadataPanel,
     showModels,
-    previewFirst,
   }
 
   return (

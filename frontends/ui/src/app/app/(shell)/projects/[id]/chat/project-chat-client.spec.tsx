@@ -88,9 +88,6 @@ vi.mock('@/features/chat', () => ({
 
 const clientProps = {
   projectId: 'p1',
-  showConfidenceChip: true,
-  showAnswerFeedback: true,
-  showResearchInHistory: false,
   projectName: 'Lacknergasse',
 }
 

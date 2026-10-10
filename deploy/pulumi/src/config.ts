@@ -933,7 +933,6 @@ export interface GridConfig {
     platformOrgExternalId: string;
     disableSelfServeOrgs: boolean;
     auditLogsEnabled: boolean;
-    enforceFeatureFlags: boolean;
     byokSecretBackend: string;
     byokLocalKek: pulumi.Output<string>;
     allowAgentOrgMemory: boolean;
@@ -999,22 +998,6 @@ export interface GridConfig {
 
   skills: {
     /**
-     * Dark-launch gate for Agent Skills and the project Jobs that may attach
-     * them (ADR-0046). Reaches the frontend and the scheduler worker as
-     * `GRID_SKILLS_ENABLED`, which they only consult while
-     * `enforceFeatureFlags` is off; with enforcement on, the per-org `skills`
-     * WorkOS flag decides instead. Default-deny.
-     *
-     * This is the ONLY switch that makes the Skills and Jobs tabs appear on a
-     * deployment carrying their code: with it off, every `/api/skills` and
-     * `/api/projects/[id]/jobs` route answers 403 `feature-disabled` and the
-     * scheduler container exits 0 as a no-op. It replaced `workflowsEnabled`,
-     * which kept being emitted as `GRID_WORKFLOWS_ENABLED` after the code that
-     * read that name was deleted — so the feature shipped with no way to turn
-     * it on.
-     */
-    enabled: boolean;
-    /**
      * Floor on how often a job may be scheduled to fire, in minutes. Reaches
      * the frontend as `GRID_SKILL_MIN_INTERVAL_MINUTES` and is enforced at
      * save time.
@@ -1068,80 +1051,6 @@ export interface GridConfig {
      * without recovering anything sooner than the next upload would notice.
      */
     schedule: string;
-  };
-
-  agentAuthoredDocuments: {
-    /**
-     * Operator kill switch for agent-authored documents: a finished
-     * deep-research report and a drawn diagram filed into a project as
-     * `documents` rows. Reaches the frontend as
-     * `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, which the BFF only consults
-     * while `enforceFeatureFlags` is off; with enforcement on, the per-org
-     * `agent-authored-documents` WorkOS flag decides instead.
-     *
-     * Defaults to TRUE — the feature ships on. It is a key and not a role
-     * grant because the tenant-facing lever is a PERMISSION
-     * (`project:documents:generate`), and withdrawing that fleet-wide would
-     * mean editing the catalog's own built-in project roles in WorkOS, which
-     * `provision:authz --check` then fails in CI. The two answer different
-     * questions: this one is "is filing available in this deployment at all".
-     */
-    enabled: boolean;
-  };
-
-  ifcModels: {
-    /**
-     * Dark-launch gate for IFC/BIM models (ADR-0045: `.ifc` upload, the model
-     * workspace, the 3D viewer, the Prüfbuch and the agent's `ifc_query`
-     * tool). Reaches the frontend as `GRID_IFC_MODELS_ENABLED`, which the BFF
-     * only consults while `enforceFeatureFlags` is off; with enforcement on,
-     * the per-org `ifc-models` WorkOS flag decides instead. Defaults to TRUE —
-     * the feature ships on. It keeps its own key rather than riding the
-     * fail-open path so a deployment can withdraw it (`false`) without turning
-     * on flag enforcement for every other feature at once. No paired
-     * capability — extraction runs in the BFF process and the viewer in the
-     * browser.
-     */
-    enabled: boolean;
-  };
-
-  mailImport: {
-    /**
-     * Dark-launch gate for the Outlook archive import (ADR-0085). Reaches the
-     * frontend as `GRID_MAIL_IMPORT_ENABLED`, which the BFF only consults while
-     * `enforceFeatureFlags` is off; with enforcement on, the per-org
-     * `mail-import` WorkOS flag decides instead. Default-deny: an archive is the
-     * correspondence of everyone who wrote to a mailbox, so an operator turns
-     * the import on deliberately.
-     */
-    enabled: boolean;
-  };
-
-  collaboration: {
-    /**
-     * Dark-launch gate for collaboration (ADR-0032…0035: shared chats,
-     * `@`-mentions with the agent hand-off, the inbox). Reaches the frontend as
-     * `GRID_COLLABORATION_ENABLED`, which the BFF only consults while
-     * `enforceFeatureFlags` is off; with enforcement on, the per-org
-     * `collaboration` WorkOS flag decides instead. Default-deny, like the
-     * feature itself: it changes who can see a conversation, so an operator has
-     * to choose it. No paired capability — without `REDIS_URL` live updates
-     * simply degrade to polling.
-     */
-    enabled: boolean;
-  };
-
-  memory: {
-    /**
-     * Runtime gate for the post-answer memory-reflection stage (the agent's
-     * cross-chat learning loop, `docs/architecture/project-memory-design.md`
-     * §3.5). Reaches the frontend as `GRID_MEMORY_REFLECTION_ENABLED`, which
-     * the BFF only consults while `enforceFeatureFlags` is off; with
-     * enforcement on, the per-org `memory-reflection` WorkOS flag decides
-     * instead. Unlike collaboration this is **default-on**: reflection is a
-     * shipped core capability, not a dark-launched product gate.
-     */
-    reflectionEnabled: boolean;
   };
 
   observability: {
@@ -2677,7 +2586,6 @@ export function loadConfig(): GridConfig {
       platformOrgExternalId: cfg.get("platformOrgExternalId") ?? "grid-platform",
       disableSelfServeOrgs: bool(cfg, "disableSelfServeOrgs", false),
       auditLogsEnabled: bool(cfg, "auditLogsEnabled", false),
-      enforceFeatureFlags: bool(cfg, "enforceFeatureFlags", false),
       byokSecretBackend: cfg.get("byokSecretBackend") ?? "",
       byokLocalKek: cfg.getSecret("byokLocalKek") ?? pulumi.output(""),
       allowAgentOrgMemory: bool(cfg, "allowAgentOrgMemory", false),
@@ -2699,7 +2607,6 @@ export function loadConfig(): GridConfig {
     },
 
     skills: {
-      enabled: bool(cfg, "skillsEnabled", false),
       minIntervalMinutes: num(cfg, "skillMinIntervalMinutes", 15),
     },
 
@@ -2713,26 +2620,6 @@ export function loadConfig(): GridConfig {
       enabled: bool(cfg, "vectorReconcileEnabled", true),
       // Sundays 03:00 UTC.
       schedule: cfg.get("vectorReconcileSchedule") ?? "0 3 * * 0",
-    },
-
-    collaboration: {
-      enabled: bool(cfg, "collaborationEnabled", false),
-    },
-
-    mailImport: {
-      enabled: bool(cfg, "mailImportEnabled", false),
-    },
-
-    agentAuthoredDocuments: {
-      enabled: bool(cfg, "agentAuthoredDocumentsEnabled", true),
-    },
-
-    ifcModels: {
-      enabled: bool(cfg, "ifcModelsEnabled", true),
-    },
-
-    memory: {
-      reflectionEnabled: bool(cfg, "memoryReflectionEnabled", true),
     },
 
     observability: {

@@ -752,7 +752,7 @@ describe('FilePreviewPane', () => {
       expect(screen.queryByText('Passages')).toBeNull()
     })
 
-    it('hides the whole panel when the files-metadata-panel flag is off, keeping status/type/size', () => {
+    it('hides the whole panel when the metadata panel is off (peek), keeping status/type/size', () => {
       render(
         <FilePreviewPane
           file={{
@@ -766,7 +766,7 @@ describe('FilePreviewPane', () => {
           showMetadataPanel={false}
         />
       )
-      // The flag-gated panel is absent…
+      // The panel is absent…
       expect(screen.queryByText('Read by Piloti')).toBeNull()
       expect(screen.queryByText('A ground-floor plan of the east wing.')).toBeNull()
       expect(screen.queryByText('Pages')).toBeNull()
@@ -831,7 +831,7 @@ describe('FilePreviewPane', () => {
       expect(screen.queryByRole('button', { name: /remove tag/i })).toBeNull()
     })
 
-    it('hides tags entirely when the files-metadata-panel flag is off', () => {
+    it('hides tags entirely when the metadata panel is off (peek)', () => {
       render(
         <FilePreviewPane
           file={{ ...mockFile, tags: ['Grundriss', 'Brandschutz'] }}

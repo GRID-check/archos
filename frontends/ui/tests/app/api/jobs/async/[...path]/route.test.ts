@@ -33,7 +33,7 @@ const baseSession = {
   organizationMembershipId: 'om_1',
   role: 'member',
   permissions: [] as string[],
-  featureFlags: null,
+  featureFlags: ['deep-research'],
 }
 
 function createStream(): ReadableStream<Uint8Array> {
@@ -171,6 +171,43 @@ describe('/api/jobs/async/[...path]', () => {
   })
 
   describe('POST', () => {
+    it('refuses a deep-research submit from a session whose organization lacks the flag', async () => {
+      process.env.REQUIRE_AUTH = 'true'
+      mockRequireAuthorizedSession.mockResolvedValue({ ...baseSession, featureFlags: [] })
+      const fetchMock = vi.fn()
+      global.fetch = fetchMock
+
+      const req = new Request('http://localhost:3000/api/jobs/async/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'proj-1', conversationId: 'conv-1' }),
+      })
+      const res = await POST(req, makeParams(['submit']))
+
+      expect(res.status).toBe(403)
+      expect(await res.json()).toEqual({ error: 'feature-disabled', feature: 'deep-research' })
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('refuses an anonymous deep-research submit — an entitlement is off where nobody signs in', async () => {
+      // It used to skip the gate ("no session to evaluate") while the agent's
+      // per-turn read said ON, so the run was offered and then submitted for
+      // nobody. Both halves now give the entitlement's fixed answer: off.
+      process.env.REQUIRE_AUTH = 'false'
+      const fetchMock = vi.fn()
+      global.fetch = fetchMock
+
+      const req = new Request('http://localhost:3000/api/jobs/async/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: 'conv-1' }),
+      })
+      const res = await POST(req, makeParams(['submit']))
+
+      expect(res.status).toBe(403)
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
     it('forwards scope header from body', async () => {
       process.env.REQUIRE_AUTH = 'true'
       mockRequireAuthorizedSession.mockResolvedValue(baseSession)

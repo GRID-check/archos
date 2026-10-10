@@ -76,7 +76,7 @@ export interface CommandPaletteProps {
    * ADR-0046).
    */
   showSkills?: boolean
-  /** Whether the org-wide Archiv is reachable (`organization-archiv`, ADR-0024). */
+  /** Whether the org-wide Archiv is reachable (ADR-0024). */
   canAccessArchiv?: boolean
 }
 

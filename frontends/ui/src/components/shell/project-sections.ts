@@ -73,7 +73,7 @@ export type ProjectNavGroup = 'work' | 'org'
 export interface ProjectSectionFlags {
   /** Agent Skills page — feature-flagged, default off (ADR-0046). */
   showSkills?: boolean
-  /** Org-wide Archiv — `organization-archiv` flag (ADR-0024). */
+  /** Org-wide Archiv (ADR-0024). */
   canAccessArchiv?: boolean
   /** Project knowledge page — feature-flagged, default off. */
   showKnowledge?: boolean

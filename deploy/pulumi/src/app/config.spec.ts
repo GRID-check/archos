@@ -54,8 +54,7 @@ function secretRef(env: ReturnType<typeof schedulerEnv>, name: string) {
 
 describe("schedulerEnv", () => {
   const cfg = {
-    skills: { enabled: true, minIntervalMinutes: 15 },
-    auth: { enforceFeatureFlags: false },
+    skills: { minIntervalMinutes: 15 },
     observability: { enabled: false },
     langfuse: { enabled: true },
   } as unknown as GridConfig;
@@ -81,8 +80,11 @@ describe("schedulerEnv", () => {
     expect(gridEmitted.filter((name) => !read.has(name))).toEqual([]);
   });
 
-  it("passes the skills gate through, so the worker can start at all", () => {
-    expect(env.find((e) => e.name === "GRID_SKILLS_ENABLED")?.value).toBe("true");
+  it("emits no feature switch: whether a schedule fires is the organization's flag", () => {
+    // `GRID_SKILLS_ENABLED` / `GRID_ENFORCE_FEATURE_FLAGS` were the worker's
+    // schedules gate; the BFF now checks the `skills` WorkOS flag per fire.
+    expect(emitted.has("GRID_SKILLS_ENABLED")).toBe(false);
+    expect(emitted.has("GRID_ENFORCE_FEATURE_FLAGS")).toBe(false);
   });
 
   it("gives the trace retention sweep Langfuse's API and a 30-day window when the tier is deployed", () => {
@@ -124,22 +126,26 @@ describe("purgerEnv", () => {
 });
 
 describe("frontendEnv", () => {
-  it("emits the Agent Skills gate", () => {
+  it("emits none of the retired feature switches", () => {
+    // Every feature is a WorkOS flag per organization now
+    // (`frontends/ui/src/lib/authz/feature-flags.ts`). An env switch emitted
+    // here would read as a lever and move nothing, which is how
+    // `GRID_WORKFLOWS_ENABLED` once shipped a feature with no way to turn it on.
     // Read from source rather than by calling frontendEnv: it touches most of
     // GridConfig, and a stub deep enough to call it would assert more about the
-    // stub than about the program. The name is what matters here.
-    expect(configSource).toContain('name: "GRID_SKILLS_ENABLED"');
-    expect(configSource).not.toContain('name: "GRID_WORKFLOWS_ENABLED"');
-  });
-
-  it("emits the mail import gate under the name the BFF reads", () => {
-    // `isMailImportEnabled` in frontends/ui/src/lib/authz/feature-flags.ts.
-    const reader = readFileSync(
-      join(repoRoot, "frontends", "ui", "src", "lib", "authz", "feature-flags.ts"),
-      "utf8",
-    );
-    expect(reader).toContain("process.env.GRID_MAIL_IMPORT_ENABLED");
-    expect(configSource).toContain('name: "GRID_MAIL_IMPORT_ENABLED"');
+    // stub than about the program.
+    for (const name of [
+      "GRID_ENFORCE_FEATURE_FLAGS",
+      "GRID_SKILLS_ENABLED",
+      "GRID_COLLABORATION_ENABLED",
+      "GRID_MAIL_IMPORT_ENABLED",
+      "GRID_IFC_MODELS_ENABLED",
+      "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED",
+      "GRID_MEMORY_REFLECTION_ENABLED",
+      "GRID_WORKFLOWS_ENABLED",
+    ]) {
+      expect(configSource).not.toContain(`name: "${name}"`);
+    }
   });
 });
 

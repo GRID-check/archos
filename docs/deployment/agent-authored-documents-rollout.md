@@ -209,7 +209,7 @@ questions. Pick by who is pulling.
 | Who | Lever | What it does | What it costs |
 |---|---|---|---|
 | **A tenant** that wants Piloti to answer but not write | withhold `project:documents:generate` | Filing is refused for that role, on every producer, before a byte is rendered. Uploads, deletes and re-ingests are untouched. | Put the people on a **custom** project role that omits the permission. Do **not** edit the built-in `project-editor` / `project-admin` roles: they are in `lib/authz/catalog.ts`, and editing them in WorkOS makes `provision:authz --check` fail in CI. |
-| **The operator** who has to stop filing everywhere, now | `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED=false` (or, with `GRID_ENFORCE_FEATURE_FLAGS=true`, untarget the per-org `agent-authored-documents` flag) | Filing is refused for every organization and every producer, at the one seam, before any permission is read. | A config change and a restart (K8s: the stack key `grid-oib:agentAuthoredDocumentsEnabled`), or — under flag enforcement — a dashboard change and no deploy at all. |
+| **The operator** who has to stop filing everywhere, now | Switch the `agent-authored-documents` WorkOS flag off (per organization, or for all) | Filing is refused for every affected organization and every producer, at the one seam, before any permission is read. | A dashboard change and no deploy at all; it reaches a signed-in reader at their next sign-in, and the session-less filing paths within the 30 s flag cache. |
 
 Both refuse **before** anything is rendered, stored or charged, so neither leaves
 a half-filed document behind. What a reader sees is what a refused quota already

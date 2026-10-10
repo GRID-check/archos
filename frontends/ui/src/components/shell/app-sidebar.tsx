@@ -107,9 +107,8 @@ export interface AppSidebarProps {
   /** Whether the current user is the platform owner (ADR-0016). */
   canManagePlatform?: boolean
   /**
-   * Whether the org-wide Archiv is reachable (any member, gated by the
-   * `organization-archiv` feature flag — ADR-0024). Also gates the Archiv
-   * nav item.
+   * Whether the org-wide Archiv is reachable (any member of an organization,
+   * ADR-0024). Also gates the Archiv nav item.
    */
   canAccessArchiv?: boolean
   /** Whether the IFC/BIM model page is enabled (`ifc-models`, ADR-0045). */

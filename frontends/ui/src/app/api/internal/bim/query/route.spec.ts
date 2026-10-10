@@ -68,8 +68,6 @@ describe('POST /api/internal/bim/query', () => {
     vi.clearAllMocks()
     process.env.GRID_INTERNAL_API_TOKEN = 'test-token'
     process.env.APP_ENV = 'development'
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_IFC_MODELS_ENABLED
     vi.mocked(listBimModels).mockResolvedValue([NEW, OLD])
     vi.mocked(isOrgFeatureEnabled).mockResolvedValue(true)
     vi.mocked(runBimQuery).mockResolvedValue({
@@ -158,7 +156,6 @@ describe('POST /api/internal/bim/query', () => {
 
   describe('the ifc-models feature flag', () => {
     it('answers when the organization has the feature', async () => {
-      process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
       const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelId: NEW.id, query: { op: 'overview' } })
 
       expect(response.status).toBe(200)
@@ -169,34 +166,12 @@ describe('POST /api/internal/bim/query', () => {
       // The gate covered the upload and the pages but not this route, so
       // revoking the flag left the agent answering questions about the
       // building for as long as anyone kept asking.
-      process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
       vi.mocked(isOrgFeatureEnabled).mockResolvedValue(false)
 
       const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelId: NEW.id, query: { op: 'overview' } })
 
       expect(response.status).toBe(403)
       expect(runBimQuery).not.toHaveBeenCalled()
-    })
-
-    it('answers without enforcement, which is the default', async () => {
-      // No flag lookup is attempted — there is no flag product to ask.
-      const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelId: NEW.id, query: { op: 'overview' } })
-
-      expect(response.status).toBe(200)
-      expect(isOrgFeatureEnabled).not.toHaveBeenCalled()
-    })
-
-    it('refuses without enforcement when the deployment withdrew the feature', async () => {
-      // The route reads the same switch as the UI. Turning the feature off
-      // must stop the AGENT answering questions about the building too — that
-      // gap is what let it keep answering after the flag was revoked.
-      process.env.GRID_IFC_MODELS_ENABLED = 'false'
-
-      const response = await post({ organizationId: 'org-1', projectId: PROJECT, modelId: NEW.id, query: { op: 'overview' } })
-
-      expect(response.status).toBe(403)
-      expect(runBimQuery).not.toHaveBeenCalled()
-      expect(isOrgFeatureEnabled).not.toHaveBeenCalled()
     })
   })
 
