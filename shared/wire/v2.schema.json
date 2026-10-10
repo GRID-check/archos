@@ -2752,6 +2752,20 @@
           "title": "Message Id",
           "type": "string"
         },
+        "posthog_session_id": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The browser's PostHog session id (posthog-js `get_session_id()`) when product analytics is on. Read per turn because the id rotates after 30 idle minutes. Bounded here and checked for the UUIDv7 shape where it is used (`langfuse_trace_attributes.record_posthog_session`): a malformed value costs the replay link, never the turn.",
+          "title": "Posthog Session Id"
+        },
         "reasoning_effort": {
           "anyOf": [
             {

@@ -55,6 +55,7 @@ import { useEffortStore } from '../stores/effort-store'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
 import { useLayoutStore } from '@/features/layout/store'
 import { useDocumentsStore } from '@/features/documents/store'
+import { getPosthogSessionId } from '@/lib/analytics/posthog'
 import { fetchRunMessage } from '../lib/commissioned-run'
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
@@ -1016,6 +1017,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       // override wins and is never remembered. Recorded on the turn too: the
       // answer keeps the level it ran at after the dial moves on.
       const effort = reasoningEffort ?? useEffortStore.getState().levelForSend(conversationId)
+      const posthogSessionId = getPosthogSessionId()
       useChatStore.getState().beginTurn(conversationId, messageId, effort)
       ensureDriver(conversationId).ask({
         type: 'user_message',
@@ -1030,6 +1032,8 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         focus_version_state: openVersionState(subject?.versionState),
         source_preset: useLayoutStore.getState().activeSourcePreset ?? null,
         reasoning_effort: effort,
+        // Omitted, not null, while PostHog is off: `forServer` keys on presence.
+        ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
       })
       return true
     },

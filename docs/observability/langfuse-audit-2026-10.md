@@ -43,7 +43,7 @@ then checked against the code before anything was changed.
 | Custom dashboards | yes | none | a recommended set in the [analyst guide](analyst-guide.md); built in the UI |
 | Metrics API v2 | yes (v4) | unused | unused; see open items |
 | Blob storage export | yes | batch export enabled in the deployment, no scheduled export | unchanged; see open items |
-| PostHog integration | yes | unused; PostHog runs in the browser separately | unused; see open items |
+| PostHog integration | yes | unused; PostHog runs in the browser separately | the way LLM traces and scores reach PostHog; UI-only, enabled by hand: [PostHog export](langfuse.md#posthog-export) |
 | Organization-level roles (Viewer, Member, Admin, Owner) | yes | no default: a first SSO login's membership was undefined | first login joins the project as VIEWER |
 | Project-level roles, audit logs, retention policies, server-side masking, SCIM | **Enterprise** | not used | not used; retention is our own 30-day job (ADR-0044 Amendment 4) |
 | Protected prompt labels | **Enterprise** | not used | not used |

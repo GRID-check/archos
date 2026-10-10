@@ -390,6 +390,26 @@ describe("with the Langfuse tier enabled", () => {
       );
     });
 
+    // Langfuse's own PostHog integration runs inside the worker: an hourly job
+    // that POSTs to the configured PostHog host (`eu.i.posthog.com`), with the
+    // host and key saved in Langfuse's project settings and not in any env this
+    // program sets. So there is no egress rule to write for it, and one rule is
+    // enough to break it with every pod Ready: an `Egress` policy selecting the
+    // worker would silently cut the export. Egress is open by design
+    // (network-policies.ts); this holds that line for the one pod that needs it.
+    it("leaves the worker's egress open so the PostHog export can reach its host", async () => {
+      const policies = RESOURCES.filter((r) => r.type === "kubernetes:networking.k8s.io/v1:NetworkPolicy");
+      expect(policies.length).toBeGreaterThan(0);
+      for (const policy of policies) {
+        const spec = (await resolve(policy.inputs.spec)) as any;
+        const selectsWorker =
+          spec.podSelector?.matchLabels?.["app.kubernetes.io/name"] === "langfuse-worker" ||
+          // The wholesale allow selects everyone except a NotIn list; it is Ingress-only.
+          spec.podSelector?.matchExpressions !== undefined;
+        if (selectsWorker) expect(spec.policyTypes, policy.name).not.toContain("Egress");
+      }
+    });
+
     it("names the only two callers ClickHouse has", async () => {
       const spec = (await resolve(
         find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-langfuse-to-clickhouse")

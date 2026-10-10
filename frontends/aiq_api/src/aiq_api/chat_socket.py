@@ -114,6 +114,9 @@ from aiq_agent.conversation_context import append_conversation_context
 from aiq_agent.conversation_context import format_context_turn
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
+from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
+from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
+from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
 from aiq_agent.observability.turn_outcome import begin_turn_outcome
 from aiq_agent.observability.turn_outcome import end_turn_outcome
 from aiq_agent.observability.turn_outcome import record_turn_error
@@ -1303,6 +1306,12 @@ async def _drive(
     # context every export task of this turn snapshots, and filled in place
     # by `_relay_workflow` when the terminal passes.
     outcome = begin_turn_outcome()
+    # The asker's PostHog session, so Langfuse's PostHog export can put this
+    # turn's observations on the recording (`record_posthog_session`). Bound
+    # here, ahead of the session, for the same reason as the outcome: every
+    # export task of the turn snapshots the context it was created in.
+    contributions = begin_trace_contributions()
+    record_posthog_session(request.posthog_session_id)
     try:
         with pinned_trace(trace_id_for_message(turn.message_id)), user_context(caller), request_trace_tag_context(tags):
             async with session_manager.session(
@@ -1320,6 +1329,7 @@ async def _drive(
         record_turn_error(_error_for(exc).code, str(exc))
         raise
     finally:
+        end_trace_contributions(contributions)
         end_turn_outcome(outcome)
 
 

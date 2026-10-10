@@ -103,3 +103,21 @@ export const resetPosthog = (): void => {
   if (!initialized) return
   posthog.reset()
 }
+
+const SESSION_ID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The id of the current PostHog browser session, or `null` when analytics is
+ * disabled or the SDK has none yet. Sent with each chat turn so Langfuse's
+ * PostHog export can put the turn's traces on this session's recording
+ * (`trace.metadata.$posthog_session_id` -> `$session_id`). Read per turn, not
+ * once: the id rotates after 30 idle minutes and on `reset()`.
+ *
+ * Only a UUID-shaped value is returned. The backend checks it again (UUIDv7)
+ * because it is browser input; this side just keeps garbage off the wire.
+ */
+export const getPosthogSessionId = (): string | null => {
+  if (!initialized) return null
+  const id = posthog.get_session_id()
+  return typeof id === 'string' && SESSION_ID_SHAPE.test(id) ? id : null
+}

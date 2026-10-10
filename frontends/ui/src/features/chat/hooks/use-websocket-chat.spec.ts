@@ -33,6 +33,8 @@ vi.mock('@/adapters/api/turn-socket', () => ({
     }
   },
 }))
+const posthogSessionId = vi.hoisted(() => vi.fn((): string | null => null))
+vi.mock('@/lib/analytics/posthog', () => ({ getPosthogSessionId: posthogSessionId }))
 vi.mock('@/adapters/auth', () => ({
   useAuth: () => ({ user: { id: 'user-1', name: 'Max' }, authRequired: false, isLoading: false }),
 }))
@@ -192,6 +194,17 @@ describe('a question', () => {
     const question = messages().find((message) => message.messageType === 'user')!
     expect(sentOf('user_message')[0]).toMatchObject({ reasoning_effort: 'xhigh' })
     expect(useChatStore.getState().turns[question.id]?.effort).toBe('xhigh')
+  })
+
+  it("sends the browser's PostHog session id with the turn, and leaves the key out while analytics is off", () => {
+    const { result } = open(conversationOf(CONVERSATION))
+
+    act(() => void result.current.sendMessage('Erste Frage'))
+    expect(sentOf('user_message')[0]).not.toHaveProperty('posthog_session_id')
+
+    posthogSessionId.mockReturnValueOnce('0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70')
+    act(() => void result.current.sendMessage('Zweite Frage'))
+    expect(sentOf('user_message')[1]).toMatchObject({ posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70' })
   })
 
   it("does not make a file that is merely open in a peek the turn's focus", () => {

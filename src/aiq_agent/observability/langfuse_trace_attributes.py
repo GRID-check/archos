@@ -65,6 +65,7 @@ Langfuse tier is deployed. An Aspire-only stack is byte-identical to before.
 import contextvars
 import logging
 import os
+import re
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -160,6 +161,49 @@ def record_trace_metadata(**pairs: Any) -> None:
         _CONTRIBUTED.set({"metadata": metadata, "tags": tags})
     except Exception:
         logger.debug("Failed to record Langfuse trace metadata", exc_info=True)
+
+
+#: The trace metadata key Langfuse's PostHog integration reads: it exports
+#: ``trace.metadata.$posthog_session_id`` as the event's ``$session_id``, which
+#: is what puts a ``langfuse observation`` event on the browser session's replay
+#: (https://langfuse.com/integrations/analytics/posthog, "Metadata matching").
+POSTHOG_SESSION_METADATA_KEY = "$posthog_session_id"
+
+#: PostHog session ids are UUIDv7 (version nibble 7, RFC 9562 variant); the JS
+#: SDK's own docs require one when a session is bootstrapped. Anything else is
+#: not a session id and would only mislabel a trace.
+_UUID_V7 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+
+
+def posthog_session_id_or_none(value: Any) -> str | None:
+    """``value`` as a PostHog session id (lower-case UUIDv7), or ``None`` for anything else. Pure."""
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().lower()
+    return candidate if _UUID_V7.fullmatch(candidate) else None
+
+
+def record_posthog_session(value: Any) -> bool:
+    """Link this turn's trace to the asker's PostHog session replay. Whether the id was recorded.
+
+    Identity-gated, decided from ``identity_attributes_enabled``'s own rule ("no
+    span names a person" unless the deployment opts in). A session id names no
+    one by itself, but on a trace it is a join key: the trace holds the turn's
+    question and answer, and the id opens that person's recording and, in
+    PostHog, their person profile. Handing Langfuse's operators that link is the
+    same step as handing them the user id, so it rides the same switch. It also
+    costs nothing real: with identity off the export's distinct id is
+    ``langfuse_unknown_user`` for every trace, so the replay link would have no
+    person to land on.
+
+    Best-effort like :func:`record_trace_metadata`; a value that is not a
+    UUIDv7 is dropped, never an error, because it came from a browser.
+    """
+    session_id = posthog_session_id_or_none(value)
+    if session_id is None or not identity_attributes_enabled():
+        return False
+    record_trace_metadata(**{POSTHOG_SESSION_METADATA_KEY: session_id})
+    return True
 
 
 def add_trace_tag(tag: str) -> None:
