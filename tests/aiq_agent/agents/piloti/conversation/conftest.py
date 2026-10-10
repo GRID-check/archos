@@ -11,6 +11,7 @@ from aiq_agent.agents.piloti import conversation_register as register_mod
 from aiq_agent.agents.piloti.conversation_register import ChatDeepResearcherConfig
 from aiq_agent.agents.piloti.conversation_register import chat_deepresearcher_agent
 from aiq_agent.common import profiler as profiler_mod
+from aiq_agent.common.platform_lessons import LessonsResolution
 from aiq_agent.knowledge import ingest_status_store
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.turn import context as context_mod
@@ -71,7 +72,7 @@ def workflow_harness(monkeypatch):
     monkeypatch.setattr(register_mod, "get_checkpointer", memory_checkpointer)
     monkeypatch.setattr(inventory_mod, "get_available_documents_async", no_documents)
     monkeypatch.setattr(ingest_status_store, "in_flight_files", lambda _names: {})
-    monkeypatch.setattr(context_mod, "get_platform_lessons_digest", lambda _cid: None)
+    monkeypatch.setattr(context_mod, "resolve_platform_lessons", lambda _cid: LessonsResolution(digest=None, arm="off"))
     monkeypatch.setattr(
         register_mod, "schedule_post_answer_stages", lambda facts, llms: seen["scheduled"].append(facts) or []
     )

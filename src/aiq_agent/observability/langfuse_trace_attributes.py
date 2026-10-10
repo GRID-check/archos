@@ -66,6 +66,7 @@ import contextvars
 import logging
 import os
 import re
+from collections.abc import Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -204,6 +205,31 @@ def record_posthog_session(value: Any) -> bool:
         return False
     record_trace_metadata(**{POSTHOG_SESSION_METADATA_KEY: session_id})
     return True
+
+
+#: Trace metadata keys of the platform-lessons experiment. Always recorded, with
+#: no identity switch: the arm is a function of the conversation id and a lesson
+#: id names a fleet-wide caution, so neither identifies a person.
+LESSONS_ARM_METADATA_KEY = "lessons_arm"
+LESSON_IDS_METADATA_KEY = "lesson_ids"
+
+
+def record_lessons(arm: str, lesson_ids: Sequence[str]) -> None:
+    """Put the turn's lessons arm and the lessons it carried on the trace.
+
+    ``lessons_arm`` is ``treated``, ``holdout`` or ``off``; ``lesson_ids`` is the
+    comma-joined ids of the lessons in the injected digest (a scalar, because
+    Langfuse stringifies a list and a PostHog property filter wants one text),
+    left out when there were none. With these two keys the holdout is a
+    breakdown on the exported ``langfuse observation`` events, without joining
+    back to the vote table: down-vote rate (the ``user-feedback`` score) by arm.
+    """
+    record_trace_metadata(
+        **{
+            LESSONS_ARM_METADATA_KEY: arm,
+            LESSON_IDS_METADATA_KEY: ",".join(lesson_ids) or None,
+        }
+    )
 
 
 def add_trace_tag(tag: str) -> None:

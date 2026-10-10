@@ -164,7 +164,7 @@ Every step is idempotent; a retry after any failure finishes the work, and a fol
 
 **Conversation**:
 1. Delete LangGraph checkpoints (`checkpoints`, `checkpoint_blobs`, `checkpoint_writes` in `aiq_checkpoints`) for `thread_id = conversation id`
-2. Delete `conversations` row (`messages` cascade)
+2. Delete the chat's `answer_feedback` rows (a down-vote's `comment` and `expected_answer` quote the chat; no FK) and the `conversations` row (`messages` cascade)
 3. Delete the chat's Langfuse traces (below): in the purger's retry after the BFF's erasure, or, for a chat the delete request erased itself, by the scheduler afterwards; see **Langfuse traces**
 
 What `DELETE /api/conversations/[id]` does today is immediate, with the queue
@@ -176,7 +176,7 @@ step after the hold check is safe to repeat:
 3. Mark the conversation `deleted_at`, which hides it and makes the session upload refuse new bytes, and in the same transaction insert a `deletion_queue` row (`entity_type = 'conversation'`, `purge_after` = now + 10 minutes, `CONVERSATION_ERASURE_RETRY_DELAY_MS`). The active-row index keeps one pending row per chat, so a repeated delete leaves the queued retry and its attempts alone.
 4. `purgeSessionDocuments` (`lib/session-documents/cleanup.ts`): for each attachment row, its chunks, its objects, then the row, then its chunks once more (logged only). A row whose erase failed is kept, and so is the conversation.
 5. `deleteSessionCollection`: the chat's whole `s_` collection through the backend's `DELETE /v1/collections/{name}`. This covers chunks no row names, such as attachments uploaded before session files were rows. A collection that does not exist (404), or a deployment with no knowledge layer (503), counts as erased. Any other failure keeps the conversation.
-6. Delete the `conversations` row (`messages` and the remaining document rows cascade), then the collaboration rows; close the queue row (`pending` or `failed` → `purged`, never a row the purger has claimed); then the agent's drafts.
+6. Delete the votes cast on the chat (`answer_feedback`, which has no foreign key: found by the conversation id they carry or by the message id of an answer the chat holds, so before the messages cascade away) and the `conversations` row (`messages` and the remaining document rows cascade) in one transaction, so a refused row keeps its votes; then the record of restricted folders and source projects, then the collaboration rows; close the queue row (`pending` or `failed` → `purged`, never a row the purger has claimed); then the agent's drafts.
 
 Steps 4 to 6 are one function (`eraseMarkedConversation`). When step 4 or 5
 fails, typically because the agent service is down, the request answers 502 and

@@ -982,3 +982,46 @@ class TestPosthogSessionLink:
             contributed={"metadata": {"$posthog_session_id": self.SESSION}, "tags": []},
         )
         assert attributes == {"langfuse.trace.metadata.$posthog_session_id": self.SESSION}
+
+
+class TestLessonsMetadata:
+    """The holdout is analysable from the exported observation events (ADR-0098)."""
+
+    LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+    LESSON_B = "9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a"
+
+    def test_the_arm_and_the_lessons_land_in_the_turns_metadata_without_the_identity_switch(self, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
+        record_lessons("treated", (self.LESSON_A, self.LESSON_B))
+        assert snapshot_contributions()["metadata"] == {
+            "lessons_arm": "treated",
+            "lesson_ids": f"{self.LESSON_A},{self.LESSON_B}",
+        }
+        reset_contributions()
+
+    def test_a_turn_with_no_lessons_records_the_arm_alone(self):
+        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        record_lessons("holdout", ())
+        assert snapshot_contributions()["metadata"] == {"lessons_arm": "holdout"}
+        reset_contributions()
+
+    def test_the_span_attributes_are_the_trace_metadata_namespace(self):
+        attributes = langfuse_attributes_for(
+            organization_id=None,
+            project_id=None,
+            conversation_id=None,
+            contributed={"metadata": {"lessons_arm": "treated", "lesson_ids": self.LESSON_A}, "tags": []},
+        )
+        assert attributes == {
+            "langfuse.trace.metadata.lessons_arm": "treated",
+            "langfuse.trace.metadata.lesson_ids": self.LESSON_A,
+        }

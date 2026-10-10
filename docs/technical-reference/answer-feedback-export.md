@@ -216,9 +216,13 @@ stored counts only once it is rated, so the figure can still under-count.
   and it is the same construction as `platform_lesson_reports.org_hash`. It is
   pseudonymous, not anonymous: anyone holding the user id can recompute it. The
   export carries no user id, name or e-mail.
-- **Deleted conversations.** Erasing a conversation deletes its messages, so
-  `question` and `answer` are empty. The vote row stays, `comment` and
-  `expected_answer` included. Votes are not part of the conversation erasure.
+- **Deleted conversations.** Erasing a conversation deletes its messages and
+  the votes cast on it, `comment` and `expected_answer` included, so an erased
+  chat leaves no row here. `question` and `answer` are empty only for a turn
+  that was never persisted. What stays is anonymous: `platform_lesson_reports`
+  (an anonymised summary and a pseudonymous organisation hash, its
+  `feedback_id` then pointing at nothing) and the `message_restricted_use`
+  marks (ids only).
 - **`app_url`** opens for members of that organization only, and is empty when
   the conversation has no row or no app origin is configured
   (`WORKOS_REDIRECT_URI`).

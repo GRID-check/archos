@@ -12,7 +12,7 @@ vi.mock('@/lib/analytics/posthog', () => ({
 
 const ok: SubmitProductFeedbackResult = {
   ok: true,
-  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z' },
+  report: { id: 'r1', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: 'The upload stops at 99 percent.' },
 }
 
 function setup(result: SubmitProductFeedbackResult = ok) {
@@ -101,17 +101,43 @@ describe('FeedbackDialog', () => {
       vi.clearAllMocks()
     })
 
-    test('also opens a Support ticket and records the kind once the report is stored', async () => {
-      const { user } = setup()
+    test('opens a Support ticket with the report id and the masked text the server returned', async () => {
+      const { user } = setup({
+        ok: true,
+        report: {
+          id: 'r7',
+          kind: 'idea',
+          createdAt: '2026-09-29T08:00:00Z',
+          relayText: 'Please add an export for [Honorar maskiert].',
+        },
+      })
 
       await user.click(screen.getByRole('radio', { name: /Idea/ }))
-      await user.type(message(), 'Please add an export for plan lists.')
+      await user.type(message(), 'Please add an export for the Honorar 48.000 EUR.')
       await user.click(send())
 
       await waitFor(() => expect(sendPosthogSupportMessage).toHaveBeenCalledTimes(1))
-      expect(sendPosthogSupportMessage).toHaveBeenCalledWith('[idea] Please add an export for plan lists.')
+      // The typed words never go: the ticket carries what the server masked.
+      expect(sendPosthogSupportMessage).toHaveBeenCalledWith(
+        '[idea] #r7 /\nPlease add an export for [Honorar maskiert].',
+      )
       // The event carries the kind and never the words.
       expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'idea' })
+    })
+
+    test('opens no ticket when the server returned no text to relay (contact not allowed)', async () => {
+      const { user } = setup({
+        ok: true,
+        report: { id: 'r8', kind: 'bug', createdAt: '2026-09-29T08:00:00Z', relayText: null },
+      })
+
+      await user.type(message(), 'The upload stops at 99 percent.')
+      await user.click(screen.getByRole('checkbox', { name: 'You may contact me about this' }))
+      await user.click(send())
+
+      expect(await screen.findByTestId('feedback-sent')).toBeInTheDocument()
+      expect(sendPosthogSupportMessage).not.toHaveBeenCalled()
+      expect(capturePosthog).toHaveBeenCalledWith('product_feedback_submitted', { kind: 'bug' })
     })
 
     test('does not involve PostHog when the report was not stored', async () => {

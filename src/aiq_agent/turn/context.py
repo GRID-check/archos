@@ -17,12 +17,14 @@ from dataclasses import replace
 from typing import Any
 
 from aiq_agent.auth import get_current_principal
-from aiq_agent.common.platform_lessons import get_platform_lessons_digest
+from aiq_agent.common.platform_lessons import LessonsResolution
+from aiq_agent.common.platform_lessons import resolve_platform_lessons
 from aiq_agent.knowledge.project_memory import fetch_memory_digest
 from aiq_agent.knowledge.restricted_collections import restricted_collections_in
 from aiq_agent.knowledge.restricted_use import current_cross_project_turn
 from aiq_agent.knowledge.restricted_use import current_restricted_use
 from aiq_agent.knowledge.restricted_use import drew_on_other_projects
+from aiq_agent.observability.langfuse_trace_attributes import record_lessons
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.project_context import compose_project_context
 from aiq_agent.project_context import get_user_message_id_from_context
@@ -254,19 +256,19 @@ async def _turn_flags(request: GridRequestContext, resolve_stages: bool) -> Turn
     )
 
 
-async def _platform_lessons(conversation_id: str | None) -> str | None:
-    """The bounded fleet-wide lessons digest, or None.
+async def _platform_lessons(conversation_id: str | None) -> LessonsResolution:
+    """The bounded fleet-wide lessons digest with its holdout arm and lesson ids.
 
     Platform-scoped, so fetched regardless of project/org context; the module
     TTL-caches, so the per-turn cost is ~zero between refreshes and the thread
     hop only exists for the cold fetch. Fails open: a digest that could not be
-    read is one the prompts do without.
+    read is one the prompts do without, and the turn then claims no arm.
     """
     try:
-        return await asyncio.to_thread(get_platform_lessons_digest, conversation_id)
+        return await asyncio.to_thread(resolve_platform_lessons, conversation_id)
     except Exception:  # noqa: BLE001 - an advisory digest must never cost the turn
         logger.warning("Platform-lessons digest fetch failed; continuing without", exc_info=True)
-        return None
+        return LessonsResolution(digest=None, arm="off")
 
 
 async def _load_turn_context(
@@ -276,18 +278,21 @@ async def _load_turn_context(
     query_text: str,
     resolve_stages: bool,
 ) -> TurnContext:
-    platform_lessons, blocks, turn_flags = await asyncio.gather(
+    lessons, blocks, turn_flags = await asyncio.gather(
         _platform_lessons(conversation_id),
         _context_blocks(request, query_text),
         _turn_flags(request, resolve_stages),
     )
+    # Here, not in `_platform_lessons`: gather runs that in a child task, whose
+    # context (and so whose trace contributions) the turn never sees again.
+    record_lessons(lessons.arm, lessons.lesson_ids)
     if blocks.drew_on_other_projects and (cross := current_cross_project_turn()) is not None:
         # An earlier turn drew on another project (ADR-0094): this one starts
         # with every door a whole project reads shut (`settle_restriction`).
         cross.drew_on_others = True
     return TurnContext(
         project_context=compose_project_context(blocks.project_context, blocks.project_memory),
-        platform_lessons=platform_lessons,
+        platform_lessons=lessons.digest,
         org_instructions=blocks.org_instructions,
         reference_projects=blocks.reference_projects,
         # The restriction is settled after the whole setup gather

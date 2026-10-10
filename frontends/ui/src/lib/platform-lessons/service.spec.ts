@@ -73,11 +73,15 @@ import {
 } from './repository'
 import { distillReport } from './distill-client'
 import {
-  buildPlatformLessonsDigest,
+  buildPlatformLessonsInjection,
+  DIGEST_MAX_CHARS,
   kickLessonDistillation,
   resetLessonSweepStateForTests,
 } from './service'
 import type { DistillOutcome } from './types'
+
+const LESSON_A = '3f2504e0-4f89-11d3-9a0c-0305e82c3301'
+const LESSON_B = '9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a'
 
 const DOWNVOTE = {
   feedbackId: 'fb-1',
@@ -315,25 +319,46 @@ describe('kickLessonDistillation', () => {
   })
 })
 
-describe('buildPlatformLessonsDigest', () => {
+describe('buildPlatformLessonsInjection', () => {
   it('formats active lessons as the bounded injectable digest', async () => {
     vi.mocked(listActiveLessonsForDigest).mockResolvedValue([
       {
+        id: LESSON_A,
         category: 'wrong_source',
         reportCount: 3,
         content: 'Vor dem Zitieren die Richtlinie prüfen.',
       },
     ] as Awaited<ReturnType<typeof listActiveLessonsForDigest>>)
 
-    const digest = await buildPlatformLessonsDigest()
+    const { digest } = await buildPlatformLessonsInjection()
     expect(digest).toBe(
       'PLATFORM_LESSONS v1\n- [wrong_source | 3x] "Vor dem Zitieren die Richtlinie prüfen."'
     )
   })
 
-  it('returns null when no lesson is active', async () => {
+  it('names the lessons whose line is in the digest, so the agent can put them on the trace', async () => {
+    vi.mocked(listActiveLessonsForDigest).mockResolvedValue([
+      { id: LESSON_A, category: 'wrong_source', reportCount: 3, content: 'Vor dem Zitieren prüfen.' },
+      { id: LESSON_B, category: 'inaccurate', reportCount: 1, content: 'Maße nie schätzen.' },
+    ] as Awaited<ReturnType<typeof listActiveLessonsForDigest>>)
+
+    expect((await buildPlatformLessonsInjection()).lessonIds).toEqual([LESSON_A, LESSON_B])
+  })
+
+  it('leaves out a lesson the digest budget cut: its id was never injected', async () => {
+    vi.mocked(listActiveLessonsForDigest).mockResolvedValue([
+      { id: LESSON_A, category: 'wrong_source', reportCount: 3, content: 'Kurz.' },
+      { id: LESSON_B, category: 'inaccurate', reportCount: 1, content: 'x'.repeat(DIGEST_MAX_CHARS) },
+    ] as Awaited<ReturnType<typeof listActiveLessonsForDigest>>)
+
+    const injection = await buildPlatformLessonsInjection()
+    expect(injection.digest).toContain('Kurz.')
+    expect(injection.lessonIds).toEqual([LESSON_A])
+  })
+
+  it('returns no digest and no ids when no lesson is active', async () => {
     vi.mocked(listActiveLessonsForDigest).mockResolvedValue([])
-    expect(await buildPlatformLessonsDigest()).toBeNull()
+    expect(await buildPlatformLessonsInjection()).toEqual({ digest: null, lessonIds: [] })
   })
 
   /**
@@ -345,10 +370,10 @@ describe('buildPlatformLessonsDigest', () => {
   it('does not inject a digest cached before restricted lessons were withdrawn', async () => {
     const stale = 'PLATFORM_LESSONS v1\n- [inaccurate | 1x] "Zimmerer-Honorar 48.000 EUR."'
     vi.mocked(getCached).mockImplementationOnce(async (key, _ttl, loader) =>
-      key === 'platformlessons:digest:v1' || key === 'platformlessons:digest:v2' ? stale : loader()
+      ['v1', 'v2', 'v3'].some((version) => key === `platformlessons:digest:${version}`) ? stale : loader()
     )
     vi.mocked(listActiveLessonsForDigest).mockResolvedValue([])
 
-    expect(await buildPlatformLessonsDigest()).toBeNull()
+    expect((await buildPlatformLessonsInjection()).digest).toBeNull()
   })
 })

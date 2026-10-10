@@ -19,7 +19,7 @@ ingestion `https://eu.i.posthog.com`).
 | Server-side events | PostHog | `posthog-node` behind `lib/analytics/posthog-server.ts` | Code in this change |
 | err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue switched off by stack key |
 | Aspire log pane | Stays the live pane; WARN+ logs also go to PostHog Logs | Second exporter on the collector, behind `grid-oib:posthogLogsEnabled` | Code in this change |
-| Product feedback dialog (Postgres, inbox, GitHub issues) | Unchanged, and also a PostHog Support conversation | `posthog.conversations.sendMessage` | Code in this change |
+| Product feedback dialog (Postgres, inbox; the GitHub filing is removed) | Unchanged, and also a PostHog Support conversation (report id and server-masked text, only when contact is allowed) | `posthog.conversations.sendMessage` | Code in this change |
 | No surveys | PostHog Surveys (NPS, CSAT, churn), German first | Defined in PostHog | Drafts created, not launched |
 | No alerts | PostHog alerts on errors, logs and insights | Defined in PostHog | Created in the project |
 | No release markers | PostHog annotations and error-tracking releases per deploy | `deploy.yml` steps, skipped without the secret | Code in this change |
