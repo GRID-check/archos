@@ -11,6 +11,7 @@ show counts as a defect.
 | [`langfuse.md`](langfuse.md) | You are changing the product. The contract: what every trace carries, the score catalogue, what Langfuse is configured with, what your change must do |
 | [`analyst-guide.md`](analyst-guide.md) | You are a business analyst or in the Fachbereich and want to read the data: access, vocabulary, which question is answered where, dashboards, the review queue |
 | [`langfuse-audit-2026-10.md`](langfuse-audit-2026-10.md) | You want to know what Langfuse offers, what we use, and what is still open |
+| [`posthog-migration.md`](posthog-migration.md) | You are working on the PostHog switch ([ADR-0098](../adr/0098-posthog-is-the-product-platform-and-langfuse-feeds-it.md), proposed): what goes where, the free-tier budget, the checklist only a person can do |
 
 The deployment side (Langfuse's workloads, its access gates, retention) is
 [ADR-0044](../adr/0044-langfuse-durable-llm-observability.md) and
