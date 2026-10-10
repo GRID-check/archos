@@ -256,6 +256,146 @@ class TestCarriedLinks:
 
 
 # ---------------------------------------------------------------------------
+# A Fassung a person chose at upload (ADR-0097)
+# ---------------------------------------------------------------------------
+
+
+class TestConfirmFassung:
+    @pytest.fixture
+    def writes(self, monkeypatch):
+        from aiq_agent import knowledge
+
+        state = SimpleNamespace(rows=[], links=[], suggestions=[], changes=[], link_ok=True)
+        monkeypatch.setattr(fassungen, "read_rows", lambda collection: state.rows)
+        monkeypatch.setattr(
+            knowledge, "set_document_superseded_by", lambda *args: state.links.append(args) or state.link_ok
+        )
+        monkeypatch.setattr(
+            knowledge, "set_document_revision_suggestion", lambda *args: state.suggestions.append(args) or True
+        )
+        monkeypatch.setattr(knowledge, "set_document_change_summary", lambda *args: state.changes.append(args) or True)
+        return state
+
+    def _llm(self, answer="- Stiege nach Norden verschoben"):
+        llm = MagicMock()
+        llm.invoke.return_value = AIMessage(content=answer)
+        return llm
+
+    def _confirm(self, llm, older="B.pdf"):
+        return fassungen.confirm_fassung(
+            "coll", "C.pdf", older, summary="Neu.", doc_class=None, tags=["Grundriss"], llm=llm
+        )
+
+    def test_the_link_is_written_the_way_the_put_route_writes_it(self, writes):
+        writes.rows = [_row("B.pdf", summary="Alt.")]
+        llm = self._llm()
+
+        assert self._confirm(llm) is True
+
+        assert writes.links == [("coll", "B.pdf", "C.pdf")]
+        assert writes.changes == [("coll", "C.pdf", "- Stiege nach Norden verschoben", "B.pdf")]
+        prompt = llm.invoke.call_args.args[0]
+        assert "Alt." in prompt and "Neu." in prompt
+
+    def test_a_suggestion_that_pointed_at_the_older_file_is_cleared(self, writes):
+        writes.rows = [_row("B.pdf"), _row("C.pdf", revision_suggestion={**SUGGESTION, "of": "B.pdf"})]
+
+        self._confirm(self._llm())
+
+        assert writes.suggestions == [("coll", "C.pdf", None)]
+
+    def test_a_suggestion_about_another_file_is_left_alone(self, writes):
+        writes.rows = [_row("B.pdf"), _row("C.pdf", revision_suggestion={**SUGGESTION, "of": "A.pdf"})]
+
+        self._confirm(self._llm())
+
+        assert writes.suggestions == []
+
+    def test_a_failed_model_leaves_the_link_and_no_change_line(self, writes):
+        writes.rows = [_row("B.pdf")]
+        llm = MagicMock()
+        llm.invoke.side_effect = RuntimeError("model down")
+
+        assert self._confirm(llm) is True
+
+        assert writes.links == [("coll", "B.pdf", "C.pdf")]
+        assert writes.changes == []
+
+    def test_an_older_file_the_collection_does_not_hold_links_nothing(self, writes, caplog):
+        writes.rows = [_row("A.pdf")]
+
+        with caplog.at_level("WARNING"):
+            assert self._confirm(self._llm()) is False
+
+        assert writes.links == [] and writes.changes == []
+        assert "B.pdf is not in coll" in caplog.text
+
+    def test_a_link_that_would_close_a_loop_is_refused(self, writes, caplog):
+        # C is already replaced by B: B cannot be replaced by C in turn.
+        writes.rows = [_row("B.pdf"), _row("C.pdf", superseded_by="B.pdf")]
+
+        with caplog.at_level("WARNING"):
+            assert self._confirm(self._llm()) is False
+
+        assert writes.links == [] and writes.changes == []
+        assert "already leads to" in caplog.text
+
+    def test_a_loop_through_other_files_is_refused_too(self, writes):
+        writes.rows = [_row("B.pdf"), _row("C.pdf", superseded_by="D.pdf"), _row("D.pdf", superseded_by="B.pdf")]
+        assert self._confirm(self._llm()) is False
+        assert writes.links == []
+
+    def test_a_file_cannot_replace_itself(self, writes):
+        writes.rows = [_row("C.pdf")]
+        assert self._confirm(self._llm(), older="C.pdf") is False
+        assert writes.links == []
+
+    def test_a_row_that_vanished_between_the_read_and_the_write_links_nothing(self, writes):
+        writes.rows = [_row("B.pdf")]
+        writes.link_ok = False
+
+        assert self._confirm(self._llm()) is False
+        assert writes.changes == []
+
+
+class TestRecordFassungenWithAChoice:
+    @pytest.fixture
+    def calls(self, monkeypatch):
+        state = SimpleNamespace(confirm=True, ran=[])
+        monkeypatch.setattr(fassungen, "confirm_fassung", lambda *a, **k: state.ran.append("confirm") or state.confirm)
+        monkeypatch.setattr(fassungen, "record_change", lambda *a, **k: state.ran.append("change"))
+        monkeypatch.setattr(fassungen, "suggest_revision", lambda *a, **k: state.ran.append("suggest"))
+        return state
+
+    def _record(self, **kwargs):
+        fassungen.record_fassungen(
+            "coll", "C.pdf", rows=[], previous=None, summary="x", doc_class=None, tags=None, llm=None, **kwargs
+        )
+
+    def test_a_made_link_replaces_the_suggestion(self, calls):
+        self._record(replaced=False, confirmed_older="B.pdf")
+        assert calls.ran == ["confirm"]
+
+    def test_a_made_link_replaces_the_change_against_the_previous_upload(self, calls):
+        self._record(replaced=True, confirmed_older="B.pdf")
+        assert calls.ran == ["confirm"]
+
+    def test_a_link_that_could_not_be_made_falls_back_to_a_suggestion(self, calls):
+        calls.confirm = False
+        self._record(replaced=False, confirmed_older="B.pdf")
+        assert calls.ran == ["confirm", "suggest"]
+
+    def test_a_link_that_could_not_be_made_falls_back_to_the_change_line_of_a_reupload(self, calls):
+        calls.confirm = False
+        self._record(replaced=True, confirmed_older="B.pdf")
+        assert calls.ran == ["confirm", "change"]
+
+    def test_no_choice_is_the_ordinary_path(self, calls):
+        self._record(replaced=False)
+        assert calls.ran == ["suggest"]
+
+
+# ---------------------------------------------------------------------------
 # End to end through _run_ingestion
 # ---------------------------------------------------------------------------
 
@@ -353,7 +493,7 @@ def _wait_terminal(ing, job_id, timeout=30):
     raise AssertionError("ingestion job did not terminate in time")
 
 
-def _ingest(ing, tmp_path, collection, file_name, text="Neue Fassung der Statik mit anderer Bewehrung."):
+def _ingest(ing, tmp_path, collection, file_name, text="Neue Fassung der Statik mit anderer Bewehrung.", **extra):
     upload = tmp_path / f"tmp_{uuid.uuid4().hex[:8]}.txt"
     upload.write_text(text, encoding="utf-8")
     job_id = ing.submit_job(
@@ -364,6 +504,7 @@ def _ingest(ing, tmp_path, collection, file_name, text="Neue Fassung der Statik 
             "extract_tables": False,
             "extract_images": False,
             "extract_charts": False,
+            **extra,
         },
     )
     status = _wait_terminal(ing, job_id)
@@ -500,6 +641,78 @@ class TestANewNameMayBeANewerFassung:
 
         assert model.prompts == []
         assert _documents("proj_off")["C.txt"].revision_suggestion is None
+
+
+class TestAFassungChosenAtUpload:
+    def test_the_link_and_its_change_line_are_written_once_the_file_has_been_read(
+        self, tmp_path, live_ingestor, stores, model
+    ):
+        from aiq_agent.knowledge import register_summary
+
+        register_summary("proj_chosen", "Grundriss_EG_Index_B.txt", "Grundriss Erdgeschoss, Stiege im Süden.")
+
+        _ingest(
+            live_ingestor, tmp_path, "proj_chosen", "Grundriss_EG_Index_C.txt", fassung_of="Grundriss_EG_Index_B.txt"
+        )
+
+        docs = _documents("proj_chosen")
+        assert docs["Grundriss_EG_Index_B.txt"].superseded_by == "Grundriss_EG_Index_C.txt"
+        assert docs["Grundriss_EG_Index_C.txt"].supersedes == ["Grundriss_EG_Index_B.txt"]
+        assert docs["Grundriss_EG_Index_C.txt"].change_summary == "- Stiege nach Norden verschoben"
+        assert docs["Grundriss_EG_Index_C.txt"].change_basis == "Grundriss_EG_Index_B.txt"
+        # A person decided; the model is not asked whether this is a newer Fassung.
+        assert model.asked("NEWER FASSUNG") == []
+        assert docs["Grundriss_EG_Index_C.txt"].revision_suggestion is None
+
+    def test_an_older_file_that_is_gone_falls_back_to_the_ordinary_suggestion(
+        self, tmp_path, live_ingestor, stores, model
+    ):
+        from aiq_agent.knowledge import register_summary
+
+        register_summary("proj_gone", "B.txt", "Statik.")
+        model.judge = '{"of": "B.txt", "confidence": 0.9, "reason": "Gleiche Statik."}'
+
+        _ingest(live_ingestor, tmp_path, "proj_gone", "C.txt", fassung_of="Weg.txt")
+
+        docs = _documents("proj_gone")
+        assert all(doc.superseded_by is None for doc in docs.values())
+        assert docs["C.txt"].revision_suggestion["of"] == "B.txt"
+
+    def test_a_loop_is_not_closed(self, tmp_path, live_ingestor, stores, model):
+        from aiq_agent.knowledge import register_summary
+        from aiq_agent.knowledge import set_document_superseded_by
+
+        register_summary("proj_loop", "B.txt", "Statik.")
+        register_summary("proj_loop", "C.txt", "Statik, neu.")
+        set_document_superseded_by("proj_loop", "C.txt", "B.txt")
+
+        _ingest(live_ingestor, tmp_path, "proj_loop", "C.txt", fassung_of="B.txt")
+
+        docs = _documents("proj_loop")
+        assert docs["B.txt"].superseded_by is None
+        assert docs["C.txt"].superseded_by == "B.txt"
+
+    def test_a_choice_for_a_name_already_in_the_collection_still_links(self, tmp_path, live_ingestor, stores, model):
+        from aiq_agent.knowledge import register_summary
+
+        register_summary("proj_again", "B.txt", "Die alte Statik.")
+        _seed_previous_version(live_ingestor, stores, "proj_again", "C.txt")
+
+        _ingest(live_ingestor, tmp_path, "proj_again", "C.txt", fassung_of="B.txt")
+
+        docs = _documents("proj_again")
+        assert docs["B.txt"].superseded_by == "C.txt"
+        # The change is told against the file the person named, not against the earlier upload of C.
+        assert docs["C.txt"].change_basis == "B.txt"
+
+    def test_the_base_corpus_ignores_it(self, tmp_path, live_ingestor, stores, model):
+        from aiq_agent.knowledge import register_summary
+
+        register_summary("oib_knowledge", "B.txt", "Statik.")
+
+        _ingest(live_ingestor, tmp_path, "oib_knowledge", "C.txt", fassung_of="B.txt")
+
+        assert _documents("oib_knowledge")["B.txt"].superseded_by is None
 
 
 class TestAReuploadSaysWhatChanged:

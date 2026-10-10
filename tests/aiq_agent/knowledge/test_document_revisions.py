@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import json
 import re
+from types import SimpleNamespace
 from unittest.mock import MagicMock
 
 import pytest
@@ -30,6 +31,7 @@ from aiq_agent.knowledge.document_revisions import parse_change_summary
 from aiq_agent.knowledge.document_revisions import rank_candidates
 from aiq_agent.knowledge.document_revisions import settled_change
 from aiq_agent.knowledge.document_revisions import summarize_change
+from aiq_agent.knowledge.document_revisions import would_loop
 
 NEW = RevisionDocument(
     file_name="Grundriss_EG_Index_C.pdf",
@@ -305,3 +307,24 @@ def summarize_prompt(older: RevisionDocument, newer: RevisionDocument) -> str:
         llm,
     )
     return llm.invoke.call_args.args[0]
+
+
+class TestWouldLoop:
+    @staticmethod
+    def _rows(**links):
+        return {name: SimpleNamespace(superseded_by=target) for name, target in links.items()}
+
+    def test_a_newer_file_already_replaced_by_the_older_one_would_close_a_loop(self):
+        assert would_loop(self._rows(C="B", B=None), newer="C", older="B") is True
+
+    def test_a_loop_through_other_files_is_found(self):
+        assert would_loop(self._rows(C="D", D="B", B=None), newer="C", older="B") is True
+
+    def test_an_unrelated_pair_is_no_loop(self):
+        assert would_loop(self._rows(B=None, C=None), newer="C", older="B") is False
+
+    def test_a_chain_that_does_not_reach_the_older_file_is_no_loop(self):
+        assert would_loop(self._rows(C="D", D=None, B=None), newer="C", older="B") is False
+
+    def test_a_cycle_elsewhere_terminates(self):
+        assert would_loop(self._rows(C="D", D="C"), newer="C", older="B") is False

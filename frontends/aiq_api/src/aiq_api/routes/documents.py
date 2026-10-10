@@ -11,6 +11,7 @@ import asyncio
 import logging
 import os
 import tempfile
+from collections.abc import Callable
 from typing import Any
 
 import httpx
@@ -44,6 +45,7 @@ from aiq_agent.knowledge.document_revisions import RevisionDocument
 from aiq_agent.knowledge.document_revisions import build_change_prompt
 from aiq_agent.knowledge.document_revisions import parse_change_summary
 from aiq_agent.knowledge.document_revisions import settled_change
+from aiq_agent.knowledge.document_revisions import would_loop
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import IngestionJobStatus
@@ -61,7 +63,11 @@ logger = logging.getLogger(__name__)
 BATCH_STATUS_MAX_IDS = 200
 
 
-def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) -> list[FileInfo]:
+def _merge_summaries(
+    files: list[FileInfo],
+    summaries: list[AvailableDocument],
+    held_names: Callable[[], set[str] | None] | None = None,
+) -> list[FileInfo]:
     """Attach persisted per-document summaries, tags and folder onto the file list.
 
     DocumentMetadataStore (SQL, keyed by ``(collection, filename)``) is the source of
@@ -70,12 +76,20 @@ def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) 
     knows what the vector store holds. The join key is the
     filename, unique within the summaries table, so a straight lookup is safe.
     A file without a stored summary/tags/folder is left untouched; already-populated
-    values are never overwritten. Topics (Themen) and the camera's capture facts
-    travel the same way, and so do the Fassungen: the confirmed link
+    values are never overwritten. Topics (Themen), the camera's capture facts and the
+    title-block facts (``revision_facts``: Plannummer, Index, Datum, Maßstab, Planinhalt read from the
+    Plankopf) travel the same way, and so do the Fassungen: the confirmed link
     (``superseded_by``, and ``supersedes`` as its reverse), the change summary with
     the file name it compared against, and Piloti's open suggestion. A suggestion
     a person dismissed, or one about a file that is gone or already replaced, is
     not sent.
+
+    A document ingested before the Fassung step existed has no stored suggestion. When
+    ``held_names`` is given, one is derived on read for it (``fassungen.derive_suggestions``):
+    the same title-block ``document_number`` with a later Index or date (``basis: title_block``), else
+    the Index or date in the file names (``basis: name``). It is never stored, never made for a pair a
+    person dismissed or linked, and never names a held or in-flight file; ``held_names`` returning
+    ``None`` suppresses it. Without ``held_names`` nothing is derived.
     """
     if not summaries:
         return files
@@ -94,6 +108,8 @@ def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) 
             file.topics = doc.topics
         if file.capture is None and doc.capture:
             file.capture = doc.capture
+        if file.revision_facts is None and doc.revision_facts:
+            file.revision_facts = doc.revision_facts
         if file.superseded_by is None and doc.superseded_by:
             file.superseded_by = doc.superseded_by
         if not file.supersedes and doc.supersedes:
@@ -103,7 +119,33 @@ def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) 
             file.change_basis = doc.change_basis
         if file.revision_suggestion is None:
             file.revision_suggestion = _open_suggestion(doc, doc_by_name)
+    if held_names is not None:
+        _attach_derived_suggestions(files, summaries, held_names)
     return files
+
+
+def _attach_derived_suggestions(
+    files: list[FileInfo], summaries: list[AvailableDocument], held_names: Callable[[], set[str] | None]
+) -> None:
+    """Fill ``revision_suggestion`` of the files that have none from the collection's own rows (on read)."""
+    from knowledge_layer.llamaindex import fassungen
+
+    derived = fassungen.derive_suggestions(summaries, held_names)
+    for file in files:
+        suggestion = derived.get(file.file_name)
+        if suggestion is not None and file.revision_suggestion is None:
+            file.revision_suggestion = suggestion
+
+
+def _held_names_of(collection_name: str) -> Callable[[], set[str] | None]:
+    """The reader of a collection's held and in-flight file names, for suggestions derived on read."""
+
+    def held() -> set[str] | None:
+        from knowledge_layer.llamaindex import fassungen
+
+        return fassungen.held_file_names(collection_name)
+
+    return held
 
 
 def _open_suggestion(doc: AvailableDocument, known: dict[str, AvailableDocument]) -> dict[str, Any] | None:
@@ -236,19 +278,6 @@ def _checked_topics(raw: list[str]) -> list[str]:
             },
         )
     return topics
-
-
-def _would_loop(documents: dict[str, AvailableDocument], *, newer: str, older: str) -> bool:
-    """Whether ``older -> newer`` would close a loop: ``newer`` already leads to ``older`` through replacements."""
-    seen: set[str] = set()
-    name: str | None = newer
-    while name and name not in seen:
-        if name == older:
-            return True
-        seen.add(name)
-        doc = documents.get(name)
-        name = doc.superseded_by if doc is not None else None
-    return False
 
 
 async def _refuse_fassung(collection_name: str, newer: AvailableDocument, older: AvailableDocument) -> dict[str, Any]:
@@ -412,7 +441,9 @@ def add_document_routes(router: APIRouter):
         # files are returned without summaries rather than erroring the route.
         try:
             summaries = await get_available_documents_async(collection_name)
-            _merge_summaries(files, summaries)
+            # Off the loop: deriving a suggestion for a document ingested before the Fassung step reads
+            # the job store for held names.
+            await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
         except Exception as e:
             logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
 
@@ -557,7 +588,7 @@ def add_document_routes(router: APIRouter):
         if not request.linked:
             return await _refuse_fassung(collection_name, newer, older)
 
-        if _would_loop(documents, newer=request.newer, older=request.older):
+        if would_loop(documents, newer=request.newer, older=request.older):
             raise HTTPException(
                 status_code=409,
                 detail=f"'{request.newer}' is already replaced by '{request.older}'; it cannot replace it in turn",

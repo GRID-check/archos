@@ -582,6 +582,16 @@ def set_document_capture(collection: str, filename: str, capture: dict[str, Any]
     return _get_document_metadata_store().set_capture(collection, filename, capture or None)
 
 
+def set_document_revision_facts(collection: str, filename: str, facts: dict[str, Any] | None) -> bool:
+    """Set the title-block facts (Plankopf: number, Index, date, scale, title) of a document; ``None`` clears them.
+
+    ``facts`` is read by the vision model during ingestion and normalised by the store
+    (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`). UPDATE-only, like
+    :func:`set_document_capture`: ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
+
+
 def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
     """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
 

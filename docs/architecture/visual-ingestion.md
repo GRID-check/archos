@@ -147,7 +147,7 @@ pages or need the PDF split first. Per-page transcription picks exactly the
 pages triage selects, reuses the cache and the per-org model, and a better OCR
 model is a setting (`AIQ_OCR_MODEL`), not a new route.
 
-## What the schema captures (v4)
+## What the schema captures (v5)
 
 Multiple **segments per image** — a sheet carrying a floor plan + a section + a
 chart + a photo indexes as four chunks, each with its **own scale and its own
@@ -161,8 +161,12 @@ subject→relation→object triples**, verbatim annotations, an approximate bbox
 and **provenance** (`text|visual|inferred`) + **confidence**
 (`high|medium|low`). Document-level: title / subtitle / slogans kept strictly
 apart, author, institution, supervision, location, strategies, process steps,
-watermark (quarantined), and a free-text summary kept alongside the structured
-data.
+watermark (quarantined), the **title block** (Plankopf: `document_number`,
+`revision` as printed, `revision_date` as ISO, `scale`, `title`; every field `null`
+when not legible, none guessed; added in v5 and stored per document as
+`revision_facts`, see
+[`document-ingestion.md`](../technical-reference/document-ingestion.md#title-block-facts-plankopf)),
+and a free-text summary kept alongside the structured data.
 
 The vocabulary is not in the schema. `space`, `circulation`, `envelope`,
 `building_physics` are the *architecture domain's* entity categories; another

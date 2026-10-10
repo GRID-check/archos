@@ -175,6 +175,8 @@ class PassageTarget:
     collection: str
     file_name: str
     shelf: str | None
+    #: The current Fassung of this document when a PERSON confirmed it replaced, else None.
+    current: str | None = None
 
 
 def _document_names(document: Any) -> list[str]:
@@ -262,9 +264,48 @@ async def _resolve_targets(entries: list[Any], document: str) -> list[PassageTar
                     collection=entry.collection,
                     file_name=str(getattr(candidate, "file_name", "")),
                     shelf=str(shelf) if shelf is not None else None,
+                    current=_current_fassung(candidate, docs),
                 )
             )
     return targets
+
+
+def _current_fassung(document: Any, documents: Sequence[Any]) -> str | None:
+    """The file that now stands for ``document`` once a person confirmed it replaced, else ``None``.
+
+    Follows ``superseded_by`` to the end of the chain (B was replaced by C, C by D: D), inside the
+    document's own collection and only through rows that still exist. A loop, which the store
+    refuses, stops where it closes.
+    """
+    by_name = {str(getattr(doc, "file_name", "")): doc for doc in documents}
+    seen = {str(getattr(document, "file_name", ""))}
+    current: str | None = None
+    next_name = getattr(document, "superseded_by", None)
+    while next_name and next_name in by_name and next_name not in seen:
+        current = next_name
+        seen.add(next_name)
+        next_name = getattr(by_name[next_name], "superseded_by", None)
+    return current
+
+
+def _older_fassung_notice(targets: Sequence[PassageTarget]) -> str:
+    """The one line that tells the model the document it opened is an older Fassung, and which one is current.
+
+    Rides the grounding block's notice slot, like „Ältere Fassungen ausgeblendet“ in the search, so
+    the block's hash still matches the bytes the model reads. A read of an older Fassung is allowed:
+    it is what „Index B“ and „die alte Fassung“ ask for. The line only keeps the answer from presenting it
+    as the document's current state. A file in a restricted collection nobody admitted is never named.
+    """
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    older = {(target.file_name, target.current) for target in targets if target.current and may_name(target.collection)}
+    if not older:
+        return ""
+    return "".join(
+        f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
+        "Sage in der Antwort, dass du die ältere Fassung liest.\n\n"
+        for name, current in sorted(older)
+    )
 
 
 def _coerce_page(page: Any) -> int | None:
@@ -1192,7 +1233,7 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
 
         chunks.sort(key=_punkt_sort_key)
         merged = _passage_result(chunks[:_MAX_PASSAGE_CHUNKS], query)
-        formatted = await asyncio.to_thread(_format_results, merged, query)
+        formatted = await asyncio.to_thread(_format_results, merged, query, notice=_older_fassung_notice(targets))
         logger.info("read_passage: %s returned %d chunk(s)", query, len(merged.chunks))
         return formatted
 
@@ -1215,7 +1256,11 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         # returns, and a byte added afterwards costs this tool the structured
         # read on its most common call (ADR-0061).
         formatted = await asyncio.to_thread(
-            _format_results, _passage_result(passages, query), query, trailer=_gliederung_block(entries)
+            _format_results,
+            _passage_result(passages, query),
+            query,
+            notice=_older_fassung_notice(targets),
+            trailer=_gliederung_block(entries),
         )
         logger.info("read_passage: %s outlined %d Punkt(e)", query, len(entries))
         return formatted
@@ -1245,7 +1290,9 @@ async def read_passage(config: ReadPassageConfig, _builder: Builder):
         merged = _passage_result(sorted(fetched, key=_punkt_sort_key)[:_MAX_PASSAGE_CHUNKS], query)
         # The line that replaces the Gliederung rides the same trailer, and for
         # the same reason: the hash is over the whole text.
-        formatted = await asyncio.to_thread(_format_results, merged, query, trailer=_NO_PUNKTE_LINE)
+        formatted = await asyncio.to_thread(
+            _format_results, merged, query, notice=_older_fassung_notice(targets), trailer=_NO_PUNKTE_LINE
+        )
         logger.info("read_passage: %s outlined %d opening chunk(s)", query, len(merged.chunks))
         return formatted
 

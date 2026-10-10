@@ -178,8 +178,8 @@ class TestTheSuggestion:
     def test_the_decoder_fails_open(self, raw):
         assert DocumentMetadataStore._decode_suggestion(raw) is None
 
-    def test_the_bases_are_name_and_content(self):
-        assert SUGGESTION_BASES == ("name", "content")
+    def test_the_bases_are_title_block_name_and_content(self):
+        assert SUGGESTION_BASES == ("title_block", "name", "content")
 
     def test_the_raw_batch_getter_returns_the_stored_json(self, pair):
         pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)

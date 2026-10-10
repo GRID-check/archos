@@ -23,10 +23,10 @@ sheet carries a floor plan, a detail, a legend, a site photo and an energy
 chart. Every enabled domain's vocabulary is offered, and each segment says
 which one it was read with.
 
-Schema v4 (canonical form, produced by :func:`parse_visual_analysis`)::
+Schema v5 (canonical form, produced by :func:`parse_visual_analysis`)::
 
     {
-      "schema_version": 4,
+      "schema_version": 5,
       "registry": "architecture+general",  # vocabulary that produced this
       "segments": [
         {
@@ -59,7 +59,14 @@ Schema v4 (canonical form, produced by :func:`parse_visual_analysis`)::
         "supervision": str|None, "location": str|None,
         "strategies": [str], "process_steps": [str],
         "watermark": str|None,
-        "summary": str
+        "summary": str,
+        "title_block": {                   # the Plankopf, once; all null without one
+          "document_number": str|None,     # Plannummer / Zeichnungsnummer, verbatim
+          "revision": str|None,            # the Index as printed: letter or number
+          "revision_date": "YYYY-MM-DD"|None,
+          "scale": str|None,               # Maßstab of the sheet
+          "title": str|None                # Planinhalt / Bezeichnung
+        }|None
       }
     }
 
@@ -72,7 +79,7 @@ Design decisions that are easy to get wrong later:
   a visually-guessed scale is never laundered into a certain fact downstream.
 - **Titles and slogans are separate fields.** A poster headline is not a
   subtitle.
-- **The parser is lenient and versioned.** Any reply that is not valid v4 JSON
+- **The parser is lenient and versioned.** Any reply that is not valid v5 JSON
   falls back to the legacy ``KEY: value`` parser, so a weaker model (or an old
   cached caption) degrades to earlier behaviour, never to a failed page.
 - **``bbox`` is groundwork, not truth.** A model's box on a technical sheet is
@@ -95,11 +102,16 @@ from knowledge_layer.llamaindex.visual_domains import Domain
 from knowledge_layer.llamaindex.visual_domains import DomainRegistry
 from knowledge_layer.llamaindex.visual_domains import resolve_registry
 
+from aiq_agent.knowledge.title_block import TITLE_BLOCK_FIELDS
+from aiq_agent.knowledge.title_block import normalise_revision_facts
+from aiq_agent.knowledge.title_block import title_block_label
+
 logger = logging.getLogger(__name__)
 
 #: Bump when the kernel schema changes shape. Part of the VLM cache identity so
 #: a schema change never serves output produced under the previous schema.
-SCHEMA_VERSION = 4
+#: v5 added ``document.title_block`` (Plannummer, Index, Datum, Maßstab, Planinhalt).
+SCHEMA_VERSION = 5
 
 # Bounds applied during normalisation. The model is instructed to be complete;
 # these caps keep a runaway reply from turning one chunk into megabytes.
@@ -257,6 +269,16 @@ def json_schema(registry: DomainRegistry) -> dict[str, Any]:
         }
     )
 
+    title_block = obj(
+        {
+            "document_number": nullable_string("Plannummer / Zeichnungsnummer exactly as printed."),
+            "revision": nullable_string("The Index as printed: a letter or a number, e.g. 'C' or '07'."),
+            "revision_date": nullable_string("Date of that Index or the plan's Stand, ISO 'YYYY-MM-DD'."),
+            "scale": nullable_string("Maßstab of the sheet as printed, e.g. '1:100'."),
+            "title": nullable_string("Planinhalt / Bezeichnung of the sheet as printed."),
+        }
+    )
+
     document = obj(
         {
             "title": nullable_string("Project or document title from the title block."),
@@ -270,6 +292,7 @@ def json_schema(registry: DomainRegistry) -> dict[str, Any]:
             "process_steps": string_array("Ordered process or phasing steps."),
             "watermark": nullable_string("Licence/watermark text, quarantined here and nowhere else."),
             "summary": {"type": "string", "description": "ONE sentence about the whole image."},
+            "title_block": title_block,
         }
     )
 
@@ -399,6 +422,16 @@ when you read it from the depiction, "inferred" when you concluded it. \
 "confidence" is high, medium or low. Never present an inference as certain.
 - Put licence or watermark text (for example "VECTORWORKS EDUCATIONAL VERSION") \
 in "document.watermark" and nowhere else. Never let it reach a summary.
+- "document.title_block" is the PLANKOPF (Schriftfeld) of a drawing sheet, once \
+for the whole image: "document_number" is the Plannummer or Zeichnungsnummer exactly \
+as printed; "revision" is the Index of THIS state as printed (a letter or a number \
+only, without the word "Index"); when the sheet has a revision table \
+(Änderungs- or Indexfeld), take its LAST (newest) row; "revision_date" is the \
+date printed with that Index or the Plandatum/Stand, written YYYY-MM-DD; "scale" is \
+the Maßstab of the sheet; "title" is the Planinhalt. Read these ONLY from the title \
+block itself, never from the drawing body or from a file name, and leave a field \
+null when it is not printed or not legible. A photo, chart, poster or text page has \
+no title block: every field null. Never guess an Index, a number or a date.
 - Unknown fields: null, or an empty list. Invent nothing.
 - Write free text (summaries, titles, names) in the LANGUAGE OF THE DOCUMENT, \
 not in English.
@@ -600,6 +633,18 @@ def _normalise_segment(raw: Any, registry: DomainRegistry) -> dict[str, Any] | N
     return segment
 
 
+def _normalise_title_block(raw: Any) -> dict[str, str] | None:
+    """The Plankopf facts of a reply: the five known fields that hold a value, the date ISO; ``None`` without any.
+
+    Only the schema's own keys are read, so a stray ``page`` in a reply is not
+    taken for a fact. A date that is not a calendar day is dropped, not repaired.
+    """
+    if not isinstance(raw, dict):
+        return None
+    facts = normalise_revision_facts({key: raw.get(key) for key in TITLE_BLOCK_FIELDS})
+    return facts or None
+
+
 def _normalise_document(raw: Any) -> dict[str, Any]:
     raw = raw if isinstance(raw, dict) else {}
     return {
@@ -614,6 +659,7 @@ def _normalise_document(raw: Any) -> dict[str, Any]:
         "process_steps": _str_list(raw.get("process_steps")),
         "watermark": _clip(raw.get("watermark"), 300),
         "summary": _clip(raw.get("summary"), 600) or "",
+        "title_block": _normalise_title_block(raw.get("title_block")),
     }
 
 
@@ -867,6 +913,12 @@ def render_document_text(document: dict[str, Any]) -> str:
     ]
     if meta_bits:
         lines.append("Details: " + ", ".join(meta_bits))
+    title_block = document.get("title_block") or {}
+    label = title_block_label(title_block)
+    if label:
+        # So a query for a plan number or an Index finds the sheet it is printed on.
+        extras = [f"Scale {title_block['scale']}" if title_block.get("scale") else "", title_block.get("title") or ""]
+        lines.append("Title block: " + ", ".join(part for part in (label, *extras) if part))
     if document.get("slogans"):
         lines.append("Headlines: " + ", ".join(document["slogans"]))
     if document.get("strategies"):

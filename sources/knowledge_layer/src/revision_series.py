@@ -8,7 +8,7 @@ carries it: ``EG_Grundriss_Index_C_2026-08-14.pdf``, ``A-101_C_Grundriss EG.pdf`
 ``260814_Schnitt_AA_idx-B.pdf``. Nothing here changes, hides or re-files a
 document; it says which one looks current.
 
-This is the Python twin of ``frontends/ui/src/features/documents/lib/revision-series.ts``.
+This is the Python twin of ``frontends/ui/src/lib/documents/revision-series.ts``.
 The same grammar runs in both, and both are held to one set of cases
 (``tests/fixtures/revision_series_cases.json``), so the folder brief in the UI and the
 agent's ``list_files`` cannot disagree about which Fassung is current. Change a

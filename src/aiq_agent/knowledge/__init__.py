@@ -58,6 +58,7 @@ from .factory import set_document_doc_class
 from .factory import set_document_doc_class_suggestion
 from .factory import set_document_folder_path
 from .factory import set_document_provenance
+from .factory import set_document_revision_facts
 from .factory import set_document_revision_suggestion
 from .factory import set_document_superseded_by
 from .factory import set_document_tags_by_person
@@ -117,6 +118,7 @@ __all__ = [
     "set_document_superseded_by",
     "get_document_superseded_by",
     "get_superseded_files",
+    "set_document_revision_facts",
     "set_document_revision_suggestion",
     "get_document_revision_suggestions",
     "set_document_change_summary",

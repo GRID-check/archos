@@ -34,6 +34,7 @@ from aiq_agent.common.db_utils import lock_schema
 from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
 from aiq_agent.common.db_utils import redact_db_url
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
     from .schema import AvailableDocument
@@ -72,6 +73,7 @@ _OPTIONAL_COLUMNS: tuple[str, ...] = (
     "revision_suggestion",
     "change_summary",
     "change_basis",
+    "revision_facts",
 )
 
 #: ``tags_set_by`` value for tags a PERSON chose. Machine writes (ingest, the
@@ -79,16 +81,16 @@ _OPTIONAL_COLUMNS: tuple[str, ...] = (
 #: Topics ride on the same marker: a person's curation covers both columns.
 TAGS_SET_BY_PERSON = "person"
 
-#: What a ``revision_suggestion`` may say its confidence rests on: the file names
-#: (the series grammar of ``revision_series.py``) or the model's reading of the
-#: content. Anything else is not stored.
-SUGGESTION_BASES = ("name", "content")
+#: What a ``revision_suggestion`` may say its confidence rests on: the title block
+#: (the same ``document_number`` on two documents), the file names (the series grammar
+#: of ``revision_series.py``) or the model's reading of the content. Anything else is not stored.
+SUGGESTION_BASES = ("title_block", "name", "content")
 
 #: The columns :meth:`DocumentMetadataStore.get_all` reads, in the order
 #: :meth:`DocumentMetadataStore._row_to_document` expects them.
 _DOCUMENT_COLUMNS = (
     "filename, summary, tags, doc_class, display_title, folder_path, created_at, "
-    "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis"
+    "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis, revision_facts"
 )
 
 # Every raw-SQL statement in this module interpolates ONLY trusted, code-defined
@@ -96,7 +98,7 @@ _DOCUMENT_COLUMNS = (
 # from a fixed allowlist (``_OPTIONAL_COLUMNS`` plus the literal
 # ``"tags"``/``"doc_class"``/``"display_title"``/``"folder_path"``/``"provenance"``/
 # ``"doc_class_suggestion"``/``"topics"``/``"capture"``/``"superseded_by"``/
-# ``"revision_suggestion"`` passed by the typed accessors).
+# ``"revision_suggestion"``/``"revision_facts"`` passed by the typed accessors).
 # SQL identifiers cannot be bound parameters, so they must live in the statement
 # text. Every caller-supplied *value* (collection, filename, summary, tags,
 # display_title, …) is always passed as a bound ``:param`` and never interpolated.
@@ -700,6 +702,23 @@ class DocumentMetadataStore:
 
         return self._update_column(collection, filename, "capture", json.dumps(capture) if capture else None)
 
+    def set_revision_facts(self, collection: str, filename: str, facts: dict[str, Any] | None) -> bool:
+        """Replace only the ``revision_facts`` of an existing metadata row (sync): the title block that was read.
+
+        ``document_number``, ``revision`` (the Index as printed), ``revision_date``
+        (ISO), ``scale``, ``title`` and the ``page`` they were read on, present
+        keys only (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`).
+        A mapping with nothing printed in it clears the column, which is what a
+        re-upload without a title block means: the old sheet's number must not
+        outlive the sheet. Same UPDATE-only contract as :meth:`set_capture`.
+        """
+        import json
+
+        normalised = normalise_revision_facts(facts)
+        return self._update_column(
+            collection, filename, "revision_facts", json.dumps(normalised, ensure_ascii=False) if normalised else None
+        )
+
     def set_superseded_by(self, collection: str, older: str, newer: str | None) -> bool:
         """Record that a PERSON confirmed ``newer`` replaces ``older`` (sync), or lift it with ``None``.
 
@@ -1033,6 +1052,18 @@ class DocumentMetadataStore:
         return kept or None
 
     @staticmethod
+    def _decode_revision_facts(raw: Any) -> dict[str, Any] | None:
+        """Decode the JSON ``revision_facts`` column through the one normaliser (fail-open to ``None``)."""
+        if not raw:
+            return None
+        import json
+
+        try:
+            return normalise_revision_facts(json.loads(raw))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
     def _normalise_suggestion(value: Any) -> dict[str, Any] | None:
         """A revision suggestion as it is stored and read: exactly its five keys, each valid, or ``None``.
 
@@ -1088,6 +1119,7 @@ class DocumentMetadataStore:
             revision_suggestion=self._decode_suggestion(row[10]) if len(row) > 10 else None,
             change_summary=(row[11] or None) if len(row) > 11 else None,
             change_basis=(row[12] or None) if len(row) > 12 else None,
+            revision_facts=self._decode_revision_facts(row[13]) if len(row) > 13 else None,
             collection=collection,
         )
 

@@ -254,7 +254,16 @@ class FileInfo(BaseModel):
         None,
         description=(
             "Piloti's open suggestion that this document is a newer Fassung of another: of (the older file name), "
-            "confidence (0..1), reason (German, short), basis ('name' or 'content'). Absent once dismissed."
+            "confidence (0..1), reason (German, short), basis ('title_block', 'name' or 'content'). "
+            "Absent once dismissed."
+        ),
+    )
+    revision_facts: dict[str, Any] | None = Field(
+        None,
+        description=(
+            "What the title block (Plankopf) of the first drawing page that has one says, read during ingestion: "
+            "document_number, revision (the Index as printed), revision_date (ISO), scale, title and the page "
+            "they were read on; present keys only. Absent when no page has a legible title block."
         ),
     )
     change_summary: str | None = Field(
@@ -394,7 +403,12 @@ class AvailableDocument(BaseModel):
             is this document.
         revision_suggestion: Optional open suggestion, as a dict: ``of`` (the
             older file name), ``confidence``, ``reason`` (German), ``basis``
-            (``name`` | ``content``), ``dismissed``. A suggestion is not a link.
+            (``title_block`` | ``name`` | ``content``), ``dismissed``. A suggestion is not a link.
+        revision_facts: Optional title-block facts read from the first drawing
+            page that has a title block: ``document_number``, ``revision`` (the
+            Index as printed), ``revision_date`` (ISO), ``scale``, ``title``,
+            ``page``; present keys only. Two documents with the same
+            ``document_number`` are Fassungen of one another.
         change_summary: Optional German bullet lines: what changed against the
             Fassung named by ``change_basis``.
         change_basis: Optional file name ``change_summary`` compared against.
@@ -418,6 +432,7 @@ class AvailableDocument(BaseModel):
     superseded_by: str | None = None
     supersedes: list[str] | None = None
     revision_suggestion: dict[str, Any] | None = None
+    revision_facts: dict[str, Any] | None = None
     change_summary: str | None = None
     change_basis: str | None = None
     added_at: str | None = None

@@ -5293,6 +5293,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         from aiq_agent.knowledge import set_document_folder_path
 
                         register_summary(collection_name, file_name, summary, tags=tags, topics=topics)
+                        # The title block (Plankopf) the vision model read on the first drawing
+                        # page that has one: Plannummer, Index, Datum. Read from the same
+                        # analysis as the chunks, so it costs no further call. A re-upload
+                        # without one clears the old sheet's facts.
+                        revision_facts = fassungen.revision_facts_from_documents(all_documents)
+                        if revision_facts or previous is not None:
+                            from aiq_agent.knowledge import set_document_revision_facts
+
+                            set_document_revision_facts(collection_name, file_name, revision_facts)
                         if photo is not None and not photo.empty:
                             from aiq_agent.knowledge import set_document_capture
 
@@ -5382,6 +5391,12 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # fail-open, and only on a shelf of user documents: the base corpus
                         # replaces by its own hash registry.
                         if not base_corpus and self.generate_summary_enabled and self.summary_llm:
+                            # A person's choice in the upload dialog (ADR-0097): this file
+                            # replaces that one. A job is one file; a name meant for it is
+                            # never read for another.
+                            confirmed_older = (config.get("fassung_of") or "").strip() or None
+                            if len(file_paths) != 1:
+                                confirmed_older = None
                             self._bounded(
                                 "Fassung",
                                 file_name,
@@ -5396,6 +5411,8 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                                 doc_class=doc_class,
                                 tags=tags,
                                 llm=self.summary_llm,
+                                confirmed_older=confirmed_older,
+                                revision_facts=revision_facts,
                             )
 
                         logger.info(f"  Summary generated ({len(summary)} chars)")

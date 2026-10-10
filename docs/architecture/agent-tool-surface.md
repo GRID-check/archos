@@ -50,7 +50,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page or outline, ≤12 chunks | 730 | `sources/knowledge_layer/src/read_passage.py` |
-| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`) | 600 | `sources/knowledge_layer/src/browse.py` |
+| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead | 660 | `sources/knowledge_layer/src/browse.py` |
 | `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `src/aiq_agent/cards/surface_documents.py` |
 | `ask_user` | Blocking multiple-choice question | 490 | `src/aiq_agent/agents/piloti/ask_user.py` |
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
@@ -151,7 +151,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Rename, move or delete a folder | `PATCH`/`DELETE /api/projects/[id]/folders/[folderId]` | Propose. Delete re-files the folder's documents first | S |
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`src/aiq_agent/tools/documents/filing.py`) | M |
-| See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Add to `list_files` rows | S |
+| See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Fassungen under other file names: done (`list_files(fassungen_of=…)`). Same-name versions and uploader: add to `list_files` rows | S |
 | Compare versions | `GET /api/documents/[id]/versions/diff` | Build `compare_versions` (§5) | L |
 | Share | `/api/sharing/[resourceType]/[resourceId]` | Person only | none |
 | Set Dokumentart | platform-only `/api/platform/knowledge/documents/[fileName]/doc-class` | Waits for a project route | n/a |
@@ -301,3 +301,37 @@ been uploaded and read).
   lesbar.` (five names, then „und n weitere“), through the notice slot so the
   grounding block's hash still matches. `match="exact"` is a literal search and
   reads older Fassungen too.
+- **`list_files(fassungen_of=…)` answers the history questions; no tool was added
+  (ADR-0097).** „Welche Fassungen gibt es von X?“ and „Was hat sich zwischen Index B
+  und C geändert?“ are one more mode of the browser, not a `compare_versions`
+  (§5 row 12 is the visual, byte-level one). The argument takes a file name (exact,
+  or all its words) and ignores every other filter; the answer is that document's
+  whole chain, newest first (`browse.render_fassungen`). Membership is the union of
+  three things, followed transitively and only inside the file's own collection: a
+  link a person confirmed (`superseded_by`), the same plan number in the Plankopf
+  (`revision_facts.document_number`), and the file name's series (the revision grammar
+  in `frontends/ui/src/lib/documents/revision-series.ts` and its Python twin
+  `sources/knowledge_layer/src/revision_series.py`, same extension; a bare first
+  state joins its indexed successors). Order:
+  a confirmed replacement always precedes what it replaced; the rest by the
+  Plankopf when every member's sheet states an Index or a date, else by the names.
+  Each line carries the Index and date its name reads, the `Plankopf:` label, who
+  vouches for its place (`bestätigt`, `laut Plankopf`, `dem Namen nach`), the upload
+  date and the change line, up to 700 characters (the listing row keeps 160), with
+  its basis: the change line sits on the NEWER file and says what it was compared
+  against, so „B → C“ is read off C's line. It reads the turn's rows and shelves
+  (`restrict_rows_to_turn`), so a shelf the turn did not ask for, a restricted
+  folder's collection and a held upload are not in it. A name that matches two
+  different documents asks for the exact name instead of choosing.
+- **`read_passage` reads an older Fassung on request and says it is one.** The read
+  is not refused (a question about Index B needs B); the first line of the result,
+  in the grounding block's notice slot like the search's „Ältere Fassungen
+  ausgeblendet“, reads `Ältere Fassung: <file> ist durch <current> ersetzt
+  (bestätigt), aktuell ist <current>.` `<current>` is the end of the confirmed
+  chain inside the file's collection (`read_passage._current_fassung`), and is not
+  named when that collection is a restricted folder this turn did not admit.
+- **The citation says it too (UI).** The by-name resolve a chip already makes
+  (`POST /api/documents/by-name`) returns the listing row with
+  `fassung.supersededBy`, resolved for the reader by `loadFassungFacts`. The peek
+  turns it into one line, „Ältere Fassung — aktuell: <Name>“, whose name opens the
+  current Fassung (`CitationPeek`, `use-open-current-fassung.ts`).

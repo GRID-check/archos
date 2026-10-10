@@ -1,7 +1,7 @@
 """Revision parsing and series grouping, held to the cases the TS twin is held to.
 
 The cases live in ``tests/fixtures/revision_series_cases.json``, shared with
-``frontends/ui/src/features/documents/lib/revision-series.spec.ts``. Both sides read
+``frontends/ui/src/lib/documents/revision-series.spec.ts``. Both sides read
 the same names the same way, so the folder brief and the agent's ``list_files``
 cannot disagree about which Fassung is current. Do not edit the fixture to make
 a case pass here; a difference is a finding to report.

@@ -1,5 +1,5 @@
 {
-  "_comment": "File names and what the revision parser must read from them. Shared by frontends/ui/src/features/documents/lib/revision-series.spec.ts and tests/knowledge_layer_tests/test_revision_series.py, so the UI and the agent cannot read the same name differently. index = [kind, value]; key is the series key both sides group by.",
+  "_comment": "File names and what the revision parser must read from them. Shared by frontends/ui/src/lib/documents/revision-series.spec.ts and tests/knowledge_layer_tests/test_revision_series.py, so the UI and the agent cannot read the same name differently. index = [kind, value]; key is the series key both sides group by.",
   "parse": [
     {
       "name": "EG_Grundriss_Index_C_2026-08-14.pdf",
