@@ -211,13 +211,13 @@ describe("with the Langfuse tier enabled", () => {
   });
 
   describe("migrations", () => {
-    it("dual-writes during the v4 migration, on both containers alike", async () => {
-      // `dual` keeps v3's tables written, which is the rollback path; the
-      // cutover to `events_only` is a deliberate config change, never a default.
+    it("writes v4's events table only, on both containers alike", async () => {
+      // v3's tables are no longer written: nothing reads them, and a write mode
+      // that differs between web and worker would split the data.
       for (const name of ["langfuse-web", "langfuse-worker"]) {
         const env = await containerEnv(name);
-        expect(env.LANGFUSE_MIGRATION_V4_WRITE_MODE).toBe("dual");
-        expect(env.LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR).toBe("dual_write");
+        expect(env.LANGFUSE_MIGRATION_V4_WRITE_MODE).toBe("events_only");
+        expect(env.LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR).toBe("direct");
         expect(env.LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL).toBe("false");
       }
     });
@@ -746,11 +746,10 @@ describe("config gating", () => {
     expect(loadWith({})).toBeNull();
   });
 
-  it("refuses a v4 write mode Langfuse does not know", () => {
-    // Langfuse would fall back to its default, `events_only`: the one-way
-    // cutover, taken by a typo.
-    const error = loadWith({ "grid-oib:langfuseV4WriteMode": "dual-write" });
-    expect(error?.message).toMatch(/langfuseV4WriteMode/);
+  it("refuses a stack that still sets the removed v4 write mode", () => {
+    // Silently ignoring it would let someone believe the v3 tables are kept.
+    const error = loadWith({ "grid-oib:langfuseV4WriteMode": "dual" });
+    expect(error?.message).toMatch(/langfuseV4WriteMode was removed/);
   });
 
   it("defaults new Langfuse users to VIEWER", () => {
