@@ -83,13 +83,32 @@ What a document is (an OIB-Richtlinie, a law, a standard, a Grundriss, a
 Gutachten…), set by a person and always trusted over a guess from the file name.
 
 **Fassung** (revision):
-One state of a document: a later Fassung replaces an earlier one as the basis,
-and the earlier one stays readable on request. Offices mark it in the file name
-with an index or a date (*Stand*); Piloti reads that as a suggestion a person
-confirms.
+One state of a document, whether it was uploaded again under the same name or
+filed under another name and linked: both are Fassungen in one timeline,
+numbered „Fassung 3 von 5“ (“Revision 3 of 5”). A later Fassung replaces an
+earlier one, and the earlier one stays readable on request. Offices mark it in
+the file name with an index or a date (*Stand*, always a date or an index:
+„Stand vom 14.08.2026“); Piloti reads that as a suggestion a person confirms.
 _Avoid_: Plan, Planstand, for any file. A name with an index says a file has
 Fassungen, not that it is a drawing; only its Dokumentart says what it is. Say
-Dokument, Datei, Fassung or Stand.
+Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” where a
+reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
+
+**Freigabe** (approval):
+The office approving one Fassung, and only that. Its status (*Freigabestatus*)
+has eight words: Entwurf, In Prüfung, Änderungen angefordert, Freigegeben,
+Veröffentlicht, Ersetzt, Abgelehnt, Stillgelegt (Draft, In review, Changes
+requested, Approved, Published, Replaced, Rejected, Retired). Approval asserts
+the content; Piloti answers only from a *veröffentlicht* Fassung (ADR-0054), so
+say „Piloti antwortet aus dieser Fassung“, never „Grundlage für Antworten“.
+_Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for sharing
+(see **Share**); „Änderungen erbeten“; “Superseded”.
+
+**Zurückgehalten** (held back):
+An upload the content check (*Inhaltsprüfung*) keeps from every model until
+someone with the right *prüft* it and lets it through (*zulassen*, “allow”) or
+deletes it (ADR-0086). It waits in the *Quarantäne*.
+_Avoid_: „freigeben“, “release”: both collide with **Freigabe**.
 
 **Piloti-Dokument**:
 A document Piloti wrote and a person approved and published, which then counts
@@ -199,9 +218,10 @@ what was there).
 
 ## Sharing and keeping
 
-**Share** (Freigabe):
+**Share** (Teilen):
 Access to one resource (a project, a chat, a document) granted to a person, as
 *viewer*, *collaborator* or *owner*.
+_Avoid_: Freigabe, which is the approval of a Fassung.
 
 **Spectator**:
 Someone watching a shared turn live without taking part in it.

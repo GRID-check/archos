@@ -66,8 +66,30 @@ exists only after ingestion, and it never helps with the hundreds of files
 already uploaded. Doing nothing leaves answers drawing on superseded states.
 
 The model only SUGGESTS (`revision_suggestion`, with the reason and whether
-the name or the content carried it). Only a person's PUT through the BFF route
-(`/api/documents/[id]/fassung`, gated like a tag correction) makes a link.
+the name or the content carried it). A link is made only by a person, in one
+of three places:
+
+* **At upload.** The upload dialog reads the dropped file's name with the
+  revision grammar and offers „als neue Fassung von X ablegen“ when it
+  continues a document already on the shelf. The decision travels with the
+  ingest job (`fassung_of`), and the link is written the moment the new file
+  has been read, with its change summary.
+* **After reading.** The preview asks when the model's suggestion, or the name
+  grammar, says a document replaces another
+  (`PUT /api/documents/[id]/fassung`, gated like a tag correction).
+* **For what is already there.** Each file carries the name-based suggestion
+  too, computed when its listing is read, so documents uploaded before this
+  existed are asked about on the file, not in the folder overview.
+
+**Storage is a link; the workspace shows one document.** A chain of linked
+documents is presented as the document it is. The listing shows only the
+current Fassung, with the number of Fassungen it has; the older ones leave
+the listing, and a filter brings them back. Opening the document shows one
+timeline of every Fassung, newest first: its own same-name versions
+(ADR-0054) and the older documents linked to it, each with its index and
+date, who uploaded it and what changed. A person sees one document with a
+history, and nothing about the link model reaches them.
+
 ADR-0054's same-name chain stays as it is. A same-name re-upload also gets a
 „was hat sich geändert“ summary against its previous version.
 
@@ -75,13 +97,13 @@ ADR-0054's same-name chain stays as it is. A same-name re-upload also gets a
 
 * Good, because answers rest on the current Fassung, and the older one is still
   one `file_name=…` away, as feld72 asked.
-* Good, because the name grammar, the brief, the preview and the agent all read
+* Good, because the name grammar, the file's suggestion, the preview and the agent all read
   one model of a Fassung: a series by name, a link by a person.
 * Good, because the change summary is new. No product we looked at says in
   words what changed between two states.
-* Bad, because a linked older Fassung is still a separate document with its
-  own name in citations. „Fassung 3 von X“ as one item exists only for
-  same-name versions (ADR-0054).
+* Bad, because a linked older Fassung keeps its own name in a citation when
+  Piloti reads it on request. That is the file's real name, and the timeline
+  shows where it sits in the document's history.
 * Bad, because the change summary compares summaries, not drawings. It can
   miss a changed dimension, and the UI says so („Prüfen Sie Maße und Werte im
   Dokument selbst“).

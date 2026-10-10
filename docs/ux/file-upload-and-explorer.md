@@ -271,11 +271,20 @@ its fold is remembered per browser, as the card and list choice is.
 
 | Part | What it says | Each count opens |
 |---|---|---|
-| Bar and legend | How many documents in the subtree Piloti can cite, and where the rest stand: citable, being read, failed, held back, not in the knowledge base. The headline gives the same answer in words. | The flat list of that state, across all subfolders |
-| What it is about | The document types and disciplines Piloti assigned to the citable documents, most frequent first, and the kinds of content it found. „Sonstiges“ always comes last. Then the topics Piloti recognised (up to twelve), and for photos the span of days the camera says they were taken on. | The flat list of documents with that tag or topic, or of the dated photos |
-| What needs a person | Failed documents, with one button to read all of them again. Documents held back by the content check. Citable documents Piloti placed in no document type. | The flat list of those documents |
-| Several Fassungen | Documents whose names say they exist in several Fassungen (`revision-series.ts`), each with the one that looks current and its older ones by index and date. A person confirms a series with „Bestätigen“, which links every older Fassung to the current one. Links a person made across different names count in one line. | The flat list of every older Fassung, by name or confirmed |
-| Where it sticks | Up to four subfolders, worst first, whose own documents need attention or are being read. Each is named by its path, so the reader lands on the folder with the trouble and not on an ancestor. | Walks into that folder |
+| Bar and legend | How many documents in the subtree Piloti has read, and where the rest of those it is meant to read stand: read, being read, failed, held back. The legend adds up to the headline's „von N“. Documents Piloti never reads follow as an aside, „dazu 1 nicht in der Wissensbasis“, outside the sum. | The flat list of that state, across all subfolders |
+| What needs a person (first, open) | Failed documents, with one button to read all of them again. Documents held back by the content check. Citable documents Piloti placed in no document type. Each „Anzeigen“ has its own accessible name. | The flat list of those documents |
+| What it is about (folded) | The document types and disciplines Piloti assigned to the citable documents, each family under its label („Dokumentart“, „Fachbereich“), most frequent first, and the kinds of content it found. „Sonstiges“ always comes last. Then the topics Piloti recognised (up to twelve), and for photos the span of days the camera says they were taken on. Folded, its line names the types. A long chip truncates and carries its full text on hover. | The flat list of documents with that tag or topic, or of the dated photos |
+| Where it sticks (folded) | Up to four subfolders, worst first, whose own documents need attention or are being read. Each is named by its path, so the reader lands on the folder with the trouble and not on an ancestor. | Walks into that folder |
+
+The order is what the reader has to do: what needs them first and open, then
+„Was Piloti noch fehlt“, „Worum es hier geht“ and „Wo es hakt“, each folded to
+one line that already names what it holds. Opened in full the brief was taller
+than a laptop screen, and the listing it introduces started below the fold.
+
+The brief counts one entry per document, as the listing shows it (ADR-0097): an
+older Fassung whose newer one is in the corpus is left out of every count, the
+pages, the chips, the failures and the re-read, whatever the „Ältere Fassungen“
+filter says.
 
 At the project root only, a fifth part, „Was Piloti noch fehlt“, lists the
 documents the intake answers say the project should hold and that no file is
@@ -289,7 +298,8 @@ the same request as a document's own „Erneut lesen“, four at a time, and eac
 row turns to „Wird gelesen“ as its answer comes in.
 
 **Folder tiles and rows** show the worst state of everything in their subtree,
-as one swatch and one phrase, in this order: failed, held back, being read, and
+as one swatch and one phrase (on a tile, on its own line under the name, so a
+two-column phone grid does not clip it), in this order: failed, held back, being read, and
 then „Alles gelesen“ when every document Piloti is meant to read is citable. An
 unplaced document is not named on a tile. It appears only in the brief's „Where
 it sticks“, because on most folders of a project it would be noise. An empty
@@ -319,16 +329,19 @@ not a merge.
 
 Piloti suggests in two ways:
 
-- **By name.** The brief and the agent's `list_files` read index and date from
-  file names with one grammar, twins held to one fixture
+- **By name.** Each file carries the name-based suggestion, computed when its
+  listing is read, so a document uploaded before this existed is still asked
+  about, on the file. The agent's `list_files` reads index and date with the
+  same grammar, twins held to one fixture
   (`tests/fixtures/revision_series_cases.json`).
 - **By reading.** After a new document is read, a model compares its summary
   with the documents it could replace, name matches first, and keeps a
   suggestion only above a confidence threshold. The preview names the basis:
   the name, or what Piloti read.
 
-The preview's Fassungen panel (`fassung-panel.tsx`) asks the question. „Ja,
-ersetzt sie“ links the two, and „Nein“ is remembered, so the same pair is not
+The preview's one section „Fassungen und Freigabe“ (`document-fassungen.tsx`,
+below) asks the question. „Ja,
+neuere Fassung“ links the two, and „Nein“ is remembered, so the same pair is not
 suggested again. Once linked:
 
 - the older document says it is replaced;
@@ -338,6 +351,93 @@ suggested again. Once linked:
 
 A same-name re-upload (ADR-0054's version chain) gets the same change line
 against its previous version.
+
+**One section, not two: „Fassungen und Freigabe“** (`document-fassungen.tsx`,
+mounted once in `file-preview-pane.tsx`, directly under Piloti's reading).
+It replaced „Fassungen“ (the older documents linked under other names) and
+„Freigabe und Fassungen“ (this document's own uploads and the approval
+controls, last in the rail), which described one history in two places.
+
+- **Header, always visible, about the NEWEST Fassung only** (`lib/fassung-standing.ts`):
+  „Fassung 2 · In Prüfung“; the track with its four stages named (Entwurf, In
+  Prüfung, Freigegeben, Veröffentlicht), the last one reached in ink; the next
+  step with a person („Nächster Schritt: Freigabe durch Sabine Gruber“, from the
+  open round's recipients, `reviewerUserIds` on the version listing; „Ihre
+  Freigabe“ when it is the reader's; „ein Teammitglied“ only when the name is
+  unknown); and which Fassung Piloti answers from, in one sentence. When that is
+  an older one, the sentence names it by number („Piloti antwortet weiter aus
+  Fassung 1.“), so the header and the rows cannot contradict each other. A
+  person's upload, born published without a review, gets no state word and no
+  track; a Fassung a newer document replaced is „Ersetzt“, without a track.
+  Under the header, when a decision is the reader's: „Freigeben“ and
+  „Änderungen anfordern“ visible, „Piloti überarbeiten lassen“ and „Ablehnen“
+  behind ⋯, and one line on what approving means.
+- **Body, a disclosure:** the suggestion card, then ONE timeline, newest first and
+  numbered „Fassung 3, 2, 1“ (`buildFassungTimeline`) across the uploads under
+  this name (`useDocumentLifecycle`) and the older documents under other names
+  (`file.fassung.history`), merged by date. An older Fassung that was opened has
+  the newer document as its top row. The index or date is a secondary tag;
+  „aktuell“ marks only the Fassung Piloti answers from; no row says „Ersetzt“.
+  Each fact once: the person and date on the act line („Hochgeladen von Anna
+  Berger · 14.08.2026“; an upload never reads „Freigegeben“), a file name only on
+  a row that is another document, cut in the middle (`MiddleTruncate`). One
+  visible action per row (Öffnen); Herunterladen, the line diff, Vergleichen and
+  „Verknüpfung lösen“ (a direct predecessor, `canManage`) behind its ⋯. Two
+  Fassungen that cannot be laid over each other (text, Markdown, CSV) get
+  „Textvergleich öffnen“ in the comparison dialog, which shows their line
+  comparison under the row (`GET /api/documents/{id}/text`, `lib/documents/text-client.ts`).
+  „Datei stilllegen …“ is one quiet line at the end; its confirm lists what it
+  does.
+- **It opens itself** on the attention edge, once: a decision is this reader's to
+  take (`lifecycleNeedsReader`), Piloti has an unconfirmed suggestion, or the file
+  is an older Fassung. A reader who closes it keeps it closed.
+- **Surfaces without lifecycle permissions** (the Büroablage sheet, the chat peek)
+  get the same section with the cross-name timeline and the suggestion, and no
+  controls; the uploads under the name are read only when the listing says there
+  is more than one.
+
+Preview: `/dev/fassungen` (nine states at the rail's real 248px, `?locale=en`), `/dev/document-lifecycle`.
+
+**Looking at two Fassungen together** (`fassung-compare/`, „Fassungen
+vergleichen“). A full-screen dialog with three views: *Nebeneinander* (two
+sheets that scroll and zoom as one; stacked on a phone, each fitted to half the
+height), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
+lines go dark and changes keep a colour; the colour key, with the computed
+swatch for „unverändert“, and the fader sit in a bar under the sheet, only in
+this view) and *Wischen* (a draggable divider in a fixed near-black ink with a
+white halo, so it shows on the white sheet in dark mode too, and „Älter“ /
+„Neuer“ tags with the file names on each side of it). The toolbar keeps one
+height in every view; on a phone it is two rows, with the view names spelled
+out. Keys: ← → and Page Up / Down turn the page, Home and End go to the ends, 1
+2 3 switch the view, Esc closes; the dialog opens with focus on the view
+switch, reads the keys through its description and gives focus back to the
+control that opened it. Zoom says „Einpassen“ when the whole sheet fits and a
+percentage of that fit otherwise (up to 800 %); Ctrl or Cmd + wheel and a
+two-finger pinch zoom at the pointer, dragging pans. File names are cut in the
+middle (`MiddleTruncate`, `lib/text/middle-truncate.ts`) from where the two
+names first differ, so the index survives. Both pages are drawn at one scale
+in a shared box; when the page counts differ the dialog says so. „Seite N mit
+Piloti vergleichen“ asks the vision comparison for that page
+(`useFassungVisualChanges`); each answered page is kept, so marking page 2
+keeps page 1's boxes. The boxes are numbered outlines in the mark ink (dashed
+in the overlay) on the newer sheet, and the list beside it (under it below
+1024 px) groups them by page, with Piloti's sentence under its box's label when
+the counts pair, and the caveat that dimensions are checked in the document.
+Boxes and rows are one selection: hovering or focusing either lights both (a
+tooltip names the box), clicking a row turns to its page and scrolls its box
+into view. A refusal names the remedy and offers a retry where one can help
+(409: still being read; 502/503: Piloti not reachable). Boxes already known can
+be passed as `overlays`; a run replaces them. PDFs and office files (through
+their PDF rendition) are drawn with the preview's pdf.js runtime, images from
+the preview URL; a page load that fails names the file and offers „Erneut
+versuchen“, anything that cannot be drawn shows „Diese Dateien lassen sich
+nicht visuell vergleichen“ with „Textvergleich öffnen“ (when the surface passes
+`onOpenTextCompare`) or „Zum Fassungsverlauf“. A surface mounts it with
+`useFassungCompare(loadSource?, { onOpenTextCompare? })`
+(`openFassungCompare(older, newer, overlays?)` plus `{compareElement}` once).
+A link can open it too: `?doc=<newer>&compare=<older>` on the files page, which
+the inbox's „Fassungen vergleichen“ uses (`use-compare-param.ts`).
+Preview: `/dev/fassung-compare`.
 
 **Names are never more than the reader may see.** The BFF resolves each linked
 name to a document the reader can open. A reference to a held, restricted or
@@ -353,8 +453,8 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 |---|---|
 | Byte-level upload transport (the only XHR in the app) | `src/lib/http/xhr-upload.ts` |
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
-| Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/features/documents/lib/revision-series.ts` |
-| The preview's Fassungen panel; the link request | `src/features/documents/components/fassung-panel.tsx`; `src/features/documents/lib/fassung-request.ts` |
+| Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
+| The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |
 | A folder's read state on its tile or row | `src/features/documents/components/folder-read-state.tsx` |
 | Bulk re-read, four requests at a time, and the one request each sends | `src/features/documents/hooks/use-bulk-reingest.ts`; `src/features/documents/lib/reingest-request.ts` |
 | The missing list, shared with the agent's prompt | `src/lib/document-roles/prompt-loader.ts` (`loadMissingDocuments`); `src/features/documents/hooks/use-missing-documents.ts` |

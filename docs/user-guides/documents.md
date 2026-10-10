@@ -46,31 +46,30 @@ and everything inside it, subfolders included, so you can see what has been read
 without opening each folder. The box is open by default. The arrow folds it, and
 the choice is remembered in this browser.
 
-- The bar counts the documents by state: „zitierbar“ (Piloti can cite them),
-  „wird gelesen“, „fehlgeschlagen“, „zurückgehalten“ (the content check holds
-  them until someone releases them) and „nicht in der Wissensbasis“ (kept in the
-  files but not read for answers, for example a report Piloti wrote and filed).
+- The bar counts the documents by state: „gelesen“ (Piloti can cite them),
+  „wird gelesen“, „fehlgeschlagen“ and „zurückgehalten“ (the content check holds
+  them back until someone reviews them). These add up to the headline's „von N“.
+  Documents kept in the files but not read for answers, for example a report
+  Piloti wrote and filed, follow as „dazu 1 nicht in der Wissensbasis“.
   Click a state to see those documents, across all subfolders, as one list.
-- „Worum es hier geht“ lists the document types and disciplines Piloti assigned,
-  with the number of documents that carry each. Click one to see them. Below
-  them, „Themen, die Piloti erkannt hat“ lists the topics Piloti found in the
-  documents (see „Themen“ below), and for photos the days they were taken on,
-  as the camera recorded it.
-- „Braucht Sie“ lists what needs you: failed documents, documents the content
-  check is holding, and documents Piloti could not assign a document type. For
-  failed documents, „Alle N erneut lesen“ reads all of them again. With one
-  document the button says „Erneut lesen“. Only people who may change files in
-  the folder see it.
-- „Mehrere Fassungen“ lists the documents whose names say they exist in
-  several Fassungen, read from the index and date in the file name
-  (`EG_Grundriss_Index_C_2026-08-14.pdf` after `…_Index_B_…`), with the one
-  Piloti takes to be current. Older Fassungen in another folder, such as `alt/`,
-  count too. Until you confirm, this is only a suggestion. „Bestätigen“ links each
-  older Fassung to the current one: answers then come from the current one, and
-  the older ones stay where they are and stay readable. Only people who may
-  change files in the folder see the button.
+- „Hier sind Sie gefragt“ comes first and lists what needs you: failed documents,
+  documents the content check is holding, and documents Piloti could not assign a
+  document type. For failed documents, „Alle N erneut lesen“ reads all of them
+  again. With one document the button says „Erneut lesen“. Only people who may
+  change files in the folder see it.
+- The other parts are folded to one line that names what they hold. Click the
+  line to open one.
+- „Worum es hier geht“ lists the document types („Dokumentart“) and disciplines
+  („Fachbereich“) Piloti assigned, with the number of documents that carry each.
+  Click one to see them. Below them, „Themen, die Piloti erkannt hat“ lists the
+  topics Piloti found in the documents (see „Themen“ below), and for photos the
+  days they were taken on, as the camera recorded it.
 - „Wo es hakt“ names the subfolders where something is stuck. Click one to go
   straight there.
+
+A document with several Fassungen counts once, as it appears in the list. An
+older Fassung is never counted, never listed as failed and never read again by
+„Alle N erneut lesen“.
 
 At the top level of a project, „Was Piloti noch fehlt“ lists the documents the
 project's intake answers say it should have, and that no file is linked to yet.
@@ -129,13 +128,13 @@ Spreadsheets index one chunk per worksheet (labelled by sheet name), so a citati
 
 ### File Size Limits
 
-The maximum upload size applies to **each file**, not to a batch: a folder of fifty 80 MB drawings uploads into the Dateiablage under a 100 MB limit. It is your organization's own limit when Piloti has set one, otherwise the deployment default from `FILE_UPLOAD_MAX_SIZE_MB` (default: **100 MB**, decimal). The upload area shows the limit in force ("max. 100 MB per file"), and Organization → Storage lists it beside the storage quota. Only Piloti's platform staff can change it, between 1 MB and the largest request the deployment accepts. A file over the limit is refused with a message naming it. IFC models (`.ifc`, `.ifczip`) have their own, larger limit (`BIM_MAX_IFC_BYTES`, default 250 MB) that the organization limit does not change.
+The maximum upload size applies to **each file**, not to a batch: a folder of fifty 80 MB drawings uploads into Dateien under a 100 MB limit. It is your organization's own limit when Piloti has set one, otherwise the deployment default from `FILE_UPLOAD_MAX_SIZE_MB` (default: **100 MB**, decimal). The upload area shows the limit in force ("max. 100 MB per file"), and Organization → Storage lists it beside the storage quota. Only Piloti's platform staff can change it, between 1 MB and the largest request the deployment accepts. A file over the limit is refused with a message naming it. IFC models (`.ifc`, `.ifczip`) have their own, larger limit (`BIM_MAX_IFC_BYTES`, default 250 MB) that the organization limit does not change.
 
 The total stored per organization is bounded separately by the storage quota.
 
 Additional limits:
 - **Chat-session attachments** also have a total: all files on one chat together may not exceed the deployment default (100 MB), or the organization's per-file limit when that is higher, so one admissible file always fits.
-- **Chat-session attachments**: `FILE_UPLOAD_MAX_FILE_COUNT` (default: **10 files**) caps how many files one chat session can hold. Project Dateiablage and the Büroablage are **not** under this cap — they are bounded by the organization's storage quota.
+- **Chat-session attachments**: `FILE_UPLOAD_MAX_FILE_COUNT` (default: **10 files**) caps how many files one chat session can hold. A project's Dateien and the Büroablage are **not** under this cap — they are bounded by the organization's storage quota.
 - **Duplicate filenames** within a session are rejected
 - Files already tracked in the current session are skipped on re-upload
 - **A question asked while an attachment is still being read waits for it.**
@@ -147,9 +146,9 @@ Additional limits:
 
 ## Moving a file into a folder
 
-Drag it onto the folder — a card, a row, or „Alle Dateien" in the breadcrumb to
+Drag it onto the folder — a card, a row, or „Alle Dateien“ in the breadcrumb to
 move it back to the top level. The folder lights up as the target while you are
-over it. „Verschieben" in a file's overflow menu does the same thing and remains
+over it. „Verschieben“ in a file's overflow menu does the same thing and remains
 the way to move a file into a folder you are not currently looking at.
 
 Dragging a file inside Piloti never starts an upload: a drag carrying files from
@@ -161,7 +160,7 @@ the browser, and only the first raises the upload overlay.
 A büro onboarding a project moves a directory tree, not a hand-picked list. Two
 ways to give Piloti one:
 
-- **„Ordner hochladen"**, beside the upload button in a project's Dateiablage.
+- **„Ordner hochladen“**, beside the upload button in a project's Dateien.
 - **Dragging the folder** onto the file area. A dropped folder used to do
   nothing at all — the browser reports directories through a different API than
   loose files, and the old handler read only the loose ones — so the overlay
@@ -173,7 +172,7 @@ rejected for containing one file of the wrong kind.
 
 **The original path is recorded, and shown.** A file that arrives this way keeps
 where it came from — `Wohnbau Nord/03_Einreichung/Grundrisse/EG.pdf` — visible
-under „Herkunft" in the file's detail panel and copyable with a click. That is
+under „Herkunft“ in the file's detail panel and copyable with a click. That is
 deliberately not the same thing as the folder you file it into here: Piloti's
 folders are yours to rename and rearrange, while the origin is a fact about the
 file and is never rewritten. The point of it is that you can go back and work on
@@ -190,16 +189,56 @@ quota** and by the **per-file** size limit. The batch total-size limit applies
 only to chat-session attachments: it exists for a conversation, which has no
 quota behind it.
 
+### Files that continue a document: „Neue Fassungen“
+
+Offices name every state with its index and date and never overwrite one
+(`EG_Grundriss_Index_B_2026-07-02.pdf`, then `…_Index_C_2026-08-14.pdf`). When a
+dropped file's name continues a document that is already in the same shelf and
+is newer than it, the upload dialog opens even though no file has that name, and
+asks whether to file it as the **new Fassung** of that document. The older file
+stays readable; Piloti answers from the new one, notes what changed, and the
+document's preview shows the history. An unticked file still uploads, as a
+document of its own, and a link can be undone later („Verknüpfung lösen“).
+
+- **One block for every new Fassung.** A file of the same name and a file that
+  continues a document under another name are both a new Fassung, so the dialog
+  asks them in one block, „39 neue Fassungen“, each group saying why Piloti
+  thinks so: „Gleicher Name“ (one box for all of them; unticked, they are not
+  uploaded) and „Namensreihe“ (index or date in the name).
+- **One decision for a whole export.** An ArchiCAD publisher export of forty
+  files is one list under one box that stays in sight while you scroll, with a
+  count: „Alle 34 als neue Fassung“, „33 von 34 als neue Fassung“. The rows are
+  grouped by folder and show the file name first, cut in the middle so its index
+  and date stay readable, then „→ Fassung von … · Index B“. Untick the master or
+  a single row (a tap anywhere on the row) to override. Only matches with exactly
+  one current document that the file is newer than, and that no other file in
+  the same drop competes for, are ticked for you. The upload button says what it
+  will do: „38 Dateien hochladen, 34 davon als neue Fassung“.
+- **„… brauchen Ihre Auswahl“.** If several current documents could be meant,
+  or the file is not newer than the one there, the file is listed apart. Nothing
+  is ticked or preselected; choosing a document in its field ticks it.
+- **One file.** A single dropped file that continues a document gets the
+  question on its own, „Neue Fassung von „…“?“, with two buttons: „Als neue
+  Fassung ablegen“ and „Als eigenes Dokument hochladen“.
+- **Unchanged re-exports** (same name, same content) stay „unverändert, wird
+  übersprungen“ and never get a proposal.
+
+The tick travels with the upload: Piloti files the link as soon as the new file
+has been read, and says in words what changed. If the older document was deleted
+in the meantime, or the link would loop, the file is simply uploaded and Piloti
+suggests the link after reading, as before. You need write access to the older
+document (a folder you can only read is not offered as a target).
+
 ## Uploading a ZIP
 
 A `.zip` can be dropped on the file area, or picked with the upload button, in a
-project's Dateiablage and in the Büroarchiv alike. Piloti treats it as the
+project's Dateien and in the Büroablage alike. Piloti treats it as the
 folder it contains: the ZIP is unpacked in your browser and then goes through
-exactly what a dropped folder goes through — the „Wollen Sie aktualisieren?"
+exactly what a dropped folder goes through — the „Wollen Sie aktualisieren?“
 plan, the folders it names created in one step, a file that is already here
-offered as a new version, an unchanged one left alone.
+offered as its next Fassung, an unchanged one left alone.
 
-- **Where the files land.** If the ZIP has one top-level folder (what „Komprimieren"
+- **Where the files land.** If the ZIP has one top-level folder (what „Komprimieren“
   makes), that folder is recreated where you are standing. If it holds loose
   files, they go into a folder named after the ZIP.
 - **What is left out without a word:** the files macOS and Office put inside
@@ -218,20 +257,20 @@ offered as a new version, an unchanged one left alone.
 File names in ZIPs made by very old Windows versions, which did not mark their
 names as UTF-8, can show garbled umlauts; renaming the folder in Piloti fixes it.
 
-**Re-uploading a file that is already there replaces it.** Dropping a corrected
+**Re-uploading a file that is already there makes it the next Fassung.** Dropping a corrected
 document under the same name into the same project, the Büroablage, or the same chat
 points the existing document at the new bytes and re-indexes it: the document
 keeps its identity, so citations, chat subjects and folder placement all
 survive, and the organization is charged for one copy rather than two. The
-previous version's thumbnail and parsed model are discarded with it, so nothing
+previous Fassung's thumbnail and parsed model are discarded with it, so nothing
 rendered from the old bytes is shown as if it were the new ones. The old
 passages are removed only once the new file has been indexed: if it cannot be
 (a password-protected PDF, a file with no readable text), the upload is marked
-as failed and search keeps finding the previous version until a working file
+as failed and search keeps finding the previous Fassung until a working file
 replaces it, while the download already returns the new file. The preview says
-so under the failure reason, for a document with more than one version. A file
+so under the failure reason, for a document with more than one Fassung. A file
 that fails partway through indexing leaves none of its passages behind, and two
-people re-uploading one name at once end with the version indexed last. The database
+people re-uploading one name at once end with the Fassung indexed last. The database
 enforces one live document per name and collection, so two uploads racing each
 other cannot recreate the duplicate either. This is the behaviour the
 ingestion pipeline already had — it replaces a document's passages by filename —
@@ -308,10 +347,8 @@ showing what ingestion extracted from the document:
 
 - the one-sentence **AI summary** that grounds the agent's answers
 - key-value rows from real metadata only: detected **document type** (first
-  document-type tag), **project**, **pages**, **passages** (retrieval chunks),
-  **contents** (when the document holds more than plain text), and the
-  **updated** timestamp
-- **„Piloti ordnet ein als“**: the document type and disciplines Piloti assigned
+  document-type tag), **project** and the **updated** timestamp
+- **„Piloti hält es für“**: the document type and disciplines Piloti assigned
   when it read the file, or „Piloti hat keine Dokumentart erkannt.“ when it found
   no type. You do not enter tags. Piloti assigns them on every upload, so there
   is nothing to fill in.
@@ -322,7 +359,7 @@ showing what ingestion extracted from the document:
 - **Your correction stays.** A correction is stored as yours. Reading the file
   again („Erneut lesen“) keeps it, and so does a backfill of tags. The editor says
   so: „Ihre Zuordnung bleibt, auch wenn Piloti die Datei neu liest.“
-- **Photographs** that Piloti recognises as photos are tagged „Foto“, beside
+- **Photographs** that Piloti recognizes as photos are tagged „Foto“, beside
   whatever else they show: a photo of a floor plan is „Foto“ and „Grundriss“. Phone photos taken in portrait are shown upright.
 - **Themen** are Piloti's own keywords for a document, such as „Attika“ or
   „Holzrahmenbau“, beside the fixed document types and disciplines. Piloti adds
@@ -335,18 +372,9 @@ showing what ingestion extracted from the document:
   records a position, it also shows a „Standort“ link to the map. Piloti uses the
   date and the camera to describe the photo, but never sends the position to a
   model. Only people who may open the file see it.
-- **Fassungen.** When Piloti thinks a document is a newer Fassung of another
-  one, the panel asks „Ist das eine neuere Fassung von …?“ and says why: the
-  index and date in the names, or what it read in both documents. This works
-  when the names differ, too. „Ja, ersetzt sie“ links them, and „Nein“ is
-  remembered, so Piloti does not ask again. Once two documents are linked:
-  - the older one says it is replaced, and answers come from the newer one;
-  - Piloti reads the older one only when you ask for it or ask for a comparison;
-  - the newer one lists „Was sich geändert hat“, which Piloti reads from both
-    Fassungen. Check dimensions and values in the document itself.
-
-  „Verknüpfung lösen“ undoes a link. A corrected file re-uploaded under the
-  same name also gets a „Was sich gegenüber der vorigen Fassung geändert hat“.
+- **Fassungen.** What a document has been and where it stands now is one
+  section under Piloti's reading, „Fassungen und Freigabe“. See
+  [Fassungen und Freigabe](#fassungen-und-freigabe) below.
 - **What the tags do.** They do not decide which documents answers draw on;
   answers are found from the text of a document. The tags are used in three
   places: the tag filter and the search field of the file list, the folder brief
@@ -355,6 +383,102 @@ showing what ingestion extracted from the document:
 
 With the flag off, the preview pane shows only the ungated status/type/size
 rows, the raw preview, and download — unchanged behavior.
+
+## Fassungen und Freigabe
+
+A document goes through states: a drawing gets an index, a report is revised, a
+file is re-exported. Piloti shows all of it in **one section** of the file's
+preview, „Fassungen und Freigabe“, directly under what Piloti made of the
+document. It answers three questions: which Fassung is this, is it the one
+answers come from, and what happened before.
+
+### The header: where the document stands
+
+The header is always visible, also when the section is shut. It is about the
+**newest** Fassung of the document:
+
+- **Which Fassung, and its state:** „Fassung 2 · In Prüfung“. The state word is
+  one of Entwurf, In Prüfung, Änderungen angefordert, Freigegeben,
+  Veröffentlicht, Ersetzt, Abgelehnt or Stillgelegt. A file you uploaded has no
+  state word: nobody approved it, you put it there.
+- **The four steps, named:** Entwurf, In Prüfung, Freigegeben, Veröffentlicht,
+  with the step the Fassung has reached set darker. A file you uploaded has no
+  track, and neither has a Fassung a newer one replaced.
+- **The next step, with a person:** „Nächster Schritt: Freigabe durch Sabine
+  Gruber“ (whoever the round was sent to), „Nächster Schritt: Ihre Freigabe“ when
+  it is you, „Überarbeitung durch Anna Berger“ when changes were requested. A
+  person Piloti cannot name reads as „ein Teammitglied“, never as a raw id.
+- **Which Fassung Piloti answers from**, in one sentence:
+
+  | Situation | What the header says |
+  |---|---|
+  | The newest is published, or is a file you uploaded | Piloti antwortet aus dieser Fassung. |
+  | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
+  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie veröffentlicht ist. |
+  | The newest was refused, nothing published | Piloti antwortet nicht daraus. |
+  | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
+  | Stillgelegt | Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr. |
+
+  Only a **published** Fassung is read into the knowledge base, so a draft or a
+  round in review never replaces the Fassung answers come from.
+
+When a decision is yours, **Freigeben** and **Änderungen anfordern** sit under
+the header; **Piloti überarbeiten lassen** and **Ablehnen** are behind the ⋯
+beside them. The section opens itself when something is asked of you: a decision
+is yours to take, Piloti has a suggestion to answer, or the file is an older
+Fassung. Once you close it, it stays closed.
+
+### The timeline
+
+Open it and there is **one list, newest first, numbered „Fassung 3“, „Fassung
+2“, „Fassung 1“**. It merges two kinds of history:
+
+- **Uploads under the same name.** Uploading a corrected file under the name
+  that already exists makes it the next Fassung; the earlier one stays readable.
+  Only Fassungen that were published can be opened as files; a draft opens as
+  text.
+- **Older documents under other names.** Offices name every state with its index
+  and date (`…_Index_B_2026-07-02.pdf`), so these are separate files. Once
+  linked, they are numbered in the same list, with their file name under the
+  number. When you open an older document, the newer one is the first row.
+
+A row carries its index („Index C“) or date as a tag, and **aktuell** only on
+the Fassung Piloti answers from. Each fact appears once: who did what and when
+on one line („Hochgeladen von Anna Berger · 14.08.2026“), what changed in it (a
+summary by Piloti, read from both Fassungen; check dimensions and values in the
+document itself), and the reviewer's words. Each row has one visible action,
+**Öffnen**; the rest is behind its ⋯: **Herunterladen**, **Text mit Fassung 2
+vergleichen** (what changed line by line), **Vergleichen** (beside the current
+Fassung: side by side, overlaid or swiped) and **Verknüpfung lösen** (for people
+who may edit the folder; only for the document this one replaces directly).
+
+Above the timeline, **Piloti's suggestion.** When Piloti thinks a document is a
+newer Fassung of another, it asks „Ist das eine neuere Fassung von …?“ and says
+why: the drawing number and index in the title block (Plankopf), the index and
+date in the names, or what it read in both documents. This works when the names
+differ. „Ja, neuere Fassung“ links them, „Nein“ is remembered. Anyone who may
+edit the folder can answer.
+
+People assigned to the older document, and whoever uploaded it, get a note in the
+inbox when a newer Fassung is linked or uploaded under the same name, if they
+may open the newer one (see „The inbox“ in the chat guide).
+
+### The approval process
+
+For a file you uploaded there is none: your upload is published the moment it
+lands, because you put it there. Approval matters for reports Piloti wrote and
+for Fassungen that need a second pair of eyes. The steps are in
+[Fassungen und Freigabe](agent-authored-reports.md#fassungen-und-freigabe): the
+buttons sit under the header, which is about the Fassung they decide.
+
+Where there are no review rights (the Büroablage, a citation preview) the
+same section shows the timeline and the suggestion, without decision buttons.
+
+How it works underneath, from upload to answer:
+[Fassungen](../architecture/fassungen.md). Why a link and not a merge:
+[ADR-0097](../adr/0097-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
+
+---
 
 ## Viewing and Downloading Documents
 
@@ -381,7 +505,7 @@ reading; nothing is edited or replaced.
 What to expect:
 
 - The first time an older file is opened, the preview shows „PDF-Vorschau wird
-  erstellt…" while it is converted. Files uploaded since the change are
+  erstellt…“ while it is converted. Files uploaded since the change are
   converted during upload.
 - The PDF is LibreOffice's rendering, not Word's or Excel's. Layout can shift a
   little, and a font the server does not have is replaced by a similar one.
@@ -462,7 +586,7 @@ across the app) and what is specific to the office:
   ingestion tags show them as an "Aus: …"/"From: …" line. Documents without
   tags show none, and there is no "verified" marker — the Büroablage has no review
   workflow.
-- **Category filter** — the filter menu offers „Kategorie", derived from the
+- **Category filter** — the filter menu offers „Kategorie“, derived from the
   controlled ingestion tags actually present on the loaded documents (document
   type + OIB discipline). Categories come from the documents themselves;
   creating custom categories is not (yet) supported. This filter is on every
@@ -471,7 +595,7 @@ across the app) and what is specific to the office:
   tags and the AI description, across every folder; Enter runs the semantic
   search over the whole Büroablage. A semantic search that cannot RUN says so and
   offers to run the same query again — it is never reported as "no matches".
-- **No assignments and no „Frage zur Datei"** — collaboration is project-scoped
+- **No assignments and no „Frage zur Datei“** — collaboration is project-scoped
   and the Büroablage has no project chat to ask in.
 - **A document that failed to index** carries the reason on its card, and the
   card's ⋯ menu offers „Erneut lesen“ for it, the same retry the preview

@@ -156,10 +156,10 @@ in quarantine, not even by its uploader: the held-back version would stay in
 the file's history, where everyone could open it. Delete the quarantined file
 first (or have it released), then upload the corrected one.
 
-**Asking for a release.** The uploader can press **Freigabe anfragen** next to
-the file in the upload summary. The people who may release it get an inbox
-notice that names the file and opens the quarantine. Nothing is released until
-one of them decides.
+**Asking for a review.** The uploader can press **Prüfung anfragen** next to
+the file in the upload summary. The people who may review and allow it get an
+inbox notice that names the file and opens the quarantine. Nothing is allowed in
+until one of them decides.
 
 ## What arrived: the upload summary
 
