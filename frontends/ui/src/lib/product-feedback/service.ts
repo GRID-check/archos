@@ -14,7 +14,6 @@
  * budget is per person and far below the default mutation budget.
  */
 
-import { after } from 'next/server'
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
@@ -25,7 +24,6 @@ import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { findOrganization } from '@/lib/organizations/repository'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
-import { fileProductFeedbackIssue } from './github'
 import {
   countProductFeedbackByStatus,
   getProductFeedback,
@@ -65,13 +63,13 @@ async function relayTextFor(
 }
 
 /**
- * Store one report from the caller, announce it to the platform owners and,
- * for a bug, file it as a GitHub issue once the response has gone.
+ * Store one report from the caller, announce it to the platform owners and
+ * hand back the masked text the browser may open a Support ticket with.
  *
- * Neither can fail the request (see `announceProductFeedback` and
- * `fileProductFeedbackIssue`): the stored report is the record, and the triage
- * page lists it whether or not anybody's inbox or the issue tracker heard
- * about it.
+ * The announcement cannot fail the request (see `announceProductFeedback`):
+ * the stored report is the record, and the triage page lists it whether or not
+ * anybody's inbox heard about it. There is no GitHub filing any more: the
+ * report's second home is the PostHog Support ticket the dialog opens.
  */
 export async function submitProductFeedback(
   session: AuthorizedSession,
@@ -91,14 +89,6 @@ export async function submitProductFeedback(
 
   const organization = await findOrganization(session.organizationId).catch(() => null)
   await announceProductFeedback(report, organization?.displayName ?? null)
-  // After the response: the reporter's confirmation must not wait on GitHub,
-  // whose request is allowed ten seconds. `after` throws outside a Next request
-  // lifecycle (unit tests, a script), where waiting is the only way to file.
-  try {
-    after(() => fileProductFeedbackIssue(report))
-  } catch {
-    await fileProductFeedbackIssue(report)
-  }
 
   return {
     id: report.id,

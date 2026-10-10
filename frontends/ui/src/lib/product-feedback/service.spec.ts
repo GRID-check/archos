@@ -4,11 +4,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
-vi.mock('next/server', () => ({
-  after: vi.fn(() => {
-    throw new Error('`after` was called outside a request scope')
-  }),
-}))
 vi.mock('@/lib/authz/platform', () => ({
   requirePlatformPermission: vi.fn(),
 }))
@@ -17,7 +12,6 @@ vi.mock('@/lib/db/tenant-context', () => ({
 }))
 vi.mock('@/lib/organizations/repository', () => ({ findOrganization: vi.fn() }))
 vi.mock('./announce', () => ({ announceProductFeedback: vi.fn() }))
-vi.mock('./github', () => ({ fileProductFeedbackIssue: vi.fn() }))
 vi.mock('@/lib/upload-screening/service', () => ({ maskChatText: vi.fn() }))
 vi.mock('./repository', () => ({
   PRODUCT_FEEDBACK_LIST_LIMIT: 2,
@@ -28,14 +22,12 @@ vi.mock('./repository', () => ({
   updateProductFeedbackStatus: vi.fn(),
 }))
 
-import { after } from 'next/server'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { findOrganization } from '@/lib/organizations/repository'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
-import { fileProductFeedbackIssue } from './github'
 import * as repository from './repository'
 import {
   decodeCursor,
@@ -89,7 +81,6 @@ beforeEach(() => {
   vi.mocked(findOrganization).mockResolvedValue({ displayName: 'Büro Nord' } as never)
   vi.mocked(announceProductFeedback).mockResolvedValue({ status: 'announced', recipients: 2 })
   vi.mocked(maskChatText).mockImplementation(async (_organizationId, text) => ({ text }) as never)
-  vi.mocked(fileProductFeedbackIssue).mockResolvedValue({ status: 'filed', number: 7, url: 'https://github.test/7' })
   vi.mocked(repository.countProductFeedbackByStatus).mockResolvedValue({
     new: 1,
     in_progress: 0,
@@ -161,26 +152,6 @@ describe('submitProductFeedback', () => {
 
     expect(view.relayText).toBeNull()
     expect(repository.insertProductFeedback).toHaveBeenCalledTimes(1)
-  })
-
-  it('hands the stored report to the GitHub filing, which decides by kind', async () => {
-    // Outside a Next request `after` throws, so the service files inline.
-    await submitProductFeedback(session, input)
-
-    expect(fileProductFeedbackIssue).toHaveBeenCalledWith(stored())
-  })
-
-  it('files after the response inside a request, so the reporter never waits on GitHub', async () => {
-    const scheduled: Array<() => unknown> = []
-    vi.mocked(after).mockImplementationOnce((task) => {
-      scheduled.push(task as () => unknown)
-    })
-
-    await submitProductFeedback(session, input)
-    expect(fileProductFeedbackIssue).not.toHaveBeenCalled()
-
-    await scheduled[0]!()
-    expect(fileProductFeedbackIssue).toHaveBeenCalledWith(stored())
   })
 
   it('still announces when the organization row cannot be read', async () => {
