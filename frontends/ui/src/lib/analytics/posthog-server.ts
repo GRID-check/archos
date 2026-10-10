@@ -14,11 +14,16 @@
  * to capture.
  *
  * Server events carry no GeoIP: the caller is our cluster, not the user, so a
- * lookup would attribute every event to the data centre.
+ * lookup would attribute every event to the data centre. They carry the
+ * deployed commit and the service as super properties (`register`), and a
+ * system event has no distinct id at all: posthog-node then sends it under a
+ * fresh id with `$process_person_profile: false`, so no person is minted.
  */
 import 'server-only'
 
 import { PostHog } from 'posthog-node'
+
+import { deployedSha } from '@/lib/boot'
 
 import { scrubServerEvent } from './scrub-server-event'
 
@@ -68,6 +73,12 @@ export const posthogServerSettings = (): { host: string; projectToken: string } 
 /** Whether the BFF sends anything to PostHog: both settings reached it. */
 export const isPosthogServerEnabled = (): boolean => posthogServerSettings() !== null
 
+/** What every server event carries: the deployed commit and which process sent it. */
+export const serverSuperProperties = (): { release: string; service: string } => ({
+  release: deployedSha(),
+  service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
+})
+
 /** The process-wide client, built on first use; `null` while PostHog is off. */
 export const getPosthogServer = (): PostHog | null => {
   if (resolved) return client
@@ -84,6 +95,8 @@ export const getPosthogServer = (): PostHog | null => {
       flushAt: 20,
       flushInterval: 5_000,
     })
+    // Synchronous for this client (memory persistence is ready at construction).
+    void client.register(serverSuperProperties())
   }
   resolved = true
   return client
@@ -113,13 +126,9 @@ export const captureServer = ({ event, distinctId, organizationId, properties }:
   if (!posthog) return false
   const props: ServerProperties = { ...properties }
   if (organizationId) props.organization_id = organizationId
-  if (distinctId === null) props.$process_person_profile = false
   try {
-    posthog.capture({
-      event,
-      distinctId: distinctId ?? `server:${event}`,
-      properties: props,
-    })
+    // No distinct id for a system action: posthog-node makes the event personless.
+    posthog.capture({ event, distinctId: distinctId ?? undefined, properties: props })
     return true
   } catch (error) {
     console.debug('[posthog] could not queue event', event, error)

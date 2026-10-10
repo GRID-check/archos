@@ -16,8 +16,12 @@ events. `tests/test_posthog_boundaries.py` enforces that.
 
 - **The distinct id is the WorkOS user id**, in the browser and on the server.
   A system action (a scheduled run starting, an ingest finishing, spend
-  crossing a limit) is **personless**: the server sends `null`, the event
-  carries `$process_person_profile: false`, and no person is minted for it.
+  crossing a limit) is **personless**: the call site passes `null`, the event
+  goes out with no distinct id of ours, and posthog-node gives it a fresh one
+  with `$process_person_profile: false`, so no person is minted for it.
+- **Every server event carries `release` and `service`**, the deployed commit
+  (`GRID_GIT_SHA`) and the process (`OTEL_SERVICE_NAME`), registered once as
+  super properties of the server client.
 - **Tenant context is a property, never a group.** `organization_id` (the WorkOS
   organization) is registered as a super property in the browser and set by
   `captureServer({ organizationId })` on the server. PostHog group analytics is

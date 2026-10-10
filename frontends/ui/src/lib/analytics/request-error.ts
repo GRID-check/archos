@@ -42,9 +42,8 @@ import {
 } from '@posthog/next'
 
 import { isAuthzError } from '@/lib/auth-utils'
-import { deployedSha } from '@/lib/boot'
 
-import { posthogServerSettings } from './posthog-server'
+import { posthogServerSettings, serverSuperProperties } from './posthog-server'
 import { scrubServerEvent } from './scrub-server-event'
 
 /** Events allowed per fingerprint per window. */
@@ -94,11 +93,9 @@ export const beforeCapture = (
 ): Record<string, unknown> | false => {
   if (isAuthzError(capture.error)) return false
   if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
-  return {
-    source: 'bff-on-request-error',
-    release: deployedSha(),
-    service: process.env.OTEL_SERVICE_NAME ?? 'grid-ui',
-  }
+  // The package's client is not ours to `register` on, so the super
+  // properties every other server event carries travel per event here.
+  return { source: 'bff-on-request-error', ...serverSuperProperties() }
 }
 
 /** What `createOnRequestError` is built with; `null` while PostHog is off. */
