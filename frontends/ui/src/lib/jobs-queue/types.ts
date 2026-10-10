@@ -244,6 +244,8 @@ export const officeRenditionPayloadSchema = documentWorkPayloadSchema.extend({
     })
     .nullable()
     .optional(),
+  /** The older file this upload was filed as the new Fassung of (ADR-0097); absent for every other. */
+  fassungOf: z.string().nullable().optional(),
 })
 export type OfficeRenditionPayload = z.infer<typeof officeRenditionPayloadSchema>
 

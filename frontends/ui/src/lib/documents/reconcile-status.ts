@@ -20,6 +20,7 @@ import { collectionFileRef, type CollectionFileRef } from './collection-file-ref
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
 import { parseFassungNames, type FassungNames, type RawFassungFields } from './fassung'
 import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
+import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
 import { setDocumentReconciledStatus } from './repository'
 
 /**
@@ -141,6 +142,8 @@ export interface DocumentMetadata {
   topics?: string[]
   /** EXIF facts of a photo (see {@link PhotoCapture}). */
   capture?: PhotoCapture
+  /** Title-block facts read off the drawing (see {@link RevisionFacts}). */
+  revisionFacts?: RevisionFacts
   /**
    * How many of this organisation's uploads wait in the ingest queue ahead of
    * this one (ADR-0076), or null when the row is not waiting there. The lane's
@@ -283,6 +286,7 @@ interface BackendFileEntry {
   tags?: string[] | null
   topics?: string[] | null
   capture?: unknown
+  revision_facts?: unknown
   /**
    * The Fassung links by FILE NAME, parsed. Deliberately not a
    * {@link DocumentMetadata} field: that type is spread onto rows several
@@ -314,6 +318,8 @@ interface RawBackendFile extends RawFassungFields {
   // Topics and capture are top-level too: the model's keywords and the photo's EXIF facts.
   topics?: string[] | null
   capture?: unknown
+  // The title-block facts read off the drawing during ingestion.
+  revision_facts?: unknown
   metadata?: { page_count?: number; content_types?: string[] } | null
 }
 
@@ -342,6 +348,7 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       tags: file.tags,
       topics: file.topics,
       capture: file.capture,
+      revision_facts: file.revision_facts,
       fassung: parseFassungNames(file),
     })
   }
@@ -620,6 +627,8 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   }
   const capture = parsePhotoCapture(file.capture)
   if (capture) meta.capture = capture
+  const revisionFacts = parseRevisionFacts(file.revision_facts)
+  if (revisionFacts) meta.revisionFacts = revisionFacts
   return Object.keys(meta).length > 0 ? meta : null
 }
 

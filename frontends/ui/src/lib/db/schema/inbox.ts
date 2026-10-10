@@ -124,6 +124,16 @@ export const INBOX_ITEM_TYPES = [
    */
   'mail_import.completed',
   'mail_import.failed',
+  /**
+   * Informational, operational tier: a newer Fassung of a document the
+   * recipient follows exists (CONTEXT.md „Fassung", ADR-0054, ADR-0097) —
+   * either a person confirmed that another document replaces it, or a new
+   * version was published under its name. Addressed to the people assigned to
+   * the OLDER document and to its uploader, never to the person who made the
+   * change, and only to those who may see the newer document. The row points at
+   * the NEWER document, so the read-time access check is the one that matters.
+   */
+  'document.new_fassung',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 

@@ -25,6 +25,14 @@
  * run the resolution on plain fixtures.
  */
 
+/**
+ * What a suggestion rests on: the title block (Plankopf: the same number, a higher Index or later
+ * date), the Index and date in the file name, or Piloti's reading of the content. The wire values
+ * of `revision_suggestion.basis`.
+ */
+export const FASSUNG_BASES = ['title_block', 'name', 'content'] as const
+export type FassungBasis = (typeof FASSUNG_BASES)[number]
+
 /** A document the reader can open: its id and the file name it is stored under. */
 export interface FassungRef {
   id: string
@@ -37,10 +45,28 @@ export interface FassungFacts {
   /** The older documents this one replaces. */
   supersedes: FassungRef[]
   /** Piloti's suggestion that THIS document is a newer Fassung of `of`; nobody has confirmed it. */
-  suggestion: { of: FassungRef; confidence: number; reason: string; basis: 'name' | 'content' } | null
+  suggestion: { of: FassungRef; confidence: number; reason: string; basis: FassungBasis } | null
   /** What changed against the Fassung it replaces; `'previous'` is the earlier upload under this very name. */
   changeSummary: { text: string; basis: FassungRef | 'previous' } | null
+  /**
+   * Every older Fassung this document replaces, directly or through another,
+   * newest first and only those the reader may open (`fassung-facts.ts`). What
+   * the preview's timeline lists and the listing's count is read from, so a
+   * document with five Fassungen is one entry that knows all five.
+   */
+  history?: FassungHistoryEntry[]
 }
+
+/** One older Fassung in a document's history. */
+export interface FassungHistoryEntry extends FassungRef {
+  /** When it was uploaded (ISO), or null when the row does not say. */
+  createdAt: string | null
+  /** What changed in it against ITS predecessor, when that predecessor is one the reader may see too. */
+  changeSummary: string | null
+}
+
+/** How deep a history is walked: a cap, never a design limit (an office keeps a few dozen states at most). */
+export const FASSUNG_MAX_HISTORY = 40
 
 /** A document with nothing to say about its Fassungen; what a client holds after an unlink. */
 export const EMPTY_FASSUNG: FassungFacts = { supersededBy: null, supersedes: [], suggestion: null, changeSummary: null }
@@ -55,7 +81,7 @@ export const FASSUNG_MAX_SUMMARY_LENGTH = 2000
 export interface FassungNames {
   supersededBy: string | null
   supersedes: string[]
-  suggestion: { of: string; confidence: number; reason: string; basis: 'name' | 'content' } | null
+  suggestion: { of: string; confidence: number; reason: string; basis: FassungBasis } | null
   change: { text: string; basis: string | null } | null
 }
 
@@ -86,8 +112,8 @@ function parseSuggestion(raw: unknown): FassungNames['suggestion'] {
   const of = asName(fields.of)
   const confidence = asConfidence(fields.confidence)
   const basis = fields.basis
-  if (of === null || confidence === null || (basis !== 'name' && basis !== 'content')) return null
-  return { of, confidence, reason: asText(fields.reason, FASSUNG_MAX_REASON_LENGTH) ?? '', basis }
+  if (of === null || confidence === null || (typeof basis !== 'string' || !FASSUNG_BASES.includes(basis as FassungBasis))) return null
+  return { of, confidence, reason: asText(fields.reason, FASSUNG_MAX_REASON_LENGTH) ?? '', basis: basis as FassungBasis }
 }
 
 /**

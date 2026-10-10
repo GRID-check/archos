@@ -91,10 +91,12 @@ import {
   readVersionForService,
   readVersionTextForTask,
   renderVersionBytes,
+  streamVersionFile,
   versionMirrorsItem,
   versionWriteKey,
   writeVersionContent,
 } from './version-content'
+import { NotFoundError } from '@/lib/api/errors'
 import { AI_PROVENANCE_PROPERTIES } from '@/lib/ai-provenance'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 
@@ -757,5 +759,90 @@ describe('reading a version’s text, and the download log', () => {
     await expect(readVersionTextForTask(session, 'doc_1', 'ver_1')).resolves.toBe('# Aktenvermerk')
 
     expect(recordDocumentAccess).not.toHaveBeenCalled()
+  })
+})
+
+describe('streamVersionFile — an earlier upload under the same name, as bytes', () => {
+  const pdfDocument: Document = makeDocument({ id: 'doc_1', projectId: 'proj_1', filename: 'Werkvertrag Ä.pdf', contentType: 'application/pdf' })
+  const bytes = () => ({ transformToWebStream: () => new Response('%PDF-1.7 v1').body })
+
+  beforeEach(() => {
+    vi.mocked(getAccessibleDocument).mockResolvedValue(pdfDocument)
+    vi.mocked(findDocumentVersion).mockResolvedValue(
+      version({ state: 'superseded', contentType: 'application/pdf', storageKey: 'org/o/doc/d/v1/a/Werkvertrag.pdf' }),
+    )
+    vi.mocked(s3Client.send).mockResolvedValue({ Body: bytes() } as never)
+  })
+
+  it('streams the version’s own object, inline for a PDF, and records the hand-over', async () => {
+    const response = await streamVersionFile(session, 'doc_1', 'ver_1')
+
+    expect(await response.text()).toBe('%PDF-1.7 v1')
+    expect(response.headers.get('Content-Type')).toBe('application/pdf')
+    expect(response.headers.get('Content-Disposition')).toMatch(/^inline; filename="Werkvertrag _\.pdf"/)
+    expect(response.headers.get('Cache-Control')).toBe('private, max-age=300')
+    expect(response.headers.get('X-Content-Type-Options')).toBe('nosniff')
+    const command = vi.mocked(s3Client.send).mock.calls[0]?.[0] as { input: { Bucket: string; Key: string } }
+    expect(command.input).toEqual({ Bucket: 'grid-org-1', Key: 'org/o/doc/d/v1/a/Werkvertrag.pdf' })
+    expect(recordDocumentAccess).toHaveBeenCalledWith(session, pdfDocument, 'version', { versionId: 'ver_1' })
+  })
+
+  it('is an attachment when asked to download, and never frames', async () => {
+    const response = await streamVersionFile(session, 'doc_1', 'ver_1', { download: true })
+
+    expect(response.headers.get('Content-Disposition')).toMatch(/^attachment; /)
+    expect(response.headers.get('X-Frame-Options')).toBeNull()
+  })
+
+  it('never serves script-capable bytes inline: HTML and SVG leave as an octet-stream attachment', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'published', contentType: 'image/svg+xml' }))
+
+    const response = await streamVersionFile(session, 'doc_1', 'ver_1')
+
+    expect(response.headers.get('Content-Disposition')).toMatch(/^attachment; /)
+    expect(response.headers.get('Content-Type')).toBe('application/octet-stream')
+  })
+
+  it('answers 404 for a version of another document, reading no byte', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(null)
+
+    await expect(streamVersionFile(session, 'doc_2', 'ver_1')).rejects.toMatchObject({ status: 404 })
+
+    expect(findDocumentVersion).toHaveBeenCalledWith('ver_1', 'doc_2', 'org_1')
+    expect(s3Client.send).not.toHaveBeenCalled()
+    expect(recordDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it.each(['draft', 'in_review', 'changes_requested', 'approved', 'rejected'] as const)(
+    'refuses a %s version: unreleased work is not part of the timeline',
+    async (state) => {
+      vi.mocked(findDocumentVersion).mockResolvedValue(version({ state }))
+
+      await expect(streamVersionFile(session, 'doc_1', 'ver_1')).rejects.toMatchObject({ status: 404 })
+
+      expect(s3Client.send).not.toHaveBeenCalled()
+    },
+  )
+
+  it('refuses a held document before it looks at a version (ADR-0086)', async () => {
+    vi.mocked(getAccessibleDocument).mockRejectedValue(new NotFoundError())
+
+    await expect(streamVersionFile(session, 'doc_1', 'ver_1')).rejects.toMatchObject({ status: 404 })
+
+    expect(findDocumentVersion).not.toHaveBeenCalled()
+    expect(s3Client.send).not.toHaveBeenCalled()
+  })
+
+  it('answers 404 when the object is gone from the store', async () => {
+    vi.mocked(s3Client.send).mockRejectedValue(new Error('NoSuchKey'))
+
+    await expect(streamVersionFile(session, 'doc_1', 'ver_1')).rejects.toMatchObject({ status: 404 })
+    expect(recordDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it('does not hand the bytes over when the log refuses (a folder with its own list)', async () => {
+    vi.mocked(recordDocumentAccess).mockRejectedValueOnce(Object.assign(new Error('not recorded'), { status: 503 }))
+
+    await expect(streamVersionFile(session, 'doc_1', 'ver_1')).rejects.toMatchObject({ status: 503 })
   })
 })

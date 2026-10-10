@@ -684,6 +684,74 @@ describe('uploadDocument ingest dispatch', () => {
   })
 })
 
+/*
+ * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0097):
+ * the browser sends the older document's ID, the upload checks it before a byte
+ * is stored (`resolveFassungOf`), the ingest job gets the older document's FILE
+ * NAME as `fassung_of`, and the trail records the choice. Each link has its own
+ * spec (`fassung-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
+ * the chain between them.
+ */
+describe('uploadDocument filed as a new Fassung (ADR-0097)', () => {
+  const OLDER_ID = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'
+  const older = (overrides: Parameters<typeof makeDocument>[0] = {}) =>
+    makeDocument({
+      id: OLDER_ID,
+      filename: 'Grundriss_EG_Index_B.pdf',
+      contentHash: 'h',
+      screeningOutcome: 'clean',
+      ...overrides,
+    })
+  const ingestBody = (): Record<string, unknown> => {
+    const call = mockFetch.mock.calls.find(([url]) => String(url).endsWith('/v1/ingest'))
+    expect(call).toBeDefined()
+    return JSON.parse(String((call![1] as RequestInit).body)) as Record<string, unknown>
+  }
+  const putCalls = () => vi.mocked(s3Client.send).mock.calls.filter(([command]) => command instanceof PutObjectCommand)
+
+  beforeEach(() => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ job_id: 'job-7' }) })
+  })
+
+  it('checks the older document, sends its file name to the ingest job, and records the choice', async () => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
+      id === OLDER_ID ? older() : makeDocument({ id, filename: 'Grundriss_EG_Index_C.pdf' }),
+    )
+
+    await uploadDocument(
+      session,
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      new Request('http://x'),
+    )
+
+    expect(ingestBody().fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ fassungOf: OLDER_ID }) }),
+    )
+  })
+
+  it('refuses an archived older document before a byte is stored', async () => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
+      id === OLDER_ID ? older({ lifecycle: 'archived' }) : makeDocument({ id }),
+    )
+    vi.mocked(s3Client.send).mockClear()
+
+    await expect(
+      uploadDocument(session, { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID }, new Request('http://x')),
+    ).rejects.toBeInstanceOf(BadRequestError)
+
+    expect(putCalls()).toHaveLength(0)
+    expect(admitOrDiscard).not.toHaveBeenCalled()
+  })
+
+  it('sends no fassung_of, and records none, for an upload nobody filed as a Fassung', async () => {
+    await uploadDocument(session, makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), new Request('http://x'))
+
+    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('fassungOf')
+  })
+})
+
 describe('uploadDocument ingest dispatch — backend fetch is time-bounded', () => {
   it('sends the ingest dispatch with an AbortSignal so a hung backend cannot stall the request', async () => {
     mockFetch.mockResolvedValue({

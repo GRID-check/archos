@@ -91,6 +91,7 @@ const OBJECT_READERS: Record<string, Disposition> = {
   'lib/documents/service.ts::streamDocumentFile': { logged: ['pdf'] },
   'lib/documents/service.ts::getDocumentTextPreview': { logged: ['text'] },
   'lib/documents/version-content.ts::readVersionContent': { logged: ['version'] },
+  'lib/documents/version-content.ts::streamVersionFile': { logged: ['version'] },
   'lib/bim/model-service.ts::getModelSource': { logged: ['model'] },
   'lib/documents/service.ts::getDocumentThumbnail': {
     servesPerson: true,
@@ -149,6 +150,7 @@ const ROUTES: Record<string, RouteDisposition> = {
   'documents/[id]/file/route.ts': { via: 'streamDocumentFile' },
   'documents/[id]/text/route.ts': { via: 'getDocumentTextPreview' },
   'documents/[id]/versions/[versionId]/content/route.ts': { via: 'readVersionContent' },
+  'documents/[id]/versions/[versionId]/file/route.ts': { via: 'streamVersionFile' },
   'documents/[id]/versions/diff/route.ts': { via: 'readVersionContent' },
   'bim/models/[modelId]/source/route.ts': { via: 'getModelSource' },
   'documents/[id]/thumbnail/route.ts': { exempt: 'a thumbnail, see OBJECT_READERS.getDocumentThumbnail' },

@@ -104,6 +104,8 @@ vi.mock('./version-content', () => ({
   writeVersionContent: vi.fn(),
 }))
 vi.mock('@/lib/storage/discard', () => ({ discardObject: vi.fn() }))
+/** The new-Fassung announcement is `fassung-notify.spec.ts`'s; here only that the transitions ask for it. */
+vi.mock('./fassung-notify', () => ({ announceNewFassung: vi.fn().mockResolvedValue(undefined) }))
 // The restricted-folder refusal (ADR-0087) is decided in `restricted-egress.ts`
 // and pinned in its own spec; here only the join is under test.
 vi.mock('@/lib/conversations/restricted-egress', async () => {
@@ -131,6 +133,7 @@ import { findDocumentInOrg } from './repository'
 import { discardObject } from '@/lib/storage/discard'
 import { purgeIngestedChunks } from './collection-file-ref'
 import { dispatchDocument } from './service'
+import { announceNewFassung } from './fassung-notify'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -790,6 +793,35 @@ describe('transitionDocumentVersion — effects', () => {
     )
   })
 
+  it('publish announces a new Fassung to the people who follow the document, as the publisher, when it replaces a version', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
+    vi.mocked(promoteVersionToPublished).mockResolvedValue({
+      version: version({ state: 'published' }),
+      superseded: [version({ id: 'ver_0', state: 'superseded', createdBy: 'user_first' })],
+    })
+
+    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
+
+    expect(announceNewFassung).toHaveBeenCalledTimes(1)
+    expect(announceNewFassung).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      actorUserId: session.userId,
+      newerId: 'doc_1',
+      olderId: 'doc_1',
+      versionId: 'ver_1',
+      previousUploaderIds: ['user_first'],
+    })
+  })
+
+  it('publish of a first version announces nothing: there is no earlier Fassung to follow', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
+    vi.mocked(promoteVersionToPublished).mockResolvedValue({ version: version({ state: 'published' }), superseded: [] })
+
+    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'publish')
+
+    expect(announceNewFassung).not.toHaveBeenCalled()
+  })
+
   it('publish moves the pointer and supersedes, in the one transaction that can', async () => {
     const published = version({ state: 'published' })
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
@@ -1082,6 +1114,36 @@ describe('createDocumentVersion — a human upload', () => {
 
     expect(insertDocumentVersion).not.toHaveBeenCalled()
     expect(promoteVersionToPublished).not.toHaveBeenCalled()
+  })
+
+  it('announces a same-name upload as a new Fassung only when it replaced a version', async () => {
+    vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
+      version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_new' }),
+      superseded: [version({ id: 'ver_0', state: 'superseded', createdBy: 'user_first' })],
+    }))
+
+    await upload()
+
+    expect(announceNewFassung).toHaveBeenCalledWith(
+      expect.objectContaining({
+        organizationId: 'org_1',
+        actorUserId: session.userId,
+        newerId: 'doc_1',
+        olderId: 'doc_1',
+        versionId: 'ver_new',
+        previousUploaderIds: ['user_first'],
+      }),
+    )
+
+    vi.mocked(announceNewFassung).mockClear()
+    vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
+      version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_first' }),
+      superseded: [],
+    }))
+
+    await upload()
+
+    expect(announceNewFassung).not.toHaveBeenCalled()
   })
 
   it('refuses an upload claimed by a machine caller', async () => {

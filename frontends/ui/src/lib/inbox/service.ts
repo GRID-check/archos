@@ -38,6 +38,7 @@ import {
   markItemsInertForResource,
   markItemsInertForSubjectRow,
   markResourceItemsRead,
+  openRecipientsOfGroup,
   resolveInboxItemsForTargets,
   upsertInboxItems,
   type InboxResolutionTarget,
@@ -152,6 +153,16 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
   )
 
   return inserted.length
+}
+
+/**
+ * Who a still-open request was sent to: the recipients holding an unresolved
+ * item under this group key. Session-less, like the emitter: the caller has
+ * already authorized reading the subject (a document's review round is read by
+ * the document's own listing, behind `getAccessibleDocument`).
+ */
+export async function openRecipientsOf(organizationId: string, groupKey: string): Promise<string[]> {
+  return openRecipientsOfGroup(organizationId, groupKey)
 }
 
 /**
@@ -497,6 +508,7 @@ function toItemView(
       ? access.deepLink({ itemType: row.type, anchorId: row.anchorId, taskId, run })
       : null,
     subject: access ? coerceText(payload.subject, SUBJECT_MAX_LENGTH) : null,
+    related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),

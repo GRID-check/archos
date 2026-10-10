@@ -9,6 +9,7 @@
  */
 
 import { ingestScreeningFor } from '@/lib/upload-screening/service'
+import { contentDisposition } from './content-disposition'
 import 'server-only'
 import {
   GetObjectCommand,
@@ -283,38 +284,6 @@ const INGEST_JOB_REF_TTL_SECONDS = 86_400
 export const RENDITION_REQUIRED_MESSAGE = 'The PDF version of this file could not be created'
 
 /**
- * Filenames are user-controlled and end up in the `Content-Disposition` of
- * presigned URLs — strip header-breaking characters (CR/LF, double quotes),
- * cap the length, and never emit an empty name.
- */
-function sanitizeFilename(raw: string): string {
-  const cleaned = raw
-    .replace(/[\r\n"]/g, '')
-    .trim()
-    .slice(0, 255)
-  return cleaned || 'download'
-}
-
-/** RFC 5987 percent-encoding for the `filename*` parameter. */
-function encodeRfc5987(value: string): string {
-  return encodeURIComponent(value).replace(
-    /['()*]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
-  )
-}
-
-/**
- * Build a header-safe Content-Disposition: an ASCII-only `filename` fallback
- * plus the RFC 5987 `filename*` carrying the full UTF-8 name.
- */
-function contentDisposition(type: 'attachment' | 'inline', rawFilename: string): string {
-  const filename = sanitizeFilename(rawFilename)
-  const asciiFallback = filename.replace(/[^\x20-\x7e]/g, '_').replace(/[\\]/g, '_') || 'download'
-  return `${type}; filename="${asciiFallback}"; filename*=UTF-8''${encodeRfc5987(filename)}`
-}
-
-
-/**
  * Dispatch a document to the backend ingest API and persist the outcome. The
  * upload and re-ingest paths share this so the success path (status pending +
  * jobId) and the failure path (status failed + errorMessage) stay identical.
@@ -363,6 +332,14 @@ export interface DispatchIngestExtras {
    * upload is byte for byte what it was before the field existed.
    */
   priority?: IngestPriority
+  /**
+   * The FILE NAME of the document in this collection that these bytes replace,
+   * when a person filed the upload as its new Fassung (ADR-0097). Sent as
+   * `fassung_of`; once the file has been read, the ingest job writes the link
+   * `PUT /v1/collections/{c}/fassung` writes. Absent for every other dispatch,
+   * and then not sent at all.
+   */
+  fassungOf?: string | null
 }
 
 /**
@@ -500,6 +477,8 @@ export async function dispatchIngest(
     file_name: extras.fileName ?? null,
     // Only a bulk dispatch says so: the backend's default is interactive.
     ...(extras.priority === 'bulk' ? { priority: 'bulk' } : {}),
+    // Only an upload a person filed as a new Fassung says so (ADR-0097).
+    ...(extras.fassungOf ? { fassung_of: extras.fassungOf } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
     // Spread so the four keys are the four keys, never a nested object the
@@ -907,6 +886,8 @@ export interface UploadDocumentInput {
    * for this project; anything else is ignored rather than refused.
    */
   uploadBatchId?: string | null
+  /** See `ShelfUploadInput.fassungOf`: the document this is filed as the new Fassung of. */
+  fassungOf?: string | null
   /** See `ShelfUploadInput.priority`: `bulk` for a machine filing on a person's behalf. */
   priority?: IngestPriority
 }
@@ -1028,6 +1009,12 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
    * the keys the Python side parses are the keys the BFF wrote.
    */
   provenance?: AgentDocumentProvenance | null
+  /**
+   * The file name of the older document this upload was filed as the new
+   * Fassung of, already checked (`resolveFassungOf`). Read by the ingest paths
+   * only: an IFC model's digest is not the file the row names.
+   */
+  fassungOf?: string | null
 }
 
 export interface DispatchDocumentResult {
@@ -1165,7 +1152,12 @@ export async function dispatchDocument(
     // The ROW's filename, not the caller's: the join key belongs to the row,
     // and this is the same "never trust the caller" argument the guard above
     // makes about authorship.
-    { fileName: row.filename, provenance: input.provenance ?? null, priority: input.priority }
+    {
+      fileName: row.filename,
+      provenance: input.provenance ?? null,
+      priority: input.priority,
+      fassungOf: input.fassungOf ?? null,
+    }
   )
 }
 
@@ -1432,6 +1424,7 @@ export async function beginRenditionIngest(
     ...documentWorkPayload(input),
     fileName,
     provenance: input.provenance ?? null,
+    fassungOf: input.fassungOf ?? null,
   })
 }
 
@@ -1449,7 +1442,11 @@ export async function runOfficeRenditionJob(
   payload: OfficeRenditionPayload,
   attempt: JobAttempt
 ): Promise<void> {
-  const input = { ...dispatchInputOf(organizationId, payload), provenance: payload.provenance ?? null }
+  const input = {
+    ...dispatchInputOf(organizationId, payload),
+    provenance: payload.provenance ?? null,
+    fassungOf: payload.fassungOf ?? null,
+  }
   if (!(await jobStillOwnsRow(input))) return
 
   await failRowOnLastAttempt(input, attempt, INGEST_DISPATCH_FAILED_MESSAGE, () =>
@@ -1487,6 +1484,7 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       // structure-preserving extractor (see `extractsFromRendition`).
       extractionRef: indexesRendition ? renditionRef : null,
       priority: input.priority,
+      fassungOf: input.fassungOf ?? null,
     }
   )
 }
@@ -2921,6 +2919,7 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     tags: reconciled.tags,
     topics: reconciled.topics,
     capture: reconciled.capture,
+    revisionFacts: reconciled.revisionFacts,
     // Resolved for THIS reader: a document they may not open is not in it.
     fassung,
     // The place in the ingest queue, null once the job is claimed or settled.

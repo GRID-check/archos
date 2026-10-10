@@ -12,12 +12,14 @@ vi.mock('@/lib/backend-proxy', () => ({ getBackendUrl: () => 'http://backend.tes
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn() }))
+vi.mock('./fassung-notify', () => ({ announceNewFassung: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({ shelfReaderFor: vi.fn() }))
 
 import { recordAuditEvent } from '@/lib/audit/service'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { getAccessibleDocument } from './access'
 import { loadFassungFacts } from './fassung-facts'
+import { announceNewFassung } from './fassung-notify'
 import { setFassungLink } from './fassung-service'
 
 const session = { userId: 'user-1', organizationId: 'org-1', email: 'a@b.test' } as AuthorizedSession
@@ -65,6 +67,8 @@ describe('setFassungLink', () => {
     vi.mocked(loadFassungFacts).mockResolvedValue(new Map())
     vi.mocked(shelfReaderFor).mockResolvedValue({ kind: 'member', userId: 'user-1' })
     vi.mocked(recordAuditEvent).mockClear()
+    vi.mocked(announceNewFassung).mockReset()
+    vi.mocked(announceNewFassung).mockResolvedValue(undefined)
     documentsById(NEWER, OLDER)
   })
 
@@ -108,6 +112,40 @@ describe('setFassungLink', () => {
     )
     expect(loadFassungFacts).toHaveBeenCalledWith(session, [NEWER, OLDER], { kind: 'member', userId: 'user-1' }, { fresh: true })
     expect(result).toEqual({ id: 'doc-b', fassung: newerFacts, older: { id: 'doc-a', fassung: olderFacts } })
+  })
+
+  it('announces a confirmed link to the people who follow the older document, with the first line of what changed', async () => {
+    const newerFacts: FassungFacts = {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-a', filename: 'Grundriss_A.pdf' }],
+      suggestion: null,
+      changeSummary: { text: 'Wand verschoben.\nTür neu.', basis: 'previous' },
+    }
+    vi.mocked(loadFassungFacts).mockResolvedValue(new Map([['doc-b', newerFacts]]))
+
+    await setFassungLink(session, 'doc-b', 'doc-a', true, request)
+
+    expect(announceNewFassung).toHaveBeenCalledTimes(1)
+    expect(announceNewFassung).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      actorUserId: 'user-1',
+      newerId: 'doc-b',
+      olderId: 'doc-a',
+      changeSummary: 'Wand verschoben.\nTür neu.',
+    })
+  })
+
+  it('announces nothing when the link is taken back', async () => {
+    await setFassungLink(session, 'doc-b', 'doc-a', false, request)
+
+    expect(announceNewFassung).not.toHaveBeenCalled()
+  })
+
+  it('announces nothing when the backend refuses the link', async () => {
+    mockFetch.mockResolvedValue(new Response('{}', { status: 409 }))
+
+    await expect(setFassungLink(session, 'doc-b', 'doc-a', true, request)).rejects.toThrow()
+    expect(announceNewFassung).not.toHaveBeenCalled()
   })
 
   it('unlinks with linked: false', async () => {

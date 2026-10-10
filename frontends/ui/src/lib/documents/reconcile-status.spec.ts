@@ -453,6 +453,47 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     expect(result.capture).toBeUndefined()
   })
 
+  it('merges the title-block facts, mapped to camelCase, and drops junk ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          revision_facts: {
+            document_number: 'A-101',
+            revision: 'C',
+            revision_date: '2026-03-14',
+            page: 2,
+          },
+        },
+        {
+          file_id: 'f-2',
+          file_name: 'junk.pdf',
+          status: 'success',
+          revision_facts: { revision_date: '14.03.2026' },
+        },
+      ])
+    )
+
+    const [present, junk] = await reconcileDocumentStatuses(
+      [
+        makeRow({ status: 'completed' }),
+        makeRow({ id: 'doc-2', filename: 'junk.pdf', status: 'completed' }),
+      ],
+      'org-1'
+    )
+
+    expect(present.revisionFacts).toEqual({
+      documentNumber: 'A-101',
+      revision: 'C',
+      revisionDate: '2026-03-14',
+      page: 2,
+    })
+    expect(junk.revisionFacts).toBeUndefined()
+  })
+
   it('reads the Fassung links by file name and keeps them out of the row metadata', async () => {
     makeDbMock()
     mockFetch.mockResolvedValue(

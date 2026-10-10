@@ -6,6 +6,7 @@
 import { apiRoute, parseFormData } from '@/lib/api/handler'
 import { DOCUMENT_UPLOAD_LIMIT } from '@/lib/limits'
 import { BadRequestError } from '@/lib/api/errors'
+import { readFassungOf } from '@/lib/documents/fassung-upload'
 import { uploadDocument } from '@/lib/documents/service'
 import { readScreeningRelease } from '@/lib/upload-screening/service'
 import { readUploadBatchId } from '@/lib/upload-batches/service'
@@ -33,6 +34,8 @@ export const POST = apiRoute(
         originPath: typeof originPath === 'string' ? originPath : null,
         screeningRelease: readScreeningRelease(formData.get('screeningRelease')),
         uploadBatchId: readUploadBatchId(formData.get('uploadBatchId')),
+        // The older document, when the reader filed this as its new Fassung (ADR-0097); checked by the service.
+        fassungOf: readFassungOf(formData.get('fassungOf')),
       },
       request
     )

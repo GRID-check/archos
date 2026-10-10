@@ -29,6 +29,8 @@ import { toListedDocuments, toListedPage, type ListedDocument } from '@/lib/docu
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
 import type { DocumentListCursor } from '@/lib/documents/list-cursor'
 import type { DocumentNameMatchRow } from '@/lib/documents/repository'
+import { fassungCandidatesOnShelf } from '@/lib/documents/fassung-candidates'
+import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { DocumentAuthor } from '@/lib/db/schema'
@@ -149,6 +151,18 @@ export async function probeArchivDocumentNames(
   return findArchivDocumentsByNames(session.organizationId, names, { reader: await archivReader(session) })
 }
 
+/**
+ * What the dropped names continue in the Archiv — the upload dialog's „Als neue
+ * Fassung von X ablegen" (`fassungCandidatesOnShelf`). Any org member may read,
+ * as with the name probe above.
+ */
+export async function probeArchivFassungCandidates(
+  session: AuthorizedSession,
+  names: readonly string[],
+): Promise<FassungCandidateMatch[]> {
+  return fassungCandidatesOnShelf(ARCHIV_SHELF, session.organizationId, names, { reader: await archivReader(session) })
+}
+
 export type UploadArchivDocumentResult = UploadDocumentResult
 
 /**
@@ -172,9 +186,10 @@ export function uploadArchivDocument(
     originPath = null,
     screeningRelease,
     uploadBatchId,
+    fassungOf,
   }: Omit<ShelfUploadInput, 'file' | 'folderId'> & { folderId?: string | null } = {},
 ): Promise<UploadArchivDocumentResult> {
-  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId }, request)
+  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId, fassungOf }, request)
 }
 
 /**

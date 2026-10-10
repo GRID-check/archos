@@ -19,9 +19,12 @@ import { getHiddenFolderIds } from '@/lib/authz/folder-access'
 import { collectionFileRef, type AuthoredDocumentRow } from './collection-file-ref'
 import type { DocumentReader } from './document-reader'
 import {
+  EMPTY_FASSUNG,
+  FASSUNG_MAX_HISTORY,
   referencedNames,
   resolveFassungFacts,
   type FassungFacts,
+  type FassungHistoryEntry,
   type FassungNames,
   type FassungRef,
 } from './fassung'
@@ -40,15 +43,61 @@ async function visibleRefs(
   collectionName: string,
   filenames: readonly string[],
   reader: DocumentReader,
-): Promise<Map<string, FassungRef>> {
+): Promise<Map<string, VisibleRef>> {
   const rows = await findFassungCounterparts(session.organizationId, collectionName, filenames, reader)
   const hidden = await hiddenFoldersByProject(session, rows)
-  const refs = new Map<string, FassungRef>()
+  const refs = new Map<string, VisibleRef>()
   for (const row of rows) {
     const closed = row.projectId !== null && row.folderId !== null && hidden.get(row.projectId)?.has(row.folderId)
-    if (!closed) refs.set(documentNameKey(row.filename), { id: row.id, filename: row.filename })
+    if (closed) continue
+    refs.set(documentNameKey(row.filename), {
+      id: row.id,
+      filename: row.filename,
+      // Coerced at the boundary: a driver handing back a string must not reach `toISOString`.
+      createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : null,
+    })
   }
   return refs
+}
+
+/** A counterpart the reader may open, with the one row fact the history shows. */
+interface VisibleRef extends FassungRef {
+  createdAt: string | null
+}
+
+/** The backend's names of one file of a collection, addressed the way `collectionFileRef` addresses a person's upload. */
+const namesOf = (collectionName: string, filename: string): Promise<FassungNames | null> => {
+  const ref = collectionFileRef({ collectionName, filename, authoredBy: 'user', publishedVersionId: null })
+  return ref ? readFassungNames(ref) : Promise.resolve(null)
+}
+
+/**
+ * The older Fassungen behind `names`, by the backend's names, newest first: the
+ * documents it replaces, then the ones THEY replace, breadth first. Cycle-safe
+ * and bounded; the reader's visibility is applied afterwards, like every other
+ * name here. Each comes with its own names, for its change line.
+ */
+async function walkHistory(
+  collectionName: string,
+  ownName: string,
+  names: FassungNames,
+): Promise<Array<{ filename: string; names: FassungNames | null }>> {
+  const seen = new Set<string>([documentNameKey(ownName)])
+  const walked: Array<{ filename: string; names: FassungNames | null }> = []
+  let frontier = names.supersedes
+  while (frontier.length > 0 && walked.length < FASSUNG_MAX_HISTORY) {
+    const next: string[] = []
+    for (const filename of frontier) {
+      const key = documentNameKey(filename)
+      if (seen.has(key) || walked.length >= FASSUNG_MAX_HISTORY) continue
+      seen.add(key)
+      const own = await namesOf(collectionName, filename)
+      walked.push({ filename, names: own })
+      next.push(...(own?.supersedes ?? []))
+    }
+    frontier = next
+  }
+  return walked
 }
 
 /** The folders this session may not open, per project the rows belong to. */
@@ -100,7 +149,21 @@ export async function loadFassungFacts(
     for (const filename of referencedNames(names, subject.filename)) set.add(filename)
     wanted.set(subject.collectionName, set)
   }
-  const refsByCollection = new Map<string, Map<string, FassungRef>>()
+  const histories = new Map<string, Array<{ filename: string; names: FassungNames | null }>>()
+  await Promise.all(
+    named.map(async ({ subject, names }) => {
+      if (names.supersedes.length === 0) return
+      const walked = await walkHistory(subject.collectionName, subject.filename, names)
+      histories.set(subject.id, walked)
+      const set = wanted.get(subject.collectionName) ?? new Set<string>()
+      for (const step of walked) {
+        set.add(step.filename)
+        for (const filename of step.names?.supersedes ?? []) set.add(filename)
+      }
+      wanted.set(subject.collectionName, set)
+    }),
+  )
+  const refsByCollection = new Map<string, Map<string, VisibleRef>>()
   await Promise.all(
     [...wanted].map(async ([collectionName, filenames]) => {
       refsByCollection.set(
@@ -112,8 +175,36 @@ export async function loadFassungFacts(
 
   for (const { subject, names } of named) {
     const refs = refsByCollection.get(subject.collectionName)
-    const resolved = resolveFassungFacts(names, subject.filename, (filename) => refs?.get(documentNameKey(filename)) ?? null)
-    if (resolved) facts.set(subject.id, resolved)
+    const lookup = (filename: string): FassungRef | null => {
+      const ref = refs?.get(documentNameKey(filename))
+      return ref ? { id: ref.id, filename: ref.filename } : null
+    }
+    const resolved = resolveFassungFacts(names, subject.filename, lookup)
+    const history = historyFor(histories.get(subject.id) ?? [], refs, lookup)
+    // A hidden direct predecessor leaves the document's own facts empty, while
+    // older Fassungen behind it may still be the reader's to see.
+    if (history.length > 0) facts.set(subject.id, { ...(resolved ?? EMPTY_FASSUNG), history })
+    else if (resolved) facts.set(subject.id, resolved)
   }
   return facts
+}
+
+/**
+ * The walked history as the reader may see it: a Fassung they may not open is
+ * left out with its name, and so is a change line that describes one (the same
+ * rule `resolveFassungFacts` applies to the document's own facts).
+ */
+function historyFor(
+  walked: ReadonlyArray<{ filename: string; names: FassungNames | null }>,
+  refs: Map<string, VisibleRef> | undefined,
+  lookup: (filename: string) => FassungRef | null,
+): FassungHistoryEntry[] {
+  const entries: FassungHistoryEntry[] = []
+  for (const step of walked) {
+    const ref = refs?.get(documentNameKey(step.filename))
+    if (!ref) continue
+    const own = resolveFassungFacts(step.names, step.filename, lookup)
+    entries.push({ ...ref, changeSummary: own?.changeSummary?.text ?? null })
+  }
+  return entries
 }

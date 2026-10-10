@@ -9,7 +9,13 @@
  * No `server-only` and no drizzle: the browser imports this.
  */
 
-import { NAME_PROBE_MAX_NAMES, nameProbeResponseSchema, type DocumentNameMatch } from './name-probe-types'
+import {
+  NAME_PROBE_MAX_NAMES,
+  fassungCandidatesResponseSchema,
+  nameProbeResponseSchema,
+  type DocumentNameMatch,
+  type FassungCandidateMatch,
+} from './name-probe-types'
 
 export type NameProbeFetch = (path: string, init?: RequestInit) => Promise<Response>
 
@@ -23,12 +29,18 @@ export class NameProbeError extends Error {
 
 export const PROJECT_NAME_PROBE_PATH = '/api/documents/name-matches'
 export const ARCHIV_NAME_PROBE_PATH = '/api/archiv/documents/name-matches'
+export const PROJECT_FASSUNG_CANDIDATES_PATH = '/api/documents/fassung-candidates'
+export const ARCHIV_FASSUNG_CANDIDATES_PATH = '/api/archiv/documents/fassung-candidates'
 
 export interface DocumentNameProbeClient {
   /** Matches on a project's shelf. */
   project: (projectId: string, names: readonly string[]) => Promise<DocumentNameMatch[]>
   /** Matches in the organization's Archiv. */
   archiv: (names: readonly string[]) => Promise<DocumentNameMatch[]>
+  /** What the names continue on a project's shelf: the documents they would be the next Fassung of (ADR-0097). */
+  projectFassungen: (projectId: string, names: readonly string[]) => Promise<FassungCandidateMatch[]>
+  /** What the names continue in the Archiv. */
+  archivFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>
 }
 
 /**
@@ -53,19 +65,32 @@ function uniqueById(matches: readonly DocumentNameMatch[]): DocumentNameMatch[] 
 export function createDocumentNameProbeClient(
   run: NameProbeFetch = (path, init) => fetch(path, init),
 ): DocumentNameProbeClient {
-  const post = async (path: string, body: unknown): Promise<DocumentNameMatch[]> => {
+  const send = async (path: string, body: unknown): Promise<unknown> => {
     const response = await run(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
     if (!response.ok) throw new NameProbeError(response.status)
-    return nameProbeResponseSchema.parse(await response.json()).documents
+    return response.json()
   }
+  const post = async (path: string, body: unknown): Promise<DocumentNameMatch[]> =>
+    nameProbeResponseSchema.parse(await send(path, body)).documents
   const batched = async (path: string, names: readonly string[], extra: Record<string, unknown>) =>
     uniqueById((await Promise.all(chunks(names).map((batch) => post(path, { ...extra, names: batch })))).flat())
+  /** One answer per dropped name: two batches never answer for the same name. */
+  const candidates = async (path: string, names: readonly string[], extra: Record<string, unknown>) => {
+    const answers = await Promise.all(
+      chunks(names).map(async (batch) =>
+        fassungCandidatesResponseSchema.parse(await send(path, { ...extra, names: batch })).candidates
+      )
+    )
+    return [...new Map(answers.flat().map((candidate) => [candidate.name, candidate])).values()]
+  }
   return {
     project: (projectId, names) => batched(PROJECT_NAME_PROBE_PATH, names, { projectId }),
     archiv: (names) => batched(ARCHIV_NAME_PROBE_PATH, names, {}),
+    projectFassungen: (projectId, names) => candidates(PROJECT_FASSUNG_CANDIDATES_PATH, names, { projectId }),
+    archivFassungen: (names) => candidates(ARCHIV_FASSUNG_CANDIDATES_PATH, names, {}),
   }
 }

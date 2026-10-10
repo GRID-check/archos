@@ -531,6 +531,31 @@
             ],
             "additionalProperties": true
           }
+        },
+        "reviewerUserIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "people": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "userId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "userId",
+              "name"
+            ],
+            "additionalProperties": true
+          }
         }
       },
       "required": [

@@ -48,7 +48,7 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import { publishToUsers } from '@/lib/events/bus'
-import { emitInboxItems, resolveInboxItemsFor } from '@/lib/inbox/service'
+import { emitInboxItems, openRecipientsOf, resolveInboxItemsFor } from '@/lib/inbox/service'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { resolvePeople } from '@/lib/sharing/directory'
@@ -66,6 +66,7 @@ import { findProjectInOrg } from '@/lib/projects/repository'
 import { isAgentDocumentFilename } from './agent-namespace'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
 import { documentDisplayName } from './display-name'
+import { announceNewFassung } from './fassung-notify'
 import { findDocumentInOrg } from './repository'
 import { hasPassedScreening, internalRead } from '@/lib/documents/document-reader'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -86,6 +87,7 @@ import {
   type DocumentVersionEffect,
   type DocumentVersionOp,
   type DocumentVersionState,
+  type DocumentVersionListResponse,
   type DocumentVersionTransition,
   type DocumentVersionView,
 } from './lifecycle-types'
@@ -520,6 +522,29 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
       if (!(error instanceof AgentAuthoredDocumentNotIndexableError)) throw error
       console.warn(`[documents] ingest refused the published version ${version.id}`)
     }
+  },
+
+  /**
+   * A published version that replaces an earlier one is a new Fassung of the
+   * document: tell the people who follow it (`./fassung-notify`).
+   *
+   * `previous` is the version this transition superseded, so it is `null` for a
+   * document's first version, which is news to nobody. For a person's upload the
+   * document is still held here (its new bytes are screened after this runs) and
+   * the notifier says nothing; the settle hook calls it again once they pass.
+   * Detached because it asks the directory about each person, and the
+   * publisher's answer should not wait for that.
+   */
+  announceNewFassung: async ({ session, document, version, previous }) => {
+    if (!previous) return
+    void announceNewFassung({
+      organizationId: session.organizationId,
+      actorUserId: session.userId,
+      newerId: document.id,
+      olderId: document.id,
+      versionId: version.id,
+      previousUploaderIds: [previous.createdBy],
+    })
   },
 
   /**
@@ -1357,20 +1382,47 @@ export function toDocumentVersionView(version: DocumentVersion): DocumentVersion
 export async function listDocumentVersionViews(
   session: AuthorizedSession,
   documentId: string,
-): Promise<{
-  documentId: string
-  lifecycle: 'active' | 'archived'
-  publishedVersionId: string | null
-  versions: DocumentVersionView[]
-}> {
+): Promise<DocumentVersionListResponse> {
   const document = await getAccessibleDocument(session, documentId, 'read')
-  const versions = await listDocumentVersions(documentId, session.organizationId)
+  const versions = (await listDocumentVersions(documentId, session.organizationId)).map(toDocumentVersionView)
+  const reviewerUserIds = await openReviewRound(session.organizationId, documentId, versions)
+  const people = await resolvePeople(session.organizationId, [...new Set([...versionActors(versions), ...reviewerUserIds])])
   return {
     documentId,
     lifecycle: document.lifecycle,
     publishedVersionId: document.publishedVersionId,
-    versions: versions.map(toDocumentVersionView),
+    versions,
+    reviewerUserIds,
+    people: [...people.values()].map((person) => ({ userId: person.userId, name: person.name })),
   }
+}
+
+/**
+ * Who the newest version's review round is still waiting on. Only a version in
+ * review has an open round; the recipients are read off the round's own inbox
+ * items, because that is where the reviewers a submitter NAMED are recorded
+ * (the fallback chain in `./reviewers` would answer with who MIGHT be asked).
+ */
+async function openReviewRound(
+  organizationId: string,
+  documentId: string,
+  versions: readonly DocumentVersionView[],
+): Promise<string[]> {
+  const newest = versions.reduce<DocumentVersionView | null>(
+    (best, version) => (best === null || version.versionNumber > best.versionNumber ? version : best),
+    null,
+  )
+  if (newest?.state !== 'in_review') return []
+  return openRecipientsOf(organizationId, reviewGroupKey(documentId, newest.id))
+}
+
+/** Every user id the versions name as having done something to them. */
+function versionActors(versions: readonly DocumentVersionView[]): string[] {
+  return versions.flatMap((version) =>
+    [version.createdBy, version.submittedBy, version.reviewedBy, version.approvedBy, version.publishedBy].filter(
+      (id): id is string => typeof id === 'string' && id.length > 0,
+    ),
+  )
 }
 
 /**

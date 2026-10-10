@@ -10,6 +10,8 @@ vi.mock('./repository', () => ({
 vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValue(1) }))
 vi.mock('@/lib/projects/repository', () => ({ findProjectInOrg: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
+// What it announces is `fassung-notify.spec.ts`'s; here, settling hands over the documents that came to rest.
+vi.mock('@/lib/documents/fassung-notify', () => ({ announceSettledVersions: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({
   resolveSubjectMembership: vi.fn(),
@@ -26,6 +28,7 @@ import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
 import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/authz/project-membership'
 import type { UploadBatch } from '@/lib/db/schema'
+import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
@@ -197,6 +200,24 @@ describe('onDocumentsSettled', () => {
       { id: 'doc-2', status: 'failed' },
     ])
     expect(auditOwedQuarantines).not.toHaveBeenCalled()
+  })
+
+  it('hands the documents that came to rest to the new-Fassung announcement, the quarantined ones left out', async () => {
+    await onDocumentsSettled('org-1', [
+      { id: 'doc-1', status: 'completed' },
+      { id: 'doc-q', status: 'quarantined' },
+      { id: 'doc-2', status: 'ready' },
+    ])
+    expect(announceSettledVersions).toHaveBeenCalledWith('org-1', ['doc-1', 'doc-2'])
+  })
+
+  it('does not fail the read when the announcement rejects', async () => {
+    vi.mocked(announceSettledVersions).mockRejectedValueOnce(new Error('directory down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    await expect(onDocumentsSettled('org-1', [{ id: 'doc-1', status: 'completed' }])).resolves.toBeUndefined()
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(warn).toHaveBeenCalled()
+    warn.mockRestore()
   })
 
   it('never throws into the read that reconciled', async () => {

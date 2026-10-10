@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  FASSUNG_BASES,
   FASSUNG_MAX_REFS,
   FASSUNG_MAX_SUMMARY_LENGTH,
   parseFassungNames,
@@ -65,6 +66,28 @@ describe('parseFassungNames', () => {
     expect(suggestion(7)?.confidence).toBe(1)
     expect(suggestion(-3)?.confidence).toBe(0)
     expect(suggestion(Number.NaN)).toBeUndefined()
+  })
+
+  it('reads a suggestion that rests on the title block', () => {
+    expect(
+      parseFassungNames({
+        revision_suggestion: {
+          of: 'Zeichnung 7.pdf',
+          confidence: 0.95,
+          reason: 'Gleiche Nummer im Plankopf (A-101), Index C statt B.',
+          basis: 'title_block',
+        },
+      })?.suggestion,
+    ).toEqual({
+      of: 'Zeichnung 7.pdf',
+      confidence: 0.95,
+      reason: 'Gleiche Nummer im Plankopf (A-101), Index C statt B.',
+      basis: 'title_block',
+    })
+  })
+
+  it('names the three bases the backend writes, in the order of their weight', () => {
+    expect(FASSUNG_BASES).toEqual(['title_block', 'name', 'content'])
   })
 
   it('refuses a basis the UI does not know', () => {

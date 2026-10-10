@@ -1,7 +1,14 @@
 import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { findRevisionSeries, parseRevisionName, revisionLabel } from './revision-series'
+import {
+  FASSUNG_MAX_CANDIDATES,
+  findFassungCandidate,
+  findRevisionSeries,
+  parseRevisionName,
+  revisionLabel,
+  revisionSeriesKeyOf,
+} from './revision-series'
 
 /**
  * The cases are shared with the agent's Python parser
@@ -17,7 +24,7 @@ interface Cases {
 }
 
 const cases = JSON.parse(
-  readFileSync(resolve(__dirname, '../../../../../../tests/fixtures/revision_series_cases.json'), 'utf8')
+  readFileSync(resolve(__dirname, '../../../../../tests/fixtures/revision_series_cases.json'), 'utf8')
 ) as Cases
 
 describe('parseRevisionName, on the shared cases', () => {
@@ -52,5 +59,71 @@ describe('revisionLabel', () => {
     expect(revisionLabel(parseRevisionName('EG_Grundriss_Index_C_2026-08-14.pdf')!)).toBe('Index C · 14.08.2026')
     expect(revisionLabel(parseRevisionName('Lageplan_v3.pdf')!)).toBe('v3')
     expect(revisionLabel(parseRevisionName('Ansicht Nord Stand 02.09.2026.pdf')!)).toBe('02.09.2026')
+  })
+})
+
+describe('findFassungCandidate', () => {
+  const doc = (filename: string, createdAt = '2026-07-02T10:00:00Z') => ({ filename, createdAt })
+
+  it('is the one current document of the series, and unambiguous, when the file is newer', () => {
+    const found = findFassungCandidate('EG_Grundriss_Index_C_2026-08-14.pdf', [doc('EG_Grundriss_Index_B_2026-07-02.pdf')])
+
+    expect(found?.candidates.map((candidate) => candidate.item.filename)).toEqual(['EG_Grundriss_Index_B_2026-07-02.pdf'])
+    expect(found?.candidates[0].label).toBe('Index B · 02.07.2026')
+    expect(found).toMatchObject({ newer: true, unambiguous: true })
+  })
+
+  it('is not unambiguous when several current documents could be meant, and lists them newest first', () => {
+    const found = findFassungCandidate('EG_Grundriss_Index_D.pdf', [doc('EG_Grundriss_Index_A.pdf'), doc('EG_Grundriss_Index_C.pdf')])
+
+    expect(found?.candidates.map((candidate) => candidate.label)).toEqual(['Index C', 'Index A'])
+    expect(found).toMatchObject({ newer: true, unambiguous: false })
+  })
+
+  it('is not newer, and so not unambiguous, when the file is older than what is there', () => {
+    const found = findFassungCandidate('EG_Grundriss_Index_A.pdf', [doc('EG_Grundriss_Index_C.pdf')])
+
+    expect(found).toMatchObject({ newer: false, unambiguous: false })
+  })
+
+  it('treats the same revision under another name as no successor: a tie goes to the file, but index and date are equal', () => {
+    const found = findFassungCandidate('EG_Grundriss_Index_B_kopie.pdf', [doc('EG_Grundriss_Index_B.pdf')])
+
+    expect(found).toBeNull()
+  })
+
+  it('compares by date when the names carry dates only', () => {
+    expect(findFassungCandidate('Schnitt_2026-09-01.pdf', [doc('Schnitt_2026-08-01.pdf')])).toMatchObject({ newer: true })
+    expect(findFassungCandidate('Schnitt_2026-07-01.pdf', [doc('Schnitt_2026-08-01.pdf')])).toMatchObject({ newer: false })
+  })
+
+  it('has no candidate for a name the shelf already holds, in either Unicode form: that is a new version', () => {
+    expect(
+      findFassungCandidate('Küche_Index_C.pdf'.normalize('NFC'), [
+        doc('Küche_Index_C.pdf'.normalize('NFD')),
+        doc('Küche_Index_B.pdf'),
+      ]),
+    ).toBeNull()
+  })
+
+  it('has no candidate across formats, across series, or for a name without a series', () => {
+    expect(findFassungCandidate('EG_Grundriss_Index_C.dwg', [doc('EG_Grundriss_Index_B.pdf')])).toBeNull()
+    expect(findFassungCandidate('OG_Grundriss_Index_C.pdf', [doc('EG_Grundriss_Index_B.pdf')])).toBeNull()
+    expect(findFassungCandidate('Baubeschreibung.pdf', [doc('Baubeschreibung_Index_B.pdf')])).toBeNull()
+    expect(findFassungCandidate('EG_Grundriss_Index_C.pdf', [])).toBeNull()
+  })
+
+  it('lists at most five candidates', () => {
+    const many = Array.from({ length: 8 }, (_, index) => doc(`EG_Grundriss_Index_${String.fromCharCode(65 + index)}.pdf`))
+
+    expect(findFassungCandidate('EG_Grundriss_Index_Z.pdf', many)?.candidates).toHaveLength(FASSUNG_MAX_CANDIDATES)
+  })
+})
+
+describe('revisionSeriesKeyOf', () => {
+  it('is shared by every state of a document in one format, and by nothing else', () => {
+    expect(revisionSeriesKeyOf('EG_Grundriss_Index_B.pdf')).toBe(revisionSeriesKeyOf('EG_Grundriss_Index_C_2026-08-14.pdf'))
+    expect(revisionSeriesKeyOf('EG_Grundriss_Index_B.pdf')).not.toBe(revisionSeriesKeyOf('EG_Grundriss_Index_B.dwg'))
+    expect(revisionSeriesKeyOf('Baubeschreibung.pdf')).toBeNull()
   })
 })

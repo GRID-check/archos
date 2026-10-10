@@ -12,6 +12,7 @@ import { apiRoute, parseFormData } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
 import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { uploadArchivDocument } from '@/lib/archiv/service'
+import { readFassungOf } from '@/lib/documents/fassung-upload'
 import { DOCUMENT_UPLOAD_LIMIT } from '@/lib/limits'
 import { readScreeningRelease } from '@/lib/upload-screening/service'
 import { readUploadBatchId } from '@/lib/upload-batches/service'
@@ -36,6 +37,7 @@ export const POST = apiRoute(
       originPath: typeof originPath === 'string' ? originPath : null,
       screeningRelease: readScreeningRelease(formData.get('screeningRelease')),
       uploadBatchId: readUploadBatchId(formData.get('uploadBatchId')),
+      fassungOf: readFassungOf(formData.get('fassungOf')),
     })
   },
   { authz: { enforcedBy: 'uploadArchivDocument (canManageArchiv)' }, limits: { rule: DOCUMENT_UPLOAD_LIMIT } }

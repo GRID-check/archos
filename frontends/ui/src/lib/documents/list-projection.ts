@@ -76,6 +76,7 @@ export function toDocumentWireRow(
     tags: row.tags ?? null,
     topics: row.topics ?? null,
     capture: row.capture ?? null,
+    revisionFacts: row.revisionFacts ?? null,
     fassung: row.fassung ?? null,
     queueAhead: row.queueAhead ?? null,
     assignees: row.assignees,

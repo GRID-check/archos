@@ -37,7 +37,7 @@ const names = (overrides: Partial<FassungNames> = {}): FassungNames => ({
   ...overrides,
 })
 
-const A = { id: 'doc-a', filename: 'Grundriss_A.pdf', projectId: 'p1', folderId: null }
+const A = { id: 'doc-a', filename: 'Grundriss_A.pdf', projectId: 'p1', folderId: null, createdAt: new Date('2026-07-02T09:00:00Z') }
 const HELD = 'Gehaltsliste_intern.xlsx'
 
 describe('loadFassungFacts', () => {
@@ -80,6 +80,8 @@ describe('loadFassungFacts', () => {
       supersedes: [{ id: 'doc-a', filename: 'Grundriss_A.pdf' }],
       suggestion: null,
       changeSummary: null,
+      // A's own change line names the held document, so it goes with it.
+      history: [{ id: 'doc-a', filename: 'Grundriss_A.pdf', createdAt: '2026-07-02T09:00:00.000Z', changeSummary: null }],
     })
   })
 
@@ -133,7 +135,7 @@ describe('loadFassungFacts', () => {
       names({ supersedes: [ref.collectionName === 'proj_abc' ? 'Grundriss_A.pdf' : 'Schnitt_A.pdf'] }),
     )
     vi.mocked(findFassungCounterparts).mockImplementation(async (_org, collection) =>
-      collection === 'proj_abc' ? [A] : [{ id: 'doc-s', filename: 'Schnitt_A.pdf', projectId: 'p2', folderId: null }],
+      collection === 'proj_abc' ? [A] : [{ id: 'doc-s', filename: 'Schnitt_A.pdf', projectId: 'p2', folderId: null, createdAt: null }],
     )
 
     const facts = await loadFassungFacts(
@@ -155,5 +157,51 @@ describe('loadFassungFacts', () => {
 
     expect(refreshCollectionFiles).toHaveBeenCalledTimes(1)
     expect(refreshCollectionFiles).toHaveBeenCalledWith('proj_abc')
+  })
+
+  describe('the history', () => {
+    const C = { id: 'doc-c', filename: 'Grundriss_C.pdf', projectId: 'p1', folderId: null, createdAt: new Date('2026-08-14T09:00:00Z') }
+    const B = { id: 'doc-b2', filename: 'Grundriss_B.pdf', projectId: 'p1', folderId: null, createdAt: new Date('2026-07-30T09:00:00Z') }
+    const byName: Record<string, FassungNames> = {
+      'Grundriss_C.pdf': names({ supersedes: ['Grundriss_B.pdf'], change: { text: '- Zufahrt neu', basis: 'Grundriss_B.pdf' } }),
+      'Grundriss_B.pdf': names({ supersededBy: 'Grundriss_C.pdf', supersedes: ['Grundriss_A.pdf'], change: { text: '- Stiege verschoben', basis: 'Grundriss_A.pdf' } }),
+      'Grundriss_A.pdf': names({ supersededBy: 'Grundriss_B.pdf' }),
+    }
+
+    it('lists every older Fassung, newest first, each with its own change line', async () => {
+      vi.mocked(readFassungNames).mockImplementation(async (ref) => byName[ref.filename] ?? null)
+      vi.mocked(findFassungCounterparts).mockResolvedValue([A, B, C])
+
+      const facts = await loadFassungFacts(session, [subject({ id: 'doc-c', filename: 'Grundriss_C.pdf' })], reader)
+
+      expect(facts.get('doc-c')?.history).toEqual([
+        { id: 'doc-b2', filename: 'Grundriss_B.pdf', createdAt: '2026-07-30T09:00:00.000Z', changeSummary: '- Stiege verschoben' },
+        { id: 'doc-a', filename: 'Grundriss_A.pdf', createdAt: '2026-07-02T09:00:00.000Z', changeSummary: null },
+      ])
+    })
+
+    it('stops at a loop instead of walking it forever', async () => {
+      vi.mocked(readFassungNames).mockImplementation(async (ref) =>
+        ref.filename === 'Grundriss_C.pdf'
+          ? names({ supersedes: ['Grundriss_B.pdf'] })
+          : names({ supersedes: ['Grundriss_C.pdf'] }),
+      )
+      vi.mocked(findFassungCounterparts).mockResolvedValue([B, C])
+
+      const facts = await loadFassungFacts(session, [subject({ id: 'doc-c', filename: 'Grundriss_C.pdf' })], reader)
+
+      expect(facts.get('doc-c')?.history?.map((entry) => entry.filename)).toEqual(['Grundriss_B.pdf'])
+    })
+
+    it('leaves out an older Fassung the reader may not open, and keeps the ones behind it they may', async () => {
+      vi.mocked(readFassungNames).mockImplementation(async (ref) => byName[ref.filename] ?? null)
+      // B is held from this reader.
+      vi.mocked(findFassungCounterparts).mockResolvedValue([A, C])
+
+      const facts = await loadFassungFacts(session, [subject({ id: 'doc-c', filename: 'Grundriss_C.pdf' })], reader)
+
+      expect(JSON.stringify([...facts.values()])).not.toContain('Grundriss_B')
+      expect(facts.get('doc-c')?.history?.map((entry) => entry.filename)).toEqual(['Grundriss_A.pdf'])
+    })
   })
 })

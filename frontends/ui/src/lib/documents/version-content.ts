@@ -44,6 +44,7 @@ import {
 import { ensureTenantBucketChecked, resolveDocumentBucket } from '@/lib/storage/bucket'
 import { recordDocumentAccess } from '@/lib/download-log/service'
 import { getAccessibleDocument } from './access'
+import { contentDisposition } from './content-disposition'
 import { AGENT_DOCUMENT_MEDIA_TYPE, renderAgentDocumentMarkdown } from './agent-document-markdown'
 import { resolveDocumentBranding, type DocumentBranding } from './branding'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
@@ -426,6 +427,81 @@ export async function readVersionContent(
   const { document, text } = await fetchVersionText(session, documentId, versionId)
   await recordDocumentAccess(session, document, 'version', { versionId })
   return text
+}
+
+/**
+ * The states whose bytes the Fassung timeline hands to a reader: the one the
+ * office asserts and the ones it replaced. A draft, a version in review and a
+ * refused one are work in progress that only the review surface (the version
+ * list's text route) shows, so this route answers 404 for them rather than
+ * confirm that an unreleased version exists.
+ */
+const TIMELINE_BYTES_STATES: ReadonlySet<DocumentVersionState> = new Set(['published', 'superseded'])
+
+/**
+ * Content types a version may be shown inline in a tab. The bytes are uploaded
+ * by users and returned from this origin, so anything that could run script
+ * (HTML, SVG, XML) is never inline: it leaves as an attachment.
+ */
+const INLINE_VERSION_CONTENT_TYPES: ReadonlySet<string> = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+])
+
+/**
+ * One superseded or published version's stored object, streamed from this
+ * origin: what „Öffnen" and „Herunterladen" on a same-name Fassung of the
+ * timeline (ADR-0054, ADR-0097) hand over. `/file` and `/download` serve only
+ * the item's CURRENT bytes, and `/content` reads text; an earlier upload under
+ * the same name was kept and reachable through none of them.
+ *
+ * Authorization is the document's (`getAccessibleDocument`: the shelf's rule,
+ * the folder's, and the hold of ADR-0086), then the version must belong to it
+ * and be in a state in {@link TIMELINE_BYTES_STATES}. The hand-over is recorded
+ * as `kind: 'version'` with the version's id, as `readVersionContent` does.
+ *
+ * The file name is the document's: a version does not carry one of its own.
+ */
+export async function streamVersionFile(
+  session: AuthorizedSession,
+  documentId: string,
+  versionId: string,
+  { download = false }: { download?: boolean } = {},
+): Promise<Response> {
+  const document = await getAccessibleDocument(session, documentId, 'read')
+  const version = await findDocumentVersion(versionId, documentId, session.organizationId)
+  if (!version || !TIMELINE_BYTES_STATES.has(version.state)) throw new NotFoundError('Version not found')
+
+  let body
+  try {
+    const object = await s3Client.send(
+      new GetObjectCommand({ Bucket: resolveDocumentBucket(version.storageBucket), Key: version.storageKey }),
+    )
+    body = object.Body
+  } catch {
+    throw new NotFoundError('Version not found')
+  }
+  if (!body) throw new NotFoundError('Version not found')
+  await recordDocumentAccess(session, document, 'version', { versionId })
+
+  const stored = version.contentType ?? document.contentType ?? ''
+  const inline = !download && INLINE_VERSION_CONTENT_TYPES.has(stored)
+  return new Response(body.transformToWebStream(), {
+    status: 200,
+    headers: {
+      'Content-Type': INLINE_VERSION_CONTENT_TYPES.has(stored) ? stored : 'application/octet-stream',
+      'Content-Disposition': contentDisposition(inline ? 'inline' : 'attachment', document.filename),
+      'X-Content-Type-Options': 'nosniff',
+      // Private: these bytes are tenant data. A version's bytes never change
+      // under its id, so a short reuse is safe.
+      'Cache-Control': 'private, max-age=300',
+      // The same pairing the file route carries, for a viewer that frames it.
+      ...(inline ? { 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'" } : {}),
+    },
+  })
 }
 
 /**

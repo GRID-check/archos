@@ -42,6 +42,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
 import { documentStatusFacts } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
+import { resolveFassungOf } from './fassung-upload'
 import { documentNameKey } from './name-match'
 import { sanitizeOriginPath } from './origin-path'
 import { resolveShelfFolderPath } from './folder-path'
@@ -73,6 +74,14 @@ export interface ShelfUploadInput {
    * for this shelf; anything else is ignored rather than refused.
    */
   uploadBatchId?: string | null
+  /**
+   * The id of the document this file is filed as the new Fassung of, when the
+   * reader ticked „Als neue Fassung von X ablegen" (ADR-0097). Checked before
+   * anything is stored (`resolveFassungOf`); the ingest job then writes the
+   * link once the file has been read. Ignored when the older document has this
+   * file's own name: that is a new version (ADR-0054).
+   */
+  fassungOf?: string | null
   /**
    * The ingest queue's priority for these bytes. A person's upload is
    * `interactive` (the default); a machine filing thousands of files on their
@@ -131,6 +140,8 @@ async function uploadAuditEvent(
     collectionName: string
     folderId: string | null
     replaced: boolean
+    /** The older document the reader filed it as the next Fassung of, when they did. */
+    fassungOf: string | null
   },
 ): Promise<void> {
   const located =
@@ -151,6 +162,7 @@ async function uploadAuditEvent(
       filename: event.filename.slice(0, 200),
       fileSize: event.fileSize,
       ...(event.replaced ? { replaced: true } : {}),
+      ...(event.fassungOf ? { fassungOf: event.fassungOf.slice(0, 200) } : {}),
     },
     request,
   })
@@ -168,6 +180,8 @@ interface PlaceUploadInput {
   contentHash: string
   storageBucket: string
   uploadBatchId: string | null
+  /** The file name of the older document this is filed as the next Fassung of, checked; null for none. */
+  fassungOf: string | null
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
   mayWriteFolder: (folderId: string | null) => boolean
   /** The screening matches the uploader released (ADR-0086), audited once stored. */
@@ -373,6 +387,8 @@ async function prepareUpload(
   if (shelf.kind === 'project') {
     await assertNameFreeElsewhereInProject(session.organizationId, shelf.projectId, collectionName, filename)
   }
+  // A Fassung the reader chose, before a byte is stored: a refusal leaves nothing behind.
+  const fassungOf = await resolveFassungOf(session, input.fassungOf, { shelf, collectionName, filename })
 
   // Create the organization's bucket if this is its first upload (ADR-0043). A
   // no-op when per-org buckets are off. Done before the PUT so a provisioning
@@ -403,6 +419,7 @@ async function prepareUpload(
     contentHash: contentDigest(bytes),
     storageBucket,
     uploadBatchId,
+    fassungOf,
     mayWriteFolder: gate.mayWriteFolder,
     screeningOverridden: nameGate.overridden,
   }
@@ -510,6 +527,7 @@ export async function uploadToShelf(
     // `knowledge_search folder=` see the folder from the first ingest onward.
     folderPath,
     priority: input.priority,
+    fassungOf: upload.fassungOf,
   })
 
   await uploadAuditEvent(session, shelf, request, {
@@ -519,6 +537,7 @@ export async function uploadToShelf(
     collectionName,
     folderId: upload.folderId,
     replaced: placed.replaced,
+    fassungOf: input.fassungOf && upload.fassungOf ? input.fassungOf : null,
   })
   await auditScreeningOverride(
     session,

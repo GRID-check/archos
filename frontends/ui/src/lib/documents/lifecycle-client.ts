@@ -227,3 +227,17 @@ export function createDocumentLifecycleClient(
 
 /** The browser's instance. A route spec builds its own over the real handlers. */
 export const documentLifecycleClient = createDocumentLifecycleClient()
+
+/**
+ * Where one version's BYTES are served (`GET …/versions/[versionId]/file`): a
+ * link for a tab or an `<a download>`, not a fetch, so it is a URL builder and
+ * not a client method. Only a published or superseded version answers.
+ */
+export function versionFileUrl(
+  documentId: string,
+  versionId: string,
+  { download = false }: { download?: boolean } = {},
+): string {
+  const base = `/api/documents/${encodeURIComponent(documentId)}/versions/${encodeURIComponent(versionId)}/file`
+  return download ? `${base}?download=1` : base
+}

@@ -436,6 +436,7 @@ export interface FassungCounterpartRow {
   filename: string
   projectId: string | null
   folderId: string | null
+  createdAt: Date | null
 }
 
 /**
@@ -466,6 +467,7 @@ export async function findFassungCounterparts(
         filename: documents.filename,
         projectId: documents.projectId,
         folderId: documents.folderId,
+        createdAt: documents.createdAt,
       })
       .from(documents)
       .where(

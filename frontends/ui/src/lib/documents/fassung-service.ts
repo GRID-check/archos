@@ -24,6 +24,7 @@ import { collectionFileRef } from './collection-file-ref'
 import { hasPassedScreening } from './document-reader'
 import type { FassungFacts } from './fassung'
 import { loadFassungFacts } from './fassung-facts'
+import { announceNewFassung } from './fassung-notify'
 
 const BACKEND_TIMEOUT_MS = 10_000
 
@@ -111,9 +112,23 @@ export async function setFassungLink(
   // Read back from the backend's listing, fresh: the cached one predates the write.
   const reader = await shelfReaderFor(session, newer)
   const facts = await loadFassungFacts(session, [newer, older], reader, { fresh: true })
+  const newerFassung = facts.get(newer.id) ?? null
+
+  // Only a confirmed link is news; taking one back tells nobody. Detached, so a
+  // slow directory never holds up the answer, and it logs rather than fails.
+  if (linked) {
+    void announceNewFassung({
+      organizationId: session.organizationId,
+      actorUserId: session.userId,
+      newerId: newer.id,
+      olderId: older.id,
+      changeSummary: newerFassung?.changeSummary?.text ?? null,
+    })
+  }
+
   return {
     id: newer.id,
-    fassung: facts.get(newer.id) ?? null,
+    fassung: newerFassung,
     older: { id: older.id, fassung: facts.get(older.id) ?? null },
   }
 }

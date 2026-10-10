@@ -19,8 +19,13 @@
  * of cases (`tests/fixtures/revision_series_cases.json`), so the folder brief and
  * the agent's `list_files` cannot disagree about which Fassung is current.
  *
+ * Lives in `lib/` because both sides of the BFF read it: the folder brief in the
+ * browser, and the upload's Fassung probe (`fassung-candidates.ts`) on the server.
+ *
  * Pure: no React, no I/O.
  */
+
+import { documentNameKey } from './name-match'
 
 export interface RevisionIndex {
   kind: 'letter' | 'number'
@@ -149,7 +154,7 @@ export interface RevisionSeries<T> {
  * then the date, then arrival — an office that numbers its revisions means the
  * number. Otherwise the date decides, then the index, then arrival.
  */
-function newestFirst<T extends { createdAt?: string | null }>(members: RevisionSeriesMember<T>[]): RevisionSeriesMember<T>[] {
+export function newestFirst<T extends { createdAt?: string | null }>(members: RevisionSeriesMember<T>[]): RevisionSeriesMember<T>[] {
   const kinds = new Set(members.map((member) => member.revision.index?.kind ?? 'none'))
   const indexLeads = kinds.size === 1 && !kinds.has('none')
   const tuple = (member: RevisionSeriesMember<T>): [number, string, number, string] => [
@@ -211,4 +216,77 @@ export function revisionLabel(revision: RevisionName): string {
     parts.push(`${day}.${month}.${year}`)
   }
   return parts.join(' · ')
+}
+
+/** The key a series is grouped by: the series key plus the format. */
+export function revisionSeriesKeyOf(filename: string): string | null {
+  const revision = parseRevisionName(filename)
+  return revision ? `${revision.key}.${splitExtension(filename).extension}` : null
+}
+
+/** What a dropped file continues: the current documents of its series, and whether it is clearly their successor. */
+export interface FassungCandidate<T> {
+  /**
+   * The current (not yet replaced) documents of the series, newest first, each
+   * with how its own name reads: „Index B · 02.07.2026", or '' when only the
+   * series says so. At most {@link FASSUNG_MAX_CANDIDATES}.
+   */
+  candidates: Array<{ item: T; label: string }>
+  /** The dropped file is NEWER than the newest of them by the series' order. */
+  newer: boolean
+  /**
+   * Whether a person need not be asked twice: exactly ONE current document of
+   * the series is on the shelf and the dropped file is newer than it. With
+   * several (two Fassungen nobody ever linked) the file may belong behind any
+   * of them; a file that is not newer is not a successor at all. Both are
+   * offered unticked, for the person to settle.
+   */
+  unambiguous: boolean
+}
+
+/** Candidates one dropped file lists: a series has a handful of current documents, never dozens. */
+export const FASSUNG_MAX_CANDIDATES = 5
+
+/**
+ * Which documents a dropped file may be the next Fassung of, if any.
+ *
+ * `current` is the documents of the shelf that are NOT already replaced by a
+ * person's link: a Fassung that has a successor is not what a new file
+ * continues. They are matched by series key and format (`findRevisionSeries`'s
+ * grouping). "Newer" is the same total order the series uses ({@link newestFirst}),
+ * where the dropped file arrives last: an equal revision (the same Index and
+ * date) is a duplicate, never a successor. A name the shelf already holds is a
+ * new VERSION of that document (ADR-0054), not a Fassung, and has no candidate.
+ */
+export function findFassungCandidate<T extends { filename: string; createdAt?: string | null }>(
+  droppedName: string,
+  current: readonly T[]
+): FassungCandidate<T> | null {
+  const dropped = parseRevisionName(droppedName)
+  const key = revisionSeriesKeyOf(droppedName)
+  if (!dropped || !key) return null
+  const droppedKey = documentNameKey(droppedName)
+  const members: RevisionSeriesMember<T>[] = []
+  for (const item of current) {
+    if (documentNameKey(item.filename) === droppedKey) return null
+    const revision = parseRevisionName(item.filename)
+    if (revision && revisionSeriesKeyOf(item.filename) === key) members.push({ item, revision })
+  }
+  if (members.length === 0) return null
+  const ordered = newestFirst(members)
+  const newest = ordered[0]
+  // The dropped file arrives after everything on the shelf, so a tie on index and date goes to it.
+  const arrival: RevisionSeriesMember<{ filename: string; createdAt: string }> = {
+    item: { filename: droppedName, createdAt: '\uffff' },
+    revision: dropped,
+  }
+  const ranked = newestFirst<{ filename: string; createdAt?: string | null }>([...members, arrival])
+  const newer = ranked[0] === arrival && signature(newest.revision) !== signature(dropped)
+  return {
+    candidates: ordered
+      .slice(0, FASSUNG_MAX_CANDIDATES)
+      .map((member) => ({ item: member.item, label: revisionLabel(member.revision) })),
+    newer,
+    unambiguous: newer && members.length === 1,
+  }
 }

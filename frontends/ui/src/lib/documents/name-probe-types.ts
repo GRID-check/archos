@@ -48,3 +48,35 @@ export type DocumentNameMatch = z.infer<typeof documentNameMatchSchema>
 
 export const nameProbeResponseSchema = z.object({ documents: z.array(documentNameMatchSchema) })
 export type NameProbeResponse = z.infer<typeof nameProbeResponseSchema>
+
+/**
+ * What a dropped name continues: the document of its revision series (the name
+ * grammar, `revision-series.ts`) that a new file of this name would replace as
+ * a Fassung (CONTEXT.md, „Fassung"; ADR-0097). The upload dialog offers „Als
+ * neue Fassung von X ablegen" from it. Asked with the same bodies as the name
+ * probe, answered for the names that continue something only.
+ */
+export const fassungCandidateSchema = z.object({
+  /** The dropped file name this answers for, exactly as it was asked. */
+  name: z.string(),
+  /** The current documents of its series, newest first. */
+  candidates: z
+    .array(
+      z.object({
+        id: z.string(),
+        filename: z.string(),
+        displayName: z.string().nullable(),
+        /** How the candidate's own name reads („Index B · 02.07.2026"); empty when it has no index or date. */
+        label: z.string(),
+      }),
+    )
+    .min(1),
+  /** The dropped file is newer than the newest candidate. */
+  newer: z.boolean(),
+  /** Exactly one candidate and the file is newer than it: the offer is made ticked. */
+  unambiguous: z.boolean(),
+})
+export type FassungCandidateMatch = z.infer<typeof fassungCandidateSchema>
+
+export const fassungCandidatesResponseSchema = z.object({ candidates: z.array(fassungCandidateSchema) })
+export type FassungCandidatesResponse = z.infer<typeof fassungCandidatesResponseSchema>
