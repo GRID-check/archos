@@ -113,7 +113,8 @@ posthog-js and posthog-node share.
 
 ## Not done here
 
-- Source maps are not uploaded, so browser stacks are minified. That needs
-  `productionBrowserSourceMaps` or `@posthog/nextjs-config` and a CI step.
+- Source maps are uploaded by the frontend image build only
+  ([`ci.md`](../contributing/ci.md#posthog-releases-and-source-maps)); a local or
+  pull-request build ships minified stacks.
 - err2issue is gone from the Pulumi program (the sink, its collector pipeline, its
   NetworkPolicy and image pin); a stack's leftover `err2issue*` keys are ignored.
