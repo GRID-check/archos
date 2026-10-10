@@ -842,12 +842,12 @@ describe("config gating", () => {
     expect(error?.message).toMatch(/must differ from grid-oib:seaweedfsSecretKey/);
   });
 
-  it("refuses the tier with NetworkPolicies off — via the dependency it inherits", () => {
-    // Langfuse needs policies as much as the dashboard does, but it does not
-    // carry its own check: `langfuseEnabled` implies `observabilityEnabled`,
-    // whose guard fires first, so a second one could never run. Pinned here so
-    // that relaxing the observability guard fails a test that says why rather
-    // than silently allowing an exposed trace store.
+  it("refuses the tier with NetworkPolicies off, on a guard of its own", () => {
+    // Langfuse needs policies as much as the dashboard does. It used to inherit
+    // the dashboard's guard through `observabilityEnabled`; with the collector
+    // no longer needing the dashboard that inheritance is gone, so this tier
+    // states the requirement itself (collector-gate.spec.ts covers the
+    // no-dashboard stack).
     const error = loadWith({ "grid-oib:networkPolicies": "false" });
     expect(error?.message).toMatch(/requires grid-oib:networkPolicies/);
   });

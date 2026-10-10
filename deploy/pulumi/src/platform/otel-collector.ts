@@ -9,7 +9,7 @@ import {
   secretChecksumAnnotations,
   surgeRollout,
 } from "./rollout";
-import { OTLP_API_KEY_SECRET_KEY } from "./observability";
+import { OTLP_API_KEY_SECRET_KEY, type Observability } from "./observability";
 import { ERR2ISSUE_OTLP_HTTP } from "./err2issue";
 import {
   LANGFUSE_SECRET_KEYS,
@@ -50,7 +50,12 @@ export function installOtelCollector(
   cfg: GridConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
-  secrets: k8s.core.v1.Secret,
+  /**
+   * The Aspire dashboard, when that tier is deployed. Undefined leaves out its
+   * exporter, its ingestion key and the key's rollout checksum: the collector
+   * runs on Langfuse / PostHog / err2issue alone.
+   */
+  dashboard: Observability | undefined,
   dependsOn: pulumi.Resource[],
   /**
    * The Secret carrying Langfuse's precomputed Basic-auth header (ADR-0044),
@@ -171,7 +176,6 @@ export function installOtelCollector(
       max_interval: 30s
       max_elapsed_time: 300s`
     : "";
-  const langfuseTraceExport = langfuseSecretName ? ", otlp_http/langfuse" : "";
 
   // PostHog Logs is a FOURTH consumer, on the logs signal only. Traces are
   // deliberately not sent: LLM traces reach PostHog through Langfuse's own
@@ -228,6 +232,40 @@ export function installOtelCollector(
       exporters: [otlp_http/posthog]`
     : "";
 
+  // The dashboard is a consumer like the others, not the collector's reason to
+  // exist: its exporter, its pipeline entries and its ingestion key are all
+  // keyed off the one `dashboard` argument, so they cannot disagree. An env
+  // reference with no env var stops the collector from starting.
+  const aspireExporter = dashboard
+    ? `
+  otlp_http/aspire:
+    endpoint: ${ASPIRE_OTLP_HTTP}
+    # The dashboard's OTLP/HTTP endpoint does not decompress gzip request
+    # bodies — it parses the raw body as protobuf, so the gzip magic bytes
+    # (0x1f 0x8b) surface as HTTP 500 InvalidProtocolBufferException "tag with
+    # an invalid wire type". The exporter default is gzip; force identity.
+    compression: none
+    headers:
+      x-otlp-api-key: \${env:OTLP_API_KEY}`
+    : "";
+
+  // Every signal keeps a pipeline whatever consumes it, because the OTLP
+  // receiver answers a signal no pipeline carries with an error that every
+  // producer would log on each export. `nop` is the collector's own exporter
+  // that accepts and discards, so a stack with no dashboard still takes the
+  // logs and metrics its producers send, and a stack with no Langfuse still
+  // takes the traces. Declared only when a pipeline needs it, so a stack with
+  // both consumers gets the config it always had.
+  const tracesList = [
+    ...(dashboard ? ["otlp_http/aspire"] : []),
+    ...(langfuseSecretName ? ["otlp_http/langfuse"] : []),
+  ];
+  const dashboardList = dashboard ? ["otlp_http/aspire"] : [];
+  const orNop = (names: string[]): string => `[${(names.length > 0 ? names : ["nop"]).join(", ")}]`;
+  const tracesExporters = orNop(tracesList);
+  const dashboardExporters = orNop(dashboardList);
+  const nopExporter = tracesList.length === 0 || dashboardList.length === 0 ? "\n  nop:" : "";
+
   // ${env:OTLP_API_KEY} is interpolated by the collector at startup from the
   // container env (secretKeyRef below) — the key never sits in the ConfigMap.
   const collectorConfig = `
@@ -248,16 +286,7 @@ processors:
     timeout: 5s
     send_batch_size: 1024${err2issueProcessor}${posthogProcessor}
 
-exporters:${err2issueExporter}${langfuseExporter}${posthogExporter}
-  otlp_http/aspire:
-    endpoint: ${ASPIRE_OTLP_HTTP}
-    # The dashboard's OTLP/HTTP endpoint does not decompress gzip request
-    # bodies — it parses the raw body as protobuf, so the gzip magic bytes
-    # (0x1f 0x8b) surface as HTTP 500 InvalidProtocolBufferException "tag with
-    # an invalid wire type". The exporter default is gzip; force identity.
-    compression: none
-    headers:
-      x-otlp-api-key: \${env:OTLP_API_KEY}
+exporters:${nopExporter}${err2issueExporter}${langfuseExporter}${posthogExporter}${aspireExporter}
 
 extensions:
   health_check:
@@ -269,15 +298,15 @@ service:
     traces:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire${langfuseTraceExport}]
+      exporters: ${tracesExporters}
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire]${err2issuePipeline}${posthogPipeline}
+      exporters: ${dashboardExporters}${err2issuePipeline}${posthogPipeline}
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire]
+      exporters: ${dashboardExporters}
 `;
 
   const configMap = new k8s.core.v1.ConfigMap(
@@ -312,7 +341,7 @@ service:
             // covers the Aspire key too, which had the same gap.
             annotations: secretChecksumAnnotations(
               secretChecksum({
-                "otlp-api-key": cfg.observability.otelPrimaryApiKey,
+                ...(dashboard ? { "otlp-api-key": cfg.observability.otelPrimaryApiKey } : {}),
                 ...(cfg.langfuse.enabled ? { "langfuse-otlp-auth": langfuseOtlpBasicAuth(cfg) } : {}),
               }),
             ),
@@ -336,15 +365,19 @@ service:
                   { containerPort: HEALTH_PORT, name: "health" },
                 ],
                 env: [
-                  {
-                    name: "OTLP_API_KEY",
-                    valueFrom: {
-                      secretKeyRef: {
-                        name: secrets.metadata.name,
-                        key: OTLP_API_KEY_SECRET_KEY,
-                      },
-                    },
-                  },
+                  ...(dashboard
+                    ? [
+                        {
+                          name: "OTLP_API_KEY",
+                          valueFrom: {
+                            secretKeyRef: {
+                              name: dashboard.secrets.metadata.name,
+                              key: OTLP_API_KEY_SECRET_KEY,
+                            },
+                          },
+                        },
+                      ]
+                    : []),
                   // Present only when Langfuse is deployed. The collector
                   // fails to START on an unresolvable `${env:…}` in its
                   // config, so this env var and the exporter block above are
@@ -390,7 +423,7 @@ service:
         },
       },
     },
-    { provider, dependsOn: [...dependsOn, configMap, secrets] },
+    { provider, dependsOn: [...dependsOn, configMap, ...(dashboard ? [dashboard.secrets] : [])] },
   );
 
   const service = new k8s.core.v1.Service(

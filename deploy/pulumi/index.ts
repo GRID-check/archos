@@ -360,21 +360,24 @@ const routes = installHttpRoutes(cfg, provider, namespace, [
   ...(rateLimitStore ? [rateLimitStore.service] : []),
 ]);
 
-// ── Observability (OTel Collector + Aspire dashboard, ADR-0029) ──────────────
-// Availability = flag AND capability (see config.ts): skipped whole when the
-// stack has no otelDomain / OTLP key / dashboard Connect application,
-// rather than shipping a dashboard nobody can log into.
+// ── Observability (OTel Collector, Aspire dashboard, ADR-0029) ───────────────
+// Two gates (see config.ts). The dashboard is skipped when the stack has no OTLP
+// key / Connect application, rather than shipping a dashboard nobody can log
+// into; the collector needs only a consumer (Langfuse, PostHog logs, err2issue
+// or the dashboard), so a stack without a dashboard still exports its traces.
+const dashboard = cfg.observability.dashboardEnabled
+  ? installObservabilityDashboard(
+      cfg, provider, namespace,
+      cfg.observability.otelPrimaryApiKey,
+      cfg.observability.oidcClientSecret,
+      [gatewayResources.gateway],
+    )
+  : undefined;
 if (cfg.observability.enabled) {
-  const obs = installObservabilityDashboard(
-    cfg, provider, namespace,
-    cfg.observability.otelPrimaryApiKey,
-    cfg.observability.oidcClientSecret,
-    [gatewayResources.gateway],
-  );
   // err2issue (ADR-0031) before the collector: the collector's logs/err2issue
   // pipeline starts exporting the moment it boots, so having the Service
   // resolvable first avoids a burst of connection-refused export errors on
-  // every deploy. Its own `enabled` already implies observability is on.
+  // every deploy. Its own `enabled` brings the collector up.
   const errorSink = cfg.err2issue.enabled
     ? installErr2Issue(cfg, provider, namespace, [ns])
     : undefined;
@@ -382,8 +385,8 @@ if (cfg.observability.enabled) {
   // Langfuse (ADR-0044) before the collector, for the same reason err2issue is:
   // the collector's `otlp_http/langfuse` exporter starts exporting the moment it
   // boots, so having the Service resolvable first avoids a burst of
-  // connection-refused export errors on every deploy. Its own `enabled` already
-  // implies observability is on.
+  // connection-refused export errors on every deploy. Its own `enabled` brings
+  // the collector up.
   //
   // `clickhouse` / `langfuseQueue` are non-undefined exactly when
   // `cfg.langfuse.enabled` is true — the same flag guards all three — but
@@ -414,9 +417,9 @@ if (cfg.observability.enabled) {
 
   installOtelCollector(
     cfg, provider, namespace,
-    obs.secrets,
+    dashboard,
     [
-      obs.service,
+      ...(dashboard ? [dashboard.service] : []),
       ...(errorSink ? [errorSink.service] : []),
       ...(langfuse ? [langfuse.webService] : []),
     ],
@@ -453,9 +456,9 @@ export const chromaUrl = chroma.url;
 export const pgInstances = cfg.postgres.instances;
 export const pgBackupsEnabled = cfg.postgres.backups.enabled;
 export const networkPoliciesEnabled = cfg.networkPolicies;
-export const otelUrl = cfg.observability.enabled
+export const otelUrl = cfg.observability.dashboardEnabled
   ? pulumi.interpolate`https://${cfg.observability.otelDomain}`
-  : pulumi.output("(none: observability disabled)");
+  : pulumi.output("(none: dashboard disabled)");
 export const langfuseUrl = cfg.langfuse.enabled
   ? pulumi.interpolate`https://${cfg.langfuse.domain}`
   : pulumi.output("(none: langfuse disabled)");

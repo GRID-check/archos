@@ -259,7 +259,7 @@ export function installGatewayResources(
     { provider, dependsOn },
   );
 
-  const otelListeners: IGatewaySpec["listeners"] = cfg.observability.enabled
+  const otelListeners: IGatewaySpec["listeners"] = cfg.observability.dashboardEnabled
     ? [
         {
           name: "https-otel",

@@ -218,7 +218,7 @@ export function installNetworkPolicies(
 
   // 7. Edge → Aspire dashboard (the otel HTTPRoute) — only when the
   //    observability tier is deployed (ADR-0029).
-  const edgeOtel = cfg.observability.enabled
+  const edgeOtel = cfg.observability.dashboardEnabled
     ? mk("allow-edge-to-aspire-dashboard", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
         policyTypes: ["Ingress"],
@@ -238,7 +238,7 @@ export function installNetworkPolicies(
   //    from the host, which is not gated by NetworkPolicy on Cilium — see the
   //    header. If a future CNI does gate them, this pod's probes are the first
   //    place that will show up.
-  const collectorToDashboard = cfg.observability.enabled
+  const collectorToDashboard = cfg.observability.dashboardEnabled
     ? mk("allow-collector-to-aspire-dashboard", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
         policyTypes: ["Ingress"],

@@ -70,8 +70,10 @@ export function langfuseStackConfig(): Record<string, string> {
     "grid-oib:langfuseQueuePassword": "lf-queue", // pragma: allowlist secret
     "grid-oib:langfuseS3SecretKey": "lf-s3", // pragma: allowlist secret
     "grid-oib:langfuseInitUserPassword": "lf-init-user", // pragma: allowlist secret
-    // The tier's capability gate includes the observability one, so the
-    // collector's dependencies have to be present too.
+    // The Connect application Langfuse signs in against and its route is gated
+    // by, plus the dashboard's OTLP key. The key is what turns the Aspire
+    // dashboard on, so a test of a stack without one deletes it (see
+    // collector-gate.spec.ts); everything else here Langfuse needs on its own.
     "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
     "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
     "grid-oib:otelOidcClientId": "client_otel",

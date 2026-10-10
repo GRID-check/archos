@@ -1858,22 +1858,29 @@ Chroma):
 
 ## 9. Observability — OTel Collector + Aspire Dashboard (ADR-0029)
 
-**Gating (flag AND capability):** the tier is deployed only when
-`grid-oib:observabilityEnabled` is on (default `true`) **and** every dependency
-it needs is configured — `otelPrimaryApiKey`, plus the dashboard's
-dedicated WorkOS Connect application (`otelOidcIssuer`/`otelOidcClientId`/
-`otelOidcClientSecret`) behind the edge permission gate (the host derives from
-`baseDomain` as `otel.<baseDomain>`). Miss one and `pulumi
-preview` logs a warning naming it
-and skips the whole tier: no collector, no dashboard, no SecurityPolicy, no
-`https-otel` Gateway listener/certificate, and no `OTEL_*` env on any producer
-(so the frontend's `src/instrumentation.ts` no-ops). That is deliberate: the
-dashboard runs `AuthMode=Unsecured` and relies entirely on the Gateway
-SecurityPolicy for auth, so a half-configured tier would be an **open**
-telemetry dashboard — and producers pointed at an absent collector just retry
-exports forever.
+**Gating (two gates):** `grid-oib:observabilityEnabled` (default `true`) is the
+product decision; what is deployed follows from what each part needs.
 
-When enabled, the stack deploys two components:
+- **The collector** needs a *consumer* and nothing else: Langfuse (traces),
+  `posthogLogsEnabled` (logs), err2issue (logs) or the dashboard. It needs no
+  dashboard key, no Connect application and no public host. A stack with
+  Langfuse and no dashboard exports its traces.
+- **The dashboard** needs `otelPrimaryApiKey` plus the dedicated WorkOS Connect
+  application (`otelOidcIssuer`/`otelOidcClientId`/`otelOidcClientSecret`)
+  behind the edge permission gate (the host derives from `baseDomain` as
+  `otel.<baseDomain>`). Miss one and the dashboard, its SecurityPolicy and its
+  `https-otel` Gateway listener/certificate are skipped; the collector is not.
+- **With no consumer at all** `pulumi preview` logs a warning, and nothing is
+  deployed: no collector and no `OTEL_*` env on any producer (so the
+  frontend's `src/instrumentation.ts` no-ops).
+
+Both halves are deliberate: the dashboard runs `AuthMode=Unsecured` and relies
+entirely on the Gateway SecurityPolicy for auth, so a half-configured dashboard
+would be an **open** telemetry dashboard; and producers pointed at an absent
+collector just retry exports forever.
+
+When enabled, the stack deploys two components (the dashboard only when its
+own gate holds):
 
 - **`otel-collector`** (`deploy/pulumi/src/platform/otel-collector.ts`) — an
   OpenTelemetry Collector that is the cluster's single OTLP ingestion point.
