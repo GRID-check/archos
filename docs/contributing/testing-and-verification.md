@@ -147,12 +147,14 @@ research before it retrieves anything.
 [`tests/benchmarks/test_turn_shapes_live.py`](../../tests/benchmarks/test_turn_shapes_live.py)
 pins both, plus a control question that must still search. It runs the real
 agent on the real prompt against Piloti's own model through OpenRouter, with
-stub tools that record every call, so the assertion is on the trace rather
-than on the prose.
+stub tools in place of retrieval, and reads the trace from the turn's own
+transcript (every tool call the model asked for), so the assertion is on the
+trace rather than on the prose.
 
-It needs a model, so it is not in `task verify` and skips itself without
-`OPENROUTER_API_KEY` (the `live` marker in `pyproject.toml` names the class).
-Locally:
+It needs a model, so it is not in `task verify`: the `live` marker in
+`pyproject.toml` names the class, and `addopts` deselects it in every run that
+does not pass `-m live`, whether or not `OPENROUTER_API_KEY` is in the shell.
+Selected without the key, it skips itself. Locally:
 
 ```bash
 OPENROUTER_API_KEY=… task be:eval:turn-shapes
@@ -178,13 +180,16 @@ budget ran out. Thirty-one realistic German questions from a Wiener Planungsbür
 live in [`tests/fixtures/herleitung/loop_eval_questions.yaml`](../../tests/fixtures/herleitung/loop_eval_questions.yaml)
 — every expected Punkt in it is read off the committed structural index rather
 than remembered — and [`scripts/loop_eval.py`](../../scripts/loop_eval.py) runs
-them, writes a CSV, and diffs two CSVs with `--compare`. **It cannot run in
+them, writes a CSV, and diffs two CSVs with `--compare`. Each question is one
+turn over the chat socket of the `chat` role at `GRID_LOOP_EVAL_URL` (wire v2,
+`REQUIRE_AUTH=false`), the only way a turn runs; the columns are read off the
+turn's own steps and its terminal `RUN_FINISHED`. **It cannot run in
 CI**, for the same reason `be:eval:retrieval` no longer does: it needs a
 reachable backend with the operator-provided, gitignored OIB corpus ingested,
 and every question costs real model calls. Run it on either side of a change to
-the answering loop and quote the delta in the PR; the CSV and comparison logic
-themselves are covered offline by
-[`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
+the answering loop and quote the delta in the PR; the CSV and comparison logic,
+and the reading of a recorded wire v2 turn (`shared/wire/v2/`), are covered
+offline by [`tests/test_loop_eval.py`](../../tests/test_loop_eval.py).
 
 ## Cross-service contract fixtures
 
@@ -267,7 +272,12 @@ Findings inside those upstream images that no digest bump can clear go in
 `expired_at`. Never by loosening the gate.
 
 Dependabot ([`dependabot.yml`](../../.github/dependabot.yml)) opens the
-dependency fix PRs. Maintainability is covered by the native linters and the
+dependency fix PRs. Package families that only build at matching versions
+(`@aws-sdk/*`, `@opentelemetry/*`) are grouped into one PR, and majors the
+toolchain cannot take yet (TypeScript 7, an `@types/node` past the Node 22
+runtime) are ignored, each with a comment saying when to lift it. Dependabot
+PRs skip the automatic Claude review: the action refuses a bot actor, and CI
+already judges a lockfile bump. Maintainability is covered by the native linters and the
 coverage gate in `ci.yml`. That drops Sonar's clean-as-you-code gate, so the
 `PLR09xx` refactor rules ruff ignores (too many arguments, branches, statements)
 are no longer reported on new code.
