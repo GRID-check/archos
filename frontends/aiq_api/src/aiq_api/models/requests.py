@@ -27,6 +27,14 @@ class DeleteFilesRequest(BaseModel):
     """Request body for batch file deletion."""
 
     file_ids: list[str] = Field(..., description="List of file IDs to delete")
+    permanent: bool = Field(
+        False,
+        description=(
+            "True when nobody will undo this delete (an erase, a move to another collection): the Fassung facts "
+            "a person made on the files go with them. False (the default) keeps those facts for the files' "
+            "return after an archive, the folder bin or a publish."
+        ),
+    )
 
 
 class ScreeningPolicy(BaseModel):

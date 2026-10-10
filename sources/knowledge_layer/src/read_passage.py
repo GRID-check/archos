@@ -301,10 +301,14 @@ def _older_fassung_notice(targets: Sequence[PassageTarget]) -> str:
     older = {(target.file_name, target.current) for target in targets if target.current and may_name(target.collection)}
     if not older:
         return ""
-    return "".join(
+    return "".join(older_fassung_line(name, current) for name, current in sorted(older))
+
+
+def older_fassung_line(name: str, current: str) -> str:
+    """The notice line for one older Fassung a tool hands the model: which file replaced it, and what to say."""
+    return (
         f"Ältere Fassung: {name} ist durch {current} ersetzt (bestätigt), aktuell ist {current}. "
         "Sage in der Antwort, dass du die ältere Fassung liest.\n\n"
-        for name, current in sorted(older)
     )
 
 

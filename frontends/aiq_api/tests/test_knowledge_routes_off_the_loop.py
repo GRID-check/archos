@@ -67,7 +67,7 @@ class _RecordingIngestor:
             FileInfo(file_id="f1", file_name="plan.pdf", collection_name=collection_name, status=FileStatus.SUCCESS)
         ]
 
-    def delete_files(self, file_ids, collection_name):
+    def delete_files(self, file_ids, collection_name, *, permanent=False):
         self._record("delete_files")
         return {"successful": list(file_ids), "failed": [], "total_deleted": len(file_ids)}
 

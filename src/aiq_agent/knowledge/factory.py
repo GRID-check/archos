@@ -31,6 +31,7 @@ from .schema import FileStatus
 
 if TYPE_CHECKING:
     from .document_metadata_store import DocumentMetadataStore
+    from .document_metadata_store import LinkOutcome
     from .schema import AvailableDocument
 
 logger = logging.getLogger(__name__)
@@ -595,11 +596,28 @@ def set_document_revision_facts(collection: str, filename: str, facts: dict[str,
 def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
     """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
 
-    The only writer of the link is the ``PUT /v1/collections/{collection}/fassung`` route. A model's
-    reading of two documents goes through :func:`set_document_revision_suggestion`, which hides
-    nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
+    A NEW link goes through :func:`link_document_fassung`, which refuses a loop in the same
+    transaction; this one lifts a link (``None``) and carries an existing one onto another spelling.
+    A model's reading of two documents goes through :func:`set_document_revision_suggestion`, which
+    hides nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
     """
     return _get_document_metadata_store().set_superseded_by(collection, older, newer)
+
+
+def link_document_fassung(collection: str, older: str, newer: str) -> "LinkOutcome":
+    """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
+
+    The writer of a NEW link, for the ``PUT /v1/collections/{collection}/fassung`` route and for a
+    link a person chose at upload (``fassung_of``). ``LOOP`` and ``MISSING`` write nothing. Also
+    clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
+    was replaced by until now when it was told against ``older``.
+    """
+    return _get_document_metadata_store().link_fassung(collection, older, newer)
+
+
+def dismiss_document_revision_suggestion(collection: str, filename: str, older: str) -> bool:
+    """Record that a person refused ``older`` as the Fassung ``filename`` replaces; earlier refusals stay."""
+    return _get_document_metadata_store().dismiss_revision_suggestion(collection, filename, older)
 
 
 def get_document_superseded_by(collection: str, filenames: list[str]) -> dict[str, str]:
@@ -616,7 +634,9 @@ def set_document_revision_suggestion(collection: str, filename: str, suggestion:
     """Store (or clear) Piloti's open suggestion that ``filename`` is a newer Fassung of another document.
 
     ``suggestion`` is ``{"of", "confidence", "reason", "basis", "dismissed"}``; an invalid one is
-    refused (``False``). A suggestion is advice to a person, never a link.
+    refused (``False``). A suggestion is advice to a person, never a link. The files a person
+    refused (``dismissed_of``) are kept across every write, and a suggestion naming one is stored
+    dismissed (:func:`dismiss_document_revision_suggestion` adds a refusal).
     """
     return _get_document_metadata_store().set_revision_suggestion(collection, filename, suggestion)
 
@@ -874,9 +894,12 @@ def reconcile_collection_summaries(
     return backfilled
 
 
-def unregister_summary(collection: str, filename: str) -> None:
-    """Delete a file's summary."""
-    _get_document_metadata_store().unregister(collection, filename)
+def unregister_summary(collection: str, filename: str, *, permanent: bool = False) -> None:
+    """Delete a file's metadata row; the Fassung facts a person made are kept for its return unless ``permanent``.
+
+    See :meth:`DocumentMetadataStore.unregister`. ``permanent`` is a delete nobody undoes.
+    """
+    _get_document_metadata_store().unregister(collection, filename, permanent=permanent)
 
 
 def clear_collection_summaries(collection: str) -> None:

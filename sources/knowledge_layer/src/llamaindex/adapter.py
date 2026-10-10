@@ -3673,9 +3673,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         listed = next((f for f in self.list_files(collection_name) if f.file_id == file_id), None)
         return listed.file_name if listed is not None else file_id
 
-    def delete_file(self, file_id: str, collection_name: str) -> bool:
+    def delete_file(self, file_id: str, collection_name: str, *, permanent: bool = False) -> bool:
         """
         Delete a file and its chunks from a collection.
+
+        ``permanent`` is a delete nobody undoes (an erase, a move to another
+        collection). Without it the metadata row goes but the Fassung facts a
+        person made on it are kept for the file's return: an archive, the folder
+        bin and a publish purge and read the document again
+        (``DocumentMetadataStore.unregister``).
 
         This removes all chunks that have the matching file_name in metadata.
         Handles both exact file names and names with tmp prefix stripped.
@@ -3751,7 +3757,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
                     from aiq_agent.knowledge import unregister_summary
 
-                    unregister_summary(collection_name, file_name)
+                    unregister_summary(collection_name, file_name, permanent=permanent)
 
                     from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
@@ -3767,7 +3773,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             # Remove from centralized summary registry
             from aiq_agent.knowledge import unregister_summary
 
-            unregister_summary(collection_name, file_name)
+            unregister_summary(collection_name, file_name, permanent=permanent)
 
             # Drop the lexical mirror for this file, scoped to THIS collection: the
             # same file_name legitimately exists in the base corpus and in a project
@@ -4176,7 +4182,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             for stored in previous.stored_names:
                 if stored != file_name:
-                    unregister_summary(collection_name, stored)
+                    # Permanent: this spelling never returns, and what a person set on
+                    # it was carried onto ``file_name`` (`_read_human_set_fields`).
+                    unregister_summary(collection_name, stored, permanent=True)
             logger.info(
                 "Replaced previous version(s): removed %d chunk(s) of %s from %s after re-ingest",
                 len(previous.chunk_ids),
@@ -5272,6 +5280,17 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         fallback_source = f"{first_text}\n{last_text}" if last_text else first_text
                         summary = fallback_summary_from_text(fallback_source)
 
+                    # A person's choice in the upload dialog (ADR-0098): this file replaces
+                    # that one. A job is one file; a name meant for it is never read for
+                    # another. The base corpus has no Fassungen: it replaces by its own hash
+                    # registry.
+                    confirmed_older = (config.get("fassung_of") or "").strip() or None
+                    if base_corpus or len(file_paths) != 1:
+                        confirmed_older = None
+                    # Whether the summary model reads Fassungen for this file: a suggestion,
+                    # a change line. The link a person chose never waits for it (below).
+                    fassung_model = bool(not base_corpus and self.generate_summary_enabled and self.summary_llm)
+
                     # Store summary + tags in FileInfo and centralized registry
                     if summary:
                         # The rows as they are BEFORE the new summary overwrites this
@@ -5390,13 +5409,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # (a suggestion), a re-upload says what changed (ADR-0054). Bounded,
                         # fail-open, and only on a shelf of user documents: the base corpus
                         # replaces by its own hash registry.
-                        if not base_corpus and self.generate_summary_enabled and self.summary_llm:
-                            # A person's choice in the upload dialog (ADR-0098): this file
-                            # replaces that one. A job is one file; a name meant for it is
-                            # never read for another.
-                            confirmed_older = (config.get("fassung_of") or "").strip() or None
-                            if len(file_paths) != 1:
-                                confirmed_older = None
+                        if fassung_model:
                             self._bounded(
                                 "Fassung",
                                 file_name,
@@ -5416,6 +5429,24 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                             )
 
                         logger.info(f"  Summary generated ({len(summary)} chars)")
+
+                    # The link a person chose at upload is theirs, whatever the summary model
+                    # could do: written without a summary (the row it waits for may come from
+                    # the reconciliation backfill) and without the model (no change line).
+                    if confirmed_older and not (summary and fassung_model):
+                        self._bounded(
+                            "Fassung",
+                            file_name,
+                            FASSUNG_TIMEOUT_SECONDS,
+                            fassungen.confirm_fassung,
+                            collection_name,
+                            file_name,
+                            confirmed_older,
+                            summary=summary or "",
+                            doc_class=doc_class,
+                            tags=tags,
+                            llm=None,
+                        )
 
                     logger.info(f"Completed file {i + 1}/{len(file_paths)} ({chunks_created} chunks)")
 

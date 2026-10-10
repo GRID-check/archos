@@ -25,6 +25,7 @@ from .factory import clear_active_retriever
 from .factory import clear_all_summaries
 from .factory import clear_collection_summaries
 from .factory import configure_summary_db
+from .factory import dismiss_document_revision_suggestion
 from .factory import find_tmp_upload_names
 from .factory import get_active_ingestor
 from .factory import get_active_retriever
@@ -44,6 +45,7 @@ from .factory import get_ingestor
 from .factory import get_retriever
 from .factory import get_superseded_files
 from .factory import get_topic_vocabulary
+from .factory import link_document_fassung
 from .factory import list_summary_collections
 from .factory import register_ingestor
 from .factory import register_retriever
@@ -120,6 +122,8 @@ __all__ = [
     "get_superseded_files",
     "set_document_revision_facts",
     "set_document_revision_suggestion",
+    "dismiss_document_revision_suggestion",
+    "link_document_fassung",
     "get_document_revision_suggestions",
     "set_document_change_summary",
     "set_document_doc_class",

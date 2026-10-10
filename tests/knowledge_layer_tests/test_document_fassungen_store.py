@@ -14,6 +14,8 @@ import pytest
 
 from aiq_agent.knowledge.document_metadata_store import SUGGESTION_BASES
 from aiq_agent.knowledge.document_metadata_store import DocumentMetadataStore
+from aiq_agent.knowledge.document_metadata_store import LinkOutcome
+from aiq_agent.knowledge.document_metadata_store import dismissed_fassungen
 
 SUGGESTION = {
     "of": "Grundriss_EG_Index_B.pdf",
@@ -21,6 +23,7 @@ SUGGESTION = {
     "reason": "Gleicher Grundriss, Stiege verschoben.",
     "basis": "name",
     "dismissed": False,
+    "dismissed_of": [],
 }
 
 
@@ -119,8 +122,254 @@ class TestTheLink:
         assert pair.get_superseded_by_batch("coll", []) == {}
 
 
+class TestAPurgeThatCanBeUndone:
+    """An archive, the folder bin and a publish purge a document and read it again later.
+
+    A link only a person makes must come back with it: the row's own link, its refusals and the
+    change line told against a linked Fassung are kept by name, and the links other rows hold to it
+    are left alone (read as nothing while it is gone).
+    """
+
+    def test_the_older_files_link_comes_back_when_it_is_read_again(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+
+        pair.unregister("coll", "B.pdf")
+        assert "B.pdf" not in {doc.file_name for doc in pair.get_all("coll")}
+        assert _doc(pair, "C.pdf").supersedes is None
+
+        pair.register("coll", "B.pdf", "Wieder gelesen.")
+        assert _doc(pair, "B.pdf").superseded_by == "C.pdf"
+        assert _doc(pair, "C.pdf").supersedes == ["B.pdf"]
+        assert pair.get_superseded_files("coll") == {"B.pdf": "C.pdf"}
+
+    def test_the_newer_file_finds_the_link_to_it_untouched(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+
+        pair.unregister("coll", "C.pdf")
+        # While C is gone, B answers again: the link is read as nothing, not erased.
+        assert _doc(pair, "B.pdf").superseded_by is None
+        assert pair.get_superseded_files("coll") == {}
+
+        pair.register("coll", "C.pdf", "Wieder gelesen.")
+        assert _doc(pair, "B.pdf").superseded_by == "C.pdf"
+        assert pair.get_superseded_files("coll") == {"B.pdf": "C.pdf"}
+
+    def test_refusals_and_the_linked_change_line_come_back(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.set_change_summary("coll", "C.pdf", "- Stiege nach Norden", "B.pdf")
+        pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf")
+
+        pair.unregister("coll", "C.pdf")
+        pair.register("coll", "C.pdf", "Wieder gelesen.")
+
+        restored = _doc(pair, "C.pdf")
+        assert (restored.change_summary, restored.change_basis) == ("- Stiege nach Norden", "B.pdf")
+        assert restored.revision_suggestion["dismissed_of"] == ["A.pdf"]
+
+    def test_what_a_person_did_not_make_is_read_again_not_kept(self, pair):
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)
+        pair.set_change_summary("coll", "C.pdf", "- gegenüber dem Upload davor", "C.pdf")
+
+        pair.unregister("coll", "C.pdf")
+        pair.register("coll", "C.pdf", "Wieder gelesen.")
+
+        restored = _doc(pair, "C.pdf")
+        assert restored.revision_suggestion is None
+        assert restored.change_summary is None and restored.change_basis is None
+
+    def test_the_kept_facts_are_taken_back_once(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.unregister("coll", "B.pdf")
+        pair.register("coll", "B.pdf", "Wieder gelesen.")
+        pair.set_superseded_by("coll", "B.pdf", None)
+
+        pair.register("coll", "B.pdf", "Noch einmal gelesen.")
+
+        assert _doc(pair, "B.pdf").superseded_by is None
+
+    def test_a_kept_link_that_would_now_close_a_loop_is_not_taken_back(self, pair):
+        pair.register("coll", "X.pdf", "Grundriss EG, Variante.")
+        pair.link_fassung("coll", "C.pdf", "X.pdf")  # X replaces C
+        pair.unregister("coll", "C.pdf")  # C archived, keeps "replaced by X"
+        pair.link_fassung("coll", "X.pdf", "B.pdf")  # meanwhile B replaces X ...
+        pair.link_fassung("coll", "B.pdf", "C.pdf")  # ... and C (gone, read as nothing) replaces B
+
+        pair.register("coll", "C.pdf", "Aus dem Archiv zurück.")
+
+        # C -> X -> B -> C would be a loop: the links made while C was gone stand.
+        assert _doc(pair, "C.pdf").superseded_by is None
+        assert _doc(pair, "B.pdf").superseded_by == "C.pdf"
+
+    def test_kept_facts_never_cross_collections(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.unregister("coll", "B.pdf")
+
+        pair.register("other", "B.pdf", "Gleicher Name, anderes Projekt.")
+        pair.register("other", "C.pdf", "Gleicher Name, anderes Projekt.")
+
+        assert _doc(pair, "B.pdf", "other").superseded_by is None
+
+    def test_a_permanent_delete_keeps_nothing_and_frees_what_it_replaced(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.set_change_summary("coll", "C.pdf", "- Stiege nach Norden", "B.pdf")
+
+        pair.unregister("coll", "C.pdf", permanent=True)
+        pair.register("coll", "C.pdf", "Ein neues Dokument gleichen Namens.")
+
+        assert _doc(pair, "C.pdf").change_summary is None
+        assert _doc(pair, "B.pdf").superseded_by is None
+        assert pair.get_superseded_files("coll") == {}
+
+    def test_a_permanent_delete_also_frees_a_kept_link_to_it(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.unregister("coll", "B.pdf")  # archived, may come back
+
+        pair.unregister("coll", "C.pdf", permanent=True)  # erased
+        pair.register("coll", "C.pdf", "Ein neues Dokument gleichen Namens.")
+        pair.register("coll", "B.pdf", "Aus dem Archiv zurück.")
+
+        assert _doc(pair, "B.pdf").superseded_by is None
+
+    def test_clearing_the_collection_forgets_what_was_kept(self, pair):
+        pair.set_superseded_by("coll", "B.pdf", "C.pdf")
+        pair.unregister("coll", "B.pdf")
+
+        pair.clear_collection("coll")
+        pair.register("coll", "B.pdf", "Neu.")
+        pair.register("coll", "C.pdf", "Neu.")
+
+        assert _doc(pair, "B.pdf").superseded_by is None
+
+
+class TestRefusals:
+    """Every file a person refused stays refused, whatever is suggested or refused afterwards."""
+
+    def test_refusing_a_second_file_keeps_the_first_refusal(self, pair):
+        assert pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf") is True
+        assert pair.dismiss_revision_suggestion("coll", "C.pdf", "B.pdf") is True
+
+        stored = _doc(pair, "C.pdf").revision_suggestion
+        assert stored["dismissed_of"] == ["A.pdf", "B.pdf"]
+        assert stored["of"] == "B.pdf" and stored["dismissed"] is True
+
+    def test_refusing_another_file_leaves_the_open_suggestion_open(self, pair):
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)
+
+        pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf")
+
+        stored = _doc(pair, "C.pdf").revision_suggestion
+        assert stored["of"] == SUGGESTION["of"] and stored["dismissed"] is False
+        assert stored["dismissed_of"] == ["A.pdf"]
+
+    def test_refusing_the_suggested_file_keeps_its_reason(self, pair):
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)
+
+        pair.dismiss_revision_suggestion("coll", "C.pdf", SUGGESTION["of"])
+
+        assert _doc(pair, "C.pdf").revision_suggestion == {
+            **SUGGESTION,
+            "dismissed": True,
+            "dismissed_of": [SUGGESTION["of"]],
+        }
+
+    def test_a_new_suggestion_keeps_the_refusals_and_a_refused_one_is_stored_dismissed(self, pair):
+        pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf")
+
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)
+        assert _doc(pair, "C.pdf").revision_suggestion["dismissed_of"] == ["A.pdf"]
+        assert _doc(pair, "C.pdf").revision_suggestion["dismissed"] is False
+
+        pair.set_revision_suggestion("coll", "C.pdf", {**SUGGESTION, "of": "A.pdf"})
+        assert _doc(pair, "C.pdf").revision_suggestion["dismissed"] is True
+
+    def test_clearing_the_suggestion_keeps_the_refusals(self, pair):
+        pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf")
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION)
+
+        pair.set_revision_suggestion("coll", "C.pdf", None)
+
+        stored = _doc(pair, "C.pdf").revision_suggestion
+        assert stored["dismissed_of"] == ["A.pdf"] and stored["dismissed"] is True
+
+    def test_a_record_written_before_the_list_still_reads_as_one_refusal(self):
+        raw = '{"of": "B.pdf", "confidence": 0.9, "reason": "Gleich.", "basis": "name", "dismissed": true}'
+        assert DocumentMetadataStore._decode_suggestion(raw)["dismissed_of"] == ["B.pdf"]
+        assert dismissed_fassungen({"of": "B.pdf", "dismissed": True}) == ["B.pdf"]
+        assert dismissed_fassungen({"of": "B.pdf", "dismissed": False}) == []
+        assert dismissed_fassungen(None) == []
+
+    def test_no_row_means_false(self, store):
+        assert store.dismiss_revision_suggestion("coll", "ghost.pdf", "B.pdf") is False
+
+
+class TestTheLinkIsOneStep:
+    """The loop check and the write happen under one lock, so concurrent confirmations cannot close a loop."""
+
+    def test_a_loop_is_refused_and_nothing_is_written(self, pair):
+        assert pair.link_fassung("coll", "B.pdf", "C.pdf") is LinkOutcome.LINKED
+        assert pair.link_fassung("coll", "C.pdf", "B.pdf") is LinkOutcome.LOOP
+        assert _doc(pair, "C.pdf").superseded_by is None
+
+    def test_an_older_file_without_a_row_is_missing(self, pair):
+        assert pair.link_fassung("coll", "ghost.pdf", "C.pdf") is LinkOutcome.MISSING
+
+    def test_concurrent_opposite_confirmations_store_one_link(self, pair):
+        import threading
+
+        for _ in range(20):
+            pair.set_superseded_by("coll", "B.pdf", None)
+            pair.set_superseded_by("coll", "C.pdf", None)
+            barrier = threading.Barrier(2)
+            outcomes = []
+
+            def confirm(older, newer):
+                barrier.wait()
+                outcomes.append(pair.link_fassung("coll", older, newer))
+
+            threads = [
+                threading.Thread(target=confirm, args=("B.pdf", "C.pdf")),
+                threading.Thread(target=confirm, args=("C.pdf", "B.pdf")),
+            ]
+            for thread in threads:
+                thread.start()
+            for thread in threads:
+                thread.join()
+
+            assert sorted(outcomes) == sorted([LinkOutcome.LINKED, LinkOutcome.LOOP])
+            links = {doc.file_name: doc.superseded_by for doc in pair.get_all("coll")}
+            assert sum(1 for newer in links.values() if newer) == 1
+
+    def test_re_pointing_drops_the_change_line_the_former_replacement_told_against_it(self, pair):
+        pair.register("coll", "D.pdf", "Grundriss EG, noch neuer.")
+        pair.link_fassung("coll", "B.pdf", "C.pdf")
+        pair.set_change_summary("coll", "C.pdf", "- Stiege nach Norden", "B.pdf")
+
+        pair.link_fassung("coll", "B.pdf", "D.pdf")
+
+        assert _doc(pair, "B.pdf").superseded_by == "D.pdf"
+        assert _doc(pair, "C.pdf").change_summary is None
+
+    def test_re_pointing_keeps_a_change_line_told_against_another_file(self, pair):
+        pair.register("coll", "D.pdf", "Grundriss EG, noch neuer.")
+        pair.link_fassung("coll", "B.pdf", "C.pdf")
+        pair.set_change_summary("coll", "C.pdf", "- gegenüber dem Upload davor", "C.pdf")
+
+        pair.link_fassung("coll", "B.pdf", "D.pdf")
+
+        assert _doc(pair, "C.pdf").change_summary == "- gegenüber dem Upload davor"
+
+    def test_the_suggestion_that_named_the_older_file_is_cleared_and_refusals_stay(self, pair):
+        pair.dismiss_revision_suggestion("coll", "C.pdf", "A.pdf")
+        pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION | {"of": "B.pdf"})
+
+        pair.link_fassung("coll", "B.pdf", "C.pdf")
+
+        stored = _doc(pair, "C.pdf").revision_suggestion
+        assert stored["of"] == "A.pdf" and stored["dismissed"] is True
+
+
 class TestTheSuggestion:
-    def test_it_round_trips_as_the_five_keys(self, pair):
+    def test_it_round_trips_as_the_six_keys(self, pair):
         assert pair.set_revision_suggestion("coll", "C.pdf", SUGGESTION) is True
         assert _doc(pair, "C.pdf").revision_suggestion == SUGGESTION
 
@@ -162,7 +411,7 @@ class TestTheSuggestion:
         assert pair.set_revision_suggestion("coll", "C.pdf", broken) is False
         assert _doc(pair, "C.pdf").revision_suggestion is None
 
-    def test_the_decoder_keeps_only_the_five_keys(self):
+    def test_the_decoder_keeps_only_the_six_keys(self):
         decoded = DocumentMetadataStore._decode_suggestion(
             '{"of": "B.pdf", "confidence": 1, "reason": "Gleich.", "basis": "content", "extra": "x"}'
         )
@@ -172,6 +421,7 @@ class TestTheSuggestion:
             "reason": "Gleich.",
             "basis": "content",
             "dismissed": False,
+            "dismissed_of": [],
         }
 
     @pytest.mark.parametrize("raw", [None, "", "not json", "[1]", '{"of": "B.pdf"}'])

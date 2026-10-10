@@ -34,7 +34,9 @@ and ticked „Als neue Fassung von X ablegen" has already said it (``fassung_of`
 job, ADR-0098). Once the new file has been read, :func:`confirm_fassung` writes the link a
 person's ``PUT /v1/collections/{c}/fassung`` writes (``superseded_by`` on X, the change summary
 on the new file with X as its basis). X missing from the collection, or a link that would close
-a loop, falls back to the ordinary paths above.
+a loop, falls back to the ordinary paths above. The link does not wait for the summary model:
+``adapter.py`` calls :func:`confirm_fassung` without one when the model is off or no summary
+was made, and only the change line is then missing.
 
 All of these are fail-open and bounded by the caller; none can fail an ingest.
 """
@@ -47,12 +49,12 @@ from collections.abc import Callable
 from collections.abc import Sequence
 from typing import Any
 
+from aiq_agent.knowledge.document_metadata_store import dismissed_fassungen
 from aiq_agent.knowledge.document_revisions import TITLE_BLOCK_CONFIDENCE
 from aiq_agent.knowledge.document_revisions import RevisionDocument
 from aiq_agent.knowledge.document_revisions import judge_revision
 from aiq_agent.knowledge.document_revisions import summarize_change
 from aiq_agent.knowledge.document_revisions import title_block_reason
-from aiq_agent.knowledge.document_revisions import would_loop
 from aiq_agent.knowledge.title_block import compare_revisions
 from aiq_agent.knowledge.title_block import document_key
 from aiq_agent.knowledge.title_block import identifies_document
@@ -111,9 +113,8 @@ def _open_to_link(older: Any, newer: Any) -> bool:
 
 
 def _refused(newer: Any, older: Any) -> bool:
-    """Whether a person already dismissed the suggestion that ``newer`` replaces ``older``."""
-    stored = newer.revision_suggestion or {}
-    return bool(stored.get("dismissed")) and stored.get("of") == older.file_name
+    """Whether a person already refused that ``newer`` replaces ``older`` (one of the files ``newer`` refused)."""
+    return older.file_name in dismissed_fassungen(newer.revision_suggestion)
 
 
 def _facts_only(row: Any) -> RevisionDocument:
@@ -298,8 +299,7 @@ def candidate_documents(file_name: str, rows: Sequence[Any], held: set[str]) -> 
     dismissed for this file, not one with nothing to say, and not a held name.
     """
     own = next((row for row in rows if row.file_name == file_name), None)
-    dismissed_suggestion = (own.revision_suggestion or {}) if own is not None else {}
-    refused = {dismissed_suggestion["of"]} if dismissed_suggestion.get("dismissed") else set()
+    refused = set(dismissed_fassungen(own.revision_suggestion)) if own is not None else set()
     return [
         revision_document(
             row.file_name,
@@ -407,32 +407,29 @@ def confirm_fassung(
 ) -> bool:
     """Write the link a person chose at upload: ``file_name`` replaces ``older``. ``False`` when it cannot be made.
 
-    The same writes as ``PUT /v1/collections/{c}/fassung`` with ``linked=true``: ``superseded_by``
-    on ``older``, a suggestion on the new file that pointed at ``older`` cleared, and what changed
-    told by the summary model onto the new file with ``older`` as its basis. A failed or absent
-    model leaves the link in place and the change line empty. Nothing is written when ``older``
-    has no row in the collection (it was deleted meanwhile) or the link would close a loop.
+    The same writes as ``PUT /v1/collections/{c}/fassung`` with ``linked=true``, through the same
+    store step (:func:`~aiq_agent.knowledge.link_document_fassung`): ``superseded_by`` on ``older``
+    and a suggestion on the new file that pointed at ``older`` cleared, with the loop check in the
+    same transaction; then what changed, told by the summary model onto the new file with ``older``
+    as its basis. A failed or absent model (``llm=None``) leaves the link in place and the change
+    line empty. Nothing is written when ``older`` has no row in the collection (it was deleted
+    meanwhile) or the link would close a loop. The new file need not have its row yet.
     """
     if older == file_name:
         return False
-    documents = {row.file_name: row for row in read_rows(collection)}
-    older_row = documents.get(older)
-    if older_row is None:
-        logger.warning("Fassung chosen at upload: %s is not in %s; ordinary suggestion instead", older, collection)
-        return False
-    if would_loop(documents, newer=file_name, older=older):
-        logger.warning("Fassung chosen at upload: %s already leads to %s; link refused", file_name, older)
-        return False
+    from aiq_agent.knowledge import link_document_fassung
     from aiq_agent.knowledge import set_document_change_summary
-    from aiq_agent.knowledge import set_document_revision_suggestion
-    from aiq_agent.knowledge import set_document_superseded_by
+    from aiq_agent.knowledge.document_metadata_store import LinkOutcome
 
-    if not set_document_superseded_by(collection, older, file_name):
-        logger.warning("Fassung chosen at upload: %s has no metadata row in %s", older, collection)
+    outcome = link_document_fassung(collection, older, file_name)
+    if outcome is not LinkOutcome.LINKED:
+        logger.warning("Fassung chosen at upload: %s over %s in %s refused (%s)", file_name, older, collection, outcome)
         return False
-    own = documents.get(file_name)
-    if own is not None and (own.revision_suggestion or {}).get("of") == older:
-        set_document_revision_suggestion(collection, file_name, None)
+    if llm is None:
+        return True
+    older_row = next((row for row in read_rows(collection) if row.file_name == older), None)
+    if older_row is None:
+        return True
     change = summarize_change(
         RevisionDocument(
             file_name=older,

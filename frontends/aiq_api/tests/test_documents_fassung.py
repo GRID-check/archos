@@ -37,7 +37,14 @@ from aiq_api.routes.documents import add_document_routes
 COLLECTION = "proj_a"
 OLDER = "Grundriss_EG_Index_B.pdf"
 NEWER = "Grundriss_EG_Index_C.pdf"
-SUGGESTION = {"of": OLDER, "confidence": 0.9, "reason": "Gleicher Grundriss.", "basis": "name", "dismissed": False}
+SUGGESTION = {
+    "of": OLDER,
+    "confidence": 0.9,
+    "reason": "Gleicher Grundriss.",
+    "basis": "name",
+    "dismissed": False,
+    "dismissed_of": [],
+}
 
 
 @pytest.fixture
@@ -163,6 +170,31 @@ class TestLinking:
 
         assert _docs(store)[NEWER].revision_suggestion == other
 
+    async def test_a_loop_written_after_the_route_read_its_rows_is_still_refused(self, app, store):
+        # Two people confirm at once: this request read the collection before the other one
+        # stored "OLDER replaces NEWER". The loop check runs again inside the locked write.
+        snapshot = store.get_all(COLLECTION)
+        store.link_fassung(COLLECTION, NEWER, OLDER)
+
+        with patch("aiq_api.routes.documents.get_available_documents_async", AsyncMock(return_value=snapshot)):
+            res = await _put(app, LINK)
+
+        assert res.status_code == 409
+        docs = _docs(store)
+        assert docs[OLDER].superseded_by is None
+        assert docs[NEWER].superseded_by == OLDER
+
+    async def test_re_pointing_an_older_file_drops_the_stale_change_line_of_its_former_replacement(self, app, store):
+        store.register(COLLECTION, "Zwischen.pdf", "Grundriss Erdgeschoss, Zwischenstand.")
+        store.link_fassung(COLLECTION, OLDER, "Zwischen.pdf")
+        store.set_change_summary(COLLECTION, "Zwischen.pdf", "- Stiege verschoben", OLDER)
+
+        await _put(app, LINK)
+
+        docs = _docs(store)
+        assert docs[OLDER].superseded_by == NEWER
+        assert docs["Zwischen.pdf"].change_summary is None and docs["Zwischen.pdf"].change_basis is None
+
     async def test_a_failing_model_leaves_the_link_and_no_change_line(self, app, store):
         res = await _put(app, LINK, _gateway(error=httpx.ConnectError("down")))
 
@@ -272,7 +304,7 @@ class TestRefusing:
 
         await _put(app, UNLINK)
 
-        assert _docs(store)[NEWER].revision_suggestion == {**SUGGESTION, "dismissed": True}
+        assert _docs(store)[NEWER].revision_suggestion == {**SUGGESTION, "dismissed": True, "dismissed_of": [OLDER]}
 
     async def test_a_refusal_with_no_stored_suggestion_is_remembered_all_the_same(self, app, store):
         # The suggestion came from the file names and lived only in the UI.
@@ -281,13 +313,33 @@ class TestRefusing:
         suggestion = _docs(store)[NEWER].revision_suggestion
         assert suggestion["of"] == OLDER and suggestion["dismissed"] is True
 
-    async def test_a_suggestion_about_another_file_is_left_alone(self, app, store):
+    async def test_a_suggestion_about_another_file_stays_open_and_the_refusal_is_added(self, app, store):
         other = {**SUGGESTION, "of": "Anderes.pdf"}
         store.set_revision_suggestion(COLLECTION, NEWER, other)
 
         await _put(app, UNLINK)
 
-        assert _docs(store)[NEWER].revision_suggestion == other
+        assert _docs(store)[NEWER].revision_suggestion == {**other, "dismissed_of": [OLDER]}
+
+    async def test_a_refusal_sticks_when_another_file_was_refused_before(self, app, store):
+        # „Nein" to one file never undoes „Nein" to another: the name series Index B -> Index C
+        # would otherwise be derived again on the next listing.
+        store.register(COLLECTION, "Anderes.pdf", "Ein anderes Dokument.")
+        store.dismiss_revision_suggestion(COLLECTION, NEWER, "Anderes.pdf")
+
+        await _put(app, UNLINK)
+
+        files = [_file(OLDER), _file(NEWER), _file("Anderes.pdf")]
+        _merge_summaries(files, store.get_all(COLLECTION), held_names=lambda: set())
+        assert files[1].revision_suggestion is None
+        assert _docs(store)[NEWER].revision_suggestion["dismissed_of"] == ["Anderes.pdf", OLDER]
+
+    async def test_a_suggestion_stored_later_for_a_refused_file_is_stored_dismissed(self, app, store):
+        await _put(app, UNLINK)
+
+        store.set_revision_suggestion(COLLECTION, NEWER, SUGGESTION)
+
+        assert _docs(store)[NEWER].revision_suggestion["dismissed"] is True
 
     async def test_a_dismissed_suggestion_is_not_offered_in_the_listing(self, app, store):
         await _put(app, UNLINK)
@@ -296,6 +348,30 @@ class TestRefusing:
         _merge_summaries(files, store.get_all(COLLECTION))
 
         assert files[1].revision_suggestion is None
+
+
+class TestThePurge:
+    """``DELETE …/documents`` says whether the delete can be undone; the ingestor gets it as ``permanent``."""
+
+    async def _delete(self, app, body):
+        from aiq_agent.knowledge.factory import get_active_ingestor
+
+        ingestor = get_active_ingestor()
+        ingestor.get_collection.return_value = object()
+        ingestor.delete_files.return_value = {"successful": ["x"], "failed": [], "total_deleted": 1}
+        async with _client(app) as client:
+            res = await client.request("DELETE", f"/v1/collections/{COLLECTION}/documents", json=body)
+        return res, ingestor.delete_files
+
+    async def test_a_purge_keeps_a_persons_fassung_facts_by_default(self, app):
+        res, delete_files = await self._delete(app, {"file_ids": [OLDER]})
+        assert res.status_code == 200
+        delete_files.assert_called_once_with([OLDER], COLLECTION, permanent=False)
+
+    async def test_a_permanent_delete_says_so(self, app):
+        res, delete_files = await self._delete(app, {"file_ids": [OLDER], "permanent": True})
+        assert res.status_code == 200
+        delete_files.assert_called_once_with([OLDER], COLLECTION, permanent=True)
 
 
 class TestValidation:

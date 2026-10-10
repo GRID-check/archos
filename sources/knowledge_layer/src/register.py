@@ -1681,8 +1681,8 @@ _FAMILY_OVERVIEW_FAILED_NOTICE = (
 _HIDDEN_FASSUNGEN_NAMED = 5
 
 
-async def _superseded_files(collections: Sequence[str]) -> dict[str, list[str]]:
-    """Per collection, the files a PERSON replaced by a newer one, read from the metadata store now.
+async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, str]]:
+    """Per collection, the files a PERSON replaced by a newer one, each with the file that replaced it, read now.
 
     Resolved at query time, the way a folder is: whether a file is replaced is
     not on its chunks, and a link made or lifted a minute ago must apply to the
@@ -1695,13 +1695,39 @@ async def _superseded_files(collections: Sequence[str]) -> dict[str, list[str]]:
         return_exceptions=True,
     )
     return {
-        collection: sorted(answer)
+        collection: dict(sorted(answer.items()))
         for collection, answer in zip(collections, answers, strict=True)
         if isinstance(answer, dict) and answer
     }
 
 
-def _hidden_fassungen_notice(superseded: dict[str, list[str]]) -> str:
+def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
+    """The line that tells the model the file it named (``file_name=…``) is an older Fassung, and which is current.
+
+    Naming the file is how an older Fassung is read on purpose, so its passages are not withheld;
+    the line keeps the answer from presenting them as the document's current state. Follows the
+    links to the end of the chain, and names nothing in a restricted collection nobody admitted.
+    The same words as ``read_passage``'s notice (:func:`older_fassung_line`).
+    """
+    if not file_name:
+        return ""
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    from .read_passage import older_fassung_line
+
+    lines = []
+    for collection, links in superseded.items():
+        if file_name not in links or not may_name(collection):
+            continue
+        seen, current = {file_name}, links[file_name]
+        while current in links and current not in seen:
+            seen.add(current)
+            current = links[current]
+        lines.append(older_fassung_line(file_name, current))
+    return "".join(sorted(set(lines)))
+
+
+def _hidden_fassungen_notice(superseded: dict[str, dict[str, str]]) -> str:
     """The one line that tells the model older Fassungen were left out of the ranking, and how to read one."""
     names = sorted({name for hidden in superseded.values() for name in hidden})
     if not names:
@@ -2085,11 +2111,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         # user shelves, so a superseded Fassung cannot outrank its replacement on
         # similarity alone. Naming the file (`file_name=`) is the way back to it.
         # The base corpus is untouched: it replaces by its own hash registry.
-        superseded: dict[str, list[str]] = {}
-        if not file_name:
-            superseded = await _superseded_files(
-                [entry.collection for entry in target_collections if entry.collection != base_collection]
-            )
+        # Read with `file_name=` too, but then only to say the named file is an older Fassung.
+        superseded = await _superseded_files(
+            [entry.collection for entry in target_collections if entry.collection != base_collection]
+        )
+        hidden_fassungen = {} if file_name else superseded
 
         # Cross-lingual bridge. The corpus is German; an English question reaches it
         # only weakly by embedding and not at all lexically. Measured on the golden
@@ -2149,8 +2175,8 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             if folder_files is not None:
                 narrowing = {"file_name": {"$in": sorted(folder_files.get(coll) or [])}}
                 coll_filters = {**coll_filters, **narrowing} if coll_filters else narrowing
-            if superseded.get(coll):
-                hidden = {"file_name": {"$nin": superseded[coll]}}
+            if hidden_fassungen.get(coll):
+                hidden = {"file_name": {"$nin": sorted(hidden_fassungen[coll])}}
                 coll_filters = {"$and": [coll_filters, hidden]} if coll_filters else hidden
             result = await retriever.retrieve(
                 query=search_query, collection_name=coll, top_k=candidate_k, filters=coll_filters
@@ -2587,7 +2613,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # own formulation was already given a second chance.
             from knowledge_layer.requery import requery_notice
 
-            notice = _hidden_fassungen_notice(superseded) + requery_notice(requery_queries)
+            notice = (
+                _hidden_fassungen_notice(hidden_fassungen)
+                + _named_older_fassung_notice(file_name, superseded)
+                + requery_notice(requery_queries)
+            )
             # The overview raised, and the passages below are what is left of
             # the family question. Said only where there ARE passages: an empty
             # or failed search already tells the model the stronger thing.

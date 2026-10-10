@@ -403,7 +403,9 @@ class AvailableDocument(BaseModel):
             is this document.
         revision_suggestion: Optional open suggestion, as a dict: ``of`` (the
             older file name), ``confidence``, ``reason`` (German), ``basis``
-            (``title_block`` | ``name`` | ``content``), ``dismissed``. A suggestion is not a link.
+            (``title_block`` | ``name`` | ``content``), ``dismissed``, and
+            ``dismissed_of`` (every file a person refused as the older Fassung;
+            ``dismissed`` says whether ``of`` is one). A suggestion is not a link.
         revision_facts: Optional title-block facts read from the first drawing
             page that has a title block: ``document_number``, ``revision`` (the
             Index as printed), ``revision_date`` (ISO), ``scale``, ``title``,

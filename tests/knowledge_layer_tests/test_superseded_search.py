@@ -164,8 +164,26 @@ class TestTheExclusion:
         assert not any("$nin" in repr(call["filters"]) for call in store.calls)
         assert "Statik_Index_B.pdf, p.1" in _cited(out)
         assert "Ältere Fassungen ausgeblendet" not in out
-        # Nothing was resolved: a call that names a file has no use for the list.
-        assert store.asked == []
+
+    async def test_naming_an_older_fassung_says_which_one_is_current(self, search):
+        # Read on purpose, but not presented as the document's current state: the same line
+        # `read_passage` gives the model when it opens an older Fassung.
+        store = search(POOLS, {PROJECT: {"Statik_Index_A.pdf": "Statik_Index_B.pdf", **REPLACED[PROJECT]}})
+
+        out = await _ranked_search(query="Bewehrung der Decke", file_name="Statik_Index_A.pdf")
+
+        assert store.asked == [PROJECT]
+        assert (
+            "Ältere Fassung: Statik_Index_A.pdf ist durch Statik_Index_C.pdf ersetzt (bestätigt), "
+            "aktuell ist Statik_Index_C.pdf." in out
+        )
+
+    async def test_naming_the_current_fassung_says_nothing_about_older_ones(self, search):
+        search(POOLS, REPLACED)
+
+        out = await _ranked_search(query="Bewehrung der Decke", file_name="Statik_Index_C.pdf")
+
+        assert "Ältere Fassung" not in out
 
     async def test_the_base_corpus_is_never_asked_about_and_never_filtered(self, search):
         store = search(POOLS, REPLACED)

@@ -27,12 +27,13 @@ from pydantic import Field
 
 from aiq_agent.common import provider_limiter
 from aiq_agent.common.openrouter import limited_async_http_client
+from aiq_agent.knowledge import dismiss_document_revision_suggestion
 from aiq_agent.knowledge import get_available_documents_async
+from aiq_agent.knowledge import link_document_fassung
 from aiq_agent.knowledge import rewrite_document_folder_paths
 from aiq_agent.knowledge import set_document_change_summary
 from aiq_agent.knowledge import set_document_display_title
 from aiq_agent.knowledge import set_document_folder_path
-from aiq_agent.knowledge import set_document_revision_suggestion
 from aiq_agent.knowledge import set_document_superseded_by
 from aiq_agent.knowledge import set_document_tags_by_person
 from aiq_agent.knowledge import set_document_topics_by_person
@@ -41,11 +42,11 @@ from aiq_agent.knowledge.document_classification import ALLOWED_TAGS
 from aiq_agent.knowledge.document_classification import MAX_TAGS
 from aiq_agent.knowledge.document_classification import MAX_TOPICS
 from aiq_agent.knowledge.document_classification import normalize_topic
+from aiq_agent.knowledge.document_metadata_store import LinkOutcome
 from aiq_agent.knowledge.document_revisions import RevisionDocument
 from aiq_agent.knowledge.document_revisions import build_change_prompt
 from aiq_agent.knowledge.document_revisions import parse_change_summary
 from aiq_agent.knowledge.document_revisions import settled_change
-from aiq_agent.knowledge.document_revisions import would_loop
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import IngestionJobStatus
@@ -292,19 +293,9 @@ async def _refuse_fassung(collection_name: str, newer: AvailableDocument, older:
         if newer.change_basis == older.file_name:
             await asyncio.to_thread(set_document_change_summary, collection_name, newer.file_name, None, None)
             change_summary = change_basis = None
-    suggestion = newer.revision_suggestion
-    if suggestion is None:
-        # A suggestion read from the file names lives only in the UI; the refusal still has to outlive it.
-        suggestion = {
-            "of": older.file_name,
-            "confidence": 0.0,
-            "reason": "Von einer Person abgelehnt.",
-            "basis": "name",
-        }
-    if suggestion.get("of") == older.file_name:
-        await asyncio.to_thread(
-            set_document_revision_suggestion, collection_name, newer.file_name, {**suggestion, "dismissed": True}
-        )
+    # Added to the refusals ``newer`` already holds: a suggestion read from the file names lives only in
+    # the UI, and „Nein" to it must stick even when another file was refused before.
+    await asyncio.to_thread(dismiss_document_revision_suggestion, collection_name, newer.file_name, older.file_name)
     return {"superseded_by": superseded_by, "change_summary": change_summary, "change_basis": change_basis}
 
 
@@ -560,16 +551,20 @@ def add_document_routes(router: APIRouter):
         by name, and only drops out of the ranked search.
 
         - ``linked=true``: ``older.superseded_by = newer``; a suggestion on ``newer``
-          that pointed at ``older`` is cleared; what changed is written by the
-          summary model (traced as ``change-summary``) onto ``newer`` with
-          ``change_basis = older``. A model failure leaves the link in place and
-          ``change_summary`` null. A link that would close a loop (the newer file
-          already replaced by the older, directly or through others) is a 409.
+          that pointed at ``older`` is cleared; when ``older`` was replaced by another
+          file until now, that file's change line told against ``older`` goes. The
+          loop check and these writes are one locked transaction
+          (``link_document_fassung``), so two concurrent confirmations cannot store
+          A over B and B over A. A link that would close a loop (the newer file
+          already replaced by the older, directly or through others) is a 409. Then
+          what changed is written by the summary model (traced as ``change-summary``)
+          onto ``newer`` with ``change_basis = older``. A model failure leaves the
+          link in place and ``change_summary`` null.
         - ``linked=false``: the link ``older -> newer`` is lifted when it exists, the
-          change summary written against ``older`` goes with it, and the suggestion
-          that ``newer`` is a newer Fassung of ``older`` is marked dismissed, so a
-          later reading does not offer it again. A suggestion about another file is
-          left alone.
+          change summary written against ``older`` goes with it, and ``older`` is added
+          to the files ``newer`` refused (``dismissed_of``), so a later reading does not
+          offer the pair again, whatever else was refused before. An open suggestion
+          about another file stays open.
 
         Returns ``{"superseded_by", "change_summary", "change_basis"}``: the link ``older``
         has and the change line ``newer`` has after the call (``null`` when none).
@@ -588,16 +583,14 @@ def add_document_routes(router: APIRouter):
         if not request.linked:
             return await _refuse_fassung(collection_name, newer, older)
 
-        if would_loop(documents, newer=request.newer, older=request.older):
+        outcome = await asyncio.to_thread(link_document_fassung, collection_name, request.older, request.newer)
+        if outcome is LinkOutcome.LOOP:
             raise HTTPException(
                 status_code=409,
                 detail=f"'{request.newer}' is already replaced by '{request.older}'; it cannot replace it in turn",
             )
-        if not await asyncio.to_thread(set_document_superseded_by, collection_name, request.older, request.newer):
+        if outcome is LinkOutcome.MISSING:
             raise _no_summary_404(collection_name, request.older)
-        suggestion = newer.revision_suggestion
-        if suggestion and suggestion.get("of") == request.older:
-            await asyncio.to_thread(set_document_revision_suggestion, collection_name, request.newer, None)
         change = await _request_change_summary(older, newer, x_grid_organization_id)
         if change:
             await asyncio.to_thread(set_document_change_summary, collection_name, request.newer, change, request.older)
@@ -776,7 +769,15 @@ def add_document_routes(router: APIRouter):
         request: DeleteFilesRequest,
         ingestor: BaseIngestor = Depends(_require_ingestor),
     ) -> dict[str, Any]:
-        """Delete files from a collection by ID."""
+        """Delete files from a collection by ID.
+
+        ``permanent`` (default ``false``) says nobody will undo this delete. Without it
+        the files' chunks and metadata rows go, but the Fassung facts a person made (a
+        confirmed link, refused suggestions, the change line against a linked Fassung)
+        are kept for the file's return, and links other files hold to it stay: an
+        archive, the folder bin and a publish purge and then read the document again.
+        With it, those facts go and the files it replaced are current again for good.
+        """
         # Verify collection exists
         collection = await asyncio.to_thread(ingestor.get_collection, collection_name)
         if collection is None:
@@ -791,7 +792,9 @@ def add_document_routes(router: APIRouter):
             }
 
         try:
-            result = await asyncio.to_thread(ingestor.delete_files, request.file_ids, collection_name)
+            result = await asyncio.to_thread(
+                ingestor.delete_files, request.file_ids, collection_name, permanent=request.permanent
+            )
             total_deleted = result.get("total_deleted", 0)
             failed = result.get("failed", [])
 

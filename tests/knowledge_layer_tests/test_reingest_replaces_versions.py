@@ -78,7 +78,11 @@ def registries(monkeypatch):
 
     from aiq_agent import knowledge
 
-    monkeypatch.setattr(knowledge, "unregister_summary", lambda coll, name: unregistered.append((coll, name)))
+    monkeypatch.setattr(
+        knowledge,
+        "unregister_summary",
+        lambda coll, name, permanent=False: unregistered.append((coll, name) if permanent else (coll, name, "kept")),
+    )
     store = MagicMock()
     store.delete_chunks.side_effect = lambda coll, ids: mirror_deleted.append((coll, sorted(ids)))
     from aiq_agent.knowledge import chunk_text_store
