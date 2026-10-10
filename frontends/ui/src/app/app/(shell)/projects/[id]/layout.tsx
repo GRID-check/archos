@@ -86,9 +86,15 @@ export default async function ProjectLayout({
     if (!current) notFound()
     // Whether the banner of a paused or closed project offers the way out of
     // it; an active project has no banner, so asks nothing.
-    // An outage asking it hides the control rather than failing the page.
+    // Asked as a permission (`project:manage`), never read off the role name.
+    // An outage hides the banner's control rather than failing every page of
+    // the project, and is logged, so it does not pass for a missing permission.
     const canChangeStatus =
-      current.status !== 'active' && (await holdsManageEvenWhenClosed(session, id).catch(() => false))
+      current.status !== 'active' &&
+      (await holdsManageEvenWhenClosed(session, id).catch((error: unknown) => {
+        console.error('[projects] could not ask project:manage for the status banner:', error)
+        return false
+      }))
 
     return (
       <>

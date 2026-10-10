@@ -171,6 +171,7 @@ export default function ClosingDebriefDevPage(): JSX.Element {
             endedOn: null,
             startedOn: variant === 'empty' ? null : '2023-04',
             suggestedEndedOn: null,
+            suggestedOutcome: null,
           }}
           profile={variant === 'empty' ? null : variant === 'structure' ? STRUCTURE : PROFILE}
           canWriteMemory={variant !== 'readonly'}

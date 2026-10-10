@@ -74,7 +74,7 @@ export const projects = pgTable('projects', {
 | `paused_at` | `timestamptz` | set exactly when `status = 'paused'` | When it was paused (0129) |
 | `closed_at` | `timestamptz` | set exactly when `status = 'closed'` | When it was closed; cleared on reopen |
 | `closed_by` | `text` | set exactly when `status = 'closed'` | WorkOS user id of whoever closed it |
-| `closed_outcome` | `text` | set exactly when `status = 'closed'`, `completed` or `cancelled` | How it ended: handed over, or not realized (0129) |
+| `closed_outcome` | `text` | NOT NULL when closed, `completed` or `cancelled` | How it ended: handed over, or not realized (0129). Kept across a reopen as the next close's suggestion, read only while closed |
 | `started_on` | `date` | first of a month, CHECK | Steckbrief Beginn (ADR-0091, migration 0117) |
 | `ended_on` | `date` | first of a month, not before `started_on`; NOT NULL when closed | Abschluss, named by closing (ADR-0098). Kept across a reopen as the next close's suggestion and read only while closed (`abschlussOf`) |
 | `deleted_at` | `timestamptz` | | Soft delete (ADR-0011) |
@@ -82,7 +82,7 @@ export const projects = pgTable('projects', {
 
 **Indexes:** `projects_org_deleted_created_idx` on `(organization_id, deleted_at, created_at)` — tenant list queries (migration `0014`). `projects_org_status_idx` on `(organization_id, status) WHERE deleted_at IS NULL` (migration 0116).
 
-**Constraints (0116, 0129):** `projects_status_check`; `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set; `projects_paused_state_check`: paused exactly when `paused_at` is set; `projects_closed_outcome_check`: closed exactly when `closed_outcome` is set, to a known outcome, and a closed project has an `ended_on`.
+**Constraints (0116, 0129):** `projects_status_check`; `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set; `projects_paused_state_check`: paused exactly when `paused_at` is set; `projects_closed_outcome_check`: a closed project has a known `closed_outcome` and an `ended_on` (both kept across a reopen).
 
 **The closed-project guard (0116).** `grid_refuse_insert_into_closed_project()` runs `BEFORE INSERT` on `documents`, `project_folders`, `document_versions` and `project_memory`, and raises SQLSTATE `GPC01` when the row names a closed project. It reads the project row `FOR SHARE`, so a close and an insert serialize. Updates are not refused. The down migration refuses while any project is closed.
 

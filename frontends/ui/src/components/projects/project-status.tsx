@@ -22,14 +22,14 @@ import type { CSSProperties } from 'react'
 import { Activity, Lock, PauseCircle } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import type { Project } from '@/lib/db/schema'
-import type { ProjectOutcome, ProjectStatus } from '@/lib/projects/project-status'
+import { toProjectStatus, type ProjectOutcome, type ProjectStatus } from '@/lib/projects/project-status'
 import { useTranslations } from '@/i18n'
 
 export type { ProjectStatus }
 
 /** The display status of a project that reached a surface. */
 export function getProjectStatus(project: Pick<Project, 'status'>): ProjectStatus {
-  return project.status === 'closed' || project.status === 'paused' ? project.status : 'active'
+  return toProjectStatus(project.status)
 }
 
 /**

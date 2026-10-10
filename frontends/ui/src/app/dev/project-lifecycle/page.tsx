@@ -30,6 +30,7 @@ const ACTIVE: ProjectLifecycleView = {
   endedOn: null,
   startedOn: '2023-04',
   suggestedEndedOn: null,
+  suggestedOutcome: null,
 }
 const PAUSED: ProjectLifecycleView = { ...ACTIVE, status: 'paused', pausedAt: '2026-08-14T09:00:00Z' }
 const CLOSED: ProjectLifecycleView = {

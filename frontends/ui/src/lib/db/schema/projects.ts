@@ -34,7 +34,7 @@ export const projects = pgTable(
     closedAt: timestamp('closed_at', { withTimezone: true }),
     /** Who closed it (WorkOS user id); set exactly when `status` is `closed`. */
     closedBy: text('closed_by'),
-    /** How it ended, `completed` or `cancelled`; set exactly when `status` is `closed`. */
+    /** How it ended, `completed` or `cancelled`; never empty when closed, kept across a reopen as the next close's suggestion. */
     closedOutcome: text('closed_outcome').$type<ProjectOutcome>(),
     /** Beginn, month precision: the first of its month (migration 0117, ADR-0091). */
     startedOn: date('started_on', { mode: 'string' }),
@@ -64,7 +64,7 @@ export const projects = pgTable(
     pausedStateCheck: check('projects_paused_state_check', sql`(${table.status} = 'paused') = (${table.pausedAt} IS NOT NULL)`),
     closedOutcomeCheck: check(
       'projects_closed_outcome_check',
-      sql`(${table.status} = 'closed') = (${table.closedOutcome} IS NOT NULL) AND (${table.closedOutcome} IS NULL OR ${table.closedOutcome} IN ('completed', 'cancelled')) AND (${table.status} <> 'closed' OR ${table.endedOn} IS NOT NULL)`
+      sql`(${table.status} <> 'closed' OR ${table.closedOutcome} IS NOT NULL) AND (${table.closedOutcome} IS NULL OR ${table.closedOutcome} IN ('completed', 'cancelled')) AND (${table.status} <> 'closed' OR ${table.endedOn} IS NOT NULL)`
     ),
     periodCheck: check(
       'projects_period_check',

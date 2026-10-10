@@ -9,7 +9,7 @@ import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { setProjectStatus } from '@/lib/projects/service'
 import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
-import { abschlussOf, PROJECT_OUTCOMES } from '@/lib/projects/project-status'
+import { abschlussOf, isProjectClosed, PROJECT_OUTCOMES } from '@/lib/projects/project-status'
 
 const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
 
@@ -35,7 +35,7 @@ export const PUT = apiRoute<{ id: string }>(
       pausedAt: project.pausedAt?.toISOString() ?? null,
       closedAt: project.closedAt?.toISOString() ?? null,
       closedBy: project.closedBy,
-      closedOutcome: project.closedOutcome,
+      closedOutcome: isProjectClosed(project) ? project.closedOutcome : null,
       endedOn: dateToMonth(abschlussOf(project)),
     }
   },

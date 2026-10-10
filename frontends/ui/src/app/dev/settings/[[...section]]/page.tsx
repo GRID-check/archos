@@ -141,6 +141,7 @@ const OVERVIEW_DATA = {
     endedOn: null,
     startedOn: '2026-03' as const,
     suggestedEndedOn: null,
+    suggestedOutcome: null,
   },
   name: 'Wohnbau Mariahilf',
   collectionName: 'proj_demo',

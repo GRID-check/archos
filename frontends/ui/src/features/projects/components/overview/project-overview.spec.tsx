@@ -25,6 +25,7 @@ const ACTIVE: ProjectOverviewData['lifecycle'] = {
   endedOn: null,
   startedOn: null,
   suggestedEndedOn: null,
+  suggestedOutcome: null,
 }
 
 const DATA: ProjectOverviewData = {

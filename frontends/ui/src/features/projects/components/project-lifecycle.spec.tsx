@@ -22,6 +22,7 @@ const ACTIVE: ProjectLifecycleView = {
   endedOn: null,
   startedOn: '2023-04',
   suggestedEndedOn: null,
+  suggestedOutcome: null,
 }
 const CLOSED: ProjectLifecycleView = {
   ...ACTIVE,
@@ -57,7 +58,9 @@ describe('ProjectStatusBanner', () => {
       </CurrentProjectProvider>
     )
     expect(screen.getByText('Closed project · read-only')).toBeInTheDocument()
-    expect(screen.getByTestId('closed-project-banner')).toHaveTextContent('Closed on October 6, 2026.')
+    // When the work ended leads; the day it was closed in Piloti follows.
+    expect(screen.getByTestId('closed-project-banner')).toHaveTextContent('Completed September 2026. Closed in Piloti on October 6, 2026.')
+    expect(screen.getByTestId('closed-project-banner')).toHaveAttribute('role', 'status')
     expect(screen.getByTestId('closed-project-banner')).not.toHaveTextContent('closed projects are readable by the whole office')
     expect(screen.getByTestId('closed-project-banner')).not.toHaveTextContent('not realized')
     // Nobody here may reopen it, so nothing offers to.
@@ -191,6 +194,9 @@ describe('ProjectLifecycleCard', () => {
     expect(month).toHaveValue('2099-01')
     expect(month).toHaveAttribute('min', '2099-01')
     expect(month).toHaveAttribute('max', '2099-01')
+    // The outcome is chosen, never preselected: until then there is no going on.
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+    await userEvent.click(screen.getByRole('radio', { name: /Not realized/ }))
     expect(screen.getByRole('button', { name: 'Next' })).toBeEnabled()
   })
 
@@ -200,7 +206,7 @@ describe('ProjectLifecycleCard', () => {
     render(<ProjectLifecycleCard projectId="p1" lifecycle={CLOSED} />)
 
     expect(screen.getByTestId('lifecycle-closed-facts')).toHaveTextContent('Completed · completion September 2026')
-    expect(screen.getByText('Closed on October 6, 2026')).toBeInTheDocument()
+    expect(screen.getByText('Closed in Piloti on October 6, 2026')).toBeInTheDocument()
     expect(screen.queryByRole('button', { name: 'Pause' })).not.toBeInTheDocument()
     await userEvent.click(screen.getByRole('button', { name: 'Reopen project' }))
     expect(screen.queryByTestId('closing-debrief')).not.toBeInTheDocument()

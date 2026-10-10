@@ -16,7 +16,7 @@
  */
 
 import 'server-only'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUuid } from '@/lib/ids'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
@@ -125,10 +125,11 @@ export type ProjectStatusWrite =
 /**
  * Move a project from `from` to another state, with that state's own columns:
  * when it was paused, or when, by whom and how it closed and its Abschluss.
- * Leaving a state clears its columns, except the Abschluss, which a reopen keeps
- * as the next close's suggestion. Only a row still in `from` changes, so two
- * people moving it at once write once; null when nothing changed (it moved
- * meanwhile, deleted, or not in the organization).
+ * Leaving a state clears its columns, except the outcome and the Abschluss,
+ * which a reopen keeps as the next close's suggestions. Only a row still in
+ * `from` changes, so two people moving it at once write once, and a close
+ * changes nothing when the Beginn moved past its Abschluss meanwhile; null when
+ * nothing changed (either race, deleted, or not in the organization).
  */
 export async function setProjectStatusInOrg(
   projectId: string,
@@ -137,7 +138,7 @@ export async function setProjectStatusInOrg(
   change: ProjectStatusWrite
 ): Promise<Project | null> {
   const db = getDb()
-  const cleared = { pausedAt: null, closedAt: null, closedBy: null, closedOutcome: null }
+  const cleared = { pausedAt: null, closedAt: null, closedBy: null }
   const values =
     change.status === 'closed'
       ? {
@@ -160,7 +161,12 @@ export async function setProjectStatusInOrg(
           eq(projects.id, projectId),
           eq(projects.organizationId, organizationId),
           isNull(projects.deletedAt),
-          eq(projects.status, from)
+          eq(projects.status, from),
+          // A Steckbrief save that moved the Beginn past this Abschluss since
+          // the service checked it: a lost race (409), not a CHECK violation (500).
+          change.status === 'closed'
+            ? sql`(${projects.startedOn} IS NULL OR ${projects.startedOn} <= ${change.endedOn}::date)`
+            : undefined
         )
       )
       .returning()

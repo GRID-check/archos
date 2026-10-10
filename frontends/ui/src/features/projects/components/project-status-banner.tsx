@@ -32,6 +32,7 @@ export function ProjectStatusBanner(): JSX.Element | null {
     pausedAt: null,
     closedAt: project.closedAt,
     closedOutcome: null,
+    suggestedOutcome: null,
     endedOn: null,
     startedOn: null,
     suggestedEndedOn: null,
@@ -69,9 +70,17 @@ function StatusBanner({
       ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(at)
       : null
 
+  // A closed project leads with when its work ended, not with the day someone
+  // clicked: a project finished in 2019 and closed today ended in 2019.
+  const abschluss = lifecycle.endedOn
+    ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+        new Date(`${lifecycle.endedOn}-01T00:00:00Z`)
+      )
+    : null
   const sentences = paused
     ? [date ? t('lifecycle.banner.pausedOn', { date }) : '', t('lifecycle.banner.pausedBody')]
     : [
+        abschluss ? t('lifecycle.banner.endedIn', { month: abschluss }) : '',
         date ? t('lifecycle.banner.closedOn', { date }) : '',
         lifecycle.closedOutcome === 'cancelled' ? t('lifecycle.banner.cancelled') : '',
         t('lifecycle.banner.body'),
@@ -80,7 +89,10 @@ function StatusBanner({
 
   return (
     <>
+      {/* `status`, not the Alert's default `alert`: the line opens every page of
+          the project, and a live alert would be announced on each of them. */}
       <Alert
+        role="status"
         variant="info"
         className="rounded-none border-x-0 border-t-0 px-4 py-2.5 md:px-8"
         data-testid={paused ? 'paused-project-banner' : 'closed-project-banner'}

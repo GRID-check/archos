@@ -25,7 +25,7 @@ import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { isProjectClosed, runsOnSchedule } from '@/lib/projects/project-status'
+import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
@@ -907,14 +907,15 @@ export async function fireScheduledJob(
   // Only an active project runs its schedules (ADR-0098). A closed one is
   // read-only and a run files into it (ADR-0090); a paused one was parked so
   // that nothing runs and spends. The schedule stays, visibly skipped, so
-  // resuming or reopening resumes it.
+  // resuming or reopening resumes it: a recurring one at its next turn, a
+  // one-shot (which the claim retired) re-armed by the move back to active.
   const project = await findProjectInOrg(definition.projectId, definition.organizationId)
   if (project && !runsOnSchedule(project)) {
     const closed = isProjectClosed(project)
     await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
       status: 'skipped',
       backendJobId: null,
-      error: closed ? 'Project is closed' : 'Project is paused',
+      error: closed ? SCHEDULE_SKIPPED_BECAUSE.closed : SCHEDULE_SKIPPED_BECAUSE.paused,
       conversationId: null,
     })
     return { fired: false, reason: closed ? 'project-closed' : 'project-paused' }

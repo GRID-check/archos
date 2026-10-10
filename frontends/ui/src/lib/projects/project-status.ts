@@ -27,7 +27,7 @@
 
 import { ForbiddenError } from '@/lib/api/errors'
 import type { ProjectPermission } from '@/lib/authz/permissions'
-import { dateToMonth, isOrderedPeriod, type Month } from './month'
+import { dateToMonth, isMonth, isOrderedPeriod, type Month } from './month'
 
 export const PROJECT_STATUSES = ['active', 'paused', 'closed'] as const
 export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
@@ -60,6 +60,11 @@ export function isProjectStatus(value: unknown): value is ProjectStatus {
   return typeof value === 'string' && (PROJECT_STATUSES as readonly string[]).includes(value)
 }
 
+/** A status read from anywhere (a row, the wire, stored metadata); anything unknown reads as active. */
+export function toProjectStatus(value: unknown): ProjectStatus {
+  return isProjectStatus(value) ? value : 'active'
+}
+
 /**
  * The Abschluss a project has: its `ended_on`, but only once it is closed. An
  * active or paused project is still running whatever is stored (a reopen keeps
@@ -83,6 +88,8 @@ export interface ProjectLifecycleView {
   closedAt: string | null
   /** How it ended; set while closed. */
   closedOutcome: ProjectOutcome | null
+  /** The outcome a close offers: what an earlier close said, kept across a reopen; null means none yet. */
+  suggestedOutcome: ProjectOutcome | null
   /** The Abschluss month; set while closed. */
   endedOn: Month | null
   /** The Beginn month, which an Abschluss may not precede. */
@@ -112,7 +119,8 @@ export function lifecycleViewOf(project: LifecycleRow): ProjectLifecycleView {
     status: project.status,
     pausedAt: iso(project.pausedAt),
     closedAt: iso(project.closedAt),
-    closedOutcome: project.closedOutcome,
+    closedOutcome: isProjectClosed(project) ? project.closedOutcome : null,
+    suggestedOutcome: project.closedOutcome,
     endedOn: dateToMonth(abschlussOf(project)),
     startedOn,
     suggestedEndedOn: stored && isOrderedPeriod(startedOn, stored) ? stored : null,
@@ -129,12 +137,32 @@ export function abschlussBounds(startedOn: Month | null, thisMonth: Month): { mi
   return { min: startedOn, max: startedOn && startedOn > thisMonth ? startedOn : thisMonth }
 }
 
+/** Why a month cannot be a close's Abschluss, or null: it must be a month within `abschlussBounds`. */
+export function abschlussProblem(
+  endedOn: string,
+  startedOn: Month | null,
+  thisMonth: Month
+): 'invalid' | 'future' | 'beforeStart' | null {
+  if (!isMonth(endedOn)) return 'invalid'
+  const { min, max } = abschlussBounds(startedOn, thisMonth)
+  if (endedOn > max) return 'future'
+  if (min && endedOn < min) return 'beforeStart'
+  return null
+}
+
 /** The month a close offers first: an earlier close's, when it still fits, else the latest allowed. */
 export function defaultAbschluss(suggested: Month | null, startedOn: Month | null, thisMonth: Month): Month {
   const { min, max } = abschlussBounds(startedOn, thisMonth)
   if (suggested && suggested <= max && (!min || suggested >= min)) return suggested
   return max
 }
+
+/**
+ * What a scheduled run skipped because its project was not active records as
+ * its `error`. Resuming or reopening reads it back to re-arm the one-shots
+ * those skips retired (`rearmOneShotsSkippedWhileParked`).
+ */
+export const SCHEDULE_SKIPPED_BECAUSE = { paused: 'Project is paused', closed: 'Project is closed' } as const
 
 /** Whether a project's schedules fire: only an active one's. Paused and closed record a skipped run, so resuming resumes them. */
 export function runsOnSchedule(project: { status?: ProjectStatus | string | null } | null | undefined): boolean {

@@ -11,6 +11,8 @@
 import 'server-only'
 import { and, desc, eq, inArray, isNotNull, lt, notInArray, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant-context'
+import { SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import {
   documents,
   taskDefinitions,
@@ -272,6 +274,41 @@ export async function touchDefinitionLastRun(definitionId: string, at: Date): Pr
     .update(taskDefinitions)
     .set({ lastRunAt: at })
     .where(eq(taskDefinitions.id, definitionId))
+}
+
+/**
+ * Re-arm the dated one-shots of a project that the scheduler retired while the
+ * project was paused or closed (ADR-0098). The claim nulls a one-shot's
+ * `next_run_at` before it fires, so a skip would lose it for good; this puts
+ * each one that never ran back in the due-scan, due now. A one-shot that ran,
+ * one somebody switched off, and a recurring schedule (which just takes its
+ * next turn) are left alone. Returns how many came back.
+ */
+export async function rearmOneShotsSkippedWhileParked(projectId: string, organizationId: string): Promise<number> {
+  const db = getDb()
+  const skipped = Object.values(SCHEDULE_SKIPPED_BECAUSE)
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .update(taskDefinitions)
+      .set({ nextRunAt: sql`now()` })
+      .where(
+        and(
+          eq(taskDefinitions.projectId, projectId),
+          eq(taskDefinitions.organizationId, organizationId),
+          eq(taskDefinitions.trigger, 'once'),
+          isNotNull(taskDefinitions.dueAt),
+          eq(taskDefinitions.enabled, true),
+          sql`${taskDefinitions.nextRunAt} IS NULL`,
+          sql`EXISTS (SELECT 1 FROM ${taskRuns} r WHERE r.definition_id = ${taskDefinitions.id} AND r.status = 'skipped' AND r.error IN (${sql.join(
+            skipped.map((reason) => sql`${reason}`),
+            sql`, `
+          )}))`,
+          sql`NOT EXISTS (SELECT 1 FROM ${taskRuns} r WHERE r.definition_id = ${taskDefinitions.id} AND r.status <> 'skipped')`
+        )
+      )
+      .returning({ id: taskDefinitions.id })
+  )
+  return rows.length
 }
 
 /** Where a revision task's document is now, by document id. */

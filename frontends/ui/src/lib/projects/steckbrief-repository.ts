@@ -5,7 +5,7 @@
  */
 
 import 'server-only'
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withTenant } from '@/lib/db/tenant-context'
 import { projectPeople, projects, type ProjectPersonRow } from '@/lib/db/schema'
@@ -48,7 +48,16 @@ export async function updateProjectPeriod(
         startedOn,
         endedOn: sql`CASE WHEN ${projects.status} <> 'closed' AND ${projects.endedOn} < ${startedOn}::date THEN NULL ELSE ${projects.endedOn} END`,
       })
-      .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId), isNull(projects.deletedAt)))
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNull(projects.deletedAt),
+          // A close that committed after the service's access check: the row is
+          // read-only now, so nothing changes (ADR-0090).
+          ne(projects.status, 'closed')
+        )
+      )
       .returning({ startedOn: projects.startedOn, endedOn: projects.endedOn, status: projects.status })
   )
   return row ?? null

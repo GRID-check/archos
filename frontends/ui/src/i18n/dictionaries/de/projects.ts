@@ -123,7 +123,8 @@ export const projects: typeof en.projects = {
     },
     banner: {
       title: 'Abgeschlossenes Projekt · nur lesen',
-      closedOn: 'Abgeschlossen am {date}.',
+      endedIn: 'Abschluss {month}.',
+      closedOn: 'In Piloti abgeschlossen am {date}.',
       cancelled: 'Es wurde nicht realisiert.',
       body: 'Dateien, Ordner, Briefing und Projektgedächtnis sind schreibgeschützt. Fragen im Chat bleiben möglich.',
       outsider:
@@ -141,7 +142,7 @@ export const projects: typeof en.projects = {
       closedDescription:
         'Schreibgeschützt und für das ganze Büro lesbar, als Referenz für künftige Projekte. Ordner mit eigener Zugriffsliste bleiben eingeschränkt. Wieder geöffnet ist es bearbeitbar und nur noch für seine Mitglieder sichtbar.',
       closedFacts: '{outcome} · Abschluss {month}',
-      closedOn: 'Abgeschlossen am {date}',
+      closedOn: 'In Piloti abgeschlossen am {date}',
       pausedOn: 'Ruht seit {date}',
       whichOne:
         'Pausieren, wenn das Projekt wartet und weitergeht. Abschließen, wenn die Arbeit vorbei ist, ob gebaut oder nicht.',
@@ -270,6 +271,7 @@ export const projects: typeof en.projects = {
       closed: 'Projekt abgeschlossen.',
       reopened: 'Projekt wieder geöffnet.',
       error: 'Der Projektstatus konnte nicht geändert werden.',
+      conflict: 'Jemand hat den Projektstatus inzwischen geändert. Die Seite zeigt jetzt den aktuellen Stand.',
     },
   },
   card: {

@@ -126,7 +126,8 @@ export const projects = {
     },
     banner: {
       title: 'Closed project · read-only',
-      closedOn: 'Closed on {date}.',
+      endedIn: 'Completed {month}.',
+      closedOn: 'Closed in Piloti on {date}.',
       cancelled: 'It was not realized.',
       body: 'Files, folders, the brief and project memory can no longer be changed. You can still ask about it in chat.',
       outsider:
@@ -144,7 +145,7 @@ export const projects = {
       closedDescription:
         'Read-only and readable by the whole office, as a reference for future projects. Folders with their own access list stay restricted. Reopened, it is editable again and visible only to its members.',
       closedFacts: '{outcome} · completion {month}',
-      closedOn: 'Closed on {date}',
+      closedOn: 'Closed in Piloti on {date}',
       pausedOn: 'Paused since {date}',
       whichOne: 'Pause when the project is waiting and will go on. Close when the work is over, built or not.',
       pause: 'Pause',
@@ -271,6 +272,7 @@ export const projects = {
       closed: 'Project closed.',
       reopened: 'Project reopened.',
       error: 'The project status could not be changed.',
+      conflict: 'Someone changed the project status meanwhile. The page now shows where it stands.',
     },
   },
   card: {

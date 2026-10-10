@@ -75,7 +75,10 @@ write one event. Each move is audited under its own name: `project.paused`,
 **Paused** (`Ruhend`) changes no access and freezes nothing: the project stays
 writable and visible to its members only. It leaves the list's „Aktiv" view and
 the „Weitermachen" rail, and its schedules record a skipped run
-(`runsOnSchedule`), as a closed project's do, so resuming resumes them. Pausing
+(`runsOnSchedule`), as a closed project's do. A recurring schedule takes its
+next turn after a resume; a dated one-shot, which the scheduler's claim retires
+before it fires, is re-armed by the move back to active
+(`rearmOneShotsSkippedWhileParked`), so a pause or close never loses it. Pausing
 asks nothing, and its toast offers the undo. `paused_at` is set exactly when
 paused (CHECK).
 
@@ -83,7 +86,9 @@ paused (CHECK).
 bypass, open to the office for reading and chat, no restricted folder opened,
 the 0116 insert guard. It now also says how it ended, `closed_outcome`
 `completed` (fertiggestellt) or `cancelled` (nicht realisiert); both stay
-references, and the chip and banner say which.
+references, and the chip and banner say which. The outcome is chosen, never
+preselected, unless an earlier close of the project named one, which a reopen
+keeps as the next close's suggestion, as it keeps the Abschluss.
 
 **The Abschluss is the closing's.** `ended_on` is no longer a field of the
 Steckbrief: the Steckbrief edits the Beginn only (`PUT …/steckbrief` refuses an
@@ -110,11 +115,17 @@ projects out unless one is open.
 
 * Good, because a date can no longer stand in for a state, and the Steckbrief's period means one thing.
 * Good, because tidying the list no longer opens a project to the office.
-* Good, because the outcome makes a lost competition a reference of its own kind.
+* Good, because a lost competition is told apart from a handed-over building wherever the project is named.
 * Good, because nothing in the authorization seam changed: `paused` is not `closed`, so every ADR-0090 rule applies as before.
 * Bad, because an Abschluss someone typed into a running project before this change stays stored but unread until that project is closed, where it is offered as the suggestion.
 * Bad, because a closed project's Abschluss cannot be corrected without reopening and closing it again.
 * Neutral: the agent's `Projekt:` line reads `ruhend` for a paused project; nothing else on the Python side reads the status beyond `closed`.
+* Bad, because the outcome is shown, not yet used: neither the similar-projects ranking nor the agent's reference line reads it, so a competition entry that was never built is cited like any closed project.
+* Bad, because work after handover (a Gewährleistung claim, a Schlussrechnung) needs a reopen, which takes the project from the office until it is closed again.
+* Bad, because closing opens the project to the whole office on the project admin's decision alone; there is no confidentiality opt-out.
+* Bad, because every project closed before 0129 is backfilled as `completed`; one that was never built has to be reopened and closed again.
+
+The last four are open product questions put to the product owner with this ADR (`audit/project-lifecycle-2026-10.md`, review round).
 
 ### Confirmation
 

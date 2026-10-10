@@ -122,7 +122,7 @@ class SourceProject(BaseModel):
 
     id: str
     name: str
-    #: ``active`` or ``closed``.
+    #: ``active``, ``paused`` or ``closed`` (ADR-0098).
     status: str
     #: Its Bundesland as the model reads it, with a warning when it is not
     #: the chat project's: a precedent from another Land was decided under

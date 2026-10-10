@@ -75,3 +75,50 @@ be done": being done is what makes a project the office's reference
 * **Correcting a closed project's Abschluss** needs a reopen and a close. Rare,
   and allowing a write into a closed project would be a second exception to
   ADR-0090.
+
+## Review round, 10 Oct 2026
+
+Two independent reviews of PR #979: one from the business and
+requirements side, one technical. What they found, and where each item stands.
+
+### Fixed in the PR
+
+| Finding | Fix |
+|---|---|
+| A close racing a Steckbrief save of a later Beginn answered 500 (CHECK 23514), and a Beginn save racing a close could write into a closed project | The closing UPDATE also requires the Beginn not to lie after the Abschluss, and the period UPDATE skips a closed row; both races now lose cleanly (409, or the closed-project refusal) |
+| A pause (or close) silently lost a dated one-shot: the scheduler's claim retires it before the skip | Moving back to active re-arms each dated one-shot that was skipped while parked and never ran (`rearmOneShotsSkippedWhileParked`) |
+| Reopen and re-close turned a „nicht realisiert" project into „fertiggestellt" | The outcome is kept across a reopen as the next close's suggestion, like the Abschluss; the CHECK now only requires it while closed |
+| The outcome was preselected | Chosen explicitly, unless an earlier close named one |
+| The banner led with the click date, so a project finished in 2019 and closed today read „Abgeschlossen am 10. Oktober 2026" | It leads with „Abschluss ‹Monat›", then „In Piloti abgeschlossen am …" |
+| The paid clean-out proposal was asked for on opening the dialog | Asked once the person moves past step one |
+| „This month" was the UTC month | `currentMonth()`, in the office's time zone (Europe/Vienna), on both sides |
+| A 409 from someone else's move left the page stale; every surface mounted dialogs it never opened; the banner was a live `alert` on every page | Refresh with a message on 409; dialogs mounted only while open; the banner is `role="status"` |
+| Status coercion copied four times; the Abschluss bounds checked twice | `toProjectStatus`, `abschlussProblem` in `project-status.ts` |
+| An outage asking for the banner's control was swallowed silently | Logged; the control hides, the page stays |
+| Release note: tasks „wait" (they are skipped), nothing on the backfill or the hidden months | Corrected |
+| Tests: no route test for the strict bodies, none for the rail rule or the filter | `status/route.spec.ts`, `resume-selection.spec.ts`, `status-filter.spec.ts` |
+
+Not taken: replacing the banner's permission check with `access.role ===
+'project-admin'`. The repo checks a permission, never a role name
+(`frontends/ui/AGENTS.md`).
+
+### Open for the product owner
+
+1. **The outcome model.** „Nicht realisiert" mislabels a lost competition (the
+   building usually is built, by the winner), and an office commissioned only
+   for the Einreichplanung fits neither answer. Proposal: *Auftrag erfüllt /
+   vorzeitig beendet / nicht beauftragt*, with the brief's `projektphase`
+   confirmed as the last phase reached. And whether the outcome should reach
+   the agent's reference line and the similar-projects ranking (today it is
+   shown, not used).
+2. **Ausmisten's defaults** (ADR-0092: everything starts selected). Older plan
+   indices are liability evidence (§ 933 ABGB, § 1489 ABGB, § 132 BAO).
+   Proposal: never preselect `older-version` or `same-content`, and make
+   „Abschließen, ohne etwas zu entfernen" the primary button.
+3. **Work after handover.** Gewährleistung claims and the Schlussrechnung are
+   routine writes after the close; today they need a reopen, which takes the
+   project from the office. Options: correct outcome and Abschluss in place;
+   closed → paused; a writable folder in a closed project.
+4. **Ruhend at all, and who may close.** The state was not asked for. And
+   closing opens a project to the whole office on the project admin's say
+   alone, with no confidentiality opt-out.

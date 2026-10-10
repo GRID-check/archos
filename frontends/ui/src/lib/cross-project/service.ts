@@ -50,7 +50,7 @@ import { searchProjectDecisions, type DecisionScope, type FoundDecision } from '
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { searchPermitRequirements, type FoundPermitRecord } from '@/lib/permits/repository'
 import { bundeslandOf, rankBySimilarity } from './similarity'
-import { abschlussOf } from '@/lib/projects/project-status'
+import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
   CROSS_PROJECT_PAGE_PROJECTS,
@@ -117,7 +117,7 @@ function party(caller: CrossProjectCaller): HandOutParty {
 
 /** A project's status (ADR-0098): active, paused or closed; anything unreadable reads as active. */
 export function projectStatusOf(project: Pick<Project, 'status'>): ProjectStatus {
-  return project.status === 'closed' || project.status === 'paused' ? project.status : 'active'
+  return toProjectStatus(project.status)
 }
 
 /**

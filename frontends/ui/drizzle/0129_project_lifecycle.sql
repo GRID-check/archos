@@ -23,9 +23,10 @@
 -- cannot exist. Every closed row already has one (closing filled it since
 -- 0117); the UPDATE covers a row written by hand.
 --
--- `ended_on` is left alone on an active or paused project: a reopened project
--- keeps the month it was closed in, and the next close offers it again. No
--- surface reads it there.
+-- `ended_on` and `closed_outcome` are left alone on an active or paused
+-- project: a reopened project keeps how and when it was closed, and the next
+-- close offers both again. No surface reads them there (`abschlussOf`,
+-- `lifecycleViewOf`).
 
 ALTER TABLE "projects" ADD COLUMN IF NOT EXISTS "paused_at" timestamp with time zone;
 --> statement-breakpoint
@@ -50,10 +51,10 @@ ALTER TABLE "projects"
 --> statement-breakpoint
 ALTER TABLE "projects" DROP CONSTRAINT IF EXISTS "projects_closed_outcome_check";
 --> statement-breakpoint
--- Closed exactly when it says how it ended, and a closed project has an Abschluss.
+-- A closed project says how it ended and has an Abschluss.
 ALTER TABLE "projects"
   ADD CONSTRAINT "projects_closed_outcome_check" CHECK (
-    ("status" = 'closed') = ("closed_outcome" IS NOT NULL)
+    ("status" <> 'closed' OR "closed_outcome" IS NOT NULL)
     AND ("closed_outcome" IS NULL OR "closed_outcome" IN ('completed', 'cancelled'))
     AND ("status" <> 'closed' OR "ended_on" IS NOT NULL)
   );
@@ -63,6 +64,6 @@ COMMENT ON COLUMN "projects"."status" IS
 --> statement-breakpoint
 COMMENT ON COLUMN "projects"."paused_at" IS 'When the project was paused. Set exactly when status = paused.';
 --> statement-breakpoint
-COMMENT ON COLUMN "projects"."closed_outcome" IS 'How a closed project ended: completed or cancelled (not realized). Set exactly when status = closed.';
+COMMENT ON COLUMN "projects"."closed_outcome" IS 'How a closed project ended: completed or cancelled (not realized). Never empty on a closed project; kept across a reopen as the next close''s suggestion.';
 --> statement-breakpoint
 COMMENT ON COLUMN "projects"."ended_on" IS 'Abschluss, the first of its month. Set by closing (ADR-0098) and never empty on a closed project; kept across a reopen as the next close''s suggestion.';

@@ -22,6 +22,11 @@ vi.mock('./repository', () => ({
   findProjectInOrg: (...args: unknown[]) => findProjectInOrg(...args),
 }))
 
+const rearmOneShotsSkippedWhileParked = vi.fn(async () => 0)
+vi.mock('@/lib/tasks/repository', () => ({
+  rearmOneShotsSkippedWhileParked: (...args: unknown[]) => rearmOneShotsSkippedWhileParked(...(args as [])),
+}))
+
 const recordAuditEvent = vi.fn()
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: (...args: unknown[]) => recordAuditEvent(...args) }))
 vi.mock('@/lib/workos/client', () => ({ getWorkOS: vi.fn() }))
@@ -131,6 +136,9 @@ describe('setProjectStatus', () => {
     await setProjectStatus(session, 'p1', { status: 'active' })
     expect(setProjectStatusInOrg).toHaveBeenLastCalledWith('p1', 'org_1', 'paused', { status: 'active' })
     expect(recordAuditEvent).toHaveBeenLastCalledWith(expect.objectContaining({ action: 'project.resumed' }))
+    // Pausing re-armed nothing; resuming brings back the one-shots the pause retired.
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledTimes(1)
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledWith('p1', 'org_1')
   })
 
   it('reopens a closed project, audited as such', async () => {
@@ -141,6 +149,18 @@ describe('setProjectStatus', () => {
 
     expect(setProjectStatusInOrg).toHaveBeenCalledWith('p1', 'org_1', 'closed', { status: 'active' })
     expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.reopened' }))
+    expect(rearmOneShotsSkippedWhileParked).toHaveBeenCalledWith('p1', 'org_1')
+  })
+
+  it('a failure re-arming one-shots does not undo or fail a move that happened', async () => {
+    findProjectInOrg.mockResolvedValue(makeProject({ id: 'p1', status: 'paused', pausedAt: NOW }))
+    setProjectStatusInOrg.mockResolvedValue(makeProject({ id: 'p1' }))
+    rearmOneShotsSkippedWhileParked.mockRejectedValueOnce(new Error('db down'))
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    await expect(setProjectStatus(session, 'p1', { status: 'active' })).resolves.toMatchObject({ id: 'p1' })
+    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.resumed' }))
+    quiet.mockRestore()
   })
 
   it.each([

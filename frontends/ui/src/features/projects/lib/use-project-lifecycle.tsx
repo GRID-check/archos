@@ -77,6 +77,12 @@ export function useProjectLifecycle({
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(body),
       })
+      if (res.status === 409) {
+        // Someone moved it first: say so, and show where it stands now.
+        toast.error(t('lifecycle.toast.conflict'))
+        router.refresh()
+        return false
+      }
       if (!res.ok) throw new Error(String(res.status))
       toast.success(done, body.status === 'paused' ? { action: { label: t('lifecycle.toast.undo'), onClick: () => void resume() } } : undefined)
       router.refresh()
@@ -101,16 +107,16 @@ export function useProjectLifecycle({
 
   const dialogs = (
     <>
-      {lifecycle.status !== 'closed' && (
-        <CloseProjectDialog projectId={projectId} lifecycle={lifecycle} open={closing} onOpenChange={setClosing} onClose={close}>
-          {closing && (
-            <ClosingDebrief projectId={projectId} profile={profile} startedOn={lifecycle.startedOn} canWriteMemory={canWriteMemory} />
-          )}
+      {/* Mounted only while asked for: a surface that never opens a dialog
+          (the banner never closes a project) holds none. */}
+      {closing && lifecycle.status !== 'closed' && (
+        <CloseProjectDialog projectId={projectId} lifecycle={lifecycle} open onOpenChange={setClosing} onClose={close}>
+          <ClosingDebrief projectId={projectId} profile={profile} startedOn={lifecycle.startedOn} canWriteMemory={canWriteMemory} />
         </CloseProjectDialog>
       )}
-      {lifecycle.status === 'closed' && (
+      {reopening && lifecycle.status === 'closed' && (
         <ConfirmDialog
-          open={reopening}
+          open
           onOpenChange={setReopening}
           tone="default"
           title={t('lifecycle.reopenDialog.title')}

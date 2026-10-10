@@ -15,10 +15,12 @@
  *      item pre-selected and deselectable. Only what is still selected goes to
  *      the Papierkorb, and only when the person confirms; then it closes.
  *
- * Steps two and three ask nothing that is required: „Weiter" is always open,
+ * The outcome is chosen, never preselected, unless an earlier close of this
+ * project named one: a default would nudge a late tidy-up towards the wrong
+ * record. Steps two and three ask nothing that is required: „Weiter" is open,
  * and closing without removing anything is always one button. The proposal is
- * asked for when the dialog opens, which a person does deliberately: it is a
- * paid model call (a POST), and it has the two first steps' time to arrive.
+ * a paid model call (a POST), so it is asked for once the person moves past
+ * the first step, not when the dialog opens; step two is its time to arrive.
  */
 
 import { useEffect, useState, type JSX, type ReactNode } from 'react'
@@ -35,14 +37,20 @@ import { Stepper } from '@/components/ui/stepper'
 import { useLocale, useTranslations } from '@/i18n'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
 import { CLEANUP_PARTIALLY_UNDONE_REASON } from '@/lib/projects/cleanup-types'
-import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
-import { abschlussBounds, defaultAbschluss, type ProjectLifecycleView, type ProjectOutcome } from '@/lib/projects/project-status'
+import { currentMonth, isMonth } from '@/lib/projects/month'
+import {
+  abschlussBounds,
+  abschlussProblem,
+  defaultAbschluss,
+  type ProjectLifecycleView,
+  type ProjectOutcome,
+} from '@/lib/projects/project-status'
 import type { ClosingChoice } from '../lib/use-project-lifecycle'
 
 export interface CloseProjectDialogProps {
   projectId: string
   /** Where the project stands: its Beginn bounds the Abschluss, and an earlier close suggests one. */
-  lifecycle: Pick<ProjectLifecycleView, 'startedOn' | 'suggestedEndedOn'>
+  lifecycle: Pick<ProjectLifecycleView, 'startedOn' | 'suggestedEndedOn' | 'suggestedOutcome'>
   open: boolean
   onOpenChange: (open: boolean) => void
   /** Close the project as chosen; resolves true when it closed. */
@@ -65,10 +73,10 @@ export function CloseProjectDialog({
 }: CloseProjectDialogProps): JSX.Element {
   const t = useTranslations('projects')
   const { locale } = useLocale()
-  const thisMonth = dateToMonth(new Date()) as Month
+  const thisMonth = currentMonth()
   const [step, setStep] = useState(0)
   const [furthest, setFurthest] = useState(0)
-  const [outcome, setOutcome] = useState<ProjectOutcome>('completed')
+  const [outcome, setOutcome] = useState<ProjectOutcome | null>(lifecycle.suggestedOutcome ?? null)
   const [endedOn, setEndedOn] = useState<string>(() => defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, thisMonth))
   const [load, setLoad] = useState<Load>({ state: 'loading' })
   const [selected, setSelected] = useState<Set<string>>(new Set())
@@ -78,13 +86,19 @@ export function CloseProjectDialog({
 
   useEffect(() => {
     if (!open) return
-    let cancelled = false
     setStep(0)
     setFurthest(0)
-    setOutcome('completed')
-    setEndedOn(defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, dateToMonth(new Date()) as Month))
+    setOutcome(lifecycle.suggestedOutcome ?? null)
+    setEndedOn(defaultAbschluss(lifecycle.suggestedEndedOn, lifecycle.startedOn, currentMonth()))
     setLoad({ state: 'loading' })
     setError(false)
+  }, [open, lifecycle.suggestedOutcome, lifecycle.suggestedEndedOn, lifecycle.startedOn])
+
+  // The proposal, once per opening, as soon as the person is past step one.
+  const askForProposal = open && furthest >= 1
+  useEffect(() => {
+    if (!askForProposal) return
+    let cancelled = false
     fetch(`/api/projects/${projectId}/cleanup/proposal`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
@@ -105,12 +119,13 @@ export function CloseProjectDialog({
     return () => {
       cancelled = true
     }
-  }, [open, projectId, locale, lifecycle.suggestedEndedOn, lifecycle.startedOn])
+  }, [askForProposal, projectId, locale])
 
   const proposal = load.state === 'ready' ? load.proposal : null
   const items = proposal?.items ?? []
   const bounds = abschlussBounds(lifecycle.startedOn, thisMonth)
-  const abschlussError = abschlussProblem(endedOn, bounds)
+  const abschlussError = abschlussProblem(endedOn, lifecycle.startedOn, thisMonth)
+  const endingAnswered = outcome !== null && abschlussError === null
   const last = step === STEPS.length - 1
 
   const goTo = (index: number): void => {
@@ -127,7 +142,7 @@ export function CloseProjectDialog({
     })
 
   const finish = async (remove: boolean): Promise<void> => {
-    if (abschlussError || !isMonth(endedOn)) {
+    if (!outcome || abschlussError || !isMonth(endedOn)) {
       goTo(0)
       return
     }
@@ -182,7 +197,7 @@ export function CloseProjectDialog({
             <Field>
               <FieldLabel id="close-outcome-label">{t('lifecycle.closeDialog.outcome.label')}</FieldLabel>
               <ChoiceCardGroup
-                value={outcome}
+                value={outcome ?? ''}
                 onValueChange={(value) => setOutcome(value === 'cancelled' ? 'cancelled' : 'completed')}
                 aria-labelledby="close-outcome-label"
                 className="sm:grid-cols-2"
@@ -303,7 +318,7 @@ export function CloseProjectDialog({
             </Button>
           )}
           {!last ? (
-            <Button onClick={() => goTo(step + 1)} disabled={step === 0 && abschlussError !== null}>
+            <Button onClick={() => goTo(step + 1)} disabled={step === 0 && !endingAnswered}>
               {t('lifecycle.closeDialog.next')}
             </Button>
           ) : (
@@ -328,14 +343,6 @@ export function CloseProjectDialog({
       </DialogContent>
     </Dialog>
   )
-}
-
-/** Why an Abschluss cannot be taken, or null: it must be a month within `abschlussBounds`. */
-function abschlussProblem(endedOn: string, bounds: { min: Month | null; max: Month }): 'invalid' | 'future' | 'beforeStart' | null {
-  if (!isMonth(endedOn)) return 'invalid'
-  if (endedOn > bounds.max) return 'future'
-  if (bounds.min && endedOn < bounds.min) return 'beforeStart'
-  return null
 }
 
 /** The folders a clean-out that could not be fully undone may have left files in; null for any other failure. */

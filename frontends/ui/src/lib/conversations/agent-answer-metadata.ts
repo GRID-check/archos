@@ -54,7 +54,7 @@
 import { CITATIONS_PAYLOAD_VERSION } from '@/features/chat/lib/citations'
 import type { WireCitationSource } from '@/features/chat/types'
 import { sanitizeProvenance, type MessageProvenance } from './message-provenance'
-import type { ProjectStatus } from '@/lib/projects/project-status'
+import { toProjectStatus, type ProjectStatus } from '@/lib/projects/project-status'
 import { sanitizeAnswerMeta } from './message-answer-meta'
 import { sanitizeFindings } from './message-findings'
 
@@ -211,7 +211,7 @@ function storedProject(value: unknown): StoredCitationSource['project'] {
   if (!isRecord(value)) return undefined
   const id = text(value.id, MAX_IDENTIFIER)
   if (!id) return undefined
-  return { id, name: text(value.name, MAX_TEXT) ?? '', status: value.status === 'closed' || value.status === 'paused' ? value.status : 'active' }
+  return { id, name: text(value.name, MAX_TEXT) ?? '', status: toProjectStatus(value.status) }
 }
 
 /**

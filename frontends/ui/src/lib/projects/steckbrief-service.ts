@@ -29,7 +29,7 @@ import type { ProjectPersonRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { findProjectProfile } from './repository'
 import { dateToMonth, monthToDate, type Month } from './month'
-import { abschlussOf } from './project-status'
+import { abschlussOf, isProjectClosed, projectClosedError } from './project-status'
 import {
   deleteProjectPersonRow,
   findProjectPeriod,
@@ -109,7 +109,11 @@ export async function setProjectPeriod(
 ): Promise<{ startedOn: Month | null }> {
   await requireProjectAccess(session, projectId, STECKBRIEF_WRITE)
   const row = await updateProjectPeriod(projectId, session.organizationId, toDate(input.startedOn))
-  if (!row) throw new NotFoundError()
+  if (!row) {
+    // Closed between the access check and the write, or gone.
+    if (isProjectClosed(await findProjectPeriod(projectId, session.organizationId))) throw projectClosedError()
+    throw new NotFoundError()
+  }
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },

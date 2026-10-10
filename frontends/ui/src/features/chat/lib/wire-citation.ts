@@ -6,6 +6,7 @@
 import type { CitationProject, CitationSource, WireCitationSource } from '../types'
 import { asShelf, asSourceKind } from './source-kinds'
 import { parsePageRegions } from '@/features/knowledge/lib/page-region'
+import { toProjectStatus } from '@/lib/projects/project-status'
 
 const trimmed = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined
@@ -29,7 +30,7 @@ export const projectFromWire = (value: unknown): CitationProject | undefined => 
   return {
     id: projectId,
     name: trimmed(name) ?? '',
-    status: status === 'closed' || status === 'paused' ? status : 'active',
+    status: toProjectStatus(status),
     landNote: trimmed(landNote) ?? null,
   }
 }

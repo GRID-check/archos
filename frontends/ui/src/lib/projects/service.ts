@@ -31,14 +31,15 @@ import type {
 } from '@/lib/db/schema'
 import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
 import {
-  abschlussBounds,
+  abschlussProblem,
   canTransition,
   isProjectClosed,
   keptWhenClosed,
   openToOrganizationWhenClosed,
   type ProjectOutcome,
 } from './project-status'
-import { dateToMonth, monthToDate, type Month } from './month'
+import { currentMonth, dateToMonth, monthToDate, type Month } from './month'
+import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
 import { withServedEvidence } from './memory-evidence'
@@ -380,7 +381,7 @@ export async function setProjectStatus(
           at: now,
           closedBy: session.userId,
           outcome: change.outcome,
-          endedOn: monthToDate(abschlussOrRefuse(change.endedOn, dateToMonth(current.startedOn), now)),
+          endedOn: monthToDate(abschlussOrRefuse(change.endedOn, dateToMonth(current.startedOn), currentMonth(now))),
         }
       : change.status === 'paused'
         ? { status: 'paused', at: now }
@@ -389,6 +390,7 @@ export async function setProjectStatus(
   if (!project) {
     throw new ConflictError('The project changed meanwhile.', { reason: 'invalid-transition', from, to: change.status })
   }
+  if (change.status === 'active') await rearmParkedOneShots(projectId, session.organizationId)
 
   await recordAuditEvent({
     organizationId: session.organizationId,
@@ -414,13 +416,26 @@ export async function setProjectStatus(
   return project
 }
 
+/**
+ * The dated one-shots a pause or close retired, due again now that the project
+ * runs (ADR-0098). After the move has committed, so a failure here is logged,
+ * not turned into an error for a move that happened.
+ */
+async function rearmParkedOneShots(projectId: string, organizationId: string): Promise<void> {
+  try {
+    await rearmOneShotsSkippedWhileParked(projectId, organizationId)
+  } catch (error) {
+    console.error('[projects] re-arming one-shots skipped while the project was not active failed:', error)
+  }
+}
+
 /** The Abschluss a close names, or a 400: within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
-function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, now: Date): Month {
-  const { max } = abschlussBounds(startedOn, dateToMonth(now) as Month)
-  if (endedOn > max) {
+function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
+  const problem = abschlussProblem(endedOn, startedOn, thisMonth)
+  if (problem === 'future') {
     throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
   }
-  if (startedOn && endedOn < startedOn) {
+  if (problem === 'beforeStart') {
     throw new BadRequestError('The Abschluss cannot lie before the Beginn.', { reason: 'abschluss-before-beginn' })
   }
   return endedOn

@@ -201,13 +201,13 @@ You move a project from its **Overview**: the **Project status** card shows the 
 
 ### Pausing a project
 
-**Pause** asks nothing, because nothing about who may do what changes; the confirmation offers **Undo**. **Resume** brings it back to **Active**, and its scheduled tasks run again from their next turn.
+**Pause** asks nothing, because nothing about who may do what changes; the confirmation offers **Undo**. While paused, scheduled tasks are skipped, not queued. **Resume** brings it back to **Active**: a recurring task runs again at its next turn, and a one-time task whose date passed while the project was paused runs right away.
 
 ### Closing a project
 
 **Close project** takes three steps. Only the first asks anything you must answer; you can go back to any step you have seen.
 
-1. **Completion** („Abschluss"): how the project ended, **Completed** (built or handed over) or **Not realized** (a competition not won, a commission withdrawn), and the month the work ended. The month defaults to this one; for a project that ended earlier, enter that month. It cannot lie in the future or before the project's Beginn; when the Beginn is still ahead, it is the Beginn's month. Both go into the Steckbrief, and a project that was not realized says so wherever it appears. Below them, the dialog says once what closing changes.
+1. **Completion** („Abschluss"): how the project ended, **Completed** (built or handed over) or **Not realized** (a competition not won, a commission withdrawn), and the month the work ended. Nothing is preselected unless the project was closed before, in which case its earlier answer is offered. The month defaults to this one; for a project that ended earlier, enter that month. It cannot lie in the future or before the project's Beginn; when the Beginn is still ahead, it is the Beginn's month. Both go into the Steckbrief, and a project that was not realized says so wherever it appears. Below them, the dialog says once what closing changes.
 2. **What stays**: what this project should leave the office. Piloti offers a closed project's experience to every similar project later, in chat and on their [Similar projects](#similar-projects) page, so this step shows
    - **How Piloti finds it again**: the Bundesland, Gebäudeklasse, Bauweise, uses and kind of work it compares projects by, and the period. A fact still *open* makes the project harder to find; **Add in the brief** opens the intake wizard. A fact the brief does not ask of this project, such as the construction of a retaining wall, says *does not apply* and is not missing. The building class is derived rather than entered in the brief, so it is shown but not counted.
    - **What the office should keep**: the decisions and constraints the project memory holds. **Confirm** the ones that are right, and other projects cite them as confirmed by a person rather than as Piloti's reading. **Record a lesson** adds one in your words.
@@ -221,10 +221,10 @@ A closed project
 - keeps its **Papierkorb** restorable for 14 days: the project's admins can restore a folder from it without reopening the project.
 - stays **searchable**, and you can still **ask about it in chat**.
 - is **readable by everyone in your office**, members of the project or not, so finished work becomes reference for the whole office. Folders with their own access list stay exactly as restricted as before: someone who sees the project only because it is closed sees none of them, even one whose list names them, except the ones every project member may read.
-- says how and when it ended on its Overview, and opens every page with a line saying it is closed and since when. Its files say „‹Projekt› · abgeschlossen" wherever they appear: the preview, the chat's sources, the download log.
+- says how and when it ended on its Overview, and opens every page with a line saying when its work ended and when it was closed in Piloti. Its files say „‹Projekt› · abgeschlossen" wherever they appear: the preview, the chat's sources, the download log.
 - leaves the sidebar's project switcher, which lists where you work; you reach it from the projects list.
 
-**Reopen project** makes it editable again, and visible only to its members; it asks once, because it takes the project away from everyone else in the office. Its Abschluss is kept and offered again the next time it is closed, for a project reopened for a defect claim, say. You can still delete a closed project.
+**Reopen project** makes it editable again, and visible only to its members; it asks once, because it takes the project away from everyone else in the office. How and when it ended are kept and offered again the next time it is closed, for a project reopened for a defect claim, say. You can still delete a closed project.
 
 ## Members and permissions
 

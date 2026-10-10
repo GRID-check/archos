@@ -42,7 +42,7 @@ const posted = (fetchMock: ReturnType<typeof stub>) =>
     .filter(([url, init]) => url === '/api/projects/p1/cleanup' && init?.method === 'POST')
     .map(([, init]) => JSON.parse(String(init?.body)))
 
-const LIFECYCLE = { startedOn: '2023-04' as const, suggestedEndedOn: '2026-09' as const }
+const LIFECYCLE = { startedOn: '2023-04' as const, suggestedEndedOn: '2026-09' as const, suggestedOutcome: 'completed' as const }
 
 /** The dialog, walked to its third step, where the clear-out is decided. */
 async function renderAtCleanup(onClose: () => Promise<boolean>) {
@@ -68,7 +68,7 @@ describe('CloseProjectDialog', () => {
     expect(onClose).not.toHaveBeenCalled()
   })
 
-  test('opens on how the project ended: completed preselected, the earlier Abschluss offered, nothing asked of the server but the proposal', async () => {
+  test('opens on how the project ended, with an earlier close\'s outcome and month offered, and asks the server nothing yet', async () => {
     const fetchMock = stub(proposal())
     render(<CloseProjectDialog projectId="p1" lifecycle={LIFECYCLE} open onOpenChange={() => {}} onClose={vi.fn(async () => true)} />)
 
@@ -76,7 +76,26 @@ describe('CloseProjectDialog', () => {
     expect(screen.getByRole('radio', { name: /Completed/ })).toBeChecked()
     expect(screen.getByLabelText('Completion')).toHaveValue('2026-09')
     expect(screen.getByTestId('close-changes')).toHaveTextContent('become read-only')
+    // The proposal is a paid call: not for someone who only looked at step one.
+    expect(fetchMock).not.toHaveBeenCalled()
+    await userEvent.click(screen.getByRole('button', { name: 'Next' }))
     expect(fetchMock.mock.calls.map(([url]) => url)).toEqual(['/api/projects/p1/cleanup/proposal'])
+  })
+
+  test('without an earlier close, no outcome is preselected', async () => {
+    stub(proposal())
+    render(
+      <CloseProjectDialog
+        projectId="p1"
+        lifecycle={{ ...LIFECYCLE, suggestedOutcome: null }}
+        open
+        onOpenChange={() => {}}
+        onClose={vi.fn(async () => true)}
+      />
+    )
+    expect(screen.getByRole('radio', { name: /Completed/ })).not.toBeChecked()
+    expect(screen.getByRole('radio', { name: /Not realized/ })).not.toBeChecked()
+    expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
   })
 
   test('asks for the proposal with a POST, never a GET: it starts a paid model call', async () => {
