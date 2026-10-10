@@ -670,7 +670,7 @@ Cloudflare Email Routing to the founders' own mailboxes, and the landing
 site's contact form sends to the same mailboxes through Cloudflare's Email
 Service. Sending to verified destination addresses is free on every plan
 ([Email Service](https://developers.cloudflare.com/email-service/)). Why
-this path: [ADR-0090](../adr/0090-contact-form-via-cloudflare-email-sending.md).
+this path: [ADR-0098](../adr/0098-contact-form-via-cloudflare-email-sending.md).
 
 Kubernetes only. Docker Compose (`deploy/compose`) runs no landing-site
 service, so neither the form nor its variables exist there.
@@ -2438,9 +2438,10 @@ permission. Who holds what (`frontends/ui/src/lib/authz/catalog.ts`):
 
 **Once per environment, in this order:**
 
-1. Provision the permission and the role: `task fe:provision:authz` shows the
-   drift, `task fe:provision:authz -- --apply` writes it (ask first; it writes
-   to WorkOS).
+1. Provision the permission and the role. The deploy does this (Job
+   `grid-app-authz-catalog`); by hand, `task fe:provision:authz` shows the drift
+   and `task fe:provision:authz -- --apply` writes it (ask first; it writes to
+   WorkOS).
 2. Assign `platform:observability:view` to the **Connect application** as a
    scope (WorkOS dashboard → the Connect application → Scopes), next to
    `platform:organizations:view`. Do this **before** the `npm run up` that ships

@@ -146,7 +146,7 @@ beforeEach(() => {
   vi.mocked(resolvePinnedRequesterSession).mockImplementation(async (requester) =>
     sessionFor(requester.userId, requester.organizationId)
   )
-  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor' })
+  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
   vi.mocked(parseMail).mockResolvedValue(MAIL)
   vi.mocked(deliveryKey).mockReturnValue(KEY)
   vi.mocked(findDelivery).mockResolvedValue(null)
@@ -248,7 +248,7 @@ describe('accepting a mail', () => {
       order.push('verify')
       return { verdict: 'pass', fromAddress: 'anna@buero-a.at', fromName: null }
     })
-    vi.mocked(requireProjectAccess).mockImplementation(async () => (order.push('permission'), { role: 'project-editor' }))
+    vi.mocked(requireProjectAccess).mockImplementation(async () => (order.push('permission'), { role: 'project-editor', closed: false, readsBecauseClosed: false }))
     vi.mocked(parseMail).mockImplementation(async () => (order.push('parse'), MAIL))
     vi.mocked(findDelivery).mockImplementation(async () => (order.push('dedupe'), null))
     vi.mocked(enforceLimit).mockImplementation(async () => (order.push('limit'), {} as never))

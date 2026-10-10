@@ -30,6 +30,12 @@
  * anywhere but this mail's folder is passed over for ` (2)`, never superseded
  * (which would re-file someone else's document into the mail) and never sent
  * into the upload's cross-collection refusal.
+ *
+ * A file an earlier run of this mail filed that is still held by the content
+ * gate (ADR-0086) counts as filed and is not uploaded again: a quarantined one refuses every
+ * re-upload (`assertMayReplaceHeld`), so the retry would fail the same way
+ * until the import stops. A held file somebody else put under that name in the
+ * mail's folder is never replaced; the mail takes the next free name.
  */
 
 import 'server-only'
@@ -39,6 +45,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { MailImport, MailImportSkippedSample, MailImportSkipReason } from '@/lib/db/schema'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import type { UploadAuditChannel } from '@/lib/documents/shelf-upload'
+import { hasPassedScreening } from '@/lib/documents/document-reader'
 import { documentNameKey } from '@/lib/documents/name-match'
 import { findLiveDocumentByFilename, findProjectCollectionsHoldingFilename } from '@/lib/documents/repository'
 import {
@@ -352,8 +359,10 @@ export async function fileBytes(
   claimed: Set<string>,
   uploadBatchId: string | null = null,
 ): Promise<AttachmentOutcome> {
-  const filename = await freeFilename(context, folderId, desired, claimed)
+  const { filename, filed } = await freeFilename(context, folderId, desired, claimed)
   claimed.add(filename)
+  // Already filed and still held: nothing is written, as for unchanged bytes.
+  if (filed) return { filed: true, filename, unchanged: true }
   const file = new File([bytes as Uint8Array<ArrayBuffer>], filename, { type: contentType })
   let unchanged: boolean
   try {
@@ -372,31 +381,54 @@ export async function fileBytes(
   return { filed: true, filename, unchanged }
 }
 
+/** A name for a file of this mail; `filed` when an earlier run of it already filed it and it is still held. */
+interface FreeName {
+  filename: string
+  filed: boolean
+}
+
 /**
  * The first of `desired`, `desired (2)`… that this mail has not taken already
  * and that no document in the project has, in any of its collections, or that
- * only the one in this very folder has (a retry of this mail).
+ * only the one in this very folder has (a retry of this mail). A held document
+ * in this folder is the retry's only when the person this mail is filed as
+ * filed it; then it is already filed.
  */
 async function freeFilename(
   context: MailFilingTarget,
   folderId: string,
   desired: string,
   claimed: ReadonlySet<string>,
-): Promise<string> {
+): Promise<FreeName> {
   for (let n = 1; n <= MAX_NAME_ATTEMPTS; n += 1) {
     const candidate = documentNameKey(numberedFilename(desired, n))
     if (claimed.has(candidate)) continue
-    if (await nameIsFreeFor(context, folderId, candidate)) return candidate
+    const state = await nameStateFor(context, folderId, candidate)
+    if (state === 'free') return { filename: candidate, filed: false }
+    if (state === 'filed') return { filename: candidate, filed: true }
   }
   throw new Error(`no free filename for ${desired} after ${MAX_NAME_ATTEMPTS} attempts`)
 }
 
-/** No document of the project holds `filename`, or only the one already in `folderId`. */
-async function nameIsFreeFor(context: MailFilingTarget, folderId: string, filename: string): Promise<boolean> {
+/**
+ * `free`: no document of the project holds `filename`, or only a screened one
+ * already in `folderId` (this mail's retry). `filed`: the one in `folderId` is
+ * still held and the person this mail is filed as filed it. `taken`: anything
+ * else.
+ */
+async function nameStateFor(
+  context: MailFilingTarget,
+  folderId: string,
+  filename: string,
+): Promise<'free' | 'taken' | 'filed'> {
   const { organizationId } = context.session
   const holders = await findProjectCollectionsHoldingFilename(organizationId, context.projectId, filename)
-  if (holders.length === 0) return true
-  if (holders.length > 1) return false
+  if (holders.length === 0) return 'free'
+  if (holders.length > 1) return 'taken'
   const existing = await findLiveDocumentByFilename(organizationId, holders[0], filename)
-  return existing?.folderId === folderId
+  if (!existing || existing.folderId !== folderId) return 'taken'
+  if (hasPassedScreening(existing)) return 'free'
+  // Held by the content gate: the retry's own file is filed already; anyone
+  // else's is never replaced (a quarantined one refuses it anyway).
+  return existing.createdBy === context.session.userId ? 'filed' : 'taken'
 }

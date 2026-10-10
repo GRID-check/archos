@@ -55,7 +55,7 @@ beforeEach(() => {
   vi.stubEnv('GRID_INBOUND_MAIL_DOMAIN', 'piloti-post.at')
   vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', '')
   vi.stubEnv('GRID_PROJECT_MAIL_INBOX_ENABLED', 'true')
-  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor' })
+  vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
   vi.mocked(can).mockResolvedValue(false)
   vi.mocked(findProjectInOrg).mockResolvedValue({ id: 'project-a', name: 'Wohnbau' } as Project)
   vi.mocked(findActiveAddressForProject).mockResolvedValue(null)

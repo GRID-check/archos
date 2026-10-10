@@ -155,7 +155,7 @@ describe('the project target', () => {
   const projectTarget = INBOX_TARGET_REGISTRY.project
 
   it('lands a run outcome on the project automation page when the reader may view the project', async () => {
-    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer' })
+    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
     expect(access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1' })).toBe(
@@ -165,7 +165,7 @@ describe('the project target', () => {
   })
 
   it('lands on the task detail when the payload names the delegated task', async () => {
-    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer' })
+    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
     expect(
@@ -174,7 +174,7 @@ describe('the project target', () => {
   })
 
   it('falls back to the automation page when the task id is absent or blank', async () => {
-    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer' })
+    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access).not.toBeNull()
     expect(access!.deepLink({ itemType: 'job.completed', anchorId: 'backend-job-1' })).toBe(
@@ -189,7 +189,7 @@ describe('the project target', () => {
   })
 
   it('lands a filed mail on its folder in the project files, or on the file root', async () => {
-    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer' })
+    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await projectTarget.resolve(makeSession(), 'proj_1')
     expect(access!.deepLink({ itemType: 'inbound_mail.filed', anchorId: 'msg-1', folderId: 'f 1' })).toBe(
       '/app/projects/proj_1/files?folder=f%201',
