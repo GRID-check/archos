@@ -274,7 +274,6 @@ def test_the_client_scrubs_presigned_urls_out_of_exception_text(monkeypatch):
     import posthog
 
     monkeypatch.setattr(posthog, "Posthog", FakePosthog)
-    monkeypatch.setattr(posthog_client, "shutdown", lambda: None)
     assert posthog_client.get_client() is not None
 
     url = "https://s3.example/b/k?X-Amz-Signature=deadbeef"  # pragma: allowlist secret
