@@ -425,6 +425,17 @@ The Aspire ingestion key is NOT an env var on producers — it lives in the
 Kubernetes Secret `aspire-dashboard-secrets`, referenced only by the collector and the
 dashboard (see `docs/deployment/kubernetes.md` §9).
 
+## PostHog (ADR-0098)
+
+The browser and BFF read `NEXT_PUBLIC_POSTHOG_HOST` / `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` ([Frontend](#frontend)). The Python tiers read their own pair, below. With either value of a pair unset, that runtime sends nothing to PostHog. LLM traces and scores never go from here to PostHog directly. They reach it through Langfuse's PostHog integration ([`observability/posthog-migration.md`](../observability/posthog-migration.md)).
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `POSTHOG_HOST` | No | _(unset)_ | PostHog ingestion host (e.g. `https://eu.i.posthog.com`) for the Python backend roles (chat, api, workers): error tracking for caught-and-logged exceptions (`src/aiq_agent/observability/posthog_client.py`). Both this and the token must be set, or the backend sends nothing. On Kubernetes it is set from `grid-oib:posthogHost`. aiq-agent, aiq-api, agent-worker, ingest-worker. |
+| `POSTHOG_PROJECT_TOKEN` | No | _(unset)_ | Public PostHog project token (`phc_…`), plain config like its frontend twin. Same fail-open behaviour as `POSTHOG_HOST`. On Kubernetes it is set from `grid-oib:posthogProjectToken`. |
+
+The collector's WARN-and-above log pipeline to PostHog Logs is not an environment variable. It is the stack key `grid-oib:posthogLogsEnabled` (default false), and it needs `posthogHost`, `posthogProjectToken` and the observability tier ([`kubernetes.md`](kubernetes.md) §9).
+
 ## Prompt management (Langfuse)
 
 The static half of Piloti's system prompt — the platform prompt — is authored
