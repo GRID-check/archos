@@ -293,8 +293,8 @@ Then:
 1. `kubectl -n envoy-gateway-system get svc` → note the Envoy proxy LoadBalancer
    external IP, and pin it as `grid-oib:loadBalancerIp`.
 2. Publish DNS `A` records for `app.<baseDomain>` and `s3.<baseDomain>` (and
-   `otel.<baseDomain>` when observability is on) plus the `baseDomain` apex
-   itself, pointing at that IP. `appDomain`/`s3Domain`/`otelDomain` exist only
+   `langfuse.<baseDomain>` when Langfuse is on) plus the `baseDomain` apex
+   itself, pointing at that IP. `appDomain`/`s3Domain`/`langfuseDomain` exist only
    as optional per-host overrides — `grid-oib:baseDomain` is the single key a
    domain move touches.
 
@@ -1511,7 +1511,7 @@ emitted somewhere it can read; see §10.
 
   **It ships in shadow mode** (`rateLimitShadowMode`, default `true`): rules
   evaluate and emit telemetry, nothing is refused. Read the would-have-blocked
-  counts off the Aspire pane (§9), pick real numbers, then set it false.
+  counts off the edge's rate-limit telemetry, pick real numbers, then set it false.
 
   **Verify client-IP preservation before trusting any per-IP number.**
   `xffNumTrustedHops` defaults to 0 — correct only if the managed LoadBalancer
@@ -1764,14 +1764,14 @@ Three things are true of this whole table and are easy to miss:
 
 | Channel | Encrypted? | Detail |
 |---|---|---|
-| Browser → edge (app, S3, landing site, Aspire) | **Yes** | TLS terminated at the Gateway, certs from Let's Encrypt via cert-manager. |
+| Browser → edge (app, S3, landing site, Langfuse) | **Yes** | TLS terminated at the Gateway, certs from Let's Encrypt via cert-manager. |
 | App → Postgres | **Yes** | Every DSN carries `sslmode=require`; CloudNativePG serves TLS on 5432 with a cert it manages. `require` encrypts but does **not** verify the CA — it closes passive sniffing, not active MITM. `verify-full` is the documented follow-up and needs the CNPG internal CA distributed to five clients (node, asyncpg, psycopg, psql, barman). |
 | App → SeaweedFS S3 | **No** | `http://seaweedfs:8333` inside the pod network. |
 | App → Dragonfly (cache / conversation bus) | **No — but authenticated** | Plaintext RESP on 6379. Dragonfly is not configured with TLS here. What *did* change: `requirepass` is now **required** (`dragonflyPassword`, or an explicit `allowUnauthenticatedRedis` opt-out), so a pod that can open the socket can no longer read the ADR-0028 conversation bus (every WebSocket frame of every chat, with a replayable 500-event backlog), the cached WorkOS directory (`directory:<orgId>` — email, name, avatar), authorization decisions or budget state. The password reaches consumers inside `REDIS_URL`, which for that reason now lives in the `grid-secrets` Secret rather than inline on each pod spec. |
 | Envoy rate limit service → counter store | **No — but authenticated** | Same plaintext RESP. `rateLimitStorePassword` is a **separate** credential from `dragonflyPassword` and is enforced distinct: every app pod holds the cache password in its `REDIS_URL`, and sharing it would let the app tier authenticate to the counter store and flush its own rate limits. It reaches the rate limit service as `REDIS_AUTH` (Envoy Gateway's `RateLimitRedisSettings` has no password field — only `url`, `urlRef`, `tls` — so it is injected via `provider.kubernetes.rateLimitDeployment.container.env`). An auth failure here is **fail-open**: limits stop enforcing, traffic keeps flowing. |
 | Frontend → backend (BFF/HTTP) | **No** | `http://aiq-api:8000` (the `api` role) inside the pod network. |
 | Frontend → backend (WebSocket chat) | **No** | `ws://` to the `chat` role (`BACKEND_CHAT_URL`), per-replica via the headless service (ADR-0028 conversation affinity). This is the full chat transport, including prompts and answers. |
-| Producers → OTel Collector, Collector → dashboard | **No** | Plain OTLP on `http://otel-collector:4318`. This traffic carries **prompts, retrieved snippets, LLM output and live presigned S3 URLs**, so it is the most sensitive plaintext channel in the namespace; the unauthenticated Aspire UI on `:18888` is likewise kept off-limits only by NetworkPolicy, which is why `observabilityEnabled` refuses to deploy with `networkPolicies=false`. |
+| Producers → OTel Collector, Collector → Langfuse | **No** | Plain OTLP on `http://otel-collector:4318`, and the collector's export to `http://langfuse-web:3000`. This traffic carries **prompts, retrieved snippets, LLM output and live presigned S3 URLs**, so it is the most sensitive plaintext channel in the namespace; Langfuse's store is likewise kept off-limits only by NetworkPolicy, which is why `langfuseEnabled` refuses to deploy with `networkPolicies=false`. |
 | Frontend and `bff-jobs` → Gotenberg | **No, and unauthenticated** | `http://gotenberg:3000`. It carries the bytes of every office file converted, and anyone who can reach it can have LibreOffice parse a file of their choosing. NetworkPolicy admits the frontend and the `bff-jobs` pool only. |
 | App → Chroma | **No, and unauthenticated** | `http://chroma:8000`, no credentials of any kind. Any pod that can reach it can read or delete every tenant's vectors. NetworkPolicy is the only control. |
 | Cluster egress (OpenRouter, Tavily, WorkOS, GitHub) | **Yes** | All HTTPS. |
@@ -1856,81 +1856,101 @@ Chroma):
   syntax error in the multi-bucket init Job) — the reason this kind of live
   validation exists.
 
-## 9. Observability — OTel Collector + Aspire Dashboard (ADR-0029)
+## 9. Observability — OTel Collector (ADR-0029)
 
-**Gating (flag AND capability):** the tier is deployed only when
-`grid-oib:observabilityEnabled` is on (default `true`) **and** every dependency
-it needs is configured — `otelPrimaryApiKey`, plus the dashboard's
-dedicated WorkOS Connect application (`otelOidcIssuer`/`otelOidcClientId`/
-`otelOidcClientSecret`) behind the edge permission gate (the host derives from
-`baseDomain` as `otel.<baseDomain>`). Miss one and `pulumi
-preview` logs a warning naming it
-and skips the whole tier: no collector, no dashboard, no SecurityPolicy, no
-`https-otel` Gateway listener/certificate, and no `OTEL_*` env on any producer
-(so the frontend's `src/instrumentation.ts` no-ops). That is deliberate: the
-dashboard runs `AuthMode=Unsecured` and relies entirely on the Gateway
-SecurityPolicy for auth, so a half-configured tier would be an **open**
-telemetry dashboard — and producers pointed at an absent collector just retry
-exports forever.
+> **The Aspire dashboard is retired.** It was an in-memory ring buffer that a
+> restart emptied, with no alerting, behind its own host and a Connect
+> application. Traces now live in Langfuse (§9b), logs go to PostHog, and
+> nothing in the cluster consumes metrics. A stack that still carries the
+> dashboard's keys (`otelPrimaryApiKey`, `otelDomain`, `dashboardImage`,
+> `dashboardMaxLogCount`, `dashboardMaxTraceCount`) ignores them; remove them
+> from the stack file. The next `pulumi up` deletes the dashboard, its
+> SecurityPolicy, the `https-otel` listener and certificate and the
+> `otel.<baseDomain>` DNS record (when `dnsEnabled`). One manual step: remove
+> `https://otel.<baseDomain>/oauth2/callback` from the Connect application's
+> redirect URIs in WorkOS.
+>
+> **err2issue is retired too.** PostHog error tracking replaces it
+> ([`observability/error-tracking.md`](../observability/error-tracking.md)), and
+> the feedback form's GitHub issue filing, which borrowed its token, goes with
+> it. The `err2issue*` and `feedbackIssues*` keys are ignored; the next
+> `pulumi up` deletes the sink's Deployment, Secret and NetworkPolicy and the
+> collector's `logs/err2issue` pipeline, and the frontend loses
+> `GRID_GITHUB_TOKEN` and `GRID_FEEDBACK_ISSUES_REPO`. Delete the ESC secrets
+> `err2issueGithubToken` and `err2issueAnthropicApiKey` and revoke the PAT.
 
-When enabled, the stack deploys two components:
+**Gating:** `grid-oib:observabilityEnabled` (default `true`) is the product
+decision. The collector is deployed when it also has a *consumer*, and needs
+nothing else:
+
+| Consumer | Signal | Switch |
+|---|---|---|
+| Langfuse (§9b) | traces | `langfuseEnabled` and its credentials |
+| PostHog Logs | logs | `posthogLogsEnabled` plus `posthogHost` and `posthogProjectToken` |
+
+With neither `pulumi preview` logs a warning and nothing is deployed: no
+collector, and no `OTEL_*` env on any producer (so the frontend's
+`src/instrumentation.ts` no-ops). Producers pointed at an absent collector would
+only retry exports forever.
+
+The stack deploys one component:
 
 - **`otel-collector`** (`deploy/pulumi/src/platform/otel-collector.ts`) — an
   OpenTelemetry Collector that is the cluster's single OTLP ingestion point.
   All producers send plain OTLP in-cluster; the collector batches, applies
-  memory back-pressure, and is the ONLY holder of the Aspire ingestion key.
-  Traces, logs, and metrics pipelines are all wired, so adopting a new
-  signal later is app-only work. Swapping the backend (Grafana/Tempo/.) is a
-  collector-config change, not an app change. The `otlp_http/aspire`
-  exporter sets `compression: none` - the dashboard does not decompress
-  OTLP/HTTP bodies and 500s on gzip (ADR-0029 Amendment 3).
+  memory back-pressure, and is the ONLY holder of the credentials its consumers
+  need (Langfuse's ingestion key, by `secretKeyRef`). Swapping or adding a
+  backend is a collector-config change, not an app change.
 
 **Signals actually emitted today** (ADR-0029 Amendment 3): traces from
-grid-ui (`@vercel/otel`), grid-aiq-agent and grid-agent-worker (NAT tracing
-exporter); logs from all five tiers - the Python tiers via the
+grid-aiq-agent and grid-agent-worker (NAT tracing exporter); the BFF registers
+no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
-`frontends/ui/observability/otel-logs.js` console bridge. Metrics: nothing
-emits them yet; that requires explicit meters.
-- **`aspire-dashboard`** (`deploy/pulumi/src/platform/observability.ts`) — a
-  .NET Aspire standalone dashboard behind the collector, as a live
-  trace/span viewer for platform owners.
+`frontends/ui/observability/otel-logs.js` console bridge. **Metrics: none.** The
+collector has no metrics pipeline and no process installs a meter provider. The
+instruments (`grid.queue.*`, `grid.provider.*`, `grid.http.*`, `grid.boot.*`)
+still exist and are no-ops until a sink is chosen for them; the Aspire dashboard
+was their only one. Until then, queue depth and age are
+readable from Postgres, which is where the KEDA scalers read them.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
         │  plain OTLP (in-cluster, no key)
         ▼
-  otel-collector ── OTLP/HTTP + x-otlp-api-key ──▶ aspire-dashboard
+  otel-collector ──▶ traces ──▶ Langfuse
+                 ──▶ logs   ──▶ PostHog (WARN+)
 ```
 
-**Log consumers.** The collector's logs signal has up to three consumers, each
-on a pipeline of its own so that one severity filter never strips another's
-copy:
+A signal no consumer takes ends in the collector's own `nop` exporter, because
+the OTLP receiver answers a signal that has no pipeline with an error that every
+producer would log on each export. The exporter is declared only when a pipeline
+needs it.
+
+**Log consumer.** The collector's logs signal has one consumer, on a pipeline of
+its own so that a second consumer added later never inherits its severity
+filter:
 
 | Pipeline | Exporter | Filter | Switch |
 |---|---|---|---|
-| `logs` | `otlp_http/aspire` | none (live view) | `observabilityEnabled` |
-| `logs/err2issue` | `otlp_http/err2issue` | below ERROR dropped | `err2issueEnabled` (default `false`) plus `err2issueGithubRepo` and `err2issueGithubToken`; off removes the pod, its Secret and the pipeline together |
 | `logs/posthog` | `otlp_http/posthog` | below WARN dropped (`severity_number < 13`, records without a severity too) | `posthogLogsEnabled` (default `false`) plus `posthogHost` and `posthogProjectToken` |
 
 PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
 <project token>`. The token is PostHog's public `phc_` key, the same one the
 browser bundle carries, so it sits in the collector ConfigMap as plain config:
-no env var and no secret checksum on the pod. Only logs go: traces stay with
-Aspire and Langfuse (LLM traces reach PostHog through Langfuse's own
-integration), metrics stay with Aspire. The WARN floor and the 1000-batch
-bounded queue are what keep the signal inside PostHog's 10 GB free tier and a
-PostHog outage out of the dashboard. Not done: the `k8sattributes` processor
-(pod, namespace and node attributes), because it needs a ServiceAccount with
-`pods`/`namespaces` read RBAC and the collector pod deliberately mounts no API
-token; `service.name` already tells the tiers apart.
+no env var and no secret checksum on the pod. Only logs go: LLM traces reach
+PostHog through Langfuse's own integration, and nothing sends metrics. The WARN
+floor and the 1000-batch bounded queue are what keep the signal inside
+PostHog's 10 GB free tier and a PostHog outage out of the rest of the
+collector. Not done: the `k8sattributes` processor (pod, namespace and node
+attributes), because it needs a ServiceAccount with `pods`/`namespaces` read
+RBAC and the collector pod deliberately mounts no API token; `service.name`
+already tells the tiers apart.
 
-err2issue is not removed, only switchable: PostHog Error Tracking takes over
-the job once it is wired, and `err2issueEnabled=false` (the default) stops
-both the sink and its pipeline. Egress needs no NetworkPolicy change: egress is
-open by design (`network-policies.ts`), so the collector, the frontend and the
-Python tiers reach PostHog on 443 as they reach OpenRouter.
+Egress needs no NetworkPolicy change: egress is open by design
+(`network-policies.ts`), so the collector, the frontend and the Python tiers
+reach PostHog on 443 as they reach OpenRouter.
 
 **One PostHog configuration.** `posthogHost` and `posthogProjectToken` are read
 once (`loadConfig`) and handed to every runtime: `NEXT_PUBLIC_POSTHOG_*` on the
@@ -1940,27 +1960,30 @@ frontend and bff-jobs, `POSTHOG_HOST` and `POSTHOG_PROJECT_TOKEN` on
 neither: with one unset every runtime stays off. Changing either rolls the pods,
 because they are literal env values in the pod template.
 
-**URL:** `https://<otelDomain>` (stack output `otelUrl`).
+### The platform Connect application
 
-**Access:** WorkOS OIDC, restricted to holders of the
-`platform:organizations:view` permission — the same test the application's own
-`isPlatformOwner` accepts (ADR-0016). Enforced at the edge by the
-`grid-otel-auth` **SecurityPolicy** on the Envoy Gateway, not inside the
-dashboard (ADR-0029 Amendment 2): `oidc` authenticates, `jwt` verifies the
-forwarded access token against the issuer's JWKS, and `authorization`
-default-denies everything without that scope.
+Langfuse's route is gated at the edge, and its UI signs in, against a
+**dedicated WorkOS Connect application**, not the app's AuthKit client. That is
+a hard requirement, not a preference: WorkOS's `/user_management/*` endpoints
+read client credentials only from the request body, while Envoy Gateway
+hardcodes HTTP Basic for the token exchange, so that pairing fails at the
+callback with `OAuth flow failed.` A Connect application's issuer is a
+spec-complete OIDC provider that accepts `client_secret_basic`. The
+`otelOidc*` keys below keep the name they had when the dashboard shared the
+application; Langfuse is now their only reader, and it is deployed only when all
+three are set.
 
-Auth runs against a **dedicated WorkOS Connect application**, not the app's
-AuthKit client. That is a hard requirement, not a preference: WorkOS's
-`/user_management/*` endpoints read client credentials only from the request
-body, while Envoy Gateway hardcodes HTTP Basic for the token exchange, so that
-pairing fails at the callback with `OAuth flow failed.` A Connect
-application's issuer is a spec-complete OIDC provider that accepts
-`client_secret_basic`.
+Access is the `platform:organizations:view` permission — the same test the
+application's own `isPlatformOwner` accepts (ADR-0016) — or
+`platform:observability:view` for read-only analysts (§9b), enforced at the
+edge by the `grid-langfuse-auth` **SecurityPolicy** on the Envoy Gateway:
+`oidc` authenticates, `jwt` verifies the forwarded access token against the
+issuer's JWKS, and `authorization` default-denies everything without a
+matching scope.
 
 > **Bare membership of the platform org is not enough**, and neither is the
 > `org-platform-owner` role on its own if the permission is not attached to it.
-> If nobody holds `platform:organizations:view`, nobody can open the dashboard.
+> If nobody holds `platform:organizations:view`, nobody can open Langfuse.
 > `GRID_PLATFORM_OWNER_EMAILS` is an application-level bootstrap and does **not**
 > apply at the Gateway.
 
@@ -1969,16 +1992,14 @@ One-time setup, in the WorkOS dashboard under **Connect**:
 1. Create an OAuth application, **confidential** client (a public PKCE-only
    client has no secret, and the SecurityPolicy requires one).
 2. Generate a client secret.
-3. Sign-in callback: `https://<otelDomain>/oauth2/callback`.
-4. Under **Scopes**, assign the `platform:organizations:view` permission — the
-   SecurityPolicy requests it and gates on it, so without this nobody is let in.
-   Where Langfuse is deployed, assign `platform:observability:view` too: its
-   route requests that one as well, and an unassigned scope fails the login
-   (§9b, "Giving analysts read-only access").
+3. Redirect URIs: the two Langfuse callbacks listed in §9b ("One-time WorkOS
+   setup").
+4. Under **Scopes**, assign the `platform:organizations:view` and
+   `platform:observability:view` permissions — the SecurityPolicy requests both
+   and an unassigned scope fails the login for everyone (§9b, "Giving analysts
+   read-only access").
 
-Then point the stack at it (all three are part of the tier's capability gate,
-so a stack missing any of them deploys no dashboard rather than one nobody can
-log into):
+Then point the stack at it:
 
 ```bash
 pulumi config set          grid-oib:otelOidcIssuer       https://<tenant>.authkit.app
@@ -1986,18 +2007,17 @@ pulumi config set          grid-oib:otelOidcClientId     client_...
 pulumi config set --secret grid-oib:otelOidcClientSecret <secret>
 ```
 
-**Verifying access after a deploy** — the check the original implementation
-lacked, and the first thing to run if login breaks:
+**Verifying access after a deploy** — the first thing to run if login breaks:
 
 ```bash
 ISSUER=$(pulumi config get grid-oib:otelOidcIssuer)
 CID=$(pulumi config get grid-oib:otelOidcClientId)
-OTEL_DOMAIN=otel.$(pulumi config get grid-oib:baseDomain)
+LANGFUSE_DOMAIN=langfuse.$(pulumi config get grid-oib:baseDomain)
 # Same callback and scopes the SecurityPolicy sends, so this exercises the
 # deployed configuration rather than a laxer variant of it.
 curl -s -o /dev/null -w '%{redirect_url}\n' \
   "$ISSUER/oauth2/authorize?client_id=$CID\
-&redirect_uri=https%3A%2F%2F$OTEL_DOMAIN%2Foauth2%2Fcallback\
+&redirect_uri=https%3A%2F%2F$LANGFUSE_DOMAIN%2Foauth2%2Fcallback\
 &response_type=code\
 &scope=openid+profile+email+offline_access+platform%3Aorganizations%3Aview&state=x"
 ```
@@ -2005,80 +2025,66 @@ curl -s -o /dev/null -w '%{redirect_url}\n' \
 It must redirect to the AuthKit login UI. `application_not_found` means the
 client id is wrong; `invalid_redirect_uri` means step 3 was missed.
 
-**Scope:** traces from all three app tiers. The Python tiers (`aiq-agent`
-chat/web, `agent-worker` deep-research jobs) share the NAT config; the
-Next.js BFF registers `@vercel/otel` from `src/instrumentation.ts`. They
-appear as separate resources via `OTEL_SERVICE_NAME` (`grid-ui` /
-`grid-aiq-agent` / `grid-agent-worker`). Skill-scheduler and purger emit
-no telemetry, and the `server.js` WS proxy is not auto-instrumented
-(follow-ups).
+**Scope:** traces from the two Python tiers (`aiq-agent` chat/web,
+`agent-worker` deep-research jobs), which share the NAT config. The Next.js BFF
+registers **no trace provider**: `src/instrumentation.ts` bridges `console.*` to
+OTLP logs and nothing else (ADR-0029 Amendment 5 dropped every BFF root span at
+creation, which left a provider that recorded nothing). Sending no `traceparent`
+costs nothing downstream: the Python tiers never continued the BFF's trace, and
+a root there is a NAT span with no NAT parent
+(`test_a_chat_root_needs_no_incoming_trace_context`). Logs appear as separate
+resources via `OTEL_SERVICE_NAME` (`grid-ui` / `grid-aiq-agent` /
+`grid-agent-worker`). The `server.js` WS proxy is not instrumented.
 
 **Wiring:**
 
 - `configs/config_oib_openrouter.yml` enables the `otelcollector_redaction`
   tracing exporter (spans only, OTLP/HTTP).
-- Pulumi injects `OTEL_SERVICE_NAME` + `OTEL_EXPORTER_OTLP_ENDPOINT` into all
-  three tiers (only when the tier is enabled — see Gating above). Endpoint
+- Pulumi injects `OTEL_SERVICE_NAME` + `OTEL_EXPORTER_OTLP_ENDPOINT` into the
+  app tiers (only when the collector is deployed — see Gating above). Endpoint
   asymmetry (intentional): the Python tiers get the
   FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts
-  as-is); the frontend gets the BASE URL (`http://otel-collector:4318` — the
-  JS OTLP HTTP exporter appends `/v1/traces` per the OTEL spec).
-- Sensitive values live in the dedicated Secret `aspire-dashboard-secrets`
-  (keys: `otlp-api-key`, `client-secret`), referenced via
-  `secretKeyRef` by the dashboard (`Dashboard:Otlp:PrimaryApiKey`) and the
-  collector exporter header, and by the Gateway SecurityPolicy for the OIDC
-  client secret — never a plain env value. Producers hold no key.
-- Only the dashboard UI port (18888) is exposed through the Gateway
-  (`https-otel` listener + HTTPRoute). Collector and dashboard OTLP ports are
-  cluster-internal. The collector's receivers sit under the wholesale
-  `allow-same-namespace` allow (any in-namespace pod can post spans to it —
-  accepted, see ADR-0029 residual risks); the **dashboard** is deliberately
-  excluded from that allow and reachable only by the Gateway (18888) and the
-  collector (4318).
+  as-is); the frontend gets the BASE URL (`http://otel-collector:4318` —
+  `otel-logs.js` derives `/v1/logs` from it).
+- The only credential the collector holds is Langfuse's precomputed Basic-auth
+  header, in the `langfuse-secrets` Secret, referenced by `secretKeyRef` —
+  never a plain env value. Producers hold no key.
+- The collector's receivers sit under the wholesale `allow-same-namespace`
+  allow (any in-namespace pod can post spans to it — accepted, see ADR-0029
+  residual risks).
 
 **Caveats:**
 
-- **In-memory ring buffer** (configured to 50k log/trace entries) — data is
-  lost on dashboard pod restart. This is a live-view tool, not a log archive.
-- Single replica each; an observability outage loses no application data. The
+- Single replica; an observability outage loses no application data. The
   `batch` processor only groups telemetry — the durability that exists comes
-  from the `otlphttp` exporter's `exporterhelper` defaults (`sending_queue`:
-  in-memory, 1000 requests; `retry_on_failure`: 5s→30s backoff for up to
-  300s). Beyond those limits — a full queue or a dashboard down longer than the
-  retry window — **exports are dropped**, which is the intended trade for a
-  live-view tool.
-- No alerting — operators must watch the dashboard.
+  from the exporters' `exporterhelper` defaults (`sending_queue`, bounded;
+  `retry_on_failure`: 5s→30s backoff for up to 300s). Beyond those limits — a
+  full queue or a consumer down longer than the retry window — **exports are
+  dropped**, which is the intended trade: telemetry is never in a request path.
+- No alerting from the cluster itself; PostHog alerts on the logs it receives.
 
-**Non-obvious deployment facts** (verified against the dashboard docs and the
-installed NAT/OTel SDK — see ADR-0029 §"Verified deployment facts" for the
-full list): the container's OTLP listeners default to 18889/18890 and are
-rebound to 4317/4318 via `ASPIRE_DASHBOARD_OTLP_*_ENDPOINT_URL`; WorkOS's OIDC
-issuer is per-client (`https://api.workos.com/user_management/<client_id>`) and
-its `/authorize` needs the non-standard `provider=authkit` selector, which is
-why OIDC runs on the Gateway (Envoy preserves query parameters already present
-on the configured authorization endpoint; ASP.NET 8 has no equivalent hook);
-`ASPNETCORE_FORWARDEDHEADERS_ENABLED=true` is still set so the dashboard
-generates `https://` links behind the TLS-terminating Gateway; the NAT exporter
-posts OTLP/HTTP to the endpoint as-is, so the full `/v1/traces` path is
-required on the Python tiers.
+**Non-obvious deployment facts** (see ADR-0029 §"Verified deployment facts" for
+the full list): the NAT exporter posts OTLP/HTTP to the endpoint as-is, so the
+full `/v1/traces` path is required on the Python tiers.
 
 ## 9b. Langfuse — durable LLM observability (ADR-0044)
 
-Section 9's dashboard is a live pane over an in-memory ring buffer. This is the
-store that outlives a restart: sessions, users, per-model cost, prompt
-management, datasets and evals, over history you can query.
+Langfuse is where traces live: the store that outlives a restart, with
+sessions, users, per-model cost, prompt management, datasets and evals, over
+history you can query. (It replaced the Aspire dashboard, an in-memory ring
+buffer, which section 9 records as retired.)
 
 **It is the free, self-hosted OSS build.** No licence key is set anywhere. The
 one consequence that shows up operationally is at the end of this section.
 
 **Gating (flag AND capability):** deployed only when
-`grid-oib:langfuseEnabled` is on — default **`true`**, as in section 9 — and
-every credential below is set **and** the observability tier of section 9 is
-itself deployed. Langfuse has no receiver of its own here; the collector is what
-feeds it, so without section 9 it is four workloads that can only sit idle. Miss
-anything and `pulumi preview` warns naming it and skips the tier entirely: no
-workloads, no `https-langfuse` listener or certificate, no collector exporter,
-and no identity attributes on any span.
+`grid-oib:langfuseEnabled` is on — default **`true`** — and every credential
+below is set, including the `otelOidc*` Connect application of section 9, **and**
+`grid-oib:observabilityEnabled` is not `false`. Langfuse has no receiver of its
+own here; the collector is what feeds it, and Langfuse is what brings the
+collector up. Miss anything and `pulumi preview` warns naming it and skips the
+tier entirely: no workloads, no `https-langfuse` listener or certificate, no
+collector exporter, and no identity attributes on any span.
 
 ### What it deploys
 
@@ -2109,7 +2115,7 @@ resolve the name, and the host simply never serves.
 
 ### One-time WorkOS setup
 
-Langfuse reuses **the same Connect application** as the Aspire dashboard (§9) —
+Langfuse signs in against **the platform Connect application** (§9) —
 do not create a second one. Add **both** of these redirect URIs to it:
 
 ```text
@@ -2129,8 +2135,7 @@ Access requires `platform:organizations:view` (the operator permission, as in
 §9) **or** `platform:observability:view` (read-only observability), enforced at
 the edge. Langfuse's own SSO alone would admit anyone who can sign in to the
 WorkOS environment at all — the narrowing is the Envoy SecurityPolicy, so do not
-remove it on the grounds that "Langfuse has its own login". The Aspire dashboard
-(§9) accepts the operator permission only.
+remove it on the grounds that "Langfuse has its own login".
 
 ### Giving analysts read-only access
 
@@ -2316,25 +2321,73 @@ the agent, ADR-0089) are not switched off in any write mode, checked against
 the 4.56.0 source. Rollback before the cutover is upstream's `migrate … goto 37` from the
 v4 web container, then the v3 digests. After it, only the backups.
 
+### Recommended owner step: move to `events_only`
+
+Both stacks run the default, `dual` (neither stack file sets
+`langfuseV4WriteMode`). This repo changes no stack; the step below is the
+owner's, per stack, dev first.
+
+**What `events_only` means.** The program sets
+`LANGFUSE_MIGRATION_V4_WRITE_MODE=events_only` and
+`LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR=direct` on `langfuse-web` and
+`langfuse-worker` (`langfuseV4MigrationEnv`, `deploy/pulumi/src/platform/langfuse.ts`).
+Spans from the collector then land in v4's events table alone. v3's tables stop
+receiving anything, the v3 views stop updating, and the legacy public read APIs
+(`/api/public/traces`, `/observations`, `/sessions`, `/scores`, `/metrics`)
+answer 404. Score writes, prompt reads and the OTLP ingestion path are
+unaffected.
+
+**It is one-way.** Upstream's rollback ends at the cutover (see above): after
+it, only the backups go back. Setting the key to `dual` again would write v3's
+tables from that moment, with no copy of what arrived in between. That is why
+the backup comes first.
+
+**Why recommend it.** Nothing in this repo reads v3's tables (traces arrive over
+OTLP, the Python SDK reads prompts only, and the BFF and the agent write
+scores), so `dual` pays a second copy of every span, on a ClickHouse volume that
+has no retention policy and no scheduled backup (see "Operating it"), for a
+rollback path nobody intends to take.
+
+**Before the `up`:**
+
+1. **Back up both stores**, exactly as for the v4 upgrade above: a CNPG backup
+   of the `langfuse` Postgres database, and a volume snapshot of the ClickHouse
+   PVC. ClickHouse has no scheduled backup, so this snapshot is the only
+   rollback.
+2. **Decide the historic backfill first.** History reaches v4's views only
+   through `langfuseV4HistoricBackfill: true`, which upstream sizes at about
+   three times the current ClickHouse disk as headroom. Check
+   `df -h /var/lib/clickhouse` (see "Operating it") before turning it on.
+3. **Look at the v4 views with real data.** With the v4 views opted in, a
+   recent chat turn must show its generations, scores, user and session, and
+   the propagation health check from the upgrade section must answer 200.
+4. **If the PostHog integration is enabled** (ADR-0098), confirm that its next
+   hourly export still lands `langfuse observation` events after the cutover.
+   That export is Langfuse's own; this repo does not run it, and it was not
+   exercised against `events_only` when this was written.
+
+**Then** `pulumi config set grid-oib:langfuseV4WriteMode events_only` and `up`
+(the env change rolls both Langfuse Deployments). Watch dev for a release cycle
+before moving prod.
+
 ### Signals and attribution
 
-Only **traces** go to Langfuse. Logs and metrics still go to the Aspire
-dashboard (plus ERROR logs to err2issue, ADR-0031, which ADR-0098 retires in
-favour of PostHog error tracking where PostHog is configured:
-[`observability/error-tracking.md`](../observability/error-tracking.md); and
-WARN+ logs to PostHog when enabled, see §9). The collector adds one
-exporter to the *existing* traces pipeline, so both consumers get every span.
+Only **traces** go to Langfuse, and Langfuse has the collector's traces
+pipeline to itself. WARN+ logs go to PostHog when enabled, see §9; exceptions go
+to PostHog error tracking
+([`observability/error-tracking.md`](../observability/error-tracking.md)); nothing
+sends metrics.
 
-Consequence to know: the two exporters share the pipeline's `memory_limiter`, so
-a Langfuse outage long enough to fill its bounded sending queue (2000 batches)
-will cost the dashboard spans too. Neither is in a request path.
+Consequence to know: a Langfuse outage long enough to fill the exporter's
+bounded sending queue (2000 batches) drops spans. Nothing is in a request path.
 
 When the tier is on, the agent tiers get `GRID_TRACE_IDENTITY_ATTRIBUTES=true`,
 which stamps `langfuse.user.id`, `langfuse.session.id` and the organization onto
 every span. Without it Langfuse receives traces that are anonymous — technically
 working, and missing most of the point. It is deliberately keyed off *this* tier
-rather than §9: attaching a user id to telemetry makes traces attributable to
-named individuals, and an Aspire-only deployment gets none of it.
+rather than the collector: attaching a user id to telemetry makes traces
+attributable to named individuals, and a stack that exports only PostHog logs
+gets none of it.
 
 Session grouping and input/output capture need no configuration — NAT already
 emits `session.id` and OpenInference `input.value`/`output.value`, both of which
@@ -2427,12 +2480,14 @@ observation carrying the query, the collections searched, the budgets and the
 picked chunk ids/files/scores — metadata only, no chunk text (ADR-0058,
 Amendment 2).
 
-The frontend tier exports **no request spans** (ADR-0029, Amendment 5): one
+The frontend tier exports **no spans at all** (ADR-0029, Amendment 5): one
 trace per HTTP request — health probes, RSC navigations, BFF POSTs — flooded
 the project under the `default` environment, and every fact those spans held
-arrives better elsewhere (backend-tier spans, the OTel log bridge). If you see
-`grid-ui` SPAN rows under `default`, they predate that amendment; filter them
-out or let retention... there is none on the OSS build, so prune by hand.
+arrives better elsewhere (backend-tier spans, the OTel log bridge). It first
+dropped them at creation with a sampler, then, since that left a provider that
+recorded nothing, stopped registering one. If you see `grid-ui` SPAN rows under
+`default`, they predate that amendment; filter them out or let retention...
+there is none on the OSS build, so prune by hand.
 
 **Model costs stay $0.00 until the model ids are priced.** Token counts land
 regardless, but the self-hosted OSS build ships no price catalog entry for the
@@ -2512,8 +2567,8 @@ developing against the Langfuse UI and API, not for reproducing ingestion.
   provider-side; neither is reachable from this program, and inventing config
   for them would produce settings that do nothing. Confirm both with the
   provider — they are the ceiling on every at-rest claim in this document.
-- A metrics/alerting stack (Prometheus/Grafana/Loki) — the Aspire dashboard
-  (§9) covers live traces only. Envoy Gateway, cert-manager, CNPG, and
+- A metrics/alerting stack (Prometheus/Grafana/Loki) — nothing consumes the
+  application's meters today (§9). Envoy Gateway, cert-manager, CNPG, and
   SeaweedFS all expose Prometheus metrics, so this is a natural next layer —
   and the provider's paid Metrics (Grafana) add-on is the quick option.
 - **Autoscaling the frontend on WS connections / event-loop lag (§6.5).**

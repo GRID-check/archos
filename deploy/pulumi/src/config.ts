@@ -956,9 +956,9 @@ export interface GridConfig {
     projectToken: string;
     /**
      * Whether the collector ships WARN-and-above logs to PostHog Logs: the
-     * `posthogLogsEnabled` flag AND host AND token AND `observability.enabled`
-     * (the collector is the only sender, so without it there is nothing to
-     * configure). Default off: it is a second copy of the logs signal leaving
+     * `posthogLogsEnabled` flag AND host AND token AND the `observabilityEnabled`
+     * flag (the collector is the only sender, so without it there is nothing to
+     * configure; this one is a consumer that brings the collector up). Default off: it is a second copy of the logs signal leaving
      * the cluster, and PostHog's free tier is 10 GB of logs.
      */
     logsEnabled: boolean;
@@ -1142,40 +1142,18 @@ export interface GridConfig {
 
   observability: {
     /**
-     * Whether the observability tier (OTel Collector + Aspire dashboard) is
-     * deployed: the `observabilityEnabled` flag AND the capability derived from
-     * its dependencies (otelPrimaryApiKey and the dashboard's
-     * dedicated WorkOS Connect application). When false nothing is provisioned
-     * and no producer gets an OTLP endpoint.
+     * Whether the OTel Collector is deployed: the `observabilityEnabled` flag
+     * AND at least one consumer for it (Langfuse or PostHog logs).
+     * The collector forwards to those on their own credentials. When false
+     * nothing is provisioned and no producer gets an OTLP endpoint.
      */
     enabled: boolean;
-    /** Public hostname for the Aspire dashboard. Derived: `otel.<baseDomain>` unless the `otelDomain` key overrides it. */
-    otelDomain: string;
-    /**
-     * Aspire dashboard image reference, digest-pinned by default (override
-     * only for deliberate upgrades).
-     */
-    dashboardImage: string;
     /**
      * OpenTelemetry Collector image reference, digest-pinned by default —
-     * the single OTLP ingestion point that fans out to the dashboard
-     * (ADR-0029 amendment).
+     * the single OTLP ingestion point that fans out to Langfuse and the log
+     * consumers (ADR-0029 amendment).
      */
     collectorImage: string;
-    /**
-     * Telemetry ring-buffer limits inside the dashboard pod. Aspire defaults
-     * to 10000/10000; raised to 50000 for a live view window.
-     */
-    telemetryLimits: {
-      maxLogCount: number;
-      maxTraceCount: number;
-    };
-    /**
-     * OTLP ingestion key. Held by the dashboard (`Dashboard:Otlp:PrimaryApiKey`)
-     * and the collector (exporter header) only — producers send unauthenticated
-     * OTLP to the collector and never see it. Empty when observability is off.
-     */
-    otelPrimaryApiKey: pulumi.Output<string>;
     /**
      * Issuer of the dedicated WorkOS **Connect** application, i.e. the
      * environment's AuthKit domain (`https://<tenant>.authkit.app`). Its
@@ -1183,11 +1161,13 @@ export interface GridConfig {
      * `/user_management/*` endpoints are not, and cannot serve this flow at all
      * (see the capability check in `loadConfig`).
      *
-     * Required for the observability tier. As a side benefit the dashboard no
+     * Required for Langfuse (its route is gated by this application and its UI
+     * signs in against it). The keys keep their `otelOidc*` names from when the
+     * Aspire dashboard shared the application. As a side benefit Langfuse no
      * longer shares the app's AuthKit client, so an ordinary app sign-in does
-     * not mint a dashboard credential, dashboard access is separately
-     * revocable, and the client secret is purpose-scoped instead of being the
-     * WorkOS management API key.
+     * not mint a platform credential, access is separately revocable, and the
+     * client secret is purpose-scoped instead of being the WorkOS management
+     * API key.
      */
     oidcIssuer: string;
     /** Client id of that Connect application. */
@@ -1199,12 +1179,11 @@ export interface GridConfig {
   /**
    * Langfuse — the DURABLE LLM-observability backend (ADR-0044).
    *
-   * A third consumer on the collector's traces signal, alongside the Aspire
-   * dashboard. The two are not redundant and neither replaces the other:
-   * Aspire is a live ops pane over an in-memory ring buffer that answers "what
-   * is the system doing right now"; Langfuse is a queryable store that answers
-   * "what did this user's run cost, which model served it, and how did that
-   * change over the last month". ADR-0029 deferred exactly this and named the
+   * The consumer of the collector's traces signal: a queryable store that
+   * answers "what did this user's run cost, which model served it, and how did
+   * that change over the last month", and the live view of what the system is
+   * doing now. It replaced the Aspire dashboard, an in-memory ring buffer that
+   * answered only the second. ADR-0029 deferred exactly this and named the
    * collector as the seam it would arrive through.
    *
    * **Self-hosted OSS only.** No license key is configured anywhere in this
@@ -1219,8 +1198,9 @@ export interface GridConfig {
     /**
      * Whether the tier is deployed: the `langfuseEnabled` flag AND the
      * capability derived from its dependencies (every credential it cannot
-     * boot without, plus `observability.enabled` — it is fed by the collector,
-     * so without one it is four workloads that can only ever sit idle).
+     * boot without, the Connect application it signs in against, plus the
+     * `observabilityEnabled` flag — it is fed by the collector, so without one
+     * it is four workloads that can only ever sit idle).
      */
     enabled: boolean;
     /** Public hostname. Derived: `langfuse.<baseDomain>` unless overridden. */
@@ -1348,81 +1328,6 @@ export interface GridConfig {
     s3SecretKey: pulumi.Output<string>;
   };
 
-  /**
-   * err2issue — ERROR-severity telemetry becomes deduplicated GitHub issues
-   * (ADR-0031). A second consumer on the collector's logs signal, alongside the
-   * Aspire dashboard.
-   */
-  err2issue: {
-    /**
-     * Whether the sink is deployed: the `err2issueEnabled` flag AND the
-     * capability derived from its dependencies (a GitHub token, a fallback
-     * repo) AND `observability.enabled` — it receives nothing without the
-     * collector in front of it.
-     */
-    enabled: boolean;
-    /**
-     * Image reference, digest-pinned (v0.5.1 by default). Upstream tags each
-     * build `:sha-<commit>` and `:latest`; bump the digest deliberately, it is
-     * scanned by the trivy job in .github/workflows/security.yml.
-     */
-    image: string;
-    /** Fallback destination repo (`owner/repo`) for unrouted services. */
-    githubRepo: string;
-    /** PAT with Issues read/write. Empty when the sink is off. */
-    githubToken: pulumi.Output<string>;
-    /**
-     * Optional `service=owner/repo` routing, globs allowed
-     * (`aiq-agent=grid-check/grid-oib-agent,*-worker=grid-check/workers`).
-     * Empty string means route everything to `githubRepo`.
-     */
-    routeMap: string;
-    /**
-     * Optional Claude API key for AI-written issue titles. Empty falls back to
-     * rule-based titles — a degraded title, not a broken sink. Note this is a
-     * console API key; a Claude subscription OAuth token will not work here.
-     */
-    anthropicApiKey: pulumi.Output<string>;
-    /** Repeat-occurrence coalescing window, seconds (upstream default 600). */
-    suppressWindowSeconds: number;
-    /** Ceiling on NEW issues per day — the blast-radius control. */
-    maxNewFingerprintsPerDay: number;
-    /** Drop errors from services the route map does not match. */
-    dropUnrouted: boolean;
-    /**
-     * Link each issue's trace id to the Aspire dashboard's trace view
-     * (`E2I_TRACE_URL_TEMPLATE`, err2issue >= 0.5). Empty when the
-     * observability tier is off: there is nothing to link to.
-     */
-    traceUrlTemplate: string;
-    /**
-     * Reopen an issue a human closed as *not planned* or *duplicate* when its
-     * error recurs (`E2I_REOPEN_NOT_PLANNED`). Off, as upstream: closing one of
-     * those is a decision about the error, and a recurrence only raises its
-     * count. Issues closed as *completed* reopen either way.
-     */
-    reopenNotPlanned: boolean;
-    /** GitHub logins assigned to new issues (`E2I_ISSUE_ASSIGNEES`, max 10). Empty leaves them unassigned. */
-    issueAssignees: string;
-  };
-
-  /**
-   * Bug reports from the in-app feedback form become GitHub issues, filed by
-   * the BFF (`frontends/ui/src/lib/product-feedback/github.ts`).
-   *
-   * Reuses err2issue's PAT rather than a second one: it already holds Issues
-   * read/write on the repo, and one credential is one thing to rotate. It is
-   * independent of `err2issue.enabled` — the error sink needs the
-   * observability tier, a bug report does not.
-   */
-  feedbackIssues: {
-    /** The `feedbackIssuesEnabled` flag (default on) AND a token AND a repo. */
-    enabled: boolean;
-    /** `owner/repo`; defaults to `err2issueGithubRepo`. */
-    repo: string;
-    /** The err2issue PAT. Empty when filing is off. */
-    githubToken: pulumi.Output<string>;
-  };
 }
 
 export interface ResourceSpec {
@@ -1540,9 +1445,9 @@ export function loadConfig(): GridConfig {
     }
   };
   rejectPlaceholder("storageClass", ["REPLACE_ME"]);
-  // Single source for every public host: app/s3/otel subdomains derive from
+  // Single source for every public host: app/s3/langfuse subdomains derive from
   // baseDomain, so a domain move is a one-key change. The per-host keys
-  // (appDomain/s3Domain/otelDomain) survive only as explicit overrides.
+  // (appDomain/s3Domain/langfuseDomain) survive only as explicit overrides.
   const baseDomain = cfg.require("baseDomain");
   const appDomain = cfg.get("appDomain") ?? `app.${baseDomain}`;
   const s3Domain = cfg.get("s3Domain") ?? `s3.${baseDomain}`;
@@ -1559,7 +1464,6 @@ export function loadConfig(): GridConfig {
   // everything and then TLS silently never issues (the exact delayed-failure
   // class this guard exists to kill).
   rejectPlaceholder("letsEncryptEmail", ["example.com"]);
-  rejectPlaceholder("otelDomain", ["example.com"]);
   rejectPlaceholder("langfuseDomain", ["example.com"]);
 
   // The BFF clamps a nonsense threshold back to 80 rather than switching the
@@ -2051,23 +1955,16 @@ export function loadConfig(): GridConfig {
     );
   }
 
-  // ── Observability (ADR-0029): availability = flag AND capability ───────────
-  // `observabilityEnabled` is the product decision; the capability is DERIVED
-  // from the dependencies the tier cannot run without — never duplicated as a
-  // second flag. Without them the components deploy broken, not degraded: the
-  // Gateway SecurityPolicy in front of the dashboard has no usable OIDC client
-  // to authenticate anyone with — and the dashboard itself runs `AuthMode=Unsecured`
-  // precisely because the edge is doing that job, so a half-configured tier is
-  // an OPEN telemetry dashboard, not a locked one. The collector likewise has
-  // no key to authenticate its export. So the whole tier (dashboard, collector,
-  // SecurityPolicy, Gateway listener, producer env) is skipped instead, with a
-  // warning naming exactly what is missing.
+  // ── Observability (ADR-0029): the collector, and what consumes it ─────────
+  // `observabilityEnabled` is the product decision for the whole tier. The
+  // collector is deployed when something consumes it (see `collectorEnabled`
+  // below), never because the flag alone says so. The Aspire dashboard it used
+  // to feed is gone (ADR-0098): traces go to Langfuse, logs to PostHog.
   const workosClientId = cfg.get("workosClientId") ?? "";
   const workosApiKey = cfg.getSecret("workosApiKey");
-  const otelDomain = cfg.get("otelDomain") ?? `otel.${baseDomain}`;
-  const otelPrimaryApiKey = cfg.getSecret("otelPrimaryApiKey");
-  // Dedicated WorkOS **Connect** application for the dashboard. REQUIRED — the
-  // app's own AuthKit client cannot be reused, and this is not a preference:
+  // Dedicated WorkOS **Connect** application for the platform surfaces (now
+  // Langfuse alone). REQUIRED — the app's own AuthKit client cannot be reused,
+  // and this is not a preference:
   //
   //   Envoy Gateway hardcodes HTTP Basic auth for the token exchange
   //   (`internal/xds/translator/oidc.go`, "every OIDC provider supports basic
@@ -2085,36 +1982,11 @@ export function loadConfig(): GridConfig {
   const otelOidcClientId = cfg.get("otelOidcClientId") ?? "";
   const otelOidcClientSecret = cfg.getSecret("otelOidcClientSecret");
   const observabilityFlag = bool(cfg, "observabilityEnabled", true);
-  const missingObservabilityDeps = [
-    otelPrimaryApiKey === undefined ? "otelPrimaryApiKey" : undefined,
+  const missingOidcDeps = [
     otelOidcIssuer === "" ? "otelOidcIssuer" : undefined,
     otelOidcClientId === "" ? "otelOidcClientId" : undefined,
     otelOidcClientSecret === undefined ? "otelOidcClientSecret" : undefined,
   ].filter((k): k is string => k !== undefined);
-  const observabilityEnabled = observabilityFlag && missingObservabilityDeps.length === 0;
-
-  // Fail closed: the Aspire dashboard authenticates nobody itself (ADR-0029
-  // Amendment 2 moved auth to the Gateway SecurityPolicy), and the ONLY thing
-  // keeping the rest of the namespace off its unauthenticated :18888 is the
-  // NetworkPolicy set. Turning policies off while the tier is deployed would
-  // publish every tenant's prompts, retrieved snippets, LLM output and
-  // presigned S3 URLs to any pod that gets a foothold. Refuse the combination
-  // rather than silently shipping it.
-  if (observabilityEnabled && !bool(cfg, "networkPolicies", true)) {
-    throw new Error(
-      "grid-oib:observabilityEnabled requires grid-oib:networkPolicies. The Aspire dashboard " +
-        "runs AuthMode=Unsecured and relies on NetworkPolicies to keep the namespace off its " +
-        "unauthenticated UI port. Set networkPolicies=true, or observabilityEnabled=false.",
-    );
-  }
-  if (observabilityFlag && !observabilityEnabled) {
-    pulumi.log.warn(
-      "Observability (ADR-0029) not deployed: missing " +
-        missingObservabilityDeps.map((k) => `grid-oib:${k}`).join(", ") +
-        ". Set them to deploy the OTel Collector + Aspire dashboard, or set " +
-        "grid-oib:observabilityEnabled=false to silence this.",
-    );
-  }
 
   // ── Langfuse (ADR-0044): same availability = flag AND capability rule ──────
   // Default ON, like `observabilityEnabled`: durable traces are the expected
@@ -2123,11 +1995,11 @@ export function loadConfig(): GridConfig {
   // tier cannot boot without, so a stack that has not set them gets the warning
   // below and no workloads, never a half-deployed tier. Set the flag to false
   // to opt out of the four workloads and the PVC that grows without a
-  // retention policy. The dependency on `observabilityEnabled` is structural
-  // for the same reason err2issue's is: Langfuse has no receiver of its own in
-  // this design, the collector fans traces into it, so without it it is idle.
+  // retention policy. The dependency on `observabilityEnabled` is structural:
+  // Langfuse has no receiver of its own in this design, the collector fans
+  // traces into it, so without it it is idle.
   //
-  // It also inherits the collector's WorkOS Connect application rather than
+  // It signs in against the platform WorkOS Connect application rather than
   // asking for a fourth OIDC triple. One application can carry several redirect
   // URIs, and the alternative is an operator provisioning two near-identical
   // confidential clients that gate on the same permission — two places to get
@@ -2151,7 +2023,8 @@ export function loadConfig(): GridConfig {
   ];
   const missingLangfuseDeps = [
     ...langfuseSecretKeys.filter((key) => (cfg.get(key) ?? "").trim() === ""),
-    observabilityEnabled ? undefined : "observabilityEnabled (Langfuse is fed by the collector)",
+    ...missingOidcDeps,
+    observabilityFlag ? undefined : "observabilityEnabled (Langfuse is fed by the collector)",
   ].filter((k): k is string => k !== undefined);
   const langfuseEnabled = langfuseFlag && missingLangfuseDeps.length === 0;
 
@@ -2229,20 +2102,19 @@ export function loadConfig(): GridConfig {
       );
     }
 
-    // NOTE ON NETWORKPOLICIES, which this tier needs just as much as the
-    // dashboard does — the trace store, its ClickHouse and its ingestion queue
-    // all sit in the app namespace holding every tenant's prompts and LLM
-    // output. There is deliberately NO guard for it here.
-    //
-    // It would be unreachable. `langfuseEnabled` resolves true only when
-    // `observabilityEnabled` is true (the capability list above), and the
-    // observability check a few lines up already throws for
-    // `networkPolicies=false`. A second check could never fire, and a control
-    // that cannot fire is worse than no control: it reads to the next person
-    // as protection that has been considered and applied.
-    //
-    // The requirement is therefore INHERITED, structurally, not restated.
-    // If the observability guard is ever relaxed, this tier needs its own.
+    // Fail closed: this tier needs NetworkPolicies — the trace store, its
+    // ClickHouse and its ingestion queue all sit in the app namespace holding
+    // every tenant's prompts and LLM output, and the policy set is what keeps
+    // the rest of the namespace off them. (The Aspire dashboard's identical
+    // guard went with the dashboard.)
+    if (!bool(cfg, "networkPolicies", true)) {
+      throw new Error(
+        "grid-oib:langfuseEnabled requires grid-oib:networkPolicies. Langfuse, its ClickHouse " +
+          "and its queue hold every tenant's prompts and LLM output in the app namespace, and " +
+          "the NetworkPolicy set is what keeps the rest of the namespace off them. Set " +
+          "networkPolicies=true, or langfuseEnabled=false.",
+      );
+    }
     //
     // Distinctness, not strength — the same control as pgRuntimePassword and
     // rateLimitStorePassword. Every app pod already holds the ADR-0020 cache
@@ -2295,7 +2167,6 @@ export function loadConfig(): GridConfig {
     webDomain,
     appDomain,
     s3Domain,
-    otelDomain: observabilityEnabled ? otelDomain : undefined,
     langfuseDomain: langfuseEnabled ? langfuseDomain : undefined,
   });
 
@@ -2375,44 +2246,19 @@ export function loadConfig(): GridConfig {
     }
   }
 
-  // ── err2issue (ADR-0031): same availability = flag AND capability rule ─────
-  // Opt-in (default false) because turning it on starts writing to a GitHub
-  // repo — a side effect outside the cluster, unlike every other component
-  // here. The dependency on `observabilityEnabled` is structural, not stylistic:
-  // err2issue has no receiver of its own in this design, it is fed by the
-  // collector's logs pipeline, so without the collector it is a pod that can
-  // only ever sit idle.
-  const err2issueFlag = bool(cfg, "err2issueEnabled", false);
-  const err2issueGithubRepo = cfg.get("err2issueGithubRepo") ?? "";
-  const err2issueGithubToken = cfg.getSecret("err2issueGithubToken");
-  const missingErr2IssueDeps = [
-    err2issueGithubRepo === "" ? "err2issueGithubRepo" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-    observabilityEnabled ? undefined : "observabilityEnabled (err2issue is fed by the collector)",
-  ].filter((k): k is string => k !== undefined);
-  const err2issueEnabled = err2issueFlag && missingErr2IssueDeps.length === 0;
-  if (err2issueFlag && !err2issueEnabled) {
-    pulumi.log.warn(
-      "err2issue (ADR-0031) not deployed: missing " +
-        missingErr2IssueDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
-        ". Set them to deploy the error→issue sink, or set " +
-        "grid-oib:err2issueEnabled=false to silence this.",
-    );
-  }
-
   // ── PostHog: one configuration for every runtime, logs opt-in on top ───────
   // The frontend, the Python tiers and the collector all read this one pair.
   // The SDK tiers capture with host + token alone (they no-op without them).
   // Logs are different: they leave the cluster in bulk, through the collector,
-  // so they are a flag AND capability on top of the credentials, the same rule
-  // as err2issue above, and need the collector to exist.
+  // so they are a flag AND capability on top of the credentials, and need the
+  // collector to exist.
   const posthogHost = cfg.get("posthogHost") ?? "";
   const posthogProjectToken = cfg.get("posthogProjectToken") ?? "";
   const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", false);
   const missingPosthogLogsDeps = [
     posthogHost === "" ? "posthogHost" : undefined,
     posthogProjectToken === "" ? "posthogProjectToken" : undefined,
-    observabilityEnabled ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
+    observabilityFlag ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
   ].filter((k): k is string => k !== undefined);
   const posthogLogsEnabled = posthogLogsFlag && missingPosthogLogsDeps.length === 0;
   if (posthogLogsFlag && !posthogLogsEnabled) {
@@ -2424,22 +2270,17 @@ export function loadConfig(): GridConfig {
     );
   }
 
-  // ── Feedback → GitHub issues: flag AND capability, the token is err2issue's ─
-  // Default ON, unlike err2issue: a report is filed only when a member sends
-  // one (rate limited per person), so there is no hot loop to cap, and a stack
-  // that has no token files nothing. Warn only when the flag was set by hand.
-  const feedbackIssuesFlag = bool(cfg, "feedbackIssuesEnabled", true);
-  const feedbackIssuesRepo = cfg.get("feedbackIssuesRepo") ?? err2issueGithubRepo;
-  const missingFeedbackIssuesDeps = [
-    feedbackIssuesRepo === "" ? "feedbackIssuesRepo (or err2issueGithubRepo)" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-  ].filter((k): k is string => k !== undefined);
-  const feedbackIssuesEnabled = feedbackIssuesFlag && missingFeedbackIssuesDeps.length === 0;
-  if (cfg.getBoolean("feedbackIssuesEnabled") === true && !feedbackIssuesEnabled) {
+  // ── The collector: deployed when something consumes what it forwards ──────
+  // Two consumers, either of which is enough: Langfuse (traces) and PostHog
+  // logs (logs). With neither it would receive OTLP from every producer and
+  // forward it nowhere, and each producer would carry an endpoint pointing at a
+  // pod that does nothing.
+  const collectorEnabled = observabilityFlag && (langfuseEnabled || posthogLogsEnabled);
+  if (observabilityFlag && !collectorEnabled) {
     pulumi.log.warn(
-      "Feedback → GitHub issues not wired: missing " +
-        missingFeedbackIssuesDeps.map((k) => `grid-oib:${k}`).join(", ") +
-        ". Bug reports are still stored and announced in the inbox.",
+      "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse " +
+        "(it also needs the otelOidc* application) or grid-oib:posthogLogsEnabled, or set " +
+        "grid-oib:observabilityEnabled=false to silence this.",
     );
   }
 
@@ -2891,23 +2732,14 @@ export function loadConfig(): GridConfig {
     },
 
     observability: {
-      enabled: observabilityEnabled,
-      otelDomain,
-      // Digest-pinned (supply chain): 13.5.2 and 0.161.0 respectively. Bump
-      // deliberately via config when upgrading — the pins are scanned by the
-      // trivy job in .github/workflows/security.yml, which blocks on fixable
-      // HIGH/CRITICAL, so a stale pin surfaces as a failing check.
-      dashboardImage:
-        cfg.get("dashboardImage") ??
-        "mcr.microsoft.com/dotnet/aspire-dashboard@sha256:0ef531119b8073aed12b0db2b4e4ab02866c6c69b7a52264269abd00cfb48a34",
+      enabled: collectorEnabled,
+      // Digest-pinned (supply chain): 0.161.0. Bump deliberately via config when
+      // upgrading — the pin is scanned by the trivy job in
+      // .github/workflows/security.yml, which blocks on fixable HIGH/CRITICAL, so
+      // a stale pin surfaces as a failing check.
       collectorImage:
         cfg.get("collectorImage") ??
         "otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1",
-      telemetryLimits: {
-        maxLogCount: num(cfg, "dashboardMaxLogCount", 50000),
-        maxTraceCount: num(cfg, "dashboardMaxTraceCount", 50000),
-      },
-      otelPrimaryApiKey: otelPrimaryApiKey ?? pulumi.output(""),
       oidcIssuer: otelOidcIssuer,
       oidcClientId: otelOidcClientId,
       oidcClientSecret: otelOidcClientSecret ?? pulumi.output(""),
@@ -2965,41 +2797,6 @@ export function loadConfig(): GridConfig {
       initUserPassword: cfg.getSecret("langfuseInitUserPassword") ?? pulumi.output(""),
       s3AccessKey: cfg.get("langfuseS3AccessKey") ?? "grid-langfuse",
       s3SecretKey: cfg.getSecret("langfuseS3SecretKey") ?? pulumi.output(""),
-    },
-
-    err2issue: {
-      enabled: err2issueEnabled,
-      // Digest-pinned: published as `:sha-7240361d3d62213625b7ddee5e9b28aa47dfa0cd`,
-      // the first build with PyJWT >= 2.14 (2.15.1). Upstream cuts no release
-      // tags, so the digest is the version; the CHANGELOG names the commit.
-      // Scanned by the trivy job in security.yml.
-      image:
-        cfg.get("err2issueImage") ??
-        "ghcr.io/matthiasbigl/err2issue@sha256:23ff1752ac2425739c6047c93c479b0d5b1a1b24b67221ae1ba0205dba8c4333",
-      githubRepo: err2issueGithubRepo,
-      githubToken: err2issueGithubToken ?? pulumi.output(""),
-      routeMap: cfg.get("err2issueRouteMap") ?? "",
-      anthropicApiKey: cfg.getSecret("err2issueAnthropicApiKey") ?? pulumi.output(""),
-      suppressWindowSeconds: num(cfg, "err2issueSuppressWindowSeconds", 600),
-      // Deliberately below the upstream default of 50. This is the first
-      // deployment of an error sink against a repo that has never had one: the
-      // realistic failure is a long tail of pre-existing, never-noticed errors
-      // arriving at once and burying the issue tracker on day one. Raise it
-      // once the steady-state volume is known.
-      maxNewFingerprintsPerDay: num(cfg, "err2issueMaxNewFingerprintsPerDay", 20),
-      dropUnrouted: bool(cfg, "err2issueDropUnrouted", true),
-      // The Aspire dashboard's trace view. It holds traces in memory, so a link
-      // on an old issue can outlive the trace it names; the id in the issue
-      // stays the thing to search by.
-      traceUrlTemplate: observabilityEnabled ? `https://${otelDomain}/traces/detail/{trace_id}` : "",
-      reopenNotPlanned: bool(cfg, "err2issueReopenNotPlanned", false),
-      issueAssignees: cfg.get("err2issueIssueAssignees") ?? "",
-    },
-
-    feedbackIssues: {
-      enabled: feedbackIssuesEnabled,
-      repo: feedbackIssuesRepo,
-      githubToken: feedbackIssuesEnabled && err2issueGithubToken ? err2issueGithubToken : pulumi.output(""),
     },
   };
 }

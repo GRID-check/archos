@@ -34,9 +34,9 @@ Postgres ranks LANES in SQL (~43 ms p50 at 100 000 queued jobs across 2 000
 lanes, ADR-0076); SQLite, which backs single-process dev and tests, ranks the
 same order in Python.
 
-Measured through the OpenTelemetry API only (``grid.queue.*``). The
-``MeterProvider`` is wired in ``aiq_agent.observability.metrics``; without one
-every instrument is a no-op.
+Measured through the OpenTelemetry API only (``grid.queue.*``). Nothing installs
+a ``MeterProvider`` today (the Aspire dashboard was the only sink), so every
+instrument is a no-op until one is chosen; a test installs its own.
 """
 
 from __future__ import annotations

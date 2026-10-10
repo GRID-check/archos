@@ -17,8 +17,8 @@ ingestion `https://eu.i.posthog.com`).
 | Session ↔ trace | PostHog `$session_id` on the exported observations | Browser session id → chat turn → trace metadata `$posthog_session_id` | Code in this change |
 | Browser analytics (15 events, off in both stacks) | PostHog product analytics | `posthog-js`, identify by WorkOS user id only, `organization_id` as a property | Code in this change; stack keys to set |
 | Server-side events | PostHog | `posthog-node` behind `lib/analytics/posthog-server.ts` | Code in this change |
-| err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue switched off by stack key |
-| Aspire log pane | Stays the live pane; WARN+ logs also go to PostHog Logs | Second exporter on the collector, behind `grid-oib:posthogLogsEnabled` | Code in this change |
+| err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue deleted from the Pulumi program |
+| Aspire log pane | Retired. WARN+ logs go to PostHog Logs, traces are read in Langfuse | An exporter on the collector, behind `grid-oib:posthogLogsEnabled`; the dashboard, its listener and its metrics pipeline are deleted | Code in this change; stack keys to remove |
 | Product feedback dialog (Postgres, inbox; the GitHub filing is removed) | Unchanged, and also a PostHog Support conversation (report id and server-masked text, only when contact is allowed) | `posthog.conversations.sendMessage` | Code in this change |
 | No surveys | PostHog Surveys (NPS, CSAT, churn), German first | Defined in PostHog | Drafts created, not launched |
 | No alerts | PostHog alerts on errors, logs and insights | Defined in PostHog | Created in the project |
@@ -138,9 +138,12 @@ date.
    keys (`seenSurvey_*`). The profile page's "usage analytics" switch calls
    `posthog.opt_out_capturing()` for that browser. Changing `persistence` or
    what is stored is a change to the notice: one commit.
-8. **Retiring err2issue and Aspire.** err2issue goes off by stack key when
-   PostHog error tracking is on. Delete it after a release cycle with nothing
-   missed. Aspire stays the live pane.
+8. **Retiring err2issue and Aspire.** Done in the Pulumi program: the sink, its
+   collector pipeline, its NetworkPolicy and its image pin are gone, and so is
+   the feedback form's GitHub issue filing that borrowed its token. The owner
+   removes the stack keys and revokes the PAT. Aspire is gone too: logs are in
+   PostHog, traces in Langfuse, and the meters (`grid.queue.*`,
+   `grid.provider.*`) have no sink until the owner picks one.
 
 ## Browser signal (wave 2)
 

@@ -4,10 +4,9 @@ Langfuse groups observations into traces and then attributes those traces to a
 *session* and a *user*. Without those two identifiers a deployment's traces are
 a flat, anonymous list: you can see that a retrieval took 4s and cost €0.02,
 but not whose conversation it belonged to or what else happened in that
-conversation. Session/user attribution is most of what distinguishes Langfuse
-from the live span view the Aspire dashboard already provides, so wiring it is
-the difference between "traces reach Langfuse" and "the app is integrated with
-Langfuse".
+conversation. Session/user attribution is most of what makes Langfuse more than a flat
+span list, so wiring it is the difference between "traces reach Langfuse" and
+"the app is integrated with Langfuse".
 
 WHAT WE GET FOR FREE, and therefore do not do here. Verified against the
 installed NAT, not assumed:
@@ -59,7 +58,7 @@ gated to platform operators. Tagging every span with its tenant and what a tool
 did is a further step, and it should arrive with the product decision that
 needs it rather than by default. So availability follows the house rule —
 ``GRID_TRACE_IDENTITY_ATTRIBUTES`` is injected by the deployment only when the
-Langfuse tier is deployed. An Aspire-only stack is byte-identical to before.
+Langfuse tier is deployed. A stack without Langfuse is byte-identical to before.
 """
 
 import contextvars

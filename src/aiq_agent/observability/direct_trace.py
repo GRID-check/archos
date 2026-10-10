@@ -14,8 +14,7 @@ Mechanics, each a decision:
 * **A private ``TracerProvider``, never the global one.** NAT, and whatever else
   in the process speaks the OpenTelemetry API, must not start exporting through
   this provider. Built lazily on the first call and kept for the life of the
-  process, like the meter provider (``observability.metrics``); the SDK flushes
-  it at interpreter exit.
+  process; the SDK flushes it at interpreter exit.
 * **The collector the rest already uses.** ``OTEL_EXPORTER_OTLP_ENDPOINT``, which
   Pulumi injects as the full ``/v1/traces`` URL; a bare collector URL gets the
   suffix. A blank endpoint builds nothing and every call is a no-op, the same

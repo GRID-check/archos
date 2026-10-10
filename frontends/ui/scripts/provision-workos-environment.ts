@@ -421,7 +421,7 @@ async function reconcileConnectApp(): Promise<void> {
     const created = await workos.connect.createApplication({
       name: appName,
       applicationType: 'oauth',
-      description: 'GRID observability stack (Aspire dashboard) sign-in.',
+      description: 'GRID platform surfaces (Langfuse) sign-in.',
       isFirstParty: true,
       usesPkce: false,
       redirectUris: uris.map((uri) => ({ uri })),

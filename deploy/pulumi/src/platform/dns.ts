@@ -56,9 +56,8 @@ export interface ManagedDns {
 /**
  * Every public host this stack serves, in Gateway listener order.
  *
- * `otelDomain` and `langfuseDomain` appear only when their tiers are actually
- * deployed, mirroring the conditional `https-otel` and `https-langfuse`
- * listeners: a record for a host with no listener resolves, answers with the
+ * `langfuseDomain` appears only when its tier is actually deployed, mirroring
+ * the conditional `https-langfuse` listener: a record for a host with no listener resolves, answers with the
  * wrong certificate, and reads as a broken deployment rather than a disabled
  * feature.
  *
@@ -70,14 +69,12 @@ export function managedHosts(args: {
   webDomain: string;
   appDomain: string;
   s3Domain: string;
-  otelDomain?: string;
   langfuseDomain?: string;
 }): string[] {
   return [
     args.webDomain,
     args.appDomain,
     args.s3Domain,
-    ...(args.otelDomain !== undefined ? [args.otelDomain] : []),
     ...(args.langfuseDomain !== undefined ? [args.langfuseDomain] : []),
   ];
 }

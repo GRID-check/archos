@@ -6,7 +6,6 @@ from pydantic import Field
 
 from aiq_agent.common.log_redaction import PresignedUrlFilter
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
-from aiq_agent.observability import metrics as grid_metrics
 from aiq_agent.observability import posthog_exceptions
 from nat.cli.register_workflow import register_logging_method  # noqa: TID251
 from nat.data_models.logging import LoggingBaseConfig
@@ -86,10 +85,12 @@ class _NatBuildFailureItemizationFilter(logging.Filter):
 
 
 class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
-    """Ships runtime logs to the OTLP collector (Aspire dashboard, ADR-0029).
+    """Ships runtime logs to the OTLP collector (ADR-0029), which forwards them to PostHog and err2issue.
 
-    Also installs the process's metrics provider on the same endpoint
-    (``aiq_agent.observability.metrics``); a blank endpoint installs neither.
+    Logs only. No ``MeterProvider`` is installed anywhere: the ``grid.queue.*``,
+    ``grid.provider.*``, ``grid.http.*`` and ``grid.boot.*`` instruments measure
+    through the OpenTelemetry API and are no-ops until a sink is chosen for them
+    (the Aspire dashboard was their only one).
 
     `endpoint` is Optional because `${OTEL_EXPORTER_OTLP_ENDPOINT:-}`
     interpolates to None (not "") when the observability tier is not deployed.
@@ -147,12 +148,6 @@ async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder
     # host added) gets the same treatment, so the guarantee does not depend on
     # which sink a record happens to reach.
     install_presigned_url_scrubbing()
-
-    # Metrics go to the same collector through the same endpoint setting, so the
-    # one place that knows whether the observability tier exists decides both.
-    # Installed for the process, and deliberately not stopped below: see
-    # aiq_agent.observability.metrics.
-    grid_metrics.install_meter_provider(config.endpoint)
 
     yield handler
 

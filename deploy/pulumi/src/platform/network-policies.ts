@@ -6,23 +6,9 @@ import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
 /**
- * `app.kubernetes.io/name` of the Aspire dashboard. Referenced by rule 2 (which
- * must NOT select it) as well as rules 7 and 8 (which grant it exactly two
- * callers), so the three stay in agreement.
- */
-const OBSERVABILITY_DASHBOARD = "aspire-dashboard";
-
-/**
- * `app.kubernetes.io/name` of the err2issue sink (ADR-0031). Held to the same
- * arrangement as the dashboard: withheld from rule 2, granted one caller in
- * rule 9.
- */
-const ERR2ISSUE = "err2issue";
-
-/**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
  * (ADR-0044). All three are withheld from rule 2 and granted named callers in
- * rules 10-12, on the same reasoning as the dashboard.
+ * rules 10-12.
  */
 const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
@@ -49,10 +35,9 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
  *     egress at all, so denying all of it cannot break anything it does.
  *   - **Intra-namespace is allowed wholesale** (frontend→backend, backend→data,
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
- *     here and are far easier to get subtly wrong. The ONE exception is the
- *     Aspire dashboard, which authenticates nobody itself (auth lives on the
- *     Gateway, ADR-0029 Amendment 2) and so cannot be left open to the
- *     namespace — see rules 2 and 8.
+ *     here and are far easier to get subtly wrong. The exceptions are the pods
+ *     whose receivers authenticate nobody or hold a store of every tenant's
+ *     text (Langfuse and its ClickHouse, Gotenberg) — see rule 2.
  *   - Cross-namespace allows are explicit: the **edge** (Envoy Gateway) to the
  *     three public services, and the **CNPG operator** to its managed pods.
  *
@@ -80,36 +65,20 @@ export function installNetworkPolicies(
   });
 
   // 2. Allow any pod in `grid` to reach any other pod in `grid` — EXCEPT the
-  //    Aspire dashboard.
+  //    pods below.
   //
-  //    The dashboard runs `AuthMode=Unsecured` because authentication moved to
-  //    the Gateway SecurityPolicy (ADR-0029 Amendment 2). That makes the
-  //    wholesale allow below actively dangerous for this one pod: it would let
-  //    ANY pod in the namespace — the internet-facing BFF, an LLM agent worker
-  //    running model-chosen tool calls — read every tenant's telemetry
-  //    (prompts, retrieved snippets, LLM output, and span URLs carrying live
-  //    presigned S3 URLs) over :18888 with no credential whatsoever. Before the
-  //    dashboard's own OIDC was removed, that path still met a claim gate.
-  //
-  //    NetworkPolicy has no deny rule and allows are additive, so the narrower
-  //    `allow-edge-to-aspire-dashboard` below cannot subtract anything. NOT
-  //    SELECTING the pod here is the only way to withhold the blanket allow.
-  //    Its one legitimate in-namespace client is granted explicitly in rule 8.
+  //    NetworkPolicy has no deny rule and allows are additive, so a narrower
+  //    allow cannot subtract anything from this one. NOT SELECTING a pod here
+  //    is the only way to withhold the blanket allow; each pod's legitimate
+  //    in-namespace callers are granted explicitly in the rules that follow.
   //
   //    `NotIn` also matches pods that lack the label entirely (Kubernetes label
   //    semantics), so CNPG-managed Postgres pods and anything else without
   //    `app.kubernetes.io/name` keep the intra-namespace allow.
   //
-  //    err2issue (ADR-0031) is withheld on the same grounds when deployed. Its
-  //    OTLP receiver authenticates nobody either, and the pod holds a GitHub
-  //    token with Issues write — so a blanket allow would let any pod in the
-  //    namespace, including the agent worker executing model-chosen tool calls,
-  //    forge issues into the repo. Rule 9 grants its one real caller.
-  //
-  //    The Langfuse tier (ADR-0044) is withheld for a related but distinct
-  //    reason, and the distinction is worth stating because it is easy to argue
-  //    the other way. Unlike the dashboard these pods DO authenticate — the web
-  //    tier has sessions and API keys, ClickHouse has a password. What they do
+  //    The Langfuse tier (ADR-0044) is withheld, and the reason is worth
+  //    stating because it is easy to argue the other way. These pods DO
+  //    authenticate — the web tier has sessions and API keys, ClickHouse has a password. What they do
   //    not have is any legitimate in-namespace caller other than each other and
   //    the collector. Leaving them in the blanket allow would expose, to every
   //    pod in the namespace: an ingestion API that accepts a bearer key
@@ -128,8 +97,6 @@ export function installNetworkPolicies(
           key: "app.kubernetes.io/name",
           operator: "NotIn",
           values: [
-            OBSERVABILITY_DASHBOARD,
-            ...(cfg.err2issue.enabled ? [ERR2ISSUE] : []),
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
           ],
@@ -216,57 +183,12 @@ export function installNetworkPolicies(
     ingress: [{ from: [nsLabel("envoy-gateway-system")] }],
   });
 
-  // 7. Edge → Aspire dashboard (the otel HTTPRoute) — only when the
-  //    observability tier is deployed (ADR-0029).
-  const edgeOtel = cfg.observability.enabled
-    ? mk("allow-edge-to-aspire-dashboard", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          { from: [nsLabel("envoy-gateway-system")], ports: [{ protocol: "TCP", port: 18888 }] },
-        ],
-      })
-    : undefined;
+  // 7-8. Were the Aspire dashboard's (edge → UI, collector → OTLP). Retired with
+  //      it; the numbers are kept so the rules below keep the names that docs
+  //      and ADRs already cite.
 
-  // 8. otel-collector → Aspire dashboard OTLP/HTTP. Rule 2 deliberately leaves
-  //    the dashboard out of the wholesale intra-namespace allow, so its only
-  //    legitimate in-cluster client needs saying explicitly. Port 4318 alone:
-  //    the collector's `otlphttp/aspire` exporter targets
-  //    http://aspire-dashboard:4318 and nothing speaks 4317 to it.
-  //
-  //    Not covered here (deliberately): kubelet probes the dashboard on 18888
-  //    from the host, which is not gated by NetworkPolicy on Cilium — see the
-  //    header. If a future CNI does gate them, this pod's probes are the first
-  //    place that will show up.
-  const collectorToDashboard = cfg.observability.enabled
-    ? mk("allow-collector-to-aspire-dashboard", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-            ports: [{ protocol: "TCP", port: 4318 }],
-          },
-        ],
-      })
-    : undefined;
-
-  // 9. otel-collector → err2issue OTLP/HTTP (ADR-0031). Mirrors rule 8: rule 2
-  //    leaves err2issue out of the wholesale allow, and the collector's
-  //    `otlp_http/err2issue` exporter is its only legitimate client. Port 4318
-  //    alone — the sink speaks no gRPC.
-  const collectorToErr2Issue = cfg.err2issue.enabled
-    ? mk("allow-collector-to-err2issue", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": ERR2ISSUE } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-            ports: [{ protocol: "TCP", port: 4318 }],
-          },
-        ],
-      })
-    : undefined;
+  // 9. Was otel-collector → err2issue (ADR-0031), retired with it; the number is
+  //    kept so the rules below keep the names that docs and ADRs already cite.
 
   // 10. Edge → Langfuse web (the langfuse HTTPRoute serves its UI). The
   //     SecurityPolicy on that route is what authorizes the request; this rule
@@ -284,8 +206,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 11. otel-collector → Langfuse web OTLP ingestion. Mirrors rules 8 and 9:
-  //     rule 2 leaves the web tier out of the wholesale allow, and the
+  // 11. otel-collector → Langfuse web OTLP ingestion. Mirrors rule 9: rule 2 leaves the web tier out of the wholesale allow, and the
   //     collector's `otlp_http/langfuse` exporter is its only in-namespace
   //     client. Same port as the UI — Langfuse serves `/api/public/otel/*` on
   //     the one HTTP listener, so this cannot be narrowed further by port. It
@@ -398,7 +319,7 @@ export function installNetworkPolicies(
   //     another pod, whatever a document asks of it. No DNS either: it has
   //     nothing to resolve.
   //
-  //     Withheld from rule 2 on the same grounds as the dashboard, so the
+  //     Withheld from rule 2 on the same grounds as Langfuse, so the
   //     frontend BFF is its caller, and the bff-jobs pool is the same BFF
   //     running the background conversions (ADR-0079), so it is named too: a
   //     pool left out here would fail every office file with a green plan. The
@@ -464,9 +385,6 @@ export function installNetworkPolicies(
     edgeWeb,
     ...(edgeRateLimitStore ? [edgeRateLimitStore] : []),
     acmeSolver,
-    ...(edgeOtel ? [edgeOtel] : []),
-    ...(collectorToDashboard ? [collectorToDashboard] : []),
-    ...(collectorToErr2Issue ? [collectorToErr2Issue] : []),
     ...(edgeLangfuse ? [edgeLangfuse] : []),
     ...(collectorToLangfuse ? [collectorToLangfuse] : []),
     ...(workersToLangfuse ? [workersToLangfuse] : []),

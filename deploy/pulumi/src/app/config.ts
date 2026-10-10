@@ -196,9 +196,6 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
-    // err2issue's PAT, for the BFF filing bug reports as issues. Absent rather
-    // than empty when that is off, so the Secret holds no credential it needn't.
-    ...(cfg.feedbackIssues.enabled ? { GRID_GITHUB_TOKEN: cfg.feedbackIssues.githubToken } : {}),
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -327,12 +324,12 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
     // OTLP tracing via the cluster collector (ADR-0029 amendment). Producers
-    // send plain OTLP in-cluster — the collector alone holds the Aspire API
+    // send plain OTLP in-cluster — the collector alone holds the Langfuse
     // key. HTTP/protobuf to :4318 — the full /v1/traces path is required: the
     // NAT exporter posts to the endpoint as-is (path appending only happens
     // for SDK env-var defaults, not for an endpoint the config passes
     // explicitly). OTEL_SERVICE_NAME becomes service.name on the spans so
-    // chat tier and worker tier are distinct resources in the dashboard.
+    // chat tier and worker tier are distinct resources in Langfuse.
     // Injected only when the observability tier is deployed — otherwise every
     // span export would retry against a Service that doesn't exist.
     ...(cfg.observability.enabled
@@ -355,8 +352,8 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // Langfuse session/user attribution (ADR-0044). Keyed off the LANGFUSE
     // tier, not the observability one, and that distinction is the point:
     // stamping a user id on every span is only worth its privacy cost where
-    // there is a store that groups traces by user. An Aspire-only deployment
-    // gets no identity attributes at all.
+    // there is a store that groups traces by user. A stack that exports only
+    // PostHog logs gets no identity attributes at all.
     ...(cfg.langfuse.enabled
       ? [{ name: "GRID_TRACE_IDENTITY_ATTRIBUTES", value: "true" }]
       : []),
@@ -563,11 +560,6 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "GRID_DISABLE_SELF_SERVE_ORGS", value: String(cfg.auth.disableSelfServeOrgs) },
     { name: "GRID_AUDIT_LOGS_ENABLED", value: String(cfg.auth.auditLogsEnabled) },
     { name: "GRID_ENFORCE_FEATURE_FLAGS", value: String(cfg.auth.enforceFeatureFlags) },
-    // Bug reports → GitHub issues. Both or neither: the repo variable is the
-    // switch the BFF reads, and without it the token is never used.
-    ...(cfg.feedbackIssues.enabled
-      ? [sref("GRID_GITHUB_TOKEN"), { name: "GRID_FEEDBACK_ISSUES_REPO", value: cfg.feedbackIssues.repo }]
-      : []),
     // Shared cache + WS rate limiting (needed for >1 replica correctness).
     // Authenticated: the URL carries the password, so it comes from the Secret.
     sref("REDIS_URL"),

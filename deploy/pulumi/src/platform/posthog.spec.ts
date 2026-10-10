@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { baseStackConfig } from "../test-support/stack-config";
+import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 import { loadConfig } from "../config";
 import { posthogEnv } from "../app/config";
 
@@ -8,11 +8,10 @@ import { posthogEnv } from "../app/config";
  * One PostHog configuration for every runtime, and the logs path to it.
  *
  * What goes wrong here is quiet. A Python tier that never gets the pair
- * captures nothing and logs nothing; a logs pipeline that shares the
- * dashboard's processors strips INFO from the live view; a pipeline without
- * the severity filter ships every INFO line to a 10 GB free tier; and err2issue
- * that cannot be switched off keeps filing GitHub issues for errors PostHog
- * Error Tracking now owns. Each is pinned below.
+ * captures nothing and logs nothing; a logs pipeline that shares another
+ * consumer's processors strips that consumer's INFO lines; a pipeline without
+ * the severity filter ships every INFO line to a 10 GB free tier. Each is
+ * pinned below.
  */
 
 const RESOURCES: Array<{ type: string; name: string; inputs: Record<string, unknown> }> = [];
@@ -48,17 +47,6 @@ function find(type: string, name: string) {
   return hit;
 }
 
-const OBSERVABILITY = {
-  "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
-  "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
-  "grid-oib:otelOidcClientId": "client_otel",
-  "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
-};
-const ERR2ISSUE = {
-  "grid-oib:err2issueEnabled": "true",
-  "grid-oib:err2issueGithubRepo": "GRID-check/grid-oib-agent",
-  "grid-oib:err2issueGithubToken": "gh-token", // pragma: allowlist secret
-};
 const POSTHOG = {
   "grid-oib:posthogHost": "https://eu.i.posthog.com/",
   "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
@@ -70,7 +58,10 @@ async function deploy(values: Record<string, string>): Promise<{
 }> {
   vi.resetModules();
   RESOURCES.length = 0;
-  pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...OBSERVABILITY, ...values });
+  // Langfuse is on in every case, so the collector exists even where PostHog
+  // logs are off: it is what keeps these tests about the logs pipelines, not
+  // about whether a collector was deployed.
+  pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...langfuseStackConfig(), ...values });
   await import("../../index");
   await new Promise((r) => setTimeout(r, 200));
   const cm = find("kubernetes:core/v1:ConfigMap", "otel-collector");
@@ -88,7 +79,6 @@ describe("PostHog logs in the collector, enabled", () => {
   beforeAll(async () => {
     ({ collector, collectorEnv } = await deploy({
       ...POSTHOG,
-      ...ERR2ISSUE,
       "grid-oib:posthogLogsEnabled": "true",
     }));
   }, 120_000);
@@ -102,30 +92,24 @@ describe("PostHog logs in the collector, enabled", () => {
     expect(collector).not.toMatch(/^\s+otlphttp\//m);
   });
 
-  it("puts it on its own logs pipeline behind a WARN filter, leaving the dashboard's alone", () => {
+  it("puts it on its own logs pipeline behind a WARN filter, with no unfiltered logs pipeline beside it", () => {
     expect(collector).toMatch(
       /logs\/posthog:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, filter\/warn_and_above, batch\]\s*\n\s*exporters: \[otlp_http\/posthog\]/,
     );
     expect(collector).toContain("'log.severity_number < SEVERITY_NUMBER_WARN'");
-    expect(collector).toMatch(
-      /\n    logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]/,
-    );
+    expect(collector).not.toMatch(/\n    logs:/);
   });
 
   it("sends no traces or metrics to PostHog", () => {
     // LLM traces reach PostHog through Langfuse's integration; APM is out of scope.
     expect(collector).not.toContain("traces_endpoint: https://eu.i.posthog.com");
     expect(collector).not.toContain("metrics_endpoint");
-    expect(collector).toMatch(/metrics:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]\s*$/);
+    expect(collector).not.toMatch(/\n    metrics:/);
   });
 
   it("needs no env var on the pod: the token is public config, not a secret", () => {
     expect(collectorEnv).not.toContain("POSTHOG_PROJECT_TOKEN");
     expect(collector).not.toMatch(/\$\{env:POSTHOG/);
-  });
-
-  it("keeps err2issue on its own pipeline alongside", () => {
-    expect(collector).toContain("logs/err2issue:");
   });
 });
 
@@ -142,29 +126,6 @@ describe("PostHog logs in the collector, off", () => {
       "grid-oib:posthogLogsEnabled": "true",
     });
     expect(collector).not.toContain("posthog");
-  }, 120_000);
-});
-
-describe("err2issue is switched off by err2issueEnabled", () => {
-  it("deploys neither the sink nor its collector pipeline when the flag is false", async () => {
-    const { collector } = await deploy({ ...ERR2ISSUE, "grid-oib:err2issueEnabled": "false" });
-    expect(collector).not.toContain("err2issue");
-    expect(RESOURCES.some((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "err2issue")).toBe(false);
-  }, 120_000);
-
-  it("is off by default, and stays off with PostHog configured", async () => {
-    const { collector } = await deploy({
-      ...POSTHOG,
-      "grid-oib:err2issueGithubRepo": ERR2ISSUE["grid-oib:err2issueGithubRepo"],
-      "grid-oib:err2issueGithubToken": ERR2ISSUE["grid-oib:err2issueGithubToken"],
-    });
-    expect(collector).not.toContain("err2issue");
-  }, 120_000);
-
-  it("deploys both when the flag is true", async () => {
-    const { collector } = await deploy({ ...ERR2ISSUE });
-    expect(collector).toContain("logs/err2issue:");
-    expect(RESOURCES.some((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "err2issue")).toBe(true);
   }, 120_000);
 });
 
@@ -210,11 +171,10 @@ describe("the Python tiers' PostHog pair", () => {
   }, 240_000);
 
   it("is read by loadConfig as a logs gate that needs host, token and the collector", () => {
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...OBSERVABILITY, ...POSTHOG, "grid-oib:posthogLogsEnabled": "true" });
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...POSTHOG, "grid-oib:posthogLogsEnabled": "true" });
     expect(loadConfig().posthog.logsEnabled).toBe(true);
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      ...OBSERVABILITY,
       ...POSTHOG,
       "grid-oib:posthogLogsEnabled": "true",
       "grid-oib:observabilityEnabled": "false",

@@ -11,7 +11,7 @@ general:
         level: INFO
       otlp:
         # Ships runtime logs to the same OTLP collector as the traces below
-        # (Aspire dashboard "Strukturierte Protokolle", ADR-0029). The
+        # (which forwards WARN+ to PostHog Logs, ADR-0029). The
         # /v1/logs path is derived from the injected traces endpoint; no
         # endpoint == observability tier not deployed == no-op.
         _type: otelcollector_logs

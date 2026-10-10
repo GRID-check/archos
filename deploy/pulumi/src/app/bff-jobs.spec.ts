@@ -77,12 +77,11 @@ describe("the bff-jobs pool", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      // The pool logs under its own name only where the observability tier runs,
-      // and that tier needs its collector's credentials to count as deployed.
-      "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
-      "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
-      "grid-oib:otelOidcClientId": "client_otel",
-      "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
+      // The pool logs under its own name only where the collector runs, and the
+      // collector counts as deployed once something consumes it: PostHog logs here.
+      "grid-oib:posthogHost": "https://eu.i.posthog.com",
+      "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
+      "grid-oib:posthogLogsEnabled": "true",
     });
     const { loadConfig } = await import("../config");
     const { installBffJobs } = await import("./bff-jobs");
