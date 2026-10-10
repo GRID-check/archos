@@ -53,6 +53,12 @@ services:
       GRID_ROLE: chat
       APP_ENV: ${APP_ENV:-production}
       LOG_LEVEL: ${LOG_LEVEL:-INFO}
+      # PostHog for the Python roles (fail-open: both empty means no events leave
+      # the backend, see src/aiq_agent/observability/posthog_client.py). The pair
+      # the frontend reads as NEXT_PUBLIC_POSTHOG_* below; the Kubernetes mirror
+      # is posthogEnv() in deploy/pulumi/src/app/config.ts.
+      POSTHOG_HOST: ${POSTHOG_HOST:-}
+      POSTHOG_PROJECT_TOKEN: ${POSTHOG_PROJECT_TOKEN:-}
       # Database config (with Docker defaults). Same split as Kubernetes
       # (ADR-0083): the first three go through the transaction pooler
       # (`pgbouncer`), and everything that needs ONE server connection across

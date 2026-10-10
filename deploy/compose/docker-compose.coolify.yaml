@@ -58,6 +58,10 @@ services:
       - GRID_ROLE=chat
       - APP_ENV=${APP_ENV:-production}
       - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      # PostHog for the Python roles (fail-open: both empty means no events leave
+      # the backend). Inherited by every role that extends this service.
+      - POSTHOG_HOST=${POSTHOG_HOST:-}
+      - POSTHOG_PROJECT_TOKEN=${POSTHOG_PROJECT_TOKEN:-}
       # ── Secrets (must be provided in Coolify's Environment Variables UI) ──
       # A single OpenRouter key powers LLMs, embeddings, AND the VLM — nothing
       # here ever calls a NVIDIA endpoint.

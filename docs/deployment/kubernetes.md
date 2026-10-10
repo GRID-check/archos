@@ -1904,6 +1904,42 @@ grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purge
   otel-collector ── OTLP/HTTP + x-otlp-api-key ──▶ aspire-dashboard
 ```
 
+**Log consumers.** The collector's logs signal has up to three consumers, each
+on a pipeline of its own so that one severity filter never strips another's
+copy:
+
+| Pipeline | Exporter | Filter | Switch |
+|---|---|---|---|
+| `logs` | `otlp_http/aspire` | none (live view) | `observabilityEnabled` |
+| `logs/err2issue` | `otlp_http/err2issue` | below ERROR dropped | `err2issueEnabled` (default `false`) plus `err2issueGithubRepo` and `err2issueGithubToken`; off removes the pod, its Secret and the pipeline together |
+| `logs/posthog` | `otlp_http/posthog` | below WARN dropped (`severity_number < 13`, records without a severity too) | `posthogLogsEnabled` (default `false`) plus `posthogHost` and `posthogProjectToken` |
+
+PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
+<project token>`. The token is PostHog's public `phc_` key, the same one the
+browser bundle carries, so it sits in the collector ConfigMap as plain config:
+no env var and no secret checksum on the pod. Only logs go: traces stay with
+Aspire and Langfuse (LLM traces reach PostHog through Langfuse's own
+integration), metrics stay with Aspire. The WARN floor and the 1000-batch
+bounded queue are what keep the signal inside PostHog's 10 GB free tier and a
+PostHog outage out of the dashboard. Not done: the `k8sattributes` processor
+(pod, namespace and node attributes), because it needs a ServiceAccount with
+`pods`/`namespaces` read RBAC and the collector pod deliberately mounts no API
+token; `service.name` already tells the tiers apart.
+
+err2issue is not removed, only switchable: PostHog Error Tracking takes over
+the job once it is wired, and `err2issueEnabled=false` (the default) stops
+both the sink and its pipeline. Egress needs no NetworkPolicy change: egress is
+open by design (`network-policies.ts`), so the collector, the frontend and the
+Python tiers reach PostHog on 443 as they reach OpenRouter.
+
+**One PostHog configuration.** `posthogHost` and `posthogProjectToken` are read
+once (`loadConfig`) and handed to every runtime: `NEXT_PUBLIC_POSTHOG_*` on the
+frontend and bff-jobs, `POSTHOG_HOST` and `POSTHOG_PROJECT_TOKEN` on
+`aiq-agent`, `aiq-api`, `agent-worker` and `ingest-worker` (`posthogEnv` in
+`deploy/pulumi/src/app/config.ts`), and the logs exporter above. Both keys or
+neither: with one unset every runtime stays off. Changing either rolls the pods,
+because they are literal env values in the pod template.
+
 **URL:** `https://<otelDomain>` (stack output `otelUrl`).
 
 **Access:** WorkOS OIDC, restricted to holders of the
@@ -2283,7 +2319,8 @@ v4 web container, then the v3 digests. After it, only the backups.
 ### Signals and attribution
 
 Only **traces** go to Langfuse. Logs and metrics still go to the Aspire
-dashboard alone (and ERROR logs to err2issue, ADR-0031). The collector adds one
+dashboard (plus ERROR logs to err2issue, ADR-0031, and WARN+ logs to PostHog when
+enabled, see §9). The collector adds one
 exporter to the *existing* traces pipeline, so both consumers get every span.
 
 Consequence to know: the two exporters share the pipeline's `memory_limiter`, so
