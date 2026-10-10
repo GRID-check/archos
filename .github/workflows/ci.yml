@@ -621,6 +621,13 @@ jobs:
           hash: ${{ matrix.hash }}
           registry: ${{ env.REGISTRY }}
           push: "true"
+          # Source maps for PostHog error tracking. Only here, never in the pull
+          # request `image` job above: a PR build must not write release data
+          # into the PostHog project, and a fork has neither value. Both empty
+          # (the secret/variable is not set up) builds exactly as before.
+          # docs/contributing/ci.md#posthog-releases-and-source-maps
+          posthog-api-key: ${{ secrets.POSTHOG_CLI_API_KEY }}
+          posthog-project-id: ${{ vars.POSTHOG_PROJECT_ID }}
 
   # The commit's tags, `sha-<commit>` for all three images (and `latest` on
   # develop), go on only after every check on this push passed. That is the

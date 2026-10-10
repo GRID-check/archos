@@ -106,6 +106,74 @@ images until someone dispatched a rebuild by hand.
 inputs did not change is re-tagged, not rebuilt, so a container reports the
 commit its code came from.
 
+## PostHog releases and source maps
+
+Error tracking and the self-driving inbox date a regression by asking which
+commit an exception came from and when the cluster started running it. Two
+pieces of CI answer that. Both are off until the secret and variable below
+exist, so a fork, a pull request and a repository without PostHog build and
+deploy exactly as before.
+
+| Piece | Where | What it does |
+|---|---|---|
+| Source maps and release | `image-push` for the frontend image, inside the Docker build (`frontends/ui/deploy/upload-sourcemaps.sh`) | After `next build`, injects a chunk id and the release id into the shipped JavaScript, uploads the maps to PostHog, deletes them. The release is `grid-ui` at the commit that built the image, which is the `GRID_GIT_SHA` the container reports |
+| Deploy marker | `deploy.yml`, after each `Pulumi up` (`deploy/pulumi/scripts/posthog-annotate.sh`) | A project annotation `deploy dev <sha>` or `deploy prod <sha>` at the time the apply finished. `continue-on-error`: a PostHog outage never turns a deploy red |
+
+| Name | Kind | Value |
+|---|---|---|
+| `POSTHOG_CLI_API_KEY` | secret | A personal API key with scopes `error_tracking:write`, `organization:read` and `annotation:write`, created at PostHog → Settings → User API keys. Repository-level, because `image-push` has no environment; the deploy jobs read the same one |
+| `POSTHOG_PROJECT_ID` | variable | The numeric project id (269895 for the EU staging project). Not secret |
+| `POSTHOG_CLI_HOST` | variable, optional | The PostHog **app** host. Default `https://eu.posthog.com`. Not the ingestion host `eu.i.posthog.com` |
+
+Why it is built this way:
+
+- **Inside the Docker build, not a workflow step.** The injection rewrites the
+  files the image ships. A step after the build would inject into files the
+  image never contained, and the chunk ids in the image would match nothing.
+  `PostHog/upload-source-maps` works on a directory of the runner, so it does
+  not fit an image built by BuildKit.
+- **A BuildKit secret, never a build arg.** An arg is written into the image
+  history. The key reaches the Dockerfile as `--mount=type=secret` and the CLI
+  as its environment. `build-image` passes it only for the frontend image and
+  only from `image-push`; a pull request build has no access and uploads
+  nothing, so unmerged code never creates a release.
+- **The maps are uploaded and not served.** `productionBrowserSourceMaps` makes
+  Next serve `.next/static/**/*.map`, original source included, to anyone.
+  `next.config.ts` turns it on only when `GRID_SOURCEMAPS=1`, which the
+  Dockerfile sets only for the build that also uploads, and the script runs the
+  CLI with `--delete-after` and fails the build if any `.map` is left in
+  `.next/static` or `.next/server`. It fails as well when no chunk id was
+  injected, which would mean the upload matches no stack frame. The runtime
+  config has neither flag.
+- **Why the release is a build commit.** An image whose inputs did not change is
+  re-tagged, not rebuilt (above), so an error on such a deploy names the older
+  commit that built the code. The deploy marker carries the commit that was
+  deployed. Read the pair together: the release says where the code came from,
+  the annotation says when users got it.
+- **Chunk ids are content-addressed**, so a rebuild of unchanged files yields
+  the same ids and a re-run cannot orphan an earlier upload.
+- The CLI is pinned (`POSTHOG_CLI_VERSION` in the script, 0.18.8) and installed
+  with npm in the builder stage only; it is not in the runtime image.
+- Caching: `ARG GRID_GIT_SHA` comes after the build layers in the Dockerfile's
+  builder stage, so a new commit re-runs the upload step and nothing above it.
+  `POSTHOG_PROJECT_ID` is an arg before `bun run build`: a build with PostHog
+  configured is a different layer from one without, so enabling it never reuses
+  a build that produced no maps.
+
+An image already in GHCR under its `inputs-<hash>` is not rebuilt when the
+secret is added later, so its maps are never uploaded. Wait for the weekly
+rebuild, or bump `SCHEME` in `ci/image_inputs.py`.
+
+Python (`aiq_agent`) has no source maps; PostHog links its exceptions to a
+release through `POSTHOG_RELEASE_ID`, which the SDK (`posthog>=7.59`) sends as
+`$release_id`. [`PostHog/resolve-release`](https://posthog.com/docs/error-tracking/link-releases/python)
+creates that release and outputs `release-id`; it is not wired in, because the
+backend's environment comes from the Pulumi stack and nothing there takes a
+release id yet. The step would go before `Pulumi up` in `deploy.yml`, with the
+action pinned by commit SHA, `release-name: grid-agent` and
+`release-version` the deployed sha, and its output set as a stack config key the
+program turns into `POSTHOG_RELEASE_ID` on the backend.
+
 ## Quick merges one after another
 
 A branch has one concurrency group. A running push run is never cancelled; a
@@ -182,6 +250,10 @@ Checked against GitHub's feature set on 2026-10-09.
   that never reports blocks every PR.
 - The `staging` and `production` environments as in
   [cd.md](../deployment/cd.md).
+- Optional: the secret `POSTHOG_CLI_API_KEY` and the variable
+  `POSTHOG_PROJECT_ID` (`POSTHOG_CLI_HOST` to override the EU default), for
+  source maps and deploy markers
+  ([above](#posthog-releases-and-source-maps)).
 
 ## Changing CI
 

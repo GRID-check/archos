@@ -19,8 +19,24 @@ import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
  */
 const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 * 1024))
 
+/**
+ * Emit source maps, for a build that is about to upload them to PostHog.
+ *
+ * Set by `deploy/Dockerfile` for the one `next build` whose key and project id
+ * are present, and by nothing else: at runtime it is unset, so the server
+ * config below carries no map flags and Node pays no source-map cost.
+ *
+ * Next serves `productionBrowserSourceMaps` from `.next/static` to anyone, with
+ * the original source inside, so a build with this on must delete the maps
+ * after the upload. `deploy/upload-sourcemaps.sh` does, and fails the build when
+ * one survives. Never turn this on in a build that does not run that script.
+ */
+const emitSourceMaps = process.env.GRID_SOURCEMAPS === '1'
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  productionBrowserSourceMaps: emitSourceMaps,
 
   // The build typechecks production code only: tsconfig.build.json leaves the
   // specs and test helpers out of its roots, so a type error in a test cannot
@@ -82,6 +98,7 @@ const nextConfig: NextConfig = {
   serverExternalPackages: ['exceljs'],
 
   experimental: {
+    serverSourceMaps: emitSourceMaps,
     serverActions: {
       bodySizeLimit: `${requestBodyLimitMB}mb`,
     },
