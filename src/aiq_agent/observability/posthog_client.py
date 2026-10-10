@@ -113,12 +113,13 @@ def capture(
     *,
     distinct_id: str | None,
     properties: dict[str, Any] | None = None,
-    groups: dict[str, str] | None = None,
 ) -> bool:
     """Queue one event; whether it was queued. Never raises.
 
     ``distinct_id`` ``None`` sends a personless event (``$process_person_profile``
     false): a job or a system step with no user behind it must not mint a person.
+    Tenancy travels as the ``organization_id`` property, not as a PostHog group:
+    group analytics is a paid add-on, and ADR-0098 keeps to the free tier.
     """
     client = get_client()
     if client is None:
@@ -127,7 +128,7 @@ def capture(
     if distinct_id is None:
         props["$process_person_profile"] = False
     try:
-        client.capture(event, distinct_id=distinct_id, properties=props, groups=groups)
+        client.capture(event, distinct_id=distinct_id, properties=props)
     except Exception:
         logger.debug("Could not queue PostHog event %s", event, exc_info=True)
         return False
