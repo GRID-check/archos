@@ -87,6 +87,9 @@ vi.mock('@/lib/tasks/repository', () => ({
   findRunByBackendJobId: vi.fn(),
 }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 vi.mock('./backend-client', async (importActual) => {
   const actual = await importActual<typeof import('./backend-client')>()
   return { ...actual, submitJob: vi.fn() }
@@ -716,6 +719,28 @@ describe('fireScheduledJob', () => {
     const result = await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
 
     expect(result).toEqual({ fired: true, jobId: 'backend-1' })
+  })
+
+  it('reports job_run_started to PostHog, personless, for a run the backend took', async () => {
+    await fireScheduledJob(definitionRow({ id: 'def-1', trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+
+    const recorded = vi.mocked(repository.insertRun).mock.calls[0]?.[0]
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: 'org_1',
+      properties: { job_id: 'def-1', run_id: recorded?.id, trigger: 'schedule', output: expect.any(String) },
+    })
+  })
+
+  it('reports no start for a skipped fire', async () => {
+    vi.mocked(findProjectInOrg).mockResolvedValueOnce({ collectionName: 'proj_x', status: 'closed' } as never)
+
+    await fireScheduledJob(definitionRow({ trigger: 'schedule', scheduleCron: '0 8 * * 1' }))
+    await fireScheduledJob(definitionRow({ enabled: false }))
+
+    expect(captureServer).not.toHaveBeenCalled()
   })
 
   it('counts a fire the backend queued as fired: a full queue is a wait, not a skip', async () => {

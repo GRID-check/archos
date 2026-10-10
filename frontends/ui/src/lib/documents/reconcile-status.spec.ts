@@ -12,6 +12,11 @@ vi.mock('@/lib/db', () => ({
 // call reconciliation makes.
 vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mockResolvedValue(undefined) }))
 
+// What PostHog hears is `lib/analytics/ingest-events.spec.ts`'s subject; here it is the
+// call reconciliation makes for the rows it moved.
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { asDb } from '@/test-utils/db-fixtures'
@@ -936,6 +941,78 @@ describe('reconcileDocumentStatuses on a failure the backend settled as interrup
     expect(batchCalls()).toHaveLength(0)
     expect(result.map((r) => r.status)).toEqual(['failed', 'failed', 'failed'])
     expect(db.update).not.toHaveBeenCalled()
+  })
+})
+
+describe('reconcileDocumentStatuses reports finished ingests to PostHog', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  const backend = (job: unknown) =>
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch')
+        ? batchResponse({ 'job-1': job })
+        : collectionResponse([
+            { file_id: 'f-1', file_name: 'plan.pdf', status: 'success', chunk_count: 12, metadata: { page_count: 4 } },
+          ])
+    )
+
+  it('sends document_ingest_finished for the row this read moved, with counts and no filename', async () => {
+    makeDbMock()
+    backend({ status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success', screening: 'clean' }] })
+    const dispatched = new Date(Date.now() - 120_000)
+
+    await reconcileDocumentStatuses([makeRow({ updatedAt: dispatched })], 'org-1')
+
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    const [[sent]] = captureServer.mock.calls as unknown as [[{ properties: Record<string, unknown> }]]
+    expect(sent).toMatchObject({
+      event: 'document_ingest_finished',
+      distinctId: null,
+      organizationId: 'org-1',
+      properties: { status: 'completed', screening: 'clean', file_type: 'pdf', page_count: 4, chunk_count: 12 },
+    })
+    expect(sent.properties.duration_ms).toBeGreaterThanOrEqual(120_000)
+    expect(sent.properties.duration_ms).toBeLessThan(150_000)
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('plan')
+  })
+
+  it('reports a failure by its status and carries nothing of the error text', async () => {
+    makeDbMock()
+    backend({ status: 'failed', error_message: 'could not read secret-plan.pdf', file_details: [] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ properties: expect.objectContaining({ status: 'failed' }) })
+    )
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('secret')
+  })
+
+  it('sends nothing for a row another read moved first', async () => {
+    makeDbMock({ moved: false })
+    backend({ status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(captureServer).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing for a job still in progress, or for rows already at rest', async () => {
+    makeDbMock()
+    backend({ status: 'processing', queue_position: 0 })
+
+    await reconcileDocumentStatuses([makeRow(), makeRow({ id: 'doc-2', status: 'completed' })], 'org-1')
+
+    expect(captureServer).not.toHaveBeenCalled()
   })
 })
 

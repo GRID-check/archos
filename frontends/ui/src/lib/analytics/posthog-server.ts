@@ -19,7 +19,39 @@ import 'server-only'
 
 import { PostHog } from 'posthog-node'
 
+import { scrubServerEvent } from './scrub-server-event'
+
 type ServerProperties = Record<string, unknown>
+
+/** What a server event may carry: scalars only, so a nested object cannot smuggle free text. */
+export type ServerEventProperties = Record<string, string | number | boolean | null | undefined>
+
+/**
+ * Product events the BFF emits, a closed union like the browser's
+ * `PostHogEvent` (`posthog.ts`) so a typo'd name fails the build instead of
+ * minting a second, almost-identical event in PostHog. Add the name here when a
+ * call site starts emitting a new one, and its row to
+ * `docs/observability/posthog-events.md`.
+ *
+ * These are the events the server is the truth for: the browser cannot see
+ * them (a scheduled run, an ingest finishing), or could be wrong or blocked by
+ * an ad blocker (a sign-in, an organization created, a budget refusal).
+ *
+ * Properties are non-personal by rule: ids of our own rows, kinds, counts,
+ * durations and statuses. Never a document name, a question, an email, a URL.
+ */
+export type ServerEvent =
+  | 'user_signed_in'
+  | 'organization_created'
+  | 'resource_shared'
+  | 'task_assigned'
+  | 'mention_released'
+  | 'job_run_started'
+  | 'job_run_finished'
+  | 'document_ingest_finished'
+  | 'bim_query_executed'
+  | 'budget_blocked'
+  | 'budget_threshold_crossed'
 
 let client: PostHog | null = null
 let resolved = false
@@ -42,6 +74,9 @@ export const getPosthogServer = (): PostHog | null => {
     client = new PostHog(config.projectToken, {
       host: config.host,
       disableGeoip: true,
+      // Every event passes the scrubber last, whichever path queued it: a
+      // credential in a URL must not depend on each caller remembering.
+      before_send: scrubServerEvent,
       // Batch small: the BFF is long-lived, but a scale-down must not lose a
       // feedback vote that sat in a large buffer.
       flushAt: 20,
@@ -53,26 +88,35 @@ export const getPosthogServer = (): PostHog | null => {
 }
 
 export interface ServerCapture {
-  event: string
-  /** The WorkOS user id. `null` sends a personless event (no person minted). */
+  event: ServerEvent
+  /** The acting WorkOS user id. `null` sends a personless event (no person minted): a system action. */
   distinctId: string | null
-  properties?: ServerProperties
-  /** Group keys, e.g. `{ organization: orgId, project: projectId }`. */
-  groups?: Record<string, string>
+  /**
+   * The WorkOS organization the event happened in, sent as the
+   * `organization_id` property. A property rather than a PostHog group: group
+   * analytics is a paid add-on, and the browser registers the same property.
+   */
+  organizationId?: string | null
+  properties?: ServerEventProperties
 }
 
-/** Queue one event; whether it was queued. Never throws. */
-export const captureServer = ({ event, distinctId, properties, groups }: ServerCapture): boolean => {
+/**
+ * Queue one event; whether it was queued. Never throws, and returns before
+ * anything is sent (the client batches), so a call site can call it inline and
+ * ignore the answer: a failure here must not change a route's behaviour or
+ * latency.
+ */
+export const captureServer = ({ event, distinctId, organizationId, properties }: ServerCapture): boolean => {
   const posthog = getPosthogServer()
   if (!posthog) return false
   const props: ServerProperties = { ...properties }
+  if (organizationId) props.organization_id = organizationId
   if (distinctId === null) props.$process_person_profile = false
   try {
     posthog.capture({
       event,
       distinctId: distinctId ?? `server:${event}`,
       properties: props,
-      groups,
     })
     return true
   } catch (error) {

@@ -21,6 +21,7 @@
  */
 
 import { z } from 'zod'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { bimQuerySchema, runBimQuery, BimModelNotReadyError } from '@/lib/bim/query'
 import {
@@ -109,10 +110,25 @@ export const POST = internalApiRoute(
       resolvedQuery = { ...query, baseModelId: matches[0].id }
     }
 
+    // `bim_query_executed` (ADR-0098): which questions about a building the
+    // agent asks, and how often they fail. Personless — the route carries a
+    // service token, not a person — and only the op, a closed enum, is sent:
+    // never the model name, the filter or the answer.
+    const announce = (ok: boolean): void => {
+      captureServer({
+        event: 'bim_query_executed',
+        distinctId: null,
+        organizationId,
+        properties: { kind: query.op, ok },
+      })
+    }
+
     try {
       const result = await runBimQuery(resolvedQuery, { modelId: selected.id, organizationId })
+      announce(true)
       return { resolved: true, ...result }
     } catch (error) {
+      announce(false)
       if (error instanceof BimModelNotReadyError) {
         // A 400 here would tell the agent it sent a malformed request; the request
         // was fine and the MODEL is not ready, which is an answer, not an error.

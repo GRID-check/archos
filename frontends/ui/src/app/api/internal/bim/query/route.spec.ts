@@ -23,9 +23,12 @@ vi.mock('@/lib/bim/query', async () => {
 })
 vi.mock('@/lib/workos/feature-flags', () => ({ isOrgFeatureEnabled: vi.fn() }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 import { POST } from './route'
 import { listBimModels } from '@/lib/bim/repository'
-import { runBimQuery } from '@/lib/bim/query'
+import { BimModelNotReadyError, runBimQuery } from '@/lib/bim/query'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import type { BimModelHeader } from '@/lib/bim/repository'
 import { getRestrictedFolderIds } from '@/lib/authz/folder-access'
@@ -101,6 +104,56 @@ describe('POST /api/internal/bim/query', () => {
     expect(getRestrictedFolderIds).toHaveBeenCalledWith('org-1', PROJECT)
     expect(response.status).toBe(404)
     expect(runBimQuery).not.toHaveBeenCalled()
+  })
+
+  describe('bim_query_executed (PostHog)', () => {
+    const overview = { organizationId: 'org-1', projectId: PROJECT, modelId: NEW.id, query: { op: 'overview' } }
+
+    it('reports the op and success, personless, with no model name or answer', async () => {
+      await post(overview)
+
+      expect(captureServer).toHaveBeenCalledTimes(1)
+      expect(captureServer).toHaveBeenCalledWith({
+        event: 'bim_query_executed',
+        distinctId: null,
+        organizationId: 'org-1',
+        properties: { kind: 'overview', ok: true },
+      })
+      expect(JSON.stringify(captureServer.mock.calls)).not.toContain('Haus-A')
+    })
+
+    it('reports a model that is not ready as not ok, and still answers as before', async () => {
+      vi.mocked(runBimQuery).mockRejectedValue(new BimModelNotReadyError('extracting', 'Modell wird noch verarbeitet.'))
+
+      const response = await post(overview)
+
+      expect(response.status).toBe(200)
+      expect(captureServer).toHaveBeenCalledWith(
+        expect.objectContaining({ properties: { kind: 'overview', ok: false } })
+      )
+    })
+
+    it('reports an unexpected failure as not ok and leaves the 500 to the factory', async () => {
+      vi.spyOn(console, 'error').mockImplementation(() => {})
+      vi.mocked(runBimQuery).mockRejectedValue(new Error('statement timeout'))
+
+      const response = await post(overview)
+
+      expect(response.status).toBe(500)
+      expect(captureServer).toHaveBeenCalledWith(
+        expect.objectContaining({ properties: { kind: 'overview', ok: false } })
+      )
+    })
+
+    it('reports nothing when no query ran: unresolved model, refused flag', async () => {
+      vi.mocked(listBimModels).mockResolvedValue([])
+      await post(overview)
+
+      process.env.GRID_IFC_MODELS_ENABLED = 'false'
+      await post(overview)
+
+      expect(captureServer).not.toHaveBeenCalled()
+    })
   })
 
   describe('the ifc-models feature flag', () => {
