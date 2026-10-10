@@ -310,12 +310,12 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
     // OTLP tracing via the cluster collector (ADR-0029 amendment). Producers
-    // send plain OTLP in-cluster — the collector alone holds the Aspire API
+    // send plain OTLP in-cluster — the collector alone holds the Langfuse
     // key. HTTP/protobuf to :4318 — the full /v1/traces path is required: the
     // NAT exporter posts to the endpoint as-is (path appending only happens
     // for SDK env-var defaults, not for an endpoint the config passes
     // explicitly). OTEL_SERVICE_NAME becomes service.name on the spans so
-    // chat tier and worker tier are distinct resources in the dashboard.
+    // chat tier and worker tier are distinct resources in Langfuse.
     // Injected only when the observability tier is deployed — otherwise every
     // span export would retry against a Service that doesn't exist.
     ...(cfg.observability.enabled
@@ -338,8 +338,8 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     // Langfuse session/user attribution (ADR-0044). Keyed off the LANGFUSE
     // tier, not the observability one, and that distinction is the point:
     // stamping a user id on every span is only worth its privacy cost where
-    // there is a store that groups traces by user. An Aspire-only deployment
-    // gets no identity attributes at all.
+    // there is a store that groups traces by user. A stack that exports only
+    // PostHog logs gets no identity attributes at all.
     ...(cfg.langfuse.enabled
       ? [{ name: "GRID_TRACE_IDENTITY_ATTRIBUTES", value: "true" }]
       : []),

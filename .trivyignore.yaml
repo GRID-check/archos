@@ -8,7 +8,7 @@
 # forever if upstream never ships the fix.
 #
 # Bump the pin before you box anything. On 2026-10-07 moving Langfuse 4.48.0
-# -> 4.54.0 and aspire-dashboard 13.4.2 -> 13.5.2 cleared 34 of this file's 37
+# -> 4.54.0 and aspire-dashboard 13.4.2 -> 13.5.2 (since retired) cleared 34 of this file's 37
 # vulnerability entries, verified by scanning the new digests with this file
 # empty rather than by reading release notes. Two more went because they had
 # already expired: the ClickHouse (OpenSSL) and err2issue (PCRE2) lines of a
@@ -140,7 +140,7 @@ vulnerabilities:
   # `go version`) is still go1.26.8, and 0.163.0 exists only as a nightly.
   # Shared context: the collector's OTLP receivers listen in plaintext inside
   # the cluster, reachable from pods in the namespace and from no route, and
-  # its exporters speak plain HTTP to the Aspire dashboard and Langfuse.
+  # its exporters speak plain HTTP to Langfuse.
   # Bump the pin to the first contrib release built with go >= 1.26.9 and drop
   # both.
   - id: CVE-2026-78667

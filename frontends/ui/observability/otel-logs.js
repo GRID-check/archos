@@ -3,8 +3,8 @@
  * purger) — ADR-0029 "future signal adoption is app-only work".
  *
  * Every tier logs with plain `console.*`; this module bridges those calls to
- * OTel log records so they land in the Aspire dashboard's "Strukturierte
- * Protokolle" next to the Python tiers' logs. The original console output is
+ * OTel log records so they reach the collector, and through it PostHog Logs,
+ * next to the Python tiers' logs. The original console output is
  * preserved (kubectl logs keeps working).
  *
  * Severity follows the console method, with the exceptions listed at
@@ -56,7 +56,7 @@ const SEVERITY = {
  * ERROR is not a cosmetic level here: the collector drops everything below it
  * before the err2issue exporter (`deploy/pulumi/src/platform/otel-collector.ts`,
  * ADR-0031), so an ERROR record opens a GitHub issue while a WARN record still
- * reaches the Aspire dashboard in full. Nothing on this list is dropped or
+ * reaches PostHog Logs in full. Nothing on this list is dropped or
  * sampled away — it is recorded at the severity it actually has, which is the
  * difference between "visible in the logs" and "someone is paged about it".
  *

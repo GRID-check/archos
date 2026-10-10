@@ -1143,46 +1143,17 @@ export interface GridConfig {
   observability: {
     /**
      * Whether the OTel Collector is deployed: the `observabilityEnabled` flag
-     * AND at least one consumer for it (Langfuse, PostHog logs, err2issue or the
-     * Aspire dashboard). It needs no dashboard, no OTLP key and no Gateway host:
-     * the collector forwards to Langfuse and PostHog on their own credentials.
-     * When false nothing is provisioned and no producer gets an OTLP endpoint.
+     * AND at least one consumer for it (Langfuse, PostHog logs or err2issue).
+     * The collector forwards to those on their own credentials. When false
+     * nothing is provisioned and no producer gets an OTLP endpoint.
      */
     enabled: boolean;
     /**
-     * Whether the Aspire dashboard is deployed: the flag AND the capability
-     * derived from its dependencies (`otelPrimaryApiKey` and the dedicated WorkOS
-     * Connect application). Implies `enabled`. It is the only part of the tier
-     * with a public host, a Gateway listener and a SecurityPolicy.
-     */
-    dashboardEnabled: boolean;
-    /** Public hostname for the Aspire dashboard. Derived: `otel.<baseDomain>` unless the `otelDomain` key overrides it. */
-    otelDomain: string;
-    /**
-     * Aspire dashboard image reference, digest-pinned by default (override
-     * only for deliberate upgrades).
-     */
-    dashboardImage: string;
-    /**
      * OpenTelemetry Collector image reference, digest-pinned by default —
-     * the single OTLP ingestion point that fans out to the dashboard
-     * (ADR-0029 amendment).
+     * the single OTLP ingestion point that fans out to Langfuse and the log
+     * consumers (ADR-0029 amendment).
      */
     collectorImage: string;
-    /**
-     * Telemetry ring-buffer limits inside the dashboard pod. Aspire defaults
-     * to 10000/10000; raised to 50000 for a live view window.
-     */
-    telemetryLimits: {
-      maxLogCount: number;
-      maxTraceCount: number;
-    };
-    /**
-     * OTLP ingestion key. Held by the dashboard (`Dashboard:Otlp:PrimaryApiKey`)
-     * and the collector (exporter header) only — producers send unauthenticated
-     * OTLP to the collector and never see it. Empty when observability is off.
-     */
-    otelPrimaryApiKey: pulumi.Output<string>;
     /**
      * Issuer of the dedicated WorkOS **Connect** application, i.e. the
      * environment's AuthKit domain (`https://<tenant>.authkit.app`). Its
@@ -1190,12 +1161,13 @@ export interface GridConfig {
      * `/user_management/*` endpoints are not, and cannot serve this flow at all
      * (see the capability check in `loadConfig`).
      *
-     * Required for the Aspire dashboard and for Langfuse (its route is gated
-     * by this application and its UI signs in against it). As a side benefit
-     * the platform surfaces no longer share the app's AuthKit client, so an
-     * ordinary app sign-in does not mint a platform credential, access is
-     * separately revocable, and the client secret is purpose-scoped instead of
-     * being the WorkOS management API key.
+     * Required for Langfuse (its route is gated by this application and its UI
+     * signs in against it). The keys keep their `otelOidc*` names from when the
+     * Aspire dashboard shared the application. As a side benefit Langfuse no
+     * longer shares the app's AuthKit client, so an ordinary app sign-in does
+     * not mint a platform credential, access is separately revocable, and the
+     * client secret is purpose-scoped instead of being the WorkOS management
+     * API key.
      */
     oidcIssuer: string;
     /** Client id of that Connect application. */
@@ -1207,12 +1179,11 @@ export interface GridConfig {
   /**
    * Langfuse — the DURABLE LLM-observability backend (ADR-0044).
    *
-   * A third consumer on the collector's traces signal, alongside the Aspire
-   * dashboard. The two are not redundant and neither replaces the other:
-   * Aspire is a live ops pane over an in-memory ring buffer that answers "what
-   * is the system doing right now"; Langfuse is a queryable store that answers
-   * "what did this user's run cost, which model served it, and how did that
-   * change over the last month". ADR-0029 deferred exactly this and named the
+   * The consumer of the collector's traces signal: a queryable store that
+   * answers "what did this user's run cost, which model served it, and how did
+   * that change over the last month", and the live view of what the system is
+   * doing now. It replaced the Aspire dashboard, an in-memory ring buffer that
+   * answered only the second. ADR-0029 deferred exactly this and named the
    * collector as the seam it would arrive through.
    *
    * **Self-hosted OSS only.** No license key is configured anywhere in this
@@ -1359,8 +1330,7 @@ export interface GridConfig {
 
   /**
    * err2issue — ERROR-severity telemetry becomes deduplicated GitHub issues
-   * (ADR-0031). A second consumer on the collector's logs signal, alongside the
-   * Aspire dashboard.
+   * (ADR-0031). A consumer on the collector's logs signal.
    */
   err2issue: {
     /**
@@ -1399,9 +1369,9 @@ export interface GridConfig {
     /** Drop errors from services the route map does not match. */
     dropUnrouted: boolean;
     /**
-     * Link each issue's trace id to the Aspire dashboard's trace view
-     * (`E2I_TRACE_URL_TEMPLATE`, err2issue >= 0.5). Empty when the
-     * observability tier is off: there is nothing to link to.
+     * Link each issue's trace id to Langfuse's trace view
+     * (`E2I_TRACE_URL_TEMPLATE`, err2issue >= 0.5). Empty when Langfuse is not
+     * deployed: there is nothing to link to.
      */
     traceUrlTemplate: string;
     /**
@@ -1549,9 +1519,9 @@ export function loadConfig(): GridConfig {
     }
   };
   rejectPlaceholder("storageClass", ["REPLACE_ME"]);
-  // Single source for every public host: app/s3/otel subdomains derive from
+  // Single source for every public host: app/s3/langfuse subdomains derive from
   // baseDomain, so a domain move is a one-key change. The per-host keys
-  // (appDomain/s3Domain/otelDomain) survive only as explicit overrides.
+  // (appDomain/s3Domain/langfuseDomain) survive only as explicit overrides.
   const baseDomain = cfg.require("baseDomain");
   const appDomain = cfg.get("appDomain") ?? `app.${baseDomain}`;
   const s3Domain = cfg.get("s3Domain") ?? `s3.${baseDomain}`;
@@ -1568,7 +1538,6 @@ export function loadConfig(): GridConfig {
   // everything and then TLS silently never issues (the exact delayed-failure
   // class this guard exists to kill).
   rejectPlaceholder("letsEncryptEmail", ["example.com"]);
-  rejectPlaceholder("otelDomain", ["example.com"]);
   rejectPlaceholder("langfuseDomain", ["example.com"]);
 
   // The BFF clamps a nonsense threshold back to 80 rather than switching the
@@ -2060,31 +2029,16 @@ export function loadConfig(): GridConfig {
     );
   }
 
-  // ── Observability (ADR-0029): the collector and the dashboard are two gates ─
-  // `observabilityEnabled` is the product decision for the whole tier. What is
-  // actually deployed is derived from what each part cannot run without, never
-  // duplicated as another flag:
-  //
-  //   * The COLLECTOR needs a consumer and nothing else. It forwards traces to
-  //     Langfuse and logs to PostHog / err2issue on their own credentials, so
-  //     it has no use for the dashboard's OTLP key, the Connect application or
-  //     a public host. It used to be gated on all three, which meant a stack
-  //     without a dashboard had no trace export at all.
-  //   * The DASHBOARD needs `otelPrimaryApiKey` and the Connect application. The
-  //     Gateway SecurityPolicy in front of it has no usable OIDC client without
-  //     them, and the dashboard itself runs `AuthMode=Unsecured` precisely
-  //     because the edge does that job, so a half-configured dashboard is an
-  //     OPEN telemetry dashboard, not a locked one. The collector likewise has
-  //     no key to authenticate its export. So the dashboard (with its
-  //     SecurityPolicy, Gateway listener and the collector's exporter to it) is
-  //     skipped instead.
+  // ── Observability (ADR-0029): the collector, and what consumes it ─────────
+  // `observabilityEnabled` is the product decision for the whole tier. The
+  // collector is deployed when something consumes it (see `collectorEnabled`
+  // below), never because the flag alone says so. The Aspire dashboard it used
+  // to feed is gone (ADR-0098): traces go to Langfuse, logs to PostHog.
   const workosClientId = cfg.get("workosClientId") ?? "";
   const workosApiKey = cfg.getSecret("workosApiKey");
-  const otelDomain = cfg.get("otelDomain") ?? `otel.${baseDomain}`;
-  const otelPrimaryApiKey = cfg.getSecret("otelPrimaryApiKey");
-  // Dedicated WorkOS **Connect** application for the platform surfaces (the
-  // Aspire dashboard and Langfuse). REQUIRED — the app's own AuthKit client
-  // cannot be reused, and this is not a preference:
+  // Dedicated WorkOS **Connect** application for the platform surfaces (now
+  // Langfuse alone). REQUIRED — the app's own AuthKit client cannot be reused,
+  // and this is not a preference:
   //
   //   Envoy Gateway hardcodes HTTP Basic auth for the token exchange
   //   (`internal/xds/translator/oidc.go`, "every OIDC provider supports basic
@@ -2107,26 +2061,6 @@ export function loadConfig(): GridConfig {
     otelOidcClientId === "" ? "otelOidcClientId" : undefined,
     otelOidcClientSecret === undefined ? "otelOidcClientSecret" : undefined,
   ].filter((k): k is string => k !== undefined);
-  const missingDashboardDeps = [
-    otelPrimaryApiKey === undefined ? "otelPrimaryApiKey" : undefined,
-    ...missingOidcDeps,
-  ].filter((k): k is string => k !== undefined);
-  const dashboardEnabled = observabilityFlag && missingDashboardDeps.length === 0;
-
-  // Fail closed: the Aspire dashboard authenticates nobody itself (ADR-0029
-  // Amendment 2 moved auth to the Gateway SecurityPolicy), and the ONLY thing
-  // keeping the rest of the namespace off its unauthenticated :18888 is the
-  // NetworkPolicy set. Turning policies off while the tier is deployed would
-  // publish every tenant's prompts, retrieved snippets, LLM output and
-  // presigned S3 URLs to any pod that gets a foothold. Refuse the combination
-  // rather than silently shipping it.
-  if (dashboardEnabled && !bool(cfg, "networkPolicies", true)) {
-    throw new Error(
-      "grid-oib:observabilityEnabled requires grid-oib:networkPolicies. The Aspire dashboard " +
-        "runs AuthMode=Unsecured and relies on NetworkPolicies to keep the namespace off its " +
-        "unauthenticated UI port. Set networkPolicies=true, or observabilityEnabled=false.",
-    );
-  }
 
   // ── Langfuse (ADR-0044): same availability = flag AND capability rule ──────
   // Default ON, like `observabilityEnabled`: durable traces are the expected
@@ -2138,7 +2072,6 @@ export function loadConfig(): GridConfig {
   // retention policy. The dependency on `observabilityEnabled` is structural
   // for the same reason err2issue's is: Langfuse has no receiver of its own in
   // this design, the collector fans traces into it, so without it it is idle.
-  // Langfuse is what brings the collector up on a stack with no dashboard.
   //
   // It signs in against the platform WorkOS Connect application rather than
   // asking for a fourth OIDC triple. One application can carry several redirect
@@ -2243,12 +2176,11 @@ export function loadConfig(): GridConfig {
       );
     }
 
-    // Fail closed, like the dashboard: this tier needs NetworkPolicies just as
-    // much — the trace store, its ClickHouse and its ingestion queue all sit in
-    // the app namespace holding every tenant's prompts and LLM output. It used
-    // to inherit the dashboard's guard (Langfuse required the whole
-    // observability tier), which stopped being true once the collector no longer
-    // needs the dashboard, so the guard is stated here.
+    // Fail closed: this tier needs NetworkPolicies — the trace store, its
+    // ClickHouse and its ingestion queue all sit in the app namespace holding
+    // every tenant's prompts and LLM output, and the policy set is what keeps
+    // the rest of the namespace off them. (The Aspire dashboard's identical
+    // guard went with the dashboard.)
     if (!bool(cfg, "networkPolicies", true)) {
       throw new Error(
         "grid-oib:langfuseEnabled requires grid-oib:networkPolicies. Langfuse, its ClickHouse " +
@@ -2309,7 +2241,6 @@ export function loadConfig(): GridConfig {
     webDomain,
     appDomain,
     s3Domain,
-    otelDomain: dashboardEnabled ? otelDomain : undefined,
     langfuseDomain: langfuseEnabled ? langfuseDomain : undefined,
   });
 
@@ -2439,17 +2370,17 @@ export function loadConfig(): GridConfig {
   }
 
   // ── The collector: deployed when something consumes what it forwards ──────
-  // Four consumers, any one of which is enough: the dashboard (all signals),
-  // Langfuse (traces), err2issue and PostHog logs (logs). With none of them it
-  // would receive OTLP from every producer and forward it nowhere, and each
-  // producer would carry an endpoint pointing at a pod that does nothing.
+  // Three consumers, any one of which is enough: Langfuse (traces), err2issue
+  // and PostHog logs (logs). With none of them it would receive OTLP from every
+  // producer and forward it nowhere, and each producer would carry an endpoint
+  // pointing at a pod that does nothing.
   const collectorEnabled =
-    observabilityFlag && (dashboardEnabled || langfuseEnabled || err2issueEnabled || posthogLogsEnabled);
+    observabilityFlag && (langfuseEnabled || err2issueEnabled || posthogLogsEnabled);
   if (observabilityFlag && !collectorEnabled) {
     pulumi.log.warn(
-      "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse, " +
-        "posthogLogsEnabled, err2issue or the Aspire dashboard (grid-oib:otelPrimaryApiKey plus the " +
-        "otelOidc* application), or set grid-oib:observabilityEnabled=false to silence this.",
+      "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse " +
+        "(it also needs the otelOidc* application) or grid-oib:posthogLogsEnabled, or set " +
+        "grid-oib:observabilityEnabled=false to silence this.",
     );
   }
 
@@ -2921,23 +2852,13 @@ export function loadConfig(): GridConfig {
 
     observability: {
       enabled: collectorEnabled,
-      dashboardEnabled,
-      otelDomain,
-      // Digest-pinned (supply chain): 13.5.2 and 0.161.0 respectively. Bump
-      // deliberately via config when upgrading — the pins are scanned by the
-      // trivy job in .github/workflows/security.yml, which blocks on fixable
-      // HIGH/CRITICAL, so a stale pin surfaces as a failing check.
-      dashboardImage:
-        cfg.get("dashboardImage") ??
-        "mcr.microsoft.com/dotnet/aspire-dashboard@sha256:0ef531119b8073aed12b0db2b4e4ab02866c6c69b7a52264269abd00cfb48a34",
+      // Digest-pinned (supply chain): 0.161.0. Bump deliberately via config when
+      // upgrading — the pin is scanned by the trivy job in
+      // .github/workflows/security.yml, which blocks on fixable HIGH/CRITICAL, so
+      // a stale pin surfaces as a failing check.
       collectorImage:
         cfg.get("collectorImage") ??
         "otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1",
-      telemetryLimits: {
-        maxLogCount: num(cfg, "dashboardMaxLogCount", 50000),
-        maxTraceCount: num(cfg, "dashboardMaxTraceCount", 50000),
-      },
-      otelPrimaryApiKey: otelPrimaryApiKey ?? pulumi.output(""),
       oidcIssuer: otelOidcIssuer,
       oidcClientId: otelOidcClientId,
       oidcClientSecret: otelOidcClientSecret ?? pulumi.output(""),
@@ -3018,10 +2939,13 @@ export function loadConfig(): GridConfig {
       // once the steady-state volume is known.
       maxNewFingerprintsPerDay: num(cfg, "err2issueMaxNewFingerprintsPerDay", 20),
       dropUnrouted: bool(cfg, "err2issueDropUnrouted", true),
-      // The Aspire dashboard's trace view. It holds traces in memory, so a link
-      // on an old issue can outlive the trace it names; the id in the issue
-      // stays the thing to search by.
-      traceUrlTemplate: dashboardEnabled ? `https://${otelDomain}/traces/detail/{trace_id}` : "",
+      // Langfuse's trace view: the OTLP trace id is the Langfuse trace id, so
+      // the link needs nothing but the project. Empty without Langfuse. Unlike
+      // the Aspire ring buffer this once pointed at, the trace outlives the
+      // issue.
+      traceUrlTemplate: langfuseEnabled
+        ? `https://${langfuseDomain}/project/${encodeURIComponent(cfg.get("langfuseProjectId") ?? "grid-oib")}/traces/{trace_id}`
+        : "",
       reopenNotPlanned: bool(cfg, "err2issueReopenNotPlanned", false),
       issueAssignees: cfg.get("err2issueIssueAssignees") ?? "",
     },

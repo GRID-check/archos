@@ -13,8 +13,8 @@ import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-conf
  *   - A collector exporting to the wrong path 404s inside the exporter. Every
  *     pod is Ready; Langfuse is simply empty.
  *   - A missing `LANGFUSE_OTLP_AUTH` env with the exporter still configured
- *     stops the COLLECTOR from starting — taking the Aspire dashboard's
- *     telemetry down with it, for a tier nobody was looking at yet.
+ *     stops the COLLECTOR from starting — taking every export down with it,
+ *     for a tier nobody was looking at yet.
  *   - Two containers both running migrations contend on an advisory lock; the
  *     loser blocks until its startup probe gives up, so a deploy fails on a
  *     probe timeout rather than on anything naming migrations.
@@ -137,26 +137,25 @@ describe("with the Langfuse tier enabled", () => {
   });
 
   describe("collector fan-out", () => {
-    it("adds Langfuse to the EXISTING traces pipeline, keeping Aspire on it", () => {
-      // Both, not either. The dashboard is the live pane and Langfuse is the
-      // durable store; a change that quietly replaced one with the other would
-      // still look like "traces are working".
+    it("gives the traces pipeline to Langfuse alone", () => {
       expect(collectorConfig).toMatch(
-        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire, otlp_http\/langfuse\]/,
+        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/,
       );
     });
 
-    it("leaves the logs and metrics pipelines alone", () => {
+    it("sends it no logs and no metrics", () => {
       // Langfuse ingests traces. Pointing logs at it would be silently
-      // discarded volume — Langfuse's OTLP receiver is a traces endpoint.
-      expect(collectorConfig).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]/);
-      expect(collectorConfig).toMatch(/metrics:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]/);
+      // discarded volume — Langfuse's OTLP receiver is a traces endpoint. With
+      // no log consumer the logs signal ends in the nop exporter, and nothing
+      // consumes metrics at all (collector-gate.spec.ts).
+      expect(collectorConfig).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
+      expect(collectorConfig).not.toMatch(/\n    metrics:/);
     });
 
     it("uses the component's CURRENT type id, not its deprecated alias", () => {
       // Both `otlp_http` and `otlphttp` resolve today, so nothing fails if this
       // drifts — until the deprecated alias is removed upstream and the
-      // collector refuses to start, taking the dashboard's telemetry with it.
+      // collector refuses to start, taking every export with it.
       // Upstream is explicit: `Type = MustNewType("otlp_http")`,
       // `DeprecatedType = MustNewType("otlphttp")`.
       expect(collectorConfig).toContain("otlp_http/langfuse:");
@@ -203,9 +202,9 @@ describe("with the Langfuse tier enabled", () => {
       expect(Object.keys(spec.template.metadata.annotations ?? {}).join()).toMatch(/checksum/i);
     });
 
-    it("bounds the Langfuse queue so an outage cannot starve the dashboard", () => {
-      // Both exporters share one pipeline, so unbounded buffering on one of
-      // them becomes `memory_limiter` back-pressure on the other.
+    it("bounds the Langfuse queue so an outage cannot grow the collector without limit", () => {
+      // Unbounded buffering behind a slow Langfuse becomes `memory_limiter`
+      // back-pressure on the whole pipeline.
       expect(collectorConfig).toMatch(/sending_queue:\s*\n\s*enabled: true\s*\n\s*queue_size: 2000/);
     });
   });
@@ -478,21 +477,6 @@ describe("with the Langfuse tier enabled", () => {
       expect(spec.oidc.scopes).toEqual(
         expect.arrayContaining(["platform:organizations:view", "platform:observability:view"]),
       );
-    });
-
-    it("keeps the Aspire dashboard on the operator permission alone", async () => {
-      // The dashboard has no users of its own to narrow an analyst by: anyone
-      // through its edge sees every tenant's raw spans and logs.
-      const spec = (await resolve(
-        find("kubernetes:gateway.envoyproxy.io/v1alpha1:SecurityPolicy", "grid-otel-security-policy")
-          .inputs.spec,
-      )) as any;
-
-      expect(spec.authorization.defaultAction).toBe("Deny");
-      expect((spec.authorization.rules as any[]).map((r) => r.principal.jwt.scopes)).toEqual([
-        ["platform:organizations:view"],
-      ]);
-      expect(spec.oidc.scopes).not.toContain("platform:observability:view");
     });
 
     it("serves the hostname on its own TLS listener", async () => {

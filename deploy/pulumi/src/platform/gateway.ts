@@ -259,23 +259,9 @@ export function installGatewayResources(
     { provider, dependsOn },
   );
 
-  const otelListeners: IGatewaySpec["listeners"] = cfg.observability.dashboardEnabled
-    ? [
-        {
-          name: "https-otel",
-          port: 443,
-          protocol: "HTTPS",
-          hostname: cfg.observability.otelDomain,
-          tls: { mode: "Terminate", certificateRefs: [{ name: "grid-otel-tls" }] },
-          allowedRoutes: { namespaces: { from: "Same" } },
-        },
-      ]
-    : [];
-
-  // Langfuse UI (ADR-0044) — same arrangement as the Aspire listener above, and
-  // absent for the same reason when the tier is off: no hostname to serve, and
-  // an annotated Gateway would have cert-manager chasing a certificate for a
-  // host with no backing Service.
+  // Langfuse UI (ADR-0044) — absent when the tier is off: no hostname to
+  // serve, and an annotated Gateway would have cert-manager chasing a
+  // certificate for a host with no backing Service.
   const langfuseListeners: IGatewaySpec["listeners"] = cfg.langfuse.enabled
     ? [
         {
@@ -329,10 +315,6 @@ export function installGatewayResources(
         tls: { mode: "Terminate", certificateRefs: [{ name: "grid-web-tls" }] },
         allowedRoutes: { namespaces: { from: "Same" } },
       },
-      // Aspire dashboard UI — only when the observability tier is deployed
-      // (ADR-0029). Otherwise there is no hostname to serve and cert-manager
-      // would chase a certificate for a host with no backing Service.
-      ...otelListeners,
       // Langfuse UI — only when that tier is deployed (ADR-0044).
       ...langfuseListeners,
     ],

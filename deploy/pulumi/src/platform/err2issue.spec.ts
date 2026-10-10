@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { baseStackConfig } from "../test-support/stack-config";
+import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
 
 /**
  * The err2issue sink (ADR-0031).
@@ -39,7 +39,7 @@ function resolve(value: unknown): Promise<any> {
   );
 }
 
-describe("err2issue, enabled behind the observability tier", () => {
+describe("err2issue, enabled behind the collector", () => {
   let container: {
     image: string;
     imagePullPolicy: string;
@@ -49,10 +49,8 @@ describe("err2issue, enabled behind the observability tier", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
-      "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
-      "grid-oib:otelOidcClientId": "client_otel",
-      "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
+      // Langfuse ON, because it is what the issue's trace link points at.
+      ...langfuseStackConfig(),
       "grid-oib:err2issueEnabled": "true",
       "grid-oib:err2issueGithubRepo": "GRID-check/grid-oib-agent",
       "grid-oib:err2issueGithubToken": "gh-token", // pragma: allowlist secret
@@ -73,8 +71,10 @@ describe("err2issue, enabled behind the observability tier", () => {
     expect(container.imagePullPolicy).toBe("IfNotPresent");
   });
 
-  it("links trace ids to the Aspire dashboard's trace view", () => {
-    expect(env("E2I_TRACE_URL_TEMPLATE")).toBe("https://otel.example.test/traces/detail/{trace_id}");
+  it("links trace ids to Langfuse's trace view", () => {
+    expect(env("E2I_TRACE_URL_TEMPLATE")).toBe(
+      "https://langfuse.example.test/project/grid-oib/traces/{trace_id}",
+    );
   });
 
   it("keeps issues closed as not planned closed, and leaves unset options to err2issue", () => {

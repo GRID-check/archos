@@ -4,19 +4,19 @@ import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-conf
 import { loadConfig } from "../config";
 
 /**
- * The collector and the Aspire dashboard are two gates (ADR-0029).
+ * The collector is deployed because something consumes it (ADR-0029).
  *
- * The collector used to be deployed only when the dashboard was, so a stack
- * without the dashboard's OTLP key and its Connect application had no trace
- * export either: Langfuse sat idle behind a collector that did not exist, and
- * nothing said so. The collector now needs a consumer and nothing else.
+ * It used to be deployed only with the Aspire dashboard, so a stack without the
+ * dashboard's OTLP key had no trace export either: Langfuse sat idle behind a
+ * collector that did not exist, and nothing said so. The dashboard is gone now,
+ * and the collector needs a consumer and nothing else.
  *
  * What fails quietly here:
- *   - A collector config that names `otlp_http/aspire` with no dashboard (or an
- *     `${env:OTLP_API_KEY}` with no env var) stops the collector from
- *     starting, taking every consumer's export down with it.
- *   - A stack that had both before must keep exactly what it had: the first
- *     block below pins the pipelines as they were.
+ *   - A collector config that names an exporter whose env var nothing injects
+ *     stops the collector from starting, taking every consumer's export down.
+ *   - A signal with no pipeline is an error on every producer's every export.
+ *   - A stack that still carries the dashboard's old keys must neither deploy
+ *     it nor break on them.
  */
 
 const RESOURCES: Array<{ type: string; name: string; inputs: Record<string, unknown> }> = [];
@@ -77,66 +77,29 @@ async function deploy(values: Record<string, string>): Promise<Deployed> {
   };
 }
 
-/** Everything a stack with the dashboard AND Langfuse sets today. */
-function withDashboard(): Record<string, string> {
-  return { ...langfuseStackConfig() };
-}
+const POSTHOG_LOGS = {
+  "grid-oib:posthogHost": "https://eu.i.posthog.com",
+  "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
+  "grid-oib:posthogLogsEnabled": "true",
+};
 
-/** The same stack without the dashboard's OTLP key: Langfuse and the Connect application stay. */
-function withoutDashboard(): Record<string, string> {
-  const values = langfuseStackConfig();
-  delete values["grid-oib:otelPrimaryApiKey"];
-  return values;
-}
+/** What a stack that adopted the dashboard still has in its config file. */
+const LEFTOVER_DASHBOARD_KEYS = {
+  "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
+  "grid-oib:otelDomain": "otel.example.test",
+  "grid-oib:dashboardImage": "mcr.microsoft.com/dotnet/aspire-dashboard@sha256:" + "0".repeat(64),
+  "grid-oib:dashboardMaxLogCount": "50000",
+};
 
-describe("a stack with the dashboard and Langfuse, as today's stacks are", () => {
+describe("a stack with Langfuse, as today's stacks are", () => {
   let d: Deployed;
   beforeAll(async () => {
-    d = await deploy(withDashboard());
+    d = await deploy({ ...langfuseStackConfig(), ...LEFTOVER_DASHBOARD_KEYS });
   }, 120_000);
 
-  it("keeps the collector, Langfuse and the dashboard", () => {
+  it("deploys the collector and Langfuse, and no dashboard whatever the config still says", () => {
     expect(has("kubernetes:apps/v1:Deployment", "otel-collector")).toBe(true);
     expect(has("kubernetes:apps/v1:Deployment", "langfuse-web")).toBe(true);
-    expect(has("kubernetes:apps/v1:Deployment", "aspire-dashboard")).toBe(true);
-    expect(d.listeners).toContain("https-otel");
-  });
-
-  it("keeps the pipelines exactly as they were", () => {
-    expect(d.collector).toContain(`service:
-  extensions: [health_check]
-  pipelines:
-    traces:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire, otlp_http/langfuse]
-    logs:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire]
-    metrics:
-      receivers: [otlp]
-      processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire]
-`);
-    expect(d.collector).not.toContain("nop");
-    expect(d.collectorEnv).toEqual(["OTLP_API_KEY", "LANGFUSE_OTLP_AUTH"]);
-    expect(d.collectorChecksum).toBe(true);
-  });
-});
-
-describe("a stack with Langfuse and no dashboard key", () => {
-  let d: Deployed;
-  beforeAll(async () => {
-    d = await deploy(withoutDashboard());
-  }, 120_000);
-
-  it("still deploys the collector and Langfuse", () => {
-    expect(has("kubernetes:apps/v1:Deployment", "otel-collector")).toBe(true);
-    expect(has("kubernetes:apps/v1:Deployment", "langfuse-web")).toBe(true);
-  });
-
-  it("deploys no dashboard, no host for it, and no policy that admits it", () => {
     expect(has("kubernetes:apps/v1:Deployment", "aspire-dashboard")).toBe(false);
     expect(has("kubernetes:gateway.envoyproxy.io/v1alpha1:SecurityPolicy", "grid-otel-security-policy")).toBe(false);
     expect(d.listeners).not.toContain("https-otel");
@@ -145,72 +108,84 @@ describe("a stack with Langfuse and no dashboard key", () => {
   });
 
   it("exports traces to Langfuse alone, with no reference to the dashboard", () => {
-    expect(d.collector).not.toMatch(/^\s+otlp_http\/aspire:|exporters: \[.*aspire/m);
+    expect(d.collector).not.toMatch(/aspire/i);
     expect(d.collector).not.toContain("OTLP_API_KEY");
     expect(d.collectorEnv).toEqual(["LANGFUSE_OTLP_AUTH"]);
     expect(d.collector).toMatch(/traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/);
   });
 
-  it("still takes logs and metrics, into the collector's own nop exporter", () => {
+  it("still takes logs, into the collector's own nop exporter, and carries no metrics pipeline", () => {
     // A signal with no pipeline is an error on every producer's every export.
+    // Metrics are not sent at all (nothing consumes them), so no pipeline.
     expect(d.collector).toMatch(/exporters:\s*\n\s+nop:/);
     expect(d.collector).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
-    expect(d.collector).toMatch(/metrics:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
+    expect(d.collector).not.toMatch(/\n    metrics:/);
   });
 
-  it("still rolls the collector when the Langfuse key rotates", () => {
+  it("rolls the collector when the Langfuse key rotates", () => {
     expect(d.collectorChecksum).toBe(true);
   });
 });
 
-describe("the gates, as loadConfig resolves them", () => {
+describe("a stack with PostHog logs and no Langfuse", () => {
+  let d: Deployed;
+  beforeAll(async () => {
+    d = await deploy(POSTHOG_LOGS);
+  }, 120_000);
+
+  it("deploys the collector on that alone, with no Langfuse and no credentials to inject", () => {
+    expect(has("kubernetes:apps/v1:Deployment", "langfuse-web")).toBe(false);
+    expect(d.collectorEnv).toEqual([]);
+    expect(d.collector).not.toContain("${env:");
+  });
+
+  it("ends the traces signal in nop and ships logs to PostHog only", () => {
+    expect(d.collector).toMatch(/traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
+    expect(d.collector).toMatch(/logs\/posthog:/);
+    expect(d.collector).not.toMatch(/\n    logs:/);
+  });
+});
+
+describe("the gate, as loadConfig resolves it", () => {
   const load = (values: Record<string, string>) => {
     pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...values });
     return loadConfig();
   };
 
-  it("needs a consumer for the collector, not a dashboard", () => {
-    expect(load({}).observability).toMatchObject({ enabled: false, dashboardEnabled: false });
-    expect(load(withoutDashboard()).observability).toMatchObject({ enabled: true, dashboardEnabled: false });
-    expect(load(withDashboard()).observability).toMatchObject({ enabled: true, dashboardEnabled: true });
+  it("needs a consumer for the collector", () => {
+    expect(load({}).observability.enabled).toBe(false);
+    expect(load(langfuseStackConfig()).observability.enabled).toBe(true);
+    expect(load(POSTHOG_LOGS).observability.enabled).toBe(true);
+    expect(
+      load({
+        "grid-oib:err2issueEnabled": "true",
+        "grid-oib:err2issueGithubRepo": "GRID-check/grid-oib-agent",
+        "grid-oib:err2issueGithubToken": "gh-token", // pragma: allowlist secret
+      }).observability.enabled,
+    ).toBe(true);
   });
 
-  it("lets PostHog logs bring the collector up on a stack with neither", () => {
-    const cfg = load({
-      "grid-oib:posthogHost": "https://eu.i.posthog.com",
-      "grid-oib:posthogProjectToken": "phc_test_token", // pragma: allowlist secret
-      "grid-oib:posthogLogsEnabled": "true",
-    });
-    expect(cfg.observability).toMatchObject({ enabled: true, dashboardEnabled: false });
-  });
-
-  it("deploys the dashboard only with its OTLP key and the Connect application", () => {
-    const oidcOnly = withoutDashboard();
-    expect(load(oidcOnly).observability.dashboardEnabled).toBe(false);
-    expect(load({ ...oidcOnly, "grid-oib:otelPrimaryApiKey": "otel-key" }).observability.dashboardEnabled).toBe(true); // pragma: allowlist secret
-    const noOidc = withDashboard();
-    delete noOidc["grid-oib:otelOidcClientSecret"];
-    expect(load(noOidc).observability.dashboardEnabled).toBe(false);
+  it("is not brought up by the dashboard's old keys alone", () => {
+    expect(load({ ...LEFTOVER_DASHBOARD_KEYS }).observability.enabled).toBe(false);
   });
 
   it("skips Langfuse, rather than half-deploying it, without the Connect application it signs in against", () => {
-    const values = withoutDashboard();
+    const values = langfuseStackConfig();
     delete values["grid-oib:otelOidcClientSecret"];
-    expect(load(values).langfuse.enabled).toBe(false);
+    const cfg = load(values);
+    expect(cfg.langfuse.enabled).toBe(false);
+    expect(cfg.observability.enabled).toBe(false);
   });
 
   it("turns everything off with the one flag", () => {
-    const cfg = load({ ...withDashboard(), "grid-oib:observabilityEnabled": "false" });
-    expect(cfg.observability).toMatchObject({ enabled: false, dashboardEnabled: false });
+    const cfg = load({ ...langfuseStackConfig(), ...POSTHOG_LOGS, "grid-oib:observabilityEnabled": "false" });
+    expect(cfg.observability.enabled).toBe(false);
     expect(cfg.langfuse.enabled).toBe(false);
+    expect(cfg.posthog.logsEnabled).toBe(false);
   });
 
-  it("refuses a dashboard without NetworkPolicies, and Langfuse without them either", () => {
-    // Two independent guards now: the dashboard's UI port is unauthenticated,
-    // and the trace store holds every tenant's prompts. Neither may lean on the
-    // other being deployed.
-    expect(() => load({ ...withDashboard(), "grid-oib:networkPolicies": "false" })).toThrow(/requires grid-oib:networkPolicies/);
-    expect(() => load({ ...withoutDashboard(), "grid-oib:networkPolicies": "false" })).toThrow(
+  it("refuses Langfuse without NetworkPolicies", () => {
+    expect(() => load({ ...langfuseStackConfig(), "grid-oib:networkPolicies": "false" })).toThrow(
       /langfuseEnabled requires grid-oib:networkPolicies/,
     );
   });

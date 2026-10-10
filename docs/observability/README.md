@@ -16,6 +16,7 @@ show counts as a defect.
 
 The deployment side (Langfuse's workloads, its access gates, retention) is
 [ADR-0044](../adr/0044-langfuse-durable-llm-observability.md) and
-[`deployment/kubernetes.md`](../deployment/kubernetes.md) § Langfuse. The live
-operator pane for "what is the system doing right now" stays the Aspire
-dashboard ([ADR-0029](../adr/0029-aspire-dashboard-telemetry.md)).
+[`deployment/kubernetes.md`](../deployment/kubernetes.md) § Langfuse. The Aspire
+dashboard ([ADR-0029](../adr/0029-aspire-dashboard-telemetry.md)) is retired:
+traces are read in Langfuse, WARN+ logs in PostHog, and the collector
+(`deployment/kubernetes.md` §9) is what feeds both.

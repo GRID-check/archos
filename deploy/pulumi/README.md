@@ -12,7 +12,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 
 | Layer | Resources |
 |-------|-----------|
-| Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap, `aspire-dashboard` Deployment + Service + HTTPRoute + Secret — only when `observabilityEnabled` **and** its config deps are set), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
+| Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap — only when `observabilityEnabled` **and** something consumes it: Langfuse, `posthogLogsEnabled` or err2issue), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
 | Data | CloudNativePG operator + `Cluster` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job |
 | App | `aiq-agent` StatefulSet (no PVC; +PDB/spread in db mode), `frontend` Deployment + HPA + PDB, `agent-worker` Deployment + HPA + PDB (db mode), `purger`, `skill-scheduler`, a one-shot `drizzle-kit migrate` Job, a one-shot WorkOS audit-schema reconcile Job (when `requireAuth`) |
 | Edge | Gateway API (Envoy Gateway, HA: 2 replicas + PDB) + HTTPRoutes with cert-manager TLS for `app.<baseDomain>` and `s3.<baseDomain>` |
@@ -84,8 +84,7 @@ pulumi up
 ```
 
 Then point DNS for `app.<baseDomain>` and `s3.<baseDomain>` (plus
-`otel.<baseDomain>` when observability is on and `langfuse.<baseDomain>` when
-that tier is) at the Envoy Gateway external IP
+`langfuse.<baseDomain>` when that tier is on) at the Envoy Gateway external IP
 (`kubectl -n envoy-gateway-system get svc`), and once TLS issues, flip
 `useStagingIssuer` to `false` and `pulumi up` again.
 
@@ -125,7 +124,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **`storageClass`** | — | Provider class for every PVC: `premium` (3 replicas) / `standard` (2) / `single-replica` (1) |
 | **Ingress / TLS** | | |
 | **`baseDomain`** | — | Single source for every public host: `app.`/`s3.`/`otel.` subdomains derive from it, so a domain move is a one-key change. The **apex** itself is the landing site's host (frontends/web) |
-| `appDomain` / `s3Domain` / `otelDomain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
+| `appDomain` / `s3Domain` / `webDomain` | derived from `baseDomain` | Optional per-host overrides (e.g. an S3 endpoint on a different zone); `webDomain` defaults to the bare `baseDomain` |
 | **`letsEncryptEmail`** | — | ACME account email (placeholder rejected) |
 | `useStagingIssuer` | `true` | LE staging CA until DNS/TLS verified, then flip false |
 | `installMetricsServer` | `false` | Only for bare clusters; the provider ships metrics already |
@@ -287,14 +286,11 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **Memory** | | |
 | `memoryReflectionEnabled` | `true` | Post-answer memory-reflection stage (the agent's cross-chat learning loop). Reaches the frontend as `GRID_MEMORY_REFLECTION_ENABLED`; consulted only while `enforceFeatureFlags` is `false` (with enforcement on, the per-org `memory-reflection` WorkOS flag decides). Default-on — reflection is a shipped core capability, not a dark-launched gate |
 | **Observability** (ADR-0029) | | |
-| `observabilityEnabled` | `true` | Feature flag for the tier. The **collector** is deployed when the flag is on **AND** something consumes it (Langfuse, `posthogLogsEnabled`, err2issue or the dashboard); it needs no dashboard key. The **dashboard** additionally needs `otelPrimaryApiKey`, `otelOidcIssuer`, `otelOidcClientId` and `otelOidcClientSecret` — otherwise it is skipped, with its `https-otel` listener, and the collector stays. With no consumer `preview` warns and nothing is provisioned, including the producers' OTLP env |
-| **`otelOidcIssuer`** | — | Issuer of the dashboard's dedicated WorkOS **Connect** application (the environment's AuthKit domain, `https://<tenant>.authkit.app`) |
+| `observabilityEnabled` | `true` | Feature flag for the OTel Collector. Deployed when the flag is on **AND** something consumes it: Langfuse, `posthogLogsEnabled` or err2issue. With no consumer `preview` warns and nothing is provisioned, including the producers' OTLP env. The Aspire dashboard it used to feed is retired; its keys (`otelPrimaryApiKey`, `otelDomain`, `dashboardImage`, `dashboardMaxLogCount`, `dashboardMaxTraceCount`) are ignored and can be deleted from the stack file |
+| **`otelOidcIssuer`** | — | Issuer of the platform WorkOS **Connect** application (the environment's AuthKit domain, `https://<tenant>.authkit.app`). Read by Langfuse alone now, which is deployed only when all three `otelOidc*` keys are set |
 | **`otelOidcClientId`** | — | Client id of that Connect application (confidential client) |
 | 🔒 `otelOidcClientSecret` | — | Its client secret. The Gateway SecurityPolicy exchanges the code with `client_secret_basic`, so a public/PKCE-only client cannot be used |
-| 🔒 `otelPrimaryApiKey` | — | OTLP ingestion key (`x-otlp-api-key`). Held by the **dashboard and collector only** — backend/worker/frontend send unauthenticated OTLP to the collector, so this key must never be copied into app secrets |
-| `dashboardImage` | digest-pinned `mcr.microsoft.com/dotnet/aspire-dashboard@sha256:…` (13.5.2) | Dashboard image; override only for a deliberate upgrade. The trivy `image-scan` job blocks on fixable HIGH/CRITICAL in the pin, so it fails when the pin goes stale |
 | `collectorImage` | digest-pinned `otel/opentelemetry-collector-contrib@sha256:…` (0.161.0) | OTel Collector image (single OTLP ingestion point); override only for a deliberate upgrade |
-| `dashboardMaxLogCount` / `dashboardMaxTraceCount` | `50000` / `50000` | In-memory ring-buffer limits |
 | **Langfuse** (ADR-0044) — durable LLM observability, self-hosted **free/OSS** build. No licence key is set anywhere; the visible cost is that data-retention policies are an Enterprise feature, so trace data never expires and `clickhouseStorageSize` is a number to watch (the server's own system logs self-clean after 14 days). Full operator guide: [`docs/deployment/kubernetes.md` §9b](../../docs/deployment/kubernetes.md) | | |
 | `langfuseEnabled` | `true` | Feature flag. Deployed only when the flag is on **AND** every 🔒 key below is set **AND** `observabilityEnabled` is not `false` **AND** the `otelOidc*` Connect application is set (its UI signs in against it) — Langfuse has no receiver of its own, the collector feeds it, and Langfuse is what brings the collector up on a stack with no dashboard. Otherwise `preview` warns naming what is missing and nothing is provisioned (no workloads, no `https-langfuse` listener, no collector exporter, no identity attributes). Default-**on**, so setting the 🔒 keys is all a stack needs; set the flag to `false` to opt out of four workloads and a PVC that grows |
 | `langfuseDomain` | `langfuse.<baseDomain>` | Public host. Register `https://<host>/oauth2/callback` as a redirect URI on the **same** WorkOS Connect application as `otelOidc*` — not a second one |

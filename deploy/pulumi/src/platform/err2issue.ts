@@ -30,11 +30,9 @@ export interface Err2Issue {
  *
  * It is a second consumer hanging off the OTel Collector, not a second
  * ingestion point: producers keep exporting plain OTLP to `otel-collector` and
- * know nothing about this pod. The collector fans the logs signal out to both
- * the Aspire dashboard (live view, in-memory, lost on restart) and here
- * (durable, actionable, one issue per unique fingerprint). Aspire answers
- * "what is happening right now"; err2issue answers "what broke and is anyone
- * on it".
+ * know nothing about this pod. The collector fans the logs signal out to here
+ * (durable, actionable, one issue per unique fingerprint), next to PostHog
+ * Logs. err2issue answers "what broke and is anyone on it".
  *
  * Deduplication state lives in GitHub, not in this pod — issue labels are used
  * as a distributed mutex — so a restart loses only the in-memory suppression
@@ -44,9 +42,9 @@ export interface Err2Issue {
  * NetworkPolicy: this pod holds a GitHub token that can write issues, and its
  * OTLP receiver authenticates nobody. It is therefore excluded from the
  * wholesale `allow-same-namespace` ingress allow and granted exactly one
- * caller — otel-collector on 4318 — the same treatment the Aspire dashboard
- * gets, for the same reason (see network-policies.ts rules 2 and 9). Without
- * that, any pod in the namespace could file issues into the repo at will.
+ * caller — otel-collector on 4318 (see network-policies.ts rules 2 and 9).
+ * Without that, any pod in the namespace could file issues into the repo at
+ * will.
  *
  * Egress is open by design (see network-policies.ts header), which is what lets
  * this pod reach api.github.com.

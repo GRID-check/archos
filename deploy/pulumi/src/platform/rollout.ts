@@ -286,7 +286,7 @@ export const ROLLOUT = {
     endpointDrainSeconds: 0,
   },
 
-  /** Observability tier (Aspire dashboard, OTel Collector) — stateless, single replica. */
+  /** Observability tier (OTel Collector, err2issue) — stateless, single replica. */
   observability: {
     minReadySeconds: 10,
     progressDeadlineSeconds: 600,
@@ -298,7 +298,7 @@ export const ROLLOUT = {
    * Langfuse web + worker (ADR-0044). Its OWN profile rather than the
    * observability one it sits beside, because its boot is not that boot.
    *
-   * The Aspire dashboard starts a .NET process and serves; langfuse-web runs
+   * The collector starts a Go process and serves; langfuse-web runs
    * Prisma AND ClickHouse schema migrations before it ever listens, against a
    * ClickHouse that may itself be cold on a first deploy. That is minutes, not
    * seconds — so the startupProbe budget is large, and the deadline has to be
@@ -306,7 +306,7 @@ export const ROLLOUT = {
    * wait for is running (see `assertStartupFitsRollout`, which now checks it).
    *
    * Borrowing `observability`'s 600s deadline and simply widening it would have
-   * pushed the same slack onto the dashboard and the collector, where nothing
+   * pushed the same slack onto err2issue and the collector, where nothing
    * needs it and a genuinely stuck rollout would take ten extra minutes to
    * report.
    */
@@ -455,7 +455,7 @@ export function surgeRollout(p: RolloutProfile) {
  *   spec.strategy.rollingUpdate: Forbidden: may not be specified when strategy
  *   `type` is 'Recreate'
  * Prefer `surgeRollout` for an existing workload — that was the resolution for
- * dragonfly and aspire-dashboard. If Recreate is genuinely required, clear the
+ * dragonfly and the former dashboard. If Recreate is genuinely required, clear the
  * defaulted field first:
  *   kubectl -n grid patch deploy <name> --type=json \
  *     -p '[{"op":"remove","path":"/spec/strategy/rollingUpdate"}]'

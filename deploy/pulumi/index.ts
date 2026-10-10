@@ -49,7 +49,6 @@ import { installBffJobs } from "./src/app/bff-jobs";
 import { installQueueScalerGrants } from "./src/app/queue-scaler-grants";
 import { installKeda } from "./src/platform/keda";
 import { installHttpRoutes } from "./src/app/httproutes";
-import { installObservabilityDashboard } from "./src/platform/observability";
 import { installOtelCollector } from "./src/platform/otel-collector";
 import { installErr2Issue } from "./src/platform/err2issue";
 import { installDns, managedRecordNames } from "./src/platform/dns";
@@ -360,19 +359,10 @@ const routes = installHttpRoutes(cfg, provider, namespace, [
   ...(rateLimitStore ? [rateLimitStore.service] : []),
 ]);
 
-// ── Observability (OTel Collector, Aspire dashboard, ADR-0029) ───────────────
-// Two gates (see config.ts). The dashboard is skipped when the stack has no OTLP
-// key / Connect application, rather than shipping a dashboard nobody can log
-// into; the collector needs only a consumer (Langfuse, PostHog logs, err2issue
-// or the dashboard), so a stack without a dashboard still exports its traces.
-const dashboard = cfg.observability.dashboardEnabled
-  ? installObservabilityDashboard(
-      cfg, provider, namespace,
-      cfg.observability.otelPrimaryApiKey,
-      cfg.observability.oidcClientSecret,
-      [gatewayResources.gateway],
-    )
-  : undefined;
+// ── Observability (OTel Collector, ADR-0029) ─────────────────────────────────
+// Deployed when something consumes it (see config.ts): Langfuse for traces,
+// PostHog logs and err2issue for logs. The Aspire dashboard it used to feed is
+// retired.
 if (cfg.observability.enabled) {
   // err2issue (ADR-0031) before the collector: the collector's logs/err2issue
   // pipeline starts exporting the moment it boots, so having the Service
@@ -417,9 +407,7 @@ if (cfg.observability.enabled) {
 
   installOtelCollector(
     cfg, provider, namespace,
-    dashboard,
     [
-      ...(dashboard ? [dashboard.service] : []),
       ...(errorSink ? [errorSink.service] : []),
       ...(langfuse ? [langfuse.webService] : []),
     ],
@@ -456,9 +444,6 @@ export const chromaUrl = chroma.url;
 export const pgInstances = cfg.postgres.instances;
 export const pgBackupsEnabled = cfg.postgres.backups.enabled;
 export const networkPoliciesEnabled = cfg.networkPolicies;
-export const otelUrl = cfg.observability.dashboardEnabled
-  ? pulumi.interpolate`https://${cfg.observability.otelDomain}`
-  : pulumi.output("(none: dashboard disabled)");
 export const langfuseUrl = cfg.langfuse.enabled
   ? pulumi.interpolate`https://${cfg.langfuse.domain}`
   : pulumi.output("(none: langfuse disabled)");

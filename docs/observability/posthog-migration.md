@@ -18,7 +18,7 @@ ingestion `https://eu.i.posthog.com`).
 | Browser analytics (15 events, off in both stacks) | PostHog product analytics | `posthog-js`, identify by WorkOS user id only, `organization_id` as a property | Code in this change; stack keys to set |
 | Server-side events | PostHog | `posthog-node` behind `lib/analytics/posthog-server.ts` | Code in this change |
 | err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue switched off by stack key |
-| Aspire log pane | Stays the live pane; WARN+ logs also go to PostHog Logs | Second exporter on the collector, behind `grid-oib:posthogLogsEnabled` | Code in this change |
+| Aspire log pane | Retired. WARN+ logs go to PostHog Logs, traces are read in Langfuse | An exporter on the collector, behind `grid-oib:posthogLogsEnabled`; the dashboard, its listener and its metrics pipeline are deleted | Code in this change; stack keys to remove |
 | Product feedback dialog (Postgres, inbox, GitHub issues) | Unchanged, and also a PostHog Support conversation | `posthog.conversations.sendMessage` | Code in this change |
 | No surveys | PostHog Surveys (NPS, CSAT, churn), German first | Defined in PostHog | Drafts created, not launched |
 | No alerts | PostHog alerts on errors, logs and insights | Defined in PostHog | Created in the project |
@@ -135,6 +135,7 @@ date.
 7. **Survey storage.** Persistence is `memory`, so PostHog sets no cookie. The
    survey runtime still writes `seenSurvey_*` to localStorage when a survey is
    shown. Decide whether the legal copy has to name it before a survey launches.
-8. **Retiring err2issue and Aspire.** err2issue goes off by stack key when
-   PostHog error tracking is on. Delete it after a release cycle with nothing
-   missed. Aspire stays the live pane.
+8. **Retiring err2issue.** err2issue goes off by stack key when PostHog error
+   tracking is on. Delete it after a release cycle with nothing missed. Aspire is
+   already gone: logs are in PostHog, traces in Langfuse, and the meters
+   (`grid.queue.*`, `grid.provider.*`) have no sink until the owner picks one.

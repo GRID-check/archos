@@ -16,9 +16,9 @@ Each reading is one ``grid.boot.phase_seconds`` histogram point with ``role`` an
 ``phase`` attributes (``chat`` and ``api`` are ``GRID_ROLE``'s two web values,
 ``research-worker`` and ``ingest-worker`` the workers; ``research-job`` is below),
 and one ``[boot-timing]`` log line. A reading taken before
-the meter provider exists (it is installed while the workflow builds) would go
-to a no-op instrument, so readings wait in the process until ``flush``, which a
-role calls once a workflow is built. The research worker is ready before its
+a meter provider exists would go to a no-op instrument, so readings wait in the
+process until ``flush``, which a role calls once a workflow is built. (No provider
+is installed today, so the log line is the reading that survives.) The research worker is ready before its
 first job builds one, so that job's build flushes the worker's reading too.
 """
 
