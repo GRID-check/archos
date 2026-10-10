@@ -6,15 +6,9 @@ import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
 /**
- * `app.kubernetes.io/name` of the err2issue sink (ADR-0031). Withheld from
- * rule 2, granted one caller in rule 9.
- */
-const ERR2ISSUE = "err2issue";
-
-/**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
  * (ADR-0044). All three are withheld from rule 2 and granted named callers in
- * rules 10-12, on the same reasoning as err2issue.
+ * rules 10-12.
  */
 const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
@@ -43,7 +37,7 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
  *     here and are far easier to get subtly wrong. The exceptions are the pods
  *     whose receivers authenticate nobody or hold a store of every tenant's
- *     text (err2issue, Langfuse and its ClickHouse, Gotenberg) — see rule 2.
+ *     text (Langfuse and its ClickHouse, Gotenberg) — see rule 2.
  *   - Cross-namespace allows are explicit: the **edge** (Envoy Gateway) to the
  *     three public services, and the **CNPG operator** to its managed pods.
  *
@@ -82,16 +76,9 @@ export function installNetworkPolicies(
   //    semantics), so CNPG-managed Postgres pods and anything else without
   //    `app.kubernetes.io/name` keep the intra-namespace allow.
   //
-  //    err2issue (ADR-0031) is withheld when deployed. Its OTLP receiver
-  //    authenticates nobody, and the pod holds a GitHub
-  //    token with Issues write — so a blanket allow would let any pod in the
-  //    namespace, including the agent worker executing model-chosen tool calls,
-  //    forge issues into the repo. Rule 9 grants its one real caller.
-  //
-  //    The Langfuse tier (ADR-0044) is withheld for a related but distinct
-  //    reason, and the distinction is worth stating because it is easy to argue
-  //    the other way. Unlike err2issue these pods DO authenticate — the web
-  //    tier has sessions and API keys, ClickHouse has a password. What they do
+  //    The Langfuse tier (ADR-0044) is withheld, and the reason is worth
+  //    stating because it is easy to argue the other way. These pods DO
+  //    authenticate — the web tier has sessions and API keys, ClickHouse has a password. What they do
   //    not have is any legitimate in-namespace caller other than each other and
   //    the collector. Leaving them in the blanket allow would expose, to every
   //    pod in the namespace: an ingestion API that accepts a bearer key
@@ -110,7 +97,6 @@ export function installNetworkPolicies(
           key: "app.kubernetes.io/name",
           operator: "NotIn",
           values: [
-            ...(cfg.err2issue.enabled ? [ERR2ISSUE] : []),
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
           ],
@@ -201,22 +187,8 @@ export function installNetworkPolicies(
   //      it; the numbers are kept so the rules below keep the names that docs
   //      and ADRs already cite.
 
-  // 9. otel-collector → err2issue OTLP/HTTP (ADR-0031). Rule 2 leaves err2issue
-  //    out of the wholesale allow, and the collector's
-  //    `otlp_http/err2issue` exporter is its only legitimate client. Port 4318
-  //    alone — the sink speaks no gRPC.
-  const collectorToErr2Issue = cfg.err2issue.enabled
-    ? mk("allow-collector-to-err2issue", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": ERR2ISSUE } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-            ports: [{ protocol: "TCP", port: 4318 }],
-          },
-        ],
-      })
-    : undefined;
+  // 9. Was otel-collector → err2issue (ADR-0031), retired with it; the number is
+  //    kept so the rules below keep the names that docs and ADRs already cite.
 
   // 10. Edge → Langfuse web (the langfuse HTTPRoute serves its UI). The
   //     SecurityPolicy on that route is what authorizes the request; this rule
@@ -347,7 +319,7 @@ export function installNetworkPolicies(
   //     another pod, whatever a document asks of it. No DNS either: it has
   //     nothing to resolve.
   //
-  //     Withheld from rule 2 on the same grounds as err2issue, so the
+  //     Withheld from rule 2 on the same grounds as Langfuse, so the
   //     frontend BFF is its caller, and the bff-jobs pool is the same BFF
   //     running the background conversions (ADR-0079), so it is named too: a
   //     pool left out here would fail every office file with a green plan. The
@@ -413,7 +385,6 @@ export function installNetworkPolicies(
     edgeWeb,
     ...(edgeRateLimitStore ? [edgeRateLimitStore] : []),
     acmeSolver,
-    ...(collectorToErr2Issue ? [collectorToErr2Issue] : []),
     ...(edgeLangfuse ? [edgeLangfuse] : []),
     ...(collectorToLangfuse ? [collectorToLangfuse] : []),
     ...(workersToLangfuse ? [workersToLangfuse] : []),

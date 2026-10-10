@@ -1869,6 +1869,15 @@ Chroma):
 > `otel.<baseDomain>` DNS record (when `dnsEnabled`). One manual step: remove
 > `https://otel.<baseDomain>/oauth2/callback` from the Connect application's
 > redirect URIs in WorkOS.
+>
+> **err2issue is retired too.** PostHog error tracking replaces it
+> ([`observability/error-tracking.md`](../observability/error-tracking.md)), and
+> the feedback form's GitHub issue filing, which borrowed its token, goes with
+> it. The `err2issue*` and `feedbackIssues*` keys are ignored; the next
+> `pulumi up` deletes the sink's Deployment, Secret and NetworkPolicy and the
+> collector's `logs/err2issue` pipeline, and the frontend loses
+> `GRID_GITHUB_TOKEN` and `GRID_FEEDBACK_ISSUES_REPO`. Delete the ESC secrets
+> `err2issueGithubToken` and `err2issueAnthropicApiKey` and revoke the PAT.
 
 **Gating:** `grid-oib:observabilityEnabled` (default `true`) is the product
 decision. The collector is deployed when it also has a *consumer*, and needs
@@ -1878,9 +1887,8 @@ nothing else:
 |---|---|---|
 | Langfuse (§9b) | traces | `langfuseEnabled` and its credentials |
 | PostHog Logs | logs | `posthogLogsEnabled` plus `posthogHost` and `posthogProjectToken` |
-| err2issue | logs | `err2issueEnabled` plus `err2issueGithubRepo` and `err2issueGithubToken` |
 
-With none of them `pulumi preview` logs a warning and nothing is deployed: no
+With neither `pulumi preview` logs a warning and nothing is deployed: no
 collector, and no `OTEL_*` env on any producer (so the frontend's
 `src/instrumentation.ts` no-ops). Producers pointed at an absent collector would
 only retry exports forever.
@@ -1912,7 +1920,7 @@ grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purge
         │  plain OTLP (in-cluster, no key)
         ▼
   otel-collector ──▶ traces ──▶ Langfuse
-                 ──▶ logs   ──▶ PostHog (WARN+), err2issue (ERROR+)
+                 ──▶ logs   ──▶ PostHog (WARN+)
 ```
 
 A signal no consumer takes ends in the collector's own `nop` exporter, because
@@ -1920,12 +1928,12 @@ the OTLP receiver answers a signal that has no pipeline with an error that every
 producer would log on each export. The exporter is declared only when a pipeline
 needs it.
 
-**Log consumers.** The collector's logs signal has up to two consumers, each on
-a pipeline of its own so that one severity filter never strips another's copy:
+**Log consumer.** The collector's logs signal has one consumer, on a pipeline of
+its own so that a second consumer added later never inherits its severity
+filter:
 
 | Pipeline | Exporter | Filter | Switch |
 |---|---|---|---|
-| `logs/err2issue` | `otlp_http/err2issue` | below ERROR dropped | `err2issueEnabled` (default `false`) plus `err2issueGithubRepo` and `err2issueGithubToken`; off removes the pod, its Secret and the pipeline together |
 | `logs/posthog` | `otlp_http/posthog` | below WARN dropped (`severity_number < 13`, records without a severity too) | `posthogLogsEnabled` (default `false`) plus `posthogHost` and `posthogProjectToken` |
 
 PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
@@ -1940,11 +1948,9 @@ attributes), because it needs a ServiceAccount with `pods`/`namespaces` read
 RBAC and the collector pod deliberately mounts no API token; `service.name`
 already tells the tiers apart.
 
-err2issue is not removed, only switchable: PostHog Error Tracking takes over
-the job once it is wired, and `err2issueEnabled=false` (the default) stops
-both the sink and its pipeline. Egress needs no NetworkPolicy change: egress is
-open by design (`network-policies.ts`), so the collector, the frontend and the
-Python tiers reach PostHog on 443 as they reach OpenRouter.
+Egress needs no NetworkPolicy change: egress is open by design
+(`network-policies.ts`), so the collector, the frontend and the Python tiers
+reach PostHog on 443 as they reach OpenRouter.
 
 **One PostHog configuration.** `posthogHost` and `posthogProjectToken` are read
 once (`loadConfig`) and handed to every runtime: `NEXT_PUBLIC_POSTHOG_*` on the
@@ -2318,10 +2324,10 @@ v4 web container, then the v3 digests. After it, only the backups.
 ### Signals and attribution
 
 Only **traces** go to Langfuse, and Langfuse has the collector's traces
-pipeline to itself. Logs go to err2issue (ADR-0031, which ADR-0098 retires in
-favour of PostHog error tracking where PostHog is configured:
-[`observability/error-tracking.md`](../observability/error-tracking.md)) and
-WARN+ to PostHog when enabled, see §9; nothing sends metrics.
+pipeline to itself. WARN+ logs go to PostHog when enabled, see §9; exceptions go
+to PostHog error tracking
+([`observability/error-tracking.md`](../observability/error-tracking.md)); nothing
+sends metrics.
 
 Consequence to know: a Langfuse outage long enough to fill the exporter's
 bounded sending queue (2000 batches) drops spans. Nothing is in a request path.

@@ -99,4 +99,5 @@ A dropped record is still logged everywhere else; it is only not counted again.
   `productionBrowserSourceMaps` or `@posthog/nextjs-config` and a CI step.
 - `POSTHOG_RELEASE_ID` (PostHog's release link) is not set; the commit travels as
   the `release` property instead.
-- The err2issue collector pipeline and its Pulumi stack are untouched.
+- err2issue is gone from the Pulumi program (the sink, its collector pipeline, its
+  NetworkPolicy and image pin); a stack's leftover `err2issue*` keys are ignored.

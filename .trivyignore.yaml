@@ -11,7 +11,7 @@
 # -> 4.54.0 and aspire-dashboard 13.4.2 -> 13.5.2 (since retired) cleared 34 of this file's 37
 # vulnerability entries, verified by scanning the new digests with this file
 # empty rather than by reading release notes. Two more went because they had
-# already expired: the ClickHouse (OpenSSL) and err2issue (PCRE2) lines of a
+# already expired: the ClickHouse (OpenSSL) and err2issue (PCRE2; since retired) lines of a
 # one-day staging exception that ran out on 2026-10-05.
 #
 # The OpenTelemetry Collector block is boxed SHORT because contrib ships every
@@ -157,36 +157,6 @@ vulnerabilities:
       references in a ClientHello. No TLS listener or TLS client is configured
       on this collector (plaintext in-cluster receivers and exporters), so no
       ClientHello reaches crypto/tls. See the block note.
-
-  # err2issue (debian 12.15 base). Perl and PCRE2 come from the Debian base
-  # image; the Python service never shells out to perl and takes no
-  # attacker-supplied regular expressions. The fix is a rebuild on a current
-  # bookworm base (perl 5.36.0-7+deb12u4, pcre2 10.42-1+deb12u2) and a pin
-  # bump; drop the block then.
-  - id: CVE-2026-103111
-    expired_at: 2026-10-22
-    statement: libpcre2-8-0 in the err2issue base image; see the block note.
-  - id: CVE-2026-13221
-    expired_at: 2026-10-22
-    statement: perl-base in the err2issue base image; see the block note.
-  - id: CVE-2026-42496
-    expired_at: 2026-10-22
-    statement: perl Archive::Tar in the err2issue base image; see the block note.
-  - id: CVE-2026-42497
-    expired_at: 2026-10-22
-    statement: perl Archive::Tar in the err2issue base image; see the block note.
-  - id: CVE-2026-8376
-    expired_at: 2026-10-22
-    statement: perl-base (32-bit builds only) in the err2issue base image; see the block note.
-  - id: CVE-2026-48962
-    expired_at: 2026-10-22
-    statement: perl IO::Compress in the err2issue base image; see the block note.
-  - id: CVE-2026-57432
-    expired_at: 2026-10-22
-    statement: perl pack/unpack in the err2issue base image; see the block note.
-  - id: CVE-2026-57433
-    expired_at: 2026-10-22
-    statement: perl Storable in the err2issue base image; see the block note.
 
 secrets:
   - id: gcp-service-account

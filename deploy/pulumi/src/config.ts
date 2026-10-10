@@ -1143,7 +1143,7 @@ export interface GridConfig {
   observability: {
     /**
      * Whether the OTel Collector is deployed: the `observabilityEnabled` flag
-     * AND at least one consumer for it (Langfuse, PostHog logs or err2issue).
+     * AND at least one consumer for it (Langfuse or PostHog logs).
      * The collector forwards to those on their own credentials. When false
      * nothing is provisioned and no producer gets an OTLP endpoint.
      */
@@ -1328,80 +1328,6 @@ export interface GridConfig {
     s3SecretKey: pulumi.Output<string>;
   };
 
-  /**
-   * err2issue — ERROR-severity telemetry becomes deduplicated GitHub issues
-   * (ADR-0031). A consumer on the collector's logs signal.
-   */
-  err2issue: {
-    /**
-     * Whether the sink is deployed: the `err2issueEnabled` flag AND the
-     * capability derived from its dependencies (a GitHub token, a fallback
-     * repo) AND the `observabilityEnabled` flag — it receives nothing without the
-     * collector in front of it.
-     */
-    enabled: boolean;
-    /**
-     * Image reference, digest-pinned (v0.5.1 by default). Upstream tags each
-     * build `:sha-<commit>` and `:latest`; bump the digest deliberately, it is
-     * scanned by the trivy job in .github/workflows/security.yml.
-     */
-    image: string;
-    /** Fallback destination repo (`owner/repo`) for unrouted services. */
-    githubRepo: string;
-    /** PAT with Issues read/write. Empty when the sink is off. */
-    githubToken: pulumi.Output<string>;
-    /**
-     * Optional `service=owner/repo` routing, globs allowed
-     * (`aiq-agent=grid-check/grid-oib-agent,*-worker=grid-check/workers`).
-     * Empty string means route everything to `githubRepo`.
-     */
-    routeMap: string;
-    /**
-     * Optional Claude API key for AI-written issue titles. Empty falls back to
-     * rule-based titles — a degraded title, not a broken sink. Note this is a
-     * console API key; a Claude subscription OAuth token will not work here.
-     */
-    anthropicApiKey: pulumi.Output<string>;
-    /** Repeat-occurrence coalescing window, seconds (upstream default 600). */
-    suppressWindowSeconds: number;
-    /** Ceiling on NEW issues per day — the blast-radius control. */
-    maxNewFingerprintsPerDay: number;
-    /** Drop errors from services the route map does not match. */
-    dropUnrouted: boolean;
-    /**
-     * Link each issue's trace id to Langfuse's trace view
-     * (`E2I_TRACE_URL_TEMPLATE`, err2issue >= 0.5). Empty when Langfuse is not
-     * deployed: there is nothing to link to.
-     */
-    traceUrlTemplate: string;
-    /**
-     * Reopen an issue a human closed as *not planned* or *duplicate* when its
-     * error recurs (`E2I_REOPEN_NOT_PLANNED`). Off, as upstream: closing one of
-     * those is a decision about the error, and a recurrence only raises its
-     * count. Issues closed as *completed* reopen either way.
-     */
-    reopenNotPlanned: boolean;
-    /** GitHub logins assigned to new issues (`E2I_ISSUE_ASSIGNEES`, max 10). Empty leaves them unassigned. */
-    issueAssignees: string;
-  };
-
-  /**
-   * Bug reports from the in-app feedback form become GitHub issues, filed by
-   * the BFF (`frontends/ui/src/lib/product-feedback/github.ts`).
-   *
-   * Reuses err2issue's PAT rather than a second one: it already holds Issues
-   * read/write on the repo, and one credential is one thing to rotate. It is
-   * independent of `err2issue.enabled` — the error sink needs the
-   * observability tier, a bug report does not.
-   */
-  feedbackIssues: {
-    /** The `feedbackIssuesEnabled` flag (default on) AND a token AND a repo. */
-    enabled: boolean;
-    /** `owner/repo`; defaults to `err2issueGithubRepo`. */
-    repo: string;
-    /** The err2issue PAT. Empty when filing is off. */
-    githubToken: pulumi.Output<string>;
-  };
 }
 
 export interface ResourceSpec {
@@ -2069,9 +1995,9 @@ export function loadConfig(): GridConfig {
   // tier cannot boot without, so a stack that has not set them gets the warning
   // below and no workloads, never a half-deployed tier. Set the flag to false
   // to opt out of the four workloads and the PVC that grows without a
-  // retention policy. The dependency on `observabilityEnabled` is structural
-  // for the same reason err2issue's is: Langfuse has no receiver of its own in
-  // this design, the collector fans traces into it, so without it it is idle.
+  // retention policy. The dependency on `observabilityEnabled` is structural:
+  // Langfuse has no receiver of its own in this design, the collector fans
+  // traces into it, so without it it is idle.
   //
   // It signs in against the platform WorkOS Connect application rather than
   // asking for a fourth OIDC triple. One application can carry several redirect
@@ -2320,37 +2246,12 @@ export function loadConfig(): GridConfig {
     }
   }
 
-  // ── err2issue (ADR-0031): same availability = flag AND capability rule ─────
-  // Opt-in (default false) because turning it on starts writing to a GitHub
-  // repo — a side effect outside the cluster, unlike every other component
-  // here. The dependency on the `observabilityEnabled` flag is structural, not
-  // stylistic: err2issue has no receiver of its own in this design, it is fed
-  // by the collector's logs pipeline, so without the collector it is a pod that
-  // can only ever sit idle. (It brings the collector up, like Langfuse.)
-  const err2issueFlag = bool(cfg, "err2issueEnabled", false);
-  const err2issueGithubRepo = cfg.get("err2issueGithubRepo") ?? "";
-  const err2issueGithubToken = cfg.getSecret("err2issueGithubToken");
-  const missingErr2IssueDeps = [
-    err2issueGithubRepo === "" ? "err2issueGithubRepo" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-    observabilityFlag ? undefined : "observabilityEnabled (err2issue is fed by the collector)",
-  ].filter((k): k is string => k !== undefined);
-  const err2issueEnabled = err2issueFlag && missingErr2IssueDeps.length === 0;
-  if (err2issueFlag && !err2issueEnabled) {
-    pulumi.log.warn(
-      "err2issue (ADR-0031) not deployed: missing " +
-        missingErr2IssueDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
-        ". Set them to deploy the error→issue sink, or set " +
-        "grid-oib:err2issueEnabled=false to silence this.",
-    );
-  }
-
   // ── PostHog: one configuration for every runtime, logs opt-in on top ───────
   // The frontend, the Python tiers and the collector all read this one pair.
   // The SDK tiers capture with host + token alone (they no-op without them).
   // Logs are different: they leave the cluster in bulk, through the collector,
-  // so they are a flag AND capability on top of the credentials, the same rule
-  // as err2issue above, and need the collector to exist.
+  // so they are a flag AND capability on top of the credentials, and need the
+  // collector to exist.
   const posthogHost = cfg.get("posthogHost") ?? "";
   const posthogProjectToken = cfg.get("posthogProjectToken") ?? "";
   const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", false);
@@ -2370,36 +2271,16 @@ export function loadConfig(): GridConfig {
   }
 
   // ── The collector: deployed when something consumes what it forwards ──────
-  // Three consumers, any one of which is enough: Langfuse (traces), err2issue
-  // and PostHog logs (logs). With none of them it would receive OTLP from every
-  // producer and forward it nowhere, and each producer would carry an endpoint
-  // pointing at a pod that does nothing.
-  const collectorEnabled =
-    observabilityFlag && (langfuseEnabled || err2issueEnabled || posthogLogsEnabled);
+  // Two consumers, either of which is enough: Langfuse (traces) and PostHog
+  // logs (logs). With neither it would receive OTLP from every producer and
+  // forward it nowhere, and each producer would carry an endpoint pointing at a
+  // pod that does nothing.
+  const collectorEnabled = observabilityFlag && (langfuseEnabled || posthogLogsEnabled);
   if (observabilityFlag && !collectorEnabled) {
     pulumi.log.warn(
       "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse " +
         "(it also needs the otelOidc* application) or grid-oib:posthogLogsEnabled, or set " +
         "grid-oib:observabilityEnabled=false to silence this.",
-    );
-  }
-
-  // ── Feedback → GitHub issues: flag AND capability, the token is err2issue's ─
-  // Default ON, unlike err2issue: a report is filed only when a member sends
-  // one (rate limited per person), so there is no hot loop to cap, and a stack
-  // that has no token files nothing. Warn only when the flag was set by hand.
-  const feedbackIssuesFlag = bool(cfg, "feedbackIssuesEnabled", true);
-  const feedbackIssuesRepo = cfg.get("feedbackIssuesRepo") ?? err2issueGithubRepo;
-  const missingFeedbackIssuesDeps = [
-    feedbackIssuesRepo === "" ? "feedbackIssuesRepo (or err2issueGithubRepo)" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-  ].filter((k): k is string => k !== undefined);
-  const feedbackIssuesEnabled = feedbackIssuesFlag && missingFeedbackIssuesDeps.length === 0;
-  if (cfg.getBoolean("feedbackIssuesEnabled") === true && !feedbackIssuesEnabled) {
-    pulumi.log.warn(
-      "Feedback → GitHub issues not wired: missing " +
-        missingFeedbackIssuesDeps.map((k) => `grid-oib:${k}`).join(", ") +
-        ". Bug reports are still stored and announced in the inbox.",
     );
   }
 
@@ -2916,44 +2797,6 @@ export function loadConfig(): GridConfig {
       initUserPassword: cfg.getSecret("langfuseInitUserPassword") ?? pulumi.output(""),
       s3AccessKey: cfg.get("langfuseS3AccessKey") ?? "grid-langfuse",
       s3SecretKey: cfg.getSecret("langfuseS3SecretKey") ?? pulumi.output(""),
-    },
-
-    err2issue: {
-      enabled: err2issueEnabled,
-      // Digest-pinned: published as `:sha-7240361d3d62213625b7ddee5e9b28aa47dfa0cd`,
-      // the first build with PyJWT >= 2.14 (2.15.1). Upstream cuts no release
-      // tags, so the digest is the version; the CHANGELOG names the commit.
-      // Scanned by the trivy job in security.yml.
-      image:
-        cfg.get("err2issueImage") ??
-        "ghcr.io/matthiasbigl/err2issue@sha256:23ff1752ac2425739c6047c93c479b0d5b1a1b24b67221ae1ba0205dba8c4333",
-      githubRepo: err2issueGithubRepo,
-      githubToken: err2issueGithubToken ?? pulumi.output(""),
-      routeMap: cfg.get("err2issueRouteMap") ?? "",
-      anthropicApiKey: cfg.getSecret("err2issueAnthropicApiKey") ?? pulumi.output(""),
-      suppressWindowSeconds: num(cfg, "err2issueSuppressWindowSeconds", 600),
-      // Deliberately below the upstream default of 50. This is the first
-      // deployment of an error sink against a repo that has never had one: the
-      // realistic failure is a long tail of pre-existing, never-noticed errors
-      // arriving at once and burying the issue tracker on day one. Raise it
-      // once the steady-state volume is known.
-      maxNewFingerprintsPerDay: num(cfg, "err2issueMaxNewFingerprintsPerDay", 20),
-      dropUnrouted: bool(cfg, "err2issueDropUnrouted", true),
-      // Langfuse's trace view: the OTLP trace id is the Langfuse trace id, so
-      // the link needs nothing but the project. Empty without Langfuse. Unlike
-      // the Aspire ring buffer this once pointed at, the trace outlives the
-      // issue.
-      traceUrlTemplate: langfuseEnabled
-        ? `https://${langfuseDomain}/project/${encodeURIComponent(cfg.get("langfuseProjectId") ?? "grid-oib")}/traces/{trace_id}`
-        : "",
-      reopenNotPlanned: bool(cfg, "err2issueReopenNotPlanned", false),
-      issueAssignees: cfg.get("err2issueIssueAssignees") ?? "",
-    },
-
-    feedbackIssues: {
-      enabled: feedbackIssuesEnabled,
-      repo: feedbackIssuesRepo,
-      githubToken: feedbackIssuesEnabled && err2issueGithubToken ? err2issueGithubToken : pulumi.output(""),
     },
   };
 }

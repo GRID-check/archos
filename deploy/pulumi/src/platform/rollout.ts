@@ -286,7 +286,7 @@ export const ROLLOUT = {
     endpointDrainSeconds: 0,
   },
 
-  /** Observability tier (OTel Collector, err2issue) — stateless, single replica. */
+  /** Observability tier (the OTel Collector) — stateless, single replica. */
   observability: {
     minReadySeconds: 10,
     progressDeadlineSeconds: 600,
@@ -306,7 +306,7 @@ export const ROLLOUT = {
    * wait for is running (see `assertStartupFitsRollout`, which now checks it).
    *
    * Borrowing `observability`'s 600s deadline and simply widening it would have
-   * pushed the same slack onto err2issue and the collector, where nothing
+   * pushed the same slack onto the collector, where nothing
    * needs it and a genuinely stuck rollout would take ten extra minutes to
    * report.
    */

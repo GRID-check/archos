@@ -9,7 +9,6 @@ import {
   secretChecksumAnnotations,
   surgeRollout,
 } from "./rollout";
-import { ERR2ISSUE_OTLP_HTTP } from "./err2issue";
 import {
   LANGFUSE_SECRET_KEYS,
   langfuseOtlpBasicAuth,
@@ -36,7 +35,7 @@ export interface OtelCollector {
  * is the ONLY holder of the credentials its consumers need (Langfuse's ingestion
  * key; PostHog's public project token sits in the ConfigMap). It batches and
  * applies memory back-pressure. It carries a traces pipeline (to Langfuse) and
- * logs pipelines (to PostHog and err2issue); there is no metrics pipeline,
+ * a logs pipeline (to PostHog); there is no metrics pipeline,
  * because nothing consumes metrics (the Aspire dashboard was the only consumer
  * and has been retired). Swapping or adding a backend later is a config change
  * HERE, not in any app.
@@ -58,43 +57,6 @@ export function installOtelCollector(
 ): OtelCollector {
   const labels = commonLabels(COMPONENT);
   const name = COMPONENT;
-
-  // err2issue (ADR-0031) is a consumer of the logs signal that gets only what
-  // is worth waking someone for. Every fragment below is empty when the sink
-  // is off, so enabling the sink is the only thing that changes the config.
-  //
-  // The filter drops everything below ERROR *before* the exporter rather than
-  // letting err2issue discard it on arrival: the sink only ever acts on ERROR,
-  // so forwarding INFO/DEBUG would be pure waste of collector egress, sink CPU
-  // and pod memory at exactly the moment a service is noisiest.
-  const err2issueExporter = cfg.err2issue.enabled
-    ? `
-  otlp_http/err2issue:
-    endpoint: ${ERR2ISSUE_OTLP_HTTP}
-    compression: none`
-    : "";
-  const err2issueProcessor = cfg.err2issue.enabled
-    ? `
-  filter/errors_only:
-    # A malformed record must not take the pipeline down — the other logs
-    # pipelines are on the other side of the same receiver.
-    error_mode: ignore
-    # \`log_conditions\` (with the \`log.\` prefix), NOT the older
-    # \`logs: log_record:\` nesting: the latter is deprecated as of
-    # collector-contrib 0.146 and slated for removal, and this stack pins
-    # 0.157. Conditions DROP what they match, so this keeps ERROR and above.
-    log_conditions:
-      - 'log.severity_number < SEVERITY_NUMBER_ERROR'`
-    : "";
-  // Its own pipeline: the severity filter is per-pipeline, so sharing one with
-  // another consumer would silently strip that consumer's logs too.
-  const err2issuePipeline = cfg.err2issue.enabled
-    ? `
-    logs/err2issue:
-      receivers: [otlp]
-      processors: [memory_limiter, filter/errors_only, batch]
-      exporters: [otlp_http/err2issue]`
-    : "";
 
   // Langfuse (ADR-0044) is the consumer of the traces signal, which is the
   // change ADR-0029 predicted when it wrote that swapping or adding a storage
@@ -153,14 +115,14 @@ export function installOtelCollector(
       max_elapsed_time: 300s`
     : "";
 
-  // PostHog Logs is a consumer of the logs signal only. Traces are deliberately
-  // not sent: LLM traces reach PostHog through Langfuse's own PostHog
-  // integration, and APM traces are out of scope.
+  // PostHog Logs is the consumer of the logs signal, and of the logs signal
+  // only. Traces are deliberately not sent: LLM traces reach PostHog through
+  // Langfuse's own PostHog integration, and APM traces are out of scope.
   //
-  // Same shape as err2issue and for the same reason: its own pipeline, because
-  // the severity filter is per-pipeline. WARN rather than ERROR because PostHog
-  // is the searchable log store, not an alert sink, but INFO/DEBUG is what
-  // would burn the 10 GB free tier. `severity_number < 13` is SEVERITY_NUMBER_WARN; a
+  // Its own pipeline, because the severity filter is per-pipeline: a second log
+  // consumer added later must not inherit it. WARN rather than ERROR because
+  // PostHog is the searchable log store, not an alert sink, but INFO/DEBUG is
+  // what would burn the 10 GB free tier. `severity_number < 13` is SEVERITY_NUMBER_WARN; a
   // record with no severity (0) is dropped too, which is the safe side.
   //
   // The project token is PostHog's public `phc_` key (it ships in the browser
@@ -214,7 +176,7 @@ export function installOtelCollector(
   // and no log consumer still takes the logs. Declared only when a pipeline
   // needs it.
   const tracesOnNop = !langfuseSecretName;
-  const logsOnNop = !cfg.err2issue.enabled && !posthogLogs;
+  const logsOnNop = !posthogLogs;
   const nopExporter = tracesOnNop || logsOnNop ? "\n  nop:" : "";
   const tracesPipeline = `
     traces:
@@ -247,9 +209,9 @@ processors:
     spike_limit_percentage: 25
   batch:
     timeout: 5s
-    send_batch_size: 1024${err2issueProcessor}${posthogProcessor}
+    send_batch_size: 1024${posthogProcessor}
 
-exporters:${nopExporter}${err2issueExporter}${langfuseExporter}${posthogExporter}
+exporters:${nopExporter}${langfuseExporter}${posthogExporter}
 
 extensions:
   health_check:
@@ -257,7 +219,7 @@ extensions:
 
 service:
   extensions: [health_check]
-  pipelines:${tracesPipeline}${nopLogsPipeline}${err2issuePipeline}${posthogPipeline}
+  pipelines:${tracesPipeline}${nopLogsPipeline}${posthogPipeline}
 `;
 
   const configMap = new k8s.core.v1.ConfigMap(

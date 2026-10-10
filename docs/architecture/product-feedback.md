@@ -58,11 +58,11 @@ stray `@name` pings nobody, the page, the browser context, and a link to the
 report on the triage page. The reporter's name, email and organization stay
 behind that link.
 
-The token is err2issue's PAT (ADR-0031), handed to the frontend as
-`GRID_GITHUB_TOKEN` from the same stack secret. It does not need err2issue to
-be deployed. In Pulumi, `feedbackIssuesEnabled` defaults to on and needs
-`err2issueGithubToken`; the repository defaults to `err2issueGithubRepo`, and
-`feedbackIssuesRepo` sends bug reports somewhere else.
+The token used to be err2issue's PAT (ADR-0031), handed to the frontend as
+`GRID_GITHUB_TOKEN` from the same stack secret. err2issue is retired and the
+Pulumi program no longer sets `GRID_GITHUB_TOKEN` or `GRID_FEEDBACK_ISSUES_REPO`
+on any tier, so on Kubernetes the sender is null and filing is off until a
+token and a repository are given to the frontend again.
 
 `lib/github/issues.ts` is not specific to feedback. Anything else that should
 open an issue builds a `GitHubIssueDraft`, gets a sender from

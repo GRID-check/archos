@@ -46,6 +46,15 @@ function resolve(value: unknown): Promise<any> {
   );
 }
 
+// Pulumi's public special-signature constant, not a credential.
+const SECRET_SIGNATURE = "4dabf18193072939515e22adb298388d"; // pragma: allowlist secret
+/** A `pulumi.secret(...)` reaches a resource mock wrapped; read through it. */
+function unsecret<T>(value: unknown): T {
+  return (value && typeof value === "object" && SECRET_SIGNATURE in (value as object)
+    ? (value as { value: T }).value
+    : value) as T;
+}
+
 function has(type: string, name: string): boolean {
   return RESOURCES.some((r) => r.type === type && r.name === name);
 }
@@ -83,6 +92,15 @@ const POSTHOG_LOGS = {
   "grid-oib:posthogLogsEnabled": "true",
 };
 
+/** What a stack that adopted err2issue and the feedback issues still has in its config file. */
+const LEFTOVER_ERR2ISSUE_KEYS = {
+  "grid-oib:err2issueEnabled": "true",
+  "grid-oib:err2issueGithubRepo": "GRID-check/grid-oib-agent",
+  "grid-oib:err2issueGithubToken": "gh-token", // pragma: allowlist secret
+  "grid-oib:feedbackIssuesEnabled": "true",
+  "grid-oib:feedbackIssuesRepo": "GRID-check/feedback",
+};
+
 /** What a stack that adopted the dashboard still has in its config file. */
 const LEFTOVER_DASHBOARD_KEYS = {
   "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
@@ -94,8 +112,24 @@ const LEFTOVER_DASHBOARD_KEYS = {
 describe("a stack with Langfuse, as today's stacks are", () => {
   let d: Deployed;
   beforeAll(async () => {
-    d = await deploy({ ...langfuseStackConfig(), ...LEFTOVER_DASHBOARD_KEYS });
+    d = await deploy({ ...langfuseStackConfig(), ...LEFTOVER_DASHBOARD_KEYS, ...LEFTOVER_ERR2ISSUE_KEYS });
   }, 120_000);
+
+  it("deploys no err2issue and no GitHub credential, whatever the config still says", async () => {
+    // err2issue is retired (PostHog error tracking replaces it), and the
+    // feedback form's issue filing, which borrowed its token, goes with it.
+    expect(has("kubernetes:apps/v1:Deployment", "err2issue")).toBe(false);
+    expect(d.collector).not.toContain("err2issue");
+    expect(d.collector).not.toContain("errors_only");
+    const secret = RESOURCES.find((r) => r.type === "kubernetes:core/v1:Secret" && r.name === "grid-secrets");
+    expect(Object.keys(unsecret<Record<string, string>>(await resolve(secret?.inputs.stringData)))).not.toContain("GRID_GITHUB_TOKEN");
+    const frontend = RESOURCES.find((r) => r.type === "kubernetes:apps/v1:Deployment" && r.name === "frontend");
+    const env = ((await resolve(frontend?.inputs.spec)) as any).template.spec.containers[0].env.map(
+      (e: { name: string }) => e.name,
+    );
+    expect(env).not.toContain("GRID_GITHUB_TOKEN");
+    expect(env).not.toContain("GRID_FEEDBACK_ISSUES_REPO");
+  });
 
   it("deploys the collector and Langfuse, and no dashboard whatever the config still says", () => {
     expect(has("kubernetes:apps/v1:Deployment", "otel-collector")).toBe(true);
@@ -156,13 +190,10 @@ describe("the gate, as loadConfig resolves it", () => {
     expect(load({}).observability.enabled).toBe(false);
     expect(load(langfuseStackConfig()).observability.enabled).toBe(true);
     expect(load(POSTHOG_LOGS).observability.enabled).toBe(true);
-    expect(
-      load({
-        "grid-oib:err2issueEnabled": "true",
-        "grid-oib:err2issueGithubRepo": "GRID-check/grid-oib-agent",
-        "grid-oib:err2issueGithubToken": "gh-token", // pragma: allowlist secret
-      }).observability.enabled,
-    ).toBe(true);
+  });
+
+  it("is not brought up by err2issue's old keys alone", () => {
+    expect(load({ ...LEFTOVER_ERR2ISSUE_KEYS }).observability.enabled).toBe(false);
   });
 
   it("is not brought up by the dashboard's old keys alone", () => {
