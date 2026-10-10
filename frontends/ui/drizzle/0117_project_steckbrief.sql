@@ -1,4 +1,4 @@
--- 0115: the Steckbrief of a project (ADR-0091, ticket „Abgeschlossene Projekte
+-- 0117: the Steckbrief of a project (ADR-0091, ticket „Abgeschlossene Projekte
 -- mit Eckdaten", slice 1b): its period, and everyone who worked on it.
 --
 -- ## The period

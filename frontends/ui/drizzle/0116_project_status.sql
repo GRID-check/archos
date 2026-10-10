@@ -1,4 +1,4 @@
--- 0114: a project is active or closed (ADR-0090, ticket „Abgeschlossene Projekte").
+-- 0116: a project is active or closed (ADR-0090, ticket „Abgeschlossene Projekte").
 --
 -- ## The status
 --
