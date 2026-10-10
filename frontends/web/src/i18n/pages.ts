@@ -137,7 +137,7 @@ const de = {
       items: [
         {
           name: 'Adresse kopieren',
-          body: 'Öffnen Sie die Einstellungen des Projekts, Abschnitt „E-Mail-Eingang“. Dort steht die Projektadresse mit einer Schaltfläche zum Kopieren. Legen Sie sie am besten als Kontakt in Ihrem E-Mail-Programm an.',
+          body: 'Öffnen Sie die Einstellungen des Projekts, Abschnitt „Dokumente & Index“, Karte „E-Mail-Eingang“. Dort steht die Projektadresse mit einer Schaltfläche zum Kopieren. Legen Sie sie am besten als Kontakt in Ihrem E-Mail-Programm an.',
         },
         {
           name: 'Dateien senden',
@@ -149,7 +149,7 @@ const de = {
         },
       ],
       missing:
-        'Sehen Sie den Abschnitt „E-Mail-Eingang“ nicht, dürfen Sie in diesem Projekt keine Dokumente hinzufügen, oder der E-Mail-Eingang ist für Ihre Organisation nicht eingeschaltet. Er wird je Organisation eingeschaltet, nachdem sie informiert wurde, dass E-Mails über Cloudflare eingehen. Dann hilft Ihre Administration weiter.',
+        'Sehen Sie die Karte „E-Mail-Eingang“ nicht, dürfen Sie in diesem Projekt keine Dokumente hinzufügen, das Projekt ist abgeschlossen (bis es wieder geöffnet wird, lässt es sich nur lesen), oder der E-Mail-Eingang ist für Ihre Organisation nicht eingeschaltet. Er wird je Organisation eingeschaltet, nachdem sie informiert wurde, dass E-Mails über Cloudflare eingehen. Dann hilft Ihre Administration weiter.',
     },
     files: {
       title: 'Was mit den Anhängen passiert',
@@ -210,6 +210,14 @@ const de = {
         {
           name: 'Sie sind Mitglied, dürfen aber keine Dokumente hinzufügen.',
           body: 'Bitten Sie um eine Rolle, die Dokumente bearbeiten darf.',
+        },
+        {
+          name: 'Der Ordner „E-Mail-Eingang“ hat eine eigene Zugriffsliste, und die erlaubt Ihnen kein Schreiben.',
+          body: 'Bitten Sie, wer das Projekt verwaltet, um Schreibzugriff auf diesen Ordner.',
+        },
+        {
+          name: 'Das Projekt ist abgeschlossen.',
+          body: 'Ein abgeschlossenes Projekt lässt sich nur lesen. Bitten Sie, wer es wieder öffnen darf, oder legen Sie die Dateien in einem anderen Projekt ab.',
         },
         {
           name: 'Sie haben von einer anderen Adresse gesendet als der Ihres Piloti-Kontos.',
@@ -371,7 +379,7 @@ const en: typeof de = {
       items: [
         {
           name: 'Copy the address',
-          body: 'Open the project’s settings, section “Project email address”. The project address is there, with a button to copy it. Save it as a contact in your mail client.',
+          body: 'Open the project’s settings, section “Documents & index”, card “Project email address”. The project address is there, with a button to copy it. Save it as a contact in your mail client.',
         },
         {
           name: 'Send the files',
@@ -383,7 +391,7 @@ const en: typeof de = {
         },
       ],
       missing:
-        'If you do not see the “Project email address” section, either you may not add documents to this project, or the mail inbox is not switched on for your organization. It is switched on per organization, after the organization has been told that mail is received through Cloudflare. Your administrator can help.',
+        'If you do not see the “Project email address” card, you may not add documents to this project, the project is closed (it is read-only until somebody reopens it), or the mail inbox is not switched on for your organization. It is switched on per organization, after the organization has been told that mail is received through Cloudflare. Your administrator can help.',
     },
     files: {
       title: 'What happens to the attachments',
@@ -444,6 +452,14 @@ const en: typeof de = {
         {
           name: 'You are a member but may not add documents.',
           body: 'Ask for a role that can edit documents.',
+        },
+        {
+          name: 'The “E-Mail-Eingang” folder has its own access list, and it does not let you write.',
+          body: 'Ask whoever manages the project for write access to that folder.',
+        },
+        {
+          name: 'The project is closed.',
+          body: 'A closed project can only be read. Ask whoever may reopen it, or file the documents in another project.',
         },
         {
           name: 'You sent from a different address than your Piloti account.',

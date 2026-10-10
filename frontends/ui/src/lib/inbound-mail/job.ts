@@ -41,17 +41,21 @@
  * included (a folder deleted or turned read-only mid-run, an FGA blip read as
  * a denial), fails the attempt. A rate-limit refusal is a backoff too, never a
  * skip.
+ *
+ * A project closed while the mail waited (ADR-0090) is the one refusal that
+ * does not wait for the retries: it is read-only until somebody reopens it, so
+ * the delivery fails at once and its sender is told.
  */
 
 import 'server-only'
 import { createHash } from 'node:crypto'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboundMailMessageRow, MailImportSkipReason, SkippedAttachment, StagedAttachment } from '@/lib/db/schema'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
 import { projectShelf } from '@/lib/documents/shelf'
-import { requireShelfWrite } from '@/lib/documents/shelf-authz'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { findOpenJobId } from '@/lib/jobs-queue/repository'
 import { BFF_JOB_PRIORITY, type InboundMailPayload } from '@/lib/jobs-queue/types'
@@ -65,7 +69,8 @@ import {
   type MailFolder,
 } from '@/lib/mail-import/filing'
 import { attachmentFilename } from '@/lib/mail-import/naming'
-import { getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { findRootProjectFolderByName, getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { isProjectClosedError } from '@/lib/projects/project-status'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
 import { notifyFailed, notifyFiled } from './notify'
@@ -160,7 +165,7 @@ export async function runInboundMailJob(organizationId: string, payload: Inbound
   } catch (error) {
     if (error instanceof DeliveryMovedOnError) return 'gone'
     detail = error instanceof AttemptFailure ? error.code : errorName(error)
-    verdict = await afterFailure(row, detail)
+    verdict = isProjectClosedError(error) ? await closedProject(row) : await afterFailure(row, detail)
   } finally {
     logAttempt(row, verdict, detail, Date.now() - started)
   }
@@ -197,6 +202,13 @@ async function afterFailure(row: InboundMailMessageRow, code: string): Promise<V
     await enqueueDelivery(row.organizationId, payloadOf(row), minutesFromNow(BACKOFF_MINUTES[attempts - 1]))
     return 'retried'
   })
+}
+
+/** The project was closed (ADR-0090): no later attempt can file, so give up now. */
+async function closedProject(row: InboundMailMessageRow): Promise<Verdict> {
+  return withTenant({ organizationId: row.organizationId, userId: row.senderUserId }, () =>
+    giveUp(row, 'project-closed')
+  )
 }
 
 async function giveUp(row: InboundMailMessageRow, code: string): Promise<Verdict> {
@@ -278,8 +290,10 @@ async function senderSession(row: InboundMailMessageRow): Promise<AuthorizedSess
 /**
  * The folder the first attempt created, or a new one it records for every
  * later attempt: `E-Mail-Eingang/<leaf>`, or `<leaf> (2)` when another mail
- * (or a person) already has the name. Authorizes the sender first: the root
- * folder is made by a resolver that trusts its caller to have done so.
+ * (or a person) already has the name. Authorizes the sender first, on the
+ * root folder as their folder roles stand (ADR-0097) and on the new root when
+ * this attempt made it: the root folder is made by a resolver that trusts its
+ * caller to have done so. The same order as the Outlook import's folder.
  */
 async function deliveryFolder(row: InboundMailMessageRow, target: MailFilingTarget): Promise<MailFolder> {
   if (row.folderId) {
@@ -288,8 +302,11 @@ async function deliveryFolder(row: InboundMailMessageRow, target: MailFilingTarg
     const path = await resolveShelfFolderPath(projectShelf(row.projectId), row.folderId, row.organizationId)
     if (path !== null) return { id: row.folderId, name: path.split('/').pop() ?? path }
   }
-  await requireShelfWrite(target.session, projectShelf(row.projectId))
+  const lookup = { onError: 'throw' } as const
+  const existing = await findRootProjectFolderByName(row.projectId, INBOUND_MAIL_ROOT_FOLDER, row.organizationId)
+  await requireFolderWrite(target.session, row.projectId, [existing?.id ?? null], lookup)
   const root = await getOrCreateProjectFolderByName(row.projectId, INBOUND_MAIL_ROOT_FOLDER, row.organizationId)
+  if (root.id !== existing?.id) await requireFolderWrite(target.session, row.projectId, [root.id], lookup)
   const folder = await createFolderWithFreeName(target, root.id, row.folderName)
   if (!(await recordDeliveryFolder(row.organizationId, row.id, folder.id))) throw new DeliveryMovedOnError()
   return folder

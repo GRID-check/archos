@@ -30,9 +30,12 @@ vi.mock('@/lib/mail-import/filing', () => ({
   fileBytes: vi.fn(),
 }))
 vi.mock('@/lib/documents/shelf', () => ({ projectShelf: (projectId: string) => ({ kind: 'project', projectId }) }))
-vi.mock('@/lib/documents/shelf-authz', () => ({ requireShelfWrite: vi.fn() }))
+vi.mock('@/lib/authz/folder-access', () => ({ requireFolderWrite: vi.fn() }))
 vi.mock('@/lib/documents/folder-path', () => ({ resolveShelfFolderPath: vi.fn() }))
-vi.mock('@/lib/projects/folder-service', () => ({ getOrCreateProjectFolderByName: vi.fn() }))
+vi.mock('@/lib/projects/folder-service', () => ({
+  findRootProjectFolderByName: vi.fn(),
+  getOrCreateProjectFolderByName: vi.fn(),
+}))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
 vi.mock('@/lib/jobs-queue/repository', () => ({ findOpenJobId: vi.fn() }))
 vi.mock('./notify', () => ({ notifyFiled: vi.fn(), notifyFailed: vi.fn() }))
@@ -58,15 +61,16 @@ import { ForbiddenError, NotFoundError, TooManyRequestsError } from '@/lib/api/e
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { TransientAuthzError } from '@/lib/authz/errors'
+import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { InboundMailMessageRow, StagedAttachment } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
 import { resolveShelfFolderPath } from '@/lib/documents/folder-path'
-import { requireShelfWrite } from '@/lib/documents/shelf-authz'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { findOpenJobId } from '@/lib/jobs-queue/repository'
 import { DOCUMENT_UPLOAD_LIMIT, enforceLimit } from '@/lib/limits'
 import { createFolderWithFreeName, fileBytes, MailImportQuotaError } from '@/lib/mail-import/filing'
-import { getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { findRootProjectFolderByName, getOrCreateProjectFolderByName } from '@/lib/projects/folder-service'
+import { projectClosedError } from '@/lib/projects/project-status'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
 import { BACKOFF_MINUTES, INBOUND_MAIL_ROOT_FOLDER, MAX_ATTEMPTS, runInboundMailJob, sweepInboundMail } from './job'
@@ -149,6 +153,7 @@ beforeEach(() => {
     new Map([['user-anna', { userId: 'user-anna', email: 'anna@buero-a.at', name: 'Anna', profilePictureUrl: null }]])
   )
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(anna)
+  vi.mocked(findRootProjectFolderByName).mockResolvedValue(null)
   vi.mocked(getOrCreateProjectFolderByName).mockResolvedValue({ id: 'folder-root' } as never)
   vi.mocked(createFolderWithFreeName).mockResolvedValue({ id: 'folder-new', name: LEAF })
   vi.mocked(enforceLimit).mockResolvedValue({} as never)
@@ -197,7 +202,12 @@ describe('filing one delivery', () => {
 
   it('checks the sender may write, then makes the folder once under E-Mail-Eingang and records it', async () => {
     await run()
-    expect(requireShelfWrite).toHaveBeenCalledWith(anna, { kind: 'project', projectId: PROJECT })
+    // The project root first (no E-Mail-Eingang yet), then the root it made,
+    // by the sender's folder roles (ADR-0097), a blip a retry rather than a no.
+    expect(vi.mocked(requireFolderWrite).mock.calls).toEqual([
+      [anna, PROJECT, [null], { onError: 'throw' }],
+      [anna, PROJECT, ['folder-root'], { onError: 'throw' }],
+    ])
     expect(getOrCreateProjectFolderByName).toHaveBeenCalledWith(PROJECT, INBOUND_MAIL_ROOT_FOLDER, 'org_A')
     expect(createFolderWithFreeName).toHaveBeenCalledWith(expect.objectContaining({ session: anna }), 'folder-root', LEAF)
     expect(recordDeliveryFolder).toHaveBeenCalledWith('org_A', ROW_ID, 'folder-new')
@@ -210,6 +220,12 @@ describe('filing one delivery', () => {
     expect(createFolderWithFreeName).not.toHaveBeenCalled()
     expect(recordDeliveryFolder).not.toHaveBeenCalled()
     expect(vi.mocked(fileBytes).mock.calls[0].slice(1, 3)).toEqual(['folder-first', `${LEAF} (2) – Plan.pdf`])
+  })
+
+  it('checks write on an E-Mail-Eingang folder that exists, once', async () => {
+    vi.mocked(findRootProjectFolderByName).mockResolvedValue({ id: 'folder-root' } as never)
+    await run()
+    expect(vi.mocked(requireFolderWrite).mock.calls).toEqual([[anna, PROJECT, ['folder-root'], { onError: 'throw' }]])
   })
 
   it('makes a new folder when the recorded one was deleted meanwhile', async () => {
@@ -308,6 +324,29 @@ describe('a failed attempt', () => {
       expect(await run()).toBe('retried')
     }
     expect(markDeliveryFiled).not.toHaveBeenCalled()
+  })
+
+  it('retries a sender whose folder role on E-Mail-Eingang no longer lets them write', async () => {
+    vi.mocked(findRootProjectFolderByName).mockResolvedValue({ id: 'folder-root' } as never)
+    vi.mocked(requireFolderWrite).mockRejectedValueOnce(new ForbiddenError())
+    expect(await run()).toBe('retried')
+    expect(createFolderWithFreeName).not.toHaveBeenCalled()
+  })
+
+  it('gives up at once on a project closed while the mail waited (ADR-0090), and tells the sender', async () => {
+    vi.mocked(requireFolderWrite).mockRejectedValueOnce(projectClosedError())
+    expect(await run()).toBe('failed')
+    expect(recordFailedAttempt).not.toHaveBeenCalled()
+    expect(enqueueJob).not.toHaveBeenCalled()
+    expect(markDeliveryFailed).toHaveBeenCalledWith('org_A', ROW_ID, expect.objectContaining({ lastError: 'project-closed' }))
+    expect(notifyFailed).toHaveBeenCalledWith(expect.objectContaining({ id: ROW_ID }))
+  })
+
+  it('gives up at once too when the upload of a later attempt finds the project closed', async () => {
+    vi.mocked(resolveShelfFolderPath).mockResolvedValue(`${INBOUND_MAIL_ROOT_FOLDER}/${LEAF}`)
+    vi.mocked(fileBytes).mockRejectedValueOnce(projectClosedError())
+    expect(await run(delivery({ folderId: 'folder-first', attempts: 2 }))).toBe('failed')
+    expect(enqueueJob).not.toHaveBeenCalled()
   })
 
   it('backs off on a spent upload budget rather than skipping', async () => {

@@ -23,7 +23,9 @@
  *  5. Read the body under that cap, refusing a declared size over the maximum
  *     up front.
  *  6. Verify the sender, find them in THIS organization's roster, check they
- *     may write documents in THIS project.
+ *     may write documents in THIS project and into its `E-Mail-Eingang`
+ *     folder by its folder roles (ADR-0097), and that the project is not
+ *     closed (ADR-0090).
  *  7. Parse the mail and select its attachments.
  *  8. The delivery key; a mail already queued, filing or filed is a duplicate
  *     and costs nothing more.
@@ -48,16 +50,18 @@
 
 import 'server-only'
 import { randomUUID } from 'node:crypto'
-import { ApiError, FileTooLargeError, NotFoundError, PayloadTooLargeError } from '@/lib/api/errors'
+import { ApiError, FileTooLargeError, ForbiddenError, NotFoundError, PayloadTooLargeError } from '@/lib/api/errors'
 import { errorResponse, readBoundedBody } from '@/lib/api/handler'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import { TransientAuthzError } from '@/lib/authz/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { requireProjectAccess } from '@/lib/authz/projects'
+import { requireFolderWrite } from '@/lib/authz/folder-access'
 import type { SkippedAttachment } from '@/lib/db/schema'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { enforceLimit, INBOUND_MAIL_ADDRESS_LIMIT, INBOUND_MAIL_ORG_LIMIT } from '@/lib/limits'
 import { mailFolderName } from '@/lib/mail-import/naming'
+import { findRootProjectFolderByName } from '@/lib/projects/folder-service'
+import { isProjectClosedError } from '@/lib/projects/project-status'
 import { loadOrganizationDirectory, type DirectoryPerson } from '@/lib/sharing/directory'
 import { assertFileSizeAllowed } from '@/lib/storage/upload-limit'
 import { isProjectMailInboxEnabledForOrg } from '@/lib/workos/feature-flags'
@@ -68,7 +72,7 @@ import {
   INBOUND_VERDICT_HEADER,
   INBOUND_VERDICT_REJECT,
 } from './contract'
-import { enqueueDelivery } from './job'
+import { enqueueDelivery, INBOUND_MAIL_ROOT_FOLDER } from './job'
 import { deliveryKey, parseMail } from './mime'
 import { findActiveAddressByToken, findDelivery, queueDelivery, type ResolvedAddress } from './repository'
 import { verifySender } from './sender-auth'
@@ -101,12 +105,13 @@ type RefusalOutcome =
   | 'refused-sender'
   | 'refused-member'
   | 'refused-permission'
+  | 'refused-closed'
 
 type Outcome = 'accepted' | 'duplicate' | RefusalOutcome | `retry-${string}`
 
 /**
  * A permanent refusal: the one error the response marks with the reject
- * verdict. Three texts for six reasons, so the answer enumerates nothing a
+ * verdict. Three texts for seven reasons, so the answer enumerates nothing a
  * stranger could learn from (an address switched off reads as unknown).
  */
 export class InboundMailRefusal extends ApiError {
@@ -124,6 +129,9 @@ const REFUSALS: Record<RefusalOutcome, [number, string, string]> = {
   'refused-sender': [403, 'FORBIDDEN', SENDER_REFUSED],
   'refused-member': [403, 'FORBIDDEN', SENDER_REFUSED],
   'refused-permission': [403, 'FORBIDDEN', SENDER_REFUSED],
+  // A closed project is read-only (ADR-0090) until someone reopens it: a
+  // refusal like any other, not a retry the sending server repeats for days.
+  'refused-closed': [403, 'FORBIDDEN', SENDER_REFUSED],
 }
 
 /** What one delivery did, for its one log line. No names, no addresses, no subject. */
@@ -373,7 +381,7 @@ async function authorizeSender(delivery: Delivery): Promise<AuthorizedSender> {
   )
   if (!session) throw new InboundMailRefusal('refused-member')
 
-  await requireDocumentWrite(session, address.projectId)
+  await requireInboxWrite(session, address.projectId)
   return { session, fromAddress: verdict.fromAddress, fromName: verdict.fromName }
 }
 
@@ -399,16 +407,26 @@ async function findMemberByEmail(organizationId: string, email: string): Promise
 }
 
 /**
- * The gate `uploadDocument` applies, asked up front with the same function, so
- * the webhook and the filing cannot disagree. Asked with `onError: 'throw'`:
- * an FGA check that could not complete is a {@link TransientAuthzError} (503,
- * retried), and only a definite "no" becomes a permanent refusal.
+ * The gate the filing applies, asked up front with the same function, so the
+ * webhook and the filing cannot disagree: document write in the project, and
+ * write on its `E-Mail-Eingang` folder once that exists, by the folder roles
+ * WorkOS holds (ADR-0097). A new folder below it inherits its list, so a
+ * sender who may not write there could file nothing. Asked with
+ * `onError: 'throw'`: a WorkOS lookup that could not complete is a
+ * {@link TransientAuthzError} (503, retried), and only a definite "no", or a
+ * closed project (ADR-0090), becomes a permanent refusal.
  */
-async function requireDocumentWrite(session: AuthorizedSession, projectId: string): Promise<void> {
+async function requireInboxWrite(session: AuthorizedSession, projectId: string): Promise<void> {
   try {
-    await requireProjectAccess(session, projectId, ['project:documents:write', 'project:edit'], { onError: 'throw' })
+    const root = await findRootProjectFolderByName(projectId, INBOUND_MAIL_ROOT_FOLDER, session.organizationId)
+    await requireFolderWrite(session, projectId, [root?.id ?? null], { onError: 'throw' })
   } catch (error) {
-    if (error instanceof NotFoundError) throw new InboundMailRefusal('refused-permission')
+    if (isProjectClosedError(error)) throw new InboundMailRefusal('refused-closed')
+    // Not found: no write in the project, or a folder they may not read. A
+    // plain 403 from the folder check: they may only read it.
+    if (error instanceof NotFoundError || error instanceof ForbiddenError) {
+      throw new InboundMailRefusal('refused-permission')
+    }
     throw error
   }
 }

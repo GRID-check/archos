@@ -83,8 +83,10 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0098).
   `withPlatformAccess` lookup before reading the body, then works inside
   `withTenant`. It checks the switch, verifies the sender, looks them up in the
   target organization only, requires `project:documents:write` or
-  `project:edit` on that project (the same `requireProjectAccess` call
-  `uploadDocument` makes), selects the attachments in memory, stages them in
+  `project:edit` on that project and, once the project has an
+  `E-Mail-Eingang` folder, write on it by the sender's folder roles (the same
+  `requireFolderWrite` every write into a folder passes, ADR-0097; a closed
+  project refuses it, ADR-0090), selects the attachments in memory, stages them in
   the organization's bucket under the project's prefix, queues one row in
   `inbound_mail_messages`, enqueues one `inbound_mail` job on the BFF's one
   job queue (`bff_job_queue`, ADR-0079), and answers 202. It never stores the
@@ -97,7 +99,7 @@ apex already runs Email Routing for `kontakt@piloti.at` (ADR-0098).
   staging and notifies the sender in the app. Every write is conditional on the
   row still being `queued`. A failed attempt counts on the row and hands the
   delivery to a fresh job after a backoff; after eight the row is `failed` and
-  the sender told. The background-work sweep gives a queued delivery whose job
+  the sender told. A project closed while the mail waited fails it at once. The background-work sweep gives a queued delivery whose job
   is gone a new one. Staging lives at most 7 days and rows 30.
 * **Sender trust is DKIM only.** Cloudflare does not give a Worker its SPF, DKIM
   or DMARC verdicts
