@@ -152,7 +152,9 @@ on (for a revision thread, from the change that made it answer yes), and the
 message id of every vote cast in one. The vote's ids are the client's and can
 only add to the answer. The sweep reads the question through the voted
 message's own conversation. Marks have no foreign key, so they stay when the
-chat is deleted, and a conversation once marked keeps answering yes.
+chat is deleted, and a conversation once marked keeps answering yes. The chat's
+votes do not stay: deleting a chat deletes them with it (`deleteConversationInOrg`),
+so a report whose vote went that way keeps only its anonymised summary.
 
 What a sweep took before that rule was withdrawn twice: migration 0120 by
 conversation record, 0123 by mark. The report's `canonical_summary` is cleared,

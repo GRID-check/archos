@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Deleting a chat now also deletes the thumbs-down comments and expected
+    answers you wrote on its answers. They used to stay behind in the
+    feedback overview after the chat was gone.
