@@ -34,7 +34,7 @@
  * dialog that promises to reproduce the tree.
  *
  * `?variant=fassungen` is an ArchiCAD publisher export of the same project: the
- * files continue documents already on the shelf (ADR-0097). The clear matches
+ * files continue documents already on the shelf (ADR-0098). The clear matches
  * are ONE list under a sticky master box, ticked and grouped by folder; the ones
  * that need the reader (two current documents, or not newer than the one there)
  * sit apart and unticked with the documents to choose from. The boxes work, so

@@ -5391,7 +5391,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         # fail-open, and only on a shelf of user documents: the base corpus
                         # replaces by its own hash registry.
                         if not base_corpus and self.generate_summary_enabled and self.summary_llm:
-                            # A person's choice in the upload dialog (ADR-0097): this file
+                            # A person's choice in the upload dialog (ADR-0098): this file
                             # replaces that one. A job is one file; a name meant for it is
                             # never read for another.
                             confirmed_older = (config.get("fassung_of") or "").strip() or None

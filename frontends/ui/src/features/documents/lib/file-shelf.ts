@@ -110,7 +110,7 @@ export interface FileShelf {
   useUpload: (input: ShelfUploadInput) => ShelfUploadApi
   /** Which of the shelf's documents already carry these names (upload plan). */
   probeNames: (names: readonly string[]) => Promise<DocumentNameMatch[]>
-  /** Which of the shelf's documents these names would be the next Fassung of (upload plan, ADR-0097). */
+  /** Which of the shelf's documents these names would be the next Fassung of (upload plan, ADR-0098). */
   probeFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>
   /** Where a drop made elsewhere in the app waits for this shelf (project only). */
   handoverKey?: string

@@ -48,7 +48,6 @@ import {
   READ_ONLY_DOCUMENT_ACTIONS,
   type DocumentActionKind,
 } from './document-actions/action-entries'
-import { roleNamesFor, useOrganizationRoles } from '@/features/organization/hooks/use-organization-roles'
 import { FileBrowserPane } from './file-browser-pane'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
@@ -557,9 +556,6 @@ export function FileWorkspace({
           onOpenChange={(next) => !next && access.setEditingFolderId(null)}
           projectId={shelf.folderAccess.projectId}
           folder={folders.find((folder) => folder.id === access.editingFolderId) ?? null}
-          roles={access.roles.data}
-          rolesFailed={access.roles.failed}
-          onRetryRoles={() => void access.roles.reload()}
           onSaved={() => {
             void tree.load()
             void listing.load(true)
@@ -614,7 +610,7 @@ export function FileWorkspace({
  * Built from the UNFILTERED corpus: the brief describes the folder, and a
  * filter that hides half of it must not make Piloti appear to know half as
  * much. One entry per document all the same: `buildFolderBrief` leaves out
- * every older Fassung whose newer one is listed (ADR-0097), so its headline,
+ * every older Fassung whose newer one is listed (ADR-0098), so its headline,
  * pages, chips and „Braucht Sie" agree with the listing. The slice is drawn
  * from the same subtree the brief counted, so a chip that says „Grundriss 12"
  * opens twelve documents.
@@ -701,7 +697,7 @@ function useFolderBriefSurface({
  * A project's folders carry an `access` per reader and the listing says what
  * the reader may do at the root; a level they may only read offers no upload,
  * no new folder and no write action on its documents. The Archiv has no
- * per-role folder access (its folders are governed by `canManage`), so without
+ * folder access lists (its folders are governed by `canManage`), so without
  * `shelf.folderAccess` every level is writable here and the shelf's own
  * `canManage` decides. The server decides every write again either way.
  */
@@ -710,14 +706,6 @@ function useFolderAccess(shelf: FileShelf, folders: readonly FolderItem[], treeR
   const rootAccess: FolderAccessLevel = folderAccess ? treeRootAccess : 'write'
   /** The folder whose access dialog is open. */
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
-  // Role names are read only when something needs them: a lock to label, or
-  // the access dialog to fill.
-  const anyRestricted = folders.some((folder) => (folder.grants?.length ?? 0) > 0)
-  const roles = useOrganizationRoles(Boolean(folderAccess) && (anyRestricted || editingFolderId !== null))
-  const roleNames = useCallback(
-    (slugs: readonly string[]) => roleNamesFor(slugs, roles.data),
-    [roles.data]
-  )
 
   const accessAt = useCallback(
     (folderId: string | null): FolderAccessLevel => {
@@ -738,12 +726,11 @@ function useFolderAccess(shelf: FileShelf, folders: readonly FolderItem[], treeR
   const folderNav = folderAccess
     ? {
         onEditFolderAccess: folderAccess.canManage ? setEditingFolderId : undefined,
-        roleNames,
         rootAccess,
       }
     : {}
 
-  return { mayWriteAt, documentActionsAt, folderNav, editingFolderId, setEditingFolderId, roles }
+  return { mayWriteAt, documentActionsAt, folderNav, editingFolderId, setEditingFolderId }
 }
 
 /**

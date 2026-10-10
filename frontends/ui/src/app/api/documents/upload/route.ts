@@ -34,7 +34,7 @@ export const POST = apiRoute(
         originPath: typeof originPath === 'string' ? originPath : null,
         screeningRelease: readScreeningRelease(formData.get('screeningRelease')),
         uploadBatchId: readUploadBatchId(formData.get('uploadBatchId')),
-        // The older document, when the reader filed this as its new Fassung (ADR-0097); checked by the service.
+        // The older document, when the reader filed this as its new Fassung (ADR-0098); checked by the service.
         fassungOf: readFassungOf(formData.get('fassungOf')),
       },
       request

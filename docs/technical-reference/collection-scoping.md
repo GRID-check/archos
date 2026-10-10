@@ -13,7 +13,7 @@ When a user asks a question, the AI needs to know which knowledge sources to sea
 - The active project collection (`proj_{projectId}`, if working in a project)
 - The restricted-folder collections the session is cleared for
   (`<project collection>_r<12 hex>`, interactive chat turns only — ADR-0087, see
-  [Restricted folders](#restricted-folders-adr-0087-adr-0088))
+  [Restricted folders](#restricted-folders-adr-0087-adr-0088-adr-0097))
 - The session collection (`s_{conversationId}`, if in a conversation)
 
 This page is about which collections a request READS. What writes into the
@@ -39,7 +39,7 @@ The Archiv collection is injected in `buildCollectionScopeFromRequest` (which ha
 │  buildCollectionScopeFromRequest(session, context) → {scope,     │
 │    headerValue, projectId, conversationId}                       │
 └────┬─────────────────────────────────────────────────────────┬───┘
-     │ SSE (/api/generate, /api/chat)                          │ WebSocket upgrade
+     │ HTTP (/api/v1, /api/jobs/async)                         │ WebSocket upgrade
      │ X-Grid-Collection-Scope header                          │ calls /api/auth/websocket-scope
      ▼                                                          ▼
 ┌────────────────────────────────────────────────────────────────┐
@@ -121,10 +121,11 @@ async function buildCollectionScopeFromRequest(
 
 ---
 
-## Restricted folders (ADR-0087, ADR-0088)
+## Restricted folders (ADR-0087, ADR-0088, ADR-0097)
 
-A folder whose own access list does not include every project member
-(`project_folder_grants` without `*`, migration 0111) restricts READING. A
+A folder with its own access list that not every project member reads
+(`project_folders.access_mode = 'custom'` without `everyone_reads`, migrations
+0111 and 0128) restricts READING. A
 document under it lives in the collection of its nearest such folder,
 `<project collection>_r<12 hex of the folder id>` (`restrictedCollectionName`
 in `lib/authz/folder-access-rule.ts`). Who may WRITE never moves anything:
@@ -140,8 +141,10 @@ shelf `project`, only when ALL of these hold:
   the flag), the `/api/v1` proxy and scheduled or commissioned runs
   (`submitAgentRun`, session-less) never get one: their reports are filed for
   the whole project;
-- the session may read the folder (`effectiveFolderLevel` over its roles, read
-  from the WorkOS membership at most 60 s ago);
+- the session may read the folder (`effectiveFolderLevel` over the levels its
+  folder roles give, ADR-0097: read from WorkOS by `heldFolderLevels` in
+  `lib/authz/folder-roles.ts`, cached for `GRID_AUTHZ_CACHE_TTL_MS`; a lookup
+  that fails clears nothing);
 - everyone the conversation is shared with may read it too
   (`restrictedCollectionsForChatScope` in `lib/conversations/restricted-use.ts`).
 
@@ -216,11 +219,10 @@ On 401/403, the WebSocket connection is rejected with the appropriate status cod
 
 ---
 
-## SSE Routes
+## HTTP proxy routes
 
-**File**: `frontends/ui/src/app/api/generate/route.ts`
-
-The `POST /api/generate` route reads `projectId` and `conversationId` from the request body, calls `buildCollectionScopeFromRequest`, and includes the header when proxying to the backend:
+There is no HTTP chat route: a chat turn runs on the WebSocket alone (ADR-0068). The HTTP proxies read `projectId` and
+`conversationId`, call `buildCollectionScopeFromRequest`, and include the header when proxying to the backend:
 
 ```typescript
 const { headerValue } = await buildCollectionScopeFromRequest(session, {
@@ -230,9 +232,7 @@ const { headerValue } = await buildCollectionScopeFromRequest(session, {
 // Forwarded as: 'X-Grid-Collection-Scope': headerValue
 ```
 
-The same pattern is used in:
-- `frontends/ui/src/app/api/chat/route.ts` — `POST /api/chat`
-- `frontends/ui/src/app/api/generate/respond/route.ts` — response follow-ups
+The pattern is used in:
 - `frontends/ui/src/app/api/v1/[...path]/route.ts` — generic API proxy
 - `frontends/ui/src/app/api/jobs/async/[...path]/route.ts` — async job proxy
 
@@ -339,7 +339,7 @@ invisible.
 
 | Priority | Source | When |
 |----------|--------|------|
-| 1 (highest) | `X-Grid-Collection-Scope` header | Present in SSE and WebSocket upgrades |
+| 1 (highest) | `X-Grid-Collection-Scope` header | Present on proxied HTTP requests and WebSocket upgrades |
 | 2 | `_resolve_target_collections()` config | Header absent (legacy/fallback) |
 
-The header is always set for SSE requests (`/api/generate`, `/api/chat`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the NAT context has no metadata headers.
+The header is always set for proxied HTTP requests (`/api/v1/*`, `/api/jobs/async/*`) and WebSocket upgrades. It is absent only when requests bypass the BFF or when the NAT context has no metadata headers.

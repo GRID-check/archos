@@ -282,7 +282,7 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     email: IN_APP_ONLY,
   },
   /*
-    A newer Fassung of a document the recipient follows (ADR-0054, ADR-0097).
+    A newer Fassung of a document the recipient follows (ADR-0054, ADR-0098).
     `per-anchor`: the anchor is the older document (a confirmed link) or the new
     version (a same-name upload), so two Fassungen of one document are two rows
     and confirming the same link twice folds into one. Informational: the

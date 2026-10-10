@@ -46,8 +46,9 @@ docker compose --env-file ../.env -f docker-compose.yaml up -d
 ### aiq-agent (the `chat` role)
 
 The Python backend running NAT + FastAPI as `GRID_ROLE=chat`: the chat WebSocket
-and the answers running on it, plus NAT's own routes (`/generate`, `/chat`,
-`/v1/chat/completions`, ...). It serves no other route. The frontend's gateway
+and the answers running on it, the only way a turn runs (NAT's HTTP turn routes,
+`/generate`, `/chat`, `/v1/chat/completions` and the rest, are not mounted). It
+serves no other route but `/health` and NAT's few that run no turn. The frontend's gateway
 reaches it with `BACKEND_CHAT_URL=http://aiq-agent:8000`, and nothing else does.
 Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 
@@ -230,6 +231,22 @@ inside the very process the boundary is meant to constrain. `frontend`,
 `depends_on: { condition: service_completed_successfully }`.
 
 Runbook: [row-level security](../database/row-level-security.md), ADR-0041.
+
+### grid-workos-authz
+
+One-shot WorkOS authorization rollout from the frontend image, the compose
+equivalent of the Kubernetes Jobs `grid-app-authz-catalog` and
+`grid-app-folder-grants` (`deploy/pulumi/src/app/workos-authz-jobs.ts`). It
+runs `provision:authz --apply`, which creates the catalog's missing permissions
+and roles, then `migrate:folder-grants --apply`, which carries folder role
+grants over to WorkOS folder roles (ADR-0097) and is a no-op once done. Both are
+bundled to plain ESM in `dist-scripts/` by the image build, because the runtime
+image has neither bun nor tsx.
+
+It waits on `frontend` being healthy, and nothing waits on it: the carry-over
+must not run while the old dialog can still narrow a list
+([the rollout](workos-provisioning.md#rolling-out-folder-roles-adr-0097)). With
+`WORKOS_API_KEY` unset it prints one line and exits 0.
 
 ### grid-audit-schemas
 

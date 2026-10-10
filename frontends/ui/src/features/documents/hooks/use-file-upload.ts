@@ -141,7 +141,7 @@ export interface UploadFilesOptions {
   /**
    * The document this file is filed as the new Fassung of (its id), when the
    * reader ticked „Als neue Fassung von X ablegen" in the upload dialog
-   * (ADR-0097). Sent as `fassungOf`; the server checks that the reader may
+   * (ADR-0098). Sent as `fassungOf`; the server checks that the reader may
    * change that document before the ingest job writes the link.
    */
   fassungOf?: (file: File) => string | null | undefined
@@ -401,7 +401,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         return (target === undefined ? folderId : target) ?? null
       }
 
-      // The older document a file is filed as the new Fassung of (ADR-0097), or null.
+      // The older document a file is filed as the new Fassung of (ADR-0098), or null.
       const fassungOfFile = (file: File): string | null => options?.fassungOf?.(file) ?? null
 
       // Paired by INDEX, not by filename: two files selected in one batch can

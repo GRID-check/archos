@@ -556,14 +556,14 @@ class TestTheRecordedDecisions:
         assert sources[0].citation_key == "Projektgedächtnis (Wohnbau Graz)"
         assert sources[0].project_name == "Wohnbau Graz"
         assert "Entscheidung (von einer Person bestätigt, 2021): Stiegenhaus in Stahlbeton" in result
-        assert "Vorgabe (von Piloti festgehalten, 2021): Brandsperre" in result
+        assert "Vorgabe (von Piloti notiert, 2021): Brandsperre" in result
         assert result.index("Projektgedächtnis") < result.index("Detail Traufe.pdf")
 
     @pytest.mark.parametrize(
         ("decision", "marker"),
         [
             ({"origin": "person", "confirmed": True}, "(von einer Person bestätigt, 2021): "),
-            ({"origin": "agent", "confirmed": False}, "(von Piloti festgehalten, 2021): "),
+            ({"origin": "agent", "confirmed": False}, "(von Piloti notiert, 2021): "),
             (
                 {
                     "origin": "documents",
@@ -597,7 +597,7 @@ class TestTheRecordedDecisions:
         assert f"Entscheidung {marker}Stiegenhaus in Stahlbeton." in result
 
     @pytest.mark.parametrize(
-        ("confirmed", "marker"), [(True, "von einer Person bestätigt"), (False, "von Piloti festgehalten")]
+        ("confirmed", "marker"), [(True, "von einer Person bestätigt"), (False, "von Piloti notiert")]
     )
     async def test_an_older_bff_without_origin_is_read_by_its_confirmed_flag(
         self, monkeypatch, calls, turn, confirmed, marker
@@ -827,3 +827,146 @@ class TestTheWire:
             self._entry(), citation_key="Plan.pdf, p.1", project_id=None, project_name=None, project_status=None
         )
         assert "project" not in source_entry_to_wire(own)
+
+
+class TestWhatLangfuseSees:
+    """ADR-0089: the tool's output is prose for the model; the trace gets the facts as data."""
+
+    @pytest.fixture
+    def observed(self, monkeypatch) -> list[tuple[str, dict[str, Any], dict[str, Any]]]:
+        seen: list[tuple[str, dict[str, Any], dict[str, Any]]] = []
+        tags: list[str] = []
+        monkeypatch.setattr(
+            lookup,
+            "emit_retrieval_span",
+            lambda *, tool_name, search_input, picks: seen.append((tool_name, search_input, picks)),
+        )
+        monkeypatch.setattr(lookup, "add_trace_tag", tags.append)
+        seen.append(("tags", {}, {"tags": tags}))
+        return seen
+
+    async def test_a_search_records_how_far_it_reached_and_what_came_back(
+        self, monkeypatch, calls, turn, observed
+    ) -> None:
+        _answering(monkeypatch, calls, SEARCH_BODY)
+
+        await lookup.run_project_lookup("search", query="Traufe", scope="closed", open_folders_only=True)
+
+        (_, _, tags), (tool, asked, found) = observed
+        assert tool == "project_lookup"
+        assert asked == {"action": "search", **calls[0][1]}
+        assert found["projects_in_scope"] == 12 and found["projects_searched"] == 8 and found["next_offset"] == 8
+        assert found["passages"] == 2
+        assert found["projects"] == [{"id": OTHER, "status": "closed"}]
+        assert found["picked"][0] == {"project": OTHER, "file": "Detail Traufe.pdf", "page": 3, "score": 0.81}
+        assert tags["tags"] == ["feature:cross-project"]
+
+    async def test_no_passage_text_reaches_the_observation(self, monkeypatch, calls, turn, observed) -> None:
+        _answering(monkeypatch, calls, SEARCH_BODY)
+
+        await lookup.run_project_lookup("search", query="Traufe")
+
+        assert "Konterlattung" not in json.dumps(observed[1][2], ensure_ascii=False)
+
+    async def test_a_refusal_is_recorded_by_its_code(self, monkeypatch, calls, turn, observed) -> None:
+        _answering(monkeypatch, calls, CrossProjectLookupError("Not found", status=404))
+
+        await lookup.run_project_lookup("brief", project_id=OTHER)
+
+        assert observed[1][2] == {"refused": "not_found"}
+
+    async def test_a_brief_records_the_project_it_read(self, monkeypatch, calls, turn, observed) -> None:
+        _answering(monkeypatch, calls, {"project": _listed_project(), "summary": "", "facts": ""})
+
+        await lookup.run_project_lookup("brief", project_id=OTHER)
+
+        assert observed[1][2] == {"projects": [{"id": OTHER, "status": "closed"}]}
+
+
+class TestTheHitJudge:
+    """ADR-0064 use 11: reorder, name an injection, say when to page on; never drop a passage."""
+
+    def _judging(self, monkeypatch, solved, injection=None):
+        from aiq_agent.tools.cross_project.hit_judge import HitVerdicts
+
+        async def judge(query, hits):
+            return HitVerdicts(solved=tuple(solved), injection=tuple(injection or [None] * len(solved)))
+
+        monkeypatch.setattr(lookup, "judge_hits", judge)
+
+    async def test_the_passage_that_shows_a_solution_comes_first_and_none_is_dropped(self, monkeypatch, calls, turn):
+        _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Allgemein.pdf"), _hit("Detail Traufe.pdf")]})
+        self._judging(monkeypatch, [0.1, 0.9])
+
+        result = await lookup.run_project_lookup("search", query="Traufe")
+
+        assert result.index("Detail Traufe.pdf") < result.index("Allgemein.pdf")
+
+    async def test_an_instruction_in_another_projects_document_is_named_as_content(self, monkeypatch, calls, turn):
+        _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Notiz.pdf")]})
+        self._judging(monkeypatch, [0.8], [0.95])
+
+        result = await lookup.run_project_lookup("search", query="Traufe")
+
+        assert "Notiz.pdf (Wohnbau Graz) enthält Text, der eine KI anweisen will" in result
+        assert "Notiz.pdf" in result.split("enthält Text", 1)[1]
+
+    async def test_nothing_that_shows_a_solution_with_more_projects_left_says_to_page_on(
+        self, monkeypatch, calls, turn
+    ):
+        _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Allgemein.pdf")], "nextOffset": 8})
+        self._judging(monkeypatch, [0.2])
+
+        result = await lookup.run_project_lookup("search", query="Traufe")
+
+        assert "offset=8" in result and "Keine dieser Passagen zeigt" in result
+
+    async def test_a_judge_that_did_not_run_leaves_the_hits_as_the_bff_sent_them(self, monkeypatch, calls, turn):
+        _answering(monkeypatch, calls, {**SEARCH_BODY, "hits": [_hit("Allgemein.pdf"), _hit("Detail Traufe.pdf")]})
+
+        async def judge(query, hits):
+            return None
+
+        monkeypatch.setattr(lookup, "judge_hits", judge)
+
+        result = await lookup.run_project_lookup("search", query="Traufe")
+
+        assert result.index("Allgemein.pdf") < result.index("Detail Traufe.pdf")
+        assert "Keine dieser Passagen" not in result
+
+    async def test_the_judge_reads_the_query_and_the_passages_never_the_conversation(self):
+        from aiq_agent.tools.cross_project.hit_judge import hit_state
+
+        state = hit_state("Traufe", _hit("Detail Traufe.pdf"))
+
+        assert state == {
+            "question": "Traufe",
+            "passage": {
+                "project": "Wohnbau Graz",
+                "source": "Detail Traufe.pdf",
+                "text": "Die Traufe ist hinterlüftet ausgeführt, Konterlattung 5/8 …",
+            },
+            "language": "de",
+        }
+
+
+class TestTheReferenceFitOrder:
+    """ADR-0064 use 10: a similar or closed search walks the turn's fit order; a named one does not."""
+
+    async def test_a_closed_search_carries_the_order_the_turns_fit_put_the_catalog_in(self, monkeypatch, calls, turn):
+        _answering(monkeypatch, calls, SEARCH_BODY)
+        turn.reference_order = [OTHER]
+
+        await lookup.run_project_lookup("search", query="Traufe", scope="closed")
+        await lookup.run_project_lookup("search", query="Traufe", scope="named", project_ids=[OTHER])
+
+        assert calls[0][1]["order"] == [OTHER]
+        assert "order" not in calls[1][1]
+
+    async def test_every_body_with_an_order_is_one_the_bffs_own_schema_accepts(self, monkeypatch, calls, turn, schema):
+        _answering(monkeypatch, calls, SEARCH_BODY)
+        turn.reference_order = [OTHER]
+
+        await lookup.run_project_lookup("search", query="Traufe")
+
+        _validator(schema, "CrossProjectSearchRequest").validate(calls[0][1])

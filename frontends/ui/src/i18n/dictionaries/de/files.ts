@@ -403,11 +403,13 @@ export const files: typeof en.files = {
     breadcrumb: 'Ordnerpfad',
     movedFolder: '„{name}“ nach „{parent}“ verschoben.',
     moveFolderError: 'Der Ordner konnte nicht verschoben werden. Bitte erneut versuchen.',
-    /** Ordnerzugriff (ADR-0087): einen Ordner auf Rollen einschränken. */
+    /** Ordnerzugriff (ADR-0088, ADR-0097): einen Ordner auf Personen einschränken. */
     access: {
       menu: 'Zugriff …',
-      restrictedTo: 'Nur für {roles}',
-      openRestricted: 'Ordner „{name}“ öffnen, Zugriff: {roles}',
+      /** Das Schloss am Ordner: Wer auf der Liste steht, sagt erst der Dialog. */
+      ownList: 'Eigene Zugriffsrechte: nur die eingetragenen Personen',
+      ownListEveryoneReads: 'Eigene Zugriffsrechte: alle Projektmitglieder lesen, bearbeiten nur die eingetragenen Personen',
+      openRestricted: 'Ordner „{name}“ öffnen. {access}',
       title: 'Zugriff auf „{name}“',
       description: 'Wer in diesem Projekt den Ordner, seine Unterordner und deren Dokumente lesen und bearbeiten darf.',
       inherit: 'Wie der übergeordnete Ordner',
@@ -415,22 +417,23 @@ export const files: typeof en.files = {
         'Der Ordner übernimmt den Zugriff des Ordners darüber. Ganz oben gilt das Projekt: Wer lesen darf, liest; wer bearbeiten darf, bearbeitet.',
       custom: 'Eigene Zugriffsrechte',
       customHint:
-        'Nur Personen mit einer der aufgeführten Rollen haben Zugriff, je nach Rolle mit „Lesen“ oder „Bearbeiten“. Wer keine davon hat, sieht den Ordner nicht. Organisations-Admins dürfen immer alles.',
-      roles: 'Rollen',
-      everyMember: 'Alle Projektmitglieder',
-      customRole: 'Eigene Rolle',
+        'Nur die eingetragenen Personen kommen in den Ordner, jede mit „Lesen“ oder „Bearbeiten“. Wer nicht eingetragen ist, sieht ihn nicht, außer alle Projektmitglieder dürfen lesen. Organisations-Admins dürfen immer alles.',
+      everyoneReads: 'Alle Projektmitglieder dürfen lesen',
+      everyoneReadsHint: 'Die Liste bestimmt dann nur, wer bearbeiten darf.',
+      people: 'Personen',
+      unknownPerson: 'Person ohne Projektzugang',
       levelRead: 'Lesen',
       levelWrite: 'Bearbeiten',
-      levelFor: 'Zugriff für {role}',
-      remove: '{role} entfernen',
-      add: 'Rolle hinzufügen …',
-      pickOne: 'Fügen Sie mindestens eine Rolle hinzu.',
-      noRoles:
-        'Ihre Organisation hat noch keine Rollen zur Auswahl. Eigene Rollen legen Sie unter Organisation → Personen & Zugriff an.',
+      levelFor: 'Zugriff für {name}',
+      remove: '{name} entfernen',
+      add: 'Person hinzufügen …',
+      pickOne: 'Fügen Sie mindestens eine Person hinzu oder lassen Sie alle Projektmitglieder lesen.',
       nesting: 'Ein Unterordner kann nur enger sein als sein übergeordneter Ordner, nie weiter.',
       ceiling: '„Bearbeiten“ gilt nur für Personen, die im Projekt bearbeiten dürfen; alle anderen lesen.',
       lockout:
-        'Haben Sie selbst keine dieser Rollen, verschwindet der Ordner nach dem Speichern auch für Sie, außer Sie sind Organisations-Admin.',
+        'Stehen Sie selbst nicht auf der Liste, verschwindet der Ordner nach dem Speichern auch für Sie, außer Sie sind Organisations-Admin.',
+      lockoutEveryoneReads:
+        'Stehen Sie selbst nicht mit „Bearbeiten“ auf der Liste, dürfen Sie den Ordner nach dem Speichern nur noch lesen, außer Sie sind Organisations-Admin.',
       moveNotice:
         'Ändert sich, wer lesen darf, verschiebt Piloti die Dokumente des Ordners und liest sie neu ein. Bei einem großen Ordner dauert das einige Minuten; so lange stehen die Dokumente auf „Wird gelesen“.',
       ifcNotice:
@@ -444,7 +447,7 @@ export const files: typeof en.files = {
       readOnlyRefused: 'In diesem Ordner dürfen Sie nur lesen.',
       save: 'Zugriff speichern',
       saving: 'Wird gespeichert…',
-      loadError: 'Die Rollen konnten nicht geladen werden.',
+      loadError: 'Die Zugriffsliste konnte nicht geladen werden.',
       savedCustom: '„{name}“ hat jetzt eigene Zugriffsrechte.',
       savedInherit: '„{name}“ übernimmt jetzt den Zugriff des übergeordneten Ordners.',
       moving: '{count, plural, one {# Dokument wird} other {# Dokumente werden}} verschoben und neu eingelesen.',
@@ -664,7 +667,7 @@ export const files: typeof en.files = {
     releaseFile: 'Trotzdem hochladen',
     // Dateien, die als neue Fassung eines vorhandenen Dokuments hereinkommen: mit
     // gleichem Namen (ADR-0054) oder über eine Namensreihe unter anderem Namen
-    // (ADR-0097). Ein Begriff, gleich wie Piloti es erkannt hat (ADR-0098). Sagen
+    // (ADR-0098). Ein Begriff, gleich wie Piloti es erkannt hat (ADR-0098). Sagen
     // Sie Dokument, Datei, Fassung: ein Name mit Index sagt nicht, was eine Datei ist.
     fassung: {
       title: '{count, plural, one {# neue Fassung} other {# neue Fassungen}}',
@@ -908,7 +911,7 @@ export const files: typeof en.files = {
     sliceClear: 'Zurück zum Ordner',
     sliceEmpty: 'Hier liegt nichts mehr vor.',
   },
-  /** Die Anzahl auf Karte und Zeile, wenn ein Dokument Fassungen unter anderen Dateinamen hat (ADR-0097). */
+  /** Die Anzahl auf Karte und Zeile, wenn ein Dokument Fassungen unter anderen Dateinamen hat (ADR-0098). */
   fassungBadge: {
     count: '{count, plural, one {# Fassung} other {# Fassungen}}',
     countTitle: '{count, plural, one {# Fassung dieses Dokuments} other {# Fassungen dieses Dokuments}}',
@@ -988,7 +991,7 @@ export const files: typeof en.files = {
     labelActive: 'Filter ({count} aktiv)',
     reset: 'Filter zurücksetzen',
     // Die beiden Schalter, die ERWEITERN: Stillgelegte stehen gar nicht erst in
-    // der Liste, ältere Fassungen sind ein Eintrag mit der aktuellen (ADR-0097).
+    // der Liste, ältere Fassungen sind ein Eintrag mit der aktuellen (ADR-0098).
     // Gleich formuliert und unter einer Überschrift, damit keiner als
     // Einschränkung gelesen wird.
     alsoShowLabel: 'Auch zeigen',

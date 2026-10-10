@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * What the dropped names continue on a shelf (ADR-0097): the grammar decides
+ * What the dropped names continue on a shelf (ADR-0098): the grammar decides
  * which documents belong to a series, the database only narrows, and a
  * document a person already replaced is not what a new file continues.
  */

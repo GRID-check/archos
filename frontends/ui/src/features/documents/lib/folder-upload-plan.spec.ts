@@ -633,7 +633,7 @@ function offer(
   }
 }
 
-describe('buildFolderUploadPlan — Fassungen across names (ADR-0097)', () => {
+describe('buildFolderUploadPlan — Fassungen across names (ADR-0098)', () => {
   const B = { id: 'b', filename: 'EG_Grundriss_Index_B.pdf', label: 'Index B' }
 
   it('attaches the offer to a new file and ticks it when the match is unambiguous', () => {

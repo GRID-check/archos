@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * „Als neue Fassung von X ablegen" arrives with the upload as the older
- * document's id (ADR-0097). It is checked with the rules the PUT route applies
+ * document's id (ADR-0098). It is checked with the rules the PUT route applies
  * to the older document, before a byte is stored, and what the ingest job gets
  * is that document's FILE NAME.
  */

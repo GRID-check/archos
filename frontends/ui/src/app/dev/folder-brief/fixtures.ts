@@ -8,7 +8,7 @@
  * site that Piloti read but could not place in a document type (three carry
  * what the camera wrote). Three earlier Fassungen sit in `03_Einreichung/alt`,
  * named with their index and linked to their newer one (`fassung`), one of them
- * a failed read. The brief counts one entry per document (ADR-0097), so none of
+ * a failed read. The brief counts one entry per document (ADR-0098), so none of
  * the three is counted, summed into the pages, or listed under failures: the
  * root reads „35 von 44 Dokumenten gelesen“ although the corpus holds 48 files.
  *

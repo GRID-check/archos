@@ -37,7 +37,7 @@ export interface DocumentNameProbeClient {
   project: (projectId: string, names: readonly string[]) => Promise<DocumentNameMatch[]>
   /** Matches in the organization's Archiv. */
   archiv: (names: readonly string[]) => Promise<DocumentNameMatch[]>
-  /** What the names continue on a project's shelf: the documents they would be the next Fassung of (ADR-0097). */
+  /** What the names continue on a project's shelf: the documents they would be the next Fassung of (ADR-0098). */
   projectFassungen: (projectId: string, names: readonly string[]) => Promise<FassungCandidateMatch[]>
   /** What the names continue in the Archiv. */
   archivFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>

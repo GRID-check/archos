@@ -31,7 +31,7 @@ picks the facts a document stores from its analysed pages.
 
 A third path needs no model to decide: a person who dropped the file onto the upload dialog
 and ticked „Als neue Fassung von X ablegen" has already said it (``fassung_of`` on the ingest
-job, ADR-0097). Once the new file has been read, :func:`confirm_fassung` writes the link a
+job, ADR-0098). Once the new file has been read, :func:`confirm_fassung` writes the link a
 person's ``PUT /v1/collections/{c}/fassung`` writes (``superseded_by`` on X, the change summary
 on the new file with X as its basis). X missing from the collection, or a link that would close
 a loop, falls back to the ordinary paths above.

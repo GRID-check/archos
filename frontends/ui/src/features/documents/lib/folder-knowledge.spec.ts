@@ -641,7 +641,7 @@ describe('selectInBrief', () => {
 })
 
 /**
- * One entry per document (ADR-0097): the brief counts the documents the
+ * One entry per document (ADR-0098): the brief counts the documents the
  * listing shows, so a document with three Fassungen is one document, and a
  * replaced Fassung is never counted, summed, nagged about or re-read.
  */

@@ -427,11 +427,13 @@ export const files = {
     breadcrumb: 'Folder path',
     movedFolder: '“{name}” moved to “{parent}”.',
     moveFolderError: 'The folder could not be moved. Please try again.',
-    /** Folder access (ADR-0087): restricting a folder to roles. */
+    /** Folder access (ADR-0088, ADR-0097): restricting a folder to people. */
     access: {
       menu: 'Access…',
-      restrictedTo: 'Only for {roles}',
-      openRestricted: 'Open folder “{name}”, access: {roles}',
+      /** The lock on a folder: who is on the list only the dialog says. */
+      ownList: 'Own access: only the listed people',
+      ownListEveryoneReads: 'Own access: all project members read, only the listed people edit',
+      openRestricted: 'Open folder “{name}”. {access}',
       title: 'Access to “{name}”',
       description: 'Who in this project may read and edit this folder, its subfolders and their documents.',
       inherit: 'Same as the parent folder',
@@ -439,22 +441,23 @@ export const files = {
         'The folder takes the access of the folder above it. At the top, the project applies: whoever may read reads, whoever may edit edits.',
       custom: 'Custom access',
       customHint:
-        'Only people with one of the listed roles have access, each role with “Read” or “Edit”. Anyone with none of them does not see the folder. Organization admins may always do everything.',
-      roles: 'Roles',
-      everyMember: 'All project members',
-      customRole: 'Custom role',
+        'Only the listed people get into the folder, each with “Read” or “Edit”. Anyone not listed does not see it, unless all project members may read. Organization admins may always do everything.',
+      everyoneReads: 'All project members may read',
+      everyoneReadsHint: 'The list then decides only who may edit.',
+      people: 'People',
+      unknownPerson: 'Person without project access',
       levelRead: 'Read',
       levelWrite: 'Edit',
-      levelFor: 'Access for {role}',
-      remove: 'Remove {role}',
-      add: 'Add a role…',
-      pickOne: 'Add at least one role.',
-      noRoles:
-        'Your organization has no roles to choose from yet. Custom roles are created under Organization → People & access.',
+      levelFor: 'Access for {name}',
+      remove: 'Remove {name}',
+      add: 'Add a person…',
+      pickOne: 'Add at least one person, or let all project members read.',
       nesting: 'A subfolder can only be narrower than its parent folder, never wider.',
       ceiling: '“Edit” applies only to people who may edit in the project; everyone else reads.',
       lockout:
-        'If you hold none of these roles yourself, the folder disappears for you too once you save, unless you are an organization admin.',
+        'If you are not on the list yourself, the folder disappears for you too once you save, unless you are an organization admin.',
+      lockoutEveryoneReads:
+        'If you are not on the list with “Edit” yourself, you may only read the folder once you save, unless you are an organization admin.',
       moveNotice:
         'If who may read changes, Piloti moves the folder’s documents and reads them again. For a large folder that takes a few minutes; meanwhile the documents show as “Reading”.',
       ifcNotice:
@@ -468,7 +471,7 @@ export const files = {
       readOnlyRefused: 'You may only read in this folder.',
       save: 'Save access',
       saving: 'Saving…',
-      loadError: 'The roles could not be loaded.',
+      loadError: 'The access list could not be loaded.',
       savedCustom: '“{name}” now has its own access.',
       savedInherit: '“{name}” now takes the access of its parent folder.',
       moving: '{count, plural, one {# document is} other {# documents are}} being moved and read again.',
@@ -693,7 +696,7 @@ export const files = {
       'Your office marks these terms as sensitive, so these files are not uploaded. If one of them belongs in Piloti after all, tick it.',
     releaseFile: 'Upload anyway',
     // Files that come in as a new revision of a document already here: by the
-    // same name (ADR-0054) or by a name series under another name (ADR-0097).
+    // same name (ADR-0054) or by a name series under another name (ADR-0098).
     // One concept, one word, whichever way Piloti recognised it (ADR-0098). Say
     // document, file, revision: a name with an index does not say what a file is.
     fassung: {
@@ -951,7 +954,7 @@ export const files = {
     sliceClear: 'Back to the folder',
     sliceEmpty: 'Nothing left here.',
   },
-  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0097). */
+  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0098). */
   fassungBadge: {
     count: '{count, plural, one {# revision} other {# revisions}}',
     countTitle: '{count, plural, one {# revision of this document} other {# revisions of this document}}',
@@ -1031,7 +1034,7 @@ export const files = {
     labelActive: 'Filters ({count} active)',
     reset: 'Reset filters',
     // The two toggles that WIDEN: retired files are not in the listing at all,
-    // and older revisions are one entry with the current one (ADR-0097). Worded
+    // and older revisions are one entry with the current one (ADR-0098). Worded
     // alike under one heading, so neither reads as a narrowing.
     alsoShowLabel: 'Also show',
     alsoShow: {

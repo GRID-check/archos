@@ -29,7 +29,7 @@ export type PlanDocumentSource =
 
 /**
  * Where the offers „Als neue Fassung von X ablegen" come from: a probe asked
- * with the dropped names (`name-probe-client.ts`, ADR-0097), answering for the
+ * with the dropped names (`name-probe-client.ts`, ADR-0098), answering for the
  * names that continue a document on the shelf.
  */
 export type FassungOfferSource = (names: readonly string[]) => Promise<readonly FassungCandidateMatch[]>
@@ -103,7 +103,7 @@ export interface UploadDecision {
       documents: PlanDocumentSource
       /**
        * Asks the shelf which documents the dropped names continue
-       * (ADR-0097). Without it nothing is offered.
+       * (ADR-0098). Without it nothing is offered.
        */
       fassungOffers?: FassungOfferSource
       /**
@@ -162,7 +162,7 @@ export interface UploadDecision {
  *
  * Files that match nothing go out at once; anything that would touch an
  * existing document opens the plan dialog first, and so does a file whose name
- * continues one as its next Fassung (ADR-0097, `fassungOffers`). A folder always
+ * continues one as its next Fassung (ADR-0098, `fassungOffers`). A folder always
  * opens it.
  */
 export function useUploadDecision(): UploadDecision {

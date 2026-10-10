@@ -281,7 +281,7 @@ The order is what the reader has to do: what needs them first and open, then
 one line that already names what it holds. Opened in full the brief was taller
 than a laptop screen, and the listing it introduces started below the fold.
 
-The brief counts one entry per document, as the listing shows it (ADR-0097): an
+The brief counts one entry per document, as the listing shows it (ADR-0098): an
 older Fassung whose newer one is in the corpus is left out of every count, the
 pages, the chips, the failures and the re-read, whatever the „Ältere Fassungen“
 filter says.
@@ -324,7 +324,7 @@ content check has not released cannot reach the reader through the brief.
 feld72 asked for „eine Logik wie bei Planfred“: only the newest state of a
 document is the basis, the older ones only on request, and any automation only
 as a suggestion a person confirms, also when a new state does not carry the
-old file name. ADR-0097 records why this is a link between two documents and
+old file name. ADR-0098 records why this is a link between two documents and
 not a merge.
 
 Piloti suggests in two ways:

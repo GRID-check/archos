@@ -360,7 +360,7 @@ Clicking a source chip opens a preview of the source instead of doing nothing:
 - **A passage you select yourself can be copied as a citation.** Selecting text in the viewer offers **Als Zitat kopieren / Copy as citation**: the clipboard gets the quotation plus the document and the page it is on — the same Zitiertext form the answer's own copy actions produce, so a quote taken from the source and one taken from the chat arrive in your Stellungnahme looking alike. Plain ⌘/Ctrl-C still copies the bare words.
 - **The toolbar says which page you are on**, not how long the file is, and it follows you as you scroll — so a passage you have scrolled away from still has an address. **Zur Fundstelle / Go to passage** takes you back to the marked one.
 - **The cited passage is marked in the document itself.** When the citation carries passage text, the viewer finds that passage in the page's text layer, scrolls to it, and lights it up — a short pulse on arrival that settles into a highlighter mark in the source's own tint. A **Zur Fundstelle / Go to passage** button in the viewer toolbar brings you back to it after scrolling away or after jumping to another Fundstelle on the rail. Matching is deliberately conservative: it tolerates line-break hyphenation, ligatures, punctuation and German inflection, but when a page offers two passages that fit equally well it marks neither and simply opens at the page — a mark on the wrong sentence is worse than no mark. When the cited page does not hold the passage at all, the page either side is searched as well, because the page number counts sheets and a document with a cover page numbers itself differently; when those come up empty too, one more page out in each direction, for a title sheet plus a table of contents. Further than that is a different passage that happens to read alike, and is not looked at. Scanned pages with no text layer open at the page without a mark. Whenever the search comes up empty on every page it could have looked at, the viewer says so in the toolbar rather than leaving you to guess whether the passage is missing, the page is wrong, or the feature is broken.
-- **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0097), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
+- **A citation of an older Fassung says so.** When the cited document is a Fassung a person has since replaced by a newer one (a link confirmed in Dateien, ADR-0098), the source's preview popover adds one muted line, **Ältere Fassung – aktuell: \<Name\>** (English: *Older revision. Current:*). The name is a button: it opens the current Fassung beside the conversation. The citation itself is unchanged, because an older Fassung is still read when you ask for it; the line only keeps you from relying on a replaced Fassung unawares. It names only a Fassung you may open yourself: a newer file held back by the content check or filed in a folder you cannot open is not named. A document nobody replaced, and a suggestion Piloti made that nobody confirmed, show no line.
 - **Ask for a document's history.** „Welche Fassungen gibt es vom EG-Grundriss?“ and „Was hat sich zwischen Index B und C geändert?“ are answered from the whole chain of Fassungen, newest first, with each one's Index and date (read from the file name and, where there is one, the Plankopf), upload date and the line saying what changed. Answers otherwise use the newest Fassung and name an older one only when you ask for it or Piloti compares; opening an older one by name says in the first line that it is the older and which one is current. The change lines are Piloti's summaries, not a comparison of the files: for a detail it reads both Fassungen.
 - **Anything unresolvable** (unknown document, non-previewable file type) shows a light popover with the source's origin, title, and passage instead — never a broken viewer. Chips with nothing beyond their label stay plain.
 
@@ -401,7 +401,9 @@ Gebäudeklasse, Bauweise and use), and it can search their documents (by topic,
 optionally by document type such as Detail or Gutachten, by OIB discipline,
 and by the project's period), find a project by name or address, and read a
 project's brief. While it searches, the status line says „in anderen
-Projekten“. Piloti also finds what other projects **decided**: the decisions and
+Projekten“; once the answer is done, the Herleitung keeps an „Andere Projekte“
+step. The same list, with what each project shares with this one, is the
+project's [Ähnliche Projekte](projects.md#similar-projects) page. Piloti also finds what other projects **decided**: the decisions and
 constraints their project memory recorded while they ran („Stiegenhaus in
 Stahlbeton, weil das Gutachten nur so die Abweichung zuließ“). These often
 say why, which a document rarely does. They come first in the answer, cited
@@ -440,8 +442,9 @@ stays with the people who may open it.** From then on the chat:
 - starts no deep research and no task, changes no project brief, files nothing
   into the project, and adds nothing to project or office memory.
 
-A notice below the text field, above the row of controls, names the other
-projects that restrict the chat right now and says what that closes: a running
+A small chip below the text field, „2 andere Projekte", counts the other
+projects that restrict the chat right now; clicking it names them and says
+what that closes (the answers already name the projects they cite): a running
 project, or a project whose folder with its own access list the chat drew on,
 even when that project is closed. If a running project is closed later, the
 chat opens up; if a closed one is reopened, the restriction comes back; the

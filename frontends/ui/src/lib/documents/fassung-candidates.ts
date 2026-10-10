@@ -1,6 +1,6 @@
 /**
  * Which documents on a shelf a set of dropped names would be the next Fassung of
- * (CONTEXT.md, „Fassung"; ADR-0097).
+ * (CONTEXT.md, „Fassung"; ADR-0098).
  *
  * The upload dialog asks this before anything is stored, and offers „Als neue
  * Fassung von X ablegen" for every name that continues a document. The grammar

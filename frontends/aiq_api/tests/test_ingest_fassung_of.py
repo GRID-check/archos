@@ -1,4 +1,4 @@
-"""`POST /v1/ingest` carries the Fassung a person chose at upload (ADR-0097).
+"""`POST /v1/ingest` carries the Fassung a person chose at upload (ADR-0098).
 
 The upload dialog offers „Als neue Fassung von X ablegen"; the BFF checks the
 person may change X and sends X's file name as `fassung_of`. The route's part is

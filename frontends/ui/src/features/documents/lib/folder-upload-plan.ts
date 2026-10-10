@@ -112,7 +112,7 @@ export interface FassungTarget {
 
 /**
  * A dropped file that continues a document already on the shelf: the offer „Als
- * neue Fassung von X ablegen" (CONTEXT.md, „Fassung"; ADR-0097) and the
+ * neue Fassung von X ablegen" (CONTEXT.md, „Fassung"; ADR-0098) and the
  * person's answer to it.
  */
 export interface PlannedFassung {
@@ -704,7 +704,7 @@ export function countPlan(
  * withholds something, and the reader is told before it happens.
  *
  * A `new` file that continues a document on the shelf (`fassungOf`) asks too:
- * filing it as that document's next Fassung is the reader's call (ADR-0097).
+ * filing it as that document's next Fassung is the reader's call (ADR-0098).
  *
  * This is the rule for picked and dropped FILES. A folder always asks: its plan
  * also says which folders are made and matched, which no count here covers.

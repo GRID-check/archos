@@ -4,7 +4,6 @@ import type { JSX } from 'react'
 import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react'
 import type { FileItem, FolderItem } from '../file-types'
 import type { CardExtras } from '../lib/file-shelf'
-import { EVERY_PROJECT_MEMBER, type FolderGrantItem } from '@/adapters/api/folder-access-client'
 import { Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
@@ -56,8 +55,6 @@ export interface FolderNavigation {
    * project's folders only: the Archiv's are governed by who manages it.
    */
   onEditFolderAccess?: (folderId: string) => void
-  /** Role slugs → names, for the lock on a folder with its own list. Slugs show as themselves without it. */
-  roleNames?: (slugs: readonly string[]) => string[]
   /**
    * What the reader may do at the project root (ADR-0088): `read` hides the
    * root's upload and new-folder affordances. Absent reads as `write`; each
@@ -310,16 +307,6 @@ export function FileBrowserPane({
     return wrapFile ? wrapFile(file, card) : card
   }
 
-  /** A folder's own list as the lock names it: each role (or every member) with what it may do. */
-  const grantLabels = (grants: readonly FolderGrantItem[]): string[] => {
-    const names = folderNav?.roleNames?.(grants.map((grant) => grant.role)) ?? grants.map((grant) => grant.role)
-    return grants.map((grant, index) => {
-      const who = grant.role === EVERY_PROJECT_MEMBER ? t('folders.access.everyMember') : names[index]
-      const what = grant.level === 'write' ? t('folders.access.levelWrite') : t('folders.access.levelRead')
-      return `${who} (${what})`
-    })
-  }
-
   const folderTile = (folder: FolderItem, asRow: boolean) => {
     const props = {
       folder,
@@ -335,7 +322,6 @@ export function FileBrowserPane({
       actions: folderNav ? (folderNav.readOnly ? <Fragment /> : <FolderActionsTrigger />) : undefined,
       editing: editingFolderId === folder.id,
       onEditingChange: (next: boolean) => setEditingFolderId(next ? folder.id : null),
-      restrictedRoleNames: folder.grants?.length ? grantLabels(folder.grants) : undefined,
       readOnly: folder.access === 'read',
     }
     const tile = asRow ? <FolderRow {...props} /> : <FolderCard {...props} />
@@ -444,7 +430,7 @@ export function FileBrowserPane({
   const folderAggregates = useMemo(() => {
     // One entry per document, like the cards below the tiles: a folder holding
     // Index A, B and C of one drawing counts one item unless older Fassungen
-    // are asked for (ADR-0097).
+    // are asked for (ADR-0098).
     const corpus = withoutOlderFassungen(searchFiles ?? files, showOlderFassungen)
     const allFolders = folderNav?.folders ?? []
     const counts = new Map<string, number>()

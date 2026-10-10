@@ -500,7 +500,7 @@ describe('the ingest dispatch sends the document folder path', () => {
     expect(body).not.toHaveProperty('approved_by')
   })
 
-  it('sends the older file’s name when the upload was filed as its new Fassung (ADR-0097)', async () => {
+  it('sends the older file’s name when the upload was filed as its new Fassung (ADR-0098)', async () => {
     // The backend twin is `frontends/aiq_api/tests/test_ingest_fassung_of.py`: the same `fassung_of` key.
     await dispatchDocument({ ...input('Grundriss_EG_Index_C.pdf'), fassungOf: 'Grundriss_EG_Index_B.pdf' })
 
@@ -626,7 +626,7 @@ describe('an office file is converted, by a job, before it is ingested', () => {
     expect(renditionRead?.[2]).toEqual({ expiresIn: 86_400 })
   })
 
-  it('carries the Fassung a person chose through the conversion to the ingest (ADR-0097)', async () => {
+  it('carries the Fassung a person chose through the conversion to the ingest (ADR-0098)', async () => {
     await dispatchDocument({ ...input('Baubeschreibung.docx'), fassungOf: 'Baubeschreibung_Index_A.docx' })
 
     expect(queuedJob()).toMatchObject({

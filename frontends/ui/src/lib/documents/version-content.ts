@@ -454,7 +454,7 @@ const INLINE_VERSION_CONTENT_TYPES: ReadonlySet<string> = new Set([
 /**
  * One superseded or published version's stored object, streamed from this
  * origin: what „Öffnen" and „Herunterladen" on a same-name Fassung of the
- * timeline (ADR-0054, ADR-0097) hand over. `/file` and `/download` serve only
+ * timeline (ADR-0054, ADR-0098) hand over. `/file` and `/download` serve only
  * the item's CURRENT bytes, and `/content` reads text; an earlier upload under
  * the same name was kept and reachable through none of them.
  *

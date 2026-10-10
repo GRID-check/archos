@@ -2,7 +2,7 @@
  * A document and its Fassungen, as the workspace shows them: ONE entry.
  *
  * Across different file names a Fassung is stored as a link between two
- * documents (ADR-0097), but a person sees one document with a history. So the
+ * documents (ADR-0098), but a person sees one document with a history. So the
  * listing shows the current Fassung only, counts how many it has, and leaves
  * the older ones out unless asked for them; opening the document lists them in
  * its timeline (`document-fassungen.tsx`). Same-name versions (ADR-0054) never were

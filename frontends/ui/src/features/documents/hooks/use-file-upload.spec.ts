@@ -622,7 +622,7 @@ describe('useFileUpload — durable document uploads', () => {
     expect((xhr.last().body as FormData).get('screeningRelease')).toBe('name')
   })
 
-  test('sends the document a file is filed as the new Fassung of, and only for that file (ADR-0097)', async () => {
+  test('sends the document a file is filed as the new Fassung of, and only for that file (ADR-0098)', async () => {
     const { result } = renderUpload()
     const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
     const plain = new File(['x'], 'Baubeschreibung.pdf', { type: 'application/pdf' })

@@ -3,7 +3,7 @@
  *
  * The Fassung probe's two routes, driven THROUGH the typed client (ADR-0055):
  * the upload dialog's „Als neue Fassung von X ablegen" asks them with the name
- * probe's bodies (ADR-0097).
+ * probe's bodies (ADR-0098).
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
