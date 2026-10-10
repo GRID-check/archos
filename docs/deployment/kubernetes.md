@@ -2321,6 +2321,55 @@ the agent, ADR-0089) are not switched off in any write mode, checked against
 the 4.56.0 source. Rollback before the cutover is upstream's `migrate … goto 37` from the
 v4 web container, then the v3 digests. After it, only the backups.
 
+### Recommended owner step: move to `events_only`
+
+Both stacks run the default, `dual` (neither stack file sets
+`langfuseV4WriteMode`). This repo changes no stack; the step below is the
+owner's, per stack, dev first.
+
+**What `events_only` means.** The program sets
+`LANGFUSE_MIGRATION_V4_WRITE_MODE=events_only` and
+`LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR=direct` on `langfuse-web` and
+`langfuse-worker` (`langfuseV4MigrationEnv`, `deploy/pulumi/src/platform/langfuse.ts`).
+Spans from the collector then land in v4's events table alone. v3's tables stop
+receiving anything, the v3 views stop updating, and the legacy public read APIs
+(`/api/public/traces`, `/observations`, `/sessions`, `/scores`, `/metrics`)
+answer 404. Score writes, prompt reads and the OTLP ingestion path are
+unaffected.
+
+**It is one-way.** Upstream's rollback ends at the cutover (see above): after
+it, only the backups go back. Setting the key to `dual` again would write v3's
+tables from that moment, with no copy of what arrived in between. That is why
+the backup comes first.
+
+**Why recommend it.** Nothing in this repo reads v3's tables (traces arrive over
+OTLP, the Python SDK reads prompts only, and the BFF and the agent write
+scores), so `dual` pays a second copy of every span, on a ClickHouse volume that
+has no retention policy and no scheduled backup (see "Operating it"), for a
+rollback path nobody intends to take.
+
+**Before the `up`:**
+
+1. **Back up both stores**, exactly as for the v4 upgrade above: a CNPG backup
+   of the `langfuse` Postgres database, and a volume snapshot of the ClickHouse
+   PVC. ClickHouse has no scheduled backup, so this snapshot is the only
+   rollback.
+2. **Decide the historic backfill first.** History reaches v4's views only
+   through `langfuseV4HistoricBackfill: true`, which upstream sizes at about
+   three times the current ClickHouse disk as headroom. Check
+   `df -h /var/lib/clickhouse` (see "Operating it") before turning it on.
+3. **Look at the v4 views with real data.** With the v4 views opted in, a
+   recent chat turn must show its generations, scores, user and session, and
+   the propagation health check from the upgrade section must answer 200.
+4. **If the PostHog integration is enabled** (ADR-0098), confirm that its next
+   hourly export still lands `langfuse observation` events after the cutover.
+   That export is Langfuse's own; this repo does not run it, and it was not
+   exercised against `events_only` when this was written.
+
+**Then** `pulumi config set grid-oib:langfuseV4WriteMode events_only` and `up`
+(the env change rolls both Langfuse Deployments). Watch dev for a release cycle
+before moving prod.
+
 ### Signals and attribution
 
 Only **traces** go to Langfuse, and Langfuse has the collector's traces
