@@ -93,8 +93,9 @@ def test_a_logged_exception_is_captured_with_its_context(sent, log, monkeypatch)
     assert properties["log_message"] == "ingest of %s failed"
     assert properties["log_level"] == "ERROR"
     assert properties["release"] == "abc1234"
-    assert properties["environment"] == "staging"
-    assert properties["service"] == "grid-agent-worker"
+    # The client's super properties carry these on every event, not each handler.
+    assert "environment" not in properties
+    assert "service" not in properties
     assert properties["$ai_trace_id"] == properties["langfuse_trace_id"] == f"{trace_id:032x}"
 
 
@@ -227,12 +228,13 @@ def test_the_process_wide_cap_stops_many_fingerprints_failing_at_once(sent, cloc
     assert len(sent) == GLOBAL_BURST
 
 
-def test_remembered_fingerprints_are_bounded(clock):
-    handler = PosthogExceptionHandler(clock=clock)
-    for index in range(posthog_exceptions.MAX_FINGERPRINTS + 50):
-        handler._admit(f"fingerprint-{index}")
+def test_a_hot_loop_costs_one_event_per_refill_interval(sent, log, clock):
+    # The free-tier arithmetic in the module header: a burst, then one per interval.
+    for _ in range(12 * 60 + 1):  # an hour, failing every 5 seconds, both ends included
+        _fail(log)
+        clock.now += 5
 
-    assert len(handler._buckets) == posthog_exceptions.MAX_FINGERPRINTS
+    assert len(sent) == FINGERPRINT_BURST + 3600 // FINGERPRINT_REFILL_SECONDS
 
 
 def test_install_is_off_while_posthog_is_not_configured(monkeypatch):

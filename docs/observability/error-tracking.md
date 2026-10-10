@@ -69,10 +69,14 @@ idempotent.
 
 It reports an `ERROR` or above record that carries `exc_info`, with the logger
 name, the formatted message (presigned URLs scrubbed), the log call site,
-`release` and `environment` as `trace_context` derives them for Langfuse, and,
+`release` as `trace_context` derives it for Langfuse, and,
 inside a traced run, the trace id as `$ai_trace_id` and `langfuse_trace_id`.
 Langfuse exports that trace to PostHog as `langfuse observation` events, so an
 issue links to the trace that produced it. The event is personless.
+`environment` and `service` are super properties of the client, so every
+Python event carries them, and frames under `aiq_agent` and `aiq_api` are
+marked in-app. posthog-python has no `logging` integration (it ships Django,
+Flask, Celery and ASGI ones), which is why this handler is ours.
 `posthog_client` scrubs presigned URLs from every event's text on the way out,
 because `str(httpx.HTTPStatusError)` embeds the request URL.
 
@@ -92,6 +96,8 @@ from spending it:
 | Both | authorization denials are never counted |
 
 A dropped record is still logged everywhere else; it is only not counted again.
+The Python buckets are posthog-python's `BucketedRateLimiter`, the algorithm
+posthog-js and posthog-node share.
 
 ## Not done here
 

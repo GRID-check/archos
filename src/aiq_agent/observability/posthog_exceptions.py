@@ -9,6 +9,9 @@ would hear about almost nothing. The one place every one of those calls passes
 through is the logging system, so a handler on the root logger reports the lot
 and no call site has to remember: the same reasoning that put presigned-URL
 scrubbing on the handlers (``common.log_redaction``) rather than at call sites.
+posthog-python ships integrations for Django, Flask, Celery and ASGI, none for
+``logging``, so this handler is the one piece that stays ours; the budget,
+the client and the release link are the SDK's.
 
 This replaces the path ERROR log, OTLP collector, err2issue, GitHub issue
 (ADR-0031). That path stays until the PostHog destination has proven itself;
@@ -23,12 +26,13 @@ exception is a message, not an exception, and PostHog groups by stack.
 
 The exception itself (type, message, stack: the SDK builds the ``$exception``
 event), and beside it the logger name, the formatted log message, the log call
-site, the release (``GRID_GIT_SHA``) and environment (``APP_ENV``) exactly as
-``trace_context`` derives them for Langfuse, and, when the error happened inside
+site, the release (``GRID_GIT_SHA``) as ``trace_context`` derives it for
+Langfuse, and, when the error happened inside
 a traced run, the trace id as ``$ai_trace_id`` and ``langfuse_trace_id``. Langfuse
 exports that trace to PostHog as ``langfuse observation`` events, so an issue in
 Error tracking links to the trace that produced it
-(https://posthog.com/docs/ai-observability/link-error-tracking).
+(https://posthog.com/docs/ai-observability/link-error-tracking). The
+environment and the service are the client's super properties, on every event.
 
 The event is personless: the log record names no user, and looking one up on an
 error path would be a second thing that can fail. Tenant text never travels:
@@ -46,8 +50,11 @@ exception text again (``posthog_client._scrub_event``) because
   fingerprint (exception type, logger, innermost frame) has a small token
   bucket, and one process-wide bucket caps the total. Over budget, the record
   is dropped silently from PostHog's side; it is still logged everywhere else,
-  so nothing is lost, only not counted again. The arithmetic is next to the
-  constants.
+  so nothing is lost, only not counted again. The buckets are the SDK's own
+  ``BucketedRateLimiter``, the one posthog-js and posthog-node use; the
+  arithmetic is next to the constants. Its buckets are never evicted, which is
+  fine here because the keys are code sites, not data: a process has as many
+  as it has places that log an exception.
 * **Never raises.** A handler that raises inside ``logger.exception`` would
   turn a logged error into a second one in the caller's ``except`` block.
 
@@ -59,7 +66,6 @@ from __future__ import annotations
 import logging
 import os
 import time
-from collections import OrderedDict
 from collections.abc import Callable
 from types import TracebackType
 
@@ -77,33 +83,12 @@ FINGERPRINT_REFILL_SECONDS = 300.0
 #: failing at once, which the per-fingerprint buckets cannot see.
 GLOBAL_BURST = 20
 GLOBAL_REFILL_SECONDS = 60.0
-#: Fingerprints remembered. The oldest is forgotten past this, which only means
-#: it gets a fresh burst if it returns.
-MAX_FINGERPRINTS = 256
+_GLOBAL_KEY = "process"
 
 MESSAGE_MAX = 500
 #: Loggers that must never be reported: the SDK's own, and this package's
 #: PostHog modules (they log at DEBUG, but the rule should not depend on that).
 _SKIPPED_LOGGER_PREFIXES = ("posthog", "aiq_agent.observability.posthog")
-
-
-class TokenBucket:
-    """``capacity`` tokens, one more every ``refill_seconds``, up to ``capacity``."""
-
-    def __init__(self, capacity: int, refill_seconds: float, now: float) -> None:
-        self.capacity = capacity
-        self.refill_seconds = refill_seconds
-        self.tokens = float(capacity)
-        self.updated = now
-
-    def take(self, now: float) -> bool:
-        elapsed = max(0.0, now - self.updated)
-        self.tokens = min(float(self.capacity), self.tokens + elapsed / self.refill_seconds)
-        self.updated = now
-        if self.tokens < 1.0:
-            return False
-        self.tokens -= 1.0
-        return True
 
 
 def _innermost_frame(traceback: TracebackType | None) -> str:
@@ -152,11 +137,9 @@ def event_properties(record: logging.LogRecord) -> dict[str, str]:
         "log_message": _message(record),
         "log_origin": f"{record.pathname}:{record.lineno}",
     }
-    optional = {
-        "release": trace_context.langfuse_release(),
-        "environment": trace_context.langfuse_environment(),
-        "service": os.environ.get("OTEL_SERVICE_NAME", "").strip() or None,
-    }
+    # Environment and service are on every event already (the client's super
+    # properties); the release is here until the deploy sets POSTHOG_RELEASE_ID.
+    optional = {"release": trace_context.langfuse_release()}
     trace_id = _current_trace_id()
     if trace_id:
         optional["$ai_trace_id"] = trace_id
@@ -170,25 +153,16 @@ class PosthogExceptionHandler(logging.Handler):
 
     def __init__(self, clock: Callable[[], float] = time.monotonic) -> None:
         super().__init__(level=logging.ERROR)
-        self._clock = clock
-        self._buckets: OrderedDict[str, TokenBucket] = OrderedDict()
-        self._global = TokenBucket(GLOBAL_BURST, GLOBAL_REFILL_SECONDS, clock())
+        self._per_fingerprint = posthog_client.rate_limiter(FINGERPRINT_BURST, FINGERPRINT_REFILL_SECONDS, clock)
+        self._process = posthog_client.rate_limiter(GLOBAL_BURST, GLOBAL_REFILL_SECONDS, clock)
 
     def _admit(self, key: str) -> bool:
-        """Spend one token from the fingerprint's bucket and the global one."""
-        now = self._clock()
-        bucket = self._buckets.get(key)
-        if bucket is None:
-            if len(self._buckets) >= MAX_FINGERPRINTS:
-                self._buckets.popitem(last=False)
-            bucket = self._buckets[key] = TokenBucket(FINGERPRINT_BURST, FINGERPRINT_REFILL_SECONDS, now)
-        else:
-            self._buckets.move_to_end(key)
-        return bucket.take(now) and self._global.take(now)
+        """Spend one token from the fingerprint's bucket, then the process's."""
+        if self._per_fingerprint.consume_rate_limit(key):
+            return False
+        return not self._process.consume_rate_limit(_GLOBAL_KEY)
 
     def emit(self, record: logging.LogRecord) -> None:
-        # ``Handler.handle`` holds this handler's lock around ``emit``, so the
-        # buckets need none of their own.
         if not record.exc_info or record.exc_info[1] is None:
             return
         if record.name.startswith(_SKIPPED_LOGGER_PREFIXES):

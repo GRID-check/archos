@@ -36,6 +36,8 @@ SDK's trade, so a PostHog outage never holds a pod's shutdown, and it is ours.
 from __future__ import annotations
 
 import os
+import time
+from collections.abc import Callable
 from threading import Lock
 from typing import TYPE_CHECKING
 from typing import Any
@@ -45,6 +47,7 @@ from aiq_agent.observability import trace_context
 
 if TYPE_CHECKING:
     from posthog import Posthog
+    from posthog.bucketed_rate_limiter import BucketedRateLimiter
 
 HOST_ENV = "POSTHOG_HOST"
 PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN"  # pragma: allowlist secret
@@ -161,6 +164,22 @@ def capture_exception(
     if client is None:
         return False
     return client.capture_exception(exception, distinct_id=distinct_id, properties=properties) is not None
+
+
+def rate_limiter(burst: int, refill_seconds: float, clock: Callable[[], float] = time.monotonic) -> BucketedRateLimiter:
+    """The SDK's keyed token bucket: ``burst`` events per key, then one per ``refill_seconds``.
+
+    The same algorithm posthog-js and posthog-node use, so a budget reads the
+    same in every runtime. Its arithmetic is not the obvious one: the call that
+    empties a bucket is itself limited, and a refill of a single token admits
+    nothing. So the bucket holds ``burst + 1`` and two tokens come back per
+    interval, which admits exactly ``burst`` and then one per interval while
+    the key keeps firing. Here rather than at the caller because it imports
+    the SDK, which only this module does.
+    """
+    from posthog.bucketed_rate_limiter import BucketedRateLimiter
+
+    return BucketedRateLimiter(burst + 1, 2, refill_seconds, clock=clock)
 
 
 def reset_for_tests() -> None:
