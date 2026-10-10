@@ -139,6 +139,28 @@ class TestProcessor:
         assert span.status.code == SpanStatusCode.ERROR
         assert "error:workflow_error" in span.attributes[TAGS_ATTRIBUTE]
 
+    async def test_a_chat_root_needs_no_incoming_trace_context(self):
+        """The BFF registers no trace provider, so no request carries a ``traceparent``.
+
+        A root is a NAT span with no NAT parent, not a span that continues a W3C
+        context, so the chat turn must still name its trace and carry its outcome
+        with nothing ambient and nothing upstream.
+        """
+        from opentelemetry import trace as otel_trace
+
+        from nat.data_models.span import Span
+
+        assert not otel_trace.get_current_span().get_span_context().is_valid
+        token = begin_turn_outcome()
+        try:
+            record_turn_error("workflow_error", "boom")
+            span = await TraceContextProcessor().process(Span(name="chat_deepresearcher_agent"))
+        finally:
+            end_turn_outcome(token)
+
+        assert span.attributes[TRACE_NAME_ATTRIBUTE] == "chat-turn"
+        assert span.attributes["langfuse.observation.level"] == "ERROR"
+
     async def test_a_child_span_never_takes_the_turns_outcome(self):
         from nat.data_models.span import Span
 

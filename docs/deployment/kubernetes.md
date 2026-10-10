@@ -1895,8 +1895,8 @@ The stack deploys one component:
   backend is a collector-config change, not an app change.
 
 **Signals actually emitted today** (ADR-0029 Amendment 3): traces from
-grid-ui (`@vercel/otel`), grid-aiq-agent and grid-agent-worker (NAT tracing
-exporter); logs from all five tiers - the Python tiers via the
+grid-aiq-agent and grid-agent-worker (NAT tracing exporter); the BFF registers
+no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
@@ -2019,24 +2019,27 @@ curl -s -o /dev/null -w '%{redirect_url}\n' \
 It must redirect to the AuthKit login UI. `application_not_found` means the
 client id is wrong; `invalid_redirect_uri` means step 3 was missed.
 
-**Scope:** traces from all three app tiers. The Python tiers (`aiq-agent`
-chat/web, `agent-worker` deep-research jobs) share the NAT config; the
-Next.js BFF registers `@vercel/otel` from `src/instrumentation.ts`. They
-appear as separate resources via `OTEL_SERVICE_NAME` (`grid-ui` /
-`grid-aiq-agent` / `grid-agent-worker`). Skill-scheduler and purger emit
-no telemetry, and the `server.js` WS proxy is not auto-instrumented
-(follow-ups).
+**Scope:** traces from the two Python tiers (`aiq-agent` chat/web,
+`agent-worker` deep-research jobs), which share the NAT config. The Next.js BFF
+registers **no trace provider**: `src/instrumentation.ts` bridges `console.*` to
+OTLP logs and nothing else (ADR-0029 Amendment 5 dropped every BFF root span at
+creation, which left a provider that recorded nothing). Sending no `traceparent`
+costs nothing downstream: the Python tiers never continued the BFF's trace, and
+a root there is a NAT span with no NAT parent
+(`test_a_chat_root_needs_no_incoming_trace_context`). Logs appear as separate
+resources via `OTEL_SERVICE_NAME` (`grid-ui` / `grid-aiq-agent` /
+`grid-agent-worker`). The `server.js` WS proxy is not instrumented.
 
 **Wiring:**
 
 - `configs/config_oib_openrouter.yml` enables the `otelcollector_redaction`
   tracing exporter (spans only, OTLP/HTTP).
-- Pulumi injects `OTEL_SERVICE_NAME` + `OTEL_EXPORTER_OTLP_ENDPOINT` into all
-  three tiers (only when the collector is deployed — see Gating above). Endpoint
+- Pulumi injects `OTEL_SERVICE_NAME` + `OTEL_EXPORTER_OTLP_ENDPOINT` into the
+  app tiers (only when the collector is deployed — see Gating above). Endpoint
   asymmetry (intentional): the Python tiers get the
   FULL path (`http://otel-collector:4318/v1/traces` — the NAT exporter posts
-  as-is); the frontend gets the BASE URL (`http://otel-collector:4318` — the
-  JS OTLP HTTP exporter appends `/v1/traces` per the OTEL spec).
+  as-is); the frontend gets the BASE URL (`http://otel-collector:4318` —
+  `otel-logs.js` derives `/v1/logs` from it).
 - The only credential the collector holds is Langfuse's precomputed Basic-auth
   header, in the `langfuse-secrets` Secret, referenced by `secretKeyRef` —
   never a plain env value. Producers hold no key.
@@ -2422,12 +2425,14 @@ observation carrying the query, the collections searched, the budgets and the
 picked chunk ids/files/scores — metadata only, no chunk text (ADR-0058,
 Amendment 2).
 
-The frontend tier exports **no request spans** (ADR-0029, Amendment 5): one
+The frontend tier exports **no spans at all** (ADR-0029, Amendment 5): one
 trace per HTTP request — health probes, RSC navigations, BFF POSTs — flooded
 the project under the `default` environment, and every fact those spans held
-arrives better elsewhere (backend-tier spans, the OTel log bridge). If you see
-`grid-ui` SPAN rows under `default`, they predate that amendment; filter them
-out or let retention... there is none on the OSS build, so prune by hand.
+arrives better elsewhere (backend-tier spans, the OTel log bridge). It first
+dropped them at creation with a sampler, then, since that left a provider that
+recorded nothing, stopped registering one. If you see `grid-ui` SPAN rows under
+`default`, they predate that amendment; filter them out or let retention...
+there is none on the OSS build, so prune by hand.
 
 **Model costs stay $0.00 until the model ids are priced.** Token counts land
 regardless, but the self-hosted OSS build ships no price catalog entry for the

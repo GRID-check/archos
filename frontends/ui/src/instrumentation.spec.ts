@@ -8,6 +8,10 @@ vi.mock('./lib/analytics/request-error', () => ({
 vi.mock('./lib/analytics/posthog-server', () => ({
   shutdownPosthogServer: () => shutdownPosthogServer(),
 }))
+const registerOTel = vi.fn()
+const initOtelLogs = vi.fn()
+vi.mock('@vercel/otel', () => ({ registerOTel: (...args: unknown[]) => registerOTel(...args) }))
+vi.mock('../observability/otel-logs.js', () => ({ initOtelLogs: () => initOtelLogs() }))
 vi.mock('./lib/boot', () => ({ bootLine: () => 'boot' }))
 vi.mock('./lib/model-config/bootstrap-defaults', () => ({ bootstrapPlatformModelDefaults: async () => {} }))
 
@@ -25,6 +29,8 @@ describe('instrumentation', () => {
     vi.unstubAllEnvs()
     reportRequestError.mockReset()
     shutdownPosthogServer.mockClear()
+    registerOTel.mockClear()
+    initOtelLogs.mockClear()
     Reflect.deleteProperty(globalThis, '__gridShutdownHooks')
     vi.spyOn(console, 'log').mockImplementation(() => {})
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -70,5 +76,29 @@ describe('instrumentation', () => {
     expect(hooks).toHaveLength(1)
     await hooks[0]!()
     expect(shutdownPosthogServer).toHaveBeenCalledTimes(1)
+  })
+
+  test('with a collector it bridges logs and registers no trace provider', async () => {
+    // The BFF's root spans were all dropped at creation, so the provider
+    // recorded nothing and only carried the cost of a registered one.
+    vi.stubEnv('NEXT_RUNTIME', 'nodejs')
+    vi.stubEnv('OTEL_EXPORTER_OTLP_ENDPOINT', 'http://otel-collector:4318')
+    const { register } = await import('./instrumentation')
+
+    await register()
+
+    expect(initOtelLogs).toHaveBeenCalledTimes(1)
+    expect(registerOTel).not.toHaveBeenCalled()
+  })
+
+  test('without a collector it bridges nothing', async () => {
+    vi.stubEnv('NEXT_RUNTIME', 'nodejs')
+    vi.stubEnv('OTEL_EXPORTER_OTLP_ENDPOINT', '')
+    const { register } = await import('./instrumentation')
+
+    await register()
+
+    expect(initOtelLogs).not.toHaveBeenCalled()
+    expect(registerOTel).not.toHaveBeenCalled()
   })
 })

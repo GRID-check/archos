@@ -83,20 +83,16 @@ export async function register() {
   // (local dev, compose without observability) → no-op, zero overhead.
   if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
 
-  const { registerOTel } = await import("@vercel/otel");
-  const { RootSpanDropSampler } = await import("../observability/span-sampler.js");
-  registerOTel({
-    serviceName: process.env.OTEL_SERVICE_NAME ?? "grid-ui",
-    // One trace per HTTP request flooded Langfuse with health probes, RSC
-    // navigations and BFF POSTs whose real work already appears in the
-    // backend tiers' traces. Root spans are dropped at creation; errors stay
-    // visible through the OTel log bridge below (and err2issue). See the
-    // module's header and ADR-0029 Amendment 5.
-    traceSampler: new RootSpanDropSampler(),
-  });
-
-  // Bridge console.* to OTLP log records (Aspire "Strukturierte Protokolle").
-  // Shared with the scheduler/purger workers; no-ops without the endpoint.
+  // Logs only. The BFF registers no trace provider: one trace per HTTP request
+  // (health probes, RSC navigations, BFF POSTs) flooded Langfuse, so ADR-0029
+  // Amendment 5 dropped every root span at creation, which left a provider that
+  // recorded nothing. The operation a request forwards appears as a richer span
+  // in the agent tier's own trace, and errors reach PostHog through
+  // `onRequestError` above and the log bridge below.
+  //
+  // Bridge console.* to OTLP log records, which the collector forwards to
+  // PostHog Logs. Shared with the scheduler/purger workers; no-ops without the
+  // endpoint.
   const { initOtelLogs } = await import("../observability/otel-logs.js");
   initOtelLogs();
 }
