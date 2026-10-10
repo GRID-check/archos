@@ -275,7 +275,7 @@ describe.skipIf(!url)('a closed project against Postgres', () => {
   })
 
   it('a close loses the race to a Beginn moved past its Abschluss: nothing changes, and no CHECK fires', async () => {
-    await inTenant(() => db.execute(sql`UPDATE projects SET started_on = '2026-11-01' WHERE id = ${projectId}::uuid`))
+    await inTenant(() => db.execute(sql`UPDATE projects SET started_on = '2026-11-01', ended_on = NULL WHERE id = ${projectId}::uuid`))
     expect(await close()).toBeNull()
     await inTenant(() => db.execute(sql`UPDATE projects SET started_on = NULL WHERE id = ${projectId}::uuid`))
   })
