@@ -26,6 +26,24 @@ ingestion `https://eu.i.posthog.com`).
 | WorkOS users and organizations | PostHog data warehouse (read-only copy, for analysis) | PostHog's WorkOS source (needs a WorkOS API key) | Decision open, see below |
 | Feature entitlements, authorization | WorkOS (unchanged) | — | Flags in PostHog are rollout switches, never authorization |
 
+## What is already configured in PostHog
+
+Project 269895 was set up as staging on 2026-10-10 (annotation "PostHog setup
+started"). Changing any of it is a click in PostHog. Nothing here is code.
+
+| Area | State |
+|---|---|
+| Project | "Piloti (staging)", Europe/Vienna, IPs anonymized. On: exception autocapture, web vitals, surveys, heatmaps, Support. Off: dead clicks, console-log and network capture, the session-recording switch (masking pre-set: all inputs, all text, minimum 2 s) |
+| Error tracking | Suppression rule for Node deprecation warnings (sampled 0.95). Alerts not created: no destination is connected |
+| Logs | Draft alert, disabled, no destination: error/fatal above 20 in 15 minutes |
+| Self-driving | 28 scout configs synced. anomaly-detection, web-vitals, surveys, logs, conversations, general and inbox-validation run daily in dry run (`emit=false`). pr-follow-up, error-tracking and ai-observability are off. Inbox sources: error-tracking issue created/reopened/spiking on, session-replay clusters off (sample 0.1) |
+| Surveys (drafts, not launched) | NPS (German, 90-day wait, cap 400), CSAT on `report_exported` (cap 300), churn form (hosted link, cap 150) |
+| Analytics | 9 actions (one per product event), cohorts "Aktive Nutzer 30T" and "Power users", dashboards "Product — Activation & usage", "LLM — via Langfuse", "Quality & errors" |
+
+Two of these wait on data that nothing sends yet. The NPS audience is the person
+property `chat_messages_30d >= 10`, because PostHog refuses behavioural cohorts
+for survey targeting. Survey texts are German only until translations are added.
+
 ## Staying free
 
 Every product gets a **$0 billing limit** (Organization → Billing → each product
@@ -67,9 +85,21 @@ date.
   PostHog, host `https://eu.i.posthog.com`, the project token, export source
   *Enriched observations*, enabled. See [`langfuse.md`](langfuse.md#posthog-export).
 - [ ] **Stack keys** on the stacks that should send: `grid-oib:posthogHost`,
-  `grid-oib:posthogProjectToken`; optionally `grid-oib:posthogLogsEnabled`.
-- [ ] **CI secrets** for releases and source maps (see
-  [`deployment/environment-variables.md`](../deployment/environment-variables.md)).
+  `grid-oib:posthogProjectToken`; optionally `grid-oib:posthogLogsEnabled`,
+  `grid-oib:posthogSessionReplay`, `grid-oib:posthogReplaySampleRate`.
+- [ ] **An alert destination**: connect GitHub, Slack or a webhook (Project
+  settings → Integrations), then create the two error-tracking alerts (issue
+  created, issue spiking; the free tier allows two) and attach the draft log
+  alert. With GitHub connected, the GitHub alert template does what err2issue
+  does today: one issue per new error group.
+- [ ] **CI secret and variable** for releases and source maps: repository secret
+  `POSTHOG_CLI_API_KEY` (personal API key, scopes `error_tracking:write`,
+  `organization:read`, `annotation:write`) and repository variable
+  `POSTHOG_PROJECT_ID=269895` ([`contributing/ci.md`](../contributing/ci.md)).
+- [ ] **Turn the scouts on**: once consent and GitHub are in place, set the dry-run
+  scouts to write to the inbox (`emit`) one at a time, and turn on pr-follow-up.
+- [ ] **Survey translations** (English) and launch, after the events they target
+  arrive.
 - [ ] **Legal copy** before replay or the landing site is instrumented:
   `frontends/ui/src/lib/legal/content/{de,en}.ts`, `frontends/web/src/i18n/ui.ts`,
   and PostHog's DPA signed.
@@ -89,6 +119,22 @@ date.
    an analysis tool). A WorkOS webhook into a PostHog workflow would add login and
    membership events. Both need a WorkOS API key or endpoint secret, which only
    a person creates.
-4. **Retiring err2issue and Aspire.** err2issue goes off by stack key when
+4. **Feedback text in PostHog.** A vote's comment and expected answer are
+   written into the Langfuse `user-feedback` score, so the integration copies
+   them into PostHog (`langfuse_score_comment`, `langfuse_score_metadata`). There
+   they sit outside the Langfuse retention sweep and the chat-erasure workers.
+   Either stop writing free text into the score and keep it in Postgres, or add
+   PostHog person and event deletion to the erasure pipeline.
+5. **Replay link needs two flags.** The browser's session id only reaches the
+   trace with `GRID_WIRE_V2_ADDITIVE_FIELDS` on (the hello withholds `accepts`
+   otherwise) and `GRID_TRACE_IDENTITY_ATTRIBUTES` on.
+6. **Support replies.** A feedback report opens a PostHog Support ticket, but
+   replies are visible to the member only through PostHog's own widget, which
+   adds its own bubble. The alternative is an in-app "Antworten vom Support" view
+   on `posthog.conversations.getTickets`/`getMessages`, which is not built.
+7. **Survey storage.** Persistence is `memory`, so PostHog sets no cookie. The
+   survey runtime still writes `seenSurvey_*` to localStorage when a survey is
+   shown. Decide whether the legal copy has to name it before a survey launches.
+8. **Retiring err2issue and Aspire.** err2issue goes off by stack key when
    PostHog error tracking is on. Delete it after a release cycle with nothing
    missed. Aspire stays the live pane.

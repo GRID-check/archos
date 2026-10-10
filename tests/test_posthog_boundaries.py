@@ -33,7 +33,9 @@ BROWSER_CLIENT = "frontends/ui/src/lib/analytics/posthog.ts"
 SERVER_CLIENT = "frontends/ui/src/lib/analytics/posthog-server.ts"
 
 _PY_IMPORT = re.compile(r"^\s*(?:from\s+posthog(?:\.\w+)*\s+import|import\s+posthog\b)", re.MULTILINE)
-_TS_IMPORT = re.compile(r"""(?:from\s+|require\(\s*|import\(\s*)['"](posthog-js|posthog-node|@posthog/[\w-]+)(?:/[^'"]*)?['"]""")
+_TS_IMPORT = re.compile(
+    r"""(?:from\s+|require\(\s*|import\(\s*)['"](posthog-js|posthog-node|@posthog/[\w-]+)(?:/[^'"]*)?['"]"""
+)
 
 #: PostHog's AI-observability event names (https://posthog.com/docs/ai-observability/surfaces/api).
 AI_EVENTS = ("$ai_generation", "$ai_trace", "$ai_span", "$ai_embedding", "$ai_metric", "$ai_feedback")
