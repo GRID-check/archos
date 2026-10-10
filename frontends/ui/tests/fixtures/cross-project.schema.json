@@ -125,6 +125,7 @@
                     "type": "string",
                     "enum": [
                       "active",
+                      "paused",
                       "closed"
                     ]
                   },
@@ -236,6 +237,7 @@
                     "type": "string",
                     "enum": [
                       "active",
+                      "paused",
                       "closed"
                     ]
                   },
@@ -409,6 +411,7 @@
                     "type": "string",
                     "enum": [
                       "active",
+                      "paused",
                       "closed"
                     ]
                   },
@@ -534,6 +537,7 @@
               "type": "string",
               "enum": [
                 "active",
+                "paused",
                 "closed"
               ]
             },
@@ -698,6 +702,7 @@
           "type": "string",
           "enum": [
             "active",
+            "paused",
             "closed"
           ]
         },
@@ -742,6 +747,7 @@
                 "type": "string",
                 "enum": [
                   "active",
+                  "paused",
                   "closed"
                 ]
               },
@@ -882,6 +888,7 @@
               "type": "string",
               "enum": [
                 "active",
+                "paused",
                 "closed"
               ]
             },

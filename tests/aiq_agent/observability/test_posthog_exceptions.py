@@ -1,4 +1,4 @@
-"""Caught exceptions reach PostHog error tracking from one logging handler (ADR-0098).
+"""Caught exceptions reach PostHog error tracking from one logging handler (ADR-0099).
 
 The SDK is never built here: ``posthog_client.capture_exception`` is replaced by
 a recorder, and the one test that needs the real client's ``before_send`` swaps

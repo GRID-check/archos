@@ -28,7 +28,7 @@ import {
   ProjectSummaryLine,
   ProjectSettingsLink,
 } from './project-atoms'
-import { getProjectStatus, ProjectStatusChip } from './project-status'
+import { ProjectStatusMark } from './project-status'
 
 interface ProjectCardProps {
   project: Project
@@ -43,8 +43,6 @@ interface ProjectCardProps {
 }
 
 export function ProjectCard({ project, docCount = 0, activityAt }: ProjectCardProps): JSX.Element {
-  const status = getProjectStatus(project)
-
   // docCount is accepted for API stability but the card face mirrors the
   // click-dummy (name · summary · last activity) and does not surface it. The
   // dense list row does, where there is a column for it.
@@ -63,7 +61,9 @@ export function ProjectCard({ project, docCount = 0, activityAt }: ProjectCardPr
           <h3 className="min-w-0 truncate text-sm font-semibold">
             <ProjectOpenLink project={project} />
           </h3>
-          <ProjectStatusChip status={status} />
+          {/* Quiet while active, like the row: the rail holds active projects, so
+              a chip here is the exception (ADR-0098). */}
+          <ProjectStatusMark project={project} size="md" />
         </div>
 
         <ProjectSummaryLine project={project} className="mt-0.5" />

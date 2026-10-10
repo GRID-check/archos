@@ -88,7 +88,7 @@ export const POST = publicApiRoute(
         metadata: { name },
         request,
       })
-      // The server is the truth for this event (ADR-0098): the browser's copy
+      // The server is the truth for this event (ADR-0099): the browser's copy
       // fired only if the response arrived and the tab survived to read it.
       // Fire-and-forget; no name, nothing but the ids.
       captureServer({

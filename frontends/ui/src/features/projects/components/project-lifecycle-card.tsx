@@ -1,128 +1,146 @@
 'use client'
 
 /**
- * Close a project, or reopen it (ADR-0090) — the settings card for whoever
- * holds `project:manage`. Both directions ask once; neither deletes anything.
- * Closing asks in the „Ausmisten" dialog (`close-project-dialog.tsx`), with
- * the closing debrief inside it (`closing-debrief.tsx`): what the project
- * leaves the office, while its memory can still be written.
- * The server decides and audits (`PUT /api/projects/[id]/status`); this card
- * only asks and then refreshes the page, whose every section reads the new
- * status from the server.
+ * The project's lifecycle on its Overview (ADR-0098), for whoever holds
+ * `project:manage`: where it stands, what that means, and the moves it has.
+ *
+ *   Aktiv ⇄ Ruhend → Abgeschlossen → (wieder öffnen) Aktiv
+ *
+ * The track draws the three states with the current one marked, so the model
+ * is visible rather than implied by whichever button happens to show. Below
+ * it, one line on what the current state means, and the moves from it: pause
+ * or close an active project, resume or close a paused one, reopen a closed
+ * one. A closed project says how it ended and its Abschluss.
+ *
+ * The moves themselves, and their dialogs, are `useProjectLifecycle`, which the
+ * hero's menu and the banner share.
  */
 
-import { useState, type JSX } from 'react'
-import { useRouter } from 'next/navigation'
-import { Lock, LockOpen } from 'lucide-react'
-import { toast } from 'sonner'
+import type { JSX } from 'react'
+import { Lock, LockOpen, PauseCircle, PlayCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { Chip } from '@/components/ui/chip'
 import { RaisedCard, RaisedCardBody } from '@/components/ui/raised-card'
 import { ProjectStatusChip } from '@/components/projects/project-status'
 import { useLocale, useTranslations } from '@/i18n'
 import type { ProjectProfile } from '@/lib/project-profile/types'
-import type { Month } from '@/lib/projects/month'
-import type { ProjectStatus } from '@/lib/projects/project-status'
-import { CloseProjectDialog } from './close-project-dialog'
-import { ClosingDebrief } from './closing-debrief'
+import { monthToDate } from '@/lib/projects/month'
+import { PROJECT_STATUSES, type ProjectLifecycleView } from '@/lib/projects/project-status'
+import { useProjectLifecycle } from '../lib/use-project-lifecycle'
 
 export interface ProjectLifecycleCardProps {
   projectId: string
-  status: ProjectStatus
-  /** ISO timestamp; set when closed. */
-  closedAt: string | null
-  /** The profile, for the debrief's fingerprint. */
+  lifecycle: ProjectLifecycleView
+  /** The profile, for the closing debrief's fingerprint. */
   profile?: ProjectProfile | null
-  /** The Steckbrief's Beginn, for the debrief. */
-  startedOn?: Month | null
   /** Whether the closer may confirm decisions and record a lesson in the debrief. */
   canWriteMemory?: boolean
 }
 
 export function ProjectLifecycleCard({
   projectId,
-  status,
-  closedAt,
+  lifecycle,
   profile = null,
-  startedOn = null,
   canWriteMemory = false,
 }: ProjectLifecycleCardProps): JSX.Element {
   const t = useTranslations('projects')
-  const tCommon = useTranslations('common')
   const { locale } = useLocale()
-  const router = useRouter()
-  const [open, setOpen] = useState(false)
-  const [pending, setPending] = useState(false)
-  const closed = status === 'closed'
-  const target: ProjectStatus = closed ? 'active' : 'closed'
+  const controls = useProjectLifecycle({ projectId, lifecycle, profile, canWriteMemory })
+  const { status } = lifecycle
 
-  const closedOn = closedAt
-    ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(closedAt))
+  const day = (iso: string | null): string | null =>
+    iso ? new Intl.DateTimeFormat(locale, { day: 'numeric', month: 'long', year: 'numeric' }).format(new Date(iso)) : null
+  const month = lifecycle.endedOn
+    ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+        new Date(`${monthToDate(lifecycle.endedOn)}T00:00:00Z`)
+      )
     : null
 
-  const submit = async (): Promise<boolean> => {
-    setPending(true)
-    try {
-      const res = await fetch(`/api/projects/${projectId}/status`, {
-        method: 'PUT',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ status: target }),
-      })
-      if (!res.ok) throw new Error(t('lifecycle.toast.error'))
-      toast.success(closed ? t('lifecycle.toast.reopened') : t('lifecycle.toast.closed'))
-      setOpen(false)
-      router.refresh()
-      return true
-    } catch {
-      toast.error(t('lifecycle.toast.error'))
-      return false
-    } finally {
-      setPending(false)
-    }
-  }
+  const meaning =
+    status === 'closed'
+      ? t('lifecycle.card.closedDescription')
+      : status === 'paused'
+        ? t('lifecycle.card.pausedDescription')
+        : t('lifecycle.card.activeDescription')
 
   return (
-    <RaisedCard aria-label={t('lifecycle.card.heading')}>
-      <RaisedCardBody className="space-y-3 p-6">
+    <RaisedCard aria-label={t('lifecycle.card.heading')} data-testid="project-lifecycle-card">
+      <RaisedCardBody className="space-y-4 p-6">
         <div className="flex flex-wrap items-center gap-2">
           <h2 className="text-foreground text-sm font-semibold">{t('lifecycle.card.heading')}</h2>
-          <ProjectStatusChip status={status} size="sm" />
+          <ProjectStatusChip status={status} outcome={lifecycle.closedOutcome} size="sm" />
         </div>
-        {closed && closedOn && <p className="text-muted-foreground text-sm">{t('lifecycle.card.closedOn', { date: closedOn })}</p>}
-        <p className="text-muted-foreground max-w-2xl text-sm leading-relaxed">
-          {closed ? t('lifecycle.card.closedDescription') : t('lifecycle.card.activeDescription')}
-        </p>
-        <Button variant="outline" onClick={() => setOpen(true)}>
-          {closed ? <LockOpen className="size-4" aria-hidden /> : <Lock className="size-4" aria-hidden />}
-          {closed ? t('lifecycle.card.reopen') : t('lifecycle.card.close')}
-        </Button>
-        {/* Closing goes through „Ausmisten" first (ADR-0092); reopening asks once. */}
-        {!closed && (
-          <CloseProjectDialog projectId={projectId} open={open} onOpenChange={setOpen} onClose={submit}>
-            {open && (
-              <ClosingDebrief
-                projectId={projectId}
-                profile={profile}
-                startedOn={startedOn}
-                canWriteMemory={canWriteMemory}
-              />
-            )}
-          </CloseProjectDialog>
-        )}
-        <ConfirmDialog
-          open={closed && open}
-          onOpenChange={setOpen}
-          tone="default"
-          title={t('lifecycle.reopenDialog.title')}
-          description={t('lifecycle.reopenDialog.description')}
-          confirmLabel={t('lifecycle.reopenDialog.confirm')}
-          cancelLabel={tCommon('actions.cancel')}
-          onConfirm={async () => {
-            await submit()
-          }}
-          pending={pending}
-        />
+
+        <LifecycleTrack current={status} />
+
+        <div className="space-y-1 text-sm">
+          {status === 'closed' && (
+            <p className="text-foreground" data-testid="lifecycle-closed-facts">
+              {t('lifecycle.card.closedFacts', {
+                outcome: t(`lifecycle.outcome.${lifecycle.closedOutcome ?? 'completed'}`),
+                month: month ?? '—',
+              })}
+            </p>
+          )}
+          {status === 'closed' && day(lifecycle.closedAt) && (
+            <p className="text-muted-foreground">{t('lifecycle.card.closedOn', { date: day(lifecycle.closedAt) ?? '' })}</p>
+          )}
+          {status === 'paused' && day(lifecycle.pausedAt) && (
+            <p className="text-foreground">{t('lifecycle.card.pausedOn', { date: day(lifecycle.pausedAt) ?? '' })}</p>
+          )}
+          <p className="text-muted-foreground max-w-2xl leading-relaxed">{meaning}</p>
+        </div>
+
+        <div className="flex flex-wrap gap-2">
+          {status === 'active' && (
+            <Button variant="outline" onClick={controls.pause} disabled={controls.pending}>
+              <PauseCircle className="size-4" aria-hidden />
+              {t('lifecycle.card.pause')}
+            </Button>
+          )}
+          {status === 'paused' && (
+            <Button onClick={controls.resume} disabled={controls.pending}>
+              <PlayCircle className="size-4" aria-hidden />
+              {t('lifecycle.card.resume')}
+            </Button>
+          )}
+          {status !== 'closed' && (
+            <Button variant="outline" onClick={controls.requestClose} disabled={controls.pending}>
+              <Lock className="size-4" aria-hidden />
+              {t('lifecycle.card.close')}
+            </Button>
+          )}
+          {status === 'closed' && (
+            <Button variant="outline" onClick={controls.requestReopen} disabled={controls.pending}>
+              <LockOpen className="size-4" aria-hidden />
+              {t('lifecycle.card.reopen')}
+            </Button>
+          )}
+        </div>
+        {status !== 'closed' && <p className="text-muted-foreground text-xs leading-relaxed">{t('lifecycle.card.whichOne')}</p>}
+        {controls.dialogs}
       </RaisedCardBody>
     </RaisedCard>
+  )
+}
+
+/** The three states in a row, the current one marked: the model, drawn. */
+function LifecycleTrack({ current }: { current: ProjectLifecycleView['status'] }): JSX.Element {
+  const t = useTranslations('projects')
+  return (
+    <ol className="flex flex-wrap items-center gap-1.5 text-xs" aria-label={t('lifecycle.card.track')}>
+      {PROJECT_STATUSES.map((status, index) => (
+        <li key={status} className="flex items-center gap-1.5">
+          {index > 0 && (
+            <span aria-hidden className="text-muted-foreground">
+              {index === 1 ? '⇄' : '→'}
+            </span>
+          )}
+          <Chip variant={status === current ? 'default' : 'outline'} size="sm" aria-current={status === current ? 'step' : undefined}>
+            {t(`card.status.${status}`)}
+          </Chip>
+        </li>
+      ))}
+    </ol>
   )
 }

@@ -105,7 +105,7 @@ class SourceRegion:
 
 
 #: How a project's status reads on the ``Projekt:`` line, and back.
-PROJECT_STATUS_LABELS: dict[str, str] = {"active": "laufend", "closed": "abgeschlossen"}
+PROJECT_STATUS_LABELS: dict[str, str] = {"active": "laufend", "paused": "ruhend", "closed": "abgeschlossen"}
 
 
 class SourceProject(BaseModel):
@@ -122,7 +122,7 @@ class SourceProject(BaseModel):
 
     id: str
     name: str
-    #: ``active`` or ``closed``.
+    #: ``active``, ``paused`` or ``closed`` (ADR-0098).
     status: str
     #: Its Bundesland as the model reads it, with a warning when it is not
     #: the chat project's: a precedent from another Land was decided under

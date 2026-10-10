@@ -2,7 +2,7 @@
 
 /**
  * The project a page is inside, as every surface below the project layout may
- * need it: its name and whether it is closed (ADR-0090). Provided once by the
+ * need it: its name and where it stands in its lifecycle (ADR-0090, ADR-0098). Provided once by the
  * project layout, from the server's own read, so a file list, a preview or a
  * chat source chip can say „abgeschlossen" without asking again.
  *
@@ -11,7 +11,7 @@
  */
 
 import { createContext, useContext, type JSX, type ReactNode } from 'react'
-import type { ProjectStatus } from '@/lib/projects/project-status'
+import type { ProjectLifecycleView, ProjectStatus } from '@/lib/projects/project-status'
 
 export interface CurrentProject {
   id: string
@@ -21,6 +21,10 @@ export interface CurrentProject {
   closedAt: string | null
   /** The reader holds no grant on the project and reads it only because it is closed. */
   readsBecauseClosed: boolean
+  /** The whole lifecycle, for the banner of a paused or closed project. */
+  lifecycle?: ProjectLifecycleView
+  /** Whether the reader may move the lifecycle (`project:manage`, even when closed); asked only when it is not active. */
+  canChangeStatus?: boolean
 }
 
 const CurrentProjectContext = createContext<CurrentProject | null>(null)

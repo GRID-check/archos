@@ -1,7 +1,7 @@
 # Switching to PostHog
 
 The plan, inventory and checklist behind
-[ADR-0098](../adr/0098-posthog-is-the-product-platform-and-langfuse-feeds-it.md).
+[ADR-0099](../adr/0099-posthog-is-the-product-platform-and-langfuse-feeds-it.md).
 It answers three questions: what moves where, what it costs (nothing, by design),
 and what a person still has to click.
 

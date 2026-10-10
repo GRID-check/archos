@@ -916,7 +916,7 @@ const startServer = async () => {
   // timer is the hard ceiling on how long a rolling update waits for this pod.
   //
   // Before exiting, run what the app registered to flush (PostHog's queued
-  // exceptions, ADR-0098): `src/instrumentation.ts` pushes async functions onto
+  // exceptions, ADR-0099): `src/instrumentation.ts` pushes async functions onto
   // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
   // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
   // never keeps the pod alive.

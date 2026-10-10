@@ -1,5 +1,5 @@
 /**
- * `document_ingest_finished` for PostHog (ADR-0098): an upload came to rest.
+ * `document_ingest_finished` for PostHog (ADR-0099): an upload came to rest.
  *
  * The server is the only place that knows. The browser sees `document_uploaded`
  * when the bytes leave; whether the file then became searchable, failed or was

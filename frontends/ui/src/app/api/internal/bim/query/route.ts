@@ -110,7 +110,7 @@ export const POST = internalApiRoute(
       resolvedQuery = { ...query, baseModelId: matches[0].id }
     }
 
-    // `bim_query_executed` (ADR-0098): which questions about a building the
+    // `bim_query_executed` (ADR-0099): which questions about a building the
     // agent asks, and how often they fail. Personless — the route carries a
     // service token, not a person — and only the op, a closed enum, is sent:
     // never the model name, the filter or the answer.

@@ -1,6 +1,6 @@
 /**
  * The last lock on what the BFF sends to PostHog: strip secrets out of every
- * URL-shaped string in an event before it leaves the process (ADR-0098).
+ * URL-shaped string in an event before it leaves the process (ADR-0099).
  *
  * Why a scrubber when the call sites send ids and counts: a property is not the
  * only way a URL gets into an event. An exception's message can quote the

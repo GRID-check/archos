@@ -587,7 +587,7 @@ export async function releaseRequest(
   // `open` rows, so a double-click cannot rewrite a resolution.
   const released = await releaseOpenRequests([request], session.userId)
   if (released > 0) {
-    // `mention_released` (ADR-0098): how often a wait is abandoned is the signal
+    // `mention_released` (ADR-0099): how often a wait is abandoned is the signal
     // ADR-0034 names as the failure mode. Only a release that closed a request:
     // a double-click on a settled one is not a second event.
     captureServer({

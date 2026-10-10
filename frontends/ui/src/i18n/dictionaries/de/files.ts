@@ -694,7 +694,7 @@ export const files: typeof en.files = {
     uploadFiles: 'Dateien auswählen',
   },
   errors: {
-    projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es in den Einstellungen wieder öffnen.',
+    projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es oben im Hinweis oder in der Übersicht wieder öffnen.',
     // Vom Namensfilter des Büros zurückgehalten (ADR-0086), auf einem Weg ohne
     // Upload-Dialog, etwa im Chat.
     screenedOut: '{count} Datei(en) nicht hochgeladen, weil Ihr Büro sie als sensibel einstuft: {files}',

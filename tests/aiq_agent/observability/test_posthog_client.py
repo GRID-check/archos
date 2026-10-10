@@ -1,4 +1,4 @@
-"""The one PostHog client the Python tiers capture through (ADR-0098).
+"""The one PostHog client the Python tiers capture through (ADR-0099).
 
 What these cases hold in place: the client is off until both settings arrive
 and is then built once; a system event never mints a person; a failing SDK

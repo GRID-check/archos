@@ -26,7 +26,7 @@ import { FEATURE_FLAGS, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { isProjectClosed } from '@/lib/projects/project-status'
+import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
@@ -912,21 +912,26 @@ export async function fireScheduledJob(
 ): Promise<{
   fired: boolean
   jobId?: string
-  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'skipped' | 'error'
+  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'project-paused' | 'skipped' | 'error'
 }> {
   if (!definition.enabled) {
     return { fired: false, reason: 'disabled' }
   }
-  // A closed project runs no task (ADR-0090): it is read-only, and a run files
-  // into it. The schedule stays, visibly skipped, so a reopen resumes it.
-  if (isProjectClosed(await findProjectInOrg(definition.projectId, definition.organizationId))) {
+  // Only an active project runs its schedules (ADR-0098). A closed one is
+  // read-only and a run files into it (ADR-0090); a paused one was parked so
+  // that nothing runs and spends. The schedule stays, visibly skipped, so
+  // resuming or reopening resumes it: a recurring one at its next turn, a
+  // one-shot (which the claim retired) re-armed by the move back to active.
+  const project = await findProjectInOrg(definition.projectId, definition.organizationId)
+  if (project && !runsOnSchedule(project)) {
+    const closed = isProjectClosed(project)
     await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
       status: 'skipped',
       backendJobId: null,
-      error: 'Project is closed',
+      error: closed ? SCHEDULE_SKIPPED_BECAUSE.closed : SCHEDULE_SKIPPED_BECAUSE.paused,
       conversationId: null,
     })
-    return { fired: false, reason: 'project-closed' }
+    return { fired: false, reason: closed ? 'project-closed' : 'project-paused' }
   }
   if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.skills, definition.organizationId))) {
     await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
@@ -939,7 +944,7 @@ export async function fireScheduledJob(
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
   if (isActiveTaskRunStatus(run.status)) {
-    // `job_run_started` (ADR-0098): the schedule fired and the backend took the
+    // `job_run_started` (ADR-0099): the schedule fired and the backend took the
     // run. Personless — nobody pressed anything, the scheduler did — and only
     // for a run that is live: a skip is a `task_runs` row, not a start. The
     // matching `job_run_finished` comes from `recordRunOutcome`, under the id

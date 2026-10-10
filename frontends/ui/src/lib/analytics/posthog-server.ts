@@ -1,5 +1,5 @@
 /**
- * PostHog from the BFF — the server-side twin of `posthog.ts` (ADR-0098).
+ * PostHog from the BFF — the server-side twin of `posthog.ts` (ADR-0099).
  *
  * Every server path that sends something to PostHog (answer feedback against
  * an LLM trace, a captured request error, a server-decided product event) goes

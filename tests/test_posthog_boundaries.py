@@ -1,4 +1,4 @@
-"""The two boundaries ADR-0098 draws around PostHog, held by something other than review.
+"""The two boundaries ADR-0099 draws around PostHog, held by something other than review.
 
 1. **One client per runtime.** ``src/aiq_agent/observability/posthog_client.py``
    is the only Python module that imports the ``posthog`` SDK, and
@@ -94,7 +94,7 @@ def test_no_code_emits_posthog_ai_observability_events() -> None:
     for path in _files(PYTHON_ROOTS, {".py"}) + _files(TS_ROOTS, TS_SUFFIXES):
         for event in _AI_EVENT.findall(path.read_text(encoding="utf-8", errors="ignore")):
             offenders.append(f"{_rel(path)}: {event}")
-    assert offenders == [], f"LLM data reaches PostHog through Langfuse's integration (ADR-0098): {offenders}"
+    assert offenders == [], f"LLM data reaches PostHog through Langfuse's integration (ADR-0099): {offenders}"
 
 
 def test_the_scanners_see_what_they_guard(tmp_path: Path) -> None:

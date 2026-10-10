@@ -85,7 +85,7 @@ export const POST = internalApiRoute(
       }))
       )
     )
-    // `budget_threshold_crossed` for PostHog (ADR-0098): the ledger just grew,
+    // `budget_threshold_crossed` for PostHog (ADR-0099): the ledger just grew,
     // so this is the moment a limit can have been crossed. Not awaited and
     // never throwing, so the tracker's flush returns exactly as fast as before,
     // and it reads nothing at all while PostHog is off.

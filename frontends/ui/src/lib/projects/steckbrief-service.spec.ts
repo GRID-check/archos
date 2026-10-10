@@ -44,7 +44,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { projectClosedError } from './project-status'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { addProjectPerson, deleteProjectPerson, getSteckbrief, setProjectPeriod } from './steckbrief-service'
-import { projectPersonSchema } from './steckbrief-types'
+import { projectPeriodSchema, projectPersonSchema } from './steckbrief-types'
 
 const session: AuthorizedSession = {
   userId: 'user_pl',
@@ -88,7 +88,7 @@ function allow(closed: boolean) {
 describe('the Steckbrief', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    repo.findProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: null })
+    repo.findProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: null, status: 'active' })
     repo.listProjectPeople.mockResolvedValue([row(), row({ id: 'person-2', name: 'Anna Weber', userId: 'user_anna' })])
   })
 
@@ -121,7 +121,7 @@ describe('the Steckbrief', () => {
     const view = await getSteckbrief(session, 'p1')
     expect(view).toMatchObject({ canEdit: false, canErase: true })
 
-    await expect(setProjectPeriod(session, 'p1', { startedOn: '2023-03', endedOn: '2025-12' })).rejects.toMatchObject({
+    await expect(setProjectPeriod(session, 'p1', { startedOn: '2023-03' })).rejects.toMatchObject({
       details: { reason: 'project-closed' },
     })
     await expect(
@@ -143,15 +143,23 @@ describe('the Steckbrief', () => {
     expect(repo.deleteProjectPersonRow).not.toHaveBeenCalled()
   })
 
-  it('stores months as the first of the month, and audits the period', async () => {
+  it('stores the Beginn as the first of its month, and audits it; the Abschluss is not the Steckbrief\'s to set (ADR-0098)', async () => {
     allow(false)
-    repo.updateProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: '2025-12-01' })
-    await expect(setProjectPeriod(session, 'p1', { startedOn: '2023-03', endedOn: '2025-12' })).resolves.toEqual({
-      startedOn: '2023-03',
-      endedOn: '2025-12',
-    })
-    expect(repo.updateProjectPeriod).toHaveBeenCalledWith('p1', 'org_1', { startedOn: '2023-03-01', endedOn: '2025-12-01' })
-    expect(recordAuditEvent).toHaveBeenCalledWith(expect.objectContaining({ action: 'project.period.changed' }))
+    repo.updateProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: null, status: 'active' })
+    await expect(setProjectPeriod(session, 'p1', { startedOn: '2023-03' })).resolves.toEqual({ startedOn: '2023-03' })
+    expect(repo.updateProjectPeriod).toHaveBeenCalledWith('p1', 'org_1', '2023-03-01')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'project.period.changed', metadata: { startedOn: '2023-03' } })
+    )
+    expect(projectPeriodSchema.safeParse({ startedOn: '2023-03', endedOn: '2025-12' }).success).toBe(false)
+  })
+
+  it('shows an Abschluss only on a closed project: a running one keeps a reopened month to itself', async () => {
+    allow(false)
+    repo.findProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: '2025-06-01', status: 'active' })
+    expect((await getSteckbrief(session, 'p1')).endedOn).toBeNull()
+    repo.findProjectPeriod.mockResolvedValue({ startedOn: '2023-03-01', endedOn: '2025-06-01', status: 'closed' })
+    expect((await getSteckbrief(session, 'p1')).endedOn).toBe('2025-06')
   })
 
   it('links an account only to a member of the organization', async () => {

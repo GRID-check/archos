@@ -65,7 +65,7 @@ went through an ADR rather than a weekend:
 | A cache tier | Dragonfly ([ADR-0020](../adr/0020-dragonfly-shared-cache.md)) |
 | A blob store | SeaweedFS ([ADR-0005](../adr/0005-object-storage-for-documents-minio.md), [ADR-0043](../adr/0043-seaweedfs-split-topology-and-per-tenant-buckets.md)) |
 | An LLM trace viewer | Langfuse ([ADR-0044](../adr/0044-langfuse-durable-llm-observability.md)) |
-| A log pane, error tracking | PostHog ([ADR-0098](../adr/0098-posthog-is-the-product-platform-and-langfuse-feeds-it.md)); the Aspire dashboard of [ADR-0029](../adr/0029-aspire-dashboard-telemetry.md) is retired |
+| A log pane, error tracking | PostHog ([ADR-0099](../adr/0099-posthog-is-the-product-platform-and-langfuse-feeds-it.md)); the Aspire dashboard of [ADR-0029](../adr/0029-aspire-dashboard-telemetry.md) is retired |
 | A changelog pipeline | reno |
 | A skill installer | apm |
 

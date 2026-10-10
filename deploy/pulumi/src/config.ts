@@ -965,7 +965,7 @@ export interface GridConfig {
      * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
      * default on, like the browser's own default). Text and inputs are masked,
      * the PDF and IFC viewers, media and signed URLs are blocked, and the privacy
-     * notice names it (ADR-0098). Nothing records while PostHog itself is off.
+     * notice names it (ADR-0099). Nothing records while PostHog itself is off.
      */
     sessionReplay: boolean;
     /**
@@ -1130,15 +1130,6 @@ export interface GridConfig {
     /** ClickHouse server image, digest-pinned. */
     clickhouseImage: string;
     /**
-     * Where Langfuse v4 writes ingested spans (`LANGFUSE_MIGRATION_V4_WRITE_MODE`).
-     * `dual` (default) writes v3's tables and v4's events table both, so the
-     * upgrade keeps a rollback path to v3 and the v3 views keep working;
-     * `events_only` is the cutover, after which only a database restore goes
-     * back; `legacy` writes v3's tables alone. The cutover is a config change:
-     * docs/deployment/kubernetes.md §9b, "Upgrading to Langfuse v4".
-     */
-    v4WriteMode: "legacy" | "dual" | "events_only";
-    /**
      * Rewrite historic traces into v4's tables in the background
      * (`LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL`). Off by
      * default: upstream asks for about three times the current ClickHouse disk
@@ -1294,11 +1285,16 @@ function langfuseOrgRole(value: string | undefined): LangfuseOrgRole {
   throw new Error(`langfuseDefaultRole must be one of ${LANGFUSE_ORG_ROLES.join(", ")}, not "${value}"`);
 }
 
-/** `langfuseV4WriteMode`, refused at load time when it is not one Langfuse knows. */
-function langfuseV4WriteMode(value: string | undefined): "legacy" | "dual" | "events_only" {
-  if (value === undefined) return "dual";
-  if (value === "legacy" || value === "dual" || value === "events_only") return value;
-  throw new Error(`langfuseV4WriteMode must be legacy, dual or events_only, not "${value}"`);
+/**
+ * `langfuseV4WriteMode` is gone: Langfuse writes v4's events table only
+ * (kubernetes.md §9b). A stack that still sets it is refused rather than
+ * silently ignored, so nobody believes they kept the v3 tables.
+ */
+function refuseLangfuseV4WriteMode(value: string | undefined): void {
+  if (value === undefined) return;
+  throw new Error(
+    `langfuseV4WriteMode was removed: Langfuse writes v4 events only. Drop "${value}" with \`pulumi config rm grid-oib:langfuseV4WriteMode\`.`,
+  );
 }
 
 function bool(cfg: pulumi.Config, key: string, fallback: boolean): boolean {
@@ -1345,6 +1341,7 @@ function requireSecretsTogether(
 
 export function loadConfig(): GridConfig {
   const cfg = new pulumi.Config();
+  refuseLangfuseV4WriteMode(cfg.get("langfuseV4WriteMode"));
 
   // Reject the Pulumi.prod.yaml template placeholders up front. `require()`
   // happily returns "REPLACE_ME"/"app.example.com", so without this the failure
@@ -1872,7 +1869,7 @@ export function loadConfig(): GridConfig {
   // `observabilityEnabled` is the product decision for the whole tier. The
   // collector is deployed when something consumes it (see `collectorEnabled`
   // below), never because the flag alone says so. The Aspire dashboard it used
-  // to feed is gone (ADR-0098): traces go to Langfuse, logs to PostHog.
+  // to feed is gone (ADR-0099): traces go to Langfuse, logs to PostHog.
   const workosClientId = cfg.get("workosClientId") ?? "";
   const workosApiKey = cfg.getSecret("workosApiKey");
   // Dedicated WorkOS **Connect** application for the platform surfaces (now
@@ -2657,7 +2654,6 @@ export function loadConfig(): GridConfig {
       clickhouseImage:
         cfg.get("clickhouseImage") ??
         "clickhouse/clickhouse-server@sha256:3043f691ec1a847f38b446ff43708893fcbf9815bd9bd88c0f84bfe064ce852f",
-      v4WriteMode: langfuseV4WriteMode(cfg.get("langfuseV4WriteMode")),
       v4HistoricBackfill: bool(cfg, "langfuseV4HistoricBackfill", false),
       // 50 Gi: fourteen days of TTL-bounded system logs plus headroom for the
       // trace store itself, which still grows without bound (OSS has no

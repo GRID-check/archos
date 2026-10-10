@@ -490,7 +490,7 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
 
         # Caught-and-logged exceptions (`logger.exception` in the job worker, the
         # runner, the chat socket) go to PostHog error tracking from one handler
-        # on the root logger (ADR-0098). Both roles, installed with the scrubbing
+        # on the root logger (ADR-0099). Both roles, installed with the scrubbing
         # above; idempotent, and a no-op while PostHog is not configured.
         posthog_exceptions.install()
 

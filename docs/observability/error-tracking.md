@@ -1,7 +1,7 @@
 # Error tracking
 
 Exceptions land in **PostHog error tracking** when PostHog is configured
-(ADR-0098). It replaces the hand-rolled
+(ADR-0099). It replaces the hand-rolled
 err2issue path (ERROR log, OTLP collector, GitHub issue; ADR-0031), which is to
 be retired once PostHog has proven itself; until then both see the same error.
 LLM traces and scores are a separate matter: they reach PostHog only through

@@ -105,7 +105,7 @@ class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
 
 @register_logging_method(config_type=OtlpLoggingMethodConfig)
 async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder):
-    # PostHog error tracking (ADR-0098) does not depend on the collector, so it
+    # PostHog error tracking (ADR-0099) does not depend on the collector, so it
     # is installed before the no-endpoint early return below. This is the seam
     # every NAT process passes (the agent and any worker running a workflow
     # config); the API plugin installs the same handler for its own start-up

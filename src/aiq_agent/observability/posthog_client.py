@@ -1,4 +1,4 @@
-"""The one PostHog client this process captures through (the PostHog switch, ADR-0098).
+"""The one PostHog client this process captures through (the PostHog switch, ADR-0099).
 
 Every Python path that sends something to PostHog (LLM analytics events, runtime
 scores as ``$ai_metric``, captured exceptions) goes through :func:`capture` or
@@ -119,7 +119,7 @@ def capture(
     ``distinct_id`` ``None`` sends a personless event (``$process_person_profile``
     false): a job or a system step with no user behind it must not mint a person.
     Tenancy travels as the ``organization_id`` property, not as a PostHog group:
-    group analytics is a paid add-on, and ADR-0098 keeps to the free tier.
+    group analytics is a paid add-on, and ADR-0099 keeps to the free tier.
     """
     client = get_client()
     if client is None:

@@ -1,7 +1,7 @@
 # PostHog event catalogue
 
 Every product event Piloti sends to PostHog, the properties it carries and the
-line that sends it ([ADR-0098](../adr/0098-posthog-is-the-product-platform-and-langfuse-feeds-it.md),
+line that sends it ([ADR-0099](../adr/0099-posthog-is-the-product-platform-and-langfuse-feeds-it.md),
 [`posthog-migration.md`](posthog-migration.md)). Read it before you add an
 event, so a second spelling of an existing one does not split a funnel, and
 before you build an insight, so you know which side of the wire sends the

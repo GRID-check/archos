@@ -1,4 +1,4 @@
-"""Caught-and-logged exceptions to PostHog error tracking (ADR-0098).
+"""Caught-and-logged exceptions to PostHog error tracking (ADR-0099).
 
 ## Why a logging handler
 

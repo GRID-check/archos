@@ -1,24 +1,42 @@
 /**
- * Close or reopen a project (ADR-0090). Thin handler; who may, and the audit
- * trail, live in `setProjectStatus` (`@/lib/projects/service`).
+ * Move a project through its lifecycle (ADR-0098): pause, resume, close,
+ * reopen. Thin handler; which moves exist, who may, and the audit trail live in
+ * `setProjectStatus` (`@/lib/projects/service`). Closing names how the project
+ * ended and its Abschluss month.
  */
 
 import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { setProjectStatus } from '@/lib/projects/service'
-import { PROJECT_STATUSES } from '@/lib/projects/project-status'
+import { dateToMonth, isMonth, type Month } from '@/lib/projects/month'
+import { abschlussOf, isProjectClosed, PROJECT_OUTCOMES } from '@/lib/projects/project-status'
 
-const statusSchema = z.object({ status: z.enum(PROJECT_STATUSES) })
+const monthSchema = z.custom<Month>((value) => typeof value === 'string' && isMonth(value), 'A month, YYYY-MM.')
+
+const statusSchema = z.discriminatedUnion('status', [
+  z.object({ status: z.literal('active') }).strict(),
+  z.object({ status: z.literal('paused') }).strict(),
+  z
+    .object({
+      status: z.literal('closed'),
+      outcome: z.enum(PROJECT_OUTCOMES),
+      endedOn: monthSchema,
+    })
+    .strict(),
+])
 
 export const PUT = apiRoute<{ id: string }>(
   async ({ session, params, request }) => {
-    const { status } = await parseJsonBody(request, statusSchema)
-    const project = await setProjectStatus(session, params.id, status, request)
+    const change = await parseJsonBody(request, statusSchema)
+    const project = await setProjectStatus(session, params.id, change, request)
     return {
       id: project.id,
       status: project.status,
+      pausedAt: project.pausedAt?.toISOString() ?? null,
       closedAt: project.closedAt?.toISOString() ?? null,
       closedBy: project.closedBy,
+      closedOutcome: isProjectClosed(project) ? project.closedOutcome : null,
+      endedOn: dateToMonth(abschlussOf(project)),
     }
   },
   { authz: { enforcedBy: 'setProjectStatus (requireProjectAccess project:manage, evenWhenClosed)' } }

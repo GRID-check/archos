@@ -25,6 +25,18 @@ _Avoid_: tenant, in product copy.
 One building project inside an organization, with its own documents, intake
 facts and members, who are a subset of the organization's people.
 
+**Aktiv / Ruhend / Abgeschlossen** (active / paused / closed):
+The three states of a project's lifecycle, moved between only on purpose: a
+paused project is waiting and will go on, a closed one is over and has become
+the office's reference, read-only and readable by everyone in it.
+_Avoid_: archived, finished or done for a closed project; "inactive" for a paused one.
+
+**Abschluss** (completion):
+The month a project's work ended, named when it is closed, never a field of a
+running project. A closed project is **fertiggestellt** (completed) or **nicht
+realisiert** (not realized).
+_Avoid_: end date, as if it were a plan.
+
 **Platform**:
 The operator level above every organization, which sets the defaults each
 organization inherits unless it overrides them.

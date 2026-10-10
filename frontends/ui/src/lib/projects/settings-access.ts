@@ -69,7 +69,7 @@ async function holdsAny(
  * is a plain no; anything else is an outage, and hiding the status controls
  * would make it look like a permission.
  */
-async function holdsManageEvenWhenClosed(
+export async function holdsManageEvenWhenClosed(
   session: AuthorizedSession,
   projectId: string
 ): Promise<boolean> {

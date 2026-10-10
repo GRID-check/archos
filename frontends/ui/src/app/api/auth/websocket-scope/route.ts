@@ -120,7 +120,7 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
         : null
 
     if (budgetStatus?.blocked) {
-      // `budget_blocked` for PostHog (ADR-0098), once per person and scope per
+      // `budget_blocked` for PostHog (ADR-0099), once per person and scope per
       // hour. Not awaited: the refusal answers exactly as fast as before.
       if (organizationId && session && budgetStatus.blockedScope) {
         void announceBudgetBlocked({

@@ -2,8 +2,9 @@
 
 /**
  * Dev preview for the closing debrief (docs/roadmap/office-experience.md, step
- * 3): the REAL `ProjectLifecycleCard`, whose close dialog („Ausmisten", ADR-0092) asks
- * with the REAL `ClosingDebrief` inside. Open it with „Projekt abschließen".
+ * 3): the REAL `ProjectLifecycleCard`, whose close dialog (ADR-0098) carries the
+ * REAL `ClosingDebrief` as its second step. Open it with „Projekt abschließen",
+ * then „Weiter". The card's other states: `/dev/project-lifecycle`.
  *
  *   - default             — a project admin who may write the memory: the Vorhaben
  *                           is a suggestion read from the documents (with its
@@ -162,10 +163,17 @@ export default function ClosingDebriefDevPage(): JSX.Element {
         <ProjectLifecycleCard
           key={variant}
           projectId={variant === 'empty' ? EMPTY : PROJECT}
-          status="active"
-          closedAt={null}
+          lifecycle={{
+            status: 'active',
+            pausedAt: null,
+            closedAt: null,
+            closedOutcome: null,
+            endedOn: null,
+            startedOn: variant === 'empty' ? null : '2023-04',
+            suggestedEndedOn: null,
+            suggestedOutcome: null,
+          }}
           profile={variant === 'empty' ? null : variant === 'structure' ? STRUCTURE : PROFILE}
-          startedOn={variant === 'empty' ? null : '2023-04'}
           canWriteMemory={variant !== 'readonly'}
         />
       </main>

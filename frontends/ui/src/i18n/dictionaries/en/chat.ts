@@ -255,7 +255,7 @@ export const chat = {
     pages: 'pp. {pages}',
     // The meta line of a precedent from another project: project, status, then the Land.
     precedentProject: '{name} · {status}',
-    projectStatus: { active: 'active', closed: 'closed' },
+    projectStatus: { active: 'active', paused: 'paused', closed: 'closed' },
     // Sources past the eight chips fold behind the same control the read
     // sources use: the count first, every name on expand.
     more: '+{count} more',

@@ -41,7 +41,7 @@ export const POST = apiRoute<Params>(
     const { userId } = await parseJsonBody(request, bodySchema)
     const resourceType = requireShareableType(params.resourceType)
     const assignees = await addResourceAssignment(session, resourceType, params.resourceId, userId, request)
-    // `task_assigned` (ADR-0098): someone was put on the hook for a resource.
+    // `task_assigned` (ADR-0099): someone was put on the hook for a resource.
     // The assignee's id stays out; the event counts the act, not the person.
     captureServer({
       event: 'task_assigned',

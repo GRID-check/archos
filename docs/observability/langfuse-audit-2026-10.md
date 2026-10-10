@@ -110,10 +110,10 @@ needed.
    generation, source registry, the dynamic half) are not managed at all, and
    their generations are stamped with the platform prompt's identity (the known
    over-broadness in `langfuse_trace_attributes.py`).
-5. **The v4 `events_only` cutover.** The deployment writes `dual`. Langfuse
-   v4's native mode is `events_only`, and trace-level evaluators stop at the
-   cutover (the judges here are observation-level already). The cutover is
-   gated on a backup ([`kubernetes.md`](../deployment/kubernetes.md) § 9b).
+5. **The v4 `events_only` cutover.** Done: the deployment writes v4's events
+   table only. Trace-level evaluators stop at the cutover (the judges here are
+   observation-level already). Each stack's first deploy with it needs the
+   backup in [`kubernetes.md`](../deployment/kubernetes.md) § 9b.
 6. **Auxiliary calls have no session.** None of the six auxiliary request
    models carries a conversation id, so a title call does not group with its
    chat. Adding an optional `conversation_id` to the title request and sending
