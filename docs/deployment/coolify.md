@@ -20,7 +20,7 @@ NVIDIA base-image removal — see §2, apart from the stock `chromadb/chroma`,
 | Service | Role | Exposed publicly? |
 |---|---|---|
 | `frontend` | Next.js UI + BFF gateway (auth, `grid_app` DB, WS proxy) — port 3000 | **Yes** (your domain) |
-| `aiq-agent` | Python FastAPI backend, **`chat` role** (`GRID_ROLE=chat`): the chat WebSocket and NAT's own routes — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
+| `aiq-agent` | Python FastAPI backend, **`chat` role** (`GRID_ROLE=chat`): the chat WebSocket, the only route a turn runs through — port 8000. The frontend dials it with `BACKEND_CHAT_URL` | No (internal) |
 | `aiq-api` | Python FastAPI backend, **`api` role** (`GRID_ROLE=api`): every other HTTP route (knowledge, jobs and SSE, LLM utilities, admin) — port 8000. The frontend, `purger` and `housekeeping` call it with `BACKEND_URL`. Mirrors the K8s `aiq-api` Deployment | No (internal) |
 | `agent-worker` | Deep-research worker (`GRID_ROLE=worker`): claims jobs from Postgres and runs them off the web tier. Mirrors the K8s worker Deployment | No (internal) |
 | `ingest-worker` | Ingestion tier (`GRID_ROLE=ingest-worker`): the one process that claims the durable ingest queue `POST /v1/ingest` fills (ADR-0076). Without it uploads sit pending. Mirrors the K8s ingest-worker Deployment | No (internal) |
@@ -143,7 +143,9 @@ own domains, DB password, and internal token with no manual input.
 5. **Deploy.** On first boot: Postgres runs `init-db.sql` (creates the 3 DBs),
    `grid-migrate` runs the Drizzle migrations for `grid_app`, `seaweedfs-init`
    creates the bucket, `grid-audit-schemas` reconciles the WorkOS Audit Log
-   schemas, and the backend starts. It ingests nothing at boot; the base-corpus
+   schemas, and the backend starts. Once the frontend is healthy,
+   `grid-workos-authz` creates the authorization catalog's permissions and
+   roles in WorkOS and carries folder grants over (ADR-0097). It ingests nothing at boot; the base-corpus
    housekeeping route does that, every ten minutes.
    The frontend waits for the first three; they are `depends_on:
    service_completed_successfully`, so a failure in any of them stops the

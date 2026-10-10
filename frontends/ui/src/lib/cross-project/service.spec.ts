@@ -57,7 +57,7 @@ vi.mock('@/lib/conversations/cross-project-use', () => ({
 }))
 vi.mock('@/lib/authz/folder-access', () => ({
   getProjectFolderAccess: vi.fn(async () => ({ sourceFolderOf: (collection: string) => state.folders.get(collection) ?? null })),
-  clearanceOf: vi.fn(async () => ({ roles: ['org-gf'], seesEverything: false })),
+  clearanceOf: vi.fn(async () => ({ levels: { 'folder-gf': 'write' }, seesEverything: false })),
   readableFolderIdsFor: vi.fn(async (_org: string, projectId: string) => state.readable.get(projectId) ?? []),
 }))
 vi.mock('./decisions-repository', () => ({
@@ -453,6 +453,41 @@ describe('searchAcrossProjects', () => {
 
     expect(result).toMatchObject({ projectsInScope: 1 })
     expect(state.searched.map((call) => call.projectId)).toEqual([state.reachable[1].id])
+  })
+
+  it('walks the closed projects most like the current one first, as the catalog lists them', async () => {
+    // The turn's precedent prefetch searches `closed`: newest first, it searched
+    // the eight newest closed projects and missed the catalog's closest ones.
+    const closed = { status: 'closed' as const, closedAt: new Date(), closedBy: OWNER }
+    const profile = (bundesland: string) => ({
+      facts: { bundesland: { value: bundesland, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' } },
+      goals: {},
+      unknowns: [],
+      assumptions: {},
+    })
+    state.reachable = [
+      project(1, { ...closed, profile: profile('wien') }),
+      project(2, { ...closed, profile: profile('tirol') }),
+      project(3, { profile: profile('tirol') }),
+    ]
+
+    await searchAcrossProjects(caller(state.reachable[2].id), search({ scope: 'closed' }))
+
+    expect(state.searched.map((call) => call.projectId)).toEqual([state.reachable[1].id, state.reachable[0].id])
+  })
+
+  it('walks the projects the turn’s reference fit names first, and only reorders the scope', async () => {
+    const closed = { status: 'closed' as const, closedAt: new Date(), closedBy: OWNER }
+    state.reachable = [project(1, closed), project(2, closed), project(3, closed), project(4)]
+    const [first, second, third, running] = state.reachable
+
+    await searchAcrossProjects(
+      caller(),
+      search({ scope: 'closed', order: [third.id, running.id, '99999999-0000-4000-8000-000000000099'] })
+    )
+
+    // The running project stays out of a closed search whatever the order says.
+    expect(state.searched.map((call) => call.projectId)).toEqual([third.id, first.id, second.id])
   })
 
   it('narrows by the PROJECT’s period before searching, not by when a file was uploaded', async () => {

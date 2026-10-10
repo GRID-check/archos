@@ -520,6 +520,14 @@ tasks:
       # ADR-0064 uses 4, 8 and 9. Exit 0 = the floors in the script hold.
       - '{{.PY}} scripts/decision_eval_offpath.py {{.CLI_ARGS}}'
 
+  be:eval:decisions:office:
+    desc: 'Decision-model eval for the office experience — precedent, reference fit, cross-project hits, fingerprint quotes — on the precedent fixture office (NEEDS OPENROUTER_API_KEY; no backend)'
+    cmds:
+      # ADR-0064 uses 1 (precedent), 10, 11 and 12. Prints each part's sweep
+      # beside the thresholds the code ships; run before and after a change to
+      # a question's wording or a threshold. A few cents for every part.
+      - '{{.PY}} scripts/decision_eval_office.py {{.CLI_ARGS}}'
+
   be:eval:decisions:holdout:
     desc: 'Held-out check for the decision-model uses, on sets written blind to the wording — never tune on them (NEEDS OPENROUTER_API_KEY; no backend)'
     cmds:
@@ -572,9 +580,11 @@ tasks:
       # The two behaviours ADR-0052 moved from the router into the prompt — a
       # greeting does not search, a commissioned report escalates before it
       # retrieves — plus a control question that must still search. Real
-      # prompt, real model, stub tools that record the trace. `-rs` prints the
-      # skip reason, so a run without the key says so instead of going green.
-      - '{{.PY}} -X faulthandler -m pytest tests/benchmarks/test_turn_shapes_live.py -q -rs'
+      # prompt, real model, stub tools; the trace is the turn's transcript.
+      # `-m live` selects what pyproject's addopts deselects everywhere else.
+      # `-rs` prints the skip reason, so a run without the key says so instead
+      # of going green.
+      - '{{.PY}} -X faulthandler -m pytest tests/benchmarks/test_turn_shapes_live.py -q -rs -m live'
 
   be:test:ci:
     desc: Backend core suite with the coverage gate CI enforces

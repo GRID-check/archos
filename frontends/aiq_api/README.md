@@ -274,6 +274,7 @@ my_provider = "mypackage.auth:get_validators"
 # mypackage/auth.py
 def get_validators() -> list:
     from aiq_api.auth.jwt_validator import JWTValidator
+
     return [JWTValidator(issuer_url="https://your-identity-provider.com")]
 ```
 
@@ -290,7 +291,7 @@ to return a non-`None` result wins.
 ```python
 class MyValidator:
     async def validate(self, token: str) -> dict | None:
-        payload = verify_token(token)   # your verification logic
+        payload = verify_token(token)  # your verification logic
         if payload is None:
             return None
         return {"type": "my_provider", "sub": payload["sub"], "token": token}
@@ -342,6 +343,10 @@ When the `aiq_debug` package is installed, the plugin registers a debug console 
 - Copy SSE streams for debugging
 
 ## Comparison with NAT's Built-in Async
+
+NAT's `/generate/async` is not mounted: none of NAT's HTTP turn routes is, since a
+chat turn runs on the chat socket alone (`AIQAPIConfig`, ADR-0068). The table is
+why research jobs never needed it.
 
 | Feature | NAT `/generate/async` | `/v1/jobs/async` |
 |---------|----------------------|------------|

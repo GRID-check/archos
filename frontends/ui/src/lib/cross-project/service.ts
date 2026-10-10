@@ -179,25 +179,49 @@ function listed(project: Project, currentProjectId: string | null): CrossProject
 }
 
 /**
- * The projects a search scope covers, the conversation's own left out: in the
- * listing's order (newest first), or, for `similar`, most like the current
- * project first (`similarity.ts`).
+ * The projects a search scope covers, the conversation's own left out: for
+ * `similar` and `closed`, most like the current project first (`similarity.ts`),
+ * so a search of the closed projects (the turn's precedent prefetch) walks the
+ * same projects the reference catalog lists first; for `all` and `named`, in the
+ * listing's order (newest first).
  */
 export function projectsInScope(
   reachable: readonly Project[],
-  request: Pick<CrossProjectSearchRequest, 'scope' | 'projectIds' | 'from' | 'to'>,
+  request: Pick<CrossProjectSearchRequest, 'scope' | 'projectIds' | 'from' | 'to'> &
+    Partial<Pick<CrossProjectSearchRequest, 'order'>>,
   current: { id: string; profile: Project['profile'] | null } | null
 ): Project[] {
   const others = reachable.filter(
     (project) => project.id !== current?.id && periodOverlaps(projectPeriodOf(project), request.from, request.to)
   )
-  if (request.scope === 'similar') return rankBySimilarity(current?.profile ?? null, others)
-  if (request.scope === 'closed') return others.filter((project) => projectStatusOf(project) === 'closed')
+  if (request.scope === 'similar') return fitFirst(rankBySimilarity(current?.profile ?? null, others), request.order)
+  if (request.scope === 'closed') {
+    return fitFirst(
+      rankBySimilarity(
+        current?.profile ?? null,
+        others.filter((project) => projectStatusOf(project) === 'closed')
+      ),
+      request.order
+    )
+  }
   if (request.scope === 'named') {
     const named = new Set(request.projectIds)
     return others.filter((project) => named.has(project.id))
   }
   return others
+}
+
+/**
+ * `ranked` with the projects `order` names walked first, in its order: the
+ * turn's reference fit. Only a reorder of what the scope already holds; an id
+ * it does not hold is ignored.
+ */
+function fitFirst(ranked: Project[], order: readonly string[] | undefined): Project[] {
+  if (!order?.length) return ranked
+  const position = new Map(order.map((id, index) => [id, index]))
+  const first = ranked.filter((project) => position.has(project.id))
+  first.sort((a, b) => (position.get(a.id) ?? 0) - (position.get(b.id) ?? 0))
+  return [...first, ...ranked.filter((project) => !position.has(project.id))]
 }
 
 /** The current project, for the similarity order; null outside every project or when it is gone. */
@@ -411,7 +435,7 @@ export async function searchAcrossProjects(
 ): Promise<CrossProjectSearchResponse> {
   const [audience, current] = await Promise.all([
     audienceReach(caller.session, caller.conversationId),
-    request.scope === 'similar' ? currentProjectOf(caller) : Promise.resolve(null),
+    request.scope === 'similar' || request.scope === 'closed' ? currentProjectOf(caller) : Promise.resolve(null),
   ])
   // `openFoldersOnly` searches as a shared chat would: no restricted folder, so nothing that narrows the readers.
   const reach = request.openFoldersOnly ? { ...audience, restrictedFolders: false } : audience

@@ -314,7 +314,7 @@ content check has not released cannot reach the reader through the brief.
 feld72 asked for „eine Logik wie bei Planfred“: only the newest state of a
 document is the basis, the older ones only on request, and any automation only
 as a suggestion a person confirms, also when a new state does not carry the
-old file name. ADR-0097 records why this is a link between two documents and
+old file name. ADR-0098 records why this is a link between two documents and
 not a merge.
 
 Piloti suggests in two ways:

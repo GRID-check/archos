@@ -280,7 +280,7 @@ been uploaded and read).
   shelf's top `3 × top_k`, so a folder whose passages ranked lower came back
   empty while holding what was asked.
 - **Fassungen: marks in `list_files`, and older ones out of the ranking
-  (ADR-0097).** A row a PERSON confirmed as replaced reads `ersetzt durch <neuer>
+  (ADR-0098).** A row a PERSON confirmed as replaced reads `ersetzt durch <neuer>
   (bestätigt)`; the newer one `ersetzt <älterer> (bestätigt)` and, when a change
   line exists, `geändert: …` (at most 160 characters; `geändert (vorige Fassung):`
   when it compares against the file's own previous upload). A confirmed mark beats

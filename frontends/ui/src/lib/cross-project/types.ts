@@ -35,8 +35,8 @@ export type ProjectStatus = (typeof PROJECT_STATUSES)[number]
 
 /**
  * Which projects a search covers: every one in reach ordered by likeness to the
- * current project (`similar`, the default), the closed ones, every one newest
- * first, or the ones it names. The conversation's own project is never part of
+ * current project (`similar`, the default), the closed ones in that same order
+ * (`closed`), every one newest first (`all`), or the ones it names (`named`). The conversation's own project is never part of
  * it: that one is searched by the chat's own tools, under its own scope.
  */
 export const CROSS_PROJECT_SCOPES = ['similar', 'closed', 'all', 'named'] as const
@@ -85,6 +85,15 @@ export const crossProjectSearchRequestSchema = z.object({
    * folder stays a step the model takes with its own call.
    */
   openFoldersOnly: z.boolean().default(false),
+  /**
+   * The projects to walk first, in this order, for a `similar` or `closed`
+   * search: the turn's reference fit (ADR-0064 use 10), the decision model's
+   * reading of which catalog projects fit THIS question. It only reorders the
+   * scope the rest of the request decides; an id outside it, or one the reader
+   * may not open, is skipped without a word, and the rest keep their likeness
+   * order behind it.
+   */
+  order: z.array(z.string().uuid()).max(CROSS_PROJECT_MAX_NAMED).default([]),
 })
 export type CrossProjectSearchRequest = z.infer<typeof crossProjectSearchRequestSchema>
 
