@@ -17,6 +17,8 @@ Two defaults are deliberate and not configurable from the call site:
 * Exception autocapture is off. Grid catches and logs its exceptions rather
   than letting them reach ``sys.excepthook``, so autocapture would see almost
   nothing; the logging handler in ``posthog_exceptions`` captures them instead.
+* Presigned URLs are scrubbed from every event's text (``_scrub_event``): an
+  exception message can embed one, and a PostHog event is retained off-cluster.
 
 Calls never raise and never block a turn: the SDK queues events on its own
 consumer thread and :func:`shutdown` flushes it at process exit.
@@ -31,6 +33,8 @@ from threading import Lock
 from typing import TYPE_CHECKING
 from typing import Any
 
+from aiq_agent.common.log_redaction import scrub_presigned_urls
+
 if TYPE_CHECKING:
     from posthog import Posthog
 
@@ -42,6 +46,28 @@ PROJECT_TOKEN_ENV = "POSTHOG_PROJECT_TOKEN"  # pragma: allowlist secret
 _client: Posthog | None = None
 _client_lock = Lock()
 _resolved = False
+
+
+def _scrub_event(event: dict[str, Any]) -> dict[str, Any]:
+    """The SDK's ``before_send``: no presigned URL leaves in an event's text.
+
+    A presigned URL is a live credential (``common.log_redaction``), and
+    ``str(httpx.HTTPStatusError)`` embeds one in the exception message the SDK
+    reads straight off the exception object, which no logging filter ever sees.
+    Applied to every event's string properties and to each ``$exception_list``
+    entry's ``value``.
+    """
+    properties = event.get("properties")
+    if not isinstance(properties, dict):
+        return event
+    for key, value in properties.items():
+        if isinstance(value, str):
+            properties[key] = scrub_presigned_urls(value)
+    exceptions = properties.get("$exception_list")
+    for item in exceptions if isinstance(exceptions, list) else []:
+        if isinstance(item, dict) and isinstance(item.get("value"), str):
+            item["value"] = scrub_presigned_urls(item["value"])
+    return event
 
 
 def _settings() -> tuple[str, str] | None:
@@ -75,6 +101,7 @@ def get_client() -> Posthog | None:
                 host=host,
                 disable_geoip=True,
                 enable_exception_autocapture=False,
+                before_send=_scrub_event,
             )
             atexit.register(shutdown)
         _resolved = True

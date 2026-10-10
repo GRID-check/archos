@@ -44,6 +44,7 @@ from typing_extensions import override
 
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
+from aiq_agent.observability import posthog_exceptions
 from aiq_agent.stages.delivery import register_stage_frame_sink
 from aiq_api.auth.middleware import AuthMiddleware
 from aiq_api.context_envelope import GridContextEnvelopeMiddleware
@@ -486,6 +487,12 @@ class AIQAPIWorker(FastApiFrontEndPluginWorker):
         # i.e. from code that never mentioned a URL. Installed after the routes
         # so the host's own handlers are in place first.
         install_presigned_url_scrubbing()
+
+        # Caught-and-logged exceptions (`logger.exception` in the job worker, the
+        # runner, the chat socket) go to PostHog error tracking from one handler
+        # on the root logger (ADR-0098). Both roles, installed with the scrubbing
+        # above; idempotent, and a no-op while PostHog is not configured.
+        posthog_exceptions.install()
 
         # The workflow is built and every route registered: this replica serves
         # from here, and the meter provider exists to take the boot readings.

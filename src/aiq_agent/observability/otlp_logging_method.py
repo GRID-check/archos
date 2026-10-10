@@ -7,6 +7,7 @@ from pydantic import Field
 from aiq_agent.common.log_redaction import PresignedUrlFilter
 from aiq_agent.common.log_redaction import install_presigned_url_scrubbing
 from aiq_agent.observability import metrics as grid_metrics
+from aiq_agent.observability import posthog_exceptions
 from nat.cli.register_workflow import register_logging_method  # noqa: TID251
 from nat.data_models.logging import LoggingBaseConfig
 from nat.plugin_api import Builder
@@ -103,6 +104,13 @@ class OtlpLoggingMethodConfig(LoggingBaseConfig, name="otelcollector_logs"):
 
 @register_logging_method(config_type=OtlpLoggingMethodConfig)
 async def otlp_logging_method(config: OtlpLoggingMethodConfig, _builder: Builder):
+    # PostHog error tracking (ADR-0098) does not depend on the collector, so it
+    # is installed before the no-endpoint early return below. This is the seam
+    # every NAT process passes (the agent and any worker running a workflow
+    # config); the API plugin installs the same handler for its own start-up
+    # path, and the install is idempotent. No-op while PostHog is off.
+    posthog_exceptions.install()
+
     # Blank endpoint == observability tier not deployed (same capability check
     # as the tracing exporter, ADR-0029): no-op so compose/local pay nothing.
     if not config.endpoint or not config.endpoint.strip():

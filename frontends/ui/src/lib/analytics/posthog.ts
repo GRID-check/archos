@@ -92,6 +92,19 @@ export const capturePosthog = (event: PostHogEvent, properties?: PostHogProperti
   posthog.capture(event, properties)
 }
 
+/**
+ * Capture a caught exception for error tracking. No-op when disabled.
+ *
+ * Autocapture (`capture_exceptions` in {@link initPosthogClient}) sees what
+ * reaches `window.onerror` and unhandled rejections. An error a React error
+ * boundary catches never does: React hands it to the boundary, so the boundary
+ * (`app/error.tsx`, `app/global-error.tsx`) reports it here.
+ */
+export const capturePosthogException = (error: unknown, properties?: PostHogProperties): void => {
+  if (!initialized) return
+  posthog.captureException(error, properties)
+}
+
 /** Associate the session with the authenticated user. No-op when disabled. */
 export const identifyPosthog = (distinctId: string, traits?: PostHogProperties): void => {
   if (!initialized) return

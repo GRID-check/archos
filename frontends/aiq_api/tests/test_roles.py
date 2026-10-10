@@ -100,6 +100,10 @@ def _session_manager() -> MagicMock:
     return manager
 
 
+#: One entry per role whose ``add_routes`` asked for the PostHog exception handler.
+POSTHOG_INSTALLS: list[int] = []
+
+
 def _worker(role: str) -> plugin.AIQAPIWorker:
     with pytest.MonkeyPatch.context() as env:
         env.setenv(ROLE_ENV, role)
@@ -169,6 +173,7 @@ def apps(tmp_path_factory: pytest.TempPathFactory) -> dict[str, FastAPI]:
         stack.enter_context(patch.object(plugin.AIQAPIWorker, "_schedule_internal_api_check", lambda self: None))
         stack.enter_context(patch.object(plugin.AIQAPIWorker, "_install_signal_handlers", lambda self: None))
         stack.enter_context(patch.object(plugin, "install_presigned_url_scrubbing", lambda: None))
+        stack.enter_context(patch.object(plugin.posthog_exceptions, "install", lambda: POSTHOG_INSTALLS.append(1)))
         stack.enter_context(patch.object(boot_timing, "BootClock", _RecordingBootClock))
         stack.enter_context(patch.object(boot_timing, "flush", lambda: None))
 
@@ -187,6 +192,11 @@ def apps(tmp_path_factory: pytest.TempPathFactory) -> dict[str, FastAPI]:
 def route_sets(apps: dict[str, FastAPI]) -> dict[str, set[tuple[str, str]]]:
     """The route keys of each app."""
     return {name: _route_keys(app) for name, app in apps.items()}
+
+
+def test_both_roles_install_the_posthog_exception_handler(apps):
+    # `apps` built the chat and the api role; each must report its caught exceptions (ADR-0098).
+    assert len(POSTHOG_INSTALLS) == 2
 
 
 def test_the_roles_serve_disjoint_routes_apart_from_health_and_the_docs(route_sets):

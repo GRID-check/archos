@@ -198,6 +198,9 @@ const SHUTDOWN_DRAIN_MS = Math.max(
   0,
   parseInt(process.env.GRID_SHUTDOWN_DRAIN_MS || '', 10) || 2000
 )
+// The list the app pushes its flush-on-exit functions onto (see cleanExit).
+const SHUTDOWN_HOOKS_KEY = '__gridShutdownHooks'
+const SHUTDOWN_HOOKS_MS = 2000
 // Set once SIGTERM/SIGINT arrives: readiness starts failing and new WebSocket
 // upgrades are refused, while everything already in flight runs to completion.
 let draining = false
@@ -922,12 +925,30 @@ const startServer = async () => {
   // Graceful shutdown. `server.close()` stops accepting new connections and
   // resolves once every existing one (including WebSockets) has ended, so the
   // timer is the hard ceiling on how long a rolling update waits for this pod.
+  //
+  // Before exiting, run what the app registered to flush (PostHog's queued
+  // exceptions, ADR-0098): `src/instrumentation.ts` pushes async functions onto
+  // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
+  // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
+  // never keeps the pod alive.
+  let exiting = false
+  const exitAfterHooks = () => {
+    if (exiting) return
+    exiting = true
+    const hooks = Array.isArray(globalThis[SHUTDOWN_HOOKS_KEY]) ? globalThis[SHUTDOWN_HOOKS_KEY] : []
+    const ceiling = setTimeout(() => process.exit(0), SHUTDOWN_HOOKS_MS)
+    Promise.allSettled(hooks.map((hook) => hook())).finally(() => {
+      clearTimeout(ceiling)
+      process.exit(0)
+    })
+  }
+
   const cleanExit = (signal) => {
     if (draining) return
     draining = true
     console.log(`\nShutting down (${signal}) — draining for up to ${SHUTDOWN_DRAIN_MS}ms...`)
-    server.close(() => process.exit(0))
-    setTimeout(() => process.exit(0), SHUTDOWN_DRAIN_MS)
+    server.close(exitAfterHooks)
+    setTimeout(exitAfterHooks, SHUTDOWN_DRAIN_MS)
   }
 
   process.once('SIGTERM', () => cleanExit('SIGTERM'))

@@ -1,3 +1,37 @@
+import type { Instrumentation } from "next";
+
+/**
+ * The list `server.js` drains before it exits (it is CommonJS and cannot import
+ * this module, and this one is bundled by Next, so a global is the one thing
+ * both can see). Same key as `SHUTDOWN_HOOKS_KEY` in `server.js`.
+ */
+const SHUTDOWN_HOOKS_KEY = "__gridShutdownHooks";
+
+const registerShutdownHook = (hook: () => Promise<void>): void => {
+  const holder = globalThis as Record<string, unknown>;
+  const hooks = (holder[SHUTDOWN_HOOKS_KEY] ??= []) as Array<() => Promise<void>>;
+  hooks.push(hook);
+};
+
+/**
+ * Server errors Next.js catches (render, route handler, server action, proxy)
+ * go to PostHog error tracking, replacing the console-to-OTLP-to-err2issue path
+ * (ADR-0031, ADR-0098). A named export, not a registration: Next calls it
+ * whether or not `register()` returned early, so a deployment without an OTLP
+ * collector still reports. Node only: `posthog-node` does not run on Edge.
+ * What is sent, and what is deliberately not: `lib/analytics/request-error`.
+ */
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  try {
+    const { reportRequestError } = await import("./lib/analytics/request-error");
+    reportRequestError(error, request, context);
+  } catch (failure) {
+    // Reporting an error must never raise a second one on the request's path.
+    console.error("[posthog] could not report a request error:", failure);
+  }
+};
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
@@ -33,6 +67,17 @@ export async function register() {
   } catch (error) {
     console.error("[Model Config] Could not run the platform default bootstrap:", error);
   }
+
+  // PostHog error tracking (ADR-0098) does not depend on the OTLP collector, so
+  // its shutdown flush is registered here, before the early return below: a
+  // deployment with PostHog and no collector must still deliver the exceptions
+  // queued when a pod is replaced. `server.js` runs every hook on this list
+  // before it exits (`__gridShutdownHooks`); the client queues nothing, and the
+  // hook does nothing, while PostHog is off.
+  registerShutdownHook(async () => {
+    const { shutdownPosthogServer } = await import("./lib/analytics/posthog-server");
+    await shutdownPosthogServer();
+  });
 
   // Capability derived from the dependency: no collector endpoint configured
   // (local dev, compose without observability) → no-op, zero overhead.
