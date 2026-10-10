@@ -2319,8 +2319,10 @@ v4 web container, then the v3 digests. After it, only the backups.
 ### Signals and attribution
 
 Only **traces** go to Langfuse. Logs and metrics still go to the Aspire
-dashboard (plus ERROR logs to err2issue, ADR-0031, and WARN+ logs to PostHog when
-enabled, see §9). The collector adds one
+dashboard (plus ERROR logs to err2issue, ADR-0031, which ADR-0098 retires in
+favour of PostHog error tracking where PostHog is configured:
+[`observability/error-tracking.md`](../observability/error-tracking.md); and
+WARN+ logs to PostHog when enabled, see §9). The collector adds one
 exporter to the *existing* traces pipeline, so both consumers get every span.
 
 Consequence to know: the two exporters share the pipeline's `memory_limiter`, so

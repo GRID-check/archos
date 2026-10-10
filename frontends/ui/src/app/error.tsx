@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { StatusScreen } from '@/components/brand/status-screen'
 import { useTranslations } from '@/i18n'
 import { isAuthzError } from '@/lib/auth-utils'
+import { capturePosthogException } from '@/lib/analytics/posthog'
 
 /**
  * Route-level error boundary. Catches thrown errors (including the plain
@@ -22,10 +23,6 @@ export default function RouteError({
 }) {
   const t = useTranslations('errors')
 
-  useEffect(() => {
-    console.error('[route error]', error)
-  }, [error])
-
   // Classify on the same typed authz signal the API route handlers and page
   // guards use (`isAuthzError`, `@/lib/auth-utils`) — never a bare substring
   // match. A naive /access/i regex also matches unrelated crashes such as
@@ -36,6 +33,18 @@ export default function RouteError({
   // `NoOrganizationError`), so an unknown error always falls through to the
   // generic screen (fail-safe).
   const isAccess = isAuthzError(error)
+
+  useEffect(() => {
+    console.error('[route error]', error)
+    // A boundary swallows the error before `window.onerror` sees it, so PostHog's
+    // autocapture never does; report it here (ADR-0098). Not a denial (an
+    // expected outcome, not a defect), and not one with a `digest`: that error
+    // was thrown on the server, where `onRequestError` already reported it with
+    // its stack, and the copy here is the redacted "error occurred in the Server
+    // Components render" that would open a second, useless issue.
+    if (isAccess || error.digest) return
+    capturePosthogException(error, { source: 'route-error-boundary' })
+  }, [error, isAccess])
 
   return (
     <StatusScreen
