@@ -36,6 +36,13 @@ const emitSourceMaps = process.env.GRID_SOURCEMAPS === '1'
 const nextConfig: NextConfig = {
   reactStrictMode: true,
 
+  // PostHog's endpoints end in a slash (`/e/`, `/s/`, `/flags/`). With the
+  // default, Next answers `/ingest/e/` with a 308 to `/ingest/e`, and a
+  // redirected beacon is a lost event (PostHog docs, advanced/proxy/nextjs).
+  // Both forms are served as written; the site has no other use for the
+  // redirect (`trailingSlash` stays unset).
+  skipTrailingSlashRedirect: true,
+
   productionBrowserSourceMaps: emitSourceMaps,
 
   // The build typechecks production code only: tsconfig.build.json leaves the

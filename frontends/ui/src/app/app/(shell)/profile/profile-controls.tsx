@@ -28,6 +28,7 @@ import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales, type Locale } from '@/i18n'
 import { AccountWidgets } from './account-widgets'
 import { ShortcutSettings } from './shortcut-settings'
+import { UsageAnalyticsSettings } from './usage-analytics-settings'
 
 const THEME_MODES: ThemeMode[] = ['system', 'light', 'dark']
 const THEME_ICONS: Record<ThemeMode, FC<{ className?: string }>> = {
@@ -45,12 +46,18 @@ interface ProfileControlsProps {
    * per-user toggle is not shown at all.
    */
   shortcutsAvailable?: boolean
+  /**
+   * Whether this deployment collects usage analytics (PostHog configured,
+   * resolved server-side). Without it the opt-out card is not shown.
+   */
+  analyticsAvailable?: boolean
 }
 
 export const ProfileControls: FC<ProfileControlsProps> = ({
   authRequired,
   email,
   shortcutsAvailable = false,
+  analyticsAvailable = false,
 }) => {
   const t = useTranslations('profile')
   const tc = useTranslations('common')
@@ -157,6 +164,9 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
 
       {/* Keyboard shortcuts (org flag is the outer gate; toggle is per-user) */}
       {shortcutsAvailable && <ShortcutSettings />}
+
+      {/* Usage analytics: a per-browser opt-out of the PostHog storage and traffic */}
+      <UsageAnalyticsSettings available={analyticsAvailable} />
 
       {/* Security & sessions */}
       <Card>

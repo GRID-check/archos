@@ -58,6 +58,20 @@ describe('AuthKit v4 proxy', () => {
     expect(matcher.test('/app/projects')).toBe(true)
   })
 
+  // The SDK posts from signed-out pages and mid-expiry; AuthKit would answer a
+  // beacon with a redirect to the WorkOS login page and lose the event.
+  test('leaves the first-party PostHog relay outside the auth redirect', async () => {
+    const { config } = await import('./proxy')
+    const matcher = new RegExp(`^${config.matcher[0]}$`)
+
+    for (const path of ['/ingest/e/', '/ingest/s/', '/ingest/flags/', '/ingest/static/recorder.js', '/ingest/array/phc_x/config.js']) {
+      expect(matcher.test(path), path).toBe(false)
+    }
+    // Only the relay's prefix: a page that merely starts with the word is still guarded.
+    expect(matcher.test('/ingestion')).toBe(true)
+    expect(matcher.test('/app/ingest/x')).toBe(true)
+  })
+
   test('delegates requests to the authkitMiddleware', async () => {
     const { default: proxy } = await import('./proxy')
     const request = { url: 'http://localhost:3000/api/v1/collections' } as never

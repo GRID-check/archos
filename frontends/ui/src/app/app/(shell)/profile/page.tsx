@@ -20,6 +20,7 @@ import type { Translator } from '@/i18n'
 import { getOrgSettings, getOrganizationOverview } from '@/lib/organizations/service'
 import { ProfileControls } from './profile-controls'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { postHogConfigFromEnv } from '@/lib/analytics/posthog-config'
 
 const KNOWN_ROLE_SLUGS = new Set(['org-platform-owner', 'admin', 'member'])
 
@@ -62,6 +63,10 @@ const resolveOrganizationName = async (organizationId: string): Promise<string> 
 export default async function ProfilePage(): Promise<JSX.Element> {
   return withPageSession(async (session) => {
     const t = await getTranslations('profile')
+
+    // `process.env` whole, so Next does not inline the build-time value (layout.tsx).
+    const posthog = postHogConfigFromEnv(process.env)
+    const analyticsAvailable = Boolean(posthog.host && posthog.projectToken)
 
     const displayName = session.name || session.email || t('account.noName')
     const initial = String(displayName).charAt(0).toUpperCase()
@@ -148,6 +153,7 @@ export default async function ProfilePage(): Promise<JSX.Element> {
             authRequired={isAuthRequired()}
             email={session.email}
             shortcutsAvailable={isFeatureEnabled(session, FEATURE_FLAGS.keyboardShortcuts)}
+            analyticsAvailable={analyticsAvailable}
           />
         </div>
       </ShellContent>

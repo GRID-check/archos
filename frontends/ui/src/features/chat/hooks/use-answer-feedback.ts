@@ -164,9 +164,13 @@ export function useAnswerFeedback(
               // folder), and the Langfuse mirror keeps them out for the same reason.
               // A note saved on top of the same vote is the same vote, not another.
               if (next && (previous?.verdict !== next.verdict || previous?.reason !== next.reason)) {
+                // The two ids are what lets a vote be joined to its turn and to
+                // the score Langfuse exports for it; they are our own row ids.
                 capturePosthog('answer_feedback_submitted', {
                   verdict: next.verdict,
                   reason: next.reason,
+                  message_id: messageId,
+                  conversation_id: conversationId ?? null,
                 })
               }
             } else {

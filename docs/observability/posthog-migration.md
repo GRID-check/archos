@@ -52,9 +52,9 @@ billing. The allowances, per month:
 
 | Product | Free | What eats it here | Guard |
 |---|---|---|---|
-| Product analytics | 1M events | Browser events, autocapture, pageviews **and every exported Langfuse observation and score** | Keep autocapture/dead clicks off where noisy. Watch observations per turn × turns |
+| Product analytics | 1M events | Browser events, autocapture, pageviews **and every exported Langfuse observation and score** | Autocapture, dead clicks, heatmaps and `history_change` pageviews are on (wave 2). Watch observations per turn × turns; the lever is the browser, not Langfuse |
 | Error tracking | 100K exceptions | Browser, BFF, Python | Python handler rate-limits per fingerprint. Suppression rules for known noise |
-| Session replay | 5K recordings | Sampled sessions | Off until the legal copy changes. Then `NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE` |
+| Session replay | 5K recordings | Every session by default (`NEXT_PUBLIC_POSTHOG_SESSION_REPLAY` on, sample rate 1) | Text stays masked. Lower `NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE` when a busy office approaches 5K a month |
 | Surveys | 1,500 responses | NPS, CSAT, churn | Wait periods and sampling on every survey |
 | Logs | 10 GB | WARN and above only | Collector filter drops below WARN |
 | Data warehouse | 1M rows | WorkOS source (full refresh each sync) | Daily sync, not hourly |
@@ -132,9 +132,34 @@ date.
    replies are visible to the member only through PostHog's own widget, which
    adds its own bubble. The alternative is an in-app "Antworten vom Support" view
    on `posthog.conversations.getTickets`/`getMessages`, which is not built.
-7. **Survey storage.** Persistence is `memory`, so PostHog sets no cookie. The
-   survey runtime still writes `seenSurvey_*` to localStorage when a survey is
-   shown. Decide whether the legal copy has to name it before a survey launches.
+7. **Browser storage.** Persistence is `localStorage+cookie` (cross-subdomain),
+   so the anonymous id and session survive the WorkOS redirect and a reload. The
+   privacy notice names the `ph_<token>_posthog` cookie and entry and the survey
+   keys (`seenSurvey_*`). The profile page's "usage analytics" switch calls
+   `posthog.opt_out_capturing()` for that browser. Changing `persistence` or
+   what is stored is a change to the notice: one commit.
 8. **Retiring err2issue and Aspire.** err2issue goes off by stack key when
    PostHog error tracking is on. Delete it after a release cycle with nothing
    missed. Aspire stays the live pane.
+
+## Browser signal (wave 2)
+
+- **First-party ingestion.** `api_host` is `/ingest` (`app/ingest/[...path]/route.ts`,
+  `lib/analytics/posthog-proxy.ts`), which relays to `NEXT_PUBLIC_POSTHOG_HOST`
+  at runtime and to the `*-assets` host for `/static/*` and `/array/*`. It is
+  `publicApiRoute`, outside the auth proxy matcher, forwards an allow-list of
+  headers (never cookies) and needs `skipTrailingSlashRedirect`. Switch off with
+  `NEXT_PUBLIC_POSTHOG_PROXY=false`.
+- **Identity.** The root layout hands the signed-in WorkOS user id to the SDK as
+  `bootstrap`, so the first pageview is identified. Super properties on every
+  event: `organization_id`, `organization_name`, `user_role`, `locale`. No email
+  or name.
+- **Secrets never leave.** `before_send` removes `sig|token|secret|key|code|state`
+  from every URL-shaped property (`lib/analytics/posthog-scrub.ts`). The BYOK key
+  input carries `ph-no-capture`. Replay records headers minus credentials and
+  `x-grid-*`, and bodies only for failed requests outside the credentials,
+  internal, auth and audit-portal endpoints.
+- **Events** (browser): `answer_completed` (`outcome`, `duration_ms`,
+  `citation_count`, `source_kinds`, `effort`, `has_run`), `citation_opened`,
+  `document_opened`, `ifc_model_opened`, and `answer_feedback_submitted` now
+  with `message_id` and `conversation_id`.

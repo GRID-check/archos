@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AppConfig } from '@/shared/context'
-import { identifyPosthog, resetPosthog, setPosthogOrganization } from '@/lib/analytics/posthog'
+import { identifyPosthog, initPosthogClient, registerPosthogContext, resetPosthog } from '@/lib/analytics/posthog'
 import { Providers } from './providers'
 
 const layoutState = {
@@ -45,10 +45,10 @@ vi.mock('@/adapters/auth', () => ({
 }))
 
 vi.mock('@/lib/analytics/posthog', () => ({
-  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '', sessionReplay: false, replaySampleRate: 0 },
+  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '', sessionReplay: false, replaySampleRate: 0, proxy: false },
   initPosthogClient: vi.fn(),
   identifyPosthog: vi.fn(),
-  setPosthogOrganization: vi.fn(),
+  registerPosthogContext: vi.fn(),
   resetPosthog: vi.fn(),
   isPosthogEnabled: vi.fn(() => true),
 }))
@@ -89,6 +89,14 @@ const baseConfig: AppConfig = {
     maxFileCount: 10,
     fileExpirationCheckIntervalHours: 0,
   },
+}
+
+const enabledPosthog = {
+  host: 'https://eu.i.posthog.com',
+  projectToken: 'phc_test',
+  sessionReplay: true,
+  replaySampleRate: 1,
+  proxy: true,
 }
 
 describe('Providers', () => {
@@ -204,9 +212,11 @@ describe('Providers', () => {
           <div>content</div>
         </Providers>
       )
-      expect(setPosthogOrganization).toHaveBeenLastCalledWith('org_1')
+      expect(registerPosthogContext).toHaveBeenLastCalledWith(
+        expect.objectContaining({ organizationId: 'org_1', locale: 'en' })
+      )
       expect(vi.mocked(identifyPosthog).mock.invocationCallOrder[0]).toBeLessThan(
-        vi.mocked(setPosthogOrganization).mock.invocationCallOrder[0]!
+        vi.mocked(registerPosthogContext).mock.invocationCallOrder[0]!
       )
 
       authState.organizationId = 'org_2'
@@ -215,9 +225,65 @@ describe('Providers', () => {
           <div>content</div>
         </Providers>
       )
-      expect(setPosthogOrganization).toHaveBeenLastCalledWith('org_2')
+      expect(registerPosthogContext).toHaveBeenLastCalledWith(
+        expect.objectContaining({ organizationId: 'org_2' })
+      )
       // A switch inside one session is not a new person.
       expect(identifyPosthog).toHaveBeenCalledTimes(1)
+    })
+
+    test('hands the server-known identity to the SDK at init (bootstrap)', () => {
+      const identity = {
+        distinctId: 'user-a',
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'de',
+      }
+      render(
+        <Providers config={{ ...baseConfig, posthog: enabledPosthog, posthogIdentity: identity }} locale="de">
+          <div>content</div>
+        </Providers>
+      )
+      expect(initPosthogClient).toHaveBeenCalledWith(enabledPosthog, identity)
+    })
+
+    test('registers the organization name and role only for the organization the server saw', () => {
+      signedInAs('user-a')
+      authState.organizationId = 'org_1'
+      const identity = {
+        distinctId: 'user-a',
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'en',
+      }
+      const config = { ...baseConfig, posthog: enabledPosthog, posthogIdentity: identity }
+      const view = render(
+        <Providers config={config} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith({
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'en',
+      })
+
+      // A client-side switch to another organization must not keep the old name.
+      authState.organizationId = 'org_2'
+      view.rerender(
+        <Providers config={config} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith({
+        organizationId: 'org_2',
+        organizationName: null,
+        role: null,
+        locale: 'en',
+      })
     })
 
     test('does not stamp an organization while signed out', () => {
@@ -228,7 +294,7 @@ describe('Providers', () => {
           <div>content</div>
         </Providers>
       )
-      expect(setPosthogOrganization).not.toHaveBeenCalled()
+      expect(registerPosthogContext).not.toHaveBeenCalled()
     })
 
     // A session lost WITHOUT `handleSignOut` — expiry, a failed refresh — used
