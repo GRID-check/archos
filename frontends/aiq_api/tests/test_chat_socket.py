@@ -1068,7 +1068,6 @@ async def test_a_failing_stage_never_changes_the_answer_frames(harness, one_fram
                 id="follow_ups",
                 agent_group=AgentGroup.MEMORY_REFLECTION,
                 flag_slug="probe-stage",
-                env_default="GRID_STAGE_PROBE_ENABLED",
                 timeout_s=0.05,
                 gate=lambda facts: GateDecision.proceed(),
                 handler=handler,
