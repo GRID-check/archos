@@ -29,9 +29,12 @@
  *
  * ## Told once
  *
- * A recipient who already holds the item is skipped, not folded. The settle hook
- * can see the same document settle again (a re-read, a retry), and folding would
- * mark an item they had read unread each time.
+ * A Fassung is announced once (`document_fassung_announcements`, migration
+ * 0129). The settle hook sees the same document settle again on every re-read
+ * („Erneut lesen", the folder brief's bulk re-read, a retry); without the
+ * record, a person assigned since, or whose row had aged out, was told about the
+ * same Fassung again. A recipient who still holds the item is skipped too, not
+ * folded, so a read item is never marked unread.
  *
  * ## It never fails its caller
  *
@@ -50,6 +53,9 @@ import { emitInboxItems } from '@/lib/inbox/service'
 import { collectionFileRef } from './collection-file-ref'
 import { SCREENED_ONLY } from './document-reader'
 import { documentDisplayName, splitDocumentName, type NamedDocument } from './display-name'
+import { claimFassungAnnouncement, releaseFassungAnnouncement } from './fassung-announcement-repository'
+import type { FassungNames } from './fassung'
+import { documentNameKey } from './name-match'
 import { readFassungNames, refreshCollectionFiles } from './reconcile-status'
 import { findDocumentInOrg, findFassungCounterparts } from './repository'
 import { findPreviousVersion, findPublishedVersion } from './version-repository'
@@ -163,6 +169,12 @@ async function peopleWhoMayOpen(organizationId: string, document: Document, user
 /**
  * Write the items. Returns how many people were told.
  *
+ * Once per Fassung: the newer document and its anchor are claimed
+ * (`document_fassung_announcements`) before anything is written, and a Fassung
+ * claimed before is not announced again. The claim is taken only once both
+ * documents are screened, so a held upload announces when it passes; a failed
+ * announcement gives it back, so the next settle tries again.
+ *
  * Throws on a failed read or write; callers that must not fail use
  * {@link announceNewFassung}.
  */
@@ -178,6 +190,25 @@ export async function notifyNewFassung(announcement: NewFassungAnnouncement): Pr
   if (!newer || !follow) return 0
   if (newer.lifecycle !== 'active' || newer.scope === 'session' || follow.scope === 'session') return 0
 
+  const claim = { organizationId, documentId: newer.id, anchorId: announcement.versionId ?? follow.id }
+  if (!(await claimFassungAnnouncement(claim))) return 0
+  try {
+    return await writeFassungItems(announcement, newer, follow, claim.anchorId)
+  } catch (error) {
+    await releaseFassungAnnouncement(claim).catch(() => undefined)
+    throw error
+  }
+}
+
+/** The items of one claimed announcement: who may open both documents, and has not been told. */
+async function writeFassungItems(
+  announcement: NewFassungAnnouncement,
+  newer: Document,
+  follow: Document,
+  anchorId: string,
+): Promise<number> {
+  const { organizationId } = announcement
+  const sameDocument = newer.id === follow.id
   const assignments = await listAssignmentsForResources(organizationId, 'document', [follow.id])
   const candidates = fassungRecipients({
     assigneeIds: assignments.map((row) => row.subjectUserId),
@@ -192,7 +223,6 @@ export async function notifyNewFassung(announcement: NewFassungAnnouncement): Pr
     : await peopleWhoMayOpen(organizationId, follow, [...mayOpenNewer])
   if (mayOpenBoth.size === 0) return 0
 
-  const anchorId = announcement.versionId ?? follow.id
   const groupKey = inboxGroupKey('document.new_fassung', 'document', newer.id, anchorId)
   const already = await recipientsHoldingGroup(organizationId, groupKey, [...mayOpenBoth])
   const told = [...mayOpenBoth].filter((userId) => !already.has(userId))
@@ -235,6 +265,18 @@ export function announceNewFassung(announcement: NewFassungAnnouncement): Promis
   )
 }
 
+/**
+ * The change line, when it was written against the file named `olderName`. A
+ * line against no basis is about the earlier upload under the document's own
+ * name, and one against another name describes another comparison: neither is
+ * what this notification is about, and the second may say what a document the
+ * recipient may not open held.
+ */
+function changeAgainstName(change: FassungNames['change'], olderName: string): string | null {
+  if (!change || change.basis === null) return null
+  return documentNameKey(change.basis) === documentNameKey(olderName) ? change.text : null
+}
+
 /** The same-name half: a published version that is not the document's first. */
 async function announceSettledVersion(organizationId: string, document: Document): Promise<void> {
   const version = await findPublishedVersion(document.id, organizationId)
@@ -270,7 +312,7 @@ async function announceSettledLinks(organizationId: string, document: Document):
       actorUserId: document.createdBy,
       newerId: document.id,
       olderId: older.id,
-      changeSummary: names.change?.text ?? null,
+      changeSummary: changeAgainstName(names.change, older.filename),
     })
   }
 }
@@ -284,8 +326,9 @@ async function announceSettledLinks(organizationId: string, document: Document):
  * throws): for each document that is screened now, the people who followed
  * what it replaces are told, whether it replaced a version under its own name
  * or an older document under another (a link already written at ingestion).
- * A Piloti document (its publish transition announces it) and a document seen
- * before (the recipient already holds the item) say nothing.
+ * A Piloti document (its publish transition announces it) says nothing, and
+ * neither does a Fassung announced before: a re-read settles the document
+ * again, and {@link notifyNewFassung} announces each Fassung once.
  *
  * Bounded by {@link SETTLE_LOOKUP_LIMIT}. The collection listings are read
  * fresh once per collection, because the cached one may predate the link.

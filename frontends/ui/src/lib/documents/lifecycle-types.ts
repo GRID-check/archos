@@ -645,6 +645,14 @@ export const documentVersionViewSchema = z.object({
   createdBy: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /**
+   * Whether THIS reader may open or download the version's bytes
+   * (`…/versions/{id}/file`, `/content`). False for an earlier upload whose bytes
+   * no screening verdict on record judged (ADR-0086), unless the reader is its
+   * uploader or a reviewer. Only the version list carries it; absent reads as
+   * readable, and the routes decide again either way.
+   */
+  bytesReadable: z.boolean().optional(),
 })
 
 export type DocumentVersionView = z.infer<typeof documentVersionViewSchema>

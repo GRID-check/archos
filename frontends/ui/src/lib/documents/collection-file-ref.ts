@@ -184,6 +184,14 @@ export const collectionFileUrl = (backendUrl: string, ref: CollectionFileRef, su
 /**
  * Ask the backend to forget a document's chunks, summary row and text mirror.
  *
+ * `permanent` when the document will not come back under this name in this
+ * collection: a delete, the Papierkorb's final purge, a move to another
+ * collection. Without it the purge is reversible (an archive, a folder sent to
+ * the bin, a published version's predecessor): the backend keeps the Fassung
+ * links a person made on the row and gives them back when the name is read
+ * again. With it every link to the file is cleared, so a later upload under the
+ * same name is another document and inherits nothing.
+ *
  * Returns whether the backend confirmed it. A `false` is logged and recorded
  * on the delete's audit event rather than swallowed: a deleted file whose
  * chunks linger keeps answering questions and keeps its name in the agent's
@@ -193,13 +201,14 @@ export const collectionFileUrl = (backendUrl: string, ref: CollectionFileRef, su
 export async function purgeIngestedChunks(
   backendUrl: string,
   ref: CollectionFileRef,
-  timeoutMs: number
+  timeoutMs: number,
+  { permanent = false }: { permanent?: boolean } = {}
 ): Promise<boolean> {
   try {
     const response = await fetch(collectionDocumentsUrl(backendUrl, ref), {
       method: 'DELETE',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ file_ids: [ref.filename] }),
+      body: JSON.stringify({ file_ids: [ref.filename], ...(permanent ? { permanent: true } : {}) }),
       signal: AbortSignal.timeout(timeoutMs),
     })
     if (!response.ok) {

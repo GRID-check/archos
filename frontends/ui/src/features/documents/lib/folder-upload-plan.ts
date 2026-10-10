@@ -149,6 +149,14 @@ export interface PlannedFile {
    * Empty means the level they are standing in.
    */
   targetPath: string
+  /**
+   * The existing folder whose access the file will have: the one it lands in,
+   * or, for a folder the upload still creates, the nearest existing folder
+   * above it (a new folder inherits its access). `null` is the shelf's root.
+   * Which collection the file is indexed into follows from it (ADR-0087), and
+   * the Fassung probe offers only documents of that collection.
+   */
+  landsInFolderId?: string | null
   action: PlannedAction
   /** The document this matched, for `update`, `unchanged` and `duplicate`. */
   existingId?: string
@@ -490,13 +498,24 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     return documentNameKey(shown) === documentNameKey(droppedName) ? undefined : shown
   }
 
+  /** The deepest existing folder on `targetPath`, or where the reader stands: see {@link PlannedFile.landsInFolderId}. */
+  const landsIn = (targetPath: string): string | null => {
+    const segments = targetPath ? targetPath.split('/') : []
+    for (let depth = segments.length; depth > 0; depth -= 1) {
+      const existing = existingByRelativePath.get(pathKey(segments.slice(0, depth).join('/')))
+      if (existing) return existing
+    }
+    return currentFolderId ?? null
+  }
+
   const hashCandidates: File[] = []
   const moves: PlannedMove[] = []
   const contested = contestedOffers(admitted.map((entry) => entry.file), input.fassungOffers)
   const plannedFiles: PlannedFile[] = entries.map(({ file, path }) => {
     const matches = screened.get(file)
     if (matches && isExcluded(file)) {
-      return { file, originPath: path, targetPath: relativeDirectory(path), action: 'excluded', screening: matches }
+      const targetPath = relativeDirectory(path)
+      return { file, originPath: path, targetPath, landsInFolderId: landsIn(targetPath), action: 'excluded', screening: matches }
     }
     const planned = withFassung(planAdmitted(file, path), input, contested)
     return matches ? { ...planned, screening: matches, screeningReleased: true } : planned
@@ -519,7 +538,7 @@ export function buildFolderUploadPlan(input: FolderUploadPlanInput): FolderUploa
     const targetFolderId = targetPath
       ? (existingByRelativePath.get(pathKey(targetPath)) ?? null)
       : (currentFolderId ?? null)
-    const base: PlannedFile = { file, originPath: path, targetPath, action: 'new' }
+    const base: PlannedFile = { file, originPath: path, targetPath, landsInFolderId: landsIn(targetPath), action: 'new' }
     const nameKey = documentNameKey(file.name)
 
     if ((dropNameCounts.get(nameKey) ?? 0) > 1) {

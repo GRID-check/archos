@@ -16,6 +16,10 @@ vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn().mockResolvedValu
 vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), findFassungCounterparts: vi.fn() }))
 vi.mock('./reconcile-status', () => ({ readFassungNames: vi.fn(), refreshCollectionFiles: vi.fn() }))
 vi.mock('./version-repository', () => ({ findPublishedVersion: vi.fn(), findPreviousVersion: vi.fn() }))
+vi.mock('./fassung-announcement-repository', () => ({
+  claimFassungAnnouncement: vi.fn(),
+  releaseFassungAnnouncement: vi.fn(),
+}))
 
 import { listAssignmentsForResources } from '@/lib/assignments/repository'
 import { filterUsersWhoMayReadFolder } from '@/lib/authz/folder-access'
@@ -23,6 +27,7 @@ import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/auth
 import { recipientsHoldingGroup } from '@/lib/inbox/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { SCREENED_ONLY } from './document-reader'
+import { claimFassungAnnouncement, releaseFassungAnnouncement } from './fassung-announcement-repository'
 import {
   announceNewFassung,
   announceSettledVersions,
@@ -103,6 +108,10 @@ beforeEach(() => {
   vi.mocked(refreshCollectionFiles).mockResolvedValue(undefined)
   vi.mocked(findFassungCounterparts).mockReset()
   vi.mocked(findFassungCounterparts).mockResolvedValue([])
+  vi.mocked(claimFassungAnnouncement).mockReset()
+  vi.mocked(claimFassungAnnouncement).mockResolvedValue(true)
+  vi.mocked(releaseFassungAnnouncement).mockReset()
+  vi.mocked(releaseFassungAnnouncement).mockResolvedValue(undefined)
 })
 
 describe('fassungRecipients', () => {
@@ -419,11 +428,11 @@ describe('announceSettledVersions', () => {
 })
 
 describe('announceSettledVersions — a link written at ingestion', () => {
-  const written = (change: string | null = 'Wand verschoben.\nTür neu.') => ({
+  const written = (change: string | null = 'Wand verschoben.\nTür neu.', basis: string | null = 'Grundriss_A.pdf') => ({
     supersededBy: null,
     supersedes: ['Grundriss_A.pdf'],
     suggestion: null,
-    change: change ? { text: change, basis: null } : null,
+    change: change ? { text: change, basis } : null,
   })
 
   beforeEach(() => {
@@ -491,6 +500,32 @@ describe('announceSettledVersions — a link written at ingestion', () => {
     expect(findDocumentInOrg).toHaveBeenCalledTimes(50)
   })
 
+  it.each([
+    ['the earlier upload under the newer document\'s own name', null],
+    ['a third document', 'Geheim_Lohnliste.pdf'],
+  ])('sends no excerpt when the change line was written against %s, not the older document', async (_label, basis) => {
+    vi.mocked(readFassungNames).mockResolvedValue(written('Lohnsummen entfernt.', basis))
+
+    await announceSettledVersions('org-1', ['doc-b'])
+
+    expect(emitted().length).toBeGreaterThan(0)
+    for (const item of emitted()) expect(item.payload).not.toHaveProperty('excerpt')
+  })
+
+  it('a re-read announces nothing again, not even to a person assigned since the first settle', async () => {
+    await announceSettledVersions('org-1', ['doc-b'])
+    expect(claimFassungAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-b', anchorId: 'doc-a' })
+    vi.mocked(emitInboxItems).mockClear()
+
+    // „Erneut lesen": the same document settles again. Bernd was assigned
+    // meanwhile and holds no row; the Fassung was announced already.
+    vi.mocked(claimFassungAnnouncement).mockResolvedValue(false)
+    assignedTo('anna', 'bernd')
+    await announceSettledVersions('org-1', ['doc-b'])
+
+    expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+
   it('does not tell the older document\'s own followers about a link to itself', async () => {
     vi.mocked(findFassungCounterparts).mockResolvedValue([
       { id: 'doc-b', filename: 'Grundriss_B.pdf', projectId: 'p1', folderId: null, createdAt: new Date() },
@@ -499,5 +534,48 @@ describe('announceSettledVersions — a link written at ingestion', () => {
     await announceSettledVersions('org-1', ['doc-b'])
 
     expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+})
+
+describe('notifyNewFassung — announced once', () => {
+  it('claims the Fassung (newer document and anchor) before anything is written', async () => {
+    assignedTo('anna')
+
+    await notifyNewFassung(link)
+
+    expect(claimFassungAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-b', anchorId: 'doc-a' })
+    expect(vi.mocked(claimFassungAnnouncement).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(emitInboxItems).mock.invocationCallOrder[0],
+    )
+  })
+
+  it('anchors a same-name Fassung on its version', async () => {
+    await notifyNewFassung({ ...link, newerId: 'doc-a', olderId: 'doc-a', versionId: 'v2' })
+
+    expect(claimFassungAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-a', anchorId: 'v2' })
+  })
+
+  it('tells nobody about a Fassung announced before, and reads no recipient for it', async () => {
+    vi.mocked(claimFassungAnnouncement).mockResolvedValue(false)
+    assignedTo('anna')
+
+    expect(await notifyNewFassung(link)).toBe(0)
+    expect(listAssignmentsForResources).not.toHaveBeenCalled()
+    expect(emitInboxItems).not.toHaveBeenCalled()
+  })
+
+  it('claims nothing while a document is held, so it is announced when it passes', async () => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) => (id === 'doc-a' ? OLDER : null))
+
+    expect(await notifyNewFassung(link)).toBe(0)
+    expect(claimFassungAnnouncement).not.toHaveBeenCalled()
+  })
+
+  it('gives the claim back when the announcement fails, so the next settle tries again', async () => {
+    assignedTo('anna')
+    vi.mocked(emitInboxItems).mockRejectedValue(new Error('db down'))
+
+    await expect(notifyNewFassung(link)).rejects.toThrow('db down')
+    expect(releaseFassungAnnouncement).toHaveBeenCalledWith({ organizationId: 'org-1', documentId: 'doc-b', anchorId: 'doc-a' })
   })
 })

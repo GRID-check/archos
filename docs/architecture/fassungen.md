@@ -48,7 +48,9 @@ the listing is read.
   (`features/documents/lib/fassung-timeline.ts`, rendered by
   `components/document-fassungen.tsx`), numbered „Fassung 3, 2, 1“ across both.
   Each row has its index or date as a tag, who and when, what changed, Öffnen,
-  and download and compare behind its ⋯. The header speaks about the newest
+  and download and compare behind its ⋯. An earlier upload under the same name
+  offers none of the three to a reader who may not receive its bytes
+  (`bytesReadable` on the version listing, see Privacy). The header speaks about the newest
   Fassung and names the older one Piloti still answers from by number
   (`features/documents/lib/fassung-standing.ts`).
 - Nothing about the link model reaches the person.
@@ -116,8 +118,13 @@ by `FASSUNG_TIMEOUT_SECONDS` (45 s) and fail-open: it cannot fail an ingest.
    candidate exactly, with confidence of at least 0.7 and a reason.
 
 A suggestion carries `of`, `confidence`, `reason` (German, at most 160
-characters), `basis` (`title_block`, `name` or `content`) and `dismissed`. A
-dismissed pair is not offered again.
+characters), `basis` (`title_block`, `name` or `content`), `dismissed` and
+`dismissed_of`: every file a person refused as the older Fassung of this one.
+A refused pair is not offered again, by the judge, by a suggestion derived on
+read, or by a later write: `set_revision_suggestion` keeps the refusals and stores
+a suggestion that names a refused file as dismissed. A record written before the
+list existed (one `of` with `dismissed: true`) reads as one refusal
+(`document_metadata_store.dismissed_fassungen`).
 
 ### Suggestions derived on read
 
@@ -135,7 +142,7 @@ suggested.
 
 | Where | What happens | Code |
 |---|---|---|
-| **Upload dialog** | The dropped names are read with the grammar and probed against the shelf (`POST /api/documents/fassung-candidates`). A name that continues a document offers „Als neue Fassung von X ablegen“. Forty such names become one decision with „Alle als neue Fassung ablegen“. | `lib/documents/fassung-candidates.ts`, `features/documents/lib/fassung-proposals.ts`, `components/folder-upload-dialog.tsx` |
+| **Upload dialog** | The dropped names are read with the grammar and probed against the shelf (`POST /api/documents/fassung-candidates`), each with the folder it lands in (`PlannedFile.landsInFolderId`: the existing folder, or the nearest existing one above a folder the upload creates). Only documents of the collection that folder files into are offered, because a restricted folder is a collection of its own (ADR-0087) and a link lives in one. A name that continues a document offers „Als neue Fassung von X ablegen“. Forty such names become one decision with „Alle als neue Fassung ablegen“. | `lib/documents/fassung-candidates.ts`, `features/documents/lib/fassung-proposals.ts`, `components/folder-upload-dialog.tsx` |
 | **Preview** | The section asks „Ist das eine neuere Fassung von …?“ with the reason and the basis. Yes links. No dismisses the suggestion. | `components/fassung-notices.tsx`, `components/document-fassungen.tsx` |
 | **Older data** | The same question, on the file, from the suggestion derived on read. | `fassungen.derive_suggestions` |
 
@@ -144,24 +151,80 @@ A row of the timeline can also **unlink** an older Fassung.
 **At upload.** The form field `fassungOf` carries the older document's id.
 `resolveFassungOf` checks it before a byte is stored: write access to the older
 document, same shelf and collection, active, past screening, a person's upload.
-Equal names return nothing, since that is a version and never a Fassung. The
+Equal names return nothing, since that is a version and never a Fassung. A
+choice that fails a check (the older document moved into a restricted folder
+after the dialog asked, was archived, is not this person's to change) never
+refuses the upload: the file is stored as a document of its own, the answer
+carries `fassungOfIgnored` with the reason, and the `document.uploaded` audit
+event records it. A document the person may not see and one they may not
+change are both `unavailable`, so the answer says nothing about which. The
 dispatch then sends `fassung_of: <older file name>` to `POST /v1/ingest`. Once
-the new file has been read, `confirm_fassung` writes what the PUT below writes.
-An older file the collection no longer holds, or a link that would close a loop,
-falls back to the ordinary suggestion.
+the new file has been read, `confirm_fassung` writes what the PUT below writes,
+through the same store step. The link is the person's and waits for nothing: it
+is written when the summary model is off (then without a change line) and when no
+summary could be made (the new file's row comes later, from the listing's
+reconciliation backfill, and the link counts from then). An older file the
+collection no longer holds, or a link that would close a loop, falls back to the
+ordinary suggestion.
 
 **After reading.** `PUT /api/documents/[id]/fassung` takes `{ older, linked }`.
 `setFassungLink` loads both documents with write access and refuses a held
 upload, a chat attachment, an archived document and two collections. It calls
-`PUT /v1/collections/{c}/fassung` with `{ newer, older, linked }` by file name,
+`PUT /v1/collections/{c}/fassung` with `{ newer, older, linked }` by file name
+and the organization and user headers, so the change summary runs on the
+organization's credential and data policy (BYOK, ZDR) and its spend is booked
+to it,
 audits `document.fassung_changed`, and answers with the facts of both documents
 as this reader now sees them.
 
-On the Python side, `linked=true` sets `superseded_by` on the older row, clears a
-suggestion that pointed at it, and has the summary model write what changed onto
-the newer row with the older name as `change_basis`. A loop is a 409. A model
-failure leaves the link and an empty change line. `linked=false` lifts the link,
-removes the change line written against it, and marks the suggestion dismissed.
+On the Python side, `linked=true` goes through `link_fassung`
+(`document_metadata_store.py`): in one transaction, under an advisory lock per
+collection on Postgres and a process lock on SQLite, it reads the links, refuses a
+loop (409), sets `superseded_by` on the older row, clears a suggestion on the newer
+row that named the older one (its refusals stay), and, when the older row was
+replaced by another file X until now, drops X's change line told against it. Two
+people confirming A over B and B over A at once therefore store one link, not a
+loop. Then the summary model writes what changed onto the newer row with the older
+name as `change_basis`; a model failure leaves the link and an empty change line.
+`linked=false` lifts the link, removes the change line written against it, and adds
+the older name to the newer row's refusals (`dismiss_revision_suggestion`).
+
+## When a document leaves and comes back
+
+The link is a fact on the knowledge layer's row, and several BFF operations take
+that row away with the chunks (`DELETE /v1/collections/{c}/documents`, which ends
+in `DocumentMetadataStore.unregister`). Most of them are undone later by reading
+the document again. A link only a person makes has to survive that.
+
+| BFF operation | Undone by | Sends |
+|---|---|---|
+| Archive (`archiveDocument`, `lib/documents/version-content.ts`) | An un-archive, which re-reads the index (the row and every version stay; the BFF has no un-archive yet) | nothing (`permanent: false`) |
+| Folder to the bin (`purgeChunksOf`, `lib/projects/folder-bin.ts`) | Restore from the bin (`restore_folder_bin` job) | nothing |
+| Publish purges the replaced version (`purgeSupersededChunks`, `lib/documents/lifecycle.ts`) | The publish re-reads under the same name | nothing |
+| Delete, Archiv delete, the bin's final purge (`eraseProjectDocument`, `lib/archiv/service.ts`) | Nothing | `permanent: true` |
+| Move to another collection (`moveDocument`, `lib/projects/collection-placement.ts`) | Nothing in the old collection: Fassungen share one collection, so its links end there | `permanent: true` |
+
+The flag is one option of the one purge call, `purgeIngestedChunks(…, { permanent: true })`
+(`lib/documents/collection-file-ref.ts`); every caller that omits it asks for the
+reversible purge, and the specs of each caller above pin which one it sends.
+
+**Without `permanent`** the row goes, and what a person made on it is kept under
+`(collection, file name)` in `document_fassung_retained`: the row's own
+`superseded_by`, its refusals (`dismissed_of`), and a change line whose
+`change_basis` is another file (one told against the document's own earlier
+upload describes bytes the re-read replaces, and an open suggestion is Piloti's,
+read again). The links other rows hold TO it are left alone. While it is gone they
+read as nothing, because `_attach_supersedes` and `get_superseded_files` count a
+link only while both rows exist: the older Fassung it replaced answers again. The
+next `register` of the name takes the kept facts back in the same transaction, and
+a column the row already fills wins. A kept link that would now close a loop (the
+other direction was linked while the file was gone) is not taken back.
+
+**With `permanent`** nothing is kept, and every link to the file, on a live row or
+a kept one, is cleared: a later upload under the same name is another document.
+
+„Erneut lesen" does not purge. A re-read of the same name keeps the row, so the
+link was never at risk there (`register` writes only the summary, tags and topics).
 
 ## Freigabe on the same file
 
@@ -233,7 +296,7 @@ The agent reads the same facts the UI does, through the knowledge layer.
 |---|---|---|
 | `list_files` | Marks a row that a person replaced („ersetzt durch X (bestätigt)“), then rows that share a title-block number („aktuelle / ältere Fassung laut Plankopf“), then the name reading. A confirmed link beats the sheets, which beat the name. Prints `Plankopf: Nr. …, Index …, Stand …` | `sources/knowledge_layer/src/browse.py`, `confirmed_revision_marks`, `title_block_marks` |
 | `list_files(fassungen_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse.py`, `render_fassungen`, `_chain_members`, `_chain_order` |
-| `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion. The base corpus is untouched | `sources/knowledge_layer/src/register.py`, `_superseded_files`; `document_metadata_store.get_superseded_files` |
+| `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion, and when the named file is an older Fassung the result carries the same line `read_passage` gives („Ältere Fassung: … ist durch … ersetzt“, the end of the chain). The base corpus is untouched | `sources/knowledge_layer/src/register.py`, `_superseded_files`, `_named_older_fassung_notice`; `document_metadata_store.get_superseded_files` |
 | `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `sources/knowledge_layer/src/read_passage.py`, `_current_fassung`, `_older_fassung_notice` |
 | Inventory | A row suffix carries only the confirmed link, never a suggestion | `src/aiq_agent/knowledge/inventory.py` |
 
@@ -258,7 +321,12 @@ name, each labelled as what it is.
   readable.
 - **Who.** The people assigned to the older document and its uploaders, minus the
   person who made the change, then cut to those who may open both documents.
-- **What.** The first line of the change summary, at most 200 characters. The
+- **What.** The first line of the change summary, at most 200 characters, and
+  only when the summary was written against the older document of THIS
+  notification (its basis). A summary against the earlier upload under the
+  newer document's own name, or against a third document, describes another
+  comparison, possibly with a document the recipient may not open, and is left
+  out (`changeSummaryAgainst`, `changeAgainstName`). The
   names are the documents' display names without the file extension
   (`fassungRowNames`), unless the two would then read the same. Who made the
   change is the row's `actorUserId`, resolved to a name when the inbox is read,
@@ -269,8 +337,16 @@ name, each labelled as what it is.
   (`features/documents/lib/fassung-compare-link.ts`), which the files workspace
   reads (`hooks/use-compare-param.ts`) to open the preview with the visual
   comparison on top. „Besprechen“ follows it.
-- **Once.** A recipient who already holds the item is skipped, not folded, so a
-  re-read does not mark a read item unread.
+- **Once.** Each Fassung is announced once: `notifyNewFassung` claims the newer
+  document and the item's anchor (the new version, or the older document for a
+  link) in `document_fassung_announcements` (migration 0129) before it writes,
+  and writes only when the claim took. The settle hook runs on every re-read
+  („Erneut lesen“, the folder brief's bulk re-read, a retry), and without the
+  record a person assigned since, or whose item had aged out, was told again.
+  The claim is taken only once both documents are screened, so a held upload is
+  announced when it passes, and a failed announcement gives it back. A
+  recipient who still holds the item is skipped too, not folded, so a read item
+  is never marked unread.
 - **Never fails the caller.** `announceNewFassung` is detached and logs.
 
 ## Privacy
@@ -278,6 +354,7 @@ name, each labelled as what it is.
 | Rule | Where it holds |
 |---|---|
 | A held or unscreened document's name or content never reaches a model, or a reader who may not see it (ADR-0086, ADR-0087) | `held_file_names` removes held and in-flight names from the judge's candidates, and when the job store cannot be read nothing is suggested. `derive_suggestions` does the same. The BFF refuses a held document in the link, compare and `fassungOf` paths with a 404. `fassung-notify.ts` re-reads both documents with the screened-only reader before it writes a row |
+| An earlier upload's bytes reach a person only if a verdict judged them | `mayReceiveVersionBytes` (`version-content.ts`) on `…/versions/{id}/file` and `/content` (and so the diff): bytes the verdict on record judged (`versionBytesPassedScreening`), or the uploader and the quarantine's reviewers (`maySeeHeld`). Everyone else gets a 404, and the version listing's `bytesReadable` keeps the timeline from offering it |
 | A name the reader may not open never reaches the browser | `resolveFassungFacts` drops a reference it cannot resolve, and a change summary that describes it. `loadFassungFacts` resolves names only to documents of the same collection, active, visible to this reader and outside a closed folder |
 | The history walk drops what the reader cannot see | `walkHistory` follows `supersedes` breadth first (cycle-safe, at most 40), then each entry is looked up with the reader's visibility. A hidden direct predecessor leaves the document's own facts empty while older Fassungen behind it may still show |
 | A restricted folder is never compared by a model | 422 `restricted_folder` in `compareFassungVisually` |
@@ -343,6 +420,14 @@ sequenceDiagram
 
 ## Known gaps
 
+- **An earlier upload under the same name opens only for its uploader and the
+  reviewers.** No version records a screening verdict of its own; the verdict
+  on record is about the document's current bytes. So every earlier upload of a
+  person's document, a screened one included, is refused to an ordinary member
+  (`mayReceiveVersionBytes`), and the timeline shows the row without Öffnen,
+  Herunterladen or the text comparison. Fixing it needs a verdict per version,
+  written by the reconcile when a job passes those bytes.
+
 - **A re-read after a failed first ingest loses `fassung_of`.** `reingestDocument`
   dispatches without it (`frontends/ui/src/lib/documents/service.ts`), so the
   confirmed link is never written. The file falls back to the ordinary path: a
@@ -365,8 +450,12 @@ sequenceDiagram
   state is stored. A set of sheets under one file name has one number and one
   Index.
 - **The link lives on the knowledge layer, not in the BFF database.** A document
-  deleted on one side leaves a dangling name. The BFF drops a reference it cannot
-  resolve, and the search query checks that the newer row still exists.
+  purged on one side leaves a dangling name, on purpose while the purge can be
+  undone (above). The BFF drops a reference it cannot resolve, and the search
+  query checks that the newer row still exists.
+- **Only the Fassung facts are kept across a purge.** The row's person-set tags,
+  topics, Dokumentart and display title go with it; `POST /v1/ingest` carries
+  only `folder_path` (and `fassung_of`) back when the document is read again.
 - **Restricted folders cannot be compared** by a model.
 
 ## Where to change what

@@ -187,7 +187,12 @@ export async function inPool<T, R>(items: readonly T[], limit: number, work: (it
   return results
 }
 
-/** Take one document's chunks out of retrieval; true when the backend confirmed (or it owns none). */
+/**
+ * Take one document's chunks out of retrieval; true when the backend confirmed
+ * (or it owns none). Reversible on purpose: a restore from the bin reads the
+ * document again and gets back the Fassung links a person made (ADR-0098). The
+ * bin's final purge erases through `eraseProjectDocument`, which is permanent.
+ */
 export function purgeChunksOf(doc: Document): Promise<boolean> {
   const ref = collectionFileRef(doc)
   return ref ? purgeIngestedChunks(getBackendUrl(), ref, CHUNK_PURGE_TIMEOUT_MS) : Promise.resolve(true)

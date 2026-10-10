@@ -208,3 +208,15 @@ export function resolveFassungFacts(
   if (!supersededBy && supersedes.length === 0 && !suggestion && !changeSummary) return null
   return { supersededBy, supersedes, suggestion, changeSummary }
 }
+
+/**
+ * The text of `summary` when it was written against the document `olderId`, else
+ * null. A change summary says what differs from ONE other document, named by
+ * its basis; a notification about another pair must not quote it, because it
+ * describes a comparison the recipient was not told about, possibly with a
+ * document they may not open. Pure.
+ */
+export function changeSummaryAgainst(summary: FassungFacts['changeSummary'], olderId: string): string | null {
+  if (!summary || summary.basis === 'previous') return null
+  return summary.basis.id === olderId ? summary.text : null
+}

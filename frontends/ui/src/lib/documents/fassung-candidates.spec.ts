@@ -11,7 +11,8 @@ import type { FassungNames } from './fassung'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('@/lib/authz/folder-access', () => ({ getHiddenFolderIds: vi.fn().mockResolvedValue(['hidden-folder']) }))
+vi.mock('@/lib/authz/folder-access', () => ({ getProjectFolderAccess: vi.fn() }))
+vi.mock('./shelf-collection', () => ({ shelfCollectionName: vi.fn().mockResolvedValue('proj_abc') }))
 vi.mock('@/lib/upload-screening/quarantine-reviewers', () => ({
   shelfReaderFor: vi.fn().mockResolvedValue({ kind: 'member', userId: 'user-1' }),
 }))
@@ -19,6 +20,8 @@ vi.mock('./fassung-candidates-repository', () => ({ findFassungSeriesRows: vi.fn
 vi.mock('./reconcile-status', () => ({ readFassungNames: vi.fn() }))
 
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { getProjectFolderAccess } from '@/lib/authz/folder-access'
+import { computeFolderAccess, restrictedCollectionName } from '@/lib/authz/folder-access-rule'
 import { findFassungSeriesRows, type FassungSeriesRow } from './fassung-candidates-repository'
 import { fassungCandidatesOnShelf, probeProjectFassungCandidates } from './fassung-candidates'
 import { readFassungNames } from './reconcile-status'
@@ -170,15 +173,72 @@ describe('fassungCandidatesOnShelf', () => {
 })
 
 describe('probeProjectFassungCandidates', () => {
+  // „Honorare" restricts reading: its documents are a collection of their own
+  // (ADR-0087). „Verborgen" is one this reader may not open.
+  const SECRET = '5ec7e700-0000-4000-8000-000000000001'
+  const HIDDEN = '41dde400-0000-4000-8000-000000000002'
+  const secretCollection = restrictedCollectionName('proj_abc', SECRET)
+
+  beforeEach(() => {
+    vi.mocked(getProjectFolderAccess).mockResolvedValue(
+      computeFolderAccess(
+        [
+          { id: SECRET, parentId: null, accessMode: 'custom', everyoneReads: false },
+          { id: HIDDEN, parentId: null, accessMode: 'custom', everyoneReads: false },
+        ],
+        { levels: { [SECRET]: 'write' }, seesEverything: false },
+        'proj_abc',
+      ),
+    )
+    vi.mocked(findFassungSeriesRows).mockResolvedValue([
+      row('open', 'EG_Grundriss_Index_B.pdf'),
+      { ...row('secret', 'EG_Grundriss_Index_A.pdf'), folderId: SECRET, collectionName: secretCollection },
+    ])
+  })
+
   it('asks for project:view like the name probe, and reads as the caller does: hidden folders out', async () => {
     await probeProjectFassungCandidates(session, 'p1', ['EG_Grundriss_Index_C.pdf'])
 
     expect(requireProjectAccess).toHaveBeenCalledWith(session, 'p1', 'project:view')
+    expect(getProjectFolderAccess).toHaveBeenCalledWith(session, 'p1', 'proj_abc')
     expect(findFassungSeriesRows).toHaveBeenCalledWith(
       { kind: 'project', projectId: 'p1' },
       'org-1',
       ['grundriss'],
-      { hiddenFolderIds: ['hidden-folder'], reader },
+      { hiddenFolderIds: [HIDDEN], reader },
     )
+  })
+
+  it('offers a file landing at the root only documents of the project collection, never one in a restricted folder', async () => {
+    const [offer] = await probeProjectFassungCandidates(session, 'p1', ['EG_Grundriss_Index_C.pdf'], {
+      'EG_Grundriss_Index_C.pdf': null,
+    })
+
+    expect(offer.candidates.map((candidate) => candidate.id)).toEqual(['open'])
+    expect(offer.unambiguous).toBe(true)
+  })
+
+  it('offers a file landing in a restricted folder only the documents of that folder’s collection', async () => {
+    const [offer] = await probeProjectFassungCandidates(session, 'p1', ['EG_Grundriss_Index_C.pdf'], {
+      'EG_Grundriss_Index_C.pdf': SECRET,
+    })
+
+    expect(offer.candidates.map((candidate) => candidate.id)).toEqual(['secret'])
+  })
+
+  it('reads a name it is not told about as landing at the root', async () => {
+    const [offer] = await probeProjectFassungCandidates(session, 'p1', ['EG_Grundriss_Index_C.pdf'])
+
+    expect(offer.candidates.map((candidate) => candidate.id)).toEqual(['open'])
+  })
+
+  it('offers nothing when the collection the file goes to holds no document of its series', async () => {
+    vi.mocked(findFassungSeriesRows).mockResolvedValue([
+      { ...row('secret', 'EG_Grundriss_Index_A.pdf'), folderId: SECRET, collectionName: secretCollection },
+    ])
+
+    await expect(
+      probeProjectFassungCandidates(session, 'p1', ['EG_Grundriss_Index_C.pdf'], { 'EG_Grundriss_Index_C.pdf': null }),
+    ).resolves.toEqual([])
   })
 })

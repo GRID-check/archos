@@ -43,22 +43,26 @@ beforeEach(() => {
   vi.mocked(getAccessibleDocument).mockReset().mockResolvedValue(older())
 })
 
+const linked = (fassungOf: string) => ({ fassungOf, ignored: null })
+const nothing = { fassungOf: null, ignored: null }
+const ignored = (reason: string) => ({ fassungOf: null, ignored: reason })
+
 describe('resolveFassungOf', () => {
   it('answers the older file’s name, after asking for WRITE access to the older document', async () => {
-    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toBe('Grundriss_EG_Index_B.pdf')
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(linked('Grundriss_EG_Index_B.pdf'))
     expect(getAccessibleDocument).toHaveBeenCalledWith(session, OLDER_ID, 'write')
   })
 
   it('has nothing to link when no choice was made', async () => {
-    await expect(resolveFassungOf(session, null, target)).resolves.toBeNull()
-    await expect(resolveFassungOf(session, undefined, target)).resolves.toBeNull()
+    await expect(resolveFassungOf(session, null, target)).resolves.toEqual(nothing)
+    await expect(resolveFassungOf(session, undefined, target)).resolves.toEqual(nothing)
     expect(getAccessibleDocument).not.toHaveBeenCalled()
   })
 
   it('ignores the choice when the names are equal: that is a new version (ADR-0054), never a Fassung', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ filename: 'Grundriss_EG_Index_C.pdf' }))
 
-    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toBeNull()
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(nothing)
   })
 
   it('compares names the way the shelf does: one Unicode form', async () => {
@@ -66,64 +70,68 @@ describe('resolveFassungOf', () => {
 
     await expect(
       resolveFassungOf(session, OLDER_ID, { ...target, filename: 'Küche_Index_B.pdf'.normalize('NFC') }),
-    ).resolves.toBeNull()
+    ).resolves.toEqual(nothing)
   })
 
-  it('refuses an older document in another collection (a restricted folder has its own, ADR-0087)', async () => {
+  // The choice is an addition to the upload, never its gate: what may not be
+  // honoured is dropped and reported, and the file is stored on its own.
+  it('drops an older document in another collection (a restricted folder has its own, ADR-0087), without throwing', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ collectionName: 'proj_restricted' }))
 
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toMatchObject({
-      details: { reason: 'different_collection' },
-    })
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('different_collection'))
   })
 
-  it('refuses an older document on another shelf', async () => {
+  it('drops an older document on another shelf', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ projectId: 'proj-2' }))
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toMatchObject({
-      details: { reason: 'different_shelf' },
-    })
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('different_shelf'))
 
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'archiv', projectId: null }))
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(BadRequestError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('different_shelf'))
   })
 
   it('accepts an Archiv document for an Archiv upload', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ scope: 'archiv', projectId: null }))
 
-    await expect(resolveFassungOf(session, OLDER_ID, { ...target, shelf: { kind: 'archiv' } })).resolves.toBe(
-      'Grundriss_EG_Index_B.pdf',
+    await expect(resolveFassungOf(session, OLDER_ID, { ...target, shelf: { kind: 'archiv' } })).resolves.toEqual(
+      linked('Grundriss_EG_Index_B.pdf'),
     )
   })
 
-  it('refuses an archived older document', async () => {
+  it('drops an archived older document', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ lifecycle: 'archived' }))
 
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toMatchObject({ details: { reason: 'archived' } })
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('archived'))
   })
 
-  it('does not find an older document that is held (ADR-0086), not even to say so', async () => {
+  it('drops an older document that is held (ADR-0086), reported like one that does not exist', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ status: 'quarantined' }))
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('unavailable'))
 
     // Bytes that were never screened are held the same way.
     vi.mocked(getAccessibleDocument).mockResolvedValue(older({ screenedHash: 'other', screeningOutcome: null }))
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('unavailable'))
   })
 
-  it('does not find a machine-authored older document: it owns no chunks over there', async () => {
+  it('drops a machine-authored older document: it owns no chunks over there', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(
       older({ authoredBy: 'agent', authoredByProducer: 'research', authoredByRef: 'run-1', authoredByRefKind: 'agent_run' }),
     )
 
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('unavailable'))
   })
 
-  it('lets the access rule speak: a reader who may not change the older document is refused', async () => {
+  it('reports a document the reader may not change exactly like one they may not see', async () => {
     vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(ForbiddenError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('unavailable'))
 
     vi.mocked(getAccessibleDocument).mockRejectedValue(new NotFoundError())
-    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toBeInstanceOf(NotFoundError)
+    await expect(resolveFassungOf(session, OLDER_ID, target)).resolves.toEqual(ignored('unavailable'))
+  })
+
+  it('still throws what is not about the choice: a failed read is not a dropped link', async () => {
+    vi.mocked(getAccessibleDocument).mockRejectedValue(new Error('db down'))
+
+    await expect(resolveFassungOf(session, OLDER_ID, target)).rejects.toThrow('db down')
   })
 })
 

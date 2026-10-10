@@ -59,6 +59,7 @@ import {
 import type { DocumentVersionState } from './lifecycle-types'
 import { findDocumentInOrg } from './repository'
 import { hasPassedScreening, SCREENED_ONLY, versionBytesPassedScreening } from '@/lib/documents/document-reader'
+import { maySeeHeld } from '@/lib/upload-screening/quarantine-reviewers'
 import {
   findDocumentVersion,
   findDocumentVersionInOrg,
@@ -393,11 +394,49 @@ async function readObjectText(
 }
 
 /**
+ * Whether a PERSON may receive this version's bytes (ADR-0086): bytes the
+ * verdict on record judged (`versionBytesPassedScreening`), or the uploader and
+ * the reviewers, who may see what is held. A held document's item paths already
+ * answer that; a version is the other way in, because an earlier upload under
+ * the same name was replaced while it was still being read, or after its
+ * reading failed, and no verdict on record is about its bytes. A member gets
+ * the 404 an unknown version gets.
+ *
+ * Since no version records a verdict of its own, this refuses EVERY earlier
+ * upload of a person's document to a member, a screened one included.
+ */
+export async function mayReceiveVersionBytes(
+  session: AuthorizedSession,
+  document: Document,
+  version: Pick<DocumentVersion, 'state' | 'contentHash'>,
+): Promise<boolean> {
+  if (versionBytesPassedScreening(document, version)) return true
+  return maySeeHeld(session, document)
+}
+
+/**
+ * {@link mayReceiveVersionBytes} for a whole version list, asking who may see
+ * what is held at most once: what the timeline reads to offer Öffnen and
+ * Herunterladen only where the route will answer.
+ */
+export async function versionBytesReadableBy(
+  session: AuthorizedSession,
+  document: Document,
+  versions: readonly Pick<DocumentVersion, 'id' | 'state' | 'contentHash'>[],
+): Promise<(version: Pick<DocumentVersion, 'state' | 'contentHash'>) => boolean> {
+  const judged = (version: Pick<DocumentVersion, 'state' | 'contentHash'>) => versionBytesPassedScreening(document, version)
+  if (versions.every(judged)) return judged
+  const seesHeld = await maySeeHeld(session, document)
+  return (version) => seesHeld || judged(version)
+}
+
+/**
  * The version's text, read for a session that may read its document; nothing
  * is recorded here. `forModel` when a model reads the text rather than the
  * person: a held document (ADR-0086) reaches no model, whoever's session
  * fetches it, its uploader and its reviewers included, and neither do a
- * version's bytes the verdict on record did not judge.
+ * version's bytes the verdict on record did not judge. A person gets those
+ * bytes only when they may see what is held ({@link mayReceiveVersionBytes}).
  */
 async function fetchVersionText(
   session: AuthorizedSession,
@@ -409,7 +448,10 @@ async function fetchVersionText(
   if (forModel && !hasPassedScreening(document)) throw new NotFoundError('Version not found')
   const version = await findDocumentVersion(versionId, documentId, session.organizationId)
   if (!version) throw new NotFoundError('Version not found')
-  if (forModel && !versionBytesPassedScreening(document, version)) throw new NotFoundError('Version not found')
+  const passed = forModel
+    ? versionBytesPassedScreening(document, version)
+    : await mayReceiveVersionBytes(session, document, version)
+  if (!passed) throw new NotFoundError('Version not found')
   return { document, text: await readObjectText(version.storageBucket, version.storageKey) }
 }
 
@@ -459,8 +501,9 @@ const INLINE_VERSION_CONTENT_TYPES: ReadonlySet<string> = new Set([
  * the same name was kept and reachable through none of them.
  *
  * Authorization is the document's (`getAccessibleDocument`: the shelf's rule,
- * the folder's, and the hold of ADR-0086), then the version must belong to it
- * and be in a state in {@link TIMELINE_BYTES_STATES}. The hand-over is recorded
+ * the folder's, and the hold of ADR-0086), then the version must belong to it,
+ * be in a state in {@link TIMELINE_BYTES_STATES}, and hold bytes this person may
+ * receive ({@link mayReceiveVersionBytes}). The hand-over is recorded
  * as `kind: 'version'` with the version's id, as `readVersionContent` does.
  *
  * The file name is the document's: a version does not carry one of its own.
@@ -474,6 +517,8 @@ export async function streamVersionFile(
   const document = await getAccessibleDocument(session, documentId, 'read')
   const version = await findDocumentVersion(versionId, documentId, session.organizationId)
   if (!version || !TIMELINE_BYTES_STATES.has(version.state)) throw new NotFoundError('Version not found')
+  // Bytes no verdict on record judged are the uploader's and the reviewers' alone (ADR-0086).
+  if (!(await mayReceiveVersionBytes(session, document, version))) throw new NotFoundError('Version not found')
 
   let body
   try {

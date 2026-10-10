@@ -67,6 +67,23 @@ describe('POST /api/documents/fassung-candidates', () => {
       expect.objectContaining({ organizationId: 'org_1' }),
       'proj_1',
       ['EG_Index_C.pdf'],
+      undefined,
+    )
+  })
+
+  it('carries where each name lands, so the server offers documents of that folder’s collection only (ADR-0087)', async () => {
+    const landsIn = new Map<string, string | null>([
+      ['EG_Index_C.pdf', 'folder_secret'],
+      ['OG_Index_B.pdf', null],
+    ])
+
+    await client.projectFassungen('proj_1', ['EG_Index_C.pdf', 'OG_Index_B.pdf'], landsIn)
+
+    expect(probeProjectFassungCandidates).toHaveBeenCalledWith(
+      expect.objectContaining({ organizationId: 'org_1' }),
+      'proj_1',
+      ['EG_Index_C.pdf', 'OG_Index_B.pdf'],
+      { 'EG_Index_C.pdf': 'folder_secret', 'OG_Index_B.pdf': null },
     )
   })
 

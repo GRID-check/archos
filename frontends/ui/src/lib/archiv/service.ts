@@ -226,7 +226,8 @@ export async function deleteArchivDocument(
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0098).
+      await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 
   // Every version's objects and derivatives, or a 502 and the row stays — the
@@ -240,7 +241,7 @@ export async function deleteArchivDocument(
   // and kept chunks it inserted after the first purge (ADR-0054, correction
   // 18). Any check from here on reads „gone“ and discards its own. Logged
   // inside, never thrown: the row is gone, and the orphan sweep is the net.
-  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
 
   await recordAuditEvent({
     organizationId: session.organizationId,

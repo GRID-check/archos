@@ -34,6 +34,23 @@ const names = z.array(z.string().min(1).max(1024)).min(1).max(NAME_PROBE_MAX_NAM
 export const archivNameProbeRequestSchema = z.object({ names })
 export const projectNameProbeRequestSchema = z.object({ projectId: z.string().min(1), names })
 
+/**
+ * The project's Fassung probe also says where each dropped name lands: the
+ * existing folder it is filed in, or, for a folder the upload creates, the
+ * nearest existing one above it (a new folder inherits its access). `null` is
+ * the project root. A restricted folder is a collection of its own (ADR-0087)
+ * and a Fassung link lives in one collection, so only documents of the
+ * collection the file goes to are offered. A name it does not mention lands at
+ * the root.
+ */
+export const projectFassungCandidatesRequestSchema = projectNameProbeRequestSchema.extend({
+  folders: z
+    .record(z.string().min(1).max(1024), z.string().min(1).max(64).nullable())
+    .refine((folders) => Object.keys(folders).length <= NAME_PROBE_MAX_NAMES, 'Too many names')
+    .optional(),
+})
+export type ProjectFassungCandidatesRequest = z.infer<typeof projectFassungCandidatesRequestSchema>
+
 export const documentNameMatchSchema = z.object({
   id: z.string(),
   filename: z.string(),

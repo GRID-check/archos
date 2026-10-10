@@ -78,6 +78,7 @@ import {
   BACKEND_PURGE_TIMEOUT_MS,
   readVersionTextForTask,
   renderVersionBytes,
+  versionBytesReadableBy,
   writeVersionContent,
 } from './version-content'
 import type { AgentDocumentProvenance, DispatchDocumentResult, IngestPriority } from './service'
@@ -1384,7 +1385,11 @@ export async function listDocumentVersionViews(
   documentId: string,
 ): Promise<DocumentVersionListResponse> {
   const document = await getAccessibleDocument(session, documentId, 'read')
-  const versions = (await listDocumentVersions(documentId, session.organizationId)).map(toDocumentVersionView)
+  const rows = await listDocumentVersions(documentId, session.organizationId)
+  // Whether `…/versions/{id}/file` and `/content` will hand this reader the
+  // bytes (ADR-0086), so the timeline offers Öffnen only where they will.
+  const readable = await versionBytesReadableBy(session, document, rows)
+  const versions = rows.map((version) => ({ ...toDocumentVersionView(version), bytesReadable: readable(version) }))
   const reviewerUserIds = await openReviewRound(session.organizationId, documentId, versions)
   const people = await resolvePeople(session.organizationId, [...new Set([...versionActors(versions), ...reviewerUserIds])])
   return {

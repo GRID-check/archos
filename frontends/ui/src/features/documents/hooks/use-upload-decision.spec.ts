@@ -139,7 +139,7 @@ describe('useUploadDecision — Fassungen across names', () => {
     })
 
     expect(sendDirect).not.toHaveBeenCalled()
-    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'])
+    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'], new Map([['EG_Grundriss_Index_C.pdf', null]]))
     await waitFor(() => expect(result.current.plan?.files[0].fassungOf).toMatchObject({ chosen: true, of: { id: 'b' } }))
     expect(result.current.open).toBe(true)
   })
@@ -154,8 +154,35 @@ describe('useUploadDecision — Fassungen across names', () => {
       await result.current.propose({ ...base, files, fassungOffers: offers }, sendDirect)
     })
 
-    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'])
+    expect(offers).toHaveBeenCalledWith(['EG_Grundriss_Index_C.pdf'], expect.any(Map))
     expect(sendDirect).toHaveBeenCalledWith(files)
+  })
+
+  it('says where each name lands: the existing folder, or the nearest existing one above a folder still to be created (ADR-0087)', async () => {
+    const offers = vi.fn(async () => [])
+    const { result } = renderHook(() => useUploadDecision())
+    const folders = [
+      { id: 'f-root', parentId: null, name: 'Projekt', path: 'Projekt' },
+      { id: 'f-einreichung', parentId: 'f-root', name: 'Einreichung', path: 'Projekt/Einreichung' },
+    ]
+    const files = [
+      pathed('Projekt/EG_Grundriss_Index_C.pdf'),
+      pathed('Projekt/Einreichung/Neu/Schnitt_AA_Index_2.pdf'),
+      pathed('Projekt/Einreichung/Ansicht_Nord_Index_B.pdf'),
+    ]
+
+    await act(async () => {
+      await result.current.propose({ documents: [], folders, currentFolderId: 'f-root', files, fassungOffers: offers }, vi.fn())
+    })
+
+    expect(offers).toHaveBeenCalledWith(
+      ['EG_Grundriss_Index_C.pdf', 'Schnitt_AA_Index_2.pdf', 'Ansicht_Nord_Index_B.pdf'],
+      new Map([
+        ['EG_Grundriss_Index_C.pdf', 'f-root'],
+        ['Schnitt_AA_Index_2.pdf', 'f-einreichung'],
+        ['Ansicht_Nord_Index_B.pdf', 'f-einreichung'],
+      ]),
+    )
   })
 
   it('makes no request at all for names without an index or a date', async () => {

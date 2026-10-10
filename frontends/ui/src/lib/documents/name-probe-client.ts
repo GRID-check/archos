@@ -37,8 +37,18 @@ export interface DocumentNameProbeClient {
   project: (projectId: string, names: readonly string[]) => Promise<DocumentNameMatch[]>
   /** Matches in the organization's Archiv. */
   archiv: (names: readonly string[]) => Promise<DocumentNameMatch[]>
-  /** What the names continue on a project's shelf: the documents they would be the next Fassung of (ADR-0098). */
-  projectFassungen: (projectId: string, names: readonly string[]) => Promise<FassungCandidateMatch[]>
+  /**
+   * What the names continue on a project's shelf: the documents they would be
+   * the next Fassung of (ADR-0098). `landsIn` says where each name lands (the
+   * existing folder, or the nearest existing one above a folder the upload
+   * creates; null is the root), so only documents of the collection that
+   * folder files into are offered (ADR-0087).
+   */
+  projectFassungen: (
+    projectId: string,
+    names: readonly string[],
+    landsIn?: ReadonlyMap<string, string | null>,
+  ) => Promise<FassungCandidateMatch[]>
   /** What the names continue in the Archiv. */
   archivFassungen: (names: readonly string[]) => Promise<FassungCandidateMatch[]>
 }
@@ -79,10 +89,20 @@ export function createDocumentNameProbeClient(
   const batched = async (path: string, names: readonly string[], extra: Record<string, unknown>) =>
     uniqueById((await Promise.all(chunks(names).map((batch) => post(path, { ...extra, names: batch })))).flat())
   /** One answer per dropped name: two batches never answer for the same name. */
-  const candidates = async (path: string, names: readonly string[], extra: Record<string, unknown>) => {
+  const candidates = async (
+    path: string,
+    names: readonly string[],
+    extra: Record<string, unknown>,
+    landsIn?: ReadonlyMap<string, string | null>
+  ) => {
+    /** Where the batch's names land, for the names the caller said; nothing when it said none. */
+    const foldersOf = (batch: readonly string[]) =>
+      landsIn
+        ? { folders: Object.fromEntries(batch.filter((name) => landsIn.has(name)).map((name) => [name, landsIn.get(name) ?? null])) }
+        : {}
     const answers = await Promise.all(
       chunks(names).map(async (batch) =>
-        fassungCandidatesResponseSchema.parse(await send(path, { ...extra, names: batch })).candidates
+        fassungCandidatesResponseSchema.parse(await send(path, { ...extra, names: batch, ...foldersOf(batch) })).candidates
       )
     )
     return [...new Map(answers.flat().map((candidate) => [candidate.name, candidate])).values()]
@@ -90,7 +110,7 @@ export function createDocumentNameProbeClient(
   return {
     project: (projectId, names) => batched(PROJECT_NAME_PROBE_PATH, names, { projectId }),
     archiv: (names) => batched(ARCHIV_NAME_PROBE_PATH, names, {}),
-    projectFassungen: (projectId, names) => candidates(PROJECT_FASSUNG_CANDIDATES_PATH, names, { projectId }),
+    projectFassungen: (projectId, names, landsIn) => candidates(PROJECT_FASSUNG_CANDIDATES_PATH, names, { projectId }, landsIn),
     archivFassungen: (names) => candidates(ARCHIV_FASSUNG_CANDIDATES_PATH, names, {}),
   }
 }

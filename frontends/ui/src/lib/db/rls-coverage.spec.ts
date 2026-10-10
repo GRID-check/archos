@@ -135,6 +135,10 @@ const BOUNDARY_MIGRATIONS = [
   // tied to its project by a composite foreign key, the requirements to the
   // record.
   '0126_permit_records.sql',
+  // Adds document_fassung_announcements — which new Fassungen have been
+  // announced, so a re-read does not announce one again. Keyed directly by its
+  // organization; cascades with the newer document.
+  '0129_document_fassung_announcements.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

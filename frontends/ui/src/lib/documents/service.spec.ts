@@ -730,18 +730,28 @@ describe('uploadDocument filed as a new Fassung (ADR-0098)', () => {
     )
   })
 
-  it('refuses an archived older document before a byte is stored', async () => {
+  it.each([
+    ['archived', { lifecycle: 'archived' as const }, 'archived'],
+    // The dialog offered it, then the folder was restricted: a collection of its own (ADR-0087).
+    ['in another collection', { collectionName: 'proj_abc_r_folder1' }, 'different_collection'],
+  ])('stores the file as a document of its own when the older document is %s, and reports why it is not linked', async (_label, overrides, reason) => {
     vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
-      id === OLDER_ID ? older({ lifecycle: 'archived' }) : makeDocument({ id }),
+      id === OLDER_ID ? older(overrides) : makeDocument({ id, filename: 'Grundriss_EG_Index_C.pdf' }),
     )
     vi.mocked(s3Client.send).mockClear()
 
-    await expect(
-      uploadDocument(session, { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID }, new Request('http://x')),
-    ).rejects.toBeInstanceOf(BadRequestError)
+    const result = await uploadDocument(
+      session,
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      new Request('http://x'),
+    )
 
-    expect(putCalls()).toHaveLength(0)
-    expect(admitOrDiscard).not.toHaveBeenCalled()
+    expect(putCalls()).toHaveLength(1)
+    expect(result).toMatchObject({ fassungOfIgnored: reason })
+    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    const metadata = vi.mocked(recordAuditEvent).mock.calls.find(([event]) => event.action === 'document.uploaded')?.[0].metadata
+    expect(metadata).toMatchObject({ fassungOfIgnored: reason })
+    expect(metadata).not.toHaveProperty('fassungOf')
   })
 
   it('sends no fassung_of, and records none, for an upload nobody filed as a Fassung', async () => {
@@ -2334,7 +2344,19 @@ describe('the authorship gate on the (collection, filename) join', () => {
       const [url, init] = documentCalls()[0] ?? []
       expect(String(url)).toBe('http://backend:8000/v1/collections/proj_abc/documents')
       expect((init as RequestInit)?.method).toBe('DELETE')
-      expect(JSON.parse(String((init as RequestInit)?.body))).toEqual({ file_ids: [collidingName] })
+      expect(JSON.parse(String((init as RequestInit)?.body))).toEqual({ file_ids: [collidingName], permanent: true })
+    })
+
+    it('purges permanently, both times: a deleted document keeps no Fassung link for a later upload of its name', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+
+      await deleteDocument(session, 'doc-1', new Request('http://x'))
+
+      const deletes = documentCalls().filter(([, init]) => (init as RequestInit)?.method === 'DELETE')
+      expect(deletes).toHaveLength(2)
+      for (const [, init] of deletes) {
+        expect(JSON.parse(String((init as RequestInit)?.body))).toMatchObject({ permanent: true })
+      }
     })
   })
 

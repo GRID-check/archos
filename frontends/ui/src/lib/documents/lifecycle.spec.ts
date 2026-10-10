@@ -101,6 +101,7 @@ vi.mock('./version-content', () => ({
   BACKEND_PURGE_TIMEOUT_MS: 10_000,
   readVersionTextForTask: vi.fn().mockResolvedValue('# Aktenvermerk'),
   renderVersionBytes: vi.fn(),
+  versionBytesReadableBy: vi.fn(),
   writeVersionContent: vi.fn(),
 }))
 vi.mock('@/lib/storage/discard', () => ({ discardObject: vi.fn() }))
@@ -154,11 +155,12 @@ import {
   listDocumentVersions,
   promoteVersionToPublished,
 } from './version-repository'
-import { readVersionTextForTask, renderVersionBytes, writeVersionContent } from './version-content'
+import { readVersionTextForTask, renderVersionBytes, versionBytesReadableBy, writeVersionContent } from './version-content'
 import { DocumentDeletedError, OpenVersionExistsError } from './unique-conflicts'
 import {
   createDocumentVersion,
   forkDraftVersion,
+  listDocumentVersionViews,
   recordUploadedVersion,
   recordUploadedVersionOrDiscard,
   replaceVersionContent,
@@ -989,6 +991,8 @@ describe('ingestPublished — what publishing a Piloti document does to the inde
       expect.objectContaining({ filename: 'piloti/doc_1/aktenvermerk-2026-09-01.md' }),
       expect.any(Number),
     )
+    // Reversible: the publish reads the same name again, and keeps its Fassung links.
+    expect(vi.mocked(purgeIngestedChunks).mock.calls[0]).toHaveLength(3)
   })
 
   it('purges nothing on a FIRST publish, because there is nothing to replace', async () => {
@@ -1558,5 +1562,22 @@ describe('request_changes and the revision task', () => {
       (row.effects as readonly string[]).includes('openRevisionTask'),
     )
     expect(carrying.map((row) => row.op)).toEqual(['request_changes'])
+  })
+})
+
+describe('listDocumentVersionViews — whether each version opens for this reader', () => {
+  it('says per version whether the reader may receive its bytes (ADR-0086), from the one rule the routes apply', async () => {
+    const earlier = version({ id: 'ver_1', versionNumber: 1, state: 'superseded', contentHash: 'sha256:before' })
+    const current = version({ id: 'ver_2', versionNumber: 2, state: 'published', contentHash: 'sha256:now' })
+    vi.mocked(listDocumentVersions).mockResolvedValue([earlier, current])
+    vi.mocked(versionBytesReadableBy).mockResolvedValue((row) => row.contentHash === 'sha256:now')
+
+    const listing = await listDocumentVersionViews(session, 'doc_1')
+
+    expect(versionBytesReadableBy).toHaveBeenCalledWith(session, document, [earlier, current])
+    expect(listing.versions.map((row) => [row.id, row.bytesReadable])).toEqual([
+      ['ver_1', false],
+      ['ver_2', true],
+    ])
   })
 })

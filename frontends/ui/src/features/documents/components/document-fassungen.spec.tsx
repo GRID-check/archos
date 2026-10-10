@@ -687,6 +687,25 @@ describe('DocumentFassungen — one visible action per row, the rest behind ⋯'
     )
   })
 
+  it('offers neither Öffnen, Herunterladen nor a comparison of an earlier upload this reader may not receive (ADR-0086)', async () => {
+    await renderOpen({
+      file: fileFixture({ versionCount: 2 }),
+      viewer: reviewer,
+      client: clientOf([makeVersion(1, 'superseded', { bytesReadable: false }), makeVersion(2, 'published')]),
+    })
+
+    const rows = await screen.findAllByTestId('fassung-timeline-row')
+    expect(rows).toHaveLength(2)
+    expect(screen.queryByTestId('fassung-version-open')).toBeNull()
+    for (const row of rows) {
+      if (!within(row).queryByTestId('fassung-row-menu')) continue
+      await openRowMenu(row)
+      expect(screen.queryByTestId('fassung-version-download')).toBeNull()
+      expect(screen.queryByTestId('document-version-compare')).toBeNull()
+      await userEvent.keyboard('{Escape}')
+    }
+  })
+
   it('opens a version that was never published as text, and offers no download of it', async () => {
     await renderOpen({ viewer: reviewer, client: clientOf([makeVersion(1, 'published'), reviewed(2, 'draft')]) })
 

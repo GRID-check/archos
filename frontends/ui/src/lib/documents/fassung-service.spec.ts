@@ -119,7 +119,7 @@ describe('setFassungLink', () => {
       supersededBy: null,
       supersedes: [{ id: 'doc-a', filename: 'Grundriss_A.pdf' }],
       suggestion: null,
-      changeSummary: { text: 'Wand verschoben.\nTür neu.', basis: 'previous' },
+      changeSummary: { text: 'Wand verschoben.\nTür neu.', basis: { id: 'doc-a', filename: 'Grundriss_A.pdf' } },
     }
     vi.mocked(loadFassungFacts).mockResolvedValue(new Map([['doc-b', newerFacts]]))
 
@@ -133,6 +133,35 @@ describe('setFassungLink', () => {
       olderId: 'doc-a',
       changeSummary: 'Wand verschoben.\nTür neu.',
     })
+  })
+
+  it.each([
+    ['another document', { id: 'doc-z', filename: 'Grundriss_Z.pdf' }],
+    ['the earlier upload under its own name', 'previous' as const],
+  ])('sends no excerpt when the change summary was written against %s, not the older document', async (_label, basis) => {
+    const newerFacts: FassungFacts = {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-a', filename: 'Grundriss_A.pdf' }],
+      suggestion: null,
+      changeSummary: { text: 'Archiv-Stand gelöscht.', basis },
+    }
+    vi.mocked(loadFassungFacts).mockResolvedValue(new Map([['doc-b', newerFacts]]))
+
+    await setFassungLink(session, 'doc-b', 'doc-a', true, request)
+
+    expect(announceNewFassung).toHaveBeenCalledWith(expect.objectContaining({ olderId: 'doc-a', changeSummary: null }))
+  })
+
+  it('tells the backend whose organization and person the confirmation runs for (BYOK, ZDR, spend)', async () => {
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'tok-1')
+
+    await setFassungLink(session, 'doc-b', 'doc-a', true, request)
+
+    const headers = mockFetch.mock.calls[0][1].headers as Record<string, string>
+    expect(headers['x-grid-organization-id']).toBe('org-1')
+    expect(headers['x-grid-user-id']).toBe('user-1')
+    expect(headers['x-grid-internal-token']).toBe('tok-1')
+    vi.unstubAllEnvs()
   })
 
   it('announces nothing when the link is taken back', async () => {

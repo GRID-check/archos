@@ -377,11 +377,15 @@ export function DocumentFassungen({
   const renderVersionRow = (row: VersionRow, index: number): JSX.Element => {
     const { version } = row
     const everArrived = version.state === 'published' || version.state === 'superseded'
+    // An earlier upload whose bytes no screening verdict judged is its
+    // uploader's and the reviewers' to open (ADR-0086): the routes refuse it to
+    // everyone else, so nothing here offers what would be a 404.
+    const openable = version.bytesReadable !== false
     // The newest carries its whole story; an older row, only its last act.
     const acts = row.newest && versionActs(version).length > 0 ? versionActs(version) : [latestAct(version)]
     const predecessorNumber = row.predecessor ? numberOfVersion(rows, row.predecessor.id) : null
     const menu: ActionMenuEntry[] = []
-    if (!row.current && everArrived) {
+    if (!row.current && everArrived && openable) {
       menu.push({
         type: 'item',
         id: 'download',
@@ -391,7 +395,7 @@ export function DocumentFassungen({
         testId: 'fassung-version-download',
       })
     }
-    if (row.predecessor && predecessorNumber !== null) {
+    if (row.predecessor && predecessorNumber !== null && openable && row.predecessor.bytesReadable !== false) {
       const predecessor = row.predecessor
       menu.push({
         type: 'item',
@@ -425,7 +429,7 @@ export function DocumentFassungen({
         dataset={{ kind: 'version', version: String(version.versionNumber), state: version.state, number: String(row.number) }}
         action={
           // The current Fassung is the document in front of the reader.
-          row.current ? null : (
+          row.current || !openable ? null : (
             <RowAction asChild>
               <a
                 href={everArrived ? versionFileUrl(file.id, version.id) : versionContentUrl(file.id, version.id)}

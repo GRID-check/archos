@@ -42,7 +42,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
 import { documentStatusFacts } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
-import { resolveFassungOf } from './fassung-upload'
+import { resolveFassungOf, type FassungOfIgnoredReason } from './fassung-upload'
 import { documentNameKey } from './name-match'
 import { sanitizeOriginPath } from './origin-path'
 import { resolveShelfFolderPath } from './folder-path'
@@ -108,6 +108,12 @@ export interface UploadDocumentResult {
    * digest, no `crypto.subtle`).
    */
   unchanged?: true
+  /**
+   * The reader filed it as the new Fassung of a document, and that choice could
+   * not be honoured (`resolveFassungOf`): the file is stored as a document of
+   * its own, and this says why it is not linked. Present only then.
+   */
+  fassungOfIgnored?: FassungOfIgnoredReason
 }
 
 /** 1 and 4 of the four differences between the shelves: the object key's owner prefix. */
@@ -142,6 +148,8 @@ async function uploadAuditEvent(
     replaced: boolean
     /** The older document the reader filed it as the next Fassung of, when they did. */
     fassungOf: string | null
+    /** Why that choice was dropped, when it was: the file went in as a document of its own. */
+    fassungOfIgnored: FassungOfIgnoredReason | null
   },
 ): Promise<void> {
   const located =
@@ -163,6 +171,7 @@ async function uploadAuditEvent(
       fileSize: event.fileSize,
       ...(event.replaced ? { replaced: true } : {}),
       ...(event.fassungOf ? { fassungOf: event.fassungOf.slice(0, 200) } : {}),
+      ...(event.fassungOfIgnored ? { fassungOfIgnored: event.fassungOfIgnored } : {}),
     },
     request,
   })
@@ -182,6 +191,8 @@ interface PlaceUploadInput {
   uploadBatchId: string | null
   /** The file name of the older document this is filed as the next Fassung of, checked; null for none. */
   fassungOf: string | null
+  /** Why the reader's Fassung choice was dropped, when it was. */
+  fassungOfIgnored: FassungOfIgnoredReason | null
   /** Whether the session may write into a folder of this shelf (a superseded document's). */
   mayWriteFolder: (folderId: string | null) => boolean
   /** The screening matches the uploader released (ADR-0086), audited once stored. */
@@ -387,8 +398,9 @@ async function prepareUpload(
   if (shelf.kind === 'project') {
     await assertNameFreeElsewhereInProject(session.organizationId, shelf.projectId, collectionName, filename)
   }
-  // A Fassung the reader chose, before a byte is stored: a refusal leaves nothing behind.
-  const fassungOf = await resolveFassungOf(session, input.fassungOf, { shelf, collectionName, filename })
+  // A Fassung the reader chose, before a byte is stored. One that may not be
+  // honoured is dropped and reported, never a reason to lose the file.
+  const fassung = await resolveFassungOf(session, input.fassungOf, { shelf, collectionName, filename })
 
   // Create the organization's bucket if this is its first upload (ADR-0043). A
   // no-op when per-org buckets are off. Done before the PUT so a provisioning
@@ -419,7 +431,8 @@ async function prepareUpload(
     contentHash: contentDigest(bytes),
     storageBucket,
     uploadBatchId,
-    fassungOf,
+    fassungOf: fassung.fassungOf,
+    fassungOfIgnored: fassung.ignored,
     mayWriteFolder: gate.mayWriteFolder,
     screeningOverridden: nameGate.overridden,
   }
@@ -496,9 +509,10 @@ export async function uploadToShelf(
   const upload = await prepareUpload(session, shelf, input)
   const { file, filename, collectionName, folderPath, storageBucket, contentHash } = upload
 
+  const ignored = upload.fassungOfIgnored ? { fassungOfIgnored: upload.fassungOfIgnored } : {}
   const placed = await placeUpload(session, upload)
   if (placed.unchanged) {
-    return { documentId: placed.documentId, jobId: null, status: 'uploaded', filename, unchanged: true }
+    return { documentId: placed.documentId, jobId: null, status: 'uploaded', filename, unchanged: true, ...ignored }
   }
   const { documentId, storageKey } = placed
 
@@ -538,6 +552,7 @@ export async function uploadToShelf(
     folderId: upload.folderId,
     replaced: placed.replaced,
     fassungOf: input.fassungOf && upload.fassungOf ? input.fassungOf : null,
+    fassungOfIgnored: upload.fassungOfIgnored,
   })
   await auditScreeningOverride(
     session,
@@ -551,5 +566,5 @@ export async function uploadToShelf(
     request,
   )
 
-  return { documentId, jobId, status, filename }
+  return { documentId, jobId, status, filename, ...ignored }
 }

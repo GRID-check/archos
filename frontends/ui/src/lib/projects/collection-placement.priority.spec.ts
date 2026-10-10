@@ -18,6 +18,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 
 vi.mock('@/lib/s3', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/s3')>()),
@@ -139,6 +140,19 @@ describe('a restriction drawn in a request', () => {
     // The queue's default, which is bulk (`enqueueJob`); never stated interactive.
     expect(queued.priority).toBeUndefined()
     expect(tagAwaitingPlacementReingest).toHaveBeenCalledWith(ORG, PROJECT, 'bff-job-1')
+  })
+
+  it('purges the old collection permanently: a Fassung link lives in one collection and ends on a move (ADR-0098)', async () => {
+    vi.mocked(listPlacementRows).mockResolvedValueOnce([placementRow('Honorarnote.pdf')])
+
+    await placeProjectDocuments(ORG, PROJECT)
+
+    expect(purgeIngestedChunks).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.objectContaining({ collectionName: COLLECTION, filename: 'Honorarnote.pdf' }),
+      expect.any(Number),
+      { permanent: true },
+    )
   })
 
   it('reuses the project’s job that no worker has started, and queues none when nothing was handed off', async () => {

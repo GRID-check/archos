@@ -18,11 +18,12 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { Document } from '@/lib/db/schema'
+import { INTERNAL_TOKEN_HEADER } from '@/lib/internal-auth'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'
 import { hasPassedScreening } from './document-reader'
-import type { FassungFacts } from './fassung'
+import { changeSummaryAgainst, type FassungFacts } from './fassung'
 import { loadFassungFacts } from './fassung-facts'
 import { announceNewFassung } from './fassung-notify'
 
@@ -55,7 +56,7 @@ async function loadForLinking(session: AuthorizedSession, documentId: string): P
   return doc
 }
 
-async function putLink(newer: Document, older: Document, linked: boolean): Promise<void> {
+async function putLink(session: AuthorizedSession, newer: Document, older: Document, linked: boolean): Promise<void> {
   // The same gate as every `(collection, filename)` call: a machine-authored
   // row owns no chunks over there, and a name it shares belongs to someone else.
   if (!collectionFileRef(newer) || !collectionFileRef(older)) throw new NotFoundError()
@@ -64,7 +65,16 @@ async function putLink(newer: Document, older: Document, linked: boolean): Promi
   try {
     res = await fetch(fassungUrl(getBackendUrl(), newer.collectionName), {
       method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        [INTERNAL_TOKEN_HEADER]: process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        // A confirmation writes the change summary on the summary model: whose
+        // credential, data policy (BYOK, ZDR) and spend ledger it runs under.
+        // Without it the backend falls back to the deployment's key and default
+        // policy, and the spend is booked to nobody.
+        'x-grid-organization-id': session.organizationId,
+        'x-grid-user-id': session.userId,
+      },
       body: JSON.stringify({ newer: newer.filename, older: older.filename, linked }),
       signal: AbortSignal.timeout(BACKEND_TIMEOUT_MS),
     })
@@ -97,7 +107,7 @@ export async function setFassungLink(
     throw new BadRequestError('Both documents must be in the same collection', { reason: 'different_collection' })
   }
 
-  await putLink(newer, older, linked)
+  await putLink(session, newer, older, linked)
 
   await recordAuditEvent({
     organizationId: session.organizationId,
@@ -122,7 +132,10 @@ export async function setFassungLink(
       actorUserId: session.userId,
       newerId: newer.id,
       olderId: older.id,
-      changeSummary: newerFassung?.changeSummary?.text ?? null,
+      // Only a summary written AGAINST the older document: one against another
+      // comparison (a third document the recipient may not open) says nothing
+      // about this link, and may say what that other document held.
+      changeSummary: changeSummaryAgainst(newerFassung?.changeSummary ?? null, older.id),
     })
   }
 

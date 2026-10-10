@@ -8,7 +8,10 @@
  * the reader:
  *
  *   - only documents the reader may see (held uploads and closed folders are
- *     not named to them), active, person-uploaded, on THIS shelf;
+ *     not named to them), active, person-uploaded, on THIS shelf, and in the
+ *     collection the dropped file goes to: a restricted folder is a collection
+ *     of its own (ADR-0087), a link lives in one, and an offer across two was
+ *     an upload refused after the reader ticked it;
  *   - a document a person already replaced is not what a new file continues
  *     (`superseded_by` on the backend's row, read by name and never sent on);
  *   - the answer carries the document's id and name for the reader who may open
@@ -20,7 +23,7 @@
 
 import 'server-only'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { getHiddenFolderIds } from '@/lib/authz/folder-access'
+import { getProjectFolderAccess } from '@/lib/authz/folder-access'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { collectionFileRef } from './collection-file-ref'
@@ -30,6 +33,7 @@ import type { FassungCandidateMatch } from './name-probe-types'
 import { readFassungNames } from './reconcile-status'
 import { findFassungCandidate, parseRevisionName, revisionSeriesKeyOf } from './revision-series'
 import { projectShelf, type DocumentShelf } from './shelf'
+import { shelfCollectionName } from './shelf-collection'
 
 /** Series one probe looks up: a folder of two thousand drawings is a handful of series, not two thousand. */
 export const FASSUNG_PROBE_MAX_SERIES = 200
@@ -72,7 +76,7 @@ async function narrowedRows(
   shelf: DocumentShelf,
   organizationId: string,
   words: readonly string[],
-  options: { hiddenFolderIds?: readonly string[]; reader: DocumentReader },
+  options: Pick<FassungCandidateOptions, 'hiddenFolderIds' | 'reader'>,
 ): Promise<FassungSeriesRow[]> {
   const byId = new Map<string, FassungSeriesRow>()
   for (let start = 0; start < words.length; start += WORDS_PER_QUERY) {
@@ -90,6 +94,17 @@ async function isReplaced(row: FassungSeriesRow): Promise<boolean> {
   return Boolean(names?.supersededBy)
 }
 
+export interface FassungCandidateOptions {
+  hiddenFolderIds?: readonly string[]
+  reader: DocumentReader
+  /**
+   * The collection a dropped name is indexed into. Only documents of that
+   * collection are offered for it. Absent on a shelf of one collection (the
+   * Archiv).
+   */
+  collectionFor?: (name: string) => string
+}
+
 /**
  * What each of `names` continues on `shelf`, for the names that continue
  * something; the others have no entry.
@@ -98,11 +113,12 @@ export async function fassungCandidatesOnShelf(
   shelf: DocumentShelf,
   organizationId: string,
   names: readonly string[],
-  options: { hiddenFolderIds?: readonly string[]; reader: DocumentReader },
+  options: FassungCandidateOptions,
 ): Promise<FassungCandidateMatch[]> {
   const series = seriesOf(names)
   if (series.size === 0) return []
-  const rows = await narrowedRows(shelf, organizationId, [...new Set([...series.values()].map((entry) => entry.word))], options)
+  const { collectionFor, ...query } = options
+  const rows = await narrowedRows(shelf, organizationId, [...new Set([...series.values()].map((entry) => entry.word))], query)
 
   const bySeries = new Map<string, FassungSeriesRow[]>()
   for (const row of rows) {
@@ -120,7 +136,10 @@ export async function fassungCandidatesOnShelf(
       .map((row) => ({ row, filename: row.filename, createdAt: row.createdAt ? row.createdAt.toISOString() : null }))
     if (current.length === 0) continue
     for (const name of dropped.names) {
-      const candidate = findFassungCandidate(name, current)
+      const collection = collectionFor?.(name)
+      const reachable = collection === undefined ? current : current.filter((item) => item.row.collectionName === collection)
+      if (reachable.length === 0) continue
+      const candidate = findFassungCandidate(name, reachable)
       if (!candidate) continue
       matches.push({
         name,
@@ -141,16 +160,26 @@ export async function fassungCandidatesOnShelf(
 /**
  * What the dropped names continue on a project's shelf. Same gate as the name
  * probe and the listing: a `project:view` reader is told of documents they can
- * already page through, outside the folders closed to them.
+ * already page through, outside the folders closed to them. `folders` says
+ * where each name lands (the existing folder, or the nearest existing one above
+ * a folder the upload creates; `null` or absent is the root), and only the
+ * documents of the collection that folder files into are offered for it.
  */
 export async function probeProjectFassungCandidates(
   session: AuthorizedSession,
   projectId: string,
   names: readonly string[],
+  folders: Readonly<Record<string, string | null>> = {},
 ): Promise<FassungCandidateMatch[]> {
   await requireProjectAccess(session, projectId, 'project:view')
-  return fassungCandidatesOnShelf(projectShelf(projectId), session.organizationId, names, {
-    hiddenFolderIds: await getHiddenFolderIds(session, projectId),
+  const shelf = projectShelf(projectId)
+  const projectCollection = await shelfCollectionName(shelf, session.organizationId)
+  if (!projectCollection) return []
+  const access = await getProjectFolderAccess(session, projectId, projectCollection)
+  return fassungCandidatesOnShelf(shelf, session.organizationId, names, {
+    hiddenFolderIds: [...access.hiddenFolderIds],
     reader: await shelfReaderFor(session, { scope: 'project', projectId }),
+    // A folder this reader may not see is not where their file lands: the upload would refuse it.
+    collectionFor: (name) => access.collectionFor(Object.hasOwn(folders, name) ? (folders[name] ?? null) : null),
   })
 }

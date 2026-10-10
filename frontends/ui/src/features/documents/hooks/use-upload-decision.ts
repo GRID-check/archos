@@ -15,6 +15,7 @@ import {
   type FolderUploadPlan,
   type FolderUploadPlanInput,
   type PlanDocument,
+  type PlannedFile,
 } from '../lib/folder-upload-plan'
 
 /**
@@ -30,9 +31,14 @@ export type PlanDocumentSource =
 /**
  * Where the offers „Als neue Fassung von X ablegen" come from: a probe asked
  * with the dropped names (`name-probe-client.ts`, ADR-0098), answering for the
- * names that continue a document on the shelf.
+ * names that continue a document on the shelf. `landsIn` says where each name
+ * lands (`PlannedFile.landsInFolderId`): a restricted folder is a collection of
+ * its own (ADR-0087), and only a document of the same collection can be linked.
  */
-export type FassungOfferSource = (names: readonly string[]) => Promise<readonly FassungCandidateMatch[]>
+export type FassungOfferSource = (
+  names: readonly string[],
+  landsIn: ReadonlyMap<string, string | null>,
+) => Promise<readonly FassungCandidateMatch[]>
 
 /** What the dialog is about: a directory tree, or files picked or dropped loose. */
 export type UploadDecisionKind = 'folder' | 'files'
@@ -56,11 +62,16 @@ async function documentsFor(source: PlanDocumentSource, files: readonly File[]):
 async function offersFor(
   source: FassungOfferSource | undefined,
   files: readonly File[],
+  planned: readonly PlannedFile[],
 ): Promise<readonly FassungCandidateMatch[]> {
   const names = [...new Set(files.map((file) => file.name).filter(continuesASeries))]
   if (!source || names.length === 0) return []
+  const wanted = new Set(names)
+  const landsIn = new Map(
+    planned.filter((entry) => wanted.has(entry.file.name)).map((entry) => [entry.file.name, entry.landsInFolderId ?? null] as const),
+  )
   try {
-    return await source(names)
+    return await source(names, landsIn)
   } catch {
     return []
   }
@@ -200,7 +211,10 @@ export function useUploadDecision(): UploadDecision {
     const screening = { policy, basePath: screeningBasePath ?? null, released: new Set<File>() }
     const screened = buildFolderUploadPlan({ ...planInput, documents: [], screening })
     const admitted = screened.files.filter((file) => file.action !== 'excluded').map((file) => file.file)
-    const [documents, offers] = await Promise.all([documentsFor(source, admitted), offersFor(offerSource, admitted)])
+    const [documents, offers] = await Promise.all([
+      documentsFor(source, admitted),
+      offersFor(offerSource, admitted, screened.files),
+    ])
     if (current !== generation.current) return
     lastSource.current = source
     lastOfferSource.current = offerSource
@@ -237,7 +251,7 @@ export function useUploadDecision(): UploadDecision {
     if (unasked.length === 0) return
     const [found, offers] = await Promise.all([
       documentsFor(lastSource.current, unasked),
-      offersFor(lastOfferSource.current, unasked),
+      offersFor(lastOfferSource.current, unasked, lastInput.current ? buildFolderUploadPlan(lastInput.current).files : []),
     ])
     if (current !== generation.current || !lastInput.current) return
     // Kept the moment it is known, before the read below: the name is not asked

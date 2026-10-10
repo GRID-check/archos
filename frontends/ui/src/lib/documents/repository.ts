@@ -449,7 +449,12 @@ export interface FassungCounterpartRow {
  * ones are not found. The folder rule (ADR-0087) is the caller's, from the
  * project it reads each row's `projectId` for; a row's folder is returned for
  * exactly that. Person-uploaded rows only: a machine-authored row owns no
- * chunks of its own, so no link of the index can name it. Bounded by its input.
+ * chunks of its own, so no link of the index can name it.
+ *
+ * Every name is looked up, in queries of at most {@link FILENAME_LOOKUP_MAX_NAMES}
+ * names each: a page of a few hundred documents references more names than one
+ * query carries, and a name left out was a link silently lost (the older
+ * Fassung shown as current, the count wrong).
  */
 export async function findFassungCounterparts(
   organizationId: string,
@@ -457,7 +462,23 @@ export async function findFassungCounterparts(
   filenames: readonly string[],
   reader: DocumentReader,
 ): Promise<FassungCounterpartRow[]> {
-  const variants = [...new Set(filenames.slice(0, FILENAME_LOOKUP_MAX_NAMES).flatMap(documentNameVariants))]
+  const unique = [...new Set(filenames)]
+  const byId = new Map<string, FassungCounterpartRow>()
+  for (let start = 0; start < unique.length; start += FILENAME_LOOKUP_MAX_NAMES) {
+    const chunk = unique.slice(start, start + FILENAME_LOOKUP_MAX_NAMES)
+    for (const row of await findFassungCounterpartChunk(organizationId, collectionName, chunk, reader)) byId.set(row.id, row)
+  }
+  return [...byId.values()]
+}
+
+/** One bounded query of {@link findFassungCounterparts}: at most {@link FILENAME_LOOKUP_MAX_NAMES} names. */
+async function findFassungCounterpartChunk(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[],
+  reader: DocumentReader,
+): Promise<FassungCounterpartRow[]> {
+  const variants = [...new Set(filenames.flatMap(documentNameVariants))]
   if (variants.length === 0) return []
   const db = getDb()
   return withTenant({ organizationId }, () =>

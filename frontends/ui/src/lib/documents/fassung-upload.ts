@@ -8,17 +8,25 @@
  * same rules `PUT /api/documents/{id}/fassung` applies to the older document
  * (`fassung-service.ts`): the caller may change it (write on its shelf and
  * folder), it is past screening, it is a person's upload and not archived, and
- * it lives on the shelf and in the collection the new file is going to. An
- * older document the caller may not open is a 404, as everywhere else.
+ * it lives on the shelf and in the collection the new file is going to.
+ *
+ * The choice is an addition to the upload, never its gate. A choice that may not
+ * be honoured (the older document moved into a restricted folder meanwhile, was
+ * archived, is not this reader's to change) is dropped and reported
+ * (`ignored`), and the file is stored as a document of its own: refusing the
+ * upload lost the file over a link a person can still confirm from the preview.
+ * A document the reader may not see and one they may not change are reported
+ * alike (`unavailable`), so the answer says nothing about which it was.
  *
  * What it answers is the older file's name for the ingest job, or `null` when
- * there is nothing to link: no choice was made, or the new file has the older
- * one's own name, which is a new version of it (ADR-0054) and never a Fassung.
+ * there is nothing to link: no choice was made, the choice was dropped, or the
+ * new file has the older one's own name, which is a new version of it
+ * (ADR-0054) and never a Fassung.
  */
 
 import 'server-only'
 import { z } from 'zod'
-import { BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getAccessibleDocument } from './access'
 import { collectionFileRef } from './collection-file-ref'
@@ -54,28 +62,48 @@ function sameShelf(a: DocumentShelf, b: DocumentShelf | null): boolean {
   return a.kind === 'archiv' || (b.kind === 'project' && a.projectId === b.projectId)
 }
 
-/** The older file's name to link, or `null` for nothing to link. Throws when the choice may not be honoured. */
+/** Why a Fassung choice was dropped. `unavailable` covers not found, held, not this reader's to change, and machine-authored. */
+export const FASSUNG_OF_IGNORED_REASONS = ['unavailable', 'different_shelf', 'archived', 'different_collection'] as const
+export type FassungOfIgnoredReason = (typeof FASSUNG_OF_IGNORED_REASONS)[number]
+
+/** The checked choice: the older file's name to link, or why the choice was dropped. */
+export interface ResolvedFassungOf {
+  /** The older file's name for the ingest job; null for nothing to link. */
+  fassungOf: string | null
+  /** Set when a choice was made and dropped; the upload goes on without it. */
+  ignored: FassungOfIgnoredReason | null
+}
+
+const NOTHING: ResolvedFassungOf = { fassungOf: null, ignored: null }
+const ignoredFor = (reason: FassungOfIgnoredReason): ResolvedFassungOf => ({ fassungOf: null, ignored: reason })
+
+/** The older document, or null when this reader may not see or change it. Anything else still throws. */
+async function olderForLinking(session: AuthorizedSession, olderId: string) {
+  try {
+    return await getAccessibleDocument(session, olderId, 'write')
+  } catch (error) {
+    if (error instanceof NotFoundError || error instanceof ForbiddenError) return null
+    throw error
+  }
+}
+
+/** Check a Fassung choice. Never throws over the choice itself: one that may not be honoured comes back `ignored`. */
 export async function resolveFassungOf(
   session: AuthorizedSession,
   olderId: string | null | undefined,
   target: FassungUploadTarget,
-): Promise<string | null> {
-  if (!olderId) return null
-  const older = await getAccessibleDocument(session, olderId, 'write')
+): Promise<ResolvedFassungOf> {
+  if (!olderId) return NOTHING
+  const older = await olderForLinking(session, olderId)
   // A held upload is its uploader's and the reviewers' alone (ADR-0086), and a link would carry its
   // name, and through the change summary what it holds, into documents everyone reads.
-  if (!hasPassedScreening(older)) throw new NotFoundError()
-  if (!sameShelf(target.shelf, documentShelf(older))) {
-    throw new BadRequestError('The older document is on another shelf', { reason: 'different_shelf' })
-  }
-  if (older.lifecycle !== 'active') {
-    throw new BadRequestError('An archived document has no Fassungen', { reason: 'archived' })
-  }
-  if (older.collectionName !== target.collectionName) {
-    throw new BadRequestError('Both documents must be in the same collection', { reason: 'different_collection' })
-  }
+  if (!older || !hasPassedScreening(older)) return ignoredFor('unavailable')
+  if (!sameShelf(target.shelf, documentShelf(older))) return ignoredFor('different_shelf')
+  if (older.lifecycle !== 'active') return ignoredFor('archived')
+  // A restricted folder is its own collection (ADR-0087); the link lives in one.
+  if (older.collectionName !== target.collectionName) return ignoredFor('different_collection')
   // The same gate as every `(collection, filename)` call: a machine-authored row owns no chunks over there.
-  if (!collectionFileRef(older)) throw new NotFoundError()
-  if (documentNameKey(older.filename) === documentNameKey(target.filename)) return null
-  return older.filename
+  if (!collectionFileRef(older)) return ignoredFor('unavailable')
+  if (documentNameKey(older.filename) === documentNameKey(target.filename)) return NOTHING
+  return { fassungOf: older.filename, ignored: null }
 }
