@@ -245,6 +245,19 @@ export const BACKEND_URL = `http://aiq-api:${PORT.backend}`;
 export const BACKEND_CHAT_URL = `http://aiq-agent:${PORT.backend}`;
 
 /**
+ * The Python tiers' PostHog pair (`POSTHOG_HOST`, `POSTHOG_PROJECT_TOKEN`), or
+ * nothing unless both are configured. Exported for `config.spec.ts`.
+ */
+export function posthogEnv(cfg: GridConfig): EnvVar[] {
+  const { host, projectToken } = cfg.posthog;
+  if (host === "" || projectToken === "") return [];
+  return [
+    { name: "POSTHOG_HOST", value: host },
+    { name: "POSTHOG_PROJECT_TOKEN", value: projectToken },
+  ];
+}
+
+/**
  * Backend environment shared by every role of the image. Postgres DSNs
  * everywhere (never SQLite) — the hard precondition for durability and any
  * future replica. The admission caps are the
@@ -311,6 +324,17 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
           { name: "OTEL_EXPORTER_OTLP_ENDPOINT", value: "http://otel-collector:4318/v1/traces" },
         ]
       : []),
+    // PostHog, the Python half of the one configuration the frontend already
+    // reads (`NEXT_PUBLIC_POSTHOG_*`): `observability/posthog_client.py` no-ops
+    // unless BOTH are set, so both or neither, never a half-configured pod. The
+    // token is a public `phc_` key, plain config like the frontend's. Here in
+    // `backendEnv` because chat, api, agent-worker and ingest-worker all build
+    // from it; none of them has a reason to be the odd one out.
+    //
+    // No rollout checksum: these are literal env values in the pod template, so
+    // changing either rolls every tier by itself (a checksum is for values a
+    // pod reads from a Secret or ConfigMap, which Kubernetes does not watch).
+    ...posthogEnv(cfg),
     // Langfuse session/user attribution (ADR-0044). Keyed off the LANGFUSE
     // tier, not the observability one, and that distinction is the point:
     // stamping a user id on every span is only worth its privacy cost where

@@ -173,6 +173,61 @@ export function installOtelCollector(
     : "";
   const langfuseTraceExport = langfuseSecretName ? ", otlp_http/langfuse" : "";
 
+  // PostHog Logs is a FOURTH consumer, on the logs signal only. Traces are
+  // deliberately not sent: LLM traces reach PostHog through Langfuse's own
+  // PostHog integration, and APM traces are out of scope. Metrics stay with
+  // the dashboard too.
+  //
+  // Same shape as err2issue and for the same reason: its own pipeline, because
+  // the severity filter is per-pipeline and sharing the dashboard's would strip
+  // INFO from the live view. WARN rather than ERROR because PostHog is the
+  // searchable log store, not an alert sink, but INFO/DEBUG is what would burn
+  // the 10 GB free tier. `severity_number < 13` is SEVERITY_NUMBER_WARN; a
+  // record with no severity (0) is dropped too, which is the safe side.
+  //
+  // The project token is PostHog's public `phc_` key (it ships in the browser
+  // bundle), so it sits in the ConfigMap as plain config, unlike the Aspire and
+  // Langfuse credentials, which arrive by env reference. Hence no env var on the
+  // pod and no secret checksum: a changed token changes the ConfigMap and the
+  // collector reads it from there. Keyed off `cfg.posthog.logsEnabled`, which
+  // already implies host + token + observability, so the exporter can never be
+  // written without its endpoint.
+  const posthogLogs = cfg.posthog.logsEnabled;
+  const posthogProcessor = posthogLogs
+    ? `
+  filter/warn_and_above:
+    error_mode: ignore
+    log_conditions:
+      - 'log.severity_number < SEVERITY_NUMBER_WARN'`
+    : "";
+  const posthogExporter = posthogLogs
+    ? `
+  otlp_http/posthog:
+    # \`logs_endpoint\`, not \`endpoint\`: PostHog serves logs at /i/v1/logs and
+    # that is the whole path, whatever the exporter would append.
+    logs_endpoint: ${cfg.posthog.host.replace(/\/+$/, "")}/i/v1/logs
+    headers:
+      Authorization: "Bearer ${cfg.posthog.projectToken}"
+    compression: gzip
+    # Bounded for the reason the Langfuse exporter is: a PostHog outage must
+    # not grow collector memory until memory_limiter refuses the dashboard.
+    sending_queue:
+      enabled: true
+      queue_size: 1000
+    retry_on_failure:
+      enabled: true
+      initial_interval: 5s
+      max_interval: 30s
+      max_elapsed_time: 300s`
+    : "";
+  const posthogPipeline = posthogLogs
+    ? `
+    logs/posthog:
+      receivers: [otlp]
+      processors: [memory_limiter, filter/warn_and_above, batch]
+      exporters: [otlp_http/posthog]`
+    : "";
+
   // ${env:OTLP_API_KEY} is interpolated by the collector at startup from the
   // container env (secretKeyRef below) — the key never sits in the ConfigMap.
   const collectorConfig = `
@@ -191,9 +246,9 @@ processors:
     spike_limit_percentage: 25
   batch:
     timeout: 5s
-    send_batch_size: 1024${err2issueProcessor}
+    send_batch_size: 1024${err2issueProcessor}${posthogProcessor}
 
-exporters:${err2issueExporter}${langfuseExporter}
+exporters:${err2issueExporter}${langfuseExporter}${posthogExporter}
   otlp_http/aspire:
     endpoint: ${ASPIRE_OTLP_HTTP}
     # The dashboard's OTLP/HTTP endpoint does not decompress gzip request
@@ -218,7 +273,7 @@ service:
     logs:
       receivers: [otlp]
       processors: [memory_limiter, batch]
-      exporters: [otlp_http/aspire]${err2issuePipeline}
+      exporters: [otlp_http/aspire]${err2issuePipeline}${posthogPipeline}
     metrics:
       receivers: [otlp]
       processors: [memory_limiter, batch]

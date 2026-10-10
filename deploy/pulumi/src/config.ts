@@ -954,6 +954,14 @@ export interface GridConfig {
     host: string;
     /** Public project token (`phc_…`). Empty = analytics disabled. */
     projectToken: string;
+    /**
+     * Whether the collector ships WARN-and-above logs to PostHog Logs: the
+     * `posthogLogsEnabled` flag AND host AND token AND `observability.enabled`
+     * (the collector is the only sender, so without it there is nothing to
+     * configure). Default off: it is a second copy of the logs signal leaving
+     * the cluster, and PostHog's free tier is 10 GB of logs.
+     */
+    logsEnabled: boolean;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2383,6 +2391,30 @@ export function loadConfig(): GridConfig {
     );
   }
 
+  // ── PostHog: one configuration for every runtime, logs opt-in on top ───────
+  // The frontend, the Python tiers and the collector all read this one pair.
+  // The SDK tiers capture with host + token alone (they no-op without them).
+  // Logs are different: they leave the cluster in bulk, through the collector,
+  // so they are a flag AND capability on top of the credentials, the same rule
+  // as err2issue above, and need the collector to exist.
+  const posthogHost = cfg.get("posthogHost") ?? "";
+  const posthogProjectToken = cfg.get("posthogProjectToken") ?? "";
+  const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", false);
+  const missingPosthogLogsDeps = [
+    posthogHost === "" ? "posthogHost" : undefined,
+    posthogProjectToken === "" ? "posthogProjectToken" : undefined,
+    observabilityEnabled ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
+  ].filter((k): k is string => k !== undefined);
+  const posthogLogsEnabled = posthogLogsFlag && missingPosthogLogsDeps.length === 0;
+  if (posthogLogsFlag && !posthogLogsEnabled) {
+    pulumi.log.warn(
+      "PostHog logs not exported: missing " +
+        missingPosthogLogsDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
+        ". Set them to ship WARN+ logs to PostHog, or set " +
+        "grid-oib:posthogLogsEnabled=false to silence this.",
+    );
+  }
+
   // ── Feedback → GitHub issues: flag AND capability, the token is err2issue's ─
   // Default ON, unlike err2issue: a report is filed only when a member sends
   // one (rate limited per person), so there is no hot loop to cap, and a stack
@@ -2798,8 +2830,9 @@ export function loadConfig(): GridConfig {
     },
 
     posthog: {
-      host: cfg.get("posthogHost") ?? "",
-      projectToken: cfg.get("posthogProjectToken") ?? "",
+      host: posthogHost,
+      projectToken: posthogProjectToken,
+      logsEnabled: posthogLogsEnabled,
     },
 
     internal: {
