@@ -8,5 +8,5 @@ fixes:
     land when they are ready instead of long after the text.
 upgrade:
   - >
-    A browser tab that was open during the update shows a connection error
-    until it is reloaded.
+    If a browser tab was open during the update, it shows a connection error
+    until you reload it.

@@ -1,7 +1,7 @@
 ---
 features:
   - >
-    On the Piloti website the example decision on a wide screen is wired left
-    to right again, from the question through its sources into the decision
-    and on to the next steps, and now looks like the phone version. The three
+    On the Piloti website, the example decision now runs left to right again on a
+    wide screen: from the question through its sources to the decision and the
+    next steps, and it looks like the phone version. In that example, the three
     sources are consulted at the same time.

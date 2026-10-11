@@ -7,22 +7,22 @@ features:
     header.
 fixes:
   - >
-    The cited passage is highlighted in the document again, survives a reload,
-    and „Zitat kopieren“ copies the quote rather than only the bibliographic
-    reference.
+    The cited passage is highlighted in the document again, and it stays
+    highlighted after a reload. „Zitat kopieren“ now copies the quote, not only
+    the bibliographic reference.
   - >
     Clicking a reference opens the document at the page the answer refers to,
     and a source lists only the pages the answer actually relies on.
   - >
-    Copied citations now name the point by which Austrian law is cited, as in
+    Copied citations now name the point the way Austrian law cites it, as in
     „OIB-Richtlinie 2, Pkt. 3.5.2“, not only the page it is printed on.
   - >
-    A file uploaded during the conversation opens from the answer's source right
-    away, and referenced files Piloti cannot display, such as Word documents or
+    A file uploaded during the conversation now opens from the answer's source
+    right away. Files Piloti cannot display, such as Word documents or
     spreadsheets, can be downloaded from there.
   - >
     A file whose name mentions an OIB-Richtlinie, such as your own commentary on
-    it, is no longer merged with the Richtlinie into one source.
+    it, is no longer shown as one source together with the Richtlinie.
   - >
     Long deep research reports can be downloaded as PDF again. If an export
     still fails, the message gives the reason.
@@ -31,5 +31,5 @@ fixes:
     instead of up to forty, and a running research is no longer reported as
     interrupted.
   - >
-    Laws in the RIS reader are shown in full. The text limit was shorter than
-    the Bauordnung für Wien, so § 108 fell outside it.
+    Laws in the RIS reader are now shown in full. Before, the Bauordnung für Wien
+    was cut short, so § 108 could not be read.

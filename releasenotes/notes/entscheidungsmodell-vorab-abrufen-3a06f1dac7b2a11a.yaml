@@ -6,10 +6,9 @@ features:
     questions are answered one step sooner. The Herleitung shows this as the
     first search step.
   - >
-    Searches judge their own results faster: whether the first hits already
-    answer the question is decided by the same fast decision model instead of a
-    full language-model call, and only a search that came up short still asks
-    for other wordings.
+    Piloti checks its search results faster: a quick decision step judges
+    whether the first hits already answer the question, and only a search that
+    came up short asks again with other wordings.
   - >
     Follow-up questions such as „und in Gebäudeklasse 4?“ are answered from the
     passages the previous answer already read, so a follow-up takes one step

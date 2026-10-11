@@ -1,6 +1,6 @@
 ---
 upgrade:
   - >
-    The Agent darf selbst laden switch is gone from the skill editor; Piloti
-    decides which skills to consider. Saved skills are unchanged and available
-    again.
+    The skill editor no longer has the switch „Der Agent darf selbst laden“:
+    Piloti decides which skills to consider. Saved skills are unchanged and
+    available again.

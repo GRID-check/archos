@@ -7,7 +7,7 @@ features:
     cite your correspondence; your administrator switches the import on.
 fixes:
   - >
-    Scheduled research reports are filed into the project again in organizations
+    Scheduled research reports are filed into the project again in offices
     whose features are switched on individually; they had been held back.
 operators:
   - >

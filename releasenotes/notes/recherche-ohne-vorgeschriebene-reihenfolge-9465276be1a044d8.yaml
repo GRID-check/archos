@@ -1,9 +1,10 @@
 ---
 improvements:
   - >
-    Piloti now chooses its source by the question rather than by a fixed order,
-    so a question about the Bauordnung goes where the Bauordnung is. Every value
-    it states still comes from a passage it read in that answer.
+    Piloti now picks where to look based on your question rather than
+    following a fixed order, so a question about the Bauordnung goes
+    straight to the Bauordnung. Every value it states still comes from a
+    passage it read in that answer.
   - >
     A question that touches the Richtlinien, the RIS and the web now checks all
     three in its first round instead of saving one for later.

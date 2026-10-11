@@ -1,9 +1,10 @@
 ---
 features:
   - >
-    Answers now open with a proper masthead no matter the question: overviews
-    get a title and scope line, legal rulings keep their verdict header, and
-    single-norm answers quote the decisive passage directly beneath it.
+    Answers now open with a clear heading whatever the question: overviews
+    get a title and a line on their scope, legal rulings keep their verdict
+    header, and answers about one provision quote the decisive passage right
+    beneath it.
   - >
     Drafts Piloti writes can now be opened and read straight from the chat,
     before anything is filed into the project.
@@ -16,8 +17,8 @@ improvements:
     search OIB knowledge.
 fixes:
   - >
-    Piloti no longer runs the same Richtlinie search twice when the whole
-    family was already retrieved, and follow-up file requests no longer
-    trigger a format interrogation.
+    Piloti no longer repeats a Richtlinie search when it has already looked
+    through the whole family, and a follow-up request for a file no longer
+    makes Piloti question you about the format.
   - >
     Long text documents now scroll correctly in the side preview.

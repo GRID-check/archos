@@ -102,6 +102,54 @@ enforces every rule marked *lint*, and each failure says how to fix it.
    (`SEVERE_PATTERNS`). The list is short on purpose, so most severe fixes pass
    it: the question to ask is whether a reader would learn that Piloti once
    lost, kept or showed what it should not have. If so, it is an `incident`.
+8. **Plain words.** *(lint)* A public entry does not name the services under
+   Piloti, the formats they speak, or the mechanics of shipping and running
+   software. The list is `PUBLIC_JARGON` in
+   [`scripts/release_notes.py`](../../scripts/release_notes.py); the failure
+   names the word it found. The classes are below.
+
+### Words a public entry does not use
+
+`PUBLIC_JARGON` is the source of truth. If this section and the list disagree,
+the list is right and this section is stale. It holds four classes:
+
+- **The services under Piloti:** databases, object storage, the model gateway,
+  the tracing platform, and the platforms we run them on.
+- **Interfaces and formats:** how one program talks to another, and the data it
+  sends. API, SDK, webhook, endpoint, socket, JSON, YAML, schema, payload.
+- **Shipping and running:** how software is released and where it runs.
+  Deploy, staging, pipeline, commit, branch, repository, container, cluster,
+  worker, and the data steps (migration, backfill, ingestion).
+- **Search, the model and the controls around them:** index, embedding, token,
+  prompt, cache, queue, configuration, environment variable, feature flag,
+  latency, trace, metric, rate limit.
+
+The German terms are the same classes in German. The Piloti screens' own words
+are not on the list: Papierkorb, Quarantäne, Archiv, Steckbrief, Fassung and the
+rest are how the reader knows the product, so they stay.
+
+How the lint matches: whole words, ignoring case. A trailing `s` or `es` counts,
+so `APIs` and `indexes` are caught. A longer word that starts with a term is a
+different word, so `Tokenizer` and `Kapitel` pass. A space in a term matches any
+space; a hyphen is literal. Quoted labels are checked as well. A label with one
+of these words in it is a sign to describe the thing rather than quote it.
+
+The German check is on the exact words listed. An inflected or compound form
+that is not on the list (`Konfigurationsdatei`, `Konfigurationen`) passes the
+lint. When you meet one, add it to `PUBLIC_JARGON` in the same change.
+
+**Rewriting a term.** Write what the reader sees or can do, in the words the
+screen uses, and leave the system out of it.
+
+| Says | Writes instead |
+|---|---|
+| "Results are cached, so repeat questions are faster." | "Repeat questions come back faster." |
+| "Re-indexing runs after each upload." | "Uploaded documents become searchable without a manual step." |
+| "Set the environment variable to change the default model." | Under `operators`: "The default model can now be changed under Platform → Models." |
+
+If the sentence only makes sense with the jargon word in it, the entry is about
+the system, not the reader. Move it to `operators` (the platform), `security` or
+`incident`, or leave it out.
 
 ### Good and bad
 

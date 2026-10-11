@@ -2,8 +2,8 @@
 improvements:
   - >
     Organizations with their own model key now use it for ranking search results
-    too; those calls always went through the platform key.
+    too. Until now, those calls always ran on the platform's key.
   - >
-    The usage overview now includes the model calls Piloti makes to rank
-    passages before it answers, which used to appear on no bill and in no
+    The usage overview now includes the model calls Piloti makes to rank passages
+    before it answers. Until now, those calls appeared on no bill and in no
     budget.

@@ -4,10 +4,10 @@
 # architect using Piloti, not for the reviewer of your diff.
 features:
   - >
-    A project's Automation section has a new Tasks tab. It lists the work handed
-    to Piloti — from a chat, from a review decision, or from a job on its
-    schedule — with what was asked for, how far it got, how it was judged, and a
-    link to the document or the chat the result ended up in.
+    The Automation section of a project has a new Tasks tab. It lists the work
+    you have handed to Piloti, whether from a chat, a review decision or a
+    schedule, with what was asked, how far it got, how it was judged, and a link
+    to the document or chat where the result ended up.
 improvements:
   - >
     Archiving a file now takes it out of the file list, which is what archiving
@@ -23,14 +23,14 @@ fixes:
     again. The upload was refused while the previous version was still the
     published one.
   - >
-    Whoever commissioned a report can now release it themselves. Piloti files a
-    report in the name of the person who asked for it, and that person was being
-    treated as its author and refused the approval.
+    Whoever commissioned a report can now release it. Piloti files a report
+    under the name of the person who asked for it, and that person was treated
+    as its author and so could not release it.
   - >
     A document Piloti revises keeps the line that says it was written with
     Piloti. Only the first draft carried it; every later version arrived without
     it.
   - >
-    Superseded and unpublished versions of a file now count towards the storage
-    a workspace uses. They were being kept and not counted, so the figure shown
-    was lower than what was actually stored.
+    Older and unpublished versions of a file now count towards the storage your
+    office uses. They were kept but not counted, so the storage figure was lower
+    than what was really in use.

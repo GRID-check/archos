@@ -9,6 +9,6 @@ features:
     click copies the path so you can keep working on the original.
 fixes:
   - >
-    Project and archive uploads are no longer capped at 100 MB per upload, so a
-    full Einreichung goes through; only your organization's storage quota
-    applies.
+    Uploads into a project or the archive are no longer limited to 100 MB at a
+    time, so a complete Einreichung goes through. Only your organization's
+    storage quota applies now.

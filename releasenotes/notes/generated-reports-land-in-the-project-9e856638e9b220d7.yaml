@@ -9,10 +9,10 @@ features:
     download it and delete it like any other file — and share it with the people
     on the project without copying anything out.
   - >
-    A report arrives „Unvergeben" — it belongs to nobody until somebody takes it
-    on. Assigning it to yourself is the moment it becomes your work, and the
-    same sweep you already use before an Einreichung will find any report nobody
-    has claimed.
+    A report arrives „Unvergeben“, so it belongs to nobody until someone
+    takes it on. Assigning it to yourself makes it your work, and the check
+    you already run before an Einreichung also finds any report nobody has
+    claimed.
   - >
     The banner names where a report will be filed while the research is
     starting, when you can still stop it, and links to the finished file with
@@ -30,6 +30,6 @@ upgrade:
     conversation. Nothing was filed retroactively.
 other:
   - >
-    Piloti does not read its own reports back, so an answer never cites a Piloti
-    report as if it were a document you supplied. To use a report in later
-    answers, upload it yourself once you have checked it.
+    Piloti does not use its own reports as sources, so an answer never cites
+    a Piloti report as if it were a document you supplied. To use a report
+    in later answers, upload it yourself once you have checked it.

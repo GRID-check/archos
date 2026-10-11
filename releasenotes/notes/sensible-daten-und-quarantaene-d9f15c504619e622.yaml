@@ -1,5 +1,5 @@
 ---
 fixes:
   - >
-    A CSV or text file exported from Excel on Windows previews with its €, „ “
-    and – again.
+    A CSV or text file exported from Excel on Windows now shows its €, „ “
+    and – characters correctly in the preview.

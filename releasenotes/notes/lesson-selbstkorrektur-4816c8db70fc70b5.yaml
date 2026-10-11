@@ -5,11 +5,11 @@ improvements:
     comment contradicts a stored note, that note is marked less reliable in your
     project. Nothing is deleted, and pinned notes are exempt.
   - >
-    Re-uploading a document under the same name now replaces its earlier version
-    in the knowledge index instead of competing with it, so an answer can no
-    longer cite a superseded upload with full confidence. A document under a new
-    name is still treated as a new document — deciding that one file supersedes
-    a differently-named one stays a human call.
+    Uploading a document again under the same name now replaces its earlier
+    version in search, instead of competing with it, so an answer can no
+    longer cite an outdated upload with full confidence. A document under a
+    new name is still a new document: deciding that one file replaces a
+    differently named one stays with a person.
 operators:
   - >
     Lessons learned from feedback now watch themselves: a lesson that keeps

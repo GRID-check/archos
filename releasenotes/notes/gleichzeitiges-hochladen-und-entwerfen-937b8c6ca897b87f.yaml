@@ -2,11 +2,11 @@
 fixes:
   - >
     When two people upload a file with the same name at the same time, both
-    uploads succeed and the second becomes a new version of the first, instead
-    of failing with a server error.
+    uploads succeed and the second becomes a new version of the first,
+    instead of one of them ending in an error.
   - >
-    When two people open a draft of the same document at once, exactly one draft
-    is created and the second person is told it already exists.
+    When two people open a draft of the same document at once, exactly one
+    draft is created and the second person is told it already exists.
   - >
-    Creating a folder with a name that is already taken in that place now says
-    the name is taken instead of showing a server error.
+    Creating a folder with a name that is already taken in that place now
+    tells you the name is taken, instead of showing an error.

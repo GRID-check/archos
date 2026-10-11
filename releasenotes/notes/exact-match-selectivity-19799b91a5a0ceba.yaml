@@ -12,8 +12,7 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Keyword matching now ignores words that appear in nearly every document,
+    Keyword search now ignores words that appear in nearly every document,
     so a search no longer spends part of its results on a term that matches
-    everything. Answers cite more of the documents that actually differ on the
-    question, and searches that used to run an extra pointless lookup return a
-    little sooner.
+    everything. Answers cite more of the documents that actually differ on
+    the question, and some searches return a little sooner.
