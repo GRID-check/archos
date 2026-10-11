@@ -264,8 +264,7 @@ async def open_checkpoint_pool(dsn: str) -> AsyncConnectionPool:
         try:
             await pool.open(wait=True, timeout=timeout)
         except PoolTimeout as exc:
-            if _postgres_pools.get(dsn) is pool:
-                del _postgres_pools[dsn]
+            _postgres_pools.pop(dsn, None)
             cause = await _connection_failure(dsn)
             raise PoolTimeout(
                 f"checkpoint pool could not connect to {redact_db_url(dsn)} within {timeout} s: {cause}"
