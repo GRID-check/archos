@@ -5,7 +5,6 @@ fixes:
     was cut short. Before, a question that ran out of research budget before
     it was fully answered could leave notes that read like settled facts.
   - >
-    A slow AI provider can no longer stop Piloti from taking notes at all.
-    The note-taking step now gives up on its own and works again with the
-    very next question, instead of going quiet for everyone until the system
-    was restarted.
+    A slow AI can no longer stop Piloti from taking notes at all. The note-
+    taking step now gives up on its own and works again with the very next
+    question, instead of going quiet for everyone.

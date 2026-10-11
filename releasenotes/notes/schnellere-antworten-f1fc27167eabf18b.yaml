@@ -1,15 +1,14 @@
 ---
 improvements:
   - >
-    Answers in chat arrive sooner, because Piloti gets its project memory,
-    feedback lessons and settings ready at the same time.
+    Answers in chat arrive sooner, because Piloti prepares what it needs for
+    the answer in parallel.
   - >
     Choosing the passages for an answer is much faster. Before, this step
     could take ten seconds.
   - >
-    Opening a project and starting a chat are faster, because your permissions
-    are remembered for a short while. A changed project role takes effect
-    within thirty seconds.
+    Opening a project and starting a chat are faster, because your
+    permissions are remembered for a short while.
   - >
     A deep research is marked finished as soon as the report is ready, and an
     answer revised after checking looks up its missing evidence at the same

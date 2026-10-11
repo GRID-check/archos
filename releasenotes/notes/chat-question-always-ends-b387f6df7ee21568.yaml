@@ -2,8 +2,7 @@
 fixes:
   - >
     A question in the chat no longer keeps showing „Denkt nach“ when no
-    answer comes. After half a minute without a reply, it ends with an error
-    that you can retry.
+    answer comes. It ends with an error that you can retry.
   - >
     The first question in a new chat is no longer lost when you send it
     straight from a suggestion, without typing.
@@ -11,9 +10,8 @@ fixes:
     If you stop a question before Piloti starts on it, it is no longer sent
     again when the connection comes back.
   - >
-    When the chat connects to a Piloti version that differs from the page
-    you have open, Piloti now tells you so, instead of asking you to check
-    your network.
+    When Piloti was updated while your page was open, it now asks you to
+    reload instead of asking you to check your network.
 operators:
   - >
     The chat socket's first frame is now a hello carrying the deployed commit,

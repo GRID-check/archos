@@ -1,11 +1,5 @@
 ---
 improvements:
   - >
-    The Herleitung now builds up visibly while Piloti works: new steps and
-    sources fade in, each new connection draws itself once, and the graph
-    grows smoothly instead of jumping. A dot runs along the lines into the
-    step in progress, on phone and desktop alike, and the graph takes less
-    processing power when nothing moves.
-  - >
     A finished Herleitung opens at once, without animation, and anyone who has
     chosen reduced motion in their system settings sees none at all.

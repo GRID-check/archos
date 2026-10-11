@@ -5,15 +5,14 @@ improvements:
     and Piloti picks that skill from there. What reaches Piloti is exactly the
     text you sent.
   - >
-    Piloti now chooses skills itself: it reads each available skill's short
-    description and loads the instructions when they fit the question. The
-    answer still names the skills that shaped it.
+    Piloti now chooses the working methods itself when they fit your
+    question, and the answer still names the methods it used.
 upgrade:
   - >
     Skills that Piloti used to run for every organization are now offered on
-    your Skills tab, switched off until someone switches them on. What should
-    apply to every answer in your office now belongs under Organisation,
-    Anweisungen.
+    your Skills tab, switched off until someone switches them on. What
+    should apply to every answer in your office now belongs under
+    Organization → Instructions.
   - >
     A skill your organization writes may now carry any name; if it shares a name
     with an offered skill, yours applies.

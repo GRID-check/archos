@@ -3,5 +3,5 @@ fixes:
   - >
     If processing a new version stops halfway, search finds only the
     previous version, and none of the new one's parts. When two people
-    upload a file under the same name at once, the version processed last is
-    the one kept.
+    upload a file under the same name at once, one upload replaces the
+    other, and the one saved last is kept.
