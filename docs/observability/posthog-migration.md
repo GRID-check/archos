@@ -118,6 +118,15 @@ date.
   change only when WorkOS does, so an old "last synced" date is not a fault.
   `directory_users` and `directory_groups` are off (no Directory Sync), which
   is the error the source still shows.
+- [ ] **Rollout flags in PostHog** (ADR-0102), **before the next promotion to
+  production**. Created 2026-10-11, active at 100 %: `web-search`,
+  `image-upload`, `wizard-conflict-check`, `agent-authored-documents`,
+  `post-answer-follow-ups`. Still to create: `ifc-models` (100 %) and
+  `project-knowledge-page`, which must NOT be 100 %: it is off in Production
+  today, and a rollout with no flag reads as on. Give it one release condition,
+  person property `organization_id` exactly one of the Staging organization ids,
+  at 100 %. Then delete the seven rollout slugs and `memory-reflection` from
+  both WorkOS environments (`task fe:provision:flags` lists them as `RETIRED?`).
 - [x] **Joins to the WorkOS tables** (accepted 2026-10-11): `events.distinct_id` → `workos_users.id` (field
   `workos_user`) and `events.properties.organization_id` →
   `workos_organizations.id` (field `workos_organization`), so charts read names
