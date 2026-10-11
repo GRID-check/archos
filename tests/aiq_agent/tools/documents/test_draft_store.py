@@ -297,7 +297,11 @@ class TestTheStoreFactory:
             "langgraph.store.postgres",
             type("_M", (), {"AsyncPostgresStore": _FakeStore}),
         )
-        monkeypatch.setattr("aiq_agent.common.get_checkpoint_pool", lambda dsn: f"pool:{dsn}")
+
+        async def _open_pool(dsn: str) -> str:
+            return f"pool:{dsn}"
+
+        monkeypatch.setattr("aiq_agent.common.open_checkpoint_pool", _open_pool)
 
         store = await get_draft_store("postgresql://x/y")
         assert isinstance(store, _FakeStore)

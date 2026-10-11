@@ -7,12 +7,14 @@ import logging
 import os
 
 import aiosqlite
+import psycopg
 from langgraph.checkpoint.base import BaseCheckpointSaver
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from langgraph.checkpoint.serde.jsonplus import JsonPlusSerializer
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from psycopg.rows import dict_row
 from psycopg_pool import AsyncConnectionPool
+from psycopg_pool import PoolTimeout
 
 from .budget_guard import BudgetGuardCallback
 from .budget_guard import RunBudgetExceededError
@@ -85,6 +87,9 @@ _postgres_pools: dict[str, AsyncConnectionPool] = {}
 # check-then-act would let two concurrent callers both connect and leak the
 # loser's connection when it is overwritten in the cache.
 _checkpointer_lock = asyncio.Lock()
+# Serializes opening a checkpoint pool: psycopg_pool's `wait()` asserts that no
+# other caller is already waiting on the same pool.
+_pool_open_lock = asyncio.Lock()
 
 
 def _pool_int_env(name: str, default: int) -> int:
@@ -140,6 +145,7 @@ __all__ = [
     "get_all_tool_refs",
     "get_checkpoint_pool",
     "get_checkpointer",
+    "open_checkpoint_pool",
     "get_or_create_session_registry",
     "get_source_id_for_tool",
     "get_session_registry",
@@ -236,9 +242,44 @@ def get_checkpoint_pool(dsn: str) -> AsyncConnectionPool:
         min_size=min_size,
         max_size=max_size,
         kwargs={"autocommit": True, "row_factory": dict_row},
+        open=False,
     )
     _postgres_pools[dsn] = pool
     return pool
+
+
+async def open_checkpoint_pool(dsn: str) -> AsyncConnectionPool:
+    """The checkpoint pool for ``dsn``, opened and filled to ``min_size`` before it is returned.
+
+    Every consumer awaits this before its first query. A pool that cannot fill within
+    ``GRID_CHECKPOINT_POOL_OPEN_TIMEOUT_SECONDS`` is closed by psycopg_pool and cannot be reopened,
+    so it leaves the cache and the next call builds a new one. The error names the host and the
+    connection error, which psycopg_pool's own ``PoolTimeout`` does not.
+    """
+    async with _pool_open_lock:
+        pool = get_checkpoint_pool(dsn)
+        if not pool.closed:
+            return pool
+        timeout = _pool_int_env("GRID_CHECKPOINT_POOL_OPEN_TIMEOUT_SECONDS", 30)
+        try:
+            await pool.open(wait=True, timeout=timeout)
+        except PoolTimeout as exc:
+            _postgres_pools.pop(dsn, None)
+            cause = await _connection_failure(dsn)
+            raise PoolTimeout(
+                f"checkpoint pool could not connect to {redact_db_url(dsn)} within {timeout} s: {cause}"
+            ) from exc
+        return pool
+
+
+async def _connection_failure(dsn: str) -> str:
+    """One direct connection attempt, to name why the pool could not connect."""
+    try:
+        conn = await psycopg.AsyncConnection.connect(dsn, connect_timeout=10)
+    except psycopg.Error as exc:
+        return f"{type(exc).__name__}: {exc}".strip()
+    await conn.close()
+    return "a direct connection now succeeds, so the database was unreachable only for a while"
 
 
 async def get_checkpointer(checkpoint_db: str) -> BaseCheckpointSaver:
@@ -268,7 +309,9 @@ async def get_checkpointer(checkpoint_db: str) -> BaseCheckpointSaver:
             # Lazy: `aiq_agent.knowledge` imports from this package.
             from aiq_agent.knowledge.leader_lock import keyed_lock_async
 
-            checkpointer = AsyncPostgresSaver(get_checkpoint_pool(checkpoint_db), serde=_build_checkpointer_serde())
+            checkpointer = AsyncPostgresSaver(
+                await open_checkpoint_pool(checkpoint_db), serde=_build_checkpointer_serde()
+            )
             # Every role runs `setup()` at start and it is not safe against that: it creates tables and
             # indexes one statement at a time (CREATE INDEX CONCURRENTLY), so a transaction lock cannot
             # hold it. A session lock on the direct DSN does (ADR-0083).
