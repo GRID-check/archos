@@ -145,10 +145,11 @@ describe("with the Langfuse tier enabled", () => {
 
     it("sends it no logs and no metrics", () => {
       // Langfuse ingests traces. Pointing logs at it would be silently
-      // discarded volume — Langfuse's OTLP receiver is a traces endpoint. With
-      // no log consumer the logs signal ends in the nop exporter, and nothing
+      // discarded volume — Langfuse's OTLP receiver is a traces endpoint. Logs
+      // go to PostHog (on by default) or end in the nop exporter, and nothing
       // consumes metrics at all (collector-gate.spec.ts).
-      expect(collectorConfig).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[nop\]/);
+      expect(collectorConfig).not.toMatch(/\n    logs[^:\n]*:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[[^\]]*\]\s*\n\s*exporters: \[[^\]]*langfuse/);
+      expect(collectorConfig).toMatch(/\n    logs[^:\n]*:\s*\n/);
       expect(collectorConfig).not.toMatch(/\n    metrics:/);
     });
 

@@ -41,6 +41,15 @@ export type BarmanEncryption = "AES256" | "aws:kms";
  */
 const SEAWEED_FILER_DB = "seaweedfs_filer";
 
+/**
+ * Piloti's PostHog project (EU Cloud, project 269895), the default for every
+ * stack (ADR-0100). The token is the public `phc_` client key: it ships in
+ * every browser bundle and can only write events, never read them. A stack
+ * opts out with an empty `grid-oib:posthogHost`.
+ */
+export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
+export const POSTHOG_DEFAULT_PROJECT_TOKEN = "phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X"; // pragma: allowlist secret
+
 export interface GridConfig {
   namespace: string;
   /** Raw kubeconfig for the target cluster (from the provider). Secret. */
@@ -941,24 +950,25 @@ export interface GridConfig {
   /**
    * PostHog product analytics (fail-open).
    *
-   * Both values are optional: an empty host or token keeps the browser client
-   * disabled (`isPosthogEnabled() === false` in
-   * `frontends/ui/src/lib/analytics/posthog.ts`), so a stack that has not
-   * adopted analytics deploys exactly as before. The project token is a public
+   * Both default to Piloti's project (`POSTHOG_DEFAULT_HOST`,
+   * `POSTHOG_DEFAULT_PROJECT_TOKEN`), so every stack sends. An empty
+   * `grid-oib:posthogHost` opts a stack out and keeps every client disabled
+   * (`isPosthogEnabled() === false` in
+   * `frontends/ui/src/lib/analytics/posthog.ts`). The project token is a public
    * `phc_` key by design (it ships in the client bundle), so it lives in plain
    * config like `workosClientId`, not in ESC secrets.
    */
   posthog: {
-    /** e.g. `https://eu.i.posthog.com`. Empty = analytics disabled. */
+    /** Default `https://eu.i.posthog.com`. Empty = analytics disabled. */
     host: string;
-    /** Public project token (`phc_…`). Empty = analytics disabled. */
+    /** Public project token (`phc_…`), default Piloti's project. Empty = analytics disabled. */
     projectToken: string;
     /**
      * Whether the collector ships WARN-and-above logs to PostHog Logs: the
      * `posthogLogsEnabled` flag AND host AND token AND the `observabilityEnabled`
      * flag (the collector is the only sender, so without it there is nothing to
-     * configure; this one is a consumer that brings the collector up). Default off: it is a second copy of the logs signal leaving
-     * the cluster, and PostHog's free tier is 10 GB of logs.
+     * configure; this one is a consumer that brings the collector up). Default
+     * on: only WARN and above leave, and PostHog's free tier is 10 GB of logs.
      */
     logsEnabled: boolean;
     /**
@@ -2165,22 +2175,26 @@ export function loadConfig(): GridConfig {
     }
   }
 
-  // ── PostHog: one configuration for every runtime, logs opt-in on top ───────
+  // ── PostHog: on by default in every stack (ADR-0100) ───────────────────────
   // The frontend, the Python tiers and the collector all read this one pair.
   // The SDK tiers capture with host + token alone (they no-op without them).
-  // Logs are different: they leave the cluster in bulk, through the collector,
-  // so they are a flag AND capability on top of the credentials, and need the
-  // collector to exist.
-  const posthogHost = cfg.get("posthogHost") ?? "";
-  const posthogProjectToken = cfg.get("posthogProjectToken") ?? "";
-  const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", false);
+  // Both default to Piloti's project, so a stack sends unless it opts out with
+  // an empty `posthogHost`; every event carries its `environment`, which keeps
+  // staging apart from production in the one project. Logs leave the cluster
+  // in bulk through the collector, so they also need the collector.
+  const posthogHost = cfg.get("posthogHost") ?? POSTHOG_DEFAULT_HOST;
+  const posthogProjectToken = cfg.get("posthogProjectToken") ?? POSTHOG_DEFAULT_PROJECT_TOKEN;
+  const posthogLogsAsked = cfg.get("posthogLogsEnabled") !== undefined;
+  const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", true);
   const missingPosthogLogsDeps = [
     posthogHost === "" ? "posthogHost" : undefined,
     posthogProjectToken === "" ? "posthogProjectToken" : undefined,
     observabilityFlag ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
   ].filter((k): k is string => k !== undefined);
   const posthogLogsEnabled = posthogLogsFlag && missingPosthogLogsDeps.length === 0;
-  if (posthogLogsFlag && !posthogLogsEnabled) {
+  // Warn only when a stack asked for logs by name: the default with the
+  // collector or PostHog switched off is that stack's choice, not a mistake.
+  if (posthogLogsAsked && posthogLogsFlag && !posthogLogsEnabled) {
     pulumi.log.warn(
       "PostHog logs not exported: missing " +
         missingPosthogLogsDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +

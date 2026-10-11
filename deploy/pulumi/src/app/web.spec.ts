@@ -89,11 +89,19 @@ describe("the web Deployment's PostHog env", () => {
     ]);
   });
 
+  it("carries Piloti's project when the stack sets nothing", async () => {
+    const { POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } = await import("../config");
+    expect(await webEnv({})).toEqual([
+      { name: "PUBLIC_POSTHOG_HOST", value: POSTHOG_DEFAULT_HOST },
+      { name: "PUBLIC_POSTHOG_PROJECT_TOKEN", value: POSTHOG_DEFAULT_PROJECT_TOKEN },
+    ]);
+  });
+
   it.each([
-    ["host", { "grid-oib:posthogProjectToken": POSTHOG["grid-oib:posthogProjectToken"] }],
-    ["token", { "grid-oib:posthogHost": POSTHOG["grid-oib:posthogHost"] }],
-    ["both", {}],
-  ])("carries nothing without the %s, never a half-configured pod", async (_what, values) => {
+    ["host", { "grid-oib:posthogHost": "" }],
+    ["token", { "grid-oib:posthogProjectToken": "" }],
+    ["both", { "grid-oib:posthogHost": "", "grid-oib:posthogProjectToken": "" }],
+  ])("carries nothing once the %s is emptied, never a half-configured pod", async (_what, values) => {
     expect(await webEnv(values)).toEqual([]);
   });
 });

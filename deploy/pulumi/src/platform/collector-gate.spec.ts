@@ -92,6 +92,9 @@ const POSTHOG_LOGS = {
   "grid-oib:posthogLogsEnabled": "true",
 };
 
+/** A stack that opted out of PostHog, which is otherwise on (and a log consumer) by default. */
+const NO_POSTHOG = { "grid-oib:posthogHost": "" };
+
 /** What a stack that adopted err2issue and the feedback issues still has in its config file. */
 const LEFTOVER_ERR2ISSUE_KEYS = {
   "grid-oib:err2issueEnabled": "true",
@@ -109,10 +112,10 @@ const LEFTOVER_DASHBOARD_KEYS = {
   "grid-oib:dashboardMaxLogCount": "50000",
 };
 
-describe("a stack with Langfuse, as today's stacks are", () => {
+describe("a stack with Langfuse and PostHog opted out", () => {
   let d: Deployed;
   beforeAll(async () => {
-    d = await deploy({ ...langfuseStackConfig(), ...LEFTOVER_DASHBOARD_KEYS, ...LEFTOVER_ERR2ISSUE_KEYS });
+    d = await deploy({ ...langfuseStackConfig(), ...NO_POSTHOG, ...LEFTOVER_DASHBOARD_KEYS, ...LEFTOVER_ERR2ISSUE_KEYS });
   }, 120_000);
 
   it("deploys no err2issue and no GitHub credential, whatever the config still says", async () => {
@@ -186,22 +189,23 @@ describe("the gate, as loadConfig resolves it", () => {
     return loadConfig();
   };
 
-  it("needs a consumer for the collector", () => {
-    expect(load({}).observability.enabled).toBe(false);
-    expect(load(langfuseStackConfig()).observability.enabled).toBe(true);
+  it("needs a consumer for the collector, and PostHog logs are one by default", () => {
+    expect(load(NO_POSTHOG).observability.enabled).toBe(false);
+    expect(load({}).observability.enabled).toBe(true);
+    expect(load({ ...langfuseStackConfig(), ...NO_POSTHOG }).observability.enabled).toBe(true);
     expect(load(POSTHOG_LOGS).observability.enabled).toBe(true);
   });
 
   it("is not brought up by err2issue's old keys alone", () => {
-    expect(load({ ...LEFTOVER_ERR2ISSUE_KEYS }).observability.enabled).toBe(false);
+    expect(load({ ...NO_POSTHOG, ...LEFTOVER_ERR2ISSUE_KEYS }).observability.enabled).toBe(false);
   });
 
   it("is not brought up by the dashboard's old keys alone", () => {
-    expect(load({ ...LEFTOVER_DASHBOARD_KEYS }).observability.enabled).toBe(false);
+    expect(load({ ...NO_POSTHOG, ...LEFTOVER_DASHBOARD_KEYS }).observability.enabled).toBe(false);
   });
 
   it("skips Langfuse, rather than half-deploying it, without the Connect application it signs in against", () => {
-    const values = langfuseStackConfig();
+    const values: Record<string, string> = { ...langfuseStackConfig(), ...NO_POSTHOG };
     delete values["grid-oib:otelOidcClientSecret"];
     const cfg = load(values);
     expect(cfg.langfuse.enabled).toBe(false);

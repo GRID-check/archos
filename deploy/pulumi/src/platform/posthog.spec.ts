@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, vi } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-config";
-import { loadConfig } from "../config";
+import { loadConfig, POSTHOG_DEFAULT_HOST, POSTHOG_DEFAULT_PROJECT_TOKEN } from "../config";
 import { posthogEnv } from "../app/config";
 
 /**
@@ -113,19 +113,22 @@ describe("PostHog logs in the collector, enabled", () => {
   });
 });
 
-describe("PostHog logs in the collector, off", () => {
-  it("is absent by default even with host and token set", async () => {
-    const { collector } = await deploy({ ...POSTHOG });
-    expect(collector).not.toContain("posthog");
-    expect(collector).not.toContain("warn_and_above");
+describe("PostHog logs in the collector, by default and off", () => {
+  it("ships WARN+ to Piloti's project when the stack sets nothing", async () => {
+    const { collector } = await deploy({});
+    expect(collector).toContain(`${POSTHOG_DEFAULT_HOST}/i/v1/logs`);
+    expect(collector).toContain(POSTHOG_DEFAULT_PROJECT_TOKEN);
+    expect(collector).toContain("warn_and_above");
   }, 120_000);
 
-  it("is absent when the flag is set but the token is missing", async () => {
-    const { collector } = await deploy({
-      "grid-oib:posthogHost": POSTHOG["grid-oib:posthogHost"],
-      "grid-oib:posthogLogsEnabled": "true",
-    });
+  it.each([
+    ["the stack switches logs off", { "grid-oib:posthogLogsEnabled": "false" }],
+    ["the stack opts out of PostHog with an empty host", { "grid-oib:posthogHost": "" }],
+    ["the flag is set but the token is empty", { "grid-oib:posthogLogsEnabled": "true", "grid-oib:posthogProjectToken": "" }],
+  ])("is absent when %s", async (_why, values) => {
+    const { collector } = await deploy(values);
     expect(collector).not.toContain("posthog");
+    expect(collector).not.toContain("warn_and_above");
   }, 120_000);
 });
 
@@ -160,7 +163,7 @@ describe("the Python tiers' PostHog pair", () => {
     expect(posthogEnv(gridCfg("", "", "0193f5a6-rel"))).toEqual([]);
   });
 
-  it("reaches chat, api, agent-worker and ingest-worker, and nothing when unset", async () => {
+  it("reaches chat, api and agent-worker, Piloti's project by default, and nothing once opted out", async () => {
     const withPosthog = async (values: Record<string, string>, name: string, type: string) => {
       await deploy(values);
       const spec = (await resolve(find(type, name).inputs.spec)) as any;
@@ -178,7 +181,11 @@ describe("the Python tiers' PostHog pair", () => {
         { name: "POSTHOG_HOST", value: "https://eu.i.posthog.com/" },
         { name: "POSTHOG_PROJECT_TOKEN", value: "phc_test_token" },
       ]);
-      expect(await withPosthog({}, name, type), name).toEqual([]);
+      expect(await withPosthog({}, name, type), name).toEqual([
+        { name: "POSTHOG_HOST", value: POSTHOG_DEFAULT_HOST },
+        { name: "POSTHOG_PROJECT_TOKEN", value: POSTHOG_DEFAULT_PROJECT_TOKEN },
+      ]);
+      expect(await withPosthog({ "grid-oib:posthogHost": "" }, name, type), name).toEqual([]);
     }
   }, 240_000);
 

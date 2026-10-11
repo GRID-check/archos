@@ -6,7 +6,11 @@ It answers three questions: what moves where, what it costs (nothing, by design)
 and what a person still has to click.
 
 The PostHog project is **EU Cloud, project 269895** (`https://eu.posthog.com`,
-ingestion `https://eu.i.posthog.com`).
+ingestion `https://eu.i.posthog.com`). It is on by default in every Pulumi
+stack, staging and production alike: the host and the public project token
+are the program's defaults (`deploy/pulumi/src/config.ts`), and each event's
+`environment` tells the two apart. A stack opts out with an empty
+`grid-oib:posthogHost`.
 
 ## What goes where
 
@@ -15,10 +19,10 @@ ingestion `https://eu.i.posthog.com`).
 | LLM traces in Langfuse (NAT spans, the 7 direct routes, `retrieve.*`, `decide.*`) | Stay in Langfuse **and** reach PostHog as `langfuse observation` events | Langfuse's PostHog integration, hourly, no backfill. Our code emits no `$ai_*` events (`tests/test_posthog_boundaries.py`) | Integration to enable, see [checklist](#checklist) |
 | 20 Langfuse scores (`SCORE_DEFINITIONS`), user votes, review and judge scores | Stay in Langfuse **and** reach PostHog as `langfuse score` events | Same integration | Same |
 | Session ↔ trace | PostHog `$session_id` on the exported observations | Browser session id → chat turn → trace metadata `$posthog_session_id` | Code in this change |
-| Browser analytics (15 events, off in both stacks) | PostHog product analytics | `posthog-js`, identify by WorkOS user id only, `organization_id` as a property | Code in this change; stack keys to set |
+| Browser analytics (15 events, off in both stacks) | PostHog product analytics | `posthog-js`, identify by WorkOS user id only, `organization_id` as a property | Code in this change; on by default in both stacks |
 | Server-side events | PostHog | `posthog-node` behind `lib/analytics/posthog-server.ts` | Code in this change |
 | err2issue (ERROR logs → GitHub issues) | PostHog error tracking | Browser autocapture, BFF `onRequestError`, Python logging handler (caught-and-logged exceptions), source maps per release | Code in this change; err2issue deleted from the Pulumi program |
-| Aspire log pane | Retired. WARN+ logs go to PostHog Logs, traces are read in Langfuse | An exporter on the collector, behind `grid-oib:posthogLogsEnabled`; the dashboard, its listener and its metrics pipeline are deleted | Code in this change; stack keys to remove |
+| Aspire log pane | Retired. WARN+ logs go to PostHog Logs, traces are read in Langfuse | An exporter on the collector, `grid-oib:posthogLogsEnabled` (default on); the dashboard, its listener and its metrics pipeline are deleted | Code in this change; old dashboard keys to remove |
 | Product feedback dialog (Postgres, inbox; the GitHub filing is removed) | Unchanged, and also a PostHog Support conversation (report id and server-masked text, only when contact is allowed) | `posthog.conversations.sendMessage` | Code in this change |
 | No surveys | PostHog Surveys (NPS, CSAT, churn), German first | Defined in PostHog | Drafts created, not launched |
 | No alerts | PostHog alerts on errors, logs and insights | Defined in PostHog | Created in the project |
@@ -84,9 +88,11 @@ date.
 - [ ] **Langfuse → PostHog integration**: in Langfuse, Settings → Integrations →
   PostHog, host `https://eu.i.posthog.com`, the project token, export source
   *Enriched observations*, enabled. See [`langfuse.md`](langfuse.md#posthog-export).
-- [ ] **Stack keys** on the stacks that should send: `grid-oib:posthogHost`,
-  `grid-oib:posthogProjectToken`; optionally `grid-oib:posthogLogsEnabled`,
-  `grid-oib:posthogSessionReplay`, `grid-oib:posthogReplaySampleRate`.
+- [x] **Stack keys**: none needed. Host, token, logs and replay default on in
+  every stack (2026-10-11); `grid-oib:posthogReplaySampleRate` lowers replay
+  when the 5K recordings run short.
+- [x] **Session recording on in the project** (2026-10-11), all text and inputs
+  masked. The browser's own switch is `grid-oib:posthogSessionReplay`.
 - [ ] **An alert destination**: connect GitHub, Slack or a webhook (Project
   settings → Integrations), then create the two error-tracking alerts (issue
   created, issue spiking; the free tier allows two) and attach the draft log
@@ -108,10 +114,9 @@ date.
 
 ## Open decisions
 
-1. **Replay.** It is on by default (`grid-oib:posthogSessionReplay`), with all
-   text masked and document viewers blocked, the moment a stack sets the token.
-   Counsel signs off on the legal copy and the consent posture first, or the
-   stack sets `posthogSessionReplay: "false"` until they have.
+1. **Replay.** On by default in staging and production (owner decision,
+   2026-10-11), with all text masked and document viewers blocked. The legal
+   copy names it; counsel's review of that copy is still open below.
 2. **Langfuse export volume.** Enriched export sends every observation type.
    If observations per turn × turns approaches 1M a month, keep the PostHog
    charts on scores and generations and ask Langfuse for a narrower export

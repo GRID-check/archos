@@ -421,7 +421,9 @@ The browser and BFF read `NEXT_PUBLIC_POSTHOG_HOST` / `NEXT_PUBLIC_POSTHOG_PROJE
 | `POSTHOG_PROJECT_TOKEN` | No | _(unset)_ | Public PostHog project token (`phc_…`), plain config like its frontend twin. Same fail-open behaviour as `POSTHOG_HOST`. On Kubernetes it is set from `grid-oib:posthogProjectToken`. |
 | `POSTHOG_RELEASE_ID` | No | _(unset)_ | The PostHog release id of the running backend image, read by posthog-python itself and sent as `$release_id` on every event, so error tracking links an exception to its release. It is the id `PostHog/resolve-release` prints (not a commit sha). The staging deploy resolves it per run for release `grid-agent` at the backend image's commit and sets `grid-oib:posthogReleaseId`; Pulumi injects it beside the pair above, never alone. Unset, events carry no release. aiq-agent, aiq-api, agent-worker, ingest-worker. |
 
-The collector's WARN-and-above log pipeline to PostHog Logs is not an environment variable. It is the stack key `grid-oib:posthogLogsEnabled` (default false), and it needs `posthogHost`, `posthogProjectToken` and the observability tier ([`kubernetes.md`](kubernetes.md) §9).
+On Kubernetes every PostHog pair is on by default: `grid-oib:posthogHost` and `grid-oib:posthogProjectToken` default to Piloti's EU project (`POSTHOG_DEFAULT_HOST` and `POSTHOG_DEFAULT_PROJECT_TOKEN` in `deploy/pulumi/src/config.ts`), so staging and production both send, told apart by each event's `environment`. A stack opts out with `grid-oib:posthogHost: ""`. Compose and a local `bun dev` still need the variables set by hand, so a developer's machine sends nothing by accident.
+
+The collector's WARN-and-above log pipeline to PostHog Logs is not an environment variable. It is the stack key `grid-oib:posthogLogsEnabled` (default true), and it needs `posthogHost`, `posthogProjectToken` and the observability tier ([`kubernetes.md`](kubernetes.md) §9).
 
 ## Prompt management (Langfuse)
 

@@ -80,7 +80,8 @@ What goes where:
 | Session ↔ trace | PostHog | The browser's PostHog session id rides the chat turn into trace metadata `$posthog_session_id`, which the integration maps to `$session_id` |
 | Product analytics | PostHog | `posthog-js` (browser), `posthog-node` (BFF) |
 | Exceptions | PostHog error tracking | Browser autocapture, BFF `onRequestError`, and a Python logging handler for caught-and-logged exceptions. err2issue (ADR-0031) is deleted |
-| Logs | PostHog Logs (WARN and above) | An exporter on the existing collector, behind a stack key. The Aspire dashboard (ADR-0029) is deleted; the collector stays, and traces are read in Langfuse |
+| Logs | PostHog Logs (WARN and above) | An exporter on the existing collector, on by default. The Aspire dashboard (ADR-0029) is deleted; the collector stays, and traces are read in Langfuse |
+| Where it is on | Every Pulumi stack, staging and production | The host and the public project token are the program's defaults, so no stack has to opt in; an event's `environment` tells the stacks apart, and an empty `posthogHost` opts one out |
 | Surveys | PostHog Surveys | Defined in PostHog; votes on answers keep their own UI |
 | Support | PostHog Support (`posthog.conversations`) | The product-feedback dialog also opens a support conversation |
 | Alerts | PostHog | Error-tracking, log and insight alerts |

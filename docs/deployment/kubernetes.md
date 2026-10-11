@@ -1934,7 +1934,7 @@ filter:
 
 | Pipeline | Exporter | Filter | Switch |
 |---|---|---|---|
-| `logs/posthog` | `otlp_http/posthog` | below WARN dropped (`severity_number < 13`, records without a severity too) | `posthogLogsEnabled` (default `false`) plus `posthogHost` and `posthogProjectToken` |
+| `logs/posthog` | `otlp_http/posthog` | below WARN dropped (`severity_number < 13`, records without a severity too) | `posthogLogsEnabled` (default `true`) plus `posthogHost` and `posthogProjectToken` (both default to Piloti's project; an empty `posthogHost` opts the stack out) |
 
 PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
 <project token>`. The token is PostHog's public `phc_` key, the same one the
