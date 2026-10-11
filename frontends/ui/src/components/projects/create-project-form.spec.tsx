@@ -33,9 +33,6 @@ describe('CreateProjectForm', () => {
     push.mockClear()
   })
 
-  // A server action that calls redirect() rejects a direct caller with
-  // NEXT_REDIRECT, so the capture after the await never ran. The action answers
-  // with the id instead, and the form owns both the event and the navigation.
   test('captures project_created and opens intake after a create', async () => {
     vi.mocked(createProject).mockResolvedValue({ projectId: 'p1' })
 
