@@ -428,6 +428,14 @@
               "de": "Wenn Piloti selbstständig frühere Projekte durchsucht, beginnt es jetzt mit den Projekten, die Ihren am ähnlichsten sind, statt mit den neuesten."
             },
             {
+              "en": "A finished answer no longer stays greyed out after Piloti tidies its sources at the end. The text fades back in and always ends at full strength.",
+              "de": "Eine fertige Antwort bleibt nicht mehr ausgegraut, nachdem Piloti am Ende die Quellen bereinigt hat. Der Text wird wieder eingeblendet und ist immer vollständig sichtbar."
+            },
+            {
+              "en": "When Piloti states another project's facts from its brief (address, start, Bauweise), the answer cites them as \"Projektdaten\" of that project. Before, that citation was removed and the answer said a source could not be verified.",
+              "de": "Wenn Piloti Fakten aus dem Briefing eines anderen Projekts nennt (Adresse, Start, Bauweise), weist die Antwort sie als „Projektdaten“ dieses Projekts aus. Bislang entfernt die Antwort diesen Verweis und erklärt, dass keine Quelle verifiziert werden kann."
+            },
+            {
               "en": "When Piloti finds nothing to answer from, it no longer tells you to narrow the question to one file unless you had actually picked a file or a shelf. If a search is unavailable, it now says so.",
               "de": "Wenn Piloti keine Antwort findet, rät es Ihnen nicht mehr, die Frage auf eine einzelne Datei einzugrenzen, es sei denn, Sie haben tatsächlich eine Datei oder Ablage ausgewählt. Ist eine Suche nicht verfügbar, sagt Piloti das jetzt."
             },

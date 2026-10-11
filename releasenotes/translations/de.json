@@ -244,6 +244,10 @@
     "de": "Ein fertiger Recherchebericht landet jetzt in Ihrem Projekt statt nur im Chat. Sie finden ihn unter „Berichte“, wo Sie ihn wie jede andere Datei öffnen, in der Vorschau ansehen, herunterladen oder löschen und mit den Personen im Projekt teilen können, ohne etwas herauskopieren zu müssen."
   },
   {
+    "en": "A finished answer no longer stays greyed out after Piloti tidies its sources at the end. The text fades back in and always ends at full strength.",
+    "de": "Eine fertige Antwort bleibt nicht mehr ausgegraut, nachdem Piloti am Ende die Quellen bereinigt hat. Der Text wird wieder eingeblendet und ist immer vollständig sichtbar."
+  },
+  {
     "en": "A finished deep-research report no longer carries follow-up questions. They are offered on chat answers instead, since a report is written after the chat answer is complete.",
     "de": "Ein fertiger Tiefenrecherche-Bericht trägt keine Folgefragen mehr. Stattdessen werden sie bei Chat-Antworten angeboten, weil ein Bericht erst geschrieben wird, nachdem die Chat-Antwort abgeschlossen ist."
   },
@@ -2694,6 +2698,10 @@
   {
     "en": "When Piloti searches twice, each step of the Herleitung now shows the files of that search instead of listing both on the first. A summary is no longer shown as a ruling by mistake.",
     "de": "Sucht Piloti zweimal, zeigt jeder Schritt der Herleitung jetzt die Dateien dieser Suche, statt beide beim ersten aufzulisten. Eine Zusammenfassung wird nicht mehr irrtümlich als Bescheid angezeigt."
+  },
+  {
+    "en": "When Piloti states another project's facts from its brief (address, start, Bauweise), the answer cites them as \"Projektdaten\" of that project. Before, that citation was removed and the answer said a source could not be verified.",
+    "de": "Wenn Piloti Fakten aus dem Briefing eines anderen Projekts nennt (Adresse, Start, Bauweise), weist die Antwort sie als „Projektdaten“ dieses Projekts aus. Bislang entfernt die Antwort diesen Verweis und erklärt, dass keine Quelle verifiziert werden kann."
   },
   {
     "en": "When Piloti was updated while your page was open, it now asks you to reload instead of asking you to check your network.",
