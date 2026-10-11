@@ -1012,6 +1012,10 @@
     "de": "Deep-Research-Läufe, die nicht abgeschlossen werden, können jetzt im Chatverlauf gestoppt werden: Für jeden weiterhin als laufend markierten Lauf gibt es eine Stopp-Aktion, und eine einzige Schaltfläche beendet alle festhängenden Läufe auf einmal. Gestoppte Läufe verhindern nicht mehr, dass Sie den zugehörigen Chat umbenennen oder löschen."
   },
   {
+    "en": "Deleting a chat now also deletes the thumbs-down comments and expected answers you wrote on its answers. They used to stay behind in the feedback overview after the chat was gone.",
+    "de": "Beim Löschen eines Chats werden jetzt auch die Daumen-runter-Kommentare und erwarteten Antworten gelöscht, die Sie zu seinen Antworten verfasst haben. Bisher blieben sie nach dem Löschen des Chats in der Feedback-Übersicht erhalten."
+  },
+  {
     "en": "Deleting a chat now also removes every file attached to it from search. Before, the content of older attachments could stay findable after the chat was gone.",
     "de": "Wer einen Chat löscht, entfernt jetzt auch alle darin angehängten Dateien aus der Suche. Bisher konnten Inhalte älterer Anhänge nach dem Löschen auffindbar bleiben."
   },
@@ -1334,6 +1338,10 @@
   {
     "en": "IFC models, Word and presentation files and finished research reports now survive an interruption, and none of them stays at “Reading” any more. A large folder of office files no longer slows other offices down, and a report whose PDF failed is tried again instead of being lost.",
     "de": "IFC-Modelle, Word- und Präsentationsdateien sowie fertige Recherche-Berichte überstehen jetzt eine Unterbrechung, und keines davon bleibt mehr bei „Wird gelesen“ hängen. Ein großer Ordner mit Büro-Dateien verlangsamt nicht mehr andere Büros, und ein Bericht, dessen PDF fehlgeschlagen ist, wird erneut versucht, statt verloren zu gehen."
+  },
+  {
+    "en": "If Piloti itself fails to load, you now see a Piloti page in your language with a button to try again, instead of a bare browser error screen.",
+    "de": "Wenn Piloti selbst nicht lädt, sehen Sie jetzt statt einer schlichten Browser-Fehlerseite eine Piloti-Seite in Ihrer Sprache mit einer Schaltfläche zum erneuten Versuch."
   },
   {
     "en": "If a browser tab was open during the update, it shows a connection error until you reload it.",
@@ -2422,6 +2430,10 @@
   {
     "en": "The preview now shows the summary Piloti made of the document, under the document itself. A file without an inline preview offers its download instead.",
     "de": "Die Vorschau zeigt jetzt unter dem Dokument die Zusammenfassung, die Piloti vom Dokument erstellt hat. Eine Datei ohne eingebettete Vorschau bietet stattdessen ihren Download an."
+  },
+  {
+    "en": "The privacy policy and the list of external providers now name PostHog, with servers in Frankfurt, as the provider of Piloti's usage analytics, error reports and surveys, and the public website measures visits the same way. The policy says exactly what is collected and stored in your browser, and how you can object at any time.",
+    "de": "Die Datenschutzerklärung und die Liste externer Anbieter nennen jetzt PostHog mit Servern in Frankfurt als Anbieter für Piloti-Nutzungsanalysen, Fehlerberichte und Umfragen. Auch die öffentliche Website erfasst Besuche auf dieselbe Weise. In der Datenschutzerklärung steht genau, welche Daten erhoben und in Ihrem Browser gespeichert werden und wie Sie jederzeit widersprechen können."
   },
   {
     "en": "The project file list now arrives with the page instead of loading folder by folder behind grey placeholders.",

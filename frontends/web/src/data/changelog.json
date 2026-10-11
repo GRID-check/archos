@@ -472,6 +472,10 @@
               "de": "Auf dem iPhone verschwindet das Eingabefeld nicht mehr hinter der Tastatur."
             },
             {
+              "en": "If Piloti itself fails to load, you now see a Piloti page in your language with a button to try again, instead of a bare browser error screen.",
+              "de": "Wenn Piloti selbst nicht lädt, sehen Sie jetzt statt einer schlichten Browser-Fehlerseite eine Piloti-Seite in Ihrer Sprache mit einer Schaltfläche zum erneuten Versuch."
+            },
+            {
               "en": "Previews of spreadsheets and text files saved on Windows show euro signs, dashes and curly quotes again instead of leaving them blank.",
               "de": "Vorschauen von unter Windows gespeicherten Tabellen und Textdateien zeigen Eurozeichen, Gedankenstriche und typografische Anführungszeichen wieder an, statt sie leer zu lassen."
             },
@@ -614,6 +618,10 @@
             {
               "en": "Dropping a folder no longer uploads the system and lock files that Macs, Windows and Office create alongside documents.",
               "de": "Wenn Sie einen Ordner hineinziehen, lädt Piloti damit nicht mehr die Systemdateien und Sperrdateien hoch, die Macs, Windows und Office neben Dokumenten anlegen."
+            },
+            {
+              "en": "Deleting a chat now also deletes the thumbs-down comments and expected answers you wrote on its answers. They used to stay behind in the feedback overview after the chat was gone.",
+              "de": "Beim Löschen eines Chats werden jetzt auch die Daumen-runter-Kommentare und erwarteten Antworten gelöscht, die Sie zu seinen Antworten verfasst haben. Bisher blieben sie nach dem Löschen des Chats in der Feedback-Übersicht erhalten."
             }
           ]
         },
@@ -648,6 +656,10 @@
             {
               "en": "Facts Piloti suggests from a closed project's documents are checked against the quoted words, so a value the quote contradicts is no longer suggested.",
               "de": "Fakten, die Piloti aus den Dokumenten eines abgeschlossenen Projekts vorschlägt, werden mit den zitierten Wörtern abgeglichen, sodass ein Wert, der dem Zitat widerspricht, nicht mehr vorgeschlagen wird."
+            },
+            {
+              "en": "The privacy policy and the list of external providers now name PostHog, with servers in Frankfurt, as the provider of Piloti's usage analytics, error reports and surveys, and the public website measures visits the same way. The policy says exactly what is collected and stored in your browser, and how you can object at any time.",
+              "de": "Die Datenschutzerklärung und die Liste externer Anbieter nennen jetzt PostHog mit Servern in Frankfurt als Anbieter für Piloti-Nutzungsanalysen, Fehlerberichte und Umfragen. Auch die öffentliche Website erfasst Besuche auf dieselbe Weise. In der Datenschutzerklärung steht genau, welche Daten erhoben und in Ihrem Browser gespeichert werden und wie Sie jederzeit widersprechen können."
             }
           ]
         }
