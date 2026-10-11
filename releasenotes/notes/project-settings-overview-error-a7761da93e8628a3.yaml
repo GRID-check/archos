@@ -1,0 +1,4 @@
+fixes:
+  - >
+    The settings overview of a project whose intake was never completed no
+    longer shows an error. Its similar closed projects load again.
