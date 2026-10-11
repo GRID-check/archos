@@ -140,7 +140,7 @@ function PickerBlock({
             }
           }}
         />
-        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+        <div className="mt-2 flex flex-wrap items-center gap-1.5">
           <span className="bg-card text-muted-foreground shadow-xs inline-flex h-8 items-center gap-[7px] rounded-lg border px-[11px] text-[12.5px]">
             <Layers className="size-3.5" aria-hidden />
             Datengrundlage

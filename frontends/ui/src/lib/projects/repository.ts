@@ -19,6 +19,7 @@ import 'server-only'
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUuid } from '@/lib/ids'
+import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { deletionQueue, projects, type Project } from '@/lib/db/schema'
@@ -52,6 +53,11 @@ export async function listProjectsInOrg(
 /**
  * Load a project by id scoped to an organization. Soft-deleted rows are
  * excluded unless `includeDeleted` (restore flows).
+ *
+ * The profile is salvaged like {@link findProjectProfile}'s, for the reason
+ * given there: a never-saved project stores `{}`, and every caller of this
+ * function reads `profile.facts`. A profile nothing can be salvaged from reads
+ * as the empty one, so no caller has to guard it.
  */
 export async function findProjectInOrg(
   projectId: string,
@@ -68,7 +74,8 @@ export async function findProjectInOrg(
       .where(and(...conditions))
       .limit(1)
   )
-  return row ?? null
+  if (!row) return null
+  return { ...row, profile: salvageProjectProfile(row.profile).profile ?? emptyProjectProfile() }
 }
 
 /**
