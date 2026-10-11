@@ -421,6 +421,14 @@
             {
               "en": "Reprocessing a project and rereading its failed documents now carry on after an interruption instead of stopping halfway, and an upload made in the meantime is read first. Both start at once and run in the background, so the page no longer waits for them.",
               "de": "Das erneute Verarbeiten eines Projekts und das erneute Lesen fehlgeschlagener Dokumente laufen nach einer Unterbrechung weiter, statt auf halbem Weg stehen zu bleiben, und ein zwischendurch hochgeladener Upload wird zuerst gelesen. Beide starten sofort und laufen im Hintergrund, sodass die Seite nicht mehr auf sie wartet."
+            },
+            {
+              "en": "The project's Steckbrief now fills itself: the project's members appear without being typed in, someone taken off the project stays on as a former member, and the start is the month the project was created until you change it.",
+              "de": "Der Steckbrief des Projekts füllt sich jetzt automatisch: Die Projektmitglieder werden ohne manuelle Eingabe angezeigt, entfernte Personen bleiben als ehemalige Mitglieder eingetragen und als Start ist zunächst der Monat der Projekterstellung hinterlegt, bis Sie ihn ändern."
+            },
+            {
+              "en": "On the overview the Steckbrief is now a summary with a „Bearbeiten“ dialog, and closing a project asks who was involved, so the record is complete before it becomes read-only.",
+              "de": "In der Übersicht ist der Steckbrief jetzt eine Zusammenfassung mit einem „Bearbeiten“-Dialog; beim Schließen eines Projekts wird abgefragt, wer beteiligt war, damit der Datensatz vollständig ist, bevor er schreibgeschützt wird."
             }
           ]
         },

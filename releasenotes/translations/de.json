@@ -1556,6 +1556,10 @@
     "de": "Im Skills-Tab lässt sich ein Skill ausschalten. Ausgeschaltet verschwindet er aus dem „/“-Menü und aus der Auswahl, die Piloti für eine Antwort treffen kann."
   },
   {
+    "en": "On the overview the Steckbrief is now a summary with a „Bearbeiten“ dialog, and closing a project asks who was involved, so the record is complete before it becomes read-only.",
+    "de": "In der Übersicht ist der Steckbrief jetzt eine Zusammenfassung mit einem „Bearbeiten“-Dialog; beim Schließen eines Projekts wird abgefragt, wer beteiligt war, damit der Datensatz vollständig ist, bevor er schreibgeschützt wird."
+  },
+  {
     "en": "Once a newer version is published, Piloti stops answering from the replaced one. The older version stays in the version list and can still be opened.",
     "de": "Sobald eine neuere Fassung veröffentlicht ist, antwortet Piloti nicht mehr aus der ersetzten Fassung. Die ältere Fassung bleibt im Fassungsverlauf und lässt sich weiter öffnen."
   },
@@ -2426,6 +2430,10 @@
   {
     "en": "The project wizard lists all its modules by full name beside the questions, each with how many answers it already has, and you can jump to any of them.",
     "de": "Der Projekt-Assistent zeigt alle Module mit vollem Namen neben den Fragen, jedes mit der Zahl der schon gemachten Angaben, und Sie springen jederzeit dorthin."
+  },
+  {
+    "en": "The project's Steckbrief now fills itself: the project's members appear without being typed in, someone taken off the project stays on as a former member, and the start is the month the project was created until you change it.",
+    "de": "Der Steckbrief des Projekts füllt sich jetzt automatisch: Die Projektmitglieder werden ohne manuelle Eingabe angezeigt, entfernte Personen bleiben als ehemalige Mitglieder eingetragen und als Start ist zunächst der Monat der Projekterstellung hinterlegt, bis Sie ihn ändern."
   },
   {
     "en": "The replaced document keeps its identity: references from answers, the link in the chat and its folder stay intact.",
