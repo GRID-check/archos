@@ -107,7 +107,7 @@
             },
             {
               "en": "Piloti now looks into the office's past projects on its own, starting with the closed projects most like yours, whenever a question is about how something was solved before. A source from another project names that project and is presented as a precedent, not as a rule.",
-              "de": "Piloti sieht jetzt von sich aus in frühere Projekte des Büros, beginnend mit den abgeschlossenen Projekten, die Ihrem am ähnlichsten sind, sobald eine Frage wissen will, wie etwas früher gelöst wurde. Eine Quelle aus einem anderen Projekt nennt dieses Projekt und wird als Präzedenzfall dargestellt, nicht als Regel."
+              "de": "Piloti sucht jetzt von sich aus in früheren Projekten des Büros, zuerst in den abgeschlossenen Projekten, die Ihren am ähnlichsten sind, sobald eine Frage wissen will, wie etwas früher gelöst wurde. Eine Quelle aus einem anderen Projekt nennt dieses Projekt und gilt als Präzedenzfall, nicht als Regel."
             },
             {
               "en": "Piloti skips folders you may not read in those projects, and files still held back for review, including your own uploads.",

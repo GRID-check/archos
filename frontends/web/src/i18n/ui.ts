@@ -569,7 +569,7 @@ const de = {
   launch: {
     kicker: 'Woche 41, 5. bis 11. Oktober 2026',
     heading: 'Der Arbeitsbereich für Architekturbüros macht fertige Projekte durchsuchbar.',
-    lede: 'Diese Woche kommt dazu, was ein Büro braucht, um ein Projekt abzuschließen oder zu pausieren, für das nächste auf frühere Projekte zurückzugreifen und pro Ordner festzulegen, wer ihn lesen oder bearbeiten darf. Uploads werden auf die Begriffe und Nummern geprüft, die Ihr Büro festlegt, bevor ein KI-Modell sie liest. Jedes Dokument behält alle seine Fassungen in einem einzigen Eintrag.',
+    lede: 'Diese Woche kommen Werkzeuge dazu, um Projekte abzuschließen, aufzuräumen und zu pausieren, aus früheren Projekten zu lernen und pro Ordner festzulegen, wer ihn lesen oder bearbeiten darf. Hochgeladene Dateien prüft Piloti vorab auf die Begriffe und Nummern, die Ihr Büro festlegt, bevor ein KI-Modell sie liest. Jedes Dokument hält alle seine Fassungen in einem Eintrag fest.',
     themes: {
       projects: { label: 'Projekte', heading: 'Projekte abschließen und pausieren' },
       knowledge: { label: 'Wissen', heading: 'Was frühere Projekte schon gelöst haben' },
@@ -1210,7 +1210,7 @@ const en: typeof de = {
   launch: {
     kicker: 'Week 41, 5 to 11 October 2026',
     heading: 'The workspace for architects keeps finished projects searchable.',
-    lede: 'This week Piloti gets what an office needs to close or pause a project, draw on earlier projects for the next one, and decide per folder who may read or edit it. Uploads are checked against the terms and numbers the office sets before any AI model reads them. Every revision of a document stays in one entry.',
+    lede: 'This week adds the tools to close, clear out and pause a project, to learn from earlier projects, and to decide per folder who may read or edit it. Piloti checks uploads for the terms and numbers your office sets before any AI model reads them. Every document keeps all its revisions in one entry.',
     themes: {
       projects: { label: 'Projects', heading: 'Close and pause projects' },
       knowledge: { label: 'Knowledge', heading: 'What earlier projects already solved' },
