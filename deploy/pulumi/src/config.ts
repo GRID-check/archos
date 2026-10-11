@@ -965,7 +965,7 @@ export interface GridConfig {
      * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
      * default on, like the browser's own default). Text and inputs are masked,
      * the PDF and IFC viewers, media and signed URLs are blocked, and the privacy
-     * notice names it (ADR-0099). Nothing records while PostHog itself is off.
+     * notice names it (ADR-0100). Nothing records while PostHog itself is off.
      */
     sessionReplay: boolean;
     /**
@@ -1878,7 +1878,7 @@ export function loadConfig(): GridConfig {
   // `observabilityEnabled` is the product decision for the whole tier. The
   // collector is deployed when something consumes it (see `collectorEnabled`
   // below), never because the flag alone says so. The Aspire dashboard it used
-  // to feed is gone (ADR-0099): traces go to Langfuse, logs to PostHog.
+  // to feed is gone (ADR-0100): traces go to Langfuse, logs to PostHog.
   const workosClientId = cfg.get("workosClientId") ?? "";
   const workosApiKey = cfg.getSecret("workosApiKey");
   // Dedicated WorkOS **Connect** application for the platform surfaces (now

@@ -79,6 +79,7 @@ Body: { projectId: string, file: File }
 4. **Insert DB row** — Drizzle `documents` table with `status: 'uploaded'`, storing `documentId`, `organizationId`, `projectId`, `createdBy`, `filename`, `storageKey`, `collectionName`, `fileSize`, `contentType`
 5. **Generate presigned GET URL** — `getSignedUrl(s3Client, GetObjectCommand, { expiresIn: INGEST_JOB_REF_TTL_SECONDS })`. 24 hours, not the 600 s `SEAWEED_PRESIGNED_URL_TTL_SECONDS` default the other signed reads use: the ingest job downloads the file when the bounded ingest pool reaches it, which can be well after dispatch (Step 3)
 6. **Trigger ingestion** — POST to `{BACKEND_URL}/v1/ingest` with `{ file_ref: presignedUrl, collection: collectionName, document_id: documentId, file_name: filename, folder_path }`. `file_name` is the row's own `documents.filename`, stated rather than derived from the presigned URL's last path segment, because it is the join key every chunk purge addresses
+   When the upload dialog filed the file as the new Fassung of another document (`fassungOf` form field, a document id), `uploadToShelf` checks it first (`resolveFassungOf`: write access to the older document, same shelf and collection, active, past screening, person-uploaded; equal names are a version and ignore it) and the dispatch adds `fassung_of: <older file name>`. It travels through the office-rendition job payload too; an IFC model's digest is not the file the row names, so it carries none. In `_ingest_job`, `fassungen.record_fassungen(..., confirmed_older=…)` calls `confirm_fassung` after the summary row is written: loop and existence checks (`document_revisions.would_loop`, shared with the PUT route), `superseded_by` on the older row, then `summarize_change` onto the new file. It replaces the suggestion for that file; when it cannot link it runs the ordinary path.
 7. **Record the job** — on success the row is updated to `status: 'pending'` with `metadata: { ingestJobId }` so status reads can later reconcile the row against the backend job (see Step 5)
 8. **Return response** — `{ documentId, jobId, status: 'pending' | 'uploaded' | 'processing' }`
 
@@ -147,6 +148,8 @@ POST /v1/ingest
 Body: {
   file_ref: str, collection: str, document_id: str,
   file_name: str | None, folder_path: str | None, thumbnail_upload_url: str | None,
+  # the older file this upload replaces, when a person filed it as a new Fassung (ADR-0099)
+  fassung_of: str | None,
   # office renditions (ADR-0070, ADR-0071): presigned GETs of _render.pdf
   preview_ref: str | None, extraction_ref: str | None,
   # provenance, all four together or none (ADR-0054)
@@ -244,10 +247,66 @@ Where it sits, per file, against the five places ingestion sends content out:
 | 5 | OCR of scanned and garbled pages (`transcription.route_pdf_pages`) | external |
 | 6 | image captioning of a standalone image (`_build_image_documents`) | external |
 | 7 | VLM enrichment of embedded rasters and drawing pages (`processing.enrich_vlm_batch`) | external |
-| 8 | summary and tag classification (`summary_llm`) | external |
+| 8 | summary, tag, topic classification and the Fassung step (`summary_llm`) | external |
 | 9 | embeddings (`VectorStoreIndex`) | external |
 
 Each file of a screened job gets `file_details[].screening` on its job status: `quarantined`; `clean` when everything that goes on was screened; `partial` when the text layer was clean but something of the file reaches a model unscreened: pages the triage sends to transcription or drawing analysis (or a PDF it could not measure), or embedded rasters the VLM will caption (pdfplumber's per-page image count, read before any model call; the enrichment step also marks the file `partial` when it sends rasters the count missed); `partial` also when some of the file's text was never read, so never screened: a PDF page the text pass could not read (`pages_failed`; its tables, when the table pass reads them, are screened), or spreadsheet rows past the 10,000-row cap (`rows_over_cap`, not indexed either), or cells the extractors drop or shorten: spreadsheet columns past the 60th and the tail of a spreadsheet or CSV cell longer than 500 characters (`content_cut` on the documents, not indexed either); `unchecked` for a standalone image or a file with no local text. The triage the screen measured is handed to `route_pdf_pages`, so a screened PDF is measured once. Known gaps, accepted for content that cannot be read locally: scanned and drawing pages, standalone images and embedded rasters reach the VLM without being screened; the outcome says so (`partial` or `unchecked`), never `clean`. The thumbnail is drawn after the screen, and only when it passed. The log line for a quarantine names reason kinds and counts only, not the term, the value or the file name.
+
+### Fassungen across file names (ADR-0099)
+
+Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/fassungen.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `FASSUNG_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/fassung` writes `superseded_by`.
+
+| The file's name is | Step | Stored on the file's own row |
+|---|---|---|
+| **new in the collection** | **Title block first.** A candidate whose `revision_facts.document_number` equals the new file's (letters and digits, case and separators ignored, at least three characters with a digit) is the same document whatever the names say, and the Index (letters A–Z or numbers, same kind) printed on the sheets, else the date, says which is newer. Decided here, with no model call: the newest older state is stored as the suggestion with `basis: title_block` and a reason built from the facts („Gleiche Nummer im Plankopf (A-101), Index C statt B.“); every same-number candidate the later state, or the same one, stores nothing; an Index on one side only leaves it to the model, which then reads the facts and gets the same-number candidates first. **Otherwise** the model reads up to eight candidates from the same collection's `document_metadata` rows (name, Dokumentart, tags, summary, the revision label the name grammar reads) and answers whether the file is a newer Fassung of one: same subject and scope, updated content, not merely the same topic. The same `document_number` leads, then name-series matches (same name without index, date and extension, `revision_series.series_key_of`), then the same Dokumentart and shared tags. An `of` that is not one of the candidates is dropped; confidence below `REVISION_THRESHOLD` (0.7) is dropped | `revision_suggestion` `{of, confidence, reason (German, ≤ 160 characters), basis: name \| content, dismissed: false}`; `basis` is `name` when the candidate shares the series key. Candidates leave out the file itself, rows a person already replaced (`superseded_by`), rows without a summary, held files, and the file this one's dismissed suggestion named |
+| **already in the collection** (a re-upload, ADR-0054) | The previous summary is read before the new row overwrites it, and the model tells in German bullets (≤ 5 lines of ≤ 160 characters) what changed, from the two one-sentence descriptions only. Equal descriptions answer "Keine inhaltliche Änderung aus den Zusammenfassungen erkennbar." without a call | `change_summary`, and `change_basis` = the file's own name (the UI labels it „vorige Fassung"). A failed comparison clears the line the upload before left |
+
+### Title block facts (Plankopf)
+
+feld72 asked that Index and date be read from the Plankopf rather than guessed from a name. The drawing analysis (`visual_analysis.py`, schema v5) carries a `document.title_block` object in the **same vision call** that already reads every rendered drawing page, embedded raster and standalone image; there is no second call.
+
+| Field | Meaning | Rule |
+|---|---|---|
+| `document_number` | Plannummer / Zeichnungsnummer | As printed, `null` when not legible |
+| `revision` | The Index of this state | A letter or a number as printed, without the word „Index“; with a revision table, its last (newest) row; `null` when not printed |
+| `revision_date` | Date printed with that Index, or the Plandatum | ISO `YYYY-MM-DD`. The parser also reads `14.08.2026` and `14.8.26`; a date that is not a calendar day (`08/2026`, `31.02.2026`) becomes `null`, never a repaired guess |
+| `scale` | Maßstab of the sheet | As printed |
+| `title` | Planinhalt / Bezeichnung | As printed |
+
+A page without a title block (a photo, a chart, a text page) answers every field `null`, and the parser stores `title_block: null`. Nothing is taken from the drawing body or the file name. The line `Title block: Nr. …, Index …, Stand …, Scale …, <title>` is added to the first chunk of the page, so a search for a plan number or an Index finds the sheet it is printed on.
+
+**Which page.** `fassungen.revision_facts_from_documents` reads the `drawing_data` of the file's analysed chunks and takes the first page, in page order, whose title block names the document or its state (a number, an Index or a date); failing that the first page with any field. Pages are not merged. The record carries the `page` it came from and is written to `document_metadata.revision_facts` right after the summary row (`set_document_revision_facts`); a re-upload replaces it, so one without a title block clears it. Documents ingested before this shipped have none until they are read again („Erneut lesen“); the schema bump to v5 (`SCHEMA_VERSION`, part of the vision cache key) makes that re-read ask the model afresh.
+
+**Cost.** The prompt grows by about 1,300 characters (roughly 330 input tokens) per analysed page, and a page's reply by roughly 50 to 70 output tokens when it has a title block (about 40 for the null object when it has none), inside the existing 3,000-token output budget. No page and no file gets an extra call.
+
+**Where it is used.** The collection listing carries `revision_facts` beside `topics` and `capture` (`GET /v1/collections/{collection}/documents`). The Fassung step above uses it first (`document_revisions.settle_by_title_block`, `title_block.py`). `list_files` prints `Plankopf: Nr. A-101, Index C, Stand 14.08.2026` on a row, and marks two files of one collection that share a document number in different states „aktuelle Fassung laut Plankopf“ and „ältere Fassung laut Plankopf“ (a person's confirmed link outranks it, it outranks the name reading). The number is a hint toward Fassungen, never a link: a person still confirms.
+
+**What reaches the model, and when (ADR-0086).** The upload screen runs before any of this: a file whose content or name matched is quarantined by the job, which `continue`s before a summary exists, so the new file has passed and a held file has no row to be read. The one gap is a quarantined **re-upload**, whose predecessor keeps its row (it carries what people set), and a re-upload still being read. Those names come from the ingest job store (`ingest_status_store.in_flight_files` and the newest job per file in `collection_jobs`, 30 days back) and are left out of the candidates; when the store cannot be read nothing is suggested. What a candidate sends is its name, Dokumentart, tags and one-line summary, which an earlier ingest already sent to the same model. A document the BFF holds for new bytes it has not yet screened (a draft published with new bytes) still has its old row; that name was sent to the model when its previous version was ingested. A collection is the boundary: a restricted folder is its own collection and is compared only with itself.
+
+**Kept across a re-ingest.** `superseded_by` and a dismissed `revision_suggestion` stay on a same-name row because `register` writes only the summary, tags and topics; from a row under another spelling of the name (`tmp[8]_`, percent-encoding) `_read_human_set_fields` carries them like the other person-set fields. Deleting the newer document clears the links that pointed at it, so the older one is current again.
+
+### Photographs: orientation, the `Foto` tag and the image summary
+
+Three things change for an uploaded image.
+
+- **Orientation.** A phone stores a portrait photo as landscape pixels with an
+  EXIF `Orientation` tag. The reader applies the tag (`ImageOps.exif_transpose`)
+  before the vision model sees the image and before the thumbnail is drawn
+  (`_read_image_as_jpeg` in the knowledge layer's adapter, and the thumbnail step
+  beside it). The model reads the photo upright, and the recorded width and
+  height are the upright ones.
+- **The `Foto` tag.** The tag classifier reads text, and for an image the text is
+  the vision model's caption, so the classifier never sees the pixels. When the
+  vision model sees a photograph (segment type `photo`), `reconcile_image_tags`
+  adds `Foto` first and keeps everything the classifier read from the caption: a
+  photo of the ground-floor plan on the site-office wall is `Foto` and
+  `Grundriss`, and a fire door in a photo is still Brandschutz. The rule applies
+  only when the image's dominant content is pictorial. A scanned plan is typed
+  `drawing` and keeps the classifier's plan type.
+- **The summary.** The caption stored as the summary drops its
+  `[IMAGE from page N]` marker (`_strip_visual_marker`). The marker is for
+  retrieval, which cites a page. People read the summary, so it starts with the
+  description.
 
 ### A re-upload replaces the previous version once it has indexed
 
@@ -258,7 +317,8 @@ per file, under a lock on (collection, normalized name):
 
 1. Before the file is read, `_find_previous_versions` reads which chunk ids
    answer to its name and what a person set on their metadata row:
-   `doc_class`, `display_title`, `folder_path`. It deletes nothing. The read is
+   `doc_class`, `display_title`, `folder_path`, and `tags` when a person chose
+   them (`tags_set_by = 'person'`). It deletes nothing. The read is
    a Chroma `where={"file_name": {"$in": [...]}}` over the spellings a stored
    version can carry: the name, its percent-encoded forms, and the
    `tmp[8]_`-prefixed names the metadata rows know
@@ -271,7 +331,10 @@ per file, under a lock on (collection, normalized name):
    (`ChunkTextStore.delete_chunks`), and bumps the collection version. The
    metadata row under the new name is the new version's row and keeps the
    fields people set; a row under another spelling of the name is dropped, and
-   its fields were carried onto the new row.
+   its fields were carried onto the new row. Tags a person chose survive the
+   same way: the upsert keeps them on a row of the same name, and a row under
+   another spelling has them carried over with `set_document_tags_by_person`.
+   The classifier's tags are re-derived from the new bytes.
 
 A file that fails (an encrypted PDF, nothing extracted, no VLM key for an
 image, any exception) retires nothing: the previous version stays the one
@@ -416,7 +479,7 @@ python scripts/backfill_document_tags.py --collection oib_knowledge
 python scripts/backfill_document_tags.py --force            # re-classify rows that already have tags
 ```
 
-It never re-ingests or re-embeds and never touches the summary — it only fills the `tags` column. It is idempotent (rows with tags are skipped unless `--force`) and fail-soft per document.
+It never re-ingests or re-embeds and never touches the summary — it only fills the `tags` column. It is idempotent (rows with tags are skipped unless `--force`) and fail-soft per document. `--force` re-classifies the machine's tags. It cannot undo a correction a person made: the backfill writes through `update_tags`, which skips any row whose tags are a person's (`tags_set_by = 'person'`).
 
 ### Fixed: silent summary-row loss on double LLM failure (2026-07-16)
 

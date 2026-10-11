@@ -136,6 +136,8 @@ vi.mock('@/lib/jobs-queue/repository', () => ({
   findOpenJobId: vi.fn().mockResolvedValue(null),
 }))
 
+// Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
+vi.mock('./fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
 vi.mock('./reconcile-status', async (importOriginal) => ({
   // Reading the job id off a row is pure; the reconciler itself is mocked.
   extractIngestJobId: (await importOriginal<typeof import('./reconcile-status')>()).extractIngestJobId,
@@ -160,6 +162,7 @@ vi.mock('@/lib/compliance/repository', () => ({
 }))
 
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { loadFassungFacts } from './fassung-facts'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { isCoveredByActiveHold } from '@/lib/compliance/repository'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
@@ -678,6 +681,84 @@ describe('uploadDocument ingest dispatch', () => {
       INGEST_DISPATCH_FAILED_MESSAGE
     )
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
+  })
+})
+
+/*
+ * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0099):
+ * the browser sends the older document's ID, the upload checks it before a byte
+ * is stored (`resolveFassungOf`), the ingest job gets the older document's FILE
+ * NAME as `fassung_of`, and the trail records the choice. Each link has its own
+ * spec (`fassung-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
+ * the chain between them.
+ */
+describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
+  const OLDER_ID = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'
+  const older = (overrides: Parameters<typeof makeDocument>[0] = {}) =>
+    makeDocument({
+      id: OLDER_ID,
+      filename: 'Grundriss_EG_Index_B.pdf',
+      contentHash: 'h',
+      screeningOutcome: 'clean',
+      ...overrides,
+    })
+  const ingestBody = (): Record<string, unknown> => {
+    const call = mockFetch.mock.calls.find(([url]) => String(url).endsWith('/v1/ingest'))
+    expect(call).toBeDefined()
+    return JSON.parse(String((call![1] as RequestInit).body)) as Record<string, unknown>
+  }
+  const putCalls = () => vi.mocked(s3Client.send).mock.calls.filter(([command]) => command instanceof PutObjectCommand)
+
+  beforeEach(() => {
+    mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ job_id: 'job-7' }) })
+  })
+
+  it('checks the older document, sends its file name to the ingest job, and records the choice', async () => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
+      id === OLDER_ID ? older() : makeDocument({ id, filename: 'Grundriss_EG_Index_C.pdf' }),
+    )
+
+    await uploadDocument(
+      session,
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      new Request('http://x'),
+    )
+
+    expect(ingestBody().fassung_of).toBe('Grundriss_EG_Index_B.pdf')
+    expect(recordAuditEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ action: 'document.uploaded', metadata: expect.objectContaining({ fassungOf: OLDER_ID }) }),
+    )
+  })
+
+  it.each([
+    ['archived', { lifecycle: 'archived' as const }, 'archived'],
+    // The dialog offered it, then the folder was restricted: a collection of its own (ADR-0087).
+    ['in another collection', { collectionName: 'proj_abc_r_folder1' }, 'different_collection'],
+  ])('stores the file as a document of its own when the older document is %s, and reports why it is not linked', async (_label, overrides, reason) => {
+    vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
+      id === OLDER_ID ? older(overrides) : makeDocument({ id, filename: 'Grundriss_EG_Index_C.pdf' }),
+    )
+    vi.mocked(s3Client.send).mockClear()
+
+    const result = await uploadDocument(
+      session,
+      { ...makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), fassungOf: OLDER_ID },
+      new Request('http://x'),
+    )
+
+    expect(putCalls()).toHaveLength(1)
+    expect(result).toMatchObject({ fassungOfIgnored: reason })
+    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    const metadata = vi.mocked(recordAuditEvent).mock.calls.find(([event]) => event.action === 'document.uploaded')?.[0].metadata
+    expect(metadata).toMatchObject({ fassungOfIgnored: reason })
+    expect(metadata).not.toHaveProperty('fassungOf')
+  })
+
+  it('sends no fassung_of, and records none, for an upload nobody filed as a Fassung', async () => {
+    await uploadDocument(session, makeInput({ name: 'Grundriss_EG_Index_C.pdf' }), new Request('http://x'))
+
+    expect(ingestBody()).not.toHaveProperty('fassung_of')
+    expect(vi.mocked(recordAuditEvent).mock.calls.at(-1)?.[0].metadata).not.toHaveProperty('fassungOf')
   })
 })
 
@@ -2109,6 +2190,15 @@ describe('getDocumentStatus', () => {
     })
   })
 
+  it('carries the Fassung facts resolved for the reader, and null when there are none', async () => {
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', null)
+
+    const facts = { supersededBy: { id: 'doc-2', filename: 'b.pdf' }, supersedes: [], suggestion: null, changeSummary: null }
+    vi.mocked(loadFassungFacts).mockResolvedValueOnce(new Map([[projectDoc.id, facts]]))
+
+    await expect(getDocumentStatus(session, 'doc-1')).resolves.toHaveProperty('fassung', facts)
+  })
+
   it('carries the shelf for a document that is not on the project shelf', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue({
       ...projectDoc,
@@ -2254,7 +2344,19 @@ describe('the authorship gate on the (collection, filename) join', () => {
       const [url, init] = documentCalls()[0] ?? []
       expect(String(url)).toBe('http://backend:8000/v1/collections/proj_abc/documents')
       expect((init as RequestInit)?.method).toBe('DELETE')
-      expect(JSON.parse(String((init as RequestInit)?.body))).toEqual({ file_ids: [collidingName] })
+      expect(JSON.parse(String((init as RequestInit)?.body))).toEqual({ file_ids: [collidingName], permanent: true })
+    })
+
+    it('purges permanently, both times: a deleted document keeps no Fassung link for a later upload of its name', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+
+      await deleteDocument(session, 'doc-1', new Request('http://x'))
+
+      const deletes = documentCalls().filter(([, init]) => (init as RequestInit)?.method === 'DELETE')
+      expect(deletes).toHaveLength(2)
+      for (const [, init] of deletes) {
+        expect(JSON.parse(String((init as RequestInit)?.body))).toMatchObject({ permanent: true })
+      }
     })
   })
 
@@ -2333,6 +2435,51 @@ describe('the authorship gate on the (collection, filename) join', () => {
       expect(String(documentCalls()[0]?.[0])).toBe(
         `http://backend:8000/v1/collections/proj_abc/documents/${collidingName}/tags`
       )
+    })
+
+    it('forwards topics in the PATCH body only when given, and returns what the backend answered', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ tags: ['Gutachten'], topics: ['Fluchtweg'] }),
+      })
+
+      await expect(updateDocumentTags(session, 'doc-1', ['Gutachten'], ['Fluchtweg'])).resolves.toEqual({
+        id: 'doc-1',
+        tags: ['Gutachten'],
+        topics: ['Fluchtweg'],
+      })
+      const init = documentCalls()[0]?.[1] as RequestInit
+      expect(JSON.parse(String(init.body))).toEqual({ tags: ['Gutachten'], topics: ['Fluchtweg'] })
+    })
+
+    it('leaves topics out of the PATCH body and the answer when the edit does not carry them', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+      mockFetch.mockResolvedValue({
+        ok: true,
+        status: 200,
+        json: async () => ({ tags: ['Gutachten'] }),
+      })
+
+      const result = await updateDocumentTags(session, 'doc-1', ['Gutachten'])
+
+      expect(result).not.toHaveProperty('topics')
+      const init = documentCalls()[0]?.[1] as RequestInit
+      expect(JSON.parse(String(init.body))).toEqual({ tags: ['Gutachten'] })
+    })
+
+    it('rejects too many topics, or an empty or overlong one, before calling the backend', async () => {
+      vi.mocked(findDocumentInOrg).mockResolvedValue(humanDoc)
+
+      await expect(
+        updateDocumentTags(session, 'doc-1', [], ['a', 'b', 'c', 'd', 'e', 'f', 'g'])
+      ).rejects.toBeInstanceOf(BadRequestError)
+      await expect(updateDocumentTags(session, 'doc-1', [], [''])).rejects.toBeInstanceOf(BadRequestError)
+      await expect(updateDocumentTags(session, 'doc-1', [], ['x'.repeat(41)])).rejects.toBeInstanceOf(
+        BadRequestError
+      )
+      expect(documentCalls()).toHaveLength(0)
     })
   })
 

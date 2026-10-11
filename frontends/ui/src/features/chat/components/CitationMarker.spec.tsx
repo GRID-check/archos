@@ -438,6 +438,44 @@ describe('an inline citation marker', () => {
       )
     })
 
+    test('a document a person replaced says so in the peek and names the current Fassung', async () => {
+      chatStore.projectId = 'p-42'
+      fetchMock.mockImplementation((input: RequestInfo | URL) =>
+        Promise.resolve(
+          String(input) === '/api/documents/by-name'
+            ? jsonResponse({
+                documents: [
+                  {
+                    id: 'doc-old',
+                    filename: projectFile,
+                    contentType: 'application/pdf',
+                    createdAt: '2026-08-01T00:00:00.000Z',
+                    fassung: {
+                      supersededBy: { id: 'doc-new', filename: 'brandschutzkonzept_ausgabe_2026_b.pdf' },
+                      supersedes: [],
+                      suggestion: null,
+                      changeSummary: null,
+                    },
+                  },
+                ],
+              })
+            : jsonResponse({ documents: [], files: [] })
+        )
+      )
+      const user = userEvent.setup()
+      answerWith(shelved('project'))
+
+      await user.click(screen.getByRole('button', { name: /Source 1: Brandschutzkonzept/i }))
+      const peek = await screen.findByRole('dialog')
+
+      expect(await within(peek).findByText('Older revision. Current:')).toBeInTheDocument()
+      expect(
+        within(peek).getByRole('button', {
+          name: 'Open the current revision: brandschutzkonzept_ausgabe_2026_b.pdf',
+        })
+      ).toBeInTheDocument()
+    })
+
     test('a base-corpus document offers no such link', async () => {
       const user = userEvent.setup()
       renderAnswer()

@@ -668,6 +668,57 @@ describe('useFileUpload — durable document uploads', () => {
     expect((xhr.last().body as FormData).get('screeningRelease')).toBe('name')
   })
 
+  test('sends the document a file is filed as the new Fassung of, and only for that file (ADR-0099)', async () => {
+    const { result } = renderUpload()
+    const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
+    const plain = new File(['x'], 'Baubeschreibung.pdf', { type: 'application/pdf' })
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles([filed, plain], { fassungOf: (file) => (file === filed ? 'doc-older' : null) })
+      await Promise.resolve()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests.forEach((request, i) => request.respond(200, uploadOk(`doc-${i}`)))
+      await pending
+    })
+
+    const bodies = new Map(xhr.requests.map((request) => [(request.body as FormData).get('file'), request.body as FormData]))
+    expect(bodies.get(filed)?.get('fassungOf')).toBe('doc-older')
+    expect(bodies.get(plain)?.has('fassungOf')).toBe(false)
+  })
+
+  test('retries a file into the same Fassung it was filed as', async () => {
+    const filed = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
+    mockDocumentsStoreState.trackedFiles = [
+      {
+        id: 'failed-1',
+        file: filed,
+        fileName: filed.name,
+        fileSize: filed.size,
+        status: 'failed',
+        progress: 0,
+        collectionName: 'proj-collection',
+        uploadedAt: new Date().toISOString(),
+        uploadIntent: { folderId: null, folderPath: null, screeningReleased: false, fassungOf: 'doc-older' },
+      },
+    ]
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.retryFile('failed-1')
+      for (let i = 0; i < 5; i += 1) await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.last().respond(200, uploadOk('doc-1'))
+      await pending
+    })
+
+    expect((xhr.last().body as FormData).get('fassungOf')).toBe('doc-older')
+  })
+
   test('records where each file went and what the reader released, for a retry to repeat', async () => {
     const { result } = renderUpload({ folderId: 'folder-here' })
     const contract = new File(['x'], 'Architektenvertrag.pdf', { type: 'application/pdf' })

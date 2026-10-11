@@ -42,7 +42,16 @@ export type ActionMenuItemEntry = {
   icon?: LucideIcon
   variant?: 'default' | 'destructive'
   disabled?: boolean
-  onSelect: () => void
+  /** Run on select. An entry with `href` may omit it: the link is the action. */
+  onSelect?: () => void
+  /**
+   * Render the row as a real link (`<a>`): open in a new tab, or download. A
+   * link keeps what a link is for — middle-click, copy address, the browser's
+   * own download — where an `onSelect` calling `window.open` would lose it.
+   */
+  href?: string
+  /** With `href`: download instead of navigating (the browser's own download). */
+  download?: boolean
   testId?: string
 }
 
@@ -108,6 +117,25 @@ function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): R
         return <parts.Separator key={`sep-${index}`} />
       case 'item': {
         const Icon = entry.icon
+        const content = (
+          <>
+            {Icon ? <Icon className="size-4" aria-hidden /> : null}
+            {entry.label}
+          </>
+        )
+        if (entry.href) {
+          return (
+            <parts.Item key={entry.id} variant={entry.variant} disabled={entry.disabled} onSelect={entry.onSelect} asChild>
+              <a
+                href={entry.href}
+                data-testid={entry.testId}
+                {...(entry.download ? { download: true } : { target: '_blank', rel: 'noreferrer' })}
+              >
+                {content}
+              </a>
+            </parts.Item>
+          )
+        }
         return (
           <parts.Item
             key={entry.id}
@@ -116,8 +144,7 @@ function renderEntries(entries: readonly ActionMenuEntry[], parts: MenuParts): R
             onSelect={entry.onSelect}
             data-testid={entry.testId}
           >
-            {Icon ? <Icon className="size-4" aria-hidden /> : null}
-            {entry.label}
+            {content}
           </parts.Item>
         )
       }

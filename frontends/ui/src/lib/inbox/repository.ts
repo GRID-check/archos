@@ -99,6 +99,61 @@ export async function upsertInboxItems(values: NewInboxItem[]): Promise<InboxIte
     .returning()
 }
 
+/**
+ * Which of these recipients already hold an item under this group key.
+ *
+ * For an emitter whose event can be seen twice (a settle hook that fires again
+ * on a re-read): {@link upsertInboxItems} folds a repeat into the row it has and
+ * marks it unread again, which for "tell them once" is the wrong half of
+ * idempotent. Asking first leaves a read row read.
+ */
+export async function recipientsHoldingGroup(
+  organizationId: string,
+  groupKey: string,
+  recipientUserIds: readonly string[],
+): Promise<Set<string>> {
+  if (recipientUserIds.length === 0) return new Set()
+  const db = getDb()
+  const rows = await db
+    .select({ recipientUserId: inboxItems.recipientUserId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.groupKey, groupKey),
+        inArray(inboxItems.recipientUserId, [...recipientUserIds]),
+      ),
+    )
+  return new Set(rows.map((row) => row.recipientUserId))
+}
+
+/**
+ * Who still holds an unresolved item under this group key: for a review round,
+ * the people it was sent to who have not seen it settled. Bounded, like every
+ * list here; a round is opened for at most twenty named reviewers.
+ */
+export async function openRecipientsOfGroup(
+  organizationId: string,
+  groupKey: string,
+  limit = 50,
+): Promise<string[]> {
+  const db = getDb()
+  const rows = await db
+    .select({ recipientUserId: inboxItems.recipientUserId })
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.groupKey, groupKey),
+        isNull(inboxItems.resolvedAt),
+        isNull(inboxItems.inertAt),
+      ),
+    )
+    .orderBy(inboxItems.createdAt)
+    .limit(limit)
+  return rows.map((row) => row.recipientUserId)
+}
+
 export interface ListInboxOptions {
   /** `true` = only things needing attention; `false`/omitted = everything unarchived. */
   pendingOnly?: boolean

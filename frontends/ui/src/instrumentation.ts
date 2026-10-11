@@ -16,7 +16,7 @@ const registerShutdownHook = (hook: () => Promise<void>): void => {
 /**
  * Server errors Next.js catches (render, route handler, server action, proxy)
  * go to PostHog error tracking, replacing the console-to-OTLP-to-err2issue path
- * (ADR-0031, ADR-0099). A named export, not a registration: Next calls it
+ * (ADR-0031, ADR-0100). A named export, not a registration: Next calls it
  * whether or not `register()` returned early, so a deployment without an OTLP
  * collector still reports. Node only: the configuration imports server code
  * (the scrubber, the authz check) that the Edge bundle must not pull in.
@@ -70,7 +70,7 @@ export async function register() {
     console.error("[Model Config] Could not run the platform default bootstrap:", error);
   }
 
-  // PostHog error tracking (ADR-0099) does not depend on the OTLP collector, so
+  // PostHog error tracking (ADR-0100) does not depend on the OTLP collector, so
   // its shutdown flush is registered here, before the early return below: a
   // deployment with PostHog and no collector must still deliver the exceptions
   // queued when a pod is replaced. `server.js` runs every hook on this list

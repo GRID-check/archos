@@ -1,4 +1,4 @@
-"""The one PostHog client this process captures through (the PostHog switch, ADR-0099).
+"""The one PostHog client this process captures through (the PostHog switch, ADR-0100).
 
 Every Python path that sends something to PostHog goes through :func:`capture`
 or :func:`capture_exception` here, so there is one place that decides whether
@@ -145,7 +145,7 @@ def capture(
     ``distinct_id`` ``None`` is a personless event: a job or a system step with
     no user behind it must not mint a person. Tenancy travels as the
     ``organization_id`` property, not as a PostHog group: group analytics is a
-    paid add-on, and ADR-0099 keeps to the free tier.
+    paid add-on, and ADR-0100 keeps to the free tier.
     """
     client = get_client()
     if client is None:

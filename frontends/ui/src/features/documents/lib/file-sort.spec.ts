@@ -17,6 +17,8 @@ const doc = (overrides: Partial<FileItem> = {}): FileItem => ({
   chunkCount: null,
   contentTypes: null,
   tags: null,
+  topics: null,
+  capture: null,
   ...overrides,
 })
 
@@ -44,6 +46,24 @@ describe('sortFiles', () => {
       'failed.pdf',
       'processing.pdf',
       'ready.pdf',
+    ])
+  })
+
+  test('ranks a file in no status group after every group, held and unindexed alike', () => {
+    const files = [
+      doc({ filename: 'stored.pdf', status: 'stored' }),
+      doc({ filename: 'quarantined.pdf', status: 'quarantined' }),
+      doc({ filename: 'ready.pdf', status: 'processed' }),
+      doc({ filename: 'failed.pdf', status: 'failed' }),
+      doc({ filename: 'processing.pdf', status: 'ingesting' }),
+    ]
+
+    expect(names(sortFiles(files, { key: 'status', direction: 'asc' }, 'en'))).toEqual([
+      'failed.pdf',
+      'processing.pdf',
+      'ready.pdf',
+      'quarantined.pdf',
+      'stored.pdf',
     ])
   })
 

@@ -985,7 +985,7 @@ class TestPosthogSessionLink:
 
 
 class TestLessonsMetadata:
-    """The holdout is analysable from the exported observation events (ADR-0099)."""
+    """The holdout is analysable from the exported observation events (ADR-0100)."""
 
     LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
     LESSON_B = "9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a"

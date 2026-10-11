@@ -10,6 +10,11 @@
  * in the wrong place. A document in the Papierkorb is never moved. Idempotent: calling it again retries what failed and
  * moves nothing else.
  *
+ * A move ends the document's Fassung links (ADR-0099): Fassungen share one
+ * collection, so the purge in the old collection is permanent and nothing of
+ * the link is kept for a later read there. A person links the two again once
+ * both live in one collection.
+ *
  * A move is purge, then re-point, then re-ingest. The purge comes FIRST so that
  * a document moving into a restricted folder stops being findable in the open
  * collection before anything else happens; if the purge fails the document is
@@ -110,7 +115,9 @@ type MoveOutcome = 'handed-off' | 'repointed' | 'failed'
 
 async function moveDocument(organizationId: string, row: PlacementRow, target: string): Promise<MoveOutcome> {
   const ref = collectionFileRef(row)
-  if (ref && !(await purgeIngestedChunks(getBackendUrl(), ref, PURGE_TIMEOUT_MS))) return 'failed'
+  // Permanent: the name will not come back to the old collection, and a Fassung
+  // link lives in one collection (module comment).
+  if (ref && !(await purgeIngestedChunks(getBackendUrl(), ref, PURGE_TIMEOUT_MS, { permanent: true }))) return 'failed'
   // A row that owned no chunks (a draft Piloti wrote, never indexed) only needs
   // the pointer, and so does a machine's published document (see the module
   // comment). A person's document with stored bytes is read again, by the job,

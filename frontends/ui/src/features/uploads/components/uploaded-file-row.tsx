@@ -38,8 +38,8 @@ import { FacetChip, useTallyLabel } from './upload-atoms'
 const SUMMARY_LINES = 2
 
 /**
- * „Freigabe anfragen" (ADR-0086): the uploader asks the people who may release
- * a quarantined file to look at it. Only the uploader opens an upload summary,
+ * „Prüfung anfragen" (ADR-0086): the uploader asks the people who may review
+ * and allow a file held back by the content check to look at it. Only the uploader opens an upload summary,
  * so whoever sees the button may press it. Once sent, it says so and rests: a
  * second press would only fold into the same inbox row.
  */

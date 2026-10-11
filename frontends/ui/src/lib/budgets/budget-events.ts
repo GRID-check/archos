@@ -1,5 +1,5 @@
 /**
- * Budget events for PostHog (ADR-0099): a budget refused a turn
+ * Budget events for PostHog (ADR-0100): a budget refused a turn
  * (`budget_blocked`), or spend crossed 80 % or 100 % of a limit
  * (`budget_threshold_crossed`).
  *

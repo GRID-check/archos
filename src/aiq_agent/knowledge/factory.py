@@ -26,10 +26,12 @@ from aiq_agent.common.db_utils import redact_db_url
 
 from .base import BaseIngestor
 from .base import BaseRetriever
+from .document_classification import MAX_TOPIC_VOCABULARY
 from .schema import FileStatus
 
 if TYPE_CHECKING:
     from .document_metadata_store import DocumentMetadataStore
+    from .document_metadata_store import LinkOutcome
     from .schema import AvailableDocument
 
 logger = logging.getLogger(__name__)
@@ -510,28 +512,143 @@ def register_summary(
     filename: str,
     summary: str | None,
     tags: list[str] | None = None,
+    topics: list[str] | None = None,
 ) -> None:
-    """Store a summary (and optional controlled tags) in the database.
+    """Store a summary, its controlled tags and its open topics in the database.
 
     The ``summary`` column is NOT NULL, so a file with no summary is skipped
-    entirely — tags ride along with the summary in a single upsert per file.
+    entirely — tags and topics ride along with the summary in a single upsert
+    per file.
     """
     if not summary:
         return
-    _get_document_metadata_store().register(collection, filename, summary, tags)
+    _get_document_metadata_store().register(collection, filename, summary, tags, topics)
 
 
 def update_document_tags(collection: str, filename: str, tags: list[str] | None) -> bool:
-    """Replace only the controlled tags of an existing summary row.
+    """Replace the MACHINE's controlled tags on an existing summary row.
 
-    The single factory seam behind BOTH the classify-only backfill script and
-    the user-facing tag-edit endpoint. Never touches the summary; returns
-    ``False`` when no summary row exists (callers 404). Tag-vocabulary
-    validation is the caller's responsibility — the store persists whatever it
-    is given, so every caller MUST validate against
-    ``document_classification.ALLOWED_TAGS`` first.
+    The seam behind the classify-only backfill script. Never touches the
+    summary, and never overwrites tags a person chose
+    (:func:`set_document_tags_by_person`); returns ``False`` when no summary row
+    exists or its tags are a person's. Tag-vocabulary validation is the
+    caller's responsibility — the store persists whatever it is given, so every
+    caller MUST validate against ``document_classification.ALLOWED_TAGS`` first.
     """
     return _get_document_metadata_store().update_tags(collection, filename, tags)
+
+
+def set_document_tags_by_person(collection: str, filename: str, tags: list[str] | None) -> bool:
+    """Store the tags a PERSON chose for a document, so no re-ingest replaces them.
+
+    The seam behind the user-facing tag edit. Same contract as
+    :func:`update_document_tags` otherwise: validated by the caller, never
+    touches the summary, ``False`` when no summary row exists (callers 404).
+    """
+    return _get_document_metadata_store().set_tags_by_person(collection, filename, tags)
+
+
+def get_document_person_tags(collection: str, filenames: list[str]) -> dict[str, list[str]]:
+    """The tags a person chose, for those of ``filenames`` that have them (``[]`` = chose none)."""
+    return _get_document_metadata_store().get_person_tags_batch(collection, filenames)
+
+
+def set_document_topics_by_person(collection: str, filename: str, topics: list[str] | None) -> bool:
+    """Store the topics a PERSON chose for a document, so no re-ingest replaces them.
+
+    The topic twin of :func:`set_document_tags_by_person`: validated by the
+    caller (:func:`normalize_topic`), never touches the summary, ``False`` when
+    no summary row exists (callers 404). Marks the row as a person's, which
+    freezes its tags as well as its topics.
+    """
+    return _get_document_metadata_store().set_topics_by_person(collection, filename, topics)
+
+
+def get_document_person_topics(collection: str, filenames: list[str]) -> dict[str, list[str]]:
+    """The topics a person chose, for those of ``filenames`` that have them (``[]`` = chose none)."""
+    return _get_document_metadata_store().get_person_topics_batch(collection, filenames)
+
+
+def get_topic_vocabulary(collection: str, limit: int = MAX_TOPIC_VOCABULARY) -> list[str]:
+    """The topics a collection already uses, most frequent first: what ingestion offers the model to reuse."""
+    return _get_document_metadata_store().get_topic_vocabulary(collection, limit)
+
+
+def set_document_capture(collection: str, filename: str, capture: dict[str, Any] | None) -> bool:
+    """Set the camera facts of a photo on an existing metadata row (UPDATE-only, like :func:`set_document_provenance`).
+
+    ``latitude``/``longitude`` are stored for the BFF and must never be printed
+    into anything a model reads; the readers take only ``captured_at`` and ``camera``.
+    """
+    return _get_document_metadata_store().set_capture(collection, filename, capture or None)
+
+
+def set_document_revision_facts(collection: str, filename: str, facts: dict[str, Any] | None) -> bool:
+    """Set the title-block facts (Plankopf: number, Index, date, scale, title) of a document; ``None`` clears them.
+
+    ``facts`` is read by the vision model during ingestion and normalised by the store
+    (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`). UPDATE-only, like
+    :func:`set_document_capture`: ``False`` when the document has no metadata row.
+    """
+    return _get_document_metadata_store().set_revision_facts(collection, filename, facts or None)
+
+
+def set_document_superseded_by(collection: str, older: str, newer: str | None) -> bool:
+    """Record that a PERSON confirmed ``newer`` replaces ``older`` in this collection; ``None`` lifts it.
+
+    A NEW link goes through :func:`link_document_fassung`, which refuses a loop in the same
+    transaction; this one lifts a link (``None``) and carries an existing one onto another spelling.
+    A model's reading of two documents goes through :func:`set_document_revision_suggestion`, which
+    hides nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
+    """
+    return _get_document_metadata_store().set_superseded_by(collection, older, newer)
+
+
+def link_document_fassung(collection: str, older: str, newer: str) -> "LinkOutcome":
+    """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop in the same transaction.
+
+    The writer of a NEW link, for the ``PUT /v1/collections/{collection}/fassung`` route and for a
+    link a person chose at upload (``fassung_of``). ``LOOP`` and ``MISSING`` write nothing. Also
+    clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
+    was replaced by until now when it was told against ``older``.
+    """
+    return _get_document_metadata_store().link_fassung(collection, older, newer)
+
+
+def dismiss_document_revision_suggestion(collection: str, filename: str, older: str) -> bool:
+    """Record that a person refused ``older`` as the Fassung ``filename`` replaces; earlier refusals stay."""
+    return _get_document_metadata_store().dismiss_revision_suggestion(collection, filename, older)
+
+
+def get_document_superseded_by(collection: str, filenames: list[str]) -> dict[str, str]:
+    """The confirmed ``superseded_by`` of those of ``filenames`` that have one (carried across a re-ingest)."""
+    return _get_document_metadata_store().get_superseded_by_batch(collection, filenames)
+
+
+def get_superseded_files(collection: str) -> dict[str, str]:
+    """Files of ``collection`` a person replaced, mapped to the file that replaced them (read at search time)."""
+    return _get_document_metadata_store().get_superseded_files(collection)
+
+
+def set_document_revision_suggestion(collection: str, filename: str, suggestion: dict[str, Any] | None) -> bool:
+    """Store (or clear) Piloti's open suggestion that ``filename`` is a newer Fassung of another document.
+
+    ``suggestion`` is ``{"of", "confidence", "reason", "basis", "dismissed"}``; an invalid one is
+    refused (``False``). A suggestion is advice to a person, never a link. The files a person
+    refused (``dismissed_of``) are kept across every write, and a suggestion naming one is stored
+    dismissed (:func:`dismiss_document_revision_suggestion` adds a refusal).
+    """
+    return _get_document_metadata_store().set_revision_suggestion(collection, filename, suggestion)
+
+
+def get_document_revision_suggestions(collection: str, filenames: list[str]) -> dict[str, str]:
+    """The stored suggestion JSON of those of ``filenames`` that have one (carried across a re-ingest)."""
+    return _get_document_metadata_store().get_revision_suggestions_batch(collection, filenames)
+
+
+def set_document_change_summary(collection: str, filename: str, summary: str | None, basis: str | None) -> bool:
+    """Store what changed in ``filename`` against the Fassung named ``basis``; ``None`` clears it."""
+    return _get_document_metadata_store().set_change_summary(collection, filename, summary, basis)
 
 
 def set_document_doc_class(collection: str, filename: str, doc_class: str | None) -> bool:
@@ -777,9 +894,12 @@ def reconcile_collection_summaries(
     return backfilled
 
 
-def unregister_summary(collection: str, filename: str) -> None:
-    """Delete a file's summary."""
-    _get_document_metadata_store().unregister(collection, filename)
+def unregister_summary(collection: str, filename: str, *, permanent: bool = False) -> None:
+    """Delete a file's metadata row; the Fassung facts a person made are kept for its return unless ``permanent``.
+
+    See :meth:`DocumentMetadataStore.unregister`. ``permanent`` is a delete nobody undoes.
+    """
+    _get_document_metadata_store().unregister(collection, filename, permanent=permanent)
 
 
 def clear_collection_summaries(collection: str) -> None:

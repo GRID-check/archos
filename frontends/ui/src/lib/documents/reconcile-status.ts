@@ -19,6 +19,9 @@ import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import type { DocumentAuthor } from '@/lib/db/schema'
 import { collectionFileRef, type CollectionFileRef } from './collection-file-ref'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
+import { parseFassungNames, type FassungNames, type RawFassungFields } from './fassung'
+import { parsePhotoCapture, type PhotoCapture } from './photo-capture'
+import { parseRevisionFacts, type RevisionFacts } from './revision-facts'
 import { setDocumentReconciledStatus } from './repository'
 
 /**
@@ -136,6 +139,12 @@ export interface DocumentMetadata {
   contentTypes?: string[]
   /** Controlled ingestion-generated tags (document type + OIB discipline). */
   tags?: string[]
+  /** Model-recognised keywords ("Themen"), beside the controlled tags. */
+  topics?: string[]
+  /** EXIF facts of a photo (see {@link PhotoCapture}). */
+  capture?: PhotoCapture
+  /** Title-block facts read off the drawing (see {@link RevisionFacts}). */
+  revisionFacts?: RevisionFacts
   /**
    * How many of this organisation's uploads wait in the ingest queue ahead of
    * this one (ADR-0076), or null when the row is not waiting there. The lane's
@@ -276,6 +285,17 @@ interface BackendFileEntry {
   page_count?: number
   content_types?: string[]
   tags?: string[] | null
+  topics?: string[] | null
+  capture?: unknown
+  revision_facts?: unknown
+  /**
+   * The Fassung links by FILE NAME, parsed. Deliberately not a
+   * {@link DocumentMetadata} field: that type is spread onto rows several
+   * callers hand to a browser, and a name here is a fact about a document the
+   * reader may not be allowed to see. It leaves this module only through
+   * {@link readFassungNames}, to the code that resolves it for a reader.
+   */
+  fassung?: FassungNames | null
 }
 
 /**
@@ -288,7 +308,7 @@ interface CollectionFiles {
   ambiguousNames: Set<string>
 }
 
-interface RawBackendFile {
+interface RawBackendFile extends RawFassungFields {
   file_name?: string
   status?: string
   error_message?: string | null
@@ -296,6 +316,11 @@ interface RawBackendFile {
   chunk_count?: number
   // Tags are a top-level FileInfo field (not inside the internal metadata jsonb).
   tags?: string[] | null
+  // Topics and capture are top-level too: the model's keywords and the photo's EXIF facts.
+  topics?: string[] | null
+  capture?: unknown
+  // The title-block facts read off the drawing during ingestion.
+  revision_facts?: unknown
   metadata?: { page_count?: number; content_types?: string[] } | null
 }
 
@@ -322,6 +347,10 @@ const loadCollectionFiles = async (collectionName: string): Promise<CollectionFi
       page_count: file.metadata?.page_count,
       content_types: file.metadata?.content_types,
       tags: file.tags,
+      topics: file.topics,
+      capture: file.capture,
+      revision_facts: file.revision_facts,
+      fassung: parseFassungNames(file),
     })
   }
   return { byName, ambiguousNames }
@@ -399,6 +428,31 @@ const loadCollectionFilesFresh = (collectionName: string): Promise<CollectionFil
  */
 export const clearCollectionFilesCache = (): void => {
   collectionFilesCache.clear()
+}
+
+/**
+ * What the backend says about a document's Fassungen, by file name, or `null`.
+ *
+ * Takes a {@link CollectionFileRef}, so a machine-authored row cannot reach it
+ * (the same gate as {@link extractMetadata}). Reads the short-TTL listing the
+ * metadata enrichment shares, so it costs no backend call in the steady state.
+ *
+ * The names are NOT safe to show: resolve them with `resolveFassungFacts` for a
+ * reader before anything leaves the BFF.
+ */
+export const readFassungNames = async (ref: CollectionFileRef): Promise<FassungNames | null> => {
+  const files = await loadCollectionFilesCached(ref.collectionName)
+  if (!files || files.ambiguousNames.has(ref.filename)) return null
+  return files.byName.get(ref.filename)?.fassung ?? null
+}
+
+/**
+ * Replace a collection's cached listing with a fresh one: the read right after
+ * a write to the backend (a confirmed Fassung link), which the TTL entry
+ * predates. Later reads within the TTL see the fresh listing too.
+ */
+export const refreshCollectionFiles = async (collectionName: string): Promise<void> => {
+  await loadCollectionFilesFresh(collectionName)
 }
 
 /**
@@ -568,6 +622,14 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
   if (Array.isArray(file.tags) && file.tags.length > 0) {
     meta.tags = file.tags.filter((t): t is string => typeof t === 'string')
   }
+  if (Array.isArray(file.topics)) {
+    const topics = file.topics.filter((t): t is string => typeof t === 'string' && t.length > 0)
+    if (topics.length > 0) meta.topics = topics
+  }
+  const capture = parsePhotoCapture(file.capture)
+  if (capture) meta.capture = capture
+  const revisionFacts = parseRevisionFacts(file.revision_facts)
+  if (revisionFacts) meta.revisionFacts = revisionFacts
   return Object.keys(meta).length > 0 ? meta : null
 }
 

@@ -1,4 +1,4 @@
-"""The one PostHog client the Python tiers capture through (ADR-0099).
+"""The one PostHog client the Python tiers capture through (ADR-0100).
 
 What these cases hold in place: the client is off until both settings arrive
 and is then built once with the options the module header promises; and the

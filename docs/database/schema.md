@@ -37,6 +37,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `conversation-source-projects.ts` | `conversation_source_projects` |
 | `document-access-log.ts` | `document_access_log` (the download log) |
 | `document-quarantine-decisions.ts` | `document_quarantine_decisions` (the content gate's decisions owed to the audit trail) |
+| `document-fassung-announcements.ts` | `document_fassung_announcements` (which new Fassungen `document.new_fassung` has announced, once each) |
 | `project-memory.ts` | `project_memory` (documented in [`project-memory-design.md`](../architecture/project-memory-design.md); the restricted-memory column below; `evidence` (0127, `jsonb`, CHECK array or NULL): the file names and pages a source-grounded decision was read from, set by the closing extraction) |
 | `jobs.ts` | `skills`, `jobs`, `job_runs` — the last two LEGACY since 0086; they are not written or read after the cutover and migration 0087 drops them |
 | `tasks.ts` | `tasks` — LEGACY since 0086, same |
@@ -356,7 +357,23 @@ upload recording its version for a document deleted first,
 `submitted_by`/`_at`, `reviewed_by`/`_at`, `approved_by`/`_at`,
 `published_by`/`_at`, `review_comment`, `created_by`,
 `origin_conversation_id` (migration `0084`), `submitted_by_actor` (migration
-`0085`), `created_at`, `updated_at`.
+`0085`), `screened_hash` (migration `0131`), `created_at`, `updated_at`.
+
+**`screened_hash` (migration `0131`, ADR-0086):** the `content_hash` of this
+version's bytes when a screening verdict passed them, the version's own verdict
+that `documents.screened_hash` cannot keep once a re-upload replaces those
+bytes and resets it. It counts only while it equals `content_hash`
+(`versionBytesPassedScreening`), so a content write leaves it behind. One
+writer, `recordVersionVerdict` in `lib/documents/repository.ts`, in the
+transaction that records the item's verdict: the reconcile sets it on every
+version of the document holding the bytes a completed, passing job judged and
+clears it on a quarantine of those bytes; a reviewer's release sets it on the
+released bytes. A forked draft carries its source's value with the bytes it
+copies. Backfilled where the rows prove a pass about exactly those bytes: the
+item's passing verdict about them, or a standing release of them
+(`screening_released_hash`) that no current quarantine of the same bytes
+overrides. A version superseded before 0131 whose item verdict had already been
+reset stays NULL, and stays closed to members.
 
 **Constraints — the ratchet, not decoration:**
 
@@ -986,6 +1003,31 @@ not yet audited.
 
 ---
 
+## document_fassung_announcements (migration 0130, ADR-0099)
+
+Which new Fassungen have been announced to the people who followed the older
+document (`document.new_fassung`, `lib/documents/fassung-notify.ts`). One row
+per Fassung: the newer document and the anchor its inbox item uses (the new
+version for a same-name Fassung, the older document for a confirmed link).
+`notifyNewFassung` inserts the row (`claimFassungAnnouncement`, ON CONFLICT DO
+NOTHING) after both documents read as screened and before any item is
+written, and writes only when its insert took the row; a failed announcement
+deletes it again (`releaseFassungAnnouncement`). The settle hook runs on every
+re-read, so without the row a person assigned since, or whose item had aged
+out, was told about the same Fassung again.
+
+| Column | Type | Constraints | Notes |
+|--------|------|-------------|-------|
+| `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
+| `document_id` | `uuid` | PK with `anchor_id`, FK `documents(id)` ON DELETE CASCADE | The newer document |
+| `anchor_id` | `uuid` | PK with `document_id` | The inbox item's anchor. No FK: a version or another document, either of which may go first |
+| `announced_at` | `timestamptz` | NOT NULL, `now()` | |
+
+The down drops the table; the older build then deduplicates by the inbox rows
+recipients still hold, so a re-read can announce a Fassung once more.
+
+---
+
 ## project_memory.restricted_folder_ids (migration 0113, ADR-0087, ADR-0088)
 
 The table itself is described in
@@ -1087,7 +1129,8 @@ This PostgreSQL entrypoint script runs on first container startup and creates tw
 | `job_info` | NAT JobStore metadata | `job_id` (PK), `status`, `config_file`, `error`, `output_path`, `created_at`, `updated_at`, `expiry_seconds`, `is_expired` |
 | `job_access` | Who may reach a job: its owner, and callers whose signed scope matches its organization and project or conversation (ADR-0084) | `job_id` (PK), `owner_auth_type`, `owner_subject`, `owner_email`, `conversation_id`, `project_collection`, `organization_id`, `created_at` |
 | `job_events` | SSE streaming event persistence | `id` (serial PK), `job_id`, `event_type`, `event_data`, `created_at` |
-| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`) |
+| `document_metadata` | Per-document metadata (was `summaries`) | `collection` + `filename` (composite PK), `summary`, `tags` (`TEXT`, JSON list; nullable), `doc_class` (`TEXT`; nullable), `display_title` (`TEXT`; nullable), `folder_path` (`TEXT`; nullable — the BFF's materialised `project_folders.path`, ADR-0049), `provenance` (`TEXT`, JSON object; nullable — who wrote a published Piloti document and who released it, ADR-0054; deleted with the chunks by `unregister_summary`), `tags_set_by` (`TEXT`; nullable — `person` when a person chose the tags through the tag edit; ingest and the backfill then leave `tags` alone, and a re-ingest carries them to the new version), `topics` (`TEXT`, JSON list; nullable — open Themen the summary model recognised, or a person's; kept with the tags on the same `tags_set_by` marker), `capture` (`TEXT`, JSON object; nullable — what a camera wrote into a photo: `captured_at`, `latitude`, `longitude`, `camera`; the position is for the BFF and never rendered to a model), `superseded_by` (`TEXT`; nullable — on the OLDER document's row: the `filename` of the newer document in the same collection that a PERSON confirmed replaces it; written only by a person's confirmation (`PUT /v1/collections/{collection}/fassung` or `fassung_of` at upload, both through `link_fassung`), kept across a re-ingest; a purge that can be undone leaves it and it reads as nothing until the newer row is back, a permanent delete of the newer document clears it; search leaves the file out of the ranking unless a call names it), `revision_suggestion` (`TEXT`, JSON object; nullable — on the NEWER document's row: Piloti's suggestion that it is a newer Fassung of another, `{of, confidence, reason, basis: title_block\|name\|content, dismissed, dismissed_of}`; advice only, links and hides nothing; `dismissed_of` lists every file a person refused, kept across every write so none is suggested again), `change_summary` (`TEXT`; nullable — German bullet lines on what changed against the Fassung `change_basis` names) `change_basis` (`TEXT`; nullable — the `filename` compared against: the document's own name for its previous upload, another name for a confirmed Fassung) and `revision_facts` (`TEXT`, JSON object; nullable — what the title block (Plankopf) of the document's first drawing page that has one says, read by the vision model during ingestion in the same call as the drawing analysis: `document_number` (Plannummer, as printed), `revision` (the Index as printed, letter or number), `revision_date` (ISO `YYYY-MM-DD`), `scale`, `title` (Planinhalt) and `page` (1-based, where it was read); present keys only, never guessed; replaced by a re-upload, so a re-upload without a title block clears it; decoded through `aiq_agent.knowledge.title_block.normalise_revision_facts`). `supersedes` (the files a document replaces) is derived on read, never stored |
+| `document_fassung_retained` | The Fassung facts a person made, kept while a purge that can be undone has taken the `document_metadata` row away (archive, folder bin, a publish that re-reads) | `collection` + `filename` (composite PK), `superseded_by`, `revision_suggestion` (refusals only), `change_summary` + `change_basis` (only when the basis is another file). Written by `DocumentMetadataStore.unregister` without `permanent`; taken back and deleted by the next `register` of the name; a permanent delete removes it and clears `superseded_by` pointing at the file. Created by the store at init, like `document_metadata` |
 
 Indexes: `job_info(status)`, `job_info(created_at)`, `job_access(owner_auth_type, owner_subject)`, `job_events(job_id)`, `job_events(job_id, id)`, `document_metadata(collection)`.
 
@@ -1669,7 +1712,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

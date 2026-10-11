@@ -34,6 +34,8 @@ from __future__ import annotations
 import json
 import logging
 import re
+from collections.abc import Iterable
+from collections.abc import Sequence
 
 from aiq_agent.common.message_utils import response_text
 
@@ -517,3 +519,175 @@ def classify_document_tags(text: str, file_name: str, llm, *, organization_id: s
     if tags:
         logger.info("[TAGS] Classified %s -> %s", file_name, tags)
     return tags
+
+
+#: The vision model's segment type for a photograph or rendering
+#: (``visual_domains._PICTORIAL_TYPES``).
+PHOTO_SEGMENT_TYPE = "photo"
+PHOTO_TAG = "Foto"
+
+
+def reconcile_image_tags(
+    tags: list[str] | None,
+    *,
+    content_type: str | None,
+    segment_types: Iterable[str],
+) -> list[str] | None:
+    """Make sure an uploaded image the vision model saw as a photograph says ``Foto``.
+
+    The tag classifier reads TEXT — for an image, the vision model's caption —
+    so it never saw the pixels the vision model did. A photo with a sparse
+    caption came out with no type at all, while the vision model had already
+    said "photograph". ``Foto`` is ADDED, first; what the classifier read from
+    the caption stays: a photo of the ground-floor plan pinned on the site
+    office wall is a Foto AND a Grundriss, and a photo of a fire door keeps its
+    Brandschutz. Capped at ``MAX_TAGS``, dropping from the end, so ``Foto`` and
+    the classifier's first reading survive.
+
+    Only for an image whose dominant content is pictorial (``content_type ==
+    "image"``): a scanned plan is typed ``drawing`` and keeps the classifier's
+    plan type alone. Deterministic and model-free.
+    """
+    if content_type != "image" or PHOTO_SEGMENT_TYPE not in set(segment_types):
+        return tags
+    rest = [tag for tag in (tags or []) if tag != PHOTO_TAG]
+    return [PHOTO_TAG, *rest][:MAX_TAGS]
+
+
+# =============================================================================
+# Open topics: the model's own keywords, beside the controlled vocabulary
+# =============================================================================
+#
+# The controlled tags answer two closed questions — what KIND of document is
+# this, which OIB discipline does it concern — and they are closed on purpose:
+# a filter over eighteen words is one a person can scan. They cannot say what a
+# document is ABOUT. "Alle Attikadetails in Holzrahmenbauweise" (feld72, Jour
+# fixe 2026-10-09) is a question about a building part and a construction
+# method, and no list a platform writes in advance holds every Bauteil, Bauweise
+# and Gewerk an office works with.
+#
+# So beside the tags the model names a few TOPICS of its own, under three
+# guards: only those it is confident of; none that restate a controlled tag;
+# and the project's existing topics offered first, so one office's "Attika"
+# stays "Attika" instead of drifting into "Attikaaufbau", "Attika-Detail" and
+# "Dachrand". A person corrects them in the same place as the tags, and a
+# correction is kept across re-reads the same way.
+
+#: Topics stored per document. Few, so each one says something.
+MAX_TOPICS = 6
+#: The model's own confidence a topic must reach to be kept.
+TOPIC_THRESHOLD = 0.75
+#: A topic is a term, not a sentence.
+MAX_TOPIC_CHARS = 40
+MAX_TOPIC_WORDS = 3
+#: Existing topics of the collection offered to the model to reuse, most used first.
+MAX_TOPIC_VOCABULARY = 60
+
+_CONTROLLED_FOLDED = frozenset(tag.casefold() for tag in ALLOWED_TAGS)
+
+
+def _build_topic_prompt(text: str, file_name: str, existing: Sequence[str]) -> str:
+    vocabulary = (
+        "Vorhandene Themen in diesem Projekt (verwende eines davon, wenn es passt, in genau dieser Schreibweise):\n"
+        + ", ".join(existing[:MAX_TOPIC_VOCABULARY])
+        + "\n\n"
+        if existing
+        else ""
+    )
+    return (
+        "Nenne die Themen dieses Baudokuments: konkrete Fachbegriffe, nach denen ein Architekturbüro "
+        "Unterlagen sucht — Bauteile (Attika, Fenster, Stiege), Bauweisen und Materialien "
+        "(Holzrahmenbau, Stahlbeton), Räume und Bereiche (Tiefgarage, Fluchtweg), Gewerke und Themen "
+        "(Abdichtung, Lüftung).\n"
+        "Regeln:\n"
+        f"- Höchstens {MAX_TOPICS} Themen, jedes ein Begriff aus 1 bis {MAX_TOPIC_WORDS} Wörtern, "
+        "Substantiv im Singular.\n"
+        "- KEINE Dokumentart (Grundriss, Schnitt, Gutachten …) und KEIN OIB-Fachbereich (Brandschutz, "
+        "Schallschutz …) — die werden getrennt erfasst.\n"
+        "- KEINE Namen von Personen, Firmen, Projekten oder Adressen.\n"
+        "- Gib zu jedem Thema an, wie sicher du bist, dass es das Dokument wirklich betrifft (0.0 bis 1.0). "
+        "Lieber kein Thema als ein geratenes.\n\n"
+        f"{vocabulary}"
+        'Antworte NUR mit einem JSON-Array, z.B. [{"thema": "Attika", "sicherheit": 0.9}].\n\n'
+        f"Dateiname: {file_name}\n\n"
+        f"{text[:CLASSIFY_MAX_INPUT_CHARS]}"
+    )
+
+
+def normalize_topic(raw: object) -> str | None:
+    """A topic as stored: trimmed, one space, bounded; ``None`` when it is not a usable term."""
+    if not isinstance(raw, str):
+        return None
+    term = " ".join(raw.replace(" ", " ").split()).strip(" .,;:-–—\"'„“")
+    if not term or len(term) > MAX_TOPIC_CHARS or len(term.split(" ")) > MAX_TOPIC_WORDS:
+        return None
+    if not any(char.isalpha() for char in term):
+        return None
+    return term
+
+
+def parse_topics(content: str, existing: Sequence[str] = ()) -> list[str] | None:
+    """Keep the confident, new-information topics, spelled as the project already spells them.
+
+    Pure. A reply that is not the JSON array asked for yields ``None``; so does
+    one whose every topic was dropped. Order is the model's (most relevant
+    first), duplicates by case are dropped, and the result is capped.
+    """
+    if not content:
+        return None
+    body = content.strip()
+    fenced = re.match(r"^```(?:json)?\s*(.*?)\s*```$", body, re.DOTALL)
+    if fenced:
+        body = fenced.group(1)
+    try:
+        items = json.loads(body)
+    except (TypeError, ValueError):
+        return None
+    if not isinstance(items, list):
+        return None
+    known = {term.casefold(): term for term in existing if isinstance(term, str)}
+    kept: list[str] = []
+    seen: set[str] = set()
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        confidence = item.get("sicherheit", item.get("confidence"))
+        # A bool is an int to Python and NaN compares False to everything: neither is a confidence.
+        if isinstance(confidence, bool) or not isinstance(confidence, int | float) or not confidence >= TOPIC_THRESHOLD:
+            continue
+        term = normalize_topic(item.get("thema", item.get("topic")))
+        if term is None:
+            continue
+        folded = term.casefold()
+        if folded in _CONTROLLED_FOLDED or folded in seen:
+            continue
+        seen.add(folded)
+        kept.append(known.get(folded, term))
+        if len(kept) >= MAX_TOPICS:
+            break
+    return kept or None
+
+
+def suggest_topics(
+    text: str,
+    file_name: str,
+    llm,
+    *,
+    existing: Sequence[str] = (),
+) -> list[str] | None:
+    """The model's confident topics for a document, or ``None``. Fully fail-open.
+
+    Runs beside the summary and the tags at ingest, on the same text and the
+    same summary model (so it lands on the same cost ledger and trace).
+    """
+    if llm is None or not text or not text.strip():
+        return None
+    try:
+        response = llm.invoke(_build_topic_prompt(text, file_name, existing))
+    except Exception as e:  # noqa: BLE001 — a topic is worth less than the ingestion
+        logger.warning("Topic suggestion failed for %s: %s", file_name, e)
+        return None
+    topics = parse_topics(response_text(response), existing)
+    if topics:
+        logger.info("[TOPICS] %s -> %s", file_name, topics)
+    return topics

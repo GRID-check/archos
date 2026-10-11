@@ -1,6 +1,6 @@
 # Kubernetes deployment (Pulumi)
 
-This is the operator guide for running the full Grid OIB stack on a Kubernetes
+This is the operator guide for running the full Piloti stack on a Kubernetes
 cluster. The infrastructure is defined as code in
 [`deploy/pulumi`](../../deploy/pulumi) (Pulumi / TypeScript); this document
 explains the architecture, the storage/SeaweedFS decisions, how to deploy, and
@@ -2367,7 +2367,7 @@ rollback path nobody intends to take.
 3. **Look at the v4 views with real data.** With the v4 views opted in, a
    recent chat turn must show its generations, scores, user and session, and
    the propagation health check from the upgrade section must answer 200.
-4. **If the PostHog integration is enabled** (ADR-0099), confirm that its next
+4. **If the PostHog integration is enabled** (ADR-0100), confirm that its next
    hourly export still lands `langfuse observation` events after the cutover.
    That export is Langfuse's own; this repo does not run it, and it was not
    exercised against `events_only` when this was written.

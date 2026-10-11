@@ -1,5 +1,5 @@
 /**
- * Server request errors to PostHog error tracking, through `@posthog/next` (ADR-0099).
+ * Server request errors to PostHog error tracking, through `@posthog/next` (ADR-0100).
  *
  * Next.js calls `onRequestError` (exported from `instrumentation.ts`) for every
  * error it catches while rendering a page, running a route handler, a server

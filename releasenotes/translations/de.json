@@ -84,6 +84,10 @@
     "de": "Eine korrigierte Datei, die ein bestehendes Dokument ersetzt, oder eine neue Version eines Dokuments, die aus einem Entwurf veröffentlicht wird, wird geprüft, bevor Kolleginnen und Kollegen sie sehen. Bis dahin ist das Dokument nur für die Person sichtbar, die es hochgeladen hat, sowie für Personen, die Dateien freigeben dürfen."
   },
   {
+    "en": "A correction you make to a document's tags stays when Piloti reads the file again. Before, re-reading the file replaced it.",
+    "de": "Eine Korrektur der Dokument-Tags bleibt erhalten, wenn Piloti die Datei erneut einliest. Bisher wurde die Korrektur beim erneuten Einlesen überschrieben."
+  },
+  {
     "en": "A date in a project note, such as a submission deadline, is no longer mistaken for a phone number and dropped.",
     "de": "Ein Datum in einer Projektnotiz, etwa eine Einreichfrist, wird nicht mehr für eine Telefonnummer gehalten und verworfen."
   },
@@ -156,6 +160,10 @@
     "de": "Ein Dokument aus einem Ordner, den nicht alle lesen dürfen, lässt sich keinem Rechercheauftrag hinzufügen. Die Liste kennzeichnet es, und Piloti sagt beim Versuch, warum."
   },
   {
+    "en": "A document is now one entry, however many revisions it has. The entry shows how many, and opening it lists every revision on one timeline, newest first, with who added it, when, and what changed.",
+    "de": "Ein Dokument ist jetzt ein einziger Eintrag, egal wie viele Fassungen es hat. Der Eintrag zeigt, wie viele es sind, und beim Öffnen stehen alle Fassungen in einem Verlauf, die neueste zuerst, mit Angabe, wer sie wann eingestellt hat und was sich geändert hat."
+  },
+  {
     "en": "A document stuck on \"processing\" after an ingestion job was lost can now be retried from its menu instead of deleted and re-uploaded. The retry keeps the document, so sources, chat references and assignments survive, and it refuses while ingestion is genuinely still running.",
     "de": "Ein Dokument, das nach dem Verlust eines Ingestion-Jobs auf „processing“ hängen bleibt, kann jetzt über sein Menü erneut gestartet werden, statt gelöscht und neu hochgeladen zu werden. Dabei bleibt das Dokument erhalten, sodass Quellen, Chat-Verweise und Zuweisungen bestehen bleiben. Solange die Ingestion tatsächlich noch läuft, kann kein erneuter Versuch gestartet werden."
   },
@@ -170,6 +178,10 @@
   {
     "en": "A document whose indexing never started no longer wears a green \"citable\" badge. It now reports a failure with a retry, or a neutral stored state for rows filed before this change.",
     "de": "Ein Dokument, dessen Indexierung nie gestartet wurde, erhält kein grünes „zitierbar“-Badge mehr. Stattdessen zeigt es einen Fehler mit Wiederholungsoption oder – bei Einträgen, die vor dieser Änderung gespeichert wurden – den neutralen Status „Gespeichert“."
+  },
+  {
+    "en": "A document's revisions and their approval now use one word each, everywhere: every state of a document is a revision, numbered \"Revision 3 of 5\", and a revision sent back reads \"Changes requested\", matching the button.",
+    "de": "Fassungen und Freigabe heißen jetzt überall gleich: Jeder Stand eines Dokuments ist eine Fassung, nummeriert als „Fassung 3 von 5“, und eine zurückgegebene Fassung heißt „Änderungen angefordert“, wie die Schaltfläche."
   },
   {
     "en": "A draft Piloti wrote can now be put into the project. Ask for it — \"leg das ins Projekt\", \"ablegen\" — and the document appears in Files, marked as a draft, with the card beside the answer linking straight to it.",
@@ -190,6 +202,10 @@
   {
     "en": "A file has no preview image until its check has passed, and Piloti does not read a file under review when a revision is requested on it.",
     "de": "Eine Datei erhält erst ein Vorschaubild, wenn sie die Prüfung bestanden hat, und Piloti liest eine Datei während der Prüfung nicht aus, wenn dafür eine Überarbeitung angefordert wird."
+  },
+  {
+    "en": "A file held back by the content check is now reviewed and allowed, no longer \"released\", so it can no longer be confused with approving a revision.",
+    "de": "Eine von der Inhaltsprüfung zurückgehaltene Datei wird jetzt geprüft und zugelassen, nicht mehr „freigegeben“, und lässt sich so nicht mehr mit der Freigabe einer Fassung verwechseln."
   },
   {
     "en": "A file in quarantine can be asked for: press „Freigabe anfragen“ next to it in the upload summary, and the people who may release it get an inbox notice naming the file. In Organisation → Quarantäne, „Ansehen“ opens the file where it is filed, so it can be looked at before it is released.",
@@ -336,8 +352,16 @@
     "de": "Eine einmalige Aufgabe trägt auf ihrer Karte jetzt dieselbe Farbe wie ihr Block im Stundenplan."
   },
   {
+    "en": "A phone photo taken in portrait is now shown upright and read upright.",
+    "de": "Ein im Hochformat aufgenommenes Handyfoto wird jetzt aufrecht angezeigt und gelesen."
+  },
+  {
     "en": "A photo or scanned drawing inside an uploaded PDF can now be viewed by Piloti on its own and at full resolution, instead of only as part of the rendered page.",
     "de": "Ein Foto oder eine eingescannte Zeichnung in einem hochgeladenen PDF kann Piloti jetzt einzeln und in voller Auflösung ansehen, statt nur als Teil der ganzen Seite."
+  },
+  {
+    "en": "A photograph is now tagged as a photo beside what it shows: a photo of a floor plan is both \"Foto\" and \"Grundriss\".",
+    "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
   },
   {
     "en": "A precedent from another Bundesland is now marked as decided under another Bauordnung.",
@@ -1100,8 +1124,16 @@
     "de": "Wenn Sie Dateien auf einer anderen Projektseite wie Einstellungen ablegen, öffnet sich jetzt die Seite Dateien und lädt die Dateien dort hoch, statt dass der Browser sie anstelle von Piloti öffnet."
   },
   {
+    "en": "Each approval state now says plainly whether Piloti answers from that revision, and publishing is what makes a revision the one Piloti answers from.",
+    "de": "Jeder Freigabestatus sagt jetzt klar, ob Piloti aus dieser Fassung antwortet, und erst das Veröffentlichen macht eine Fassung zu der, aus der Piloti antwortet."
+  },
+  {
     "en": "Each document state now has one name everywhere: Zitierbar, and Wird verarbeitet while a file is being read, instead of three different labels.",
     "de": "Jeder Zustand eines Dokuments heißt jetzt überall gleich: „Zitierbar“ und, solange eine Datei gelesen wird, „Wird verarbeitet“ statt drei verschiedener Bezeichnungen."
+  },
+  {
+    "en": "Each folder shows the state of everything inside it, such as \"2 failed\" or \"All read\", so a problem is visible without opening every subfolder.",
+    "de": "Jeder Ordner zeigt den Status aller enthaltenen Elemente an, z. B. „2 fehlgeschlagen“ oder „Alles gelesen“, damit Probleme sichtbar sind, ohne dass Sie jeden Unterordner öffnen müssen."
   },
   {
     "en": "Each line of Das Wichtigste now carries what you would write down, the number, the class or the deadline. Expanded, it shows the reference, the derivation or the case in which it does not apply.",
@@ -1162,6 +1194,10 @@
   {
     "en": "Every finished answer can now be copied. An answer that cites no source — a clarifying question, a short conversational reply — offered only the Word download before, so there was no way to take a sentence from it into an e-mail.",
     "de": "Jede fertige Antwort lässt sich jetzt kopieren. Bei Antworten ohne Quellenangabe – etwa einer Rückfrage oder einer kurzen Gesprächsantwort – steht bisher nur der Word-Download zur Verfügung, sodass Sie keinen Satz daraus in eine E-Mail übernehmen können."
+  },
+  {
+    "en": "Every folder now opens with what Piloti knows about it and everything below it: how many documents it can cite, what they are about, and which ones need you. Failed documents can be read again together with \"Read all again\", and the top level of a project lists the documents Piloti still expects.",
+    "de": "Jeder Ordner zeigt beim Öffnen jetzt, was Piloti über ihn und alle darunterliegenden Ordner weiß: wie viele Dokumente Piloti zitieren kann, worum es darin geht und welche Ihre Aufmerksamkeit benötigen. Fehlgeschlagene Dokumente können mit „Alle erneut lesen“ nochmals eingelesen werden, und auf der obersten Ebene eines Projekts werden die Dokumente angezeigt, die Piloti noch erwartet."
   },
   {
     "en": "Every new version now counts fully towards your storage, because earlier versions are kept. Before, repeated revisions could exceed the storage limit unnoticed.",
@@ -1616,12 +1652,28 @@
     "de": "Pausieren, Schließen und Wiederöffnen stehen im Menü der Projektübersicht sowie über den Hinweis oben in einem pausierten oder geschlossenen Projekt zur Verfügung, und der Projektwechsler listet nicht mehr jedes geschlossene Projekt des Büros auf."
   },
   {
+    "en": "People assigned to a document, and whoever uploaded it, now get an inbox note when a newer revision replaces it, with the first line of what changed. It reaches only people who may open the newer one.",
+    "de": "Wem ein Dokument zugewiesen ist und wer es hochgeladen hat, bekommt jetzt eine Nachricht im Posteingang, wenn eine neuere Fassung es ersetzt, mit der ersten Zeile dessen, was sich geändert hat. Sie erreicht nur Personen, die die neuere Fassung öffnen dürfen."
+  },
+  {
     "en": "People who are invited or join an existing project also get the tours, once each, on their first visit.",
     "de": "Auch wer eingeladen wird oder einem bestehenden Projekt beitritt, bekommt die Touren, jeweils einmal beim ersten Besuch."
   },
   {
+    "en": "Photos show when they were taken and with which camera, and link to where they were taken. Piloti uses the date to describe a photo but never sends its location to a model.",
+    "de": "Fotos zeigen Aufnahmedatum und verwendete Kamera und verlinken mit dem Aufnahmeort. Piloti verwendet das Datum zur Beschreibung eines Fotos, übermittelt den Standort aber niemals an ein Modell."
+  },
+  {
     "en": "Pictures in Word and PowerPoint files are now read, so a photo or plan on a slide can be found and cited in an answer. Files uploaded earlier are read this way once you choose Erneut lesen in their menu.",
     "de": "Bilder in Word- und PowerPoint-Dateien werden jetzt gelesen, sodass ein Foto oder Plan auf einer Folie gefunden und in einer Antwort zitiert werden kann. Früher hochgeladene Dateien werden so gelesen, sobald Sie in ihrem Menü „Erneut lesen“ wählen."
+  },
+  {
+    "en": "Piloti adds its own topics to a document beside the fixed document types, for example \"Attika\" or \"Holzrahmenbau\", when it is confident and no fixed tag fits. You can correct them, and the file search finds them.",
+    "de": "Piloti fügt einem Dokument bei hoher Sicherheit eigene Themen hinzu, zusätzlich zu den fixen Dokumenttypen, etwa „Attika“ oder „Holzrahmenbau“, wenn kein fixer Tag passt. Sie können diese korrigieren; die Dateisuche findet sie."
+  },
+  {
+    "en": "Piloti answers from the current revision and uses an older one only when you name it. A citation of an older revision says so and opens the current one.",
+    "de": "Piloti antwortet aus der aktuellen Fassung und nimmt eine ältere nur, wenn Sie sie nennen. Ein Zitat aus einer älteren Fassung sagt das und öffnet die aktuelle."
   },
   {
     "en": "Piloti asks a short multiple-choice question more often instead of silently picking one of several plausible directions, for example when a comparison names no criteria.",
@@ -1696,6 +1748,10 @@
     "de": "Piloti zieht bei Fragen zur Praxis zuverlässiger selbstständig frühere Projekte heran und tut dies bei einfachen Fragen zu einer Vorschrift nicht mehr."
   },
   {
+    "en": "Piloti no longer calls a file a plan unless it knows the file is a drawing. The folder overview and the agent say document, file or revision instead.",
+    "de": "Piloti bezeichnet eine Datei nur noch dann als Plan, wenn sie als Zeichnung erkannt wurde. Die Ordnerübersicht und der Agent sprechen stattdessen von Dokument, Datei oder Revision."
+  },
+  {
     "en": "Piloti no longer ends a conversation without noting what it learned about the project. Its note limit now counts only the notes it actually keeps.",
     "de": "Piloti beendet ein Gespräch nicht mehr, ohne festzuhalten, was es über das Projekt erfahren hat. Die Obergrenze für Notizen zählt jetzt nur, was tatsächlich behalten wird."
   },
@@ -1762,6 +1818,10 @@
   {
     "en": "Piloti now takes on work that lasts longer than an answer: „Mach den Einreichcheck bis Freitag“ creates a task that runs on its own, under your name and permissions, and reports back when done.",
     "de": "Piloti nimmt jetzt Arbeit an, die länger dauert als eine Antwort: „Mach den Einreichcheck bis Freitag“ legt einen Auftrag an, der unter Ihrem Namen und mit Ihren Rechten selbständig läuft und sich meldet, wenn er fertig ist."
+  },
+  {
+    "en": "Piloti recognises a new revision of a document by itself, from the file name, from the number, index and date printed in a drawing's title block, and from the content. It asks once before linking them, in the upload dialog or on the file, and nothing is linked without your confirmation.",
+    "de": "Piloti erkennt eine neue Fassung eines Dokuments von selbst: am Dateinamen, an Nummer, Index und Datum im Plankopf einer Zeichnung und am Inhalt. Es fragt einmal nach, bevor es beide verknüpft, im Upload-Dialog oder an der Datei, und ohne Ihre Bestätigung wird nichts verknüpft."
   },
   {
     "en": "Piloti remembers your decisions on its suggestions: a rejected suggestion or discarded note does not come back in the next answer.",
@@ -2332,6 +2392,10 @@
     "de": "Die Oberfläche wirkt ruhiger und reagiert schneller: Buttons geben bei jedem Klick dezent nach, beim Kopieren einer Antwort erscheint ein Häkchen, und Ladeplatzhalter schimmern, statt grau aufzublitzen."
   },
   {
+    "en": "The kind filter now offers spreadsheets and text notes.",
+    "de": "Der Filter für Dateitypen bietet jetzt Tabellen und Textnotizen."
+  },
+  {
     "en": "The list of references now always sits beside the document and shows which passage you are reading, and the toolbar shows the page you are on.",
     "de": "Die Fundstellenliste steht jetzt immer neben dem Dokument und zeigt, welche Stelle Sie gerade lesen, und die Werkzeugleiste zeigt die aktuelle Seite."
   },
@@ -2444,6 +2508,10 @@
     "de": "Die Statuszeile über der Herleitung sagt, wonach Piloti gerade sucht, und sobald die Recherche abgeschlossen ist, dass die Antwort formuliert wird."
   },
   {
+    "en": "The summary of an image no longer starts with \"[IMAGE from page 1]\".",
+    "de": "Die Zusammenfassung eines Bildes beginnt nicht mehr mit „[IMAGE from page 1]“."
+  },
+  {
     "en": "The upload area now states the largest file you can upload as a size per file, and the number it shows is the one your organization is held to. It no longer shows 95 MB for a 100 MB limit.",
     "de": "Der Upload-Bereich gibt nun die maximale Dateigröße pro Datei an, die Sie hochladen können. Angezeigt wird der für Ihre Organisation geltende Wert. Bei einem Limit von 100 MB werden nicht mehr 95 MB angezeigt."
   },
@@ -2518,6 +2586,10 @@
   {
     "en": "Two new skills start switched on for chat: Einreichcheck lists what a building-permit application still lacks in your province, and Bestand lists what still binds after a conversion, a change of use or a larger renovation.",
     "de": "Zwei neue Skills sind im Chat von Anfang an eingeschaltet: Der Einreichcheck zeigt, was einem Bauansuchen in Ihrem Bundesland noch fehlt, und Bestand zeigt, was nach einem Umbau, einer Nutzungsänderung oder einer größeren Sanierung weiterhin gilt."
+  },
+  {
+    "en": "Two revisions can be compared side by side, overlaid with the changes in colour, or with a swipe. On request Piloti marks what changed on the drawing and says it in words.",
+    "de": "Zwei Fassungen lassen sich nebeneinander, übereinandergelegt mit farbig hervorgehobenen Änderungen oder mit einem Wischregler vergleichen. Auf Wunsch markiert Piloti auf der Zeichnung, was sich geändert hat, und beschreibt es in Worten."
   },
   {
     "en": "Typing in the search field narrows the file list as you go, and Enter searches the full text of every project document. Each result shows the passage that matched and its page.",

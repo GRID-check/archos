@@ -39,7 +39,7 @@ export const nav = {
     org: 'Organization',
   },
   sectionSubtitles: {
-    files: 'Documents that ground Piloti’s answers in this project.',
+    files: 'This project’s documents. Piloti reads them and cites from them.',
     automation:
       'What Piloti did while you were away, what it will do next, and the skills it does it with.',
     knowledge: 'What the knowledge base currently contains.',

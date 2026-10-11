@@ -4,7 +4,7 @@ import type { en } from '../en'
 export const knowledge: typeof en.knowledge = {
   title: 'Wissensbasis',
   subtitle:
-    'Alle Dokumente, auf die sich der Assistent stützen kann — die gemeinsamen OIB-Richtlinien plus die in diesem Projekt hochgeladenen Dateien. Nichts anderes wird verwendet.',
+    'Die Dokumente, mit denen Piloti in diesem Projekt arbeitet: die gemeinsamen OIB-Richtlinien und die hochgeladenen Dateien des Projekts.',
   summary: {
     documents: 'Dokumente',
     indexed: 'Indexiert',
@@ -45,7 +45,7 @@ export const knowledge: typeof en.knowledge = {
   },
   stateHints: {
     ingested: 'Für den Assistenten vollständig durchsuchbar.',
-    stale: 'Die Datei wurde seit der Indexierung ersetzt; Antworten spiegeln bis zur nächsten Synchronisierung die vorherige Version wider.',
+    stale: 'Die Datei wurde seit der Indexierung ersetzt; bis zur nächsten Synchronisierung antwortet Piloti aus der vorherigen Fassung.',
     pending: 'Hochgeladen, aber noch nicht verarbeitet — der Assistent kann sie erst verwenden, wenn ein Ingest-Worker sie fertig verarbeitet hat.',
     failed: 'Die Verarbeitung wurde nicht abgeschlossen. Ein neuer Versuch erfolgt erst, wenn sich die Datei ändert; mit „Neu indexieren“ lässt er sich auslösen.',
     removed: 'Der Korpus führt dieses Dokument nicht mehr, seine indexierten Inhalte sind aber noch durchsuchbar. Zum Bereinigen löschen.',

@@ -53,7 +53,7 @@ export const POST = apiRoute<Params>(
       return escalateToOwner(session, resourceType, params.resourceId, request)
     }
     const sharing = await grantResourceAccess(session, resourceType, params.resourceId, body, request)
-    // `resource_shared` (ADR-0099): the collaboration funnel's first step. A
+    // `resource_shared` (ADR-0100): the collaboration funnel's first step. A
     // grant names a person, so the audience kind is `person`; the person's id
     // stays out, the event says THAT a resource was shared and at what role.
     captureServer({

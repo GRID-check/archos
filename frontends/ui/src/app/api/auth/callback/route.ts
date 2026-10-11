@@ -32,7 +32,7 @@ const baseURL = redirectUri ? new URL(redirectUri).origin : undefined
 const NEW_USER_WINDOW_MS = 10 * 60_000
 
 /**
- * `user_signed_in` for PostHog (ADR-0099), from the server because this is the
+ * `user_signed_in` for PostHog (ADR-0100), from the server because this is the
  * one place a sign-in is certain: the browser lands on the app after the
  * redirect with nothing that says a login happened. `authenticationMethod` is
  * WorkOS's own enum (`SSO`, `Password`, `GoogleOAuth`, …), no identity.

@@ -63,6 +63,7 @@ import {
   sourceSignalStyle,
 } from '@/features/layout/components/SourceSignalChip'
 import type { SourceTint } from '@/features/layout/lib/source-presets'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { useChatStore } from '../store'
 import { useHoverPopover } from '@/hooks/use-hover-popover'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
@@ -124,11 +125,18 @@ onDocumentsChanged(resetSourcePreviewIndexCache)
 
 // The shelf is stated by the LIST the rows came from — the project document
 // route or the org Archiv route — not guessed from a collection id.
+interface ListedRow {
+  id: string
+  filename: string
+  contentType?: string | null
+  fassung?: { supersededBy?: FassungRef | null } | null
+}
+
 const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
   Array.isArray(rows)
     ? rows
         .filter(
-          (doc): doc is { id: string; filename: string; contentType?: string | null } =>
+          (doc): doc is ListedRow =>
             !!doc && typeof doc.id === 'string' && typeof doc.filename === 'string'
         )
         .map((doc) => ({
@@ -136,6 +144,9 @@ const toRefs = (rows: unknown, shelf: Shelf): StoredDocumentRef[] =>
           filename: doc.filename,
           contentType: doc.contentType ?? null,
           shelf,
+          // Only what the server resolved for THIS reader: a newer Fassung they
+          // may not open is not in the row, name and all.
+          supersededBy: doc.fassung?.supersededBy ?? null,
         }))
     : []
 
@@ -1197,7 +1208,12 @@ const DocumentPreviewChip: FC<{
           fill. */}
       {citation && (
         <HoverPeekPanel peek={peek} className="w-80 p-3">
-          <CitationPeek citation={citation} snippet={target.snippet} onOpen={open} />
+          <CitationPeek
+            citation={citation}
+            snippet={target.snippet}
+            onOpen={open}
+            supersededBy={target.supersededBy}
+          />
         </HoverPeekPanel>
       )}
       {dialog}
@@ -1301,6 +1317,7 @@ const DownloadPreviewChip: FC<{
           snippet={target.snippet}
           onDownload={() => void download()}
           downloadPending={isDownloading}
+          supersededBy={target.supersededBy}
         />
       </HoverPeekPanel>
     </>

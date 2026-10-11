@@ -118,6 +118,20 @@ export const documentVersions = pgTable(
     fileSize: integer('file_size'),
     /** `sha256:<hex>` — the `If-Match` value a content replace must carry. */
     contentHash: text('content_hash'),
+    /**
+     * The `content_hash` of this version's bytes when a verdict passed them
+     * (migration 0131, ADR-0086): the version's own screening verdict, which
+     * the item's `screened_hash` cannot carry once newer bytes replace these.
+     * It counts only while it equals `content_hash`, so a content write that
+     * swaps the bytes leaves it behind and the version refused.
+     *
+     * One writer, `recordVersionVerdict` in `@/lib/documents/repository`, in
+     * the transaction that records the item's verdict (the reconcile, a
+     * reviewer's release): set on a pass, cleared on a quarantine of the same
+     * bytes. A forked draft carries its source's value with the bytes it
+     * copies. Read by `versionBytesPassedScreening`.
+     */
+    screenedHash: text('screened_hash'),
     submittedBy: text('submitted_by'),
     /**
      * Whose HAND submitted this version, as opposed to whose AUTHORITY it

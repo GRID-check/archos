@@ -17,7 +17,7 @@
 
 import { type FC } from 'react'
 import Link from 'next/link'
-import { Download, ExternalLink, FileSearch, FolderOpen, Link2 } from 'lucide-react'
+import { Download, ExternalLink, FileSearch, FolderOpen, History, Link2 } from 'lucide-react'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -25,10 +25,12 @@ import { PRESSABLE } from '@/components/ui/press'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
 import { useDelayedFlag } from '@/hooks/use-transient-flag'
+import type { FassungRef } from '@/lib/documents/fassung'
 import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
 import { documentPages, refPage, type CitationRef, type CitedDocument } from '../lib/citations'
 import { isPrecedent } from '../lib/precedent'
 import type { Shelf } from '../lib/source-kinds'
+import { useOpenCurrentFassung } from '../hooks/use-open-current-fassung'
 import { useChatStore } from '../store'
 import { CopySourceCitationButton } from './CopyCitation'
 import { CopyCitationLinkButton } from './CopyCitationLink'
@@ -62,6 +64,12 @@ interface CitationPeekProps {
   onDownload?: () => void
   /** The download is being presigned — the control says so rather than repeating. */
   downloadPending?: boolean
+  /**
+   * The newer document a person confirmed replaces the cited one — set only when
+   * the cited document IS an older Fassung and the reader may open the newer one.
+   * The peek says so in one line and opens the current Fassung.
+   */
+  supersededBy?: FassungRef | null
 }
 
 /**
@@ -259,6 +267,37 @@ export const PeekDownloadButton: FC<{
   )
 }
 
+/**
+ * „Ältere Fassung — aktuell: <Name>": the one line a citation of an older
+ * Fassung adds, and the way to the current one.
+ *
+ * A citation is a claim that this passage backs this sentence; when the passage
+ * stands in a Fassung a person has since replaced, the reader should know before
+ * relying on it. Muted, because the citation itself is still true of the file it
+ * names (an older Fassung is read on request); the name is the control.
+ */
+const OlderFassungLine: FC<{ current: FassungRef }> = ({ current }) => {
+  const t = useTranslations('chat')
+  const openCurrent = useOpenCurrentFassung()
+  return (
+    <p
+      data-citation-older-fassung=""
+      className="flex flex-wrap items-baseline gap-x-1 text-xs leading-relaxed text-muted-foreground"
+    >
+      <History aria-hidden="true" className="size-3.5 shrink-0 self-center" />
+      <span>{t('citationPeek.olderFassung')}</span>
+      <button
+        type="button"
+        onClick={() => void openCurrent(current)}
+        aria-label={t('citationPeek.openCurrentFassungAria', { name: current.filename })}
+        className={cn(PEEK_ACTION_CLASSES, 'break-all text-foreground underline')}
+      >
+        {current.filename}
+      </button>
+    </p>
+  )
+}
+
 export const CitationPeek: FC<CitationPeekProps> = ({
   citation,
   snippet,
@@ -267,6 +306,7 @@ export const CitationPeek: FC<CitationPeekProps> = ({
   unavailable,
   onDownload,
   downloadPending,
+  supersededBy,
 }) => {
   const t = useTranslations('chat')
   const projectId = useChatStore((s) => s.projectId)
@@ -290,6 +330,8 @@ export const CitationPeek: FC<CitationPeekProps> = ({
         <p className="break-words text-sm font-medium text-foreground">{doc.title}</p>
         <LocusLine citation={citation} />
       </div>
+
+      {supersededBy && <OlderFassungLine current={supersededBy} />}
 
       {/* Does this actually bind me? The highest-value fact for a legal source. */}
       {doc.bindingNote && (

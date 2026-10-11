@@ -1,9 +1,10 @@
 # Piloti
 
-Piloti is the workspace in which an Austrian planning office runs a building
-project, and the colleague in it who answers questions about building law, the
-office's own knowledge and the project's documents, with a source for every
-claim. This file is its domain language: what the words mean, in the product and
+Piloti is the workspace for architects: an Austrian planning office runs its
+work in it, every project and every process, and Piloti, the agent, is a
+colleague in that office who does part of the work, with a source for every
+claim. Building law is one of the things it knows, not the frame around it
+([`VISION.md`](VISION.md)). This file is its domain language: what the words mean, in the product and
 in conversation about it. The engineering vocabulary (tenancy helpers, CI,
 deploys, tooling) is in [`docs/glossary.md`](docs/glossary.md).
 
@@ -13,7 +14,7 @@ term.
 ## The office and its work
 
 **Piloti**:
-The product, and the colleague persona that answers in it. The name users see.
+The product, and the colleague persona that works in it. The name users see.
 _Avoid_: GRID in anything a user reads; GRID is the repository's and the code's name.
 
 **Organization** (Büro):
@@ -77,19 +78,49 @@ into laws and ordinances.
 The coarse family every source belongs to, which decides how it is shown:
 *Baurecht & Richtlinien* (building law and guidelines), *Büroarchiv* (the
 office's own standards, details and experience), *Projektwissen* (this project's
-plans, Bescheide and uploads) and *Web*. A *Modellmessung* (a value measured off
+documents, Bescheide and uploads) and *Web*. A *Modellmessung* (a value measured off
 the project's BIM model) is shown beside them but is never a source for a legal
 verdict.
 
 **Shelf**:
 Where a document lives, which decides who may read it and what a search reaches:
-the *Archiv* (the organization's shelf), a project, a single chat, or the shared
-OIB base every organization sees.
+the *Büroablage* (the organization's shelf, formerly „Archiv"; the code keeps
+`archiv`), a project, a single chat, or the shared OIB base every organization
+sees. The Büroablage can hold norms an office uploaded itself (ÖNORMEN,
+Weisungen) that the OIB base does not carry.
 _Avoid_: folder; folders organise documents within a shelf, a shelf decides who sees them.
 
 **Dokumentart** (document type):
-What a document is (an OIB-Richtlinie, a law, a standard, a plan…), set by a
-person and always trusted over a guess from the file name.
+What a document is (an OIB-Richtlinie, a law, a standard, a Grundriss, a
+Gutachten…), set by a person and always trusted over a guess from the file name.
+
+**Fassung** (revision):
+One state of a document, whether it was uploaded again under the same name or
+filed under another name and linked: both are Fassungen in one timeline,
+numbered „Fassung 3 von 5“ (“Revision 3 of 5”). A later Fassung replaces an
+earlier one, and the earlier one stays readable on request. Offices mark it in
+the file name with an index or a date (*Stand*, always a date or an index:
+„Stand vom 14.08.2026“); Piloti reads that as a suggestion a person confirms.
+_Avoid_: Plan, Planstand, for any file. A name with an index says a file has
+Fassungen, not that it is a drawing; only its Dokumentart says what it is. Say
+Dokument, Datei, Fassung or Stand. Also avoid „Version“ and “version” where a
+reader sees it, „Upload 3“ as the name of a Fassung, and „Stand“ for a state.
+
+**Freigabe** (approval):
+The office approving one Fassung, and only that. Its status (*Freigabestatus*)
+has eight words: Entwurf, In Prüfung, Änderungen angefordert, Freigegeben,
+Veröffentlicht, Ersetzt, Abgelehnt, Stillgelegt (Draft, In review, Changes
+requested, Approved, Published, Replaced, Rejected, Retired). Approval asserts
+the content; Piloti answers only from a *veröffentlicht* Fassung (ADR-0054), so
+say „Piloti antwortet aus dieser Fassung“, never „Grundlage für Antworten“.
+_Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for sharing
+(see **Share**); „Änderungen erbeten“; “Superseded”.
+
+**Zurückgehalten** (held back):
+An upload the content check (*Inhaltsprüfung*) keeps from every model until
+someone with the right *prüft* it and lets it through (*zulassen*, “allow”) or
+deletes it (ADR-0086). It waits in the *Quarantäne*.
+_Avoid_: „freigeben“, “release”: both collide with **Freigabe**.
 
 **Piloti-Dokument**:
 A document Piloti wrote and a person approved and published, which then counts
@@ -199,9 +230,10 @@ what was there).
 
 ## Sharing and keeping
 
-**Share** (Freigabe):
+**Share** (Teilen):
 Access to one resource (a project, a chat, a document) granted to a person, as
 *viewer*, *collaborator* or *owner*.
+_Avoid_: Freigabe, which is the approval of a Fassung.
 
 **Spectator**:
 Someone watching a shared turn live without taking part in it.

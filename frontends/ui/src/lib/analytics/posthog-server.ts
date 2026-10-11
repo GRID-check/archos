@@ -1,5 +1,5 @@
 /**
- * PostHog from the BFF — the server-side twin of `posthog.ts` (ADR-0099).
+ * PostHog from the BFF — the server-side twin of `posthog.ts` (ADR-0100).
  *
  * Every server path that sends something to PostHog (a server-decided product
  * event) goes through this module, so there is one place that decides whether

@@ -411,7 +411,7 @@ consumer (Langfuse, or `posthogLogsEnabled`) — `docs/deployment/kubernetes.md`
 | `OTEL_SERVICE_NAME` | No | per-tier | `service.name` resource: `grid-ui` / `grid-aiq-agent` / `grid-agent-worker`. |
 | `GRID_TRACE_IDENTITY_ATTRIBUTES` | No | unset (off) | When `true`, keeps the `user.id` NAT 1.9 sets from the verified subject and stamps `langfuse.session.id` and the organization onto every span; when off, Grid strips NAT's `user.id` and `<prefix>.user.id` before export (`UserIdentityStripProcessor`) (`src/aiq_agent/observability/langfuse_trace_attributes.py`), which is what turns anonymous spans into traces attributable to a user and a tenant. Keyed off the Langfuse tier (ADR-0044) rather than observability generally, and Kubernetes-only. Off by default because it is a privacy posture rather than a performance knob: ADR-0029 accepted that traces carry user content on the grounds that access is gated to platform operators, and making every span attributable to a named individual is a further step that should arrive with the product decision needing it. The processor runs ahead of NAT's redaction processor, so these attributes stay redactable. Session grouping and input/output need no flag: NAT already emits `session.id` and OpenInference `input.value`/`output.value`. Backend (aiq-agent) and agent-worker services. |
 
-## PostHog (ADR-0099)
+## PostHog (ADR-0100)
 
 The browser and BFF read `NEXT_PUBLIC_POSTHOG_HOST` / `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN` ([Frontend](#frontend)). The Python tiers read their own pair, below. With either value of a pair unset, that runtime sends nothing to PostHog. LLM traces and scores never go from here to PostHog directly. They reach it through Langfuse's PostHog integration ([`observability/posthog-migration.md`](../observability/posthog-migration.md)).
 
@@ -605,7 +605,7 @@ Tune the per-project FGA authorization path (`lib/authz/projects.ts`), the WorkO
 
 The Astro landing service (`frontends/web`) carries no secrets; its
 deployment knobs are where sign-in hands off and whether PostHog web analytics
-loads (ADR-0099). One image serves every stack —
+loads (ADR-0100). One image serves every stack —
 the app host is resolved at request time, never baked into the prerendered
 HTML (a baked host is how prod once linked at the dev app).
 

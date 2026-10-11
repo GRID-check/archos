@@ -85,6 +85,8 @@ vi.mock('@/lib/documents/service', () => ({
 vi.mock('@/lib/documents/reconcile-status', () => ({
   reconcileDocumentStatuses: vi.fn(),
 }))
+// Which documents a Fassung link names, resolved for the reader, is `fassung-facts.spec.ts`'s subject.
+vi.mock('@/lib/documents/fassung-facts', () => ({ loadFassungFacts: vi.fn(async () => new Map()) }))
 
 // The admitting insert, not the repository's — see the note in
 // `documents/service.spec.ts`. The Archiv shares the tenant's bytes, so it goes
@@ -565,6 +567,13 @@ describe('deleteArchivDocument', () => {
       'http://backend:8000/v1/collections/archiv_org-1/documents',
       expect.objectContaining({ method: 'DELETE' }),
     )
+    // Permanent, before and after the row goes: the document is gone, and so
+    // are its Fassung links (ADR-0099).
+    const deletes = fetchSpy.mock.calls.filter(([, init]) => (init as RequestInit)?.method === 'DELETE')
+    expect(deletes).toHaveLength(2)
+    for (const [, init] of deletes) {
+      expect(JSON.parse(String((init as RequestInit).body))).toEqual({ file_ids: ['plan.pdf'], permanent: true })
+    }
     expect(deleteArchivDocumentRow).toHaveBeenCalledWith('d1', 'org-1')
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ action: 'archiv.document.deleted' }),

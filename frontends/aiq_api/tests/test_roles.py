@@ -195,7 +195,7 @@ def route_sets(apps: dict[str, FastAPI]) -> dict[str, set[tuple[str, str]]]:
 
 
 def test_both_roles_install_the_posthog_exception_handler(apps):
-    # `apps` built the chat and the api role; each must report its caught exceptions (ADR-0099).
+    # `apps` built the chat and the api role; each must report its caught exceptions (ADR-0100).
     assert len(POSTHOG_INSTALLS) == 2
 
 

@@ -95,7 +95,7 @@ export const jobs: typeof en.jobs = {
 
   run: {
     submitted: 'Gestartet.',
-    submittedDetail: 'Er läuft jetzt — verfolgen Sie ihn unter Tasks.',
+    submittedDetail: 'Er läuft jetzt – verfolgen Sie ihn unter Aufgaben.',
     skipped: 'Übersprungen',
     error: 'Das konnte nicht gestartet werden.',
     disabled: 'Setzen Sie die Aufgabe fort, bevor Sie sie ausführen.',
@@ -216,7 +216,7 @@ export const jobs: typeof en.jobs = {
 
   history: {
     title: 'Verlauf',
-    loading: 'Tasks werden geladen…',
+    loading: 'Aufgaben werden geladen…',
     loadError: 'Der Verlauf konnte nicht geladen werden.',
     empty: 'Diese Aufgabe ist noch nie gelaufen.',
     openChat: 'Chat öffnen',

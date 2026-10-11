@@ -944,7 +944,7 @@ export async function fireScheduledJob(
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
   if (isActiveTaskRunStatus(run.status)) {
-    // `job_run_started` (ADR-0099): the schedule fired and the backend took the
+    // `job_run_started` (ADR-0100): the schedule fired and the backend took the
     // run. Personless — nobody pressed anything, the scheduler did — and only
     // for a run that is live: a skip is a `task_runs` row, not a start. The
     // matching `job_run_finished` comes from `recordRunOutcome`, under the id

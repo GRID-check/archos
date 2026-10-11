@@ -37,7 +37,7 @@ export default function RouteError({
   useEffect(() => {
     console.error('[route error]', error)
     // A boundary swallows the error before `window.onerror` sees it, so PostHog's
-    // autocapture never does; report it here (ADR-0099). Not a denial (an
+    // autocapture never does; report it here (ADR-0100). Not a denial (an
     // expected outcome, not a defect), and not one with a `digest`: that error
     // was thrown on the server, where `onRequestError` already reported it with
     // its stack, and the copy here is the redacted "error occurred in the Server

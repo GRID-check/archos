@@ -13,7 +13,7 @@
 import 'server-only'
 import { and, asc, count, desc, eq, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import type { DbExecutor } from '@/lib/db/executor'
+import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { ARCHIV_SHELF, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
@@ -23,6 +23,7 @@ import {
   bffJobQueue,
   documentQuarantineDecisions,
   documents,
+  documentVersions,
   projectFolders,
   type Document,
   type DocumentAuthor,
@@ -32,6 +33,7 @@ import {
 import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import { auditedQuarantineReasons, parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { documentVisibleTo, heldAtRest, internalRead, SCREENED_ONLY, type DocumentReader } from './visibility'
+import { verdictPasses } from './document-reader'
 
 /**
  * Hard cap on one page of a document listing (project and Archiv alike).
@@ -430,6 +432,82 @@ export function findProjectDocumentsByFilenames(
   return findDocumentsByFilenames(projectShelf(projectId), organizationId, filenames, options)
 }
 
+/** A document a Fassung link may point to, as the resolution needs it. */
+export interface FassungCounterpartRow {
+  id: string
+  filename: string
+  projectId: string | null
+  folderId: string | null
+  createdAt: Date | null
+}
+
+/**
+ * The documents of ONE collection named `filenames` that `reader` may see, for
+ * resolving a Fassung link's file names to documents (`fassung-facts.ts`).
+ *
+ * The link is stored by file name in the backend's index, which knows nothing
+ * of who may read what, so this is where a name becomes a document or stays a
+ * string nobody sees: held rows (`documentVisibleTo`, ADR-0086) and archived
+ * ones are not found. The folder rule (ADR-0087) is the caller's, from the
+ * project it reads each row's `projectId` for; a row's folder is returned for
+ * exactly that. Person-uploaded rows only: a machine-authored row owns no
+ * chunks of its own, so no link of the index can name it.
+ *
+ * Every name is looked up, in queries of at most {@link FILENAME_LOOKUP_MAX_NAMES}
+ * names each: a page of a few hundred documents references more names than one
+ * query carries, and a name left out was a link silently lost (the older
+ * Fassung shown as current, the count wrong).
+ */
+export async function findFassungCounterparts(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[],
+  reader: DocumentReader,
+): Promise<FassungCounterpartRow[]> {
+  const unique = [...new Set(filenames)]
+  const byId = new Map<string, FassungCounterpartRow>()
+  for (let start = 0; start < unique.length; start += FILENAME_LOOKUP_MAX_NAMES) {
+    const chunk = unique.slice(start, start + FILENAME_LOOKUP_MAX_NAMES)
+    for (const row of await findFassungCounterpartChunk(organizationId, collectionName, chunk, reader)) byId.set(row.id, row)
+  }
+  return [...byId.values()]
+}
+
+/** One bounded query of {@link findFassungCounterparts}: at most {@link FILENAME_LOOKUP_MAX_NAMES} names. */
+async function findFassungCounterpartChunk(
+  organizationId: string,
+  collectionName: string,
+  filenames: readonly string[],
+  reader: DocumentReader,
+): Promise<FassungCounterpartRow[]> {
+  const variants = [...new Set(filenames.flatMap(documentNameVariants))]
+  if (variants.length === 0) return []
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select({
+        id: documents.id,
+        filename: documents.filename,
+        projectId: documents.projectId,
+        folderId: documents.folderId,
+        createdAt: documents.createdAt,
+      })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.organizationId, organizationId),
+          eq(documents.collectionName, collectionName),
+          inArray(documents.filename, variants),
+          eq(documents.authoredBy, 'user'),
+          eq(documents.lifecycle, 'active'),
+          documentVisibleTo(reader),
+        ),
+      )
+      .orderBy(asc(documents.id))
+      .limit(DOCUMENT_LIST_LIMIT),
+  )
+}
+
 /** One row of a name probe (`name-probe-types.ts` is its wire shape). */
 export interface DocumentNameMatchRow {
   id: string
@@ -605,6 +683,45 @@ export async function listDocumentIdsForProject(
       .limit(limit),
   )
   return rows.map((row) => row.id)
+}
+
+/** The statuses a read ended in failure at — the `failed` family of `DOCUMENT_STATUS_FACTS`. */
+const READ_FAILED_STATUSES = ['failed', 'error'] as const
+
+/**
+ * The project's active documents whose read FAILED and that a model may name:
+ * screened ones only (ADR-0086, {@link SCREENED_ONLY}) and none in a folder the
+ * caller hides (ADR-0087). Newest first, bounded by `limit`.
+ *
+ * Read for the agent's `documents_unreadable:` block. Without it a file Piloti
+ * could not read was indistinguishable from one that does not exist: it has no
+ * summary row, so neither the inventory nor any tool lists it, and an answer
+ * called it missing.
+ */
+export async function listUnreadableProjectDocuments(
+  projectId: string,
+  organizationId: string,
+  hiddenFolderIds: readonly string[],
+  limit: number,
+): Promise<{ filename: string; displayName: string | null; folderId: string | null }[]> {
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select({ filename: documents.filename, displayName: documents.displayName, folderId: documents.folderId })
+      .from(documents)
+      .where(
+        and(
+          eq(documents.projectId, projectId),
+          eq(documents.organizationId, organizationId),
+          eq(documents.lifecycle, 'active'),
+          inArray(documents.status, [...READ_FAILED_STATUSES]),
+          ...outsideHiddenFolders(hiddenFolderIds),
+          documentVisibleTo(SCREENED_ONLY),
+        ),
+      )
+      .orderBy(desc(documents.createdAt))
+      .limit(limit),
+  )
 }
 
 /**
@@ -1430,6 +1547,42 @@ const sameDispatch = (jobId: string | null): SQL =>
 /** The digest the dispatch of the job being reconciled recorded, or the row's earlier one. */
 const screenedHashOfDispatch = sql<string | null>`coalesce(${documents.metadata} ->> 'ingestContentHash', ${documents.screenedHash})`
 
+/** The digest the dispatch of the job being reconciled recorded, and nothing else. */
+const dispatchedHash = sql<string | null>`${documents.metadata} ->> 'ingestContentHash'`
+
+/**
+ * A verdict recorded on the versions that hold the bytes it judged (migration
+ * 0131, ADR-0086): the one writer of `document_versions.screened_hash`, called
+ * only inside the transaction that records the item's verdict, so the item and
+ * its versions never disagree about the same bytes.
+ *
+ * `document_versions.screened_hash` is what keeps an earlier upload readable
+ * once a re-upload replaces it: the item's own `screened_hash` names the
+ * current bytes and is reset by the replace. A pass sets it on every version of
+ * this document holding `judgedHash`; a verdict that holds those bytes
+ * (a quarantine) clears it, so the latest verdict about the bytes is the one on
+ * record. No judged digest (a dispatch from before migration 0123 with nothing
+ * on the item either) records nothing, and those versions stay refused.
+ */
+async function recordVersionVerdict(
+  tx: DbTransaction,
+  documentId: string,
+  organizationId: string,
+  verdict: { judgedHash: string | null; passed: boolean },
+): Promise<void> {
+  if (!verdict.judgedHash) return
+  await tx
+    .update(documentVersions)
+    .set({ screenedHash: verdict.passed ? verdict.judgedHash : null })
+    .where(
+      and(
+        eq(documentVersions.documentId, documentId),
+        eq(documentVersions.organizationId, organizationId),
+        eq(documentVersions.contentHash, verdict.judgedHash),
+      ),
+    )
+}
+
 /**
  * Persist a reconciled ingestion status.
  *
@@ -1488,8 +1641,20 @@ export async function setDocumentReconciledStatus(
           folderId: documents.folderId,
           filename: documents.filename,
           createdBy: documents.createdBy,
+          status: documents.status,
+          screeningOutcome: documents.screeningOutcome,
+          screenedHash: documents.screenedHash,
+          dispatchedHash,
         })
       if (!moved) return false
+      // The versions holding the bytes this job judged take the same verdict
+      // (migration 0131). A read that ended without one (`failed`) says nothing.
+      if (resolution.status !== 'failed') {
+        await recordVersionVerdict(tx, documentId, organizationId, {
+          judgedHash: resolution.status === 'completed' ? moved.screenedHash : moved.dispatchedHash,
+          passed: resolution.status === 'completed' && verdictPasses(moved),
+        })
+      }
       if (resolution.status === 'quarantined') {
         const verdict = parseQuarantine(resolution.errorMessage)
         await tx
@@ -1527,33 +1692,38 @@ export async function markScreeningReleased(
   release: { contentHash: string; releasedBy: string; releasedAt: Date },
 ): Promise<boolean> {
   const db = getDb()
-  const updated = await withTenant({ organizationId }, () =>
-    db
-      .update(documents)
-      .set({
-        status: 'uploaded',
-        errorMessage: null,
-        screeningOutcome: 'released',
-        // The release is a verdict about these bytes (migration 0123).
-        screenedHash: release.contentHash,
-        screeningReleasedHash: release.contentHash,
-        screeningReleasedBy: release.releasedBy,
-        screeningReleasedAt: release.releasedAt,
-        updatedAt: release.releasedAt,
-      })
-      .where(
-        and(
-          eq(documents.id, documentId),
-          eq(documents.organizationId, organizationId),
-          // Held and at rest: a quarantine, or a file the gate never reached a
-          // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
-          heldAtRest(),
-          eq(documents.contentHash, release.contentHash),
-        ),
-      )
-      .returning({ id: documents.id }),
+  return withTenant({ organizationId }, () =>
+    db.transaction(async (tx) => {
+      const updated = await tx
+        .update(documents)
+        .set({
+          status: 'uploaded',
+          errorMessage: null,
+          screeningOutcome: 'released',
+          // The release is a verdict about these bytes (migration 0123).
+          screenedHash: release.contentHash,
+          screeningReleasedHash: release.contentHash,
+          screeningReleasedBy: release.releasedBy,
+          screeningReleasedAt: release.releasedAt,
+          updatedAt: release.releasedAt,
+        })
+        .where(
+          and(
+            eq(documents.id, documentId),
+            eq(documents.organizationId, organizationId),
+            // Held and at rest: a quarantine, or a file the gate never reached a
+            // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
+            heldAtRest(),
+            eq(documents.contentHash, release.contentHash),
+          ),
+        )
+        .returning({ id: documents.id })
+      if (updated.length === 0) return false
+      // The versions holding the released bytes are released with them (migration 0131).
+      await recordVersionVerdict(tx, documentId, organizationId, { judgedHash: release.contentHash, passed: true })
+      return true
+    }),
   )
-  return updated.length > 0
 }
 
 /** Bound on one read of the quarantine queue. A queue longer than this is a policy problem, not a list. */

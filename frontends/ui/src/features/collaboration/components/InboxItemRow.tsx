@@ -42,6 +42,7 @@ import {
   Clock,
   EyeOff,
   HardDrive,
+  Layers,
   Megaphone,
   MessageSquare,
   ShieldAlert,
@@ -82,6 +83,7 @@ import {
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { DiscussDocumentButton } from '@/features/documents/components/discuss-document-button'
 import { projectIdFromDocumentHref } from '@/features/documents/lib/document-question'
+import { compareFassungHref } from '@/features/documents/lib/fassung-compare-link'
 
 /**
  * The ONE place the registry's icon names become components. Keeping the map here
@@ -97,6 +99,7 @@ const ICONS: Record<(typeof INBOX_TYPE_PRESENTATION)[keyof typeof INBOX_TYPE_PRE
     'hard-drive': HardDrive,
     'alert-triangle': AlertTriangle,
     clock: Clock,
+    layers: Layers,
     megaphone: Megaphone,
     'shield-alert': ShieldAlert,
   }
@@ -173,6 +176,25 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const documentProjectId =
     item.resourceType === 'document' ? projectIdFromDocumentHref(item.href) : null
 
+  /*
+    „Fassungen vergleichen", the next move on a new Fassung filed under another
+    name: BEHAVIOUR keyed on the type, like the review triage below. The row
+    then names two documents — the newer is the resource, the older the anchor
+    — and the link opens the newer one's preview with the comparison against
+    the older already open. A same-name version anchors on the version and
+    has nothing to lay side by side here; its row opens the document, whose
+    Fassungen section compares the text.
+  */
+  const compareHref =
+    item.type === 'document.new_fassung' &&
+    item.state !== 'inert' &&
+    item.resourceType === 'document' &&
+    item.related !== null &&
+    item.anchorId !== null &&
+    item.anchorId !== item.resourceId
+      ? compareFassungHref(item.href, item.anchorId)
+      : null
+
   const inert = item.state === 'inert'
   const unread = item.state === 'unread'
   const resolved = item.state === 'resolved'
@@ -196,23 +218,36 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   const vars = {
     actor: item.actorName ?? t('inbox.unknownActor'),
     subject: item.subject ?? t(redacted ? 'inbox.inert' : 'inbox.untitledConversation'),
+    related: item.related ?? '',
     count: item.count,
   }
 
-  const titleLeaf =
-    pickKey(
-      dictionary,
-      presentation.i18nKey,
-      // `count` is occurrences SINCE THE ROW WAS LAST READ, so 0 is the ordinary
-      // state of a read row — and picking `titleOne` for it made a group of
-      // twenty that had been read claim "1 new message". Three cases, not two.
-      item.count > 1 ? ['titleMany', 'title'] : item.count === 1 ? ['titleOne', 'title'] : ['titleNone', 'titleOne', 'title'],
-    ) ??
-    'title'
+  const countedTitles =
+    // `count` is occurrences SINCE THE ROW WAS LAST READ, so 0 is the ordinary
+    // state of a read row — and picking `titleOne` for it made a group of
+    // twenty that had been read claim "1 new message". Three cases, not two.
+    item.count > 1 ? ['titleMany', 'title'] : item.count === 1 ? ['titleOne', 'title'] : ['titleNone', 'titleOne', 'title']
+  // A row that names a second thing reads the title written for two names,
+  // where its type has one, and the plain title otherwise. A type that is a
+  // sentence about a person (`{actor} hat …`) may say it without one when the
+  // actor is unknown, rather than „Jemand hat …".
+  const titleCandidates = [
+    ...(item.actorName === null ? ['titleNoActor'] : []),
+    ...(item.related !== null && !redacted ? ['titleRelated'] : []),
+    ...countedTitles,
+  ]
+  const titleLeaf = pickKey(dictionary, presentation.i18nKey, titleCandidates) ?? 'title'
   const title = t(`inbox.types.${presentation.i18nKey}.${titleLeaf}`, vars)
   // A row whose payload names no subject (an upload to the Büroablage or a
-  // chat) reads the sentence written without one, where its type has it.
-  const bodyLeaf = pickKey(dictionary, presentation.i18nKey, item.subject === null ? ['bodyNoSubject', 'body'] : ['body'])
+  // chat) reads the sentence written without one, where its type has it. A
+  // type whose excerpt IS the news (a new Fassung's „what changed") writes its
+  // body only for the row without one, as `bodyNoExcerpt`: a sentence above
+  // the excerpt saying „open it to see what changed" repeated it.
+  const bodyLeaf = pickKey(dictionary, presentation.i18nKey, [
+    ...(item.subject === null ? ['bodyNoSubject'] : []),
+    ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
+    'body',
+  ])
   /*
     A REDACTED row gets a complete sentence of its own rather than the templated
     "in {subject}".
@@ -449,8 +484,16 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
 
           {body && <ItemDescription className="mt-0.5">{body}</ItemDescription>}
 
+          {/* Three lines when it is the only body: then it is the news, and
+              on a phone two lines cut a change off mid-sentence. */}
           {item.excerpt && (
-            <p className="mt-1.5 line-clamp-2 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground">
+            <p
+              className={cn(
+                'mt-1.5 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
+                body ? 'line-clamp-2' : 'line-clamp-3',
+              )}
+              data-testid="inbox-item-excerpt"
+            >
               {item.excerpt}
             </p>
           )}
@@ -717,6 +760,23 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
                 overlay across the whole card, and anything meant to be clickable
                 has to sit above it. Never on an inert row — its target is gone,
                 which is the same reason the title is not a link there. */}
+            {compareHref && (
+              <Button asChild size="sm" className="relative z-10">
+                <Link
+                  href={compareHref}
+                  aria-label={t('inbox.compareFassungenLabel', { subject: vars.subject })}
+                  onClick={(event) => {
+                    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return
+                    if (event.button !== 0) return
+                    onOpen?.(item)
+                  }}
+                  data-testid="inbox-compare-fassungen"
+                >
+                  <Layers aria-hidden />
+                  {t('inbox.compareFassungen')}
+                </Link>
+              </Button>
+            )}
             {documentProjectId && !inert && (
               <DiscussDocumentButton
                 projectId={documentProjectId}

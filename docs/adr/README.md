@@ -1,9 +1,13 @@
 # Architecture Decision Records
 
-This directory holds the **Architecture Decision Records (ADRs)** for the Grid Agent
-project. An ADR captures a single architecturally significant decision together with
-its context, the decision itself, and its consequences, so the rationale survives
-team and template churn.
+This directory holds the **Architecture Decision Records (ADRs)** for Piloti, the
+workspace for architects and planning offices. An ADR captures a single
+architecturally significant decision together with its context, the decision
+itself, and its consequences, so the rationale survives team and template churn.
+
+For what the product is, read [`VISION.md`](../../VISION.md). Accepted records 0006,
+0025, 0037, 0052 and 0060 were written in the earlier frame of a building-regulation
+assistant, and are read in the light of VISION.md.
 
 New records use [MADR 4](https://adr.github.io/madr/). The shape is in
 [`0000-template.md`](0000-template.md). Records 0001–0049 predate that template
@@ -16,9 +20,9 @@ Working in here: [`AGENTS.md`](AGENTS.md).
 
 ## Why ADRs
 
-Grid is a small team rapidly evolving a product built on a third-party template
-(AI-Q). Decisions that are costly to reverse need a durable rationale trail: new
-services, datastores, external dependencies, auth/tenancy/security models,
+Piloti is a small team rapidly evolving a workspace for planning offices, built on
+a third-party template (AI-Q). Decisions that are costly to reverse need a durable
+rationale trail: new services, datastores, external dependencies, auth/tenancy/security models,
 data-model changes, cross-cutting patterns, or anything that changes a public
 contract. ADRs give us shared context and make onboarding easier.
 
@@ -88,9 +92,9 @@ Consequences, where a reader looks for them.
 | [0026](0026-unified-source-kind-model.md) | Unified source-kind model for citations, Herleitung, and reports | Accepted |
 | [0027](0027-platform-workflow-templates.md) | Platform-managed workflow templates | Superseded by ADR-0046 |
 | [0028](0028-horizontal-agent-scaling-conversation-affinity.md) | Horizontally scaling the aiq-agent container via conversation affinity | Accepted |
-| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Superseded by ADR-0099 |
+| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Superseded by ADR-0100 |
 | [0030](0030-interactive-card-decisions-persist-on-the-message.md) | Interactive-card decisions persist on the message | Accepted |
-| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Superseded by ADR-0099 |
+| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Superseded by ADR-0100 |
 | [0032](0032-shareable-resource-model.md) | The shareable-resource model, and where resource-level grants live | Accepted |
 | [0033](0033-server-authoritative-shared-conversations.md) | Server-authoritative shared conversations (and the seam that keeps private ones local-first) | Accepted |
 | [0034](0034-mention-handoff-persisted-state.md) | The mention hand-off is persisted conversation state, not the agent's in-memory HITL | Accepted |
@@ -157,7 +161,8 @@ Consequences, where a reader looks for them.
 | [0096](0096-a-closed-project-s-experience-is-read-from-its-documents-as-suggestions.md) | A closed project's experience is read from its documents, as suggestions a person confirms | Proposed |
 | [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
 | [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Proposed |
-| [0099](0099-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
+| [0099](0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md) | Fassungen across file names are a confirmed link, not a merge | Proposed |
+| [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

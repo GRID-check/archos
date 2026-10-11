@@ -9,6 +9,7 @@
  */
 
 import { ingestScreeningFor } from '@/lib/upload-screening/service'
+import { contentDisposition } from './content-disposition'
 import 'server-only'
 import {
   GetObjectCommand,
@@ -45,7 +46,7 @@ import {
   NotFoundError,
   UpstreamError,
 } from '@/lib/api/errors'
-import { ALLOWED_TAGS } from './tag-vocabulary'
+import { ALLOWED_TAGS, MAX_TOPICS, MAX_TOPIC_LENGTH } from './tag-vocabulary'
 import { documentStatusFacts } from './document-status'
 import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
 import { INGEST_ALREADY_DONE, INGEST_NOT_ELIGIBLE, INGEST_RUNNING } from './reingest-codes'
@@ -70,6 +71,7 @@ import type { Document, DocumentAuthor } from '@/lib/db/schema'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
 import { toListedDocuments, toListedPage, type ListedDocument } from './shelf-listing'
+import { loadFassungFacts } from './fassung-facts'
 import { projectShelf } from './shelf'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { resolveDocumentFolderPath } from './folder-path'
@@ -282,38 +284,6 @@ const INGEST_JOB_REF_TTL_SECONDS = 86_400
 export const RENDITION_REQUIRED_MESSAGE = 'The PDF version of this file could not be created'
 
 /**
- * Filenames are user-controlled and end up in the `Content-Disposition` of
- * presigned URLs — strip header-breaking characters (CR/LF, double quotes),
- * cap the length, and never emit an empty name.
- */
-function sanitizeFilename(raw: string): string {
-  const cleaned = raw
-    .replace(/[\r\n"]/g, '')
-    .trim()
-    .slice(0, 255)
-  return cleaned || 'download'
-}
-
-/** RFC 5987 percent-encoding for the `filename*` parameter. */
-function encodeRfc5987(value: string): string {
-  return encodeURIComponent(value).replace(
-    /['()*]/g,
-    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`
-  )
-}
-
-/**
- * Build a header-safe Content-Disposition: an ASCII-only `filename` fallback
- * plus the RFC 5987 `filename*` carrying the full UTF-8 name.
- */
-function contentDisposition(type: 'attachment' | 'inline', rawFilename: string): string {
-  const filename = sanitizeFilename(rawFilename)
-  const asciiFallback = filename.replace(/[^\x20-\x7e]/g, '_').replace(/[\\]/g, '_') || 'download'
-  return `${type}; filename="${asciiFallback}"; filename*=UTF-8''${encodeRfc5987(filename)}`
-}
-
-
-/**
  * Dispatch a document to the backend ingest API and persist the outcome. The
  * upload and re-ingest paths share this so the success path (status pending +
  * jobId) and the failure path (status failed + errorMessage) stay identical.
@@ -362,6 +332,14 @@ export interface DispatchIngestExtras {
    * upload is byte for byte what it was before the field existed.
    */
   priority?: IngestPriority
+  /**
+   * The FILE NAME of the document in this collection that these bytes replace,
+   * when a person filed the upload as its new Fassung (ADR-0099). Sent as
+   * `fassung_of`; once the file has been read, the ingest job writes the link
+   * `PUT /v1/collections/{c}/fassung` writes. Absent for every other dispatch,
+   * and then not sent at all.
+   */
+  fassungOf?: string | null
 }
 
 /**
@@ -499,6 +477,8 @@ export async function dispatchIngest(
     file_name: extras.fileName ?? null,
     // Only a bulk dispatch says so: the backend's default is interactive.
     ...(extras.priority === 'bulk' ? { priority: 'bulk' } : {}),
+    // Only an upload a person filed as a new Fassung says so (ADR-0099).
+    ...(extras.fassungOf ? { fassung_of: extras.fassungOf } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
     // Spread so the four keys are the four keys, never a nested object the
@@ -906,6 +886,8 @@ export interface UploadDocumentInput {
    * for this project; anything else is ignored rather than refused.
    */
   uploadBatchId?: string | null
+  /** See `ShelfUploadInput.fassungOf`: the document this is filed as the new Fassung of. */
+  fassungOf?: string | null
   /** See `ShelfUploadInput.priority`: `bulk` for a machine filing on a person's behalf. */
   priority?: IngestPriority
 }
@@ -1027,6 +1009,12 @@ export interface DispatchDocumentInput extends BeginModelExtractionInput {
    * the keys the Python side parses are the keys the BFF wrote.
    */
   provenance?: AgentDocumentProvenance | null
+  /**
+   * The file name of the older document this upload was filed as the new
+   * Fassung of, already checked (`resolveFassungOf`). Read by the ingest paths
+   * only: an IFC model's digest is not the file the row names.
+   */
+  fassungOf?: string | null
 }
 
 export interface DispatchDocumentResult {
@@ -1164,7 +1152,12 @@ export async function dispatchDocument(
     // The ROW's filename, not the caller's: the join key belongs to the row,
     // and this is the same "never trust the caller" argument the guard above
     // makes about authorship.
-    { fileName: row.filename, provenance: input.provenance ?? null, priority: input.priority }
+    {
+      fileName: row.filename,
+      provenance: input.provenance ?? null,
+      priority: input.priority,
+      fassungOf: input.fassungOf ?? null,
+    }
   )
 }
 
@@ -1431,6 +1424,7 @@ export async function beginRenditionIngest(
     ...documentWorkPayload(input),
     fileName,
     provenance: input.provenance ?? null,
+    fassungOf: input.fassungOf ?? null,
   })
 }
 
@@ -1448,7 +1442,11 @@ export async function runOfficeRenditionJob(
   payload: OfficeRenditionPayload,
   attempt: JobAttempt
 ): Promise<void> {
-  const input = { ...dispatchInputOf(organizationId, payload), provenance: payload.provenance ?? null }
+  const input = {
+    ...dispatchInputOf(organizationId, payload),
+    provenance: payload.provenance ?? null,
+    fassungOf: payload.fassungOf ?? null,
+  }
   if (!(await jobStillOwnsRow(input))) return
 
   await failRowOnLastAttempt(input, attempt, INGEST_DISPATCH_FAILED_MESSAGE, () =>
@@ -1486,6 +1484,7 @@ async function ingestThroughRendition(input: DispatchDocumentInput, fileName: st
       // structure-preserving extractor (see `extractsFromRendition`).
       extractionRef: indexesRendition ? renditionRef : null,
       priority: input.priority,
+      fassungOf: input.fassungOf ?? null,
     }
   )
 }
@@ -2053,12 +2052,16 @@ export async function redispatchStuckDocument(
  * vocabulary. Tags are also validated here against the mirrored `ALLOWED_TAGS`
  * so an obviously-bad request fails fast (400) without a backend round-trip;
  * an empty list clears the tags. A missing summary row surfaces as 404.
+ *
+ * `topics` is the model's keyword list, which a person may correct. It is
+ * forwarded only when given, so a tag-only edit leaves the topics alone.
  */
 export async function updateDocumentTags(
   session: AuthorizedSession,
   documentId: string,
-  tags: string[]
-): Promise<{ id: string; tags: string[] }> {
+  tags: string[],
+  topics?: string[]
+): Promise<{ id: string; tags: string[]; topics?: string[] }> {
   const doc = await getAccessibleDocument(session, documentId, 'write')
 
   const offending = tags.filter((tag) => !ALLOWED_TAGS.has(tag))
@@ -2066,6 +2069,9 @@ export async function updateDocumentTags(
     throw new BadRequestError('Tags outside the controlled vocabulary are not allowed', {
       invalidTags: offending,
     })
+  }
+  if (topics && (topics.length > MAX_TOPICS || topics.some((t) => t.length < 1 || t.length > MAX_TOPIC_LENGTH))) {
+    throw new BadRequestError(`Topics must be at most ${MAX_TOPICS} keywords of 1 to ${MAX_TOPIC_LENGTH} characters`)
   }
 
   // The same gate as the read paths, on a WRITE. There is no backend summary row
@@ -2081,7 +2087,7 @@ export async function updateDocumentTags(
     res = await fetch(collectionFileUrl(getBackendUrl(), ref, '/tags'), {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tags }),
+      body: JSON.stringify(topics === undefined ? { tags } : { tags, topics }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
   } catch {
@@ -2097,7 +2103,12 @@ export async function updateDocumentTags(
   if (!res.ok) throw new UpstreamError('The document service rejected the tag update')
 
   const body = await res.json().catch(() => ({}))
-  return { id: doc.id, tags: Array.isArray(body.tags) ? body.tags : tags }
+  const answer: { id: string; tags: string[]; topics?: string[] } = {
+    id: doc.id,
+    tags: Array.isArray(body.tags) ? body.tags : tags,
+  }
+  if (topics !== undefined) answer.topics = Array.isArray(body.topics) ? body.topics : topics
+  return answer
 }
 
 /**
@@ -2234,7 +2245,8 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0099).
+      await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 
   await eraseDocumentObjectsOrKeepRow(doc, organizationId)
@@ -2256,7 +2268,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   // and kept chunks it inserted after the first purge (ADR-0054, correction
   // 18). Any check from here on reads „gone“ and discards its own. Logged
   // inside, never thrown: the row is gone, and the orphan sweep is the net.
-  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
 
   return chunksPurged
 }
@@ -2877,6 +2889,8 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     findOpenVersion(reconciled.id, session.organizationId),
     listDocumentVersionSummaries([reconciled.id], session.organizationId),
   ])
+  const fassung =
+    (await loadFassungFacts(session, [reconciled], await shelfReaderFor(session, reconciled))).get(reconciled.id) ?? null
 
   return {
     id: reconciled.id,
@@ -2904,6 +2918,11 @@ export async function getDocumentStatus(session: AuthorizedSession, documentId: 
     chunkCount: reconciled.chunkCount,
     contentTypes: reconciled.contentTypes,
     tags: reconciled.tags,
+    topics: reconciled.topics,
+    capture: reconciled.capture,
+    revisionFacts: reconciled.revisionFacts,
+    // Resolved for THIS reader: a document they may not open is not in it.
+    fassung,
     // The place in the ingest queue, null once the job is claimed or settled.
     queueAhead: reconciled.queueAhead ?? null,
     // Whose hand wrote the bytes. Added because this payload is how the CHAT

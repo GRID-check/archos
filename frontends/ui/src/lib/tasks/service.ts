@@ -365,7 +365,7 @@ async function fileResultFor(
 }
 
 /**
- * `job_run_finished` for PostHog (ADR-0099): how a run ended and how long it
+ * `job_run_finished` for PostHog (ADR-0100): how a run ended and how long it
  * took, for every kind of run (a schedule, a "run now", a delegated question).
  * The requester is the distinct id, because the run is theirs even when the
  * schedule fired it; `job_id` is null for a run with no definition behind it.
