@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    A Markdown file in which a long paragraph starts with „#“ now becomes
+    searchable. Before, the upload failed for that file.

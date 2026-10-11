@@ -216,7 +216,7 @@ For each file:
    | OIB Richtlinie (`oib_doc_class` set) | a Punkt (`punkt_chunking`) | `3.5.2`, `Tabelle 3` | first page |
    | Any other PDF with a heading structure | chunks of ~640 tokens inside a section that may span pages, 96 tokens of overlap inside the section, heading breadcrumb as the first line (`section_chunking`) | the heading's number (`3.2`, `§ 4`, `Artikel 2`), else its title path (`Brandschutz › Allgemeines`) | page the chunk's own text starts on; `page_end` where it ends |
    | A PDF without one | one Document per page, split by `SentenceSplitter` | none | the page |
-   | `.md` (the IFC digest too) | one section per ATX heading, packed to the same budget, breadcrumb first | the heading path under the document title (`Geschoße › EG`) | none |
+   | `.md` (the IFC digest too) | one section per ATX heading of at most 120 characters (a longer `#` line is body text), packed to the same budget, breadcrumb first | the heading path under the document title (`Geschoße › EG`) | none |
    | `.txt` | paragraph blocks packed to the budget | `Zeilen 12-30` | none |
    | `.csv`/`.tsv` | row groups that each repeat the header | `Zeilen 2-41` (file lines) | none |
    | `.xlsx`/`.xlsm` sheet | row groups that each repeat the header, at most 10,000 rows a sheet; the rest are stated in the last group and counted as `rows_over_cap` on the file's job status | `Raumliste: Zeilen 2-41` | the sheet name |

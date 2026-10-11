@@ -9,9 +9,9 @@ Each format is now cut on its own structure, and every chunk carries a locator i
 ``punkt_id`` -- the key ``read_passage(punkt=…)`` addresses and the grounding block
 prints as ``Punkt:``:
 
-* ``.md``: one section per ATX heading (``#`` … ``######``, outside code fences),
-  addressed by its heading path (``Geschoße`` or ``Brandschutz › Fluchtwege``) and
-  prefixed with that breadcrumb. The IFC digest is Markdown and gains its sections
+* ``.md``: one section per ATX heading (``#`` … ``######``, outside code fences, at
+  most ``MAX_HEADING_CHARS`` long), addressed by its heading path (``Geschoße`` or
+  ``Brandschutz › Fluchtwege``) and prefixed with that breadcrumb. The IFC digest is Markdown and gains its sections
   here too.
 * ``.txt``: paragraph blocks, packed to the chunk budget, addressed ``Zeilen 12-30``.
 * ``.csv``/``.tsv``: row groups sized to the budget, each repeating the header row,
@@ -37,6 +37,7 @@ from typing import Any
 
 from knowledge_layer.llamaindex.section_chunking import ATX_HEADING_RE
 from knowledge_layer.llamaindex.section_chunking import BREADCRUMB_SEP
+from knowledge_layer.llamaindex.section_chunking import MAX_HEADING_CHARS
 from knowledge_layer.llamaindex.section_chunking import Line
 from knowledge_layer.llamaindex.section_chunking import apply_exclusions
 from knowledge_layer.llamaindex.section_chunking import pack
@@ -102,7 +103,9 @@ def _markdown_sections(lines: list[str]) -> list[tuple[list[str], int, list[Line
         if _FENCE_RE.match(raw):
             fenced = not fenced
         match = None if fenced else ATX_HEADING_RE.match(raw)
-        if match is None:
+        # A paragraph marked with "#" is body text, as on the PDF path: its title would
+        # be copied into three locator fields and could fill the splitter's chunk budget.
+        if match is None or len(match.group("title")) > MAX_HEADING_CHARS:
             sections[-1][2].append(Line(number, raw.rstrip()))
             continue
         level = len(match.group("hashes"))

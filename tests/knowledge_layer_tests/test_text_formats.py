@@ -105,6 +105,20 @@ class TestMarkdown:
         assert [doc.text for doc in geschosse] == ["BIM-Modell: Wohnanlage Musterstraße › Geschoße"]
         assert geschosse[0].metadata["punkt_depth"] == 1
 
+    def test_a_paragraph_marked_as_a_heading_is_body_text_and_fits_the_chunk(self, tmp_path):
+        """Its title went into ``punkt_id``, ``punkt_title`` and ``punkt_path``, and the
+        header it rendered was larger than the chunk, so ``SentenceSplitter`` raised."""
+        from llama_index.core.node_parser import SentenceSplitter
+
+        paragraph = "Die Anforderungen an Wände und Decken gelten für alle Geschoße des Gebäudes. " * 20
+        data = f"# Bericht\n\n## Brandschutz\n\n## {paragraph}\n\nText darunter.\n".encode()
+        docs = extract_text_format_documents(_write(tmp_path, "bericht.md", data), "bericht.md", 1)
+
+        assert [doc.metadata.get("punkt_id") for doc in docs] == ["Brandschutz"]
+        assert paragraph.strip() in docs[0].text
+        assert "Text darunter." in docs[0].text
+        SentenceSplitter(chunk_size=1024, chunk_overlap=128).get_nodes_from_documents(docs)
+
     def test_section_order_is_document_order(self, tmp_path):
         docs = extract_text_format_documents(_write(tmp_path, "digest.md", DIGEST.encode()), "digest.md", 1)
         orders = [doc.metadata["section_order"] for doc in docs]
@@ -225,6 +239,26 @@ class TestThroughTheIngestJob:
         assert [doc.metadata["punkt_id"] for doc in docs] == ["Zeilen 2-3"]
         assert "| Großraum | 80 m² |" in docs[0].text
         assert docs[0].metadata["source_encoding"] == "cp1252"
+
+    def test_a_markdown_file_with_a_paragraph_marked_as_a_heading_is_indexed(self, tmp_path, ingestor, summary_db):
+        paragraph = "Die Anforderungen an Wände und Decken gelten für alle Geschoße des Gebäudes. " * 20
+        data = f"# Bericht\n\n## {paragraph}\n".encode()
+        status = _run(ingestor, _write(tmp_path, "tmp_upload", data), "Bericht.md")
+
+        assert status.file_details[0].status == "success", status.file_details[0].error_message
+        assert paragraph.strip() in _indexed()[0].text
+
+    def test_metadata_that_fills_the_chunk_fails_the_file_and_names_the_field(self):
+        from knowledge_layer.llamaindex.adapter import _check_metadata_fits
+        from llama_index.core import Document
+
+        fits = Document(text="Text.", metadata={"punkt_id": "Brandschutz", "file_size": "1" * 9000})
+        fits.excluded_embed_metadata_keys = fits.excluded_llm_metadata_keys = ["file_size"]
+        too_long = Document(text="Text.", metadata={"punkt_id": "Brandschutz", "punkt_path": "Wand " * 1200})
+
+        _check_metadata_fits([fits], 1024, "bericht.md")
+        with pytest.raises(ValueError, match=r"bericht\.md fills \d+ of the 1024 tokens.*'punkt_path'"):
+            _check_metadata_fits([fits, too_long], 1024, "bericht.md")
 
     def test_rows_the_sheet_cap_left_out_are_counted_on_the_file_result(
         self, tmp_path, ingestor, summary_db, monkeypatch

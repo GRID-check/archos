@@ -812,6 +812,33 @@ def _apply_metadata_exclusions(document: Any) -> None:
             logger.debug("Could not set %s on %r", attribute, type(document).__name__)
 
 
+def _check_metadata_fits(documents: list[Any], chunk_size: int, file_name: str) -> None:
+    """Raise when a document's metadata header alone fills a chunk, and name its longest field.
+
+    ``SentenceSplitter`` subtracts the rendered header from ``chunk_size`` and raises
+    ``Metadata length (N) is longer than chunk size`` when nothing is left, which names
+    neither the file nor the field. This measures the same header (the longer of the
+    embed and LLM renderings) with the splitter's default tokenizer, before anything is
+    written.
+    """
+    from llama_index.core.schema import MetadataMode
+    from llama_index.core.utils import get_tokenizer
+
+    tokenizer = get_tokenizer()
+    for document in documents:
+        renderings = (document.get_metadata_str(MetadataMode.EMBED), document.get_metadata_str(MetadataMode.LLM))
+        tokens = len(tokenizer(max(renderings, key=len)))
+        if tokens < chunk_size:
+            continue
+        hidden = set(document.excluded_embed_metadata_keys) & set(document.excluded_llm_metadata_keys)
+        shown = {key: str(value) for key, value in document.metadata.items() if key not in hidden}
+        longest = max(shown, key=lambda key: len(shown[key]))
+        raise ValueError(
+            f"The metadata of {file_name} fills {tokens} of the {chunk_size} tokens in a chunk; "
+            f"the longest field is {longest!r} ({len(shown[longest])} characters)"
+        )
+
+
 #: Collection-metadata keys recording which embedding produced a collection's vectors.
 #: Namespaced so they cannot collide with a user-supplied `metadata` dict.
 EMBED_FINGERPRINT_KEY = "aiq:embed_fingerprint"
@@ -5151,6 +5178,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         doc.metadata["doc_class"] = doc_class
                         doc.metadata.update(provenance)
                         _apply_metadata_exclusions(doc)
+                    _check_metadata_fits(all_documents, config.get("chunk_size", self.chunk_size), file_name)
 
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.
