@@ -8,6 +8,9 @@ import {
   type FakePdfState,
 } from '@/test-utils/pdfjs-fake'
 import { PdfDocumentView } from './pdf-document-view'
+import { capturePosthog } from '@/lib/analytics/posthog'
+
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 // `vi.hoisted` runs before the imports, but a type annotation is erased, so
 // naming the shared shape here costs nothing at runtime.
@@ -42,6 +45,7 @@ const selectWithin = (node: Element): void => {
 }
 
 beforeEach(() => {
+  vi.mocked(capturePosthog).mockClear()
   state.fail = false
   state.destroyed = 0
   state.pages = []
@@ -66,6 +70,29 @@ describe('PdfDocumentView', () => {
     expect(sheet.style.aspectRatio).toBe(`1 / ${Math.SQRT2}`)
     await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
     expect(screen.queryByTestId('pdf-page-placeholder')).toBeNull()
+  })
+
+  it('blocks the document from the session recorder, pages and text layer alike', async () => {
+    state.pages = [{ items: [] }]
+    const { container } = render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    expect(container.firstElementChild).toHaveClass('ph-no-capture')
+  })
+
+  it('reports document_opened once pdf.js has the document, with the kind and renderer only', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="Plan_EG.pdf" />)
+    expect(capturePosthog).not.toHaveBeenCalled()
+    await waitFor(() => expect(capturePosthog).toHaveBeenCalledTimes(1))
+    expect(capturePosthog).toHaveBeenCalledWith('document_opened', { kind: 'pdf', library: 'pdfjs' })
+  })
+
+  it('reports the browser fallback as its own renderer', async () => {
+    state.fail = true
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() =>
+      expect(capturePosthog).toHaveBeenCalledWith('document_opened', { kind: 'pdf', library: 'browser' })
+    )
   })
 
   it('renders one frame per page of the document', async () => {

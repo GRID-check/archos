@@ -1234,7 +1234,7 @@ export const chat = {
         'Medium confidence: the source shown was attached by the assistant, not cited by the answer itself.',
     },
   },
-  // Per-answer thumbs feedback (WS-7, `answer-feedback` flag).
+  // Per-answer thumbs feedback (WS-7).
   feedback: {
     question: 'Was this helpful?',
     helpfulAria: 'Mark this answer as helpful',

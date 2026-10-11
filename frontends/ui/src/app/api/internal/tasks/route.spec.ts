@@ -16,6 +16,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/tasks/delegation', () => ({ delegateTask: vi.fn(), commissionResearchRun: vi.fn() }))
 vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
+vi.mock('@/lib/workos/feature-flags', () => ({
+  isDeepResearchEnabledForOrg: vi.fn(),
+  isTaskAutomationEnabledForOrg: vi.fn(),
+}))
 // Partial: the factory itself opens a request-scoped slot, and replacing that
 // would test a handler the app does not run.
 vi.mock('@/lib/db/tenant-context', async (importOriginal) => ({
@@ -32,6 +36,7 @@ import {
 } from '@/lib/request-context'
 import { DELEGATABLE_TASK_KINDS } from '@/lib/db/schema'
 import { commissionResearchRun, delegateTask } from '@/lib/tasks/delegation'
+import { isDeepResearchEnabledForOrg, isTaskAutomationEnabledForOrg } from '@/lib/workos/feature-flags'
 import { internalTaskRequestSchema, parseTaskDue } from '@/lib/tasks/wire'
 import { POST } from './route'
 
@@ -117,6 +122,8 @@ beforeEach(() => {
   vi.clearAllMocks()
   process.env.GRID_INTERNAL_API_TOKEN = SECRET
   vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(session)
+  vi.mocked(isDeepResearchEnabledForOrg).mockResolvedValue(true)
+  vi.mocked(isTaskAutomationEnabledForOrg).mockResolvedValue(true)
   vi.mocked(delegateTask).mockResolvedValue({ definition: oneOffDefinition, run: task } as never)
   vi.mocked(commissionResearchRun).mockResolvedValue({
     runId: 'run-1',
@@ -200,6 +207,18 @@ describe('the op set', () => {
       expect((await call({ ...CREATE, kind })).status).toBe(201)
     }
     expect((await call({ ...CREATE, kind: 'deep-research' })).status).toBe(400)
+  })
+})
+
+describe('the capability gate — the door the agent comes through', () => {
+  it('refuses a task when the organization has no task-automation, and creates nothing', async () => {
+    vi.mocked(isTaskAutomationEnabledForOrg).mockResolvedValue(false)
+
+    const response = await call(CREATE)
+
+    expect(response.status).toBe(403)
+    expect(isTaskAutomationEnabledForOrg).toHaveBeenCalledWith('org_1')
+    expect(delegateTask).not.toHaveBeenCalled()
   })
 })
 

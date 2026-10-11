@@ -2,7 +2,7 @@
 
 /**
  * Per-user keyboard-shortcuts preference (the inner gate of the shortcuts
- * feature — the outer gate is the `keyboard-shortcuts` WorkOS feature flag).
+ * feature — the outer gate is the session having an organization).
  *
  * The app has no generic user-preferences backend surface for this, so the
  * choice lives in localStorage, default ON. SSR-safe: the server snapshot is

@@ -200,18 +200,6 @@ interface ChatAreaProps {
   /** Callback when sign in is clicked */
   onSignIn?: () => void
   /**
-   * Whether the AgentResponse confidence chip renders (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Defaults to true (fail-open) so
-   * existing callers/specs are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
-   * Whether answers show the per-answer thumbs feedback row (WorkOS
-   * `answer-feedback` flag, WS-7). Defaults to true (fail-open) so existing
-   * callers/specs are unaffected.
-   */
-  showAnswerFeedback?: boolean
-  /**
    * Whether the collaboration surfaces are reachable for this org (ADR-0032…0035,
    * dark-launched behind the per-org `collaboration` flag).
    *
@@ -231,8 +219,6 @@ interface ChatAreaProps {
 export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
   isAuthenticated = false,
   onSignIn,
-  showConfidenceChip = true,
-  showAnswerFeedback = true,
   canCollaborate = false,
 }) {
   const {
@@ -1751,8 +1737,6 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                               onContinueRun={commissionRun ? continueRun : undefined}
                               onErrorDismiss={dismissErrorCard}
                               onErrorRetry={handleErrorRetry}
-                              showConfidenceChip={showConfidenceChip}
-                              showAnswerFeedback={showAnswerFeedback}
                               showReasoning={showReasoningSkills}
                               author={messageAuthorship?.author}
                               grouped={messageAuthorship?.grouped}
@@ -2090,10 +2074,6 @@ interface MessageRendererProps {
   onErrorDismiss?: (messageId: string) => void
   /** Resend the last user message + dismiss this error card (retry affordance). */
   onErrorRetry?: (messageId: string) => void
-  /** Whether the AgentResponse confidence chip renders (feature-flagged). */
-  showConfidenceChip?: boolean
-  /** Whether the AgentResponse thumbs feedback row renders (feature-flagged). */
-  showAnswerFeedback?: boolean
   /** The reader's showReasoningSkills preference (fetched once by ChatArea). */
   showReasoning?: boolean
   /**
@@ -2121,8 +2101,6 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
   projectId,
   onErrorDismiss,
   onErrorRetry,
-  showConfidenceChip = true,
-  showAnswerFeedback = true,
   showReasoning = false,
   author,
   grouped,
@@ -2203,9 +2181,7 @@ const MessageRendererComponent: FC<MessageRendererProps> = ({
             skillsActivated={message.skillsActivated}
             skillsHidden={message.skillsHidden}
             showReasoning={showReasoning}
-            showConfidenceChip={showConfidenceChip}
             messageId={message.id}
-            showAnswerFeedback={showAnswerFeedback}
             isStreaming={message.isStreaming}
             stopped={message.stopped === true}
             // A turn that failed under a written answer: the words stay, marked
@@ -2327,8 +2303,6 @@ const areMessageRendererPropsEqual = (
   prev.previousFindings === next.previousFindings &&
   prev.onCommissionFinding === next.onCommissionFinding &&
   prev.onContinueRun === next.onContinueRun &&
-  prev.showConfidenceChip === next.showConfidenceChip &&
-  prev.showAnswerFeedback === next.showAnswerFeedback &&
   prev.showReasoning === next.showReasoning &&
   // Authorship is derived per render (from the roster + the reader), so compare
   // its fields rather than the object — otherwise every roster refresh would

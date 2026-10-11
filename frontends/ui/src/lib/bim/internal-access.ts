@@ -27,7 +27,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { s3Client } from '@/lib/s3'
 import { resolveDocumentBucket } from '@/lib/storage/bucket'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import { FEATURE_FLAGS, enforcementOn, ifcModelsEnvEnabled } from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
@@ -38,18 +38,14 @@ import { listBimModels, type BimModelHeader } from './repository'
  * The SAME gate the UI and every user-facing route apply, evaluated
  * per-organization because these routes carry a service token and no session.
  *
- * Mirrors `isIfcModelsEnabled` for a caller that has neither: under enforcement
- * the per-org flag decides (`isOrgFeatureEnabled` is itself fail-closed on a
- * lookup error); without it, the deployment-level switch does — which defaults
- * to ON, like the UI. The point is that the two agree: the agent answering
+ * Mirrors `isIfcModelsEnabled` for a caller that has neither: the per-org flag
+ * decides (`isOrgFeatureEnabled` applies the session gate's rules, fail-closed
+ * on a lookup error). The point is that the two agree: the agent answering
  * questions about a building makes the same claim the UI makes, so withdrawing
  * the feature has to stop both.
  */
 export async function assertInternalIfcModelsEnabled(organizationId: string): Promise<void> {
-  const allowed = enforcementOn()
-    ? await isOrgFeatureEnabled(FEATURE_FLAGS.ifcModels, organizationId)
-    : ifcModelsEnvEnabled()
-  if (!allowed) {
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.ifcModels, organizationId))) {
     throw new ForbiddenError('IFC models are not enabled for this organization')
   }
 }

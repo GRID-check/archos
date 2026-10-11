@@ -52,6 +52,8 @@ from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.common.wire_v2 import WireSource
 from aiq_agent.common.write_fence import TurnFenced
 from aiq_agent.common.write_fence import current_write_fence
+from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
+from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
 from aiq_agent.turn.response import answer_message_id
 from aiq_api import chat_socket
 from aiq_api import internal_api as chat_socket_internal
@@ -351,7 +353,8 @@ async def test_the_first_frame_is_hello_before_any_client_message(harness, monke
     assert hello["v"] == 2
     assert hello["type"] == "CUSTOM"
     assert hello["name"] == "hello"
-    assert hello["value"] == {"build": "abc1234", "accepts": ["cancel_turn.shown"]}
+    assert hello["value"] == {"build": "abc1234", "accepts": list(ACCEPTED_CLIENT_FIELDS)}
+    assert "user_message.posthog_session_id" in hello["value"]["accepts"]
     # A connection frame, not a turn's: nothing a fold or a cursor could key on.
     assert not {"conversation_id", "turn_id", "seq"} & hello.keys()
     assert sock.sent == []
@@ -1065,7 +1068,6 @@ async def test_a_failing_stage_never_changes_the_answer_frames(harness, one_fram
                 id="follow_ups",
                 agent_group=AgentGroup.MEMORY_REFLECTION,
                 flag_slug="probe-stage",
-                env_default="GRID_STAGE_PROBE_ENABLED",
                 timeout_s=0.05,
                 gate=lambda facts: GateDecision.proceed(),
                 handler=handler,
@@ -2255,3 +2257,52 @@ async def test_a_finished_turn_takes_its_fence_off_so_the_stage_frames_behind_it
     await asyncio.sleep(FENCE_TTL)  # past the old deadline, with nobody renewing any more
 
     assert not guard.fenced()
+
+
+# ---------------------------------------------------------------------------
+# The asker's PostHog session reaches the turn's trace metadata
+# ---------------------------------------------------------------------------
+
+_POSTHOG_SESSION = "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70"
+
+
+def _contributions_seen_by(seen: list):
+    """A turn that records what the trace would be given while it runs, then answers."""
+
+    async def turn(request, ask):
+        seen.append(snapshot_contributions())
+        yield TextMessageStartBody(message_id="m")
+        yield _finished(request)
+
+    return turn
+
+
+async def test_the_posthog_session_of_a_turn_becomes_trace_metadata_when_identity_is_on(harness, monkeypatch):
+    monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, "true")
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"] == {"$posthog_session_id": _POSTHOG_SESSION}
+
+
+async def test_a_turn_without_identity_attributes_keeps_the_session_off_the_trace(harness, monkeypatch):
+    monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"] == {}
+
+
+async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(harness, monkeypatch):
+    monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, "true")
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?", posthog_session_id="not-a-uuid")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.events()[-1]["outcome"] == "answered"
+    assert seen[0]["metadata"] == {}

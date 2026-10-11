@@ -320,24 +320,11 @@ export interface AgentResponseProps {
    */
   showReasoning?: boolean
   /**
-   * Whether the self-assessment ConfidenceChip renders (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Defaults to true so the feature stays
-   * visible with flag enforcement off (fail-open) and existing callers/specs
-   * are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
    * Client-side message identifier of this answer — keys the per-answer
    * thumbs feedback row (WS-7). No feedback row renders when absent (e.g.
    * legacy callers), so existing usages are unaffected.
    */
   messageId?: string
-  /**
-   * Whether the per-answer thumbs feedback row renders (WorkOS
-   * `answer-feedback` flag). Defaults to true (fail-open, matching the other
-   * flag props) — the row still requires a `messageId` to appear.
-   */
-  showAnswerFeedback?: boolean
   /**
    * Whether this answer is still streaming (C6). Drives the blinking caret at
    * the end of the answer body and the partial-markdown stabilizer in the
@@ -936,9 +923,7 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   skillsActivated,
   skillsHidden,
   showReasoning = false,
-  showConfidenceChip = true,
   messageId,
-  showAnswerFeedback = true,
   isStreaming = false,
   routingDecision,
   readOnly = false,
@@ -1327,16 +1312,14 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     [stages, cards, cardInteractions]
   )
 
-  // What the merged footer's meta row would actually hold. The flags alone are
-  // not the answer: `showConfidenceChip` is on by default but the chip renders
+  // What the merged footer's meta row would actually hold. The chip renders
   // nothing without a level, and the feedback row needs a `messageId` — gating
-  // the row on the flags let it mount as an empty band (bare spacer + its own
-  // gap) on a meta turn that has neither.
+  // the row on anything less let it mount as an empty band (bare spacer + its
+  // own gap) on a meta turn that has neither.
   const hasConfidence =
-    showConfidenceChip &&
-    (answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high')
+    answerConfidence === 'low' || answerConfidence === 'medium' || answerConfidence === 'high'
   // Rating somebody else's answer is not the reader's to do (readOnly).
-  const hasFeedback = !readOnly && showAnswerFeedback && Boolean(messageId)
+  const hasFeedback = !readOnly && Boolean(messageId)
   // The copy actions. A still-arriving answer cannot be copied — half a
   // Prüfvermerk is worse than none — and a cards-only turn has no markdown to
   // hand over, so it gets no button that copies ''. While the answer arrives
@@ -1507,6 +1490,13 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   )
   const previousBody = useRef(body)
   const bodyFade = useMotionToken(motionBase)
+  // The fade outlives the commit that started it: the reveal goes on growing
+  // the rewritten body, and every word re-runs the effect below. Stopping it
+  // there froze the answer greyed out, because a stopped animation keeps the
+  // value it reached (WAAPI commits it to the element). It is only ever
+  // finished, by the next rewrite or by unmounting, and finishing is full ink.
+  const bodyFadeControls = useRef<{ complete: () => void } | null>(null)
+  useLayoutEffect(() => () => bodyFadeControls.current?.complete(), [])
   useLayoutEffect(() => {
     const previous = previousBody.current.trimEnd()
     previousBody.current = body
@@ -1516,13 +1506,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     // and the whole answer blinked out and back as the button was pressed.
     if (stopped || failed) return
     if (!mountedLive || !previous || !body || body.startsWith(previous) || !proseRef.current) return
-    const controls = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
+    bodyFadeControls.current?.complete()
+    bodyFadeControls.current = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
     const frame = frameRef.current
-    const stopGlide = frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
-    return () => {
-      controls.stop()
-      stopGlide?.()
-    }
+    return frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
   }, [body, mountedLive, bodyFade, glideFrameDown, stopped, failed])
 
   // The retraction, on the elements that are already there (nothing remounts).

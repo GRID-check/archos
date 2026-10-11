@@ -23,6 +23,7 @@ import aiq_agent.knowledge.project_memory as pm
 import aiq_agent.project_context as pc
 from aiq_agent.cards.envelope import REFUSED_CONFINED
 from aiq_agent.cards.envelope import validate_model_card
+from aiq_agent.common.platform_lessons import LessonsResolution
 from aiq_agent.knowledge import scoping
 from aiq_agent.knowledge.restricted_use import CrossProjectTurn
 from aiq_agent.knowledge.restricted_use import bind_cross_project_turn
@@ -70,11 +71,11 @@ class TestTheTurnLearnsIt:
         async def blocks(*_args, **_kwargs) -> ContextBlocks:
             return ContextBlocks(None, None, None, drew_on_other_projects=True)
 
-        async def nothing(*_args, **_kwargs):
-            return None
+        async def no_lessons(*_args, **_kwargs) -> LessonsResolution:
+            return LessonsResolution(digest=None, arm="off")
 
         monkeypatch.setattr(turn_context, "_context_blocks", blocks)
-        monkeypatch.setattr(turn_context, "_platform_lessons", nothing)
+        monkeypatch.setattr(turn_context, "_platform_lessons", no_lessons)
         monkeypatch.setattr(
             turn_context,
             "_turn_flags",

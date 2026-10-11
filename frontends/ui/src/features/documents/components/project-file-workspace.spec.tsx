@@ -1477,10 +1477,12 @@ describe('ProjectFileWorkspace — a settling document settles on screen', () =>
 
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
     await waitFor(() => expect(documentCalls).toBe(1))
+    expect(await screen.findByText('Reading')).toBeInTheDocument()
 
     await vi.advanceTimersByTimeAsync(4_100)
     await waitFor(() => expect(statusCalls).toBe(1))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    // A citable document carries no badge on its card, so settling clears it.
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
     // Twenty pages of listing every four seconds was the cost of one PDF being
     // read; the poll never drains the listing again.
     expect(documentCalls).toBe(1)
@@ -1681,14 +1683,13 @@ describe('ProjectFileWorkspace — only the newest answer may win', () => {
     expect(onComplete).toBeTypeOf('function')
     onComplete?.()
     await waitFor(() => expect(documentCalls).toBe(2))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
 
     // Now the stale poll answers. It is older than what is on screen, so it
     // must not commit.
     gate.release?.()
     await flushWithoutPolling()
 
-    expect(screen.getByText('Citable')).toBeInTheDocument()
     expect(screen.queryByText('Reading')).not.toBeInTheDocument()
 
     // …and it must not resurrect the poll either.
@@ -1764,35 +1765,6 @@ describe('ProjectFileWorkspace — an .ifc opens as a building', () => {
     expect(
       routerPush.mock.calls.some((call) => String(call[0]).includes('model=Haus-A.ifc'))
     ).toBe(false)
-  })
-
-  /**
-   * The flag exists so this can be flipped in production without a deploy, and
-   * the Archiv reads the same one — an `.ifc` that behaves one way in a project
-   * and another in the Archiv is the defect the whole change is about.
-   */
-  it('goes straight to the stage when preview-first is switched off', async () => {
-    renderWorkspace(
-      <ProjectFileWorkspace
-        projectId="proj-1"
-        projectName="Test"
-        collectionName="test-coll"
-        showModels
-        previewFirst={false}
-      />
-    )
-    fireEvent.click(await findFileButton(/Haus-A\.ifc/i))
-
-    // The name, not the id: `?model=` is resolved by file name so the link
-    // survives a re-ingestion and stays readable in a chat message.
-    //
-    // And PUSHED, not replaced: with `replace` the stage added no history
-    // entry, so the back button left the Files page entirely — discarding the
-    // camera, the cut, the selection, the hidden set and every measurement.
-    // On a phone, back is how anyone dismisses a full-screen overlay.
-    const href = routerPush.mock.calls.at(-1)?.[0] as string
-    expect(new URLSearchParams(href.split('?')[1]).get('model')).toBe('Haus-A.ifc')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('leaves every other file opening the preview dialog', async () => {

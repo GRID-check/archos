@@ -91,10 +91,12 @@ export const projects = pgTable('projects', {
 
 ## project_people (migration 0117, ADR-0091)
 
-Everyone who worked on a project, with or without a Piloti account: the Steckbrief's people.
-Personal data of people who mostly never gave it, so: name, function, company, months, an
-optional account link, and nothing else. Never read into the agent's prompt
-(`people-stay-out-of-the-prompt.spec.ts`).
+What the Steckbrief stores about the people on a project. The project's current members are
+not rows: they are read from WorkOS (ADR-0100), and a row with their `user_id` only adds their
+function, company and months. A member removed from the project gets a row then, as a former
+member; everyone without an account is a row added by hand. Personal data of people who mostly
+never gave it, so: name, function, company, months, a member's account, and nothing else. Never
+read into the agent's prompt (`people-stay-out-of-the-prompt.spec.ts`).
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
@@ -105,7 +107,7 @@ optional account link, and nothing else. Never read into the agent's prompt
 | `function` | `text` | ≤ 200 | Funktion: Projektleitung, Statik, Bauherr … |
 | `company` | `text` | ≤ 200 | Firma |
 | `started_on`, `ended_on` | `date` | first of a month; end not before start | von–bis |
-| `user_id` | `text` | | WorkOS user id of their Piloti account, when linked; checked to be an organization member on write |
+| `user_id` | `text` | | WorkOS user id of a member or former member; checked to be an organization member on write. One row per member: the service updates it rather than adding a second |
 | `created_by` | `text` | NOT NULL | |
 | `created_at`, `updated_at` | `timestamptz` | NOT NULL | |
 
@@ -1539,8 +1541,8 @@ the lookup by document the revision-thread triggers make.
 
 ## answer_feedback (migrations 0020, 0121, 0124)
 
-Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
-`answer-feedback`). One row per (user, assistant answer).
+Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row per
+(user, assistant answer).
 
 - Columns: `organization_id` (denormalized, scopes every query in SQL),
   `project_id` (nullable, **cascade FK** to `projects` so a purged project
@@ -1579,8 +1581,13 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
   f.organization_id`, `lib/feedback/turn-join.ts`) and take the conversation
   from the persisted answer when one exists. The vote path stores the answer
   row's conversation when it can see one.
-- Not part of conversation erasure: deleting a conversation cascades its
-  `messages` but leaves its votes, `comment` and `expected_answer` included.
+- Part of conversation erasure, though no FK says so: `deleteConversationInOrg`
+  deletes the votes whose `conversation_id` is the chat's, or whose `message_id`
+  is one of its messages, in the same transaction as the conversation row
+  (`comment` and `expected_answer` quote the chat). Votes on a purged project
+  go through `project_id`'s cascade. `platform_lesson_reports.feedback_id` is
+  left pointing at nothing, as after a retracted vote: the report keeps only
+  the anonymised `canonical_summary`.
 - Indexes: `answer_feedback_org_conversation_idx`
   (`organization_id`,`conversation_id`) serves the per-conversation hydration
   list; `answer_feedback_org_project_idx` (`organization_id`,`project_id`);

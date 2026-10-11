@@ -4,9 +4,10 @@
  * Dev preview for the Files browser — the Finder-style drill-down that
  * replaced the folder tree. Fixtures:
  *
- *  1. The default browser: breadcrumb path row ("All Files › …"), folder cards
- *     beside file cards at the current level, the New-folder popover, and the
- *     cards/list view toggle. Clicking a folder card drills in; the breadcrumb
+ *  1. The default browser: breadcrumb path row ("All Files › …"), the folder
+ *     brief folded to its one line (click it to open), folder cards beside file
+ *     cards at the current level, the New-folder popover, and the cards/list
+ *     view toggle. Clicking a folder card drills in; the breadcrumb
  *     walks back out.
  *  2. A flat reference grid (no `folderNav`) — the Archiv's presentation.
  *  3. A standalone `FileSearchBar` with a live query so the enlarged clear (X)
@@ -63,6 +64,8 @@ import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { LayoutGrid, List } from 'lucide-react'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
 import { FassungenFixture } from './fassungen-fixture'
+import { FolderBrief } from '@/features/documents/components/folder-brief'
+import { buildFolderBrief } from '@/features/documents/lib/folder-knowledge'
 
 function makeFile(id: string, filename: string, summary: string, extra: Record<string, unknown> = {}): FileItem {
   return {
@@ -650,6 +653,9 @@ function FileBrowserFixtures(): JSX.Element {
   const [barSearch, setBarSearch] = useState('Brandschutz')
 
   const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
+  // The brief as the workspace mounts it: folded to one line, opened on a click.
+  const [briefCollapsed, setBriefCollapsed] = useState(true)
+  const currentFolderName = FOLDERS.find((folder) => folder.id === folderNav.currentFolderId)?.name ?? null
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 p-6">
@@ -705,6 +711,17 @@ function FileBrowserFixtures(): JSX.Element {
             view={view}
             onViewChange={setView}
             folderNav={folderNav}
+            brief={
+              <FolderBrief
+                brief={buildFolderBrief(FILES, FOLDERS, folderNav.currentFolderId)}
+                folderName={currentFolderName}
+                shelfKind="project"
+                onSelect={() => {}}
+                onOpenFolder={folderNav.onNavigate}
+                collapsed={briefCollapsed}
+                onCollapsedChange={setBriefCollapsed}
+              />
+            }
             wrapFile={(file, card) => (
               <DocumentObjectMenu
                 document={file}

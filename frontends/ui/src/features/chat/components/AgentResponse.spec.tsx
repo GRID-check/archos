@@ -232,27 +232,6 @@ describe('AgentResponse', () => {
     expect(screen.getByText('Confidence: high')).toBeInTheDocument()
   })
 
-  test('hides the confidence chip when the chat-confidence-chip flag is off (default variant)', () => {
-    // Flag off must suppress the chip even when the model self-assessed a level.
-    render(<AgentResponse content="Answer" answerConfidence="high" showConfidenceChip={false} />)
-    expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument()
-    // The answer itself still renders — only the chip is gated.
-    expect(screen.getByText('Answer')).toBeInTheDocument()
-  })
-
-  test('hides the confidence chip when the flag is off (inline variant)', () => {
-    render(
-      <AgentResponse
-        content="Answer"
-        variant="inline"
-        answerConfidence="low"
-        showConfidenceChip={false}
-      />
-    )
-    expect(screen.queryByText(/Confidence:/)).not.toBeInTheDocument()
-    expect(screen.getByText('Answer')).toBeInTheDocument()
-  })
-
   // Cards used to open the answer, which is the one place they cannot help: two
   // of them push the written answer — the thing that was asked for — below the
   // fold. A card the answer did not place itself now follows the prose.
@@ -364,8 +343,6 @@ describe('AgentResponse', () => {
           content="Answer"
           conversationId="conv-1"
           stages={NOTED}
-          showConfidenceChip={false}
-          showAnswerFeedback={false}
         />
       )
 
@@ -378,9 +355,7 @@ describe('AgentResponse', () => {
     })
 
     test('renders no meta row when it would hold nothing at all', () => {
-      render(
-        <AgentResponse content="Answer" showConfidenceChip={false} showAnswerFeedback={false} />
-      )
+      render(<AgentResponse content="Answer" />)
 
       expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
       expect(screen.queryByText(/\d{1,2}:\d{2}/)).not.toBeInTheDocument()

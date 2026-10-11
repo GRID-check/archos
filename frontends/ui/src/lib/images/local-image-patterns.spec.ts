@@ -23,7 +23,7 @@
 import { hasLocalMatch } from 'next/dist/shared/lib/match-local-pattern'
 import { beforeAll, describe, expect, it } from 'vitest'
 
-import nextConfig from '../../../next.config'
+import { nextConfig } from '../../../next.config'
 import { buildDocumentImageUrl } from './signed-image-url'
 import { isOptimizerEligible, LOCAL_IMAGE_PATTERNS } from './optimizable'
 

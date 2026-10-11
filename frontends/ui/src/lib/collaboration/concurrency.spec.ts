@@ -17,7 +17,7 @@
  * and asserted, because that is where the property actually lives.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
 
@@ -165,6 +165,7 @@ const session = {
   role: 'member',
   roles: ['member'],
   permissions: [],
+  featureFlags: ['collaboration'],
 } as unknown as AuthorizedSession
 
 const annaSession = { ...session, userId: ANNA } as unknown as AuthorizedSession
@@ -256,10 +257,11 @@ function captureSql(rows: unknown[][] = []): CapturedQuery[] {
 }
 
 beforeEach(() => {
-  // The collaboration feature is dark-launched (spec NF-7): without an operator
-  // opt-in the mention path refuses outright, so the tests that exercise it must
-  // enable it. The flag-OFF behaviour has its own tests.
-  process.env.GRID_COLLABORATION_ENABLED = 'true'
+  // The collaboration feature is an entitlement (spec NF-7): without the
+  // organization's flag the mention path refuses outright, so these tests run as
+  // a signed-in deployment whose session holds it (`session.featureFlags`). The
+  // flag-OFF behaviour has its own tests.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
   stubConversation()
   stubContainer('project-editor')
   stubMyGrant(null)
@@ -276,6 +278,10 @@ beforeEach(() => {
   vi.mocked(insertMessages).mockImplementation(async (rows) => rows as Message[])
   vi.mocked(findMessageInConversation).mockResolvedValue(null)
   vi.mocked(deleteGrant).mockResolvedValue(true)
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe('two people answering the same mention (matrix D21, spec CC-15)', () => {

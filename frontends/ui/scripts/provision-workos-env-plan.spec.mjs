@@ -3,7 +3,8 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { diffSets, parseFlagTargets, splitList } from './provision-workos-env-plan.ts'
+import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags.ts'
+import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan.ts'
 
 describe('splitList', () => {
   it('splits on commas and trims whitespace', () => {
@@ -94,5 +95,38 @@ describe('parseFlagTargets', () => {
       ok: true,
       entries: [{ slug: 'skills', orgIds: ['org_1'] }],
     })
+  })
+})
+
+describe('planFlagCheck (task fe:provision:flags)', () => {
+  it('passes when the environment has every registry slug', () => {
+    expect(planFlagCheck(['skills', 'deep-research'], ['deep-research', 'skills'])).toEqual({
+      ok: true,
+      present: ['deep-research', 'skills'],
+      missing: [],
+      unknown: [],
+    })
+  })
+
+  it('fails on a registry slug the environment lacks — it is off for everybody there', () => {
+    const plan = planFlagCheck(['mail-import', 'skills'], ['skills'])
+    expect(plan.ok).toBe(false)
+    expect(plan.missing).toEqual(['mail-import'])
+  })
+
+  it('reports a flag no code reads without failing on it', () => {
+    // A retired flag still in the dashboard is a human's to delete; the check
+    // must not turn every environment red until somebody has.
+    const plan = planFlagCheck(['skills'], ['skills', 'source-origin-badges', 'organization-archiv'])
+    expect(plan.ok).toBe(true)
+    expect(plan.unknown).toEqual(['organization-archiv', 'source-origin-badges'])
+  })
+
+  it('checks the whole registry, the stage flags included', () => {
+    // The stage flags used to live outside the registry, so nothing that read
+    // it would have asked WorkOS about them.
+    expect(REGISTRY_FLAG_SLUGS).toEqual(expect.arrayContaining(['memory-reflection', 'post-answer-follow-ups']))
+    const plan = planFlagCheck(REGISTRY_FLAG_SLUGS, REGISTRY_FLAG_SLUGS.filter((slug) => slug !== 'mail-import'))
+    expect(plan.missing).toEqual(['mail-import'])
   })
 })

@@ -225,8 +225,10 @@ describe('ProjectOverview', () => {
         steckbrief={{
           address: null,
           startedOn: null,
+          startedOnIsDefault: false,
           endedOn: null,
           people: [],
+          rosterKnown: true,
           canEdit: false,
           canErase: false,
         }}

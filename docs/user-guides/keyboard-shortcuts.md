@@ -9,9 +9,9 @@ same registry the app binds, so it is never out of date with what actually works
 
 Shortcuts are only active when both of these allow it:
 
-1. **The organization flag.** The `keyboard-shortcuts` WorkOS feature flag turns
-   the whole feature on for an organization. Without it the client code is never
-   mounted and no key listener exists.
+1. **An organization.** The shortcuts navigate inside one, so a session without
+   an organization (onboarding, a break-glass session) never mounts the client
+   code and no key listener exists.
 2. **Your own preference.** Profile → *Keyboard shortcuts* is a per-device toggle,
    default on. Turned off, the app registers zero key listeners and renders
    neither the palette nor the cheatsheet — the feature is fully inert, not just

@@ -85,6 +85,11 @@ const switchPath = switchTo ?? (paths ?? auto)[other]
     <script is:inline>
       document.documentElement.classList.add('js')
     </script>
+    <!-- PostHog web analytics. The pages are prerendered, so the host and token
+         cannot be read here; this route reads them from the container's
+         environment per request and answers an empty script when they are
+         unset (src/pages/web-analytics.js.ts, runtime/web-analytics.mjs). -->
+    <script is:inline src="/web-analytics.js" defer></script>
   </head>
   <body>
     <a

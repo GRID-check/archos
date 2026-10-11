@@ -167,7 +167,8 @@ describe('ProjectLifecycleCard', () => {
     await userEvent.click(screen.getByRole('button', { name: 'Close project' }))
     // Step one: the outcome and the Abschluss, an earlier close's month offered.
     expect(await screen.findByTestId('close-step-ending')).toBeInTheDocument()
-    expect(screen.getByLabelText('Completion')).toHaveValue('2025-06')
+    expect(screen.getByRole('combobox', { name: 'Completion' })).toHaveTextContent('June')
+    expect(screen.getByRole('combobox', { name: 'Year' })).toHaveTextContent('2025')
     await userEvent.click(screen.getByRole('radio', { name: /Not realized/ }))
     await userEvent.click(screen.getByRole('button', { name: 'Next' }))
     // Step two: the debrief, which stays mounted (hidden) while another step shows.
@@ -190,10 +191,11 @@ describe('ProjectLifecycleCard', () => {
     render(<ProjectLifecycleCard projectId="p1" lifecycle={{ ...ACTIVE, startedOn: '2099-01' }} />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Close project' }))
-    const month = await screen.findByLabelText('Completion')
-    expect(month).toHaveValue('2099-01')
-    expect(month).toHaveAttribute('min', '2099-01')
-    expect(month).toHaveAttribute('max', '2099-01')
+    expect(await screen.findByRole('combobox', { name: 'Completion' })).toHaveTextContent('January')
+    // Only the Beginn's year is offered: nothing earlier, and nothing later than it.
+    await userEvent.click(screen.getByRole('combobox', { name: 'Year' }))
+    expect((await screen.findAllByRole('option')).map((option) => option.textContent)).toEqual(['2099'])
+    await userEvent.keyboard('{Escape}')
     // The outcome is chosen, never preselected: until then there is no going on.
     expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
     await userEvent.click(screen.getByRole('radio', { name: /Not realized/ }))

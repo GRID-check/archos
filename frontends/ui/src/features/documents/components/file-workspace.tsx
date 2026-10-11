@@ -230,24 +230,17 @@ export function FileWorkspace({
    * the reconciler below, because the preview can also be opened from a link and
    * shut by three controls this function never hears about.
    *
-   * An `.ifc` opens the way every other file opens — unless the flag says to go
-   * straight to the stage. Both shelves read the same flag, so they cannot
-   * answer this differently.
+   * An `.ifc` opens the way every other file opens: the preview first, with
+   * the stage one button away.
    */
   const handleSelectFile = useCallback(
     (id: string | null) => {
       if (id === null) return channel.close()
       const file = files.find((candidate) => candidate.id === id)
       if (!file) return
-      const goesToStage =
-        !shelf.previewFirst &&
-        shelf.showModels &&
-        inferDocumentKind({ filename: file.filename, contentType: file.contentType, tags: file.tags }) ===
-          'model'
-      if (goesToStage) return stage.openModel(file.filename)
       channel.open(file)
     },
-    [files, shelf.previewFirst, shelf.showModels, stage, channel]
+    [files, channel]
   )
   useDocParamSync({
     openId: channel.openId,
@@ -569,7 +562,6 @@ export function FileWorkspace({
           canManage={canManage}
           scope={shelf.documentScope}
           onClose={channel.close}
-          showMetadataPanel={shelf.showMetadataPanel}
           showModels={shelf.showModels}
           onReingested={handlers.onReingested}
           onTagsUpdated={handlers.onTagsUpdated}

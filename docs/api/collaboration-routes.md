@@ -26,9 +26,9 @@ assignment (who is professionally on the hook — ADR-0047).
   `403 details.reason = 'feature-disabled'`, `…/read` still moves the high-water
   mark but skips the ambient inbox clear, and `publishTypingPresence` returns
   without publishing (`204` either way). Both forms read the same
-  **default-deny** flag (per-org `collaboration` WorkOS flag with flag enforcement
-  on; `GRID_COLLABORATION_ENABLED=true` otherwise), because the feature changes
-  who can see conversations.
+  **default-deny** flag (the per-org `collaboration` WorkOS flag, an entitlement:
+  off where nobody signs in), because the feature changes who can see
+  conversations.
 - **All are declared through `apiRoute`** from `@/lib/api/handler`, so they are
   session-authenticated, org-scoped, and return the standard error envelope
   `{ error, code, details? }`. The one exception to the JSON-wrapping is

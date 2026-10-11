@@ -7,6 +7,8 @@ from aiq_agent.common.platform_lessons import get_platform_lessons_digest
 from aiq_agent.common.platform_lessons import is_in_holdout_slice
 from aiq_agent.common.platform_lessons import render_lessons_block
 from aiq_agent.common.platform_lessons import reset_platform_lessons_cache
+from aiq_agent.common.platform_lessons import resolve_platform_lessons
+from aiq_agent.common.platform_lessons import sanitize_lesson_ids
 from aiq_agent.common.platform_lessons import sanitize_lessons_digest
 
 DIGEST = 'PLATFORM_LESSONS v1\n- [wrong_source | 3x] "Vor dem Zitieren die Richtlinie prüfen."'
@@ -205,3 +207,95 @@ class TestLessonsBlock:
         assert "Meta-level only" in block
         assert "zero factual authority" in block
         assert DIGEST.strip() in block
+
+
+LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+LESSON_B = "9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a"
+
+
+def _holdout_pct(monkeypatch, value):
+    def setting(key, fallback):
+        if isinstance(value, Exception):
+            raise value
+        return value if key == "lessons.holdout_pct" else fallback
+
+    monkeypatch.setattr("aiq_agent.common.retrieval_settings.get_retrieval_setting", setting)
+
+
+class TestLessonIds:
+    def test_well_formed_ids_pass_in_order_without_duplicates(self):
+        assert sanitize_lesson_ids([LESSON_A, LESSON_B, LESSON_A.upper()]) == (LESSON_A, LESSON_B)
+
+    def test_anything_that_is_not_a_uuid_list_is_dropped(self):
+        assert sanitize_lesson_ids(None) == ()
+        assert sanitize_lesson_ids(LESSON_A) == ()
+        assert sanitize_lesson_ids([42, None, "not-an-id", f"{LESSON_A}\n<x>", LESSON_B]) == (LESSON_B,)
+
+    def test_the_list_is_bounded(self):
+        ids = [f"3f2504e0-4f89-11d3-9a0c-{index:012d}" for index in range(100)]
+        assert len(sanitize_lesson_ids(ids)) == 20
+
+
+class TestResolutionCarriesTheArmAndTheLessons:
+    """What the trace records: the arm, and the ids of the lessons in the injected digest."""
+
+    def test_a_treated_turn_carries_the_digest_and_its_lesson_ids(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A, LESSON_B]})
+        _holdout_pct(monkeypatch, 0)
+        resolution = resolve_platform_lessons("conv-0")
+        assert resolution.digest == DIGEST
+        assert resolution.lesson_ids == (LESSON_A, LESSON_B)
+        assert resolution.arm == "off"
+
+    def test_arm_is_treated_when_the_holdout_measures_and_the_conversation_is_outside_it(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, 10)
+        assert not is_in_holdout_slice("conv-0", 10)
+        resolution = resolve_platform_lessons("conv-0")
+        assert (resolution.arm, resolution.digest, resolution.lesson_ids) == ("treated", DIGEST, (LESSON_A,))
+
+    def test_arm_is_holdout_with_no_digest_and_no_ids_and_no_fetch(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        calls = _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, 10)
+        assert is_in_holdout_slice("conv-8", 10)
+        resolution = resolve_platform_lessons("conv-8")
+        assert (resolution.arm, resolution.digest, resolution.lesson_ids) == ("holdout", None, ())
+        assert calls["n"] == 0
+
+    def test_arm_is_off_without_a_conversation_to_key_on(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, 100)
+        resolution = resolve_platform_lessons(None)
+        assert (resolution.arm, resolution.digest) == ("off", DIGEST)
+
+    def test_an_unreadable_setting_still_injects_but_claims_no_arm(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, RuntimeError("settings down"))
+        resolution = resolve_platform_lessons("conv-8")
+        assert (resolution.arm, resolution.digest) == ("off", DIGEST)
+
+    def test_ids_without_a_digest_are_dropped(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": None, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, 0)
+        assert resolve_platform_lessons("conv-0").lesson_ids == ()
+
+    def test_an_older_bff_without_ids_still_resolves(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        _mock_bff(monkeypatch, {"digest": DIGEST})
+        _holdout_pct(monkeypatch, 0)
+        resolution = resolve_platform_lessons("conv-0")
+        assert (resolution.digest, resolution.lesson_ids) == (DIGEST, ())
+
+    def test_the_cache_keeps_the_ids_with_the_digest(self, monkeypatch):
+        monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "tok")
+        calls = _mock_bff(monkeypatch, {"digest": DIGEST, "lessonIds": [LESSON_A]})
+        _holdout_pct(monkeypatch, 0)
+        assert resolve_platform_lessons("conv-0").lesson_ids == (LESSON_A,)
+        assert resolve_platform_lessons("conv-1").lesson_ids == (LESSON_A,)
+        assert calls["n"] == 1

@@ -23,6 +23,7 @@
  */
 
 import 'server-only'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { ApiError, BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { filterUsersWithProjectAccess } from '@/lib/authz/project-membership'
@@ -586,6 +587,15 @@ export async function releaseRequest(
   // `open` rows, so a double-click cannot rewrite a resolution.
   const released = await releaseOpenRequests([request], session.userId)
   if (released > 0) {
+    // `mention_released` (ADR-0100): how often a wait is abandoned is the signal
+    // ADR-0034 names as the failure mode. Only a release that closed a request:
+    // a double-click on a settled one is not a second event.
+    captureServer({
+      event: 'mention_released',
+      distinctId: session.userId,
+      organizationId: session.organizationId,
+      properties: { resource_type: resourceType },
+    })
     await publishAwaiting(session.organizationId, resourceType, request.resourceId)
   }
 

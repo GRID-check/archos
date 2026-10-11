@@ -4,19 +4,55 @@
  * Flags are created and targeted in the WorkOS dashboard (per-organization
  * or per-user targets; changes are covered by WorkOS's own event log) and
  * arrive in the AuthKit JWT as the `feature_flags` claim — the same
- * delivery path as permissions, zero extra lookups. The platform owner can
- * also target orgs programmatically (`workos.featureFlags.addFlagTarget`).
+ * delivery path as permissions, zero extra lookups. A caller with no session
+ * (a scheduled fire, an internal service route, the per-turn stage read) asks
+ * WorkOS per organization instead: `isOrgFeatureEnabled` in
+ * `lib/workos/feature-flags.ts`, which applies the same rules as this module.
  *
- * Enforcement is an explicit deployment opt-in: `GRID_ENFORCE_FEATURE_FLAGS
- * =true` AFTER the flags below exist in the WorkOS environment and the
- * intended orgs are targeted (runbook:
- * docs/deployment/workos-provisioning.md). While off, every feature stays
- * available (back-compat for environments without the flag product). Once
- * on, a token WITHOUT the claim fails closed — users pick the flags up on
- * their next sign-in.
+ * ## One semantic, and where it comes from
+ *
+ * A flag is ON for a session exactly when WorkOS says so. Anything short of a
+ * yes is a no: a token minted before the claim existed, a slug missing from
+ * WorkOS, a failed lookup, a caller with no organization. There used to be
+ * four semantics here — fail-open while `GRID_ENFORCE_FEATURE_FLAGS` was off,
+ * an env opt-in that defaulted off, an env opt-out that defaulted on, and
+ * fail-closed under enforcement — chosen per flag, and production ran the last
+ * one while every other environment rehearsed one of the first three. Both
+ * stacks enforced flags, so every `GRID_*_ENABLED` fallback was dead config in
+ * them, and compose and local dev exercised a different code path from the one
+ * that shipped.
+ *
+ * ## The one exception: a deployment that authenticates nobody
+ *
+ * With `REQUIRE_AUTH` not `true` (local dev, an anonymous compose stack) there
+ * is no signed-in user, so there is no claim and usually no organization to
+ * ask WorkOS about. Such a deployment gets a FIXED answer per flag, decided by
+ * the flag's kind in {@link FLAG_KINDS}:
+ *
+ *   - a `rollout` is ON. It is a feature we ship to everybody and keep a kill
+ *     switch for (web search, the model surfaces, filing agent-written
+ *     documents, the post-answer stages). A developer must see what customers
+ *     see.
+ *   - an `entitlement` is OFF. It is granted per organization because it costs
+ *     money or changes who can read what (deep research, tasks, BYOK, model
+ *     configuration, collaboration, the mail import, skills). An unauthenticated
+ *     deployment that is reachable from somewhere it should not be must not
+ *     hand those out — the same direction every other failure here takes.
+ *
+ * The condition is `REQUIRE_AUTH` rather than `NODE_ENV`, because the built
+ * image runs `NODE_ENV=production` in compose too, and rather than the absence
+ * of a WorkOS key, because a stack that signs people in cannot run without one.
+ * To exercise an entitlement locally, run with `REQUIRE_AUTH=true` against the
+ * Staging WorkOS environment: that is the code path production runs, and the
+ * only one worth rehearsing.
+ *
+ * Every slug below must exist in BOTH WorkOS environments, or it is off for
+ * everybody: `task fe:provision:flags` checks that, read-only (runbook:
+ * docs/deployment/workos-provisioning.md).
  */
 
 import type { GridSession } from '@/lib/auth/types'
+import { isAuthRequired } from '@/lib/auth/auth-required'
 import { NextResponse } from 'next/server'
 
 export const FEATURE_FLAGS = {
@@ -43,49 +79,24 @@ export const FEATURE_FLAGS = {
    * turn and leave it reachable by asking for it as a task.
    */
   taskAutomation: 'task-automation',
-  /** Command palette + global keyboard shortcuts (workspace polish). */
-  keyboardShortcuts: 'keyboard-shortcuts',
   /** Project-level knowledge-base transparency page (nav section). */
   projectKnowledgePage: 'project-knowledge-page',
   /** Per-org BYOK LLM credentials via WorkOS Vault (ADR-0022) — enterprise tier. */
   byokLlm: 'byok-llm',
   /** Platform-layer web-search gate; tenant toggle lives in org settings (ADR-0022). */
   webSearch: 'web-search',
-  /** Self-assessed confidence chip on shallow chat answers (FB-6). */
-  chatConfidenceChip: 'chat-confidence-chip',
-  /** Files preview metadata block: summary/pages/passages/contents rows (FB-8). */
-  filesMetadataPanel: 'files-metadata-panel',
   /** Standalone PNG/JPG image upload via VLM captioning (FB-15a); gates the
    *  accept-list (client) and the server-side upload allow-list (BFF). */
   imageUpload: 'image-upload',
-  /** Fold the Research runs tab into the chat-history panel as a "Deep
-   *  Research" section (FB-10). ON → hide the `research` nav item, redirect
-   *  `/research` to chat, show the Deep Research section in SessionsPanel;
-   *  OFF → keep the legacy Research tab + ResearchRunsList page. */
-  researchInChatHistory: 'research-in-chat-history',
   /** End-of-wizard AI conflict check (FB-13): on Save, an LLM checks the intake
    *  answers for internal contradictions and the user confirms/overrides or
    *  revises. Server-computed in the intake page, prop-drilled to the wizard;
    *  off → the wizard saves exactly as before (no check). */
   wizardConflictCheck: 'wizard-conflict-check',
-  /** Org-wide document Archiv (ADR-0024): a top-level, cross-project document
-   *  store shared by every project in the org. A standard WorkOS feature flag —
-   *  gated per-org by the `organization-archiv` flag when enforcement is on, and
-   *  (like every flag) available to all while enforcement is off. Gates the
-   *  `/archiv` nav entry + page, every BFF `/api/archiv/*` route, and the
-   *  injection of the org archive collection into project retrieval scope. */
-  orgArchiv: 'organization-archiv',
-  /** Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §6): the
-   *  "Was this helpful?" row under assistant answers + the
-   *  `/api/feedback/answers` routes. A standard flag — fail-open while
-   *  enforcement is off; provision it default-off in WorkOS and target the
-   *  orgs that should collect feedback. */
-  answerFeedback: 'answer-feedback',
   /**
    * Collaboration (ADR-0032/0033/0034/0035): shared chats, @-mentions with the
-   * agent hand-off, and the inbox. Dark-launched — gated by the per-org
-   * `collaboration` WorkOS flag when enforcement is on, else the
-   * `GRID_COLLABORATION_ENABLED` env opt-in (default off), mirroring skills.
+   * agent hand-off, and the inbox. An entitlement: it changes who can see a
+   * conversation, so nobody has it until an operator targets the organization.
    *
    * Gates the inbox nav entry + page, the share surfaces, the mention picker, and
    * every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. With the flag
@@ -114,28 +125,6 @@ export const FEATURE_FLAGS = {
    */
   ifcModels: 'ifc-models',
   /**
-   * Whether a click on an `.ifc` opens the FILE PREVIEW first, or goes straight
-   * to the full-screen model stage.
-   *
-   * Separate from `ifcModels`, which answers whether the model surfaces exist
-   * at all. This one answers what a click does when they do — and it exists
-   * because that answer used to be decided per surface rather than per product:
-   * Dateien intercepted the click and jumped to the stage, while the Archiv
-   * showed a preview it offered no way out of. Same file, two behaviours,
-   * depending on where you clicked it.
-   *
-   * ON (the default) — preview first, everywhere, with the stage one button
-   * away. An `.ifc` is then a file like every other file, and the analytical
-   * surface is something you choose rather than something you land in.
-   *
-   * OFF — the stage opens directly, everywhere, including the Archiv, which
-   * could not do it before the stage stopped requiring a project.
-   *
-   * The point of the flag is that "everywhere" holds either way: it moves both
-   * surfaces together or neither.
-   */
-  ifcPreviewFirst: 'ifc-preview-first',
-  /**
    * Agent-authored documents: a finished deep-research report and a drawn
    * diagram filed into a project as `documents` rows
    * (`lib/documents/generated.ts`, ADR-0047's 2026-08-20 addenda).
@@ -160,35 +149,71 @@ export const FEATURE_FLAGS = {
    *     filing has to stop now, and it stops filing for every producer and every
    *     tenant without touching a single role.
    *
-   * Default **ON**, `ifc-models` shape and for the same reason: a deployment
-   * must be able to switch a capability off without switching WorkOS flag
-   * enforcement on for every other feature at the same time, which the plain
-   * fail-open path gives no way to do.
+   * A rollout: ON for every organization in WorkOS, and switching it off for
+   * one (or all) is a dashboard toggle, no deploy.
    */
   agentAuthoredDocuments: 'agent-authored-documents',
   /** Agent Skills: the org toolbox of agentskills.io-format skills plus the
-   *  project jobs that may attach them. Dark-launched — gated by the WorkOS
-   *  flag when enforcement is on, else the GRID_SKILLS_ENABLED env opt-in
-   *  (default off). Gates every /api/skills and /api/projects/[id]/jobs route,
-   *  and the scheduler container's start gate. Jobs ride this one flag: they
-   *  ship as one feature, so a second flag could only let them disagree. */
+   *  project jobs that may attach them. Gates every /api/skills and
+   *  /api/projects/[id]/jobs route, and whether a due schedule fires for the
+   *  organization (`fireScheduledJob`). Jobs ride this one flag: they ship as
+   *  one feature, so a second flag could only let them disagree. */
   skills: 'skills',
-  /** Outlook archive (.pst/.ost) import into a project (ADR-0085). Dark-launched:
-   *  the WorkOS flag when enforcement is on, else the GRID_MAIL_IMPORT_ENABLED env
-   *  opt-in (default off). It files the correspondence of everyone who wrote to
-   *  the office, so an operator switches it on per organization, deliberately. */
+  /** Outlook archive (.pst/.ost) import into a project (ADR-0085). It files the
+   *  correspondence of everyone who wrote to the office, so an operator
+   *  switches it on per organization, deliberately. */
   mailImport: 'mail-import',
+  /**
+   * The post-answer memory-reflection stage (`docs/architecture/
+   * project-memory-design.md` §3.5). Read per turn by the agent tier through
+   * `GET /api/internal/stages` (`POST_ANSWER_STAGE_FLAGS` in
+   * `lib/workos/feature-flags.ts`), never from a session.
+   */
+  memoryReflection: 'memory-reflection',
+  /** The post-answer follow-up-questions stage, read the same way. */
+  postAnswerFollowUps: 'post-answer-follow-ups',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
 
 /**
- * Whether WorkOS flag enforcement is on for this deployment. Exported so
- * session-less gates (e.g. the skill scheduled-fire path) share this one
- * definition instead of re-parsing GRID_ENFORCE_FEATURE_FLAGS themselves.
+ * What kind of switch each flag is — which decides only its answer in a
+ * deployment that authenticates nobody (see the module header). A `Record`
+ * over every slug, so a flag added to the registry does not compile until
+ * somebody has said which kind it is.
  */
-export function enforcementOn(): boolean {
-  return (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
+export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'rollout'>> = {
+  'runtime-model-config': 'entitlement',
+  'deep-research': 'entitlement',
+  'task-automation': 'entitlement',
+  'byok-llm': 'entitlement',
+  collaboration: 'entitlement',
+  skills: 'entitlement',
+  'mail-import': 'entitlement',
+  'web-search': 'rollout',
+  'project-knowledge-page': 'rollout',
+  'image-upload': 'rollout',
+  'wizard-conflict-check': 'rollout',
+  'ifc-models': 'rollout',
+  'agent-authored-documents': 'rollout',
+  'memory-reflection': 'rollout',
+  'post-answer-follow-ups': 'rollout',
+}
+
+/** Every slug the code reads, for the WorkOS drift check. */
+export const REGISTRY_FLAG_SLUGS: readonly KnownFeatureFlag[] = Object.values(FEATURE_FLAGS)
+
+/**
+ * Whether flags come from WorkOS here — true wherever people sign in. The one
+ * definition the session gates and the session-less ones share.
+ */
+export function flagsFromWorkOS(): boolean {
+  return isAuthRequired()
+}
+
+/** A flag's fixed answer in a deployment that authenticates nobody. */
+export function unauthenticatedDefault(flag: KnownFeatureFlag): boolean {
+  return FLAG_KINDS[flag] === 'rollout'
 }
 
 /** Whether the session's user+org context has the feature enabled. */
@@ -196,145 +221,51 @@ export function isFeatureEnabled(
   session: Pick<GridSession, 'featureFlags'>,
   flag: KnownFeatureFlag
 ): boolean {
-  if (!enforcementOn()) return true
+  if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
   if (session.featureFlags === null) return false // stale token — re-auth picks flags up
   return session.featureFlags.includes(flag)
 }
 
 /**
- * Default-OFF gate for the project knowledge page. Unlike isFeatureEnabled
- * (which fails open when enforcement is off, for back-compat), this feature
- * launches dark: without WorkOS flag enforcement it is only available when a
- * deployment explicitly opts in via GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED=true.
- * The platform owner's base-knowledge manager is NOT gated by this.
+ * The project knowledge page. The platform owner's base-knowledge manager is
+ * NOT gated by this.
  */
 export function isProjectKnowledgePageEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.projectKnowledgePage)
-  }
-  return (process.env.GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED ?? '').toLowerCase() === 'true'
+  return isFeatureEnabled(session, FEATURE_FLAGS.projectKnowledgePage)
 }
 
 /**
- * Default-OFF gate for the Outlook archive import (ADR-0085), the
- * `isProjectKnowledgePageEnabled` shape: the per-org flag under enforcement,
- * otherwise an explicit deployment opt-in via `GRID_MAIL_IMPORT_ENABLED=true`.
- * Checked when an import is started and when its upload completes; the job that
- * files it does not re-check, so switching the flag off stops new imports and
- * lets a running one finish.
+ * The Outlook archive import (ADR-0085). Checked when an import is started and
+ * when its upload completes; the job that files it does not re-check, so
+ * switching the flag off stops new imports and lets a running one finish.
  */
 export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.mailImport)
-  }
-  return (process.env.GRID_MAIL_IMPORT_ENABLED ?? '').toLowerCase() === 'true'
+  return isFeatureEnabled(session, FEATURE_FLAGS.mailImport)
 }
 
-/**
- * Default-OFF gate for collaboration (ADR-0032…0035). Same dark-launch shape as
- * `isWorkflowsEnabled`: with WorkOS flag enforcement it follows the per-org
- * `collaboration` flag; without enforcement it requires an explicit deployment
- * opt-in via `GRID_COLLABORATION_ENABLED=true`.
- *
- * Deliberately not fail-open like `isFeatureEnabled`: this feature changes who
- * can see conversations, so it must not switch itself on in an environment whose
- * operator has not chosen it.
- */
+/** Collaboration (ADR-0032…0035). */
 export function isCollaborationEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.collaboration)
-  }
-  return (process.env.GRID_COLLABORATION_ENABLED ?? '').toLowerCase() === 'true'
+  return isFeatureEnabled(session, FEATURE_FLAGS.collaboration)
 }
 
 /**
- * Gate for IFC/BIM models (ADR-0045). With WorkOS flag enforcement it follows
- * the per-org `ifc-models` flag; without enforcement it follows
- * `GRID_IFC_MODELS_ENABLED`, which **defaults to true**.
- *
- * Default-ON is a product decision, taken knowing the trade-off: the feature
- * renders OIB compliance verdicts, so a deployment that has not looked at its
- * output is asserting something to an architect. It keeps its own env switch
- * rather than reusing `isFeatureEnabled` so that a deployment can turn it OFF
- * (`GRID_IFC_MODELS_ENABLED=false`) without switching on flag enforcement for
- * every other feature at the same time — which the plain fail-open path gives
- * no way to do.
+ * IFC/BIM models (ADR-0045). Worth knowing before enabling it for a customer:
+ * the feature renders OIB compliance verdicts, so an organization that has not
+ * looked at its output is being told something about a building.
  */
 export function isIfcModelsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.ifcModels)
-  }
-  return ifcModelsEnvEnabled()
+  return isFeatureEnabled(session, FEATURE_FLAGS.ifcModels)
 }
 
 /**
- * The session-less half of {@link isIfcModelsEnabled}, for the internal service
- * route: it carries a service token and no session, so it resolves the per-org
- * flag itself and needs this for the enforcement-off case.
- *
- * Unset means ON. Only an explicit falsey value turns the feature off, so the
- * check is inverted relative to the opt-in gates above.
- */
-export function ifcModelsEnvEnabled(): boolean {
-  const raw = (process.env.GRID_IFC_MODELS_ENABLED ?? '').trim().toLowerCase()
-  return raw === '' || !['false', '0', 'no', 'off'].includes(raw)
-}
-
-/**
- * Gate for preview-first `.ifc` handling. With WorkOS flag enforcement it
- * follows the per-org `ifc-preview-first` flag; without enforcement it follows
- * `GRID_IFC_PREVIEW_FIRST`, which **defaults to true**.
- *
- * Its own env switch, the same shape as `isIfcModelsEnabled`, and for the same
- * reason: this is an interaction change on a surface people already use, so a
- * deployment has to be able to put it back without switching flag enforcement
- * on for every other feature at the same time.
- *
- * Fail-open lands on preview-first because that is the safer of the two to be
- * wrong about — a reader who wanted the stage is one button from it, while a
- * reader thrown into a full-screen viewport has lost the preview entirely.
- */
-export function isIfcPreviewFirstEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.ifcPreviewFirst)
-  }
-  const raw = (process.env.GRID_IFC_PREVIEW_FIRST ?? '').trim().toLowerCase()
-  return raw === '' || !['false', '0', 'no', 'off'].includes(raw)
-}
-
-/**
- * Gate for agent-authored documents. With WorkOS flag enforcement it follows the
- * per-org `agent-authored-documents` flag; without enforcement it follows
- * `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, which **defaults to true**.
- *
- * Default-ON is deliberate and it is not the same posture as `collaboration` or
- * `skills`: those launch dark, and their opt-in is the whole point. This
- * capability already has its opt-in — `project:documents:generate`, which no
- * role holds unless the catalog has been provisioned and which the legacy
- * `project:edit` umbrella deliberately does not satisfy. A second default-off
- * gate would not make the feature safer, it would make every deployment turn two
- * knobs to reach the behaviour its own release note describes.
- *
- * What this flag is FOR is the case the permission cannot serve: an operator who
- * has to stop filing across every tenant at once. See the registry entry.
+ * Agent-authored documents: whether Piloti may file what it writes. The
+ * OPERATOR's lever; the tenant's is `project:documents:generate`. See the
+ * registry entry for why there are two.
  */
 export function isAgentAuthoredDocumentsEnabled(
   session: Pick<GridSession, 'featureFlags'>
 ): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.agentAuthoredDocuments)
-  }
-  return agentAuthoredDocumentsEnvEnabled()
-}
-
-/**
- * Unset means ON. Only an explicit falsey value turns filing off, so the check
- * is inverted relative to the opt-in gates above — the same shape, and the same
- * accepted spellings, as {@link ifcModelsEnvEnabled}.
- */
-export function agentAuthoredDocumentsEnvEnabled(): boolean {
-  const raw = (process.env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED ?? '').trim().toLowerCase()
-  return raw === '' || !['false', '0', 'no', 'off'].includes(raw)
+  return isFeatureEnabled(session, FEATURE_FLAGS.agentAuthoredDocuments)
 }
 
 /**
@@ -344,24 +275,12 @@ export function agentAuthoredDocumentsEnvEnabled(): boolean {
 export function requireCollaborationEnabled(
   session: Pick<GridSession, 'featureFlags'>
 ): Response | null {
-  if (isCollaborationEnabled(session)) return null
-  return NextResponse.json(
-    { error: 'feature-disabled', feature: FEATURE_FLAGS.collaboration },
-    { status: 403 }
-  )
+  return requireFeature(session, FEATURE_FLAGS.collaboration)
 }
 
-/**
- * Default-OFF gate for Agent Skills (Phase A). Same dark-launch shape as
- * `isWorkflowsEnabled`: with WorkOS flag enforcement it follows the per-org
- * `skills` flag; without enforcement it requires an explicit deployment
- * opt-in via `GRID_SKILLS_ENABLED=true`.
- */
+/** Agent Skills and the project jobs that attach them (ADR-0046). */
 export function isSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
-  if (enforcementOn()) {
-    return isFeatureEnabled(session, FEATURE_FLAGS.skills)
-  }
-  return (process.env.GRID_SKILLS_ENABLED ?? '').toLowerCase() === 'true'
+  return isFeatureEnabled(session, FEATURE_FLAGS.skills)
 }
 
 /**
@@ -370,21 +289,10 @@ export function isSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): boo
  * `const gated = requireSkillsEnabled(session); if (gated) return gated`
  */
 export function requireSkillsEnabled(session: Pick<GridSession, 'featureFlags'>): Response | null {
-  if (isSkillsEnabled(session)) return null
-  return NextResponse.json(
-    { error: 'feature-disabled', feature: FEATURE_FLAGS.skills },
-    { status: 403 }
-  )
+  return requireFeature(session, FEATURE_FLAGS.skills)
 }
 
-/**
- * Whether this session may create delegated tasks and schedules.
- *
- * A standard fail-open flag, the same shape as `deepResearch` and deliberately
- * not the dark-launch shape `isSkillsEnabled` uses: tasks shipped and were
- * available to every organization, so withdrawing them is a decision an
- * operator makes in WorkOS, not a default a deployment inherits.
- */
+/** Whether this session may create delegated tasks and schedules. */
 export function isTaskAutomationEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.taskAutomation)
 }

@@ -3,7 +3,6 @@
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import {
-  schedulesEnabled,
   readConfig,
   createStreaks,
   fireOne,
@@ -20,22 +19,6 @@ import {
 
 afterEach(() => {
   vi.restoreAllMocks()
-})
-
-describe('schedulesEnabled (the schedules gate)', () => {
-  it('is off when neither gate env is set — schedules are not fired', () => {
-    expect(schedulesEnabled({})).toBe(false)
-    expect(schedulesEnabled({ GRID_SKILLS_ENABLED: 'false' })).toBe(false)
-    expect(schedulesEnabled({ GRID_SKILLS_ENABLED: '1' })).toBe(false) // only literal 'true'
-  })
-
-  it('starts when the dark-launch opt-in is true', () => {
-    expect(schedulesEnabled({ GRID_SKILLS_ENABLED: 'true' })).toBe(true)
-  })
-
-  it('starts when feature-flag enforcement is on', () => {
-    expect(schedulesEnabled({ GRID_ENFORCE_FEATURE_FLAGS: 'true' })).toBe(true)
-  })
 })
 
 describe('readConfig', () => {
@@ -362,31 +345,12 @@ describe('tick', () => {
   }
   const reconciled = () => vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ closed: 0, failed: 0 }) })
 
-  it('with the schedules gate off, fires nothing but still runs every sweep', async () => {
-    // A run exists without Agent Skills (an escalated chat question), so its
-    // reconciliation cannot wait on the skills feature; nor can an upload's.
-    const sql = { begin: vi.fn() }
-    const fetchImpl = reconciled()
-
-    const fired = await tick(sql, { ...base, schedulesEnabled: false }, fetchImpl, streaksWithoutDownloadLog())
-
-    expect(fired).toBe(0)
-    expect(sql.begin).not.toHaveBeenCalled()
-    // The runs, then the documents stranded at `processing` (ADR-0079), then the uploads and placements.
-    expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
-      'http://frontend:3000/api/internal/runs/reconcile',
-      'http://frontend:3000/api/internal/maintenance/reconcile-background-work',
-      'http://frontend:3000/api/internal/upload-batches/sweep',
-      'http://frontend:3000/api/internal/folder-placement/sweep',
-    ])
-  })
-
-  it('with the gate on, a failed claim still leaves the reconciler its turn', async () => {
+  it('a failed claim still leaves the reconciler its turn', async () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const sql = { begin: vi.fn().mockRejectedValue(new Error('db down')) }
     const fetchImpl = reconciled()
 
-    await tick(sql, { ...base, schedulesEnabled: true }, fetchImpl, streaksWithoutDownloadLog())
+    await tick(sql, base, fetchImpl, streaksWithoutDownloadLog())
 
     expect(sql.begin).toHaveBeenCalled()
     expect(fetchImpl.mock.calls.map(([url]) => url)).toEqual([
@@ -406,7 +370,7 @@ describe('tick', () => {
     })
     const sql = { begin: vi.fn().mockRejectedValue(down) }
     const streaks = streaksWithoutDownloadLog()
-    const config = { ...base, schedulesEnabled: true }
+    const config = base
 
     await tick(sql, config, reconciled(), streaks)
     expect(error).not.toHaveBeenCalled()
@@ -427,7 +391,7 @@ describe('tick', () => {
   it('keeps a claim that failed for any other reason at ERROR', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     const bad = Object.assign(new Error('relation "task_definitions" does not exist'), { code: '42P01' })
-    await tick({ begin: vi.fn().mockRejectedValue(bad) }, { ...base, schedulesEnabled: true }, reconciled(), streaksWithoutDownloadLog())
+    await tick({ begin: vi.fn().mockRejectedValue(bad) }, base, reconciled(), streaksWithoutDownloadLog())
     expect(error).toHaveBeenCalledTimes(1)
     expect(error.mock.calls[0][0]).toContain('claim transaction failed')
   })
@@ -500,10 +464,11 @@ describe('sweepDownloadLogRetention (the download log is purged daily, migration
     const base = { frontendUrl: 'http://frontend:3000', internalToken: 't', batch: 20, retentionDays: 90, pollMs: 30000 }
     const fetchImpl = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({}) })
 
-    await tick(sql, { ...base, schedulesEnabled: false }, fetchImpl, createStreaks(base))
+    await tick(sql, base, fetchImpl, createStreaks(base))
 
-    // The cap statement and the list of organizations with a shorter setting.
-    expect(sql.begin).toHaveBeenCalledTimes(2)
+    // The schedules' claim and run-history prune, then the cap statement and
+    // the list of organizations with a shorter setting.
+    expect(sql.begin).toHaveBeenCalledTimes(4)
   })
 })
 
@@ -703,7 +668,7 @@ describe('Langfuse trace retention (ADR-0044)', () => {
 
     it('is part of every tick, after the sweeps, and still only the one run a day', async () => {
       vi.spyOn(console, 'log').mockImplementation(() => {})
-      const base = { ...readConfig(env), frontendUrl: 'http://frontend:3000', internalToken: 't', batch: 20, retentionDays: 90, pollMs: 30000, schedulesEnabled: false }
+      const base = { ...readConfig(env), frontendUrl: 'http://frontend:3000', internalToken: 't', batch: 20, retentionDays: 90, pollMs: 30000 }
       const lf = langfuse([[]])
       const fetchImpl = vi.fn(async (url, init) =>
         url.startsWith('http://frontend') ? answer(200, {}) : lf.fetchImpl(url, init),
@@ -715,10 +680,10 @@ describe('Langfuse trace retention (ADR-0044)', () => {
       await tick(sql, base, fetchImpl, streaks)
 
       expect(lf.lists).toHaveLength(1)
-      // The schedules gate is off, so the readers are the sweep of chats the BFF
-      // erased (one read a tick, two ticks) and the download log's daily purge
-      // (two statements, on the first tick only).
-      expect(sql.begin).toHaveBeenCalledTimes(4)
+      // The schedules' claim and prune (two a tick, two ticks), the sweep of
+      // chats the BFF erased (one read a tick, two ticks) and the download log's
+      // daily purge (two statements, on the first tick only).
+      expect(sql.begin).toHaveBeenCalledTimes(8)
     })
   })
 })

@@ -411,7 +411,20 @@ def test_retry_after_is_read_in_seconds_or_milliseconds_and_capped():
 def test_a_429_gives_the_slot_back_before_it_waits_out_the_retry_after(store, monkeypatch):
     monkeypatch.setenv(pl._CEILING_ENV, "16")
     slept: list[tuple[float, dict[str, float]]] = []
-    monkeypatch.setattr(pl.time, "sleep", lambda seconds: slept.append((seconds, leases(store))))
+    # `pl.time` is the `time` module, so this patch is process-wide. Record only
+    # the sleep of the call under test; any other thread (the limiter's own lease
+    # renewer, an SDK's flush thread) keeps sleeping for real, and its sleeps are
+    # not this test's business. Recording them made the count depend on timing.
+    caller = threading.get_ident()
+    real_sleep = time.sleep
+
+    def sleep(seconds: float) -> None:
+        if threading.get_ident() != caller:
+            real_sleep(seconds)
+            return
+        slept.append((seconds, leases(store)))
+
+    monkeypatch.setattr(pl.time, "sleep", sleep)
 
     with pytest.raises(RateLimited):
         with pl.slot(model="m"):

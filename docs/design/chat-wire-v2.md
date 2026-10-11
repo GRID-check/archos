@@ -253,7 +253,7 @@ frame the page could not read, and the page showed „Denkt nach…" forever. Th
 client now sends nothing before the hello, and treats a socket that stays
 silent, or opens with anything else, as a failed attempt (§e.2). `accepts`
 lists the optional client fields this server reads, as `<type>.<field>`
-(`ACCEPTED_CLIENT_FIELDS`, today `cancel_turn.shown`); see Compatibility below.
+(`ACCEPTED_CLIENT_FIELDS`, today `cancel_turn.shown` and `user_message.posthog_session_id`); see Compatibility below.
 
 **Not in the set, on purpose.** There is no `run_handoff` event, because the
 commission is the turn's last act and `RUN_FINISHED.result.run` carries it
@@ -282,7 +282,7 @@ The client sends four messages, all with `v: 2` and `conversation_id`.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?` | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?` | The fields are flat, where they used to be a JSON string inside a NAT text part. The type name stays `user_message` because the gateway's turn limiter (`lib/limits/ws-frames.js`) counts turns by it, so it needs no change. `include_shelves` does not exist: the contract refuses it |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, and the contract enforces that structurally |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Authorised: only the asker's verified subject, or an internal caller, may cancel. Anyone else gets `rejected{not_asker}`. `shown` is how much of the answer was on screen: the first `chars` code points of the text the client had folded through `seq`. A position, not the text, so the server keeps only what the model wrote and the frame stays small enough for the gateway's limiter to read whole (`ws-frames.js` peeks 512 bytes and charges a longer message as a turn). Sent only when the hello accepts `cancel_turn.shown` |
 | `attach` | `turn_id`, `after_seq` | After a reconnect or a reload: replay the turn from `after_seq + 1`, then continue live |

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatBoundedDigest } from './digest-format'
+import { formatBoundedDigest, formatBoundedDigestWithKept } from './digest-format'
 
 describe('formatBoundedDigest', () => {
   it('renders one tagged, quoted line per item under a header', () => {
@@ -44,5 +44,31 @@ describe('formatBoundedDigest', () => {
   it('returns null when nothing survives', () => {
     expect(formatBoundedDigest('HEAD', [], 100)).toBeNull()
     expect(formatBoundedDigest('HEAD', [{ tags: ['a'], content: '   ' }], 100)).toBeNull()
+  })
+})
+
+describe('formatBoundedDigestWithKept', () => {
+  it('returns exactly the items whose line is in the text, skipping blank ones and stopping at the budget', () => {
+    const { digest, kept } = formatBoundedDigestWithKept(
+      'HEAD',
+      [
+        { id: 1, tags: ['a'], content: 'first entry' },
+        { id: 2, tags: ['b'], content: '   ' },
+        { id: 3, tags: ['c'], content: 'second entry' },
+        { id: 4, tags: ['d'], content: 'x'.repeat(500) },
+        { id: 5, tags: ['e'], content: 'never reached' },
+      ],
+      80
+    )
+    expect(digest).toBe('HEAD\n- [a] "first entry"\n- [c] "second entry"')
+    expect(kept.map((item) => item.id)).toEqual([1, 3])
+  })
+
+  it('keeps nothing when no line survives', () => {
+    expect(formatBoundedDigestWithKept('HEAD', [], 100)).toEqual({ digest: null, kept: [] })
+    expect(formatBoundedDigestWithKept('HEAD', [{ tags: ['a'], content: ' ' }], 100)).toEqual({
+      digest: null,
+      kept: [],
+    })
   })
 })

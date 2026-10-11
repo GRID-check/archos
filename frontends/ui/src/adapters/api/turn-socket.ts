@@ -118,9 +118,22 @@ export const HELLO_TIMEOUT_MS = 5_000
  * without `shown` keeps everything streamed so far.
  */
 export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>): ClientMessage => {
-  if (message.type !== 'cancel_turn' || !message.shown || accepts.has('cancel_turn.shown')) return message
-  const { shown: _unread, ...rest } = message
-  return rest
+  if (message.type === 'cancel_turn' && message.shown && !accepts.has('cancel_turn.shown')) {
+    const { shown: _unread, ...rest } = message
+    return rest
+  }
+  // The PostHog session id links the turn's Langfuse trace to the recording. A
+  // server that does not read it refuses the whole question, the key present
+  // even as null, so the key goes, not the value.
+  if (
+    message.type === 'user_message' &&
+    message.posthog_session_id !== undefined &&
+    !accepts.has('user_message.posthog_session_id')
+  ) {
+    const { posthog_session_id: _unread, ...rest } = message
+    return rest
+  }
+  return message
 }
 
 /** The heartbeat interval assumed until the server states its own. */

@@ -13,6 +13,11 @@ vi.mock('@/lib/budgets/service', () => ({
   recordUsageEvents: vi.fn().mockResolvedValue(1),
 }))
 
+const announceBudgetThresholds = vi.fn(async () => {})
+vi.mock('@/lib/budgets/budget-events', () => ({
+  announceBudgetThresholds: (...args: unknown[]) => announceBudgetThresholds(...(args as [])),
+}))
+
 import { POST } from './route'
 import { recordUsageEvents } from '@/lib/budgets/service'
 
@@ -127,6 +132,51 @@ describe('POST /api/internal/usage', () => {
     expect(res.status).toBe(202)
     expect(await res.json()).toEqual({ recorded: 0, skipped: 1 })
     expect(recordUsageEvents).not.toHaveBeenCalled()
+  })
+
+  describe('budget_threshold_crossed (PostHog)', () => {
+    it('checks the thresholds for the batch’s organization, user and project after the write', async () => {
+      const order: string[] = []
+      vi.mocked(recordUsageEvents).mockImplementationOnce(async () => {
+        order.push('record')
+        return 1
+      })
+      announceBudgetThresholds.mockImplementationOnce(async () => {
+        order.push('announce')
+      })
+
+      const res = await POST(request({ organizationId: 'org_1', userId: 'user_1', projectId: 'proj-1', events: [VALID_EVENT] }))
+
+      expect(res.status).toBe(202)
+      expect(order).toEqual(['record', 'announce'])
+      expect(announceBudgetThresholds).toHaveBeenCalledWith({
+        organizationId: 'org_1',
+        userId: 'user_1',
+        projectId: 'proj-1',
+      })
+    })
+
+    it('passes null for a batch with no user or project', async () => {
+      await POST(request({ organizationId: 'org_1', events: [VALID_EVENT] }))
+
+      expect(announceBudgetThresholds).toHaveBeenCalledWith({ organizationId: 'org_1', userId: null, projectId: null })
+    })
+
+    it('answers at the same speed when the check never settles', async () => {
+      announceBudgetThresholds.mockReturnValueOnce(new Promise<void>(() => {}))
+
+      const res = await POST(request({ organizationId: 'org_1', events: [VALID_EVENT] }))
+
+      expect(res.status).toBe(202)
+      expect(await res.json()).toEqual({ recorded: 1 })
+    })
+
+    it('checks nothing for a batch that was dropped (anonymous) or refused', async () => {
+      await POST(request({ organizationId: null, events: [VALID_EVENT] }))
+      await POST(request({ organizationId: 'org_1', events: [] }))
+
+      expect(announceBudgetThresholds).not.toHaveBeenCalled()
+    })
   })
 
   it('rejects malformed payloads', async () => {

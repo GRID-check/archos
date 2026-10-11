@@ -1250,7 +1250,7 @@ export const chat: typeof en.chat = {
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
   },
-  // Antwort-Feedback per Daumen (WS-7, Feature-Flag `answer-feedback`).
+  // Antwort-Feedback per Daumen (WS-7).
   feedback: {
     question: 'War das hilfreich?',
     helpfulAria: 'Diese Antwort als hilfreich markieren',

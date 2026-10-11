@@ -33,6 +33,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import type { BimProfileSuggestion } from '@/lib/bim/profile'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import {
   BIM_TAKEOFF_DIMENSION,
   BIM_TAKEOFF_QUANTITIES,
@@ -136,6 +137,7 @@ export function IfcRoomSchedule({
     anchor.download = `${filename.replace(/\.(ifc|ifczip)$/i, '')}-raumbuch.csv`
     anchor.click()
     URL.revokeObjectURL(url)
+    capturePosthog('report_exported', { kind: 'room_schedule', format: 'csv' })
   }
 
   const totalRooms = schedule?.totals.rooms ?? 0

@@ -24,12 +24,6 @@ interface ProjectFileWorkspaceProps {
   projectName: string
   collectionName: string
   /**
-   * Whether the file preview's ingestion-metadata block renders (WorkOS
-   * `files-metadata-panel` flag, FB-8). Defaults to true so the feature stays
-   * visible with flag enforcement off (fail-open).
-   */
-  showMetadataPanel?: boolean
-  /**
    * Whether the model workspace is reachable (WorkOS `ifc-models`, ADR-0046).
    *
    * It decides the smallest of the things the flag has been: whether the preview
@@ -38,13 +32,6 @@ interface ProjectFileWorkspaceProps {
    * endpoints answer 403 is worse than no viewer.
    */
   showModels?: boolean
-  /**
-   * Whether a click on an `.ifc` opens the preview first (`ifc-preview-first`).
-   * Defaults to preview-first, the safer direction to be wrong in. Threaded from
-   * the page alongside the Archiv's copy of the same flag — the two surfaces
-   * must move together.
-   */
-  previewFirst?: boolean
   /** Faces, Unvergeben, Zuweisen — behind the collaboration flag. */
   canCollaborate?: boolean
   currentUserId?: string
@@ -90,9 +77,7 @@ export function ProjectFileWorkspace({
   projectId,
   projectName,
   collectionName,
-  showMetadataPanel = true,
   showModels = false,
-  previewFirst = true,
   canCollaborate = false,
   currentUserId,
   lifecyclePermissions,
@@ -129,9 +114,7 @@ export function ProjectFileWorkspace({
       dropToUpload: t('workspace.dropToUpload'),
       ingestionComplete: (name) => t('toast.ingestionComplete', { name }),
     },
-    showMetadataPanel,
     showModels,
-    previewFirst,
     lifecyclePermissions,
   }
 

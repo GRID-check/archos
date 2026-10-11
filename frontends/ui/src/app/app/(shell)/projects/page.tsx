@@ -49,8 +49,8 @@ export default async function ProjectsPage({
           autoOpenCreate={autoOpenCreate}
         />
 
-        {/* Org-wide Archiv entry — gated server-side on the `organization-archiv`
-            flag, the same check the /app/archiv page enforces (ADR-0024). */}
+        {/* Org-wide Archiv entry — every member of an organization reaches it
+            (`canAccessArchiv`, ADR-0024). */}
         {navFlags.canAccessArchiv && (
           <section className="mt-6" aria-label={t('archivCard.title')}>
             <ArchivEntryCard />

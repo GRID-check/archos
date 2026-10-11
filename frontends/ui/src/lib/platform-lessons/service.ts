@@ -36,7 +36,7 @@ import { NotFoundError } from '@/lib/api/errors'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import type { PlatformLesson, PlatformLessonEvent, PlatformLessonReport } from '@/lib/db/schema'
-import { formatBoundedDigest } from '@/lib/knowledge/digest-format'
+import { formatBoundedDigestWithKept } from '@/lib/knowledge/digest-format'
 import { redactPii } from '@/lib/text/redact-pii'
 import { distillReport } from './distill-client'
 import { embedNote, embedNotes, enrichForEmbedding } from '@/lib/knowledge/embeddings'
@@ -165,9 +165,10 @@ export function resetLessonSweepStateForTests(): void {
  * v2: migration 0120 retired the lessons created from a conversation that drew
  * on a restricted folder, and a v1 digest written before it ran may still
  * inject one for the rest of its TTL. v3: migration 0124 retired the lessons
- * created from a vote on a marked message, for the same reason.
+ * created from a vote on a marked message, for the same reason. v4: the cached
+ * value is the injection (`{ digest, lessonIds }`), no longer the bare string.
  */
-const DIGEST_CACHE_KEY = 'platformlessons:digest:v3'
+const DIGEST_CACHE_KEY = 'platformlessons:digest:v4'
 const DIGEST_CACHE_TTL_MS = 5 * 60 * 1000
 
 const SYSTEM_ACTOR = 'system:distiller'
@@ -497,23 +498,38 @@ export async function runLessonSweep(session: GridSession | null): Promise<Sweep
   }
 }
 
+/** What the agent injects into a turn, and the lessons that text is made of. */
+export interface PlatformLessonsInjection {
+  /** The bounded digest, or null when no lesson is active. */
+  digest: string | null
+  /**
+   * The ids of the lessons whose line is IN `digest` (not the ones the budget
+   * cut). The agent writes them on the turn's trace (`lesson_ids`), so the
+   * holdout can be read from the trace export without the vote table.
+   */
+  lessonIds: string[]
+}
+
 /**
- * The bounded digest injected into every agent turn, cached because it is
- * identical for every tenant and read once per turn per backend worker.
- * Null when no lesson is active — the agent then renders no block at all.
+ * The bounded digest injected into every agent turn, with the ids of the
+ * lessons in it, cached because it is identical for every tenant and read once
+ * per turn per backend worker. `digest` is null when no lesson is active — the
+ * agent then renders no block at all.
  */
-export async function buildPlatformLessonsDigest(): Promise<string | null> {
+export async function buildPlatformLessonsInjection(): Promise<PlatformLessonsInjection> {
   return getCached(DIGEST_CACHE_KEY, DIGEST_CACHE_TTL_MS, () =>
     withPlatformAccess('platform lessons: build injection digest', async () => {
       const lessons = await listActiveLessonsForDigest(MAX_ACTIVE_LESSONS)
-      return formatBoundedDigest(
+      const { digest, kept } = formatBoundedDigestWithKept(
         'PLATFORM_LESSONS v1',
         lessons.map((lesson) => ({
+          id: lesson.id,
           tags: [lesson.category, `${lesson.reportCount}x`],
           content: lesson.content,
         })),
         DIGEST_MAX_CHARS
       )
+      return { digest, lessonIds: kept.map((lesson) => lesson.id) }
     })
   )
 }

@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    If Piloti itself fails to load, you now see a Piloti page in your language
+    with a button to try again, instead of a bare browser error screen.

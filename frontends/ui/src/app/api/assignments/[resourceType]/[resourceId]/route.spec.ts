@@ -27,9 +27,12 @@ vi.mock('@/lib/assignments/service', () => ({
   removeResourceAssignment: vi.fn(),
 }))
 
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 import { NotFoundError } from '@/lib/api/errors'
-import { listResourceAssignments } from '@/lib/assignments/service'
-import { GET } from './route'
+import { addResourceAssignment, listResourceAssignments } from '@/lib/assignments/service'
+import { GET, POST } from './route'
 
 const get = (resourceType: string, resourceId: string) =>
   GET(new Request(`https://grid.test/api/assignments/${resourceType}/${resourceId}`), {
@@ -59,5 +62,43 @@ describe('GET /api/assignments/[resourceType]/[resourceId]', () => {
     const response = await get('conversation', 's_private')
 
     expect(response.status).toBe(404)
+  })
+})
+
+describe('POST /api/assignments/[resourceType]/[resourceId]', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  const post = (resourceType: string, resourceId: string) =>
+    POST(
+      new Request(`https://grid.test/api/assignments/${resourceType}/${resourceId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: 'user-2' }),
+      }),
+      { params: Promise.resolve({ resourceType, resourceId }) }
+    )
+
+  it('reports task_assigned as the assigner, with the resource type and not the assignee', async () => {
+    vi.mocked(addResourceAssignment).mockResolvedValue([])
+
+    const response = await post('document', 'doc-1')
+
+    expect(response.status).toBe(200)
+    expect(captureServer).toHaveBeenCalledWith({
+      event: 'task_assigned',
+      distinctId: 'user-1',
+      organizationId: 'org-1',
+      properties: { resource_type: 'document' },
+    })
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('user-2')
+  })
+
+  it('reports nothing when the assignment is refused', async () => {
+    vi.mocked(addResourceAssignment).mockRejectedValue(new NotFoundError())
+
+    const response = await post('document', 'doc-1')
+
+    expect(response.status).toBe(404)
+    expect(captureServer).not.toHaveBeenCalled()
   })
 })

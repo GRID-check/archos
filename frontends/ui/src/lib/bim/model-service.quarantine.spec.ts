@@ -18,7 +18,6 @@ import type { Document } from '@/lib/db/schema'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/feature-flags', () => ({
   FEATURE_FLAGS: { ifcModels: 'ifc-models' },
-  enforcementOn: vi.fn().mockReturnValue(false),
   ifcModelsEnvEnabled: vi.fn().mockReturnValue(true),
   isFeatureEnabled: vi.fn().mockReturnValue(true),
   isIfcModelsEnabled: vi.fn().mockReturnValue(true),

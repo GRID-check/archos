@@ -11,9 +11,9 @@ product report never reaches that pipeline.
 ```
 member ── Feedback senden ──▶ POST /api/feedback/reports ──▶ product_feedback (reporter's org, RLS)
                                                        │
-                                                       ├──▶ feedback.submitted inbox rows
-                                                       │    (platform org, one per owner)
-                                                       └──▶ GitHub issue (bugs only, when configured)
+                                                       └──▶ feedback.submitted inbox rows
+                                                            (platform org, one per owner)
+member's browser ──▶ PostHog Support ticket (masked text, only when contact is allowed)
 owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id> ──▶ PATCH status
 ```
 
@@ -22,7 +22,6 @@ owner's inbox (platform lane) ──▶ /app/platform/feedback?report=<id> ─�
 | The form, and its entry points (avatar menu, org header) | `frontends/ui/src/features/product-feedback/components/feedback-dialog.tsx`, `feedback-provider.tsx` |
 | Submit route, rate limited by `FEEDBACK_REPORT_LIMIT` (10 an hour per person) | `frontends/ui/src/app/api/feedback/reports/route.ts` |
 | Store and announce | `frontends/ui/src/lib/product-feedback/service.ts`, `announce.ts` |
-| File a bug as a GitHub issue | `frontends/ui/src/lib/product-feedback/github.ts`, over `frontends/ui/src/lib/github/issues.ts` |
 | Table, bounds, RLS | `frontends/ui/drizzle/0100_product_feedback.sql` |
 | Triage routes (`platform:settings:view` to read, `:manage` to change status) | `frontends/ui/src/app/api/platform/feedback/` |
 | Triage page | `frontends/ui/src/features/product-feedback/components/feedback-triage.tsx` |
@@ -43,35 +42,36 @@ Announcing fails open. The report is stored first, and a WorkOS failure while
 resolving the roster is logged instead of costing the reporter their
 confirmation.
 
-## Bug reports become GitHub issues
+## The Support ticket in PostHog
 
-A report of kind `bug` is also filed as an issue in the repository named by
-`GRID_FEEDBACK_ISSUES_REPO`, labelled `bug` and `user-feedback`. Ideas, praise
-and questions stay on the triage page. Filing runs after the response has gone
-(Next's `after`), so the reporter's confirmation never waits on GitHub, and it
-fails open like the announcement: a GitHub outage is logged, and the report is
-already stored.
+When PostHog is configured and its Support product is on for the project, the
+browser also opens a Support ticket for the report, so the person answering
+tickets and the session replay sit in one place
+(`sendPosthogSupportMessage` in `lib/analytics/posthog.ts`). The first message
+is `[<kind>] #<report id> <page path>`, a newline, then the text. The id is the
+key back to the stored report and **Platform → Feedback**.
 
-The issue tracker is outside the tenant boundary, so the issue carries only
-what reproduces the bug: the message after `redactPii`, quoted in a fence so a
-stray `@name` pings nobody, the page, the browser context, and a link to the
-report on the triage page. The reporter's name, email and organization stay
-behind that link.
+- **The text is the server's, masked.** `POST /api/feedback/reports` answers
+  `{ id, kind, createdAt, relayText }`. `relayText` is the message after
+  `maskChatText`, the same pass a vote's comment goes through against the
+  office's „Sensible Daten" policy (ADR-0086). The stored report keeps what was
+  typed; only this copy leaves for a third party. The dialog never sends its own
+  textarea.
+- **No ticket without consent.** `relayText` is `null` when the reporter did not
+  tick "You may contact me about this" (a ticket is a thread that answers the
+  reporter), and also when the policy could not be read: no text means no
+  ticket, never an unmasked one. Their report still reaches the triage page and
+  the platform owners' inbox.
+- Best effort. The ticket runs beside the stored report and cannot fail it.
 
-The token is err2issue's PAT (ADR-0031), handed to the frontend as
-`GRID_GITHUB_TOKEN` from the same stack secret. It does not need err2issue to
-be deployed. In Pulumi, `feedbackIssuesEnabled` defaults to on and needs
-`err2issueGithubToken`; the repository defaults to `err2issueGithubRepo`, and
-`feedbackIssuesRepo` sends bug reports somewhere else.
+## No GitHub issues
 
-`lib/github/issues.ts` is not specific to feedback. Anything else that should
-open an issue builds a `GitHubIssueDraft`, gets a sender from
-`githubIssueSenderFromEnv('<ITS_REPO_VARIABLE>')` and calls `send`. A null
-sender means that use is switched off.
-
-Nothing links the issue back onto the report row yet. The issue links the
-report, so the triage page's report is one click from GitHub but not the other
-way round.
+Bug reports used to be filed as GitHub issues too (`GRID_FEEDBACK_ISSUES_REPO`,
+err2issue's token). That is gone: it was off in production, borrowed another
+tool's PAT, and the issue could not be traced back to the report. A bug keeps
+its Postgres record, the platform owners' inbox row and, when the reporter
+allows contact, the Support ticket above. Triage belongs in PostHog Support;
+nothing here files into an issue tracker.
 
 ## The platform lane
 

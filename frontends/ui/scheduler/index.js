@@ -45,11 +45,12 @@
  *   GRID_LANGFUSE_TRACE_RETENTION_DAYS - how long Langfuse traces live
  *                                        (default 30, minimum 3)
  *
- * Schedules gate (steps 1-3): only when GRID_SKILLS_ENABLED=true or
- * GRID_ENFORCE_FEATURE_FLAGS=true. Steps 4 to 9 run regardless, because runs exist
- * without Agent Skills: a chat question escalated to deep research is a
- * `task_runs` row with no definition behind it (ADR-0062). With the gate off the
- * container is a reconcile-only worker rather than exiting.
+ * There is no deployment-wide schedules gate. Every due definition is claimed
+ * and handed to the BFF, which checks the organization's `skills` WorkOS flag
+ * and records a `skipped` run when it is off (`fireScheduledJob`,
+ * `src/lib/jobs/service.ts`). That is the same per-organization answer the
+ * Automation section reads, so revoking an organization's flag pauses its
+ * schedules without a deploy, and nothing here can disagree with it.
  */
 
 const {
@@ -91,20 +92,6 @@ const FIRE_TIMEOUT_MS = 30000
 // main() keeps a slow sweep from overlapping the next tick.
 const RECONCILE_TIMEOUT_MS = 120000
 
-/**
- * The schedules gate. Due definitions are claimed and fired only when the
- * skills feature is turned on for this deployment — either the dark-launch env
- * opt-in (GRID_SKILLS_ENABLED) or enforced WorkOS flags
- * (GRID_ENFORCE_FEATURE_FLAGS). The two sweeps run either way.
- */
-function schedulesEnabled(env) {
-  // Case-insensitive, matching how the BFF reads these vars
-  // (feature-flags.ts lowercases before comparing) — 'TRUE' must not enable
-  // the UI while silently no-op'ing this container.
-  const on = (v) => (v || '').toLowerCase() === 'true'
-  return on(env.GRID_SKILLS_ENABLED) || on(env.GRID_ENFORCE_FEATURE_FLAGS)
-}
-
 function toPositiveInt(raw, fallback) {
   const n = parseInt(raw, 10)
   return Number.isFinite(n) && n > 0 ? n : fallback
@@ -123,7 +110,6 @@ function readConfig(env) {
     pollMs: toPositiveInt(env.GRID_SKILL_SCHEDULER_POLL_MS, 30000),
     batch: toPositiveInt(env.GRID_SKILL_SCHEDULER_BATCH, 20),
     retentionDays: toPositiveInt(env.GRID_SKILL_RUNS_RETENTION_DAYS, 90),
-    schedulesEnabled: schedulesEnabled(env),
   }
 }
 
@@ -519,13 +505,13 @@ async function fireOne(config, scheduleId, fetchImpl = fetch) {
 }
 
 /**
- * One scheduler tick: the schedules (when their gate is on), then the run
- * reconciler and the background-work sweep (always). Neither can throw out of the tick. Returns the count
+ * One scheduler tick: the schedules, then the run reconciler and the
+ * background-work sweeps. None of them can throw out of the tick. Returns the count
  * fired (for logs). `streaks` must outlive the tick (`createStreaks`): a fresh
  * one per tick would never reach its escalation.
  */
 async function tick(sql, config, fetchImpl, streaks) {
-  const fired = config.schedulesEnabled ? await fireDue(sql, config, streaks.database) : 0
+  const fired = await fireDue(sql, config, streaks.database)
   await reconcileRuns(config, fetchImpl, streaks.reconcile)
   await reconcileBackgroundWork(config, fetchImpl, streaks.background)
   await sweepUploads(config, fetchImpl, streaks.uploads)
@@ -603,18 +589,10 @@ function main() {
     }
   }
 
-  if (config.schedulesEnabled) {
-    console.log(
-      `${LOG} started, polling every ${config.pollMs}ms ` +
-        `(batch ${config.batch}, retention ${config.retentionDays}d, target ${config.frontendUrl})`,
-    )
-  } else {
-    console.log(
-      `${LOG} skills feature is off for this deployment ` +
-        `(set GRID_SKILLS_ENABLED=true or GRID_ENFORCE_FEATURE_FLAGS=true to fire schedules) — ` +
-        `running the run reconciler only, every ${config.pollMs}ms (target ${config.frontendUrl})`,
-    )
-  }
+  console.log(
+    `${LOG} started, polling every ${config.pollMs}ms ` +
+      `(batch ${config.batch}, retention ${config.retentionDays}d, target ${config.frontendUrl})`,
+  )
   console.log(
     `${LOG} Langfuse trace erasure of deleted chats and retention: ` +
       (config.langfuse
@@ -630,7 +608,6 @@ if (require.main === module) {
 }
 
 module.exports = {
-  schedulesEnabled,
   readConfig,
   toPositiveInt,
   createStreaks,

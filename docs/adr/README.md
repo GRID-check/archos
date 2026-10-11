@@ -92,9 +92,9 @@ Consequences, where a reader looks for them.
 | [0026](0026-unified-source-kind-model.md) | Unified source-kind model for citations, Herleitung, and reports | Accepted |
 | [0027](0027-platform-workflow-templates.md) | Platform-managed workflow templates | Superseded by ADR-0046 |
 | [0028](0028-horizontal-agent-scaling-conversation-affinity.md) | Horizontally scaling the aiq-agent container via conversation affinity | Accepted |
-| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Accepted |
+| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Superseded by ADR-0100 |
 | [0030](0030-interactive-card-decisions-persist-on-the-message.md) | Interactive-card decisions persist on the message | Accepted |
-| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Accepted |
+| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Superseded by ADR-0100 |
 | [0032](0032-shareable-resource-model.md) | The shareable-resource model, and where resource-level grants live | Accepted |
 | [0033](0033-server-authoritative-shared-conversations.md) | Server-authoritative shared conversations (and the seam that keeps private ones local-first) | Accepted |
 | [0034](0034-mention-handoff-persisted-state.md) | The mention hand-off is persisted conversation state, not the agent's in-memory HITL | Accepted |
@@ -153,7 +153,7 @@ Consequences, where a reader looks for them.
 | [0088](0088-folder-access-is-read-write-per-role.md) | Folder access is read/write per role | Accepted |
 | [0089](0089-langfuse-is-the-observability-platform-and-everything-is-observable.md) | Langfuse is the observability platform, and everything the product does is observable in it | Accepted |
 | [0090](0090-a-closed-project-is-read-only-and-open-to-the-office.md) | A closed project is read-only and open to the whole office | Accepted |
-| [0091](0091-the-steckbrief-keeps-people-apart-from-the-profile.md) | The Steckbrief keeps its people apart from the profile | Accepted |
+| [0091](0091-the-steckbrief-keeps-people-apart-from-the-profile.md) | The Steckbrief keeps its people apart from the profile (its people list partly superseded by 0100) | Accepted |
 | [0092](0092-ausmisten-proposes-from-metadata-and-bins-through-a-subfolder.md) | „Ausmisten" proposes from metadata, and bins through a subfolder of each document's folder | Accepted |
 | [0093](0093-the-server-marks-the-message-that-drew-on-a-restricted-folder.md) | The server marks the message that drew on a restricted folder, and the mark outlives the chat | Accepted |
 | [0094](0094-the-agent-searches-other-projects-as-the-conversations-audience.md) | The agent searches other projects as the conversation's audience, and a closed project restricts nobody | Accepted |
@@ -162,6 +162,8 @@ Consequences, where a reader looks for them.
 | [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
 | [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Proposed |
 | [0099](0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md) | Fassungen across file names are a confirmed link, not a merge | Proposed |
+| [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
+| [0101](0100-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

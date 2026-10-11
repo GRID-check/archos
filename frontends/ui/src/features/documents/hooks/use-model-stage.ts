@@ -27,21 +27,6 @@ export function useModelStage(enabled: boolean, files: readonly FileItem[]) {
     [files, stageModel]
   )
 
-  /**
-   * Straight to the stage, for the flag-off path. `push`, not `replace`: with
-   * `replace` the back button left the page entirely and discarded the camera,
-   * the cut, the selection and every measurement — and on a phone, back is how
-   * anyone dismisses a full-screen overlay.
-   */
-  const openModel = useCallback(
-    (filename: string) => {
-      const params = new URLSearchParams(searchParams?.toString() ?? '')
-      params.set('model', filename)
-      router.push(`${pathname}?${params.toString()}`, { scroll: false })
-    },
-    [pathname, router, searchParams]
-  )
-
   /** Closing REPLACES, so shutting the stage leaves no entry that back would re-open. Dropping only `model` would let the next model inherit another building's selection. */
   const closeModel = useCallback(() => {
     const params = new URLSearchParams(searchParams?.toString() ?? '')
@@ -50,5 +35,5 @@ export function useModelStage(enabled: boolean, files: readonly FileItem[]) {
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
   }, [pathname, router, searchParams])
 
-  return { stageModel, stageDocument, openModel, closeModel }
+  return { stageModel, stageDocument, closeModel }
 }

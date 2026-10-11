@@ -28,6 +28,7 @@ import type { ProjectLifecycleView, ProjectOutcome } from '@/lib/projects/projec
 import type { Month } from '@/lib/projects/month'
 import { CloseProjectDialog } from '../components/close-project-dialog'
 import { ClosingDebrief } from '../components/closing-debrief'
+import { ClosingSteckbrief } from '../components/closing-steckbrief'
 
 export interface UseProjectLifecycleOptions {
   projectId: string
@@ -111,7 +112,10 @@ export function useProjectLifecycle({
           (the banner never closes a project) holds none. */}
       {closing && lifecycle.status !== 'closed' && (
         <CloseProjectDialog projectId={projectId} lifecycle={lifecycle} open onOpenChange={setClosing} onClose={close}>
-          <ClosingDebrief projectId={projectId} profile={profile} startedOn={lifecycle.startedOn} canWriteMemory={canWriteMemory} />
+          <div className="space-y-5">
+            <ClosingDebrief projectId={projectId} profile={profile} canWriteMemory={canWriteMemory} />
+            <ClosingSteckbrief projectId={projectId} />
+          </div>
         </CloseProjectDialog>
       )}
       {reopening && lifecycle.status === 'closed' && (

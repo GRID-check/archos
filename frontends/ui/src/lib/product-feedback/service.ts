@@ -14,7 +14,6 @@
  * budget is per person and far below the default mutation budget.
  */
 
-import { after } from 'next/server'
 import 'server-only'
 import { NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
@@ -23,8 +22,8 @@ import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { findOrganization } from '@/lib/organizations/repository'
+import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
-import { fileProductFeedbackIssue } from './github'
 import {
   countProductFeedbackByStatus,
   getProductFeedback,
@@ -44,13 +43,33 @@ import {
 } from './types'
 
 /**
- * Store one report from the caller, announce it to the platform owners and,
- * for a bug, file it as a GitHub issue once the response has gone.
+ * The words that may leave for PostHog Support: the report masked against the
+ * office's policy, and only for a reporter who agreed to be contacted. The
+ * stored report stays as typed (platform owners triage it); this copy is the
+ * only one a third party receives, so a failure to mask answers `null` rather
+ * than the raw text.
+ */
+async function relayTextFor(
+  session: AuthorizedSession,
+  input: SubmitProductFeedbackInput
+): Promise<string | null> {
+  if (!input.allowContact) return null
+  try {
+    return (await maskChatText(session.organizationId, input.message)).text
+  } catch (error) {
+    console.error('[product-feedback] relay text not masked; no Support ticket for this report:', error)
+    return null
+  }
+}
+
+/**
+ * Store one report from the caller, announce it to the platform owners and
+ * hand back the masked text the browser may open a Support ticket with.
  *
- * Neither can fail the request (see `announceProductFeedback` and
- * `fileProductFeedbackIssue`): the stored report is the record, and the triage
- * page lists it whether or not anybody's inbox or the issue tracker heard
- * about it.
+ * The announcement cannot fail the request (see `announceProductFeedback`):
+ * the stored report is the record, and the triage page lists it whether or not
+ * anybody's inbox heard about it. There is no GitHub filing any more: the
+ * report's second home is the PostHog Support ticket the dialog opens.
  */
 export async function submitProductFeedback(
   session: AuthorizedSession,
@@ -70,16 +89,13 @@ export async function submitProductFeedback(
 
   const organization = await findOrganization(session.organizationId).catch(() => null)
   await announceProductFeedback(report, organization?.displayName ?? null)
-  // After the response: the reporter's confirmation must not wait on GitHub,
-  // whose request is allowed ten seconds. `after` throws outside a Next request
-  // lifecycle (unit tests, a script), where waiting is the only way to file.
-  try {
-    after(() => fileProductFeedbackIssue(report))
-  } catch {
-    await fileProductFeedbackIssue(report)
-  }
 
-  return { id: report.id, kind: report.kind, createdAt: report.createdAt.toISOString() }
+  return {
+    id: report.id,
+    kind: report.kind,
+    createdAt: report.createdAt.toISOString(),
+    relayText: await relayTextFor(session, input),
+  }
 }
 
 // ---------------------------------------------------------------------------

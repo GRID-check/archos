@@ -96,7 +96,7 @@ onDocumentsChanged(resetSurfacedDocumentsCache)
  * Fetch one corpus' WHOLE document list, following the listing's cursor —
  * {@link storedFileIndex} asks "which of my files could this text be naming",
  * which is a question about every file, not the newest page. `softStatuses`
- * are fail-open (e.g. Archiv 403 feature gate) — no rows, but NOT an error. Any
+ * are fail-open (e.g. the Archiv's 403 for a session without an organization) — no rows, but NOT an error. Any
  * other non-ok status or a network reject IS a genuine error the caller
  * surfaces as retryable.
  */
@@ -224,8 +224,8 @@ function loadSurfacedIndex(
       projectId
         ? fetchCorpus(`/api/documents?projectId=${encodeURIComponent(projectId)}`, [])
         : Promise.resolve({ rows: null, failed: false }),
-      // Büroablage is org-scoped (no projectId) and feature-gated — a 403 (or a
-      // 404) is fail-open (no Archiv resolutions), NOT an error.
+      // Büroablage is org-scoped (no projectId) — a 403 (a session without an
+      // organization) or a 404 is fail-open (no Archiv resolutions), NOT an error.
       fetchCorpus('/api/archiv/documents', [403, 404]),
       // This conversation's private attachments. A caller that names no
       // conversation gets an empty session corpus and no extra request.

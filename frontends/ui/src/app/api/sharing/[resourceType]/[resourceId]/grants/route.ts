@@ -9,6 +9,7 @@
  */
 
 import { z } from 'zod'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requireCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { RESOURCE_ROLES } from '@/lib/db/schema'
@@ -51,7 +52,17 @@ export const POST = apiRoute<Params>(
     if ('escalate' in body) {
       return escalateToOwner(session, resourceType, params.resourceId, request)
     }
-    return grantResourceAccess(session, resourceType, params.resourceId, body, request)
+    const sharing = await grantResourceAccess(session, resourceType, params.resourceId, body, request)
+    // `resource_shared` (ADR-0100): the collaboration funnel's first step. A
+    // grant names a person, so the audience kind is `person`; the person's id
+    // stays out, the event says THAT a resource was shared and at what role.
+    captureServer({
+      event: 'resource_shared',
+      distinctId: session.userId,
+      organizationId: session.organizationId,
+      properties: { resource_type: resourceType, audience_kind: 'person', role: body.role },
+    })
+    return sharing
   },
   { status: 201, authz: { enforcedBy: 'grantResourceAccess (requireResourceAccess owner)' } }
 )

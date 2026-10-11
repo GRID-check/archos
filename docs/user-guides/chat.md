@@ -131,7 +131,7 @@ The list groups chats by day (Today, Yesterday, then the date) with sticky day h
 - **Ellipse**: the chat's research report has expired
 - **Chat bubble**: a plain chat with no deep research
 
-Rename and delete appear on the row on hover or keyboard focus. With the `research-in-chat-history` flag on, a **Deep Research** section above the day groups lists this project's research runs — including headless/CLI ones that never touched this browser — each stating its status in words (*Running*, *Report ready*, *Failed*, *Cancelled*).
+Rename and delete appear on the row on hover or keyboard focus. A **Deep Research** section above the day groups lists this project's research runs — including headless/CLI ones that never touched this browser — each stating its status in words (*Running*, *Report ready*, *Failed*, *Cancelled*).
 
 The footer explains that chats live in this browser and that research reports may expire on the server, warns when browser storage is nearly full (and says what to do about it), and holds **Delete all chats** — the destructive bulk action, kept at the far end of the panel rather than above the list it deletes. It is scoped to the current project.
 
@@ -400,7 +400,8 @@ the closed projects most like this one (same Bundesland first, then
 Gebäudeklasse, Bauweise and use), and it can search their documents (by topic,
 optionally by document type such as Detail or Gutachten, by OIB discipline,
 and by the project's period), find a project by name or address, and read a
-project's brief. While it searches, the status line says „in anderen
+project's brief. What it states from a brief (address, start, Bauweise) is
+cited as „Projektdaten · ‹Projekt›“, like any other source. While it searches, the status line says „in anderen
 Projekten“; once the answer is done, the Herleitung keeps an „Andere Projekte“
 step. The same list, with what each project shares with this one, is the
 project's [Ähnliche Projekte](projects.md#similar-projects) page. Piloti also finds what other projects **decided**: the decisions and

@@ -25,7 +25,7 @@ const mockCreate = vi.mocked(createSkill)
 const asSkill = (row: Pick<Skill, 'id' | 'name'>): Skill => row as unknown as Skill
 const validBody = { name: 'my-skill', description: 'Does things.', body: 'Body text.' }
 
-const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: null } = {
+const session: Omit<AuthorizedSession, 'featureFlags'> & { featureFlags: string[] | null } = {
   userId: 'user_1',
   email: 'user@example.com',
   name: null,
@@ -46,11 +46,15 @@ function req(body?: unknown): Request {
 
 beforeEach(() => {
   vi.clearAllMocks()
+  // A signed-in deployment: the session's WorkOS claim is the skills gate, and
+  // a session without the claim is the default (off).
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  session.featureFlags = null
   mockSession.mockResolvedValue(session as unknown as AuthorizedSession)
 })
 
 afterEach(() => {
-  delete process.env.GRID_SKILLS_ENABLED
+  vi.unstubAllEnvs()
 })
 
 describe('GET /api/skills', () => {
@@ -61,8 +65,8 @@ describe('GET /api/skills', () => {
     expect(mockList).not.toHaveBeenCalled()
   })
 
-  it('lists the merged toolbox when the env gate is on', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+  it('lists the merged toolbox when the skills flag is on', async () => {
+    session.featureFlags = ['skills']
     // The route is a pass-through, so the toolbox's two halves — the skills and
     // the categories they are filed under — both have to reach the client.
     mockList.mockResolvedValue({
@@ -90,15 +94,15 @@ describe('POST /api/skills', () => {
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
-  it('returns 400 on an invalid body when the gate is on', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+  it('returns 400 on an invalid body when the skills flag is on', async () => {
+    session.featureFlags = ['skills']
     const res = await POST(req({ description: 'no name or body' }))
     expect(res.status).toBe(400)
     expect(mockCreate).not.toHaveBeenCalled()
   })
 
   it('creates a skill (201) on a valid body', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
+    session.featureFlags = ['skills']
     mockCreate.mockResolvedValue({ skill: asSkill({ id: 'skill-new', name: 'My skill' }) })
     const res = await POST(req(validBody))
     expect(res.status).toBe(201)

@@ -91,7 +91,6 @@ export const DocumentGridCard: FC<DocumentGridCardProps> = ({ title, query: _que
                   onSelect={() => peekFile(file, entry.docSource, projectId)}
                   source={entry.docSource}
                   sourceLabel={entry.docSource ? t(`documentGrid.source.${entry.docSource}`) : undefined}
-                  hideStatusWhenReady
                   hideFooter
                   ariaLabel={t('documentGrid.openAria', { label: file.filename })}
                 />

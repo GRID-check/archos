@@ -35,6 +35,8 @@ vi.mock('@/lib/documents/revision', () => ({ openDraftForRevision: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({ emitInboxItems: vi.fn() }))
 vi.mock('@/lib/runs/service', () => ({ settleRunLedger: vi.fn() }))
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
 
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -576,6 +578,73 @@ describe('recordRunOutcome', () => {
       conversationId: 's_conv_2',
       filedDocumentId: 'doc-7',
       jobId: 'job-1',
+    })
+  })
+
+  describe('job_run_finished (PostHog)', () => {
+    it('reports how the run ended, as the requester, with ids, statuses and a duration only', async () => {
+      vi.mocked(emitInboxItems).mockResolvedValue(1)
+      const startedAt = new Date(Date.now() - 90_000)
+
+      await recordRunOutcome(delegated({ startedAt, kind: 'chat' }), {
+        status: 'failure',
+        error: 'Budget exhausted',
+        report: 'Bericht',
+      })
+
+      expect(captureServer).toHaveBeenCalledTimes(1)
+      const [[sent]] = captureServer.mock.calls as unknown as [[{ properties: Record<string, unknown> }]]
+      expect(sent).toMatchObject({
+        event: 'job_run_finished',
+        distinctId: 'user_owner',
+        organizationId: 'org_1',
+        properties: { job_id: 'job-1', run_id: 'run-1', status: 'failure', trigger: 'delegated', output: 'chat' },
+      })
+      expect(sent.properties.duration_ms).toBeGreaterThanOrEqual(90_000)
+      expect(sent.properties.duration_ms).toBeLessThan(120_000)
+      // Nothing the requester wrote or the run produced.
+      expect(JSON.stringify(captureServer.mock.calls)).not.toMatch(/Aktenvermerk|Budget exhausted|Bericht|owner@grid/)
+    })
+
+    it('reports a null job id for a run with no definition behind it', async () => {
+      vi.mocked(emitInboxItems).mockResolvedValue(1)
+
+      await recordRunOutcome(delegated({ definitionId: null }), { status: 'success' })
+
+      expect(captureServer).toHaveBeenCalledWith(
+        expect.objectContaining({ properties: expect.objectContaining({ job_id: null }) }),
+      )
+    })
+
+    it('sends no duration rather than a wrong one when the run has no start', async () => {
+      vi.mocked(emitInboxItems).mockResolvedValue(1)
+
+      await recordRunOutcome(delegated(), { status: 'success' })
+
+      const [[sent]] = captureServer.mock.calls as unknown as [[{ properties: Record<string, unknown> }]]
+      expect(sent.properties.duration_ms).toBeUndefined()
+    })
+
+    it('reports once: a worker’s retried report finds the run already ended', async () => {
+      vi.mocked(emitInboxItems).mockResolvedValue(1)
+
+      await recordRunOutcome({ ...run, status: 'succeeded' } as TaskRun, { status: 'success' })
+
+      expect(captureServer).not.toHaveBeenCalled()
+    })
+
+    it('reports a run the reconciler closed, and nothing for one it found already ended', async () => {
+      vi.mocked(emitInboxItems).mockResolvedValue(1)
+      vi.mocked(repository.closeActiveRun).mockImplementationOnce(
+        async (_id, _org, patch) => ({ ...run, ...patch }) as TaskRun,
+      )
+      await recordRunOutcome({ ...run, status: 'running' } as TaskRun, { status: 'failure' }, { onlyIfActive: true })
+      expect(captureServer).toHaveBeenCalledTimes(1)
+
+      captureServer.mockClear()
+      vi.mocked(repository.closeActiveRun).mockResolvedValueOnce(null)
+      await recordRunOutcome({ ...run, status: 'running' } as TaskRun, { status: 'failure' }, { onlyIfActive: true })
+      expect(captureServer).not.toHaveBeenCalled()
     })
   })
 

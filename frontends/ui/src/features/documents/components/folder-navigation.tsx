@@ -299,7 +299,10 @@ interface FolderTileProps {
   itemCount: number
   /** Most recent child's timestamp — the "last change" for this folder, like file cards show file time. */
   lastModified?: string | null
-  /** Where the folder's whole subtree stands with Piloti (`subtreeTallies`). */
+  /**
+   * Where the folder's whole subtree stands with Piloti (`subtreeTallies`): a
+   * dot beside the name on a tile, the dot and its words on a list-view row.
+   */
   knowledge?: KnowledgeTally
   onOpen: (id: string) => void
   onRenameFolder: FolderNavProps['onRenameFolder']
@@ -554,14 +557,11 @@ export function FolderCard({
                   {folder.name}
                 </p>
                 {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
+                {/* The dot alone, after the name: what a folder holds at a
+                    glance, without a line of words on every tile. */}
+                <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
               </div>
             )}
-            {/* The read state on its own line under the name, never sharing
-                the footer: there, in a two-column phone grid or a four-column
-                desktop one, the count and the time took the width and „Alles
-                gelesen" was clipped to nothing — the one thing feld72 opened
-                folders to find out. */}
-            <FolderReadState tally={knowledge} className="mt-1 flex min-w-0 max-w-full" />
           </div>
         </GridTileBody>
         <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">

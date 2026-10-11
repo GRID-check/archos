@@ -110,14 +110,17 @@ describe('FileBrowserPane — card grid', () => {
     )
   })
 
-  it('shows the tinted extension chip, size and the ingestion status badge on each card', () => {
-    renderPane()
-    const cards = screen.getAllByTestId('file-card')
-    const card = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
+  it('shows the tinted extension chip and size, and a status badge only when the document is not citable', () => {
+    const { unmount } = renderPane()
+    const card = screen.getAllByTestId('file-card').find((c) => within(c).queryByText('site-plan.pdf'))!
     expect(within(card).getByText('PDF')).toBeInTheDocument()
     expect(within(card).getByText(/1 kB/)).toBeInTheDocument()
-    // The ingestion-status badge is kept — critical info the dummy lacks.
-    expect(within(card).getByText('Citable')).toBeInTheDocument()
+    // Citable is the normal state: the card says nothing about it.
+    expect(within(card).queryByText('Citable')).not.toBeInTheDocument()
+    unmount()
+
+    renderPane({ files: [{ ...files[0], status: 'processing' }] })
+    expect(within(screen.getByTestId('file-card')).getByText('Reading')).toBeInTheDocument()
   })
 
   it('surfaces the failure reason on failed cards', () => {
@@ -629,14 +632,45 @@ describe('FileBrowserPane — folder aggregates', () => {
       onDeleteFolder: vi.fn(),
     }
     const { unmount } = renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav })
-    const card = screen.getByTestId('folder-card-root-a')
-    expect(within(card).getByText('2 items')).toBeInTheDocument()
-    // The replaced Fassung failed to read, and nobody is told about it on the tile.
-    expect(within(card).getByTestId('folder-read-state')).not.toHaveAttribute('data-state', 'failed')
+    expect(within(screen.getByTestId('folder-card-root-a')).getByText('2 items')).toBeInTheDocument()
     unmount()
+
+    // The replaced Fassung failed to read, and nobody is told about it on the
+    // list view's row, the one place a folder's read state is drawn.
+    const list = renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, view: 'list' })
+    expect(within(screen.getByTestId('folder-row-root-a')).getByTestId('folder-read-state')).not.toHaveAttribute(
+      'data-state',
+      'failed'
+    )
+    list.unmount()
 
     renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, showOlderFassungen: true })
     expect(within(screen.getByTestId('folder-card-root-a')).getByText('3 items')).toBeInTheDocument()
+  })
+
+  it('marks a folder tile with the dot alone and spells the state out on the list view\'s row', () => {
+    const failed: FileItem = { ...files[1], id: 'broken', folderId: 'root-a', status: 'failed' }
+    const nav = {
+      folders: tree,
+      currentFolderId: null,
+      onNavigate: vi.fn(),
+      onCreateFolder: vi.fn(),
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    }
+    const { unmount } = renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav })
+    const dot = within(screen.getByTestId('folder-card-root-a')).getByTestId('folder-read-state')
+    expect(dot).toHaveAttribute('data-state', 'failed')
+    // The words are there for a screen reader and on hover, not drawn on the tile.
+    expect(dot).toHaveAttribute('title', '1 failed')
+    expect(within(dot).getByText('1 failed')).toHaveClass('sr-only')
+    unmount()
+
+    renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav, view: 'list' })
+    expect(within(screen.getByTestId('folder-row-root-a')).getByTestId('folder-read-state')).toHaveAttribute(
+      'data-state',
+      'failed'
+    )
   })
 
   it('survives a parent cycle in the folder rows rather than overflowing the stack', () => {

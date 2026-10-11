@@ -30,28 +30,36 @@ export const READ_MARK_KEY: Record<ReadMark['state'], string> = {
  * On every folder tile and row, so the read state of nested folders is visible
  * from the level above them without opening each one — the first thing feld72
  * asked for. Nothing is drawn for an empty folder.
+ *
+ * `dotOnly` is the tile's form: the swatch alone, its words on hover and for a
+ * screen reader. The colour is enough to browse by; spelled out on every tile
+ * the state was louder than browsing needs. The list view's row keeps the words.
  */
 export function FolderReadState({
   tally,
   withUnplaced = false,
+  dotOnly = false,
   className,
 }: {
   tally: KnowledgeTally | undefined
   withUnplaced?: boolean
+  dotOnly?: boolean
   className?: string
 }): JSX.Element | null {
   const t = useTranslations('files')
   const mark = tally ? readMarkOf(tally, { withUnplaced }) : null
   if (!mark) return null
+  const words = t(READ_MARK_KEY[mark.state], { count: mark.count })
   return (
     <span
       className={cn('text-muted-foreground inline-flex shrink-0 items-center gap-1.5 text-xs', className)}
       data-testid="folder-read-state"
       data-state={mark.state}
+      title={dotOnly ? words : undefined}
     >
       <ToneSwatch tone={READ_MARK_TONE[mark.state]} />
       {/* Truncates rather than pushing its row: the swatch stays, the words give way. */}
-      <span className="min-w-0 truncate">{t(READ_MARK_KEY[mark.state], { count: mark.count })}</span>
+      <span className={dotOnly ? 'sr-only' : 'min-w-0 truncate'}>{words}</span>
     </span>
   )
 }
