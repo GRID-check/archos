@@ -108,8 +108,10 @@ date.
 
 ## Open decisions
 
-1. **Replay.** It needs the legal copy changed and a consent decision. Until then
-   it ships off, with all text masked and document viewers blocked once on.
+1. **Replay.** It is on by default (`grid-oib:posthogSessionReplay`), with all
+   text masked and document viewers blocked, the moment a stack sets the token.
+   Counsel signs off on the legal copy and the consent posture first, or the
+   stack sets `posthogSessionReplay: "false"` until they have.
 2. **Langfuse export volume.** Enriched export sends every observation type.
    If observations per turn × turns approaches 1M a month, keep the PostHog
    charts on scores and generations and ask Langfuse for a narrower export
