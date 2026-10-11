@@ -415,6 +415,10 @@
               "de": "Ist die KI ausgelastet, gehen Antworten auf Ihre Fragen jetzt vor Hintergrundarbeit, etwa dem erneuten Verarbeiten der Dokumente eines Projekts, sodass ein großer Upload den Chat weniger ausbremst."
             },
             {
+              "en": "Browsing your files is calmer: the overview of what Piloti has read now sits as one line above each folder and opens on a click, folder tiles show a coloured dot instead of a phrase, and file cards only mark a document while it is being read or could not be read. The list view spells out every state.",
+              "de": "Das Durchsehen Ihrer Dateien ist jetzt übersichtlicher: Die Übersicht darüber, was Piloti gelesen hat, steht als einzelne Zeile über jedem Ordner und lässt sich per Klick öffnen. Ordnerkacheln zeigen statt eines Textes einen farbigen Punkt, und Dateikarten kennzeichnen ein Dokument nur, wenn es gerade gelesen wird oder nicht gelesen werden konnte. In der Listenansicht werden alle Status ausgeschrieben."
+            },
+            {
               "en": "Reprocessing a project and rereading its failed documents now carry on after an interruption instead of stopping halfway, and an upload made in the meantime is read first. Both start at once and run in the background, so the page no longer waits for them.",
               "de": "Das erneute Verarbeiten eines Projekts und das erneute Lesen fehlgeschlagener Dokumente laufen nach einer Unterbrechung weiter, statt auf halbem Weg stehen zu bleiben, und ein zwischendurch hochgeladener Upload wird zuerst gelesen. Beide starten sofort und laufen im Hintergrund, sodass die Seite nicht mehr auf sie wartet."
             }

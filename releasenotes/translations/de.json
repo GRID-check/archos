@@ -840,6 +840,10 @@
     "de": "„Bereits abgerufen“ steht jetzt nur dort, wo eine Stelle tatsächlich noch einmal geholt wurde."
   },
   {
+    "en": "Browsing your files is calmer: the overview of what Piloti has read now sits as one line above each folder and opens on a click, folder tiles show a coloured dot instead of a phrase, and file cards only mark a document while it is being read or could not be read. The list view spells out every state.",
+    "de": "Das Durchsehen Ihrer Dateien ist jetzt übersichtlicher: Die Übersicht darüber, was Piloti gelesen hat, steht als einzelne Zeile über jedem Ordner und lässt sich per Klick öffnen. Ordnerkacheln zeigen statt eines Textes einen farbigen Punkt, und Dateikarten kennzeichnen ein Dokument nur, wenn es gerade gelesen wird oder nicht gelesen werden konnte. In der Listenansicht werden alle Status ausgeschrieben."
+  },
+  {
     "en": "Building law now stays in the search when a question is about a specific file. „Erfüllt dieser Grundriss die Fluchtweganforderungen?“ used to search the floor plan and no Richtlinie.",
     "de": "Baurecht bleibt bei einer Frage zu einer bestimmten Datei in der Suche. „Erfüllt dieser Grundriss die Fluchtweganforderungen?“ hat früher nur im Grundriss gesucht und in keiner Richtlinie."
   },
