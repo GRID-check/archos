@@ -67,8 +67,8 @@ export type BentoSpan = keyof typeof SPANS
 
 /**
  * A grid cell for a card that brings its own chrome: an organism that is
- * already a raised card (the lifecycle card, the Steckbrief) takes a size in the
- * bento without being wrapped in a second card.
+ * already a raised card (the lifecycle card) takes a size in the bento without
+ * being wrapped in a second card.
  */
 export function BentoCell({
   span = 'small',

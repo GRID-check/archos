@@ -12,7 +12,6 @@ import { projectOverviewReader } from '@/lib/projects/service'
 import { resolveProjectSettingsAccess } from '@/lib/projects/settings-access'
 import { getSteckbrief } from '@/lib/projects/steckbrief-service'
 import { getSimilarProjects } from '@/lib/references/service'
-import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { BentoCell } from '@/components/ui/bento'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ProjectOverview } from '@/features/projects/components/overview/project-overview'
@@ -53,16 +52,7 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
     ])
     if (!data) notFound()
 
-    const [usage, accounts] = await Promise.all([
-      access.manageBudget ? getProjectUsage(session, id) : null,
-      // The organization's people, to link a Steckbrief person to their
-      // account; asked only of someone who may edit it. Names only, never e-mail.
-      steckbrief.canEdit
-        ? loadOrganizationDirectory(session.organizationId).then((directory) =>
-            [...directory.values()].map((person) => ({ userId: person.userId, name: person.name }))
-          )
-        : [],
-    ])
+    const usage = access.manageBudget ? await getProjectUsage(session, id) : null
 
     return (
       <ProjectOverview
@@ -70,7 +60,6 @@ export default async function ProjectOverviewPage({ params }: PageProps): Promis
         activity={activity}
         usage={usage}
         steckbrief={steckbrief}
-        steckbriefAccounts={accounts}
         similar={
           <Suspense
             fallback={

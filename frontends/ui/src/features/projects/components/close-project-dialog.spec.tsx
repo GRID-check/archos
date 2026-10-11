@@ -74,7 +74,8 @@ describe('CloseProjectDialog', () => {
 
     expect(screen.getByText('Step 1 of 3')).toBeInTheDocument()
     expect(screen.getByRole('radio', { name: /Completed/ })).toBeChecked()
-    expect(screen.getByLabelText('Completion')).toHaveValue('2026-09')
+    expect(screen.getByRole('combobox', { name: 'Completion' })).toHaveTextContent('September')
+    expect(screen.getByRole('combobox', { name: 'Year' })).toHaveTextContent('2026')
     expect(screen.getByTestId('close-changes')).toHaveTextContent('become read-only')
     // The proposal is a paid call: not for someone who only looked at step one.
     expect(fetchMock).not.toHaveBeenCalled()

@@ -11,7 +11,8 @@
  *   - the fingerprint the reference ranking reads (`lib/cross-project/fingerprint.ts`),
  *     each fact, „offen", or „trifft nicht zu" where the intake does not ask it
  *     of this project, with one link to the intake wizard, the profile's one
- *     editor, when a fact it writes is open; and the Steckbrief's period. A fact
+ *     editor, when a fact it writes is open. (The period is the Steckbrief's,
+ *     shown beside this debrief by `ClosingSteckbrief`.) A fact
  *     the closing extraction suggested (`docs/design/closed-project-experience.md`)
  *     shows its evidence and „Übernehmen", which writes it through the ordinary
  *     profile patch; the OIB edition is shown beside the facts when it is known;
@@ -35,19 +36,16 @@ import { Button } from '@/components/ui/button'
 import { Item, ItemActions, ItemContent, ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Textarea } from '@/components/ui/textarea'
-import { useLocale, useTranslations } from '@/i18n'
+import { useTranslations } from '@/i18n'
 import { isConfirmedMemory, memoryOriginOf } from '@/lib/cross-project/decision-origin'
 import { factLabel, fingerprintOf, type FingerprintKey } from '@/lib/cross-project/fingerprint'
 import type { ProjectMemoryItem } from '@/lib/db/schema'
 import type { ProjectExperienceError, ProjectExperienceResult } from '@/lib/project-experience/types'
 import type { ProjectAssumption, ProjectFact, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
-import { monthToDate, type Month } from '@/lib/projects/month'
 
 export interface ClosingDebriefProps {
   projectId: string
   profile: ProjectProfile | null
-  /** The Steckbrief's Beginn; the Abschluss is set by closing when it is unset. */
-  startedOn: Month | null
   /** Whether the reader may confirm decisions and record a lesson (project memory write). */
   canWriteMemory: boolean
 }
@@ -103,9 +101,8 @@ async function send<T>(url: string, init?: RequestInit): Promise<T> {
   return (await res.json()) as T
 }
 
-export function ClosingDebrief({ projectId, profile, startedOn, canWriteMemory }: ClosingDebriefProps): JSX.Element {
+export function ClosingDebrief({ projectId, profile, canWriteMemory }: ClosingDebriefProps): JSX.Element {
   const t = useTranslations('projects')
-  const { locale } = useLocale()
   const router = useRouter()
   const [items, setItems] = useState<DebriefItem[] | null>(null)
   const [failed, setFailed] = useState(false)
@@ -236,10 +233,7 @@ export function ClosingDebrief({ projectId, profile, startedOn, canWriteMemory }
   const fillable = facts.filter(
     (fact) => fact.applies && fact.editable && (fact.value === null || suggestionFor(profile, fact.key) !== null)
   )
-  const missing = fillable.length + (startedOn ? 0 : 1)
-  const startLabel = startedOn
-    ? new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).format(new Date(monthToDate(startedOn)))
-    : null
+  const missing = fillable.length
   const oibFact: ProjectFact | undefined = profile?.facts[OIB_KEY]
   const oibConfirmed = oibFact && oibFact.value !== null ? valueText(OIB_KEY, oibFact.value) : null
   const oibSuggested = suggestionFor(profile, OIB_KEY)
@@ -336,14 +330,6 @@ export function ClosingDebrief({ projectId, profile, startedOn, canWriteMemory }
                   : t('lifecycle.debrief.fingerprint.derivedOpen')
             )
           )}
-          <Item as="li" className="py-2">
-            <ItemContent className="text-sm">{t('lifecycle.debrief.fingerprint.period')}</ItemContent>
-            <ItemActions className={startLabel ? 'text-foreground text-sm' : 'text-muted-foreground text-sm italic'}>
-              {startLabel
-                ? t('lifecycle.debrief.fingerprint.periodOpen', { start: startLabel })
-                : t('lifecycle.debrief.fingerprint.periodNone')}
-            </ItemActions>
-          </Item>
           {(oibConfirmed !== null || oibSuggested !== null) &&
             renderRow(OIB_KEY, t('lifecycle.debrief.fingerprint.labels.oibEdition'), oibConfirmed, '')}
         </ItemList>
