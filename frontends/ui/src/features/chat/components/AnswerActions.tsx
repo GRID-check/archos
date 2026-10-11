@@ -59,6 +59,7 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { copyMarkdownToClipboard } from '@/shared/utils/clipboard-rich'
 import { startBrowserDownload } from '@/lib/browser-download'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useAnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
 import type { StripOptions } from '@/lib/text/answer-directives'
 import {
@@ -184,6 +185,8 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
       const url = URL.createObjectURL(blob)
       try {
         startBrowserDownload(url, filename)
+        // The kind and the format, never the file name (it carries the question).
+        capturePosthog('report_exported', { kind: 'answer', format: 'docx' })
       } finally {
         // The download has the blob by reference; the URL itself can go on the
         // next tick without cutting it off.

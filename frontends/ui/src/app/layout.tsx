@@ -23,16 +23,13 @@ import { getEffectiveMaxUploadBytes } from '@/lib/storage/upload-limit'
 import { getGridSession } from '@/lib/auth/session'
 import { runWithTenantSlot } from '@/lib/db/tenant-context'
 import { PRODUCT_NAME } from '@/lib/brand'
-import {
-  FEATURE_FLAGS,
-  isFeatureEnabled,
-  isIfcModelsEnabled,
-  type KnownFeatureFlag,
-} from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS, isFeatureEnabled, type KnownFeatureFlag } from '@/lib/authz/feature-flags'
 import { getLocale } from '@/i18n/server'
 import { getDictionary } from '@/i18n'
 import './globals.css'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { postHogConfigFromEnv, type PostHogConfig, type PostHogIdentity } from '@/lib/analytics/posthog-config'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
 
 const geistSans = Geist({
   subsets: ['latin'],
@@ -106,29 +103,15 @@ export const metadata: Metadata = {
 /**
  * Whether standalone image upload is offered to this session (WorkOS
  * `image-upload` flag, FB-15a). Read tolerantly — an unauthenticated route or a
- * session-lookup failure must never break the layout; it just falls back to the
- * flag's default (fail-open when enforcement is off, so images are offered).
+ * session-lookup failure must never break the layout; it reads as a session
+ * without the claim (off where people sign in, on where nobody does).
  */
 const isImageUploadEnabled = async (): Promise<boolean> =>
   isSessionFlagEnabled(FEATURE_FLAGS.imageUpload)
 
-/**
- * Whether IFC model upload is offered to this session (WorkOS `ifc-models`).
- *
- * Read through `isIfcModelsEnabled`, not the flag directly: this feature is
- * dark-launched, so with enforcement off it needs `GRID_IFC_MODELS_ENABLED`
- * rather than falling open like the cosmetic flags do.
- */
-const isIfcUploadEnabled = async (): Promise<boolean> => {
-  try {
-    return await runWithTenantSlot(async () => {
-      const session = await getGridSession()
-      return isIfcModelsEnabled(session ?? { featureFlags: null })
-    })
-  } catch {
-    return isIfcModelsEnabled({ featureFlags: null })
-  }
-}
+/** Whether IFC model upload is offered to this session (WorkOS `ifc-models`). */
+const isIfcUploadEnabled = async (): Promise<boolean> =>
+  isSessionFlagEnabled(FEATURE_FLAGS.ifcModels)
 
 const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> => {
   try {
@@ -137,8 +120,7 @@ const isSessionFlagEnabled = async (flag: KnownFeatureFlag): Promise<boolean> =>
     // slot is open — with none, into an ambient binding that does not survive.
     return await runWithTenantSlot(async () => {
       const session = await getGridSession()
-      if (!session) return isFeatureEnabled({ featureFlags: null }, flag)
-      return isFeatureEnabled(session, flag)
+      return isFeatureEnabled(session ?? { featureFlags: null }, flag)
     })
   } catch {
     return isFeatureEnabled({ featureFlags: null }, flag)
@@ -165,10 +147,42 @@ const getSessionMaxUploadBytes = async (): Promise<number | undefined> => {
 }
 
 /**
+ * Who the server already knows the visitor is, for PostHog's `bootstrap`: with
+ * it the first pageview is identified, where an id handed over only after
+ * hydration left that pageview on an anonymous person.
+ *
+ * `null` for a signed-out visitor (no bootstrap, no profile), when analytics is
+ * off (no lookup is spent on it), when auth is off (there is no person), and on any failure: the browser then
+ * identifies after AuthKit restores its session, as it did before. Non-personal
+ * fields only; no email, no name.
+ */
+const getPosthogIdentity = async (
+  posthog: PostHogConfig,
+  locale: string
+): Promise<PostHogIdentity | null> => {
+  if (!posthog.host || !posthog.projectToken || !isAuthRequired()) return null
+  try {
+    return await runWithTenantSlot(async () => {
+      const session = await getGridSession()
+      if (!session?.userId) return null
+      return {
+        distinctId: session.userId,
+        organizationId: session.organizationId,
+        organizationName: await getOrganizationDisplayName(session.organizationId),
+        role: session.role,
+        locale,
+      }
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
  * Runtime configuration from server-side environment variables.
  * These values can be changed at runtime without rebuilding the container.
  */
-const getAppConfig = async (): Promise<AppConfig> => {
+const getAppConfig = async (locale: string): Promise<AppConfig> => {
   // Image upload = flag AND capability; IFC upload = flag alone (extraction runs
   // in this process, so there is no capability to derive). Resolved server-side
   // so the picker and validation share ONE accepted-types list with the upload
@@ -179,6 +193,7 @@ const getAppConfig = async (): Promise<AppConfig> => {
     isIfcUploadEnabled(),
     getSessionMaxUploadBytes(),
   ])
+  const posthog = postHogConfigFromEnv(process.env)
   return {
     authRequired: isAuthRequired(),
     fileUpload: getFileUploadConfigFromEnv(process.env, {
@@ -191,10 +206,10 @@ const getAppConfig = async (): Promise<AppConfig> => {
     // files, so a client-side `process.env.NEXT_PUBLIC_*` read would bake
     // `undefined` into the bundle and silently disable analytics on every
     // deployed environment. Empty values keep the client disabled (fail-open).
-    posthog: {
-      host: process.env.NEXT_PUBLIC_POSTHOG_HOST ?? '',
-      projectToken: process.env.NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN ?? '',
-    },
+    // Replay, its sample rate and the first-party proxy switch are read here
+    // for the same reason as the host and token (`posthog-config.ts`).
+    posthog,
+    posthogIdentity: await getPosthogIdentity(posthog, locale),
   }
 }
 
@@ -204,8 +219,8 @@ interface RootLayoutProps {
 
 const RootLayout = async ({ children }: RootLayoutProps): Promise<ReactNode> => {
   await connection()
-  const config = await getAppConfig()
   const locale = await getLocale()
+  const config = await getAppConfig(locale)
   const t = getDictionary(locale).common
 
   return (

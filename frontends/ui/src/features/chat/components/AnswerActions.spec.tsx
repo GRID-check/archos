@@ -13,12 +13,16 @@
 
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { vi, describe, test, expect, beforeEach } from 'vitest'
+import { vi, describe, test, expect, beforeEach, afterEach } from 'vitest'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import { startBrowserDownload } from '@/lib/browser-download'
 import { AnswerActions } from './AnswerActions'
 import { buildCitationModel } from '../lib/citations'
 
 const toastError = vi.hoisted(() => vi.fn())
 vi.mock('sonner', () => ({ toast: { error: toastError } }))
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
+vi.mock('@/lib/browser-download', () => ({ startBrowserDownload: vi.fn() }))
 
 const documents = buildCitationModel({
   citations: [
@@ -130,6 +134,54 @@ describe('AnswerActions', () => {
 
     expect(screen.getByRole('button', { name: 'Copy answer' })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Download as Word document' })).toBeInTheDocument()
+  })
+
+  describe('Word export and PostHog', () => {
+    const renderExportable = () =>
+      render(
+        <AnswerActions content="Nur Prosa." body="Nur Prosa." documents={[]} conversationId="conv-1" messageId="msg-1" />
+      )
+
+    beforeEach(() => {
+      URL.createObjectURL = vi.fn(() => 'blob:export')
+      URL.revokeObjectURL = vi.fn()
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+    })
+
+    test('records the export by kind and format, never by file name', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn(async () => ({
+          ok: true,
+          blob: async () => new Blob(['docx']),
+          headers: new Headers({ 'content-disposition': 'attachment; filename="Fluchtweg-Frage.docx"' }),
+        }))
+      )
+      const user = userEvent.setup()
+      renderExportable()
+
+      await user.click(screen.getByRole('button', { name: 'Download as Word document' }))
+
+      await waitFor(() =>
+        expect(capturePosthog).toHaveBeenCalledWith('report_exported', { kind: 'answer', format: 'docx' })
+      )
+      expect(startBrowserDownload).toHaveBeenCalledWith('blob:export', 'Fluchtweg-Frage.docx')
+      expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toContain('Fluchtweg')
+    })
+
+    test('records nothing when the export fails', async () => {
+      vi.stubGlobal('fetch', vi.fn(async () => ({ ok: false, status: 500 })))
+      const user = userEvent.setup()
+      renderExportable()
+
+      await user.click(screen.getByRole('button', { name: 'Download as Word document' }))
+
+      await waitFor(() => expect(toastError).toHaveBeenCalled())
+      expect(capturePosthog).not.toHaveBeenCalled()
+    })
   })
 
   test('hides the plain copy once the with-sources copy is available', () => {

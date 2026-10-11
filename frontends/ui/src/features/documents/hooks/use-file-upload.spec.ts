@@ -1,6 +1,9 @@
 import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { en } from '@/i18n/dictionaries/en'
+import { capturePosthog } from '@/lib/analytics/posthog'
+
+vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
 
 // Use vi.hoisted for mocks that need to be available before vi.mock
 const { mockClient, mockDocumentsStoreState, mockOrchestratorFns } = vi.hoisted(() => {
@@ -540,6 +543,49 @@ describe('useFileUpload — durable document uploads', () => {
     const body = xhr.requests[0].body as FormData
     expect(body.get('projectId')).toBe('proj-1')
     expect(body.get('folderId')).toBe('folder-9')
+  })
+
+  test('tells PostHog how many files of which types were taken, never their names', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles([
+        new File(['x'], 'Einreichplan-Haus-Meier.pdf', { type: 'application/pdf' }),
+        new File(['x'], 'Statik.docx'),
+        new File(['x'], 'Deckblatt.pdf', { type: 'application/pdf' }),
+      ])
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests.forEach((request, i) => request.respond(200, uploadOk(`doc-${i}`)))
+      await pending
+    })
+
+    expect(capturePosthog).toHaveBeenCalledTimes(1)
+    expect(capturePosthog).toHaveBeenCalledWith('document_uploaded', {
+      count: 3,
+      types: 'docx,pdf',
+      shelf: 'project',
+    })
+    expect(JSON.stringify(vi.mocked(capturePosthog).mock.calls)).not.toMatch(/Meier|Einreichplan/)
+  })
+
+  test('counts only the files the server took', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(2))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0]!.respond(200, uploadOk('doc-0'))
+      xhr.requests[1]!.respond(500, JSON.stringify({ error: 'boom' }))
+      await pending
+    })
+
+    expect(capturePosthog).toHaveBeenCalledWith('document_uploaded', expect.objectContaining({ count: 1 }))
   })
 
   test('does not send a file the office screens out, and says which and why', async () => {

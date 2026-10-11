@@ -342,11 +342,10 @@ User uploads file
 
 ---
 
-## The "Read by Piloti" Panel (files-metadata-panel flag)
+## The "Read by Piloti" Panel
 
-With the `files-metadata-panel` feature flag on (the default while flag
-enforcement is off), the preview pane leads with a **Read by Piloti** panel
-showing what ingestion extracted from the document:
+The preview pane leads with a **Read by Piloti** panel showing what ingestion
+extracted from the document (the compact peek of a cited source leaves it out):
 
 - the one-sentence **AI summary** that grounds the agent's answers
 - key-value rows from real metadata only: detected **document type** (first
@@ -567,8 +566,7 @@ project in your organization** — every project's chat automatically searches t
 Büroablage alongside its own documents and the base corpus, with no per-project
 re-upload. Any member can browse, preview, and download Büroablage documents;
 uploading and deleting require the **`org:archiv:manage`** permission (org admins
-have it). It is the same workspace as the project Files tab — upload, ingestion, preview and folders. The feature is gated by the `organization-archiv` feature flag
-(available to all orgs while flag enforcement is off; targeted per-org once on).
+have it). It is the same workspace as the project Files tab — upload, ingestion, preview and folders. Every organization has one.
 
 The Büroablage is the project Files workspace over the office's shelf: **one
 component, two shelves** (`FileWorkspace`; see

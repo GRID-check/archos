@@ -562,7 +562,7 @@ class RejectedBody(_CustomBody):
 #: the hello. The server reads client messages strictly (``extra="forbid"``), so
 #: a client sends an optional field only to a server whose hello names it: a tab
 #: that outlives a rolling deploy may be talking to a pod one release older.
-ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = ("cancel_turn.shown",)
+ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = ("cancel_turn.shown", "user_message.posthog_session_id")
 
 
 class HelloValue(_Model):
@@ -790,6 +790,16 @@ class UserMessage(_ClientBase):
     reasoning_effort: Literal["minimal", "low", "medium", "high", "xhigh"] | None = Field(
         default=None,
         description="The composer's Aufwand dial for this turn; absent keeps the platform level.",
+    )
+    posthog_session_id: str | None = Field(
+        default=None,
+        max_length=64,
+        description=(
+            "The browser's PostHog session id (posthog-js `get_session_id()`) when product analytics is on. "
+            "Read per turn because the id rotates after 30 idle minutes. Bounded here and checked for the "
+            "UUIDv7 shape where it is used (`langfuse_trace_attributes.record_posthog_session`): "
+            "a malformed value costs the replay link, never the turn."
+        ),
     )
 
 

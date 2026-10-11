@@ -40,10 +40,6 @@ describe('/api/auth/websocket-scope', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     delete process.env.REQUIRE_AUTH
-    // Keep the reflection gate at its documented defaults (flags not enforced,
-    // GRID_MEMORY_REFLECTION_ENABLED unset → on) regardless of ambient env.
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_MEMORY_REFLECTION_ENABLED
     mockLoadProjectPromptView.mockResolvedValue(null)
   })
 
@@ -75,8 +71,8 @@ describe('/api/auth/websocket-scope', () => {
       // and the conversationId it authorized so the signed envelope carries it.
       projectId: 'proj-1',
       conversationId: 'conv-1',
-      // Anonymous mode: no org, and GRID_ENFORCE_FEATURE_FLAGS is off, so the
-      // GRID_MEMORY_REFLECTION_ENABLED fallback decides — and it defaults ON.
+      // Anonymous mode: nobody signs in, so the reflection stage gets a
+      // rollout's fixed answer — ON.
       memoryReflectionEnabled: true,
     })
     expect(mockRequireProjectAccess).not.toHaveBeenCalled()

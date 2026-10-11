@@ -259,9 +259,8 @@ export interface LangfuseInputs {
  * **Access.** Two independent gates, and both are wanted:
  *
  *   1. The Envoy SecurityPolicy on the route (`platformOidcSecurityPolicySpec`)
- *      admits only WorkOS identities holding `platform:organizations:view` —
- *      the rule that protects the Aspire dashboard, because the data is the
- *      same data: every tenant's prompts and model output — or the narrower
+ *      admits only WorkOS identities holding `platform:organizations:view`
+ *      (the data is every tenant's prompts and model output) or the narrower
  *      `platform:observability:view`, which the read-only
  *      `platform-observability-analyst` role carries.
  *   2. Langfuse's own SSO (`AUTH_CUSTOM_*`) against that same issuer then
@@ -269,9 +268,8 @@ export interface LangfuseInputs {
  *      org and project as `defaultRole` (VIEWER), so an analyst reads and an
  *      owner promotes in the Langfuse UI.
  *
- * The second is not redundant. Unlike the Aspire dashboard, Langfuse cannot run
- * unauthenticated — it has users, projects and API keys of its own, and needs
- * to know who is asking. But it would, on its own, accept anyone who can sign
+ * The second is not redundant. Langfuse cannot run unauthenticated — it has
+ * users, projects and API keys of its own, and needs to know who is asking. But it would, on its own, accept anyone who can sign
  * in to the WorkOS environment at all; the permission check that narrows that
  * to platform operators exists only at the edge. Removing either one is a real
  * widening of who can read cross-tenant telemetry.
@@ -722,8 +720,7 @@ export function installLangfuse(
         domain: lf.domain,
         secretName: SECRETS_NAME,
         // Read-only analysts reach Langfuse without the operator permission;
-        // inside it they land as `defaultRole` (VIEWER). The Aspire dashboard
-        // stays operator-only: it has no users of its own to scope them by.
+        // inside it they land as `defaultRole` (VIEWER).
         alsoAdmit: [OBSERVABILITY_VIEW_PERMISSION],
       }),
     },

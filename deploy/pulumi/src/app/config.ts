@@ -196,9 +196,6 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
-    // err2issue's PAT, for the BFF filing bug reports as issues. Absent rather
-    // than empty when that is off, so the Secret holds no credential it needn't.
-    ...(cfg.feedbackIssues.enabled ? { GRID_GITHUB_TOKEN: cfg.feedbackIssues.githubToken } : {}),
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -243,6 +240,39 @@ export const BACKEND_URL = `http://aiq-api:${PORT.backend}`;
  * per-pod address (`BACKEND_POD_WS_TEMPLATE`) and only falls back to this.
  */
 export const BACKEND_CHAT_URL = `http://aiq-agent:${PORT.backend}`;
+
+/**
+ * The Python tiers' PostHog pair (`POSTHOG_HOST`, `POSTHOG_PROJECT_TOKEN`), or
+ * nothing unless both are configured, plus `POSTHOG_RELEASE_ID` when the deploy
+ * resolved a release for the backend image (posthog-python reads it itself and
+ * sends it as `$release_id`). Exported for `posthog.spec.ts`.
+ */
+export function posthogEnv(cfg: GridConfig): EnvVar[] {
+  const { host, projectToken, releaseId } = cfg.posthog;
+  if (host === "" || projectToken === "") return [];
+  return [
+    { name: "POSTHOG_HOST", value: host },
+    { name: "POSTHOG_PROJECT_TOKEN", value: projectToken },
+    ...(releaseId === "" ? [] : [{ name: "POSTHOG_RELEASE_ID", value: releaseId }]),
+  ];
+}
+
+/**
+ * The landing site's PostHog pair (`PUBLIC_POSTHOG_HOST`,
+ * `PUBLIC_POSTHOG_PROJECT_TOKEN`), or nothing unless both are configured: the
+ * same stack keys the other runtimes read, under the names the Astro tier uses.
+ * `frontends/web/src/pages/web-analytics.js.ts` reads them per request (the
+ * pages are prerendered and the image builds with no env files) and answers an
+ * empty script without them. Exported for `web.spec.ts`.
+ */
+export function webPosthogEnv(cfg: GridConfig): EnvVar[] {
+  const { host, projectToken } = cfg.posthog;
+  if (host === "" || projectToken === "") return [];
+  return [
+    { name: "PUBLIC_POSTHOG_HOST", value: host },
+    { name: "PUBLIC_POSTHOG_PROJECT_TOKEN", value: projectToken },
+  ];
+}
 
 /**
  * Backend environment shared by every role of the image. Postgres DSNs
@@ -297,12 +327,12 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     { name: "REQUIRE_AUTH", value: String(cfg.auth.requireAuth) },
     { name: "WORKOS_CLIENT_ID", value: cfg.auth.workosClientId },
     // OTLP tracing via the cluster collector (ADR-0029 amendment). Producers
-    // send plain OTLP in-cluster — the collector alone holds the Aspire API
+    // send plain OTLP in-cluster — the collector alone holds the Langfuse
     // key. HTTP/protobuf to :4318 — the full /v1/traces path is required: the
     // NAT exporter posts to the endpoint as-is (path appending only happens
     // for SDK env-var defaults, not for an endpoint the config passes
     // explicitly). OTEL_SERVICE_NAME becomes service.name on the spans so
-    // chat tier and worker tier are distinct resources in the dashboard.
+    // chat tier and worker tier are distinct resources in Langfuse.
     // Injected only when the observability tier is deployed — otherwise every
     // span export would retry against a Service that doesn't exist.
     ...(cfg.observability.enabled
@@ -311,11 +341,22 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
           { name: "OTEL_EXPORTER_OTLP_ENDPOINT", value: "http://otel-collector:4318/v1/traces" },
         ]
       : []),
+    // PostHog, the Python half of the one configuration the frontend already
+    // reads (`NEXT_PUBLIC_POSTHOG_*`): `observability/posthog_client.py` no-ops
+    // unless BOTH are set, so both or neither, never a half-configured pod. The
+    // token is a public `phc_` key, plain config like the frontend's. Here in
+    // `backendEnv` because chat, api, agent-worker and ingest-worker all build
+    // from it; none of them has a reason to be the odd one out.
+    //
+    // No rollout checksum: these are literal env values in the pod template, so
+    // changing either rolls every tier by itself (a checksum is for values a
+    // pod reads from a Secret or ConfigMap, which Kubernetes does not watch).
+    ...posthogEnv(cfg),
     // Langfuse session/user attribution (ADR-0044). Keyed off the LANGFUSE
     // tier, not the observability one, and that distinction is the point:
     // stamping a user id on every span is only worth its privacy cost where
-    // there is a store that groups traces by user. An Aspire-only deployment
-    // gets no identity attributes at all.
+    // there is a store that groups traces by user. A stack that exports only
+    // PostHog logs gets no identity attributes at all.
     ...(cfg.langfuse.enabled
       ? [{ name: "GRID_TRACE_IDENTITY_ATTRIBUTES", value: "true" }]
       : []),
@@ -489,6 +530,10 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // env files; a build-time read would bake `undefined` into the bundle).
     { name: "NEXT_PUBLIC_POSTHOG_HOST", value: cfg.posthog.host },
     { name: "NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN", value: cfg.posthog.projectToken },
+    // Session replay: off unless the stack opts in; the browser masks all text
+    // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
+    { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
+    { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
     // BYOK.
     { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
     sref("GRID_BYOK_LOCAL_KEK"),
@@ -517,12 +562,6 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     { name: "GRID_PLATFORM_ORG_EXTERNAL_ID", value: cfg.auth.platformOrgExternalId },
     { name: "GRID_DISABLE_SELF_SERVE_ORGS", value: String(cfg.auth.disableSelfServeOrgs) },
     { name: "GRID_AUDIT_LOGS_ENABLED", value: String(cfg.auth.auditLogsEnabled) },
-    { name: "GRID_ENFORCE_FEATURE_FLAGS", value: String(cfg.auth.enforceFeatureFlags) },
-    // Bug reports → GitHub issues. Both or neither: the repo variable is the
-    // switch the BFF reads, and without it the token is never used.
-    ...(cfg.feedbackIssues.enabled
-      ? [sref("GRID_GITHUB_TOKEN"), { name: "GRID_FEEDBACK_ISSUES_REPO", value: cfg.feedbackIssues.repo }]
-      : []),
     // Shared cache + WS rate limiting (needed for >1 replica correctness).
     // Authenticated: the URL carries the password, so it comes from the Secret.
     sref("REDIS_URL"),
@@ -532,35 +571,11 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // drop every streaming answer in flight on each deploy. Must stay inside the
     // pod's terminationGracePeriodSeconds (see ROLLOUT.frontend in rollout.ts).
     { name: "GRID_SHUTDOWN_DRAIN_MS", value: String(FRONTEND_DRAIN_SECONDS * 1000) },
-    // Agent Skills + Jobs (ADR-0046). Frontend AND scheduler: the tabs, every
-    // /api/skills and /api/projects/[id]/jobs route, and the worker's start
-    // gate all read GRID_SKILLS_ENABLED.
-    { name: "GRID_SKILLS_ENABLED", value: String(cfg.skills.enabled) },
+    // Agent Skills + Jobs (ADR-0046). Whether the feature exists for an
+    // organization is its `skills` WorkOS flag, like every other feature
+    // (`frontends/ui/src/lib/authz/feature-flags.ts`); only the scheduling
+    // floor is deployment configuration.
     { name: "GRID_SKILL_MIN_INTERVAL_MINUTES", value: String(cfg.skills.minIntervalMinutes) },
-    // Collaboration (ADR-0032…0035). Frontend-only: the inbox, the share
-    // surfaces and the mention picker are BFF/UI concerns, so no worker or the
-    // backend needs this. Without it the feature is invisible even on a
-    // deployment carrying its code — which is exactly the dark-launch contract.
-    { name: "GRID_COLLABORATION_ENABLED", value: String(cfg.collaboration.enabled) },
-    // Outlook archive import (ADR-0085). Read by the routes that start and
-    // complete an import; the bff-jobs pods inherit it with the rest of this
-    // block, and the filing job does not re-check it, so turning it off stops
-    // new imports and lets a running one finish.
-    { name: "GRID_MAIL_IMPORT_ENABLED", value: String(cfg.mailImport.enabled) },
-    // IFC/BIM models (ADR-0045). Frontend-only: extraction runs in the BFF
-    // process and the viewer in the browser, so neither the worker nor the
-    // backend needs it. Default-deny for the same reason as collaboration —
-    // this one renders compliance verdicts.
-    { name: "GRID_IFC_MODELS_ENABLED", value: String(cfg.ifcModels.enabled) },
-    // Agent-authored documents. Frontend-only: the filing seam lives in the BFF
-    // (`lib/documents/generated.ts`) and no worker or backend path reaches it.
-    // Default ON — the tenant-facing lever is the `project:documents:generate`
-    // permission; this is the operator's, for stopping filing across every
-    // tenant at once without touching a role.
-    {
-      name: "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED",
-      value: String(cfg.agentAuthoredDocuments.enabled),
-    },
     // Storage-quota alerting (ADR-0042). Read by the sweep behind
     // /api/internal/storage/alerts, which the storage-alerts CronJob calls — so
     // it belongs to the frontend even though nothing renders it. Escalation to
@@ -569,12 +584,6 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
       name: "GRID_STORAGE_ALERT_THRESHOLD_PERCENT",
       value: String(cfg.storageAlerts.thresholdPercent),
     },
-    // Memory reflection (project-memory-design.md §3.5). Frontend-only: the BFF
-    // consults it at the WS upgrade and forwards the decision to the backend as
-    // a header. Default-on like the feature itself — consulted only while
-    // enforceFeatureFlags is off; with enforcement on, the per-org
-    // `memory-reflection` WorkOS flag decides instead.
-    { name: "GRID_MEMORY_REFLECTION_ENABLED", value: String(cfg.memory.reflectionEnabled) },
     // Office → PDF rendition (ADR-0070). Frontend-only: the BFF is the one
     // converter; the backend receives the finished PDF as `preview_ref`, and
     // for Word/presentation/.xls/.ods also as `extraction_ref`, the only
@@ -727,8 +736,6 @@ export function schedulerEnv(w: AppWiring): EnvVar[] {
     sref("GRID_APP_DATABASE_URL"),
     { name: "FRONTEND_INTERNAL_URL", value: `http://frontend:${PORT.frontend}` },
     sref("GRID_INTERNAL_API_TOKEN"),
-    { name: "GRID_SKILLS_ENABLED", value: String(cfg.skills.enabled) },
-    { name: "GRID_ENFORCE_FEATURE_FLAGS", value: String(cfg.auth.enforceFeatureFlags) },
     { name: "GRID_SKILL_SCHEDULER_POLL_MS", value: String(APP_DEFAULTS.schedulerPollMs) },
     { name: "GRID_SKILL_SCHEDULER_BATCH", value: String(APP_DEFAULTS.schedulerBatch) },
     { name: "GRID_SKILL_RUNS_RETENTION_DAYS", value: String(APP_DEFAULTS.skillRunsRetentionDays) },

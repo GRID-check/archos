@@ -1,3 +1,39 @@
+import type { Instrumentation } from "next";
+
+/**
+ * The list `server.js` drains before it exits (it is CommonJS and cannot import
+ * this module, and this one is bundled by Next, so a global is the one thing
+ * both can see). Same key as `SHUTDOWN_HOOKS_KEY` in `server.js`.
+ */
+const SHUTDOWN_HOOKS_KEY = "__gridShutdownHooks";
+
+const registerShutdownHook = (hook: () => Promise<void>): void => {
+  const holder = globalThis as Record<string, unknown>;
+  const hooks = (holder[SHUTDOWN_HOOKS_KEY] ??= []) as Array<() => Promise<void>>;
+  hooks.push(hook);
+};
+
+/**
+ * Server errors Next.js catches (render, route handler, server action, proxy)
+ * go to PostHog error tracking, replacing the console-to-OTLP-to-err2issue path
+ * (ADR-0031, ADR-0100). A named export, not a registration: Next calls it
+ * whether or not `register()` returned early, so a deployment without an OTLP
+ * collector still reports. Node only: the configuration imports server code
+ * (the scrubber, the authz check) that the Edge bundle must not pull in.
+ * The capture is `@posthog/next`'s `createOnRequestError`; our configuration of
+ * it (settings, scrubber, what is skipped): `lib/analytics/request-error`.
+ */
+export const onRequestError: Instrumentation.onRequestError = async (error, request, context) => {
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
+  try {
+    const { requestErrorHandler } = await import("./lib/analytics/request-error");
+    await requestErrorHandler()?.(error, request, context);
+  } catch (failure) {
+    // Reporting an error must never raise a second one on the request's path.
+    console.error("[posthog] could not report a request error:", failure);
+  }
+};
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
 
@@ -34,24 +70,31 @@ export async function register() {
     console.error("[Model Config] Could not run the platform default bootstrap:", error);
   }
 
+  // PostHog error tracking (ADR-0100) does not depend on the OTLP collector, so
+  // its shutdown flush is registered here, before the early return below: a
+  // deployment with PostHog and no collector must still deliver the exceptions
+  // queued when a pod is replaced. `server.js` runs every hook on this list
+  // before it exits (`__gridShutdownHooks`); the client queues nothing, and the
+  // hook does nothing, while PostHog is off.
+  registerShutdownHook(async () => {
+    const { shutdownPosthogServer } = await import("./lib/analytics/posthog-server");
+    await shutdownPosthogServer();
+  });
+
   // Capability derived from the dependency: no collector endpoint configured
   // (local dev, compose without observability) → no-op, zero overhead.
   if (!process.env.OTEL_EXPORTER_OTLP_ENDPOINT) return;
 
-  const { registerOTel } = await import("@vercel/otel");
-  const { RootSpanDropSampler } = await import("../observability/span-sampler.js");
-  registerOTel({
-    serviceName: process.env.OTEL_SERVICE_NAME ?? "grid-ui",
-    // One trace per HTTP request flooded Langfuse with health probes, RSC
-    // navigations and BFF POSTs whose real work already appears in the
-    // backend tiers' traces. Root spans are dropped at creation; errors stay
-    // visible through the OTel log bridge below (and err2issue). See the
-    // module's header and ADR-0029 Amendment 5.
-    traceSampler: new RootSpanDropSampler(),
-  });
-
-  // Bridge console.* to OTLP log records (Aspire "Strukturierte Protokolle").
-  // Shared with the scheduler/purger workers; no-ops without the endpoint.
+  // Logs only. The BFF registers no trace provider: one trace per HTTP request
+  // (health probes, RSC navigations, BFF POSTs) flooded Langfuse, so ADR-0029
+  // Amendment 5 dropped every root span at creation, which left a provider that
+  // recorded nothing. The operation a request forwards appears as a richer span
+  // in the agent tier's own trace, and errors reach PostHog through
+  // `onRequestError` above and the log bridge below.
+  //
+  // Bridge console.* to OTLP log records, which the collector forwards to
+  // PostHog Logs. Shared with the scheduler/purger workers; no-ops without the
+  // endpoint.
   const { initOtelLogs } = await import("../observability/otel-logs.js");
   initOtelLogs();
 }

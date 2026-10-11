@@ -295,8 +295,8 @@ What differs is who may (`org:archiv:manage` instead of `project:documents:write
 the collection (`archiv_<orgId>`), the object key prefix (`org/{orgId}/archiv/`), the
 audit action name, and a folder row's `projectId`, which is `null` here.
 
-All routes are gated by the `organization-archiv` feature flag (available to all
-while flag enforcement is off; per-org once on); a disabled org gets `403 { error: 'feature-disabled' }`.
+Every member of an organization reaches these routes; changing the Archiv takes
+`org:archiv:manage`, enforced in the services.
 
 | Method | Path | Auth | Notes | Request | Response |
 |--------|------|------|-------|---------|----------|
@@ -357,10 +357,7 @@ its conversation, so a vote can name an answer with no `messages` row. Whether
 the answer drew on a restricted folder is the server's own mark on that id,
 written at admission (`message_restricted_use`, ADR-0093), never the
 `conversationId` the client sends with the vote, which can only add to it. Voting
-model: re-vote = upsert, toggle-off = `DELETE` (no tombstones). All routes are
-gated by the `answer-feedback` feature flag (available to all while
-`GRID_ENFORCE_FEATURE_FLAGS` is off; stable `feature-disabled` 403 once on).
-Users only ever read/write their **own** votes; when a vote carries a
+model: re-vote = upsert, toggle-off = `DELETE` (no tombstones). Users only ever read/write their **own** votes; when a vote carries a
 `projectId`, `project:view` FGA is additionally enforced.
 
 | Method | Path | Auth | Description | Request | Response |
@@ -388,7 +385,7 @@ Source: `frontends/ui/src/app/api/feedback/answers/route.ts`; `frontends/ui/src/
 | `POST` | `/api/platform/knowledge/sync` | Platform owner | Run one corpus sync cycle now (proxies `POST /v1/admin/oib/sync`): the same cycle the `base-corpus` housekeeping route runs every ten minutes: it queues an ingest job for every file whose index is not built from its current bytes and records the jobs that finished. | — | `{ filesAdded, filesTotal, message }` |
 | `POST` | `/api/platform/knowledge/reingest` | Platform owner | Rebuild the chunks of SELECTED base-corpus documents (proxies `POST /v1/admin/oib/reingest`). Distinct from `sync`, which gates on each file's recorded hash and chunk-format version and so does nothing for a file the index is built from — this forces the rebuild, which is what is needed after a change to how chunks are *built* (chunking, embedding model, a half-failed ingest). Returns as soon as the work is queued; each document then reads `pending` in `/api/knowledge-base` until its chunks exist again. Unknown names are reported in `unknown` rather than failing the call. | `{ fileNames: string[] }` (non-empty) | `{ status: 'pending'\|'noop', queued, unknown, message }` |
 
-Source: `frontends/ui/src/app/api/knowledge-base/**`, `frontends/ui/src/app/api/platform/knowledge/**` (service: `frontends/ui/src/lib/knowledge/service.ts`). Rendered by the project "Knowledge" page (`/app/projects/{id}/knowledge`, feature-flagged via `project-knowledge-page` / `GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED`, default off) and the platform dashboard's "Base knowledge" manager. The platform routes require `GRID_ADMIN_TOKEN` on the frontend service (must match the aiq-agent value).
+Source: `frontends/ui/src/app/api/knowledge-base/**`, `frontends/ui/src/app/api/platform/knowledge/**` (service: `frontends/ui/src/lib/knowledge/service.ts`). Rendered by the project "Knowledge" page (`/app/projects/{id}/knowledge`, feature-flagged via the per-org `project-knowledge-page` WorkOS flag) and the platform dashboard's "Base knowledge" manager. The platform routes require `GRID_ADMIN_TOKEN` on the frontend service (must match the aiq-agent value).
 
 ## Legal sources (RIS)
 
@@ -490,7 +487,7 @@ had is untouched, so a client that has never heard of either key keeps working.
 |---|---|
 | `filed: { … }` | The document exists. `alreadyFiled` distinguishes the fetch that created the row from the re-reads that follow — a report is fetched again every time its tab is opened, and filing is idempotent per run. |
 | `filingQueued: true` | A job holds the report and has not finished. The promise is being kept; reading the report again after a moment answers `filed`. Carried through the adapter (`deep-research-client.ts`) like `filingFailed`; no reader of the run block uses it yet. |
-| `filingFailed: true` | A filing was attempted for this report and did not land: storage admission refused the bytes (`admitOrDiscard`, quota), the audit write failed (in which case the document is un-filed again, row and object both), or the caller does not hold both `project:documents:write` and `project:documents:generate` on the project — or the deployment has switched filing off entirely (`GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED=false` / the per-org `agent-authored-documents` flag). **No reason travels.** A quota refusal, a revoked permission and an object store that is down are one fact to this reader — the document is not there — and the messages that separate them name buckets and limits, which belong in the server log that already has them. |
+| `filingFailed: true` | A filing was attempted for this report and did not land: storage admission refused the bytes (`admitOrDiscard`, quota), the audit write failed (in which case the document is un-filed again, row and object both), or the caller does not hold both `project:documents:write` and `project:documents:generate` on the project — or filing is switched off for the organization (the per-org `agent-authored-documents` flag). **No reason travels.** A quota refusal, a revoked permission and an object store that is down are one fact to this reader — the document is not there — and the messages that separate them name buckets and limits, which belong in the server log that already has them. |
 | neither key | No promise was made: this is not a report request, there is no report yet, no session (which is also the scheduled-run guard — a cron run has no live principal whose permission could authorize a write, design decision 10), or no project could be resolved, meaning neither a `projectId` on the request nor a reachable `active_project_id` preference to fall back on. |
 
 The distinction exists because the banner promises the filing before the run
@@ -514,7 +511,7 @@ Source: `frontends/ui/src/app/api/jobs/async/[...path]/route.ts`
 
 ## Agent Skills (ADR-0046, feature-gated)
 
-All routes 403 (`feature-disabled`) unless the skills feature is on (`skills` WorkOS flag under enforcement, else `GRID_SKILLS_ENABLED=true`). Authorization is enforced in `lib/skills/service.ts`, not in the routes (ADR-0017); every query is additionally org-filtered.
+All routes 403 (`feature-disabled`) unless the organization holds the `skills` WorkOS flag. Authorization is enforced in `lib/skills/service.ts`, not in the routes (ADR-0017); every query is additionally org-filtered.
 
 The org toolbox:
 

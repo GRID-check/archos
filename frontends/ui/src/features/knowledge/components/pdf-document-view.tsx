@@ -39,6 +39,8 @@ import { Button } from '@/components/ui/button'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
+import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useTranslations } from '@/i18n'
 import {
   documentParameters,
@@ -610,6 +612,13 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
     [doc],
   )
 
+  // A document is on screen once pdf.js has parsed it, not when the viewer
+  // mounts (a failed load shows the fallback frame below, which reports itself).
+  // The kind and the renderer, never the name or the page count.
+  useEffect(() => {
+    if (doc) capturePosthog('document_opened', { kind: 'pdf', library: 'pdfjs' })
+  }, [doc])
+
   // Every page that could hold this passage has read its text and none did.
   // Until all of them have answered the viewer says nothing, because "not
   // found" and "still looking" are different claims and only one is true yet.
@@ -634,7 +643,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   }
 
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', REPLAY_BLOCK_CLASS, className)}>
       {/* `flex-wrap`: this row holds a page count, a "jump to the passage"
           button and the zoom group, and on a phone — where each of those grows
           to the 44px touch floor — they add up past the viewport. Unwrapped, the
@@ -1130,8 +1139,11 @@ const PdfFallbackFrame: FC<{
   className?: string
 }> = ({ src, title, page, hasPassage, className }) => {
   const t = useTranslations('knowledge')
+  useEffect(() => {
+    capturePosthog('document_opened', { kind: 'pdf', library: 'browser' })
+  }, [])
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', className)}>
+    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', REPLAY_BLOCK_CLASS, className)}>
       {hasPassage && (
         <p className="flex shrink-0 items-center gap-1.5 text-xs text-muted-foreground">
           <AlertTriangle aria-hidden className="size-3.5" />

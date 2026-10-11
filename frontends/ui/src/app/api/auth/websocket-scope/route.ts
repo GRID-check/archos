@@ -27,6 +27,7 @@ import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 import { isWebSearchEnabledForOrg } from '@/lib/organizations/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
+import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
 import { isAuthzError } from '@/lib/auth-utils'
 import { isAuthRequired } from '@/lib/backend-proxy'
 
@@ -102,11 +103,9 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     // directly dropped the implicit project from every lookup after the scope.
     const effectiveProjectId = authorizedProjectId ?? projectId
 
-    // Gate the async memory-reflection stage: with WorkOS flag enforcement
-    // on, the per-org "memory-reflection" flag is the source of truth; without
-    // enforcement it follows GRID_MEMORY_REFLECTION_ENABLED (default on) — see
-    // isMemoryReflectionEnabled. server.js forwards this as
-    // x-grid-feature-memory-reflection.
+    // Gate the async memory-reflection stage on the per-org
+    // "memory-reflection" flag (see isMemoryReflectionEnabled). server.js
+    // forwards this as x-grid-feature-memory-reflection.
     const memoryReflectionEnabled = await isMemoryReflectionEnabled(organizationId)
     // Budget enforcement (ADR-0015): refuse the upgrade outright when a
     // budget scope is already exhausted, otherwise forward the remaining
@@ -121,6 +120,16 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
         : null
 
     if (budgetStatus?.blocked) {
+      // `budget_blocked` for PostHog (ADR-0100), once per person and scope per
+      // hour. Not awaited: the refusal answers exactly as fast as before.
+      if (organizationId && session && budgetStatus.blockedScope) {
+        void announceBudgetBlocked({
+          organizationId,
+          userId: session.userId,
+          scope: budgetStatus.blockedScope,
+          unit: budgetStatus.unit,
+        })
+      }
       return NextResponse.json(
         {
           error: 'Budget exhausted',

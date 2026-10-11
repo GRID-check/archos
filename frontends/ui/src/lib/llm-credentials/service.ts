@@ -16,7 +16,8 @@ import { recordAuditEvent } from '@/lib/audit/service'
 import { getCached } from '@/lib/cache'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getOrgSettings, updateOrgSettings } from '@/lib/organizations/service'
-import { BYOK_LLM_FLAG, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import type { OrgLlmCredential } from '@/lib/db/schema'
 import {
   assertSafeBaseUrl,
@@ -308,8 +309,7 @@ const ownKeyCacheKey = (organizationId: string): string => `llmownkey:${organiza
 
 export async function isOrgOnOwnKey(organizationId: string): Promise<boolean> {
   return getCached(ownKeyCacheKey(organizationId), OWN_KEY_CACHE_TTL_MS, async () => {
-    const enforceFlags = (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
-    if (enforceFlags && !(await isOrgFeatureEnabled(BYOK_LLM_FLAG, organizationId, false))) {
+    if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.byokLlm, organizationId))) {
       return false
     }
     if (!(await getActiveCredential(organizationId))) return false
@@ -329,8 +329,7 @@ export async function isOrgOnOwnKey(organizationId: string): Promise<boolean> {
  * reports as the BYOK provider.
  */
 export async function getActiveCredentialProvider(organizationId: string): Promise<string | null> {
-  const enforceFlags = (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
-  if (enforceFlags && !(await isOrgFeatureEnabled(BYOK_LLM_FLAG, organizationId, false))) {
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.byokLlm, organizationId))) {
     return null
   }
   const row = await getActiveCredential(organizationId)
@@ -349,15 +348,14 @@ export interface ResolvedCredential {
 
 /**
  * Just-in-time resolution for the internal endpoint. Re-checks the org
- * feature flag (when enforcement is on), decrypts, and throttles the
+ * feature flag, decrypts, and throttles the
  * `last_used_at` bookkeeping write. Returns null when the org has no BYOK
  * credential — the backend then stays on the platform key.
  */
 export async function resolveActiveCredentialForBackend(
   organizationId: string,
 ): Promise<ResolvedCredential | null> {
-  const enforceFlags = (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
-  if (enforceFlags && !(await isOrgFeatureEnabled(BYOK_LLM_FLAG, organizationId, false))) {
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.byokLlm, organizationId))) {
     return null
   }
 

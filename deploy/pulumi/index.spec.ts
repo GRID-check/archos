@@ -204,11 +204,10 @@ describe("the program constructs in the split topology", () => {
     expect(value("BACKEND_CHAT_URL")).toBe("http://aiq-agent:8000");
   });
 
-  it("creates the scheduler even with Agent Skills off, because it is the run reconciler's clock", () => {
+  it("creates the scheduler, because it is the run reconciler's clock", () => {
     // Runs exist without Agent Skills (an escalated chat question is a run with
     // no definition), and the scheduler is what closes the ones whose ending
     // never reached the BFF. Left out, those runs would read "running" forever.
-    expect(pulumi.runtime.allConfig()["grid-oib:skillsEnabled"]).not.toBe("true");
     expect(named("kubernetes:apps/v1:Deployment")).toContain("skill-scheduler");
   });
 

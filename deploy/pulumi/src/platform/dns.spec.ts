@@ -100,14 +100,14 @@ async function loadWith(values: Record<string, string>): Promise<Error | null> {
 }
 
 describe("managedHosts", () => {
-  it("mirrors the Gateway's HTTPS listeners, otel included only when observability is on", () => {
+  it("mirrors the Gateway's HTTPS listeners, langfuse included only when its tier is on", () => {
     const base = { webDomain: "d.test", appDomain: "app.d.test", s3Domain: "s3.d.test" };
     expect(managedHosts(base)).toEqual(["d.test", "app.d.test", "s3.d.test"]);
-    expect(managedHosts({ ...base, otelDomain: "otel.d.test" })).toEqual([
+    expect(managedHosts({ ...base, langfuseDomain: "langfuse.d.test" })).toEqual([
       "d.test",
       "app.d.test",
       "s3.d.test",
-      "otel.d.test",
+      "langfuse.d.test",
     ]);
   });
 });
@@ -163,16 +163,19 @@ describe("installDns", () => {
     }
   });
 
-  it("adds the otel host when the observability tier is deployed", async () => {
+  it("publishes no otel host: the dashboard behind it is retired", async () => {
+    // A stack that still carries the dashboard's old keys must not get a record
+    // for a host nothing answers on.
     const { records } = await install({
       ...dnsConfig(),
       "grid-oib:observabilityEnabled": "true",
       "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
+      "grid-oib:otelDomain": `otel.dev.${ZONE}`,
       "grid-oib:otelOidcIssuer": "https://tenant.authkit.app",
       "grid-oib:otelOidcClientId": "client_test",
       "grid-oib:otelOidcClientSecret": "otel-secret", // pragma: allowlist secret
     });
-    expect(records.map((r) => r.inputs.name)).toContain(`otel.dev.${ZONE}`);
+    expect(records.map((r) => r.inputs.name)).not.toContain(`otel.dev.${ZONE}`);
   });
 
   it("leaves the zone-level records alone unless this stack claims the baseline", async () => {

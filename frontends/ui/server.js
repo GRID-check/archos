@@ -28,14 +28,13 @@ const { parse } = require('url')
 const crypto = require('crypto')
 
 // ── Boot identity (ledger item 1) ────────────────────────────────────────────
-// One greppable line naming the deployed commit and the effective value of the
-// four gates, printed before this process serves anything. A pilot said a
-// feature did not work and nobody could say which build they were on, nor
-// whether that feature was switched on for them at all — three of the four
-// flags default OFF, so "broken" and "never enabled" look identical from
-// outside. Rationale in full: `src/lib/boot.ts`.
+// One greppable line naming the deployed commit and where the feature flags
+// come from (WorkOS, or the fixed defaults of a deployment that signs nobody
+// in), printed before this process serves anything. A pilot said a feature did
+// not work and nobody could say which build they were on, nor whether that
+// feature was switched on for them at all. Rationale in full: `src/lib/boot.ts`.
 //
-// DUPLICATED from `formatBootLine`/`bootFlags`/`deployedSha` in that module,
+// DUPLICATED from `formatBootLine`/`flagSource`/`deployedSha` in that module,
 // for the same reason the envelope builder below is duplicated: this file is
 // plain CommonJS (see the `require(...)` calls above) and cannot import a TS
 // module. `tests/lib/boot.test.ts` extracts THIS function from the source and
@@ -44,19 +43,9 @@ const crypto = require('crypto')
 // with `new Function`, so a reference to anything outside its own body breaks
 // the pin rather than the line.
 function bootLogLine(env) {
-  const optIn = (raw) => (raw || '').trim().toLowerCase() === 'true'
-  // Unset means ON for this one, matching agentAuthoredDocumentsEnvEnabled.
-  const optOut = (raw) => {
-    const value = (raw || '').trim().toLowerCase()
-    return value === '' || !['false', '0', 'no', 'off'].includes(value)
-  }
   const sha = (env.GRID_GIT_SHA || '').trim() || 'unknown'
-  return (
-    `[boot] sha=${sha} skills=${optIn(env.GRID_SKILLS_ENABLED)}` +
-    ` collaboration=${optIn(env.GRID_COLLABORATION_ENABLED)}` +
-    ` enforceFlags=${optIn(env.GRID_ENFORCE_FEATURE_FLAGS)}` +
-    ` agentDocs=${optOut(env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED)}`
-  )
+  const flags = (env.REQUIRE_AUTH || '').toLowerCase() === 'true' ? 'workos' : 'defaults'
+  return `[boot] sha=${sha} flags=${flags}`
 }
 
 // ── Signed context envelope (backlog T3-9 follow-up, 2026-07-16, user-mandated) ──
@@ -198,6 +187,9 @@ const SHUTDOWN_DRAIN_MS = Math.max(
   0,
   parseInt(process.env.GRID_SHUTDOWN_DRAIN_MS || '', 10) || 2000
 )
+// The list the app pushes its flush-on-exit functions onto (see cleanExit).
+const SHUTDOWN_HOOKS_KEY = '__gridShutdownHooks'
+const SHUTDOWN_HOOKS_MS = 2000
 // Set once SIGTERM/SIGINT arrives: readiness starts failing and new WebSocket
 // upgrades are refused, while everything already in flight runs to completion.
 let draining = false
@@ -922,12 +914,30 @@ const startServer = async () => {
   // Graceful shutdown. `server.close()` stops accepting new connections and
   // resolves once every existing one (including WebSockets) has ended, so the
   // timer is the hard ceiling on how long a rolling update waits for this pod.
+  //
+  // Before exiting, run what the app registered to flush (PostHog's queued
+  // exceptions, ADR-0100): `src/instrumentation.ts` pushes async functions onto
+  // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
+  // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
+  // never keeps the pod alive.
+  let exiting = false
+  const exitAfterHooks = () => {
+    if (exiting) return
+    exiting = true
+    const hooks = Array.isArray(globalThis[SHUTDOWN_HOOKS_KEY]) ? globalThis[SHUTDOWN_HOOKS_KEY] : []
+    const ceiling = setTimeout(() => process.exit(0), SHUTDOWN_HOOKS_MS)
+    Promise.allSettled(hooks.map((hook) => hook())).finally(() => {
+      clearTimeout(ceiling)
+      process.exit(0)
+    })
+  }
+
   const cleanExit = (signal) => {
     if (draining) return
     draining = true
     console.log(`\nShutting down (${signal}) — draining for up to ${SHUTDOWN_DRAIN_MS}ms...`)
-    server.close(() => process.exit(0))
-    setTimeout(() => process.exit(0), SHUTDOWN_DRAIN_MS)
+    server.close(exitAfterHooks)
+    setTimeout(exitAfterHooks, SHUTDOWN_DRAIN_MS)
   }
 
   process.once('SIGTERM', () => cleanExit('SIGTERM'))

@@ -149,10 +149,10 @@ there (`purger/storage.js`, `abortMultipartUploads`).
 
 ## Switching it on
 
-1. The deployment: `grid-oib:mailImportEnabled` (Pulumi) or
-   `GRID_MAIL_IMPORT_ENABLED=true` (Compose) while flag enforcement is off; with
-   enforcement on, create the `mail-import` WorkOS flag OFF and turn it on per
-   organization ([`workos-provisioning.md`](../deployment/workos-provisioning.md)).
+1. The flag: create the `mail-import` WorkOS flag OFF in both environments
+   and turn it on per organization
+   ([`workos-provisioning.md`](../deployment/workos-provisioning.md)). There is
+   no env switch; where nobody signs in it is off, as every entitlement is.
 2. Data protection, before the first organization: an archive is the
    correspondence of everyone who wrote to the mailbox. The organization's Art. 28
    notice and the Art. 30 record have to cover imported correspondence; the

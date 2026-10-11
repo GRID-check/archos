@@ -32,6 +32,20 @@ inputs:
       with `packages: write`. Anything else builds only.
     required: false
     default: "false"
+  posthog-api-key:
+    description: >-
+      A PostHog personal API key (`error_tracking:write`, `organization:read`).
+      With `posthog-project-id` it makes the frontend build upload its source
+      maps to PostHog, as the BuildKit secret `posthog_cli_api_key` (never a
+      build arg, which would be written into the image history). Empty, as it
+      is for a fork or a repository without the secret, builds as before. Only
+      the frontend image reads it.
+    required: false
+    default: ""
+  posthog-project-id:
+    description: The PostHog project the source maps belong to. Not secret.
+    required: false
+    default: ""
 
 runs:
   using: composite
@@ -73,6 +87,28 @@ runs:
         images: ${{ inputs.registry }}/${{ inputs.repository }}
         tags: type=raw,value=inputs-${{ inputs.hash }}
 
+    # Source maps go to PostHog from the frontend build, the one that has a
+    # bundle for a browser to run, and only when both halves are configured.
+    # Anything missing leaves the build exactly as it was before this existed:
+    # no extra build arg (the other two Dockerfiles do not declare it, and an
+    # unused arg is a warning), no secret.
+    - name: Build arguments
+      id: args
+      shell: bash
+      env:
+        IMAGE_NAME: ${{ inputs.name }}
+        POSTHOG_API_KEY: ${{ inputs.posthog-api-key }}
+        POSTHOG_PROJECT_ID: ${{ inputs.posthog-project-id }}
+      run: |
+        {
+          echo "list<<GRID_EOF"
+          echo "GRID_GIT_SHA=$GITHUB_SHA"
+          if [ "$IMAGE_NAME" = frontend ] && [ -n "$POSTHOG_API_KEY" ] && [ -n "$POSTHOG_PROJECT_ID" ]; then
+            echo "POSTHOG_PROJECT_ID=$POSTHOG_PROJECT_ID"
+          fi
+          echo "GRID_EOF"
+        } >> "$GITHUB_OUTPUT"
+
     # Layer cache in GHCR, one `buildcache` tag per image, rather than type=gha:
     # three mode=max caches (3-5 GB) LRU-evicted each other and every other
     # cache out of the repository's 10 GB Actions budget, and re-exporting them
@@ -85,9 +121,11 @@ runs:
     # stage; `image-manifest`/`oci-mediatypes` because GHCR rejects the legacy
     # cache manifest.
     #
-    # GRID_GIT_SHA is the commit that BUILT the image. An image whose inputs did
-    # not change is not rebuilt, only re-tagged, so a container reports the
-    # commit its code came from, which is the one worth reading in a pilot report.
+    # GRID_GIT_SHA (set above) is the commit that BUILT the image. An image whose
+    # inputs did not change is not rebuilt, only re-tagged, so a container reports
+    # the commit its code came from, which is the one worth reading in a pilot
+    # report. It is also the PostHog release of the frontend's source maps, so an
+    # error's release is the commit the running container names.
     - name: Build${{ inputs.push == 'true' && ' and push' || '' }}
       uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
       with:
@@ -97,7 +135,10 @@ runs:
         push: ${{ inputs.push == 'true' }}
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
-        build-args: |
-          GRID_GIT_SHA=${{ github.sha }}
+        build-args: ${{ steps.args.outputs.list }}
+        # A BuildKit secret mount, so the key is in no layer and no build arg.
+        # Straight from the input rather than through a step output, which the
+        # runner may refuse to carry for a value it knows to be a secret.
+        secrets: ${{ inputs.name == 'frontend' && inputs.posthog-api-key != '' && inputs.posthog-project-id != '' && format('posthog_cli_api_key={0}', inputs.posthog-api-key) || '' }}
         cache-from: type=registry,ref=${{ inputs.registry }}/${{ inputs.repository }}:buildcache
         cache-to: ${{ inputs.push == 'true' && format('type=registry,ref={0}/{1}:buildcache,mode=max,image-manifest=true,oci-mediatypes=true', inputs.registry, inputs.repository) || '' }}

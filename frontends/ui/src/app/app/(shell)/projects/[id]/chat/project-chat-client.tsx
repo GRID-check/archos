@@ -22,24 +22,12 @@ export interface ProjectChatClientProps {
   canCollaborate?: boolean
   /** Whether the reader holds `project:chat` on this project. */
   canChatInProject?: boolean
-  /** Whether shallow answers show the confidence chip (WorkOS `chat-confidence-chip`). */
-  showConfidenceChip: boolean
-  /** Whether answers show the per-answer thumbs row (WorkOS `answer-feedback`, WS-7). */
-  showAnswerFeedback: boolean
-  /**
-   * Whether the sessions panel shows the Deep Research section and per-session
-   * research labels (WorkOS `research-in-chat-history`, FB-10).
-   */
-  showResearchInHistory: boolean
   /** Project name for the thread-header breadcrumb + composer scope chip. */
   projectName: string | null
 }
 
 const ProjectChatContent = ({
   projectId,
-  showConfidenceChip,
-  showAnswerFeedback,
-  showResearchInHistory,
   projectName,
   canCollaborate = false,
   canChatInProject = true,
@@ -304,9 +292,6 @@ const ProjectChatContent = ({
     <MainLayout
       isAuthenticated={isAuthenticated}
       onSignIn={signIn}
-      showConfidenceChip={showConfidenceChip}
-      showAnswerFeedback={showAnswerFeedback}
-      showResearchInHistory={showResearchInHistory}
       projectName={projectName}
       canCollaborate={canCollaborate}
       canChatInProject={canChatInProject}
@@ -315,10 +300,9 @@ const ProjectChatContent = ({
 }
 
 /**
- * Client half of the project chat route. The server page computes the chat
- * feature flags and passes them here; they are prop-drilled to the
- * feature-flagged surfaces (AgentResponse confidence chip and feedback row,
- * the sessions panel's research section) via MainLayout.
+ * Client half of the project chat route. The server page resolves what needs
+ * the session (the collaboration gate, the reader's `project:chat` right) and
+ * passes it here; it reaches the chat surfaces via MainLayout.
  */
 export const ProjectChatClient = (props: ProjectChatClientProps): ReactNode => {
   return (

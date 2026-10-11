@@ -32,7 +32,13 @@ const proxyDb = drizzle(async (sql, params) => {
   return { rows: nextRows }
 })
 
-vi.mock('@/lib/db', () => ({ getDb: () => proxyDb }))
+// The proxy driver cannot open a transaction, and the statements are what these
+// specs read, so a transaction here runs its body on the same recording driver.
+const recordingDb = Object.assign(Object.create(proxyDb), {
+  transaction: async <T>(run: (tx: typeof proxyDb) => Promise<T>): Promise<T> => run(proxyDb),
+})
+
+vi.mock('@/lib/db', () => ({ getDb: () => recordingDb }))
 
 import {
   CONVERSATION_LIST_LIMIT,
@@ -217,11 +223,11 @@ describe('deleteConversationInOrg', () => {
   it('carries tenancy in the WHERE clause, not only in the service above it', async () => {
     await deleteConversationInOrg('conv_1', 'org_1')
 
-    // The conversation, then its record of restricted folders and of other projects (ADR-0094).
-    expect(captured).toHaveLength(3)
-    expect(captured[2].sql).toContain('"conversation_source_projects"')
-    expect(captured[2].params).toEqual(['org_1', 'conv_1'])
-    const { sql, params } = captured[0]
+    // The votes, the conversation, then its record of restricted folders and of other projects (ADR-0094).
+    expect(captured).toHaveLength(4)
+    expect(captured[3].sql).toContain('"conversation_source_projects"')
+    expect(captured[3].params).toEqual(['org_1', 'conv_1'])
+    const { sql, params } = captured[1]
     // Regression: deleting by id alone let any signed-in user delete another
     // org's conversation by guessing ids.
     expect(sql).toContain('"conversations"."id" = $1')
@@ -233,11 +239,27 @@ describe('deleteConversationInOrg', () => {
     await deleteConversationInOrg('conv_1', 'org_1')
 
     // No foreign key reaches the record: a first admission writes it before the row exists.
-    const { sql, params } = captured[1]
+    const { sql, params } = captured[2]
     expect(sql).toContain('delete from "conversation_restricted_folders"')
     expect(sql).toContain('"conversation_restricted_folders"."organization_id" = $1')
     expect(sql).toContain('"conversation_restricted_folders"."conversation_id" = $2')
     expect(params).toEqual(['org_1', 'conv_1'])
+  })
+
+  it('erases the votes cast on the chat, in the same organization, before its messages cascade away', async () => {
+    await deleteConversationInOrg('conv_1', 'org_1')
+
+    // Regression: `answer_feedback` has no foreign key to the chat, so a down-vote's
+    // comment and expected answer outlived the conversation they quoted.
+    const { sql, params } = captured[0]
+    expect(sql).toContain('delete from "answer_feedback"')
+    expect(sql).toContain('"answer_feedback"."organization_id" = $1')
+    expect(sql).toContain('"answer_feedback"."conversation_id" = $2')
+    // A vote that carries no conversation id is still found by the answer it rates.
+    expect(sql).toContain('"answer_feedback"."message_id" in (select "messages"."id"::text from "messages"')
+    expect(params).toEqual(['org_1', 'conv_1', 'conv_1', 'org_1'])
+    // The messages are the lookup, so the votes go while they still exist.
+    expect(captured[1].sql).toContain('delete from "conversations"')
   })
 })
 

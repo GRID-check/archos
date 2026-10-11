@@ -36,6 +36,7 @@
 'use client'
 
 import { useEffect, useRef, useState, type CSSProperties, type FC, type ReactNode } from 'react'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { ChevronDown, ChevronUp, Download, ExternalLink, Link2 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -1860,6 +1861,21 @@ export const SourceDocumentDialog: FC<{
     citation
   )
 
+  // The reader went from an answer to its evidence: counted once the viewer is
+  // actually showing, never for a dialog that mounted and closed because there
+  // was nothing to open. `verified` is a quote the server found word for word
+  // (`atQuote` keys its locus `…#quote`). Kinds and flags only: no name, no page.
+  const openedReportedRef = useRef(false)
+  const reportOpened = (viewer: 'document' | 'ris'): void => {
+    if (openedReportedRef.current) return
+    openedReportedRef.current = true
+    capturePosthog('citation_opened', {
+      source_kind: citation.document.kind,
+      verified: Boolean(citation.locus?.key.endsWith('#quote')),
+      viewer,
+    })
+  }
+
   // Open as soon as resolution succeeds; close the owner when the reader
   // dismisses the dialog, so the mount is tied to the viewing session. An
   // office citation opens its rendition here like any PDF; when there is none
@@ -1869,7 +1885,8 @@ export const SourceDocumentDialog: FC<{
   useEffect(() => {
     if (isDocument && !isOpen)
       void openPreview(citation.locus).then((outcome) => {
-        if (outcome !== 'opened') onClose()
+        if (outcome === 'opened') reportOpened('document')
+        else onClose()
       })
     // Opening is a one-shot per resolved target; re-running on every render
     // would reopen a dialog the reader just dismissed.
@@ -1893,6 +1910,12 @@ export const SourceDocumentDialog: FC<{
     // Nothing openable and the index has answered: there is no viewer to show.
     if (previewIndex && !isDocument) onClose()
   }, [previewIndex, isDocument, isRis, downloadTarget, isOpen, onClose])
+
+  useEffect(() => {
+    if (isRis) reportOpened('ris')
+    // One report per mounted dialog (the ref guards a re-run).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isRis])
 
   // A RIS source opens its own reader — no stored-document index, no presign,
   // and no page: the reader marks the passage in the text instead.

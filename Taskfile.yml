@@ -304,6 +304,15 @@ tasks:
     cmds:
       - bun run provision:audit-schemas {{.CLI_ARGS}}
 
+  fe:provision:flags:
+    desc: 'Check every registry feature flag exists in WorkOS (read-only; needs WORKOS_API_KEY)'
+    # Read-only and with no --apply: flag creation has no SDK binding, so the
+    # fix is always a dashboard step. A registry slug WorkOS lacks is off for
+    # every organization, which is why a missing one fails the run.
+    dir: '{{.UI}}'
+    cmds:
+      - ./node_modules/.bin/tsx scripts/check-workos-flags.ts
+
   fe:provision:workos-env:
     desc: 'Check WorkOS environment identity drift (add `-- --apply` to reconcile)'
     dir: '{{.UI}}'

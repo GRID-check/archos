@@ -13,7 +13,7 @@ export const PLATFORM_VIEW_PERMISSION = "platform:organizations:view";
  * analysts, the Fachbereich) to Langfuse without the platform-operator one.
  * Mirrors `PLATFORM_PERMISSIONS.observabilityView` in
  * frontends/ui/src/lib/authz/permissions.ts. Only routes that pass it in
- * `alsoAdmit` accept it; the Aspire dashboard does not.
+ * `alsoAdmit` accept it.
  */
 export const OBSERVABILITY_VIEW_PERMISSION = "platform:observability:view";
 
@@ -40,7 +40,8 @@ export interface PlatformOidcGate {
 
 /**
  * Edge authN + authZ for a platform-operator route (ADR-0029 Amendment 2,
- * generalized by ADR-0044 when Langfuse became a second such route).
+ * generalized by ADR-0044 when Langfuse became a second such route, and the
+ * only one since the Aspire dashboard was retired).
  *
  * Three cooperating stages, run by Envoy in this order (the filter order is
  * fixed by Envoy Gateway: OAuth2=8, JWTAuthn=9, RBAC=301):
@@ -76,13 +77,13 @@ export interface PlatformOidcGate {
  * unmodified. The application must be a CONFIDENTIAL client: a public PKCE-only
  * client has no secret, and `clientSecret` is required here.
  *
- * **One application, several routes.** Both platform routes gate on the same
- * issuer and the same operator permission (Langfuse additionally admits
- * `platform:observability:view`, through `alsoAdmit`), so they share one
- * Connect application and it carries one redirect URI per route. Splitting them would mean two
- * near-identical confidential clients and two places to get the scope
- * assignment wrong, buying a separation nobody would use — the credential is
- * already purpose-scoped to platform operators.
+ * **One application, as many routes as there are.** Every platform route gates
+ * on the same issuer and the same operator permission (Langfuse additionally
+ * admits `platform:observability:view`, through `alsoAdmit`), so a second route
+ * would share the Connect application and carry one more redirect URI.
+ * Splitting them would mean two near-identical confidential clients and two
+ * places to get the scope assignment wrong, buying a separation nobody would
+ * use — the credential is already purpose-scoped to platform operators.
  *
  * One-time WorkOS setup per route: register
  * `https://<domain>/oauth2/callback` as a redirect URI on that application

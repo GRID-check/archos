@@ -20,6 +20,10 @@ a commit CI failed cannot be deployed by accident.
   config changes stay reviewable in the PR diff); after the ESC migration it
   contains no `secure:` blocks.
 - **The only GitHub secret** the pipeline needs is `PULUMI_ACCESS_TOKEN`.
+  Optionally `POSTHOG_CLI_API_KEY` (with the variable `POSTHOG_PROJECT_ID`) adds
+  a PostHog annotation `deploy <env> <sha>` after each `Pulumi up` and
+  uploads the frontend's source maps at build time; without them nothing
+  changes. [ci.md](../contributing/ci.md#posthog-releases-and-source-maps).
 - **Gating**: `deploy.yml` runs on `workflow_run` of **CI**, for a run that
   concluded `success`, was a `push` (not a pull request whose branch happens to
   be called `develop`) and came from this repository. A green push run of CI

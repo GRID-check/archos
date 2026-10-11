@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = {
   userId: 'user-1',
@@ -9,7 +9,16 @@ const session = {
   email: 'admin@grid.com',
   role: 'admin',
   permissions: [] as string[],
+  featureFlags: ['runtime-model-config'] as string[] | null,
 }
+
+// A deployment that signs people in: the gates read the session's WorkOS claim.
+beforeEach(() => {
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+})
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockImplementation(async () => session),

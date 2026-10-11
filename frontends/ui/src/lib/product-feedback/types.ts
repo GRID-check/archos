@@ -63,11 +63,22 @@ export const submitProductFeedbackSchema = z.object({
 
 export type SubmitProductFeedbackInput = z.infer<typeof submitProductFeedbackSchema>
 
-/** What the reporter gets back: enough to say "thank you", nothing more. */
+/**
+ * What the reporter gets back: enough to say "thank you", and the text the
+ * browser may open a PostHog Support ticket with.
+ */
 export interface SubmittedProductFeedbackView {
   id: string
   kind: ProductFeedbackKind
   createdAt: string
+  /**
+   * The message masked against the office's „Sensible Daten" policy
+   * (ADR-0086), the same `maskChatText` a vote's comment goes through. `null`
+   * when the reporter did not agree to be contacted (a Support ticket is a
+   * thread that answers the reporter) or when the policy could not be read:
+   * no text means no ticket, never an unmasked one.
+   */
+  relayText: string | null
 }
 
 /** GET /api/platform/feedback */

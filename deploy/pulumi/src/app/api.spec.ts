@@ -233,7 +233,7 @@ describe("the api tier", () => {
 
   it("is reachable from the frontend and the CronJobs through the namespace-wide ingress allow", async () => {
     // Intra-namespace ingress is allowed wholesale except for the pods named in
-    // the policy's `NotIn` list (the dashboard, err2issue, Langfuse, Gotenberg).
+    // the policy's `NotIn` list (Langfuse, Gotenberg).
     // The api tier must never join that list, or every BFF call times out.
     const { installNetworkPolicies } = await import("../platform/network-policies");
     const made = await wiringFor(TUNED);

@@ -108,16 +108,15 @@ interface FilePreviewPaneProps {
   onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /**
    * Whether the "Indexed by GRID" metadata panel (AI summary, key-value props,
-   * editable tags) renders (WorkOS `files-metadata-panel` flag, FB-8). Defaults
-   * to true so the feature stays visible with flag enforcement off (fail-open)
-   * and existing callers/specs are unaffected. Status/type/size rows are never
-   * gated — they predate the feature.
+   * editable tags) renders (FB-8). On everywhere except the `peek`
+   * presentation, which has no room for it. Status/type/size rows always
+   * render.
    */
   showMetadataPanel?: boolean
   /**
    * Whether an `.ifc` preview offers the model workspace (`ifc-models`).
    *
-   * Defaults to true, fail-open like `showMetadataPanel`: a link that does not
+   * Defaults to true: a link that does not
    * render is a feature nobody can find, and the workspace refuses on its own
    * if the flag is really off.
    */
@@ -1096,7 +1095,7 @@ export function FilePreviewPane({
           </section>
         )}
 
-        {/* Right: indexed-metadata panel (files-metadata-panel flag, FB-8).
+        {/* Right: indexed-metadata panel (FB-8; off only in the peek).
             The AI summary that grounds the agent's answers, the ingestion-detected
             key-value props, and the user-correctable tags. Status/type/size sit
             below it and are never gated (they predate the metadata panel).

@@ -2,9 +2,9 @@
 
 Same table as ``frontends/ui/tests/lib/boot.test.ts``. The two services print
 the same line so one ``grep '^\\[boot\\]'`` over a deployment answers "what is
-this running, and which gates are on" for both tiers at once; that only holds
-if both sides agree on the format down to the casing of ``true``, which is what
-these cases assert. The cases are duplicated rather than shared through a
+this running, and where do its flags come from" for both tiers at once; that
+only holds if both sides agree on the format down to the rule that reads
+``REQUIRE_AUTH``, which is what these cases assert. The cases are duplicated rather than shared through a
 fixture on purpose — a fixture would pin the format to itself, and what needs
 pinning is the *rendered line*, which is what an operator actually greps.
 """
@@ -16,9 +16,9 @@ import logging
 import pytest
 
 from aiq_api.startup_banner import UNKNOWN_SHA
-from aiq_api.startup_banner import boot_flags
 from aiq_api.startup_banner import boot_line
 from aiq_api.startup_banner import deployed_sha
+from aiq_api.startup_banner import flag_source
 from aiq_api.startup_banner import format_boot_line
 from aiq_api.startup_banner import log_boot_line
 
@@ -27,44 +27,40 @@ CASES = [
     (
         "an unstamped image with nothing configured — the compose defaults",
         {},
-        "[boot] sha=unknown skills=false collaboration=false enforceFlags=false agentDocs=true",
+        "[boot] sha=unknown flags=defaults",
     ),
     (
-        "a published image with every gate on",
+        "a published image that signs people in",
         {
             "GRID_GIT_SHA": "0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c",  # pragma: allowlist secret
-            "GRID_SKILLS_ENABLED": "true",
-            "GRID_COLLABORATION_ENABLED": "true",
-            "GRID_ENFORCE_FEATURE_FLAGS": "true",
-            "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED": "true",
+            "REQUIRE_AUTH": "true",
         },
-        "[boot] sha=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c "  # pragma: allowlist secret
-        "skills=true collaboration=true enforceFlags=true agentDocs=true",
+        "[boot] sha=0f1e2d3c4b5a69788796a5b4c3d2e1f00f1e2d3c flags=workos",  # pragma: allowlist secret
     ),
     (
-        "filing withdrawn fleet-wide — the one gate that is off by being SET",
-        {"GRID_GIT_SHA": "abc1234", "GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED": "false"},
-        "[boot] sha=abc1234 skills=false collaboration=false enforceFlags=false agentDocs=false",
+        "REQUIRE_AUTH=false is the anonymous deployment, not WorkOS",
+        {"GRID_GIT_SHA": "abc1234", "REQUIRE_AUTH": "false"},
+        "[boot] sha=abc1234 flags=defaults",
     ),
     (
-        "the other falsey spellings agentAuthoredDocumentsEnvEnabled accepts",
-        {"GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED": "OFF"},
-        "[boot] sha=unknown skills=false collaboration=false enforceFlags=false agentDocs=false",
+        'only the exact word true signs people in — "1" does not',
+        {"REQUIRE_AUTH": "1"},
+        "[boot] sha=unknown flags=defaults",
     ),
     (
-        'an opt-in gate is not turned on by "1" — only the exact word true',
-        {"GRID_SKILLS_ENABLED": "1", "GRID_COLLABORATION_ENABLED": "yes"},
-        "[boot] sha=unknown skills=false collaboration=false enforceFlags=false agentDocs=true",
+        "case is ignored and the sha is trimmed, as an env_file produces them",
+        {"GRID_GIT_SHA": "  deadbeef  ", "REQUIRE_AUTH": "TRUE"},
+        "[boot] sha=deadbeef flags=workos",
     ),
     (
-        "whitespace and case, as an env_file or a copy-paste produces them",
-        {"GRID_GIT_SHA": "  deadbeef  ", "GRID_ENFORCE_FEATURE_FLAGS": " TRUE "},
-        "[boot] sha=deadbeef skills=false collaboration=false enforceFlags=true agentDocs=true",
+        "a padded REQUIRE_AUTH is anonymous, because isAuthRequired reads it so",
+        {"REQUIRE_AUTH": " true "},
+        "[boot] sha=unknown flags=defaults",
     ),
     (
         "an empty GRID_GIT_SHA is an unstamped image, not an empty sha",
         {"GRID_GIT_SHA": ""},
-        "[boot] sha=unknown skills=false collaboration=false enforceFlags=false agentDocs=true",
+        "[boot] sha=unknown flags=defaults",
     ),
 ]
 
@@ -72,7 +68,7 @@ CASES = [
 @pytest.mark.parametrize(("name", "env", "expected"), CASES, ids=[c[0] for c in CASES])
 def test_the_line_renders_the_same_as_the_bff_does(name: str, env: dict, expected: str) -> None:
     assert boot_line(env) == expected
-    assert format_boot_line(deployed_sha(env), boot_flags(env)) == expected
+    assert format_boot_line(deployed_sha(env), flag_source(env)) == expected
 
 
 def test_an_unstamped_image_is_named_rather_than_left_blank() -> None:
@@ -88,17 +84,9 @@ def test_it_is_one_line_because_an_operator_greps_for_it(name: str, env: dict, e
     assert line.startswith("[boot] ")
 
 
-def test_the_booleans_are_javascript_cased_so_one_grep_covers_both_tiers() -> None:
-    # Python's repr would print `True`, which would split the one grep the
-    # shared format exists to make possible.
-    line = boot_line({"GRID_SKILLS_ENABLED": "true"})
-    assert "skills=true" in line
-    assert "True" not in line
-
-
 def test_log_boot_line_emits_at_info_and_returns_what_it_logged(caplog, monkeypatch) -> None:
     monkeypatch.delenv("GRID_GIT_SHA", raising=False)
-    monkeypatch.setenv("GRID_SKILLS_ENABLED", "true")
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
 
     with caplog.at_level(logging.INFO, logger="aiq_api.startup_banner"):
         line = log_boot_line()

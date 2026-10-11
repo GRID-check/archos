@@ -43,6 +43,9 @@ vi.mock('../store', () => ({
 }))
 
 vi.mock('@/adapters/auth', () => ({ useAuth: () => ({ accessToken: null }) }))
+// The feedback row is AnswerFeedback.spec's subject and fetches its own state;
+// these specs are about the answer's settle, so it renders nothing here.
+vi.mock('./AnswerFeedback', () => ({ AnswerFeedback: () => null }))
 
 // Every element-level animation the answer starts, passed through: the body's
 // fade is read off these calls.
@@ -98,7 +101,7 @@ const STREAMED = 'Ein zweiter Fluchtweg ist erforderlich, wenn das Fluchtniveau 
 const FINAL = `${STREAMED}Ausnahmen regelt die OIB-RL 2 für Gebäude der Gebäudeklassen 1 und 2.`
 
 const answer = (content: string, isStreaming: boolean) => (
-  <AgentResponse content={content} isStreaming={isStreaming} messageId="m-1" showAnswerFeedback={false} />
+  <AgentResponse content={content} isStreaming={isStreaming} messageId="m-1" />
 )
 
 describe('the end of a streamed answer', () => {
@@ -268,7 +271,7 @@ describe('the end of a streamed answer', () => {
     expect(atStop.length).toBeLessThan(STREAMED.length)
 
     const stoppedAnswer = (content: string) => (
-      <AgentResponse content={content} messageId="m-1" showAnswerFeedback={false} stopped />
+      <AgentResponse content={content} messageId="m-1" stopped />
     )
     rerender(stoppedAnswer(STREAMED))
     expect(screen.getByTestId('prose').textContent).toBe(atStop)
@@ -292,7 +295,7 @@ describe('the end of a streamed answer', () => {
 
     animations.length = 0
     rerender(
-      <AgentResponse content="Ein zweiter Fluchtweg ist erforderlich und " messageId="m-1" showAnswerFeedback={false} stopped />
+      <AgentResponse content="Ein zweiter Fluchtweg ist erforderlich und " messageId="m-1" stopped />
     )
     act(() => vi.advanceTimersByTime(1000))
     const fades = animations.filter(({ keyframes }) => JSON.stringify(keyframes) === JSON.stringify({ opacity: [0, 1] }))
@@ -363,7 +366,6 @@ describe('a summary that leads a fresh answer', () => {
       isStreaming={isStreaming}
       messageId="m-sum"
       answerMeta={META}
-      showAnswerFeedback={false}
     />
   )
   const standfirst = () => screen.queryByText((_, el) => el?.tagName === 'P' && el.closest('header') !== null)
@@ -404,7 +406,7 @@ describe('a summary that leads a fresh answer', () => {
     expect(atStop.length).toBeLessThan(SUMMARY.length)
 
     rerender(
-      <AgentResponse content="" messageId="m-sum" answerMeta={META} showAnswerFeedback={false} stopped />
+      <AgentResponse content="" messageId="m-sum" answerMeta={META} stopped />
     )
     act(() => vi.advanceTimersByTime(1500))
     expect(screen.getByRole('article')).toBeInTheDocument()
@@ -413,7 +415,7 @@ describe('a summary that leads a fresh answer', () => {
   })
 
   it('draws a stored stopped answer that holds only its masthead', () => {
-    render(<AgentResponse content="" messageId="m-sum" answerMeta={META} showAnswerFeedback={false} stopped />)
+    render(<AgentResponse content="" messageId="m-sum" answerMeta={META} stopped />)
     expect(screen.getByRole('article')).toBeInTheDocument()
     expect(standfirst()!.textContent).toBe(SUMMARY)
   })

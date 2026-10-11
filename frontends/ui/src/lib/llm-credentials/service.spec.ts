@@ -28,7 +28,6 @@ vi.mock('@/lib/organizations/service', () => ({
 }))
 
 vi.mock('@/lib/workos/feature-flags', () => ({
-  BYOK_LLM_FLAG: 'byok-llm',
   isOrgFeatureEnabled: vi.fn().mockResolvedValue(true),
 }))
 
@@ -36,6 +35,7 @@ vi.mock('@/lib/audit/service', () => ({
   recordAuditEvent: vi.fn().mockResolvedValue(undefined),
 }))
 
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import { getActiveCredentialProvider, resolveActiveCredentialForBackend } from './service'
 import { getActiveCredential, markUsed } from './repository'
 import { revealSecret } from './secret-store'
@@ -57,7 +57,6 @@ const ROW = {
 describe('resolveActiveCredentialForBackend', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
     vi.mocked(getOrgSettings).mockResolvedValue({ displayName: null, defaultLocale: 'en', settings: {} })
     vi.mocked(revealSecret).mockResolvedValue('sk-tenant')
   })
@@ -89,6 +88,16 @@ describe('resolveActiveCredentialForBackend', () => {
     expect(await resolveActiveCredentialForBackend('org-1')).toBeNull()
   })
 
+  it('returns null without the byok-llm flag, before anything is decrypted', async () => {
+    // The check used to run only under GRID_ENFORCE_FEATURE_FLAGS, so a
+    // deployment without it served every stored key whatever WorkOS said.
+    vi.mocked(isOrgFeatureEnabled).mockResolvedValueOnce(false)
+    vi.mocked(getActiveCredential).mockResolvedValue(ROW as never)
+    expect(await resolveActiveCredentialForBackend('org-1')).toBeNull()
+    expect(isOrgFeatureEnabled).toHaveBeenCalledWith('byok-llm', 'org-1')
+    expect(revealSecret).not.toHaveBeenCalled()
+  })
+
   it('fails open to the platform key when the secret cannot be revealed', async () => {
     vi.mocked(getActiveCredential).mockResolvedValue(ROW as never)
     vi.mocked(revealSecret).mockRejectedValue(new Error('vault down'))
@@ -99,7 +108,6 @@ describe('resolveActiveCredentialForBackend', () => {
 describe('getActiveCredentialProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
     vi.mocked(getOrgSettings).mockResolvedValue({ displayName: null, defaultLocale: 'en', settings: {} })
   })
 

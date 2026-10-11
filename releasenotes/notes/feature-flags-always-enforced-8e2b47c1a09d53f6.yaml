@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    Feature flags now always come from WorkOS. GRID_ENFORCE_FEATURE_FLAGS and
+    the GRID_*_ENABLED feature switches are gone, along with their Pulumi keys.
+    A stack that signs nobody in turns every rollout on and every entitlement,
+    deep research included, off. A Coolify pilot now reads its WorkOS flags.

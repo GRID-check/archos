@@ -40,32 +40,14 @@ interface MainLayoutProps {
   isAuthenticated?: boolean
   /** Callback when sign in is clicked */
   onSignIn?: () => void
-  /**
-   * Whether shallow answers show the confidence chip (WorkOS
-   * `chat-confidence-chip` flag, FB-6). Threaded to ChatArea → AgentResponse.
-   * Defaults to true (fail-open) so existing callers/specs are unaffected.
-   */
-  showConfidenceChip?: boolean
-  /**
-   * Whether answers show the per-answer thumbs feedback row (WorkOS
-   * `answer-feedback` flag, WS-7). Threaded to ChatArea → AgentResponse.
-   * Defaults to true (fail-open) so existing callers/specs are unaffected.
-   */
-  showAnswerFeedback?: boolean
-  /**
-   * Whether the sessions panel shows the Deep Research section and per-session
-   * research labels (WorkOS `research-in-chat-history` flag, FB-10). Threaded to
-   * SessionsPanel. Defaults to false so existing callers/specs are unaffected.
-   */
-  showResearchInHistory?: boolean
   /** Active project name — thread-header breadcrumb + composer scope chip. */
   projectName?: string | null
   /**
    * Whether the collaboration surfaces are available (ADR-0032…0035): message
    * authorship, the unread divider, the turn-in-flight banner. Threaded to
-   * ChatArea. Defaults to false — this feature is dark-launched, and unlike the
-   * fail-open flags above it changes who can see a conversation, so it must not
-   * switch itself on for callers that have not opted in (spec NF-7/NF-8).
+   * ChatArea. Defaults to false — this feature is dark-launched, and it changes
+   * who can see a conversation, so it must not switch itself on for callers
+   * that have not opted in (spec NF-7/NF-8).
    */
   canCollaborate?: boolean
   /** Whether the reader may chat in this project (`project:chat`). */
@@ -80,9 +62,6 @@ interface MainLayoutProps {
 export const MainLayout: FC<MainLayoutProps> = ({
   isAuthenticated = false,
   onSignIn,
-  showConfidenceChip = true,
-  showAnswerFeedback = true,
-  showResearchInHistory = false,
   canCollaborate = false,
   canChatInProject = true,
   projectName = null,
@@ -266,8 +245,6 @@ export const MainLayout: FC<MainLayoutProps> = ({
               <ChatArea
                 isAuthenticated={isAuthenticated}
                 onSignIn={onSignIn}
-                showConfidenceChip={showConfidenceChip}
-                showAnswerFeedback={showAnswerFeedback}
                 canCollaborate={canCollaborate}
               />
 
@@ -325,7 +302,6 @@ export const MainLayout: FC<MainLayoutProps> = ({
         onDeleteSession={handleDeleteSession}
         onDeleteAllSessions={handleDeleteAllSessions}
         onRenameSession={updateConversationTitle}
-        showDeepResearchSection={showResearchInHistory}
         projectId={projectId ?? undefined}
       />
     </div>

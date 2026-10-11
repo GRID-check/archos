@@ -96,7 +96,6 @@ export interface FilePreviewContext {
   canManage?: boolean
   scope?: DocumentScope
   canCollaborate?: boolean
-  showMetadataPanel?: boolean
   /**
    * Whether an `.ifc` preview offers the model workspace (`ifc-models`).
    *

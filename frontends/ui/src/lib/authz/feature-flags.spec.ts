@@ -1,238 +1,155 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   FEATURE_FLAGS,
-  agentAuthoredDocumentsEnvEnabled,
-  ifcModelsEnvEnabled,
+  FLAG_KINDS,
+  REGISTRY_FLAG_SLUGS,
+  flagsFromWorkOS,
   isAgentAuthoredDocumentsEnabled,
+  isCollaborationEnabled,
   isFeatureEnabled,
   isIfcModelsEnabled,
+  isMailImportEnabled,
+  isProjectKnowledgePageEnabled,
   isSkillsEnabled,
   requireFeature,
   requireSkillsEnabled,
+  type KnownFeatureFlag,
 } from './feature-flags'
 
 const FLAG = FEATURE_FLAGS.modelConfiguration
 
-describe('feature flags (WorkOS-native, JWT claim)', () => {
-  afterEach(() => {
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-  })
+afterEach(() => {
+  vi.unstubAllEnvs()
+})
 
-  it('registry contains the known flags with their WorkOS slugs', () => {
+describe('the registry', () => {
+  it('contains the known flags with their WorkOS slugs', () => {
     expect(FEATURE_FLAGS.modelConfiguration).toBe('runtime-model-config')
     expect(FEATURE_FLAGS.deepResearch).toBe('deep-research')
-    expect(FEATURE_FLAGS.keyboardShortcuts).toBe('keyboard-shortcuts')
+    expect(FEATURE_FLAGS.memoryReflection).toBe('memory-reflection')
+    expect(FEATURE_FLAGS.postAnswerFollowUps).toBe('post-answer-follow-ups')
   })
 
-  it('enforced: keyboard shortcuts follow the org claim like any other flag', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    const flag = FEATURE_FLAGS.keyboardShortcuts
-    expect(isFeatureEnabled({ featureFlags: [flag] }, flag)).toBe(true)
-    expect(isFeatureEnabled({ featureFlags: [] }, flag)).toBe(false)
+  it('classifies every slug, and nothing that is not one', () => {
+    // `FLAG_KINDS` is a Record over the slug union, so tsc already refuses a
+    // missing entry; this pins that the runtime object agrees.
+    expect(Object.keys(FLAG_KINDS).sort()).toEqual([...REGISTRY_FLAG_SLUGS].sort())
   })
 
-  it('everything stays enabled while enforcement is off (default)', () => {
-    expect(isFeatureEnabled({ featureFlags: null }, FLAG)).toBe(true)
-    expect(isFeatureEnabled({ featureFlags: [] }, FLAG)).toBe(true)
-    expect(requireFeature({ featureFlags: null }, FLAG)).toBeNull()
+  it('keeps the entitlements that cost money or widen who reads what OFF where nobody signs in', () => {
+    const entitlements = REGISTRY_FLAG_SLUGS.filter((slug) => FLAG_KINDS[slug] === 'entitlement').sort()
+    expect(entitlements).toEqual(
+      [
+        'byok-llm',
+        'collaboration',
+        'deep-research',
+        'mail-import',
+        'runtime-model-config',
+        'skills',
+        'task-automation',
+      ].sort()
+    )
+  })
+})
+
+describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed', () => {
+  beforeEach(() => {
+    vi.stubEnv('REQUIRE_AUTH', 'true')
   })
 
-  it('enforced: only sessions carrying the flag slug pass', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
+  it('reads flags from WorkOS', () => {
+    expect(flagsFromWorkOS()).toBe(true)
+  })
+
+  it('passes only sessions carrying the flag slug', () => {
     expect(isFeatureEnabled({ featureFlags: [FLAG] }, FLAG)).toBe(true)
     expect(isFeatureEnabled({ featureFlags: ['other-flag'] }, FLAG)).toBe(false)
     expect(isFeatureEnabled({ featureFlags: [] }, FLAG)).toBe(false)
   })
 
-  it('enforced: a token without the claim fails closed (stale session)', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
+  it('fails a token without the claim closed (stale session)', () => {
     expect(isFeatureEnabled({ featureFlags: null }, FLAG)).toBe(false)
   })
 
+  it('gives a rollout no default either — absent from the claim is off', () => {
+    // The default-ON env gates (`GRID_IFC_MODELS_ENABLED`,
+    // `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`) are gone; what WorkOS says is
+    // what the session gets.
+    expect(isIfcModelsEnabled({ featureFlags: [] })).toBe(false)
+    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: [] })).toBe(false)
+    expect(isIfcModelsEnabled({ featureFlags: [FEATURE_FLAGS.ifcModels] })).toBe(true)
+  })
+
+  it('ignores every retired environment fallback', () => {
+    for (const name of [
+      'GRID_SKILLS_ENABLED',
+      'GRID_COLLABORATION_ENABLED',
+      'GRID_MAIL_IMPORT_ENABLED',
+      'GRID_PROJECT_KNOWLEDGE_PAGE_ENABLED',
+    ]) {
+      vi.stubEnv(name, 'true')
+    }
+    vi.stubEnv('GRID_IFC_MODELS_ENABLED', 'true')
+    const none = { featureFlags: [] }
+    expect(isSkillsEnabled(none)).toBe(false)
+    expect(isCollaborationEnabled(none)).toBe(false)
+    expect(isMailImportEnabled(none)).toBe(false)
+    expect(isProjectKnowledgePageEnabled(none)).toBe(false)
+    expect(isIfcModelsEnabled(none)).toBe(false)
+  })
+
   it('requireFeature returns a stable-coded 403', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
     const res = requireFeature({ featureFlags: [] }, FLAG)
     expect(res).not.toBeNull()
     expect(res?.status).toBe(403)
     expect(await res?.json()).toEqual({ error: 'feature-disabled', feature: FLAG })
-  })
-})
-
-describe('organization-archiv flag (standard WorkOS flag, ADR-0024)', () => {
-  afterEach(() => {
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-  })
-
-  it('registry carries the organization-archiv slug', () => {
-    expect(FEATURE_FLAGS.orgArchiv).toBe('organization-archiv')
-  })
-
-  it('unenforced: available to all (fail-open like every flag) — no env var involved', () => {
-    expect(isFeatureEnabled({ featureFlags: null }, FEATURE_FLAGS.orgArchiv)).toBe(true)
-    expect(isFeatureEnabled({ featureFlags: [] }, FEATURE_FLAGS.orgArchiv)).toBe(true)
-  })
-
-  it('enforced: gated per-org by the WorkOS flag claim', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    expect(
-      isFeatureEnabled({ featureFlags: [FEATURE_FLAGS.orgArchiv] }, FEATURE_FLAGS.orgArchiv)
-    ).toBe(true)
-    expect(isFeatureEnabled({ featureFlags: [] }, FEATURE_FLAGS.orgArchiv)).toBe(false)
-    expect(isFeatureEnabled({ featureFlags: null }, FEATURE_FLAGS.orgArchiv)).toBe(false)
-  })
-
-  it('requireFeature: null when allowed, stable-coded 403 when off', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    expect(
-      requireFeature({ featureFlags: [FEATURE_FLAGS.orgArchiv] }, FEATURE_FLAGS.orgArchiv)
-    ).toBeNull()
-
-    const res = requireFeature({ featureFlags: [] }, FEATURE_FLAGS.orgArchiv)
-    expect(res?.status).toBe(403)
-    expect(await res?.json()).toEqual({ error: 'feature-disabled', feature: 'organization-archiv' })
-  })
-})
-
-describe('ifc-models — default ON, with its own off switch', () => {
-  afterEach(() => {
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_IFC_MODELS_ENABLED
-  })
-
-  it('registry carries the ifc-models slug', () => {
-    expect(FEATURE_FLAGS.ifcModels).toBe('ifc-models')
-  })
-
-  it('unenforced and unset: ON', () => {
-    expect(isIfcModelsEnabled({ featureFlags: null })).toBe(true)
-    expect(isIfcModelsEnabled({ featureFlags: [] })).toBe(true)
-  })
-
-  it('unenforced: an explicit falsey value withdraws the feature', () => {
-    // The point of having its own variable rather than riding the fail-open
-    // `isFeatureEnabled` path: a deployment can turn THIS off without switching
-    // on flag enforcement for every other feature at the same time.
-    for (const value of ['false', 'FALSE', ' false ', '0', 'no', 'off']) {
-      process.env.GRID_IFC_MODELS_ENABLED = value
-      expect(ifcModelsEnvEnabled(), `value ${JSON.stringify(value)}`).toBe(false)
-      expect(isIfcModelsEnabled({ featureFlags: [FEATURE_FLAGS.ifcModels] })).toBe(false)
-    }
-  })
-
-  it('unenforced: anything else leaves it on', () => {
-    for (const value of ['', 'true', 'TRUE', '1', 'yes']) {
-      process.env.GRID_IFC_MODELS_ENABLED = value
-      expect(ifcModelsEnvEnabled(), `value ${JSON.stringify(value)}`).toBe(true)
-    }
-  })
-
-  it('enforced: the per-org WorkOS claim decides and the env var is ignored', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    process.env.GRID_IFC_MODELS_ENABLED = 'true'
-    expect(isIfcModelsEnabled({ featureFlags: [FEATURE_FLAGS.ifcModels] })).toBe(true)
-    expect(isIfcModelsEnabled({ featureFlags: [] })).toBe(false)
-    // A token minted before the flag existed must not inherit the env default.
-    expect(isIfcModelsEnabled({ featureFlags: null })).toBe(false)
-  })
-})
-
-describe('agent-authored-documents — the operator gate a permission cannot be', () => {
-  afterEach(() => {
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED
-  })
-
-  it('registry carries the agent-authored-documents slug', () => {
-    expect(FEATURE_FLAGS.agentAuthoredDocuments).toBe('agent-authored-documents')
-  })
-
-  it('unenforced and unset: ON', () => {
-    // Deliberately NOT the dark-launch shape of `skills` / `collaboration`. This
-    // capability already has its opt-in — `project:documents:generate`, which no
-    // role holds until the catalog is provisioned and which the legacy
-    // `project:edit` umbrella does not satisfy. A second default-off gate would
-    // make every deployment turn two knobs to reach the behaviour its own
-    // release note describes.
-    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: null })).toBe(true)
-    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: [] })).toBe(true)
-  })
-
-  it('unenforced: an explicit falsey value stops filing everywhere at once', () => {
-    // The case the permission cannot serve. Withdrawing the permission
-    // fleet-wide means editing the built-in project roles in WorkOS, which makes
-    // `provision:authz --check` fail in CI — so the operator's kill switch has
-    // to live here.
-    for (const value of ['false', 'FALSE', ' false ', '0', 'no', 'off']) {
-      process.env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED = value
-      expect(agentAuthoredDocumentsEnvEnabled(), `value ${JSON.stringify(value)}`).toBe(false)
-      expect(
-        isAgentAuthoredDocumentsEnabled({
-          featureFlags: [FEATURE_FLAGS.agentAuthoredDocuments],
-        })
-      ).toBe(false)
-    }
-  })
-
-  it('unenforced: anything else leaves it on', () => {
-    for (const value of ['', 'true', 'TRUE', '1', 'yes']) {
-      process.env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED = value
-      expect(agentAuthoredDocumentsEnvEnabled(), `value ${JSON.stringify(value)}`).toBe(true)
-    }
-  })
-
-  it('enforced: the per-org WorkOS claim decides and the env var is ignored', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    process.env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED = 'true'
-    expect(
-      isAgentAuthoredDocumentsEnabled({ featureFlags: [FEATURE_FLAGS.agentAuthoredDocuments] })
-    ).toBe(true)
-    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: [] })).toBe(false)
-    // A token minted before the flag existed must not inherit the env default.
-    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: null })).toBe(false)
-  })
-})
-
-describe('isSkillsEnabled (dark-launch gate, ADR-0046)', () => {
-  afterEach(() => {
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_SKILLS_ENABLED
-  })
-
-  it('registry carries the skills slug', () => {
-    expect(FEATURE_FLAGS.skills).toBe('skills')
-  })
-
-  it('unenforced and without the env opt-in: OFF, unlike an ordinary flag', () => {
-    // The point of a dark-launch gate: every other flag fails OPEN while
-    // enforcement is off, so only an explicit env opt-in can reveal this one.
-    expect(isSkillsEnabled({ featureFlags: [FEATURE_FLAGS.skills] })).toBe(false)
-    expect(isSkillsEnabled({ featureFlags: null })).toBe(false)
-  })
-
-  it('unenforced with GRID_SKILLS_ENABLED=true: on for everyone', () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
-    expect(isSkillsEnabled({ featureFlags: [] })).toBe(true)
-    expect(isSkillsEnabled({ featureFlags: null })).toBe(true)
-  })
-
-  it('enforced: the per-org WorkOS flag decides, and the env var stops counting', () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    process.env.GRID_SKILLS_ENABLED = 'true'
-    expect(isSkillsEnabled({ featureFlags: [FEATURE_FLAGS.skills] })).toBe(true)
-    expect(isSkillsEnabled({ featureFlags: [] })).toBe(false)
-    expect(isSkillsEnabled({ featureFlags: null })).toBe(false)
+    expect(requireFeature({ featureFlags: [FLAG] }, FLAG)).toBeNull()
   })
 
   it('requireSkillsEnabled: null when allowed, stable-coded 403 when off', async () => {
-    process.env.GRID_SKILLS_ENABLED = 'true'
-    expect(requireSkillsEnabled({ featureFlags: [] })).toBeNull()
-
-    delete process.env.GRID_SKILLS_ENABLED
+    expect(requireSkillsEnabled({ featureFlags: [FEATURE_FLAGS.skills] })).toBeNull()
     const res = requireSkillsEnabled({ featureFlags: [] })
     expect(res?.status).toBe(403)
     expect(await res?.json()).toEqual({ error: 'feature-disabled', feature: 'skills' })
+  })
+})
+
+describe('where nobody signs in (REQUIRE_AUTH unset): rollouts on, entitlements off', () => {
+  beforeEach(() => {
+    vi.stubEnv('REQUIRE_AUTH', '')
+  })
+
+  it('does not read flags from WorkOS', () => {
+    expect(flagsFromWorkOS()).toBe(false)
+  })
+
+  it('answers each flag by its kind, whatever the session carries', () => {
+    for (const slug of REGISTRY_FLAG_SLUGS) {
+      const expected = FLAG_KINDS[slug] === 'rollout'
+      for (const featureFlags of [null, [], [slug]] as (KnownFeatureFlag[] | null)[]) {
+        expect(isFeatureEnabled({ featureFlags }, slug), `${slug} ${JSON.stringify(featureFlags)}`).toBe(
+          expected
+        )
+      }
+    }
+  })
+
+  it('so the model surfaces and filing are on, and skills and collaboration are not', () => {
+    expect(isIfcModelsEnabled({ featureFlags: null })).toBe(true)
+    expect(isAgentAuthoredDocumentsEnabled({ featureFlags: null })).toBe(true)
+    expect(isProjectKnowledgePageEnabled({ featureFlags: null })).toBe(true)
+    expect(isSkillsEnabled({ featureFlags: null })).toBe(false)
+    expect(isCollaborationEnabled({ featureFlags: null })).toBe(false)
+    expect(isMailImportEnabled({ featureFlags: null })).toBe(false)
+    expect(isFeatureEnabled({ featureFlags: null }, FEATURE_FLAGS.deepResearch)).toBe(false)
+  })
+
+  it('is not talked into an entitlement by a retired environment variable', () => {
+    vi.stubEnv('GRID_SKILLS_ENABLED', 'true')
+    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    expect(isSkillsEnabled({ featureFlags: [FEATURE_FLAGS.skills] })).toBe(false)
   })
 })

@@ -42,8 +42,8 @@ down-vote (existing WS-7 capture: verdict + reason chip + comment)
                  not general    → recorded as skipped
                  new + audit ok → lesson ACTIVE immediately, capacity eviction
                  new + flagged  → CANDIDATE, held for a human
-  active lessons ──► bounded digest (≤20 lessons / 1600 chars, cached 5 min)
-    └─ GET /api/internal/platform-lessons/digest   [token-guarded, cross-tenant]
+  active lessons ──► bounded digest (≤20 lessons / 1600 chars, cached 5 min) + the ids of the lessons in it
+    └─ GET /api/internal/platform-lessons/digest   [token-guarded, cross-tenant]  { digest, lessonIds }
          └─ aiq_agent.common.platform_lessons      [60 s TTL, fail-open to None]
               └─ piloti.j2 §PLATFORM_LESSONS   [meta-framing, everything outranks it]
 ```
@@ -152,7 +152,9 @@ on (for a revision thread, from the change that made it answer yes), and the
 message id of every vote cast in one. The vote's ids are the client's and can
 only add to the answer. The sweep reads the question through the voted
 message's own conversation. Marks have no foreign key, so they stay when the
-chat is deleted, and a conversation once marked keeps answering yes.
+chat is deleted, and a conversation once marked keeps answering yes. The chat's
+votes do not stay: deleting a chat deletes them with it (`deleteConversationInOrg`),
+so a report whose vote went that way keeps only its anonymised summary.
 
 What a sweep took before that rule was withdrawn twice: migration 0120 by
 conversation record, 0123 by mark. The report's `canonical_summary` is cleared,
@@ -162,8 +164,9 @@ since none of it came from there. 0123 also clears the vector embedded from
 every withdrawn lesson's old text and removes `previousContent`, which an
 owner's edit had kept, from its events. Votes whose chat and record were
 deleted before 0120, and reports whose vote was retracted, cannot be matched
-(the 0123 header lists them). The injection digest's cache key is `platformlessons:digest:v3`, so a
-digest cached before 0123 ran is not injected for the rest of its five minutes.
+(the 0123 header lists them). The injection's cache key is `platformlessons:digest:v4` (v3 held the bare
+digest string, v4 holds `{ digest, lessonIds }`), so a digest cached before 0123
+ran is not injected for the rest of its five minutes.
 
 Four defence layers, none trusted alone: deterministic scrub → instructed
 omission (the distiller writes the failure class, not the instance) → auditor
@@ -276,6 +279,17 @@ decide with the same pure function over the same key — `isInHoldoutSlice` in
 TypeScript, `is_in_holdout_slice` in Python, with pinned cross-language test
 vectors on both sides — so nothing has to be plumbed between them and they
 cannot disagree.
+
+The arm is also on the turn's **trace**, so the holdout is readable from the
+exported `langfuse observation` events without the vote table: trace metadata
+`lessons_arm` (`treated`, `holdout`, or `off` when the holdout is off, the
+conversation has no id, or the setting could not be read) and `lesson_ids` (the
+comma-joined ids of the lessons whose line is in the injected digest; absent on a
+holdout or empty turn). They are written in `turn/context.py` from
+`resolve_platform_lessons`, and the ids come from the digest endpoint, which
+names only the lessons the 1600-character budget kept. The three arm states
+match the vote's `lessons_holdout` (true, false, NULL) one to one. Break the
+`user-feedback` score down by `lessons_arm` to read the experiment.
 
 Three deliberate choices:
 

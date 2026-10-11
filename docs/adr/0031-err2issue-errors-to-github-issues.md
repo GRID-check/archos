@@ -4,7 +4,7 @@ Date: 2026-07-28
 
 ## Status
 
-Accepted (dev only; prod deployment gated — see Consequences)
+Superseded by ADR-0100
 
 ## Context
 

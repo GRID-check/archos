@@ -238,6 +238,16 @@ function clickCanvas(canvas: Element, at: { clientX: number; clientY: number }):
   fireEvent.pointerUp(canvas, { pointerId: 1, button: 0, ...at })
 }
 
+describe('session replay', () => {
+  it('blocks the model canvas from the recorder: it has no text to mask', async () => {
+    const view = await mountLoaded()
+
+    // The block class is on the wrapper, so the canvas AND the measurement
+    // overlays drawn over the building are replaced by a placeholder.
+    expect(view.container.querySelector('canvas')?.parentElement).toHaveClass('ph-no-capture')
+  })
+})
+
 describe('the cut the renderer is actually given', () => {
   it('cuts at the height the reader asked for, in world metres', async () => {
     await mountLoaded({ section: { atMetres: 3, flipped: false } })

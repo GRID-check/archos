@@ -4,13 +4,11 @@
  * handler; all logic (incl. `org:archiv:manage` authorization) lives in
  * `@/lib/archiv/service`, which shares its pipeline with a project's upload
  * (`@/lib/documents/shelf-upload`, ADR-0078): optional `folderId` and
- * `originPath` form fields file the document into an Archiv folder. Feature-gated by the dark-launch `organization-archiv`
- * flag (ADR-0024).
+ * `originPath` form fields file the document into an Archiv folder (ADR-0024).
  */
 
 import { apiRoute, parseFormData } from '@/lib/api/handler'
 import { BadRequestError } from '@/lib/api/errors'
-import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { uploadArchivDocument } from '@/lib/archiv/service'
 import { readFassungOf } from '@/lib/documents/fassung-upload'
 import { DOCUMENT_UPLOAD_LIMIT } from '@/lib/limits'
@@ -19,9 +17,6 @@ import { readUploadBatchId } from '@/lib/upload-batches/service'
 
 export const POST = apiRoute(
   async ({ session, request }) => {
-    const gated = requireFeature(session, FEATURE_FLAGS.orgArchiv)
-    if (gated) return gated
-
     const formData = await parseFormData(request)
     const file = formData.get('file')
     if (!(file instanceof File)) {

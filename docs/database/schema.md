@@ -1541,8 +1541,8 @@ the lookup by document the revision-thread triggers make.
 
 ## answer_feedback (migrations 0020, 0121, 0124)
 
-Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
-`answer-feedback`). One row per (user, assistant answer).
+Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6). One row per
+(user, assistant answer).
 
 - Columns: `organization_id` (denormalized, scopes every query in SQL),
   `project_id` (nullable, **cascade FK** to `projects` so a purged project
@@ -1581,8 +1581,13 @@ Per-answer thumbs feedback (WS-7, click-dummy overhaul spec §1/§6; flag
   f.organization_id`, `lib/feedback/turn-join.ts`) and take the conversation
   from the persisted answer when one exists. The vote path stores the answer
   row's conversation when it can see one.
-- Not part of conversation erasure: deleting a conversation cascades its
-  `messages` but leaves its votes, `comment` and `expected_answer` included.
+- Part of conversation erasure, though no FK says so: `deleteConversationInOrg`
+  deletes the votes whose `conversation_id` is the chat's, or whose `message_id`
+  is one of its messages, in the same transaction as the conversation row
+  (`comment` and `expected_answer` quote the chat). Votes on a purged project
+  go through `project_id`'s cascade. `platform_lesson_reports.feedback_id` is
+  left pointing at nothing, as after a retracted vote: the report keeps only
+  the anonymised `canonical_summary`.
 - Indexes: `answer_feedback_org_conversation_idx`
   (`organization_id`,`conversation_id`) serves the per-conversation hydration
   list; `answer_feedback_org_project_idx` (`organization_id`,`project_id`);

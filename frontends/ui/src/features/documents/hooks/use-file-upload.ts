@@ -35,6 +35,8 @@ import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-sc
 import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '../lib/upload-batch'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import { fileExtensionLabel } from '../document-kind'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
@@ -457,6 +459,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           ]),
         })
         let unchangedCount = 0
+        // File types of the files the server took, for the `document_uploaded`
+        // event: extensions only, never a name.
+        const uploadedTypes: string[] = []
 
         // Several at a time, not one after another: each POST also writes to
         // object storage, checks the org quota and dispatches to the ingest
@@ -536,6 +541,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
               // event happened to say.
               bytesUploaded: file.size,
             })
+            uploadedTypes.push(fileExtensionLabel(file.name).toLowerCase() || 'unknown')
           } catch (err) {
             if (isAbort(err)) {
               updateTrackedFile(tracked.id, { status: 'canceled' })
@@ -561,6 +567,16 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         // make every surface that mounts during the batch refetch four
         // listings again for each one.
         notifyDocumentsChanged()
+
+        // One event per batch the server took files from: how many, which types,
+        // and which shelf. Counts and extensions only; no name leaves the browser.
+        if (uploadedTypes.length > 0) {
+          capturePosthog('document_uploaded', {
+            count: uploadedTypes.length,
+            types: [...new Set(uploadedTypes)].sort().join(','),
+            shelf,
+          })
+        }
 
         // Sealed once every request has answered: the files that wrote no row
         // are counted here, the rest the server can see for itself.

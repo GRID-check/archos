@@ -740,7 +740,6 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     render(
       <SessionsPanel
         sessions={sessions}
-        showDeepResearchSection
         projectId="p1"
         {...extra}
       />
@@ -759,12 +758,12 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     })
   })
 
-  test('does not render the section, the filter, or fetch runs when the flag is off', () => {
-    render(<SessionsPanel sessions={sessions} projectId="p1" />)
+  test('does not render the section, the filter, or fetch runs outside a project', () => {
+    render(<SessionsPanel sessions={sessions} />)
 
     expect(screen.queryByTestId('deep-research-section')).not.toBeInTheDocument()
     expect(screen.queryByRole('radiogroup', { name: /filter history/i })).not.toBeInTheDocument()
-    // Effect early-returns when showDeepResearchSection is false.
+    // The runs belong to a project, so the fetch effect early-returns without one.
     expect(mockListResearchRuns).not.toHaveBeenCalled()
   })
 
@@ -850,7 +849,6 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     render(
       <SessionsPanel
         sessions={[{ id: 'conv-1', title: 'Research chat', date: today, hasCompletedReport: true }]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -956,7 +954,7 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     })
 
     const { rerender } = render(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
 
     expect(mockListResearchRuns).toHaveBeenCalledTimes(1)
@@ -964,11 +962,11 @@ describe('SessionsPanel - Deep Research section (FB-10)', () => {
     // Close, then reopen — all while the fetch is still in flight.
     isPanelOpen = false
     rerender(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
     isPanelOpen = true
     rerender(
-      <SessionsPanel sessions={sessions} showDeepResearchSection projectId="p1" />
+      <SessionsPanel sessions={sessions} projectId="p1" />
     )
 
     // Now the original fetch resolves; the result must land in the section.
@@ -1008,7 +1006,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[{ ...idleSession, hasActiveDeepResearch: true }]}
-        showDeepResearchSection
       />
     )
     expect(screen.queryByRole('button', { name: /stop research/i })).not.toBeInTheDocument()
@@ -1031,7 +1028,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -1067,7 +1063,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )
@@ -1094,7 +1089,6 @@ describe('SessionsPanel - stopping a run from the history', () => {
     render(
       <SessionsPanel
         sessions={[idleSession]}
-        showDeepResearchSection
         projectId="p1"
       />
     )

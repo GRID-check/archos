@@ -46,11 +46,13 @@ Trace metadata on the root:
 | `error_code` | on a failed turn |
 | `usage_llm_calls`, `usage_prompt_tokens`, `usage_completion_tokens`, `usage_total_tokens`, `usage_cost_usd`, `usage_cost_source`, `usage_error` | the turn's whole spend (`usage_rollup`) |
 | `answer_dialect` | block census and repairs by kind |
+| `lessons_arm`, `lesson_ids` | the platform-lessons experiment (`turn/context.py`): `treated`, `holdout` or `off`, and the comma-joined ids of the lessons in the digest the turn carried (none on a holdout turn). The holdout is a breakdown on these, not a join to the vote table. Always recorded: neither names a person |
 | `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
 | `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
 | `reference_projects_offered`, `precedent_p`, `reference_prefetch` | the turn's start: how many reference projects the catalog listed, the decision's p(precedent), and whether round 0 searched them on its own (`agents/piloti/register.py`) |
 | `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
+| `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
 
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 `confidence:<…>`, `capped:<…>`, `citations-removed`, `quote-not-found`,
@@ -146,6 +148,121 @@ task langfuse:provision -- --apply   # create what is missing (ask first on a sh
 The script never changes or deletes what exists; a config that differs is
 reported as drift for a person to resolve.
 
+## PostHog export
+
+Traces, generations and scores reach PostHog **only** through Langfuse's own
+PostHog integration. Grid sends no `$ai_*` event and no LLM trace or score
+to PostHog itself; everything else (product analytics, errors, replay, surveys)
+goes to PostHog directly, and this export is what joins the two. The upstream
+page is [langfuse.com/integrations/analytics/posthog](https://langfuse.com/integrations/analytics/posthog).
+
+### What is exported
+
+Langfuse's worker, on an hourly schedule, batches events to the PostHog host you
+give it:
+
+| Event | One per | Properties that matter to us |
+|---|---|---|
+| `langfuse observation` | observation of any type (`GENERATION`, `SPAN`, `AGENT`, `TOOL`, `RETRIEVER`, `EVENT`, `CHAIN`, `EMBEDDING`, `EVALUATOR`, `GUARDRAIL`) | `langfuse_type`, `langfuse_observation_name`, `langfuse_trace_id`, `langfuse_trace_name`, `langfuse_model`, `langfuse_cost_usd`, `langfuse_input_units` / `_output_units` / `_total_units`, `langfuse_latency`, `langfuse_level`, `langfuse_tags`, `langfuse_environment`, `langfuse_release`, `langfuse_session_id`, `langfuse_user_id` |
+| `langfuse score` | score | `langfuse_score_name`, `_value`, `_string_value`, `_data_type`, `_comment`, `_metadata`, `langfuse_trace_id`, `langfuse_user_id` |
+
+A legacy export source sends `langfuse trace` and `langfuse generation` instead
+of `langfuse observation`; scores are the same in every source. No prompt or
+answer text is in either event. **Score comments and metadata are**: the
+`user-feedback` score's comment carries the voter's own words and what they
+expected (`feedback-score.ts`), so those words land in PostHog as
+`langfuse_score_comment` and `langfuse_score_metadata`. Langfuse's trace
+retention and erasure workers (ADR-0044) do not reach PostHog: an erased
+person's events there are removed in PostHog (delete the person with their
+events).
+
+Facts to plan around: **nothing is backfilled** (the sync is watermark-based,
+and starts when the integration is saved); there is **no filter** by observation
+type, name or level on the integration (the only lever is the export source);
+and PostHog drops events past the free tier's limit without telling Langfuse.
+An upstream issue ([langfuse#12786](https://github.com/langfuse/langfuse/issues/12786))
+reports the first sync of a project with a long history sending it all in one
+unthrottled burst, against the "nothing is backfilled" line, so save the integration
+early or on a project with little history, and watch the first run.
+
+### Which export source
+
+Self-hosted Langfuse has an **Export Source** selector in the integration
+settings (introduced with the v4 preview):
+
+| Source | Events | Reads | Works while |
+|---|---|---|---|
+| Enriched observations (recommended) | `langfuse observation` + `langfuse score` | v4's events table | `langfuse.v4WriteMode` is `dual` or `events_only` |
+| Traces and observations (legacy) | `langfuse trace` + `langfuse generation` + `langfuse score` | v3's tables | `legacy` or `dual`; not selectable once legacy writes are off |
+| Both | all of the above | | `dual`; duplicates by design, for migration only |
+
+Our deployment writes both tables (`langfuseV4WriteMode` defaults to `dual`,
+`deploy/pulumi/src/config.ts`), so either source works today. Upstream moves a
+self-hosted deployment on to the enriched source automatically once the server
+runs in `events_only`; the switch is one-way.
+
+**Volume.** A chat turn is one `AGENT` root plus a span for every retrieval,
+decision-model call, tool call and model call under it, so the enriched source
+exports many events per turn and the legacy source one trace plus its
+generations. All of them are ordinary PostHog events and count against the
+free tier's 1M analytics events a month, not against its AI-observability
+allowance. Because there is no filter, the choice is the legacy source (fewer
+events, deprecated upstream, gone at `events_only`) or the enriched one (every
+observation). Count before you commit: enable it on staging for a week and read
+the monthly `langfuse observation` count in PostHog, then decide. The export
+never reads a trace's body, so this is the whole cost.
+
+### Identity and the replay link
+
+* `user_id` becomes the event's distinct id, so it must be the WorkOS user id
+  PostHog identifies the browser with. That is Langfuse's user, which Grid sets
+  only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
+  `langfuse_unknown_user` and joins to no person.
+* `trace.metadata.$posthog_session_id` becomes `$session_id`. Each chat turn
+  carries the browser's PostHog session id there:
+  `getPosthogSessionId()` (`frontends/ui/src/lib/analytics/posthog.ts`) is read
+  per question and sent as `user_message.posthog_session_id`; `_drive` in
+  `aiq_api/chat_socket.py` records it with `record_posthog_session`
+  (`langfuse_trace_attributes.py`). From a trace, open the same `$session_id`
+  in PostHog's replay list.
+* It is **identity-gated**, on the rule in that module's header ("no span names a
+  person" unless the deployment opts in): a session id names no one alone, but on
+  a trace holding the turn's question and answer it is a join key to that person's
+  recording and profile. It rides the same switch as the user id, and costs nothing
+  real: without the user id the events have no person to land on.
+* Only a UUIDv7 is kept, as PostHog generates them; anything else is dropped and
+  the turn runs. PostHog rotates the id after 30 idle minutes, so it is read per
+  turn.
+* The page sends the id only to a server whose hello lists
+  `user_message.posthog_session_id` in `accepts`, which is withheld while
+  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off (its default). Turn that on for the link.
+
+### How to enable
+
+Langfuse configures this integration in the UI and nowhere else. There is no
+environment variable and no `LANGFUSE_INIT_*` for it, and the public API
+(`/api/public`) has an integrations endpoint for blob storage only, so
+`task langfuse:provision` cannot declare it. Do it by hand, once per Langfuse
+project:
+
+1. In Langfuse, open the project, then **Settings -> Integrations -> PostHog**.
+2. Set **PostHog Hostname** to the ingestion host (`https://eu.i.posthog.com`,
+   the same value as `POSTHOG_HOST`) and **PostHog API key** to the project's
+   public token (`POSTHOG_PROJECT_TOKEN`, `phc_...`).
+3. Choose the **Export Source** (above), switch **Enabled** on, and save.
+   Langfuse encrypts the key with `ENCRYPTION_KEY`, which the Langfuse tier
+   sets (`deploy/pulumi/src/platform/langfuse.ts`); a save that fails with an
+   internal error means that variable is missing.
+4. Wait for the next hourly run. In PostHog, `langfuse observation` appears
+   under Data management -> Events; the **AI Metrics** dashboard template is a
+   starting point.
+
+Network: the worker calls the PostHog host over HTTPS. Egress from the `grid`
+namespace is open (`network-policies.ts`, "Egress is left open on purpose"); only
+Gotenberg has an egress policy, so no rule is needed. A spec
+(`platform/langfuse.spec.ts`) fails if a policy ever selects the worker with
+`Egress`.
+
 ## When you change the product
 
 | When you | You must |
@@ -168,5 +285,6 @@ reported as drift for a person to resolve.
 | Model calls outside NAT | `src/aiq_agent/observability/direct_trace.py` |
 | Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
 | Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
+| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
 | Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
 | Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

@@ -16,6 +16,7 @@ const requester = { userId: 'user_owner', email: 'owner@grid.test', organization
 beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
+  vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
 })
 
 afterEach(() => {
@@ -35,7 +36,7 @@ describe('resolvePinnedRequesterSession', () => {
       role: 'member',
       // No token: nothing on the filing path forwards one, and none is minted.
       accessToken: '',
-      featureFlags: null,
+      featureFlags: [],
     })
     // Permissions come from the catalog for the role, never from the caller.
     expect(Array.isArray(session?.permissions)).toBe(true)
@@ -53,8 +54,7 @@ describe('resolvePinnedRequesterSession', () => {
     expect(await resolvePinnedRequesterSession(requester)).toBeNull()
   })
 
-  it("carries every flag of the requester's organization under enforcement, asked by that organization", async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+  it("carries every flag of the requester's organization, asked by that organization", async () => {
     vi.mocked(enabledFlagsForOrganization).mockResolvedValueOnce(['agent-authored-documents', 'image-upload'])
 
     const session = await resolvePinnedRequesterSession(requester)
@@ -64,15 +64,8 @@ describe('resolvePinnedRequesterSession', () => {
   })
 
   it('lets a failed flag lookup throw, so the background work retries instead of acting with none', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
     vi.mocked(enabledFlagsForOrganization).mockRejectedValueOnce(new Error('workos down'))
 
     await expect(resolvePinnedRequesterSession(requester)).rejects.toThrow('workos down')
-  })
-
-  it('carries no flags at all without enforcement, as a live session without the claim does', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'false')
-
-    expect((await resolvePinnedRequesterSession(requester))?.featureFlags).toBeNull()
   })
 })

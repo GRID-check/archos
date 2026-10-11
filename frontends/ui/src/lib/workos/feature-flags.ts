@@ -1,65 +1,25 @@
 /**
- * WorkOS feature-flag evaluation (server-side).
+ * WorkOS feature-flag evaluation (server-side, without a session).
  *
  * `listOrganizationFeatureFlags` returns the flags **enabled** for an
  * organization, so membership of a slug == "on for this org". Results are cached
  * briefly per org to avoid a WorkOS round-trip on every WebSocket upgrade.
  *
- * Fail-closed: any error (no API key, feature not on the plan, network) returns
- * the caller's default (off), so a flag outage never silently enables a gated
- * capability.
+ * The same rules as the session gates in `lib/authz/feature-flags.ts`, whose
+ * header is the argument: fail-closed on any error (no API key, feature not on
+ * the plan, network) and for a caller with no organization, and the fixed
+ * per-kind answer in a deployment that authenticates nobody. A flag outage
+ * never silently enables a gated capability.
  */
 
 import { getWorkOS } from './client'
 import { getCached, invalidateCached } from '@/lib/cache'
-import { FEATURE_FLAGS, enforcementOn } from '@/lib/authz/feature-flags'
-
-/** Slug of the flag gating the async post-answer memory-reflection stage. */
-export const MEMORY_REFLECTION_FLAG = 'memory-reflection'
-
-/**
- * Slug of the flag gating the async post-answer follow-up-questions stage.
- * The stage delivers a `grid_stage_message` frame that renders as a rail below
- * the answer; it ran `silent` for one slice first so its skip rate, empty rate
- * and true per-turn cost were measured before any reader saw a chip
- * (docs/architecture/post-answer-stages.md §10, slices 1 and 3).
- */
-export const FOLLOW_UPS_FLAG = 'post-answer-follow-ups'
-
-/** Slug of the flag gating per-org BYOK LLM credentials (ADR-0022). */
-export const BYOK_LLM_FLAG = 'byok-llm'
-
-/**
- * Slug of the flag gating the Agent Skills feature (Phase A). Session paths
- * use `isSkillsEnabled` (authz/feature-flags); the session-less scheduled-fire
- * path evaluates this slug per-org so revoking an org's flag also pauses its
- * skill schedules (fail-closed).
- */
-export const SKILLS_FLAG = 'skills'
-
-/**
- * Slug of the platform-layer web-search flag (ADR-0022). Participates only
- * when GRID_ENFORCE_FEATURE_FLAGS=true — see `isWebSearchEnabledForOrg` in
- * `@/lib/organizations/service`, which combines it with the tenant's own
- * `settings.webSearchEnabled` toggle.
- */
-export const WEB_SEARCH_FLAG = 'web-search'
-
-/**
- * Slug of the flag gating deep research. Taken from the registry rather than
- * re-spelled, because this one is now read on TWO paths that must agree: the
- * session gate on `POST /api/jobs/async/submit`, and the session-less per-turn
- * read below that tells the agent tier whether it may offer the run at all.
- */
-export const DEEP_RESEARCH_FLAG = FEATURE_FLAGS.deepResearch
-
-/**
- * Slug of the flag gating delegated tasks and schedules. Read session-lessly
- * for the same reason as the one above: the agent's `create_task` reaches the
- * BFF with a signed envelope, not a session, and the model has to be told
- * before it offers the hand-off.
- */
-export const TASK_AUTOMATION_FLAG = FEATURE_FLAGS.taskAutomation
+import {
+  FEATURE_FLAGS,
+  flagsFromWorkOS,
+  unauthenticatedDefault,
+  type KnownFeatureFlag,
+} from '@/lib/authz/feature-flags'
 
 const CACHE_TTL_MS = 30_000
 
@@ -95,93 +55,51 @@ export async function enabledFlagsForOrganization(organizationId: string): Promi
 }
 
 /**
- * Whether `slug` is enabled for `organizationId`. Returns `defaultValue` when
- * there is no org, no WorkOS API key, or evaluation fails (fail-closed).
+ * Whether `flag` is enabled for `organizationId`, for a caller without a
+ * session. OFF when there is no organization, no WorkOS API key, or the lookup
+ * fails; the fixed per-kind answer where nobody authenticates.
  */
 export async function isOrgFeatureEnabled(
-  slug: string,
+  flag: KnownFeatureFlag,
   organizationId: string | null | undefined,
-  defaultValue = false,
 ): Promise<boolean> {
-  if (!organizationId || !process.env.WORKOS_API_KEY) {
-    return defaultValue
-  }
+  if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
+  if (!organizationId || !process.env.WORKOS_API_KEY) return false
   try {
-    return (await enabledSlugsForOrg(organizationId)).has(slug)
+    return (await enabledSlugsForOrg(organizationId)).has(flag)
   } catch (error) {
-    console.warn(`[FeatureFlags] evaluation of "${slug}" failed; using default (${defaultValue})`, error)
-    return defaultValue
+    console.warn(`[FeatureFlags] evaluation of "${flag}" failed; treating it as off`, error)
+    return false
   }
 }
 
 /**
  * One post-answer stage's runtime switch (see
  * `docs/architecture/post-answer-stages.md` §7.8). The `id` mirrors the
- * `StageSpec.id` declared in `src/aiq_agent/stages/`; `flag` and `envVar`
- * mirror its `flag_slug` and `env_default`. Keep the two sides in step — a
- * stage the backend declares but this registry omits can never be switched on.
+ * `StageSpec.id` declared in `src/aiq_agent/stages/`; `flag` mirrors its
+ * `flag_slug` (`tests/aiq_agent/stages/test_stage_flag_parity.py`). Keep the
+ * two sides in step — a stage the backend declares but this registry omits can
+ * never be switched on.
  */
 export interface PostAnswerStageFlag {
   readonly id: string
-  readonly flag: string
-  readonly envVar: string
-  /** The value when flag enforcement is off and the env var is unset. */
-  readonly defaultOn: boolean
+  readonly flag: KnownFeatureFlag
 }
 
 export const POST_ANSWER_STAGE_FLAGS: readonly PostAnswerStageFlag[] = [
   {
     id: 'memory_reflection',
-    flag: MEMORY_REFLECTION_FLAG,
-    envVar: 'GRID_MEMORY_REFLECTION_ENABLED',
-    // Memory reflection is a shipped core capability, not a dark-launched
-    // product gate, so like every non-dark feature it stays ON in environments
-    // without the flag product. New stages default OFF.
-    defaultOn: true,
+    flag: 'memory-reflection',
   },
   {
+    // ON for every organization in both WorkOS environments, and the only thing
+    // that produces follow-up questions since the in-answer `follow_ups` CARD
+    // was deleted (ADR-0069). Turning the flag off stops the frames within a
+    // turn or two, no deploy and no reconnect; it does not bring the card back.
     id: 'follow_ups',
-    flag: FOLLOW_UPS_FLAG,
-    envVar: 'GRID_STAGE_FOLLOW_UPS_ENABLED',
-    // ON. It shipped OFF, as every new stage does, and was switched on per org
-    // while the empty rate and the per-turn cost were read off the
-    // `stage:follow_ups` spans. It is ON for every organization in both WorkOS
-    // environments now, and the in-answer `follow_ups` CARD it replaces has been
-    // deleted (ADR-0069), so this stage is the only thing that
-    // produces follow-up questions at all.
-    //
-    // That is what moves the default: `defaultOn` is what a deployment without
-    // the flag product sees, and leaving it false there would mean a Grid with
-    // no follow-ups anywhere and nothing to switch on. It is a shipped core
-    // capability now, on the same footing as `memory_reflection` — including the
-    // capability bit, so a workflow config with no `follow_ups_llm` is still a
-    // no-op rather than a failure.
-    //
-    // Turning the WorkOS flag off still stops the frames within a turn or two,
-    // no deploy and no reconnect, and the answer is unaffected either way. What
-    // it no longer does is fall back to the card: the card type no longer
-    // exists, so reversing that means restoring it (ADR-0069).
-    defaultOn: true,
+    flag: 'post-answer-follow-ups',
   },
 ]
-
-/**
- * Whether one post-answer stage runs for this org.
- *
- * With WorkOS flag enforcement on (GRID_ENFORCE_FEATURE_FLAGS=true) the
- * per-org flag is the source of truth (fail-closed). Without enforcement the
- * stage follows its env var. The backend still no-ops when no LLM is
- * configured for the stage's agent group (the capability bit).
- */
-export async function isPostAnswerStageEnabled(
-  stage: PostAnswerStageFlag,
-  organizationId: string | null | undefined,
-): Promise<boolean> {
-  if (enforcementOn()) {
-    return isOrgFeatureEnabled(stage.flag, organizationId)
-  }
-  return (process.env[stage.envVar] ?? String(stage.defaultOn)).toLowerCase() !== 'false'
-}
 
 /**
  * The ids of every post-answer stage switched on for this org.
@@ -197,7 +115,7 @@ export async function enabledPostAnswerStages(
 ): Promise<string[]> {
   const decisions = await Promise.all(
     POST_ANSWER_STAGE_FLAGS.map(async (stage) =>
-      (await isPostAnswerStageEnabled(stage, organizationId)) ? stage.id : null,
+      (await isOrgFeatureEnabled(stage.flag, organizationId)) ? stage.id : null,
     ),
   )
   return decisions.filter((id): id is string => id !== null)
@@ -205,16 +123,12 @@ export async function enabledPostAnswerStages(
 
 /**
  * Whether the async post-answer memory-reflection stage runs for this org.
- *
- * Retained as the name the WebSocket-upgrade path uses; it now delegates to the
- * stage registry above so there is one source of truth for the decision.
+ * Retained as the name the WebSocket-upgrade path uses.
  */
 export async function isMemoryReflectionEnabled(
   organizationId: string | null | undefined,
 ): Promise<boolean> {
-  const stage = POST_ANSWER_STAGE_FLAGS.find((entry) => entry.flag === MEMORY_REFLECTION_FLAG)
-  if (!stage) return false
-  return isPostAnswerStageEnabled(stage, organizationId)
+  return isOrgFeatureEnabled(FEATURE_FLAGS.memoryReflection, organizationId)
 }
 
 /**
@@ -228,21 +142,18 @@ export async function isMemoryReflectionEnabled(
  * answered 403. This is what the agent tier reads per turn (`GET
  * /api/internal/stages`) so it can decline to OFFER the run.
  *
- * Fail-open with enforcement off, exactly like `isFeatureEnabled`: the two
- * halves must reach the same verdict, and a deployment that does not enforce
- * flags has deep research for everyone.
+ * The same verdict the session gate reaches: OFF for a caller with no
+ * organization. That case used to answer ON, on the reasoning that an
+ * org-less caller is an anonymous deployment or a break-glass session rather
+ * than a tenant with the flag switched off — which made the one entitlement
+ * that costs the most the one that failed open. An anonymous deployment gets
+ * its answer from `flagsFromWorkOS` instead (deep research is an entitlement,
+ * so off), and a break-glass session has no tenant to bill a run to.
  */
 export async function isDeepResearchEnabledForOrg(
   organizationId: string | null | undefined,
 ): Promise<boolean> {
-  if (!enforcementOn()) return true
-  // No organization is not a tenant with the flag switched off: it is an
-  // anonymous deployment (REQUIRE_AUTH=false) or a break-glass session, and
-  // `POST /api/jobs/async/submit` skips its own gate for exactly that case.
-  // Denying here would make the two halves disagree and withdraw deep research
-  // from a deployment that has no per-org flags to read in the first place.
-  if (!organizationId) return true
-  return isOrgFeatureEnabled(DEEP_RESEARCH_FLAG, organizationId)
+  return isOrgFeatureEnabled(FEATURE_FLAGS.deepResearch, organizationId)
 }
 
 /**
@@ -256,11 +167,7 @@ export async function isDeepResearchEnabledForOrg(
 export async function isTaskAutomationEnabledForOrg(
   organizationId: string | null | undefined,
 ): Promise<boolean> {
-  if (!enforcementOn()) return true
-  // See `isDeepResearchEnabledForOrg`: no organization is an anonymous or
-  // break-glass caller, not a tenant with the flag switched off.
-  if (!organizationId) return true
-  return isOrgFeatureEnabled(TASK_AUTOMATION_FLAG, organizationId)
+  return isOrgFeatureEnabled(FEATURE_FLAGS.taskAutomation, organizationId)
 }
 
 /** Test hook: clear a specific org's flag cache entry. */

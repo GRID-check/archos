@@ -180,6 +180,7 @@ const session = {
   roles: ['member'],
   permissions: [],
   email: 'me@grid.test',
+  featureFlags: ['collaboration'],
 } as unknown as AuthorizedSession
 
 /** The registry's single probe: existence, tenancy, container, visibility, creator. */
@@ -244,10 +245,11 @@ beforeEach(() => {
   vi.mocked(peopleWhoMayRead).mockImplementation(async (_org, _id, userIds) => new Set(userIds))
   vi.mocked(lockedConversationIds).mockResolvedValue(new Set())
   vi.mocked(restrictingOtherProjects).mockResolvedValue([])
-  // The collaboration feature is dark-launched (spec NF-7): without an operator
-  // opt-in the mention path refuses outright, so the tests that exercise it must
-  // enable it. The flag-OFF behaviour has its own tests.
-  process.env.GRID_COLLABORATION_ENABLED = 'true'
+  // The collaboration feature is an entitlement (spec NF-7): without the
+  // organization's flag the mention path refuses outright, so these tests run as
+  // a signed-in deployment whose session holds it (`session.featureFlags`). The
+  // flag-OFF behaviour has its own tests.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
   stubConversation()
   stubContainer('project-editor')
   vi.mocked(findGrantForSubject).mockResolvedValue(null)
@@ -271,6 +273,10 @@ beforeEach(() => {
   })
   vi.mocked(findMessageInConversation).mockResolvedValue(null)
   vi.mocked(insertMessages).mockImplementation(async (rows) => rows as Message[])
+})
+
+afterEach(() => {
+  vi.unstubAllEnvs()
 })
 
 describe('reading a conversation — the access rules', () => {
@@ -1314,10 +1320,13 @@ describe("the addressee ruling is the SERVER's, and only the server's (spec MN-2
 
 describe('the collaboration flag is off (spec NF-8, NF-7)', () => {
   beforeEach(() => {
-    // A deployment that never opted in. The chat path must be the product it was
-    // before this feature existed — the flag is the operator's decision, and the
-    // feature must not switch itself on by being POSTed to.
-    delete process.env.GRID_COLLABORATION_ENABLED
+    // An organization nobody granted it. The chat path must be the product it
+    // was before this feature existed — the flag is the operator's decision, and
+    // the feature must not switch itself on by being POSTed to.
+    session.featureFlags = []
+  })
+  afterEach(() => {
+    session.featureFlags = ['collaboration']
   })
 
   it('refuses a message carrying mentions, and grants/asks/notifies nobody', async () => {

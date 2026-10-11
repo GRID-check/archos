@@ -64,7 +64,7 @@ the same change.
 | Dragonfly | The Redis-protocol shared cache across BFF replicas, which also holds each conversation's frame stream (ADR-0020) | [`docs/adr/0020-dragonfly-shared-cache.md`](adr/0020-dragonfly-shared-cache.md) |
 | SeaweedFS | The object store for document bytes, one bucket per organization (ADR-0043) | [`docs/adr/0043-seaweedfs-split-topology-and-per-tenant-buckets.md`](adr/0043-seaweedfs-split-topology-and-per-tenant-buckets.md) |
 | Langfuse | The LLM trace store, and where the platform prompt is managed (ADR-0044) | [`docs/adr/0044-langfuse-durable-llm-observability.md`](adr/0044-langfuse-durable-llm-observability.md) |
-| err2issue | The path that turns ERROR-level logs into deduplicated GitHub issues (ADR-0031) | [`docs/adr/0031-err2issue-errors-to-github-issues.md`](adr/0031-err2issue-errors-to-github-issues.md) |
+| err2issue | The retired path that turned ERROR-level logs into deduplicated GitHub issues (ADR-0031); PostHog error tracking replaces it | [`docs/adr/0031-err2issue-errors-to-github-issues.md`](adr/0031-err2issue-errors-to-github-issues.md) |
 
 ## UI
 
