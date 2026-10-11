@@ -263,7 +263,7 @@ export interface LangfuseInputs {
  *      the rule that protects the Aspire dashboard, because the data is the
  *      same data: every tenant's prompts and model output — or the narrower
  *      `platform:observability:view`, which the read-only
- *      `platform-observability-analyst` role carries.
+ *      `org-platform-observability-analyst` role carries.
  *   2. Langfuse's own SSO (`AUTH_CUSTOM_*`) against that same issuer then
  *      establishes a real Langfuse session. A first sign-in joins the seeded
  *      org and project as `defaultRole` (VIEWER), so an analyst reads and an

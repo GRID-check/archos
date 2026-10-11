@@ -2105,7 +2105,7 @@ permission. Who holds what (`frontends/ui/src/lib/authz/catalog.ts`):
 |---|---|---|
 | `org-platform-owner` | yes | every platform permission |
 | `org-platform-support` | yes | the read-only platform views |
-| `platform-observability-analyst` ("Observability Analyst") | yes | nothing else |
+| `org-platform-observability-analyst` ("Observability Analyst") | yes | nothing else |
 
 **Once per environment, in this order:**
 
