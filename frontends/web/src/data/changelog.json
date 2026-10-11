@@ -359,6 +359,10 @@
               "de": "Bei Fragen, die möglicherweise bereits in einem früheren Projekt beantwortet wurden, durchsucht Piloti jetzt von Anfang an die abgeschlossenen Projekte, die Ihrem am ähnlichsten sind, und findet sie auch anhand der Bauweise."
             },
             {
+              "en": "The message box no longer draws a line between where you type and the project and attachment controls below it.",
+              "de": "Im Nachrichtenfeld gibt es keine Trennlinie mehr zwischen der Texteingabe und den darunterliegenden Projekt- und Anhangsoptionen."
+            },
+            {
               "en": "A document's revisions and their approval now use one word each, everywhere: every state of a document is a revision, numbered \"Revision 3 of 5\", and a revision sent back reads \"Changes requested\", matching the button.",
               "de": "Fassungen und Freigabe heißen jetzt überall gleich: Jeder Stand eines Dokuments ist eine Fassung, nummeriert als „Fassung 3 von 5“, und eine zurückgegebene Fassung heißt „Änderungen angefordert“, wie die Schaltfläche."
             },
@@ -518,6 +522,10 @@
             {
               "en": "Piloti can open a draft it wrote earlier in the conversation again. Asking it to shorten or rework part of an Aktenvermerk used to end with Piloti saying it could not read the document and asking you to paste the text.",
               "de": "Piloti kann einen Entwurf, den es zuvor im Gespräch erstellt hat, erneut öffnen. Bisher sagt Piloti oft, dass es das Dokument nicht lesen kann, und bittet Sie, den Text einzufügen, wenn Sie es bitten, einen Teil eines Aktenvermerks zu kürzen oder zu überarbeiten."
+            },
+            {
+              "en": "The settings overview of a project whose intake was never completed no longer shows an error. Its similar closed projects load again.",
+              "de": "Die Einstellungsübersicht eines Projekts, dessen Erfassung nie abgeschlossen wurde, zeigt keinen Fehler mehr. Ähnliche abgeschlossene Projekte werden wieder geladen."
             },
             {
               "en": "Opening a project's settings without permission to manage members no longer shows an error, and buttons you are not allowed to use are no longer shown.",

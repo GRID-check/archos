@@ -2360,6 +2360,10 @@
     "de": "Das Eingabefeld ist beim Tippen wieder grau und schwarz statt grün. In Piloti markiert Grün, woher eine Quelle stammt, und zwei übereinanderliegende Grüntöne ließen sich kaum unterscheiden."
   },
   {
+    "en": "The message box no longer draws a line between where you type and the project and attachment controls below it.",
+    "de": "Im Nachrichtenfeld gibt es keine Trennlinie mehr zwischen der Texteingabe und den darunterliegenden Projekt- und Anhangsoptionen."
+  },
+  {
     "en": "The message box no longer sits flush against your last answer. It now floats as its own translucent panel, and the conversation fades gently into it as you scroll, so it reads as the place where you type rather than another line of the chat.",
     "de": "Das Nachrichtenfeld liegt nicht mehr direkt an Ihrer letzten Antwort. Es schwebt jetzt als eigenes durchscheinendes Feld, und das Gespräch geht beim Scrollen sanft darin über, sodass es wie der Ort wirkt, an dem Sie tippen, und nicht wie eine weitere Zeile im Chat."
   },
@@ -2434,6 +2438,10 @@
   {
     "en": "The search in Dateien now sits in the header, next to the view switcher, the Alle / Meine / Nicht zugewiesen filter and Hochladen. The documents start a row higher, and there is one search on the page instead of two.",
     "de": "Die Suche in „Dateien“ sitzt jetzt in der Kopfzeile, neben dem Ansichtsumschalter, dem Filter Alle / Meine / Nicht zugewiesen und Hochladen. Die Dokumente beginnen eine Zeile höher, und es gibt nur noch eine Suche auf der Seite statt zwei."
+  },
+  {
+    "en": "The settings overview of a project whose intake was never completed no longer shows an error. Its similar closed projects load again.",
+    "de": "Die Einstellungsübersicht eines Projekts, dessen Erfassung nie abgeschlossen wurde, zeigt keinen Fehler mehr. Ähnliche abgeschlossene Projekte werden wieder geladen."
   },
   {
     "en": "The skill editor no longer has the switch that let Piloti pick skills on its own. Piloti decides which skills to consider, and saved skills are unchanged and available again.",
