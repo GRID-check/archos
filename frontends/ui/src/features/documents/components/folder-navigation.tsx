@@ -300,9 +300,8 @@ interface FolderTileProps {
   /** Most recent child's timestamp — the "last change" for this folder, like file cards show file time. */
   lastModified?: string | null
   /**
-   * Where the folder's whole subtree stands with Piloti (`subtreeTallies`).
-   * Drawn on the list view's row only: the tile grid is for browsing, and a
-   * read state on every tile was louder than anyone browsing wanted.
+   * Where the folder's whole subtree stands with Piloti (`subtreeTallies`): a
+   * dot beside the name on a tile, the dot and its words on a list-view row.
    */
   knowledge?: KnowledgeTally
   onOpen: (id: string) => void
@@ -470,6 +469,7 @@ export function FolderCard({
   folder,
   itemCount,
   lastModified,
+  knowledge,
   onOpen,
   onRenameFolder,
   onDeleteFolder,
@@ -557,6 +557,9 @@ export function FolderCard({
                   {folder.name}
                 </p>
                 {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
+                {/* The dot alone, after the name: what a folder holds at a
+                    glance, without a line of words on every tile. */}
+                <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
               </div>
             )}
           </div>

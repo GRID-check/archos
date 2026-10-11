@@ -80,8 +80,9 @@ Piloti cannot tell that it is the Energieausweis until you link it.
 
 In the list view, folder rows carry the same state in short form: „2
 fehlgeschlagen“, „3 werden gelesen“, or „Alles gelesen“ when everything Piloti is
-meant to read is ready. A folder with nothing Piloti reads shows no state. The
-card view leaves the state off folder tiles, so browsing stays calm.
+meant to read is ready. A folder with nothing Piloti reads shows no state. In
+the card view a folder tile shows only the coloured dot (green read, blue being
+read, red failed, amber held back); hover it for the words.
 
 ### The file card grid
 

@@ -304,9 +304,10 @@ row turns to „Wird gelesen“ as its answer comes in.
 **Folder rows in the list view** show the worst state of everything in their
 subtree, as one swatch and one phrase, in this order: failed, held back, being
 read, and then „Alles gelesen“ when every document Piloti is meant to read is
-citable. The folder tiles of the card view show no read state: the card view is
-for browsing, the list view is the detail view, and a state on every tile was
-louder than browsing needs. For the same reason a file card carries a status
+citable. The folder tiles of the card view carry the same mark as a coloured dot
+beside the name, without the words, which are its tooltip and its screen-reader
+text: the card view is for browsing, the list view is the detail view, and the
+phrase on every tile was louder than browsing needs. For the same reason a file card carries a status
 badge only when the document is not simply citable (being read, failed, held
 back, never indexed); „Zitierbar“ is spelled out in the list view's status
 column. An unplaced document is not named on a row. It appears only in the
@@ -464,7 +465,7 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
 | Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
 | The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |
-| A folder's read state on its list-view row | `src/features/documents/components/folder-read-state.tsx` |
+| A folder's read state: the dot on its tile, the dot and phrase on its list-view row | `src/features/documents/components/folder-read-state.tsx` |
 | Bulk re-read, four requests at a time, and the one request each sends | `src/features/documents/hooks/use-bulk-reingest.ts`; `src/features/documents/lib/reingest-request.ts` |
 | The missing list, shared with the agent's prompt | `src/lib/document-roles/prompt-loader.ts` (`loadMissingDocuments`); `src/features/documents/hooks/use-missing-documents.ts` |
 | Phase model, batch summary, rate/ETA estimator | `src/features/documents/lib/upload-progress.ts` |

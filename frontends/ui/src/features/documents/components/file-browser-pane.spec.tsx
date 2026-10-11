@@ -648,7 +648,7 @@ describe('FileBrowserPane — folder aggregates', () => {
     expect(within(screen.getByTestId('folder-card-root-a')).getByText('3 items')).toBeInTheDocument()
   })
 
-  it('keeps Piloti\'s read state off the folder tile and on the list view\'s row', () => {
+  it('marks a folder tile with the dot alone and spells the state out on the list view\'s row', () => {
     const failed: FileItem = { ...files[1], id: 'broken', folderId: 'root-a', status: 'failed' }
     const nav = {
       folders: tree,
@@ -659,7 +659,11 @@ describe('FileBrowserPane — folder aggregates', () => {
       onDeleteFolder: vi.fn(),
     }
     const { unmount } = renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav })
-    expect(within(screen.getByTestId('folder-card-root-a')).queryByTestId('folder-read-state')).toBeNull()
+    const dot = within(screen.getByTestId('folder-card-root-a')).getByTestId('folder-read-state')
+    expect(dot).toHaveAttribute('data-state', 'failed')
+    // The words are there for a screen reader and on hover, not drawn on the tile.
+    expect(dot).toHaveAttribute('title', '1 failed')
+    expect(within(dot).getByText('1 failed')).toHaveClass('sr-only')
     unmount()
 
     renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav, view: 'list' })
