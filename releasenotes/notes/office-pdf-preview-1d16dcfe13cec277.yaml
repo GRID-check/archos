@@ -5,15 +5,15 @@ features:
     preview, and a reference to one opens that preview instead of only offering
     a download. Download still gives you the original file, unchanged.
   - >
-    Pictures in Word and PowerPoint files are now read, so a photo or plan on a
-    slide can be found and cited in an answer. Files uploaded earlier are read
-    this way once you choose Erneut lesen in their menu.
+    Pictures in Word and PowerPoint files are now read too, so a photo or
+    drawing on a slide can be found and cited in an answer. Files uploaded
+    earlier are read this way once you choose "Erneut lesen" in their menu.
   - >
     A reference to a Word or PowerPoint file opens its preview at the page the
     passage came from.
   - >
-    An open file shows its summary, page count and tags as soon as indexing
-    finishes, without closing and reopening it.
+    An open file shows its summary, page count and tags as soon as Piloti
+    has finished reading it, without closing and reopening it.
 operators:
   - >
     The platform now needs a Gotenberg service at GOTENBERG_URL. Office

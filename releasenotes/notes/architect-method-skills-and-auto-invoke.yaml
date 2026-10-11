@@ -1,22 +1,23 @@
 ---
 features:
   - >
-    Skills can now say whether Piloti may pick them on its own. Switch off Agent
-    may pick this and the skill only runs when you call it with a slash or
-    attach it to a job.
+    Skills can now say whether Piloti may pick them on its own. Switch off
+    "Agent may pick this" and the skill runs only when you call it with a
+    slash command or attach it to a task.
   - >
     Two new skills start switched on for chat: Einreichcheck lists what a
     building-permit application still lacks in your province, and Bestand lists
     what still binds after a conversion, a change of use or a larger renovation.
   - >
-    Asking for a full Soll-Ist or Konformitaetspruefung now runs the staged
-    check against this project, instead of walking the six Richtlinien by hand.
+    Asking for a full Soll-Ist or Konformitätsprüfung now runs the complete
+    check against this project, instead of going through the six Richtlinien
+    by hand.
 improvements:
   - >
-    Answers on fire safety, site rules, stairs and energy now follow a worked
-    method instead of restating numbers from the guideline. Each skill is
-    described in one sentence, so the slash menu is readable.
+    Answers on fire safety, site rules, stairs and energy now follow a
+    worked method instead of restating numbers from the guideline. Each
+    skill in the slash menu now has a one-sentence description.
   - >
-    Forecast and prediction-report skills no longer ride along on every deep
-    research run. They sit on the Skills tab for the jobs that actually need
-    them.
+    Forecast and prediction-report skills no longer come along automatically
+    with every deep research run. They sit on the Skills tab, for the jobs
+    that need them.

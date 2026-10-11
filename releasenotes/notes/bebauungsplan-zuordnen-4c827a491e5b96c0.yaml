@@ -1,9 +1,9 @@
 ---
 features:
   - >
-    You can now tell a project which file is its Bebauungsplan, by uploading it
-    right at the question in the project wizard or by picking a document already
-    in the project. Piloti then refers to the plan by name.
+    You can now tell a project which file is its Bebauungsplan, by uploading
+    it right where the project wizard asks for it or by picking a document
+    already in the project. Piloti then cites the Bebauungsplan by name.
   - >
     Piloti knows which documents are still missing and answers accordingly.
     Without a Bebauungsplan it says so instead of answering as if it had read

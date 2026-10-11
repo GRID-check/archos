@@ -1,7 +1,7 @@
 ---
 improvements:
   - >
-    The Aufgaben list now stays current while it is visible and refreshes
-    when you return to it, instead of showing the state from when the tab
-    was opened. Early submission states also read as queued work rather
-    than as raw technical labels.
+    The Aufgaben list stays current while it is open and refreshes when you
+    return to it, instead of showing how things stood when you opened the tab.
+    A task that has just been submitted shows as waiting, not with a technical
+    status name.

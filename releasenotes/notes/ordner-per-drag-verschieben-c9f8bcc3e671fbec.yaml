@@ -4,8 +4,8 @@ features:
     Documents can now also be dragged into a folder in the list view, not only
     in the card view.
   - >
-    Folders can now be dragged onto another folder, or onto Alle Dateien to move
-    them back to the top. A folder never lights up as a target inside itself.
+    Folders can now be dragged onto another folder, or onto Alle Dateien to
+    move them back to the top. A folder can never be dropped into itself.
 fixes:
   - >
     Dragging a file onto a folder no longer flickers or shows the upload
