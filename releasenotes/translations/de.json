@@ -84,6 +84,10 @@
     "de": "Eine korrigierte Datei, die ein bestehendes Dokument ersetzt, oder eine neue Version eines Dokuments, die aus einem Entwurf veröffentlicht wird, wird geprüft, bevor Kolleginnen und Kollegen sie sehen. Bis dahin ist das Dokument nur für die Person sichtbar, die es hochgeladen hat, sowie für Personen, die Dateien freigeben dürfen."
   },
   {
+    "en": "A correction you make to a document's tags stays when Piloti reads the file again. Before, re-reading the file replaced it.",
+    "de": "Eine Korrektur der Dokument-Tags bleibt erhalten, wenn Piloti die Datei erneut einliest. Bisher wurde die Korrektur beim erneuten Einlesen überschrieben."
+  },
+  {
     "en": "A date in a project note, such as a submission deadline, is no longer mistaken for a phone number and dropped.",
     "de": "Ein Datum in einer Projektnotiz, etwa eine Einreichfrist, wird nicht mehr für eine Telefonnummer gehalten und verworfen."
   },
@@ -348,8 +352,16 @@
     "de": "Eine einmalige Aufgabe trägt auf ihrer Karte jetzt dieselbe Farbe wie ihr Block im Stundenplan."
   },
   {
+    "en": "A phone photo taken in portrait is now shown upright and read upright.",
+    "de": "Ein im Hochformat aufgenommenes Handyfoto wird jetzt aufrecht angezeigt und gelesen."
+  },
+  {
     "en": "A photo or scanned drawing inside an uploaded PDF can now be viewed by Piloti on its own and at full resolution, instead of only as part of the rendered page.",
     "de": "Ein Foto oder eine eingescannte Zeichnung in einem hochgeladenen PDF kann Piloti jetzt einzeln und in voller Auflösung ansehen, statt nur als Teil der ganzen Seite."
+  },
+  {
+    "en": "A photograph is now tagged as a photo beside what it shows: a photo of a floor plan is both \"Foto\" and \"Grundriss\".",
+    "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
   },
   {
     "en": "A precedent from another Bundesland is now marked as decided under another Bauordnung.",
@@ -1120,6 +1132,10 @@
     "de": "Jeder Zustand eines Dokuments heißt jetzt überall gleich: „Zitierbar“ und, solange eine Datei gelesen wird, „Wird verarbeitet“ statt drei verschiedener Bezeichnungen."
   },
   {
+    "en": "Each folder shows the state of everything inside it, such as \"2 failed\" or \"All read\", so a problem is visible without opening every subfolder.",
+    "de": "Jeder Ordner zeigt den Status aller enthaltenen Elemente an, z. B. „2 fehlgeschlagen“ oder „Alles gelesen“, damit Probleme sichtbar sind, ohne dass Sie jeden Unterordner öffnen müssen."
+  },
+  {
     "en": "Each line of Das Wichtigste now carries what you would write down, the number, the class or the deadline. Expanded, it shows the reference, the derivation or the case in which it does not apply.",
     "de": "Jede Zeile von „Das Wichtigste“ trägt jetzt das, was man mitschreibt: die Zahl, die Klasse, die Frist. Aufgeklappt zeigt sie die Fundstelle, die Herleitung oder den Fall, in dem die Aussage nicht gilt."
   },
@@ -1178,6 +1194,10 @@
   {
     "en": "Every finished answer can now be copied. An answer that cites no source — a clarifying question, a short conversational reply — offered only the Word download before, so there was no way to take a sentence from it into an e-mail.",
     "de": "Jede fertige Antwort lässt sich jetzt kopieren. Bei Antworten ohne Quellenangabe – etwa einer Rückfrage oder einer kurzen Gesprächsantwort – steht bisher nur der Word-Download zur Verfügung, sodass Sie keinen Satz daraus in eine E-Mail übernehmen können."
+  },
+  {
+    "en": "Every folder now opens with what Piloti knows about it and everything below it: how many documents it can cite, what they are about, and which ones need you. Failed documents can be read again together with \"Read all again\", and the top level of a project lists the documents Piloti still expects.",
+    "de": "Jeder Ordner zeigt beim Öffnen jetzt, was Piloti über ihn und alle darunterliegenden Ordner weiß: wie viele Dokumente Piloti zitieren kann, worum es darin geht und welche Ihre Aufmerksamkeit benötigen. Fehlgeschlagene Dokumente können mit „Alle erneut lesen“ nochmals eingelesen werden, und auf der obersten Ebene eines Projekts werden die Dokumente angezeigt, die Piloti noch erwartet."
   },
   {
     "en": "Every new version now counts fully towards your storage, because earlier versions are kept. Before, repeated revisions could exceed the storage limit unnoticed.",
@@ -1628,20 +1648,28 @@
     "de": "Übersichten enthalten nochmals eine Zusammenfassung und die wichtigsten Punkte, und Vorschläge für Folgefragen ergeben sich aus konkreten Lücken in der Antwort."
   },
   {
-    "en": "People assigned to a document, and whoever uploaded it, now get an inbox note when a newer revision replaces it, with the first line of what changed. It reaches only people who may open the newer one.",
-    "de": "Wem ein Dokument zugewiesen ist und wer es hochgeladen hat, bekommt jetzt eine Nachricht im Posteingang, wenn eine neuere Fassung es ersetzt, mit der ersten Zeile dessen, was sich geändert hat. Sie erreicht nur Personen, die die neuere Fassung öffnen dürfen."
-  },
-  {
     "en": "Pausing, closing and reopening are offered from the project's overview menu and from the notice at the top of a paused or closed project, and the project switcher no longer lists every closed project of the office.",
     "de": "Pausieren, Schließen und Wiederöffnen stehen im Menü der Projektübersicht sowie über den Hinweis oben in einem pausierten oder geschlossenen Projekt zur Verfügung, und der Projektwechsler listet nicht mehr jedes geschlossene Projekt des Büros auf."
+  },
+  {
+    "en": "People assigned to a document, and whoever uploaded it, now get an inbox note when a newer revision replaces it, with the first line of what changed. It reaches only people who may open the newer one.",
+    "de": "Wem ein Dokument zugewiesen ist und wer es hochgeladen hat, bekommt jetzt eine Nachricht im Posteingang, wenn eine neuere Fassung es ersetzt, mit der ersten Zeile dessen, was sich geändert hat. Sie erreicht nur Personen, die die neuere Fassung öffnen dürfen."
   },
   {
     "en": "People who are invited or join an existing project also get the tours, once each, on their first visit.",
     "de": "Auch wer eingeladen wird oder einem bestehenden Projekt beitritt, bekommt die Touren, jeweils einmal beim ersten Besuch."
   },
   {
+    "en": "Photos show when they were taken and with which camera, and link to where they were taken. Piloti uses the date to describe a photo but never sends its location to a model.",
+    "de": "Fotos zeigen Aufnahmedatum und verwendete Kamera und verlinken mit dem Aufnahmeort. Piloti verwendet das Datum zur Beschreibung eines Fotos, übermittelt den Standort aber niemals an ein Modell."
+  },
+  {
     "en": "Pictures in Word and PowerPoint files are now read, so a photo or plan on a slide can be found and cited in an answer. Files uploaded earlier are read this way once you choose Erneut lesen in their menu.",
     "de": "Bilder in Word- und PowerPoint-Dateien werden jetzt gelesen, sodass ein Foto oder Plan auf einer Folie gefunden und in einer Antwort zitiert werden kann. Früher hochgeladene Dateien werden so gelesen, sobald Sie in ihrem Menü „Erneut lesen“ wählen."
+  },
+  {
+    "en": "Piloti adds its own topics to a document beside the fixed document types, for example \"Attika\" or \"Holzrahmenbau\", when it is confident and no fixed tag fits. You can correct them, and the file search finds them.",
+    "de": "Piloti fügt einem Dokument bei hoher Sicherheit eigene Themen hinzu, zusätzlich zu den fixen Dokumenttypen, etwa „Attika“ oder „Holzrahmenbau“, wenn kein fixer Tag passt. Sie können diese korrigieren; die Dateisuche findet sie."
   },
   {
     "en": "Piloti answers from the current revision and uses an older one only when you name it. A citation of an older revision says so and opens the current one.",
@@ -1718,6 +1746,10 @@
   {
     "en": "Piloti looks into past projects on its own more reliably for questions about practice, and no longer does so for plain questions about a rule.",
     "de": "Piloti zieht bei Fragen zur Praxis zuverlässiger selbstständig frühere Projekte heran und tut dies bei einfachen Fragen zu einer Vorschrift nicht mehr."
+  },
+  {
+    "en": "Piloti no longer calls a file a plan unless it knows the file is a drawing. The folder overview and the agent say document, file or revision instead.",
+    "de": "Piloti bezeichnet eine Datei nur noch dann als Plan, wenn sie als Zeichnung erkannt wurde. Die Ordnerübersicht und der Agent sprechen stattdessen von Dokument, Datei oder Revision."
   },
   {
     "en": "Piloti no longer ends a conversation without noting what it learned about the project. Its note limit now counts only the notes it actually keeps.",
@@ -2360,6 +2392,10 @@
     "de": "Die Oberfläche wirkt ruhiger und reagiert schneller: Buttons geben bei jedem Klick dezent nach, beim Kopieren einer Antwort erscheint ein Häkchen, und Ladeplatzhalter schimmern, statt grau aufzublitzen."
   },
   {
+    "en": "The kind filter now offers spreadsheets and text notes.",
+    "de": "Der Filter für Dateitypen bietet jetzt Tabellen und Textnotizen."
+  },
+  {
     "en": "The list of references now always sits beside the document and shows which passage you are reading, and the toolbar shows the page you are on.",
     "de": "Die Fundstellenliste steht jetzt immer neben dem Dokument und zeigt, welche Stelle Sie gerade lesen, und die Werkzeugleiste zeigt die aktuelle Seite."
   },
@@ -2470,6 +2506,10 @@
   {
     "en": "The status line above the Herleitung says what Piloti is searching for, and once the research is done, that the answer is being written.",
     "de": "Die Statuszeile über der Herleitung sagt, wonach Piloti gerade sucht, und sobald die Recherche abgeschlossen ist, dass die Antwort formuliert wird."
+  },
+  {
+    "en": "The summary of an image no longer starts with \"[IMAGE from page 1]\".",
+    "de": "Die Zusammenfassung eines Bildes beginnt nicht mehr mit „[IMAGE from page 1]“."
   },
   {
     "en": "The upload area now states the largest file you can upload as a size per file, and the number it shows is the one your organization is held to. It no longer shows 95 MB for a 100 MB limit.",

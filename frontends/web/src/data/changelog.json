@@ -131,6 +131,26 @@
               "de": "Beim Löschen einer eigenen Rolle, die Ordner nennen, zeigt Piloti jetzt, welche Ordner das sind, und verlangt eine Bestätigung. Ordner ohne gültige Rolle können nur noch Organisations-Admins lesen und stehen in den Projekteinstellungen mit einem Link zu jedem."
             },
             {
+              "en": "A document is now one entry, however many revisions it has. The entry shows how many, and opening it lists every revision on one timeline, newest first, with who added it, when, and what changed.",
+              "de": "Ein Dokument ist jetzt ein einziger Eintrag, egal wie viele Fassungen es hat. Der Eintrag zeigt, wie viele es sind, und beim Öffnen stehen alle Fassungen in einem Verlauf, die neueste zuerst, mit Angabe, wer sie wann eingestellt hat und was sich geändert hat."
+            },
+            {
+              "en": "Piloti recognises a new revision of a document by itself, from the file name, from the number, index and date printed in a drawing's title block, and from the content. It asks once before linking them, in the upload dialog or on the file, and nothing is linked without your confirmation.",
+              "de": "Piloti erkennt eine neue Fassung eines Dokuments von selbst: am Dateinamen, an Nummer, Index und Datum im Plankopf einer Zeichnung und am Inhalt. Es fragt einmal nach, bevor es beide verknüpft, im Upload-Dialog oder an der Datei, und ohne Ihre Bestätigung wird nichts verknüpft."
+            },
+            {
+              "en": "Two revisions can be compared side by side, overlaid with the changes in colour, or with a swipe. On request Piloti marks what changed on the drawing and says it in words.",
+              "de": "Zwei Fassungen lassen sich nebeneinander, übereinandergelegt mit farbig hervorgehobenen Änderungen oder mit einem Wischregler vergleichen. Auf Wunsch markiert Piloti auf der Zeichnung, was sich geändert hat, und beschreibt es in Worten."
+            },
+            {
+              "en": "Piloti answers from the current revision and uses an older one only when you name it. A citation of an older revision says so and opens the current one.",
+              "de": "Piloti antwortet aus der aktuellen Fassung und nimmt eine ältere nur, wenn Sie sie nennen. Ein Zitat aus einer älteren Fassung sagt das und öffnet die aktuelle."
+            },
+            {
+              "en": "People assigned to a document, and whoever uploaded it, now get an inbox note when a newer revision replaces it, with the first line of what changed. It reaches only people who may open the newer one.",
+              "de": "Wem ein Dokument zugewiesen ist und wer es hochgeladen hat, bekommt jetzt eine Nachricht im Posteingang, wenn eine neuere Fassung es ersetzt, mit der ersten Zeile dessen, was sich geändert hat. Sie erreicht nur Personen, die die neuere Fassung öffnen dürfen."
+            },
+            {
               "en": "Organisation admins can now see who downloaded which document, and who opened one in a folder with its own access list, under Organisation → Download-Protokoll. Entries are kept 12 months at most, which an organization can shorten to 30 days, and reading the log is itself recorded.",
               "de": "Organisations-Admins sehen jetzt unter Organisation → Download-Protokoll, wer welches Dokument heruntergeladen und wer eines in einem Ordner mit eigener Zugriffsliste geöffnet hat. Einträge bleiben höchstens 12 Monate erhalten, was eine Organisation auf 30 Tage verkürzen kann, und auch das Lesen des Protokolls wird festgehalten."
             },
@@ -149,6 +169,22 @@
             {
               "en": "A folder's own access list now names people instead of roles, each allowed to read or also to edit. Switch on \"Alle Projektmitglieder dürfen lesen\" when the whole project may read a folder and only some may change it.",
               "de": "Die Zugriffsliste eines Ordners führt jetzt Personen statt Rollen auf, jeweils mit Lese- oder Lese- und Bearbeitungsberechtigung. Aktivieren Sie „Alle Projektmitglieder dürfen lesen“, wenn alle Projektmitglieder einen Ordner lesen dürfen, aber nur einige ihn bearbeiten dürfen."
+            },
+            {
+              "en": "Every folder now opens with what Piloti knows about it and everything below it: how many documents it can cite, what they are about, and which ones need you. Failed documents can be read again together with \"Read all again\", and the top level of a project lists the documents Piloti still expects.",
+              "de": "Jeder Ordner zeigt beim Öffnen jetzt, was Piloti über ihn und alle darunterliegenden Ordner weiß: wie viele Dokumente Piloti zitieren kann, worum es darin geht und welche Ihre Aufmerksamkeit benötigen. Fehlgeschlagene Dokumente können mit „Alle erneut lesen“ nochmals eingelesen werden, und auf der obersten Ebene eines Projekts werden die Dokumente angezeigt, die Piloti noch erwartet."
+            },
+            {
+              "en": "Each folder shows the state of everything inside it, such as \"2 failed\" or \"All read\", so a problem is visible without opening every subfolder.",
+              "de": "Jeder Ordner zeigt den Status aller enthaltenen Elemente an, z. B. „2 fehlgeschlagen“ oder „Alles gelesen“, damit Probleme sichtbar sind, ohne dass Sie jeden Unterordner öffnen müssen."
+            },
+            {
+              "en": "Piloti adds its own topics to a document beside the fixed document types, for example \"Attika\" or \"Holzrahmenbau\", when it is confident and no fixed tag fits. You can correct them, and the file search finds them.",
+              "de": "Piloti fügt einem Dokument bei hoher Sicherheit eigene Themen hinzu, zusätzlich zu den fixen Dokumenttypen, etwa „Attika“ oder „Holzrahmenbau“, wenn kein fixer Tag passt. Sie können diese korrigieren; die Dateisuche findet sie."
+            },
+            {
+              "en": "Photos show when they were taken and with which camera, and link to where they were taken. Piloti uses the date to describe a photo but never sends its location to a model.",
+              "de": "Fotos zeigen Aufnahmedatum und verwendete Kamera und verlinken mit dem Aufnahmeort. Piloti verwendet das Datum zur Beschreibung eines Fotos, übermittelt den Standort aber niemals an ein Modell."
             },
             {
               "en": "Deleting a folder in a project now moves it to the project's Papierkorb with its subfolders and documents. It disappears from lists, search and answers at once and can be restored with its access for 14 days.",
@@ -320,6 +356,26 @@
               "de": "Bei Fragen, die möglicherweise bereits in einem früheren Projekt beantwortet wurden, durchsucht Piloti jetzt von Anfang an die abgeschlossenen Projekte, die Ihrem am ähnlichsten sind, und findet sie auch anhand der Bauweise."
             },
             {
+              "en": "A document's revisions and their approval now use one word each, everywhere: every state of a document is a revision, numbered \"Revision 3 of 5\", and a revision sent back reads \"Changes requested\", matching the button.",
+              "de": "Fassungen und Freigabe heißen jetzt überall gleich: Jeder Stand eines Dokuments ist eine Fassung, nummeriert als „Fassung 3 von 5“, und eine zurückgegebene Fassung heißt „Änderungen angefordert“, wie die Schaltfläche."
+            },
+            {
+              "en": "Each approval state now says plainly whether Piloti answers from that revision, and publishing is what makes a revision the one Piloti answers from.",
+              "de": "Jeder Freigabestatus sagt jetzt klar, ob Piloti aus dieser Fassung antwortet, und erst das Veröffentlichen macht eine Fassung zu der, aus der Piloti antwortet."
+            },
+            {
+              "en": "The kind filter now offers spreadsheets and text notes.",
+              "de": "Der Filter für Dateitypen bietet jetzt Tabellen und Textnotizen."
+            },
+            {
+              "en": "A photograph is now tagged as a photo beside what it shows: a photo of a floor plan is both \"Foto\" and \"Grundriss\".",
+              "de": "Ein Foto wird jetzt zusätzlich zum dargestellten Inhalt als „Foto“ gekennzeichnet: Ein Foto eines Grundrisses ist sowohl „Foto“ als auch „Grundriss“."
+            },
+            {
+              "en": "Piloti no longer calls a file a plan unless it knows the file is a drawing. The folder overview and the agent say document, file or revision instead.",
+              "de": "Piloti bezeichnet eine Datei nur noch dann als Plan, wenn sie als Zeichnung erkannt wurde. Die Ordnerübersicht und der Agent sprechen stattdessen von Dokument, Datei oder Revision."
+            },
+            {
               "en": "When you ask how something was solved before, Piloti now starts with the past projects that fit your question, not only those most like your building, and puts the passages that show a solution first.",
               "de": "Wenn Sie fragen, wie etwas früher gelöst wurde, zeigt Piloti jetzt zuerst frühere Projekte, die zu Ihrer Frage passen – nicht nur jene, die Ihrem Gebäude am ähnlichsten sind – und stellt Passagen, die eine Lösung zeigen, an den Anfang."
             },
@@ -393,8 +449,24 @@
               "de": "Vorschauen von unter Windows gespeicherten Tabellen und Textdateien zeigen Eurozeichen, Gedankenstriche und typografische Anführungszeichen wieder an, statt sie leer zu lassen."
             },
             {
+              "en": "A file held back by the content check is now reviewed and allowed, no longer \"released\", so it can no longer be confused with approving a revision.",
+              "de": "Eine von der Inhaltsprüfung zurückgehaltene Datei wird jetzt geprüft und zugelassen, nicht mehr „freigegeben“, und lässt sich so nicht mehr mit der Freigabe einer Fassung verwechseln."
+            },
+            {
               "en": "A document that failed to index, or that is still being read, now stays in the project file list with its status, so it is no longer mistaken for a file that was never uploaded.",
               "de": "Ein Dokument, das nicht indexiert werden konnte oder noch eingelesen wird, bleibt jetzt samt Status in der Dateiliste des Projekts, damit es nicht mehr für eine nie hochgeladene Datei gehalten wird."
+            },
+            {
+              "en": "A correction you make to a document's tags stays when Piloti reads the file again. Before, re-reading the file replaced it.",
+              "de": "Eine Korrektur der Dokument-Tags bleibt erhalten, wenn Piloti die Datei erneut einliest. Bisher wurde die Korrektur beim erneuten Einlesen überschrieben."
+            },
+            {
+              "en": "A phone photo taken in portrait is now shown upright and read upright.",
+              "de": "Ein im Hochformat aufgenommenes Handyfoto wird jetzt aufrecht angezeigt und gelesen."
+            },
+            {
+              "en": "The summary of an image no longer starts with \"[IMAGE from page 1]\".",
+              "de": "Die Zusammenfassung eines Bildes beginnt nicht mehr mit „[IMAGE from page 1]“."
             },
             {
               "en": "A folder upload into a project with a restricted folder no longer refuses the subfolders of a folder it has just created.",
