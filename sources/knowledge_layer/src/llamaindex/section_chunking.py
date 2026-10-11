@@ -360,9 +360,14 @@ def _numbered_heading(
     return (number, title) if _title_like(title) else None
 
 
+def fits_heading(title: str) -> bool:
+    """Whether a marked heading's title is short enough to be one; a longer one is a paragraph."""
+    return len(title) <= _MAX_HEADING_CHARS
+
+
 def _atx_heading(line: Line) -> tuple[str, str] | None:
     """A Markdown heading's ``(number, title)``; the author (or the transcriber) marked it."""
-    if len(line.text) > _MAX_HEADING_CHARS:
+    if not fits_heading(line.text):
         return None
     numbered = _numbered(line.text)
     return (numbered[0], numbered[1]) if numbered else ("", line.text)
