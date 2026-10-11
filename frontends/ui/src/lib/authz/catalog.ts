@@ -570,7 +570,9 @@ export const ROLES: readonly RoleSpec[] = [
     ],
   },
   {
-    slug: 'platform-observability-analyst',
+    // WorkOS requires the `org-` prefix on organization-level roles. Without it
+    // the catalog Job fails every deploy (see catalog.spec.ts).
+    slug: 'org-platform-observability-analyst',
     name: 'Observability Analyst',
     description:
       'Read-only Langfuse for business analysts and the Fachbereich: traces, scores and cost, nothing else. Exclusive to the GRID Platform organization.',

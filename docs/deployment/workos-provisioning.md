@@ -102,7 +102,7 @@ were also created by hand on 2026-10-10, with the catalog's names, descriptions
 and permission sets, so the deploy's catalog Job finds them already in place. In
 Staging the next deploy creates them. A read-only comparison of Production on
 2026-10-10 found that `--apply` there also adds `platform:observability:view` and
-the `platform-observability-analyst` role, adds that permission to
+the `org-platform-observability-analyst` role, adds that permission to
 `org-platform-owner` and `org-platform-support`, and removes nothing.
 [Rolling out folder roles](#rolling-out-folder-roles-adr-0097) has the order.
 
@@ -254,7 +254,7 @@ environment-scoped role holds a `platform:*` permission.
 | `folder-editor` | environment (Folder) | `folder:read`, `folder:write` |
 | `org-platform-owner` | **GRID Platform org only** | all `platform:*` + five `widgets:*` |
 | `org-platform-support` | **GRID Platform org only** | `platform:organizations:view`, `platform:usage:view`, `platform:settings:view`, `platform:observability:view` — every read, no `*:manage`. `platformApiRoute` requires the specific permission per route, which is what makes "read-only" true rather than described. |
-| `platform-observability-analyst` | **GRID Platform org only** | `platform:observability:view` only: opens Langfuse at the edge for business analysts and the Fachbereich, and no platform surface in the app (ADR-0089). The scope must be assigned to the Connect application before the stack that checks it is deployed, or every Langfuse login fails with `invalid_scope` |
+| `org-platform-observability-analyst` | **GRID Platform org only** | `platform:observability:view` only: opens Langfuse at the edge for business analysts and the Fachbereich, and no platform surface in the app (ADR-0089). The scope must be assigned to the Connect application before the stack that checks it is deployed, or every Langfuse login fails with `invalid_scope` |
 
 The two folder roles are assigned on one folder resource to one organization
 membership, by the folder's access dialog in a project's Files

@@ -407,7 +407,7 @@ section and two tiles in the first cut and were taken out again: they did not
 answer a question a person opens the hub with. The briefing is edited in the
 intake wizard, linked from the hero.
 
-The Steckbrief (ADR-0091, ADR-0100) is a tile like the others, a summary whose
+The Steckbrief (ADR-0091, ADR-0101) is a tile like the others, a summary whose
 „Bearbeiten" opens its editor in a dialog; the close/reopen card (ADR-0090) sits
 in the grid as a cell. Similar projects (ADR-0094) arrived as a rail entry of its own and
 moved in here (2026-10-10): it is reference reading about this project, not a
