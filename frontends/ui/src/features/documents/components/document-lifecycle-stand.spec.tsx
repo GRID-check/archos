@@ -84,7 +84,6 @@ describe('DocumentLifecycleStand — the track', () => {
       <DocumentLifecycleStand
         version={version('changes_requested')}
         lifecycle="active"
-       
       />,
     )
 
