@@ -4,7 +4,7 @@
  * What can be DONE to a document, in one place.
  *
  * Every surface that shows a document — the file grid's preview, the explorer
- * list, the Büroarchiv, the model viewport — needs the same three operations,
+ * list, the Büroablage, the model viewport — needs the same three operations,
  * and before this each of them either re-implemented one or simply did not
  * offer it. The viewport had none at all: a model could be uploaded and looked
  * at, and then only deleted by finding it again in a different view.
@@ -29,7 +29,8 @@ import { startDocumentDownload } from '@/lib/documents/download'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import { documentDisplayName, type NamedDocument } from '@/lib/documents/display-name'
 import { LEGAL_HOLD_REASON } from '@/lib/compliance/legal-hold-codes'
-import { INGEST_ALREADY_DONE, INGEST_RUNNING } from '@/lib/documents/reingest-codes'
+import { INGEST_RUNNING } from '@/lib/documents/reingest-codes'
+import { requestReingest } from '../../lib/reingest-request'
 
 /** Which corpus the document belongs to — and so which words and which route. */
 export type DocumentScope = 'files' | 'archiv'
@@ -91,21 +92,6 @@ export interface DocumentActions {
   move: (folderId: string | null, folderName: string) => Promise<boolean>
 }
 
-/** A re-ingest 409's `details`: why it was refused, and the row's status now. */
-async function readReingestRefusal(
-  res: Response
-): Promise<{ code: string | null; status: string | null } | null> {
-  const body: unknown = await res.json().catch(() => null)
-  if (!body || typeof body !== 'object') return null
-  const details = (body as { details?: unknown }).details
-  if (!details || typeof details !== 'object') return null
-  const { code, status } = details as { code?: unknown; status?: unknown }
-  return {
-    code: typeof code === 'string' ? code : null,
-    status: typeof status === 'string' ? status : null,
-  }
-}
-
 /** Whether a 409 is the legal-hold refusal (`details.reason`, `lib/compliance`). */
 async function isLegalHoldRefusal(res: Response): Promise<boolean> {
   const body: unknown = await res.json().catch(() => null)
@@ -127,6 +113,8 @@ export function useDocumentActions({
   onMoved,
 }: UseDocumentActionsOptions): DocumentActions {
   const t = useTranslations(scope)
+  // Folders are a project concept, so the one refusal a move can meet is worded there.
+  const tFiles = useTranslations('files')
   const [isRenaming, setIsRenaming] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
   const [isDownloading, setIsDownloading] = useState(false)
@@ -234,33 +222,23 @@ export function useDocumentActions({
   const reingest = useCallback(async (): Promise<string | null> => {
     setIsReingesting(true)
     try {
-      const res = await fetch(`/api/documents/${document.id}/reingest`, { method: 'POST' })
-      if (res.status === 409) {
-        const refusal = await readReingestRefusal(res)
-        // Neither is a failure to retry. The row the reader clicked was stale
-        // (it said failed or stuck while the backend was working, or already
-        // done), so the answer is the real state and a fresh listing, not
-        // "please try again" — which could only ever 409 again.
-        if (refusal?.code === INGEST_RUNNING || refusal?.code === INGEST_ALREADY_DONE) {
-          toast.info(
-            t(refusal.code === INGEST_RUNNING ? 'actions.reingestRunning' : 'actions.reingestAlreadyDone')
-          )
-          notifyDocumentsChanged()
-          if (refusal.status) onReingested?.(document.id, refusal.status)
-          return refusal.status
-        }
+      const outcome = await requestReingest(document.id)
+      if (outcome.kind === 'failed') {
+        toast.error(t('actions.reingestError'))
+        return null
       }
-      if (!res.ok) throw new Error(`Reingest failed (${res.status})`)
-      const data = await res.json().catch(() => ({}))
-      const status = typeof data?.status === 'string' ? data.status : 'pending'
+      // A `settled` answer is not a failure to retry. The row the reader
+      // clicked was stale (it said failed or stuck while the backend was
+      // working, or already done), so the answer is the real state and a fresh
+      // listing, not "please try again" — which could only ever 409 again.
+      if (outcome.kind === 'settled') {
+        toast.info(t(outcome.code === INGEST_RUNNING ? 'actions.reingestRunning' : 'actions.reingestAlreadyDone'))
+      }
       // The row left the citable set (or rejoined the in-flight one); caches
       // holding its status must re-read it.
       notifyDocumentsChanged()
-      onReingested?.(document.id, status)
-      return status
-    } catch {
-      toast.error(t('actions.reingestError'))
-      return null
+      if (outcome.status) onReingested?.(document.id, outcome.status)
+      return outcome.status
     } finally {
       setIsReingesting(false)
     }
@@ -280,6 +258,11 @@ export function useDocumentActions({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ folderId }),
         })
+        // 409: an IFC model bound for a restricted folder (ADR-0087). Retrying cannot help, so say why.
+        if (res.status === 409) {
+          toast.error(tFiles('folders.access.ifcRefused'))
+          return false
+        }
         if (!res.ok) throw new Error(`Move failed (${res.status})`)
         onMoved?.(document.id, folderId)
         toast.success(t('actions.moved', { name, folder: folderName }))
@@ -291,7 +274,7 @@ export function useDocumentActions({
         setIsMoving(false)
       }
     },
-    [document.id, name, onMoved, t]
+    [document.id, name, onMoved, t, tFiles]
   )
 
   return {

@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Where a document stands, in one glance: the word, the track it is on, and
- * what it is waiting for.
+ * Where a document stands, in one glance: the track it is on, and one plain
+ * sentence on what that stand means for answers.
  *
  * ## Why a track and not just the badge
  *
@@ -29,8 +29,8 @@
  * a colour there would be decoration. The bar turns when something has actually
  * happened to the document: {@link TRACK_TINT}.
  *
- * **Never the Büroarchiv gold.** `--text-color-feedback-warning` is an alias of
- * `--source-office`, the Büroarchiv's own provenance signal (`styles/tokens.css`
+ * **Never the Büroablage gold.** `--text-color-feedback-warning` is an alias of
+ * `--source-office`, the Büroablage's own provenance signal (`styles/tokens.css`
  * says so on the line), and this feature has just finished untangling one
  * archive collision in its words — putting the same collision back as a colour
  * would be a poor trade. „Änderungen erbeten" therefore shares the stopped
@@ -48,29 +48,31 @@ import { StageTrack } from '@/components/ui/stage-track'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
-import {
-  LIFECYCLE_STAGES,
-  lifecycleProgress,
-  lifecycleWaiting,
-} from '../lib/document-lifecycle'
+import { LIFECYCLE_STAGES, lifecycleMeaning, lifecycleProgress } from '../lib/document-lifecycle'
 
 export interface DocumentLifecycleStandProps {
-  version: Pick<DocumentVersionView, 'state' | 'submittedBy'> | null
+  version: Pick<DocumentVersionView, 'state'> | null
   lifecycle: 'active' | 'archived'
-  /** Resolves a user id to a name — the panel's own, so „Sie" survives. */
-  nameOf: (userId: string | null) => string
+  /**
+   * Whether a published version stands behind this one, so the sentence can say
+   * Piloti answers from it (`lifecycleMeaning`).
+   */
+  live?: boolean
+  /** Said instead of the state's own sentence: the one case is a document a newer Fassung has replaced. */
+  sentence?: string
   className?: string
 }
 
 export function DocumentLifecycleStand({
   version,
   lifecycle,
-  nameOf,
+  live = false,
+  sentence,
   className,
 }: DocumentLifecycleStandProps): JSX.Element {
   const t = useTranslations('files')
   const progress = lifecycleProgress(version, lifecycle)
-  const waiting = lifecycleWaiting(version, lifecycle)
+  const meaning = lifecycleMeaning(version, lifecycle, { live })
 
   return (
     <div className={cn('space-y-1.5', className)} data-testid="document-lifecycle-stand">
@@ -81,10 +83,8 @@ export function DocumentLifecycleStand({
         tone={progress.tone}
         data-testid="document-lifecycle-track"
       />
-      <p className="text-muted-foreground text-xs" data-testid="document-review-waiting">
-        {waiting.submitterUserId
-          ? t(`lifecycle.waiting.${waiting.key}`, { name: nameOf(waiting.submitterUserId) })
-          : t(`lifecycle.waiting.${waiting.key}`)}
+      <p className="text-muted-foreground text-xs" data-testid="document-lifecycle-meaning" data-meaning={meaning}>
+        {sentence ?? t(`lifecycle.meaning.${meaning}`)}
       </p>
     </div>
   )

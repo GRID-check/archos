@@ -2,10 +2,10 @@
  * Internal BYOK credential resolution (ADR-0022) — the single decryption
  * point for tenant LLM keys.
  *
- * Called just-in-time by the Python backend (chat rebuilds and Dask workers)
+ * Called just-in-time by the Python backend (chat rebuilds and research workers)
  * with the org id it already carries; guarded by `GRID_INTERNAL_API_TOKEN`.
  * Returns `{ credential: null }` when the org runs on the platform key (no
- * active credential, or the `byok-llm` flag is off under enforcement).
+ * active credential, or the `byok-llm` flag is off for the organization).
  *
  * The response contains the PLAINTEXT key: it must never be cached in the
  * shared cache, logged, or proxied beyond the internal network. The backend

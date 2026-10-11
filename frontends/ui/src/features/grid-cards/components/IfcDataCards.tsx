@@ -30,6 +30,7 @@ import { roomScheduleToCsv, type BimRoomSchedule } from '@/lib/bim/schedule'
 import { buildModelHref } from '@/features/bim/lib/model-link'
 import { formatPropertyValue } from '@/features/bim/lib/format-value'
 import { shortIfcType } from '@/features/bim/lib/model-index'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import {
   notReadyModelStatus,
   resolveModelByFilename,
@@ -301,6 +302,7 @@ export function IfcScheduleCard({
     anchor.download = `${(model?.filename ?? 'modell').replace(/\.(ifc|ifczip)$/i, '')}-raumbuch.csv`
     anchor.click()
     URL.revokeObjectURL(url)
+    capturePosthog('report_exported', { kind: 'room_schedule', format: 'csv' })
   }
 
   return (

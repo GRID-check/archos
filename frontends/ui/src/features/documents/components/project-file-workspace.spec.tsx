@@ -1,8 +1,9 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { type ReactElement, type ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
+import { strToU8, zipSync } from 'fflate'
 import { server } from '@/mocks/server'
 import { ProjectFileWorkspace } from './project-file-workspace'
 import { FilePreviewHost } from './file-preview-host'
@@ -11,6 +12,7 @@ import { useFilePreviewStore } from '../stores/file-preview-store'
 import { useProjectDocuments } from '../hooks/use-project-documents'
 import type { DocumentWireRow } from '../lib/file-item'
 import { handOverDroppedFiles, takeDroppedFiles } from '../lib/dropped-file-handover'
+import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
 
 function renderWorkspace(ui: ReactElement) {
   return render(
@@ -73,6 +75,9 @@ vi.mock('sonner', () => ({
   toast: {
     success: (...args: unknown[]) => toastSuccess(...args),
     error: (...args: unknown[]) => toastError(...args),
+    // The "reading the ZIP…" toast, which stays up while an archive is unpacked.
+    loading: vi.fn(() => 'reading'),
+    dismiss: vi.fn(),
   },
 }))
 
@@ -179,6 +184,22 @@ describe('ProjectFileWorkspace', () => {
     expect(screen.queryByRole('heading', { name: 'Test' })).toBeNull()
   })
 
+  it('offers no upload where the reader may only read (ADR-0088), and takes no dropped file there', () => {
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFolders={[]}
+        initialRootAccess="read"
+      />,
+    )
+    expect(screen.queryByTestId('project-upload-input')).toBeNull()
+    const dataTransfer = makeDataTransfer([new File(['x'], 'plan.pdf', { type: 'application/pdf' })])
+    fireEvent.dragEnter(screen.getByTestId('workspace-dropzone'), { dataTransfer })
+    expect(screen.queryByTestId('workspace-drop-overlay')).toBeNull()
+  })
+
   it('shows the drop overlay on dragover of a supported file', () => {
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
     const dropzone = screen.getByTestId('workspace-dropzone')
@@ -206,7 +227,7 @@ describe('ProjectFileWorkspace', () => {
     // the handler captures entries synchronously and hands over the files
     // afterwards. A plain file drop still ends in exactly this call.
     await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
-    expect(mockUploadFiles).toHaveBeenCalledWith([file])
+    expect(mockUploadFiles).toHaveBeenCalledWith([file], expect.objectContaining({ folderPathFor: expect.any(Function) }))
     // Overlay clears after drop.
     expect(screen.queryByTestId('workspace-drop-overlay')).not.toBeInTheDocument()
   })
@@ -223,7 +244,7 @@ describe('ProjectFileWorkspace', () => {
 
     fireEvent.drop(dropzone, { dataTransfer })
     // Same contract as the button: files still flow to uploadFiles, which validates.
-    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([badFile]))
+    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([badFile], expect.objectContaining({ folderPathFor: expect.any(Function) })))
   })
 
   it('uploads a drop made elsewhere in the project once it arrives, and only once', async () => {
@@ -236,7 +257,7 @@ describe('ProjectFileWorkspace', () => {
       <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />
     )
 
-    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([file]))
+    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([file], expect.objectContaining({ folderPathFor: expect.any(Function) })))
     unmount()
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
     await new Promise((resolve) => setTimeout(resolve, 0))
@@ -267,6 +288,28 @@ describe('ProjectFileWorkspace', () => {
  * the plan that replaced that: what it says, what the reader decides, and where
  * the files actually go.
  */
+describe('ProjectFileWorkspace — the mail import action', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+  })
+
+  const workspace = (rootAccess?: 'read' | 'write') => (
+    <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" mailImportEnabled initialRootAccess={rootAccess} />
+  )
+
+  it('offers the import to a reader who may write at the project root, where it files its folder', () => {
+    renderWorkspace(workspace('write'))
+    expect(screen.getByTestId('mail-import-trigger')).toBeDefined()
+  })
+
+  it('hides it from a reader whose root access is read (ADR-0088)', () => {
+    renderWorkspace(workspace('read'))
+    expect(screen.queryByTestId('mail-import-trigger')).toBeNull()
+  })
+})
+
 describe('ProjectFileWorkspace — a dropped folder', () => {
   const existing: DocumentWireRow = {
     id: 'doc-eg',
@@ -395,6 +438,33 @@ describe('ProjectFileWorkspace — a dropped folder', () => {
     )
   })
 
+  it('unpacks a picked zip into the same plan a dropped folder gets', async () => {
+    renderWithCorpus()
+    const zip = new File(
+      [zipSync({ 'Statik/Bericht.pdf': strToU8('%PDF'), 'Statik/Plaene/EG.pdf': strToU8('%PDF') }) as BlobPart],
+      'Statik.zip',
+      { type: 'application/zip' }
+    )
+    const input = screen.getByTestId('project-upload-input') as HTMLInputElement
+    Object.defineProperty(input, 'files', { value: [zip], configurable: true })
+    fireEvent.change(input)
+
+    await userEvent.click(await screen.findByTestId('folder-upload-confirm'))
+
+    await waitFor(() => expect(ensureRequests).toHaveLength(1))
+    expect(ensureRequests[0]).toEqual({ parentId: null, paths: ['Statik', 'Statik/Plaene'] })
+    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
+    const [sent, options] = mockUploadFiles.mock.calls[0] as [
+      File[],
+      { folderIdFor: (file: File) => string | null },
+    ]
+    expect(sent.map((file) => file.name).sort()).toEqual(['Bericht.pdf', 'EG.pdf'])
+    expect(sent.map((file) => options.folderIdFor(file)).sort()).toEqual([
+      'folder-for-Statik',
+      'folder-for-Statik/Plaene',
+    ])
+  })
+
   it('leaves the existing documents alone when the reader unticks the update', async () => {
     renderWithCorpus()
     await dropFolder([pathed('Wohnbau/EG.pdf'), pathed('Wohnbau/New.pdf')])
@@ -470,6 +540,80 @@ describe('ProjectFileWorkspace — a dropped folder', () => {
     expect(moveRequests[0]).toEqual({ documentId: 'doc-eg', folderId: 'folder-for-Plaene' })
   })
 
+  // Ticket 5 (ADR-0086): the plan the reader confirms is settled before
+  // anything goes, a folder's name included.
+  describe('settled before it is applied', () => {
+    const officePolicy = { ...SUGGESTED_SCREENING_POLICY, nameTerms: [...SUGGESTED_SCREENING_POLICY.nameTerms, 'Huber'] }
+    const planChanged = 'The preview has changed. Nothing was uploaded. Please review it and confirm again.'
+
+    it('makes no folder named with a term the admin saved while the dialog was open', async () => {
+      renderWithCorpus([])
+      await dropFolder([pathed('Wohnbau/Huber/Notiz.pdf'), pathed('Wohnbau/New.pdf')])
+      const confirm = await screen.findByTestId('folder-upload-confirm')
+      await waitFor(() => expect(confirm).toBeEnabled())
+
+      server.use(
+        http.get('/api/organization/upload-screening', () =>
+          HttpResponse.json({ policy: officePolicy, suggested: false, suggestion: SUGGESTED_SCREENING_POLICY }),
+        ),
+      )
+      await userEvent.click(confirm)
+
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith(planChanged))
+      expect(ensureRequests).toEqual([])
+      expect(mockUploadFiles).not.toHaveBeenCalled()
+      const dialog = screen.getByTestId('folder-upload-dialog')
+      expect(within(dialog).getByTestId('folder-upload-excluded')).toHaveTextContent('Wohnbau/Huber/Notiz.pdf')
+    })
+
+    it('sends nothing, and says nothing was uploaded, when the office list cannot be read at confirm', async () => {
+      renderWithCorpus([])
+      await dropFolder([pathed('Wohnbau/New.pdf')])
+      const confirm = await screen.findByTestId('folder-upload-confirm')
+      await waitFor(() => expect(confirm).toBeEnabled())
+
+      server.use(http.get('/api/organization/upload-screening', () => HttpResponse.json({}, { status: 500 })))
+      await userEvent.click(confirm)
+
+      await waitFor(() =>
+        expect(toastError).toHaveBeenCalledWith(
+          "Your office's list of sensitive data could not be loaded. Nothing was uploaded. Please try again.",
+        ),
+      )
+      expect(toastSuccess).not.toHaveBeenCalled()
+      expect(ensureRequests).toEqual([])
+      expect(mockUploadFiles).not.toHaveBeenCalled()
+    })
+
+    it('waits for a release probe still in flight, and asks again when the file is a version', async () => {
+      renderWithCorpus([{ ...existing, id: 'doc-lohn', filename: 'Lohnzettel.pdf' }])
+      let answer: () => void = () => undefined
+      const held = new Promise<void>((resolve) => {
+        answer = resolve
+      })
+      server.use(
+        http.post('/api/documents/name-matches', async ({ request }) => {
+          const { names } = (await request.clone().json()) as { names: string[] }
+          // Falls through to the shelf's own handler once answered.
+          if (names.includes('Lohnzettel.pdf')) await held
+        }),
+      )
+      const dialog = await dropFolder([pathed('Akt/Lohnzettel.pdf'), pathed('Akt/New.pdf')])
+      const confirm = await screen.findByTestId('folder-upload-confirm')
+      await waitFor(() => expect(confirm).toBeEnabled())
+
+      await userEvent.click(within(dialog).getByTestId('folder-upload-release'))
+      await userEvent.click(confirm)
+      expect(mockUploadFiles).not.toHaveBeenCalled()
+
+      answer()
+      await waitFor(() => expect(toastError).toHaveBeenCalledWith(planChanged))
+      expect(mockUploadFiles).not.toHaveBeenCalled()
+      expect(ensureRequests).toEqual([])
+      expect(within(dialog).getByTestId('folder-upload-count-update')).toHaveTextContent('1')
+    })
+  })
+
   it('still takes a handful of picked files straight to the upload path', async () => {
     renderWithCorpus()
     const input = screen.getByTestId('project-upload-input') as HTMLInputElement
@@ -477,7 +621,7 @@ describe('ProjectFileWorkspace — a dropped folder', () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
     fireEvent.change(input)
 
-    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([file]))
+    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([file], expect.objectContaining({ folderPathFor: expect.any(Function) })))
     expect(screen.queryByTestId('folder-upload-dialog')).not.toBeInTheDocument()
   })
 })
@@ -544,19 +688,19 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
     fireEvent.change(input)
   }
 
-  it('asks „new version of X?" and uploads it on yes', async () => {
+  it('asks „new Fassung of X?" and uploads it on yes', async () => {
     renderWithCorpus()
     const revised = new File(['revised bytes'], 'EG.pdf', { type: 'application/pdf' })
     pick(revised)
 
     const dialog = await screen.findByTestId('folder-upload-dialog')
     await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-update'))
-    expect(within(dialog).getByText('Upload a new version of “EG.pdf”?')).toBeInTheDocument()
+    expect(within(dialog).getByText('New revision of “EG.pdf”?')).toBeInTheDocument()
     // Nothing leaves on the strength of the gesture alone.
     expect(mockUploadFiles).not.toHaveBeenCalled()
 
     const confirm = within(dialog).getByTestId('folder-upload-confirm')
-    expect(confirm).toHaveTextContent('Upload as new version')
+    expect(confirm).toHaveTextContent('File as a new revision')
     await userEvent.click(confirm)
 
     await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
@@ -647,7 +791,7 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
     const fresh = new File(['x'], 'Neu.pdf', { type: 'application/pdf' })
     pick(fresh)
 
-    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([fresh]))
+    await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledWith([fresh], expect.objectContaining({ folderPathFor: expect.any(Function) })))
     expect(probedNames).toEqual([['Neu.pdf']])
     expect(screen.queryByTestId('folder-upload-dialog')).not.toBeInTheDocument()
   })
@@ -659,6 +803,33 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
 
     await waitFor(() => expect(toastError).toHaveBeenCalled())
     expect(mockUploadFiles).not.toHaveBeenCalled()
+  })
+
+  // Ticket 5: an excluded file is not transferred, not even briefly, and its
+  // name is part of it (ADR-0086).
+  it('never asks the server about a name the office list holds back', async () => {
+    renderWithCorpus()
+    pick(new File(['x'], 'Lohnzettel_Mai_Huber.pdf', { type: 'application/pdf' }))
+
+    const dialog = await screen.findByTestId('folder-upload-dialog')
+    await waitFor(() => expect(within(dialog).getAllByText(/Lohnzettel_Mai_Huber\.pdf/).length).toBeGreaterThan(0))
+    expect(probedNames).toEqual([])
+    expect(mockUploadFiles).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing, not even the name, while the office list cannot be read', async () => {
+    server.use(http.get('/api/organization/upload-screening', () => HttpResponse.json({}, { status: 500 })))
+    renderWithCorpus()
+    pick(new File(['x'], 'Notizen.pdf', { type: 'application/pdf' }))
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(
+        "Your office's list of sensitive data could not be loaded. Nothing was uploaded. Please try again.",
+      ),
+    )
+    expect(probedNames).toEqual([])
+    expect(mockUploadFiles).not.toHaveBeenCalled()
+    expect(screen.queryByTestId('folder-upload-dialog')).not.toBeInTheDocument()
   })
 })
 
@@ -874,6 +1045,25 @@ describe('ProjectFileWorkspace — dragging a file into a folder', () => {
     expect(patched[0]).toMatchObject({ url: 'doc-1', body: { folderId: 'folder-1' } })
   })
 
+  it('says why when the server refuses an IFC model into a restricted folder (ADR-0087)', async () => {
+    server.use(
+      http.patch('/api/documents/:id/folder', () =>
+        HttpResponse.json({ error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT' }, { status: 409 })
+      )
+    )
+    renderWorkspace(
+      <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />
+    )
+
+    const folder = await screen.findByTestId('folder-card-folder-1')
+    fireEvent.dragOver(folder, { dataTransfer: dragTransfer('doc-1') })
+    fireEvent.drop(folder, { dataTransfer: dragTransfer('doc-1') })
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(expect.stringContaining('cannot be filed in a folder not everyone may read yet'))
+    )
+  })
+
   it('does not raise the upload overlay for a drag that started in the page', async () => {
     renderWorkspace(
       <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />
@@ -968,6 +1158,23 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
 
     await waitFor(() => expect(patched).toHaveLength(1))
     expect(patched[0]).toMatchObject({ url: 'f-a', body: { parentId: 'f-b' } })
+  })
+
+  it('says why when the server refuses moving IFC models under a restriction (ADR-0087)', async () => {
+    server.use(
+      http.patch('/api/projects/:projectId/folders/:folderId', () =>
+        HttpResponse.json({ error: 'IFC models cannot be filed in a restricted folder yet', code: 'CONFLICT' }, { status: 409 })
+      )
+    )
+    renderWithFolders()
+    const target = screen.getByTestId('folder-card-f-b')
+
+    fireEvent.dragOver(target, { dataTransfer: folderDragTransfer('f-a') })
+    fireEvent.drop(target, { dataTransfer: folderDragTransfer('f-a') })
+
+    await waitFor(() =>
+      expect(toastError).toHaveBeenCalledWith(expect.stringContaining('cannot be filed in a folder not everyone may read yet'))
+    )
   })
 
   it('refuses a folder dropped on itself', async () => {
@@ -1105,8 +1312,9 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     const user = userEvent.setup()
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
 
-    // Open doc-a and add a discipline tag via the inline add-tag input.
+    // Open doc-a, correct Piloti's reading, and add a discipline tag via the inline add-tag input.
     fireEvent.click(await findFileButton(/alpha\.txt/i))
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await user.type(await screen.findByRole('textbox', { name: /add tag/i }), 'Brandschutz{Enter}')
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
@@ -1125,6 +1333,8 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     fireEvent.click(await findFileButton(/alpha\.txt/i))
     await screen.findByRole('dialog')
 
+    // The reading is static again; open the editor to see what was saved.
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
     )
@@ -1267,10 +1477,12 @@ describe('ProjectFileWorkspace — a settling document settles on screen', () =>
 
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
     await waitFor(() => expect(documentCalls).toBe(1))
+    expect(await screen.findByText('Reading')).toBeInTheDocument()
 
     await vi.advanceTimersByTimeAsync(4_100)
     await waitFor(() => expect(statusCalls).toBe(1))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    // A citable document carries no badge on its card, so settling clears it.
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
     // Twenty pages of listing every four seconds was the cost of one PDF being
     // read; the poll never drains the listing again.
     expect(documentCalls).toBe(1)
@@ -1471,14 +1683,13 @@ describe('ProjectFileWorkspace — only the newest answer may win', () => {
     expect(onComplete).toBeTypeOf('function')
     onComplete?.()
     await waitFor(() => expect(documentCalls).toBe(2))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
 
     // Now the stale poll answers. It is older than what is on screen, so it
     // must not commit.
     gate.release?.()
     await flushWithoutPolling()
 
-    expect(screen.getByText('Citable')).toBeInTheDocument()
     expect(screen.queryByText('Reading')).not.toBeInTheDocument()
 
     // …and it must not resurrect the poll either.
@@ -1554,35 +1765,6 @@ describe('ProjectFileWorkspace — an .ifc opens as a building', () => {
     expect(
       routerPush.mock.calls.some((call) => String(call[0]).includes('model=Haus-A.ifc'))
     ).toBe(false)
-  })
-
-  /**
-   * The flag exists so this can be flipped in production without a deploy, and
-   * the Archiv reads the same one — an `.ifc` that behaves one way in a project
-   * and another in the Archiv is the defect the whole change is about.
-   */
-  it('goes straight to the stage when preview-first is switched off', async () => {
-    renderWorkspace(
-      <ProjectFileWorkspace
-        projectId="proj-1"
-        projectName="Test"
-        collectionName="test-coll"
-        showModels
-        previewFirst={false}
-      />
-    )
-    fireEvent.click(await findFileButton(/Haus-A\.ifc/i))
-
-    // The name, not the id: `?model=` is resolved by file name so the link
-    // survives a re-ingestion and stays readable in a chat message.
-    //
-    // And PUSHED, not replaced: with `replace` the stage added no history
-    // entry, so the back button left the Files page entirely — discarding the
-    // camera, the cut, the selection, the hidden set and every measurement.
-    // On a phone, back is how anyone dismisses a full-screen overlay.
-    const href = routerPush.mock.calls.at(-1)?.[0] as string
-    expect(new URLSearchParams(href.split('?')[1]).get('model')).toBe('Haus-A.ifc')
-    expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
   })
 
   it('leaves every other file opening the preview dialog', async () => {
@@ -2132,5 +2314,106 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
 
     expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
     expect(requests).toBe(20)
+  })
+})
+
+describe('ProjectFileWorkspace — Fassungen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+  })
+
+  const row = (id: string, filename: string, fassung: DocumentWireRow['fassung']): DocumentWireRow =>
+    ({
+      id,
+      filename,
+      displayName: null,
+      fileSize: 2048,
+      contentType: 'application/pdf',
+      status: 'ready',
+      folderId: null,
+      createdAt: '2026-06-14T09:00:00.000Z',
+      errorMessage: null,
+      summary: null,
+      pageCount: null,
+      chunkCount: null,
+      contentTypes: null,
+      tags: null,
+      assignees: [],
+      authoredBy: 'user',
+      fassung,
+    }) as DocumentWireRow
+
+  it('lists one entry for a document and opens its older Fassung by id from the preview', async () => {
+    const older = row('doc-v1', 'Gutachten_v1.pdf', {
+      supersededBy: { id: 'doc-v2', filename: 'Gutachten_v2.pdf' },
+      supersedes: [],
+      suggestion: null,
+      changeSummary: null,
+    })
+    const current = row('doc-v2', 'Gutachten_v2.pdf', {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+      history: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf', createdAt: null, changeSummary: null }],
+    })
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[current, older]}
+        initialFolders={[]}
+      />,
+    )
+
+    expect(await findFileButton(/Gutachten_v2\.pdf/)).toBeInTheDocument()
+    expect(screen.queryByText('Gutachten_v1.pdf')).not.toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Gutachten_v2\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-v2'))
+
+    act(() => useFilePreviewStore.getState().context.onOpenDocument?.('doc-v1'))
+    expect(useFilePreviewStore.getState().file?.id).toBe('doc-v1')
+  })
+
+  it('moves BOTH listing entries when the preview confirms a link', async () => {
+    const unlinked = { supersededBy: null, supersedes: [], suggestion: null, changeSummary: null }
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[
+          row('doc-new', 'Statik_Entwurf.pdf', unlinked),
+          row('doc-old', 'Tragwerk_Altstand.pdf', unlinked),
+        ]}
+        initialFolders={[]}
+      />,
+    )
+    expect(await findFileButton(/Tragwerk_Altstand\.pdf/)).toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Statik_Entwurf\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-new'))
+
+    const { onFassungChanged } = useFilePreviewStore.getState().context
+    act(() => {
+      onFassungChanged?.('doc-new', {
+        ...unlinked,
+        supersedes: [{ id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' }],
+      })
+      onFassungChanged?.('doc-old', {
+        ...unlinked,
+        supersededBy: { id: 'doc-new', filename: 'Statik_Entwurf.pdf' },
+      })
+    })
+
+    // The older document folds into the newer one's entry; the open one carries the link.
+    await waitFor(() => expect(screen.queryByText('Tragwerk_Altstand.pdf')).not.toBeInTheDocument())
+    expect(useFilePreviewStore.getState().file?.fassung?.supersedes).toEqual([
+      { id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' },
+    ])
   })
 })

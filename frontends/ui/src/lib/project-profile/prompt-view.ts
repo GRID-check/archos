@@ -1,5 +1,6 @@
 import { findProjectProfile, findProjectPromptView } from '@/lib/projects/repository'
 import { loadDocumentRolesPromptSection } from '@/lib/document-roles/prompt-loader'
+import { loadUnreadableDocumentsSection } from './unreadable-section'
 import { getCached, invalidateCached } from '@/lib/cache'
 import { buildProjectBriefView } from './brief-view'
 import { isValidBundeslandToken } from './intake-definition'
@@ -40,6 +41,11 @@ const bundeslandCacheKey = (projectId: string, organizationId: string | null | u
  * every WS upgrade. Backed by the shared cache (ADR-0020), so a profile edit
  * on one replica invalidates for all replicas — the per-process Map this
  * replaces served stale project context for up to 5 minutes after an edit.
+ *
+ * The view is one per project, read by every member and by scheduled and
+ * deep-research runs, and it names no document in a restricted folder, for
+ * anyone (ADR-0087): listing is not use, and a chat finds a restricted
+ * document by searching for it.
  */
 export async function loadProjectPromptView(
   projectId: string | undefined,
@@ -47,23 +53,28 @@ export async function loadProjectPromptView(
 ): Promise<string | null> {
   if (!projectId) return null
 
-  return getCached(
-    promptViewCacheKey(projectId, organizationId),
-    PROMPT_VIEW_CACHE_TTL_MS,
-    async () => {
-      const [stored, documents] = await Promise.all([
-        findProjectPromptView(projectId, organizationId),
-        // Appended here rather than baked into the stored view, because a role
-        // binding changes without the profile changing. `buildProjectPromptView`
-        // runs at profile-save; a document declared afterwards would never reach
-        // a view built there. Declaring or revoking a role invalidates this cache
-        // (`lib/document-roles/service`), so the block cannot go stale either.
-        loadDocumentRolesPromptSection(projectId, organizationId),
-      ])
-      const combined = [stored?.trim(), documents].filter(Boolean).join('\n\n').trim()
-      return combined || null
-    }
-  )
+  const build = async (): Promise<string | null> => {
+    const [stored, documents] = await Promise.all([
+      findProjectPromptView(projectId, organizationId),
+      // Appended here rather than baked into the stored view, because a role
+      // binding changes without the profile changing. `buildProjectPromptView`
+      // runs at profile-save; a document declared afterwards would never reach
+      // a view built there. Declaring or revoking a role invalidates this cache
+      // (`lib/document-roles/service`), so the block cannot go stale either.
+      loadDocumentRolesPromptSection(projectId, organizationId),
+    ])
+    const combined = [stored?.trim(), documents].filter(Boolean).join('\n\n').trim()
+    return combined || null
+  }
+
+  // The unreadable files ride beside the cached view, not inside it: a re-read
+  // changes them without touching anything that invalidates the cache, and
+  // the next turn must not be told about a failure „Alle erneut lesen" fixed.
+  const [view, unreadable] = await Promise.all([
+    getCached(promptViewCacheKey(projectId, organizationId), PROMPT_VIEW_CACHE_TTL_MS, build),
+    loadUnreadableDocumentsSection(projectId, organizationId),
+  ])
+  return [view, unreadable].filter(Boolean).join('\n\n') || null
 }
 
 export async function invalidateProjectPromptViewCache(

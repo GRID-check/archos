@@ -12,13 +12,22 @@ Platform-wide by design — no org layer and no per-request header: a lesson is
 anonymized fleet knowledge, identical for every tenant. Fail-open by design: a
 BFF outage must never take answering down, so every error path returns None
 and the prompt simply renders no lessons block.
+
+The turn also reports WHICH arm of the holdout it was in and which lessons it
+carried (:class:`LessonsResolution`), so the experiment is analysable from the
+trace alone: ``turn/context.py`` records ``lessons_arm`` and ``lesson_ids`` on
+the trace metadata (docs/observability/langfuse.md), which Langfuse's PostHog
+export carries onto every ``langfuse observation`` event.
 """
 
 import hashlib
 import logging
 import os
+import re
 import threading
 import time
+from dataclasses import dataclass
+from typing import Literal
 
 logger = logging.getLogger(__name__)
 
@@ -36,12 +45,39 @@ _MAX_DIGEST_CHARS = 2400
 
 _EXPECTED_HEADER = "PLATFORM_LESSONS"
 
+# Lesson ids are uuids (platform_lessons.id). More than the BFF's active-lesson
+# cap (20) is not a digest this module produced, and the ids ride a trace
+# attribute, so they are bounded and shape-checked like the digest.
+_LESSON_ID = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")
+_MAX_LESSON_IDS = 20
+
+#: Which side of the lessons experiment a turn was on, as the trace records it.
+#: ``treated``: the holdout is measuring and this conversation got the digest;
+#: ``holdout``: it is measuring and this conversation is the control that got
+#: none; ``off``: no experiment ran for this turn (``lessons.holdout_pct`` is 0,
+#: there is no conversation to key on, or the setting could not be read). The
+#: same three states the BFF stamps on a vote (``answer_feedback.lessons_holdout``:
+#: true, false, NULL), so a vote and its trace carry the same label.
+LessonsArm = Literal["treated", "holdout", "off"]
+
+
+@dataclass(frozen=True)
+class LessonsResolution:
+    """What one turn's lessons lookup decided: the digest, the arm, the lessons in it."""
+
+    #: The bounded digest to inject, or None (holdout, none active, or fail-open).
+    digest: str | None
+    arm: LessonsArm
+    #: The ids of the lessons whose text is in ``digest`` (empty without one).
+    lesson_ids: tuple[str, ...] = ()
+
 
 class _CacheEntry:
-    __slots__ = ("digest", "expires_at")
+    __slots__ = ("digest", "expires_at", "lesson_ids")
 
-    def __init__(self, digest: str | None, ttl: float) -> None:
+    def __init__(self, digest: str | None, ttl: float, lesson_ids: tuple[str, ...] = ()) -> None:
         self.digest = digest
+        self.lesson_ids = lesson_ids
         self.expires_at = time.monotonic() + ttl
 
 
@@ -68,12 +104,28 @@ def sanitize_lessons_digest(value: object) -> str | None:
     return digest
 
 
-def _fetch_digest() -> str | None:
-    """One HTTP round-trip to the BFF's internal platform-lessons endpoint."""
+def sanitize_lesson_ids(value: object) -> tuple[str, ...]:
+    """Reduce an untrusted payload to a bounded, de-duplicated tuple of uuid strings."""
+    if not isinstance(value, list):
+        return ()
+    ids: list[str] = []
+    for item in value:
+        if not isinstance(item, str):
+            continue
+        candidate = item.strip().lower()
+        if _LESSON_ID.fullmatch(candidate) and candidate not in ids:
+            ids.append(candidate)
+        if len(ids) >= _MAX_LESSON_IDS:
+            break
+    return tuple(ids)
+
+
+def _fetch_digest() -> tuple[str | None, tuple[str, ...]]:
+    """One HTTP round-trip to the BFF's internal platform-lessons endpoint: the digest and its lesson ids."""
     token = os.environ.get("GRID_INTERNAL_API_TOKEN")
     if not token:
         # No internal-token trust channel — no lessons, and no error.
-        return None
+        return None, ()
 
     import httpx
 
@@ -86,8 +138,10 @@ def _fetch_digest() -> str | None:
     response.raise_for_status()
     payload = response.json()
     if not isinstance(payload, dict):
-        return None
-    return sanitize_lessons_digest(payload.get("digest"))
+        return None, ()
+    digest = sanitize_lessons_digest(payload.get("digest"))
+    # The ids describe the digest; without one they describe nothing.
+    return digest, sanitize_lesson_ids(payload.get("lessonIds")) if digest else ()
 
 
 def is_in_holdout_slice(conversation_id: str, holdout_pct: int) -> bool:
@@ -111,42 +165,67 @@ def is_in_holdout_slice(conversation_id: str, holdout_pct: int) -> bool:
     return int.from_bytes(digest[:4], "big") % 100 < holdout_pct
 
 
-def get_platform_lessons_digest(conversation_id: str | None = None) -> str | None:
-    """The active-lessons digest, or None when there is none to inject.
+def _holdout_arm(conversation_id: str | None) -> LessonsArm:
+    """The arm this conversation is in. Fail-open: anything unreadable is ``off``, never a block.
 
-    Returns None for a conversation in the holdout slice — the control group
-    that receives no lessons at all, so the two down-vote rates can be
-    compared (``lessons.holdout_pct``, default 0 = measurement off).
+    ``off`` for an unreadable setting still INJECTS (the caller treats the turn
+    as treated), but it does not claim a place in the experiment, so the
+    comparison excludes it instead of counting it as treated, as the BFF does
+    for a vote with a NULL ``lessons_holdout``.
+    """
+    if not conversation_id:
+        return "off"
+    try:
+        from aiq_agent.common.retrieval_settings import get_retrieval_setting
 
-    Never raises. Called once per turn (register layer); the TTL cache keeps
+        holdout_pct = get_retrieval_setting("lessons.holdout_pct", 0)
+        if holdout_pct <= 0:
+            return "off"
+        return "holdout" if is_in_holdout_slice(conversation_id, holdout_pct) else "treated"
+    except Exception:  # noqa: BLE001 - fail open: measurement never blocks answering
+        logger.debug("Holdout resolution failed; treating this turn as treated", exc_info=True)
+        return "off"
+
+
+def resolve_platform_lessons(conversation_id: str | None = None) -> LessonsResolution:
+    """The turn's lessons: digest to inject, holdout arm, and the ids of the lessons in the digest.
+
+    A conversation in the holdout slice gets no digest at all — the control
+    group, so the two down-vote rates can be compared (``lessons.holdout_pct``,
+    default 0 = measurement off) — and costs no fetch.
+
+    Never raises. Called once per turn (``turn/context.py``); the TTL cache keeps
     the per-turn cost at zero between refreshes. Blocking I/O — call it via
     ``asyncio.to_thread`` from async code, like ``fetch_memory_digest``.
     """
-    if conversation_id:
-        try:
-            from aiq_agent.common.retrieval_settings import get_retrieval_setting
-
-            holdout_pct = get_retrieval_setting("lessons.holdout_pct", 0)
-            if is_in_holdout_slice(conversation_id, holdout_pct):
-                return None
-        except Exception:  # noqa: BLE001 - fail open: measurement never blocks answering
-            logger.debug("Holdout resolution failed; treating this turn as treated", exc_info=True)
+    arm = _holdout_arm(conversation_id)
+    if arm == "holdout":
+        return LessonsResolution(digest=None, arm=arm)
     global _cache
     now = time.monotonic()
     with _cache_lock:
         if _cache is not None and _cache.expires_at > now:
-            return _cache.digest
+            return LessonsResolution(digest=_cache.digest, arm=arm, lesson_ids=_cache.lesson_ids)
 
     try:
-        digest = _fetch_digest()
+        digest, lesson_ids = _fetch_digest()
         ttl = _POSITIVE_TTL_SECONDS if digest else _NEGATIVE_TTL_SECONDS
     except Exception as exc:  # noqa: BLE001 - fail open by design
         logger.warning("Platform-lessons resolution failed: %s", type(exc).__name__)
-        digest, ttl = None, _NEGATIVE_TTL_SECONDS
+        digest, lesson_ids, ttl = None, (), _NEGATIVE_TTL_SECONDS
 
     with _cache_lock:
-        _cache = _CacheEntry(digest, ttl)
-    return digest
+        _cache = _CacheEntry(digest, ttl, lesson_ids)
+    return LessonsResolution(digest=digest, arm=arm, lesson_ids=lesson_ids)
+
+
+def get_platform_lessons_digest(conversation_id: str | None = None) -> str | None:
+    """The active-lessons digest, or None when there is none to inject.
+
+    The digest half of :func:`resolve_platform_lessons`, for callers that only
+    inject it. None for a conversation in the holdout slice.
+    """
+    return resolve_platform_lessons(conversation_id).digest
 
 
 #: The framing that travels WITH the lessons, rendered once here rather than

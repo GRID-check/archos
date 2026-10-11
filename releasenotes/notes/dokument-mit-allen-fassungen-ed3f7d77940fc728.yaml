@@ -1,0 +1,37 @@
+---
+features:
+  - >
+    A document is now one entry, however many revisions it has. The entry shows
+    how many, and opening it lists every revision on one timeline, newest first,
+    with who added it, when, and what changed.
+  - >
+    Piloti recognises a new revision of a document by itself, from the file
+    name, from the number, revision mark and date in a drawing's title
+    block, and from the content. It asks once before linking them, in the
+    upload dialog or on the file, and nothing is linked without your
+    confirmation.
+  - >
+    Two revisions can be compared side by side, overlaid with the changes in
+    colour, or with a swipe. On request Piloti marks what changed on the drawing
+    and says it in words.
+  - >
+    Piloti answers from the current revision and uses an older one only when you
+    name it. A citation of an older revision says so and opens the current one.
+  - >
+    People assigned to a document, and whoever uploaded it, now get an inbox
+    note when a newer revision replaces it, with the first line of what changed.
+    It reaches only people who may open the newer one.
+improvements:
+  - >
+    A document's revisions and their approval now use one word each, everywhere:
+    every state of a document is a revision, numbered "Revision 3 of 5", and a
+    revision sent back reads "Changes requested", matching the button.
+  - >
+    Each approval state now says plainly whether Piloti answers from that
+    revision, and publishing is what makes a revision the one Piloti answers
+    from.
+fixes:
+  - >
+    A file held back by the content check is now marked as reviewed and
+    allowed, not released, so it can no longer be confused with approving a
+    revision.

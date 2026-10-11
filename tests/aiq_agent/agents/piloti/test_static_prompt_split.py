@@ -151,11 +151,17 @@ class TestStoreSeam:
         The seam itself: with a version being served, the bytes above the
         boundary are Langfuse's and the bytes below are still the template's.
         """
+        # Read the template before the store is swapped: its first call resolves
+        # the static half too (the boot fetch), so a worker that reaches this test
+        # with the cache cold would otherwise count that call as the render's.
+        # A disabled store keeps that first call off the network.
+        monkeypatch.setattr(prompt_module, "prompt_store", lambda: PromptStore(enabled=False))
+        template = system_prompt_template()
         served = _FakeStore(ResolvedPrompt(text="MANAGED STATIC HALF", name=STATIC_PROMPT_NAME, version="12"))
         monkeypatch.setattr(prompt_module, "prompt_store", lambda: served)
 
         resolved = resolve_static_block()
-        rendered = render_prompt_template(system_prompt_template(), static_block=resolved.text, **PINNED)
+        rendered = render_prompt_template(template, static_block=resolved.text, **PINNED)
 
         assert served.asked == [STATIC_PROMPT_NAME]
         assert rendered.startswith("MANAGED STATIC HALF## Context")
@@ -385,3 +391,17 @@ class _FakeStore:
         self.asked.append(name)
         self.fallbacks.append(fallback)
         return self.answer or fallback
+
+
+def test_project_record_names_the_three_file_blocks_and_says_look_before_missing():
+    """The agent must not call a file missing because no list shows it, nor read an unreadable one as absent.
+
+    Contract tokens only: the block keys, and the two tools the prompt sends the agent to look with.
+    """
+    committed = (PROMPTS_DIR / STATIC_PROMPT_FILE).read_text(encoding="utf-8")
+    assert "<project_record>" in committed
+    record = committed.split("<project_record>", 1)[1].split("</project_record>", 1)[0]
+
+    for key in ("documents:", "documents_missing:", "documents_unreadable:"):
+        assert key in record
+    assert "list_files" in record and "knowledge_search" in record

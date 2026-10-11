@@ -1,0 +1,5 @@
+---
+improvements:
+  - >
+    The message box no longer draws a line between where you type and the
+    project and attachment controls below it.

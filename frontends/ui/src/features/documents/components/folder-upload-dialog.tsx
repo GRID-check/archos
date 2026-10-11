@@ -1,15 +1,17 @@
 'use client'
 
 import type { JSX } from 'react'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   AlertTriangle,
   Copy,
   FilePlus2,
   FolderInput,
   FolderPlus,
+  History,
   MoveRight,
   RefreshCw,
+  ShieldAlert,
   ShieldCheck,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
@@ -25,18 +27,43 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { CountPill } from '@/components/ui/count-pill'
-import { ScrollArea } from '@/components/ui/scroll-area'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Spinner } from '@/components/ui/spinner'
 import { StatCardIcon, type StatCardIconTone } from '@/components/ui/stat-card'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
+  countNewFassungen,
+  groupByFolder,
+  groupFassungProposals,
+  masterTarget,
+  soleProposal,
+  type FassungChange,
+  type FassungProposals,
+  type ProposedFile,
+} from '../lib/fassung-proposals'
+import {
   countPlan,
+  type FassungTarget,
+  type FolderUploadCounts,
   type FolderUploadPlan,
   type PlannedAction,
   type PlannedFile,
 } from '../lib/folder-upload-plan'
 import type { UploadDecisionKind } from '../hooks/use-upload-decision'
+import { describeNameMatch } from '@/lib/upload-screening/quarantine'
+import {
+  DecisionBar,
+  DecisionFileName,
+  DecisionGroupLabel,
+  DecisionNote,
+  DecisionRow,
+  DecisionRowExtra,
+  DecisionSection,
+  DecisionSubgroup,
+  DecisionTarget,
+} from './upload-decision-atoms'
 
 /**
  * „Wollen Sie aktualisieren?" — asked once, with the answer visible.
@@ -48,30 +75,33 @@ import type { UploadDecisionKind } from '../hooks/use-upload-decision'
  * touch. A person dropping a fortnight's worth of an Einreichung had no way to
  * find out whether they were adding eight files or overwriting five hundred.
  *
- * So the plan is shown BEFORE anything moves, and the one decision that
- * actually changes the outcome — update the documents that already exist, or
- * add only what is new — is a checkbox rather than a second dialog. Everything
- * else on this surface is a statement, not a question: which folders were
- * matched, which will be created, what is being skipped because the bytes are
- * identical, which documents move because the tree files them elsewhere, which
- * files the project already holds under another name, and which files it cannot
- * hold two of.
+ * So the plan is shown BEFORE anything moves. The decision that changes the
+ * outcome is which files come in as a new Fassung of a document already here
+ * (CONTEXT.md, „Fassung"): a file of the same name (ADR-0054) or one whose name
+ * continues a document under another name (ADR-0099). Both are a new Fassung of
+ * one document and the timeline shows both (ADR-0099), so the dialog asks them
+ * in ONE block, in one row shape and one wording, each group saying why Piloti
+ * thinks so (gleicher Name, Namensreihe). Everything else on this surface is a
+ * statement, not a question: which folders were matched, which will be created,
+ * what is being skipped because the bytes are identical, which documents move
+ * because the tree files them elsewhere, which files the project already holds
+ * under another name, and which files it cannot hold two of.
  *
  * Where a document has been renamed here, the row carries BOTH names. The plan
  * speaks in the names the drop uses and the corpus speaks in the names people
  * gave it; asking somebody to approve replacing a document they cannot find in
  * their own file list is not asking.
  *
- * The counts are the headline because they are what the answer turns on. The
- * lists are there because a count without names is not something a person can
- * check, and they are collapsed because five hundred rows is not a summary.
+ * One scroll region: the header and the footer stay put, the body scrolls, and
+ * the master box of forty proposals sticks to the top of it while its rows go
+ * past. No list scrolls inside another, and the confirm button is on screen at
+ * any height.
  *
  * Loose FILES come through here too (`kind: 'files'`), but only when one of
- * them would touch a document that is already on the shelf — a same-name
- * upload makes a new version of the live document (ADR-0054), and that is the
- * same question a folder asks about each of its files. One such file gets the
- * question in its own words: „Neue Fassung von „X“ hochladen?", or, when the
- * bytes are identical, „Unverändert – bereits vorhanden".
+ * them would touch a document that is already on the shelf, or continue one.
+ * One such file gets the question in its own words and its own light layout:
+ * „Neue Fassung von „X“?", or, when the bytes are identical, „Unverändert –
+ * bereits vorhanden".
  */
 export interface FolderUploadDialogProps {
   open: boolean
@@ -80,12 +110,22 @@ export interface FolderUploadDialogProps {
   plan: FolderUploadPlan | null
   /** The folder the reader is standing in, named. Null is the project root. */
   currentFolderName: string | null
-  /** Confirm. `includeUpdates` is the reader's answer to the one question. */
+  /** Confirm. `includeUpdates` is the reader's answer about the files of the same name. */
   onConfirm: (includeUpdates: boolean) => void | Promise<void>
   /** In flight — the plan is being applied (folders created, files queued). */
   pending?: boolean
   /** A dropped or picked folder, or loose files that met existing documents. */
   kind?: UploadDecisionKind
+  /**
+   * The reader's answer for one file the upload screening held back
+   * (ADR-0086). Absent: the exclusions are listed without a way to release.
+   */
+  onReleaseChange?: (file: File, released: boolean) => void
+  /**
+   * The reader's answer to „Als neue Fassung von X ablegen" for one file
+   * (ADR-0099). Absent: the offers are listed without a way to answer.
+   */
+  onFassungChange?: (change: FassungChange) => void
 }
 
 export function FolderUploadDialog({
@@ -96,8 +136,11 @@ export function FolderUploadDialog({
   onConfirm,
   pending = false,
   kind = 'folder',
+  onReleaseChange,
+  onFassungChange,
 }: FolderUploadDialogProps): JSX.Element {
   const t = useTranslations('files')
+  const contentRef = useRef<HTMLDivElement>(null)
   /**
    * Default ON.
    *
@@ -105,9 +148,11 @@ export function FolderUploadDialog({
    * set across expects the corrections to land. Defaulting to off would make the
    * common case a silent no-op that looks like a successful upload — the worse
    * of the two ways to be wrong, because nothing on screen afterwards would say
-   * the new plans are not here.
+   * the new files are not here.
    */
   const [includeUpdates, setIncludeUpdates] = useState(true)
+  /** The one file's answer, given and waiting for the plan to carry it before it is confirmed. */
+  const [soleAnswer, setSoleAnswer] = useState<boolean | null>(null)
 
   /**
    * A new drop starts from the default again.
@@ -119,7 +164,9 @@ export function FolderUploadDialog({
    * becoming null, which is what every new drop does before it has a plan.
    */
   useEffect(() => {
-    if (!plan) setIncludeUpdates(true)
+    if (plan) return
+    setIncludeUpdates(true)
+    setSoleAnswer(null)
   }, [plan])
 
   const counts = useMemo(
@@ -137,252 +184,455 @@ export function FolderUploadDialog({
     !isFolder && plan?.files.length === 1 && (plan.files[0].action === 'update' || plan.files[0].action === 'unchanged')
       ? plan.files[0]
       : null
-  const singleName = single ? single.file.name : ''
-  const singleShownAs = single ? (single.existingName ?? single.file.name) : ''
-  const singleMoves = single?.refiledFromFolderId !== undefined
+  /** One loose file that continues a document under another name: the same light layout, two named outcomes. */
+  const sole = !isFolder && plan ? soleProposal(plan.files) : null
 
-  const title = single
-    ? single.action === 'update'
-      ? t('folderUpload.single.updateTitle', { name: singleName })
-      : t('folderUpload.single.unchangedTitle')
-    : isFolder
-      ? plan?.rootName
-        ? t('folderUpload.title', { name: plan.rootName })
-        : t('folderUpload.titleGeneric')
-      : plan
-        ? t('folderUpload.titleFiles', { count: plan.files.length })
-        : t('folderUpload.titleFilesGeneric')
-  const description = single
-    ? single.action === 'update'
-      ? t('folderUpload.single.updateExplain', { name: singleShownAs })
-      : t('folderUpload.single.unchangedExplain', { name: singleShownAs })
-    : isFolder
-      ? plan?.mergedIntoCurrentFolder
-        ? t('folderUpload.destinationMerged', { folder: destination })
-        : t('folderUpload.destination', { folder: destination })
-      : t('folderUpload.destinationFiles', { folder: destination })
-  const HeaderIcon = single ? (single.action === 'update' ? RefreshCw : ShieldCheck) : isFolder ? FolderInput : FilePlus2
+  /*
+   * The one file's answer is a choice AND a confirm. The choice goes into the
+   * plan first (`onFassungChange`), and the confirm waits until the plan the
+   * dialog is shown carries it: the caller applies the plan it last rendered,
+   * and checks it against the settled one, so confirming in the same tick would
+   * send the answer the reader just changed.
+   */
+  useEffect(() => {
+    if (soleAnswer === null || !sole || sole.fassungOf.chosen !== soleAnswer) return
+    setSoleAnswer(null)
+    void onConfirm(true)
+  }, [soleAnswer, sole, onConfirm])
+
+  const answerSole = (asFassung: boolean) => {
+    if (!sole) return
+    if (sole.fassungOf.chosen !== asFassung) onFassungChange?.({ files: [sole.file], chosen: asFassung })
+    setSoleAnswer(asFassung)
+  }
+
+  const { title, description, HeaderIcon } = describeHeader({ t, plan, single, sole, isFolder, destination })
   const nothingToDo = !counts || counts.uploading + counts.moving === 0
+  const batch = Boolean(plan && counts && !single && !sole)
+  const fassungen = plan ? countNewFassungen(plan.files, includeUpdates) : 0
 
   return (
     <Dialog open={open} onOpenChange={(next) => !pending && onOpenChange(next)}>
       <DialogContent
-        className="sm:max-w-lg"
+        ref={contentRef}
+        // One scroll region between a fixed header and a fixed footer. On a
+        // phone the batch fills the screen: a floating card there is mostly
+        // margin, and the decision is what needs the height.
+        // The batch is a little wider: a German confirm label that names both
+        // counts, and a file name beside its box, both need the room.
+        className={cn(
+          // The container holds the focus on open only to keep it off the first box,
+          // so it draws no ring; `!` because the global `:focus-visible` rule is unlayered.
+          'flex flex-col gap-0 overflow-hidden p-0 outline-none! max-sm:px-0',
+          batch || sole ? 'sm:max-w-xl' : 'sm:max-w-lg',
+        )}
+        fullScreenOnMobile={batch}
+        closeLabel={t('folderUpload.close')}
+        // The dialog itself takes the focus, not its first box: a master box
+        // wearing the focus ring on open looks more decided than the rows it
+        // decides, and a keyboard reader's first Tab still lands on it.
+        onOpenAutoFocus={(event) => {
+          event.preventDefault()
+          contentRef.current?.focus()
+        }}
         aria-busy={pending || undefined}
         data-testid="folder-upload-dialog"
-        data-kind={single ? `single-${single.action}` : kind}
+        data-kind={sole ? 'single-fassung' : single ? `single-${single.action}` : kind}
       >
-        <DialogHeader>
+        <DialogHeader className="px-4 pt-6 pb-4 pr-12 text-left sm:px-6 sm:pr-12">
           <div className="flex items-start gap-3.5">
             <StatCardIcon icon={HeaderIcon} tone={single?.action === 'unchanged' ? 'muted' : 'info'} />
             <div className="min-w-0 space-y-1.5">
-              <DialogTitle>{title}</DialogTitle>
+              <DialogTitle className="leading-snug">{title}</DialogTitle>
               <DialogDescription>{description}</DialogDescription>
             </div>
           </div>
         </DialogHeader>
 
-        {!plan || !counts ? (
-          // Reading the tree and hashing the plausible duplicates. Named rather
-          // than left as a bare spinner: on a large folder this is seconds long
-          // and "comparing with what is already here" is exactly what it is
-          // doing.
-          <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground" data-testid="folder-upload-planning">
-            <Spinner size="sm" />
-            {t('folderUpload.planning')}
-          </div>
-        ) : single ? (
-          // The one file already says everything in the title; what is left is
-          // where the document ends up, when that is not where it is now — and
-          // that it is archived, because the new version stays out of sight
-          // with it.
-          singleMoves || single.existingArchived ? (
-            <div className="space-y-2">
-              {single.existingArchived && (
-                <Alert data-testid="folder-upload-archived">
-                  <AlertDescription>{t('folderUpload.single.archived')}</AlertDescription>
-                </Alert>
-              )}
-              {singleMoves && (
-                <Alert data-testid="folder-upload-refiled">
-                  <MoveRight aria-hidden />
-                  <AlertDescription>{t('folderUpload.single.refiled', { folder: destination })}</AlertDescription>
-                </Alert>
-              )}
+        <DialogBody>
+          {!plan || !counts ? (
+            // Reading the tree and hashing the plausible duplicates. Named rather
+            // than left as a bare spinner: on a large folder this is seconds long
+            // and "comparing with what is already here" is exactly what it is
+            // doing.
+            <div className="flex items-center gap-3 py-6 text-sm text-muted-foreground" data-testid="folder-upload-planning">
+              <Spinner size="sm" />
+              {t('folderUpload.planning')}
             </div>
-          ) : null
-        ) : (
-          <div className="space-y-4">
-            <div className="grid gap-2 sm:grid-cols-2">
-              <PlanCount
-                icon={FilePlus2}
-                tone="success"
-                count={counts.new}
-                label={t('folderUpload.counts.new')}
-                testId="folder-upload-count-new"
-              />
-              <PlanCount
-                icon={RefreshCw}
-                tone="warning"
-                count={counts.update}
-                label={t('folderUpload.counts.update')}
-                testId="folder-upload-count-update"
-              />
-              <PlanCount
-                icon={ShieldCheck}
-                tone="muted"
-                count={counts.unchanged}
-                label={t('folderUpload.counts.unchanged')}
-                testId="folder-upload-count-unchanged"
-              />
-              {isFolder && (
-              <PlanCount
-                icon={FolderPlus}
-                tone="info"
-                count={counts.foldersCreated}
-                label={t('folderUpload.counts.foldersCreated')}
-                testId="folder-upload-count-folders"
-                // The other half of the folder story, and the half that says the
-                // matching worked: a re-sync creates nothing and matches
-                // everything.
-                secondary={
-                  counts.foldersMatched > 0
-                    ? t('folderUpload.counts.foldersMatched', { count: String(counts.foldersMatched) })
-                    : undefined
-                }
-              />
-              )}
-            </div>
+          ) : sole ? (
+            <SoleCandidatePick file={sole} disabled={pending || soleAnswer !== null} onFassungChange={onFassungChange} />
+          ) : single ? (
+            <SingleNotes single={single} destination={destination} />
+          ) : (
+            <BatchPlan
+              plan={plan}
+              counts={counts}
+              isFolder={isFolder}
+              includeUpdates={includeUpdates}
+              onIncludeUpdatesChange={setIncludeUpdates}
+              pending={pending}
+              destination={destination}
+              onReleaseChange={onReleaseChange}
+              onFassungChange={onFassungChange}
+            />
+          )}
+        </DialogBody>
 
-            {counts.update > 0 && (
-              <label
-                className="flex cursor-pointer items-start gap-3 rounded-lg border bg-muted/40 p-3"
-                data-testid="folder-upload-include-updates"
-              >
-                <Checkbox
-                  checked={includeUpdates}
-                  onCheckedChange={(checked) => setIncludeUpdates(checked === true)}
-                  disabled={pending}
-                  aria-label={t('folderUpload.updatePrompt', { count: String(counts.update) })}
-                />
-                <span className="min-w-0 space-y-1 text-sm">
-                  <span className="block font-medium text-foreground">
-                    {t('folderUpload.updatePrompt', { count: String(counts.update) })}
-                  </span>
-                  <span className="block text-xs text-muted-foreground">
-                    {t('folderUpload.updateExplain')}
-                  </span>
-                </span>
-              </label>
-            )}
-
-            {/* Where documents END UP, which is the part a reader does not see
-                coming: the document exists, it is simply filed somewhere else,
-                and this drop puts it where its tree says it belongs. */}
-            {(counts.refiled > 0 || counts.moving > 0) && (
-              <Alert data-testid="folder-upload-refiled">
-                <MoveRight aria-hidden />
-                <AlertDescription className="space-y-1">
-                  {counts.refiled > 0 && (
-                    <span className="block">
-                      {t('folderUpload.refiled', { count: String(counts.refiled) })}
-                    </span>
-                  )}
-                  {/* The unchanged ones send no bytes, so nothing about the
-                      upload would move them — they are moved on their own, and
-                      that is a different sentence. */}
-                  {counts.moving > 0 && (
-                    <span className="block">
-                      {t('folderUpload.moving', { count: String(counts.moving) })}
-                    </span>
-                  )}
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* ALREADY HERE UNDER ANOTHER NAME.
-                Not an update — the server replaces by filename and these do not
-                share one, so uploading would add a second copy of a document
-                the project already holds. Named with what it is called here,
-                because that is the only way the reader can go and look. */}
-            {counts.duplicate > 0 && (
-              <Alert variant="warning" data-testid="folder-upload-duplicates">
-                <Copy aria-hidden />
-                <AlertTitle>
-                  {t('folderUpload.duplicates', { count: String(counts.duplicate) })}
-                </AlertTitle>
-                <AlertDescription className="space-y-1">
-                  <span className="block">{t('folderUpload.duplicatesExplain')}</span>
-                  <FileNameList files={plan.files.filter((file) => file.action === 'duplicate')} />
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {/* THE ONE THING THAT IS NOT MERELY INFORMATION.
-                A project holds one document per filename, so two files of the
-                same name inside one drop cannot both land — and before this
-                they both uploaded, one overwriting the other, with nothing said.
-                Neither is sent; the reader is told which, so they can rename or
-                pick. */}
-            {counts.collision > 0 && (
-              <Alert variant="warning" data-testid="folder-upload-collisions">
-                <AlertTriangle aria-hidden />
-                <AlertTitle>
-                  {t('folderUpload.collisions', { count: String(counts.collision) })}
-                </AlertTitle>
-                <AlertDescription className="space-y-1">
-                  <span className="block">{t('folderUpload.collisionsExplain')}</span>
-                  <FileNameList files={plan.files.filter((file) => file.action === 'collision')} />
-                </AlertDescription>
-              </Alert>
-            )}
-
-            <PlanDetails plan={plan} includeUpdates={includeUpdates} />
-          </div>
-        )}
-
-        <DialogFooter>
-          {single && nothingToDo ? (
+        <DialogFooter className={cn('px-4 pb-6 pt-4 sm:flex-wrap sm:px-6', batch && 'border-t')}>
+          {sole ? (
+            <SoleFooter
+              file={sole}
+              busy={pending || soleAnswer !== null}
+              canChange={Boolean(onFassungChange)}
+              onAnswer={answerSole}
+            />
+          ) : single && nothingToDo ? (
             // Identical and already where it belongs: a statement, so one way out.
             <Button onClick={() => onOpenChange(false)} data-testid="folder-upload-close">
               {t('folderUpload.close')}
             </Button>
           ) : (
-          <>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
-            {t('folderUpload.cancel')}
-          </Button>
-          <Button
-            // The one file's question IS the update question, so its button answers yes.
-            onClick={() => void onConfirm(single ? true : includeUpdates)}
-            /*
-             * Nothing to send is not a reason to hide the dialog's answer — the
-             * reader still wants to read "everything here is already up to
-             * date" — but it is a reason not to offer a button that would do
-             * nothing.
-             *
-             * "Nothing" includes the moves. A re-sync of a folder somebody has
-             * since reorganised in Piloti uploads not one byte and still has
-             * work to do, and a disabled button there would say the tree is
-             * already reproduced when it is not.
-             */
-            disabled={pending || nothingToDo}
-            data-testid="folder-upload-confirm"
-          >
-            {pending && <Spinner size="sm" />}
-            {nothingToDo
-              ? t('folderUpload.nothingToDo')
-              : single?.action === 'update'
-                ? t('folderUpload.single.confirmUpdate')
-                : (counts?.uploading ?? 0) > 0
-                  ? t('folderUpload.confirm', { count: String(counts?.uploading ?? 0) })
-                  : t('folderUpload.confirmMoveOnly', { count: String(counts?.moving ?? 0) })}
-          </Button>
-          </>
+            <>
+              <Button variant="outline" onClick={() => onOpenChange(false)} disabled={pending}>
+                {t('folderUpload.cancel')}
+              </Button>
+              <Button
+                // The one file's question IS the update question, so its button answers yes.
+                onClick={() => void onConfirm(single ? true : includeUpdates)}
+                /*
+                 * Nothing to send is not a reason to hide the dialog's answer — the
+                 * reader still wants to read "everything here is already up to
+                 * date" — but it is a reason not to offer a button that would do
+                 * nothing.
+                 *
+                 * "Nothing" includes the moves. A re-sync of a folder somebody has
+                 * since reorganised in Piloti uploads not one byte and still has
+                 * work to do, and a disabled button there would say the tree is
+                 * already reproduced when it is not.
+                 */
+                disabled={pending || nothingToDo}
+                data-testid="folder-upload-confirm"
+              >
+                {pending && <Spinner size="sm" />}
+                {confirmLabel({ t, counts, single, nothingToDo, fassungen })}
+              </Button>
+            </>
           )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+type Translate = ReturnType<typeof useTranslations>
+
+/** The dialog's title, the sentence under it and its glyph, for whichever case this drop is. */
+function describeHeader({
+  t,
+  plan,
+  single,
+  sole,
+  isFolder,
+  destination,
+}: {
+  t: Translate
+  plan: FolderUploadPlan | null
+  single: PlannedFile | null
+  sole: ProposedFile | null
+  isFolder: boolean
+  destination: string
+}): { title: string; description: string; HeaderIcon: LucideIcon } {
+  if (sole) return { ...describeSole(t, sole), HeaderIcon: History }
+  if (single) {
+    const shownAs = single.existingName ?? single.file.name
+    return single.action === 'update'
+      ? {
+          title: t('folderUpload.single.newFassungTitle', { name: single.file.name }),
+          description: t('folderUpload.single.updateExplain', { name: shownAs }),
+          HeaderIcon: History,
+        }
+      : {
+          title: t('folderUpload.single.unchangedTitle'),
+          description: t('folderUpload.single.unchangedExplain', { name: shownAs }),
+          HeaderIcon: ShieldCheck,
+        }
+  }
+  if (isFolder) {
+    return {
+      title: plan?.rootName ? t('folderUpload.title', { name: plan.rootName }) : t('folderUpload.titleGeneric'),
+      description: plan?.mergedIntoCurrentFolder
+        ? t('folderUpload.destinationMerged', { folder: destination })
+        : t('folderUpload.destination', { folder: destination }),
+      HeaderIcon: FolderInput,
+    }
+  }
+  return {
+    title: plan ? t('folderUpload.titleFiles', { count: plan.files.length }) : t('folderUpload.titleFilesGeneric'),
+    description: t('folderUpload.destinationFiles', { folder: destination }),
+    HeaderIcon: FilePlus2,
+  }
+}
+
+/** The one file's question: a clear match, a choice between documents, or a file not newer than the one there. */
+function describeSole(t: Translate, sole: ProposedFile): { title: string; description: string } {
+  const { of, candidates, newer } = sole.fassungOf
+  const file = sole.file.name
+  if (candidates.length > 1) {
+    return { title: t('folderUpload.single.unclearTitle', { file }), description: t('folderUpload.single.unclearExplain') }
+  }
+  if (!newer) {
+    return {
+      title: t('folderUpload.single.unclearTitle', { file }),
+      description: t('folderUpload.single.notNewerExplain', { file, name: of.name }),
+    }
+  }
+  return {
+    title: t('folderUpload.single.newFassungTitle', { name: of.name }),
+    description: t('folderUpload.single.fassungExplain', { file, name: of.name }),
+  }
+}
+
+/** What the confirm button says: how many files go, and how many of them as a new Fassung. */
+function confirmLabel({
+  t,
+  counts,
+  single,
+  nothingToDo,
+  fassungen,
+}: {
+  t: Translate
+  counts: FolderUploadCounts | null
+  single: PlannedFile | null
+  nothingToDo: boolean
+  fassungen: number
+}): string {
+  if (nothingToDo || !counts) return t('folderUpload.nothingToDo')
+  if (single?.action === 'update') return t('folderUpload.single.confirmFassung')
+  if (counts.uploading === 0) return t('folderUpload.confirmMoveOnly', { count: counts.moving })
+  return fassungen > 0
+    ? t('folderUpload.confirmWithFassungen', { count: counts.uploading, fassungen })
+    : t('folderUpload.confirm', { count: counts.uploading })
+}
+
+/** The scrolling middle of the dialog. Nothing in it scrolls on its own. */
+function DialogBody({ children }: { children: JSX.Element }): JSX.Element {
+  return <div className="min-h-0 flex-1 overflow-y-auto px-4 sm:px-6">{children}</div>
+}
+
+/**
+ * The one same-name file, when there is more to say than its title: where the
+ * document ends up, when that is not where it is now, and that it is archived,
+ * because the new Fassung stays out of sight with it.
+ */
+function SingleNotes({ single, destination }: { single: PlannedFile; destination: string }): JSX.Element | null {
+  const t = useTranslations('files')
+  const moves = single.refiledFromFolderId !== undefined
+  if (!moves && !single.existingArchived) return null
+  return (
+    <div className="space-y-2 pb-1">
+      {single.existingArchived && (
+        <Alert data-testid="folder-upload-archived">
+          <AlertDescription>{t('folderUpload.single.archived')}</AlertDescription>
+        </Alert>
+      )}
+      {moves && (
+        <Alert data-testid="folder-upload-refiled">
+          <MoveRight aria-hidden />
+          <AlertDescription>{t('folderUpload.single.refiled', { folder: destination })}</AlertDescription>
+        </Alert>
+      )}
+    </div>
+  )
+}
+
+/** The one file that could continue several documents: which one, before it can be filed as a new Fassung. */
+function SoleCandidatePick({
+  file,
+  disabled,
+  onFassungChange,
+}: {
+  file: ProposedFile
+  disabled: boolean
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element | null {
+  if (file.fassungOf.candidates.length < 2) return null
+  return (
+    <div className="pb-1">
+      <CandidatePick file={file} disabled={disabled || !onFassungChange} onFassungChange={onFassungChange} />
+    </div>
+  )
+}
+
+/**
+ * The one file's two outcomes, each named: filed as the next Fassung, or
+ * uploaded as a document of its own. A file not newer than the document it
+ * would continue leads with the second; one that could continue several cannot
+ * be filed until the reader has said which. No third „Abbrechen" beside two
+ * long labels: the close button and Escape leave without uploading.
+ */
+function SoleFooter({
+  file,
+  busy,
+  canChange,
+  onAnswer,
+}: {
+  file: ProposedFile
+  busy: boolean
+  canChange: boolean
+  onAnswer: (asFassung: boolean) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const { chosen, newer, candidates } = file.fassungOf
+  const needsPick = candidates.length > 1 && !chosen
+  // Without a handler the answer cannot change, so only the outcome already chosen can be confirmed.
+  const fassungBlocked = needsPick || (!canChange && !chosen)
+  const separateBlocked = !canChange && chosen
+  const leadWithFassung = newer
+  return (
+    <>
+      <Button
+        variant={leadWithFassung ? 'outline' : 'default'}
+        onClick={() => onAnswer(false)}
+        disabled={busy || separateBlocked}
+        data-testid="folder-upload-sole-separate"
+      >
+        {t('folderUpload.single.confirmSeparate')}
+      </Button>
+      <Button
+        variant={leadWithFassung ? 'default' : 'outline'}
+        onClick={() => onAnswer(true)}
+        disabled={busy || fassungBlocked}
+        data-testid="folder-upload-sole-fassung"
+      >
+        {t('folderUpload.single.confirmFassung')}
+      </Button>
+    </>
+  )
+}
+
+/** Everything a batch says and asks, top to bottom: the numbers, the one decision, then what is only stated. */
+function BatchPlan({
+  plan,
+  counts,
+  isFolder,
+  includeUpdates,
+  onIncludeUpdatesChange,
+  pending,
+  destination,
+  onReleaseChange,
+  onFassungChange,
+}: {
+  plan: FolderUploadPlan
+  counts: FolderUploadCounts
+  isFolder: boolean
+  includeUpdates: boolean
+  onIncludeUpdatesChange: (include: boolean) => void
+  pending: boolean
+  destination: string
+  onReleaseChange?: (file: File, released: boolean) => void
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  return (
+    <div className="space-y-4 pb-4">
+      {/* Two by two at every width: stacked one per row on a phone, the four
+          numbers pushed the decision off the first screen. */}
+      <div className="grid grid-cols-2 gap-2">
+        <PlanCount icon={FilePlus2} tone="success" count={counts.new} label={t('folderUpload.counts.new')} testId="folder-upload-count-new" />
+        <PlanCount
+          icon={RefreshCw}
+          tone="warning"
+          count={counts.update}
+          label={t('folderUpload.counts.update')}
+          testId="folder-upload-count-update"
+        />
+        <PlanCount
+          icon={ShieldCheck}
+          tone="muted"
+          count={counts.unchanged}
+          label={t('folderUpload.counts.unchanged')}
+          testId="folder-upload-count-unchanged"
+        />
+        {isFolder && (
+          <PlanCount
+            icon={FolderPlus}
+            tone="info"
+            count={counts.foldersCreated}
+            label={t('folderUpload.counts.foldersCreated')}
+            testId="folder-upload-count-folders"
+            // The other half of the folder story, and the half that says the
+            // matching worked: a re-sync creates nothing and matches everything.
+            secondary={
+              counts.foldersMatched > 0 ? t('folderUpload.counts.foldersMatched', { count: counts.foldersMatched }) : undefined
+            }
+          />
+        )}
+      </div>
+
+      {/* The decision comes right after the numbers: it is what the reader is here for. */}
+      <FassungSection
+        plan={plan}
+        updates={counts.update}
+        includeUpdates={includeUpdates}
+        onIncludeUpdatesChange={onIncludeUpdatesChange}
+        pending={pending}
+        destination={destination}
+        onFassungChange={onFassungChange}
+      />
+
+      {/* Where documents END UP, which is the part a reader does not see
+          coming: the document exists, it is simply filed somewhere else,
+          and this drop puts it where its tree says it belongs. */}
+      {(counts.refiled > 0 || counts.moving > 0) && (
+        <Alert data-testid="folder-upload-refiled">
+          <MoveRight aria-hidden />
+          <AlertDescription className="space-y-1">
+            {counts.refiled > 0 && <span className="block">{t('folderUpload.refiled', { count: counts.refiled })}</span>}
+            {/* The unchanged ones send no bytes, so nothing about the
+                upload would move them — they are moved on their own, and
+                that is a different sentence. */}
+            {counts.moving > 0 && <span className="block">{t('folderUpload.moving', { count: counts.moving })}</span>}
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* ALREADY HERE UNDER ANOTHER NAME.
+          Not an update — the server replaces by filename and these do not
+          share one, so uploading would add a second copy of a document
+          the project already holds. Named with what it is called here,
+          because that is the only way the reader can go and look. */}
+      {counts.duplicate > 0 && (
+        <Alert variant="warning" data-testid="folder-upload-duplicates">
+          <Copy aria-hidden />
+          <AlertTitle>{t('folderUpload.duplicates', { count: counts.duplicate })}</AlertTitle>
+          <AlertDescription className="space-y-1">
+            <span className="block">{t('folderUpload.duplicatesExplain')}</span>
+            <FileNameList files={plan.files.filter((file) => file.action === 'duplicate')} />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {/* THE ONE THING THAT IS NOT MERELY INFORMATION.
+          A project holds one document per filename, so two files of the
+          same name inside one drop cannot both land — and before this
+          they both uploaded, one overwriting the other, with nothing said.
+          Neither is sent; the reader is told which, so they can rename or
+          pick. */}
+      {counts.collision > 0 && (
+        <Alert variant="warning" data-testid="folder-upload-collisions">
+          <AlertTriangle aria-hidden />
+          <AlertTitle>{t('folderUpload.collisions', { count: counts.collision })}</AlertTitle>
+          <AlertDescription className="space-y-1">
+            <span className="block">{t('folderUpload.collisionsExplain')}</span>
+            <FileNameList files={plan.files.filter((file) => file.action === 'collision')} />
+          </AlertDescription>
+        </Alert>
+      )}
+
+      <ScreeningSection plan={plan} pending={pending} onReleaseChange={onReleaseChange} />
+
+      <PlanDetails plan={plan} includeUpdates={includeUpdates} />
+    </div>
   )
 }
 
@@ -394,7 +644,8 @@ export function FolderUploadDialog({
  * decision and a file list. Its icon slot also wraps whatever it is given in a
  * fixed muted disc, so a toned glyph would be a disc inside a disc. The atom
  * that matters — the tinted well — IS the kit's (`StatCardIcon`); what is local
- * is the cell around it, which is layout.
+ * is the cell around it, which is layout. The label wraps rather than cut off:
+ * half a phone's width is too narrow for „unverändert, übersprungen" on one line.
  */
 function PlanCount({
   icon,
@@ -412,20 +663,301 @@ function PlanCount({
   testId: string
 }): JSX.Element {
   return (
-    <div
-      className={cn('flex items-center gap-2.5 rounded-lg border p-2.5', count === 0 && 'opacity-55')}
-      data-testid={testId}
-    >
+    <div className={cn('flex items-center gap-2.5 rounded-lg border p-2.5', count === 0 && 'opacity-55')} data-testid={testId}>
       <StatCardIcon icon={icon} tone={tone} size="sm" />
       <div className="min-w-0">
         <p className="text-sm font-semibold tabular-nums text-foreground">{count}</p>
-        <p className="truncate text-xs text-muted-foreground">{label}</p>
-        {secondary && <p className="truncate text-[11px] text-muted-foreground/80">{secondary}</p>}
+        <p className="text-xs leading-snug text-muted-foreground">{label}</p>
+        {secondary && <p className="text-[11px] leading-snug text-muted-foreground/80">{secondary}</p>}
       </div>
     </div>
   )
 }
 
+/**
+ * Which files come in as a new Fassung of a document already here
+ * (CONTEXT.md, „Fassung"): ONE block, whichever way Piloti recognised them.
+ *
+ * - **Gleicher Name** (ADR-0054): one box for all of them, because the same
+ *   name replaces the live document whatever the reader says about one file;
+ *   unticked, they are skipped.
+ * - **Namensreihe** (ADR-0099): a publisher export brings forty at once, so the
+ *   clear matches are one decision (`groupFassungProposals`) under a master box
+ *   that sticks to the top while its rows, grouped by folder, go past; each
+ *   row can be overridden, and unticked it comes in as a document of its own.
+ * - The ones that need the reader (several documents could be meant, or the
+ *   file is not newer than the one there) apart, never ticked for them, each
+ *   with the documents to choose from.
+ *
+ * Every row has the same shape: the file name first, cut in the middle so its
+ * index and date survive, then where it goes. One sentence says what all of it
+ * does.
+ */
+function FassungSection({
+  plan,
+  updates,
+  includeUpdates,
+  onIncludeUpdatesChange,
+  pending,
+  destination,
+  onFassungChange,
+}: {
+  plan: FolderUploadPlan
+  updates: number
+  includeUpdates: boolean
+  onIncludeUpdatesChange: (include: boolean) => void
+  pending: boolean
+  destination: string
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const proposals = useMemo(() => groupFassungProposals(plan.files), [plan.files])
+  const { detected, unclear } = proposals
+  if (updates === 0 && detected.length === 0 && unclear.length === 0) return null
+  const disabled = pending || !onFassungChange
+  return (
+    <DecisionSection
+      icon={History}
+      title={t('folderUpload.fassung.title', { count: updates + detected.length || unclear.length })}
+      data-testid="folder-upload-fassungen"
+    >
+      {(detected.length > 0 || unclear.length > 0) && <DecisionNote>{t('folderUpload.fassung.consequence')}</DecisionNote>}
+
+      {updates > 0 && (
+        <DecisionRow
+          data-testid="folder-upload-include-updates"
+          muted={!includeUpdates}
+          control={
+            <Checkbox
+              checked={includeUpdates}
+              onCheckedChange={(checked) => onIncludeUpdatesChange(checked === true)}
+              disabled={pending}
+              aria-label={t('folderUpload.fassung.sameNameTitle', { count: updates })}
+            />
+          }
+          title={<span className="font-medium">{t('folderUpload.fassung.sameNameTitle', { count: updates })}</span>}
+          detail={t('folderUpload.fassung.sameNameReason')}
+        />
+      )}
+
+      {detected.length > 0 && (
+        <DetectedProposals proposals={proposals} disabled={disabled} destination={destination} onFassungChange={onFassungChange} />
+      )}
+
+      {unclear.length > 0 && (
+        <DecisionSubgroup
+          title={t('folderUpload.fassung.unclearTitle', { count: unclear.length })}
+          data-testid="folder-upload-fassungen-unclear"
+        >
+          <DecisionNote>{t('folderUpload.fassung.unclearHint')}</DecisionNote>
+          {unclear.map((file, index) => (
+            <div key={`${index}:${file.originPath}`} data-testid="folder-upload-fassung-unclear-row">
+              <DecisionRow
+                muted={!file.fassungOf.chosen}
+                control={<ProposalBox file={file} disabled={disabled} onFassungChange={onFassungChange} />}
+                title={<DecisionFileName name={file.file.name} />}
+                detail={
+                  file.fassungOf.newer
+                    ? t('folderUpload.fassung.reasonSeveral')
+                    : t('folderUpload.fassung.reasonNotNewer', { name: file.fassungOf.of.name })
+                }
+              />
+              {file.fassungOf.candidates.length > 1 && (
+                <DecisionRowExtra>
+                  <CandidatePick file={file} disabled={disabled} onFassungChange={onFassungChange} />
+                </DecisionRowExtra>
+              )}
+            </div>
+          ))}
+        </DecisionSubgroup>
+      )}
+    </DecisionSection>
+  )
+}
+
+/** The clear matches: a sticky master bar with the count, then the rows, one run per folder. */
+function DetectedProposals({
+  proposals,
+  disabled,
+  destination,
+  onFassungChange,
+}: {
+  proposals: FassungProposals
+  disabled: boolean
+  destination: string
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const { detected, master, ticked } = proposals
+  const runs = groupByFolder(detected)
+  const masterLabel =
+    master === 'all'
+      ? t('folderUpload.fassung.masterAll', { count: detected.length })
+      : master === 'some'
+        ? t('folderUpload.fassung.masterSome', { ticked, count: detected.length })
+        : t('folderUpload.fassung.masterNone', { count: detected.length })
+  return (
+    <div data-testid="folder-upload-fassungen-detected">
+      <DecisionBar>
+        <DecisionRow
+          control={
+            <Checkbox
+              checked={master === 'all' ? true : master === 'some' ? 'indeterminate' : false}
+              onCheckedChange={() => onFassungChange?.({ files: detected.map((file) => file.file), chosen: masterTarget(master) })}
+              disabled={disabled}
+              aria-label={masterLabel}
+              data-testid="folder-upload-fassung-master"
+            />
+          }
+          title={
+            <span className="font-medium tabular-nums" data-testid="folder-upload-fassung-master-label">
+              {masterLabel}
+            </span>
+          }
+          detail={t('folderUpload.fassung.seriesReason')}
+        />
+      </DecisionBar>
+      {runs.map((run) => (
+        <div key={run.folder} role="group" aria-label={run.folder || destination}>
+          {(runs.length > 1 || run.folder !== '') && (
+            <DecisionGroupLabel count={run.files.length}>
+              <MiddleTruncate text={run.folder || destination} tail={24} />
+            </DecisionGroupLabel>
+          )}
+          {run.files.map((file, index) => (
+            <DecisionRow
+              key={`${index}:${file.originPath}`}
+              data-testid="folder-upload-fassung-row"
+              muted={!file.fassungOf.chosen}
+              control={<ProposalBox file={file} disabled={disabled} onFassungChange={onFassungChange} />}
+              title={<DecisionFileName name={file.file.name} />}
+              detail={
+                <DecisionTarget
+                  prefix={t('folderUpload.fassung.ofPrefix')}
+                  name={file.fassungOf.of.name}
+                  label={file.fassungOf.of.label}
+                />
+              }
+            />
+          ))}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+/** One file's box: „Als neue Fassung von X ablegen". */
+function ProposalBox({
+  file,
+  disabled,
+  onFassungChange,
+}: {
+  file: ProposedFile
+  disabled: boolean
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  return (
+    <Checkbox
+      checked={file.fassungOf.chosen}
+      onCheckedChange={(checked) => onFassungChange?.({ files: [file.file], chosen: checked === true })}
+      disabled={disabled}
+      aria-label={t('folderUpload.fassung.offer', { name: file.fassungOf.of.name })}
+      data-testid="folder-upload-fassung-choice"
+    />
+  )
+}
+
+/**
+ * The documents a file may continue, to choose from. Nothing shows as chosen
+ * until the reader chooses: a value in the field over an unticked box looked
+ * decided when it was not. Choosing ticks the file (`useUploadDecision`).
+ */
+function CandidatePick({
+  file,
+  disabled,
+  onFassungChange,
+}: {
+  file: ProposedFile
+  disabled: boolean
+  onFassungChange?: (change: FassungChange) => void
+}): JSX.Element {
+  const t = useTranslations('files')
+  const { candidates, of, chosen } = file.fassungOf
+  const describe = (candidate: FassungTarget) => (candidate.label ? `${candidate.name} · ${candidate.label}` : candidate.name)
+  return (
+    <Select
+      value={chosen ? of.id : ''}
+      onValueChange={(targetId) => onFassungChange?.({ files: [file.file], targetId })}
+      disabled={disabled}
+    >
+      <SelectTrigger size="sm" className="w-full min-w-0" aria-label={t('folderUpload.fassung.pick')} data-testid="folder-upload-fassung-pick">
+        <SelectValue placeholder={t('folderUpload.fassung.pick')} />
+      </SelectTrigger>
+      <SelectContent>
+        {candidates.map((candidate) => (
+          <SelectItem key={candidate.id} value={candidate.id}>
+            {describe(candidate)}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  )
+}
+
+/**
+ * What the office's upload screening held back, and why (ADR-0086).
+ *
+ * A statement and a question at once: these files stay on this computer, and
+ * each one can be released by the person who knows what it is — the Bauvertrag
+ * in a folder called „Verträge". A released file stays in the list, ticked, so
+ * the release can be taken back before anything is sent.
+ */
+function ScreeningSection({
+  plan,
+  pending,
+  onReleaseChange,
+}: {
+  plan: FolderUploadPlan
+  pending: boolean
+  onReleaseChange?: (file: File, released: boolean) => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const screened = plan.files.filter((file) => file.action === 'excluded' || file.screeningReleased)
+  if (screened.length === 0) return null
+  const excludedCount = screened.filter((file) => file.action === 'excluded').length
+  return (
+    <Alert variant="warning" data-testid="folder-upload-excluded">
+      <ShieldAlert aria-hidden />
+      <AlertTitle>{t('folderUpload.excluded', { count: excludedCount })}</AlertTitle>
+      <AlertDescription className="space-y-2">
+        <span className="block">{t('folderUpload.excludedExplain')}</span>
+        <ul className="space-y-1.5 text-xs">
+          {screened.slice(0, 20).map((file, index) => (
+            <li key={`${index}:${file.originPath}`} className="flex items-start gap-2">
+              {onReleaseChange && (
+                <Checkbox
+                  checked={file.screeningReleased === true}
+                  onCheckedChange={(checked) => onReleaseChange(file.file, checked === true)}
+                  disabled={pending}
+                  aria-label={`${t('folderUpload.releaseFile')}: ${file.originPath}`}
+                  data-testid="folder-upload-release"
+                />
+              )}
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-mono">{file.originPath}</span>
+                <span className="block opacity-80">
+                  {(file.screening ?? []).map((match) => describeNameMatch(match, t)).join(' · ')}
+                </span>
+              </span>
+            </li>
+          ))}
+          {screened.length > 20 && <li className="opacity-70">+{screened.length - 20}</li>}
+        </ul>
+      </AlertDescription>
+    </Alert>
+  )
+}
 
 /** Names, because a count nobody can check is a number to be believed. */
 function FileNameList({ files }: { files: readonly PlannedFile[] }): JSX.Element {
@@ -453,7 +985,8 @@ function FileNameList({ files }: { files: readonly PlannedFile[] }): JSX.Element
  * and open-able because a person about to replace somebody's drawings is
  * entitled to see exactly which ones. `<details>` rather than a Collapsible:
  * nothing here needs to animate, and the native element keeps its keyboard and
- * screen-reader behaviour for free.
+ * screen-reader behaviour for free. Opened, it is part of the dialog's one
+ * scroll, not a second window inside it.
  */
 function PlanDetails({
   plan,
@@ -469,53 +1002,56 @@ function PlanDetails({
   return (
     <details className="rounded-lg border" data-testid="folder-upload-details">
       <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-foreground">
-        {t('folderUpload.showAll', { count: String(rows.length) })}
+        {t('folderUpload.showAll', { count: rows.length })}
       </summary>
-      <ScrollArea className="max-h-56">
-        <ul className="space-y-0.5 px-3 pb-3">
-          {rows.map((file, index) => (
-            <li key={`${index}:${file.originPath}`} className="flex items-center gap-2 text-xs">
-              <ActionTag action={file.action} includeUpdates={includeUpdates} />
-              <span className="min-w-0 flex-1 truncate font-mono text-muted-foreground">
-                {file.originPath}
+      <ul className="space-y-0.5 px-3 pb-3">
+        {rows.map((file, index) => (
+          <li key={`${index}:${file.originPath}`} className="flex min-w-0 items-center gap-2 text-xs">
+            <ActionTag file={file} includeUpdates={includeUpdates} />
+            <MiddleTruncate text={file.originPath} tail={24} className="min-w-0 flex-1 font-mono text-muted-foreground" />
+            {/* The document this row is about to touch, when the project
+                calls it something else — a rename here is invisible to the
+                drop, and approving a replacement you cannot locate is not
+                approval. */}
+            {file.existingName && (
+              <span className="max-w-[45%] shrink-0 truncate text-muted-foreground/80">
+                {t('folderUpload.alreadyHereAs', { name: file.existingName })}
               </span>
-              {/* The document this row is about to touch, when the project
-                  calls it something else — a rename here is invisible to the
-                  drop, and approving a replacement you cannot locate is not
-                  approval. */}
-              {file.existingName && (
-                <span className="max-w-[45%] shrink-0 truncate text-muted-foreground/80">
-                  {t('folderUpload.alreadyHereAs', { name: file.existingName })}
-                </span>
-              )}
-              {file.existingArchived && (
-                <span className="shrink-0 text-muted-foreground/80">{t('folderUpload.archivedMatch')}</span>
-              )}
-            </li>
-          ))}
-        </ul>
-      </ScrollArea>
+            )}
+            {file.existingArchived && <span className="shrink-0 text-muted-foreground/80">{t('folderUpload.archivedMatch')}</span>}
+          </li>
+        ))}
+      </ul>
     </details>
   )
 }
 
+/** What one row will actually do, given the reader's answers. */
+type EffectiveAction = Exclude<PlannedAction, 'update'> | 'fassung' | 'skipped'
+
+/**
+ * A same-name update the reader keeps, and a new file whose offer is ticked,
+ * both come in as a new Fassung and say so; an update switched off is skipped.
+ * A list still labelled „Neue Fassung" under an unticked box describes an
+ * upload that is not going to happen.
+ */
+function effectiveAction(file: PlannedFile, includeUpdates: boolean): EffectiveAction {
+  if (file.action === 'update') return includeUpdates ? 'fassung' : 'skipped'
+  if (file.action === 'new' && file.fassungOf?.chosen) return 'fassung'
+  return file.action
+}
+
 /** What this row will do, in one word. */
-function ActionTag({
-  action,
-  includeUpdates,
-}: {
-  action: PlannedAction
-  includeUpdates: boolean
-}): JSX.Element {
+function ActionTag({ file, includeUpdates }: { file: PlannedFile; includeUpdates: boolean }): JSX.Element {
   const t = useTranslations('files')
-  // An update the reader has switched off is skipped, and the row has to say
-  // so — a list still labelled „Aktualisieren" under an unticked box describes
-  // an upload that is not going to happen.
-  const effective = action === 'update' && !includeUpdates ? 'skipped' : action
-  const label = t(`folderUpload.action.${effective}`)
+  const effective = effectiveAction(file, includeUpdates)
   return (
-    <CountPill tone={effective === 'new' || effective === 'update' ? 'attention' : 'muted'} data-testid={`folder-upload-action-${effective}`}>
-      {label}
+    <CountPill
+      tone={effective === 'new' || effective === 'fassung' ? 'attention' : 'muted'}
+      className="min-w-[5.5rem]"
+      data-testid={`folder-upload-action-${effective}`}
+    >
+      {t(`folderUpload.action.${effective}`)}
     </CountPill>
   )
 }

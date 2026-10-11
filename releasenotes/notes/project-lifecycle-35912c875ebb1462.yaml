@@ -1,0 +1,23 @@
+---
+features:
+  - >
+    You can now pause a project that is waiting, for a permit or a client
+    decision. It leaves your active projects and its scheduled tasks are skipped
+    until you resume it, without making it read-only or visible to the whole
+    office.
+  - >
+    Closing a project now asks how it ended, completed or not realized, and in
+    which month, then what the office keeps, then what to clear out, one step at
+    a time.
+improvements:
+  - >
+    A project's completion month is now set when you close it. A running project
+    shows "ongoing", and a month entered earlier is no longer shown; you are
+    asked for it again when you close the project.
+  - >
+    Projects closed before this release are marked as completed. If one was
+    never built, reopen it and close it again as not realized.
+  - >
+    Pausing, closing and reopening are offered from the project's overview menu
+    and from the notice at the top of a paused or closed project, and the
+    project switcher no longer lists every closed project of the office.

@@ -44,7 +44,15 @@ vi.mock('@/lib/citations/service', () => ({
     reasons: [
       { kind: 'citations_removed', reason: 'url_not_in_registry', occurrences: 20, share: 0.66 },
     ],
-    sourceMix: [{ dimension: 'tool', label: 'ris_search_tool', turns: 7 }],
+    sourceMix: [
+      { dimension: 'tool', label: 'ris_search_tool', turns: 7 },
+      { dimension: 'lane', label: 'oib', turns: 5 },
+    ],
+    unavailableTools: [],
+    missingSources: [],
+    missingSourcesTotal: 0,
+    inventoryKnown: false,
+    organizationsTotal: 1,
     organizations: [
       {
         organizationId: 'org_1',
@@ -83,28 +91,61 @@ describe('GET /api/platform/citation-health', () => {
     expect(body.totals.cleanRate).toBe(0.88)
     expect(body.organizations[0].name).toBe('Tenant')
     expect(body.reasons[0].reason).toBe('url_not_in_registry')
+    // The fields the dashboard needs to say what it is NOT showing.
+    expect(body).toMatchObject({
+      inventoryKnown: false,
+      missingSourcesTotal: 0,
+      organizationsTotal: 1,
+    })
   })
 
-  it('passes the requested window through to the service', async () => {
+  it('passes the scope through to the service: range, organizations, projects', async () => {
     isOwner.value = true
-    await GET(request('http://localhost/api/platform/citation-health?days=7'))
-    expect(getCitationHealth).toHaveBeenCalledWith({ days: 7 })
+    const res = await GET(
+      request(
+        'http://localhost/api/platform/citation-health?from=2026-09-01&to=2026-09-30&org=org_1&org=org_2&project=p_1'
+      )
+    )
+    expect(res.status).toBe(200)
+    expect(getCitationHealth).toHaveBeenCalledWith({
+      from: '2026-09-01',
+      to: '2026-09-30',
+      organizationIds: ['org_1', 'org_2'],
+      projectIds: ['p_1'],
+    })
   })
 
-  it('takes the default window for every non-window value', async () => {
+  it('keeps the older days= shorthand working when no range is given', async () => {
     isOwner.value = true
-    // Blank and non-positive must mean "unspecified" — Number('') and
-    // Number(null) are both 0, which would otherwise clamp to a 1-DAY window
-    // and silently show the operator a near-empty dashboard.
-    for (const query of ['', '?days=', '?days=abc', '?days=0', '?days=-5']) {
-      await GET(request(`http://localhost/api/platform/citation-health${query}`))
-      expect(getCitationHealth).toHaveBeenLastCalledWith({ days: undefined })
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-10-09T15:00:00Z'))
+    try {
+      await GET(request('http://localhost/api/platform/citation-health?days=7'))
+      expect(getCitationHealth).toHaveBeenLastCalledWith({
+        from: '2026-10-03',
+        to: '2026-10-09',
+        organizationIds: [],
+        projectIds: [],
+      })
+      await GET(request('http://localhost/api/platform/citation-health'))
+      expect(getCitationHealth).toHaveBeenLastCalledWith(
+        expect.objectContaining({ from: '2026-09-10', to: '2026-10-09' })
+      )
+    } finally {
+      vi.useRealTimers()
     }
   })
 
-  it('passes a valid window through untouched', async () => {
+  it.each([
+    ['?from=2026-09-31&to=2026-10-01', 'invalid_from'],
+    ['?from=2026-09-01', 'invalid_to'],
+    ['?from=2026-10-01&to=2026-09-01', 'range_inverted'],
+    ['?from=2024-01-01&to=2026-01-01', 'range_too_long'],
+  ])('answers %s with 400 %s and never queries', async (query, code) => {
     isOwner.value = true
-    await GET(request('http://localhost/api/platform/citation-health?days=7'))
-    expect(getCitationHealth).toHaveBeenLastCalledWith({ days: 7 })
+    const res = await GET(request(`http://localhost/api/platform/citation-health${query}`))
+    expect(res.status).toBe(400)
+    expect(await res.json()).toMatchObject({ code: 'BAD_REQUEST', details: { scope: code } })
+    expect(getCitationHealth).not.toHaveBeenCalled()
   })
 })

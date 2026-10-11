@@ -1,19 +1,39 @@
 'use client'
 
 /**
- * Dev preview for the platform CitationHealth card. Renders the REAL card with
- * fixture data so the stat tiles, the stacked defect trend, the reason /
- * source breakdowns, the per-organization table and the recent-findings list
- * can be reviewed and screenshotted without a backend. A module-scope fetch
- * shim (browser + dev only) serves `/api/platform/citation-health`. Not linked
- * from anywhere and 404s outside development.
+ * Dev preview for the platform CitationHealth tab. Renders the REAL organism
+ * with fixture data so the stat tiles, the findings, the stacked defect trend,
+ * the sources to add, the reason / source breakdowns, the per-organization
+ * table and the recent-findings table can be reviewed and screenshotted
+ * without a backend. A module-scope fetch shim (browser + dev only) serves
+ * `/api/platform/citation-health`, answering for the scope the request names
+ * (the trend is cut to its days, the scope echoed back). Not linked from
+ * anywhere; 404s outside development. Pinned to German, the primary product
+ * language.
+ *
+ * The scope comes from the page URL like on the real page (`from`, `to`,
+ * repeatable `org` and `project`), defaulting to the fixture's 30 days.
+ *
+ * Variants by query string:
+ * - `?narrow`  two organizations and a project (labels + project caveat)
+ * - `?readonly`  a viewer without `platform:settings:manage` (add actions disabled)
+ * - `?inventory=unknown`  the server could not read the platform inventory
+ * - `?error`  loads fail for the first seconds (destructive alert + retry)
+ * - `?clear`  nothing to do (the all-clear state)
  */
 
 import type { JSX } from 'react'
-import { notFound } from 'next/navigation'
+import { Suspense } from 'react'
+import { notFound, useSearchParams } from 'next/navigation'
 import { CitationHealth } from '@/features/platform/components/citation-health'
+import { PlatformAccessProvider } from '@/features/platform/platform-access'
+import { I18nProvider } from '@/i18n'
+import { readQualityScope, type QualityScope } from '@/lib/quality/scope'
 
 const WINDOW_DAYS = 30
+/** The fixture's days: 28 June to 27 July 2026. */
+const FIXTURE_FROM = '2026-06-28'
+const FIXTURE_TO = '2026-07-27'
 
 /**
  * A deterministic 30-day series: a mostly-healthy baseline with a visible
@@ -35,6 +55,12 @@ const DAILY = Array.from({ length: WINDOW_DAYS }, (_, index) => {
 })
 
 const SNAPSHOT = {
+  scope: {
+    from: FIXTURE_FROM,
+    to: FIXTURE_TO,
+    organizationIds: [] as string[],
+    projectIds: [] as string[],
+  },
   windowDays: WINDOW_DAYS,
   totals: {
     turns: 1348,
@@ -57,7 +83,7 @@ const SNAPSHOT = {
       id: 'answers_ungrounded',
       severity: 'error',
       subject: { type: 'organization', label: 'Bauwerk Consulting' },
-      metrics: { turns: 26, share: 1.9 },
+      metrics: { turns: 26, share: 0.019 },
     },
     {
       id: 'sources_missing',
@@ -75,13 +101,13 @@ const SNAPSHOT = {
       id: 'citations_invented',
       severity: 'warn',
       subject: null,
-      metrics: { turns: 121, citations: 412, share: 68, unheld: 3 },
+      metrics: { turns: 121, citations: 412, share: 0.68, unheld: 3 },
     },
     {
       id: 'organization_outlier',
       severity: 'warn',
       subject: { type: 'organization', label: 'Bauwerk Consulting' },
-      metrics: { share: 15.7, platformShare: 12.8, turns: 96 },
+      metrics: { share: 0.157, platformShare: 0.128, turns: 96 },
     },
   ],
   unavailableTools: [{ tool: 'ris_search_tool', turns: 2 }],
@@ -145,7 +171,12 @@ const SNAPSHOT = {
   dailyTrend: DAILY,
   reasons: [
     { kind: 'citations_removed', reason: 'url_not_in_registry', occurrences: 186, share: 0.41 },
-    { kind: 'citations_removed', reason: 'citation_key_not_in_registry', occurrences: 121, share: 0.27 },
+    {
+      kind: 'citations_removed',
+      reason: 'citation_key_not_in_registry',
+      occurrences: 121,
+      share: 0.27,
+    },
     { kind: 'citations_removed', reason: 'duplicate', occurrences: 68, share: 0.15 },
     { kind: 'citations_removed', reason: 'unverifiable', occurrences: 37, share: 0.08 },
     { kind: 'confidence_capped', reason: 'ungrounded', occurrences: 26, share: 0.06 },
@@ -158,7 +189,12 @@ const SNAPSHOT = {
     { dimension: 'origin', label: 'ris', turns: 69 },
     { dimension: 'tool', label: 'web_search', turns: 41 },
     { dimension: 'origin', label: 'web', turns: 38 },
+    { dimension: 'lane', label: 'oib_binding', turns: 31 },
   ],
+  // The server lists the first 25 / 50; the totals say how many there were.
+  missingSourcesTotal: 31,
+  organizationsTotal: 4,
+  inventoryKnown: true,
   organizations: [
     {
       organizationId: 'org_01HZ',
@@ -168,9 +204,30 @@ const SNAPSHOT = {
       errorTurns: 11,
       defectRate: 96 / 612,
     },
-    { organizationId: 'org_02KP', name: 'Statik Nord', turns: 431, defectTurns: 54, errorTurns: 8, defectRate: 54 / 431 },
-    { organizationId: 'org_03QT', name: 'GRID Platform', turns: 218, defectTurns: 19, errorTurns: 5, defectRate: 19 / 218 },
-    { organizationId: null, name: null, turns: 87, defectTurns: 4, errorTurns: 2, defectRate: 4 / 87 },
+    {
+      organizationId: 'org_02KP',
+      name: 'Statik Nord',
+      turns: 431,
+      defectTurns: 54,
+      errorTurns: 8,
+      defectRate: 54 / 431,
+    },
+    {
+      organizationId: 'org_03QT',
+      name: 'GRID Platform',
+      turns: 218,
+      defectTurns: 19,
+      errorTurns: 5,
+      defectRate: 19 / 218,
+    },
+    {
+      organizationId: null,
+      name: null,
+      turns: 87,
+      defectTurns: 4,
+      errorTurns: 2,
+      defectRate: 4 / 87,
+    },
   ],
   recent: [
     {
@@ -236,19 +293,89 @@ const SNAPSHOT = {
   ],
 }
 
+const params =
+  typeof window === 'undefined'
+    ? new URLSearchParams()
+    : new URLSearchParams(window.location.search)
+
+/** The page's scope: the URL's, else the fixture's range; `?narrow` adds organizations and a project. */
+function previewScope(url: URLSearchParams): QualityScope {
+  const read = new URLSearchParams(url)
+  if (!read.has('from') && !read.has('days')) {
+    read.set('from', FIXTURE_FROM)
+    read.set('to', FIXTURE_TO)
+  }
+  if (url.has('narrow')) {
+    read.append('org', 'org_01HZBAUWERK')
+    read.append('org', 'org_01HZFERNBAU')
+    read.append('project', '0f0f0f0f-0000-4000-8000-0000000000a1')
+  }
+  return readQualityScope(read)
+}
+
+/** The fixture as the server would answer it for one scope: its days only, the scope echoed. */
+function snapshotFor(url: string): typeof SNAPSHOT {
+  const scope = readQualityScope(new URLSearchParams(url.split('?')[1] ?? ''))
+  const dailyTrend = SNAPSHOT.dailyTrend.filter(
+    (point) => point.day >= scope.from && point.day <= scope.to
+  )
+  return { ...SNAPSHOT, scope, windowDays: dailyTrend.length, dailyTrend }
+}
+
 if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
   const w = window as unknown as { __citationHealthShim?: boolean }
   if (!w.__citationHealthShim) {
     w.__citationHealthShim = true
     const real = window.fetch.bind(window)
+    // Fails for the first seconds, so a dev StrictMode double mount still
+    // sees the failure and a later Retry recovers.
+    const failUntil = params.has('error') ? Date.now() + 2500 : 0
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      const url =
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
       if (url.startsWith('/api/platform/citation-health')) {
-        return Response.json(SNAPSHOT)
+        if (Date.now() < failUntil) {
+          return new Response('{}', { status: 500 })
+        }
+        const snapshot = snapshotFor(url)
+        if (params.has('clear')) {
+          return Response.json({
+            ...snapshot,
+            findings: [
+              {
+                id: 'all_clear',
+                severity: 'info',
+                subject: null,
+                metrics: { turns: 1348, share: 0.984 },
+              },
+            ],
+            missingSources: [],
+          })
+        }
+        if (params.get('inventory') === 'unknown') {
+          // The server's shape when the corpus / norm catalog could not be read:
+          // every candidate that depends on it is `present: null`, no add.
+          return Response.json({
+            ...snapshot,
+            inventoryKnown: false,
+            missingSources: SNAPSHOT.missingSources.map((row) =>
+              row.kind === 'web' ? row : { ...row, present: null, action: 'inventory_unknown' }
+            ),
+          })
+        }
+        return Response.json(snapshot)
       }
       return real(input, init)
     }
   }
+}
+
+/**
+ * The organism in the URL's scope. Read through `useSearchParams`, not the
+ * module-scope `params`, so the server render and the client agree on it.
+ */
+function ScopedCitationHealth(): JSX.Element {
+  return <CitationHealth scope={previewScope(new URLSearchParams(useSearchParams()))} />
 }
 
 export default function CitationHealthDevPage(): JSX.Element {
@@ -256,15 +383,28 @@ export default function CitationHealthDevPage(): JSX.Element {
     notFound()
   }
 
+  const body = (
+    <Suspense>
+      <ScopedCitationHealth />
+    </Suspense>
+  )
+
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
-      <div>
-        <h1 className="text-lg font-semibold">Platform — Citation health</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          Platform-owner surface: how often citation verification had to intervene, what it caught, and where.
-        </p>
-      </div>
-      <CitationHealth />
-    </main>
+    <I18nProvider initialLocale="de" fixedLocale>
+      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8 sm:px-8">
+        <h1 className="text-xl font-semibold tracking-tight">
+          Antwortqualität · Zitations-Qualität
+        </h1>
+        {params.has('readonly') ? (
+          <PlatformAccessProvider
+            permissions={['platform:organizations:view', 'platform:settings:view']}
+          >
+            {body}
+          </PlatformAccessProvider>
+        ) : (
+          body
+        )}
+      </main>
+    </I18nProvider>
   )
 }

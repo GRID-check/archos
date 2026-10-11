@@ -50,13 +50,16 @@
 import { useCallback, useMemo, useState, type FC } from 'react'
 import { BookMarked, Check, Copy, FileDown } from 'lucide-react'
 import { toast } from 'sonner'
-import { AnimatePresence, motion, springSnap } from '@/components/motion'
+import { AnimatePresence, motion, useIconSwapTransition } from '@/components/motion'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { PRESSABLE } from '@/components/ui/press'
+import { useTransientFlag } from '@/hooks/use-transient-flag'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { copyMarkdownToClipboard } from '@/shared/utils/clipboard-rich'
 import { startBrowserDownload } from '@/lib/browser-download'
+import { capturePosthog } from '@/lib/analytics/posthog'
 import { useAnswerData } from '@/shared/components/MarkdownRenderer/answer-block-context'
 import type { StripOptions } from '@/lib/text/answer-directives'
 import {
@@ -93,6 +96,11 @@ export interface AnswerActionsProps {
   conversationId?: string | null
   messageId?: string
   className?: string
+  /**
+   * The answer is still arriving: the actions hold their place in the row,
+   * invisible and inert, and fade in when it settles (`AgentResponse`).
+   */
+  pending?: boolean
 }
 
 /** Which button is currently showing its Check. */
@@ -105,7 +113,11 @@ type Copied = 'plain' | 'withSources' | null
  */
 const actionButton = cn(
   'inline-flex size-6 items-center justify-center rounded-md',
-  'text-muted-foreground/70 transition-[color,transform] duration-snap ease-out active:scale-[0.98] motion-reduce:transition-none motion-reduce:active:scale-100',
+  // The shared press: its transition list carries the hover background too,
+  // which this list used to leave out, so the fill snapped in under an
+  // easing colour.
+  'text-muted-foreground/70',
+  PRESSABLE,
   'hover:bg-accent hover:text-foreground',
   'touch-target',
   FOCUS_RING
@@ -118,9 +130,15 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
   conversationId,
   messageId,
   className,
+  pending = false,
 }) => {
   const t = useTranslations('chat')
-  const [copied, setCopied] = useState<Copied>(null)
+  const swap = useIconSwapTransition()
+  // Which copy showed its check, for as long as the receipt stands. The flag
+  // owns the clock: a second press restarts it, and an unmount clears it.
+  const [copiedOn, raiseCopied] = useTransientFlag()
+  const [copiedWhich, setCopiedWhich] = useState<Copied>(null)
+  const copied = copiedOn ? copiedWhich : null
   // A pasted answer carries the project's values, never the `:project[…]` handle.
   const { project } = useAnswerData()
   const strip = useMemo(
@@ -136,14 +154,14 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
         // Both flavors: rendered HTML for Word/Outlook/Notion, the markdown
         // source as the plain-text fallback — see `clipboard-rich`.
         await copyMarkdownToClipboard(text)
-        setCopied(which)
-        window.setTimeout(() => setCopied(null), 1500)
+        setCopiedWhich(which)
+        raiseCopied()
       } catch {
         // Clipboard unavailable or blocked (insecure context, denied permission).
         toast.error(t('answerActions.copyFailed'))
       }
     },
-    [t]
+    [t, raiseCopied]
   )
 
   /**
@@ -167,6 +185,8 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
       const url = URL.createObjectURL(blob)
       try {
         startBrowserDownload(url, filename)
+        // The kind and the format, never the file name (it carries the question).
+        capturePosthog('report_exported', { kind: 'answer', format: 'docx' })
       } finally {
         // The download has the blob by reference; the URL itself can go on the
         // next tick without cutting it off.
@@ -206,7 +226,17 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
   const downloadLabel = t('answerActions.downloadDocx')
 
   return (
-    <div className={cn('flex items-center gap-0.5', className)}>
+    <div
+      className={cn(
+        'flex items-center gap-0.5 transition-opacity duration-base ease-out motion-reduce:transition-none',
+        pending && 'opacity-0',
+        className
+      )}
+      // Held in the row while the answer arrives, so it takes its width from
+      // the first frame; nothing to see, reach or press until it is complete.
+      inert={pending}
+      aria-hidden={pending || undefined}
+    >
       {showPlainCopy && (
         <Tooltip>
           <TooltipTrigger asChild>
@@ -220,9 +250,8 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
                 <motion.span
                   key={copied === 'plain' ? 'check' : 'copy'}
                   initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  transition={springSnap}
+                  animate={{ opacity: 1, scale: 1, transition: swap.enter }}
+                  exit={{ opacity: 0, scale: 0.6, transition: swap.exit }}
                   className="inline-flex"
                   aria-hidden="true"
                 >
@@ -251,9 +280,8 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
                 <motion.span
                   key={copied === 'withSources' ? 'check' : 'copy'}
                   initial={{ opacity: 0, scale: 0.6 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.6 }}
-                  transition={springSnap}
+                  animate={{ opacity: 1, scale: 1, transition: swap.enter }}
+                  exit={{ opacity: 0, scale: 0.6, transition: swap.exit }}
                   className="inline-flex"
                   aria-hidden="true"
                 >

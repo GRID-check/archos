@@ -12,7 +12,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **postgres** — 3 logical DBs: `aiq_jobs`, `aiq_checkpoints`, `grid_app`.
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
-- **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT) + embedded Dask
+- **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
   scheduler/worker + in-process ChromaDB. Runs the LangGraph workflow and the
   async deep-research jobs.
 - **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
@@ -31,8 +31,9 @@ OpenRouter embeddings), the only config left in `configs/`.
 
 ## 2. Chat request lifecycle (WebSocket-only)
 
-Chat is **WebSocket only**. The old SSE `/api/generate` chat path is dead; SSE
-now serves **only** the deep-research job stream (§7).
+Chat is **WebSocket only**. The old SSE `/api/generate` chat path is dead, and
+the backend mounts none of NAT's HTTP turn routes, so the chat socket is the
+only way to run a turn; SSE now serves **only** the deep-research job stream (§7).
 
 ```
 Browser WebSocket
@@ -55,10 +56,9 @@ Browser WebSocket
     the model's own clause). A commissioned report escalates immediately,
     without a retrieval first.
 
-    Note: Piloti doubles as the conversational assistant, so the UI
-    presents it neutrally as "Assistant" (getDisplayName in
-    intermediate-step-parser.ts), not "Research Agent" — a greeting is
-    not a research run.
+    Note: The answering agent is one surface of Piloti. The UI presents it
+    neutrally as "Assistant" (getDisplayName in intermediate-step-parser.ts),
+    not "Research Agent" — a greeting is not a research run.
   → the turn's wire bodies, stamped and sent by the chat socket (wire v2, ADR-0068)
       frontends/aiq_api/src/aiq_api/chat_socket.py
   → the UI's turn socket and fold (docs/api/websocket-protocol.md, "The client")
@@ -253,8 +253,10 @@ is present. It is deny-by-default: the exempt list is the paths that run no
 workflow and that a BFF proxy forwards with the member's bearer alone
 (`/health`, `/v1/collections`, `/v1/documents`, `/v1/data_sources`, the async
 job reads and controls under `/v1/jobs/async/{jobs,job,agents}`, `/v1/drafts`);
-every other path, NAT's `/chat`, `/v1/chat/completions` and `/v1/workflow`
-routes and the WebSocket included, needs the envelope. Always exempt:
+every other path, the WebSocket included, needs the envelope. NAT's HTTP turn
+routes (`/chat`, `/generate`, `/v1/chat/completions`, `/v1/workflow`, ...) are
+not mounted at all: a turn runs on the chat socket alone (`AIQAPIConfig`,
+ADR-0068), and deny by default is what closes a route a later NAT adds. Always exempt:
 anonymous mode and internal-token-authenticated service calls. Dev fail-open note:
 when `GRID_INTERNAL_API_TOKEN` is unset, signature verification is skipped
 but envelope *presence* is still required for authenticated requests.
@@ -337,7 +339,26 @@ backend pieces live in `chat_socket.py` and `conversation_bus.py`; the design is
   lives); a resent question that lands on another replica, or arrives after its
   turn finished, is `rejected{duplicate_turn}` and the client attaches. A newer
   question supersedes a stale turn on whichever replica runs it (`SUPERSEDE` on
-  the input channel). With the bus down both fail open to the local registry.
+  the input channel), and runs only once the stale turn's `conv:<id>:running`
+  marker is gone (ADR-0080): the owner renews it while the turn runs and deletes
+  it when the turn ends, a dead owner's expires on its TTL, and a turn that
+  cannot get it in time is refused, never run beside the stale one. With the
+  bus down the claim fails open to the local registry, and so does the marker
+  while `GRID_CHAT_AFFINITY` is on; with it off the question is refused.
+- **The owner fences itself** (`aiq_api/turn_fence.py`, `aiq_agent/common/write_fence.py`;
+  only with `GRID_CHAT_AFFINITY` off). The marker's TTL can run out under a
+  turn that is still running (a renewal task starved or late, Dragonfly
+  unreachable from this replica), and a newer turn on another replica may then
+  take it. So the turn keeps a deadline of its own: the start of its last
+  successful renewal plus the TTL minus a margin (one guarded write, 3 s, plus
+  1 s). Every write the turn makes to the conversation asks that deadline first
+  and reads `time.monotonic()` itself, so no task has to have run: the checkpoint
+  writes (`FencedCheckpointer`, which also ends each by 3 s past the deadline, raising
+  `TurnFenced`, so the margin holds), the turn's frames (a fenced turn sends its terminal and nothing else)
+  and the persist of its outcome. The renewal task also cancels the turn through
+  the Stop path when the deadline passes or a renewal finds the marker gone, so
+  it ends with a `cancelled` terminal. A tool's own side effects are stopped by
+  that cancel, not by the fence.
 - **Every turn ends.** `run_turn`'s `finally` guarantees one terminal whatever
   escaped; the turn has a deadline (`GRID_CHAT_TURN_DEADLINE_SECONDS`) on its
   own clock, which stops while it waits on a person; a Stop waits at most
@@ -410,8 +431,8 @@ deep research returns the stub `"Deep research job submitted. Job ID: …"`. The
 report artifact with cards attached over the job SSE stream, and stores
 `{"report", "cards"}` as the job output. Deep research cannot use the
 `emit_card` tool directly: the conversation-scoped `CardRegistry` is bound
-only in the chat request path, not inside a Dask worker. The remaining gap is
-the **synchronous inline** deep-research path (no Dask scheduler configured):
+only in the chat request path, not inside a research worker. The remaining gap is
+the **synchronous inline** deep-research path (`use_async_deep_research` off):
 those answers carry no cards, since the deep agent has no `emit_card` tool
 and no post-hoc generation runs in `deep_research_node`.
 
@@ -536,15 +557,20 @@ internal client (its URL is backend-consumed). Compose sets `SEAWEED_PUBLIC_ENDP
 ### Folders
 
 Nested folders are fully supported (self-referential `project_folders.parent_id`,
-`folder-service.ts` builds the nested path, the API accepts `parentId`, and the
+`folder-service.ts` builds the nested path — since ADR-0078 on both shelves that
+have folders, a project's Dateien and the org-wide Archiv, through one
+shelf-parameterised core in `lib/documents/shelf-folders.ts`, the API accepts `parentId`, and the
 tree renders recursively). The prior "can't nest" symptom was **UX only** — there
 was no per-folder affordance. **Fix**: `folder-tree-pane.tsx` now shows an "add
 subfolder" `+` on each folder row and makes root creation explicit.
 
-`folder-service.ts` carries the full set: `createProjectFolder`,
-`updateProjectFolder` (rename and/or move) and `deleteProjectFolder`, behind
-`POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`. Two
-invariants are load-bearing:
+`folder-service.ts` carries `createProjectFolder`, `updateProjectFolder`
+(rename and/or move) and `deleteProjectFolder`, which is the Papierkorb's
+`moveFolderToBin` in `folder-bin.ts` (ADR-0088). They sit behind
+`POST`/`PATCH`/`DELETE` on `/api/projects/{id}/folders[/{folderId}]`; the
+Archiv's folders (`/api/archiv/folders`, ADR-0078) share the shelf core in
+`lib/documents/shelf-folders.ts`, delete included. Two invariants are
+load-bearing:
 
 - **`path` is materialised**, so a rename or a move has to rewrite every
   descendant row. `rewriteDescendantPaths` does it as one prefix-replace
@@ -554,12 +580,17 @@ invariants are load-bearing:
   folder's own subtree is rejected up front — with a materialised path a cycle
   is invisible until something walks it.
 - **`documents.folder_id` is `ON DELETE CASCADE`** (see the deletion pipeline),
-  so deleting a folder row would take its documents with it. `deleteProjectFolder`
-  re-files the documents *and* re-parents the child folders into the deleted
-  folder's own parent **inside the transaction, before the delete**, and returns
-  `{ documentsMoved, foldersMoved }` so the surface can say where the files
-  went. `folder-service.mutations.spec.ts` pins that ordering — deleting a label
-  must never delete the work filed under it.
+  so a folder row is never deleted with anything in it. A project folder's
+  delete marks it and its subfolders `deleted_at` (the Papierkorb), purges their
+  documents' chunks and keeps every row; the purge after
+  `FOLDER_PURGE_GRACE_DAYS` erases the documents one by one and keeps the
+  folders as tombstones with their access lists (a folder with its own list
+  keeps its WorkOS folder resource, ADR-0097). Migration 0115's triggers refuse
+  filing anything into a deleted folder, and its CHECK refuses a deleted Archiv
+  folder. `folder-bin.integration.spec.ts` pins it against Postgres. An Archiv
+  folder has no bin: `deleteShelfFolder` re-files its documents and child
+  folders into its parent inside the transaction, then removes the row
+  (`shelf-folders.spec.ts`, `shelf-folders.integration.spec.ts`).
 
 #### Folders on the Python side (ADR-0049)
 
@@ -643,9 +674,9 @@ is `includeShelvesForTurn` in `frontends/ui/src/features/layout/lib/retrieval-sc
 
 **A subject file never subtracts `base`.** A subject narrows which *documents*
 a turn reads, which is what #429 and #436 asked for; neither was about the
-building-code corpus. Dropping it made the product unable to answer its own
-central question — bind a plan, ask whether it meets the escape-route
-requirement, and retrieval held the plan and no OIB. The asymmetry that exposed
+building-code corpus. Dropping it left a turn about one document without the
+building-code corpus that must sit beside it — bind a document, ask whether it
+meets the escape-route requirement, and retrieval held that document and no OIB. The asymmetry that exposed
 it: the `project` PRESET kept `base` and the `project` SHELF did not, although a
 reader reaches for either to say the same thing. `law` is the one branch that
 still subtracts everything else, because there the reader asked for the law
@@ -687,11 +718,11 @@ this.
 `piloti/conversation_register.py`, aggregated across the collections in the
 request's header-based scope (or the base + session collection fallback when
 no scope header is present). Identity is `(collection, file_name)` — the same
-filename on the Büroarchiv and in a project is two documents (ADR-0047). The
+filename on the Büroablage and in a project is two documents (ADR-0047). The
 cap (`GRID_AVAILABLE_DOCUMENTS_MAX`) keeps user-shelf files (archiv / project
 / session) first so the OIB corpus cannot evict them; a previous
 sort-then-slice let ~40 OIB filenames eat the window and made "welche Dateien
-hast du im Büroarchiv" answer from Basiswissen. The prompt block is grouped
+hast du in der Büroablage" answer from Basiswissen. The prompt block is grouped
 by shelf (`aiq_agent.knowledge.inventory.render_inventory_block`) and empty
 in-scope shelves render as empty rather than being omitted. The same list is
 then shared by Piloti, clarifier, and deep-research paths for that turn
@@ -773,7 +804,7 @@ together:
    chunk) so a sparse first chunk can't starve it.
 2. **Reconciliation backfill (`42a4fa3`)**: `reconcile_collection_summaries()`
    (knowledge-layer factory) runs at the end of every `LlamaIndexIngestor`
-   ingestion job — the Knowledge API, `scripts/ingest_oib.py`'s `oib_sync`,
+   ingestion job — the Knowledge API, the base-corpus sync (`oib_sync`),
    and any future caller get it for free. It diffs a collection's indexed,
    successfully-ingested files (`BaseIngestor.list_files`) against the
    `document_metadata` table and registers a deterministic fallback summary for any
@@ -985,17 +1016,17 @@ falling back to the content-aware SVG sketch (`DocumentKindThumbnail`).
    `_thumb.jpg`) and generates a presigned **PUT** URL for it.
 2. The PUT URL is passed to the backend's `/v1/ingest` as
    `thumbnail_upload_url`.
-3. The ingest job draws the thumbnail right after it downloads its input and
-   before any extraction: page 0 of a PDF, or the image itself, via
-   `pypdfium2`/PIL → 400px JPEG. For a Word or presentation file, `.xls` or
-   `.ods`, that input is the PDF rendition from `extraction_ref`
+3. The ingest job draws the thumbnail once the file's upload screen has
+   passed, never before (ADR-0086): page 0 of a PDF after its text screen, or
+   an image itself once it passes on its name, via `pypdfium2`/PIL → 400px
+   JPEG. A quarantined file gets none. For a Word or presentation file,
+   `.xls` or `.ods`, the PDF is the rendition from `extraction_ref`
    (ADR-0071), so the thumbnail comes from the same file the job extracts.
-4. The route itself no longer has the bytes: the job downloads them, so there
-   is no quick render from the original. It draws a thumbnail only for an
-   office original the job cannot rasterise, which in practice means
-   `.xlsx`/`.xlsm`: `preview_ref` present and `extraction_ref` absent. Then a
-   FastAPI background task, run once the 202 is out, downloads the rendition
-   into a temp `.pdf`, renders page 0 at 200px and deletes the file.
+4. The route draws nothing. An office original the job cannot rasterise
+   (in practice `.xlsx`/`.xlsm`: `preview_ref` present and `extraction_ref`
+   absent) gets its rendition as a second deferred download
+   (`preview_paths`), which the job fetches and renders only after the
+   workbook's extracted text passed the screen, then deletes.
 5. Either way the JPEG is PUT to SeaweedFS via the presigned URL. The full
    contract is in [`python-endpoints.md`](../api/python-endpoints.md).
 
@@ -1003,7 +1034,8 @@ falling back to the content-aware SVG sketch (`DocumentKindThumbnail`).
 - `GET /api/documents/{id}/thumbnail` → `getDocumentThumbnail()` presigns a
   browser-facing GET URL for `_thumb.jpg`. Returns `{ url: string | null }`;
   `null` means no thumbnail exists (a type with none, an office original whose
-  conversion failed, or a render that failed).
+  conversion failed, or a render that failed) or the file is held, its
+  screening not passed (ADR-0086), whoever asks.
 
 **Frontend:**
 - `ThumbnailWithFallback` (file-browser-pane.tsx) and
@@ -1276,7 +1308,9 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    knowledge image to the VLM **as an image block during a research turn** —
    not just at ingestion. Three source shapes: **PDF pages** are re-rendered on
    demand with pypdfium2 (long edge `AIQ_PAGE_RENDER_MAX_DIM`, default 2048) —
-   base-corpus PDFs from disk (`OIB_UPLOADS_DIR` / repo corpus), project/Archiv
+   base-corpus PDFs from this replica's cache of the corpus, which
+   `corpus_store.ensure_local` fills from SeaweedFS on demand (the
+   `oib_corpus_files` table says what a base-corpus file is), project/Archiv
    PDFs from SeaweedFS bytes; **standalone image uploads** (PNG/JPG
    project/Archiv documents) are fetched from SeaweedFS and re-encoded to JPEG
    directly; and **stored embedded rasters** — the images
@@ -1307,6 +1341,11 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    bytes itself via boto3 (S3, path-style, read-only `get_object`) — which is
    why the aiq-agent tier now carries the `SEAWEED_*` credential set
    (deliberate override of the previous presign-only separation; ADR-0039).
+   The `collection` argument is the model's, so the tool refuses one outside
+   the turn's scope, or a restricted folder's the turn may not draw on, before
+   any lookup; it echoes the turn's signed envelope, and the route answers only
+   inside the scope that envelope signs (ADR-0088). An image it returns is
+   reported (`note_collections_read`) and admitted with the rest of the round.
    Every failure path (missing file, lookup/fetch/render error, invalid page
    number, disabled flag, no VLM key) degrades to a text-only explanation
    block.
@@ -1365,8 +1404,8 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
   the pointer, downloads the law and returns the answering §§ as citable
   passages: `sources/ris_adapter/src/lookup/`), and by `ris_fetch_document` in
   deep research, which still drives the three older RIS tools itself.
-- **The OIB corpus is not in the catalog.** `data/oib/` → `oib_knowledge` is
-  its own source of truth; what a corpus file *is* (Richtlinie / Leitfaden /
+- **The OIB corpus is not in the catalog.** The `oib_corpus_files` table and its
+  objects → `oib_knowledge` are its own source of truth; what a corpus file *is* (Richtlinie / Leitfaden /
   Erläuterung / Begriffsbestimmungen / Zitierte Normen / Änderungsdokument)
   derives from the filename (`norm_registry.oib_doc_class`). The 15
   `aenderungen_*` diff files and the superseded `zitierte_normen` revision are
@@ -1436,7 +1475,7 @@ Austria's). The org-Archiv stratum (ADR-0024) sits beside these unchanged.
 - **Display tagging** — `lane_for_hit` / `citation_verification.source_lane`
   map a retrieval or citation hit to a stratum + lane label (Bundesrecht /
   Landesrecht / Verordnung via catalog rank; OIB lanes via filename class;
-  Projektwissen / Büroarchiv / Web via collection origin) for the research
+  Projektwissen / Büroablage / Web via collection origin) for the research
   fan-out UI. Deterministic tagging only — no chunk-metadata dependency.
 
 ## 6c. IFC/BIM models — the building as queryable data (ADR-0045, 2026-08-08)
@@ -1464,9 +1503,9 @@ the way in (`lib/bim/ifc-archive.ts`), and everything downstream sees STEP.
 That module also enforces the extraction ceiling on the archive's DECLARED
 uncompressed size, read from the zip directory before a byte is inflated: the
 limit exists to keep a 1 GiB pod alive, and measuring it on the compressed
-object let a 40 MB upload become a 300 MB allocation. Extraction is detached from
-the request (a 60 MB model takes tens of seconds) and every terminal outcome
-writes the document row: success → the digest dispatch sets `pending` + a job
+object let a 40 MB upload become a 300 MB allocation. Extraction is a `bim_extract` job on the
+`bff-jobs` pool, not part of the request (a 60 MB model takes tens of seconds;
+ADR-0079) and every terminal outcome writes the document row: success → the digest dispatch sets `pending` + a job
 id, failure → `failed` with the reason, plus a `bim_models` row recording the
 same thing.
 
@@ -1718,14 +1757,14 @@ same three BFF functions. A run whose job the store cannot find is closed as
 failed after two hours. The transactional outbox the backlog item describes is
 still deferred; this is pull-based reconciliation instead.
 
-**Open items**: synchronous inline deep-research answers (no Dask) do not
+**Open items**: synchronous inline deep-research answers (`use_async_deep_research` off) do not
 carry Grid cards (§3; the async job path generates them post-hoc in the
 runner). And the research tab can 403 — see §9.
 
 **Collection-scope re-injection gap — now diagnosable (fixed 2026-07-16,
 `f8093a0`)**: the `X-Grid-Collection-Scope` header is captured once at submit
 time (`piloti/conversation_register.py`) and threaded into the async job payload
-as `collection_scope`. The Dask worker only re-injects it into its own
+as `collection_scope`. The research worker only re-injects it into its own
 request context conditionally — `frontends/aiq_api/src/aiq_api/jobs/runner.py:641`
 does `if collection_scope is not None:` before base64url-encoding it back
 onto the header. When the scope is absent, `knowledge_retrieval` inside the
@@ -1873,6 +1912,18 @@ fallback is in the trace METADATA instead, as `prompt_name` and
 [`environment-variables.md`](../deployment/environment-variables.md)
 §Prompt management.
 
+**Editing a template.** Each agent keeps its Jinja2 templates in
+`src/aiq_agent/agents/<agent>/prompts/`; `load_prompt` reads one and
+`render_prompt_template` renders it (`common/prompt_utils.py`). The `.j2` file
+is the authority on the variables it uses, so keep every one the agent passes,
+and keep standing instructions above per-call content so the provider's prompt
+cache keeps hitting. Keep a template task-agnostic: which sources a question
+needs is decided at run time by the data source registry and
+`source_router.j2`, not by names written into the prompt. Editing an existing
+template needs no code change; a new one is used only once the agent's Python
+loads and renders it. Which model each role runs on is config:
+[llm-providers.md](llm-providers.md#which-model-each-role-uses).
+
 ### Project memory (implemented)
 
 The agent can now persist curated findings across turns. Full design:
@@ -1941,7 +1992,7 @@ full specs in `org-model-configuration.md` (ADR-0014) and
   `GridCostTracker` through LangChain's `register_configure_hook` ContextVar
   seam — every callback manager configured inside the request picks it up,
   so agents contain no metering code. Activated in exactly three places:
-  the chat workflow `_run`, the Dask job runner, and the reflection task.
+  the chat workflow `_run`, the research job runner, and the reflection task.
   Events (model, tokens, OpenRouter `usage.cost`, generation id) POST to
   the token-guarded `POST /api/internal/usage` (single-writer rule).
 - **Budgets**: `x-grid-budget` carries the remaining budget per scope — USD of cost for an organization the platform bills, tokens for one on its own key (ADR-0053)
@@ -2029,7 +2080,7 @@ loads house voice, offers and org skills through `use_skill`
   non-empty (§6) — only the *listing* still is, which is cosmetic once the
   list itself is reliable.
 - **Async job collection-scope fallback — fixed 2026-07-16 (`f8093a0`)** —
-  `collection_scope` is still only re-injected into the Dask worker context
+  `collection_scope` is still only re-injected into the research worker context
   when present (behavior unchanged: absent scope still drops
   project-collection search for that job, §7), but the degradation is no
   longer silent: `runner.py` logs a one-time WARNING (job id, whether the
@@ -2154,7 +2205,7 @@ loads house voice, offers and org skills through `use_skill`
   from `store`) passed through to `create_deep_agent`. When
   `deep_research_agent.checkpoint_db` is configured (env
   `AIQ_DEEP_CHECKPOINT_DB`; unset by default, opt-in since jobs run in
-  ephemeral Dask worker processes — the reference config sets it to
+  ephemeral research worker processes — the reference config sets it to
   `./deep_research_checkpoints.db`), `DeepResearcherAgent.run()` wires
   `configurable.thread_id = job_id` and `durability="async"` (LangGraph's
   canonical durable-execution mode for long batch-style runs), so a worker

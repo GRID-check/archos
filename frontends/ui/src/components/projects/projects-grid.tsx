@@ -28,10 +28,20 @@ import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ItemList } from '@/components/ui/item'
 import { PageHeader } from '@/components/ui/page-header'
 import { SearchField } from '@/components/ui/search-field'
 import { SectionLabel } from '@/components/ui/section-label'
 import { splitForResume } from '@/features/projects/lib/resume-selection'
+import {
+  countByStatus,
+  defaultProjectStatusFilter,
+  filterProjectsByStatus,
+  isProjectStatusFilter,
+  PROJECT_STATUS_FILTERS,
+  type ProjectStatusFilter,
+} from '@/features/projects/lib/status-filter'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import type { Project } from '@/lib/db/schema'
 import { useTranslations } from '@/i18n'
 import { TOUR_ANCHORS } from '@/features/onboarding/lib/product-tour'
@@ -71,6 +81,9 @@ function SectionHeading({ id, children, count }: { id: string; children: string;
   )
 }
 
+/** Only work in progress takes a rail slot; a paused or closed project keeps its place in the list (ADR-0098). */
+const isRailable = (project: Project): boolean => project.status === 'active'
+
 export function ProjectsGrid({
   projects,
   docCounts,
@@ -79,19 +92,33 @@ export function ProjectsGrid({
 }: ProjectsGridProps): JSX.Element {
   const t = useTranslations('projects')
   const [query, setQuery] = useState('')
+  const [statusFilter, setStatusFilter] = useState<ProjectStatusFilter>(() => defaultProjectStatusFilter(projects))
+  const statusCounts = useMemo(() => countByStatus(projects), [projects])
+  // Offered only once there is something to tell apart: a list of active
+  // projects alone needs no control that would only ever show one answer. A
+  // segment with nothing in it is left out, except Aktiv and Alle.
+  const showStatusFilter = statusCounts.closed > 0 || statusCounts.paused > 0
+  const statusOptions = PROJECT_STATUS_FILTERS.filter(
+    (option) => option === 'active' || option === 'all' || statusCounts[option] > 0
+  )
+  // A segment that emptied (its last project moved) is gone, so it is no longer
+  // what the list shows either.
+  const activeFilter: ProjectStatusFilter = statusOptions.includes(statusFilter) ? statusFilter : 'all'
 
   const needle = query.trim().toLowerCase()
   const isSearching = needle.length > 0
 
   const filtered = useMemo(() => {
-    if (!needle) return projects
-    return projects.filter((project) => project.name.toLowerCase().includes(needle))
-  }, [projects, needle])
+    const inStatus = showStatusFilter ? filterProjectsByStatus(projects, activeFilter) : projects
+    if (!needle) return inStatus
+    return inStatus.filter((project) => project.name.toLowerCase().includes(needle))
+  }, [projects, needle, activeFilter, showStatusFilter])
+  const emptyInStatus = showStatusFilter && !isSearching && filtered.length === 0
 
   // One helper serves both modes: zero rail slots turns the split into "order
   // everything by recency", which is exactly what a result list wants too.
   const { resume, rest, basis } = useMemo(
-    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined),
+    () => splitForResume(filtered, viewerActivity, isSearching ? 0 : undefined, isRailable),
     [filtered, viewerActivity, isSearching],
   )
 
@@ -134,6 +161,28 @@ export function ProjectsGrid({
         }
       />
 
+      {showStatusFilter && (
+        <ToggleGroup
+          type="single"
+          value={activeFilter}
+          onValueChange={(value) => {
+            if (isProjectStatusFilter(value)) setStatusFilter(value)
+          }}
+          segmented
+          size="sm"
+          aria-label={t('list.filter.label')}
+          className="mt-5"
+          data-testid="project-status-filter"
+        >
+          {statusOptions.map((option) => (
+            <ToggleGroupItem key={option} value={option} data-testid={`project-status-filter-${option}`}>
+              {t(`list.filter.${option}`)}
+              <CountPill>{statusCounts[option]}</CountPill>
+            </ToggleGroupItem>
+          ))}
+        </ToggleGroup>
+      )}
+
       <div className="mt-7">
         {!hasProjects ? (
           <EmptyState
@@ -142,6 +191,17 @@ export function ProjectsGrid({
             description={t('list.empty.description')}
             action={<CreateProjectDialog label={t('list.empty.action')} />}
             className="min-h-96 justify-center"
+          />
+        ) : emptyInStatus ? (
+          <EmptyState
+            variant="bare"
+            title={t(`list.noneInFilter.${activeFilter === 'all' ? 'active' : activeFilter}`)}
+            description={t('list.noneInFilter.description')}
+            action={
+              <Button variant="outline" size="sm" onClick={() => setStatusFilter('all')}>
+                {t('list.noneInFilter.showAll')}
+              </Button>
+            }
           />
         ) : isSearching ? (
           rest.length === 0 ? (
@@ -161,32 +221,37 @@ export function ProjectsGrid({
               <SectionHeading id="projects-results" count={rest.length}>
                 {t('list.results.heading')}
               </SectionHeading>
-              {/* `space-y-1`: the rows are full-border rounded pills now, so they
-                  take a 4px gap rather than touching and doubling the seam. */}
-              <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+              {/* One connected list: `ItemList` rounds only the outer corners and
+                  draws the hairlines between rows. `-mx-3` puts the row content on
+                  the heading's left edge. */}
+              <ItemList as="ul" className="-mx-3 bg-card">
+                {rest.map(renderRow)}
+              </ItemList>
             </section>
           )
         ) : (
           // `gap-8` is the documented gap between major sections; whitespace
           // does the separating, so neither heading needs a rule under it.
           <div className="flex flex-col gap-8 animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
-            <section aria-labelledby="projects-resume">
-              <SectionHeading id="projects-resume">
-                {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
-              </SectionHeading>
-              {/* The staple project card, unchanged — the rail is a selection
-                  and an ordering, not a new kind of card. */}
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
-                {resume.map((project) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    docCount={docCounts[project.id] ?? 0}
-                    activityAt={viewerActivity[project.id]}
-                  />
-                ))}
-              </div>
-            </section>
+            {resume.length > 0 && (
+              <section aria-labelledby="projects-resume">
+                <SectionHeading id="projects-resume">
+                  {basis === 'activity' ? t('list.resume.heading') : t('list.resume.fallbackHeading')}
+                </SectionHeading>
+                {/* The staple project card, unchanged — the rail is a selection
+                    and an ordering, not a new kind of card. */}
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6 lg:grid-cols-3">
+                  {resume.map((project) => (
+                    <ProjectCard
+                      key={project.id}
+                      project={project}
+                      docCount={docCounts[project.id] ?? 0}
+                      activityAt={viewerActivity[project.id]}
+                    />
+                  ))}
+                </div>
+              </section>
+            )}
 
             {rest.length > 0 && (
               <section aria-labelledby="projects-more">
@@ -194,9 +259,11 @@ export function ProjectsGrid({
                     MINUS the rail, so an "all" heading would sit above a count
                     that disagrees with the page. */}
                 <SectionHeading id="projects-more" count={rest.length}>
-                  {t('list.more.heading')}
+                  {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${activeFilter}`)}
                 </SectionHeading>
-                <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+                <ItemList as="ul" className="-mx-3 bg-card">
+                  {rest.map(renderRow)}
+                </ItemList>
               </section>
             )}
           </div>

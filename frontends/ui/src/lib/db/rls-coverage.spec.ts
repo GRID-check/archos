@@ -85,6 +85,60 @@ const BOUNDARY_MIGRATIONS = [
   // platform owners. Keyed directly by the organization it was written from,
   // secured exactly as `organization_instructions`.
   '0100_product_feedback.sql',
+  // Re-secures project_folders on its own `organization_id` column instead of a
+  // join through projects: an Archiv folder has no project to join. No table is
+  // added or removed, and the replaced policy is the single one — the shape the
+  // `messages` re-securing in 0032 has.
+  '0102_archiv_folders.sql',
+  // Adds bff_job_queue and bff_job_lane_turns — the BFF's durable background
+  // work (ADR-0081). The lane is the organization id, so both are tenant tables
+  // whose predicate compares `lane` (not an `organization_id` column) to the
+  // active tenant; the runner reads across lanes under the platform role.
+  '0104_bff_job_queue.sql',
+  // Adds upload_batches — one upload gesture and when it was all read
+  // (ADR-0086). Keyed directly by its organization.
+  '0110_upload_batches.sql',
+  // Adds project_folder_grants — a folder's own access list, one row per role
+  // and level (ADR-0088). Keyed directly by its organization.
+  '0111_project_folder_grants.sql',
+  // Adds conversation_restricted_folders — the source folders not every member
+  // may read that a conversation actually drew on, one row per folder id,
+  // judged against the current grants when read (ADR-0087, ADR-0088). Keyed
+  // directly by its organization: the conversation row may not exist yet.
+  '0112_conversation_restricted_folders.sql',
+  // Adds document_access_log — the download log: who took a document's bytes,
+  // and who opened one under a folder with its own list. Keyed directly by its
+  // organization; no foreign keys, so the row outlives what it names.
+  '0114_document_access_log.sql',
+  // Adds project_people — the Steckbrief's people, with or without a Piloti
+  // account (ADR-0091). Keyed directly by its organization, tied to its project
+  // by a composite foreign key.
+  '0117_project_steckbrief.sql',
+  // Adds document_quarantine_decisions — the content gate's decisions, owed to
+  // the audit trail until sent. Keyed directly by its organization; no foreign
+  // keys, so the row outlives the document it names.
+  '0119_document_quarantine_decisions.sql',
+  // Adds message_restricted_use — the server's mark on a message written while
+  // its conversation drew on a restricted folder (ADR-0093). Keyed directly by
+  // its organization; no foreign key, so the mark outlives the chat.
+  '0124_message_restricted_use.sql',
+  // Adds mail_imports (ADR-0085), an Outlook archive a member is filing into a
+  // project. Keyed by the organization, secured like product_feedback; the
+  // stale-upload sweep reads across tenants under the platform role.
+  '0108_mail_imports.sql',
+  // Adds conversation_source_projects — another project a chat drew on
+  // through a cross-project lookup (ADR-0094). Keyed directly by its
+  // organization: the conversation row may not exist yet.
+  '0125_conversation_source_projects.sql',
+  // Adds permit_records and permit_requirements — what a Bescheid says, kept
+  // as rows (ADR-0095). Keyed directly by their organization; the record is
+  // tied to its project by a composite foreign key, the requirements to the
+  // record.
+  '0126_permit_records.sql',
+  // Adds document_fassung_announcements — which new Fassungen have been
+  // announced, so a re-read does not announce one again. Keyed directly by its
+  // organization; cascades with the newer document.
+  '0130_document_fassung_announcements.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

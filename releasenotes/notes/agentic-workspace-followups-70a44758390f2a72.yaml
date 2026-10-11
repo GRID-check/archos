@@ -1,14 +1,14 @@
 ---
 improvements:
   - >
-    If the document viewer cannot find a quoted passage on the stated page or
-    its neighbours, it now looks one page further in both directions, since a
-    title page and contents often shift the numbering by two.
+    If a quoted passage is not on the stated page, the document view now
+    also checks the pages just before and after it, because a title page and
+    contents often shift the numbering by two.
   - >
-    In the Herleitung, documents that were read but not cited now also carry the
-    label and colour of where they come from: project, office archive or this
-    chat.
+    In the Herleitung, documents that were read but not cited now also carry
+    a label and colour showing whether they come from the project, the
+    office archive or this chat.
 fixes:
   - >
-    Project memory now merges a reworded insight with the note it already has,
-    instead of storing the same fact twice.
+    When Piloti learns a fact it already knows in new words, it updates the
+    existing entry in the project memory instead of saving the fact twice.

@@ -3,7 +3,7 @@ export const projects = {
   list: {
     heading: 'Projects',
     description:
-      'Every building project in one workspace — documents, members, and chat, grounded in the files, the office archive, and building law.',
+      'Every building project in one workspace: documents, members, tasks, research and chat, with Office filing and building law at hand.',
     loading: 'Loading projects…',
     searchPlaceholder: 'Search projects…',
     searchAria: 'Search projects by name',
@@ -30,18 +30,278 @@ export const projects = {
     empty: {
       title: 'Start your first project',
       description:
-        'Piloti is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together — then ask Piloti about the work, grounded in the files, the office archive, and Austrian building law.',
+        'Piloti is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together. Piloti works in it and cites every source.',
       action: 'Create your first project',
+    },
+    filter: {
+      label: 'Filter projects by status',
+      active: 'Active',
+      paused: 'Paused',
+      closed: 'Closed',
+      all: 'All',
+    },
+    noneInFilter: {
+      active: 'No active projects',
+      paused: 'No paused projects',
+      closed: 'No closed projects',
+      description: 'There are no projects in this view.',
+      showAll: 'Show all projects',
     },
   },
   section: {
     loading: 'Loading…',
+  },
+  steckbrief: {
+    heading: 'Project record',
+    dialogDescription: 'Where, when and with whom. This stays once the project is closed.',
+    edit: 'Edit',
+    showAll: 'Show all',
+    done: 'Done',
+    addressMissing: 'No address yet; it is entered in the brief.',
+    period: 'Period',
+    since: 'since {start}',
+    until: 'until {end}',
+    range: '{start} – {end}',
+    periodOpen: 'Start open',
+    startedOn: 'Start',
+    startedOnDefault: 'The month the project was created in Piloti. Change it if the work began earlier.',
+    endedOn: 'Completion',
+    endedOnRunning: 'Ongoing. The completion is set when the project is closed.',
+    month: 'Month',
+    year: 'Year',
+    clear: 'Clear',
+    periodSaved: 'Start saved.',
+    people: 'People involved',
+    peopleCount: '{count, plural, one {# person} other {# people}}',
+    formerCount: '{count} former',
+    more: '{count, plural, one {# more person} other {# more people}}',
+    noPeople: 'Nobody entered yet.',
+    peopleHint:
+      "The project's members are listed here on their own. Add whoever worked on it without a Piloti account: external planners, the client, former staff.",
+    rosterUnknown: "The project's members could not be loaded just now. Only what was entered is shown.",
+    privacy: 'Only name, function, company and period are stored. Piloti does not use these details in answers.',
+    member: 'Member',
+    former: 'former',
+    functionMissing: 'Function open',
+    name: 'Name',
+    function: 'Function',
+    functionPlaceholder: 'e.g. structural engineer, project lead, client',
+    company: 'Company',
+    from: 'From',
+    to: 'To',
+    periodBackwards: 'To lies before From.',
+    add: 'Add person',
+    save: 'Save',
+    cancel: 'Cancel',
+    editPerson: 'Edit {name}',
+    remove: 'Remove {name}',
+    removeTitle: 'Remove this person?',
+    removeDescription: '{name} and every detail about them will be deleted from the project record for good.',
+    removeConfirm: 'Remove for good',
+    removed: 'Person removed.',
+    saved: 'Saved.',
+    error: 'That did not work. Please try again.',
+    closing: {
+      heading: 'Who was involved',
+      description:
+        'Check who worked on the project and add whoever was involved without a Piloti account. Once closed, the record is read-only.',
+      loadFailed: 'The project record could not be loaded. You can still close the project.',
+    },
+  },
+  cleanup: {
+    loading: 'Piloti is going through the files …',
+    aiNotice:
+      'AI proposal: made by Piloti from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
+    aiUnavailable:
+      'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, “Copy of …” or an older index in the file name.',
+    considered: '{count} files checked that you may edit.',
+    none: 'Piloti proposes nothing to remove.',
+    unavailable: 'The proposals could not be loaded. You can still close the project.',
+    binNote: 'What you select goes to the bin for 14 days and can be restored from there.',
+    aiChip: 'AI proposal',
+    selectAll: 'Select all',
+    confirm: 'Move {count} to the bin and close',
+    closeOnly: 'Close without removing anything',
+    cancel: 'Cancel',
+    removed: '{count} files moved to the bin.',
+    error: 'Clearing out did not work; the project is still open.',
+    /** The clean-out failed and could not be fully undone (ADR-0092): where to look. */
+    partial:
+      'Clearing out did not work and could not be fully undone. Some files may still be in a folder „{folders}“ inside their folder, or in the Papierkorb. The project is still open.',
+    rules: {
+      'lock-file': 'Lock file of an Office program',
+      'temp-file': 'Temporary file',
+      'system-file': 'System file',
+      'copy-name': 'Working copy (name)',
+      'old-name': 'Marked as old (name)',
+      'same-content': 'Same content as an older file',
+      'older-version': 'Older revision; a newer one is in the same folder',
+      'unpublished-draft': 'Draft by Piloti, never published',
+    },
+  },
+  lifecycle: {
+    fileChip: '{name} · closed',
+    fileChipNoName: 'Closed project',
+    outcome: {
+      completed: 'Completed',
+      cancelled: 'Not realized',
+    },
+    banner: {
+      title: 'Closed project · read-only',
+      endedIn: 'Completed {month}.',
+      closedOn: 'Closed in Piloti on {date}.',
+      cancelled: 'It was not realized.',
+      body: 'Files, folders, the brief and project memory can no longer be changed. You can still ask about it in chat.',
+      outsider:
+        'You can see this project because closed projects are readable by the whole office. Folders with their own access list stay hidden from you.',
+      pausedTitle: 'Paused project',
+      pausedOn: 'Paused since {date}.',
+      pausedBody: 'Everything stays editable. Scheduled tasks run again once it is resumed.',
+    },
+    card: {
+      heading: 'Project status',
+      track: 'Project lifecycle',
+      activeDescription: 'In progress. Its members work in it, and scheduled tasks run.',
+      pausedDescription:
+        'Waiting, for a permit or a client decision, say. It stays editable and visible only to its members; scheduled tasks do not run, and it is no longer listed under “Active”.',
+      closedDescription:
+        'Read-only and readable by the whole office, as a reference for future projects. Folders with their own access list stay restricted. Reopened, it is editable again and visible only to its members.',
+      closedFacts: '{outcome} · completion {month}',
+      closedOn: 'Closed in Piloti on {date}',
+      pausedOn: 'Paused since {date}',
+      whichOne: 'Pause when the project is waiting and will go on. Close when the work is over, built or not.',
+      pause: 'Pause',
+      resume: 'Resume',
+      close: 'Close project',
+      reopen: 'Reopen project',
+    },
+    closeDialog: {
+      title: 'Close project',
+      stepsLabel: 'Steps',
+      stepProgress: 'Step {current} of {total}',
+      back: 'Back',
+      next: 'Next',
+      steps: {
+        ending: {
+          label: 'Completion',
+          description: 'How the project ended, and when. Both go into the project profile.',
+        },
+        keep: {
+          label: 'What stays',
+          description: 'What this project leaves the office. None of it is required.',
+        },
+        cleanup: {
+          label: 'Clear out',
+          description:
+            'Piloti proposes what the finished project no longer needs: working copies, superseded versions, duplicates, temporary files and drafts that were never published. You decide about every item.',
+        },
+      },
+      outcome: {
+        label: 'How did the project end?',
+        completedHint: 'Built or handed over; the work is delivered.',
+        cancelledHint: 'A competition not won, or a commission withdrawn, say.',
+      },
+      endedOn: {
+        label: 'Completion',
+        hint: 'The month the work ended. For a project that ended earlier, enter that month.',
+        invalid: 'Choose a month.',
+        future: 'The completion cannot lie in the future.',
+        beforeStart: 'The completion lies before the start in the project profile.',
+      },
+      changes: {
+        heading: 'What changes',
+        readOnly: 'Files, folders, the brief and project memory become read-only.',
+        office: 'Everyone in the office can read the project and ask about it. Folders with their own access list stay restricted.',
+        stops: 'Deep research and scheduled tasks stop running.',
+        reopen: 'You can reopen it at any time.',
+      },
+    },
+    debrief: {
+      intro:
+        'What this project learned can serve every future project in the office: Piloti offers it when a similar question comes up. Take a moment before closing to check what stays.',
+      fingerprint: {
+        heading: 'How Piloti finds it again',
+        description:
+          'Piloti finds comparable projects by these facts, and your office finds this one under “Similar projects”. Add missing ones in the brief.',
+        missing: '{count, plural, one {# fact missing} other {# facts missing}}',
+        complete: 'Complete',
+        open: 'open',
+        notApplicable: 'does not apply',
+        derivedOpen: 'open (not set in the brief)',
+        edit: 'Add in the brief',
+        suggested: 'Suggestion from the documents',
+        accept: 'Accept',
+        oibEdition: 'OIB-Richtlinien {edition}',
+        labels: {
+          bundesland: 'Federal state',
+          gebaeudeklasse: 'Building class',
+          bauweise: 'Construction',
+          nutzungen: 'Uses',
+          vorhabensart: 'Kind of work',
+          oibEdition: 'OIB edition',
+        },
+      },
+      extract: {
+        action: 'Read from the documents',
+        pending: 'Piloti is reading the documents …',
+        result:
+          '{suggested, plural, one {# fact} other {# facts}} suggested, {drafted, plural, one {# decision} other {# decisions}} drafted from {documents, plural, one {# document} other {# documents}}.',
+        none: 'Piloti found nothing new in the documents.',
+        errors: {
+          backendUnavailable: 'Piloti could not read the documents just now. Please try again later.',
+          noDocuments: 'There are no readable documents in the open folders yet.',
+          failed: 'The reading did not work. Please try again later.',
+        },
+      },
+      decisions: {
+        heading: 'What the office should keep',
+        description:
+          'Decisions and constraints from the project memory. Piloti cites confirmed ones in other projects as “confirmed by a person”.',
+        empty: 'Piloti has not recorded any decisions for this project yet.',
+        confirm: 'Confirm',
+        confirmed: 'Confirmed',
+        dismiss: 'Dismiss',
+        grounded: 'Drawn from the documents',
+        noted: 'Noted by Piloti',
+        evidencePage: '{file}, p. {page}',
+        kind: { decision: 'Decision', constraint: 'Constraint' },
+      },
+      lesson: {
+        label: 'Record a lesson',
+        placeholder: 'e.g. “The authority required the escape-route width dimensioned in every floor plan.”',
+        add: 'Record',
+        added: 'Lesson recorded.',
+      },
+      readOnly:
+        'Only people who may edit the project memory can confirm decisions and record lessons. You can still close the project.',
+      errors: {
+        load: 'The project memory could not be loaded.',
+        save: 'That could not be saved.',
+      },
+    },
+    reopenDialog: {
+      title: 'Reopen this project?',
+      description: 'The project becomes editable again, and only its members will see it.',
+      confirm: 'Reopen',
+    },
+    toast: {
+      paused: 'Project paused.',
+      resumed: 'Project resumed.',
+      undo: 'Undo',
+      closed: 'Project closed.',
+      reopened: 'Project reopened.',
+      error: 'The project status could not be changed.',
+      conflict: 'Someone changed the project status meanwhile. The page now shows where it stands.',
+    },
   },
   card: {
     summaryFallback:
       'Planning-office workspace. Add documents and a brief so Piloti can work from this project.',
     status: {
       active: 'Active',
+      paused: 'Paused',
+      closed: 'Closed',
+      cancelled: 'Not realized',
     },
     lastActivity: 'Last activity',
     /** The viewer's OWN last message in the project — not the project's. */
@@ -53,10 +313,10 @@ export const projects = {
     settingsAria: 'Open settings for {name}',
   },
   archivCard: {
-    title: 'Archiv',
+    title: 'Office filing',
     subtitle:
       "Your office's organization-wide knowledge — shared documents and proven details, available in every project.",
-    aria: 'Open the organization-wide Archiv',
+    aria: 'Open Office filing',
   },
   dialog: {
     newProject: 'New project',
@@ -69,7 +329,7 @@ export const projects = {
     nameTooLong: 'Project name must be at most 255 characters.',
     createError: "We couldn't create this project just now. Please try again in a moment.",
     nameLabel: 'Project name',
-    namePlaceholder: 'OIB fire safety review',
+    namePlaceholder: 'e.g. Apartment building, 12 Main Street',
     templateLabel: 'Start from a template',
     templates: {
       neubauWohnbau: { label: 'New residential build', name: 'New residential build' },
@@ -84,7 +344,7 @@ export const projects = {
       oibBrandschutzAudit: { label: 'OIB fire-safety audit', name: 'OIB fire-safety audit' },
     },
     footnote:
-      'Create a workspace for documents, members, and chat, grounded in the project files, the office archive, and building law.',
+      'Create a workspace for documents, members, and chat, grounded in the project files, Office filing, and building law.',
     submit: 'Create project',
   },
   applicableStandards: {
@@ -152,7 +412,7 @@ export const projects = {
     tryAgain: 'Try again',
     emptyTitle: 'No research runs yet',
     emptyDescription:
-      'Deep research runs appear here once you ask Piloti an involved question in Chat — it works the OIB/RIS sources and returns a cited report you can revisit.',
+      'Deep research runs appear here once you ask Piloti an involved question in Chat. It works through the project’s files, Office filing and building law, and returns a cited report you can revisit.',
     emptyAction: 'Start a run in Chat',
     viewReport: 'View report',
     viewProgress: 'View progress',
@@ -182,7 +442,7 @@ export const projects = {
     eyebrowCreate: 'Project setup',
     titleFallback: 'Tell Piloti about this project',
     subtitle:
-      'About 2 minutes. Piloti uses this brief to ground every answer — and to show which OIB Richtlinien apply to this building.',
+      'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
     schnellstart: 'Quick start',
@@ -286,6 +546,16 @@ export const projects = {
       title:
         'Conflicts with “{note}” — Piloti was not allowed to replace that note. Confirm or remove one of the two.',
       titleUnknown: 'Conflicts with a confirmed note that is no longer in this list.',
+    },
+    restricted: {
+      badge: 'Restricted',
+      title:
+        'Drawn from restricted folders ({folders}). Only people cleared for all of them see this note, and only their chats are given it.',
+      titleUnknown: 'Drawn from restricted folders. Only people cleared for all of them see this note.',
+      judgedBadge: 'decided with AI',
+      judged: 'A language model helped decide who may read this note.',
+      judgeFailed:
+        'The language model that decides who may read this note gave no usable answer, so the note is restricted to every restricted folder of the chat.',
     },
     time: {
       justNow: 'just now',
@@ -401,7 +671,7 @@ export const projects = {
       viewAll: 'View all',
       emptyTitle: 'No files yet',
       emptyDescription:
-        'Upload building documents — plans, reports, the Bauordnung excerpts — so Piloti can cite your project when it answers.',
+        'Upload building documents — drawings, reports, the Bauordnung excerpts — so Piloti can cite your project when it answers.',
       emptyAction: 'Upload files',
     },
   },

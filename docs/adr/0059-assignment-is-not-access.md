@@ -194,7 +194,8 @@ finished report from the backend's job endpoint and files it in the same request
 `frontends/ui/src/app/api/jobs/async/[...path]/route.ts`). The bytes never pass
 through the browser: `readReportMarkdown` reads them off the upstream response,
 and `authorize_job_access` (`frontends/aiq_api/src/aiq_api/jobs/access.py`) has
-already refused a job whose owner is not the caller. Nobody can make that path
+already refused a job the caller may not read: one it neither owns nor reaches
+through the project or conversation the BFF signed (ADR-0084). Nobody can make that path
 file prose of their own choosing.
 
 **The diagram's provenance is asserted by the client.** The browser POSTs
@@ -311,7 +312,7 @@ The addenda above give a document a fourth relation — who wrote it. They left 
 also what authorizes a human upload, a delete and a re-ingest
 (`frontends/ui/src/lib/documents/service.ts`). An organization that wanted Piloti
 to answer but not to write into its file system therefore had exactly one lever,
-and pulling it stopped its own architects uploading plans. That is not a choice,
+and pulling it stopped its own architects uploading documents. That is not a choice,
 and a deploy runbook that offered it as a kill switch was wrong; the correction
 is in `../deployment/agent-authored-documents-rollout.md` §4.
 

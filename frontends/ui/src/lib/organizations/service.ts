@@ -16,7 +16,8 @@ import { BadRequestError, ForbiddenError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
-import { isOrgFeatureEnabled, WEB_SEARCH_FLAG } from '@/lib/workos/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { FEATURE_FLAGS } from '@/lib/authz/feature-flags'
 import type { AuthorizedSession, GridSession } from '@/lib/auth/types'
 import { defaultLocale, isLocale, type Locale } from '@/i18n/config'
 
@@ -283,7 +284,24 @@ export async function updatePlatformOwnedOrgSettings(
   return writeOrgSettings(organizationId, patch)
 }
 
-/** The merge itself. Private: every caller goes through one of the two above. */
+/**
+ * Write ONE key the generic save refuses (`DEDICATED_ROUTE_SETTINGS`), for the
+ * dedicated service that owns it. The key must be declared there: this is not
+ * a second generic writer, it is the door each dedicated route walks through,
+ * and a key nobody declared has no route that validates it.
+ */
+export async function writeDedicatedOrgSetting(
+  organizationId: string,
+  key: keyof typeof DEDICATED_ROUTE_SETTINGS,
+  value: unknown
+): Promise<OrgSettings> {
+  if (!Object.prototype.hasOwnProperty.call(DEDICATED_ROUTE_SETTINGS, key)) {
+    throw new BadRequestError(`${String(key)} is not a dedicated setting`)
+  }
+  return writeOrgSettings(organizationId, { settings: { [key]: value } })
+}
+
+/** The merge itself. Private: every caller goes through one of the exported writers above. */
 async function writeOrgSettings(
   organizationId: string,
   patch: OrgSettingsPatch
@@ -315,11 +333,11 @@ const webSearchCacheKey = (organizationId: string): string => `websearch:${organ
  *
  *  - Tenant layer: `settings.webSearchEnabled` (default TRUE — web search is
  *    a core capability until an org admin turns it off).
- *  - Platform layer: the WorkOS `web-search` flag, participating only when
- *    `GRID_ENFORCE_FEATURE_FLAGS=true` (the flag must be provisioned first;
- *    see docs/deployment/workos-provisioning.md).
+ *  - Platform layer: the WorkOS `web-search` flag (a rollout, ON for every
+ *    organization; see docs/deployment/workos-provisioning.md).
  *
- * No org (anonymous deployments) = enabled.
+ * No org = enabled: an anonymous deployment, where web search is on as every
+ * rollout is (`lib/authz/feature-flags.ts`).
  */
 export async function isWebSearchEnabledForOrg(
   organizationId: string | null | undefined
@@ -328,11 +346,7 @@ export async function isWebSearchEnabledForOrg(
   return getCached(webSearchCacheKey(organizationId), WEB_SEARCH_CACHE_TTL_MS, async () => {
     const { settings } = await getOrgSettings(organizationId)
     if (settings.webSearchEnabled === false) return false
-    const enforceFlags = (process.env.GRID_ENFORCE_FEATURE_FLAGS ?? '').toLowerCase() === 'true'
-    if (enforceFlags) {
-      return isOrgFeatureEnabled(WEB_SEARCH_FLAG, organizationId, false)
-    }
-    return true
+    return isOrgFeatureEnabled(FEATURE_FLAGS.webSearch, organizationId)
   })
 }
 

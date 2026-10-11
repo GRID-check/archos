@@ -11,7 +11,10 @@
 import 'server-only'
 import { and, desc, eq, inArray, isNotNull, lt, notInArray, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant-context'
+import { SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import {
+  documents,
   taskDefinitions,
   taskRuns,
   tasks,
@@ -273,6 +276,88 @@ export async function touchDefinitionLastRun(definitionId: string, at: Date): Pr
     .where(eq(taskDefinitions.id, definitionId))
 }
 
+/**
+ * Re-arm the dated one-shots of a project that the scheduler retired while the
+ * project was paused or closed (ADR-0098). The claim nulls a one-shot's
+ * `next_run_at` before it fires, so a skip would lose it for good; this puts
+ * each one that never ran back in the due-scan, due now. A one-shot that ran,
+ * one somebody switched off, and a recurring schedule (which just takes its
+ * next turn) are left alone. Returns how many came back.
+ */
+export async function rearmOneShotsSkippedWhileParked(projectId: string, organizationId: string): Promise<number> {
+  const db = getDb()
+  const skipped = Object.values(SCHEDULE_SKIPPED_BECAUSE)
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .update(taskDefinitions)
+      .set({ nextRunAt: sql`now()` })
+      .where(
+        and(
+          eq(taskDefinitions.projectId, projectId),
+          eq(taskDefinitions.organizationId, organizationId),
+          eq(taskDefinitions.trigger, 'once'),
+          isNotNull(taskDefinitions.dueAt),
+          eq(taskDefinitions.enabled, true),
+          sql`${taskDefinitions.nextRunAt} IS NULL`,
+          sql`EXISTS (SELECT 1 FROM ${taskRuns} r WHERE r.definition_id = ${taskDefinitions.id} AND r.status = 'skipped' AND r.error IN (${sql.join(
+            skipped.map((reason) => sql`${reason}`),
+            sql`, `
+          )}))`,
+          sql`NOT EXISTS (SELECT 1 FROM ${taskRuns} r WHERE r.definition_id = ${taskDefinitions.id} AND r.status <> 'skipped')`
+        )
+      )
+      .returning({ id: taskDefinitions.id })
+  )
+  return rows.length
+}
+
+/** Where a revision task's document is now, by document id. */
+export interface SubjectDocumentPlace {
+  projectId: string | null
+  folderId: string | null
+}
+
+/** The most subjects one read resolves: a run list is `RUN_LIST_LIMIT` long. */
+const SUBJECT_LOOKUP_LIMIT = 500
+
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+/**
+ * The current project and folder of each of these documents, for the ones that
+ * still exist (`subject-access.ts`). Ids that are not uuids are left out
+ * rather than cast: a plan is jsonb, and a malformed id must not fail the list.
+ */
+export async function findSubjectDocumentPlaces(
+  organizationId: string,
+  documentIds: readonly string[],
+): Promise<Map<string, SubjectDocumentPlace>> {
+  const uuids = [...new Set(documentIds)].filter((id) => UUID_PATTERN.test(id)).slice(0, SUBJECT_LOOKUP_LIMIT)
+  if (uuids.length === 0) return new Map()
+  const db = getDb()
+  const rows = await db
+    .select({ id: documents.id, projectId: documents.projectId, folderId: documents.folderId })
+    .from(documents)
+    .where(and(eq(documents.organizationId, organizationId), inArray(documents.id, uuids)))
+    .limit(SUBJECT_LOOKUP_LIMIT)
+  return new Map(rows.map((row) => [String(row.id), { projectId: row.projectId ?? null, folderId: row.folderId ?? null }]))
+}
+
+/**
+ * The runs among these ids, in this organization: what the inbox reads to judge
+ * a run's row by its subject (`subject-access.ts`). Ids that are not uuids are
+ * left out rather than cast: they come from an inbox payload.
+ */
+export async function listRunsByIds(organizationId: string, runIds: readonly string[]): Promise<TaskRun[]> {
+  const uuids = [...new Set(runIds)].filter((id) => UUID_PATTERN.test(id)).slice(0, SUBJECT_LOOKUP_LIMIT)
+  if (uuids.length === 0) return []
+  const db = getDb()
+  return db
+    .select()
+    .from(taskRuns)
+    .where(and(eq(taskRuns.organizationId, organizationId), inArray(taskRuns.id, uuids)))
+    .limit(SUBJECT_LOOKUP_LIMIT)
+}
+
 export async function insertRun(values: NewTaskRun): Promise<TaskRun> {
   const db = getDb()
   const [row] = await db.insert(taskRuns).values(values).returning()
@@ -358,6 +443,31 @@ export async function updateRun(
   return row ?? null
 }
 
+/**
+ * Move a run from `queued` to `running` once a worker has started it, and stamp
+ * when. Conditional on `queued`: a run that already moved (a second flush) or
+ * ended is left alone, so the first flush wins and a late one cannot reopen it.
+ */
+export async function markRunStarted(
+  runId: string,
+  organizationId: string,
+  startedAt: Date,
+): Promise<boolean> {
+  const db = getDb()
+  const rows = await db
+    .update(taskRuns)
+    .set({ status: 'running', startedAt, updatedAt: new Date() })
+    .where(
+      and(
+        eq(taskRuns.id, runId),
+        eq(taskRuns.organizationId, organizationId),
+        eq(taskRuns.status, 'queued'),
+      ),
+    )
+    .returning({ id: taskRuns.id })
+  return rows.length > 0
+}
+
 /** The statuses a run is still in the worker's hands in; see `isActiveTaskRunStatus`. */
 const ACTIVE_RUN_STATUSES = ['queued', 'running'] as const satisfies readonly TaskRunStatus[]
 
@@ -429,6 +539,71 @@ export async function claimRunsToReconcile(
     .set({ reconcileCheckedAt: sql`now()` })
     .where(inArray(taskRuns.id, due))
     .returning()
+}
+
+/**
+ * Runs whose report has been `queued` for filing since before `before`, and
+ * whose filing job is NOT alive, oldest first (`ix_task_runs_filing_queued`,
+ * migration 0105).
+ *
+ * The filing sweep's read, and a row is only worth reading when something is
+ * left to do for it: a run whose job is still waiting or running is not listed,
+ * however old, exactly as the document sweep leaves out a document with a live
+ * job (`listStuckProcessingDocuments`). Without that the batch filled with the
+ * oldest filings of a backlog, all of them alive, and a run whose job had died
+ * behind them was never reached. A job that is dead or gone (a run's report is
+ * keyed by its backend job id, which the job's payload carries as `runId`) is
+ * what is listed. NOT tenant-filtered: the caller runs this under platform
+ * access and judges each run inside its own organization.
+ */
+export async function listRunsWithStaleQueuedFiling(before: Date, limit: number): Promise<TaskRun[]> {
+  const db = getDb()
+  const aliveJob = sql`EXISTS (
+    SELECT 1 FROM bff_job_queue j
+    WHERE j.kind = 'file_research_report'
+      AND j.lane = ${taskRuns.organizationId}
+      AND j.payload ->> 'runId' = ${taskRuns.backendJobId}
+      AND j.status <> 'dead'
+  )`
+  return db
+    .select()
+    .from(taskRuns)
+    // An ISO string for the same reason as `claimRunsToReconcile`.
+    .where(
+      and(
+        eq(taskRuns.filingStatus, 'queued'),
+        lt(sql`COALESCE(${taskRuns.finishedAt}, ${taskRuns.updatedAt})`, before.toISOString()),
+        sql`NOT ${aliveJob}`,
+      ),
+    )
+    .orderBy(sql`COALESCE(${taskRuns.finishedAt}, ${taskRuns.updatedAt})`)
+    .limit(limit)
+}
+
+/**
+ * Settle a filing that is still `queued`: write its verdict only while the row
+ * says so, and say whether it did.
+ *
+ * What the filing sweep ends a row with. The job that files the report writes
+ * its own verdict (`filed`, `refused`, `failed`) as soon as it has one, and the
+ * sweep judged the row from a read made earlier: an unconditional write would
+ * lay the sweep's older opinion over the job's, turning a `filed` row into a
+ * `failed` one (or the reverse). A row that has left `queued` keeps what it
+ * says.
+ */
+export async function settleQueuedFiling(
+  runId: string,
+  organizationId: string,
+  patch: Pick<NewTaskRun, 'filingStatus' | 'filingDetail' | 'filedDocumentId'>,
+): Promise<TaskRun | null> {
+  const [row] = await getDb()
+    .update(taskRuns)
+    .set({ ...patch, updatedAt: new Date() })
+    .where(
+      and(eq(taskRuns.id, runId), eq(taskRuns.organizationId, organizationId), eq(taskRuns.filingStatus, 'queued')),
+    )
+    .returning()
+  return row ?? null
 }
 
 /**

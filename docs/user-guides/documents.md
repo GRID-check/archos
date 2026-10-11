@@ -1,6 +1,6 @@
 # Document Management
 
-Upload your files to make them searchable by the AI. Documents are ingested into a vector knowledge base, allowing the AI to reference their content when answering your questions.
+Keep the office's files in folders and share them with everyone who has access to the project. Piloti reads each file, so its answers and tasks can cite it.
 
 ---
 
@@ -22,7 +22,9 @@ The folder tree in the left pane is the project's filing system, and it supports
 - **Create** — `New folder` at the bottom of the tree adds a top-level folder; hovering a row reveals a `+` (`Add subfolder in {name}`) that nests one inside it. Both open an inline name field; Enter commits, Escape cancels.
 - **Rename** — the row's `⋯` menu → `Rename…` turns the row itself into an input, pre-filled with the current name. Enter commits, Escape cancels, and a name that did not change makes no request at all. If the rename fails the row stays in edit mode with your text intact, so nothing is retyped.
 - **Move** — `PATCH …/folders/{folderId}` accepts a new `parentId`; moving a folder into itself or into one of its own subfolders is refused rather than silently producing a loop.
-- **Delete** — the same menu's `Delete…`. **A folder is a label, and deleting the label never deletes the work.** The confirmation names where things go — *"Its 4 document(s) and 1 subfolder(s) are not deleted — they move to 'Brandschutz'"* — and the documents and child folders are re-filed into the deleted folder's parent (the project root when it had none) before the row is removed. The toast afterwards repeats the count: *"Folder deleted. 4 document(s) moved to 'Brandschutz'."*
+- **Delete** — the same menu's `Delete…`. The folder goes to the project's **Papierkorb** with its subfolders and documents: *"Move the folder 'Brandschutz' to the bin? Its subfolders and documents go with it. From the bin it can be restored with its access until it is permanently deleted."* The toast says until when: *"'Brandschutz' is in the bin. Restorable until 20 Oct 2026."* It is gone from every listing, search and answer at once, and restorable for 14 days from the bin icon in Files; then it is deleted for good. A folder holding a folder you may not edit is refused. The whole story: [Deleting folders: the Papierkorb](sensitive-data-and-access.md#deleting-folders-the-papierkorb).
+
+Each of these is a write in the folder. In a folder whose access list gives you only **Lesen**, the tree and the file grid mark it **Nur lesen** and offer none of them, nor upload or moving a document in or out; the route refuses them too (403, `reason: folder-read-only`). Who may read and edit a folder: [sensitive data and access](sensitive-data-and-access.md#who-may-read-and-edit-a-folder).
 
 Renaming or moving a folder rewrites the stored path of everything beneath it in the same transaction, so a deeply nested document is never left pointing at a path that no longer exists.
 
@@ -37,6 +39,51 @@ moving a folder updates what the assistant sees too; it may take one more
 question before a very recent rename shows up in its answers. Documents that were
 never filed simply have no folder, and the assistant says nothing about one.
 
+### What Piloti knows about a folder
+
+Above every folder's files sits one quiet line, for example „35 von 44
+Dokumenten gelesen in diesem Projekt“. It covers the folder and everything
+inside it, subfolders included, so you can see what has been read without
+opening each folder. Click the line and the full overview opens around it; click
+it again to fold it. The choice is remembered in this browser.
+
+- The bar counts the documents by state: „gelesen“ (Piloti can cite them),
+  „wird gelesen“, „fehlgeschlagen“ and „zurückgehalten“ (the content check holds
+  them back until someone reviews them). These add up to the headline's „von N“.
+  Documents kept in the files but not read for answers, for example a report
+  Piloti wrote and filed, follow as „dazu 1 nicht in der Wissensbasis“.
+  Click a state to see those documents, across all subfolders, as one list.
+- „Hier sind Sie gefragt“ comes first and lists what needs you: failed documents,
+  documents the content check is holding, and documents Piloti could not assign a
+  document type. For failed documents, „Alle N erneut lesen“ reads all of them
+  again. With one document the button says „Erneut lesen“. Only people who may
+  change files in the folder see it.
+- The other parts are folded to one line that names what they hold. Click the
+  line to open one.
+- „Worum es hier geht“ lists the document types („Dokumentart“) and disciplines
+  („Fachbereich“) Piloti assigned, with the number of documents that carry each.
+  Click one to see them. Below them, „Themen, die Piloti erkannt hat“ lists the
+  topics Piloti found in the documents (see „Themen“ below), and for photos the
+  days they were taken on, as the camera recorded it.
+- „Wo es hakt“ names the subfolders where something is stuck. Click one to go
+  straight there.
+
+A document with several Fassungen counts once, as it appears in the list. An
+older Fassung is never counted, never listed as failed and never read again by
+„Alle N erneut lesen“.
+
+At the top level of a project, „Was Piloti noch fehlt“ lists the documents the
+project's intake answers say it should have, and that no file is linked to yet.
+Being read is not the same as being known to be a particular document. A file
+you uploaded but have not yet linked to its role still appears here, because
+Piloti cannot tell that it is the Energieausweis until you link it.
+
+In the list view, folder rows carry the same state in short form: „2
+fehlgeschlagen“, „3 werden gelesen“, or „Alles gelesen“ when everything Piloti is
+meant to read is ready. A folder with nothing Piloti reads shows no state. In
+the card view a folder tile shows only the coloured dot (green read, blue being
+read, red failed, amber held back); hover it for the words.
+
 ### The file card grid
 
 Files render as cards in a responsive grid. Each card shows:
@@ -44,7 +91,7 @@ Files render as cards in a responsive grid. Each card shows:
 - a **content-aware skeleton thumbnail** — the sketch is picked from the document's ingestion tags (or, absent tags, filename heuristics / content type): floor plan (Grundriss), section/elevation (Schnitt/Ansicht), site plan (Lageplan), official notice (Bescheid), photo, or a generic document
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
-- the **ingestion status badge** (Ready / Processing / Failed) — failed cards show the failure reason inline
+- an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 
@@ -52,7 +99,7 @@ Right-click a file, a folder, or the empty listing — the same operations as th
 
 The **detail view** (the list toggle) is a dense sortable table for a corpus past what a card grid can hold. It is fully keyboard-navigable: one tab stop into the list, then arrows to walk it and Home/End to jump to either end — and the tab stop stays on the row you walked to, so tabbing away and back does not return you to the top. Enter opens the row.
 
-A **search field** above the grid filters the current listing client-side by file name, ingestion tags, and the AI description. Top-level folders additionally appear as a quick-filter **chip row** above the grid (the same selection the sidebar folder tree drives — no separate navigation model).
+A **search field** above the grid filters the current listing client-side by file name, ingestion tags, and the AI description. Folders are the drill-down inside the listing itself (breadcrumb, tiles, `?folder=` in the URL); a search escapes the current folder and runs over everything.
 
 Semantic results arrive in whichever view you are in. In the detail view the ranking is preserved rather than being re-sorted by upload date: **Relevance** is the column the list opens sorted by (and can be sorted the other way), and each row carries the passage that matched with its page number in place of the document's summary.
 
@@ -61,6 +108,8 @@ Semantic results arrive in whichever view you are in. In the detail view the ran
 Files are validated before anything leaves the browser: type, individual size, the batch's total size, and duplicates (both within one selection and against what is already there). A rejection names the reason in the language the interface is in — the validator itself is a pure module and keeps an English fallback for callers with no dictionary, but nothing user-facing renders it any more.
 
 A partially rejected batch still uploads: the valid files go, and the panel says how many were skipped and why.
+
+Your office's sensitive-data list can also hold files back, by name before they are sent or by content before any model reads them: see [Sensitive data, quarantine and folder access](sensitive-data-and-access.md).
 
 ### Supported File Types
 
@@ -82,10 +131,13 @@ Spreadsheets index one chunk per worksheet (labelled by sheet name), so a citati
 
 ### File Size Limits
 
-The maximum upload size is configured via `FILE_UPLOAD_MAX_SIZE_MB` (default: **100 MB**). This limit applies per **batch** (total of all files in a single upload operation), not per individual file.
+The maximum upload size applies to **each file**, not to a batch: a folder of fifty 80 MB drawings uploads into Dateien under a 100 MB limit. It is your organization's own limit when Piloti has set one, otherwise the deployment default from `FILE_UPLOAD_MAX_SIZE_MB` (default: **100 MB**, decimal). The upload area shows the limit in force ("max. 100 MB per file"), and Organization → Storage lists it beside the storage quota. Only Piloti's platform staff can change it, between 1 MB and the largest request the deployment accepts. A file over the limit is refused with a message naming it. IFC models (`.ifc`, `.ifczip`) have their own, larger limit (`BIM_MAX_IFC_BYTES`, default 250 MB) that the organization limit does not change.
+
+The total stored per organization is bounded separately by the storage quota.
 
 Additional limits:
-- **Chat-session attachments**: `FILE_UPLOAD_MAX_FILE_COUNT` (default: **10 files**) caps how many files one chat session can hold. Project Dateiablage and the Büroarchiv are **not** under this cap — they are bounded by the organization's storage quota.
+- **Chat-session attachments** also have a total: all files on one chat together may not exceed the deployment default (100 MB), or the organization's per-file limit when that is higher, so one admissible file always fits.
+- **Chat-session attachments**: `FILE_UPLOAD_MAX_FILE_COUNT` (default: **10 files**) caps how many files one chat session can hold. A project's Dateien and the Büroablage are **not** under this cap — they are bounded by the organization's storage quota.
 - **Duplicate filenames** within a session are rejected
 - Files already tracked in the current session are skipped on re-upload
 - **A question asked while an attachment is still being read waits for it.**
@@ -97,9 +149,9 @@ Additional limits:
 
 ## Moving a file into a folder
 
-Drag it onto the folder — a card, a row, or „Alle Dateien" in the breadcrumb to
+Drag it onto the folder — a card, a row, or „Alle Dateien“ in the breadcrumb to
 move it back to the top level. The folder lights up as the target while you are
-over it. „Verschieben" in a file's overflow menu does the same thing and remains
+over it. „Verschieben“ in a file's overflow menu does the same thing and remains
 the way to move a file into a folder you are not currently looking at.
 
 Dragging a file inside Piloti never starts an upload: a drag carrying files from
@@ -111,7 +163,7 @@ the browser, and only the first raises the upload overlay.
 A büro onboarding a project moves a directory tree, not a hand-picked list. Two
 ways to give Piloti one:
 
-- **„Ordner hochladen"**, beside the upload button in a project's Dateiablage.
+- **„Ordner hochladen“**, beside the upload button in a project's Dateien.
 - **Dragging the folder** onto the file area. A dropped folder used to do
   nothing at all — the browser reports directories through a different API than
   loose files, and the old handler read only the loose ones — so the overlay
@@ -123,7 +175,7 @@ rejected for containing one file of the wrong kind.
 
 **The original path is recorded, and shown.** A file that arrives this way keeps
 where it came from — `Wohnbau Nord/03_Einreichung/Grundrisse/EG.pdf` — visible
-under „Herkunft" in the file's detail panel and copyable with a click. That is
+under „Herkunft“ in the file's detail panel and copyable with a click. That is
 deliberately not the same thing as the folder you file it into here: Piloti's
 folders are yours to rename and rearrange, while the origin is a fact about the
 file and is never rewritten. The point of it is that you can go back and work on
@@ -135,25 +187,93 @@ reached you are told the upload is incomplete rather than left with a silently
 partial one — a bulk upload that quietly took the first half is worse than one
 that refuses, because the missing files look exactly like files nobody chose.
 
-Project and Büroarchiv uploads are bounded by the organization's **storage
+Project and Büroablage uploads are bounded by the organization's **storage
 quota** and by the **per-file** size limit. The batch total-size limit applies
 only to chat-session attachments: it exists for a conversation, which has no
 quota behind it.
 
-**Re-uploading a file that is already there replaces it.** Dropping a corrected
-plan under the same name into the same project, the Büroarchiv, or the same chat
+### Files that continue a document: „Neue Fassungen“
+
+Offices name every state with its index and date and never overwrite one
+(`EG_Grundriss_Index_B_2026-07-02.pdf`, then `…_Index_C_2026-08-14.pdf`). When a
+dropped file's name continues a document that is already in the same shelf and
+is newer than it, the upload dialog opens even though no file has that name, and
+asks whether to file it as the **new Fassung** of that document. The older file
+stays readable; Piloti answers from the new one, notes what changed, and the
+document's preview shows the history. An unticked file still uploads, as a
+document of its own, and a link can be undone later („Verknüpfung lösen“).
+
+- **One block for every new Fassung.** A file of the same name and a file that
+  continues a document under another name are both a new Fassung, so the dialog
+  asks them in one block, „39 neue Fassungen“, each group saying why Piloti
+  thinks so: „Gleicher Name“ (one box for all of them; unticked, they are not
+  uploaded) and „Namensreihe“ (index or date in the name).
+- **One decision for a whole export.** An ArchiCAD publisher export of forty
+  files is one list under one box that stays in sight while you scroll, with a
+  count: „Alle 34 als neue Fassung“, „33 von 34 als neue Fassung“. The rows are
+  grouped by folder and show the file name first, cut in the middle so its index
+  and date stay readable, then „→ Fassung von … · Index B“. Untick the master or
+  a single row (a tap anywhere on the row) to override. Only matches with exactly
+  one current document that the file is newer than, and that no other file in
+  the same drop competes for, are ticked for you. The upload button says what it
+  will do: „38 Dateien hochladen, 34 davon als neue Fassung“.
+- **„… brauchen Ihre Auswahl“.** If several current documents could be meant,
+  or the file is not newer than the one there, the file is listed apart. Nothing
+  is ticked or preselected; choosing a document in its field ticks it.
+- **One file.** A single dropped file that continues a document gets the
+  question on its own, „Neue Fassung von „…“?“, with two buttons: „Als neue
+  Fassung ablegen“ and „Als eigenes Dokument hochladen“.
+- **Unchanged re-exports** (same name, same content) stay „unverändert, wird
+  übersprungen“ and never get a proposal.
+
+The tick travels with the upload: Piloti files the link as soon as the new file
+has been read, and says in words what changed. If the older document was deleted
+in the meantime, or the link would loop, the file is simply uploaded and Piloti
+suggests the link after reading, as before. You need write access to the older
+document (a folder you can only read is not offered as a target).
+
+## Uploading a ZIP
+
+A `.zip` can be dropped on the file area, or picked with the upload button, in a
+project's Dateien and in the Büroablage alike. Piloti treats it as the
+folder it contains: the ZIP is unpacked in your browser and then goes through
+exactly what a dropped folder goes through — the „Wollen Sie aktualisieren?“
+plan, the folders it names created in one step, a file that is already here
+offered as its next Fassung, an unchanged one left alone.
+
+- **Where the files land.** If the ZIP has one top-level folder (what „Komprimieren“
+  makes), that folder is recreated where you are standing. If it holds loose
+  files, they go into a folder named after the ZIP.
+- **What is left out without a word:** the files macOS and Office put inside
+  archives (`__MACOSX`, `.DS_Store`, `~$…`, `Thumbs.db`). Nobody meant to upload
+  them.
+- **What is refused, with a message:** a ZIP that cannot be read (damaged, or
+  protected by a password), an empty one, one with more than 2,000 files, or one
+  that unpacks to more than 1 GB. The whole ZIP is refused, never its first
+  half — the missing files would look exactly like files nobody chose. Other ZIPs
+  dropped with it are unaffected.
+- **Types Piloti does not read** inside a ZIP are refused per file in the usual
+  upload report, like any other file. A ZIP inside a ZIP is not unpacked.
+- **An `.ifczip` is not a ZIP of documents.** It is a building model and is
+  uploaded as one, as before.
+
+File names in ZIPs made by very old Windows versions, which did not mark their
+names as UTF-8, can show garbled umlauts; renaming the folder in Piloti fixes it.
+
+**Re-uploading a file that is already there makes it the next Fassung.** Dropping a corrected
+document under the same name into the same project, the Büroablage, or the same chat
 points the existing document at the new bytes and re-indexes it: the document
 keeps its identity, so citations, chat subjects and folder placement all
 survive, and the organization is charged for one copy rather than two. The
-previous version's thumbnail and parsed model are discarded with it, so nothing
+previous Fassung's thumbnail and parsed model are discarded with it, so nothing
 rendered from the old bytes is shown as if it were the new ones. The old
 passages are removed only once the new file has been indexed: if it cannot be
 (a password-protected PDF, a file with no readable text), the upload is marked
-as failed and search keeps finding the previous version until a working file
+as failed and search keeps finding the previous Fassung until a working file
 replaces it, while the download already returns the new file. The preview says
-so under the failure reason, for a document with more than one version. A file
+so under the failure reason, for a document with more than one Fassung. A file
 that fails partway through indexing leaves none of its passages behind, and two
-people re-uploading one name at once end with the version indexed last. The database
+people re-uploading one name at once end with the Fassung indexed last. The database
 enforces one live document per name and collection, so two uploads racing each
 other cannot recreate the duplicate either. This is the behaviour the
 ingestion pipeline already had — it replaces a document's passages by filename —
@@ -222,27 +342,145 @@ User uploads file
 
 ---
 
-## The "Read by Piloti" Panel (files-metadata-panel flag)
+## The "Read by Piloti" Panel
 
-With the `files-metadata-panel` feature flag on (the default while flag
-enforcement is off), the preview pane leads with a **Read by Piloti** panel
-showing what ingestion extracted from the document:
+The preview pane leads with a **Read by Piloti** panel showing what ingestion
+extracted from the document (the compact peek of a cited source leaves it out):
 
 - the one-sentence **AI summary** that grounds the agent's answers
 - key-value rows from real metadata only: detected **document type** (first
-  document-type tag), **project**, **pages**, **passages** (retrieval chunks),
-  **contents** (when the document holds more than plain text), and the
-  **updated** timestamp
-- **editable tags**: remove a tag via its ×, add one through the inline input
-  (Enter commits, Escape clears, clicking a suggestion adds it). Tags come from
-  a controlled vocabulary (document types + OIB disciplines), so the input
-  suggests the allowed labels and free-form values are rejected. Each change
-  saves immediately.
-- the caption "Automatically detected on upload — your corrections improve
-  future answers": tag corrections feed back into retrieval quality.
+  document-type tag), **project** and the **updated** timestamp
+- **„Piloti hält es für“**: the document type and disciplines Piloti assigned
+  when it read the file, or „Piloti hat keine Dokumentart erkannt.“ when it found
+  no type. You do not enter tags. Piloti assigns them on every upload, so there
+  is nothing to fill in.
+- **„Korrigieren“** opens the tag editor. Add or remove types and disciplines
+  from the controlled vocabulary (document types and OIB disciplines). Free-form
+  labels are refused, and each change saves at once. A document with no type
+  shows „Zuordnen“ instead.
+- **Your correction stays.** A correction is stored as yours. Reading the file
+  again („Erneut lesen“) keeps it, and so does a backfill of tags. The editor says
+  so: „Ihre Zuordnung bleibt, auch wenn Piloti die Datei neu liest.“
+- **Photographs** that Piloti recognizes as photos are tagged „Foto“, beside
+  whatever else they show: a photo of a floor plan is „Foto“ and „Grundriss“. Phone photos taken in portrait are shown upright.
+- **Themen** are Piloti's own keywords for a document, such as „Attika“ or
+  „Holzrahmenbau“, beside the fixed document types and disciplines. Piloti adds
+  one only when it is confident and no fixed tag says the same, at most six per
+  document, and it reuses the spelling the project already uses. You can add or
+  remove topics with „Korrigieren“. Like a tag correction, your topics stay when
+  the file is read again. The file list's search and tag filter find topics too.
+- **When and where a photo was taken.** For a photo with camera data (EXIF),
+  the panel shows the day and time it was taken and the camera. If the photo
+  records a position, it also shows a „Standort“ link to the map. Piloti uses the
+  date and the camera to describe the photo, but never sends the position to a
+  model. Only people who may open the file see it.
+- **Fassungen.** What a document has been and where it stands now is one
+  section under Piloti's reading, „Fassungen und Freigabe“. See
+  [Fassungen und Freigabe](#fassungen-und-freigabe) below.
+- **What the tags do.** They do not decide which documents answers draw on;
+  answers are found from the text of a document. The tags are used in three
+  places: the tag filter and the search field of the file list, the folder brief
+  (see above), and the file list Piloti works from for each question, where each
+  file name is followed by its tags.
 
 With the flag off, the preview pane shows only the ungated status/type/size
 rows, the raw preview, and download — unchanged behavior.
+
+## Fassungen und Freigabe
+
+A document goes through states: a drawing gets an index, a report is revised, a
+file is re-exported. Piloti shows all of it in **one section** of the file's
+preview, „Fassungen und Freigabe“, directly under what Piloti made of the
+document. It answers three questions: which Fassung is this, is it the one
+answers come from, and what happened before.
+
+### The header: where the document stands
+
+The header is always visible, also when the section is shut. It is about the
+**newest** Fassung of the document:
+
+- **Which Fassung, and its state:** „Fassung 2 · In Prüfung“. The state word is
+  one of Entwurf, In Prüfung, Änderungen angefordert, Freigegeben,
+  Veröffentlicht, Ersetzt, Abgelehnt or Stillgelegt. A file you uploaded has no
+  state word: nobody approved it, you put it there.
+- **The four steps, named:** Entwurf, In Prüfung, Freigegeben, Veröffentlicht,
+  with the step the Fassung has reached set darker. A file you uploaded has no
+  track, and neither has a Fassung a newer one replaced.
+- **The next step, with a person:** „Nächster Schritt: Freigabe durch Sabine
+  Gruber“ (whoever the round was sent to), „Nächster Schritt: Ihre Freigabe“ when
+  it is you, „Überarbeitung durch Anna Berger“ when changes were requested. A
+  person Piloti cannot name reads as „ein Teammitglied“, never as a raw id.
+- **Which Fassung Piloti answers from**, in one sentence:
+
+  | Situation | What the header says |
+  |---|---|
+  | The newest is published, or is a file you uploaded | Piloti antwortet aus dieser Fassung. |
+  | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
+  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie veröffentlicht ist. |
+  | The newest was refused, nothing published | Piloti antwortet nicht daraus. |
+  | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
+  | Stillgelegt | Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr. |
+
+  Only a **published** Fassung is read into the knowledge base, so a draft or a
+  round in review never replaces the Fassung answers come from.
+
+When a decision is yours, **Freigeben** and **Änderungen anfordern** sit under
+the header; **Piloti überarbeiten lassen** and **Ablehnen** are behind the ⋯
+beside them. The section opens itself when something is asked of you: a decision
+is yours to take, Piloti has a suggestion to answer, or the file is an older
+Fassung. Once you close it, it stays closed.
+
+### The timeline
+
+Open it and there is **one list, newest first, numbered „Fassung 3“, „Fassung
+2“, „Fassung 1“**. It merges two kinds of history:
+
+- **Uploads under the same name.** Uploading a corrected file under the name
+  that already exists makes it the next Fassung; the earlier one stays readable.
+  Only Fassungen that were published can be opened as files; a draft opens as
+  text.
+- **Older documents under other names.** Offices name every state with its index
+  and date (`…_Index_B_2026-07-02.pdf`), so these are separate files. Once
+  linked, they are numbered in the same list, with their file name under the
+  number. When you open an older document, the newer one is the first row.
+
+A row carries its index („Index C“) or date as a tag, and **aktuell** only on
+the Fassung Piloti answers from. Each fact appears once: who did what and when
+on one line („Hochgeladen von Anna Berger · 14.08.2026“), what changed in it (a
+summary by Piloti, read from both Fassungen; check dimensions and values in the
+document itself), and the reviewer's words. Each row has one visible action,
+**Öffnen**; the rest is behind its ⋯: **Herunterladen**, **Text mit Fassung 2
+vergleichen** (what changed line by line), **Vergleichen** (beside the current
+Fassung: side by side, overlaid or swiped) and **Verknüpfung lösen** (for people
+who may edit the folder; only for the document this one replaces directly).
+
+Above the timeline, **Piloti's suggestion.** When Piloti thinks a document is a
+newer Fassung of another, it asks „Ist das eine neuere Fassung von …?“ and says
+why: the drawing number and index in the title block (Plankopf), the index and
+date in the names, or what it read in both documents. This works when the names
+differ. „Ja, neuere Fassung“ links them, „Nein“ is remembered. Anyone who may
+edit the folder can answer.
+
+People assigned to the older document, and whoever uploaded it, get a note in the
+inbox when a newer Fassung is linked or uploaded under the same name, if they
+may open the newer one (see „The inbox“ in the chat guide).
+
+### The approval process
+
+For a file you uploaded there is none: your upload is published the moment it
+lands, because you put it there. Approval matters for reports Piloti wrote and
+for Fassungen that need a second pair of eyes. The steps are in
+[Fassungen und Freigabe](agent-authored-reports.md#fassungen-und-freigabe): the
+buttons sit under the header, which is about the Fassung they decide.
+
+Where there are no review rights (the Büroablage, a citation preview) the
+same section shows the timeline and the suggestion, without decision buttons.
+
+How it works underneath, from upload to answer:
+[Fassungen](../architecture/fassungen.md). Why a link and not a merge:
+[ADR-0099](../adr/0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
+
+---
 
 ## Viewing and Downloading Documents
 
@@ -269,7 +507,7 @@ reading; nothing is edited or replaced.
 What to expect:
 
 - The first time an older file is opened, the preview shows „PDF-Vorschau wird
-  erstellt…" while it is converted. Files uploaded since the change are
+  erstellt…“ while it is converted. Files uploaded since the change are
   converted during upload.
 - The PDF is LibreOffice's rendering, not Word's or Excel's. Layout can shift a
   little, and a font the server does not have is replaced by a similar one.
@@ -280,7 +518,7 @@ What to expect:
   pane shows the placeholder and the Download button as before.
 
 **Pictures in Word and PowerPoint files are read.** Piloti indexes these files
-from the PDF, the same way it reads a PDF you upload: a photo, a pasted plan or
+from the PDF, the same way it reads a PDF you upload: a photo, a pasted drawing or
 a rendering on a slide gets a description, and a question about it can find it
 and cite it. PowerPoint speaker notes are still read from the original file,
 because the PDF leaves them out. Excel files keep being read sheet by sheet, as
@@ -288,6 +526,8 @@ tables.
 
 - While the PDF is being made, the upload shows „Wird gelesen“. It turns into
   Ready once the file is indexed, which for a large deck can take a few minutes.
+  The conversion is a background job that survives a server restart; a folder of
+  hundreds of files is worked through in turn and does not delay other offices.
 - Files uploaded before this change keep their old index: their text is
   searchable, their pictures are not, and a Word citation opens at page 1.
   Choose „Erneut lesen“ in the file's ⋯ menu to have it read the new way.
@@ -309,45 +549,55 @@ for indexing.
 
 | Scope | Collection Pattern | Visibility | TTL Cleanup |
 |-------|--------------------|------------|-------------|
-| **Archiv (org-wide)** | `archiv_{orgId}` | Every project in the organization | Never (persistent) |
+| **Büroablage (org-wide)** | `archiv_{orgId}` | Every project in the organization | Never (persistent) |
 | **Project** | `proj_{projectId}` | All project members | Never (persistent) |
 | **Session** | `s_{conversationId}` | Only within that conversation | Deleted after 24 hours (configurable via `AIQ_COLLECTION_TTL_HOURS`) |
 
 Session-scoped collections are prefixed with `s_` and are automatically reaped by the `TTLCleanupMixin` background thread that runs periodically (every `AIQ_TTL_CLEANUP_INTERVAL_SECONDS`, default 3600s).
 
-### The org-wide Archiv (ADR-0024)
+### The Büroablage (ADR-0024)
 
-The **Archiv** is a top-level document store that lives above projects, reachable
-from the user menu (Archiv). Anything uploaded there is shared with **every
+The **Büroablage** (English UI: *Office filing*) is a top-level document store
+that lives above projects, reachable from the navigation (Büroablage). Until
+October 2026 it was called „Archiv“; the URL `/app/archiv`, the permission
+`org:archiv:manage` and the collection `archiv_{orgId}` keep that name. It is a
+different thing from the „Stilllegen“ action on a project document. Anything uploaded there is shared with **every
 project in your organization** — every project's chat automatically searches the
-Archiv alongside its own documents and the base corpus, with no per-project
-re-upload. Any member can browse, preview, and download Archiv documents;
+Büroablage alongside its own documents and the base corpus, with no per-project
+re-upload. Any member can browse, preview, and download Büroablage documents;
 uploading and deleting require the **`org:archiv:manage`** permission (org admins
-have it). It reuses the exact same upload/ingestion/preview experience as the
-project Files tab. The feature is gated by the `organization-archiv` feature flag
-(available to all orgs while flag enforcement is off; targeted per-org once on).
+have it). It is the same workspace as the project Files tab — upload, ingestion, preview and folders. Every organization has one.
 
-The Archiv presents itself as the office's **knowledge library** (gold archive
-mark = the Büroarchiv provenance signal used across the app):
+The Büroablage is the project Files workspace over the office's shelf: **one
+component, two shelves** (`FileWorkspace`; see
+[`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#one-workspace-two-shelves)).
+Everything described for a project's Dateien above — folders, moving files by
+menu or drag, uploading a whole folder, the cards/list toggle, filters and sort,
+search, the preview and its `?doc=` link — works the same here, with the same
+words. It keeps the gold office mark (the Büroablage provenance signal used
+across the app) and what is specific to the office:
 
-- **Card grid** — the same content-aware skeleton thumbnails, extension chips,
-  one-line AI descriptions, and ingestion-status badges as the project file
-  grid; failed cards show the failure reason inline.
-- **Category chips** — a filter row derived from the controlled ingestion tags
-  actually present on the archive's documents (document type + OIB discipline),
-  plus an "All" chip. Categories come from the documents themselves; creating
-  custom categories is not (yet) supported.
-- **Provenance footer** — cards whose documents carry ingestion tags show them
-  as an "Aus: …"/"From: …" line with the gold archive mark. Documents without
-  tags simply show none, and there is no "verified" marker — the Archiv has no
-  review workflow.
-- **Search** — filters the listing client-side by file name, ingestion tags,
-  and the AI description, combinable with the category chips. Pressing Enter
-  runs the semantic search over the corpus instead. A semantic search that
-  cannot RUN (the index is unreachable, the request times out) says so and
-  offers to run the same query again — it is never reported as "no matches",
-  which is a claim about your own files that a search which never ran has no
-  business making.
+- **Folders** — the office's own tree, separate from every project's. Members
+  with `org:archiv:manage` create, rename, move and delete folders and re-file
+  documents; deleting a folder never deletes documents, it re-files them into the
+  parent. Everyone else can open folders, search, filter, preview and download
+  but sees no upload, drag, create, rename, move or delete.
+- **Gold kind chip and provenance footer** — a card shows the document's kind
+  (floor plan, notice, …) on a gold chip, and cards whose documents carry
+  ingestion tags show them as an "Aus: …"/"From: …" line. Documents without
+  tags show none, and there is no "verified" marker — the Büroablage has no review
+  workflow.
+- **Category filter** — the filter menu offers „Kategorie“, derived from the
+  controlled ingestion tags actually present on the loaded documents (document
+  type + OIB discipline). Categories come from the documents themselves;
+  creating custom categories is not (yet) supported. This filter is on every
+  shelf, not only the Büroablage.
+- **Search** — as in a project: typing filters the listing by file name, ingestion
+  tags and the AI description, across every folder; Enter runs the semantic
+  search over the whole Büroablage. A semantic search that cannot RUN says so and
+  offers to run the same query again — it is never reported as "no matches".
+- **No assignments and no „Frage zur Datei“** — collaboration is project-scoped
+  and the Büroablage has no project chat to ask in.
 - **A document that failed to index** carries the reason on its card, and the
   card's ⋯ menu offers „Erneut lesen“ for it, the same retry the preview
   has, where the failure is actually read. An indexed document gets the same

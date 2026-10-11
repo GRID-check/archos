@@ -4,7 +4,9 @@
  * Architecture (following Nemo-Agent-Toolkit-UI pattern):
  * - Runs on port 3000 as the main entry point
  * - Proxies to Next.js server (dev on 3001, or production on same process)
- * - Proxies /websocket to backend WebSocket endpoint
+ * - Proxies /websocket to the backend's chat role (BACKEND_CHAT_URL). This is the
+ *   only backend traffic this process carries; every HTTP call to the backend is
+ *   the BFF's, to the api role (BACKEND_URL).
  *
  * Development:
  *   npm run dev - Runs gateway + Next.js dev server concurrently
@@ -13,7 +15,9 @@
  *   npm start - Runs Next.js in production mode with integrated proxy
  *
  * Environment:
- *   BACKEND_URL - Backend service URL (e.g., http://backend:8000)
+ *   BACKEND_CHAT_URL - The backend's chat role, for the WebSocket proxy (e.g.,
+ *     http://aiq-agent:8000). Required: it does not fall back to BACKEND_URL,
+ *     which is the api role and serves no chat socket (ADR-0082 step B).
  *   PORT - Gateway port (default: 3000)
  *   NEXT_INTERNAL_URL - Next.js server URL (default: http://localhost:3001)
  */
@@ -24,14 +28,13 @@ const { parse } = require('url')
 const crypto = require('crypto')
 
 // ── Boot identity (ledger item 1) ────────────────────────────────────────────
-// One greppable line naming the deployed commit and the effective value of the
-// four gates, printed before this process serves anything. A pilot said a
-// feature did not work and nobody could say which build they were on, nor
-// whether that feature was switched on for them at all — three of the four
-// flags default OFF, so "broken" and "never enabled" look identical from
-// outside. Rationale in full: `src/lib/boot.ts`.
+// One greppable line naming the deployed commit and where the feature flags
+// come from (WorkOS, or the fixed defaults of a deployment that signs nobody
+// in), printed before this process serves anything. A pilot said a feature did
+// not work and nobody could say which build they were on, nor whether that
+// feature was switched on for them at all. Rationale in full: `src/lib/boot.ts`.
 //
-// DUPLICATED from `formatBootLine`/`bootFlags`/`deployedSha` in that module,
+// DUPLICATED from `formatBootLine`/`flagSource`/`deployedSha` in that module,
 // for the same reason the envelope builder below is duplicated: this file is
 // plain CommonJS (see the `require(...)` calls above) and cannot import a TS
 // module. `tests/lib/boot.test.ts` extracts THIS function from the source and
@@ -40,19 +43,9 @@ const crypto = require('crypto')
 // with `new Function`, so a reference to anything outside its own body breaks
 // the pin rather than the line.
 function bootLogLine(env) {
-  const optIn = (raw) => (raw || '').trim().toLowerCase() === 'true'
-  // Unset means ON for this one, matching agentAuthoredDocumentsEnvEnabled.
-  const optOut = (raw) => {
-    const value = (raw || '').trim().toLowerCase()
-    return value === '' || !['false', '0', 'no', 'off'].includes(value)
-  }
   const sha = (env.GRID_GIT_SHA || '').trim() || 'unknown'
-  return (
-    `[boot] sha=${sha} skills=${optIn(env.GRID_SKILLS_ENABLED)}` +
-    ` collaboration=${optIn(env.GRID_COLLABORATION_ENABLED)}` +
-    ` enforceFlags=${optIn(env.GRID_ENFORCE_FEATURE_FLAGS)}` +
-    ` agentDocs=${optOut(env.GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED)}`
-  )
+  const flags = (env.REQUIRE_AUTH || '').toLowerCase() === 'true' ? 'workos' : 'defaults'
+  return `[boot] sha=${sha} flags=${flags}`
 }
 
 // ── Signed context envelope (backlog T3-9 follow-up, 2026-07-16, user-mandated) ──
@@ -135,34 +128,48 @@ const dev = process.env.NODE_ENV !== 'production'
 const hostname = process.env.HOSTNAME || '0.0.0.0'
 const port = parseInt(process.env.PORT || '3000', 10)
 
-const getBackendUrl = () => {
-  const url = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000'
+// The chat role's address. Required and never derived from BACKEND_URL: that is
+// the api role, and a socket sent there would connect to nothing that serves
+// one. A gateway that cannot say where chat is stops here, not at the first
+// reader's upgrade.
+const getBackendChatUrl = () => {
+  const url = (process.env.BACKEND_CHAT_URL || '').trim()
+  if (!url) {
+    throw new Error(
+      'BACKEND_CHAT_URL is required: the URL of the backend chat role, which the WebSocket proxy dials ' +
+        '(e.g. http://aiq-agent:8000). BACKEND_URL is the api role and is not a fallback.',
+    )
+  }
   return url.replace(/\/$/, '')
 }
 
-const getBackendWsUrl = () => {
-  const baseUrl = getBackendUrl()
-  return baseUrl.replace(/^http/, 'ws')
-}
-
-const BACKEND_HTTP_URL = getBackendUrl()
-const BACKEND_WS_URL = getBackendWsUrl()
+const BACKEND_CHAT_URL = getBackendChatUrl()
+const BACKEND_WS_URL = BACKEND_CHAT_URL.replace(/^http/, 'ws')
 const NEXT_INTERNAL_URL = process.env.NEXT_INTERNAL_URL || 'http://localhost:3001'
 
 // ── Conversation affinity (horizontal aiq-agent scaling) ──
-// The backend keeps per-conversation WebSocket delivery, human-in-the-loop
-// futures, and the running LangGraph task IN PROCESS, so a given conversation
-// must always reach the SAME backend replica for reconnect + HITL to work. When
-// aiq-agent runs >1 replica (a StatefulSet), pin each conversation to a specific
-// pod via a stable hash of conversationId -> that pod's stable DNS name. Falls
-// back to the load-balanced Service when there's 1 replica, no pod template, or
-// no conversationId — so single-replica behavior is unchanged.
+// With GRID_CHAT_AFFINITY on (the default, ADR-0028) each conversation is pinned
+// to one aiq-agent pod by a stable hash of conversationId -> that pod's stable
+// DNS name, so the in-process socket, HITL future and running task are always
+// reachable. With it off (ADR-0080) every socket goes to the load-balanced
+// Service and the conversation bus decides, per turn, which replica runs it, so
+// the backend can autoscale. Either way a single replica, no pod template or no
+// conversationId reaches the load-balanced Service. The rule lives in
+// src/lib/proxy/backend-target.js.
+const { affinityEnabled, createBackendTargetPicker } = require('./src/lib/proxy/backend-target.js')
 const BACKEND_REPLICAS = Math.max(1, parseInt(process.env.BACKEND_REPLICAS || '1', 10) || 1)
 // Per-pod WS DNS template with a literal `{i}`, e.g.
 // an in-cluster headless-service pod address like
 // aiq-agent-{i}.aiq-agent-headless:8000 (ws, in-cluster only) supplied via env.
 // nosemgrep: javascript.lang.security.detect-insecure-websocket.detect-insecure-websocket
 const BACKEND_POD_WS_TEMPLATE = process.env.BACKEND_POD_WS_TEMPLATE || ''
+const CHAT_AFFINITY = affinityEnabled(process.env.GRID_CHAT_AFFINITY)
+const pickBackendWsTarget = createBackendTargetPicker({
+  replicas: BACKEND_REPLICAS,
+  podTemplate: BACKEND_POD_WS_TEMPLATE,
+  affinity: CHAT_AFFINITY,
+  serviceUrl: BACKEND_WS_URL,
+})
 
 // How many frontend replicas this deployment runs (Pulumi passes the min count).
 // Used only to loudly flag a multi-replica deploy that is missing the shared
@@ -180,26 +187,12 @@ const SHUTDOWN_DRAIN_MS = Math.max(
   0,
   parseInt(process.env.GRID_SHUTDOWN_DRAIN_MS || '', 10) || 2000
 )
+// The list the app pushes its flush-on-exit functions onto (see cleanExit).
+const SHUTDOWN_HOOKS_KEY = '__gridShutdownHooks'
+const SHUTDOWN_HOOKS_MS = 2000
 // Set once SIGTERM/SIGINT arrives: readiness starts failing and new WebSocket
 // upgrades are refused, while everything already in flight runs to completion.
 let draining = false
-
-// FNV-1a: stable, dependency-free, well-distributed for short ids.
-function hashToIndex(str, mod) {
-  let h = 0x811c9dc5
-  for (let i = 0; i < str.length; i++) {
-    h ^= str.charCodeAt(i)
-    h = Math.imul(h, 0x01000193)
-  }
-  return (h >>> 0) % mod
-}
-
-function pickBackendWsTarget(conversationId) {
-  if (BACKEND_REPLICAS <= 1 || !BACKEND_POD_WS_TEMPLATE || !conversationId) {
-    return BACKEND_WS_URL
-  }
-  return BACKEND_POD_WS_TEMPLATE.replace('{i}', String(hashToIndex(String(conversationId), BACKEND_REPLICAS)))
-}
 
 // ── Upstream reachability and teardown ──
 // A backend that is not there for an upgrade (rollout, restart: issues #270,
@@ -852,8 +845,8 @@ const startServer = async () => {
           req,
           socket,
           head,
-          // Conversation affinity: pin this conversation to its owning backend
-          // replica so in-process WS/HITL/task state is always reachable.
+          // Conversation affinity (GRID_CHAT_AFFINITY): pin this conversation to
+          // its owning backend replica, or hand it to the Service when off.
           { target: pickBackendWsTarget(conversationId), changeOrigin: true },
           // http-proxy also calls this AFTER the upgrade, for an upstream socket
           // error; the handler never writes a 502 into a live WebSocket.
@@ -913,7 +906,7 @@ const startServer = async () => {
     console.log(`
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
   Frontend: http://localhost:${port}
-  Backend:  ${BACKEND_HTTP_URL}
+  Chat:     ${BACKEND_CHAT_URL}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 `)
   })
@@ -921,12 +914,30 @@ const startServer = async () => {
   // Graceful shutdown. `server.close()` stops accepting new connections and
   // resolves once every existing one (including WebSockets) has ended, so the
   // timer is the hard ceiling on how long a rolling update waits for this pod.
+  //
+  // Before exiting, run what the app registered to flush (PostHog's queued
+  // exceptions, ADR-0100): `src/instrumentation.ts` pushes async functions onto
+  // `globalThis.__gridShutdownHooks`, because this file cannot import it. They
+  // get SHUTDOWN_HOOKS_MS, on top of the drain, and a hook that fails or hangs
+  // never keeps the pod alive.
+  let exiting = false
+  const exitAfterHooks = () => {
+    if (exiting) return
+    exiting = true
+    const hooks = Array.isArray(globalThis[SHUTDOWN_HOOKS_KEY]) ? globalThis[SHUTDOWN_HOOKS_KEY] : []
+    const ceiling = setTimeout(() => process.exit(0), SHUTDOWN_HOOKS_MS)
+    Promise.allSettled(hooks.map((hook) => hook())).finally(() => {
+      clearTimeout(ceiling)
+      process.exit(0)
+    })
+  }
+
   const cleanExit = (signal) => {
     if (draining) return
     draining = true
     console.log(`\nShutting down (${signal}) — draining for up to ${SHUTDOWN_DRAIN_MS}ms...`)
-    server.close(() => process.exit(0))
-    setTimeout(() => process.exit(0), SHUTDOWN_DRAIN_MS)
+    server.close(exitAfterHooks)
+    setTimeout(exitAfterHooks, SHUTDOWN_DRAIN_MS)
   }
 
   process.once('SIGTERM', () => cleanExit('SIGTERM'))

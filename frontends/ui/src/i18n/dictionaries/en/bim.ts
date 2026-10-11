@@ -7,7 +7,7 @@ export const bim = {
     structure: 'Structure',
     quantities: 'Quantities',
     revisions: 'Revisions',
-    // The Büroarchiv has no project — so no Gebäudeklasse and no Hauptnutzung
+    // The Büroablage has no project — so no Gebäudeklasse and no Hauptnutzung
     // to check against. Disabled rather than hidden: a missing tab reads as
     // the Prüfbuch having been lost.
     complianceNeedsProject: 'Available inside a project',
@@ -214,7 +214,7 @@ export const bim = {
       save: 'Save confirmation',
       cancel: 'Cancel',
       noteLabel: 'Why this is settled',
-      notePlaceholder: 'e.g. checked against the plan, agreed with the fire-safety consultant …',
+      notePlaceholder: 'e.g. checked against the drawing, agreed with the fire-safety consultant …',
     },
     card: {
       export: 'Open items as BCF',
@@ -446,7 +446,7 @@ export const bim = {
     xrayNeedsTarget: 'See through — select an element or open a highlighted answer first',
     view: {
       iso: 'Free',
-      top: 'Plan',
+      top: 'Top view',
       north: 'North',
       south: 'South',
       east: 'East',

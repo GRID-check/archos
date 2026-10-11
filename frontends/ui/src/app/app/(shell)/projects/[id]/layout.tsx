@@ -8,6 +8,10 @@ import { NavigationTrailLabel, ProjectSectionFrame } from '@/components/shell'
 import { PRODUCT_NAME } from '@/lib/brand'
 import { FilePreviewBridge } from '@/features/documents/components/file-preview-host'
 import { ProjectFileDrop } from '@/features/documents/components/project-file-drop'
+import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
+import { ProjectStatusBanner } from '@/features/projects/components/project-status-banner'
+import { lifecycleViewOf } from '@/lib/projects/project-status'
+import { holdsManageEvenWhenClosed } from '@/lib/projects/settings-access'
 
 interface ProjectLayoutProps {
   children: React.ReactNode
@@ -73,13 +77,24 @@ export default async function ProjectLayout({
     const { id } = await params
     // View access is enough to enter the project shell; per-section controls
     // (danger zone, member management) are gated inside their own pages.
-    await requireProjectAccess(session, id, 'project:view')
+    const access = await requireProjectAccess(session, id, 'project:view')
 
     // Soft-deleted projects are gone for everyone — including org admins, who
     // bypass the per-project check inside requireProjectAccess. `findProjectInOrg`
     // excludes them by default, so a missing row IS the soft-deleted case.
     const current = await findProjectInOrg(id, session.organizationId)
     if (!current) notFound()
+    // Whether the banner of a paused or closed project offers the way out of
+    // it; an active project has no banner, so asks nothing.
+    // Asked as a permission (`project:manage`), never read off the role name.
+    // An outage hides the banner's control rather than failing every page of
+    // the project, and is logged, so it does not pass for a missing permission.
+    const canChangeStatus =
+      current.status !== 'active' &&
+      (await holdsManageEvenWhenClosed(session, id).catch((error: unknown) => {
+        console.error('[projects] could not ask project:manage for the status banner:', error)
+        return false
+      }))
 
     return (
       <>
@@ -88,14 +103,30 @@ export default async function ProjectLayout({
             "Zurück zu <project>" rather than a path it can only read an id out
             of — including the org-scope rail's own back control. */}
         <NavigationTrailLabel label={current.name} />
-        <FilePreviewBridge>
-          {/* A file dropped on any page of the project lands in its Dateien. */}
-          <ProjectFileDrop projectId={id}>
-            <ProjectSectionFrame projectId={id} projectName={current.name}>
-              {children}
-            </ProjectSectionFrame>
-          </ProjectFileDrop>
-        </FilePreviewBridge>
+        {/* Which project, and where it stands (ADR-0090, ADR-0098), for every
+            surface below: the banner, file previews, chat source chips. */}
+        <CurrentProjectProvider
+          value={{
+            id,
+            name: current.name,
+            status: current.status,
+            closedAt: current.closedAt?.toISOString() ?? null,
+            readsBecauseClosed: access.readsBecauseClosed,
+            lifecycle: lifecycleViewOf(current),
+            canChangeStatus,
+          }}
+        >
+          <ProjectStatusBanner />
+          <FilePreviewBridge>
+            {/* A file dropped on any page of the project lands in its Dateien;
+                a closed project takes none. */}
+            <ProjectFileDrop projectId={id} disabled={current.status === 'closed'}>
+              <ProjectSectionFrame projectId={id} projectName={current.name}>
+                {children}
+              </ProjectSectionFrame>
+            </ProjectFileDrop>
+          </FilePreviewBridge>
+        </CurrentProjectProvider>
       </>
     )
   })

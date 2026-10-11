@@ -15,6 +15,7 @@
 
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
+import { REVIEWER_READER } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
@@ -110,7 +111,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     const seen: string[] = []
     let cursor: import('./list-cursor').DocumentListCursor | undefined
     for (let guard = 0; guard < 10; guard++) {
-      const page = await repo.listProjectDocumentPage(projectId, ORG, { limit: 2, cursor })
+      const page = await repo.listProjectDocumentPage(projectId, ORG, { limit: 2, cursor, reader: REVIEWER_READER })
       seen.push(...page.rows.map((row) => row.id))
       if (!page.nextCursor) break
       cursor = page.nextCursor
@@ -123,7 +124,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     const seen: string[] = []
     let cursor: import('./list-cursor').DocumentListCursor | undefined
     for (let guard = 0; guard < 10; guard++) {
-      const page = await inTenant(() => archiv.listArchivDocuments(ORG, { limit: 3, cursor }))
+      const page = await inTenant(() => archiv.listArchivDocuments(ORG, { limit: 3, cursor, reader: REVIEWER_READER }))
       seen.push(...page.rows.map((row) => row.id))
       if (!page.nextCursor) break
       cursor = page.nextCursor
@@ -132,14 +133,56 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
   })
 
   it('says a full last page is the last one', async () => {
-    const page = await repo.listProjectDocumentPage(projectId, ORG, { limit: CREATED_AT.length })
+    const page = await repo.listProjectDocumentPage(projectId, ORG, { limit: CREATED_AT.length, reader: REVIEWER_READER })
     expect(page.rows).toHaveLength(CREATED_AT.length)
     expect(page.nextCursor).toBeNull()
   })
 
+  /**
+   * The rescan job's walk over the failed set: oldest first, a keyset instead
+   * of an exclusion list, so rows that STAY failed cannot starve the rows behind
+   * them and the job's whole position is one cursor it keeps in its payload.
+   */
+  it('walks the failed documents once each, oldest first, ignoring the ones that were read', async () => {
+    const statuses = ['failed', 'error', 'uploaded', 'failed', 'completed', 'failed', 'failed']
+    await inTenant(async () => {
+      for (const [index, createdAt] of CREATED_AT.entries()) {
+        await db.execute(sql`
+          INSERT INTO documents
+            (organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, created_at)
+          VALUES
+            (${ORG}, ${USER}, ${`failedwalk-${index}.pdf`}, ${`k/failedwalk/${index}`}, 'coll_listpage',
+             ${statuses[index]}, 'project', ${projectId}::uuid, ${createdAt}::timestamptz)
+        `)
+      }
+    })
+    const expected = await inTenant(async () =>
+      Array.from(
+        await db.execute<{ id: string }>(sql`
+          SELECT id FROM documents
+          WHERE organization_id = ${ORG} AND status IN ('failed', 'error', 'uploaded')
+          ORDER BY created_at ASC, id ASC
+        `),
+      ).map((row) => String(row.id)),
+    )
+
+    const seen: string[] = []
+    let cursor: import('./list-cursor').DocumentListCursor | null = null
+    for (let guard = 0; guard < 10; guard++) {
+      const page: Awaited<ReturnType<typeof repo.listFailedDocumentPageInOrg>> =
+        await repo.listFailedDocumentPageInOrg(ORG, { limit: 2, cursor })
+      seen.push(...page.ids)
+      if (!page.nextCursor) break
+      cursor = page.nextCursor
+    }
+
+    expect(expected).toHaveLength(6)
+    expect(seen).toEqual(expected)
+  })
+
   it('finds an Archiv document by name whatever page it is on', async () => {
     const oldest = `norm-${CREATED_AT.length - 1}.pdf`
-    const rows = await inTenant(() => archiv.findArchivDocumentsByFilenames(ORG, [oldest]))
+    const rows = await inTenant(() => archiv.findArchivDocumentsByFilenames(ORG, [oldest], { reader: REVIEWER_READER }))
     expect(rows.map((row) => row.filename)).toEqual([oldest])
   })
 
@@ -177,7 +220,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
       'Übersicht.pdf'.normalize('NFC'),
       'grundriss eg.pdf',
       'plan-0.pdf',
-    ])
+    ], { reader: REVIEWER_READER })
 
     const byName = Object.fromEntries(rows.map((row) => [row.filename, row]))
     expect(Object.keys(byName).sort()).toEqual(

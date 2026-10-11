@@ -76,10 +76,20 @@ SUMMARIES_FILE = RELNOTES_DIR / "summaries.yaml"
 PRELUDE_SECTION = "prelude"
 
 # Sections reno keeps and the public changelog never shows. The changelog on
-# piloti.at is written for the architect using Piloti; a note that only the people
-# running the platform can act on (model defaults, the Platform area, deployment
-# and migration steps) goes here instead. `task release:preview` still lists it.
-INTERNAL_SECTIONS = frozenset({"operators"})
+# piloti.at is product news for the architect using Piloti, not a bug register,
+# so three kinds of note are kept in the repository and off the page:
+#
+# * `operators`: only the people running the platform can act on it (model
+#   defaults, the Platform area, deployment and migration steps);
+# * `security`: a vulnerability, a hardening, a dependency bumped for a CVE. The
+#   public page named a remote-code-execution flaw before this was internal;
+# * `incident`: a severe fix, something that should never have happened (data
+#   lost or kept after deletion, a permission or legal hold that did not hold,
+#   an answer passed as checked when it was not, a false claim on the site).
+#
+# A customer who must hear about a security or incident fix is told directly,
+# not by a changelog line. `task release:preview` still lists all three.
+INTERNAL_SECTIONS = frozenset({"operators", "security", "incident"})
 
 # German titles for the sections defined in releasenotes/config.yaml. The English
 # side lives in that config (reno owns it); this is the other half. They are
@@ -91,6 +101,7 @@ SECTION_TITLES_DE = {
     "improvements": "Verbesserungen",
     "fixes": "Fehlerbehebungen",
     "security": "Sicherheit",
+    "incident": "Schwere Fehler",
     "deprecations": "Auslaufende Funktionen",
     "upgrade": "Hinweise zur Umstellung",
     "other": "Sonstiges",
@@ -109,8 +120,9 @@ MAX_SENTENCES = 2
 # A week's summary covers a dozen notes, so it gets a little more room than one.
 SUMMARY_MAX_LENGTH = 500
 SUMMARY_MAX_SENTENCES = 3
-# An `operators` note may carry a migration step, so it gets two more sentences.
-OPERATOR_MAX_SENTENCES = 4
+# An internal note may carry a migration step or the cause of an incident, so it
+# gets two more sentences. Nobody outside the repository reads it.
+INTERNAL_MAX_SENTENCES = 4
 
 # The source language is English; German is generated from it. A note written
 # in German is published as "English" on /en/changelog and translated from German
@@ -142,6 +154,135 @@ OPERATOR_PATTERNS = re.compile(
     re.IGNORECASE,
 )
 
+# Phrasing that marks a note as a security or severe fix. The public changelog is
+# product news: a vulnerability or a data-loss bug belongs in `security` or
+# `incident`, which are kept and never published. Deliberately short: each word
+# here blocks an author, so only phrases that cannot describe an ordinary fix.
+SEVERE_PATTERNS = re.compile(
+    r"(vulnerab\w*|Sicherheitsl(ü|ue)cke\w*|remote code|\bCVE-\d|\bexploit\w*"
+    r"|permissions? (check )?bypass\w*|bypass\w* (the |a )?permissions?|Berechtigung\w* umgangen"
+    r"|data loss|Datenverlust\w*)",
+    re.IGNORECASE,
+)
+
+# Words a reader of the public changelog should not have to meet. The changelog is
+# written for an architect who uses Piloti, so a word goes here when that reader
+# cannot act on it. Four kinds are listed: the names of the services underneath
+# Piloti (databases, object storage, the tracing platform, the model gateway); the
+# interfaces and formats the services speak (API, webhook, JSON, schema); the
+# mechanics of shipping and running software (deploy, staging, pipeline, commit,
+# container); and the internals of search and the model (index, embedding, token,
+# prompt, cache), together with the switches and measurements an engineer reads
+# (feature flag, configuration, latency, trace). The words the Piloti screens
+# themselves show (Papierkorb, Quarantäne, Steckbrief, IFC and the rest) are product
+# terms, not jargon, and are deliberately not here. Matching ignores case and a
+# trailing s or es; a space in a term matches any space; a hyphen is a hyphen.
+# Spellings that differ only by case are listed once; the match ignores case anyway.
+PUBLIC_JARGON = (
+    "API",
+    "API key",
+    "SDK",
+    "endpoint",
+    "endpoints",
+    "webhook",
+    "JSON",
+    "YAML",
+    "schema",
+    "migration",
+    "migrations",
+    "backfill",
+    "Langfuse",
+    "KEDA",
+    "Kubernetes",
+    "Postgres",
+    "PostgreSQL",
+    "Redis",
+    "Dragonfly",
+    "SeaweedFS",
+    "S3",
+    "Dask",
+    "OpenRouter",
+    "NeMo",
+    "WebSocket",
+    "socket",
+    "container",
+    "pod",
+    "replica",
+    "cluster",
+    "deploy",
+    "deployed",
+    "deployment",
+    "deployments",
+    "staging",
+    "pipeline",
+    "CI",
+    "commit",
+    "branch",
+    "repository",
+    "regex",
+    "hash",
+    "cache",
+    "cached",
+    "index",
+    "indexed",
+    "indexing",
+    "reindex",
+    "re-index",
+    "re-indexed",
+    "re-indexing",
+    "embedding",
+    "embeddings",
+    "vector",
+    "token",
+    "tokens",
+    "prompt",
+    "prompts",
+    "worker",
+    "workers",
+    "queue",
+    "queued",
+    "config",
+    "configuration",
+    "environment variable",
+    "feature flag",
+    "flag",
+    "service",
+    "microservice",
+    "backend",
+    "frontend",
+    "rate limit",
+    "autoscaling",
+    "latency",
+    "telemetry",
+    "tracing",
+    "trace",
+    "traces",
+    "observability",
+    "metric",
+    "metrics",
+    "payload",
+    "parser",
+    "ingestion",
+    "Endpunkt",
+    "Endpunkte",
+    "Migrationen",
+    "gecacht",
+    "indexiert",
+    "indexieren",
+    "Indexierung",
+    "Re-Indexierung",
+    "Vektor",
+    "Warteschlange",
+    "Konfiguration",
+    "Umgebungsvariable",
+    "Feature-Flag",
+    "Replik",
+    "Latenz",
+    "Telemetrie",
+    "Metrik",
+    "Metriken",
+)
+
 # reStructuredText that reno tolerates and the changelog page would render as
 # literal punctuation: directives, comments, roles, literal markup, code fences.
 RST_PATTERNS = [
@@ -170,7 +311,8 @@ TEMPLATE_MARKERS = [
     "say what is new, from the reader's side",
     "say what got better about something they already had",
     "say what used to go wrong",
-    "only for changes a customer must know about",
+    "only for a vulnerability or hardening; never published",
+    "only for a severe fix that should never have happened; never published",
     "name what is going away",
     "only when the reader has to do something themselves",
     "anything genuinely user-visible",
@@ -321,8 +463,8 @@ def group_notes(
       six weeks, some holding one note and some fifty; an ISO week is the unit a
       reader can take in.
 
-    Only sections in `section_order` survive, which is how the `operators`
-    section stays off the public page. A group's summary comes from
+    Only sections in `section_order` survive, which is how the internal
+    sections (`INTERNAL_SECTIONS`) stay off the public page. A group's summary comes from
     `summaries` (releasenotes/summaries.yaml, keyed by group id) and falls back
     to a reno prelude.
     """
@@ -625,7 +767,7 @@ def lint_note(filename: str, raw: str, valid_sections: set[str]) -> list[str]:
                 problems.append(f"{filename}: section `{section}` has an entry that is not text.")
                 continue
             public = section not in INTERNAL_SECTIONS
-            limit = MAX_SENTENCES if public else OPERATOR_MAX_SENTENCES
+            limit = MAX_SENTENCES if public else INTERNAL_MAX_SENTENCES
             issues = lint_text(entry, public=public, max_sentences=limit)
             problems.extend(f"{filename} ({section}): {issue}" for issue in issues)
     return problems
@@ -645,6 +787,50 @@ def _section_entries(section: str, body: Any, valid_sections: set[str]) -> tuple
     if not body:
         return [], f"section `{section}` is empty. Fix: delete the section."
     return body, None
+
+
+def _jargon_pattern(term: str) -> re.Pattern[str]:
+    """One term as a whole-word, case-insensitive pattern.
+
+    `(?<!\\w)` and `(?!\\w)` make a term a whole word, so `S3` does not match `S30`
+    and `API` does not match `Kapitel`. A hyphen is a literal character, so
+    `re-index` does not match `re index`. A space matches any run of whitespace. A
+    trailing `s` or `es` is allowed, so `APIs` and `indexes` count; a longer word
+    that merely starts with the term (`Tokenizer`) does not.
+    """
+    body = r"\s+".join(re.escape(part) for part in term.split(" "))
+    return re.compile(rf"(?<!\w){body}(?:e?s)?(?!\w)", re.IGNORECASE)
+
+
+# Longest first, so `feature-flag` claims its text before the bare `flag` can.
+_JARGON_PATTERNS = tuple(_jargon_pattern(term) for term in sorted(PUBLIC_JARGON, key=len, reverse=True))
+
+
+def jargon_hits(text: str) -> list[str]:
+    """The public-jargon words in `text`, as written, in reading order, each once."""
+    claimed: list[tuple[int, int]] = []
+    hits: list[tuple[int, str]] = []
+    for pattern in _JARGON_PATTERNS:
+        for match in pattern.finditer(text):
+            if any(match.start() < end and start < match.end() for start, end in claimed):
+                continue
+            claimed.append(match.span())
+            hits.append((match.start(), match.group(0)))
+    seen: set[str] = set()
+    words: list[str] = []
+    for _, word in sorted(hits):
+        if word.lower() not in seen:
+            seen.add(word.lower())
+            words.append(word)
+    return words
+
+
+def _jargon_issue(word: str) -> str:
+    return (
+        f'uses "{word}", a technical word a reader of the changelog cannot act on. Fix: say what '
+        "the reader sees or can do, in the words the Piloti screens use (Papierkorb, Archiv, "
+        "Steckbrief); leave out the name of the system and the mechanism behind it."
+    )
 
 
 def lint_text(
@@ -674,6 +860,13 @@ def lint_text(
             "reads as a note for the people who run the platform. Fix: move it to the `operators` "
             "section, which stays off the public changelog; or rewrite it for the architect using Piloti."
         )
+    if public and SEVERE_PATTERNS.search(text):
+        issues.append(
+            "reads as a security or severe fix. Fix: move it to `security` (a vulnerability or hardening) "
+            "or `incident` (data lost, a permission that did not hold); both are kept and never published."
+        )
+    if public:
+        issues.extend(_jargon_issue(word) for word in jargon_hits(text))
     if len(text) < MIN_LENGTH:
         issues.append(f"too short ({len(text)} chars) to mean anything to a reader. Fix: say what changed for them.")
     if len(text) > max_length:
@@ -776,8 +969,9 @@ def cmd_lint(args: argparse.Namespace) -> int:
         for problem in problems:
             print(f"  ✗ {problem}", file=sys.stderr)
         print(
-            "\nNotes are published to https://piloti.at/changelog, for the architect using\n"
-            "Piloti. Good and bad examples: docs/contributing/release-notes.md.\n",
+            "\nNotes in the public sections are published to https://piloti.at/changelog, for\n"
+            "the architect using Piloti; `security`, `incident` and `operators` never are.\n"
+            "Good and bad examples: docs/contributing/release-notes.md.\n",
             file=sys.stderr,
         )
         return 1

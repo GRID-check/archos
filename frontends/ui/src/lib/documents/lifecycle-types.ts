@@ -149,6 +149,12 @@ export const DOCUMENT_VERSION_EFFECTS = [
    * that overrides the rule above.
    */
   'openRevisionTask',
+  /**
+   * Tell the people who follow this document that a newer Fassung of it is
+   * published (`./fassung-notify`). A no-op for a first version. Detached and
+   * logged: it never fails the transition.
+   */
+  'announceNewFassung',
 ] as const
 export type DocumentVersionEffect = (typeof DOCUMENT_VERSION_EFFECTS)[number]
 
@@ -275,7 +281,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['audit', 'eventHint'],
+    effects: ['audit', 'eventHint', 'announceNewFassung'],
   },
   {
     from: null,
@@ -376,7 +382,7 @@ export const DOCUMENT_VERSION_TRANSITIONS = [
     requires: {},
     auditAction: 'document.version.published',
     promotes: true,
-    effects: ['ingestPublished', 'audit', 'eventHint'],
+    effects: ['ingestPublished', 'audit', 'eventHint', 'announceNewFassung'],
   },
 ] as const satisfies readonly DocumentVersionTransition[]
 
@@ -639,6 +645,14 @@ export const documentVersionViewSchema = z.object({
   createdBy: z.string(),
   createdAt: z.string(),
   updatedAt: z.string(),
+  /**
+   * Whether THIS reader may open or download the version's bytes
+   * (`…/versions/{id}/file`, `/content`). False for an earlier upload whose bytes
+   * no screening verdict on record judged (ADR-0086), unless the reader is its
+   * uploader or a reviewer. Only the version list carries it; absent reads as
+   * readable, and the routes decide again either way.
+   */
+  bytesReadable: z.boolean().optional(),
 })
 
 export type DocumentVersionView = z.infer<typeof documentVersionViewSchema>
@@ -648,6 +662,19 @@ export const documentVersionListResponseSchema = z.object({
   lifecycle: z.enum(DOCUMENT_LIFECYCLES),
   publishedVersionId: z.string().nullable(),
   versions: z.array(documentVersionViewSchema),
+  /**
+   * Who the newest version's open review round was sent to (the recipients of
+   * its unresolved `document.review_requested` items). Empty when no round is
+   * open. The rail says „Nächster Schritt: Freigabe durch …" with these, rather
+   * than guessing from the assignees.
+   */
+  reviewerUserIds: z.array(z.string()).optional(),
+  /**
+   * Display names for the user ids this listing mentions (every act on every
+   * version, and the reviewers above), so the rail names a person instead of
+   * „jemandem". An id the directory cannot resolve is absent.
+   */
+  people: z.array(z.object({ userId: z.string(), name: z.string() })).optional(),
 })
 
 export type DocumentVersionListResponse = z.infer<typeof documentVersionListResponseSchema>

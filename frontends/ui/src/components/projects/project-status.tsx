@@ -1,74 +1,108 @@
 'use client'
 
 /**
- * Project status — derivation helper + chip.
+ * Project status: the derivation helper and the chip (ADR-0098, ADR-0090).
  *
- * Honesty note: the projects table has NO status/archived/completed column
- * (see `src/lib/db/schema/projects.ts` — the only lifecycle field is
- * `deletedAt`), and soft-deleted rows never reach the grid (filtered upstream
- * with `WHERE deleted_at IS NULL`; they surface in the "Recently deleted"
- * panel instead). So every project a card renders is, truthfully, active.
- * A "Done/Abgeschlossen" state is deliberately NOT invented here — it appears
- * only once the data model grows a real completion/archive concept.
+ * A project is `active`, `paused` or `closed` (`projects.status`, migrations
+ * 0116 and 0129); a closed one says whether it was completed or not realized. A
+ * soft-deleted project never reaches a surface that shows this chip; it lives in
+ * the "Recently deleted" panel.
+ *
+ * Two chips, one decision each:
+ *   - {@link ProjectStatusChip}: the project's own status, where a project is
+ *     named (card, row, the Overview's hero), and only when it is NOT active:
+ *     active is the normal case, and a chip on every row says nothing.
+ *   - {@link ProjectClosedChip}: on a FILE, wherever it appears, to say which
+ *     closed project it belongs to. A file of an active project carries
+ *     nothing; the project it is in is the page around it.
  */
 
 import type { JSX } from 'react'
 import type { CSSProperties } from 'react'
-import { Activity } from 'lucide-react'
+import { Activity, Lock, PauseCircle } from 'lucide-react'
 import { Chip } from '@/components/ui/chip'
 import type { Project } from '@/lib/db/schema'
+import { toProjectStatus, type ProjectOutcome, type ProjectStatus } from '@/lib/projects/project-status'
 import { useTranslations } from '@/i18n'
 
-export type ProjectStatus = 'active'
+export type { ProjectStatus }
 
-/**
- * Derive the display status for a project that reached the grid. Currently the
- * only value the data can support is `active` (see module note); the helper
- * exists so call sites stay unchanged when a real status field lands.
- */
-export function getProjectStatus(_project: Pick<Project, 'deletedAt'>): ProjectStatus {
-  return 'active'
+/** The display status of a project that reached a surface. */
+export function getProjectStatus(project: Pick<Project, 'status'>): ProjectStatus {
+  return toProjectStatus(project.status)
 }
 
 /**
- * Status colors via the `--status-*` token family (spec §4). The tokens are
- * being introduced by the parallel token retune (WS-1); until they exist the
- * chip falls back to the semantic success feedback tokens — never hex, and
- * theme-aware in both cases.
+ * Status colors via the `--status-*` token family (spec §4), with the semantic
+ * success tokens as the fallback for `active`. A closed project is quiet: the
+ * muted chip carries it, and the lock icon says what closed means.
  */
-const STATUS_STYLE: Record<ProjectStatus, CSSProperties> = {
+const STATUS_STYLE: Record<ProjectStatus, CSSProperties | undefined> = {
   active: {
     backgroundColor:
       'var(--status-active-tint, color-mix(in oklch, var(--status-active, var(--text-color-feedback-success)) 14%, transparent))',
     color: 'var(--status-active-text, var(--status-active, var(--text-color-feedback-success)))',
   },
+  paused: undefined,
+  closed: undefined,
 }
 
-/**
- * Chip variant per status. `active` is the project-green family (`success`);
- * the mapping stays explicit so a second status lands here, not in a call site.
- */
-const STATUS_VARIANT: Record<ProjectStatus, 'success' | 'muted'> = {
+const STATUS_VARIANT: Record<ProjectStatus, 'success' | 'muted' | 'outline'> = {
   active: 'success',
+  paused: 'outline',
+  closed: 'muted',
+}
+
+const STATUS_ICON: Record<ProjectStatus, typeof Activity> = {
+  active: Activity,
+  paused: PauseCircle,
+  closed: Lock,
 }
 
 interface ProjectStatusChipProps {
   status: ProjectStatus
+  /** How a closed project ended: a project that was not realized says so. */
+  outcome?: ProjectOutcome | null
+  size?: 'sm' | 'md'
 }
 
-/** Small tinted status chip (Aktiv / Active) shown on every project card. */
-export function ProjectStatusChip({ status }: ProjectStatusChipProps): JSX.Element {
+/** Small status chip: Aktiv, Ruhend, Abgeschlossen, or Nicht realisiert. */
+export function ProjectStatusChip({ status, outcome = null, size = 'md' }: ProjectStatusChipProps): JSX.Element {
   const t = useTranslations('projects')
-  // `Chip size="md"` owns the geometry (`h-6 px-2.5 text-xs rounded-md`,
-  // `size-3.5` icon) — identical outer box to the hand-rolled span it replaces
-  // (the 2px larger icon is paid for by the chip's 2px tighter icon gap, so the
-  // width does not move). `STATUS_STYLE` rides as the inline override so the
-  // `--status-active` tokens win where they exist, with the `success` variant
-  // as the theme-aware fallback either way.
+  const Icon = STATUS_ICON[status]
+  const label = status === 'closed' && outcome === 'cancelled' ? t('card.status.cancelled') : t(`card.status.${status}`)
   return (
-    <Chip variant={STATUS_VARIANT[status]} size="md" style={STATUS_STYLE[status]}>
-      <Activity aria-hidden />
-      {t(`card.status.${status}`)}
+    <Chip variant={STATUS_VARIANT[status]} size={size} style={STATUS_STYLE[status]}>
+      <Icon aria-hidden />
+      {label}
+    </Chip>
+  )
+}
+
+/** The chip a named project carries: none while it is active. */
+export function ProjectStatusMark({
+  project,
+  size = 'sm',
+}: {
+  project: Pick<Project, 'status' | 'closedOutcome'>
+  size?: 'sm' | 'md'
+}): JSX.Element | null {
+  const status = getProjectStatus(project)
+  if (status === 'active') return null
+  return <ProjectStatusChip status={status} outcome={project.closedOutcome} size={size} />
+}
+
+/**
+ * A file's project, said to be closed: „Projekt Seestadt · abgeschlossen".
+ * The name is the project's; without one the chip says only that it is closed.
+ */
+export function ProjectClosedChip({ projectName, className }: { projectName?: string | null; className?: string }): JSX.Element {
+  const t = useTranslations('projects')
+  const label = projectName ? t('lifecycle.fileChip', { name: projectName }) : t('lifecycle.fileChipNoName')
+  return (
+    <Chip variant="muted" size="sm" className={className} title={label}>
+      <Lock aria-hidden />
+      <span className="max-w-[16rem] truncate">{label}</span>
     </Chip>
   )
 }

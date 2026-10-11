@@ -2,9 +2,9 @@
 
 # PILOTI
 
-### AI Compliance Assistant for Austrian Building Regulations
+### The workspace for architects
 
-Navigate the **OIB Richtlinien** — Austria's building-code framework — with a multi-agent AI that searches regulations, interprets requirements, and **cites its sources**. Project-centric: each building project has its own documents, chat history, and an evolving knowledge memory. Built on the **NVIDIA AI-Q Blueprint** / NeMo Agent Toolkit.
+A planning office runs its work in Piloti: every project, every process, the whole organization. **Piloti, the agent, is a colleague in that office**. It reads everything the office holds: the project's documents, the Büroablage, the building model, past projects. It takes part in the work, from the intake to the last report, and grounds every claim in a passage you can open. Building law (OIB-Richtlinien, laws via RIS, the office's own norms) is one of the things it knows well.
 
 [![Python 3.14](https://img.shields.io/badge/Python-3.14-3776AB?logo=python&logoColor=white)](https://python.org)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6?logo=typescript&logoColor=white)](https://typescriptlang.org)
@@ -23,23 +23,20 @@ Navigate the **OIB Richtlinien** — Austria's building-code framework — with 
 
 ---
 
-The OIB Richtlinien are Austria's core building-technical regulations — hundreds of pages covering fire safety, structural integrity, soundproofing, thermal insulation, and accessibility. Architects spend hours cross-referencing paragraphs and verifying compliance.
-
-**Piloti answers OIB questions in seconds** — and remembers what it learns about each project. Upload plans, complete a short intake, and get cited answers through a chat interface built for professionals.
+An architect's work is spread across a file server, a document-exchange portal, mail, CAD, a building model and the heads of the people who did the last project. Piloti puts that work in one place where an agent can read all of it and do part of it. **Read [`VISION.md`](VISION.md) first:** it says what the product is, and every other document describes Piloti that way.
 
 ## What It Does
 
-| Capability | For Architects |
+| The architect's work | What Piloti does there |
 |---|---|
-| **OIB Knowledge Base** | The full OIB Richtlinien (OIB 1–6) are pre-loaded into a vector index. Ask _"fire-resistance requirements for staircases in buildings over 22 m?"_ and get the exact paragraph, cited. |
-| **RAG over Your Documents** | Upload project PDFs (plans, specifications). They are ingested into a **project-scoped** collection and searched alongside the OIBs — never mixed across projects. |
-| **Project & Organization Memory** | Piloti records durable findings about a project (decisions, constraints, open questions) as it works, and carries them into every future conversation. Org-wide memory applies across all your projects. Everything is visible and editable on the project page. |
-| **Rich-UI Cards** | When a structured format helps, the agent answers with a typed **card** (legal-basis citation, summary, profile update) instead of plain prose. |
-| **Multi-Agent Research** | A **LangGraph** pipeline: Piloti answers every turn and decides for itself when a question needs deep research, clarifying the plan on the way — with inspectable thinking traces. Deep research runs as an async job with a live progress panel. |
-| **Web Search** | When the OIBs don't cover a topic, the agent can fall back to **Tavily** web search (a toggleable data source you control). |
-| **Project Lifecycle** | Organise documents and chats per project with **WorkOS FGA** access control, plus a grace-period **soft-delete → restore → hard-purge** pipeline with legal holds. |
-| **Real-Time Answers** | Chat streams over **WebSocket**; the agent's reasoning, sources, and cards appear as it works. |
-| **Enterprise Auth** | Optional **WorkOS AuthKit** SSO with organization-scoped, role-based access. |
+| **Projects and intake** | Each building project has its own documents, people, chats and an intake profile (building class, use, plot, authority). Piloti keeps the profile current as the project establishes new facts. |
+| **Files and the Büroablage** | Folders, uploads of whole folders and ZIPs, versions with Freigabe. Piloti reads every upload and says what it is, which of its Fassungen is current, and what is missing or could not be read. The office's own documents (Büroablage) are on every project. |
+| **The building model** | IFC models in the browser. Piloti reads and measures their elements, and confirmations go into the Prüfbuch. |
+| **Questions about the work** | About a document, a folder, a decision, the model, the law. Answers are grounded in the project's files, the Büroablage and the legal corpus, whichever the question needs, and every claim is cited. |
+| **Tasks and jobs** | Hand Piloti work: deep research, checks, drafted reports, scheduled jobs. Results come back as documents a person reviews and approves. |
+| **Team** | Shared projects and chats, mentions, an inbox, assignments, presence, organization-scoped roles (WorkOS). |
+| **Office knowledge** | Project and organization memory, similar past projects, and the office's conventions, carried into every conversation and visible and editable. |
+| **Building law and norms** | The OIB-Richtlinien, Austrian laws via RIS, and norms an office uploads itself, searched and cited at the passage. One capability among the others. |
 
 ## Architecture
 
@@ -59,7 +56,7 @@ flowchart TB
         FAST["FastAPI (aiq_api plugin)"]
         NAT["NeMo Agent Toolkit"]
         LG["LangGraph<br/>Piloti → (escalate?) clarify → deep researcher"]
-        DASK["Dask — async deep-research jobs"]
+        JOBS["Research queue (Postgres) — deep-research jobs"]
         CHROMA["ChromaDB — oib_knowledge + proj_* + mem_*"]
     end
 
@@ -79,7 +76,7 @@ flowchart TB
     BFF <--> DB
     BFF -->|HTTP| FAST
     BFF -->|internal write API| BFF
-    FAST --> NAT --> LG --> DASK
+    FAST --> NAT --> LG --> JOBS
     LG <--> CHROMA
     BFF -->|upload| SEAWEED
     FAST -.->|/v1/ingest| CHROMA
@@ -118,13 +115,13 @@ cp deploy/.env.example deploy/.env
 # 2. Build and start the full stack
 docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env up -d --build
 
-# 3. OIB knowledge-base ingestion starts automatically in the background when
-#    the aiq-agent container boots — watch its progress in the container logs:
+# 3. The OIB knowledge base starts empty. Upload the Richtlinien PDFs in the
+#    platform-admin UI, or from a directory of PDFs (the backend is on :8000):
+GRID_ADMIN_TOKEN=... uv run python scripts/upload_oib_corpus.py data/oib
+#    Each upload queues its own ingestion; anything not indexed yet is picked up
+#    by the housekeeping service every ten minutes. Watch the container logs:
 docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env logs -f aiq-agent
-# To re-run ingestion manually (incremental — e.g. after adding PDFs to data/oib/,
-#  which ships empty; see data/oib/README.md):
-docker compose -f deploy/compose/docker-compose.yaml --env-file deploy/.env exec aiq-agent python scripts/ingest_oib.py
-# (An admin-token-guarded `POST /v1/admin/oib/sync` endpoint triggers the same re-run over HTTP.)
+# (An admin-token-guarded `POST /v1/admin/oib/sync` endpoint runs a sync cycle now.)
 
 # 4. Open the UI
 open http://localhost:3000
@@ -132,20 +129,20 @@ open http://localhost:3000
 
 > **LLM-agnostic.** Piloti runs against **any OpenAI-compatible API** — OpenRouter, a self-hosted vLLM/Ollama server, Azure OpenAI, NVIDIA NIM, etc. The LLM/embedding provider is not baked in: point the `base_url`, `model_name`, and API-key env at your endpoint in the workflow config (`configs/*.yml`) and set `CONFIG_FILE` accordingly. The shipped **reference config** is `configs/config_oib_openrouter.yml` (OpenAI GPT-5.6 Luna + `text-embedding-3-large`, both via OpenRouter).
 
-The stack runs eight Compose services: `postgres`, `seaweedfs` (+ `seaweedfs-init`), `aiq-agent` (+ a one-shot `aiq-data-permissions`), `frontend`, the `purger` deletion worker, and the `workflow-scheduler` cron worker (ADR-0023; a clean no-op unless workflows are enabled).
+The stack runs eight Compose services: `postgres`, `seaweedfs` (+ `seaweedfs-init`), `aiq-agent` (+ a one-shot `chroma-data-permissions`), `frontend`, the `purger` deletion worker, and the `workflow-scheduler` cron worker (ADR-0023; a clean no-op unless workflows are enabled).
 
 ## Tech Stack
 
 | Layer | Technology | Role |
 |---|---|---|
-| **Frontend** | Next.js 16, React 18, TypeScript, **shadcn/ui + Tailwind v4** | Project-centric chat UI |
+| **Frontend** | Next.js 16, React 18, TypeScript, **shadcn/ui + Tailwind v4** | The workspace UI: projects, files, model, chat, tasks |
 | **Backend** | Python 3.14, FastAPI, Uvicorn | AI endpoint server (`aiq_api` plugin) |
-| **AI Orchestration** | NeMo Agent Toolkit (NAT), LangGraph, Dask | Multi-agent pipeline + async jobs |
+| **AI Orchestration** | NeMo Agent Toolkit (NAT), LangGraph | Multi-agent pipeline + async jobs |
 | **RAG** | ChromaDB, LlamaIndex | Chunking · embeddings · scoped retrieval |
 | **LLM + Embeddings** | **Any OpenAI-compatible endpoint** — reference config: OpenAI GPT-5.6 Luna via OpenRouter | Reasoning, classification, cards, embeddings |
-| **Web Search** | Tavily | Context beyond the OIB corpus |
+| **Web Search** | Tavily | Context beyond the office's documents and the legal corpus |
 | **Database** | PostgreSQL, Drizzle ORM | Projects, conversations, documents, memory, deletion queue |
-| **Object Storage** | SeaweedFS (S3-compatible) | OIB PDFs + uploaded documents |
+| **Object Storage** | SeaweedFS (S3-compatible) | Project and office documents, the legal corpus |
 | **Auth** | WorkOS AuthKit + FGA | Organization-scoped SSO / access control |
 | **Infrastructure** | Docker Compose | Single-command deployment |
 
@@ -161,8 +158,8 @@ The stack runs eight Compose services: `postgres`, `seaweedfs` (+ `seaweedfs-ini
 │   └── benchmarks/         # Evaluation harnesses
 ├── configs/                # Workflow configs — config_oib_openrouter.yml is the working one
 ├── deploy/                 # Docker Compose, Dockerfile, env templates
-├── data/oib/               # Where the OIB PDFs go — operator-provided, ships empty
-├── scripts/                # Utility scripts (ingest_oib.py)
+├── data/oib/               # A local copy of the OIB PDFs for the evals; the platform does not read it
+├── scripts/                # Utility scripts (upload_oib_corpus.py)
 └── docs/                   # Documentation (see docs/architecture/ for the current deep-dives)
 ```
 
@@ -202,9 +199,10 @@ task infra:types
 ```
 
 `task --list` shows everything. The tasks absorb the venv layout
-(`.venv/Scripts` vs `.venv/bin`) and the required `PYTHONPATH=src`.
+(`.venv/Scripts` vs `.venv/bin`) and the `PYTHONPATH=src` that `nat run` and ad-hoc
+scripts need. Bare `pytest` already tests `src/` through `pyproject.toml`.
 
-Note: the UI tsconfig includes test files, so spec type errors block the production `next build`. See [AGENTS.md](AGENTS.md) for the full contributor workflow.
+`task fe:types` typechecks the UI including its specs; `next build` checks production code only (`tsconfig.build.json`). See [AGENTS.md](AGENTS.md) for the full contributor workflow.
 
 ---
 

@@ -39,6 +39,10 @@ import { type ResourceVisibility } from './resource-shares'
 export const DOCUMENT_SCOPES = ['project', 'archiv', 'session'] as const
 export type DocumentScope = (typeof DOCUMENT_SCOPES)[number]
 
+/** The content gate's verdict on a document's current bytes (ADR-0086). */
+export const DOCUMENT_SCREENING_OUTCOMES = ['clean', 'partial', 'unchecked', 'quarantined', 'released'] as const
+export type DocumentScreeningOutcome = (typeof DOCUMENT_SCREENING_OUTCOMES)[number]
+
 /**
  * Whose hand wrote the bytes (migration 0063). The members that exist TODAY:
  *
@@ -396,6 +400,34 @@ export const documents = pgTable('documents', {
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   errorMessage: text('error_message'),
   metadata: jsonb('metadata'),
+  /**
+   * What the content gate concluded about the CURRENT bytes (ADR-0086,
+   * migration 0109). NULL: not screened. `quarantined` pairs with
+   * `status = 'quarantined'`; `released` with a complete release below.
+   */
+  screeningOutcome: text('screening_outcome').$type<DocumentScreeningOutcome>(),
+  /**
+   * The `content_hash` of the bytes `screening_outcome` judged (migration 0123):
+   * written with the verdict from the hash its dispatch recorded, or with a
+   * release. A person's upload passes the hold only while this equals
+   * `content_hash`, so a writer that swaps the bytes and leaves the verdict
+   * holds the file back instead of vouching for bytes nobody checked.
+   */
+  screenedHash: text('screened_hash'),
+  /**
+   * A reviewer's release from quarantine, of the bytes whose `content_hash`
+   * this names. A re-upload under the same id carries a different hash, so it
+   * is screened again. All three or none (CHECK).
+   */
+  screeningReleasedHash: text('screening_released_hash'),
+  screeningReleasedBy: text('screening_released_by'),
+  screeningReleasedAt: timestamp('screening_released_at', { withTimezone: true }),
+  /**
+   * The upload gesture that last wrote this document's bytes (migration 0110),
+   * or NULL for a row no batch wrote. No foreign key: the batch is a pointer
+   * for the upload summary, and pruning it must not take the document along.
+   */
+  uploadBatchId: uuid('upload_batch_id'),
   // No inline `.references()`: the real constraint is composite (below).
   folderId: uuid('folder_id'),
 }, (table) => ({
@@ -452,6 +484,9 @@ export const documents = pgTable('documents', {
    * policy, so same-project implies same-organization — which is what stops one
    * tenant filing a document into another tenant's folder, without a recursive
    * policy and without a subquery.
+   *
+   * It cannot see an Archiv document: `projectId` is NULL and the key is MATCH
+   * SIMPLE. `folderShelfFk` below is the one that does.
    */
   folderProjectFk: foreignKey({
     name: 'documents_folder_id_project_id_fkey',
@@ -459,19 +494,37 @@ export const documents = pgTable('documents', {
     foreignColumns: [projectFolders.id, projectFolders.projectId],
   }).onDelete('cascade'),
   /**
-   * What makes the composite key above actually check anything. `projectId` is
-   * nullable (org-wide `archiv` documents have no project) and a composite
-   * foreign key is MATCH SIMPLE, so it skips the check whenever any column of
-   * the key is NULL — `(someone else's folder, NULL)` passed unexamined. This
-   * leaves the only unchecked case as "no folder to validate".
+   * A document's folder is on the document's own SHELF and in its own TENANT
+   * (migration 0102, ADR-0078). `organizationId` and `scope` are both NOT NULL,
+   * so whenever `folderId` is set the key is all-non-null and MATCH SIMPLE does
+   * check it — including for an Archiv row, which `folderProjectFk` skips.
    *
-   * MATCH FULL would be the reflex fix and is wrong: it demands all-null or
-   * all-non-null, which rejects an ordinary document sitting at the root of a
-   * project.
+   * What it makes impossible: a project document in an Archiv folder (or the
+   * reverse), either one in another tenant's folder, and ANY `session` document
+   * in a folder — no folder row can carry scope `session`, so the key has
+   * nothing to match. `ON DELETE CASCADE` like the key above: the services
+   * re-file documents before they delete a folder, so the cascade is only a
+   * backstop and has to agree with the other one.
    */
-  folderRequiresProject: check(
+  folderShelfFk: foreignKey({
+    name: 'documents_folder_id_organization_id_scope_fkey',
+    columns: [table.folderId, table.organizationId, table.scope],
+    foreignColumns: [projectFolders.id, projectFolders.organizationId, projectFolders.scope],
+  }).onDelete('cascade'),
+  /**
+   * A filed document is a project document or an Archiv one (migrations 0031,
+   * 0102). Its original job was to make `folderProjectFk` checkable — a NULL
+   * `projectId` made the composite key skip, so `(someone else's folder, NULL)`
+   * passed unexamined. `folderShelfFk` now checks every folder reference
+   * whatever the project, so what remains is the shelf rule itself.
+   *
+   * MATCH FULL would be the reflex fix for the old problem and is wrong: it
+   * demands all-null or all-non-null, which rejects an ordinary document
+   * sitting at the root of a project.
+   */
+  folderRequiresShelf: check(
     'documents_folder_requires_project',
-    sql`${table.folderId} IS NULL OR ${table.projectId} IS NOT NULL`
+    sql`${table.folderId} IS NULL OR ${table.projectId} IS NOT NULL OR ${table.scope} = 'archiv'`
   ),
   /**
    * A session document belongs to a conversation in its OWN tenant (migration

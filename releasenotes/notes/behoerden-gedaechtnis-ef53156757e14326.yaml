@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Piloti now remembers what authorities demanded in your past Bescheide and
+    Nachforderungen, and when you ask „Fragt die Behörde das wieder nach?“ it
+    answers with the Auflagen of comparable projects, each citing its Bescheid.
+    Reading a Bescheid at upload takes one extra step.

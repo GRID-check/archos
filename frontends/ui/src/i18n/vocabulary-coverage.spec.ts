@@ -73,6 +73,16 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
     'research.fileSourceCard.statusIngesting',
   ],
 
+  /**
+   * A file of an upload matched what the project already holds, byte for
+   * byte, so it was not sent. The folder-upload plan labels the row before the
+   * upload, and the upload summary counts the same files after it (ADR-0086).
+   */
+  'upload: identical file, not sent again': [
+    'files.folderUpload.action.unchanged',
+    'uploadBatches.summary.counts.unchanged',
+  ],
+
   /** A document's processing broke. */
   'document: processing failed': [
     'files.uploads.row.failed',
@@ -109,6 +119,41 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
    * labelled as something it is not, and the two libraries disagreed.
    */
   'document kind: section or elevation': ['files.filters.kind.section', 'archiv.library.kind.section'],
+
+  /**
+   * The approval status of a Fassung (CONTEXT.md, „Freigabe“). The file pane's
+   * badge, its milestone row and the chat's draft card name the same state.
+   * The card once said „Wartet auf Freigabe“ beside a badge saying „In
+   * Prüfung“, and the state word „Änderungen erbeten“ broke the pair with its
+   * action „Änderungen anfordern“.
+   */
+  'fassung status: draft': ['files.lifecycle.states.draft', 'chat.cards.documentDraft.draftState'],
+  'fassung status: in review': ['files.lifecycle.states.inReview', 'chat.cards.documentDraft.inReview'],
+  'fassung status: changes requested': [
+    'files.lifecycle.states.changesRequested',
+    'files.lifecycle.versions.changesRequested',
+    'chat.cards.documentDraft.changesRequested',
+  ],
+  'fassung status: approved': [
+    'files.lifecycle.states.approved',
+    'files.lifecycle.versions.approved',
+    'chat.cards.documentDraft.approved',
+  ],
+  'fassung status: published': [
+    'files.lifecycle.states.published',
+    'files.lifecycle.versions.published',
+    'chat.cards.documentDraft.published',
+  ],
+  'fassung status: replaced': ['files.lifecycle.states.superseded', 'chat.cards.documentDraft.ersetzt'],
+
+  /** The signature under an approval, on the file and in the inbox row: one sentence. */
+  'fassung approval: the signature': [
+    'files.lifecycle.approveConfirm.checkbox',
+    'collaboration.inbox.review.approveConfirm',
+  ],
+
+  /** Submitting a Fassung for approval, from the file pane and from Piloti's draft card. */
+  'fassung approval: submit': ['files.lifecycle.actions.submit', 'chat.cards.documentDraft.submit'],
 }
 
 const LOCALES = { en, de } as const

@@ -205,7 +205,7 @@ describe('ModelStage — what is on screen', () => {
     }
     // The six view directions used to be six buttons in the bar, which is what
     // pushed the controls anyone uses off the end of the row.
-    expect(screen.queryByRole('button', { name: 'Plan' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Top' })).not.toBeInTheDocument()
   })
 
   it('gives the camera button and the restore button different names', () => {
@@ -1207,7 +1207,7 @@ describe('ModelStage — the file operations on the building', () => {
   })
 })
 
-describe('ModelStage — a model from the Büroarchiv', () => {
+describe('ModelStage — a model from the Büroablage', () => {
   it('deletes it through the org-scoped route, not the project one', async () => {
     // The rail lists the Archiv's models beside the project's, and an Archiv
     // document is 404 on the project delete route by design.

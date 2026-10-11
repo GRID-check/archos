@@ -62,14 +62,14 @@ export const onboarding = {
       },
       createProjectJoined: {
         title: 'Your projects',
-        body: 'Projects appear here as colleagues add you to them. You can also start one yourself: a project holds one building, its documents, the people on it, and a chat that answers from OIB guidelines and Austrian building law.',
+        body: 'Projects appear here as colleagues add you to them. You can also start one yourself: a project holds one building, its documents, the people on it, its tasks and research, and a chat in which Piloti works and cites every source.',
       },
       createProject: {
         title: 'Start with a project',
-        body: 'A project holds one building: its plans and documents, the people working on it, and a chat that answers from OIB guidelines and Austrian building law, with every source cited. A short setup asks about the building, then we show you around inside.',
+        body: 'A project holds one building: its documents, the people working on it, its tasks and research, and a chat where Piloti works with you. Every source is cited, whether building law or your own files. A short setup asks about the building, then we show you around inside.',
       },
       archiv: {
-        title: 'Archiv',
+        title: 'Office filing',
         body: 'Your office’s shared documents — standard details, specifications, templates. File something here once and every project can draw on it.',
       },
       inbox: {
@@ -99,28 +99,28 @@ export const onboarding = {
         body: 'Every building gets a space like this one. Here is where the work happens.',
       },
       projectChat: {
-        title: 'Ask Piloti',
-        body: 'Ask about this building in plain language: fire compartments, escape routes, accessibility, energy. Answers draw on building law, OIB guidelines and your own documents.',
+        title: 'Work with Piloti',
+        body: 'Talk to Piloti about this building in plain language, or hand it a task. It works from your files, Office filing and building law, and cites each source.',
       },
       projectFiles: {
         title: 'Files: this project’s documents',
-        body: 'Upload plans, reports and correspondence for this building. Once a file has been read, Piloti can quote it, but only inside this project.',
+        body: 'Upload drawings, reports and correspondence for this building. Once a file has been read, Piloti can quote it, but only inside this project.',
       },
       projectArchiv: {
-        title: 'Archiv: your office’s documents',
-        body: 'The Archiv sits above your projects, and every project searches it automatically. It starts empty: admins add documents, and everyone in the organization can read and cite them.',
+        title: 'Office filing: your office’s documents',
+        body: 'Office filing sits above your projects, and every project searches it automatically. It starts empty: admins add documents, and everyone in the organization can read and cite them.',
       },
       filesOrArchiv: {
-        title: 'Files or Archiv?',
+        title: 'Files or Office filing?',
         body: 'Ask who the document belongs to.',
         filesTerm: 'Files — this building',
-        filesDetail: 'Its plans, reports, correspondence. Cited only in this project.',
-        archivTerm: 'Archiv — the office',
+        filesDetail: 'Its drawings, reports, correspondence. Cited only in this project.',
+        archivTerm: 'Office filing — the office',
         archivDetail: 'Standard details, specifications, templates, earlier submissions worth reusing. Cited in every project.',
       },
       projectSources: {
         title: 'Every answer shows its sources',
-        body: 'Each claim is marked with where it came from — Building law, Project knowledge or Office archive — and opens the passage it rests on. If Piloti has no source for something, it says so.',
+        body: 'Each claim is marked with where it came from — Building law, Project knowledge or Office filing — and opens the passage it rests on. If Piloti has no source for something, it says so.',
       },
       projectSettings: {
         title: 'Settings and members',

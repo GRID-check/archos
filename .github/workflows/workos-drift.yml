@@ -1,13 +1,14 @@
 name: WorkOS drift
 
 # Weekly + on-demand read-only verification that the WorkOS environment still
-# agrees with what this repo declares (the authorization catalog and the audit
-# schema registry). Both checks are CHECK-mode by default: they write nothing
-# and exit non-zero on drift, so a red job here means someone changed the
-# dashboard (or the catalog shipped ahead of provisioning).
+# agrees with what this repo declares (the authorization catalog, the audit
+# schema registry and the feature-flag registry). Every check is CHECK-mode:
+# they write nothing and exit non-zero on drift, so a red job here means someone
+# changed the dashboard (or the code shipped ahead of provisioning). A
+# feature-flag slug missing from WorkOS is off for every organization.
 #
 # REQUIRES a repository secret named WORKOS_API_KEY_STAGING — a WorkOS secret
-# key (sk_…) for the STAGING environment. Without it both steps fail fast with
+# key (sk_…) for the STAGING environment. Without it every step fails fast with
 # "WORKOS_API_KEY is required." Production has no scheduled check on purpose:
 # its key would sit in CI for a job that reads nothing but configuration, and
 # the same commands can be pointed at any environment by hand
@@ -30,15 +31,16 @@ concurrency:
 
 jobs:
   drift:
-    name: Authz + audit schema drift (staging)
+    name: Authz, audit schema + flag drift (staging)
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       # Read-only against WorkOS, but it installs dependencies — keep the same
       # no-persisted-credential posture as every other job that runs installs.
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: actions/setup-node@v7
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
       - uses: ./.github/actions/setup-bun
@@ -50,5 +52,9 @@ jobs:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}
       - name: Audit log schemas vs WorkOS
         run: task fe:provision:audit-schemas
+        env:
+          WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}
+      - name: Feature-flag registry vs WorkOS
+        run: task fe:provision:flags
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}

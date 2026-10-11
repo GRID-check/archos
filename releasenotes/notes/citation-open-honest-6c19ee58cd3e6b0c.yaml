@@ -1,6 +1,6 @@
 ---
 fixes:
   - >
-    An dieser Stelle öffnen now appears only for sources Piloti can actually
-    show. For a plan or a Word file the link used to close the window and do
-    nothing else.
+    The "An dieser Stelle öffnen" link now appears only for sources Piloti
+    can actually show. For a drawing or a Word file, it used to close the
+    window and do nothing else.

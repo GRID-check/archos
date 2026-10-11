@@ -1,5 +1,13 @@
 import * as pulumi from "@pulumi/pulumi";
+import { createHmac } from "node:crypto";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
+import {
+  KEDA_SCALER_CONNECTION_LIMIT,
+  POOLED_POOLS,
+  POSTGRES_DIRECT_RESERVE,
+  POSTGRES_POOLER,
+  POSTGRES_TUNING,
+} from "./constants";
 
 /**
  * Typed configuration for the Grid OIB Kubernetes deployment.
@@ -32,6 +40,15 @@ export type BarmanEncryption = "AES256" | "aws:kms";
  * its own login, with `CONNECT` revoked from `PUBLIC`.
  */
 const SEAWEED_FILER_DB = "seaweedfs_filer";
+
+/**
+ * Piloti's PostHog project (EU Cloud, project 269895), the default for every
+ * stack (ADR-0100). The token is the public `phc_` client key: it ships in
+ * every browser bundle and can only write events, never read them. A stack
+ * opts out with an empty `grid-oib:posthogHost`.
+ */
+export const POSTHOG_DEFAULT_HOST = "https://eu.i.posthog.com";
+export const POSTHOG_DEFAULT_PROJECT_TOKEN = "phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X"; // pragma: allowlist secret
 
 export interface GridConfig {
   namespace: string;
@@ -92,6 +109,15 @@ export interface GridConfig {
      * § Encryption posture.
      */
     className: string;
+    /**
+     * The data volume of the pre-A2 backend (`data-aiq-agent-0`) whose base
+     * corpus the one-shot import Job carries into the corpus store (ADR-0082
+     * A2, `aiq_agent.legacy_corpus_import`). Set only on stacks that ran the
+     * backend before A2; a fresh stack has no such claim, and a Job mounting a
+     * missing claim would never schedule. Remove with the importer once every
+     * stack has run it.
+     */
+    legacyCorpusClaim?: string;
   };
 
   ingress: {
@@ -285,6 +311,32 @@ export interface GridConfig {
   postgres: {
     /** CloudNativePG instance count (1 = single primary; ≥2 = HA with replicas). */
     instances: number;
+    /**
+     * The transaction pooler in front of the pooled DSNs (ADR-0083). Its worst
+     * case against `max_connections` is `pgConnectionBudget`, and the plan fails
+     * when that does not fit.
+     */
+    pooler: {
+      /** PgBouncer replicas (`pgPoolerInstances`). Each keeps its own server pool per (database, role). */
+      instances: number;
+      /**
+       * Server connections one PgBouncer opens per (database, role) pair
+       * (`pgPoolerPoolSize`, PgBouncer's `default_pool_size`). The default is 12,
+       * the largest that lets a fresh stack with everything on pass the plan:
+       * two poolers x (three pooled pairs x 12 + 1 auth session) = 74 of the
+       * primary's 200 connections, against a direct reserve of up to 122 (62
+       * fixed or sized by the ingest tier at 5 x 3, 20 for Langfuse, 40 for a
+       * filer that keeps its namespace in Postgres) = 196. Prod, on the single
+       * SeaweedFS topology, holds 74 + 82 = 156. It is not a demand number: a
+       * transaction holds a server connection for milliseconds, and 24 per pair
+       * across the two poolers serves hundreds of statements a second. Clients
+       * past the pool queue in PgBouncer, which shows as `cl_waiting` rather than
+       * as an error. Raise it only together with `max_connections`.
+       */
+      poolSize: number;
+      /** Digest-pinned PgBouncer image (>= 1.21: protocol-level prepared statements). */
+      image: string;
+    };
     storageSize: string;
     /** App role name that owns the three databases. */
     appUser: string;
@@ -306,6 +358,15 @@ export interface GridConfig {
      * existing stack must set it (and rotate) before the next deploy.
      */
     runtimePassword: pulumi.Output<string>;
+    /**
+     * Password for `grid_keda_scaler`, the read-only login KEDA's `postgresql`
+     * scaler counts the queue tables with (ADR-0079). Optional
+     * (`pgScalerPassword`): unset, it is derived from `pgAppPassword` by a
+     * one-way HMAC, so it is never the owner's password and an existing stack
+     * needs no new secret to deploy. Set it to rotate the scaler's credential
+     * on its own.
+     */
+    scalerPassword: pulumi.Output<string>;
     /**
      * How CNPG rolls the primary during an operator/image update.
      * "unsupervised" = automatic switchover + restart (no human), which is what
@@ -443,14 +504,17 @@ export interface GridConfig {
      */
     enabled: boolean;
     image: string;
+    /**
+     * Converter replicas. One LibreOffice converts one document at a time per
+     * replica, so this is the fleet's conversion capacity, and the thing the
+     * `bff-jobs` pool's rendition ceiling is held to (`renditionCeiling`):
+     * every replica added is {@link GOTENBERG_SLOTS_PER_REPLICA} more
+     * conversions the pool may have in flight.
+     */
+    replicas: number;
   };
 
   chroma: {
-    /**
-     * Run a shared Chroma server (horizontal scaling). When true, the backend
-     * points AIQ_CHROMA_URL at it instead of using an embedded per-pod store.
-     */
-    enabled: boolean;
     image: string;
     storageSize: string;
   };
@@ -656,35 +720,72 @@ export interface GridConfig {
   };
 
   /**
-   * The agent (backend) is a hard singleton today (embedded Chroma + private
-   * Dask + in-process job state — see docs/architecture/scaling-review-2026-07.md).
-   * It scales VERTICALLY: give it CPU/memory and Dask workers/threads here, and
-   * bound concurrent work with the admission knobs. Horizontal scaling is a
-   * documented follow-up (retire local Dask for DB-claimed workers).
+   * The chat tier (`aiq-agent`, `GRID_ROLE=chat`): CPU/memory here, replicas and
+   * their scaling below, and the admission knobs that bound concurrent work.
    */
   backend: {
     resources: ResourceSpec;
-    daskWorkers: number;
-    daskThreads: number;
-    /** Global cap on non-terminal async research jobs (0 disables). */
-    maxActiveJobs: number;
-    /** Per-org cap on non-terminal async research jobs (0 disables). */
+    /**
+     * Research jobs one organization runs at once (0 disables). It is the
+     * workers' per-organization claim cap: a job over it waits.
+     */
     maxActiveJobsPerOrg: number;
+    /**
+     * Research jobs one organization may have WAITING (0 disables). Abuse protection and the only 429 left: capacity makes a job
+     * wait, never fail.
+     */
+    maxQueuedJobsPerOrg: number;
     /** Max concurrent document-ingestion workers in the backend process. */
     ingestMaxWorkers: number;
     /** Backend web config file (baked into the image under /app/configs). */
     configFile: string;
-    /** Chroma persistence dir on the data PVC. */
-    chromaDir: string;
-    /** Persistent /app/data volume size (Chroma vectors + uploaded corpus). */
-    dataStorageSize: string;
     /**
-     * Web/chat replica count. Only applied when jobExecution="db" (in "dask"
-     * mode the agent is a hard singleton and this is forced to 1). The
-     * chat/retrieval path is replica-safe via shared Chroma + Postgres + cache;
-     * see the base-corpus-upload caveat in docs/deployment/kubernetes.md §6.4.
+     * Chat replica count. The chat/retrieval path is replica-safe via shared
+     * Chroma + Postgres + cache; see the base-corpus-upload caveat in
+     * docs/deployment/kubernetes.md §6.4.
      */
     replicas: number;
+    /**
+     * Replica ceiling once the chat tier autoscales (ADR-0080): `replicas` is
+     * the floor, KEDA moves the count between the two on the fleet's running
+     * turns. Autoscaling needs `chatAffinity` off; with it on the count is the
+     * hash's modulus and stays `replicas`, whatever this says.
+     */
+    maxReplicas: number;
+    /** Running chat turns, fleet-wide, per replica that KEDA aims for (its metrics-api AverageValue target). */
+    turnsPerReplica: number;
+    /** CPU utilisation (% of requests) at which the KEDA cpu trigger adds replicas. */
+    cpuTargetPercent: number;
+    /**
+     * `GRID_CHAT_DRAIN_SECONDS`: how long a terminating replica waits for its
+     * turns before cancelling them. The pod's grace period is this plus the
+     * endpoint drain and slack (`backendRollout`), so it must cover the longest
+     * chat turn, `GRID_CHAT_TURN_DEADLINE_SECONDS` (2700).
+     */
+    drainSeconds: number;
+    /**
+     * `GRID_CHAT_AFFINITY` (ADR-0080): the BFF pins a conversation to one
+     * replica by hash (on, ADR-0028) or hands the socket to the aiq-agent
+     * Service and lets the conversation bus decide per turn (off). Prod stays
+     * on until the cross-replica path is validated on dev.
+     */
+    chatAffinity: boolean;
+  };
+
+  /**
+   * The api tier (ADR-0082 step B): `GRID_ROLE=api`, every backend HTTP route
+   * except the chat socket (knowledge, jobs and SSE, LLM utilities, admin,
+   * housekeeping). A Deployment of the backend image behind the `aiq-api`
+   * Service, which is what `BACKEND_URL` names. HPA-owned, like the frontend:
+   * the work is request-bound, so CPU is the signal, where the chat tier's
+   * (`backend`) is running turns.
+   */
+  api: {
+    resources: ResourceSpec;
+    minReplicas: number;
+    maxReplicas: number;
+    /** HPA target average CPU utilisation (%). */
+    hpaCpuTargetPercent: number;
   };
 
   frontend: {
@@ -705,13 +806,6 @@ export interface GridConfig {
   };
 
   /**
-   * Research execution backend (ADR-0021). "dask" = per-pod cluster (the agent
-   * is a singleton). "db" = DB-claimed workers: the web tier runs no Dask and
-   * dedicated agent-worker replicas execute jobs, so both tiers scale
-   * horizontally.
-   */
-  jobExecution: "dask" | "db";
-  /**
    * Enable the Dragonfly pub/sub conversation bus (ADR-0028) so the chat tier is
    * fully stateless — any replica serves any conversation's WebSocket. ON by
    * default (the intended architecture; uses REDIS_URL and fails open to local
@@ -723,24 +817,26 @@ export interface GridConfig {
     resources: ResourceSpec;
     minReplicas: number;
     maxReplicas: number;
-    hpaCpuTargetPercent: number;
-    /** Concurrent research jobs per worker process (GRID_RESEARCH_WORKERS). */
+    /** Concurrent research jobs per worker process (GRID_RESEARCH_WORKERS); also KEDA's jobs-per-replica target. */
     concurrency: number;
     /**
      * Seconds a terminating worker may spend finishing the research jobs it has
-     * already claimed, before the kubelet SIGKILLs it
-     * (`terminationGracePeriodSeconds`).
+     * already claimed (`GRID_RESEARCH_WORKER_DRAIN_SECONDS`). The pod's
+     * `terminationGracePeriodSeconds` is this plus 30 s, so the worker has time
+     * to give back what it did not finish before the kubelet SIGKILLs it.
      *
      * This is the single most consequential rollout knob in the stack. On
      * SIGTERM the worker stops claiming and awaits its in-flight jobs
      * (`aiq_api/jobs/worker.py`); Kubernetes' 30s default kills that drain
-     * part-way, so *every* deploy and *every* node drain destroyed research a
-     * user was waiting on. Set it at or above the p99 job duration.
+     * part-way. A job still running when the budget ends is given back to the
+     * queue without costing an attempt and another worker starts it over, so the
+     * budget now decides how much work is repeated, not whether any is lost. Set
+     * it at or above the p99 job duration to repeat none.
      *
      * The cost is deploy latency: workers roll one at a time and a draining one
      * can hold its slot for this long, so `pulumi up` may take
-     * (drain × replicas) in the worst case. Lower it only if you would rather
-     * lose in-flight research than wait.
+     * (drain x replicas) in the worst case. Lower it only if you would rather
+     * repeat in-flight research than wait.
      */
     drainSeconds: number;
   };
@@ -748,18 +844,19 @@ export interface GridConfig {
   /**
    * The ingestion tier (ADR-0076): dedicated replicas that claim jobs from the
    * durable, fair ingest queue (`ingest_job_queue`), scaled by KEDA on its
-   * depth. When enabled the web tier stops claiming (`GRID_INGEST_QUEUE_CLAIM
-   * =false`), so ingestion no longer shares the chat pods' CPU and GIL.
+   * depth. The chat and api roles only put jobs in the queue and never claim
+   * them, so ingestion shares neither their CPU nor their GIL. Always deployed.
    */
   ingestWorker: {
-    enabled: boolean;
     resources: ResourceSpec;
     /** Floor; 0 lets the tier scale to nothing while no job waits. */
     minReplicas: number;
     /**
      * Ceiling. The real ceiling is the model provider's rate limit on the
      * shared key: replicas × concurrency × `AIQ_VLM_BATCH_WORKERS` is the
-     * peak number of VLM calls in flight.
+     * peak number of VLM calls in flight, and `assertVlmPeakFitsCeiling` fails
+     * the deploy when that is more than twice `vlmFleetConcurrency`, which is
+     * itself held to the provider ceilings.
      */
     maxReplicas: number;
     /** Jobs one replica runs at once (`AIQ_INGEST_MAX_WORKERS`); also KEDA's jobs-per-replica target. */
@@ -771,10 +868,59 @@ export interface GridConfig {
   };
 
   /**
-   * KEDA, the event-driven autoscaler the ingest tier scales with. Installed by
-   * this program unless the cluster already runs one (`installKeda=false`).
+   * The BFF's background pool (ADR-0079): internal-only replicas of the frontend
+   * image that claim jobs from `bff_job_queue` fairly across organizations and
+   * run them in their own BFF, so a reindex, a rescan (and later IFC parsing and
+   * rendition) never shares a pod with the chat gateway. Scaled by KEDA on the
+   * queue's depth, like the ingest tier.
+   */
+  bffJobs: {
+    enabled: boolean;
+    resources: ResourceSpec;
+    /** Floor; 0 lets the pool scale to nothing while no job waits. */
+    minReplicas: number;
+    maxReplicas: number;
+    /** Jobs one replica runs at once (`GRID_BFF_JOBS_CONCURRENCY`); also KEDA's jobs-per-replica target. */
+    concurrency: number;
+    /** SIGTERM budget to finish the slice in hand; the claim is then given back without costing an attempt. */
+    drainSeconds: number;
+    /** Most jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless). */
+    maxPerOrg: number;
+    /**
+     * Office conversions ONE pod runs at Gotenberg at once (`GOTENBERG_MAX_
+     * CONCURRENCY` in the pod). The fleet's ceiling is this times `maxReplicas`
+     * ({@link renditionCeiling}), and a spec holds that to the converter's
+     * capacity: more than Gotenberg can convert queues inside it, and what
+     * queues there counts against its own API timeout.
+     */
+    renditionConcurrency: number;
+  };
+
+  /**
+   * KEDA, the event-driven autoscaler the ingest and bff-jobs tiers scale with.
+   * Installed by this program unless the cluster already runs one
+   * (`installKeda=false`).
    */
   keda: { install: boolean };
+
+  /**
+   * What the shared OpenRouter key is asked to carry (ADR-0076, ADR-0081), as
+   * the backend image's environment. The four numbers are one budget:
+   * {@link vlmPeakCalls} is held to `vlmFleetConcurrency` where the ingest tier
+   * is sized (`assertVlmPeakFitsCeiling`), and `vlmFleetConcurrency` is held to
+   * both ceilings a vision call passes: the key-wide `limitCeiling` and the
+   * vision model's own `modelLimitCeiling` (a call takes a slot in each pool).
+   */
+  providerLimits: {
+    /** `AIQ_VLM_FLEET_CONCURRENCY`: vision calls in flight across every ingest process at once. */
+    vlmFleetConcurrency: number;
+    /** `AIQ_VLM_BATCH_WORKERS`: vision calls one file runs at once. */
+    vlmBatchWorkers: number;
+    /** `GRID_PROVIDER_LIMIT_CEILING`: model calls in flight fleet-wide, all models together. */
+    limitCeiling: number;
+    /** `GRID_PROVIDER_MODEL_LIMIT_CEILING`: model calls in flight fleet-wide to one model. */
+    modelLimitCeiling: number;
+  };
 
   /** LLM / model-provider settings shared by backend + frontend. */
   llm: {
@@ -796,7 +942,6 @@ export interface GridConfig {
     platformOrgExternalId: string;
     disableSelfServeOrgs: boolean;
     auditLogsEnabled: boolean;
-    enforceFeatureFlags: boolean;
     byokSecretBackend: string;
     byokLocalKek: pulumi.Output<string>;
     allowAgentOrgMemory: boolean;
@@ -805,18 +950,49 @@ export interface GridConfig {
   /**
    * PostHog product analytics (fail-open).
    *
-   * Both values are optional: an empty host or token keeps the browser client
-   * disabled (`isPosthogEnabled() === false` in
-   * `frontends/ui/src/lib/analytics/posthog.ts`), so a stack that has not
-   * adopted analytics deploys exactly as before. The project token is a public
+   * Both default to Piloti's project (`POSTHOG_DEFAULT_HOST`,
+   * `POSTHOG_DEFAULT_PROJECT_TOKEN`), so every stack sends. An empty
+   * `grid-oib:posthogHost` opts a stack out and keeps every client disabled
+   * (`isPosthogEnabled() === false` in
+   * `frontends/ui/src/lib/analytics/posthog.ts`). The project token is a public
    * `phc_` key by design (it ships in the client bundle), so it lives in plain
    * config like `workosClientId`, not in ESC secrets.
    */
   posthog: {
-    /** e.g. `https://eu.i.posthog.com`. Empty = analytics disabled. */
+    /** Default `https://eu.i.posthog.com`. Empty = analytics disabled. */
     host: string;
-    /** Public project token (`phc_…`). Empty = analytics disabled. */
+    /** Public project token (`phc_…`), default Piloti's project. Empty = analytics disabled. */
     projectToken: string;
+    /**
+     * Whether the collector ships WARN-and-above logs to PostHog Logs: the
+     * `posthogLogsEnabled` flag AND host AND token AND the `observabilityEnabled`
+     * flag (the collector is the only sender, so without it there is nothing to
+     * configure; this one is a consumer that brings the collector up). Default
+     * on: only WARN and above leave, and PostHog's free tier is 10 GB of logs.
+     */
+    logsEnabled: boolean;
+    /**
+     * Whether the browser may record sessions (`grid-oib:posthogSessionReplay`,
+     * default on, like the browser's own default). Text and inputs are masked,
+     * the PDF and IFC viewers, media and signed URLs are blocked, and the privacy
+     * notice names it (ADR-0100). Nothing records while PostHog itself is off.
+     */
+    sessionReplay: boolean;
+    /**
+     * Share of sessions recorded when replay is on, 0..1
+     * (`grid-oib:posthogReplaySampleRate`, default 1). Lower it when the 5K
+     * recordings a month of the free tier run out.
+     */
+    replaySampleRate: string;
+    /**
+     * The PostHog release the backend image belongs to
+     * (`grid-oib:posthogReleaseId`, default empty). Not a commit: the id
+     * `PostHog/resolve-release` prints, which the deploy workflow sets per run
+     * with `pulumi config set`. The Python tiers get it as `POSTHOG_RELEASE_ID`,
+     * which posthog-python sends as `$release_id`, so error tracking links each
+     * exception to the release by id. Empty = no release link.
+     */
+    releaseId: string;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -824,36 +1000,22 @@ export interface GridConfig {
     apiToken: pulumi.Output<string>;
     adminToken: pulumi.Output<string>;
     /**
-     * Token for `/api/internal/oib-corpus`, the corpus tarball the answer-suite
-     * CI workflow ingests. Its own secret, because it lives outside the cluster
-     * (a repository secret). Empty = the export is disabled (503).
+     * Token for `/api/internal/oib-corpus`, the corpus tarball. Its only
+     * consumer was the answer-suite CI workflow, which has been removed; the
+     * export stays until someone decides to delete it. Its own secret, because
+     * it lived outside the cluster (a repository secret). Empty = the export is
+     * disabled (503).
      */
     corpusExportToken: pulumi.Output<string>;
     /**
      * 32-byte base64 KEK encrypting DB-claimed job payloads at rest (they carry
      * the user auth token). Empty = plaintext (dev only). Strongly recommended
-     * whenever jobExecution="db". Generate: `openssl rand -base64 32`.
+     * Generate: `openssl rand -base64 32`.
      */
     jobPayloadKek: pulumi.Output<string>;
   };
 
   skills: {
-    /**
-     * Dark-launch gate for Agent Skills and the project Jobs that may attach
-     * them (ADR-0046). Reaches the frontend and the scheduler worker as
-     * `GRID_SKILLS_ENABLED`, which they only consult while
-     * `enforceFeatureFlags` is off; with enforcement on, the per-org `skills`
-     * WorkOS flag decides instead. Default-deny.
-     *
-     * This is the ONLY switch that makes the Skills and Jobs tabs appear on a
-     * deployment carrying their code: with it off, every `/api/skills` and
-     * `/api/projects/[id]/jobs` route answers 403 `feature-disabled` and the
-     * scheduler container exits 0 as a no-op. It replaced `workflowsEnabled`,
-     * which kept being emitted as `GRID_WORKFLOWS_ENABLED` after the code that
-     * read that name was deleted — so the feature shipped with no way to turn
-     * it on.
-     */
-    enabled: boolean;
     /**
      * Floor on how often a job may be scheduled to fire, in minutes. Reaches
      * the frontend as `GRID_SKILL_MIN_INTERVAL_MINUTES` and is enforced at
@@ -910,104 +1072,20 @@ export interface GridConfig {
     schedule: string;
   };
 
-  agentAuthoredDocuments: {
-    /**
-     * Operator kill switch for agent-authored documents: a finished
-     * deep-research report and a drawn diagram filed into a project as
-     * `documents` rows. Reaches the frontend as
-     * `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`, which the BFF only consults
-     * while `enforceFeatureFlags` is off; with enforcement on, the per-org
-     * `agent-authored-documents` WorkOS flag decides instead.
-     *
-     * Defaults to TRUE — the feature ships on. It is a key and not a role
-     * grant because the tenant-facing lever is a PERMISSION
-     * (`project:documents:generate`), and withdrawing that fleet-wide would
-     * mean editing the catalog's own built-in project roles in WorkOS, which
-     * `provision:authz --check` then fails in CI. The two answer different
-     * questions: this one is "is filing available in this deployment at all".
-     */
-    enabled: boolean;
-  };
-
-  ifcModels: {
-    /**
-     * Dark-launch gate for IFC/BIM models (ADR-0045: `.ifc` upload, the model
-     * workspace, the 3D viewer, the Prüfbuch and the agent's `ifc_query`
-     * tool). Reaches the frontend as `GRID_IFC_MODELS_ENABLED`, which the BFF
-     * only consults while `enforceFeatureFlags` is off; with enforcement on,
-     * the per-org `ifc-models` WorkOS flag decides instead. Defaults to TRUE —
-     * the feature ships on. It keeps its own key rather than riding the
-     * fail-open path so a deployment can withdraw it (`false`) without turning
-     * on flag enforcement for every other feature at once. No paired
-     * capability — extraction runs in the BFF process and the viewer in the
-     * browser.
-     */
-    enabled: boolean;
-  };
-
-  collaboration: {
-    /**
-     * Dark-launch gate for collaboration (ADR-0032…0035: shared chats,
-     * `@`-mentions with the agent hand-off, the inbox). Reaches the frontend as
-     * `GRID_COLLABORATION_ENABLED`, which the BFF only consults while
-     * `enforceFeatureFlags` is off; with enforcement on, the per-org
-     * `collaboration` WorkOS flag decides instead. Default-deny, like the
-     * feature itself: it changes who can see a conversation, so an operator has
-     * to choose it. No paired capability — without `REDIS_URL` live updates
-     * simply degrade to polling.
-     */
-    enabled: boolean;
-  };
-
-  memory: {
-    /**
-     * Runtime gate for the post-answer memory-reflection stage (the agent's
-     * cross-chat learning loop, `docs/architecture/project-memory-design.md`
-     * §3.5). Reaches the frontend as `GRID_MEMORY_REFLECTION_ENABLED`, which
-     * the BFF only consults while `enforceFeatureFlags` is off; with
-     * enforcement on, the per-org `memory-reflection` WorkOS flag decides
-     * instead. Unlike collaboration this is **default-on**: reflection is a
-     * shipped core capability, not a dark-launched product gate.
-     */
-    reflectionEnabled: boolean;
-  };
-
   observability: {
     /**
-     * Whether the observability tier (OTel Collector + Aspire dashboard) is
-     * deployed: the `observabilityEnabled` flag AND the capability derived from
-     * its dependencies (otelPrimaryApiKey and the dashboard's
-     * dedicated WorkOS Connect application). When false nothing is provisioned
-     * and no producer gets an OTLP endpoint.
+     * Whether the OTel Collector is deployed: the `observabilityEnabled` flag
+     * AND at least one consumer for it (Langfuse or PostHog logs).
+     * The collector forwards to those on their own credentials. When false
+     * nothing is provisioned and no producer gets an OTLP endpoint.
      */
     enabled: boolean;
-    /** Public hostname for the Aspire dashboard. Derived: `otel.<baseDomain>` unless the `otelDomain` key overrides it. */
-    otelDomain: string;
-    /**
-     * Aspire dashboard image reference, digest-pinned by default (override
-     * only for deliberate upgrades).
-     */
-    dashboardImage: string;
     /**
      * OpenTelemetry Collector image reference, digest-pinned by default —
-     * the single OTLP ingestion point that fans out to the dashboard
-     * (ADR-0029 amendment).
+     * the single OTLP ingestion point that fans out to Langfuse and the log
+     * consumers (ADR-0029 amendment).
      */
     collectorImage: string;
-    /**
-     * Telemetry ring-buffer limits inside the dashboard pod. Aspire defaults
-     * to 10000/10000; raised to 50000 for a live view window.
-     */
-    telemetryLimits: {
-      maxLogCount: number;
-      maxTraceCount: number;
-    };
-    /**
-     * OTLP ingestion key. Held by the dashboard (`Dashboard:Otlp:PrimaryApiKey`)
-     * and the collector (exporter header) only — producers send unauthenticated
-     * OTLP to the collector and never see it. Empty when observability is off.
-     */
-    otelPrimaryApiKey: pulumi.Output<string>;
     /**
      * Issuer of the dedicated WorkOS **Connect** application, i.e. the
      * environment's AuthKit domain (`https://<tenant>.authkit.app`). Its
@@ -1015,11 +1093,13 @@ export interface GridConfig {
      * `/user_management/*` endpoints are not, and cannot serve this flow at all
      * (see the capability check in `loadConfig`).
      *
-     * Required for the observability tier. As a side benefit the dashboard no
+     * Required for Langfuse (its route is gated by this application and its UI
+     * signs in against it). The keys keep their `otelOidc*` names from when the
+     * Aspire dashboard shared the application. As a side benefit Langfuse no
      * longer shares the app's AuthKit client, so an ordinary app sign-in does
-     * not mint a dashboard credential, dashboard access is separately
-     * revocable, and the client secret is purpose-scoped instead of being the
-     * WorkOS management API key.
+     * not mint a platform credential, access is separately revocable, and the
+     * client secret is purpose-scoped instead of being the WorkOS management
+     * API key.
      */
     oidcIssuer: string;
     /** Client id of that Connect application. */
@@ -1031,12 +1111,11 @@ export interface GridConfig {
   /**
    * Langfuse — the DURABLE LLM-observability backend (ADR-0044).
    *
-   * A third consumer on the collector's traces signal, alongside the Aspire
-   * dashboard. The two are not redundant and neither replaces the other:
-   * Aspire is a live ops pane over an in-memory ring buffer that answers "what
-   * is the system doing right now"; Langfuse is a queryable store that answers
-   * "what did this user's run cost, which model served it, and how did that
-   * change over the last month". ADR-0029 deferred exactly this and named the
+   * The consumer of the collector's traces signal: a queryable store that
+   * answers "what did this user's run cost, which model served it, and how did
+   * that change over the last month", and the live view of what the system is
+   * doing now. It replaced the Aspire dashboard, an in-memory ring buffer that
+   * answered only the second. ADR-0029 deferred exactly this and named the
    * collector as the seam it would arrive through.
    *
    * **Self-hosted OSS only.** No license key is configured anywhere in this
@@ -1051,8 +1130,9 @@ export interface GridConfig {
     /**
      * Whether the tier is deployed: the `langfuseEnabled` flag AND the
      * capability derived from its dependencies (every credential it cannot
-     * boot without, plus `observability.enabled` — it is fed by the collector,
-     * so without one it is four workloads that can only ever sit idle).
+     * boot without, the Connect application it signs in against, plus the
+     * `observabilityEnabled` flag — it is fed by the collector, so without one
+     * it is four workloads that can only ever sit idle).
      */
     enabled: boolean;
     /** Public hostname. Derived: `langfuse.<baseDomain>` unless overridden. */
@@ -1068,15 +1148,6 @@ export interface GridConfig {
     workerImage: string;
     /** ClickHouse server image, digest-pinned. */
     clickhouseImage: string;
-    /**
-     * Where Langfuse v4 writes ingested spans (`LANGFUSE_MIGRATION_V4_WRITE_MODE`).
-     * `dual` (default) writes v3's tables and v4's events table both, so the
-     * upgrade keeps a rollback path to v3 and the v3 views keep working;
-     * `events_only` is the cutover, after which only a database restore goes
-     * back; `legacy` writes v3's tables alone. The cutover is a config change:
-     * docs/deployment/kubernetes.md §9b, "Upgrading to Langfuse v4".
-     */
-    v4WriteMode: "legacy" | "dual" | "events_only";
     /**
      * Rewrite historic traces into v4's tables in the background
      * (`LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL`). Off by
@@ -1143,6 +1214,24 @@ export interface GridConfig {
     orgId: string;
     projectId: string;
     /**
+     * The role a NEW Langfuse user gets in the seeded org (`orgId`) and project
+     * (`projectId`) on their first sign-in (`LANGFUSE_DEFAULT_ORG_ROLE` /
+     * `LANGFUSE_DEFAULT_PROJECT_ROLE`, upstream's automated access
+     * provisioning). Default `VIEWER`: read-only. Without a default, a first SSO
+     * login lands in no organization at all and sees nothing, and the people
+     * the edge now admits for read-only analysis (`platform:observability:view`)
+     * would each need an owner to add them by hand before they saw a trace.
+     *
+     * Applies only when the Langfuse account is CREATED (or first linked to the
+     * SSO identity); an existing membership is never changed by it, so
+     * promotion to MEMBER or ADMIN is an owner's edit in the Langfuse UI and
+     * survives every deploy. `NONE` joins the org with no access and no
+     * project, which is "an owner grants each person by hand". OSS Langfuse has
+     * no project-level roles (an Enterprise entitlement), so the ORG role is the
+     * one that decides; the project role is set to match for when it does.
+     */
+    defaultRole: LangfuseOrgRole;
+    /**
      * The break-glass Langfuse account created at headless init.
      *
      * Sign-in normally happens through WorkOS SSO (`AUTH_CUSTOM_*`), so this
@@ -1162,81 +1251,6 @@ export interface GridConfig {
     s3SecretKey: pulumi.Output<string>;
   };
 
-  /**
-   * err2issue — ERROR-severity telemetry becomes deduplicated GitHub issues
-   * (ADR-0031). A second consumer on the collector's logs signal, alongside the
-   * Aspire dashboard.
-   */
-  err2issue: {
-    /**
-     * Whether the sink is deployed: the `err2issueEnabled` flag AND the
-     * capability derived from its dependencies (a GitHub token, a fallback
-     * repo) AND `observability.enabled` — it receives nothing without the
-     * collector in front of it.
-     */
-    enabled: boolean;
-    /**
-     * Image reference, digest-pinned (v0.5.1 by default). Upstream tags each
-     * build `:sha-<commit>` and `:latest`; bump the digest deliberately, it is
-     * scanned by the trivy job in .github/workflows/security.yml.
-     */
-    image: string;
-    /** Fallback destination repo (`owner/repo`) for unrouted services. */
-    githubRepo: string;
-    /** PAT with Issues read/write. Empty when the sink is off. */
-    githubToken: pulumi.Output<string>;
-    /**
-     * Optional `service=owner/repo` routing, globs allowed
-     * (`aiq-agent=grid-check/grid-oib-agent,*-worker=grid-check/workers`).
-     * Empty string means route everything to `githubRepo`.
-     */
-    routeMap: string;
-    /**
-     * Optional Claude API key for AI-written issue titles. Empty falls back to
-     * rule-based titles — a degraded title, not a broken sink. Note this is a
-     * console API key; a Claude subscription OAuth token will not work here.
-     */
-    anthropicApiKey: pulumi.Output<string>;
-    /** Repeat-occurrence coalescing window, seconds (upstream default 600). */
-    suppressWindowSeconds: number;
-    /** Ceiling on NEW issues per day — the blast-radius control. */
-    maxNewFingerprintsPerDay: number;
-    /** Drop errors from services the route map does not match. */
-    dropUnrouted: boolean;
-    /**
-     * Link each issue's trace id to the Aspire dashboard's trace view
-     * (`E2I_TRACE_URL_TEMPLATE`, err2issue >= 0.5). Empty when the
-     * observability tier is off: there is nothing to link to.
-     */
-    traceUrlTemplate: string;
-    /**
-     * Reopen an issue a human closed as *not planned* or *duplicate* when its
-     * error recurs (`E2I_REOPEN_NOT_PLANNED`). Off, as upstream: closing one of
-     * those is a decision about the error, and a recurrence only raises its
-     * count. Issues closed as *completed* reopen either way.
-     */
-    reopenNotPlanned: boolean;
-    /** GitHub logins assigned to new issues (`E2I_ISSUE_ASSIGNEES`, max 10). Empty leaves them unassigned. */
-    issueAssignees: string;
-  };
-
-  /**
-   * Bug reports from the in-app feedback form become GitHub issues, filed by
-   * the BFF (`frontends/ui/src/lib/product-feedback/github.ts`).
-   *
-   * Reuses err2issue's PAT rather than a second one: it already holds Issues
-   * read/write on the repo, and one credential is one thing to rotate. It is
-   * independent of `err2issue.enabled` — the error sink needs the
-   * observability tier, a bug report does not.
-   */
-  feedbackIssues: {
-    /** The `feedbackIssuesEnabled` flag (default on) AND a token AND a repo. */
-    enabled: boolean;
-    /** `owner/repo`; defaults to `err2issueGithubRepo`. */
-    repo: string;
-    /** The err2issue PAT. Empty when filing is off. */
-    githubToken: pulumi.Output<string>;
-  };
 }
 
 export interface ResourceSpec {
@@ -1251,11 +1265,55 @@ function num(cfg: pulumi.Config, key: string, fallback: number): number {
   return v === undefined ? fallback : v;
 }
 
-/** `langfuseV4WriteMode`, refused at load time when it is not one Langfuse knows. */
-function langfuseV4WriteMode(value: string | undefined): "legacy" | "dual" | "events_only" {
-  if (value === undefined) return "dual";
-  if (value === "legacy" || value === "dual" || value === "events_only") return value;
-  throw new Error(`langfuseV4WriteMode must be legacy, dual or events_only, not "${value}"`);
+/** A count that must be a whole number of at least one: a replica count or a pool size, never 0 or 2.5. */
+function positiveInt(cfg: pulumi.Config, key: string, fallback: number): number {
+  const v = num(cfg, key, fallback);
+  if (!Number.isInteger(v) || v < 1) {
+    throw new Error(`grid-oib:${key} must be a whole number of at least 1 (got ${v}).`);
+  }
+  return v;
+}
+
+/**
+ * The scaler login's password when `pgScalerPassword` is not set: an HMAC of a
+ * fixed label under the owner's password. One-way, so holding the scaler DSN
+ * says nothing about `pgAppPassword` (Postgres authenticates by role AND
+ * password, which is the whole reason `grid_app_rw` has a password of its own),
+ * and URL-safe, so it needs no care in a DSN. It follows `pgAppPassword` when
+ * that rotates.
+ */
+function derivedScalerPassword(appPassword: pulumi.Output<string>): pulumi.Output<string> {
+  return pulumi.secret(
+    appPassword.apply((password) => createHmac("sha256", password).update("grid-keda-scaler").digest("base64url")),
+  );
+}
+
+/** The roles Langfuse accepts for `LANGFUSE_DEFAULT_ORG_ROLE` (its `env.mjs` enum). */
+export const LANGFUSE_ORG_ROLES = ["OWNER", "ADMIN", "MEMBER", "VIEWER", "NONE"] as const;
+export type LangfuseOrgRole = (typeof LANGFUSE_ORG_ROLES)[number];
+
+/**
+ * `langfuseDefaultRole`, refused at load time when Langfuse would refuse it.
+ * Langfuse validates the variable with a zod enum at startup, so a typo there
+ * is not a fallback to VIEWER but a langfuse-web that never becomes Ready.
+ */
+function langfuseOrgRole(value: string | undefined): LangfuseOrgRole {
+  if (value === undefined || value.trim() === "") return "VIEWER";
+  const role = LANGFUSE_ORG_ROLES.find((known) => known === value.trim());
+  if (role) return role;
+  throw new Error(`langfuseDefaultRole must be one of ${LANGFUSE_ORG_ROLES.join(", ")}, not "${value}"`);
+}
+
+/**
+ * `langfuseV4WriteMode` is gone: Langfuse writes v4's events table only
+ * (kubernetes.md §9b). A stack that still sets it is refused rather than
+ * silently ignored, so nobody believes they kept the v3 tables.
+ */
+function refuseLangfuseV4WriteMode(value: string | undefined): void {
+  if (value === undefined) return;
+  throw new Error(
+    `langfuseV4WriteMode was removed: Langfuse writes v4 events only. Drop "${value}" with \`pulumi config rm grid-oib:langfuseV4WriteMode\`.`,
+  );
 }
 
 function bool(cfg: pulumi.Config, key: string, fallback: boolean): boolean {
@@ -1302,6 +1360,7 @@ function requireSecretsTogether(
 
 export function loadConfig(): GridConfig {
   const cfg = new pulumi.Config();
+  refuseLangfuseV4WriteMode(cfg.get("langfuseV4WriteMode"));
 
   // Reject the Pulumi.prod.yaml template placeholders up front. `require()`
   // happily returns "REPLACE_ME"/"app.example.com", so without this the failure
@@ -1315,9 +1374,9 @@ export function loadConfig(): GridConfig {
     }
   };
   rejectPlaceholder("storageClass", ["REPLACE_ME"]);
-  // Single source for every public host: app/s3/otel subdomains derive from
+  // Single source for every public host: app/s3/langfuse subdomains derive from
   // baseDomain, so a domain move is a one-key change. The per-host keys
-  // (appDomain/s3Domain/otelDomain) survive only as explicit overrides.
+  // (appDomain/s3Domain/langfuseDomain) survive only as explicit overrides.
   const baseDomain = cfg.require("baseDomain");
   const appDomain = cfg.get("appDomain") ?? `app.${baseDomain}`;
   const s3Domain = cfg.get("s3Domain") ?? `s3.${baseDomain}`;
@@ -1334,7 +1393,6 @@ export function loadConfig(): GridConfig {
   // everything and then TLS silently never issues (the exact delayed-failure
   // class this guard exists to kill).
   rejectPlaceholder("letsEncryptEmail", ["example.com"]);
-  rejectPlaceholder("otelDomain", ["example.com"]);
   rejectPlaceholder("langfuseDomain", ["example.com"]);
 
   // The BFF clamps a nonsense threshold back to 80 rather than switching the
@@ -1354,8 +1412,36 @@ export function loadConfig(): GridConfig {
     );
   }
 
-  const jobExecution: "dask" | "db" = (cfg.get("jobExecution") ?? "dask") === "db" ? "db" : "dask";
   const conversationBus = bool(cfg, "conversationBus", true);
+
+  // ── Chat tier scale-out (ADR-0080) ────────────────────────────────────────
+  const backendReplicas = Math.max(1, num(cfg, "backendReplicas", 2));
+  const backendMaxReplicas = Math.max(1, num(cfg, "backendMaxReplicas", 3));
+  const chatAffinity = bool(cfg, "chatAffinity", true);
+  if (backendMaxReplicas < backendReplicas) {
+    throw new Error(
+      `grid-oib:backendMaxReplicas (${backendMaxReplicas}) must be >= backendReplicas ` +
+        `(${backendReplicas}), the floor the chat tier scales between.`,
+    );
+  }
+  // The api tier's floor and ceiling, the bounds its HPA moves between.
+  const apiMinReplicas = Math.max(1, num(cfg, "apiMinReplicas", 2));
+  const apiMaxReplicas = Math.max(1, num(cfg, "apiMaxReplicas", 4));
+  if (apiMaxReplicas < apiMinReplicas) {
+    throw new Error(
+      `grid-oib:apiMaxReplicas (${apiMaxReplicas}) must be >= apiMinReplicas ` +
+        `(${apiMinReplicas}), the floor the api tier's HPA scales between.`,
+    );
+  }
+  // Affinity off hands every socket to the Service and leans on the bus to keep
+  // one turn running per conversation. Without the bus nothing does: two
+  // replicas would each run the question they were handed.
+  if (!chatAffinity && !conversationBus) {
+    throw new Error(
+      "grid-oib:chatAffinity=false needs grid-oib:conversationBus=true: without the Dragonfly " +
+        "conversation bus no replica can relay a turn it does not run, or stop a stale one (ADR-0080).",
+    );
+  }
   const imageTag = cfg.get("imageTag") ?? "latest";
 
   // Fail fast: the web PDB allows maxUnavailable 1, so a webMinReplicas of 1
@@ -1772,24 +1858,25 @@ export function loadConfig(): GridConfig {
   // in Postgres (table + WAL + backups + replicas). Refuse to deploy db mode
   // without a KEK to encrypt them at rest, unless plaintext is explicitly opted
   // into for dev. Guards against the silent plaintext-token-at-rest default.
-  // Fail closed: db mode REQUIRES the shared Chroma server. Without it every
-  // web replica and worker opens an embedded per-pod store — workers ingest
-  // into stores no web replica can read (retrieval silently empty), and the
-  // volume-less agent-worker can't even write its store (image FS, root-owned).
-  // The deploy would report success and be functionally broken.
-  const chromaEnabled = bool(cfg, "chromaEnabled", true);
-  if (jobExecution === "db" && !chromaEnabled) {
+  // Fail closed: the shared Chroma server is REQUIRED. The backend keeps no
+  // volume (ADR-0082), so an embedded per-pod store would be wiped at every
+  // restart, and every web replica and worker would also open a
+  // store of its own — workers ingest into stores no web replica can read
+  // (retrieval silently empty). The deploy would report success and be
+  // functionally broken.
+  if (!bool(cfg, "chromaEnabled", true)) {
     throw new Error(
-      "jobExecution=db requires the shared Chroma server (workers and web replicas must " +
-        "read/write one vector store). Set grid-oib:chromaEnabled=true, or use jobExecution=dask.",
+      "chromaEnabled=false is not supported: the backend keeps no volume, so an embedded vector " +
+        "store would be wiped on every restart, and replicas and workers must share one store. " +
+        "Set grid-oib:chromaEnabled=true.",
     );
   }
 
   const jobPayloadKek = cfg.getSecret("jobPayloadKek");
   const allowPlaintextJobPayloads = bool(cfg, "allowPlaintextJobPayloads", false);
-  if (jobExecution === "db" && jobPayloadKek === undefined && !allowPlaintextJobPayloads) {
+  if (jobPayloadKek === undefined && !allowPlaintextJobPayloads) {
     throw new Error(
-      "jobExecution=db persists research-job payloads (which carry the user auth token) in Postgres, " +
+      "The DB-claimed research queue persists job payloads (which carry the user auth token) in Postgres, " +
         "so they must be encrypted at rest. Set a 32-byte base64 KEK:\n" +
         "  pulumi config set --secret grid-oib:jobPayloadKek $(openssl rand -base64 32)\n" +
         "To deliberately run with PLAINTEXT payloads (dev/single-node only), set:\n" +
@@ -1797,23 +1884,16 @@ export function loadConfig(): GridConfig {
     );
   }
 
-  // ── Observability (ADR-0029): availability = flag AND capability ───────────
-  // `observabilityEnabled` is the product decision; the capability is DERIVED
-  // from the dependencies the tier cannot run without — never duplicated as a
-  // second flag. Without them the components deploy broken, not degraded: the
-  // Gateway SecurityPolicy in front of the dashboard has no usable OIDC client
-  // to authenticate anyone with — and the dashboard itself runs `AuthMode=Unsecured`
-  // precisely because the edge is doing that job, so a half-configured tier is
-  // an OPEN telemetry dashboard, not a locked one. The collector likewise has
-  // no key to authenticate its export. So the whole tier (dashboard, collector,
-  // SecurityPolicy, Gateway listener, producer env) is skipped instead, with a
-  // warning naming exactly what is missing.
+  // ── Observability (ADR-0029): the collector, and what consumes it ─────────
+  // `observabilityEnabled` is the product decision for the whole tier. The
+  // collector is deployed when something consumes it (see `collectorEnabled`
+  // below), never because the flag alone says so. The Aspire dashboard it used
+  // to feed is gone (ADR-0100): traces go to Langfuse, logs to PostHog.
   const workosClientId = cfg.get("workosClientId") ?? "";
   const workosApiKey = cfg.getSecret("workosApiKey");
-  const otelDomain = cfg.get("otelDomain") ?? `otel.${baseDomain}`;
-  const otelPrimaryApiKey = cfg.getSecret("otelPrimaryApiKey");
-  // Dedicated WorkOS **Connect** application for the dashboard. REQUIRED — the
-  // app's own AuthKit client cannot be reused, and this is not a preference:
+  // Dedicated WorkOS **Connect** application for the platform surfaces (now
+  // Langfuse alone). REQUIRED — the app's own AuthKit client cannot be reused,
+  // and this is not a preference:
   //
   //   Envoy Gateway hardcodes HTTP Basic auth for the token exchange
   //   (`internal/xds/translator/oidc.go`, "every OIDC provider supports basic
@@ -1831,36 +1911,11 @@ export function loadConfig(): GridConfig {
   const otelOidcClientId = cfg.get("otelOidcClientId") ?? "";
   const otelOidcClientSecret = cfg.getSecret("otelOidcClientSecret");
   const observabilityFlag = bool(cfg, "observabilityEnabled", true);
-  const missingObservabilityDeps = [
-    otelPrimaryApiKey === undefined ? "otelPrimaryApiKey" : undefined,
+  const missingOidcDeps = [
     otelOidcIssuer === "" ? "otelOidcIssuer" : undefined,
     otelOidcClientId === "" ? "otelOidcClientId" : undefined,
     otelOidcClientSecret === undefined ? "otelOidcClientSecret" : undefined,
   ].filter((k): k is string => k !== undefined);
-  const observabilityEnabled = observabilityFlag && missingObservabilityDeps.length === 0;
-
-  // Fail closed: the Aspire dashboard authenticates nobody itself (ADR-0029
-  // Amendment 2 moved auth to the Gateway SecurityPolicy), and the ONLY thing
-  // keeping the rest of the namespace off its unauthenticated :18888 is the
-  // NetworkPolicy set. Turning policies off while the tier is deployed would
-  // publish every tenant's prompts, retrieved snippets, LLM output and
-  // presigned S3 URLs to any pod that gets a foothold. Refuse the combination
-  // rather than silently shipping it.
-  if (observabilityEnabled && !bool(cfg, "networkPolicies", true)) {
-    throw new Error(
-      "grid-oib:observabilityEnabled requires grid-oib:networkPolicies. The Aspire dashboard " +
-        "runs AuthMode=Unsecured and relies on NetworkPolicies to keep the namespace off its " +
-        "unauthenticated UI port. Set networkPolicies=true, or observabilityEnabled=false.",
-    );
-  }
-  if (observabilityFlag && !observabilityEnabled) {
-    pulumi.log.warn(
-      "Observability (ADR-0029) not deployed: missing " +
-        missingObservabilityDeps.map((k) => `grid-oib:${k}`).join(", ") +
-        ". Set them to deploy the OTel Collector + Aspire dashboard, or set " +
-        "grid-oib:observabilityEnabled=false to silence this.",
-    );
-  }
 
   // ── Langfuse (ADR-0044): same availability = flag AND capability rule ──────
   // Default ON, like `observabilityEnabled`: durable traces are the expected
@@ -1869,11 +1924,11 @@ export function loadConfig(): GridConfig {
   // tier cannot boot without, so a stack that has not set them gets the warning
   // below and no workloads, never a half-deployed tier. Set the flag to false
   // to opt out of the four workloads and the PVC that grows without a
-  // retention policy. The dependency on `observabilityEnabled` is structural
-  // for the same reason err2issue's is: Langfuse has no receiver of its own in
-  // this design, the collector fans traces into it, so without it it is idle.
+  // retention policy. The dependency on `observabilityEnabled` is structural:
+  // Langfuse has no receiver of its own in this design, the collector fans
+  // traces into it, so without it it is idle.
   //
-  // It also inherits the collector's WorkOS Connect application rather than
+  // It signs in against the platform WorkOS Connect application rather than
   // asking for a fourth OIDC triple. One application can carry several redirect
   // URIs, and the alternative is an operator provisioning two near-identical
   // confidential clients that gate on the same permission — two places to get
@@ -1897,7 +1952,8 @@ export function loadConfig(): GridConfig {
   ];
   const missingLangfuseDeps = [
     ...langfuseSecretKeys.filter((key) => (cfg.get(key) ?? "").trim() === ""),
-    observabilityEnabled ? undefined : "observabilityEnabled (Langfuse is fed by the collector)",
+    ...missingOidcDeps,
+    observabilityFlag ? undefined : "observabilityEnabled (Langfuse is fed by the collector)",
   ].filter((k): k is string => k !== undefined);
   const langfuseEnabled = langfuseFlag && missingLangfuseDeps.length === 0;
 
@@ -1975,20 +2031,19 @@ export function loadConfig(): GridConfig {
       );
     }
 
-    // NOTE ON NETWORKPOLICIES, which this tier needs just as much as the
-    // dashboard does — the trace store, its ClickHouse and its ingestion queue
-    // all sit in the app namespace holding every tenant's prompts and LLM
-    // output. There is deliberately NO guard for it here.
-    //
-    // It would be unreachable. `langfuseEnabled` resolves true only when
-    // `observabilityEnabled` is true (the capability list above), and the
-    // observability check a few lines up already throws for
-    // `networkPolicies=false`. A second check could never fire, and a control
-    // that cannot fire is worse than no control: it reads to the next person
-    // as protection that has been considered and applied.
-    //
-    // The requirement is therefore INHERITED, structurally, not restated.
-    // If the observability guard is ever relaxed, this tier needs its own.
+    // Fail closed: this tier needs NetworkPolicies — the trace store, its
+    // ClickHouse and its ingestion queue all sit in the app namespace holding
+    // every tenant's prompts and LLM output, and the policy set is what keeps
+    // the rest of the namespace off them. (The Aspire dashboard's identical
+    // guard went with the dashboard.)
+    if (!bool(cfg, "networkPolicies", true)) {
+      throw new Error(
+        "grid-oib:langfuseEnabled requires grid-oib:networkPolicies. Langfuse, its ClickHouse " +
+          "and its queue hold every tenant's prompts and LLM output in the app namespace, and " +
+          "the NetworkPolicy set is what keeps the rest of the namespace off them. Set " +
+          "networkPolicies=true, or langfuseEnabled=false.",
+      );
+    }
     //
     // Distinctness, not strength — the same control as pgRuntimePassword and
     // rateLimitStorePassword. Every app pod already holds the ADR-0020 cache
@@ -2041,7 +2096,6 @@ export function loadConfig(): GridConfig {
     webDomain,
     appDomain,
     s3Domain,
-    otelDomain: observabilityEnabled ? otelDomain : undefined,
     langfuseDomain: langfuseEnabled ? langfuseDomain : undefined,
   });
 
@@ -2121,47 +2175,45 @@ export function loadConfig(): GridConfig {
     }
   }
 
-  // ── err2issue (ADR-0031): same availability = flag AND capability rule ─────
-  // Opt-in (default false) because turning it on starts writing to a GitHub
-  // repo — a side effect outside the cluster, unlike every other component
-  // here. The dependency on `observabilityEnabled` is structural, not stylistic:
-  // err2issue has no receiver of its own in this design, it is fed by the
-  // collector's logs pipeline, so without the collector it is a pod that can
-  // only ever sit idle.
-  const err2issueFlag = bool(cfg, "err2issueEnabled", false);
-  const err2issueGithubRepo = cfg.get("err2issueGithubRepo") ?? "";
-  const err2issueGithubToken = cfg.getSecret("err2issueGithubToken");
-  const missingErr2IssueDeps = [
-    err2issueGithubRepo === "" ? "err2issueGithubRepo" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-    observabilityEnabled ? undefined : "observabilityEnabled (err2issue is fed by the collector)",
+  // ── PostHog: on by default in every stack (ADR-0100) ───────────────────────
+  // The frontend, the Python tiers and the collector all read this one pair.
+  // The SDK tiers capture with host + token alone (they no-op without them).
+  // Both default to Piloti's project, so a stack sends unless it opts out with
+  // an empty `posthogHost`; every event carries its `environment`, which keeps
+  // staging apart from production in the one project. Logs leave the cluster
+  // in bulk through the collector, so they also need the collector.
+  const posthogHost = cfg.get("posthogHost") ?? POSTHOG_DEFAULT_HOST;
+  const posthogProjectToken = cfg.get("posthogProjectToken") ?? POSTHOG_DEFAULT_PROJECT_TOKEN;
+  const posthogLogsAsked = cfg.get("posthogLogsEnabled") !== undefined;
+  const posthogLogsFlag = bool(cfg, "posthogLogsEnabled", true);
+  const missingPosthogLogsDeps = [
+    posthogHost === "" ? "posthogHost" : undefined,
+    posthogProjectToken === "" ? "posthogProjectToken" : undefined,
+    observabilityFlag ? undefined : "observabilityEnabled (PostHog logs are exported by the collector)",
   ].filter((k): k is string => k !== undefined);
-  const err2issueEnabled = err2issueFlag && missingErr2IssueDeps.length === 0;
-  if (err2issueFlag && !err2issueEnabled) {
+  const posthogLogsEnabled = posthogLogsFlag && missingPosthogLogsDeps.length === 0;
+  // Warn only when a stack asked for logs by name: the default with the
+  // collector or PostHog switched off is that stack's choice, not a mistake.
+  if (posthogLogsAsked && posthogLogsFlag && !posthogLogsEnabled) {
     pulumi.log.warn(
-      "err2issue (ADR-0031) not deployed: missing " +
-        missingErr2IssueDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
-        ". Set them to deploy the error→issue sink, or set " +
-        "grid-oib:err2issueEnabled=false to silence this.",
+      "PostHog logs not exported: missing " +
+        missingPosthogLogsDeps.map((k) => (k.includes(" ") ? k : `grid-oib:${k}`)).join(", ") +
+        ". Set them to ship WARN+ logs to PostHog, or set " +
+        "grid-oib:posthogLogsEnabled=false to silence this.",
     );
   }
 
-  // ── Feedback → GitHub issues: flag AND capability, the token is err2issue's ─
-  // Default ON, unlike err2issue: a report is filed only when a member sends
-  // one (rate limited per person), so there is no hot loop to cap, and a stack
-  // that has no token files nothing. Warn only when the flag was set by hand.
-  const feedbackIssuesFlag = bool(cfg, "feedbackIssuesEnabled", true);
-  const feedbackIssuesRepo = cfg.get("feedbackIssuesRepo") ?? err2issueGithubRepo;
-  const missingFeedbackIssuesDeps = [
-    feedbackIssuesRepo === "" ? "feedbackIssuesRepo (or err2issueGithubRepo)" : undefined,
-    err2issueGithubToken === undefined ? "err2issueGithubToken" : undefined,
-  ].filter((k): k is string => k !== undefined);
-  const feedbackIssuesEnabled = feedbackIssuesFlag && missingFeedbackIssuesDeps.length === 0;
-  if (cfg.getBoolean("feedbackIssuesEnabled") === true && !feedbackIssuesEnabled) {
+  // ── The collector: deployed when something consumes what it forwards ──────
+  // Two consumers, either of which is enough: Langfuse (traces) and PostHog
+  // logs (logs). With neither it would receive OTLP from every producer and
+  // forward it nowhere, and each producer would carry an endpoint pointing at a
+  // pod that does nothing.
+  const collectorEnabled = observabilityFlag && (langfuseEnabled || posthogLogsEnabled);
+  if (observabilityFlag && !collectorEnabled) {
     pulumi.log.warn(
-      "Feedback → GitHub issues not wired: missing " +
-        missingFeedbackIssuesDeps.map((k) => `grid-oib:${k}`).join(", ") +
-        ". Bug reports are still stored and announced in the inbox.",
+      "OTel Collector (ADR-0029) not deployed: nothing consumes it. Enable Langfuse " +
+        "(it also needs the otelOidc* application) or grid-oib:posthogLogsEnabled, or set " +
+        "grid-oib:observabilityEnabled=false to silence this.",
     );
   }
 
@@ -2186,6 +2238,7 @@ export function loadConfig(): GridConfig {
 
     storage: {
       className: cfg.require("storageClass"),
+      legacyCorpusClaim: cfg.get("legacyCorpusClaim"),
     },
 
     ingress: {
@@ -2228,10 +2281,23 @@ export function loadConfig(): GridConfig {
 
     postgres: {
       instances: num(cfg, "pgInstances", 1),
+      pooler: {
+        instances: positiveInt(cfg, "pgPoolerInstances", 2),
+        poolSize: positiveInt(cfg, "pgPoolerPoolSize", 12),
+        // Digest-pinned like the ADR-0029 and ADR-0044 images, and scanned by the
+        // same trivy job in security.yml. The tag is the version (1.26.0, which
+        // is >= 1.21: protocol-level prepared statements in transaction mode);
+        // the digest is what the cluster pulls. CloudNativePG's own build of
+        // PgBouncer, because the operator drives its config and its auth query.
+        image:
+          cfg.get("pgPoolerImage") ??
+          "ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:ce54f1133c509f1db8a8092c3f1c761d8c9292065ed6b6698786bb966da4dab9",
+      },
       storageSize: cfg.get("pgStorageSize") ?? "20Gi",
       appUser: cfg.get("pgAppUser") ?? "aiq",
       appPassword: cfg.requireSecret("pgAppPassword"),
       runtimePassword: cfg.requireSecret("pgRuntimePassword"),
+      scalerPassword: cfg.getSecret("pgScalerPassword") ?? derivedScalerPassword(cfg.requireSecret("pgAppPassword")),
       primaryUpdateStrategy:
         cfg.get("pgPrimaryUpdateStrategy") === "supervised" ? "supervised" : "unsupervised",
       backups: {
@@ -2286,10 +2352,22 @@ export function loadConfig(): GridConfig {
       // this binary does not know (any --chromium-*) stops it at boot. Keep it equal to the
       // Compose pin (deploy/compose/docker-compose.yaml).
       image: cfg.get("gotenbergImage") ?? "gotenberg/gotenberg:8.37.0-libreoffice",
+      // Unset, it is what the bff-jobs pool needs at its ceiling, so the defaults hold
+      // `renditionCeiling <= gotenbergCapacity` (asserted in gotenberg.spec.ts).
+      replicas: Math.max(
+        1,
+        num(
+          cfg,
+          "gotenbergReplicas",
+          Math.ceil(
+            (Math.max(1, num(cfg, "bffJobsMaxReplicas", 4)) * Math.max(1, num(cfg, "bffJobsRenditionConcurrency", 1))) /
+              GOTENBERG_SLOTS_PER_REPLICA,
+          ),
+        ),
+      ),
     },
 
     chroma: {
-      enabled: chromaEnabled,
       // Deliberately pinned (NOT latest): the server API/wire protocol is
       // coupled to the backend's `chromadb` Python client. It MUST match — a 1.x
       // client against a 0.5.x server fails ingestion with KeyError('_type'),
@@ -2354,19 +2432,40 @@ export function loadConfig(): GridConfig {
         limitsCpu: cfg.get("backendLimitsCpu") ?? "4",
         limitsMemory: cfg.get("backendLimitsMemory") ?? "8Gi",
       },
-      daskWorkers: num(cfg, "backendDaskWorkers", 1),
-      daskThreads: num(cfg, "backendDaskThreads", 4),
-      maxActiveJobs: num(cfg, "backendMaxActiveJobs", 8),
       maxActiveJobsPerOrg: num(cfg, "backendMaxActiveJobsPerOrg", 3),
+      maxQueuedJobsPerOrg: num(cfg, "backendMaxQueuedJobsPerOrg", 50),
       ingestMaxWorkers: num(cfg, "backendIngestMaxWorkers", 2),
       configFile: cfg.get("backendConfigFile") ?? "/app/configs/config_oib_openrouter.yml",
-      chromaDir: cfg.get("backendChromaDir") ?? "/app/data/chroma_data",
-      dataStorageSize: cfg.get("backendDataStorageSize") ?? "20Gi",
       // Multi-replica chat/web tier. Safe because the frontend WS proxy pins each
       // conversation to its owning replica by hash (conversation affinity,
       // ADR-0028), so the in-process WS/HITL/task state is always reachable. The
       // headless service (backend.ts) provides the per-pod DNS this needs.
-      replicas: num(cfg, "backendReplicas", 2),
+      replicas: backendReplicas,
+      maxReplicas: backendMaxReplicas,
+      turnsPerReplica: Math.max(1, num(cfg, "backendTurnsPerReplica", 8)),
+      cpuTargetPercent: num(cfg, "backendCpuTargetPercent", 70),
+      // The longest chat turn (+ its 30 s cancel grace) once the tier scales: scale-in
+      // picks a pod whatever it is running. With affinity on the count is static
+      // and a singleton serves nobody while it drains, so the short drain that
+      // fits the 90 s grace period the tier has always had stays the default.
+      drainSeconds: Math.max(10, num(cfg, "backendDrainSeconds", chatAffinity ? 20 : 2730)),
+      chatAffinity,
+    },
+
+    api: {
+      // Request-bound LLM utilities, knowledge routes and SSE streams: CPU is
+      // modest per pod, memory carries the workflow the process builds at boot
+      // (the same one the chat tier builds). `requests` is what the HPA divides
+      // by, so it stays near steady state (see `frontend`).
+      resources: {
+        requestsCpu: cfg.get("apiRequestsCpu") ?? "500m",
+        requestsMemory: cfg.get("apiRequestsMemory") ?? "1536Mi",
+        limitsCpu: cfg.get("apiLimitsCpu") ?? "2",
+        limitsMemory: cfg.get("apiLimitsMemory") ?? "6Gi",
+      },
+      minReplicas: apiMinReplicas,
+      maxReplicas: apiMaxReplicas,
+      hpaCpuTargetPercent: num(cfg, "apiHpaCpuTargetPercent", 70),
     },
 
     frontend: {
@@ -2419,7 +2518,6 @@ export function loadConfig(): GridConfig {
       hpaCpuTargetPercent: num(cfg, "webHpaCpuTargetPercent", 70),
     },
 
-    jobExecution,
     conversationBus,
     agentWorker: {
       resources: {
@@ -2428,10 +2526,12 @@ export function loadConfig(): GridConfig {
         limitsCpu: cfg.get("agentWorkerLimitsCpu") ?? "4",
         limitsMemory: cfg.get("agentWorkerLimitsMemory") ?? "8Gi",
       },
-      minReplicas: num(cfg, "agentWorkerMinReplicas", 2),
-      maxReplicas: num(cfg, "agentWorkerMaxReplicas", 8),
-      hpaCpuTargetPercent: num(cfg, "agentWorkerHpaCpuTargetPercent", 70),
-      concurrency: num(cfg, "agentWorkerConcurrency", 1),
+      // KEDA scales the tier on the research queue's depth (ADR-0079), not on
+      // CPU, which an LLM-bound job barely moves. A floor of zero lets it idle
+      // while nothing waits.
+      minReplicas: Math.max(0, num(cfg, "agentWorkerMinReplicas", 1)),
+      maxReplicas: Math.max(1, num(cfg, "agentWorkerMaxReplicas", 8)),
+      concurrency: Math.max(1, num(cfg, "agentWorkerConcurrency", 1)),
       // 10 minutes: long enough for a typical deep-research run to land, short
       // enough that a rolling deploy of the tier stays inside the CD timeout.
       // Clamped to a sane floor — a value below the default 30s would be a
@@ -2440,9 +2540,6 @@ export function loadConfig(): GridConfig {
     },
 
     ingestWorker: {
-      // Needs the durable queue's shared Postgres and a shared vector store,
-      // which is what `db` execution already requires (Chroma server mode).
-      enabled: jobExecution === "db" && cfg.getBoolean("ingestWorkerEnabled") !== false,
       resources: {
         requestsCpu: cfg.get("ingestWorkerRequestsCpu") ?? "500m",
         requestsMemory: cfg.get("ingestWorkerRequestsMemory") ?? "1536Mi",
@@ -2450,12 +2547,46 @@ export function loadConfig(): GridConfig {
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },
       minReplicas: Math.max(0, num(cfg, "ingestWorkerMinReplicas", 1)),
-      maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 20)),
+      // 5 x 3 x `AIQ_VLM_BATCH_WORKERS` (4) = 60, within 2 x the vision pool (32): the
+      // most the default budget can feed (`assertVlmPeakFitsCeiling`).
+      maxReplicas: Math.max(1, num(cfg, "ingestWorkerMaxReplicas", 5)),
       concurrency: Math.max(1, num(cfg, "ingestWorkerConcurrency", 3)),
       drainSeconds: Math.max(30, num(cfg, "ingestWorkerDrainSeconds", 600)),
       maxPerOrg: Math.max(0, num(cfg, "ingestMaxPerOrg", 0)),
     },
+    bffJobs: {
+      enabled: cfg.getBoolean("bffJobsEnabled") !== false,
+      // A reindex or a rescan only pages and POSTs, but an IFC model is parsed
+      // here too (`bim_extract`): several times its own size in memory, up to
+      // `maxIfcBytes`, with `bffJobsConcurrency` of them at once. So the limit
+      // is double a frontend pod's; the request stays where the walk needs it.
+      resources: {
+        requestsCpu: cfg.get("bffJobsRequestsCpu") ?? "250m",
+        requestsMemory: cfg.get("bffJobsRequestsMemory") ?? "512Mi",
+        limitsCpu: cfg.get("bffJobsLimitsCpu") ?? "1",
+        limitsMemory: cfg.get("bffJobsLimitsMemory") ?? "2Gi",
+      },
+      minReplicas: Math.max(0, num(cfg, "bffJobsMinReplicas", 1)),
+      maxReplicas: Math.max(1, num(cfg, "bffJobsMaxReplicas", 4)),
+      concurrency: Math.max(1, num(cfg, "bffJobsConcurrency", 2)),
+      drainSeconds: Math.max(15, num(cfg, "bffJobsDrainSeconds", 60)),
+      maxPerOrg: Math.max(0, num(cfg, "bffJobsMaxPerOrg", 0)),
+      // One: LibreOffice converts one document at a time, and the second slot
+      // Gotenberg is sized for is the next job waiting behind it. A pod running
+      // two jobs at once still converts one file at a time.
+      renditionConcurrency: Math.max(1, num(cfg, "bffJobsRenditionConcurrency", 1)),
+    },
     keda: { install: cfg.getBoolean("installKeda") ?? true },
+
+    // Defaults are the backend image's own (`adapter.py`, `processing.py`,
+    // `provider_limiter.py`), written down here so the stack file, not a Python
+    // default, is where the fleet's budget is read and changed.
+    providerLimits: {
+      vlmFleetConcurrency: Math.max(0, num(cfg, "vlmFleetConcurrency", 32)),
+      vlmBatchWorkers: Math.max(1, num(cfg, "vlmBatchWorkers", 4)),
+      limitCeiling: Math.max(1, num(cfg, "providerLimitCeiling", 128)),
+      modelLimitCeiling: Math.max(1, num(cfg, "providerModelLimitCeiling", 32)),
+    },
 
     llm: {
       openrouterApiKey: cfg.requireSecret("openrouterApiKey"),
@@ -2475,15 +2606,18 @@ export function loadConfig(): GridConfig {
       platformOrgExternalId: cfg.get("platformOrgExternalId") ?? "grid-platform",
       disableSelfServeOrgs: bool(cfg, "disableSelfServeOrgs", false),
       auditLogsEnabled: bool(cfg, "auditLogsEnabled", false),
-      enforceFeatureFlags: bool(cfg, "enforceFeatureFlags", false),
       byokSecretBackend: cfg.get("byokSecretBackend") ?? "",
       byokLocalKek: cfg.getSecret("byokLocalKek") ?? pulumi.output(""),
       allowAgentOrgMemory: bool(cfg, "allowAgentOrgMemory", false),
     },
 
     posthog: {
-      host: cfg.get("posthogHost") ?? "",
-      projectToken: cfg.get("posthogProjectToken") ?? "",
+      host: posthogHost,
+      projectToken: posthogProjectToken,
+      logsEnabled: posthogLogsEnabled,
+      sessionReplay: bool(cfg, "posthogSessionReplay", true),
+      replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
+      releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
     },
 
     internal: {
@@ -2494,7 +2628,6 @@ export function loadConfig(): GridConfig {
     },
 
     skills: {
-      enabled: bool(cfg, "skillsEnabled", false),
       minIntervalMinutes: num(cfg, "skillMinIntervalMinutes", 15),
     },
 
@@ -2510,40 +2643,15 @@ export function loadConfig(): GridConfig {
       schedule: cfg.get("vectorReconcileSchedule") ?? "0 3 * * 0",
     },
 
-    collaboration: {
-      enabled: bool(cfg, "collaborationEnabled", false),
-    },
-
-    agentAuthoredDocuments: {
-      enabled: bool(cfg, "agentAuthoredDocumentsEnabled", true),
-    },
-
-    ifcModels: {
-      enabled: bool(cfg, "ifcModelsEnabled", true),
-    },
-
-    memory: {
-      reflectionEnabled: bool(cfg, "memoryReflectionEnabled", true),
-    },
-
     observability: {
-      enabled: observabilityEnabled,
-      otelDomain,
-      // Digest-pinned (supply chain): 13.4.2 and 0.161.0 respectively. Bump
-      // deliberately via config when upgrading — the pins are scanned by the
-      // trivy job in .github/workflows/security.yml, which blocks on fixable
-      // HIGH/CRITICAL, so a stale pin surfaces as a failing check.
-      dashboardImage:
-        cfg.get("dashboardImage") ??
-        "mcr.microsoft.com/dotnet/aspire-dashboard@sha256:d71f709233fdd53092a9a562ca6fb74264aec7c16c9aff03da94091f18ea2394",
+      enabled: collectorEnabled,
+      // Digest-pinned (supply chain): 0.161.0. Bump deliberately via config when
+      // upgrading — the pin is scanned by the trivy job in
+      // .github/workflows/security.yml, which blocks on fixable HIGH/CRITICAL, so
+      // a stale pin surfaces as a failing check.
       collectorImage:
         cfg.get("collectorImage") ??
         "otel/opentelemetry-collector-contrib@sha256:fd328de2552466ad78385e1b1289c3f2402b1c45f265b252aab1955b42845ac1",
-      telemetryLimits: {
-        maxLogCount: num(cfg, "dashboardMaxLogCount", 50000),
-        maxTraceCount: num(cfg, "dashboardMaxTraceCount", 50000),
-      },
-      otelPrimaryApiKey: otelPrimaryApiKey ?? pulumi.output(""),
       oidcIssuer: otelOidcIssuer,
       oidcClientId: otelOidcClientId,
       oidcClientSecret: otelOidcClientSecret ?? pulumi.output(""),
@@ -2553,21 +2661,23 @@ export function loadConfig(): GridConfig {
       enabled: langfuseEnabled,
       domain: langfuseDomain,
       // Digest-pinned on the same terms as the ADR-0029 images, and scanned by
-      // the same trivy gate: langfuse 4.48.0 (web + worker, which MUST be the
+      // the same trivy gate: langfuse 4.56.0 (web + worker, which MUST be the
       // same version) and ClickHouse 26.8.15.10 LTS, which v4 needs (>= 25.12).
-      // `4` and `26.8` are moving tags upstream; these are the digests they
-      // resolved to when pinned. v3 (3.225.11) shipped next 16.2.11, whose
+      // The langfuse digests are what GHCR's `4.56.0` tags resolve to (checked
+      // 2026-10-09); `26.8` is a moving tag upstream and this is the digest it
+      // resolved to when pinned. 4.56.0 moved both images from node:24-alpine
+      // to UBI 9 micro; the uid (1001) and the `node` binary the preStop hook
+      // runs are unchanged. v3 (3.225.11) shipped next 16.2.11, whose
       // next/og RCE (GHSA-vcvr-r3jv-pc5j) no 3.x release fixes.
       webImage:
         cfg.get("langfuseWebImage") ??
-        "ghcr.io/langfuse/langfuse@sha256:8c1b80ed7735be587974d603af0f6e0247b33d3b56c7d5ab9d2337aec313efa0",
+        "ghcr.io/langfuse/langfuse@sha256:b1948c7c0931f277975b985e30e73536b1bca5822705ddd9a89ba7c1ed79b3ee",
       workerImage:
         cfg.get("langfuseWorkerImage") ??
-        "ghcr.io/langfuse/langfuse-worker@sha256:9349b003a453326b3d2e2033eb94fe5ca9ee12ee237779c10984b9d3dfe0f8ed",
+        "ghcr.io/langfuse/langfuse-worker@sha256:3f7571ff3a725ebdcdf4c35e06bdf8c3f8325770691c673793ad61b328265e13",
       clickhouseImage:
         cfg.get("clickhouseImage") ??
         "clickhouse/clickhouse-server@sha256:3043f691ec1a847f38b446ff43708893fcbf9815bd9bd88c0f84bfe064ce852f",
-      v4WriteMode: langfuseV4WriteMode(cfg.get("langfuseV4WriteMode")),
       v4HistoricBackfill: bool(cfg, "langfuseV4HistoricBackfill", false),
       // 50 Gi: fourteen days of TTL-bounded system logs plus headroom for the
       // trace store itself, which still grows without bound (OSS has no
@@ -2593,47 +2703,26 @@ export function loadConfig(): GridConfig {
       // existing one, orphaning every trace already stored.
       orgId: cfg.get("langfuseOrgId") ?? "grid",
       projectId: cfg.get("langfuseProjectId") ?? "grid-oib",
+      defaultRole: langfuseOrgRole(cfg.get("langfuseDefaultRole")),
       initUserEmail: cfg.get("langfuseInitUserEmail") ?? cfg.get("letsEncryptEmail") ?? "",
       initUserPassword: cfg.getSecret("langfuseInitUserPassword") ?? pulumi.output(""),
       s3AccessKey: cfg.get("langfuseS3AccessKey") ?? "grid-langfuse",
       s3SecretKey: cfg.getSecret("langfuseS3SecretKey") ?? pulumi.output(""),
     },
-
-    err2issue: {
-      enabled: err2issueEnabled,
-      // Digest-pinned: published as `:sha-7240361d3d62213625b7ddee5e9b28aa47dfa0cd`,
-      // the first build with PyJWT >= 2.14 (2.15.1). Upstream cuts no release
-      // tags, so the digest is the version; the CHANGELOG names the commit.
-      // Scanned by the trivy job in security.yml.
-      image:
-        cfg.get("err2issueImage") ??
-        "ghcr.io/matthiasbigl/err2issue@sha256:23ff1752ac2425739c6047c93c479b0d5b1a1b24b67221ae1ba0205dba8c4333",
-      githubRepo: err2issueGithubRepo,
-      githubToken: err2issueGithubToken ?? pulumi.output(""),
-      routeMap: cfg.get("err2issueRouteMap") ?? "",
-      anthropicApiKey: cfg.getSecret("err2issueAnthropicApiKey") ?? pulumi.output(""),
-      suppressWindowSeconds: num(cfg, "err2issueSuppressWindowSeconds", 600),
-      // Deliberately below the upstream default of 50. This is the first
-      // deployment of an error sink against a repo that has never had one: the
-      // realistic failure is a long tail of pre-existing, never-noticed errors
-      // arriving at once and burying the issue tracker on day one. Raise it
-      // once the steady-state volume is known.
-      maxNewFingerprintsPerDay: num(cfg, "err2issueMaxNewFingerprintsPerDay", 20),
-      dropUnrouted: bool(cfg, "err2issueDropUnrouted", true),
-      // The Aspire dashboard's trace view. It holds traces in memory, so a link
-      // on an old issue can outlive the trace it names; the id in the issue
-      // stays the thing to search by.
-      traceUrlTemplate: observabilityEnabled ? `https://${otelDomain}/traces/detail/{trace_id}` : "",
-      reopenNotPlanned: bool(cfg, "err2issueReopenNotPlanned", false),
-      issueAssignees: cfg.get("err2issueIssueAssignees") ?? "",
-    },
-
-    feedbackIssues: {
-      enabled: feedbackIssuesEnabled,
-      repo: feedbackIssuesRepo,
-      githubToken: feedbackIssuesEnabled && err2issueGithubToken ? err2issueGithubToken : pulumi.output(""),
-    },
   };
+}
+
+/**
+ * Whether the chat tier autoscales (ADR-0080).
+ *
+ * Only with affinity off. With it on, the BFF routes by
+ * `hash(conversationId) % BACKEND_REPLICAS`, so the replica count is part of the
+ * routing: changing it remaps live conversations, and a replica the hash names
+ * that does not exist yet is a dead socket. The count is then whatever
+ * `backendReplicas` says, and the stack's own `replicas` field owns it.
+ */
+export function backendAutoscaled(c: GridConfig): boolean {
+  return !c.backend.chatAffinity && c.backend.maxReplicas > c.backend.replicas;
 }
 
 /** Resolve the concrete backend image reference. */
@@ -2802,4 +2891,162 @@ export function assertHpaTargetIsProportional(
       `${tier}: CPU limit (${r.limitsCpu}) is below the request (${r.requestsCpu}).`,
     );
   }
+}
+
+/**
+ * Conversions one Gotenberg replica is sized to take at once: one running and
+ * one ready behind it. The second is deliberate (`rendition.ts` in the BFF):
+ * it keeps the converter busy between files without queueing anything inside
+ * it that could run out of its own API timeout.
+ */
+export const GOTENBERG_SLOTS_PER_REPLICA = 2;
+
+/**
+ * The most office conversions the `bff-jobs` pool can have in flight at
+ * Gotenberg at once: its replicas at the ceiling times what one pod runs.
+ * Background conversions are claimed from `bff_job_queue` (ADR-0079), so this
+ * is the fleet-wide bound that replaced a per-process queue in every frontend
+ * pod; readers opening a preview are the frontend pods' own, bounded apart.
+ */
+export function renditionCeiling(cfg: Pick<GridConfig, "bffJobs">): number {
+  return cfg.bffJobs.maxReplicas * cfg.bffJobs.renditionConcurrency;
+}
+
+/** What the converter can take: its replicas times {@link GOTENBERG_SLOTS_PER_REPLICA}. */
+export function gotenbergCapacity(cfg: Pick<GridConfig, "gotenberg">): number {
+  return cfg.gotenberg.replicas * GOTENBERG_SLOTS_PER_REPLICA;
+}
+
+/**
+ * Vision calls the ingest tier can have in flight at its ceiling: replicas, times
+ * the jobs one replica runs at once, times the files' own parallelism
+ * (`AIQ_VLM_BATCH_WORKERS`). Every one of them asks the shared provider key for a
+ * slot of the fleet pool (`AIQ_VLM_FLEET_CONCURRENCY`).
+ */
+export function vlmPeakCalls(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): number {
+  return cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency * cfg.providerLimits.vlmBatchWorkers;
+}
+
+/**
+ * How far past the fleet pool the ingest tier may be sized. Callers over the pool
+ * wait for a slot, which is what the pool is for, so some overshoot is a queue
+ * that keeps the pool busy between files; a lot of it is replicas that only hold
+ * memory while they wait, and a wait long enough to meet the vision client's
+ * timeout (`AIQ_VLM_TIMEOUT_SECONDS`) is a retry for nothing.
+ */
+export const VLM_OVERSUBSCRIPTION = 2;
+
+/**
+ * Refuse an ingest tier whose peak vision calls run past the fleet's ceiling by
+ * more than {@link VLM_OVERSUBSCRIPTION}, and a fleet pool larger than either
+ * limiter ceiling it passes through: the key-wide one, and the vision model's
+ * own (every vision call holds a slot in both, and the model's pool is the
+ * smaller by default, so a bigger fleet pool could never fill). The numbers are chosen in two
+ * places (the tier's replicas, the provider's budget) and neither looks wrong
+ * alone, which is how a tier gets raised until its replicas queue on a pool
+ * sized for a fraction of them.
+ *
+ * Skipped when the pool is off (`vlmFleetConcurrency` 0: nothing is held back).
+ */
+export function assertVlmPeakFitsCeiling(cfg: Pick<GridConfig, "ingestWorker" | "providerLimits">): void {
+  const { vlmFleetConcurrency, vlmBatchWorkers, limitCeiling, modelLimitCeiling } = cfg.providerLimits;
+  if (vlmFleetConcurrency === 0) return;
+  const peak = vlmPeakCalls(cfg);
+  const allowed = VLM_OVERSUBSCRIPTION * vlmFleetConcurrency;
+  if (peak > allowed) {
+    const { maxReplicas, concurrency } = cfg.ingestWorker;
+    throw new Error(
+      `Invalid ingest sizing: ingestWorkerMaxReplicas (${maxReplicas}) x ingestWorkerConcurrency (${concurrency}) ` +
+        `x vlmBatchWorkers (${vlmBatchWorkers}) = ${peak} vision calls at the peak, more than ` +
+        `${VLM_OVERSUBSCRIPTION}x vlmFleetConcurrency (${vlmFleetConcurrency}) = ${allowed}. The extra replicas ` +
+        "would only queue on the fleet pool and add cost without throughput. Lower ingestWorkerMaxReplicas " +
+        `to ${Math.max(1, Math.floor(allowed / (concurrency * vlmBatchWorkers)))} or less, or raise vlmFleetConcurrency ` +
+        "(and the provider's own limit with it).",
+    );
+  }
+  if (vlmFleetConcurrency > limitCeiling) {
+    throw new Error(
+      `Invalid provider budget: vlmFleetConcurrency (${vlmFleetConcurrency}) is above providerLimitCeiling ` +
+        `(${limitCeiling}), the key-wide limit every model call passes. The fleet pool could never fill. ` +
+        "Raise providerLimitCeiling or lower vlmFleetConcurrency.",
+    );
+  }
+  if (vlmFleetConcurrency > modelLimitCeiling) {
+    throw new Error(
+      `Invalid provider budget: vlmFleetConcurrency (${vlmFleetConcurrency}) is above providerModelLimitCeiling ` +
+        `(${modelLimitCeiling}), the limit on calls in flight to one model, which the vision model's calls also pass. ` +
+        "Its own pool would hold the calls back below the fleet pool, so the extra slots and the replicas sized " +
+        "to them would only wait. Raise providerModelLimitCeiling (and the provider's own limit with it) or lower " +
+        "vlmFleetConcurrency.",
+    );
+  }
+}
+
+/** What `pgConnectionBudget` adds up, with the parts named so a failure can say which one grew. */
+export interface PgConnectionBudget {
+  /** `max_connections` on the primary. */
+  limit: number;
+  /** PgBouncer's worst case: instances x pooled pairs x pool size, plus each instance's auth session. */
+  pooled: number;
+  /** The direct connections held back, by name (zero parts included, so the list is stable). */
+  reserve: Array<{ name: string; connections: number }>;
+  reserveTotal: number;
+  total: number;
+}
+
+type PgBudgetInputs = Pick<GridConfig, "postgres" | "ingestWorker" | "langfuse" | "seaweedfs" | "bffJobs">;
+
+/**
+ * The most connections the primary can be asked for, in `max_connections` slots
+ * (ADR-0083): every PgBouncer at its pool ceiling, plus the connections that
+ * bypass it by design. PgBouncer keeps a server pool per (database, role), so
+ * the pooled side is `instances x POOLED_POOLS x poolSize`; the direct side is
+ * {@link POSTGRES_DIRECT_RESERVE}, each part bounded by what holds it.
+ */
+export function pgConnectionBudget(cfg: PgBudgetInputs): PgConnectionBudget {
+  const { instances, poolSize } = cfg.postgres.pooler;
+  const pooled = instances * (POOLED_POOLS.length * poolSize + POSTGRES_POOLER.authConnections);
+  const filerOnPostgres = cfg.seaweedfs.topology === "split" && cfg.seaweedfs.filerStore === "postgres";
+  const ingestJobsInFlight = cfg.ingestWorker.maxReplicas * cfg.ingestWorker.concurrency;
+  const reserve = [
+    { name: "superuser_reserved_connections", connections: POSTGRES_DIRECT_RESERVE.superuser },
+    { name: "CloudNativePG (instance manager, exporter, backup)", connections: POSTGRES_DIRECT_RESERVE.cnpg },
+    { name: "job SSE LISTEN streams", connections: POSTGRES_DIRECT_RESERVE.sseListen },
+    {
+      name: "session advisory locks (ingest jobs in flight + background)",
+      connections: ingestJobsInFlight + POSTGRES_DIRECT_RESERVE.sessionLocksBackground,
+    },
+    { name: "migration and bootstrap Jobs", connections: POSTGRES_DIRECT_RESERVE.bootstrapJobs },
+    { name: "KEDA scaler login", connections: KEDA_SCALER_CONNECTION_LIMIT },
+    { name: "Langfuse (Prisma)", connections: cfg.langfuse.enabled ? POSTGRES_DIRECT_RESERVE.langfuse : 0 },
+    {
+      name: "SeaweedFS filer store",
+      connections: filerOnPostgres ? cfg.seaweedfs.filerReplicas * POSTGRES_DIRECT_RESERVE.filerPerReplica : 0,
+    },
+  ];
+  const reserveTotal = reserve.reduce((sum, part) => sum + part.connections, 0);
+  return { limit: Number(POSTGRES_TUNING.maxConnections), pooled, reserve, reserveTotal, total: pooled + reserveTotal };
+}
+
+/**
+ * Refuse a Postgres whose pooled and direct connections together can pass
+ * `max_connections`. A primary that runs out of slots does not degrade: new
+ * sessions get "too many clients" while the old ones keep running, so the first
+ * thing to fail is whichever tier happens to reconnect, which is a deploy, a
+ * failover, or a KEDA scale-out, never the moment someone changed a number. The
+ * three knobs that feed it (`pgPoolerInstances`, `pgPoolerPoolSize`, the ingest
+ * tier's size) are set in different places and none looks wrong alone.
+ */
+export function assertPgConnectionBudget(cfg: PgBudgetInputs): void {
+  const budget = pgConnectionBudget(cfg);
+  if (budget.total <= budget.limit) return;
+  const { instances, poolSize } = cfg.postgres.pooler;
+  const parts = budget.reserve.filter((part) => part.connections > 0).map((part) => `${part.name} ${part.connections}`);
+  throw new Error(
+    `Invalid Postgres connection budget: ${budget.total} connections at the peak, more than max_connections ` +
+      `(${budget.limit}). The pooler can hold ${budget.pooled} (pgPoolerInstances ${instances} x (${POOLED_POOLS.length} ` +
+      `pooled database/role pairs x pgPoolerPoolSize ${poolSize} + ${POSTGRES_POOLER.authConnections} auth session)) ` +
+      `and the direct connections need ${budget.reserveTotal} (${parts.join(", ")}). ` +
+      "Lower pgPoolerPoolSize or pgPoolerInstances, or raise POSTGRES_TUNING.maxConnections (and the primary's memory with it).",
+  );
 }

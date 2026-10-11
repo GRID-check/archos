@@ -37,6 +37,13 @@ export const profile = {
     label: 'Show technical reasoning',
     hint: 'Reveals the individual technical steps (which agent or tool ran). Off by default — you normally see the plain-language trace.',
   },
+  usageAnalytics: {
+    title: 'Usage analytics',
+    description:
+      'Piloti measures how the product is used (pages, clicks, errors and masked screen recordings) to find and fix problems.',
+    label: 'Share usage analytics',
+    hint: 'Applies to this browser and takes effect immediately. Switched off, this browser sends nothing.',
+  },
   security: {
     title: 'Security & sessions',
     description: 'Where you are signed in and how your account is protected.',

@@ -37,14 +37,15 @@ RAW_CLIENT_HOMES = {
 }
 
 #: Talking to a model endpoint directly. The module must also use an adapter.
-MODEL_ENDPOINT = re.compile(r"/chat/completions|[\"']/rerank[\"']|/api/alpha/decisions|\.responses\.[\w.]*create\(")
+MODEL_ENDPOINT = re.compile(
+    r"/chat/completions|/audio/transcriptions|[\"']/rerank[\"']|/api/alpha/decisions|\.responses\.[\w.]*create\("
+)
 ADAPTERS = re.compile(
     r"request_body\(|PLATFORM_FIXED\.apply\(|\.apply\(\{|openai_client\(|pinned_(?:async_)?http_client\("
 )
 
 #: Mentions of a model endpoint that send no tenant content, with the reason.
 NO_TENANT_CONTENT = {
-    "frontends/aiq_api/src/aiq_api/auth/middleware.py": "our own /v1/chat/completions route path",
     "frontends/aiq_api/src/aiq_api/context_envelope.py": "our own route path, in a docstring",
     "scripts/turn_census/census.py": "parses recorded request paths",
     "scripts/release_notes.py": "sends the changelog, which is public",

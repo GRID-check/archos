@@ -6,7 +6,9 @@ NullHandler, no export attempts against a collector that does not exist.
 
 import logging
 
+import pytest
 import yaml
+from opentelemetry import metrics as otel_metrics
 
 from aiq_agent.observability.otlp_logging_method import OtlpLoggingMethodConfig
 from aiq_agent.observability.otlp_logging_method import _logs_endpoint
@@ -27,6 +29,21 @@ async def test_missing_endpoint_yields_a_null_handler():
     # the tracing exporter crashed NAT startup on exactly this).
     async with otlp_logging_method(OtlpLoggingMethodConfig(), None) as handler:
         assert isinstance(handler, logging.NullHandler)
+
+
+@pytest.mark.parametrize("endpoint", [None, "http://otel-collector:4318/v1/traces"])
+async def test_no_meter_provider_is_installed_with_or_without_an_endpoint(monkeypatch, endpoint):
+    # Metrics have no consumer (the collector carries no metrics pipeline), so
+    # the logging method exports logs and nothing else: a MeterProvider set here
+    # would batch readings to an endpoint that answers 404 on every interval.
+    # The global provider is set once per process: record the calls, never make them.
+    calls: list[object] = []
+    monkeypatch.setattr(otel_metrics, "set_meter_provider", calls.append)
+
+    async with otlp_logging_method(OtlpLoggingMethodConfig(endpoint=endpoint), None):
+        pass
+
+    assert calls == []
 
 
 async def test_configured_endpoint_yields_an_otlp_handler():

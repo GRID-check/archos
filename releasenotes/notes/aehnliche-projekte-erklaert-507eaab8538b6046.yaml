@@ -1,0 +1,15 @@
+---
+improvements:
+  - >
+    Similar projects now shows what each comparison is based on and which
+    facts in your brief would sharpen it. Projects with nothing in common are
+    set apart from the rest, and you can ask Piloti about any of them in this
+    project's chat.
+  - >
+    When Piloti has looked into other projects for an answer, the steps above
+    the answer keep saying so after it is finished. The notice above the
+    message field is now a small chip, and a click explains what it means.
+fixes:
+  - >
+    When Piloti looks into past projects on its own, it now starts with the
+    ones most like yours, not the most recent ones.

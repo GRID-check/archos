@@ -13,11 +13,24 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { useTranslations } from '@/i18n'
+import type { ProjectStatus } from '@/lib/projects/project-status'
 import { cn } from '@/lib/utils'
 
 export interface ProjectSwitcherProject {
   id: string
   name: string
+  /** Absent reads as active. */
+  status?: ProjectStatus
+}
+
+/**
+ * The projects the switcher offers: where one works. Every member reads every
+ * closed project (ADR-0090), so listing them would bury the dozen running ones
+ * under everything the office ever finished; a closed project is reached from
+ * the projects list, and stays here only while it is the one open (ADR-0098).
+ */
+export function switchableProjects(projects: readonly ProjectSwitcherProject[], currentId?: string): ProjectSwitcherProject[] {
+  return projects.filter((project) => project.status !== 'closed' || project.id === currentId)
 }
 
 export interface ProjectSwitcherProps {
@@ -47,7 +60,9 @@ function StatusDot({ active }: { active?: boolean }) {
 export function ProjectSwitcher({ projects, activeProjectId, collapsed }: ProjectSwitcherProps) {
   const router = useRouter()
   const t = useTranslations('nav')
+  const tProjects = useTranslations('projects')
   const active = projects.find((p) => p.id === activeProjectId)
+  const offered = switchableProjects(projects, activeProjectId)
   const [open, setOpen] = React.useState(false)
 
   return (
@@ -88,8 +103,9 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
         <DropdownMenuLabel className="text-[10.5px] font-semibold tracking-[0.05em] text-muted-foreground uppercase">
           {t('projectSwitcher.switchHeading')}
         </DropdownMenuLabel>
-        {projects.map((project) => {
+        {offered.map((project) => {
           const isCurrent = project.id === activeProjectId
+          const quiet = project.status === 'paused' || project.status === 'closed'
           return (
             <DropdownMenuItem
               key={project.id}
@@ -107,6 +123,9 @@ export function ProjectSwitcher({ projects, activeProjectId, collapsed }: Projec
               >
                 {project.name}
               </span>
+              {quiet && project.status && (
+                <span className="text-muted-foreground shrink-0 text-[11px]">{tProjects(`card.status.${project.status}`)}</span>
+              )}
               <button
                 type="button"
                 aria-label={t('projectSwitcher.projectSettings', { name: project.name })}

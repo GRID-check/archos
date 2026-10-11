@@ -3,15 +3,14 @@ import { type Metadata } from 'next'
 import { notFound } from 'next/navigation'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { can } from '@/lib/authz/decide'
 import {
-  FEATURE_FLAGS,
   isCollaborationEnabled,
-  isFeatureEnabled,
+  isMailImportEnabled,
   isIfcModelsEnabled,
-  isIfcPreviewFirstEnabled,
 } from '@/lib/authz/feature-flags'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import { listProjectFolders } from '@/lib/projects/folder-service'
+import { listProjectFolders, projectRootAccess } from '@/lib/projects/folder-service'
 import { listDocumentsPage } from '@/lib/documents/service'
 import { summarizeDocumentVersions } from '@/lib/documents/lifecycle'
 import { resolveDocumentLifecyclePermissions } from '@/lib/documents/lifecycle-permissions'
@@ -39,21 +38,12 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
       notFound()
     }
 
-    // Org-level gate for the ingestion-metadata block (WorkOS `files-metadata-panel`).
-    // Fail-open when enforcement is off (isFeatureEnabled → true).
-    const showMetadataPanel = isFeatureEnabled(session, FEATURE_FLAGS.filesMetadataPanel)
-
     // The model viewer lives inside this page now (there is no `/model` route
     // any more — it redirects here). The org flag no longer hides a
     // destination; it decides whether the model surfaces exist at all for this
     // tenant, which is the honest behaviour for one whose BIM endpoints would
     // refuse the request anyway.
     const showModels = isIfcModelsEnabled(session)
-
-    // What a click on an `.ifc` DOES — preview first, or straight to the stage.
-    // Read here AND in the Archiv sheet from the same helper, because the whole
-    // point of the flag is that it moves both file surfaces together.
-    const previewFirst = isIfcPreviewFirstEnabled(session)
 
     /*
      * THE LISTING, READ HERE INSTEAD OF AFTER HYDRATION.
@@ -94,12 +84,18 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
      * data; the client never guesses one, and a control it renders is one the
      * route would also allow.
      */
-    const [versionSummaries, lifecyclePermissions] = await Promise.all([
+    // `project:manage` decides whether „Zugriff…" is offered on a folder
+    // (ADR-0087); the access route asks the same question again.
+    const [versionSummaries, lifecyclePermissions, canManageFolderAccess, initialRootAccess] = await Promise.all([
       summarizeDocumentVersions(
         session.organizationId,
         initialDocuments.map((row) => row.id),
       ),
       resolveDocumentLifecyclePermissions(session, id),
+      can(session, 'project:manage', { type: 'project', id }),
+      // What the reader may do at the project root (ADR-0088); each folder row
+      // carries its own.
+      projectRootAccess(session, id),
     ])
 
     return (
@@ -107,17 +103,18 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
         lifecyclePermissions={lifecyclePermissions}
         projectId={id}
         initialFolders={initialFolders.map(toFolderWireRow)}
+        canManageFolderAccess={canManageFolderAccess}
+        initialRootAccess={initialRootAccess}
         initialFiles={initialDocuments.map((row) =>
           toDocumentWireRow(row, versionSummaries.get(row.id)),
         )}
         initialFilesComplete={nextCursor === null}
         projectName={project.name}
         collectionName={project.collectionName}
-        showMetadataPanel={showMetadataPanel}
         showModels={showModels}
-        previewFirst={previewFirst}
         canCollaborate={isCollaborationEnabled(session)}
         currentUserId={session.userId}
+        mailImportEnabled={isMailImportEnabled(session)}
       />
     )
   })

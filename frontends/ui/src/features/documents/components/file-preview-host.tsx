@@ -374,7 +374,7 @@ export function FilePreviewHost({
           canCollaborate={context.canCollaborate}
           lifecyclePermissions={context.lifecyclePermissions}
           viewerUserId={context.viewerUserId}
-          showMetadataPanel={panePresentation === 'peek' ? false : context.showMetadataPanel}
+          showMetadataPanel={panePresentation !== 'peek'}
           showModels={context.showModels}
           presentation={panePresentation}
           onClose={overlay ? (mode === 'expanded' ? peek : close) : hide}
@@ -390,9 +390,14 @@ export function FilePreviewHost({
             if (fileId === file.id) patchFile({ status })
             context.onReingested?.(fileId, status)
           }}
-          onTagsUpdated={(fileId, tags) => {
-            if (fileId === file.id) patchFile({ tags })
-            context.onTagsUpdated?.(fileId, tags)
+          onTagsUpdated={(fileId, tags, topics) => {
+            if (fileId === file.id) patchFile(topics === undefined ? { tags } : { tags, topics })
+            context.onTagsUpdated?.(fileId, tags, topics)
+          }}
+          onOpenDocument={context.onOpenDocument}
+          onFassungChanged={(fileId, fassung) => {
+            if (fileId === file.id) patchFile({ fassung })
+            context.onFassungChanged?.(fileId, fassung)
           }}
           onAssigneesChanged={(assignees) => patchFile({ assignees })}
           onLifecycleChanged={(fileId, summary) => {

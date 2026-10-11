@@ -8,6 +8,7 @@ import {
   type FolderUploadPlanInput,
 } from './folder-upload-plan'
 import type { FileItem, FolderItem } from '../components/project-file-workspace'
+import { SUGGESTED_SCREENING_POLICY } from '@/lib/upload-screening/policy'
 
 /** A `File` carrying the path a folder input would have given it. */
 function pathed(relativePath: string, size = 100): File {
@@ -34,6 +35,8 @@ function doc(overrides: Partial<FileItem> & Pick<FileItem, 'id' | 'filename'>): 
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
     assignees: [],
     authoredBy: 'user',
     ...overrides,
@@ -485,28 +488,6 @@ describe('a loose file against the listing', () => {
   })
 })
 
-describe('a flat shelf (the Archiv)', () => {
-  it('plans no folders and reads only the name, whatever path a file carried', () => {
-    const result = plan({
-      files: [pathed('Einreichung/Plaene/EG.pdf')],
-      documents: [doc({ id: 'd1', filename: 'EG.pdf' })],
-      flat: true,
-    })
-
-    expect(result.folders).toEqual([])
-    expect(result.files[0]).toMatchObject({ action: 'update', targetPath: '', existingId: 'd1' })
-  })
-
-  it('still refuses two files of one name in one drop', () => {
-    const result = plan({
-      files: [pathed('A/Deckblatt.pdf'), pathed('B/Deckblatt.pdf')],
-      flat: true,
-    })
-
-    expect(result.files.map((file) => file.action)).toEqual(['collision', 'collision'])
-  })
-})
-
 /**
  * The server versions a same-name document whatever its lifecycle, so the
  * name probe returns archived matches too — and the plan has to say which
@@ -517,7 +498,6 @@ describe('buildFolderUploadPlan — an archived match', () => {
     const result = plan({
       files: [new File(['x'.repeat(50)], 'EG.pdf')],
       documents: [{ ...doc({ id: 'd1', filename: 'EG.pdf' }), lifecycle: 'archived' }],
-      flat: true,
     })
     expect(result.files[0]).toMatchObject({ action: 'update', existingId: 'd1', existingArchived: true })
   })
@@ -526,7 +506,6 @@ describe('buildFolderUploadPlan — an archived match', () => {
     const result = plan({
       files: [new File(['x'], 'eg.pdf')],
       documents: [{ ...doc({ id: 'd1', filename: 'EG.pdf' }), lifecycle: 'archived' }],
-      flat: true,
     })
     expect(result.files[0]).toMatchObject({ action: 'duplicate', existingArchived: true })
   })
@@ -535,7 +514,6 @@ describe('buildFolderUploadPlan — an archived match', () => {
     const result = plan({
       files: [new File(['x'.repeat(50)], 'EG.pdf')],
       documents: [doc({ id: 'd1', filename: 'EG.pdf' })],
-      flat: true,
     })
     expect(result.files[0]).not.toHaveProperty('existingArchived')
   })
@@ -555,8 +533,239 @@ describe('buildFolderUploadPlan — an archived match', () => {
           lifecycle: 'active',
         },
       ],
-      flat: true,
     })
     expect(result.files[0]).toMatchObject({ action: 'update', existingId: 'd1' })
+  })
+})
+
+/**
+ * ADR-0086: what the office's upload screening names is shown in the plan and
+ * never sent — not the file, and not the folder it would have created — unless
+ * the reader releases that one file.
+ */
+describe('buildFolderUploadPlan — upload screening', () => {
+  const screening = { policy: SUGGESTED_SCREENING_POLICY, basePath: null }
+
+  it('excludes a file whose folder is named, and does not create that folder', () => {
+    const payslip = pathed('Büro/Personalakten/0042.pdf')
+    const result = plan({ files: [pathed('Büro/Pläne/EG.pdf'), payslip], screening })
+
+    const excluded = result.files.find((file) => file.file === payslip)
+    expect(excluded?.action).toBe('excluded')
+    expect(excluded?.screening).toEqual([{ term: 'Personal', segment: 'Personalakten', kind: 'folder' }])
+    expect(result.folders.map((planned) => planned.path)).toEqual(['Büro', 'Büro/Pläne'])
+    expect(result.counts.excluded).toBe(1)
+    expect(filesToUpload(result, true).map((planned) => planned.file)).not.toContain(payslip)
+    expect(needsUploadDecision(result)).toBe(true)
+  })
+
+  it('screens what a ZIP holds by its path inside the archive, as a dropped folder (#850)', async () => {
+    // The archive is unpacked in the browser; nothing of it leaves before the plan.
+    const { zipSync, strToU8 } = await import('fflate')
+    const bytes = zipSync({
+      'Büro/Pläne/EG.pdf': strToU8('plan'),
+      'Büro/Lohnzettel/2026-09.pdf': strToU8('pay'),
+      'Büro/Honorarnote_Ost.pdf': strToU8('fee'),
+    })
+    const { expandZips } = await import('./expand-zip')
+    const { files } = await expandZips([new File([bytes as BlobPart], 'Ablage.zip', { type: 'application/zip' })])
+    const result = plan({ files, screening })
+
+    const actionOf = (name: string) => result.files.find((planned) => planned.file.name === name)?.action
+    expect(actionOf('EG.pdf')).not.toBe('excluded')
+    expect(actionOf('2026-09.pdf')).toBe('excluded')
+    expect(actionOf('Honorarnote_Ost.pdf')).toBe('excluded')
+    expect(result.folders.map((planned) => planned.path)).not.toContain('Büro/Lohnzettel')
+  })
+
+  it('screens against the folder the file lands in, too', () => {
+    const scan = new File(['x'], '0042.pdf')
+    const result = plan({ files: [scan], screening: { ...screening, basePath: 'Verwaltung/Honorare' } })
+    expect(result.files[0]).toMatchObject({
+      action: 'excluded',
+      screening: [{ term: 'Honorar', segment: 'Honorare', kind: 'folder' }],
+    })
+  })
+
+  it('lets a released file through as what it would otherwise be, marked as released', () => {
+    const contract = pathed('Projekt/Verträge/Architektenvertrag.pdf')
+    const result = plan({ files: [contract], screening: { ...screening, released: new Set([contract]) } })
+
+    expect(result.files[0]).toMatchObject({ action: 'new', screeningReleased: true })
+    expect(result.files[0]?.screening?.length).toBeGreaterThan(0)
+    expect(result.folders.map((planned) => planned.path)).toEqual(['Projekt', 'Projekt/Verträge'])
+    expect(filesToUpload(result, true)).toHaveLength(1)
+  })
+
+  it('does not let an excluded file collide with an admitted one of the same name', () => {
+    const plan1 = pathed('A/Pläne/Deckblatt.pdf')
+    const plan2 = pathed('A/Rechnungen/Deckblatt.pdf')
+    const result = plan({ files: [plan1, plan2], screening })
+    expect(result.files.map((file) => file.action)).toEqual(['new', 'excluded'])
+  })
+
+  it('screens nothing when no policy is handed in', () => {
+    const result = plan({ files: [pathed('X/Rechnungen/a.pdf')] })
+    expect(result.files[0]?.action).toBe('new')
+  })
+
+  it('screens the folders on disk a file came from, and plans no folder for it', () => {
+    const result = plan({ files: [pathed('Rechnungen/Grundriss.pdf')], screening })
+    expect(result.files[0]).toMatchObject({
+      action: 'excluded',
+      screening: [{ term: 'Rechnung', segment: 'Rechnungen', kind: 'folder' }],
+    })
+    expect(result.folders).toEqual([])
+  })
+})
+
+/** An answer of the Fassung probe (`name-probe-types.ts`) for one dropped name. */
+function offer(
+  name: string,
+  candidates: Array<{ id: string; filename: string; label?: string; displayName?: string | null }>,
+  overrides: { newer?: boolean; unambiguous?: boolean } = {},
+) {
+  return {
+    name,
+    candidates: candidates.map((candidate) => ({ label: '', displayName: null, ...candidate })),
+    newer: overrides.newer ?? true,
+    unambiguous: overrides.unambiguous ?? candidates.length === 1,
+  }
+}
+
+describe('buildFolderUploadPlan — Fassungen across names (ADR-0099)', () => {
+  const B = { id: 'b', filename: 'EG_Grundriss_Index_B.pdf', label: 'Index B' }
+
+  it('attaches the offer to a new file and ticks it when the match is unambiguous', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+
+    expect(result.files[0].action).toBe('new')
+    expect(result.files[0].fassungOf).toMatchObject({
+      of: { id: 'b', filename: 'EG_Grundriss_Index_B.pdf', name: 'EG_Grundriss_Index_B.pdf', label: 'Index B' },
+      unambiguous: true,
+      chosen: true,
+    })
+  })
+
+  it('shows the document by its rename when it has one', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const result = plan({
+      files: [file],
+      fassungOffers: new Map([[file.name, offer(file.name, [{ ...B, displayName: 'Grundriss EG' }])]]),
+    })
+
+    expect(result.files[0].fassungOf?.of.name).toBe('Grundriss EG')
+  })
+
+  it('leaves an ambiguous offer unticked, and takes the newest candidate as the one it is about', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const other = { id: 'a', filename: 'EG_Grundriss_Index_A.pdf' }
+    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B, other])]]) })
+
+    expect(result.files[0].fassungOf).toMatchObject({ of: { id: 'b' }, unambiguous: false, chosen: false })
+  })
+
+  it('leaves a file that is not newer unticked', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_A.pdf')
+    const result = plan({
+      files: [file],
+      fassungOffers: new Map([[file.name, offer(file.name, [B], { newer: false, unambiguous: false })]]),
+    })
+
+    expect(result.files[0].fassungOf).toMatchObject({ newer: false, chosen: false })
+  })
+
+  it('takes the reader’s tick over the default, and their pick among the candidates', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const other = { id: 'a', filename: 'EG_Grundriss_Index_A.pdf' }
+    const input = { files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B, other])]]) }
+
+    expect(plan({ ...input, fassungChoices: new Map([[file, { chosen: true }]]) }).files[0].fassungOf?.chosen).toBe(true)
+    const picked = plan({ ...input, fassungChoices: new Map([[file, { targetId: 'a', chosen: true }]]) }).files[0]
+    expect(picked.fassungOf).toMatchObject({ of: { id: 'a' }, chosen: true })
+    expect(plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]), fassungChoices: new Map([[file, { chosen: false }]]) }).files[0].fassungOf?.chosen).toBe(false)
+  })
+
+  it('offers nothing to a file whose name the shelf already holds: that is a new version (ADR-0054)', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf', { type: 'application/pdf' })
+    const result = plan({
+      files: [file],
+      documents: [doc({ id: 'c', filename: 'EG_Grundriss_Index_C.pdf', fileSize: 999 })],
+      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+    })
+
+    expect(result.files[0].action).toBe('update')
+    expect(result.files[0].fassungOf).toBeUndefined()
+  })
+
+  it('leaves an unchanged re-export unchanged and skipped: same name, same bytes, no proposal', () => {
+    const file = pathed('Export/EG_Grundriss_Index_C.pdf', 100)
+    const result = plan({
+      files: [file],
+      documents: [doc({ id: 'c', filename: 'EG_Grundriss_Index_C.pdf', fileSize: 100, contentHash: 'sha-1' })],
+      digests: new Map([[file, 'sha-1']]),
+      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+    })
+
+    expect(result.files[0]).toMatchObject({ action: 'unchanged' })
+    expect(result.files[0].fassungOf).toBeUndefined()
+    expect(result.counts.uploading).toBe(0)
+  })
+
+  it('does not offer an excluded file, whatever its name continues', () => {
+    const file = new File(['x'], 'Rechnung_Index_C.pdf')
+    const result = plan({
+      files: [file],
+      fassungOffers: new Map([[file.name, offer(file.name, [B])]]),
+      screening: { policy: SUGGESTED_SCREENING_POLICY, basePath: null },
+    })
+
+    if (result.files[0].action === 'excluded') expect(result.files[0].fassungOf).toBeUndefined()
+  })
+
+  it('does not tick two files of one drop for one document: only the newest of them is the successor', () => {
+    const c = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const d = new File(['x'], 'EG_Grundriss_Index_D.pdf')
+    const result = plan({
+      files: [c, d],
+      fassungOffers: new Map([
+        [c.name, offer(c.name, [B])],
+        [d.name, offer(d.name, [B])],
+      ]),
+    })
+
+    const byName = new Map(result.files.map((file) => [file.file.name, file.fassungOf]))
+    expect(byName.get(d.name)).toMatchObject({ unambiguous: true, chosen: true })
+    expect(byName.get(c.name)).toMatchObject({ unambiguous: false, chosen: false })
+  })
+
+  it('asks about a drop of loose files that only continue documents', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const without = plan({ files: [file] })
+    const withOffer = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+
+    expect(needsUploadDecision(without)).toBe(false)
+    expect(needsUploadDecision(withOffer)).toBe(true)
+  })
+
+  it('counts a file filed as a Fassung like any new file, and uploads it', () => {
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const result = plan({ files: [file], fassungOffers: new Map([[file.name, offer(file.name, [B])]]) })
+
+    expect(filesToUpload(result, true).map((planned) => planned.file)).toEqual([file])
+    expect(result.counts.new).toBe(1)
+  })
+
+  it('is a different outcome when the reader ticks another box', async () => {
+    const { samePlanOutcome } = await import('./folder-upload-plan')
+    const file = new File(['x'], 'EG_Grundriss_Index_C.pdf')
+    const offers = new Map([[file.name, offer(file.name, [B])]])
+
+    const ticked = plan({ files: [file], fassungOffers: offers })
+    const unticked = plan({ files: [file], fassungOffers: offers, fassungChoices: new Map([[file, { chosen: false }]]) })
+
+    expect(samePlanOutcome(ticked, ticked)).toBe(true)
+    expect(samePlanOutcome(ticked, unticked)).toBe(false)
   })
 })

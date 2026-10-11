@@ -3,9 +3,10 @@
  * onto the FE CitationSource shape.
  */
 
-import type { CitationSource, WireCitationSource } from '../types'
+import type { CitationProject, CitationSource, WireCitationSource } from '../types'
 import { asShelf, asSourceKind } from './source-kinds'
 import { parsePageRegions } from '@/features/knowledge/lib/page-region'
+import { toProjectStatus } from '@/lib/projects/project-status'
 
 const trimmed = (value: unknown): string | undefined =>
   typeof value === 'string' && value.trim() ? value.trim() : undefined
@@ -18,6 +19,20 @@ export const normalizeOrigin = (value: unknown): CitationSource['origin'] | unde
     .replace(/^\[|\]$/g, '')
   if (lower === 'kb' || lower === 'ris' || lower === 'web') return lower
   return undefined
+}
+
+/** The other project a source came from (ADR-0094), when the wire states a well-formed one. */
+export const projectFromWire = (value: unknown): CitationProject | undefined => {
+  if (!value || typeof value !== 'object') return undefined
+  const { id, name, status, landNote } = value as Record<string, unknown>
+  const projectId = trimmed(id)
+  if (!projectId) return undefined
+  return {
+    id: projectId,
+    name: trimmed(name) ?? '',
+    status: toProjectStatus(status),
+    landNote: trimmed(landNote) ?? null,
+  }
 }
 
 /** Build a stable-ish client id when the server does not send one. */
@@ -78,6 +93,7 @@ export const citationFromWire = (
     // misleading one. See WireCitationSource.bindingStatus.
     bindingStatus: bindingStatusOrUndefined(wire.binding_status),
     regions: parsePageRegions(wire.regions),
+    project: projectFromWire(wire.project),
   }
 }
 

@@ -17,6 +17,7 @@ import {
   secretChecksumAnnotations,
   surgeRollout,
 } from "../platform/rollout";
+import { withLangfuseKeysChecksum } from "../platform/langfuse";
 import { AppSecrets, AppWiring, frontendEnv } from "./config";
 import { PORT, UID } from "../constants";
 
@@ -74,7 +75,9 @@ export function installFrontend(
             // Rotating any credential in `grid-secrets` changes this annotation,
             // which is what turns the rotation into an actual rolling update
             // instead of a Secret nobody re-reads (rollout.ts).
-            annotations: secretChecksumAnnotations(secrets.checksum),
+            // The Langfuse keys (when the tier is deployed) come from their own
+            // Secret, so their rotation is folded in here too.
+            annotations: secretChecksumAnnotations(withLangfuseKeysChecksum(cfg, secrets.checksum)),
           },
           spec: {
             enableServiceLinks: false, // see chroma.ts — legacy env collisions

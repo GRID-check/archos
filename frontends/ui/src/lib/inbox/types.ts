@@ -47,6 +47,12 @@ export interface InboxItemView {
   /** Short context line — e.g. the conversation title. */
   subject: string | null
   /**
+   * The other thing the row names, where a type has two: for a new Fassung, the
+   * newer document's name beside the `subject` that was followed. Withheld with
+   * the rest of the payload when the item is inert, like `subject`.
+   */
+  related: string | null
+  /**
    * The asker's question, or a message excerpt. Stripped when the item is inert,
    * because an inbox must never leak content whose access was revoked (IB-13).
    */
@@ -79,6 +85,8 @@ export interface InboxTypePresentation {
     | 'alert-triangle'
     | 'clock'
     | 'megaphone'
+    | 'shield-alert'
+    | 'layers'
   /** i18n key under `inbox.types.<key>.title` / `.body`. */
   readonly i18nKey: string
   /**
@@ -116,6 +124,12 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
     tone: 'request',
   },
   'feedback.submitted': { icon: 'megaphone', i18nKey: 'feedbackSubmitted', tone: 'info' },
+  'upload.completed': { icon: 'check-circle', i18nKey: 'uploadCompleted', tone: 'info' },
+  'document.quarantined': { icon: 'shield-alert', i18nKey: 'documentQuarantined', tone: 'warning' },
+  'document.release_requested': { icon: 'shield-alert', i18nKey: 'documentReleaseRequested', tone: 'request' },
+  'mail_import.completed': { icon: 'check-circle', i18nKey: 'mailImportCompleted', tone: 'info' },
+  'mail_import.failed': { icon: 'alert-triangle', i18nKey: 'mailImportFailed', tone: 'warning' },
+  'document.new_fassung': { icon: 'layers', i18nKey: 'documentNewFassung', tone: 'info' },
 }
 
 /**

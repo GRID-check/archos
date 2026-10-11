@@ -1,9 +1,8 @@
 ---
 fixes:
   - >
-    A deep research no longer stops when Piloti briefly has no free slot to
-    query a source. Only that one lookup is skipped, and the research carries
-    on.
+    A deep research no longer stops when Piloti is briefly too busy to query a
+    source. Only that one lookup is skipped, and the research carries on.
   - >
     A long research that reports nothing for a while is no longer cut off as if
     it had died.

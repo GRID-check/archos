@@ -18,7 +18,7 @@ of them things a user notices:
 
 - **Surfacing.** The knowledge-base inventory the agent answers listing
   questions from carried `(collection, file_name, summary, tags, shelf)` and
-  nothing about the filing. A user who put three plans in `Brandschutz` could
+  nothing about the filing. A user who put three documents in `Brandschutz` could
   not be told "die drei Dokumente in Brandschutz", because the agent could not
   see that the folder existed.
 - **Retrieval.** There was no way to scope a search to a folder. "Was steht in
@@ -43,7 +43,7 @@ folder rows themselves.
 
 The path needs none of that:
 
-- it **reads as itself** — the inventory line `**plan.pdf** (Ordner:
+- it **reads as itself** — the inventory line `**Brandschutznachweis.pdf** (Ordner:
   Brandschutz/Fluchtwege)` is the value, not a lookup of it;
 - a **prefix match is the subtree**, which is the entire reason the column was
   materialised in the first place. `folder=Brandschutz` covering
@@ -91,12 +91,16 @@ the BFF's own `rewriteDescendantPaths` is the same prefix replace:
 |---|---|
 | Rename `Brandschutz` → `Feuer` | `Brandschutz` → `Feuer` |
 | Move `Alt/Brandschutz` under `Neu` | `Alt/Brandschutz` → `Neu/Brandschutz` |
-| Delete `Brandschutz/Alt` (parent `Brandschutz`) | `Brandschutz/Alt` → `Brandschutz` |
+| Delete an Archiv folder `Brandschutz/Alt` (parent `Brandschutz`) | `Brandschutz/Alt` → `Brandschutz` |
+| Delete a project folder `Brandschutz/Alt` | none: the folder goes to the Papierkorb with its contents |
 
-A delete works out to a prefix rewrite because `deleteProjectFolder` re-files
-the folder's documents at its parent and re-parents its children the same way:
-`Brandschutz/Alt` → `Brandschutz` and `Brandschutz/Alt/EG` → `Brandschutz/EG`
-are the same replacement.
+An Archiv folder's delete works out to a prefix rewrite because
+`deleteShelfFolder` re-files the folder's documents at its parent and
+re-parents its children the same way: `Brandschutz/Alt` → `Brandschutz` and
+`Brandschutz/Alt/EG` → `Brandschutz/EG` are the same replacement. A project
+folder's delete used to be one too. Since ADR-0088's Papierkorb it takes its
+subfolders and documents with it and their chunks are purged from the index, so
+nothing moves on the Python side; a restore re-ingests them under their path.
 
 The boundary is `/`, on both sides. `Brandschutz` must never carry
 `Brandschutzkonzepte` with it, and `LIKE` metacharacters are escaped so a folder

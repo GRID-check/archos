@@ -189,7 +189,7 @@ chips and deep-links fall out of one decision (`backend-deep-dive.md` §6c).
 /projects/<slug>/work/…               NEW: Piloti's desk     (agent-authored)
 /projects/<slug>/views/<name>.view    NEW: saved filters     (§7)
 /projects/<slug>/memory/…             memory, projected      (read-only view of rows)
-/archiv/…                             Büroarchiv shelf       (documents, scope='archiv')
+/archiv/…                             Büroablage shelf       (documents, scope='archiv')
 /threads/<conv>/…                     chat-private shelf     (documents, scope='session')
 /skills/…                             org + platform skills
 /law/oib/…                            the corpus             (global, read-only)
@@ -310,7 +310,7 @@ The product already has the vocabulary to render this without inventing
 anything: the design language's provenance signals are the only chroma in the
 app. Agent-authored work sits in `--source-auto` grey (*automatisch*); promotion
 is the moment it becomes `--source-project` green (*Projektwissen*) or
-`--source-office` gold (*Büroarchiv*). Colour never travels alone, so the chip
+`--source-office` gold (*Büroablage*). Colour never travels alone, so the chip
 carries the word too — and the word is the honest one.
 
 An agent that "organizes the Archiv" therefore produces a **proposal** — a batch
@@ -676,7 +676,7 @@ compatible with this design and is the right shape if execution is wanted later.
 **Make it a git.** Rejected as the *interface*, kept as the *idea*: content
 addressing, immutable history and refs are all here. Branches and merges are
 not, because an LLM resolving a merge conflict inside a Brandschutzkonzept is a
-liability, and because linear per-node history is what a revision-stamped plan
+liability, and because linear per-node history is what a revision-stamped document
 set actually is.
 
 **Let the agent write as the user.** **[CORRECTED — the premise was false.]**
@@ -694,7 +694,7 @@ give the agent a write path at all. The BFF already proxies the finished report
 commissioning user's own session, gated on `project:documents:write` — and, as
 built, on `project:documents:generate` beside it, so that "Piloti may write
 here" is a capability an organization can withhold without also stopping its own
-architects uploading plans. That removes the confused deputy instead of
+architects uploading documents. That removes the confused deputy instead of
 reasoning about it — see the build spec's decision 4 and
 [ADR-0047's third addendum](../adr/0059-assignment-is-not-access.md).
 

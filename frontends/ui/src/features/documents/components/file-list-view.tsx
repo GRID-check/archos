@@ -1,11 +1,13 @@
 'use client'
 
+import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import type { JSX } from 'react'
 import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { FileItem } from './project-file-workspace'
 import { DocumentStatusBadge } from './document-status'
 import { DocumentVersionStateBadge } from './document-version-badge'
+import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
 import { documentBadgeState } from '../lib/document-lifecycle'
 import { extChipTint, fileExtensionLabel } from '../document-kind'
 import { DEFAULT_FILE_SORT, RELEVANCE_SORT, nextSort, sortFiles, type FileSort, type FileSortKey } from '../lib/file-sort'
@@ -292,12 +294,16 @@ export function FileListView({
                       {ext || '—'}
                     </span>
                     <span className="min-w-0 flex-1">
-                      <span
-                        className="block truncate text-xs font-medium leading-[1.4] text-foreground"
-                        title={documentDisplayName(file)}
-                      >
-                        {documentDisplayName(file)}
+                      {/* „· 3 Fassungen" after the name, on the same line: the
+                          history belongs to the document, not to the „Freigabe"
+                          column, and here it never makes a row taller. */}
+                      <span className="flex min-w-0 items-baseline gap-1.5 text-xs font-medium leading-[1.4] text-foreground">
+                        <span className="min-w-0 truncate" title={documentDisplayName(file)}>
+                          {documentDisplayName(file)}
+                        </span>
+                        <FassungCount file={file} />
                       </span>
+                      {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} />}
                       {/* The summary earns its line here in a way it cannot on
                           a card: the row is already one line tall, so a second
                           one doubles the information without doubling the
@@ -371,7 +377,12 @@ export function FileListView({
                       so the triage signal is exactly the rows that need work.
                       `documentBadgeState` is the rule read directly, so an empty
                       slot renders the same `—` a missing page count does. */}
-                  {approvalState ? (
+                  {/* An older Fassung shows one badge, „Ältere Fassung", with
+                      what replaced it on hover: the lifecycle's „Ersetzt" said
+                      the same thing again. One badge, so the cell never wraps. */}
+                  {isOlderFassungEntry(file) ? (
+                    <OlderFassungBadge file={file} className="max-w-full truncate" />
+                  ) : approvalState ? (
                     <DocumentVersionStateBadge
                       versionState={approvalSubject.versionState}
                       versionCount={approvalSubject.versionCount}

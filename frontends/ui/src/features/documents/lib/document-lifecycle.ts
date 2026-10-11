@@ -331,47 +331,46 @@ export function lifecycleProgress(
 }
 
 /**
- * What this version is waiting for, as an i18n leaf plus the one id the wording
- * may need.
+ * What a state MEANS for the reader, as an i18n leaf under
+ * `files.lifecycle.meaning`: one plain sentence, in the terms the reader has —
+ * is this the basis Piloti answers from, or is it still waiting for somebody.
  *
- * Extracted from the control strip because the STAND is now said in two places
- * — on the collapsed panel, where it is the only thing said, and under the
- * controls when the panel is open — and a second `switch` over the state union
- * is exactly the drift this module's header refuses for the transition table.
+ * The state words alone („In Prüfung", „Freigegeben") are only informative to
+ * somebody who already knows what a state changes. What changes is one thing:
+ * whether Piloti answers from this Fassung. Only a PUBLISHED version is read
+ * into the knowledge base (ADR-0054), so a draft or a round in review does not
+ * replace the Fassung answers come from until it is published. `live` says
+ * whether such a published version stands behind the newest one; the sentence
+ * differs, because „Piloti antwortet weiter aus der veröffentlichten Fassung"
+ * is only true when there is one.
  *
- * Who was ASKED stays absent on purpose: the reviewer chain is resolved
- * server-side (`lib/documents/reviewers.ts`), so no name is invented for them.
+ * Said in two places (the section's header and, shut or open, the track under
+ * it), so a second `switch` over the state union is exactly the drift this
+ * module's header refuses for the transition table.
  */
-export interface LifecycleWaiting {
-  /** Leaf under `files.lifecycle.waiting`. */
-  key: string
-  /** The submitter, when the wording names them. */
-  submitterUserId?: string | null
-}
-
-export function lifecycleWaiting(
-  version: Pick<DocumentVersionView, 'state' | 'submittedBy'> | null,
+export function lifecycleMeaning(
+  version: Pick<DocumentVersionView, 'state'> | null,
   lifecycle: 'active' | 'archived',
-): LifecycleWaiting {
-  if (lifecycle === 'archived') return { key: 'archived' }
-  if (!version) return { key: 'none' }
+  { live }: { live: boolean },
+): string {
+  if (lifecycle === 'archived') return 'archived'
+  if (!version) return 'none'
+  const suffix = live ? 'Live' : 'Alone'
   switch (version.state) {
     case 'draft':
-      return { key: 'draft' }
+      return `draft${suffix}`
     case 'in_review':
-      return version.submittedBy
-        ? { key: 'inReviewBy', submitterUserId: version.submittedBy }
-        : { key: 'inReview' }
+      return `inReview${suffix}`
     case 'changes_requested':
-      return { key: 'changesRequested' }
+      return `changesRequested${suffix}`
     case 'approved':
-      return { key: 'approved' }
-    case 'published':
-      return { key: 'published' }
+      return `approved${suffix}`
     case 'rejected':
-      return { key: 'rejected' }
+      return `rejected${suffix}`
+    case 'published':
+      return 'published'
     case 'superseded':
-      return { key: 'superseded' }
+      return 'superseded'
   }
 }
 

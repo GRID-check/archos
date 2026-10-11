@@ -10,7 +10,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
     organizationId: 'org_1',
     email: 'p@grid.test',
     role: 'admin',
-    featureFlags: [],
+    featureFlags: ['deep-research'],
   }),
 }))
 vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
@@ -22,6 +22,7 @@ vi.mock('@/lib/tasks/delegation', async (importOriginal) => {
 
 import { NotFoundError } from '@/lib/api/errors'
 import { findConversationInOrg } from '@/lib/conversations/repository'
+import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { commissionResearchRun } from '@/lib/tasks/delegation'
 import { POST } from './route'
@@ -40,6 +41,8 @@ const post = (body: unknown) =>
 
 beforeEach(() => {
   vi.unstubAllEnvs()
+  // A deployment that signs people in: the session's claim decides.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
   vi.mocked(commissionResearchRun).mockReset()
   vi.mocked(requireResourceAccess).mockReset().mockResolvedValue({} as never)
   vi.mocked(findConversationInOrg)
@@ -77,6 +80,8 @@ describe('POST /api/projects/[id]/runs', () => {
         question: 'Fluchtweg klären',
         context: 'Befund offen',
         documents: null,
+        // The refusal of a confined thread is read by whoever pressed the button.
+        locale: expect.stringMatching(/^(en|de)$/),
       }
     )
   })
@@ -109,7 +114,13 @@ describe('POST /api/projects/[id]/runs', () => {
   })
 
   it('answers 403 when deep research is off for the org', async () => {
-    vi.stubEnv('GRID_ENFORCE_FEATURE_FLAGS', 'true')
+    vi.mocked(requireAuthorizedSession).mockResolvedValueOnce({
+      userId: 'user_1',
+      organizationId: 'org_1',
+      email: 'p@grid.test',
+      role: 'admin',
+      featureFlags: [],
+    } as never)
     const response = await post({ conversationId: 's_conv', question: 'Fluchtweg klären' })
     expect(response.status).toBe(403)
     expect(commissionResearchRun).not.toHaveBeenCalled()

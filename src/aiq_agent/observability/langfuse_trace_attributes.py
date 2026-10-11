@@ -4,10 +4,9 @@ Langfuse groups observations into traces and then attributes those traces to a
 *session* and a *user*. Without those two identifiers a deployment's traces are
 a flat, anonymous list: you can see that a retrieval took 4s and cost €0.02,
 but not whose conversation it belonged to or what else happened in that
-conversation. Session/user attribution is most of what distinguishes Langfuse
-from the live span view the Aspire dashboard already provides, so wiring it is
-the difference between "traces reach Langfuse" and "the app is integrated with
-Langfuse".
+conversation. Session/user attribution is most of what makes Langfuse more than a flat
+span list, so wiring it is the difference between "traces reach Langfuse" and
+"the app is integrated with Langfuse".
 
 WHAT WE GET FOR FREE, and therefore do not do here. Verified against the
 installed NAT, not assumed:
@@ -59,12 +58,14 @@ gated to platform operators. Tagging every span with its tenant and what a tool
 did is a further step, and it should arrive with the product decision that
 needs it rather than by default. So availability follows the house rule —
 ``GRID_TRACE_IDENTITY_ATTRIBUTES`` is injected by the deployment only when the
-Langfuse tier is deployed. An Aspire-only stack is byte-identical to before.
+Langfuse tier is deployed. A stack without Langfuse is byte-identical to before.
 """
 
 import contextvars
 import logging
 import os
+import re
+from collections.abc import Sequence
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -122,7 +123,7 @@ def begin_trace_contributions() -> contextvars.Token:
     Follows the ``cards/registry.py`` token discipline: the caller holds the
     token and passes it to :func:`end_trace_contributions`, which restores
     whatever was bound before. Starting fresh (rather than inheriting) is what
-    keeps a reused Dask worker process from handing job N's tags to job N+1
+    keeps a reused research worker process from handing job N's tags to job N+1
     across tenants.
     """
     return _CONTRIBUTED.set({"metadata": {}, "tags": []})
@@ -162,6 +163,74 @@ def record_trace_metadata(**pairs: Any) -> None:
         logger.debug("Failed to record Langfuse trace metadata", exc_info=True)
 
 
+#: The trace metadata key Langfuse's PostHog integration reads: it exports
+#: ``trace.metadata.$posthog_session_id`` as the event's ``$session_id``, which
+#: is what puts a ``langfuse observation`` event on the browser session's replay
+#: (https://langfuse.com/integrations/analytics/posthog, "Metadata matching").
+POSTHOG_SESSION_METADATA_KEY = "$posthog_session_id"
+
+#: PostHog session ids are UUIDv7 (version nibble 7, RFC 9562 variant); the JS
+#: SDK's own docs require one when a session is bootstrapped. Anything else is
+#: not a session id and would only mislabel a trace.
+_UUID_V7 = re.compile(r"[0-9a-f]{8}-[0-9a-f]{4}-7[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}")
+
+
+def posthog_session_id_or_none(value: Any) -> str | None:
+    """``value`` as a PostHog session id (lower-case UUIDv7), or ``None`` for anything else. Pure."""
+    if not isinstance(value, str):
+        return None
+    candidate = value.strip().lower()
+    return candidate if _UUID_V7.fullmatch(candidate) else None
+
+
+def record_posthog_session(value: Any) -> bool:
+    """Link this turn's trace to the asker's PostHog session replay. Whether the id was recorded.
+
+    Identity-gated, decided from ``identity_attributes_enabled``'s own rule ("no
+    span names a person" unless the deployment opts in). A session id names no
+    one by itself, but on a trace it is a join key: the trace holds the turn's
+    question and answer, and the id opens that person's recording and, in
+    PostHog, their person profile. Handing Langfuse's operators that link is the
+    same step as handing them the user id, so it rides the same switch. It also
+    costs nothing real: with identity off the export's distinct id is
+    ``langfuse_unknown_user`` for every trace, so the replay link would have no
+    person to land on.
+
+    Best-effort like :func:`record_trace_metadata`; a value that is not a
+    UUIDv7 is dropped, never an error, because it came from a browser.
+    """
+    session_id = posthog_session_id_or_none(value)
+    if session_id is None or not identity_attributes_enabled():
+        return False
+    record_trace_metadata(**{POSTHOG_SESSION_METADATA_KEY: session_id})
+    return True
+
+
+#: Trace metadata keys of the platform-lessons experiment. Always recorded, with
+#: no identity switch: the arm is a function of the conversation id and a lesson
+#: id names a fleet-wide caution, so neither identifies a person.
+LESSONS_ARM_METADATA_KEY = "lessons_arm"
+LESSON_IDS_METADATA_KEY = "lesson_ids"
+
+
+def record_lessons(arm: str, lesson_ids: Sequence[str]) -> None:
+    """Put the turn's lessons arm and the lessons it carried on the trace.
+
+    ``lessons_arm`` is ``treated``, ``holdout`` or ``off``; ``lesson_ids`` is the
+    comma-joined ids of the lessons in the injected digest (a scalar, because
+    Langfuse stringifies a list and a PostHog property filter wants one text),
+    left out when there were none. With these two keys the holdout is a
+    breakdown on the exported ``langfuse observation`` events, without joining
+    back to the vote table: down-vote rate (the ``user-feedback`` score) by arm.
+    """
+    record_trace_metadata(
+        **{
+            LESSONS_ARM_METADATA_KEY: arm,
+            LESSON_IDS_METADATA_KEY: ",".join(lesson_ids) or None,
+        }
+    )
+
+
 def add_trace_tag(tag: str) -> None:
     """Tag this turn's traces, e.g. so every turn that read a model is findable.
 
@@ -189,7 +258,7 @@ def reset_contributions() -> None:
 
     Production code binds per job/turn via :func:`begin_trace_contributions`
     and restores via :func:`end_trace_contributions` in ``finally``, so a
-    reused Dask worker cannot hand job N's tags to job N+1. This helper stays
+    reused research worker cannot hand job N's tags to job N+1. This helper stays
     for tests that need a blank slate without holding a token.
     """
     _CONTRIBUTED.set(None)
@@ -701,8 +770,72 @@ def current_langfuse_attributes() -> dict[str, Any]:
         return {}
 
 
+def current_contribution_attributes() -> dict[str, Any]:
+    """What tools recorded about this turn, with no identity: the half that is not personal data.
+
+    Tool facts (``feature:ifc``, ``ifc_op``), the usage rollup and the answer
+    dialect census are labels and counts. They used to ride the identity
+    processor and so vanished from every trace whenever
+    ``GRID_TRACE_IDENTITY_ATTRIBUTES`` was off, which made a privacy switch
+    silently turn off cost and quality reporting too (ADR-0089).
+    """
+    try:
+        return langfuse_attributes_for(
+            organization_id=None,
+            project_id=None,
+            conversation_id=None,
+            contributed=snapshot_contributions(),
+        )
+    except Exception:
+        logger.debug("Failed to derive Langfuse contribution attributes", exc_info=True)
+        return {}
+
+
+def merge_span_attributes(attributes: dict[str, Any], additions: dict[str, Any]) -> None:
+    """Apply ``additions`` to a span's attribute map, uniting tag lists rather than replacing them.
+
+    Several processors tag the same span (tenant, tool facts, turn outcome), in
+    an order the pipeline decides. Whichever runs second must not erase the
+    first one's tags.
+    """
+    for key, value in additions.items():
+        existing = attributes.get(key)
+        if key == TAGS_ATTRIBUTE and isinstance(existing, list | tuple) and isinstance(value, list | tuple):
+            attributes[key] = list(dict.fromkeys([*existing, *value]))
+        else:
+            attributes[key] = value
+
+
+def context_attributes_for(
+    *, name: str | None, attributes: dict[str, Any], is_root: bool, outcome: dict[str, Any] | None
+) -> dict[str, Any]:
+    """What :class:`TraceContextProcessor` adds to one span. Pure.
+
+    Every span: the process's environment and release, and its Langfuse
+    observation type. A root span also names its trace and carries the turn's
+    outcome when the turn recorded one.
+    """
+    from aiq_agent.observability.trace_context import OBSERVATION_TYPE_ATTRIBUTE
+    from aiq_agent.observability.trace_context import TRACE_NAME_ATTRIBUTE
+    from aiq_agent.observability.trace_context import observation_type
+    from aiq_agent.observability.trace_context import process_trace_attributes
+    from aiq_agent.observability.trace_context import span_kind
+    from aiq_agent.observability.trace_context import trace_name_for_root
+
+    additions = process_trace_attributes()
+    kind = observation_type(name=name, kind=span_kind(attributes))
+    if kind:
+        additions[OBSERVATION_TYPE_ATTRIBUTE] = kind
+    if is_root:
+        additions[TRACE_NAME_ATTRIBUTE] = trace_name_for_root(name)
+        additions.update(outcome or {})
+    return additions
+
+
 try:
     from nat.data_models.span import Span
+    from nat.data_models.span import SpanStatus
+    from nat.data_models.span import SpanStatusCode
     from nat.observability.processor.processor import Processor
 
     class LangfuseTraceAttributeProcessor(Processor[Span, Span]):
@@ -716,6 +849,11 @@ try:
         Running first means these attributes are subject to exactly the same
         redaction policy as ``input.value`` and ``output.value``.
         """
+
+        def __init__(self, *, identity: bool = True) -> None:
+            super().__init__()
+            #: False installs the contributions half only (no tenant, no session).
+            self._identity = identity
 
         async def process(self, item: Span) -> Span:
             """Stamp the current request's identity onto one span.
@@ -731,8 +869,39 @@ try:
             ``current_langfuse_attributes`` absorbs its own failures, because an
             exception escaping here would stop span export for the process.
             """
-            for key, value in current_langfuse_attributes().items():
-                item.set_attribute(key, value)
+            additions = current_langfuse_attributes() if self._identity else current_contribution_attributes()
+            try:
+                merge_span_attributes(item.attributes, additions)
+            except Exception:
+                logger.debug("Failed to stamp Langfuse trace attributes onto a span", exc_info=True)
+            return item
+
+    class TraceContextProcessor(Processor[Span, Span]):
+        """Environment, release and observation type on every span; trace name and outcome on the root.
+
+        Installed unconditionally: a deployment name, a commit and a span's
+        type are not personal data. A root span whose turn failed also gets
+        an OTel ERROR status, which NAT never sets itself.
+        """
+
+        async def process(self, item: Span) -> Span:
+            try:
+                from aiq_agent.observability.trace_context import OBSERVATION_LEVEL_ATTRIBUTE
+                from aiq_agent.observability.turn_outcome import current_turn_outcome
+
+                is_root = item.parent is None
+                additions = context_attributes_for(
+                    name=item.name,
+                    attributes=item.attributes or {},
+                    is_root=is_root,
+                    outcome=current_turn_outcome() if is_root else None,
+                )
+                merge_span_attributes(item.attributes, additions)
+                if additions.get(OBSERVATION_LEVEL_ATTRIBUTE) == "ERROR":
+                    message = additions.get("langfuse.observation.status_message")
+                    item.status = SpanStatus(code=SpanStatusCode.ERROR, message=message)
+            except Exception:
+                logger.debug("Failed to stamp the trace context onto a span", exc_info=True)
             return item
 
     class UserIdentityStripProcessor(Processor[Span, Span]):
@@ -776,6 +945,23 @@ try:
             """
             try:
                 attributes = item.attributes or {}
+                from aiq_agent.observability.decision_trace import decision_usage
+                from aiq_agent.observability.decision_trace import is_decision_span
+
+                if is_decision_span(item.name):
+                    # The decision model's calls bypass LangChain; their usage
+                    # rides the observation's own output (decision_trace).
+                    decided = decision_usage(attributes)
+                    if decided is not None:
+                        for key, value in usage_observation_attributes(
+                            prompt_tokens=decided["prompt_tokens"],
+                            completion_tokens=decided["completion_tokens"],
+                            total_tokens=decided["total_tokens"],
+                            cost_usd=decided["cost_usd"],
+                            model=decided["model"],
+                        ).items():
+                            item.set_attribute(key, value)
+                    return item
                 if not is_generation_span(attributes):
                     return item
                 counts: dict[str, Any] | None = None
@@ -836,6 +1022,7 @@ except Exception:  # pragma: no cover - exercised only without the NAT extras
     # pure mapping above stays importable (and testable) even where the NAT
     # observability extras are not installed.
     LangfuseTraceAttributeProcessor = None  # type: ignore[assignment,misc]
+    TraceContextProcessor = None  # type: ignore[assignment,misc]
     UsageAttributeProcessor = None  # type: ignore[assignment,misc]
     PromptLinkProcessor = None  # type: ignore[assignment,misc]
     UserIdentityStripProcessor = None  # type: ignore[assignment,misc]

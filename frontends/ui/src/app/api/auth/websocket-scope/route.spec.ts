@@ -63,6 +63,11 @@ vi.mock('@/lib/budgets/service', () => ({
   getBudgetStatus: (...args: unknown[]) => getBudgetStatus(...args),
 }))
 
+const announceBudgetBlocked = vi.fn(async () => {})
+vi.mock('@/lib/budgets/budget-events', () => ({
+  announceBudgetBlocked: (...args: unknown[]) => announceBudgetBlocked(...(args as [])),
+}))
+
 const { GET } = await import('./route')
 
 const SESSION = {
@@ -118,6 +123,35 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     buildProposalDecisionsBlock.mockResolvedValue('decisions')
   })
 
+  it('asks for an INTERACTIVE CHAT scope, the only one that may carry restricted folders (ADR-0087)', async () => {
+    await upgrade('?projectId=proj_q&conversationId=s_mine')
+
+    expect(buildCollectionScopeFromRequest).toHaveBeenCalledWith(SESSION, {
+      projectId: 'proj_q',
+      conversationId: 's_mine',
+      interactiveChat: true,
+    })
+  })
+
+  it('names no document of a restricted folder in the legacy inline project context and serves open memory only, whatever the scope carries (ADR-0087, ADR-0088)', async () => {
+    // Listing is not use: the shared, cached prompt view names no restricted
+    // document for anyone, and restricted memory reaches a turn only through
+    // the live per-turn digest, which admits its folders for the conversation.
+    // The authenticated handshake loads no prompt block at all, so the only
+    // inline copy left is the anonymous legacy one.
+    isAuthRequired.mockReturnValue(false)
+    getGridSession.mockResolvedValue(null)
+    const restricted = 'proj_proj_q_r0123456789ab'
+    buildCollectionScopeFromRequest.mockResolvedValue({
+      ...scopeReturning('proj_q'),
+      scope: ['base', 'proj_proj_q', restricted],
+    })
+
+    await upgrade('?projectId=proj_q&conversationId=s_mine')
+    expect(loadProjectPromptView).toHaveBeenCalledWith('proj_q', undefined)
+    expect(buildProjectMemoryDigest).toHaveBeenCalledWith('proj_q', undefined)
+  })
+
   it('returns 403 without firing the project lookups when the budget is blocked', async () => {
     getBudgetStatus.mockResolvedValue({ ...OPEN_BUDGET, blocked: true, blockedScope: 'org' })
 
@@ -129,6 +163,36 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     expect(loadProjectBundesland).not.toHaveBeenCalled()
     expect(buildProjectMemoryDigest).not.toHaveBeenCalled()
     expect(buildProposalDecisionsBlock).not.toHaveBeenCalled()
+  })
+
+  it('announces a blocked budget to PostHog as the refused person, and answers the same 403', async () => {
+    getBudgetStatus.mockResolvedValue({ ...OPEN_BUDGET, blocked: true, blockedScope: 'member', unit: 'credit' })
+
+    const response = await upgrade()
+
+    expect(response.status).toBe(403)
+    expect(announceBudgetBlocked).toHaveBeenCalledTimes(1)
+    expect(announceBudgetBlocked).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      userId: 'user_1',
+      scope: 'member',
+      unit: 'credit',
+    })
+  })
+
+  it('answers the 403 even when the announcement fails or never settles', async () => {
+    getBudgetStatus.mockResolvedValue({ ...OPEN_BUDGET, blocked: true, blockedScope: 'org', unit: 'token' })
+    announceBudgetBlocked.mockReturnValueOnce(new Promise<void>(() => {}))
+
+    const response = await upgrade()
+
+    expect(response.status).toBe(403)
+  })
+
+  it('announces nothing for an open budget', async () => {
+    await upgrade()
+
+    expect(announceBudgetBlocked).not.toHaveBeenCalled()
   })
 
   it('fails OPEN when the budget lookup itself errors', async () => {

@@ -1,24 +1,23 @@
 ---
 features:
   - >
-    Every file now has a version history: uploading a corrected file under the
-    same name replaces it, and the old version stays available to open, with who
-    uploaded which version when.
+    Every file now has a version history: uploading a corrected file under
+    the same name replaces it, and the old version stays available to open,
+    with who uploaded which version when.
   - >
-    A version can be submitted for approval: the reviewer gets an inbox entry
-    and can approve, ask for changes or reject, the latter two with a reason.
-    Whoever submitted a version cannot approve it.
+    A version can be submitted for approval: the reviewer gets an inbox
+    entry and can approve, ask for changes or reject, the latter two with a
+    reason. Whoever submitted a version cannot approve it.
   - >
-    Approving and publishing are two steps, so a finding approved on Tuesday can
-    be published with the submission on Friday. Exactly one version is published
-    at a time.
+    Approving and publishing are two steps, so a version approved on Tuesday
+    can be published on Friday. Only one version is published at a time.
   - >
-    Documents can be archived: they leave the lists while the file and all its
-    versions are kept.
+    Documents can be archived: they leave the lists while the file and all
+    its versions are kept.
 upgrade:
   - >
     Every existing document, including Piloti's reports, starts with one
-    published version, so nothing lands in a review queue.
+    published version, so nothing is waiting for a review.
   - >
     Replaced versions keep their files and count towards your organization's
     storage quota.

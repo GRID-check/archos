@@ -14,16 +14,21 @@
 
 ## 1. Executive summary
 
-Piloti is the **workspace in which a planning office runs a building project**.
-Piloti the agent is a **member of that office**. Architects work inside
-**projects**; chat is how they talk to the agent, and **tasks** (Aufgaben)
-are how they hand it work — a task is the work object, a job the recurring
-schedule behind it (§5.12). Every **normative claim** is grounded in a passage retrieved this
-turn from the project, the office archive, or the Austrian building-regulation
-corpus. Not every answer is a ruling. Piloti does not replace the
-Entwurfsverfasser or the Behörde.
+Piloti is the **workspace in which a planning office runs its work**: every
+project, every process, the whole organization. Architects work inside
+**projects**. A project holds its intake (the facts that decide the rest of
+it), its files and the office's Büroablage, its building model (IFC, opened in
+the browser), its tasks and research, and its team. What the office knows
+carries from one project to the next, through project and organization memory.
 
-Architecturally, GRID is a **two-tier system**:
+Piloti, the agent, is a **member of that office**. Chat is how people talk to
+it, and **tasks** (Aufgaben) are how they hand it work: a task is the work
+object, a job the recurring schedule behind it (§5.12). Building law is one
+capability in this workspace, not the frame around it. Legal claims cite the
+passage they rest on (§5.2). Not every answer is a ruling. Piloti does not
+replace the Entwurfsverfasser or the Behörde.
+
+Architecturally, Piloti is a **two-tier system**:
 
 - A **stateful BFF** (Next.js) owns identity, the application database, file
   storage, and access control — everything tenant-specific and durable.
@@ -65,9 +70,10 @@ flowchart TB
     SYS -->|pre-loaded corpus| OIB
 ```
 
-**Actors:** architects/planners (ask questions, upload documents, manage a
-project's knowledge) and organization admins (projects, members, org-wide
-memory). **External dependencies:** WorkOS (identity + fine-grained
+**Actors:** the people of a planning office (architects, project leads,
+drafters, site supervision, specialist consultants), who work in projects,
+upload documents, hand tasks to the agent and ask it questions; and organization
+admins, who manage projects, members and org-wide memory. **External dependencies:** WorkOS (identity + fine-grained
 authorization), an OpenAI-compatible LLM/embeddings provider, Tavily (web
 search), and the OIB corpus (ingested once into the vector store).
 
@@ -90,7 +96,7 @@ flowchart TB
     subgraph Tier2["Tier 2 · Python AI backend (port 8000)"]
         API["FastAPI (aiq_api plugin)"]
         NAT["NeMo Agent Toolkit + LangGraph agents"]
-        DASK["Dask — async deep-research jobs"]
+        JOBS["Research queue (Postgres) — deep-research jobs"]
     end
 
     subgraph Data["Stateful infrastructure"]
@@ -106,7 +112,7 @@ flowchart TB
     BFF <-->|Drizzle| PG
     BFF -->|presign / put| SEAWEED
     GW -->|"proxy WS upgrade + REST"| API
-    API --> NAT --> DASK
+    API --> NAT --> JOBS
     NAT <--> CHROMA
     NAT -->|"job store / checkpoints"| PG
     BFF -.->|"internal memory write API (token)"| BFF
@@ -119,13 +125,13 @@ flowchart TB
 | Container | Tech | Responsibility |
 |---|---|---|
 | **frontend** | Next.js 16, React 18, TypeScript | The UI, the BFF (all `/api/*`), and the `server.js` gateway. System of record for `grid_app`. |
-| **aiq-agent** | Python 3.14, FastAPI, NAT, LangGraph, Dask | Stateless AI orchestration; owns the vector store and the job/checkpoint DBs. |
+| **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
 | **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `aiq_jobs` (jobs/events/summaries), `aiq_checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
-| **ChromaDB** | in-process in aiq-agent | Vector store (collections persisted to a volume). Not a separate container. |
+| **ChromaDB** | shared `chroma` server (HTTP) | Vector store (collections persisted to a volume), queried by every backend role. |
 | **purger** | same image as frontend, `node purger/index.js` | Scheduled worker that hard-deletes soft-deleted projects after the grace period. |
 | **dragonfly** | Dragonfly (Redis protocol) | Shared cache (ADR-0020): read-through caches, WS-upgrade rate limiting, citation-registry snapshots. Cache-only; both tiers fail open to in-process fallbacks. |
-| *(one-shot)* | alpine / mc | `aiq-data-permissions` (volume chown) and `seaweedfs-init` (bucket create). |
+| *(one-shot)* | alpine / mc | `chroma-data-permissions` (volume chown) and `seaweedfs-init` (bucket create). |
 
 The **gateway (`server.js`)** is the seam that makes the two-tier model work:
 on each WebSocket upgrade (and REST proxy) it calls an internal BFF endpoint to
@@ -159,6 +165,17 @@ or security, and every tenant-data mutation goes through one audited layer.
 
 ## 5. Major subsystems
 
+The workspace surfaces, each with its own doc:
+
+- **Projects and intake:** [projects guide](../user-guides/projects.md)
+- **Files, Büroablage and document roles:** [documents guide](../user-guides/documents.md), [Piloti in the file system](piloti-filesystem-design.md), [document roles](document-roles.md)
+- **Building model (IFC):** [IFC models guide](../user-guides/bim-models.md)
+- **Tasks and jobs:** §5.12 below, and [projects guide, Jobs](../user-guides/projects.md#jobs-feature-flagged)
+- **Research and reports:** [reports Piloti writes](../user-guides/agent-authored-reports.md), [deep research report](deep-research-report.md)
+- **Team and access:** [collaboration lifecycle](collaboration-lifecycle.md), [sensitive data and access](../user-guides/sensitive-data-and-access.md)
+- **Office knowledge:** [project memory design](project-memory-design.md)
+- **Mail import:** [Outlook archive import](mail-import.md)
+
 ### 5.1 Chat & the agent pipeline
 Chat is **WebSocket-only** (ADR 0009). A turn runs through a LangGraph workflow
 (`chat_deepresearcher_agent`): **one answering agent on every turn, with its
@@ -171,6 +188,10 @@ NAT WebSocket handler that lifts structured fields (cards, deep-research job id)
 onto the message. → `docs/architecture/backend-deep-dive.md` §2.
 
 ### 5.2 The two knowledge systems
+Every normative claim is grounded in a passage retrieved this turn from the
+project, the Büroablage, or the Austrian building-regulation corpus. Not every
+answer is a ruling.
+
 GRID deliberately separates **retrieval** from **memory** — they answer
 different questions and reach the agent differently:
 
@@ -302,7 +323,7 @@ happens in the inbox, where the person was told about the result.
 
 Two naming collisions to keep straight. The `task_definitions`/`task_runs`
 tables live in `grid_app` (the collapsed successor of `jobs`/`job_runs`/
-`tasks`); the backend async/Dask jobs live in `aiq_jobs` (deep-research runs,
+`tasks`); the backend async jobs live in `aiq_jobs` (deep-research runs,
 §5.5) — a `task_runs.backend_job_id` value names one of the latter. And
 `compliance_check` is a **task kind**, not a chat tool or an agent: the
 purpose-built compliance checker is deleted, and a full Soll-Ist runs as a
@@ -369,7 +390,7 @@ frontend start). → `docs/database/`.
   crosses organizations.
 - **Verification / CI.** `task verify` is the local gate, host-native, defined
   once in the root `Taskfile.yml`. CI calls the same definitions but schedules
-  them differently (concurrent jobs, a six-way test shard), and two required
+  them differently (concurrent jobs, a four-way test shard), and two required
   checks sit outside it. → `docs/contributing/testing-and-verification.md`.
 
 ---
@@ -380,7 +401,7 @@ frontend start). → `docs/database/`.
 |---|---|
 | Frontend | Next.js 16, React 18, TypeScript, shadcn/ui + Tailwind v4 |
 | BFF / gateway | Next.js app-router API routes + a Node `server.js` WS/HTTP proxy |
-| AI orchestration | NeMo Agent Toolkit (NAT) + LangGraph; Dask for async jobs |
+| AI orchestration | NeMo Agent Toolkit (NAT) + LangGraph; the Postgres research queue for async jobs |
 | LLM | any OpenAI-compatible endpoint (reference boot floor: OpenAI GPT-5.6 Luna via OpenRouter; the served model is an admin decision at runtime) |
 | Embeddings | any OpenAI-compatible endpoint (reference: OpenAI text-embedding-3-large via OpenRouter) |
 | RAG / vector store | ChromaDB (+ LlamaIndex ingestion) |
@@ -395,10 +416,10 @@ frontend start). → `docs/database/`.
 ## 10. Deployment topology
 
 Seven Compose services on one bridge network: `postgres`, `seaweedfs` (+ `seaweedfs-init`),
-`aiq-agent` (+ one-shot `aiq-data-permissions`), `frontend`, and `purger`.
+`aiq-agent` (+ one-shot `chroma-data-permissions`), `frontend`, and `purger`.
 Frontend on `:3000` (the only public port for the app), backend on `:8000`,
-Postgres `:5432`, SeaweedFS `:8333/:8888`. Migrations run on frontend start; OIB
-ingestion is a one-time `scripts/ingest_oib.py` after first boot. → `docs/deployment/`.
+Postgres `:5432`, SeaweedFS `:8333/:8888`. Migrations run on frontend start; the
+OIB corpus is uploaded after first boot (admin UI or `scripts/upload_oib_corpus.py`) and ingested by the ingest workers, from jobs the upload and the base-corpus housekeeping queue. → `docs/deployment/`.
 
 ---
 
@@ -410,7 +431,7 @@ ingestion is a one-time `scripts/ingest_oib.py` after first boot. → `docs/depl
   `project` entity type has a registered purger; others are stubbed.
 - **Deep-research cards** — async deep-research jobs generate cards post-hoc
   from the final report in the job runner and deliver them via the job SSE
-  stream and job output; the synchronous inline deep-research path (no Dask)
+  stream and job output; the synchronous inline deep-research path (`use_async_deep_research` off)
   still returns no cards.
 - **Memory** — capture, curation, semantic consolidation and query-relevant
   recall are built (see `architecture/semantic-notes.md`); what remains open
@@ -448,6 +469,6 @@ What lives where in the checkout.
 | `deploy/` | Docker Compose assets and environment templates; `deploy/pulumi/` holds the Pulumi (TypeScript) Kubernetes deployment (see `docs/deployment/kubernetes.md`) |
 | `docs/architecture/` | Architecture docs (see `backend-deep-dive.md`, `project-memory-design.md`, `citation-system-audit-2026-07.md` for the citation pipeline as built) |
 | `skills/` | API-consumer skill examples |
-| `scripts/` | Utility scripts, including `scripts/ingest_oib.py` |
+| `scripts/` | Utility scripts, including `scripts/upload_oib_corpus.py` |
 | `releasenotes/` | reno release notes — one YAML file per user-visible change, published to piloti.at/changelog |
-| `data/oib/` | Where the OIB Richtlinien PDFs go. Operator-provided and gitignored: the directory ships empty and is filled by an admin upload or by dropping files in before first boot |
+| `data/oib/` | A local, gitignored copy of the OIB Richtlinien PDFs for the evals and tests. The platform does not read it: the base corpus is uploaded through the admin UI into object storage |

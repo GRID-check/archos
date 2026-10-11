@@ -29,16 +29,30 @@ import type { AnswerFeedbackView, UpsertAnswerFeedbackInput } from './types'
 import {
   deleteAnswerFeedbackForUser,
   getAnswerFeedbackForUser,
+  getAnswerTraceId,
+  isRestrictedUseVote,
   getFeedbackHealth,
+  getPersistedAnswerConversationId,
   listAnswerFeedbackForConversation,
   upsertAnswerFeedback,
   type FeedbackHealth,
-  type FeedbackHealthFilters,
+  type FeedbackOrgRollup,
+  type FeedbackTurn,
 } from './repository'
+import type { FeedbackQuery } from './filters'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
+import { langfuseProjectUrl, langfuseTraceUrl, langfuseUiConfig } from '@/lib/langfuse/config'
+import {
+  deleteFeedbackScore,
+  feedbackScoringEnabled,
+  upsertFeedbackScore,
+} from '@/lib/langfuse/feedback-score'
 import { getFeedbackDigest, type FeedbackDigestOptions, type FeedbackDigestResult } from './digest'
 import { resolveLessonsHoldout } from '@/lib/platform-lessons/holdout'
 import { reopenReportForRedistillation } from '@/lib/platform-lessons/service'
 import { implicateMemoryFromFeedback } from '@/lib/projects/memory-service'
+import { memoryClearance } from '@/lib/projects/service'
+import { maskChatText } from '@/lib/upload-screening/service'
 
 /** Upsert the caller's vote on one assistant answer. */
 export async function submitAnswerFeedback(
@@ -56,7 +70,7 @@ export async function submitAnswerFeedback(
   if (input.verdict === 'up' && input.reason != null) {
     throw new BadRequestError('A reason is only valid with a down verdict.')
   }
-  if (input.verdict === 'up' && input.comment) {
+  if (input.verdict === 'up' && (input.comment || input.expectedAnswer)) {
     throw new BadRequestError('A comment is only valid with a down verdict.')
   }
 
@@ -65,15 +79,39 @@ export async function submitAnswerFeedback(
     await requireProjectAccess(session, input.projectId, 'project:view')
   }
 
+  // The conversation is the persisted answer's when there is one, not the
+  // client's say-so: readers join topics and titles on it. A turn with no row
+  // yet keeps the client's value rather than losing its vote (see the
+  // repository note), and the readers prefer the answer row's either way.
+  const conversationId =
+    (await getPersistedAnswerConversationId(input.messageId, session.organizationId)) ??
+    input.conversationId ??
+    null
+
   // Which arm of the lessons experiment this turn was in, decided by the same
   // pure function the agent used when it chose whether to inject. Null when
   // the holdout is off, which is the default — see lib/platform-lessons/holdout.
-  const lessonsHoldout = await resolveLessonsHoldout(input.conversationId ?? null)
+  const lessonsHoldout = await resolveLessonsHoldout(conversationId)
 
   // Read the prior vote before the upsert: memory implication (below) must
   // fire on NEW complaint text only, or a re-saved identical comment would
   // penalize the same notes twice.
   const prior = await getAnswerFeedbackForUser(session.userId, input.messageId)
+
+  // The comment is typed text, and it goes on to the embedder (memory
+  // implication below, the lesson pipeline) and to the distilling model: stored
+  // masked against the office's „Sensible Daten" policy (ADR-0086), like a chat
+  // message. Masked before the comparison with `prior`, which was stored masked.
+  const comment =
+    input.verdict === 'down' && input.comment
+      ? (await maskChatText(session.organizationId, input.comment)).text
+      : null
+  // The answer the person expected is typed text too, and it becomes an eval
+  // case a model answers against (`feedback-to-cases`): masked the same way.
+  const expectedAnswer =
+    input.verdict === 'down' && input.expectedAnswer
+      ? (await maskChatText(session.organizationId, input.expectedAnswer)).text
+      : null
 
   const row = await upsertAnswerFeedback({
     lessonsHoldout,
@@ -82,8 +120,9 @@ export async function submitAnswerFeedback(
     messageId: input.messageId,
     verdict: input.verdict,
     reason: input.verdict === 'down' ? (input.reason ?? null) : null,
-    comment: input.verdict === 'down' ? input.comment || null : null,
-    conversationId: input.conversationId ?? null,
+    comment,
+    expectedAnswer,
+    conversationId,
     projectId: input.projectId ?? null,
   })
   // A re-vote that adds detail (a comment, a corrected reason) deserves another
@@ -100,14 +139,77 @@ export async function submitAnswerFeedback(
   // (the raw comment never leaves it). Fire-and-forget like the sweep kick —
   // the vote is the user's business, this is ours.
   if (row.verdict === 'down' && row.comment && row.comment !== prior?.comment) {
-    void implicateMemoryFromFeedback({
-      organizationId: session.organizationId,
-      projectId: row.projectId ?? null,
-      comment: row.comment,
-    })
+    void implicateFeedbackMemory(session, row.projectId ?? null, row.comment)
   }
 
+  // The vote as a score on the answer's Langfuse trace (ADR-0044, Amendment 3).
+  // After the write, never awaited: Langfuse being slow or down must not cost
+  // the voter anything, and the vote in the database is the record either way.
+  // The prior verdict decides whether a down-vote is new enough to queue for
+  // review (an edited complaint is not a second one).
+  void scoreVoteInLangfuse(session.organizationId, row, prior?.verdict ?? null)
+
   return toView(row)
+}
+
+/**
+ * Lower the salience of the notes a complaint sits next to, among the notes the
+ * voter may see (ADR-0087): a member not cleared for a restricted folder cannot
+ * see its notes, so their down-vote must not bury them for those who can.
+ * Fire-and-forget like the call itself; never throws.
+ */
+async function implicateFeedbackMemory(
+  session: AuthorizedSession,
+  projectId: string | null,
+  comment: string
+): Promise<void> {
+  try {
+    const { cleared } = projectId ? await memoryClearance(session, projectId) : { cleared: [] }
+    await implicateMemoryFromFeedback({
+      organizationId: session.organizationId,
+      projectId,
+      comment,
+      readableFolderIds: cleared,
+    })
+  } catch (error) {
+    console.warn('[feedback] Memory implication skipped (non-fatal):', error)
+  }
+}
+
+/**
+ * Mirror one stored vote into Langfuse. Never rejects: the score is bookkeeping
+ * about a vote that has already been recorded.
+ *
+ * Nothing is sent when Langfuse is not configured, and nothing when the answer's
+ * row does not name its trace (an unpersisted turn, or one from before the agent
+ * recorded traces): a score on a guessed trace id would attach to nothing.
+ *
+ * A vote on a conversation that drew on a restricted folder is scored without
+ * the voter's words (`isRestrictedUseVote`), as the platform's own feedback
+ * views leave it out: the number and the reason chip are not content.
+ */
+async function scoreVoteInLangfuse(
+  organizationId: string,
+  row: AnswerFeedback,
+  previousVerdict: AnswerFeedback['verdict'] | null
+): Promise<void> {
+  if (!feedbackScoringEnabled()) return
+  try {
+    const traceId = await getAnswerTraceId(row.messageId, organizationId)
+    if (!traceId) return
+    const withWords = !(await isRestrictedUseVote(row.id, organizationId))
+    await upsertFeedbackScore({
+      feedbackId: row.id,
+      traceId,
+      verdict: row.verdict,
+      reason: row.reason ?? null,
+      comment: withWords ? (row.comment ?? null) : null,
+      expectedAnswer: withWords ? (row.expectedAnswer ?? null) : null,
+      previousVerdict,
+    })
+  } catch (error) {
+    console.warn('[Feedback] Langfuse score failed (non-fatal):', error)
+  }
 }
 
 /**
@@ -118,7 +220,14 @@ export async function retractAnswerFeedback(
   session: AuthorizedSession,
   messageId: string
 ): Promise<void> {
-  await deleteAnswerFeedbackForUser(session.userId, messageId, session.organizationId)
+  const deletedId = await deleteAnswerFeedbackForUser(
+    session.userId,
+    messageId,
+    session.organizationId
+  )
+  // Its Langfuse score goes with it, keyed by the row id the score was derived
+  // from. Fire-and-forget, like the write; a no-op when Langfuse is not set up.
+  if (deletedId) void deleteFeedbackScore(deletedId)
 }
 
 /** The caller's own votes in one conversation, for client-side hydration. */
@@ -140,6 +249,7 @@ function toView(row: AnswerFeedback): AnswerFeedbackView {
     verdict: row.verdict,
     reason: row.reason ?? null,
     comment: row.comment ?? null,
+    expectedAnswer: row.expectedAnswer ?? null,
   }
 }
 
@@ -158,19 +268,72 @@ function toView(row: AnswerFeedback): AnswerFeedbackView {
  * quality across tenants, which is the same person the citation-health and
  * profiler surfaces on this page already serve.
  */
+/** One organization's rollup, named for the reader. */
+export interface FeedbackOrgRollupView extends FeedbackOrgRollup {
+  /** The organization's display name; null when the name lookup failed or missed. */
+  organizationName: string | null
+}
+
+/** One voted turn, named for the reader. */
+export interface FeedbackTurnView extends FeedbackTurn {
+  /** The organization's display name; null when the name lookup failed or missed. */
+  organizationName: string | null
+  /**
+   * The turn's trace in the Langfuse UI, where its vote is also a score. Null
+   * when Langfuse links are not configured or the answer row names no trace.
+   */
+  langfuseTraceUrl: string | null
+}
+
+/** What the platform quality view is served: the aggregate, with the tenants named. */
+export interface AnswerFeedbackHealthView extends Omit<FeedbackHealth, 'organizations' | 'turns'> {
+  organizations: FeedbackOrgRollupView[]
+  turns: FeedbackTurnView[]
+  /**
+   * The Langfuse project the votes are scored in (its scores dashboard lives
+   * under it); null when Langfuse links are not configured.
+   */
+  langfuse: { projectUrl: string } | null
+}
+
 export async function getAnswerFeedbackHealth(
   session: GridSession | null,
-  filters: FeedbackHealthFilters = {}
-): Promise<FeedbackHealth> {
+  query: FeedbackQuery
+): Promise<AnswerFeedbackHealthView> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.organizationsView)
   // The read groups BY organization across every tenant, so it must not run
   // pinned to the owner's active one — row-level security would quietly return
   // that org's rows, or none at all, and the page would look merely empty
   // rather than broken (ADR-0041). The gate above is the authorization this
   // bypass rests on; it sits here so no caller can reach the data without it.
-  return withPlatformAccess('answer feedback: cross-organization quality view', () =>
-    getFeedbackHealth(filters)
+  //
+  // Names come from the same resolver citation health uses, so the two cards
+  // never call one tenant two things. It fails soft to an empty map.
+  const health = await withPlatformAccess('answer feedback: cross-organization quality view', () =>
+    getFeedbackHealth(query)
   )
+  // Resolved per id, not from one WorkOS list page, so a tenant past the first
+  // hundred is still named.
+  const names = await getOrganizationDisplayNames([
+    ...health.organizations.map((org) => org.organizationId),
+    ...health.turns.map((turn) => turn.organizationId),
+  ])
+  const nameOf = (organizationId: string): string | null => names.get(organizationId) ?? null
+  const ui = langfuseUiConfig()
+  const projectUrl = langfuseProjectUrl(ui)
+  return {
+    ...health,
+    organizations: health.organizations.map((org) => ({
+      ...org,
+      organizationName: nameOf(org.organizationId),
+    })),
+    turns: health.turns.map((turn) => ({
+      ...turn,
+      organizationName: nameOf(turn.organizationId),
+      langfuseTraceUrl: langfuseTraceUrl(turn.traceId, ui),
+    })),
+    langfuse: projectUrl ? { projectUrl } : null,
+  }
 }
 
 /**
@@ -186,13 +349,14 @@ export async function getAnswerFeedbackHealth(
  */
 export async function getAnswerFeedbackDigest(
   session: GridSession | null,
-  filters: FeedbackHealthFilters = {},
+  query: FeedbackQuery,
   options: FeedbackDigestOptions = {}
 ): Promise<FeedbackDigestResult> {
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.organizationsView)
-  const health = await withPlatformAccess(
-    'answer feedback digest: cross-organization quality view',
-    () => getFeedbackHealth({ ...filters, limit: 0 })
-  )
-  return getFeedbackDigest(health, filters, options)
+  // The samples are read inside the same bypass as the figures: both are the
+  // cross-organization read the gate above authorizes.
+  return withPlatformAccess('answer feedback digest: cross-organization quality view', async () => {
+    const health = await getFeedbackHealth(query, { turnLimit: 0 })
+    return getFeedbackDigest(health, query, options)
+  })
 }

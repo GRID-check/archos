@@ -25,9 +25,13 @@ import { ConflictError, InsufficientStorageError, NotFoundError } from '@/lib/ap
 import { markingIsInBytes, type AiProvenanceMarking } from '@/lib/ai-provenance'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { filedInOf } from '@/lib/audit/document-names'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { placementCollectionFor } from '@/lib/authz/folder-access'
 import { findConversationInOrg } from '@/lib/conversations/repository'
+import { admitRestrictedUse } from '@/lib/conversations/restricted-use'
+import { findProjectCollectionName } from '@/lib/projects/repository'
 import type { Document, DocumentVersion } from '@/lib/db/schema'
 import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { bucketAdminS3Client, s3Client } from '@/lib/s3'
@@ -38,7 +42,9 @@ import {
   STORAGE_QUOTA_EXCEEDED_MESSAGE,
 } from '@/lib/storage/service'
 import { ensureTenantBucketChecked, resolveDocumentBucket } from '@/lib/storage/bucket'
+import { recordDocumentAccess } from '@/lib/download-log/service'
 import { getAccessibleDocument } from './access'
+import { contentDisposition } from './content-disposition'
 import { AGENT_DOCUMENT_MEDIA_TYPE, renderAgentDocumentMarkdown } from './agent-document-markdown'
 import { resolveDocumentBranding, type DocumentBranding } from './branding'
 import { collectionFileRef, purgeIngestedChunks } from './collection-file-ref'
@@ -52,6 +58,8 @@ import {
 } from './generated'
 import type { DocumentVersionState } from './lifecycle-types'
 import { findDocumentInOrg } from './repository'
+import { hasPassedScreening, SCREENED_ONLY, versionBytesPassedScreening } from '@/lib/documents/document-reader'
+import { maySeeHeld } from '@/lib/upload-screening/quarantine-reviewers'
 import {
   findDocumentVersion,
   findDocumentVersionInOrg,
@@ -385,16 +393,219 @@ async function readObjectText(
   return body
 }
 
-/** Read one version's bytes back as text — the diff endpoint's other half. */
+/** The version facts the screening rule reads (`versionBytesPassedScreening`). */
+type VersionScreening = Pick<DocumentVersion, 'state' | 'contentHash' | 'screenedHash'>
+
+/**
+ * Whether a PERSON may receive this version's bytes (ADR-0086): bytes a
+ * passing verdict judged (`versionBytesPassedScreening`: the version's own,
+ * migration 0131, or the item's when it is about these bytes), or the uploader
+ * and the reviewers, who may see what is held. A held document's item paths
+ * already answer that; a version is the other way in, because an earlier
+ * upload under the same name may have been replaced while it was still being
+ * read, after its reading failed, or while quarantined, and then no verdict
+ * passed its bytes. A member gets the 404 an unknown version gets; a screened
+ * earlier upload opens for every member who may read the document.
+ */
+export async function mayReceiveVersionBytes(
+  session: AuthorizedSession,
+  document: Document,
+  version: VersionScreening,
+): Promise<boolean> {
+  if (versionBytesPassedScreening(document, version)) return true
+  return maySeeHeld(session, document)
+}
+
+/**
+ * {@link mayReceiveVersionBytes} for a whole version list, asking who may see
+ * what is held at most once: what the timeline reads to offer Öffnen and
+ * Herunterladen only where the route will answer.
+ */
+export async function versionBytesReadableBy(
+  session: AuthorizedSession,
+  document: Document,
+  versions: readonly (VersionScreening & Pick<DocumentVersion, 'id'>)[],
+): Promise<(version: VersionScreening) => boolean> {
+  const judged = (version: VersionScreening) => versionBytesPassedScreening(document, version)
+  if (versions.every(judged)) return judged
+  const seesHeld = await maySeeHeld(session, document)
+  return (version) => seesHeld || judged(version)
+}
+
+/**
+ * The version's text, read for a session that may read its document; nothing
+ * is recorded here. `forModel` when a model reads the text rather than the
+ * person: a held document (ADR-0086) reaches no model, whoever's session
+ * fetches it, its uploader and its reviewers included, and neither do a
+ * version's bytes no passing verdict judged. A person gets those
+ * bytes only when they may see what is held ({@link mayReceiveVersionBytes}).
+ */
+async function fetchVersionText(
+  session: AuthorizedSession,
+  documentId: string,
+  versionId: string,
+  { forModel = false }: { forModel?: boolean } = {},
+): Promise<{ document: Document; text: string }> {
+  const document = await getAccessibleDocument(session, documentId, 'read')
+  if (forModel && !hasPassedScreening(document)) throw new NotFoundError('Version not found')
+  const version = await findDocumentVersion(versionId, documentId, session.organizationId)
+  if (!version) throw new NotFoundError('Version not found')
+  const passed = forModel
+    ? versionBytesPassedScreening(document, version)
+    : await mayReceiveVersionBytes(session, document, version)
+  if (!passed) throw new NotFoundError('Version not found')
+  return { document, text: await readObjectText(version.storageBucket, version.storageKey) }
+}
+
+/**
+ * Read one version's bytes back as text, for the person at the other end: the
+ * version list's „Öffnen" and the diff endpoint's two halves. The hand-over is
+ * recorded in the download log (`kind: 'version'`, with the version's id), which
+ * is why a diff of two versions records two.
+ */
 export async function readVersionContent(
   session: AuthorizedSession,
   documentId: string,
   versionId: string,
 ): Promise<string> {
-  await getAccessibleDocument(session, documentId, 'read')
+  const { document, text } = await fetchVersionText(session, documentId, versionId)
+  await recordDocumentAccess(session, document, 'version', { versionId })
+  return text
+}
+
+/**
+ * The states whose bytes the Fassung timeline hands to a reader: the one the
+ * office asserts and the ones it replaced. A draft, a version in review and a
+ * refused one are work in progress that only the review surface (the version
+ * list's text route) shows, so this route answers 404 for them rather than
+ * confirm that an unreleased version exists.
+ */
+const TIMELINE_BYTES_STATES: ReadonlySet<DocumentVersionState> = new Set(['published', 'superseded'])
+
+/**
+ * Content types a version may be shown inline in a tab. The bytes are uploaded
+ * by users and returned from this origin, so anything that could run script
+ * (HTML, SVG, XML) is never inline: it leaves as an attachment.
+ */
+const INLINE_VERSION_CONTENT_TYPES: ReadonlySet<string> = new Set([
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+])
+
+/**
+ * One superseded or published version's stored object, streamed from this
+ * origin: what „Öffnen" and „Herunterladen" on a same-name Fassung of the
+ * timeline (ADR-0054, ADR-0099) hand over. `/file` and `/download` serve only
+ * the item's CURRENT bytes, and `/content` reads text; an earlier upload under
+ * the same name was kept and reachable through none of them.
+ *
+ * Authorization is the document's (`getAccessibleDocument`: the shelf's rule,
+ * the folder's, and the hold of ADR-0086), then the version must belong to it,
+ * be in a state in {@link TIMELINE_BYTES_STATES}, and hold bytes this person may
+ * receive ({@link mayReceiveVersionBytes}). The hand-over is recorded
+ * as `kind: 'version'` with the version's id, as `readVersionContent` does.
+ *
+ * The file name is the document's: a version does not carry one of its own.
+ */
+export async function streamVersionFile(
+  session: AuthorizedSession,
+  documentId: string,
+  versionId: string,
+  { download = false }: { download?: boolean } = {},
+): Promise<Response> {
+  const document = await getAccessibleDocument(session, documentId, 'read')
   const version = await findDocumentVersion(versionId, documentId, session.organizationId)
-  if (!version) throw new NotFoundError('Version not found')
-  return readObjectText(version.storageBucket, version.storageKey)
+  if (!version || !TIMELINE_BYTES_STATES.has(version.state)) throw new NotFoundError('Version not found')
+  // Bytes no verdict on record judged are the uploader's and the reviewers' alone (ADR-0086).
+  if (!(await mayReceiveVersionBytes(session, document, version))) throw new NotFoundError('Version not found')
+
+  let body
+  try {
+    const object = await s3Client.send(
+      new GetObjectCommand({ Bucket: resolveDocumentBucket(version.storageBucket), Key: version.storageKey }),
+    )
+    body = object.Body
+  } catch {
+    throw new NotFoundError('Version not found')
+  }
+  if (!body) throw new NotFoundError('Version not found')
+  await recordDocumentAccess(session, document, 'version', { versionId })
+
+  const stored = version.contentType ?? document.contentType ?? ''
+  const inline = !download && INLINE_VERSION_CONTENT_TYPES.has(stored)
+  return new Response(body.transformToWebStream(), {
+    status: 200,
+    headers: {
+      'Content-Type': INLINE_VERSION_CONTENT_TYPES.has(stored) ? stored : 'application/octet-stream',
+      'Content-Disposition': contentDisposition(inline ? 'inline' : 'attachment', document.filename),
+      'X-Content-Type-Options': 'nosniff',
+      // Private: these bytes are tenant data. A version's bytes never change
+      // under its id, so a short reuse is safe.
+      'Cache-Control': 'private, max-age=300',
+      // The same pairing the file route carries, for a viewer that frames it.
+      ...(inline ? { 'X-Frame-Options': 'SAMEORIGIN', 'Content-Security-Policy': "frame-ancestors 'self'" } : {}),
+    },
+  })
+}
+
+/**
+ * The same text for the agent task a „Änderungen anfordern" starts
+ * (`openRevisionTask`): the reviewer's session fetches it, the model reads it,
+ * and the reviewer never receives these bytes, so there is no hand-over to
+ * record. `coverage.spec.ts` lists the exemption with this reason. A model
+ * reads it, so a document whose screening has not passed answers 404 here
+ * (ADR-0086), for its reviewer as much as anyone.
+ */
+export async function readVersionTextForTask(
+  session: AuthorizedSession,
+  documentId: string,
+  versionId: string,
+): Promise<string> {
+  return (await fetchVersionText(session, documentId, versionId, { forModel: true })).text
+}
+
+/** Who a service read of a subject is for: the turn's signed asker, and the answer it is writing. */
+export interface ServiceReader {
+  /** The turn's asker, as signed; needed only for a document in a restricted folder. */
+  askerUserId: string | null
+  /** The answer the turn writes; marked when the read admits a restricted folder (ADR-0093). */
+  answerMessageId: string | null
+}
+
+/**
+ * A subject in a restricted folder is opened into the turn's working directory
+ * whole, so reading it is USE of that folder (ADR-0087, ADR-0088): admitted for
+ * the conversation, against its audience, before the bytes leave. Refused, or
+ * with no asker to check, it reads as no subject at all. True when a folder not
+ * every member may read was admitted, so the agent knows the conversation is
+ * confined from this turn on.
+ */
+async function admitSubjectRead(
+  document: Document,
+  organizationId: string,
+  conversationId: string,
+  { askerUserId, answerMessageId }: ServiceReader,
+): Promise<boolean> {
+  if (!document.projectId || !document.folderId) return false
+  const projectCollection = await findProjectCollectionName(document.projectId, organizationId)
+  if (!projectCollection) return false
+  const collection = await placementCollectionFor(
+    organizationId,
+    document.projectId,
+    projectCollection,
+    document.folderId,
+  )
+  if (collection === projectCollection) return false
+  if (!askerUserId) throw new NotFoundError('Version not found')
+  const admission = await admitRestrictedUse(
+    { organizationId, conversationId, userId: askerUserId, projectId: document.projectId, answerMessageId },
+    [collection],
+  )
+  if (admission.refused.length > 0) throw new NotFoundError('Version not found')
+  return admission.admitted.length > 0
 }
 
 /**
@@ -430,6 +641,7 @@ export async function readVersionForService(
   versionId: string,
   organizationId: string,
   conversationId: string,
+  reader: ServiceReader = { askerUserId: null, answerMessageId: null },
 ): Promise<{
   documentId: string
   versionId: string
@@ -440,6 +652,8 @@ export async function readVersionForService(
   filename: string
   displayName: string
   content: string
+  /** The read drew on a folder not every project member may read; the conversation recorded it. */
+  drewOnRestrictedFolder: boolean
 }> {
   const version = await findDocumentVersionInOrg(versionId, organizationId)
   if (!version) throw new NotFoundError('Version not found')
@@ -451,8 +665,12 @@ export async function readVersionForService(
   ) {
     throw new NotFoundError('Version not found')
   }
-  const document = await findDocumentInOrg(version.documentId, organizationId)
-  if (!document) throw new NotFoundError('Version not found')
+  // A held document (ADR-0086) never reaches a model, not even as the subject
+  // its own uploader opened a chat about: nobody's own uploads count here.
+  const document = await findDocumentInOrg(version.documentId, organizationId, SCREENED_ONLY)
+  // The verdict is about the item's bytes; these are the version's.
+  if (!document || !versionBytesPassedScreening(document, version)) throw new NotFoundError('Version not found')
+  const drewOnRestrictedFolder = await admitSubjectRead(document, organizationId, conversationId, reader)
   return {
     documentId: version.documentId,
     versionId: version.id,
@@ -463,6 +681,7 @@ export async function readVersionForService(
     filename: document.filename,
     displayName: documentDisplayName(document),
     content: await readObjectText(version.storageBucket, version.storageKey),
+    drewOnRestrictedFolder,
   }
 }
 
@@ -511,6 +730,7 @@ export async function archiveDocument(
     action: 'document.archived',
     targetType: 'document',
     targetId: documentId,
+    filedIn: filedInOf(document),
     metadata: {
       projectId: document.projectId ?? '',
       filename: document.filename.slice(0, 200),

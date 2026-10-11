@@ -44,10 +44,10 @@ describe('ProjectCard', () => {
     )
   })
 
-  test('shows the Active status chip — the only status the data model supports', () => {
+  test('carries no status chip while the project is active: the normal case says nothing (ADR-0098)', () => {
     render(<ProjectCard project={createProject()} />)
 
-    expect(screen.getByText('Active')).toBeInTheDocument()
+    expect(screen.queryByText('Active')).not.toBeInTheDocument()
   })
 
   test('renders last activity as a relative time from the newest timestamp', () => {
@@ -89,7 +89,24 @@ describe('ProjectCard', () => {
 })
 
 describe('getProjectStatus', () => {
-  test('is honest about the data: every non-deleted project is active (no fake "Done")', () => {
-    expect(getProjectStatus({ deletedAt: null })).toBe('active')
+  test('reads the stored status (ADR-0098): active, paused, or closed', () => {
+    expect(getProjectStatus({ status: 'active' })).toBe('active')
+    expect(getProjectStatus({ status: 'paused' })).toBe('paused')
+    expect(getProjectStatus({ status: 'closed' })).toBe('closed')
+  })
+
+  test('a closed project card says so, and says when it was not realized', () => {
+    const { unmount } = render(
+      <ProjectCard project={createProject({ status: 'closed', closedAt: new Date(), closedBy: 'u', closedOutcome: 'completed' })} docCount={0} />
+    )
+    expect(screen.getByText('Closed')).toBeInTheDocument()
+    unmount()
+    render(<ProjectCard project={createProject({ status: 'closed', closedAt: new Date(), closedBy: 'u', closedOutcome: 'cancelled' })} />)
+    expect(screen.getByText('Not realized')).toBeInTheDocument()
+  })
+
+  test('a paused project card says so', () => {
+    render(<ProjectCard project={createProject({ status: 'paused', pausedAt: new Date() })} />)
+    expect(screen.getByText('Paused')).toBeInTheDocument()
   })
 })

@@ -11,6 +11,8 @@ export const chat: typeof en.chat = {
     faster: 'Schneller',
     smarter: 'Intelligenter',
     help: 'Wie lange Piloti nachdenkt, bevor es antwortet. Mehr Aufwand hilft bei verzwickten Fragen, kostet aber Zeit und Tokens. Gilt für diesen Chat.',
+    maximumWarning:
+      'Selten klüger als Hoch. Piloti denkt viel länger, kostet weit mehr Tokens und verrennt sich eher.',
     levels: {
       minimal: 'Minimal',
       low: 'Niedrig',
@@ -48,8 +50,10 @@ export const chat: typeof en.chat = {
     // knowledge-base copy of a legal text reads as project material.
     kinds: {
       baurecht: 'Baurecht & Richtlinien',
-      buero: 'Büroarchiv',
+      buero: 'Büroablage',
       projekt: 'Projektwissen',
+      // Eine Quelle aus einem anderen Projekt, die als Vorbild dient (ADR-0094); gleiche Farbe wie „Projektwissen“.
+      praezedenz: 'Präzedenzfall',
       web: 'Webquelle',
     },
     origins: {
@@ -58,7 +62,7 @@ export const chat: typeof en.chat = {
       web: 'Webquelle',
     },
   },
-  // Dokumentraster: echte Projekt-/Büroarchiv-Dateien, die der Assistent als
+  // Dokumentraster: echte Projekt-/Büroablage-Dateien, die der Assistent als
   // anklickbare Vorschaukarten anzeigt (`document_grid`-Karte / `surface_documents`).
   documentGrid: {
     countOne: '1 Dokument',
@@ -69,10 +73,10 @@ export const chat: typeof en.chat = {
       buero: 'Büro',
     },
     // Eine referenzierte Datei, die sich nicht mehr auf eine Dokumentzeile
-    // auflösen lässt — eine ehrliche, handlungsfähige Karte (im Archiv / in den
+    // auflösen lässt — eine ehrliche, handlungsfähige Karte (in der Büroablage / in den
     // Projektdateien öffnen) statt einer stummen toten Kachel.
     unresolvedHint: 'Der Assistent hat diese Datei referenziert.',
-    openInArchive: 'Im Archiv öffnen',
+    openInArchive: 'In der Büroablage öffnen',
     openInFiles: 'In den Projektdateien öffnen',
     // Der Auflösungs-Abruf ist fehlgeschlagen — eine Wiederholaktion statt einer
     // dauerhaft toten Kachel.
@@ -99,13 +103,14 @@ export const chat: typeof en.chat = {
     // Wenn die Antwort den Namen anders geschrieben hat als die Datei heißt.
     writtenAs: 'Im Text: {name}',
     // Regal, aus dem die Datei stammt — dieselbe Unterscheidung wie bei den
-    // Quellen: geteiltes Projektwissen, büroweites Archiv, private Beilage.
+    // Quellen: geteiltes Projektwissen, die Büroablage, private Beilage.
     shelf: {
       projekt: 'Projektdateien',
-      buero: 'Büroarchiv',
+      buero: 'Büroablage',
       session: 'Beilage in diesem Chat',
     },
-    notIndexed: 'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber Piloti zitiert sie nicht.',
+    notIndexed:
+      'Abgelegt, nicht gelesen. Sie können die Datei öffnen, aber Piloti zitiert sie nicht.',
     failed: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
   },
   composer: {
@@ -124,17 +129,41 @@ export const chat: typeof en.chat = {
     // tiny one-line hint under the composer keeps the active source count legible.
     sourcesActiveMobile: '{count, plural, one {# Quelle} other {# Quellen}} aktiv',
   },
+  // Spracheingabe im Eingabefeld (features/dictation).
+  dictation: {
+    start: 'Diktieren',
+    startHint:
+      'Sprechen Sie, Piloti schreibt es in Ihre Nachricht. Stoppt nach {seconds} Sekunden.',
+    stop: 'Beenden und einfügen',
+    recording: 'Aufnahme, {elapsed}',
+    transcribing: 'Wird verschriftlicht …',
+    unavailable: {
+      unsupported: 'Dieser Browser kann nicht vom Mikrofon aufnehmen.',
+      insecure: 'Spracheingabe braucht eine sichere (https-)Verbindung.',
+      noFormat: 'Dieser Browser nimmt in keinem Format auf, das Piloti verschriftlichen kann.',
+      denied:
+        'Der Mikrofonzugriff ist blockiert. Erlauben Sie ihn in den Website-Einstellungen des Browsers und laden Sie die Seite neu.',
+    },
+    errors: {
+      noMicrophone: 'Es wurde kein Mikrofon gefunden.',
+      denied: 'Der Mikrofonzugriff wurde nicht erlaubt.',
+      rateLimited: 'Zu viele Aufnahmen in kurzer Zeit. Versuchen Sie es in einer Minute erneut.',
+      tooLarge: 'Die Aufnahme ist zu groß zum Verschriftlichen.',
+      notConfigured: 'Spracheingabe ist gerade nicht verfügbar.',
+      failed: 'Die Aufnahme konnte nicht verschriftlicht werden. Ihre Nachricht ist unverändert.',
+    },
+  },
   // Der Reiter einer Quellenkarte in der Herleitung: die grobe Ebene, wenn der
   // Server keine feine Lane benannt hat, und das Regal, auf dem das Dokument
   // laut Wire liegt (ADR-0047: Deutsch ist Darstellung, nie Transport).
   sourceTabs: {
     law: 'Baurecht',
     project: 'Projektwissen',
-    office: 'Büroarchiv',
+    office: 'Büroablage',
     auto: 'Web',
     model: 'Modellmessung',
     shelves: {
-      archiv: 'Büroarchiv',
+      archiv: 'Büroablage',
       project: 'Projektwissen',
       session: 'Private Sitzung',
       base: 'Basiswissen',
@@ -146,7 +175,7 @@ export const chat: typeof en.chat = {
     presets: {
       law: 'Baurecht & Richtlinien',
       project: 'Projektunterlagen',
-      office: 'Büroarchiv',
+      office: 'Büroablage',
     },
   },
   greeting: {
@@ -195,6 +224,8 @@ export const chat: typeof en.chat = {
     // Ein offener Befund lässt sich als eigener Auftrag klären; der Lauf
     // erscheint als Block in diesem Verlauf.
     clarify: 'Klären',
+    /** Unter der Matrix in einem abgeschlossenen Projekt, wo „Klären“ stünde (ADR-0090). */
+    clarifyClosed: 'Abgeschlossenes Projekt: keine neue Recherche zu offenen Befunden.',
     commissioned: 'Auftrag angelegt',
     // Gegenüber dem vorigen Bericht zum selben Thema.
     change: {
@@ -216,6 +247,9 @@ export const chat: typeof en.chat = {
     sourceNumber: 'Quelle {number}',
     page: 'S. {page}',
     pages: 'S. {pages}',
+    // Die Meldezeile einer Präzedenz aus einem anderen Projekt: Projekt, Status, dann das Bundesland.
+    precedentProject: '{name} · {status}',
+    projectStatus: { active: 'laufend', paused: 'ruhend', closed: 'abgeschlossen' },
     // Quellen jenseits der acht Chips falten sich hinter denselben Auslöser wie
     // die gelesenen Quellen: die Zahl zuerst, jeder Name beim Aufklappen.
     more: '+{count} weitere',
@@ -336,6 +370,11 @@ export const chat: typeof en.chat = {
     previousLocus: 'Vorherige Fundstelle',
     nextLocus: 'Nächste Fundstelle',
     retrievedOnly: 'Gelesen',
+    // Das Dokument ist eine Fassung, die eine Person durch eine neuere ersetzt hat. Die Zitation bleibt wahr
+    // für die Datei, die sie nennt; der Leser soll es nur wissen, bevor er sich darauf verlässt.
+    olderFassung: 'Ältere Fassung – aktuell:',
+    openCurrentFassungAria: 'Aktuelle Fassung öffnen: {name}',
+    currentFassungUnavailable: 'Die aktuelle Fassung lässt sich nicht öffnen.',
   },
   breadcrumb: {
     ariaLabel: 'Navigationspfad',
@@ -446,10 +485,10 @@ export const chat: typeof en.chat = {
       fileError: 'Das Ablegen hat nicht geklappt. Bitte erneut versuchen.',
       fileConflict: 'Ein Dokument mit diesem Namen liegt bereits im Projekt.',
       fileAnyway: 'Trotzdem ablegen',
-      // Die Referenz ist abgelegt und eine Person hat die Version
+      // Die Referenz ist abgelegt und eine Person hat die Fassung
       // weitergereicht: nichts erneut zu versuchen und nichts zu bestätigen —
-      // ab hier ist die Dateiablage zuständig.
-      fileSubmitted: 'Dieser Entwurf ist bereits abgelegt. Weiter in der Dateiablage.',
+      // ab hier sind die Dateien zuständig.
+      fileSubmitted: 'Dieser Entwurf ist bereits abgelegt. Weiter unter Dateien.',
       // Die Lesefläche des unabgelegten Entwurfs: Die Bytes liegen im
       // Arbeitsordner des Agenten und kommen über die Entwurfs-Vorschautür des
       // BFF. Ein Lesen, also schreibt sie nichts und bleibt presentational.
@@ -462,17 +501,17 @@ export const chat: typeof en.chat = {
       open: 'Im Projekt öffnen',
       submit: 'Zur Freigabe einreichen',
       submitting: 'Wird eingereicht …',
-      submitted: 'Zur Freigabe eingereicht — wartet auf eine Person',
+      submitted: 'Zur Freigabe eingereicht – wartet auf eine Person',
       // Der Zustand, den eine Person schon gesetzt hat. Kein Knopf: Was jetzt
-      // passiert, entscheidet sie in der Dateiablage.
-      inReview: 'Wartet auf Freigabe',
-      changesRequested: 'Änderungen erbeten',
+      // passiert, entscheidet sie unter Dateien.
+      inReview: 'In Prüfung',
+      changesRequested: 'Änderungen angefordert',
       approved: 'Freigegeben',
       published: 'Veröffentlicht',
       // Eine Fassung, die eine neuere überholt hat: weder Entwurf noch
-      // Freigabe — sie ist gelesen, aber nicht mehr der Stand.
+      // Freigabe — sie ist gelesen, aber nicht mehr die aktuelle.
       ersetzt: 'Ersetzt',
-      error: 'Das Einreichen hat nicht geklappt. Bitte in der Dateiablage erneut versuchen.',
+      error: 'Das Einreichen hat nicht geklappt. Bitte unter Dateien erneut versuchen.',
     },
     // Ein Auftrag, den Piloti nach diesem Gespräch selbständig erledigt
     // (ADR-0051). Die Karte bietet nichts an: die Zeile existiert schon, wenn
@@ -521,7 +560,7 @@ export const chat: typeof en.chat = {
       // ist das alles, was die Karte ehrlich sagen kann, und sie sagt, wo man
       // nachsieht, statt zu raten.
       partial:
-        'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden — sehen Sie in der Dateiablage nach.',
+        'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden – sehen Sie unter Dateien nach.',
       dismissed: 'Verworfen. Es wurde nichts geändert.',
       error: 'Konnte nicht übernommen werden.',
       // Der eine Fall, in dem die Karte nichts auszuführen hat. Der Vorschlag
@@ -637,7 +676,7 @@ export const chat: typeof en.chat = {
         removeExcluded: 'Nicht mehr ausgeschlossen: {name}',
       },
       rahmen: 'Datengrundlage',
-      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie freigeben.',
+      rahmenNote: 'Die im Eingabefeld gewählten Quellen. Ändern Sie sie dort, bevor Sie den Plan genehmigen.',
     },
     awaitingOther: 'Piloti wartet auf {name}',
     awaitingSomeone: 'Piloti wartet auf eine andere Person',
@@ -666,13 +705,22 @@ export const chat: typeof en.chat = {
     responseApproved: 'Recherche gestartet',
     responseShallow: 'Kurze Antwort angefordert',
     responseCancelled: 'Recherche abgebrochen',
+    // An answered plan folds to one line; the plan as approved is behind it.
+    planRecord: 'Plan freigegeben · {count, plural, one {# Abschnitt} other {# Abschnitte}}',
+    showPlan: 'Plan anzeigen',
+    hidePlan: 'Plan ausblenden',
   },
   // Die einzelne Aufklappung in der Antwortfußzeile für alles hinter der
   // Quellenzeile und den Kopieraktionen (Konfidenz, Merknotiz, Skills,
   // Prüfhinweise, Bewertung, Zeitstempel).
+  // Under an answer the reader stopped, where the writing ended.
+  answerStoppedMarker: 'Gestoppt',
   answerDetails: {
     trigger: 'Antwortdetails',
     triggerAria: 'Details zu dieser Antwort anzeigen',
+    // The trigger when the details hold a warning (cut-off, salvaged run,
+    // stripped citations, low confidence): the dot beside it says so visually.
+    triggerAriaAttention: 'Details zu dieser Antwort anzeigen, mit Hinweisen zur Antwort',
     // How long the turn took, question sent to answer final.
     duration: 'Antwort nach {duration}',
     // What the answer cost in the organization's unit: the credits billed for
@@ -744,20 +792,21 @@ export const chat: typeof en.chat = {
         web: 'im Web',
         documents: 'in Ihren Unterlagen',
         ifc: 'im Gebäudemodell',
+        otherProjects: 'in anderen Projekten',
       },
       // Verbindet zwei Korpora in einer Zeile. Grammatik, also auch hier.
       corpusJoin: ' und ',
       status: {
         // Welche der eigenen Unterlagen gerade gesichtet werden. Ein
         // Schlüssel pro Ebene statt einer Vorlage mit Platzhalter: Deutsch
-        // braucht den Dativ („aus dem Büroarchiv“), Englisch gar keinen
+        // braucht den Dativ („aus der Büroablage“), Englisch gar keinen
         // Artikel, also lässt sich der Name nicht in EINEN Satz einsetzen.
         // Jede Zeile nennt den Namen, den die Lesenden im Produkt sehen —
-        // Büroarchiv, Projekt, Unterhaltung. Für mehrere Ebenen zugleich gibt
+        // Büroablage, Projekt, Unterhaltung. Für mehrere Ebenen zugleich gibt
         // es keinen: der Sammelbegriff dafür ist unser Wort, nicht ihres, also
         // sagt `several` schlicht, WAS gelesen wird.
         documents: {
-          archiv: 'Unterlagen aus dem Büroarchiv werden gesichtet …',
+          archiv: 'Unterlagen aus der Büroablage werden gesichtet …',
           project: 'Unterlagen aus dem Projekt werden gesichtet …',
           session: 'Unterlagen aus dieser Unterhaltung werden gesichtet …',
           several: 'Ihre Unterlagen werden gesichtet …',
@@ -842,6 +891,9 @@ export const chat: typeof en.chat = {
       webSearch: 'Websuche',
       ris: 'RIS',
       corpus: 'Wissen',
+      // In anderen Projekten des Büros nachgeschlagen (ADR-0094), meist in den
+      // abgeschlossenen Referenzprojekten.
+      otherProjects: 'Andere Projekte',
       reading: 'Lesen',
       // Das Arbeitsverzeichnis der Unterhaltung: schreiben, lesen, ändern,
       // auflisten — ein Wort für alle vier. Was Lesende interessiert, ist dass
@@ -859,7 +911,7 @@ export const chat: typeof en.chat = {
       skill: 'Skill: {name}',
       model: 'Gebäudemodell',
       measure: 'Messung',
-      drawing: 'Plan',
+      drawing: 'Zeichnung',
       documents: 'Dateien',
       note: 'Notiz',
       card: 'Karte',
@@ -881,8 +933,20 @@ export const chat: typeof en.chat = {
     // Zug, der nur unterbrochen AUSSIEHT, nicht sofort den „verloren“-Hinweis
     // zeigt, bevor bestätigt ist, dass die Antwort wirklich fehlt.
     recovering: 'Antwort wird geholt',
-    recoveringNotice: 'Piloti arbeitet weiter — die Antwort erscheint hier, sobald sie fertig ist …',
+    recoveringNotice:
+      'Piloti arbeitet weiter — die Antwort erscheint hier, sobald sie fertig ist …',
     done: 'Fertig',
+    // Die Lesenden haben die Antwort angehalten: kein grünes Häkchen, kein
+    // „Fertig“ — so steht es auch an einem abgebrochenen Lauf.
+    stopped: 'Gestoppt',
+    // Der Zug hat einen Auftrag angelegt: die Arbeit hat erst begonnen, im
+    // Laufblock darunter. Kein grünes Häkchen, kein „Fertig“.
+    // Der Zug ist gescheitert; die Fehlerkarte darunter sagt wie.
+    failed: 'Fehlgeschlagen',
+    handedOff: 'Auftrag angelegt',
+    // Piloti hat die Frage nicht bearbeitet (abgelehnt oder nicht angenommen):
+    // das Banner darunter sagt warum. Neutral, kein „Fertig“.
+    refused: 'Nicht bearbeitet',
     showThinking: 'Denkschritte anzeigen ({count})',
     showThinkingSteps: 'Denkschritte anzeigen ({count})',
     // Die Kopfzeile der Herleitung. Keine Schrittzahl: gezählt wurden rohe
@@ -1034,7 +1098,6 @@ export const chat: typeof en.chat = {
         },
       },
       branchesTab: 'Folgewege',
-      branchesSub: 'Wählen Sie eine Option — das Ergebnis wird für Ihre Wahl zusammengestellt.',
     },
   },
   error: {
@@ -1088,6 +1151,10 @@ export const chat: typeof en.chat = {
       message:
         'Ihre vorherige Anfrage wurde nicht abgeschlossen. Bitte senden Sie Ihre Nachricht erneut.',
     },
+    noResponse: {
+      title: 'Keine Rückmeldung',
+      message: 'Piloti hat auf Ihre Frage nicht reagiert, auch nicht auf einen zweiten Versuch. Senden Sie sie erneut.',
+    },
     zdrRefused: {
       title: 'Modell unter Zero Data Retention nicht verfügbar',
       message:
@@ -1106,6 +1173,7 @@ export const chat: typeof en.chat = {
     // (WP-A `job_admission_rejected`). Warnung, nicht Fehler: erneut senden hilft.
     researchQueueFull: {
       title: 'Recherche ausgelastet',
+      full: 'Die Recherche-Warteschlange ist gerade voll.',
       message:
         'Die Recherche-Warteschlange ist gerade voll. Bitte senden Sie Ihre Anfrage in einem Moment erneut.',
       retryHint:
@@ -1182,7 +1250,7 @@ export const chat: typeof en.chat = {
         'Mittlere Sicherheit: die angeführte Quelle wurde ergänzt, nicht von der Antwort selbst zitiert.',
     },
   },
-  // Antwort-Feedback per Daumen (WS-7, Feature-Flag `answer-feedback`).
+  // Antwort-Feedback per Daumen (WS-7).
   feedback: {
     question: 'War das hilfreich?',
     helpfulAria: 'Diese Antwort als hilfreich markieren',
@@ -1202,12 +1270,43 @@ export const chat: typeof en.chat = {
     voteRecorded: 'Bewertung gespeichert.',
     commentLabel: 'Noch etwas?',
     commentPlaceholder: 'Optional — was ist schiefgelaufen?',
+    expectedLabel: 'Was hätte in einer guten Antwort stehen sollen?',
+    expectedPlaceholder: 'z. B. Brüstungshöhe 1,00 m laut OIB-RL 4',
     commentSubmit: 'Hinweis senden',
+  },
+  // Nach einem Daumen nach unten: dieselbe Frage mit mehr Aufwand erneut stellen.
+  retryThorough: {
+    action: 'Gründlicher neu beantworten',
+    aria: 'Dieselbe Frage mit höherem Aufwand erneut beantworten lassen',
   },
   // Schaltfläche „Nachricht kopieren" auf den Nutzernachrichtenblasen
   copyMessage: {
     copy: 'Nachricht kopieren',
     copied: 'Kopiert',
     failed: 'Nachricht konnte nicht kopiert werden',
+  },
+  /**
+   * Sensible Daten im Chat (ADR-0086): was der Composer vor dem Senden meldet.
+   * Die Platzhalter selbst sind Fachdaten und kommen aus `content-screen.ts`.
+   */
+  /** The notice once a chat's answers drew on another project (ADR-0094). */
+  otherProjects: {
+    chip: '{count, plural, one {Ein anderes Projekt} other {# andere Projekte}}',
+    title: 'Dieser Chat stützt sich auf andere Projekte: {projects}.',
+    gone: 'ein Projekt, das es nicht mehr gibt',
+    body: 'Er lässt sich nur mit Personen teilen, die diese Projekte öffnen dürfen. Aus ihm geht nichts ins Projektgedächtnis, in Aufträge, in eine Tiefenrecherche oder in die Projektablage.',
+  },
+  screening: {
+    title: 'Enthält {items} (Sensible Daten).',
+    body: 'Piloti sendet sie nicht an das Antwortmodell.',
+    preview: 'Das Modell sieht: „{text}“',
+    iban: '{count, plural, one {eine IBAN} other {# IBANs}}',
+    at_svnr:
+      '{count, plural, one {eine Sozialversicherungsnummer} other {# Sozialversicherungsnummern}}',
+    credit_card: '{count, plural, one {eine Kartennummer} other {# Kartennummern}}',
+    term: 'den Begriff „{term}“',
+    withSample: '{item} {sample}',
+    sendMasked: 'Maskiert senden',
+    edit: 'Bearbeiten',
   },
 }

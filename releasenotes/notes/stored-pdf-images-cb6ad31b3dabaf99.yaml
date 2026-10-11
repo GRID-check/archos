@@ -1,6 +1,5 @@
 ---
 improvements:
   - >
-    A photo or scanned drawing inside an uploaded PDF can now be viewed by
-    Piloti on its own and at full resolution, instead of only as part of the
-    rendered page.
+    Piloti can now view a photo or scanned drawing inside an uploaded PDF on
+    its own and at full resolution, not only as part of the page.

@@ -15,7 +15,9 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
@@ -43,7 +45,7 @@ CONFIG_PATH = REPO_ROOT / "releasenotes" / "config.yaml"
 SECTIONS = rn.read_config_sections(CONFIG_PATH)
 SECTION_KEYS = {key for key, _ in SECTIONS}
 
-GOOD = "Projects can now be re-indexed from the settings page, without contacting support."
+GOOD = "Projects can now be renamed from the settings page, without contacting support."
 
 
 def lint_entry(text: str) -> list[str]:
@@ -160,9 +162,134 @@ def test_operator_notes_are_sent_to_the_operators_section(text):
     assert rn.lint_note("note.yaml", note_yaml, SECTION_KEYS) == []
 
 
+@pytest.mark.parametrize(
+    ("section", "text"),
+    [
+        ("security", "Langfuse moves to a release that fixes a remote code execution flaw in a bundled library."),
+        ("security", "The telemetry dashboard picks up upstream fixes for vulnerabilities in its bundled code."),
+        ("security", "A dependency is updated for CVE-2026-1234, which affected file previews."),
+        ("security", "A viewer could bypass the permission check by opening a conversation directly."),
+        ("incident", "Opening a conversation during a reload no longer causes data loss on another device."),
+    ],
+)
+def test_security_and_severe_fixes_are_sent_to_an_internal_section(section, text):
+    problems = lint_entry(text)
+    assert any("security or severe fix" in problem for problem in problems), problems
+    assert rn.lint_note("note.yaml", yaml.safe_dump({section: [text]}), SECTION_KEYS) == []
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Deleting a folder now asks first, and its documents stay in the Archiv.",
+        "Project admins can create and run scheduled skills again after a permission was renamed.",
+        "A security officer can now be named in the project settings, next to the site manager.",
+        "Data from the IFC model now loads twice as fast on large projects.",
+    ],
+)
+def test_ordinary_fixes_do_not_trip_the_severe_fix_check(text):
+    assert lint_entry(text) == []
+
+
 def test_every_lint_message_names_the_fix():
     problems = lint_entry("Fixed #12 in `x.py`")
     assert problems and all("Fix:" in problem for problem in problems)
+
+
+# ── public jargon ───────────────────────────────────────────────────────────
+
+
+@pytest.mark.parametrize(
+    ("text", "word"),
+    [
+        ("Documents can now be searched through the API by partner offices.", "API"),
+        ("Re-indexing a project is faster now for folders with many files.", "Re-indexing"),
+        ("The new webhook fires whenever the status of a permit changes.", "webhook"),
+        ("Tokens used by a conversation are now shown beside its title.", "Tokens"),
+        ("A feature flag now decides who sees the new export dialog.", "feature flag"),
+        ("Answers are cached for a day, so a repeated question returns at once.", "cached"),
+        ("Buckets on S3 can now be connected to Piloti as a source.", "S3"),
+        ("Die neue Warteschlange verarbeitet Dokumente schneller.", "Warteschlange"),
+        ("Der Index wird jetzt bei jeder Änderung aktualisiert.", "Index"),
+        ("Das Feature-Flag steuert den neuen Export für jedes Büro.", "Feature-Flag"),
+        ("Die Konfiguration des Projekts wird jetzt beim Speichern geprüft.", "Konfiguration"),
+    ],
+)
+def test_jargon_is_rejected_in_english_and_german(text, word):
+    problems = lint_entry(text)
+    assert any(f'"{word}"' in problem for problem in problems), problems
+
+
+def test_the_jargon_message_names_the_word_and_gives_the_fix():
+    problems = lint_entry("Documents can now be searched through the API by partner offices.")
+    (problem,) = [problem for problem in problems if '"API"' in problem]
+    assert "Fix:" in problem
+    assert "Papierkorb" in problem  # the fix points at the words the screens use
+
+
+@pytest.mark.parametrize(
+    "text",
+    [
+        "Deleted folders stay in the Papierkorb for thirty days before they are removed.",
+        "Files Piloti cannot read end up in the Quarantäne, where an admin can review them.",
+        "The Steckbrief of every project now lists its address and its phase.",
+    ],
+)
+def test_ui_product_terms_pass(text):
+    assert lint_entry(text) == []
+
+
+@pytest.mark.parametrize("section", ["security", "operators", "incident"])
+def test_internal_sections_may_keep_the_technical_word(section):
+    text = "The API key check now runs on every endpoint of the deployment pipeline."
+    assert rn.lint_note("note.yaml", yaml.safe_dump({section: [text]}), SECTION_KEYS) == []
+
+
+@pytest.mark.parametrize("term", rn.PUBLIC_JARGON)
+def test_every_listed_term_matches_itself(term):
+    assert rn.jargon_hits(term) == [term]
+
+
+def test_the_ui_product_terms_are_not_on_the_list():
+    ui_terms = {
+        "Papierkorb",
+        "Quarantäne",
+        "Archiv",
+        "Steckbrief",
+        "Fassung",
+        "Herleitung",
+        "Büroablage",
+        "Zugriffsliste",
+        "Projektspeicher",
+        "Bescheid",
+        "Auflage",
+        "IFC",
+        "OIB",
+        "RIS",
+        "Prüfbuch",
+        "Tiefenrecherche",
+        "Aufgabe",
+    }
+    listed = {term.lower() for term in rn.PUBLIC_JARGON}
+    assert not {term.lower() for term in ui_terms} & listed
+
+
+@pytest.mark.parametrize(
+    ("text", "expected"),
+    [
+        ("The S30 series of drawings now opens without delay for every architect.", []),
+        ("Das Kapitel zur Baugenehmigung ist jetzt im Projekt sichtbar.", []),
+        ("A Tokenizer-free export is now the default for every office.", []),
+        ("Civil works are listed under their own heading.", []),
+        ("The S3-Bucket is connected.", ["S3"]),
+        ("Each api call is logged.", ["api"]),
+        ("Piloti runs its CI/CD checks on every change.", ["CI"]),
+        ("A feature-flag and a flag.", ["feature-flag", "flag"]),
+        ("Tokens, tokens and Tokenizer.", ["Tokens"]),
+    ],
+)
+def test_short_terms_match_whole_words_only(text, expected):
+    assert rn.jargon_hits(text) == expected
 
 
 def test_the_repos_own_summaries_pass():
@@ -176,8 +303,10 @@ def test_a_summary_key_must_be_a_week_or_a_version():
 
 def test_the_repos_own_notes_pass():
     """The notes actually committed here are publishable, not just lintable in theory."""
+    problems: list[str] = []
     for path in sorted((REPO_ROOT / "releasenotes" / "notes").glob("*.yaml")):
-        assert rn.lint_note(path.name, path.read_text(encoding="utf-8"), SECTION_KEYS) == []
+        problems.extend(rn.lint_note(path.name, path.read_text(encoding="utf-8"), SECTION_KEYS))
+    assert not problems, f"{len(problems)} problem(s) in the committed notes:\n" + "\n".join(problems)
 
 
 # ── config drift ────────────────────────────────────────────────────────────
@@ -237,6 +366,24 @@ def test_operator_notes_never_reach_the_public_changelog():
     assert rn.collect_strings(groups) == ["Public."]
     data = rn.build_changelog(groups, rn.public_sections(SECTIONS), {})
     assert "operators" not in data["sectionTitles"]
+
+
+@pytest.mark.parametrize("section", ["security", "incident"])
+def test_security_and_incident_notes_are_kept_but_never_published(section):
+    """The changelog is product news; a vulnerability or a severe fix is not shown there."""
+    assert section in SECTION_KEYS
+    public = [key for key, _ in rn.public_sections(SECTIONS)]
+    assert section not in public
+    groups = rn.group_notes(
+        [note("0.0.0", "2026-09-26", **{section: ["Kept in the repository only."], "features": ["Public."]})],
+        public,
+    )
+    assert rn.collect_strings(groups) == ["Public."]
+    assert section not in rn.build_changelog(groups, rn.public_sections(SECTIONS), {})["sectionTitles"]
+
+
+def test_ordinary_fixes_stay_public():
+    assert {"features", "improvements", "fixes"} <= {key for key, _ in rn.public_sections(SECTIONS)}
 
 
 def test_an_edited_note_keeps_the_day_it_first_shipped():
@@ -443,6 +590,40 @@ def test_the_committed_artifact_is_well_formed():
                 assert not rn.looks_german(entry["en"]), entry["en"]
 
 
+CHANGELOG_JSON = REPO_ROOT / "frontends" / "web" / "src" / "data" / "changelog.json"
+TRANSLATIONS_JSON = REPO_ROOT / "releasenotes" / "translations" / "de.json"
+
+
+def public_changelog_strings() -> list[str]:
+    """Every English string the page shows: summaries and notes. Section titles are translated
+    from SECTION_TITLES_DE, which the config-drift tests above cover, so they are not here."""
+    data = json.loads(CHANGELOG_JSON.read_text(encoding="utf-8"))
+    english: list[str] = []
+    for release in data["releases"]:
+        if release["summary"]:
+            english.append(release["summary"]["en"])
+        for section in release["sections"]:
+            english.extend(note["en"] for note in section["notes"])
+    return list(dict.fromkeys(english))
+
+
+def test_every_public_changelog_string_has_a_german_entry():
+    translations = rn.load_translations(TRANSLATIONS_JSON)
+    missing = [text for text in public_changelog_strings() if not translations.get(rn.text_key(text), {}).get("de")]
+    assert not missing, f"{len(missing)} public string(s) have no German entry in de.json, e.g. {missing[:3]}"
+
+
+def test_the_german_of_a_public_changelog_string_is_not_its_english():
+    translations = rn.load_translations(TRANSLATIONS_JSON)
+    same = [text for text in public_changelog_strings() if translations.get(rn.text_key(text), {}).get("de") == text]
+    assert not same, f"{len(same)} public string(s) are untranslated in de.json, e.g. {same[:3]}"
+
+
+def test_no_public_changelog_string_reads_as_german():
+    german = [text for text in public_changelog_strings() if rn.looks_german(text)]
+    assert not german, f"{len(german)} public English string(s) read as German, e.g. {german[:3]}"
+
+
 # ── the PR gate ─────────────────────────────────────────────────────────────
 
 
@@ -467,3 +648,72 @@ def test_tests_and_docs_do_not_need_a_note():
 def test_a_note_in_the_pr_satisfies_the_gate():
     assert require_note.has_note(["releasenotes/notes/re-index-4f2a91c0deadbeef.yaml"])
     assert not require_note.has_note(["releasenotes/config.yaml"])
+
+
+def _git(repo: Path, *args: str) -> str:
+    env = {
+        **os.environ,
+        "GIT_AUTHOR_NAME": "t",
+        "GIT_AUTHOR_EMAIL": "t@t",
+        "GIT_COMMITTER_NAME": "t",
+        "GIT_COMMITTER_EMAIL": "t@t",
+        # A developer's signing setup must not reach these throwaway commits.
+        "GIT_CONFIG_COUNT": "1",
+        "GIT_CONFIG_KEY_0": "commit.gpgsign",
+        "GIT_CONFIG_VALUE_0": "false",
+    }
+    result = subprocess.run(["git", *args], cwd=repo, capture_output=True, text=True, check=True, env=env)
+    return result.stdout.strip()
+
+
+@pytest.fixture
+def pr_repo(tmp_path, monkeypatch):
+    """A repository with one product file and one old note, on its base commit."""
+    _git(tmp_path, "init", "-q", "-b", "develop")
+    (tmp_path / "src/aiq_agent").mkdir(parents=True)
+    (tmp_path / "src/aiq_agent/tool.py").write_text("X = 1\n")
+    (tmp_path / "releasenotes/notes").mkdir(parents=True)
+    (tmp_path / "releasenotes/notes/old-0000.yaml").write_text("features:\n  - Old.\n")
+    _git(tmp_path, "add", "-A")
+    _git(tmp_path, "commit", "-qm", "base")
+    monkeypatch.chdir(tmp_path)
+    return tmp_path
+
+
+def _pr(repo: Path, files: dict[str, str]) -> int:
+    base = _git(repo, "rev-parse", "HEAD")
+    for path, text in files.items():
+        (repo / path).write_text(text)
+    _git(repo, "add", "-A")
+    _git(repo, "commit", "-qm", "change")
+    return require_note.main(["require_release_note.py", base, _git(repo, "rev-parse", "HEAD")])
+
+
+def test_a_comment_only_edit_to_a_product_file_still_needs_a_note(pr_repo):
+    # The check goes by file; a change nobody can notice takes the label instead.
+    assert _pr(pr_repo, {"src/aiq_agent/tool.py": "# why X is one\nX = 1\n"}) == 1
+
+
+def test_a_note_the_pr_adds_satisfies_the_gate(pr_repo):
+    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/new-1111.yaml": "fixes:\n  - New.\n"}
+
+    assert _pr(pr_repo, files) == 0
+
+
+def test_a_note_in_an_internal_section_satisfies_the_gate(pr_repo):
+    """The failure message promises it: a security fix needs a note, not a public one."""
+    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/hole-2222.yaml": "security:\n  - Closed.\n"}
+
+    assert _pr(pr_repo, files) == 0
+
+
+def test_editing_an_old_note_does_not_satisfy_the_gate(pr_repo):
+    files = {"src/aiq_agent/tool.py": "X = 2\n", "releasenotes/notes/old-0000.yaml": "features:\n  - Edited.\n"}
+
+    assert _pr(pr_repo, files) == 1
+
+
+def test_a_pr_without_product_files_needs_no_note(pr_repo):
+    (pr_repo / "docs").mkdir()
+
+    assert _pr(pr_repo, {"docs/readme.md": "Hello\n"}) == 0

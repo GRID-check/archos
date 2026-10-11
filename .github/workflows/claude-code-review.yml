@@ -28,15 +28,19 @@ jobs:
   review:
     name: Review PR
     # Draft PRs are reviewed once they are marked ready, not while in progress.
-    if: github.event.pull_request.draft == false
+    # Dependabot PRs are skipped: claude-code-action refuses a bot actor ("Add
+    # bot to allowed_bots list") so the job only ever failed there, and allowing
+    # the bot would buy an LLM review of a lockfile bump, which CI (typecheck,
+    # tests) already judges for free.
+    if: github.event.pull_request.draft == false && github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
 
-      - uses: anthropics/claude-code-action@v1
+      - uses: anthropics/claude-code-action@2dca132ff0e0c4094ce6048b422c6915a071210b # v1.0.247
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           plugin_marketplaces: "https://github.com/anthropics/claude-code.git"

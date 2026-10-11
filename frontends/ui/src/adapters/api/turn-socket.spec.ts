@@ -314,6 +314,78 @@ describe('the hello', () => {
   })
 })
 
+// A Stop says how much of the answer was on screen, but the server reads client
+// messages strictly: a pod one release older would refuse the whole cancel.
+describe('optional fields, by what the hello accepts', () => {
+  const stop = { type: 'cancel_turn', conversation_id: 'conv_1', turn_id: 't1', shown: { seq: 9, chars: 120 } } as const
+  const { shown: _shown, ...bareStop } = stop
+
+  it('sends the shown position to a server whose hello names it', async () => {
+    const { socket } = setup()
+    await socket.connect()
+    latest().open()
+    latest().receive({ ...HELLO, value: { build: 'new', accepts: ['cancel_turn.shown'] } })
+    socket.send(stop)
+    expect(latest().sent).toEqual([stop])
+  })
+
+  it('leaves it out for a server whose hello does not, and still stops the turn', async () => {
+    const { socket } = setup()
+    await socket.connect()
+    latest().greet()
+    socket.send(stop)
+    expect(latest().sent).toEqual([bareStop])
+  })
+
+  it('reads accepts from each socket’s own hello: a reconnect to an older pod forgets what the last one took', async () => {
+    const { socket } = setup()
+    await socket.connect()
+    latest().open()
+    latest().receive({ ...HELLO, value: { build: 'new', accepts: ['cancel_turn.shown'] } })
+    latest().drop()
+    await vi.advanceTimersByTimeAsync(100)
+    latest().greet()
+    socket.send(stop)
+    expect(latest().sent).toEqual([bareStop])
+  })
+
+  describe('the PostHog session id on a question', () => {
+    const question = {
+      type: 'user_message',
+      conversation_id: 'conv_1',
+      message_id: 'm1',
+      text: 'Welche Höhe gilt?',
+      posthog_session_id: '0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70',
+    } as const
+    const { posthog_session_id: _session, ...bareQuestion } = question
+
+    it('goes to a server whose hello names it', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['user_message.posthog_session_id'] } })
+      socket.send(question)
+      expect(latest().sent).toEqual([question])
+    })
+
+    it('is left out for a server whose hello does not, and the question still goes', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      socket.send(question)
+      expect(latest().sent).toEqual([bareQuestion])
+    })
+  })
+
+  it('takes a hello naming fields this page has never heard of', async () => {
+    const { socket, statuses } = setup()
+    await socket.connect()
+    latest().open()
+    latest().receive({ ...HELLO, value: { build: 'newer', accepts: ['cancel_turn.shown', 'user_message.someday'] } })
+    expect(statuses.at(-1)).toBe('open')
+  })
+})
+
 describe('reconnect', () => {
   it('drops the open socket and opens a fresh one at once, from the first rung', async () => {
     const { socket } = setup()

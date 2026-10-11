@@ -1,10 +1,9 @@
 ---
 features:
   - >
-    A document can now be moved to another folder with Move to folder in its ⋯
-    menu. Each destination is listed by its full path, and All Files takes it
-    out of every folder.
+    You can now move a document to another folder with Move to folder in its
+    menu. Each destination is listed by its full path, and All Files takes
+    it out of every folder.
   - >
-    Moving a document also tells Piloti where it went, so an answer that
-    mentions where a document lives follows the move immediately, with nothing
-    re-indexed.
+    Piloti also knows where the document now is, so an answer that names its
+    folder follows the move at once.

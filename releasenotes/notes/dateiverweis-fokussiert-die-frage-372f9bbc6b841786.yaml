@@ -1,9 +1,9 @@
 ---
 improvements:
   - >
-    Clicking a file name in an answer now also points your next question at that
-    document: the message box says „Fragen zu …“ and the search runs in that
-    file. The ✕ ends it.
+    Clicking a file name in an answer now also focuses your next question on
+    that document: the message box says „Fragen zu …“, and the search runs
+    only in that file. The ✕ ends the focus.
   - >
-    A document Piloti has not read only opens; the preview explains on hover why
-    it cannot be asked about.
+    A document Piloti has not read can only be opened. Hovering over its
+    preview explains why you cannot ask questions about it.

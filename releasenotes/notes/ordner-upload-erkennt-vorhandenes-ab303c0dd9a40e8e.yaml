@@ -1,13 +1,14 @@
 ---
 fixes:
   - >
-    Uploading a folder again no longer reports every file with an umlaut in its
-    name as new; Macs and Windows encode umlauts differently, and the whole
-    folder used to be transferred twice.
+    Uploading a folder again no longer marks every file with an umlaut in its
+    name as new. Before, the whole folder was uploaded a second time, because
+    Macs and Windows write umlauts differently.
   - >
-    Uploading the same file twice no longer processes it again when nothing has
+    Uploading the same file twice no longer reads it again when nothing has
     changed.
   - >
-    A file that matches an existing document under a different spelling is held
-    back and shown next to that document, instead of becoming a second document.
-    The dialog also names both names of a document renamed in Piloti.
+    A file that matches an existing document under a different spelling is
+    held back and shown next to that document, instead of becoming a second
+    document. The dialog also names both the old and the new name of a
+    document renamed in Piloti.

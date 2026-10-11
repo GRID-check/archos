@@ -12,13 +12,10 @@ features:
     reaches the next run of the same task, so a correction such as „Atrium ist
     OIB 2.3“ is made once.
   - >
-    A reference now names the point of the Richtlinie, not just the page: „Pkt.
-    3.5.2 · S. 7“ instead of „S. 7“. That is how building law is cited, and it
-    survives a reload and a shared conversation.
+    A reference now names the point of the Richtlinie, not just the page:
+    „Pkt. 3.5.2 · S. 7“ instead of „S. 7“. That is how building law is cited,
+    and it is kept after a reload and in shared chats.
 improvements:
-  - >
-    What Piloti searched for in an answer now survives a reload and is visible
-    to colleagues in a shared conversation.
   - >
     Piloti remembers your decisions on its suggestions: a rejected suggestion or
     discarded note does not come back in the next answer.
@@ -31,15 +28,12 @@ improvements:
     correction reaches the note it means, however long ago it was written.
 fixes:
   - >
-    An answer that touches several documents cites several again. A single PDF
-    could fill every evidence slot of an answer.
+    An answer built on several documents now cites all of them. Before, a
+    single PDF could fill every source reference in an answer.
   - >
-    A quote that leaves out or adds a whole word no longer counts as verbatim,
-    so a quote that lost a „nicht“ cannot pass as checked.
-  - >
-    When a reference or quote fails the check, Piloti now searches once more for
-    the passage and rewrites the answer before it appears. If it still fails,
-    the mark stays.
+    When a reference or quote fails the check, Piloti searches for the passage
+    once more and rewrites the answer before you see it. If it still fails,
+    the mark stays on it.
   - >
     A research run that hits your organization's budget now says so and tells
     you where an admin can raise the limit, instead of reporting an internal
@@ -48,11 +42,15 @@ fixes:
     A single source that does not answer in time no longer ends a deep research;
     the run carries on without it.
   - >
-    The source list of a research report now carries the same numbers the report
-    cites with, so [3] in the text points to the third entry.
+    The source list of a research report now uses the same numbers as the
+    text, so [3] in the text points to the third entry.
   - >
     A date in a project note, such as a submission deadline, is no longer
     mistaken for a phone number and dropped.
   - >
     An OIB document from an edition other than May 2023 now carries its correct
     edition in the title.
+incident:
+  - >
+    A quote that leaves out or adds a whole word no longer counts as verbatim,
+    so a quote that lost a „nicht“ cannot pass as checked.

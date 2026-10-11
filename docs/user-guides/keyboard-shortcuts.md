@@ -9,9 +9,9 @@ same registry the app binds, so it is never out of date with what actually works
 
 Shortcuts are only active when both of these allow it:
 
-1. **The organization flag.** The `keyboard-shortcuts` WorkOS feature flag turns
-   the whole feature on for an organization. Without it the client code is never
-   mounted and no key listener exists.
+1. **An organization.** The shortcuts navigate inside one, so a session without
+   an organization (onboarding, a break-glass session) never mounts the client
+   code and no key listener exists.
 2. **Your own preference.** Profile → *Keyboard shortcuts* is a per-device toggle,
    default on. Turned off, the app registers zero key listeners and renders
    neither the palette nor the cheatsheet — the feature is fully inert, not just
@@ -48,7 +48,7 @@ navigation rail, so what you see in the rail is what you can jump to:
 | **G** then **F** | Files |
 | **G** then **K** | Knowledge |
 | **G** then **H** | History |
-| **G** then **A** | Archiv |
+| **G** then **A** | Büroablage |
 | **G** then **I** | Inbox |
 | **G** then **S** | Project settings |
 
@@ -58,7 +58,7 @@ generic one.
 
 Section jumps open that section of the project you are currently in. Outside a
 project there is nothing for them to open, so they do nothing rather than
-guessing a project for you. *All projects*, *Organization*, *Archiv* and *Inbox*
+guessing a project for you. *All projects*, *Organization*, *Büroablage* and *Inbox*
 are org-wide doorways and work from anywhere.
 
 A second key that is not bound simply cancels the sequence. Nothing navigates

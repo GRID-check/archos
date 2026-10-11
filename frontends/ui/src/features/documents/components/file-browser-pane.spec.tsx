@@ -5,6 +5,7 @@ import userEvent from '@testing-library/user-event'
 import { FileBrowserPane } from './file-browser-pane'
 import { FileSearchField } from './file-search-bar'
 import { useFileSearch } from '../hooks/use-file-search'
+import { projectSearchScope } from '../lib/file-shelf'
 import { useTranslations } from '@/i18n'
 import type { FileItem, FolderItem } from './project-file-workspace'
 
@@ -24,6 +25,8 @@ const files: FileItem[] = [
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   },
   {
     id: 'f2',
@@ -40,6 +43,8 @@ const files: FileItem[] = [
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   },
 ]
 
@@ -57,7 +62,7 @@ type HarnessProps = Omit<Partial<PaneProps>, 'search'> & {
  */
 function Harness({ projectId, ...paneProps }: HarnessProps) {
   const t = useTranslations('files')
-  const search = useFileSearch({ projectId })
+  const search = useFileSearch(projectId ? projectSearchScope(projectId) : undefined)
   return (
     <>
       <FileSearchField
@@ -105,14 +110,17 @@ describe('FileBrowserPane — card grid', () => {
     )
   })
 
-  it('shows the tinted extension chip, size and the ingestion status badge on each card', () => {
-    renderPane()
-    const cards = screen.getAllByTestId('file-card')
-    const card = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
+  it('shows the tinted extension chip and size, and a status badge only when the document is not citable', () => {
+    const { unmount } = renderPane()
+    const card = screen.getAllByTestId('file-card').find((c) => within(c).queryByText('site-plan.pdf'))!
     expect(within(card).getByText('PDF')).toBeInTheDocument()
     expect(within(card).getByText(/1 kB/)).toBeInTheDocument()
-    // The ingestion-status badge is kept — critical info the dummy lacks.
-    expect(within(card).getByText('Citable')).toBeInTheDocument()
+    // Citable is the normal state: the card says nothing about it.
+    expect(within(card).queryByText('Citable')).not.toBeInTheDocument()
+    unmount()
+
+    renderPane({ files: [{ ...files[0], status: 'processing' }] })
+    expect(within(screen.getByTestId('file-card')).getByText('Reading')).toBeInTheDocument()
   })
 
   it('surfaces the failure reason on failed cards', () => {
@@ -208,7 +216,20 @@ describe('FileBrowserPane — folder drill-down', () => {
     })
     // Pläne holds one document and one subfolder — two items.
     const card = screen.getByTestId('folder-card-root-1')
-    expect(within(card).getByText('2 item(s)')).toBeInTheDocument()
+    expect(within(card).getByText('2 items')).toBeInTheDocument()
+  })
+
+  /**
+   * In the list view the folders are one connected run with the file table
+   * under it. A row that carries its own radius, border or shadow is a pill, and
+   * the run stops reading as one list.
+   */
+  it('lists the level’s folders as one connected run in the list view', () => {
+    renderPane({ folderNav: folderNav(null), view: 'list' })
+    const row = screen.getByTestId('folder-row-root-1')
+    // Not the direct parent: the row's context menu wraps it in a block div.
+    expect(row.closest('[data-slot="item-list"]')).not.toBeNull()
+    expect(row.className).not.toMatch(/\brounded|\bborder\b|\bshadow/)
   })
 
   it('a typed query escapes the current folder and searches the corpus', async () => {
@@ -224,7 +245,7 @@ describe('FileBrowserPane — folder drill-down', () => {
     expect(screen.getByText('permit.pdf')).toBeInTheDocument()
   })
 
-  it('renders no folder navigation without folderNav (the Archiv is flat)', () => {
+  it('renders no folder navigation without folderNav', () => {
     renderPane()
     expect(screen.queryByRole('navigation', { name: 'Folder path' })).not.toBeInTheDocument()
   })
@@ -601,10 +622,68 @@ describe('FileBrowserPane — folder aggregates', () => {
     const card = screen.getByTestId('folder-card-root-a')
     // One document + one subfolder directly inside: two items, not the three
     // things that exist underneath it.
-    expect(within(card).getByText('2 item(s)')).toBeInTheDocument()
+    expect(within(card).getByText('2 items')).toBeInTheDocument()
     // The newest thing under it is in the SUBFOLDER, so the walk has to reach
     // it — the folder's own document is two months older.
     expect(within(card).getByRole('time')).toHaveAttribute('datetime', '2026-03-09T00:00:00Z')
+  })
+
+  it('counts one entry per document: a replaced Fassung leaves the tile unless older ones are shown', () => {
+    const older: FileItem = {
+      ...files[1],
+      id: 'older',
+      folderId: 'root-a',
+      status: 'failed',
+      fassung: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+    }
+    const nav = {
+      folders: tree,
+      currentFolderId: null,
+      onNavigate: vi.fn(),
+      onCreateFolder: vi.fn(),
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    }
+    const { unmount } = renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav })
+    expect(within(screen.getByTestId('folder-card-root-a')).getByText('2 items')).toBeInTheDocument()
+    unmount()
+
+    // The replaced Fassung failed to read, and nobody is told about it on the
+    // list view's row, the one place a folder's read state is drawn.
+    const list = renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, view: 'list' })
+    expect(within(screen.getByTestId('folder-row-root-a')).getByTestId('folder-read-state')).not.toHaveAttribute(
+      'data-state',
+      'failed'
+    )
+    list.unmount()
+
+    renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, showOlderFassungen: true })
+    expect(within(screen.getByTestId('folder-card-root-a')).getByText('3 items')).toBeInTheDocument()
+  })
+
+  it('marks a folder tile with the dot alone and spells the state out on the list view\'s row', () => {
+    const failed: FileItem = { ...files[1], id: 'broken', folderId: 'root-a', status: 'failed' }
+    const nav = {
+      folders: tree,
+      currentFolderId: null,
+      onNavigate: vi.fn(),
+      onCreateFolder: vi.fn(),
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    }
+    const { unmount } = renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav })
+    const dot = within(screen.getByTestId('folder-card-root-a')).getByTestId('folder-read-state')
+    expect(dot).toHaveAttribute('data-state', 'failed')
+    // The words are there for a screen reader and on hover, not drawn on the tile.
+    expect(dot).toHaveAttribute('title', '1 failed')
+    expect(within(dot).getByText('1 failed')).toHaveClass('sr-only')
+    unmount()
+
+    renderPane({ files: [], searchFiles: [...corpus, failed], folderNav: nav, view: 'list' })
+    expect(within(screen.getByTestId('folder-row-root-a')).getByTestId('folder-read-state')).toHaveAttribute(
+      'data-state',
+      'failed'
+    )
   })
 
   it('survives a parent cycle in the folder rows rather than overflowing the stack', () => {
@@ -662,5 +741,46 @@ describe('FileBrowserPane — server-rendered markup', () => {
     // on an empty render.
     expect(html).toContain('site-plan.pdf')
     expect(html).toContain('Brandschutz')
+  })
+})
+
+describe('FileBrowserPane — older Fassungen in search', () => {
+  // `current.pdf` replaces `plan_v1.pdf`; the older one is a document of its own
+  // in the corpus, and the current one knows the name it was stored under.
+  const older: FileItem = {
+    ...files[0],
+    id: 'old',
+    filename: 'plan_v1.pdf',
+    fassung: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+  }
+  const current: FileItem = {
+    ...files[1],
+    id: 'current',
+    filename: 'current.pdf',
+    fassung: {
+      supersededBy: null,
+      supersedes: [{ id: 'old', filename: 'plan_v1.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+      history: [{ id: 'old', filename: 'plan_v1.pdf', createdAt: null, changeSummary: null }],
+    },
+  }
+
+  it('finds the current document by the name of an older Fassung, once', async () => {
+    const user = userEvent.setup()
+    renderPane({ files: [older, current] })
+
+    await user.type(screen.getByRole('textbox', { name: /search files/i }), 'plan_v1')
+    expect(screen.getByText('current.pdf')).toBeInTheDocument()
+    expect(screen.queryByText('plan_v1.pdf')).not.toBeInTheDocument()
+  })
+
+  it('lists the older Fassung among the matches when older Fassungen are shown', async () => {
+    const user = userEvent.setup()
+    renderPane({ files: [older, current], showOlderFassungen: true })
+
+    await user.type(screen.getByRole('textbox', { name: /search files/i }), 'plan_v1')
+    expect(screen.getByText('current.pdf')).toBeInTheDocument()
+    expect(screen.getByText('plan_v1.pdf')).toBeInTheDocument()
   })
 })

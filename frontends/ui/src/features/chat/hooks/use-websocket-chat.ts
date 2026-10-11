@@ -13,7 +13,7 @@
  * - **Every question ends.** The server answers a question within
  *   {@link ACK_TIMEOUT_MS} (`RUN_STARTED`, a refusal, any frame of its turn),
  *   or the open socket is dropped and reopened, which sends it again. A second
- *   miss ends the turn with an error card and its Retry. A running turn the
+ *   miss fails the turn with `agent.no_response` and its Retry. A running turn the
  *   watchdog finds silent on {@link SILENT_DROPS_BEFORE_GIVING_UP} sockets in
  *   a row, with nothing folded in between, is ended too. Nothing waits on
  *   silence: a spinner that cannot end is the one failure this file exists to
@@ -26,7 +26,8 @@
  *   until its stages have landed or the server's stage TTL has passed. A gap
  *   in a turn's seq is attached from the last seq folded.
  * - **Ending.** Stop is `cancel_turn`; the partial answer stays, marked
- *   stopped. A turn the stream no longer holds, or a socket that gave up, asks
+ *   stopped, and the cancel says how much of it was on screen (`shown`), so
+ *   the row the server stores is that text too. A turn the stream no longer holds, or a socket that gave up, asks
  *   the server for the finished answer before any banner. Close code 4426, or
  *   a frame this bundle cannot read, is a reload notice; a server that never
  *   says hello is `connection.server_incompatible`.
@@ -43,20 +44,22 @@ import { useShallow } from 'zustand/react/shallow'
 import { useTranslations } from '@/i18n'
 import { useAuth } from '@/adapters/auth'
 import { createTurnSocket, type OpenTurn } from '@/adapters/api/turn-socket'
-import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
+import type { ClientMessage, ShownAnswer, WireEvent } from '@/adapters/api/wire-v2'
 import { checkBackendHealthCached, invalidateHealthCache } from '@/shared/hooks/use-backend-health'
 import { useThreadSharing } from '@/shared/collaboration/thread-sharing'
 import type { AddresseeSet } from '@/lib/mentions/types'
 import { useChatStore } from '../store'
-import { isFilePeekVisible, useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
 import { registerStopStreamingHandler, runningTurnIn } from '../stores/messages-store'
 import { useConnectionRecovery } from './use-connection-recovery'
 import { useEffortStore } from '../stores/effort-store'
+import { capturePosthog } from '@/lib/analytics/posthog'
+import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
 import { useLayoutStore } from '@/features/layout/store'
 import { useDocumentsStore } from '@/features/documents/store'
+import { getPosthogSessionId } from '@/lib/analytics/posthog'
 import { fetchRunMessage } from '../lib/commissioned-run'
 import { STAGE_COUNT } from '../lib/turn-projection'
-import { runErrorCard } from '../lib/run-error'
+import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import type { TurnView } from '../lib/turn-fold'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
@@ -86,6 +89,12 @@ export interface SendMessageOptions {
    * so a stale read costs a round trip and nothing else.
    */
   awaitingHuman?: boolean
+  /**
+   * Run THIS turn at a level other than the chat's Aufwand dial, without
+   * touching the dial (`effort-store.ts`): the "answer again, more thoroughly"
+   * retry under a down-voted answer.
+   */
+  reasoningEffort?: ChatEffort
 }
 
 /** A refusal the composer can localise from `details.reason`. */
@@ -259,8 +268,12 @@ export interface TurnDriver {
   ask: (message: UserMessage) => void
   /** Send now, or as soon as there is a socket. */
   deliver: (message: ClientMessage) => void
-  /** Stop a turn: what arrived for it is folded first, so the answer kept is all of it. */
-  cancel: (turnId: string) => void
+  /**
+   * Stop a turn: what arrived for it is folded first, so the socket's cursor
+   * is past it. `shown` is what the asker had on screen; the socket leaves it
+   * out for a server that does not read it (`forServer`).
+   */
+  cancel: (turnId: string, shown?: ShownAnswer) => void
 }
 
 const store = () => useChatStore.getState()
@@ -285,14 +298,19 @@ const endInterruptedTurn = (view: TurnView): void => {
     })
 }
 
-/** A turn that ended with `RUN_ERROR`: nothing was persisted, but the server is asked once before the banner. */
-const endFailedTurn = (view: TurnView): void => {
-  store().dropTurn(view.turnId)
+/**
+ * A turn that ended with `RUN_ERROR`, or a question the server never
+ * acknowledged: nothing was persisted, but the server is asked once before the
+ * banner. What it had written stays on screen, dimmed, with the error card
+ * under it (`failTurn`): dropping it deleted the sentence the reader was on in
+ * one frame. `card` defaults to the one the turn's `RUN_ERROR` earns.
+ */
+const endFailedTurn = (view: TurnView, card: RunErrorCard = runErrorCard(view.error)): void => {
+  store().failTurn(view.turnId)
   void store()
     ._recoverInterruptedAssistantMessage(view.conversationId, view.turnId)
     .then((outcome) => {
       if (outcome !== 'nothing' || store().currentConversation?.id !== view.conversationId) return
-      const card = runErrorCard(view.error)
       store().addErrorCard(card.code, card.message, card.details)
     })
 }
@@ -356,8 +374,10 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
     const misses = (ackMisses.get(turnId) ?? 0) + 1
     if (misses >= ACK_MISSES_BEFORE_GIVING_UP) {
       forget(turnId)
+      // Failed, not interrupted: the header says „Fehlgeschlagen“, and the card
+      // says the question went unanswered rather than that the agent erred.
       const view = store().turns[turnId]
-      if (view?.phase === 'running') endFailedTurn(view)
+      if (view?.phase === 'running') endFailedTurn(view, { code: 'agent.no_response' })
       return
     }
     ackMisses.set(turnId, misses)
@@ -431,8 +451,10 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
     const result = view.result
     if (!result || result === previous?.result) return
     if (result.job_admission_rejected) hooks.onQueueFull(result.text, result.retry_after_seconds)
-    // The turn commissioned a run (ADR-0062): its message already exists, and
-    // the block renders from it and follows the run's own stream.
+    // The turn commissioned a run (ADR-0062): its message already exists. The
+    // projection drew a provisional block in the answer's row in the same
+    // frame; the stored message (its title, its first ledger frame) replaces
+    // it there, and the block follows the run's own stream either way.
     const run = result.run
     if (run) {
       void fetchRunMessage(conversationId, run.run_message_id).then((message) => {
@@ -487,6 +509,9 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
         socket.send({ type: 'attach', conversation_id: conversationId, turn_id: turnId, after_seq: view?.lastSeq ?? 0 })
         return
       case 'turn_not_found':
+        // A Stop the server no longer had a turn for: it finished first, and
+        // stored the whole answer. Keep the one on screen before the turn goes.
+        if (value.of === 'cancel_turn') store().keepStoppedAnswer(turnId)
         return lost(turnId)
       case 'conversation_mismatch':
       case 'invalid_message':
@@ -541,11 +566,11 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       if (!socket.send(message)) void socket.connect()
     },
     deliver,
-    cancel: (turnId) => {
+    cancel: (turnId, shown) => {
       flush()
       // A Stop before RUN_STARTED: the question is not asked again on a reopen.
       forget(turnId)
-      deliver({ type: 'cancel_turn', conversation_id: conversationId, turn_id: turnId })
+      deliver({ type: 'cancel_turn', conversation_id: conversationId, turn_id: turnId, ...(shown && { shown }) })
     },
   }
 }
@@ -778,8 +803,15 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
     onConnected: setIsConnected,
     onGaveUp: () => void explainConnectionFailure(),
     onQueueFull: (text, retryAfter) => {
-      const hint = retryAfter ? tChat('errorRegistry.researchQueueFull.retryHint', { seconds: retryAfter }) : ''
-      addErrorCard('research.queue_full', [text.trim(), hint].filter(Boolean).join(' ') || undefined)
+      // One sentence saying when to resend, in the reader's language. The
+      // server's own text is English on one path and carries its own „try
+      // again" on the other, so in front of the hint it said it twice; it
+      // stays as the details. Without a wait, the registry's message says
+      // „in a moment" instead.
+      const message = retryAfter
+        ? `${tChat('errorRegistry.researchQueueFull.full')} ${tChat('errorRegistry.researchQueueFull.retryHint', { seconds: retryAfter })}`
+        : tChat('errorRegistry.researchQueueFull.message')
+      addErrorCard('research.queue_full', message, text.trim() || undefined)
     },
   }
   const hooksRef = useRef(hooks)
@@ -873,9 +905,9 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
 
   // Stop: `cancel_turn`, sent now or as soon as the socket is back.
   useEffect(() => {
-    registerStopStreamingHandler((turnId) => {
+    registerStopStreamingHandler((turnId, shown) => {
       const conversationId = useChatStore.getState().currentConversation?.id
-      if (conversationId) ensureDriver(conversationId).cancel(turnId)
+      if (conversationId) ensureDriver(conversationId).cancel(turnId, shown)
     })
     return () => registerStopStreamingHandler(null)
   }, [ensureDriver])
@@ -963,39 +995,58 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
    * cancelled.
    */
   const openAgentTurn = useCallback(
-    (messageId: string, content: string, dataSourcesForMessage: string[], conversationId: string | undefined): boolean => {
+    (
+      messageId: string,
+      content: string,
+      dataSourcesForMessage: string[],
+      conversationId: string | undefined,
+      reasoningEffort?: ChatEffort
+    ): boolean => {
       if (!conversationId) {
         addErrorCard('system.unknown', 'No active conversation')
         return false
       }
-      // Retrieval follows the composer bar ("Asking about this file"). A
-      // visible peek is the fallback when there is no bar yet. A version id
-      // only ever comes from the SUBJECT: it says what this turn is about, and
-      // a file that merely happens to be visible beside the chat does not.
-      const preview = useFilePreviewStore.getState()
+      // Retrieval follows the composer bar ("Asking about this file") and
+      // nothing else. A file that merely happens to be open in a peek is
+      // context, not scope: sending it as the focus told the agent every bare
+      // question was about that file, and a norm question ("Absturzhoehe bei
+      // Bruestungen") came back empty because the search was pinned to it.
       const subject = useChatStore.getState().composerSubject
       const subjectName = subject?.filename?.trim() || subject?.title?.trim() || undefined
-      const peekName = isFilePeekVisible(preview) ? preview.file?.filename.trim() || undefined : undefined
-      useChatStore.getState().beginTurn(conversationId, messageId)
+      // The composer's Aufwand dial. Always stated, so the level the chat
+      // shows is the level the turn runs at (`effort-store.ts`). A per-turn
+      // override wins and is never remembered. Recorded on the turn too: the
+      // answer keeps the level it ran at after the dial moves on.
+      const effort = reasoningEffort ?? useEffortStore.getState().levelForSend(conversationId)
+      const posthogSessionId = getPosthogSessionId()
+      useChatStore.getState().beginTurn(conversationId, messageId, effort)
+      // One event per turn that actually starts, from the one place a turn
+      // starts. Shape only: whether files are attached, the Aufwand level and
+      // how many sources are live. Never the question, never a file name.
+      capturePosthog('chat_message_sent', {
+        has_attachments: collectSendMetadata().messageFiles.length > 0,
+        effort,
+        data_source_count: dataSourcesForMessage.length,
+      })
       ensureDriver(conversationId).ask({
         type: 'user_message',
         conversation_id: conversationId,
         message_id: messageId,
         text: content,
         data_sources: dataSourcesForMessage,
-        focus_file_name: subjectName || peekName || null,
+        focus_file_name: subjectName || null,
         focus_shelf: subject?.shelf ?? null,
         focus_document_id: subject?.resourceId ?? null,
         focus_version_id: subject?.versionId ?? null,
         focus_version_state: openVersionState(subject?.versionState),
         source_preset: useLayoutStore.getState().activeSourcePreset ?? null,
-        // The composer's Aufwand dial. Always stated, so the level the chat
-        // shows is the level the turn runs at (`effort-store.ts`).
-        reasoning_effort: useEffortStore.getState().levelForSend(conversationId),
+        reasoning_effort: effort,
+        // Omitted, not null, while PostHog is off: `forServer` keys on presence.
+        ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
       })
       return true
     },
-    [addErrorCard, ensureDriver]
+    [addErrorCard, collectSendMetadata, ensureDriver]
   )
 
   /**
@@ -1094,7 +1145,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         return { ok: true, addressees: ruling }
       }
 
-      const started = openAgentTurn(messageId, content, dataSourcesForMessage, conversationId)
+      const started = openAgentTurn(messageId, content, dataSourcesForMessage, conversationId, options.reasoningEffort)
       return { ok: started, addressees: ruling }
     },
     [addErrorCard, collectSendMetadata, deliverAsContext, openAgentTurn]
@@ -1122,7 +1173,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       const message = addUserMessage(content, { enabledDataSources: dataSourcesForMessage, messageFiles })
       // The conversation may have just been created inside addUserMessage.
       const conversationId = useChatStore.getState().currentConversation?.id
-      return openAgentTurn(message.id, content, dataSourcesForMessage, conversationId)
+      return openAgentTurn(message.id, content, dataSourcesForMessage, conversationId, options?.reasoningEffort)
     },
     [addUserMessage, collectSendMetadata, openAgentTurn, sendRuledMessage]
   )

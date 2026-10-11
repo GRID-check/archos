@@ -11,32 +11,52 @@ import asyncio
 import logging
 import os
 import tempfile
+from collections.abc import Callable
 from typing import Any
 
+import httpx
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import File
+from fastapi import Header
 from fastapi import HTTPException
 from fastapi import UploadFile
 from pydantic import BaseModel
+from pydantic import ConfigDict
 from pydantic import Field
 
+from aiq_agent.common import provider_limiter
+from aiq_agent.common.openrouter import limited_async_http_client
+from aiq_agent.knowledge import dismiss_document_revision_suggestion
 from aiq_agent.knowledge import get_available_documents_async
+from aiq_agent.knowledge import link_document_fassung
 from aiq_agent.knowledge import rewrite_document_folder_paths
+from aiq_agent.knowledge import set_document_change_summary
 from aiq_agent.knowledge import set_document_display_title
 from aiq_agent.knowledge import set_document_folder_path
-from aiq_agent.knowledge import update_document_tags
+from aiq_agent.knowledge import set_document_superseded_by
+from aiq_agent.knowledge import set_document_tags_by_person
+from aiq_agent.knowledge import set_document_topics_by_person
 from aiq_agent.knowledge.base import BaseIngestor
 from aiq_agent.knowledge.document_classification import ALLOWED_TAGS
 from aiq_agent.knowledge.document_classification import MAX_TAGS
+from aiq_agent.knowledge.document_classification import MAX_TOPICS
+from aiq_agent.knowledge.document_classification import normalize_topic
+from aiq_agent.knowledge.document_metadata_store import LinkOutcome
+from aiq_agent.knowledge.document_revisions import RevisionDocument
+from aiq_agent.knowledge.document_revisions import build_change_prompt
+from aiq_agent.knowledge.document_revisions import parse_change_summary
+from aiq_agent.knowledge.document_revisions import settled_change
 from aiq_agent.knowledge.schema import AvailableDocument
 from aiq_agent.knowledge.schema import FileInfo
 from aiq_agent.knowledge.schema import IngestionJobStatus
+from aiq_agent.observability.direct_trace import observed_generation
 
 from ..jobs import ingest_dispatch
 from ..models.requests import DeleteFilesRequest
 from ..models.requests import UploadResponse
 from .collections import _require_ingestor
+from .generate_summary import _llm_settings
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +64,11 @@ logger = logging.getLogger(__name__)
 BATCH_STATUS_MAX_IDS = 200
 
 
-def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) -> list[FileInfo]:
+def _merge_summaries(
+    files: list[FileInfo],
+    summaries: list[AvailableDocument],
+    held_names: Callable[[], set[str] | None] | None = None,
+) -> list[FileInfo]:
     """Attach persisted per-document summaries, tags and folder onto the file list.
 
     DocumentMetadataStore (SQL, keyed by ``(collection, filename)``) is the source of
@@ -53,7 +77,20 @@ def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) 
     knows what the vector store holds. The join key is the
     filename, unique within the summaries table, so a straight lookup is safe.
     A file without a stored summary/tags/folder is left untouched; already-populated
-    values are never overwritten.
+    values are never overwritten. Topics (Themen), the camera's capture facts and the
+    title-block facts (``revision_facts``: Plannummer, Index, Datum, Maßstab, Planinhalt read from the
+    Plankopf) travel the same way, and so do the Fassungen: the confirmed link
+    (``superseded_by``, and ``supersedes`` as its reverse), the change summary with
+    the file name it compared against, and Piloti's open suggestion. A suggestion
+    a person dismissed, or one about a file that is gone or already replaced, is
+    not sent.
+
+    A document ingested before the Fassung step existed has no stored suggestion. When
+    ``held_names`` is given, one is derived on read for it (``fassungen.derive_suggestions``):
+    the same title-block ``document_number`` with a later Index or date (``basis: title_block``), else
+    the Index or date in the file names (``basis: name``). It is never stored, never made for a pair a
+    person dismissed or linked, and never names a held or in-flight file; ``held_names`` returning
+    ``None`` suppresses it. Without ``held_names`` nothing is derived.
     """
     if not summaries:
         return files
@@ -68,7 +105,205 @@ def _merge_summaries(files: list[FileInfo], summaries: list[AvailableDocument]) 
             file.tags = doc.tags
         if file.folder_path is None and doc.folder_path:
             file.folder_path = doc.folder_path
+        if not file.topics and doc.topics:
+            file.topics = doc.topics
+        if file.capture is None and doc.capture:
+            file.capture = doc.capture
+        if file.revision_facts is None and doc.revision_facts:
+            file.revision_facts = doc.revision_facts
+        if file.superseded_by is None and doc.superseded_by:
+            file.superseded_by = doc.superseded_by
+        if not file.supersedes and doc.supersedes:
+            file.supersedes = doc.supersedes
+        if file.change_summary is None and doc.change_summary:
+            file.change_summary = doc.change_summary
+            file.change_basis = doc.change_basis
+        if file.revision_suggestion is None:
+            file.revision_suggestion = _open_suggestion(doc, doc_by_name)
+    if held_names is not None:
+        _attach_derived_suggestions(files, summaries, held_names)
     return files
+
+
+def _attach_derived_suggestions(
+    files: list[FileInfo], summaries: list[AvailableDocument], held_names: Callable[[], set[str] | None]
+) -> None:
+    """Fill ``revision_suggestion`` of the files that have none from the collection's own rows (on read)."""
+    from knowledge_layer.llamaindex import fassungen
+
+    derived = fassungen.derive_suggestions(summaries, held_names)
+    for file in files:
+        suggestion = derived.get(file.file_name)
+        if suggestion is not None and file.revision_suggestion is None:
+            file.revision_suggestion = suggestion
+
+
+def _held_names_of(collection_name: str) -> Callable[[], set[str] | None]:
+    """The reader of a collection's held and in-flight file names, for suggestions derived on read."""
+
+    def held() -> set[str] | None:
+        from knowledge_layer.llamaindex import fassungen
+
+        return fassungen.held_file_names(collection_name)
+
+    return held
+
+
+def _open_suggestion(doc: AvailableDocument, known: dict[str, AvailableDocument]) -> dict[str, Any] | None:
+    """Piloti's suggestion for ``doc`` as the BFF gets it, or ``None`` when there is nothing to offer.
+
+    Nothing to offer: it was dismissed, the older file is no longer in the
+    collection, this document already replaces it, or it was replaced by another.
+    """
+    suggestion = doc.revision_suggestion
+    if not suggestion or suggestion.get("dismissed"):
+        return None
+    older = known.get(suggestion["of"])
+    if older is None or older.superseded_by or suggestion["of"] in (doc.supersedes or []):
+        return None
+    return {key: suggestion[key] for key in ("of", "confidence", "reason", "basis")}
+
+
+async def _request_change_summary(
+    older: AvailableDocument, newer: AvailableDocument, organization_id: str | None
+) -> str | None:
+    """What changed from ``older`` to ``newer``, German bullet lines, or ``None``. Never raises.
+
+    The same prompt and parser as ingestion's (``document_revisions``), posted over
+    the summary gateway like the other utility routes and traced as a
+    ``change-summary`` generation (ADR-0089). A person is waiting on the
+    confirmation, so the call queues as interactive (ADR-0081).
+    """
+    before = RevisionDocument(
+        file_name=older.file_name, summary=older.summary or "", doc_class=older.doc_class, tags=tuple(older.tags or ())
+    )
+    after = RevisionDocument(
+        file_name=newer.file_name, summary=newer.summary or "", doc_class=newer.doc_class, tags=tuple(newer.tags or ())
+    )
+    settled, answer = settled_change(before, after)
+    if settled:
+        return answer
+    cred = await asyncio.to_thread(_llm_settings, organization_id)
+    if not cred.api_key:
+        return None
+    payload = cred.request_body(
+        {
+            "model": cred.model,
+            "temperature": 0,
+            "max_tokens": 400,
+            "messages": [{"role": "user", "content": build_change_prompt(before, after)}],
+        }
+    )
+    headers = {"Content-Type": "application/json", "Authorization": f"Bearer {cred.api_key}"}
+    try:
+        async with (
+            observed_generation("change-summary", model=cred.model, messages=payload.get("messages")) as generation,
+            limited_async_http_client(cls=provider_limiter.INTERACTIVE, timeout=30.0) as client,
+        ):
+            response = await client.post(f"{cred.base_url}/chat/completions", json=payload, headers=headers)
+            response.raise_for_status()
+            data = response.json()
+            generation.finish(data)
+        return parse_change_summary(data["choices"][0]["message"]["content"] or "")
+    except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
+        logger.warning("Change summary request failed: %s", type(exc).__name__)
+        return None
+
+
+def _checked_tags(raw: list[str]) -> list[str]:
+    """A person's controlled tags, de-duplicated; 400 when one is off the vocabulary or there are too many."""
+    # De-duplicate while preserving order so the response is stable.
+    deduped: list[str] = []
+    for tag in raw:
+        if tag not in deduped:
+            deduped.append(tag)
+
+    offending = [tag for tag in deduped if tag not in ALLOWED_TAGS]
+    if offending:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Tags outside the controlled vocabulary are not allowed",
+                "invalid_tags": offending,
+            },
+        )
+
+    # Enforce the same per-document cap that ingestion applies (MAX_TAGS).
+    # Reject rather than silently truncate so the caller's intent is explicit.
+    if len(deduped) > MAX_TAGS:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"At most {MAX_TAGS} tags are allowed per document",
+                "max_tags": MAX_TAGS,
+                "tag_count": len(deduped),
+            },
+        )
+    return deduped
+
+
+def _checked_topics(raw: list[str]) -> list[str]:
+    """A person's topics as ingestion would store them.
+
+    Each goes through :func:`normalize_topic` (400 listing the ones that are not a
+    term), is de-duplicated by case keeping the first spelling, and a topic that
+    restates a controlled tag is dropped: that word is already a tag, and a
+    filter should find it in one place. 400 when more than ``MAX_TOPICS`` remain.
+    """
+    invalid = [raw_topic for raw_topic in raw if normalize_topic(raw_topic) is None]
+    if invalid:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": "Topics must be a term of up to three words",
+                "invalid_topics": invalid,
+            },
+        )
+
+    controlled = {tag.casefold() for tag in ALLOWED_TAGS}
+    kept: dict[str, str] = {}
+    for raw_topic in raw:
+        term = normalize_topic(raw_topic)
+        folded = term.casefold()
+        if folded not in controlled:
+            kept.setdefault(folded, term)
+
+    topics = list(kept.values())
+    if len(topics) > MAX_TOPICS:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "message": f"At most {MAX_TOPICS} topics are allowed per document",
+                "max_topics": MAX_TOPICS,
+                "topic_count": len(topics),
+            },
+        )
+    return topics
+
+
+async def _refuse_fassung(collection_name: str, newer: AvailableDocument, older: AvailableDocument) -> dict[str, Any]:
+    """The ``linked=false`` half of the Fassung route: lift the link, drop its change line, dismiss the suggestion.
+
+    Answers the link ``older`` has and the change line ``newer`` has once this is done.
+    """
+    superseded_by, change_summary, change_basis = older.superseded_by, newer.change_summary, newer.change_basis
+    if older.superseded_by == newer.file_name:
+        await asyncio.to_thread(set_document_superseded_by, collection_name, older.file_name, None)
+        superseded_by = None
+        if newer.change_basis == older.file_name:
+            await asyncio.to_thread(set_document_change_summary, collection_name, newer.file_name, None, None)
+            change_summary = change_basis = None
+    # Added to the refusals ``newer`` already holds: a suggestion read from the file names lives only in
+    # the UI, and „Nein" to it must stick even when another file was refused before.
+    await asyncio.to_thread(dismiss_document_revision_suggestion, collection_name, newer.file_name, older.file_name)
+    return {"superseded_by": superseded_by, "change_summary": change_summary, "change_basis": change_basis}
+
+
+def _no_summary_404(collection_name: str, file_name: str) -> HTTPException:
+    return HTTPException(
+        status_code=404,
+        detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
+    )
 
 
 def _job_statuses(ingestor: BaseIngestor, job_ids: list[str]) -> dict[str, Any]:
@@ -197,7 +432,9 @@ def add_document_routes(router: APIRouter):
         # files are returned without summaries rather than erroring the route.
         try:
             summaries = await get_available_documents_async(collection_name)
-            _merge_summaries(files, summaries)
+            # Off the loop: deriving a suggestion for a document ingested before the Fassung step reads
+            # the job store for held names.
+            await asyncio.to_thread(_merge_summaries, files, summaries, _held_names_of(collection_name))
         except Exception as e:
             logger.warning(f"Failed to merge summaries for {collection_name}: {e}")
 
@@ -229,6 +466,13 @@ def add_document_routes(router: APIRouter):
             default_factory=list,
             description="Controlled document tags; must be a subset of the ingestion vocabulary.",
         )
+        topics: list[str] | None = Field(
+            default=None,
+            description=(
+                "Open topics (Themen), free terms of up to three words. Omit to leave the topics as they are; "
+                "send tags alone to leave them, too."
+            ),
+        )
 
     @router.patch(
         "/v1/collections/{collection_name}/documents/{file_name}/tags",
@@ -252,46 +496,111 @@ def add_document_routes(router: APIRouter):
         - More than ``MAX_TAGS`` tags (after dedup) → 400 (the BFF zod already
           caps this, so a normal user never reaches it).
         - An empty list is allowed and clears the tags.
+        - ``topics``, when sent, is normalised by :func:`_checked_topics` (400
+          for a non-term or too many) and stored as a person's topics. Sent
+          alone, it leaves the tags as they are; sent with ``tags``, both change.
         - No summary row for ``(collection, file_name)`` → 404 (the summary is
           the anchor; there is nothing to tag without one).
         The summary itself is never modified.
+
+        The tags and topics are stored as a PERSON's choice, so a later re-ingest
+        keeps them instead of writing the classifier's guess back over the correction.
         """
-        # De-duplicate while preserving order so the response is stable.
-        deduped: list[str] = []
-        for tag in request.tags:
-            if tag not in deduped:
-                deduped.append(tag)
+        # Validate everything before any write, so a 400 on one field leaves both untouched.
+        topics = _checked_topics(request.topics) if request.topics is not None else None
+        write_tags = "tags" in request.model_fields_set or request.topics is None
+        tags = _checked_tags(request.tags) if write_tags else None
 
-        offending = [tag for tag in deduped if tag not in ALLOWED_TAGS]
-        if offending:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "message": "Tags outside the controlled vocabulary are not allowed",
-                    "invalid_tags": offending,
-                },
-            )
+        response: dict[str, Any] = {"collection_name": collection_name, "file_name": file_name}
+        if topics is not None:
+            if not await asyncio.to_thread(set_document_topics_by_person, collection_name, file_name, topics):
+                raise _no_summary_404(collection_name, file_name)
+            response["topics"] = topics
+        if tags is not None:
+            if not await asyncio.to_thread(set_document_tags_by_person, collection_name, file_name, tags):
+                raise _no_summary_404(collection_name, file_name)
+            response["tags"] = tags
+        return response
 
-        # Enforce the same per-document cap that ingestion applies (MAX_TAGS).
-        # Reject rather than silently truncate so the caller's intent is explicit.
-        if len(deduped) > MAX_TAGS:
-            raise HTTPException(
-                status_code=400,
-                detail={
-                    "message": f"At most {MAX_TAGS} tags are allowed per document",
-                    "max_tags": MAX_TAGS,
-                    "tag_count": len(deduped),
-                },
-            )
+    class FassungRequest(BaseModel):
+        model_config = ConfigDict(extra="forbid")
 
-        updated = await asyncio.to_thread(update_document_tags, collection_name, file_name, deduped)
-        if not updated:
+        newer: str = Field(..., min_length=1, max_length=512, description="File name of the newer Fassung.")
+        older: str = Field(..., min_length=1, max_length=512, description="File name of the Fassung it replaces.")
+        linked: bool = Field(
+            ...,
+            description="True: a person confirms newer replaces older. False: a person lifts or refuses that.",
+        )
+
+    @router.put(
+        "/v1/collections/{collection_name}/fassung",
+        tags=["documents"],
+        summary="Confirm or refuse that one file replaces another (a Fassung across different names)",
+    )
+    async def put_fassung_route(
+        collection_name: str,
+        request: FassungRequest,
+        ingestor: BaseIngestor = Depends(_require_ingestor),
+        x_grid_organization_id: str | None = Header(default=None),
+    ) -> dict[str, Any]:
+        """A person's decision about a Piloti suggestion (or a name series): ``newer`` replaces ``older``.
+
+        Follows the documents-router auth model: end-user access is enforced at the
+        BFF. Both files must have a metadata row in THIS collection, and differ.
+        Nothing here merges stored bytes: the older file stays whole and readable
+        by name, and only drops out of the ranked search.
+
+        - ``linked=true``: ``older.superseded_by = newer``; a suggestion on ``newer``
+          that pointed at ``older`` is cleared; when ``older`` was replaced by another
+          file until now, that file's change line told against ``older`` goes. The
+          loop check and these writes are one locked transaction
+          (``link_document_fassung``), so two concurrent confirmations cannot store
+          A over B and B over A. A link that would close a loop (the newer file
+          already replaced by the older, directly or through others) is a 409. Then
+          what changed is written by the summary model (traced as ``change-summary``)
+          onto ``newer`` with ``change_basis = older``. A model failure leaves the
+          link in place and ``change_summary`` null.
+        - ``linked=false``: the link ``older -> newer`` is lifted when it exists, the
+          change summary written against ``older`` goes with it, and ``older`` is added
+          to the files ``newer`` refused (``dismissed_of``), so a later reading does not
+          offer the pair again, whatever else was refused before. An open suggestion
+          about another file stays open.
+
+        Returns ``{"superseded_by", "change_summary", "change_basis"}``: the link ``older``
+        has and the change line ``newer`` has after the call (``null`` when none).
+        """
+        if request.newer == request.older:
+            raise HTTPException(status_code=400, detail="A file cannot replace itself")
+        documents = {doc.file_name: doc for doc in await get_available_documents_async(collection_name)}
+        missing = [name for name in (request.newer, request.older) if name not in documents]
+        if missing:
             raise HTTPException(
                 status_code=404,
-                detail=f"No summary found for '{file_name}' in collection '{collection_name}'",
+                detail=f"No document {missing!r} in collection '{collection_name}'",
             )
+        newer, older = documents[request.newer], documents[request.older]
 
-        return {"collection_name": collection_name, "file_name": file_name, "tags": deduped}
+        if not request.linked:
+            return await _refuse_fassung(collection_name, newer, older)
+
+        outcome = await asyncio.to_thread(link_document_fassung, collection_name, request.older, request.newer)
+        if outcome is LinkOutcome.LOOP:
+            raise HTTPException(
+                status_code=409,
+                detail=f"'{request.newer}' is already replaced by '{request.older}'; it cannot replace it in turn",
+            )
+        if outcome is LinkOutcome.MISSING:
+            raise _no_summary_404(collection_name, request.older)
+        change = await _request_change_summary(older, newer, x_grid_organization_id)
+        if change:
+            await asyncio.to_thread(set_document_change_summary, collection_name, request.newer, change, request.older)
+            return {"superseded_by": request.newer, "change_summary": change, "change_basis": request.older}
+        # No line could be told: whatever the newer file already says about itself stays, with its own basis.
+        return {
+            "superseded_by": request.newer,
+            "change_summary": newer.change_summary,
+            "change_basis": newer.change_basis,
+        }
 
     class UpdateDisplayTitleRequest(BaseModel):
         display_title: str | None = Field(
@@ -460,7 +769,15 @@ def add_document_routes(router: APIRouter):
         request: DeleteFilesRequest,
         ingestor: BaseIngestor = Depends(_require_ingestor),
     ) -> dict[str, Any]:
-        """Delete files from a collection by ID."""
+        """Delete files from a collection by ID.
+
+        ``permanent`` (default ``false``) says nobody will undo this delete. Without it
+        the files' chunks and metadata rows go, but the Fassung facts a person made (a
+        confirmed link, refused suggestions, the change line against a linked Fassung)
+        are kept for the file's return, and links other files hold to it stay: an
+        archive, the folder bin and a publish purge and then read the document again.
+        With it, those facts go and the files it replaced are current again for good.
+        """
         # Verify collection exists
         collection = await asyncio.to_thread(ingestor.get_collection, collection_name)
         if collection is None:
@@ -475,7 +792,9 @@ def add_document_routes(router: APIRouter):
             }
 
         try:
-            result = await asyncio.to_thread(ingestor.delete_files, request.file_ids, collection_name)
+            result = await asyncio.to_thread(
+                ingestor.delete_files, request.file_ids, collection_name, permanent=request.permanent
+            )
             total_deleted = result.get("total_deleted", 0)
             failed = result.get("failed", [])
 

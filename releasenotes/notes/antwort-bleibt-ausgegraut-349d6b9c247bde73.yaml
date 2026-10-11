@@ -1,0 +1,11 @@
+---
+fixes:
+  - >
+    A finished answer no longer stays greyed out after Piloti tidies its
+    sources at the end. The text fades back in and always ends at full
+    strength.
+  - >
+    When Piloti states another project's facts from its brief (address,
+    start, Bauweise), the answer cites them as "Projektdaten" of that
+    project. Before, that citation was removed and the answer said a source
+    could not be verified.

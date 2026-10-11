@@ -23,7 +23,9 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
  * Chip is meant to be clicked, counted, and reused across features.
  */
 const chipVariants = cva(
-  'inline-flex items-center gap-1 rounded-md border font-medium w-fit whitespace-nowrap shrink-0 ' +
+  // `max-w-full`: a chip never outgrows its row. Its label only gives way when
+  // it is wrapped in `ChipLabel`, which truncates; the count and icon stay whole.
+  'inline-flex items-center gap-1 rounded-md border font-medium w-fit max-w-full whitespace-nowrap shrink-0 ' +
     // background/border ride along so the interactive hover fills below
     // transition instead of snapping; transform keeps the press dip smooth.
     // Paint only — no layout property is ever transitioned here.
@@ -133,4 +135,18 @@ const ChipCount = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLSpa
 )
 ChipCount.displayName = 'ChipCount'
 
-export { Chip, ChipCount, chipVariants }
+/**
+ * The text of a Chip that may be longer than its row: a topic Piloti named, a
+ * document type in a narrow rail. It truncates with an ellipsis while the
+ * `ChipCount` and any icon beside it stay whole, so a 40-character topic
+ * cannot push the count out of the card or make the page scroll sideways. The
+ * chip still needs a `title` carrying the full text.
+ */
+const ChipLabel = React.forwardRef<HTMLSpanElement, React.HTMLAttributes<HTMLSpanElement>>(
+  ({ className, ...props }, ref) => (
+    <span ref={ref} data-slot="chip-label" className={cn('min-w-0 truncate', className)} {...props} />
+  )
+)
+ChipLabel.displayName = 'ChipLabel'
+
+export { Chip, ChipCount, ChipLabel, chipVariants }

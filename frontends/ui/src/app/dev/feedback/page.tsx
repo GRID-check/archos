@@ -42,7 +42,7 @@ function Preview(): JSX.Element {
     await new Promise((resolve) => setTimeout(resolve, 400))
     return variant === 'error'
       ? { ok: false, reason: 'failed' }
-      : { ok: true, report: { id: 'f1', kind, createdAt: new Date().toISOString() } }
+      : { ok: true, report: { id: 'f1', kind, createdAt: new Date().toISOString(), relayText: null } }
   }, [variant, kind])
 
   // For the `sent` and `error` captures: fill and send once the dialog is up.

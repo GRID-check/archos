@@ -1,6 +1,6 @@
 ---
 features:
   - >
-    Piloti can now look at your plans. When a question turns on what a floor
-    plan or section shows, it opens the page as an image instead of relying on
-    the text description made at upload.
+    Piloti can now look at your drawings. When a question depends on what a
+    floor plan or section shows, it opens the page as an image instead of
+    relying on the text description made at upload.

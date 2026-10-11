@@ -55,6 +55,11 @@ class PreparedIngestJob:
         value = self.config.get("organization_id")
         return value if isinstance(value, str) and value else None
 
+    @property
+    def priority(self) -> str:
+        """``interactive`` (a person is waiting on this file) or ``bulk`` (a reindex, a rescan)."""
+        return "bulk" if self.config.get("priority") == "bulk" else "interactive"
+
 
 class TTLCleanupMixin:
     """
@@ -119,7 +124,8 @@ class TTLCleanupMixin:
 
         Elects a single runner via a Postgres advisory lock so that, with the
         vector store now shared across replicas, N replicas don't race the same
-        session-collection deletions each cycle. Fail-open on single-node.
+        session-collection deletions each cycle. With no Postgres the process always leads;
+        when the election cannot be held the cycle is skipped and the next tick retries.
         """
         from .leader_lock import leader_lock
 
@@ -340,8 +346,13 @@ class BaseIngestor(ABC):
         file_paths: list[str | Callable[[], str]],
         collection_name: str,
         config: dict[str, Any] | None = None,
+        job_id: str | None = None,
     ) -> "PreparedIngestJob":
-        """Validate a job and record it PENDING without running it (see ``PreparedIngestJob``)."""
+        """Validate a job and record it PENDING without running it (see ``PreparedIngestJob``).
+
+        ``job_id`` names the job when its caller needs the same id for the same work
+        (the base corpus does); without it a fresh one is made.
+        """
         raise NotImplementedError
 
     def submit_prepared(self, prepared: "PreparedIngestJob") -> None:
@@ -462,13 +473,16 @@ class BaseIngestor(ABC):
         """
 
     @abstractmethod
-    def delete_file(self, file_id: str, collection_name: str) -> bool:
+    def delete_file(self, file_id: str, collection_name: str, *, permanent: bool = False) -> bool:
         """
         Delete a file and its chunks from a collection.
 
         Args:
             file_id: File identifier (can be filename or internal ID).
             collection_name: Collection containing the file.
+            permanent: A delete nobody undoes. Without it the Fassung facts a
+                person made on the file's metadata row are kept for the file's
+                return (``DocumentMetadataStore.unregister``).
 
         Returns:
             True if deleted successfully, False otherwise.
@@ -478,6 +492,8 @@ class BaseIngestor(ABC):
         self,
         file_ids: list[str],
         collection_name: str,
+        *,
+        permanent: bool = False,
     ) -> dict[str, Any]:
         """
         Delete multiple files from a collection (batch delete).
@@ -485,6 +501,7 @@ class BaseIngestor(ABC):
         Args:
             file_ids: List of file IDs to delete.
             collection_name: Collection containing the files.
+            permanent: Passed to :meth:`delete_file` for each file.
 
         Returns:
             Dict with 'successful' (list), 'failed' (list), 'total_deleted' (int).
@@ -494,7 +511,7 @@ class BaseIngestor(ABC):
 
         for file_id in file_ids:
             try:
-                if self.delete_file(file_id, collection_name):
+                if self.delete_file(file_id, collection_name, permanent=permanent):
                     successful.append(file_id)
                 else:
                     failed.append({"file_id": file_id, "error": "Not found or already deleted"})

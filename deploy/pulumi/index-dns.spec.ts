@@ -52,19 +52,13 @@ describe("the program constructs with public DNS enabled", () => {
   beforeAll(async () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      // Langfuse ON for the same reason observability is, below: `https-langfuse`
-      // is the OTHER conditional listener, so leaving it off would let the
-      // invariant pass while the newest host in the set went unchecked. Spread
-      // first so this file's own otel values still win.
+      // Langfuse ON: `https-langfuse` is the one conditional listener, so
+      // leaving it off would let the invariant pass while the newest host in
+      // the set went unchecked.
       ...langfuseStackConfig(),
       "grid-oib:baseDomain": `dev.${ZONE}`,
       "grid-oib:seaweedfsTopology": "single",
       "grid-oib:seaweedfsPerOrgBuckets": "false",
-      // Observability ON, so the conditional `https-otel` listener exists and
-      // the otel host is actually part of the set being compared. With it off
-      // the invariant holds trivially and the test proves much less.
-      "grid-oib:observabilityEnabled": "true",
-      "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
       "grid-oib:otelOidcIssuer": "https://tenant.authkit.app",
       "grid-oib:otelOidcClientId": "client_test",
       "grid-oib:otelOidcClientSecret": "otel-secret", // pragma: allowlist secret
@@ -102,15 +96,14 @@ describe("the program constructs with public DNS enabled", () => {
     expect([...dnsHosts()].sort()).toEqual([...listenerHosts()].sort());
   });
 
-  it("covers both conditional listeners too", () => {
+  it("covers the conditional listener too", () => {
     // Guards the test above against passing because BOTH sides went empty, and
-    // pins the specific hosts whose listeners exist only when their tier is
-    // deployed — otel (ADR-0029) and langfuse (ADR-0044).
-    for (const host of [`otel.dev.${ZONE}`, `langfuse.dev.${ZONE}`]) {
-      expect(listenerHosts()).toContain(host);
-      expect(dnsHosts()).toContain(host);
-    }
-    expect(dnsHosts()).toHaveLength(5);
+    // pins the host whose listener exists only when its tier is deployed —
+    // langfuse (ADR-0044). The otel host (ADR-0029) is gone with the dashboard.
+    const host = `langfuse.dev.${ZONE}`;
+    expect(listenerHosts()).toContain(host);
+    expect(dnsHosts()).toContain(host);
+    expect(dnsHosts()).toHaveLength(4);
   });
 
   it("points every record at the pinned LoadBalancer IP", () => {

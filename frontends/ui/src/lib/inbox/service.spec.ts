@@ -5,6 +5,7 @@ vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))
 vi.mock('@/lib/events/bus', () => ({ publishToUser: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
+vi.mock('@/lib/tasks/subject-access', () => ({ unreadableRunIds: vi.fn() }))
 vi.mock('@/lib/authz/platform', () => ({
   hasPlatformPermission: vi.fn(),
   getPlatformOrganizationId: vi.fn(),
@@ -48,8 +49,11 @@ import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/pl
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { describeResource } from '@/lib/sharing/registry'
+import { unreadableRunIds } from '@/lib/tasks/subject-access'
 import * as repository from './repository'
 import {
+  upsertWaves,
+  emitInboxItems,
   archiveItem,
   getInboxSummary,
   listInbox,
@@ -70,6 +74,9 @@ import {
  * its states — see the `visibleInboxTypes` describe block — rather than
  * accidentally in whichever one the missing field happened to produce.
  */
+/** Whether the organization holds `collaboration`; a test switches it off. */
+let collaborationGranted = true
+
 function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSession {
   return {
     userId: 'user_1',
@@ -80,7 +87,10 @@ function makeSession(overrides: Partial<AuthorizedSession> = {}): AuthorizedSess
     organizationMembershipId: 'om_1',
     role: 'admin',
     permissions: [],
-    featureFlags: null,
+    // Read at call time, so the shared `session` below follows the switch too.
+    get featureFlags() {
+      return collaborationGranted ? ['collaboration'] : []
+    },
     ...overrides,
   }
 }
@@ -99,6 +109,14 @@ const ALL_TYPES = [
   'job.failed',
   'job.waiting',
   'document.review_requested',
+  'upload.completed',
+  'document.quarantined',
+  'document.release_requested',
+  'mail_import.completed',
+  'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -113,6 +131,18 @@ const OPERATIONAL_TYPES = [
   // collaboration still has documents to approve, and gating the one review
   // queue in the product would make it invisible for exactly them.
   'document.review_requested',
+  // ADR-0086: an upload being read and a file held back by the content check
+  // are about the office's own files, not about working together.
+  'upload.completed',
+  'document.quarantined',
+  'document.release_requested',
+  // An Outlook archive import ended (ADR-0085): an office without
+  // collaboration imports mail too.
+  'mail_import.completed',
+  'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')
@@ -148,14 +178,16 @@ const reachable = {
   visibility: 'project' as const,
   container: { organizationId: 'org_1', projectId: 'proj_1' },
   canEscalate: false,
+  contentLocked: false,
 }
 
 beforeEach(() => {
   // Most of this file is about collaboration items, so the default world is a
-  // tenant that HAS collaboration. Flag enforcement is off in tests, so this env
-  // opt-in is what `isCollaborationEnabled` reads. The gate's other state is
-  // exercised explicitly rather than inherited from an unset variable.
-  vi.stubEnv('GRID_COLLABORATION_ENABLED', 'true')
+  // signed-in tenant that HAS collaboration: `isCollaborationEnabled` reads the
+  // session's claim. The gate's other state is exercised explicitly
+  // (`collaborationGranted = false`) rather than inherited from a missing field.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  collaborationGranted = true
   laneScopes.length = 0
   // Not platform staff unless a test says so: the platform lane stays shut.
   vi.mocked(hasPlatformPermission).mockResolvedValue(false)
@@ -164,6 +196,7 @@ beforeEach(() => {
   vi.mocked(repository.countPendingInboxItems).mockResolvedValue(3)
   vi.mocked(resolveResourceAccess).mockResolvedValue(reachable)
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer' } as never)
+  vi.mocked(unreadableRunIds).mockResolvedValue(new Set())
   vi.mocked(resolvePeople).mockResolvedValue(
     new Map([['user_2', { userId: 'user_2', email: 'anna@grid.test', name: 'Anna Berger', profilePictureUrl: null }]]),
   )
@@ -313,6 +346,30 @@ describe('listInbox — projection', () => {
     expect(byId.get('empty')).toMatchObject({ subject: null, excerpt: null })
   })
 
+  it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
+      row({ id: 'junk', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
+      row({ id: 'inert', type: 'document.new_fassung', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'gone', type: 'document.new_fassung', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    // The row is a sentence about a person: who made the change comes from the
+    // directory by `actorUserId`, never from the payload.
+    expect(byId.get('ok')).toMatchObject({ subject: 'Grundriss A', related: 'Grundriss B', actorName: 'Anna Berger' })
+    expect(byId.get('junk')!.related).toBeNull()
+    // The newer document's name is content: a reader who lost the document sees neither.
+    expect(byId.get('inert')!.related).toBeNull()
+    expect(byId.get('gone')!.related).toBeNull()
+  })
+
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([row({ actorUserId: 'user_deactivated' })])
     vi.mocked(resolvePeople).mockResolvedValue(new Map())
@@ -393,6 +450,53 @@ describe('listInbox — project href threads the delegated task', () => {
 
     expect(byId.get('job-no-task')!.href).toBe('/app/projects/proj_1/automation?tab=jobs')
     expect(byId.get('job-blank-task')!.href).toBe('/app/projects/proj_1/automation?tab=jobs')
+  })
+
+  /**
+   * The target is the project, and project access says nothing about a
+   * revision task whose document moved into a folder the recipient may not
+   * read (ADR-0093): its title and its link into the thread are withheld, as
+   * the task list and the run view withhold them.
+   */
+  it('redacts a run row whose task the recipient may not see now, by the run it names', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({
+        id: 'revision-done',
+        type: 'job.completed',
+        resourceType: 'project',
+        resourceId: 'proj_1',
+        anchorId: 'backend-job-1',
+        payload: {
+          subject: 'Überarbeitung: Honorar Zimmerer',
+          runId: 'run-revision',
+          taskId: 'run-revision',
+          conversationId: 's_thread',
+          runMessageId: 'msg-1',
+        },
+      }),
+      row({
+        id: 'plain-done',
+        type: 'job.completed',
+        resourceType: 'project',
+        resourceId: 'proj_1',
+        anchorId: 'backend-job-2',
+        payload: { subject: 'Aktenvermerk', taskId: 'run-plain' },
+      }),
+    ])
+    vi.mocked(unreadableRunIds).mockResolvedValue(new Set(['run-revision']))
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(unreadableRunIds).toHaveBeenCalledWith(session, [
+      { projectId: 'proj_1', runId: 'run-revision' },
+      { projectId: 'proj_1', runId: 'run-plain' },
+    ])
+    expect(byId.get('revision-done')).toMatchObject({ href: null, subject: null, excerpt: null })
+    expect(byId.get('plain-done')).toMatchObject({
+      href: '/app/projects/proj_1/automation?tab=tasks&task=run-plain',
+      subject: 'Aktenvermerk',
+    })
   })
 })
 
@@ -476,7 +580,7 @@ describe('mutations are scoped to the caller\'s own inbox', () => {
   // cannot omit it silently.
   it('narrows both mutations to the types the caller may see', async () => {
     // Collaboration off, the way the rest of this file does it.
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markInboxItemsRead).mockResolvedValue(0)
     vi.mocked(repository.archiveInboxItem).mockResolvedValue(false)
 
@@ -630,7 +734,7 @@ describe('the SQL predicates behind the filters', () => {
  */
 describe('visibleInboxTypes gate — the inbox is not collaboration-only', () => {
   it('a tenant WITHOUT collaboration still sees operational items', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await listInbox(makeSession())
 
@@ -643,7 +747,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('a tenant WITHOUT collaboration gets a badge counted over the same set', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
 
     await getInboxSummary(makeSession())
 
@@ -663,7 +767,7 @@ describe('visibleInboxTypes gate — the inbox is not collaboration-only', () =>
   })
 
   it('"clear all" without collaboration cannot settle collaboration rows', async () => {
-    vi.stubEnv('GRID_COLLABORATION_ENABLED', 'false')
+    collaborationGranted = false
     vi.mocked(repository.markAllInboxItemsRead).mockResolvedValue(1)
 
     await markAllRead(makeSession())
@@ -782,5 +886,33 @@ describe('the platform lane', () => {
     expect(vi.mocked(repository.countPendingInboxItems).mock.calls.map((call) => call[0])).toEqual([
       'org_1',
     ])
+  })
+})
+
+/**
+ * Two emissions that fold into one row in the same call (two files of one
+ * settle quarantined for the same reviewer) used to reach one INSERT … ON
+ * CONFLICT DO UPDATE, which Postgres refuses. They go in successive waves.
+ */
+describe('emitInboxItems — repeated keys in one call', () => {
+  it('splits rows so no wave repeats a (recipient, group) key, keeping order', () => {
+    const row = (recipientUserId: string, groupKey: string, n: number) => ({ recipientUserId, groupKey, n })
+    const waves = upsertWaves([row('a', 'g', 1), row('b', 'g', 2), row('a', 'g', 3), row('a', 'g', 4), row('a', 'h', 5)])
+    expect(waves.map((wave) => wave.map((r) => r.n))).toEqual([[1, 2, 5], [3], [4]])
+  })
+
+  it('upserts each wave on its own', async () => {
+    vi.mocked(repository.upsertInboxItems).mockResolvedValue([])
+    const emission = {
+      organizationId: 'org-1',
+      recipientUserId: 'reviewer',
+      type: 'document.quarantined' as const,
+      resourceType: 'organization' as const,
+      resourceId: 'org-1',
+      actorUserId: 'uploader',
+      groupKey: 'document.quarantined:organization:org-1',
+    }
+    await emitInboxItems([emission, emission])
+    expect(repository.upsertInboxItems).toHaveBeenCalledTimes(2)
   })
 })

@@ -19,18 +19,27 @@ in the jobs system.
 
 from __future__ import annotations
 
+import hashlib
+import json
 import logging
 import threading
 import time
+from collections.abc import Callable
+from dataclasses import dataclass
 from datetime import UTC
 from datetime import date
 from datetime import datetime
+from enum import StrEnum
 from typing import TYPE_CHECKING
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from aiq_agent.common.db_utils import ensure_schema
+from aiq_agent.common.db_utils import lock_schema
 from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
 from aiq_agent.common.db_utils import redact_db_url
+from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
+from aiq_agent.knowledge.title_block import normalise_revision_facts
 
 if TYPE_CHECKING:
     from .schema import AvailableDocument
@@ -62,14 +71,171 @@ _OPTIONAL_COLUMNS: tuple[str, ...] = (
     "folder_path",
     "provenance",
     "doc_class_suggestion",
+    "tags_set_by",
+    "topics",
+    "capture",
+    "superseded_by",
+    "revision_suggestion",
+    "change_summary",
+    "change_basis",
+    "revision_facts",
 )
+
+#: ``tags_set_by`` value for tags a PERSON chose. Machine writes (ingest, the
+#: backfill script) never overwrite them — see :meth:`DocumentMetadataStore.register`.
+#: Topics ride on the same marker: a person's curation covers both columns.
+TAGS_SET_BY_PERSON = "person"
+
+#: What a ``revision_suggestion`` may say its confidence rests on: the title block
+#: (the same ``document_number`` on two documents), the file names (the series grammar
+#: of ``revision_series.py``) or the model's reading of the content. Anything else is not stored.
+SUGGESTION_BASES = ("title_block", "name", "content")
+
+#: The columns :meth:`DocumentMetadataStore.get_all` reads, in the order
+#: :meth:`DocumentMetadataStore._row_to_document` expects them.
+_DOCUMENT_COLUMNS = (
+    "filename, summary, tags, doc_class, display_title, folder_path, created_at, "
+    "topics, capture, superseded_by, revision_suggestion, change_summary, change_basis, revision_facts"
+)
+
+#: Where the Fassung facts a person made outlive a purge that can be undone (an archive, the folder
+#: bin, a publish that re-reads a document). One row per ``(collection, filename)`` whose metadata row
+#: went; the next :meth:`DocumentMetadataStore.register` of that name takes them back and deletes it.
+RETAINED_TABLE_NAME = "document_fassung_retained"
+
+#: What :data:`RETAINED_TABLE_NAME` keeps: the link a person confirmed, the suggestions a person
+#: refused, and the change line told against a linked Fassung (its basis is another file).
+_RETAINED_COLUMNS = ("superseded_by", "revision_suggestion", "change_summary", "change_basis")
+
+#: The reason a refusal is stored with when nothing else was suggested: the record keeps its shape.
+REFUSAL_REASON = "Von einer Person abgelehnt."
+
+
+class LinkOutcome(StrEnum):
+    """What :meth:`DocumentMetadataStore.link_fassung` did."""
+
+    LINKED = "linked"
+    #: ``newer`` already leads to ``older`` through replacements; nothing was written.
+    LOOP = "loop"
+    #: ``older`` has no metadata row in the collection; nothing was written.
+    MISSING = "missing"
+
+
+def dismissed_fassungen(suggestion: Any) -> list[str]:
+    """The file names a person refused as the older Fassung of a document, oldest refusal first.
+
+    Reads the stored record in both shapes: the current one carries ``dismissed_of``; a record
+    written before that carries one ``of`` with ``dismissed: true``. Anything else refuses nothing.
+    """
+    if not isinstance(suggestion, dict):
+        return []
+    names = [name for name in suggestion.get("dismissed_of") or () if isinstance(name, str) and name.strip()]
+    older = suggestion.get("of")
+    if suggestion.get("dismissed") is True and isinstance(older, str) and older.strip() and older not in names:
+        names.append(older)
+    return list(dict.fromkeys(names))
+
+
+def _link_lock_key(collection: str) -> int:
+    """The signed 64-bit advisory-lock key that serialises link writes within one collection (Postgres)."""
+    digest = hashlib.sha256(f"grid-fassung-link:{collection}".encode()).digest()
+    return int.from_bytes(digest[:8], "big", signed=True)
+
+
+@dataclass(frozen=True, slots=True)
+class _LinkRow:
+    """What :meth:`DocumentMetadataStore.link_fassung` reads of each row of the collection."""
+
+    superseded_by: str | None
+    change_basis: str | None
+    revision_suggestion: str | None
+
+
+def _set_columns(conn, collection: str, filename: str, **values: Any) -> None:
+    """UPDATE the named Fassung columns of one row on the caller's connection."""
+    from sqlalchemy import text
+
+    unknown = set(values) - set(_RETAINED_COLUMNS)
+    if unknown:
+        raise ValueError(f"not a Fassung column: {sorted(unknown)}")
+    assignments = ", ".join(f"{column} = :{column}" for column in values)
+    conn.execute(
+        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+        text(f"UPDATE {TABLE_NAME} SET {assignments} WHERE collection = :collection AND filename = :filename"),
+        {**values, "collection": collection, "filename": filename},
+    )
+
+
+def _refusal_record(refused: list[str]) -> dict[str, Any] | None:
+    """The stored record when a person refused files and nothing is suggested: the latest refusal as its ``of``."""
+    if not refused:
+        return None
+    return {
+        "of": refused[-1],
+        "confidence": 0.0,
+        "reason": REFUSAL_REASON,
+        "basis": "name",
+        "dismissed": True,
+        "dismissed_of": refused,
+    }
+
+
+def _merged_suggestion(stored: dict[str, Any] | None, new: dict[str, Any] | None) -> dict[str, Any] | None:
+    """``new`` as it is stored over ``stored``: the refusals of both kept, and dismissed when it names one of them.
+
+    ``new`` of ``None`` clears the open suggestion; what is left is the refusals, or nothing.
+    """
+    refused = list(dict.fromkeys(dismissed_fassungen(stored) + dismissed_fassungen(new)))
+    if new is None:
+        return _refusal_record(refused)
+    return {**new, "dismissed": new["of"] in refused, "dismissed_of": refused}
+
+
+def _with_refusal(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:
+    """``stored`` with ``older`` refused: the open suggestion dismissed when it names ``older``, else kept open."""
+    refused = [name for name in dismissed_fassungen(stored) if name != older] + [older]
+    if stored is None or stored["of"] == older or stored["dismissed"]:
+        return {**(stored or {}), **_refusal_record(refused), **_kept_reason(stored, older)}
+    return {**stored, "dismissed_of": refused}
+
+
+def _person_made_facts(
+    filename: str,
+    superseded_by: str | None,
+    revision_suggestion: str | None,
+    change_summary: str | None,
+    change_basis: str | None,
+) -> dict[str, str | None] | None:
+    """What a reversible purge keeps of a row: the confirmed link, the refusals, a change line against a link.
+
+    An open suggestion is Piloti's advice and is read again; a change line told against the
+    document's own earlier upload (``change_basis`` is its own name) describes bytes the re-read
+    replaces. ``None`` when nothing a person made is on the row.
+    """
+    refusals = _merged_suggestion(DocumentMetadataStore._decode_suggestion(revision_suggestion), None)
+    linked_change = bool(change_summary) and bool(change_basis) and change_basis != filename
+    kept = {
+        "superseded_by": superseded_by or None,
+        "revision_suggestion": json.dumps(refusals) if refusals else None,
+        "change_summary": change_summary if linked_change else None,
+        "change_basis": change_basis if linked_change else None,
+    }
+    return kept if any(kept.values()) else None
+
+
+def _kept_reason(stored: dict[str, Any] | None, older: str) -> dict[str, Any]:
+    """The suggestion's own reason, confidence and basis when the refusal is of the file it named."""
+    if stored is None or stored["of"] != older:
+        return {}
+    return {key: stored[key] for key in ("confidence", "reason", "basis")}
+
 
 # Every raw-SQL statement in this module interpolates ONLY trusted, code-defined
 # SQL identifiers: the table/index name constants above, and column names drawn
 # from a fixed allowlist (``_OPTIONAL_COLUMNS`` plus the literal
 # ``"tags"``/``"doc_class"``/``"display_title"``/``"folder_path"``/``"provenance"``/
-# ``"doc_class_suggestion"``
-# passed by the typed accessors).
+# ``"doc_class_suggestion"``/``"topics"``/``"capture"``/``"superseded_by"``/
+# ``"revision_suggestion"``/``"revision_facts"`` passed by the typed accessors).
 # SQL identifiers cannot be bound parameters, so they must live in the statement
 # text. Every caller-supplied *value* (collection, filename, summary, tags,
 # display_title, …) is always passed as a bound ``:param`` and never interpolated.
@@ -101,6 +267,8 @@ class DocumentMetadataStore:
     _sync_engine_cache: dict[str, tuple[Any, float]] = {}
     _cache_lock = threading.Lock()
     _tables_initialized: set[str] = set()
+    #: Serialises :meth:`link_fassung` on SQLite, which has no advisory lock (dev and tests run one process).
+    _link_lock = threading.Lock()
 
     def __init__(self, db_url: str):
         self.db_url = db_url
@@ -199,19 +367,15 @@ class DocumentMetadataStore:
             if self.db_url in DocumentMetadataStore._tables_initialized:
                 return
 
-            migrated = False
-            try:
-                with self._sync_engine.connect() as conn:
-                    migrated = self._run_schema(conn)
-                    conn.commit()
-            except Exception as e:
-                logger.warning("Failed to ensure document_metadata schema (sync): %s", e)
-
             # Only mark the store initialized when the schema is actually ready.
             # A failed migration must NOT be cached as initialized, so the next
             # call retries it instead of writing against a missing column.
-            if migrated:
-                DocumentMetadataStore._tables_initialized.add(self.db_url)
+            try:
+                ensure_schema(self._sync_engine, TABLE_NAME, self._run_schema)
+            except Exception as e:
+                logger.warning("Failed to ensure document_metadata schema (sync): %s", e)
+                return
+            DocumentMetadataStore._tables_initialized.add(self.db_url)
 
     @classmethod
     async def _ensure_table_async(cls, db_url: str):
@@ -225,22 +389,21 @@ class DocumentMetadataStore:
         store = cls.__new__(cls)
         store.db_url = db_url
 
-        migrated = False
         try:
             async with engine.begin() as conn:
-                migrated = await conn.run_sync(store._run_schema)
+                await conn.run_sync(lock_schema, TABLE_NAME)
+                await conn.run_sync(store._run_schema)
         except Exception as e:
             logger.warning("Failed to ensure document_metadata schema (async): %s", e)
+            return
+        cls._tables_initialized.add(db_url)
+        logger.info("Created/migrated document_metadata table (async) in %s", redact_db_url(db_url))
 
-        if migrated:
-            cls._tables_initialized.add(db_url)
-            logger.info("Created/migrated document_metadata table (async) in %s", redact_db_url(db_url))
-
-    def _run_schema(self, conn) -> bool:
+    def _run_schema(self, conn) -> None:
         """Create fresh, rename the legacy table, then backfill missing columns.
 
-        Runs over a live sync connection (the caller owns the transaction/commit).
-        Returns ``True`` when the schema is ready.
+        Runs over a live sync connection (the caller owns the transaction/commit,
+        and has taken the schema lock: the processes of a boot all reach this at once).
         """
         from sqlalchemy import inspect
         from sqlalchemy import text
@@ -249,26 +412,40 @@ class DocumentMetadataStore:
         has_current = inspector.has_table(TABLE_NAME)
         has_legacy = inspector.has_table(LEGACY_TABLE_NAME)
 
-        try:
-            if not has_current and has_legacy:
-                # Preserve every existing row: rename the table in place rather
-                # than recreating it. Postgres and SQLite both support this.
-                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                conn.execute(text(f"ALTER TABLE {LEGACY_TABLE_NAME} RENAME TO {TABLE_NAME}"))
-                logger.info("Migrated legacy '%s' table to '%s' (rows preserved)", LEGACY_TABLE_NAME, TABLE_NAME)
-            elif not has_current:
-                self._create_table(conn)
+        if not has_current and has_legacy:
+            # Preserve every existing row: rename the table in place rather
+            # than recreating it. Postgres and SQLite both support this.
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"ALTER TABLE {LEGACY_TABLE_NAME} RENAME TO {TABLE_NAME}"))
+            logger.info("Migrated legacy '%s' table to '%s' (rows preserved)", LEGACY_TABLE_NAME, TABLE_NAME)
+        elif not has_current:
+            self._create_table(conn)
 
-            # Backfill any optional column that predates the current schema
-            # (covers a just-renamed legacy table and older document_metadata ones).
-            for column in _OPTIONAL_COLUMNS:
-                self._add_column_if_missing(conn, column)
+        # Backfill any optional column that predates the current schema
+        # (covers a just-renamed legacy table and older document_metadata ones).
+        for column in _OPTIONAL_COLUMNS:
+            self._add_column_if_missing(conn, column)
 
-            self._ensure_index(conn)
-            return True
-        except Exception as e:
-            logger.warning("Failed to migrate document_metadata schema: %s", e)
-            return False
+        self._ensure_index(conn)
+        self._create_retained_table(conn)
+
+    def _create_retained_table(self, conn) -> None:
+        """Create :data:`RETAINED_TABLE_NAME` if it is missing: the Fassung facts a reversible purge keeps."""
+        from sqlalchemy import text
+
+        conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"CREATE TABLE IF NOT EXISTS {RETAINED_TABLE_NAME} ("
+                "collection VARCHAR(256) NOT NULL, "
+                "filename VARCHAR(512) NOT NULL, "
+                "superseded_by TEXT, "
+                "revision_suggestion TEXT, "
+                "change_summary TEXT, "
+                "change_basis TEXT, "
+                "PRIMARY KEY (collection, filename))"
+            )
+        )
 
     def _create_table(self, conn) -> None:
         from sqlalchemy import text
@@ -318,8 +495,15 @@ class DocumentMetadataStore:
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         conn.execute(text(f"DROP INDEX IF EXISTS {_LEGACY_INDEX_NAME}"))
 
-    def register(self, collection: str, filename: str, summary: str, tags: list[str] | None = None) -> None:
-        """Store a document summary and optional controlled tags (sync).
+    def register(
+        self,
+        collection: str,
+        filename: str,
+        summary: str,
+        tags: list[str] | None = None,
+        topics: list[str] | None = None,
+    ) -> None:
+        """Store a document summary, its controlled tags and its open topics (sync).
 
         Owns the ``summary`` and ``tags`` columns and NOTHING ELSE. The other
         columns on the row — ``doc_class``, ``display_title``, ``folder_path`` —
@@ -332,47 +516,277 @@ class DocumentMetadataStore:
         A re-ingest silently un-renamed and un-filed the document, and the only
         symptom was the agent describing a folder structure the user no longer
         had. ``excluded`` is spelled the same in SQLite and Postgres.
+
+        Tags a PERSON set (``tags_set_by = 'person'``) are kept as they are: the
+        classifier's fresh output replaces only its own earlier guess. Without
+        this, „Erneut lesen" silently threw away every correction anybody had
+        made, because the re-read re-classifies and this upsert wrote the result
+        over whatever was there.
+
+        Topics follow the same rule, on the same marker: a person's curation
+        covers ``tags`` AND ``topics``. So a person who edited only the topics
+        also freezes the tags (and the reverse), because the row carries one
+        ``tags_set_by`` flag. That is deliberate: one "a person touched this
+        row" answer, not two that a re-read could disagree with.
         """
         import json
 
         from sqlalchemy import text
 
         tags_json = json.dumps(tags) if tags else None
+        topics_json = json.dumps(topics) if topics else None
 
         try:
             with self._sync_engine.connect() as conn:
                 conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     text(
-                        f"INSERT INTO {TABLE_NAME} (collection, filename, summary, tags) "
-                        "VALUES (:collection, :filename, :summary, :tags) "
+                        f"INSERT INTO {TABLE_NAME} (collection, filename, summary, tags, topics) "
+                        "VALUES (:collection, :filename, :summary, :tags, :topics) "
                         "ON CONFLICT (collection, filename) DO UPDATE SET "
-                        "summary = excluded.summary, tags = excluded.tags"
+                        "summary = excluded.summary, "
+                        f"tags = CASE WHEN {TABLE_NAME}.tags_set_by = :person "
+                        f"THEN {TABLE_NAME}.tags ELSE excluded.tags END, "
+                        f"topics = CASE WHEN {TABLE_NAME}.tags_set_by = :person "
+                        f"THEN {TABLE_NAME}.topics ELSE excluded.topics END"
                     ),
-                    {"collection": collection, "filename": filename, "summary": summary, "tags": tags_json},
+                    {
+                        "collection": collection,
+                        "filename": filename,
+                        "summary": summary,
+                        "tags": tags_json,
+                        "topics": topics_json,
+                        "person": TAGS_SET_BY_PERSON,
+                    },
                 )
+                self._take_back_retained(conn, collection, filename)
                 conn.commit()
                 logger.debug("Registered metadata for %s in %s", filename, collection)
         except Exception as e:
             logger.warning("Failed to register metadata for %s: %s", filename, e)
 
+    def _take_back_retained(self, conn, collection: str, filename: str) -> None:
+        """Put the Fassung facts a reversible purge kept back onto the row, in the caller's transaction.
+
+        A column the row already fills wins: a fact written since is newer than the one kept. The kept
+        entry goes either way, so it is taken back exactly once.
+        """
+        from sqlalchemy import text
+
+        params = {"collection": collection, "filename": filename}
+        kept = conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"SELECT {', '.join(_RETAINED_COLUMNS)} FROM {RETAINED_TABLE_NAME} "
+                "WHERE collection = :collection AND filename = :filename"
+            ),
+            params,
+        ).first()
+        if kept is None:
+            return
+        kept = dict(zip(_RETAINED_COLUMNS, kept, strict=True))
+        if kept["superseded_by"] and self._closes_a_loop(conn, collection, filename, kept["superseded_by"]):
+            # Linked meanwhile the other way round (X over this file while it was gone): that link stands.
+            kept["superseded_by"] = None
+        conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"UPDATE {TABLE_NAME} SET "
+                "superseded_by = COALESCE(superseded_by, :superseded_by), "
+                "revision_suggestion = COALESCE(revision_suggestion, :revision_suggestion), "
+                "change_basis = CASE WHEN change_summary IS NULL THEN :change_basis ELSE change_basis END, "
+                "change_summary = COALESCE(change_summary, :change_summary) "
+                "WHERE collection = :collection AND filename = :filename"
+            ),
+            {**params, **kept},
+        )
+        self._forget_retained(conn, collection, filename)
+        logger.info("Took back the Fassung facts kept for %s in %s", filename, collection)
+
+    @staticmethod
+    def _closes_a_loop(conn, collection: str, older: str, newer: str) -> bool:
+        """Whether ``older -> newer`` would close a loop over the links the collection's rows hold now."""
+        from sqlalchemy import text
+
+        from .document_revisions import would_loop
+
+        rows = {
+            row[0]: _LinkRow(row[1], None, None)
+            for row in conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(f"SELECT filename, superseded_by FROM {TABLE_NAME} WHERE collection = :collection"),
+                {"collection": collection},
+            )
+        }
+        return would_loop(rows, newer=newer, older=older)
+
+    @staticmethod
+    def _forget_retained(conn, collection: str, filename: str) -> None:
+        from sqlalchemy import text
+
+        conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(f"DELETE FROM {RETAINED_TABLE_NAME} WHERE collection = :collection AND filename = :filename"),
+            {"collection": collection, "filename": filename},
+        )
+
     def update_tags(self, collection: str, filename: str, tags: list[str] | None) -> bool:
-        """Replace only the ``tags`` of an existing metadata row (sync).
+        """Replace the machine's ``tags`` on an existing metadata row (sync).
 
-        The one-sentence ``summary`` is NEVER touched — this is the tag-edit /
-        backfill seam, distinct from :meth:`register` (which owns the summary).
-        An empty or ``None`` ``tags`` clears the column (stored as SQL NULL,
-        which decodes back to ``None``).
+        The one-sentence ``summary`` is NEVER touched — this is the backfill
+        seam, distinct from :meth:`register` (which owns the summary). An empty
+        or ``None`` ``tags`` clears the column (stored as SQL NULL, which decodes
+        back to ``None``).
 
-        Returns ``True`` when a row existed and was updated, ``False`` when no
-        metadata row exists for ``(collection, filename)`` — so callers (the edit
-        endpoint) can surface a 404 rather than silently creating a summary-less,
-        NOT NULL-violating row.
+        A row whose tags a person chose is left alone, like :meth:`register`
+        leaves it: a machine write never overrules a person's. A person's own
+        edit goes through :meth:`set_tags_by_person`.
+
+        Returns ``True`` when a row was updated, ``False`` when no metadata row
+        exists for ``(collection, filename)`` or its tags are a person's.
         """
         import json
 
+        from sqlalchemy import text
+
         tags_json = json.dumps(tags) if tags else None
-        return self._update_column(collection, filename, "tags", tags_json)
+        try:
+            with self._sync_engine.connect() as conn:
+                result = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"UPDATE {TABLE_NAME} SET tags = :tags "
+                        "WHERE collection = :collection AND filename = :filename "
+                        "AND (tags_set_by IS NULL OR tags_set_by <> :person)"
+                    ),
+                    {"tags": tags_json, "collection": collection, "filename": filename, "person": TAGS_SET_BY_PERSON},
+                )
+                conn.commit()
+                return (result.rowcount or 0) > 0
+        except Exception as e:
+            logger.warning("Failed to update tags for %s: %s", filename, e)
+            return False
+
+    def set_tags_by_person(self, collection: str, filename: str, tags: list[str] | None) -> bool:
+        """Store the tags a PERSON chose, and mark them as theirs (sync).
+
+        From then on neither a re-ingest (:meth:`register`) nor the backfill
+        (:meth:`update_tags`) replaces them. An empty list is a choice too — "no
+        tags" — and is kept the same way. ``False`` when no row exists.
+        """
+        return self._set_person_list(collection, filename, "tags", tags)
+
+    def set_topics_by_person(self, collection: str, filename: str, topics: list[str] | None) -> bool:
+        """Store the topics a PERSON chose, and mark the row as theirs (sync).
+
+        The topic twin of :meth:`set_tags_by_person`, on the same marker, so a
+        re-ingest keeps them (see :meth:`register`). ``False`` when no row exists.
+        """
+        return self._set_person_list(collection, filename, "topics", topics)
+
+    def get_person_tags_batch(self, collection: str, filenames: list[str]) -> dict[str, list[str]]:
+        """The tags a PERSON chose, for the rows among ``filenames`` that have them.
+
+        A row whose person cleared every tag answers ``[]`` — still a choice, and
+        distinct from a row that is absent (the machine's tags, or no row).
+        Fail-open to ``{}``.
+        """
+        return self._person_list_batch(collection, filenames, "tags")
+
+    def get_person_topics_batch(self, collection: str, filenames: list[str]) -> dict[str, list[str]]:
+        """The topics a PERSON chose, with the same answer shape as :meth:`get_person_tags_batch`."""
+        return self._person_list_batch(collection, filenames, "topics")
+
+    def get_topic_vocabulary(self, collection: str, limit: int = MAX_TOPIC_VOCABULARY) -> list[str]:
+        """The topics this collection already uses, most frequent first (sync).
+
+        What ingestion offers the model to reuse, so one office's "Attika" stays
+        "Attika". A topic counts once per document, whatever its case; the
+        spelling kept is the most frequent one, and ties sort alphabetically.
+        Fail-open to ``[]``.
+        """
+        from sqlalchemy import text
+
+        try:
+            with self._sync_engine.connect() as conn:
+                rows = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(f"SELECT topics FROM {TABLE_NAME} WHERE collection = :collection AND topics IS NOT NULL"),
+                    {"collection": collection},
+                )
+                documents = [self._decode_tags(row[0]) or [] for row in rows]
+        except Exception as e:
+            logger.warning("Failed to read topic vocabulary for %s: %s", collection, e)
+            return []
+
+        from collections import Counter
+        from collections import defaultdict
+
+        documents_per_topic: Counter[str] = Counter()
+        spellings: defaultdict[str, Counter[str]] = defaultdict(Counter)
+        for topics in documents:
+            first_spelling: dict[str, str] = {}
+            for topic in topics:
+                first_spelling.setdefault(topic.casefold(), topic)
+            for key, spelling in first_spelling.items():
+                documents_per_topic[key] += 1
+                spellings[key][spelling] += 1
+
+        ranked = sorted(documents_per_topic, key=lambda key: (-documents_per_topic[key], key))
+        return [spellings[key].most_common(1)[0][0] for key in ranked[:limit]]
+
+    def _set_person_list(self, collection: str, filename: str, column: str, values: list[str] | None) -> bool:
+        """Store a JSON list a PERSON chose in ``column`` and mark the row ``tags_set_by = 'person'``."""
+        import json
+
+        from sqlalchemy import text
+
+        value_json = json.dumps(values) if values else None
+        try:
+            with self._sync_engine.connect() as conn:
+                result = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"UPDATE {TABLE_NAME} SET {column} = :value, tags_set_by = :person "
+                        "WHERE collection = :collection AND filename = :filename"
+                    ),
+                    {
+                        "value": value_json,
+                        "collection": collection,
+                        "filename": filename,
+                        "person": TAGS_SET_BY_PERSON,
+                    },
+                )
+                conn.commit()
+                return (result.rowcount or 0) > 0
+        except Exception as e:
+            logger.warning("Failed to set %s for %s: %s", column, filename, e)
+            return False
+
+    def _person_list_batch(self, collection: str, filenames: list[str], column: str) -> dict[str, list[str]]:
+        """The JSON list in ``column`` for the rows among ``filenames`` a PERSON set. Fail-open to ``{}``."""
+        if not filenames:
+            return {}
+        from sqlalchemy import bindparam
+        from sqlalchemy import text
+
+        result: dict[str, list[str]] = {}
+        try:
+            with self._sync_engine.connect() as conn:
+                rows = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"SELECT filename, {column} FROM {TABLE_NAME} "
+                        "WHERE collection = :collection AND filename IN :filenames AND tags_set_by = :person"
+                    ).bindparams(bindparam("filenames", expanding=True)),
+                    {"collection": collection, "filenames": list(filenames), "person": TAGS_SET_BY_PERSON},
+                )
+                for row in rows:
+                    result[row[0]] = self._decode_tags(row[1]) or []
+        except Exception as e:
+            logger.warning("Failed to batch-get person %s for %s: %s", column, collection, e)
+            return {}
+        return result
 
     def set_doc_class(self, collection: str, filename: str, doc_class: str | None) -> bool:
         """Replace only the ``doc_class`` of an existing metadata row (sync).
@@ -497,6 +911,239 @@ class DocumentMetadataStore:
             logger.warning("Ignoring unreadable provenance for %s in %s", filename, collection)
             return None
         return decoded if isinstance(decoded, dict) else None
+
+    def set_capture(self, collection: str, filename: str, capture: dict[str, Any] | None) -> bool:
+        """Replace only the ``capture`` facts of an existing metadata row (sync).
+
+        What the camera wrote into a photo (:class:`PhotoFacts`, as its
+        ``as_metadata()``): ``captured_at``, ``latitude``, ``longitude``,
+        ``camera``. The coordinates are stored and read back for the BFF; they
+        are never rendered into anything a model reads, which is the readers'
+        rule, not this store's. Same UPDATE-only contract as
+        :meth:`set_provenance`. ``None`` or an empty mapping clears the column.
+        """
+        import json
+
+        return self._update_column(collection, filename, "capture", json.dumps(capture) if capture else None)
+
+    def set_revision_facts(self, collection: str, filename: str, facts: dict[str, Any] | None) -> bool:
+        """Replace only the ``revision_facts`` of an existing metadata row (sync): the title block that was read.
+
+        ``document_number``, ``revision`` (the Index as printed), ``revision_date``
+        (ISO), ``scale``, ``title`` and the ``page`` they were read on, present
+        keys only (:func:`~aiq_agent.knowledge.title_block.normalise_revision_facts`).
+        A mapping with nothing printed in it clears the column, which is what a
+        re-upload without a title block means: the old sheet's number must not
+        outlive the sheet. Same UPDATE-only contract as :meth:`set_capture`.
+        """
+        import json
+
+        normalised = normalise_revision_facts(facts)
+        return self._update_column(
+            collection, filename, "revision_facts", json.dumps(normalised, ensure_ascii=False) if normalised else None
+        )
+
+    def set_superseded_by(self, collection: str, older: str, newer: str | None) -> bool:
+        """Record that a PERSON confirmed ``newer`` replaces ``older`` (sync), or lift it with ``None``.
+
+        The link lives on the OLDER document's row, as the file name of the newer
+        one in the same collection. Only a person's confirmation writes it;
+        ingestion and models suggest through :meth:`set_revision_suggestion` and
+        never here. A re-ingest of either file keeps it: :meth:`register` writes
+        only the summary, tags and topics. Same UPDATE-only contract as
+        :meth:`set_doc_class`.
+
+        Without a loop check, so it is for lifting a link (``None``) and for
+        carrying one that already exists onto another spelling. A NEW link goes
+        through :meth:`link_fassung`, which refuses a loop in the same transaction.
+        """
+        return self._update_column(collection, older, "superseded_by", newer or None)
+
+    def set_revision_suggestion(self, collection: str, filename: str, suggestion: dict[str, Any] | None) -> bool:
+        """Store (or clear, with ``None``) Piloti's suggestion that ``filename`` is a newer Fassung of another.
+
+        A suggestion, never a link: nothing hides or re-ranks a document because
+        of it. A dict that is not a valid suggestion (:meth:`_normalise_suggestion`)
+        is refused with ``False`` rather than stored. UPDATE-only, like the rest.
+
+        The refusals a person made (``dismissed_of``) outlive every write here: a new
+        suggestion keeps them, and one naming a refused file is stored dismissed, so
+        it is not offered again. ``None`` clears the open suggestion and keeps them.
+        """
+        normalised = None
+        if suggestion is not None:
+            normalised = self._normalise_suggestion(suggestion)
+            if normalised is None:
+                logger.warning("Refused an invalid revision suggestion for %s", filename)
+                return False
+        return self._rewrite_suggestion(collection, filename, lambda stored: _merged_suggestion(stored, normalised))
+
+    def dismiss_revision_suggestion(self, collection: str, filename: str, older: str) -> bool:
+        """Record that a person refused ``older`` as the Fassung ``filename`` replaces (sync).
+
+        Added to the refusals the row already holds, so „Nein" to one file never
+        undoes „Nein" to another. An open suggestion about ``older`` is marked
+        dismissed; one about another file stays open. ``False`` when no row exists.
+        """
+        if not older.strip():
+            return False
+        return self._rewrite_suggestion(collection, filename, lambda stored: _with_refusal(stored, older))
+
+    def _rewrite_suggestion(
+        self, collection: str, filename: str, rewrite: Callable[[dict[str, Any] | None], dict[str, Any] | None]
+    ) -> bool:
+        """Read the stored suggestion, ``rewrite`` it, and write the result back in one transaction."""
+        from sqlalchemy import text
+
+        params = {"collection": collection, "filename": filename}
+        try:
+            with self._sync_engine.begin() as conn:
+                row = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"SELECT revision_suggestion FROM {TABLE_NAME} "
+                        "WHERE collection = :collection AND filename = :filename"
+                    ),
+                    params,
+                ).first()
+                if row is None:
+                    return False
+                written = rewrite(self._decode_suggestion(row[0]))
+                conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"UPDATE {TABLE_NAME} SET revision_suggestion = :value "
+                        "WHERE collection = :collection AND filename = :filename"
+                    ),
+                    {**params, "value": json.dumps(written) if written else None},
+                )
+                return True
+        except Exception as e:
+            logger.warning("Failed to write the revision suggestion for %s: %s", filename, e)
+            return False
+
+    def link_fassung(self, collection: str, older: str, newer: str) -> LinkOutcome:
+        """Record that a PERSON confirmed ``newer`` replaces ``older``, refusing a loop, in one locked transaction.
+
+        The loop check and the write are one step: two people confirming A over B
+        and B over A at the same moment each read a collection with no link, and
+        writing after a separate check stored both. Here the second waits for the
+        first (an advisory lock per collection on Postgres, a process lock on
+        SQLite) and then sees its link.
+
+        In the same transaction: a suggestion on ``newer`` that named ``older`` is
+        cleared (its refusals stay), and when ``older`` was replaced by another file
+        X until now, X's change line told against ``older`` goes, because X no longer
+        replaces it. ``newer`` need not have a row yet: an upload whose summary is
+        still missing has the link waiting for it (:meth:`_attach_supersedes`).
+        """
+        if self._is_postgres():
+            return self._link_fassung_locked(collection, older, newer)
+        with DocumentMetadataStore._link_lock:
+            return self._link_fassung_locked(collection, older, newer)
+
+    def _link_fassung_locked(self, collection: str, older: str, newer: str) -> LinkOutcome:
+        from sqlalchemy import text
+
+        from .document_revisions import would_loop
+
+        with self._sync_engine.begin() as conn:
+            if conn.dialect.name == "postgresql":
+                conn.execute(
+                    text("SELECT pg_advisory_xact_lock(CAST(:key AS bigint))"), {"key": _link_lock_key(collection)}
+                )
+            rows = {
+                row[0]: _LinkRow(row[1], row[2], row[3])
+                for row in conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"SELECT filename, superseded_by, change_basis, revision_suggestion FROM {TABLE_NAME} "
+                        "WHERE collection = :collection"
+                    ),
+                    {"collection": collection},
+                )
+            }
+            if older not in rows:
+                return LinkOutcome.MISSING
+            if would_loop(rows, newer=newer, older=older):
+                return LinkOutcome.LOOP
+            self._write_link(conn, collection, older, newer, rows)
+        return LinkOutcome.LINKED
+
+    def _write_link(self, conn, collection: str, older: str, newer: str, rows: dict[str, _LinkRow]) -> None:
+        """The three writes of a confirmed link, on the caller's locked transaction."""
+        _set_columns(conn, collection, older, superseded_by=newer)
+        previous = rows[older].superseded_by
+        if previous and previous != newer and previous in rows and rows[previous].change_basis == older:
+            _set_columns(conn, collection, previous, change_summary=None, change_basis=None)
+        own = rows.get(newer)
+        stored = self._decode_suggestion(own.revision_suggestion) if own is not None else None
+        if stored is not None and stored["of"] == older and not stored["dismissed"]:
+            kept = _merged_suggestion(stored, None)
+            _set_columns(conn, collection, newer, revision_suggestion=json.dumps(kept) if kept else None)
+
+    def set_change_summary(self, collection: str, filename: str, summary: str | None, basis: str | None) -> bool:
+        """Store what changed in ``filename`` against the Fassung named ``basis`` (sync); ``None`` clears both.
+
+        ``basis`` is the file name compared against: the document's own name for
+        its previous upload, another name for a Fassung a person confirmed. One
+        UPDATE writes both columns, so a summary is never left with another
+        file's basis.
+        """
+        from sqlalchemy import text
+
+        text_value = (summary or "").strip() or None
+        basis_value = (basis or "").strip() or None if text_value else None
+        try:
+            with self._sync_engine.connect() as conn:
+                result = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"UPDATE {TABLE_NAME} SET change_summary = :summary, change_basis = :basis "
+                        "WHERE collection = :collection AND filename = :filename"
+                    ),
+                    {"summary": text_value, "basis": basis_value, "collection": collection, "filename": filename},
+                )
+                conn.commit()
+                return (result.rowcount or 0) > 0
+        except Exception as e:
+            logger.warning("Failed to set the change summary for %s: %s", filename, e)
+            return False
+
+    def get_superseded_by_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
+        """The confirmed ``superseded_by`` of the rows among ``filenames`` that have one."""
+        return self._get_column_batch(collection, filenames, "superseded_by")
+
+    def get_superseded_files(self, collection: str) -> dict[str, str]:
+        """Every file of ``collection`` a person replaced, with the file that replaced it (sync).
+
+        Read at search time, so the answer is the store's and a delete or an
+        unlink applies to the next search. A link counts only while the newer
+        document still has its row, which the same query checks. Fail-open to
+        ``{}``: a search that cannot read it hides nothing.
+        """
+        from sqlalchemy import text
+
+        try:
+            with self._sync_engine.connect() as conn:
+                rows = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"SELECT older.filename, older.superseded_by FROM {TABLE_NAME} older "
+                        "WHERE older.collection = :collection AND older.superseded_by IS NOT NULL "
+                        f"AND EXISTS (SELECT 1 FROM {TABLE_NAME} newer "
+                        "WHERE newer.collection = older.collection AND newer.filename = older.superseded_by)"
+                    ),
+                    {"collection": collection},
+                )
+                return {row[0]: row[1] for row in rows}
+        except Exception as e:
+            logger.warning("Failed to read the replaced files of %s: %s", collection, e)
+            return {}
+
+    def get_revision_suggestions_batch(self, collection: str, filenames: list[str]) -> dict[str, str]:
+        """The stored ``revision_suggestion`` JSON of the rows among ``filenames`` that have one (raw text)."""
+        return self._get_column_batch(collection, filenames, "revision_suggestion")
 
     def rewrite_folder_paths(self, collection: str, from_path: str, to_path: str | None) -> int:
         """Re-file a whole subtree after a folder was renamed, moved or deleted.
@@ -700,6 +1347,99 @@ class DocumentMetadataStore:
             return tags or None
         return None
 
+    #: The keys a ``capture`` object may carry, and the type each must have.
+    _CAPTURE_TYPES: dict[str, type | tuple[type, ...]] = {
+        "captured_at": str,
+        "latitude": (int, float),
+        "longitude": (int, float),
+        "camera": str,
+    }
+
+    @classmethod
+    def _decode_object(cls, raw: Any) -> dict[str, Any] | None:
+        """Decode the JSON ``capture`` column: only the known keys, each of its type (fail-open).
+
+        A key outside :attr:`_CAPTURE_TYPES`, or one of the wrong type, is dropped
+        rather than failing the row: the column is a record of what a camera
+        wrote, and a malformed key is a fact we cannot use, not a reason to lose
+        the document. ``bool`` is excluded from the numeric keys (it is an ``int``
+        in Python, and a flag is not a coordinate).
+        """
+        if not raw:
+            return None
+        import json
+
+        try:
+            decoded = json.loads(raw)
+        except (TypeError, ValueError):
+            return None
+        if not isinstance(decoded, dict):
+            return None
+        kept: dict[str, Any] = {}
+        for key, expected in cls._CAPTURE_TYPES.items():
+            value = decoded.get(key)
+            if value is None or isinstance(value, bool) or not isinstance(value, expected):
+                continue
+            if key == "captured_at" and not value.strip():
+                continue
+            kept[key] = value
+        return kept or None
+
+    @staticmethod
+    def _decode_revision_facts(raw: Any) -> dict[str, Any] | None:
+        """Decode the JSON ``revision_facts`` column through the one normaliser (fail-open to ``None``)."""
+        if not raw:
+            return None
+        import json
+
+        try:
+            return normalise_revision_facts(json.loads(raw))
+        except (TypeError, ValueError):
+            return None
+
+    @staticmethod
+    def _normalise_suggestion(value: Any) -> dict[str, Any] | None:
+        """A revision suggestion as it is stored and read: exactly its six keys, each valid, or ``None``.
+
+        ``of`` is the older file name, ``confidence`` a number in 0..1 (a flag is
+        not one, and NaN is not one), ``reason`` a non-empty text, ``basis`` one
+        of :data:`SUGGESTION_BASES`. ``dismissed_of`` lists every file a person
+        refused as the older Fassung (:func:`dismissed_fassungen`, which also reads
+        the older record with one dismissed ``of``), and ``dismissed`` says whether
+        ``of`` is among them. A suggestion missing any of the first four is no suggestion.
+        """
+        if not isinstance(value, dict):
+            return None
+        older, confidence = value.get("of"), value.get("confidence")
+        reason, basis = value.get("reason"), value.get("basis")
+        if not isinstance(older, str) or not older.strip():
+            return None
+        if isinstance(confidence, bool) or not isinstance(confidence, int | float) or not 0.0 <= confidence <= 1.0:
+            return None
+        if not isinstance(reason, str) or not reason.strip() or basis not in SUGGESTION_BASES:
+            return None
+        refused = dismissed_fassungen(value)
+        return {
+            "of": older,
+            "confidence": float(confidence),
+            "reason": reason.strip(),
+            "basis": basis,
+            "dismissed": older in refused,
+            "dismissed_of": refused,
+        }
+
+    @classmethod
+    def _decode_suggestion(cls, raw: Any) -> dict[str, Any] | None:
+        """Decode the JSON ``revision_suggestion`` column (fail-open to ``None``)."""
+        if not raw:
+            return None
+        import json
+
+        try:
+            return cls._normalise_suggestion(json.loads(raw))
+        except (TypeError, ValueError):
+            return None
+
     def _row_to_document(self, row: Any, collection: str | None = None) -> AvailableDocument:
         from .schema import AvailableDocument
 
@@ -711,8 +1451,36 @@ class DocumentMetadataStore:
             display_title=row[4] or None,
             folder_path=row[5] or None,
             added_at=self._iso_date(row[6]) if len(row) > 6 else None,
+            topics=self._decode_tags(row[7]) if len(row) > 7 else None,
+            capture=self._decode_object(row[8]) if len(row) > 8 else None,
+            superseded_by=(row[9] or None) if len(row) > 9 else None,
+            revision_suggestion=self._decode_suggestion(row[10]) if len(row) > 10 else None,
+            change_summary=(row[11] or None) if len(row) > 11 else None,
+            change_basis=(row[12] or None) if len(row) > 12 else None,
+            revision_facts=self._decode_revision_facts(row[13]) if len(row) > 13 else None,
             collection=collection,
         )
+
+    @staticmethod
+    def _attach_supersedes(documents: list[AvailableDocument]) -> list[AvailableDocument]:
+        """Fill ``supersedes``, the reverse of ``superseded_by``, over one collection's rows.
+
+        Derived on every read and never stored, so there is one fact to keep true.
+        A link counts only while the newer document still has its row: a purge that
+        can be undone leaves the links that point at it (:meth:`unregister`), and this
+        guard is what reads them as nothing until the row is back. An older document
+        whose newer one is gone is current again, not hidden.
+        """
+        present = {doc.file_name for doc in documents}
+        replaced: dict[str, list[str]] = {}
+        for doc in documents:
+            if doc.superseded_by and doc.superseded_by in present:
+                replaced.setdefault(doc.superseded_by, []).append(doc.file_name)
+        for doc in documents:
+            if doc.superseded_by and doc.superseded_by not in present:
+                doc.superseded_by = None
+            doc.supersedes = sorted(replaced[doc.file_name]) if doc.file_name in replaced else None
+        return documents
 
     @staticmethod
     def _iso_date(raw: Any) -> str | None:
@@ -752,14 +1520,10 @@ class DocumentMetadataStore:
             with self._sync_engine.connect() as conn:
                 result = conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                    text(
-                        "SELECT filename, summary, tags, doc_class, display_title, folder_path, created_at "
-                        f"FROM {TABLE_NAME} "
-                        "WHERE collection = :collection"
-                    ),
+                    text(f"SELECT {_DOCUMENT_COLUMNS} FROM {TABLE_NAME} WHERE collection = :collection"),
                     {"collection": collection},
                 )
-                return [self._row_to_document(row, collection) for row in result]
+                return self._attach_supersedes([self._row_to_document(row, collection) for row in result])
         except Exception as e:
             logger.warning("Failed to get metadata for %s: %s", collection, e)
             return []
@@ -774,34 +1538,89 @@ class DocumentMetadataStore:
             async with engine.connect() as conn:
                 result = await conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-                    text(
-                        "SELECT filename, summary, tags, doc_class, display_title, folder_path, created_at "
-                        f"FROM {TABLE_NAME} "
-                        "WHERE collection = :collection"
-                    ),
+                    text(f"SELECT {_DOCUMENT_COLUMNS} FROM {TABLE_NAME} WHERE collection = :collection"),
                     {"collection": collection},
                 )
-                return [self._row_to_document(row, collection) for row in result]
+                return self._attach_supersedes([self._row_to_document(row, collection) for row in result])
         except Exception as e:
             logger.warning("Failed to get metadata async for %s: %s", collection, e)
             # Fallback to sync
             return self.get_all(collection)
 
-    def unregister(self, collection: str, filename: str) -> None:
-        """Remove a document's metadata row (sync)."""
+    def unregister(self, collection: str, filename: str, *, permanent: bool = False) -> None:
+        """Remove a document's metadata row (sync), keeping the Fassung facts a person made unless ``permanent``.
+
+        Most purges can be undone: an archive, the folder bin and a publish take the
+        chunks and the row out and read the document again later. A link only a
+        person makes must survive that, so by default the row's own link, its
+        refusals and a change line told against a linked Fassung are kept under
+        ``(collection, filename)`` (:data:`RETAINED_TABLE_NAME`) for the next
+        :meth:`register` of the name, and the links OTHER rows hold to it stay as
+        they are. While the row is gone they read as nothing: :meth:`_attach_supersedes`
+        and :meth:`get_superseded_files` count a link only while both rows exist.
+
+        ``permanent`` is a delete nobody undoes (the document is erased, or leaves the
+        collection): what was kept for the name goes, and the rows it replaced are
+        current again for good.
+        """
         from sqlalchemy import text
 
+        params = {"collection": collection, "filename": filename}
         try:
-            with self._sync_engine.connect() as conn:
+            with self._sync_engine.begin() as conn:
+                if permanent:
+                    self._forget_links_to(conn, collection, filename)
+                else:
+                    self._retain(conn, collection, filename)
                 conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     text(f"DELETE FROM {TABLE_NAME} WHERE collection = :collection AND filename = :filename"),
-                    {"collection": collection, "filename": filename},
+                    params,
                 )
-                conn.commit()
-                logger.debug("Unregistered metadata for %s in %s", filename, collection)
+            logger.debug("Unregistered metadata for %s in %s (permanent=%s)", filename, collection, permanent)
         except Exception as e:
             logger.warning("Failed to unregister metadata for %s: %s", filename, e)
+
+    def _retain(self, conn, collection: str, filename: str) -> None:
+        """Keep the Fassung facts a person made on the row about to go, in the caller's transaction."""
+        from sqlalchemy import text
+
+        params = {"collection": collection, "filename": filename}
+        row = conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"SELECT {', '.join(_RETAINED_COLUMNS)} FROM {TABLE_NAME} "
+                "WHERE collection = :collection AND filename = :filename"
+            ),
+            params,
+        ).first()
+        kept = _person_made_facts(filename, *row) if row is not None else None
+        self._forget_retained(conn, collection, filename)
+        if kept is None:
+            return
+        conn.execute(
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            text(
+                f"INSERT INTO {RETAINED_TABLE_NAME} (collection, filename, {', '.join(_RETAINED_COLUMNS)}) "
+                "VALUES (:collection, :filename, :superseded_by, :revision_suggestion, :change_summary, :change_basis)"
+            ),
+            {**params, **kept},
+        )
+
+    def _forget_links_to(self, conn, collection: str, filename: str) -> None:
+        """A permanent delete: nothing kept for ``filename``, and no row, kept or live, replaced by it any longer."""
+        from sqlalchemy import text
+
+        self._forget_retained(conn, collection, filename)
+        for table in (TABLE_NAME, RETAINED_TABLE_NAME):
+            conn.execute(
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                text(
+                    f"UPDATE {table} SET superseded_by = NULL "
+                    "WHERE collection = :collection AND superseded_by = :filename"
+                ),
+                {"collection": collection, "filename": filename},
+            )
 
     def clear_collection(self, collection: str) -> None:
         """Remove all metadata for a collection (sync)."""
@@ -812,6 +1631,11 @@ class DocumentMetadataStore:
                 conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     text(f"DELETE FROM {TABLE_NAME} WHERE collection = :collection"),
+                    {"collection": collection},
+                )
+                conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(f"DELETE FROM {RETAINED_TABLE_NAME} WHERE collection = :collection"),
                     {"collection": collection},
                 )
                 conn.commit()
@@ -827,6 +1651,8 @@ class DocumentMetadataStore:
             with self._sync_engine.connect() as conn:
                 # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                 conn.execute(text(f"DELETE FROM {TABLE_NAME}"))
+                # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                conn.execute(text(f"DELETE FROM {RETAINED_TABLE_NAME}"))
                 conn.commit()
                 logger.debug("Cleared all document metadata")
         except Exception as e:

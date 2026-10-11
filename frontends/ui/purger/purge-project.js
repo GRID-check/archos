@@ -16,6 +16,7 @@
  */
 
 const { hasActiveHold } = require('./db')
+const { eraseProject } = require('../workers/job-queue')
 
 /** @typedef {import('./types').Tx} Tx */
 /** @typedef {import('./types').QueueEntry} QueueEntry */
@@ -107,7 +108,7 @@ async function purgeBackendCollection(deps, fetchImpl, collectionName, conversat
  * @returns {Promise<void>}
  */
 async function purgeProject(tx, entry, deps) {
-  const { bucket, workos, deleteStoragePrefix } = deps
+  const { bucket, workos, deleteStoragePrefix, abortMultipartUploads } = deps
   const fetchImpl = deps.fetchImpl || fetch
   const projectId = entry.entity_id
   const orgId = entry.organization_id
@@ -156,6 +157,24 @@ async function purgeProject(tx, entry, deps) {
   // many conversations the project holds, and it reads the conversation set at
   // statement time rather than from the snapshot above.
 
+  //    Every OTHER collection the project's own documents name. A document
+  //    filed under a restricted folder lives in that folder's collection,
+  //    `<project collection>_r<12 hex>` (ADR-0087), not in the project's, so a
+  //    purge given only the project's name left every restricted folder's
+  //    chunks — the files a restriction exists for — readable in Chroma after
+  //    the rows that named them were gone. Read here, before step 4 cascades
+  //    the document rows away, for the same reason as the session rows above.
+  //
+  //    DISTINCT over the rows rather than derived from the folders: a document
+  //    records the collection it was ingested into, and a re-classification
+  //    moves the row only after the old collection was purged (ADR-0087), so
+  //    the rows name every collection that still holds this project's chunks.
+  const documentCollections = /** @type {{ collection_name: string | null }[]} */ (
+    await tx`
+      SELECT DISTINCT collection_name FROM documents
+       WHERE project_id = ${projectId} AND collection_name IS NOT NULL`
+  )
+
   // 1. Python-side stores: Chroma collection, summaries, job rows, checkpoints.
   await purgeBackendCollection(
     deps,
@@ -183,6 +202,32 @@ async function purgeProject(tx, entry, deps) {
     await purgeBackendCollection(deps, fetchImpl, sessionCollection, [])
   }
 
+  // 1c. The restricted folders' collections (ADR-0087). Same contract as 1b:
+  //     one call each, a hold re-checked before each, and a failure throws
+  //     before anything below has run, so the rows naming them drive the retry.
+  //     Session collections are not in this set (their rows have no
+  //     `project_id`), and the project's own collection was erased in step 1.
+  const restrictedCollections = new Set(
+    documentCollections
+      .map((row) => row.collection_name)
+      .filter((name) => Boolean(name) && name !== collectionName && !sessionCollections.has(name)),
+  )
+  for (const restrictedCollection of restrictedCollections) {
+    await assertNoHold(tx, entry)
+    await purgeBackendCollection(deps, fetchImpl, restrictedCollection, [])
+  }
+
+  // 1d. The chats' Langfuse traces, found by session id = conversation id. Read
+  //     from the rows here, like every pointer above: step 4 deletes them. One
+  //     erasure per chat with the hold re-checked before each, since each is an
+  //     external destructive step; a failure throws before anything below has
+  //     run, so the rows that name the chats drive the retry. Chats erased on
+  //     their own earlier took their traces then. A logged no-op without Langfuse.
+  for (const conversation of conversations) {
+    await assertNoHold(tx, entry)
+    await deps.eraseConversationTraces(conversation.id)
+  }
+
   // Re-check the hold before EACH external destructive step to keep the TOCTOU
   // window to a single step (see file header). Aborts release the row.
   await assertNoHold(tx, entry)
@@ -206,10 +251,16 @@ async function purgeProject(tx, entry, deps) {
   //    Sequential rather than concurrent on purpose: the prefix sweep is a
   //    list-then-delete loop, and running several against one storage tier only
   //    trades a rarely-hot latency for contention on the thing being erased.
+  //    An Outlook archive half-sent into the project's mail import (ADR-0085)
+  //    names its bucket on its own row: a project with no document yet would
+  //    otherwise never reach that bucket, and its upload would never be aborted.
   const recorded = /** @type {{ storage_bucket: string }[]} */ (
     await tx`
       SELECT DISTINCT storage_bucket FROM documents
-       WHERE project_id = ${projectId} AND storage_bucket IS NOT NULL`
+       WHERE project_id = ${projectId} AND storage_bucket IS NOT NULL
+      UNION
+      SELECT staging_bucket AS storage_bucket FROM mail_imports
+       WHERE project_id = ${projectId}`
   )
   const targets = new Set([bucket, ...recorded.map((row) => row.storage_bucket)])
   for (const target of targets) {
@@ -221,6 +272,10 @@ async function purgeProject(tx, entry, deps) {
     // continues past the moment someone said stop, and reports success.
     await assertNoHold(tx, entry)
     await deleteStoragePrefix(target, `org/${orgId}/project/${projectId}/`)
+    // And what is not an object yet: an Outlook archive half-sent into the
+    // project's mail import (ADR-0085). Only the organization's own bucket
+    // receives one, but sweeping each target costs a list and catches any.
+    await abortMultipartUploads(target, `org/${orgId}/project/${projectId}/`)
   }
 
   // 2b. SeaweedFS objects under each CHAT's prefix.
@@ -258,16 +313,19 @@ async function purgeProject(tx, entry, deps) {
   }
 
   await assertNoHold(tx, entry)
-  // 3. WorkOS FGA resource (+ role assignments). Already-gone is success.
-  try {
-    await workos.authorization.deleteResourceByExternalId({
-      organizationId: orgId,
-      resourceTypeSlug: 'project',
-      externalId: projectId,
-      cascadeDelete: true,
-    })
-  } catch (error) {
-    if (!isNotFound(error)) throw error
+  // 3. WorkOS FGA resource (+ role assignments). Already-gone is success. No
+  //    WorkOS environment means no resource was ever created (`PurgeDeps.workos`).
+  if (workos) {
+    try {
+      await workos.authorization.deleteResourceByExternalId({
+        organizationId: orgId,
+        resourceTypeSlug: 'project',
+        externalId: projectId,
+        cascadeDelete: true,
+      })
+    } catch (error) {
+      if (!isNotFound(error)) throw error
+    }
   }
 
   // 4. grid_app rows: the collaboration rows FIRST, then conversations
@@ -319,6 +377,12 @@ async function purgeProject(tx, entry, deps) {
   await tx`DELETE FROM mention_requests WHERE resource_type = 'document' AND resource_id IN (SELECT id::text FROM documents WHERE project_id = ${projectId})`
   await tx`DELETE FROM resource_shares WHERE resource_type = 'document' AND resource_id IN (SELECT id::text FROM documents WHERE project_id = ${projectId})`
   await tx`DELETE FROM resource_assignments WHERE resource_type = 'document' AND resource_id IN (SELECT id::text FROM documents WHERE project_id = ${projectId})`
+  //    The project's background jobs (ADR-0079). `bff_job_queue` points at the
+  //    project only through its payload (no foreign key), and a payload holds the
+  //    project's work: a research report, file names, storage keys, the
+  //    requester. Nothing cascades, so without this a purged project's jobs, dead
+  //    ones included, would outlive it until their retention.
+  await eraseProject(tx, orgId, projectId)
   await tx`DELETE FROM conversations WHERE project_id = ${projectId}`
   await tx`DELETE FROM projects WHERE id = ${projectId}`
 }

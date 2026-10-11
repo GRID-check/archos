@@ -3,6 +3,11 @@ import { render, screen } from '@/test-utils'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import RouteError from './error'
 
+const capturePosthogException = vi.fn()
+vi.mock('@/lib/analytics/posthog', () => ({
+  capturePosthogException: (...args: unknown[]) => capturePosthogException(...args),
+}))
+
 vi.mock('next/link', () => ({
   default: ({ href, children, ...rest }: { href: string; children: ReactNode }) => (
     <a href={href} {...rest}>
@@ -52,5 +57,29 @@ describe('RouteError', () => {
     expect(screen.getByText(/something went wrong/i)).toBeDefined()
     expect(screen.getByRole('button', { name: /try again/i })).toBeDefined()
     expect(screen.getByRole('link', { name: /back to projects/i })).toBeDefined()
+  })
+
+  describe('error tracking', () => {
+    test('a client-side crash is reported to PostHog, with where it was caught', () => {
+      const crash = new Error('boom')
+      render(<RouteError error={crash} reset={vi.fn()} />)
+
+      expect(capturePosthogException).toHaveBeenCalledWith(crash, { source: 'route-error-boundary' })
+    })
+
+    test('an authz denial is an outcome, not an exception', () => {
+      render(<RouteError error={new Error('Not found')} reset={vi.fn()} />)
+
+      expect(capturePosthogException).not.toHaveBeenCalled()
+    })
+
+    test('a server-thrown error (it has a digest) was reported by onRequestError and is not reported twice', () => {
+      const serverError = Object.assign(new Error('An error occurred in the Server Components render.'), {
+        digest: '1234',
+      })
+      render(<RouteError error={serverError} reset={vi.fn()} />)
+
+      expect(capturePosthogException).not.toHaveBeenCalled()
+    })
   })
 })

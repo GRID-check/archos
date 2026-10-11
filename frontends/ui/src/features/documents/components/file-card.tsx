@@ -15,7 +15,10 @@ import { sourceTint } from '@/lib/ui/source-tint'
 import { extChipTint, fileExtensionLabel, inferDocumentKind } from '../document-kind'
 import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { AuthorshipLine } from './authorship-line'
+import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import { DocumentVersionStateBadge } from './document-version-badge'
+import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
+import { fassungCount } from '../lib/fassung-chain'
 import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './document-status'
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
@@ -115,7 +118,7 @@ function loadThumbnail(fileId: string, provisional = false): Promise<string | nu
  * soft tile + format chip, never a lone glyph that mimics a broken image. Only a
  * GENUINE failure (5xx / network / broken image url) shows a distinct
  * "couldn't load" treatment. The route is scope-aware, so this serves both
- * project uploads and Büroarchiv documents by id.
+ * project uploads and Büroablage documents by id.
  */
 export function ThumbnailWithFallback({ file }: { file: FileItem }) {
   const t = useTranslations('files')
@@ -212,13 +215,10 @@ export interface FileCardProps {
   locale: string
   /** Present on a semantic/surfaced result: the snippet + page + score to show WHY it matched. */
   match?: { snippet: string; page: number | null; score: number }
-  /** Coarse corpus for a provenance chip in the metadata row (project vs Büroarchiv). */
+  /** Coarse corpus for a provenance chip in the metadata row (project vs Büroablage). */
   source?: 'projekt' | 'buero' | null
   /** Localized label for the provenance chip. */
   sourceLabel?: string
-  /** Hide the ingestion-status badge when the document is `ready` (noise in a
-   * discovery context where every surfaced document is already ingested). */
-  hideStatusWhenReady?: boolean
   /** Accessible label for the click action (defaults to the filename content). */
   ariaLabel?: string
   /** Dim + progress cursor while an action (e.g. opening) resolves. */
@@ -259,7 +259,6 @@ export function FileCard({
   match,
   source,
   sourceLabel,
-  hideStatusWhenReady,
   ariaLabel,
   isBusy,
   footerLead,
@@ -276,7 +275,11 @@ export function FileCard({
   // The card is one click target, so it carries no disclosure: the sentence
   // shows, the stored text is the tooltip, and the preview pane has „Details".
   const failureReason = isFailed ? (failureText?.sentence ?? t('ingestFailure.unknown')) : undefined
-  const showStatus = !!file.status && !(hideStatusWhenReady && isCitableStatus(file.status))
+  // A badge only when the document is NOT simply citable — being read, failed,
+  // held, never indexed. „Zitierbar" is the normal state; on every card it was
+  // a status nobody browsing a folder was asking about. The list view's status
+  // column is where every document's state is spelled out.
+  const showStatus = !!file.status && !isCitableStatus(file.status)
   // The AI summary is the last thing ingestion produces, so a document that is
   // still being read has an empty description slot. Left blank it reads as a
   // card that failed to render; skeleton lines say the sentence is on its way —
@@ -340,7 +343,10 @@ export function FileCard({
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
                 // underneath instead of hiding it.
-                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
+                // `bg-background/80` is a light ground, and the destructive
+                // variant's ink is white: „Fehlgeschlagen" was white on paper,
+                // invisible. Its ink becomes the error red on this ground.
+                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
               />
             )}
           </GridTileMedia>
@@ -377,19 +383,36 @@ export function FileCard({
                 `Unvergeben` live and that slot answers a different question:
                 who is responsible for it. */}
             <AuthorshipLine authoredBy={file.authoredBy} className="mt-0.5" />
+            {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} className="mt-0.5" />}
             {/* The editorial state, on the same side as the byline and nowhere
                 near the footer, for exactly that reason: „freigegeben" is a
                 statement about the CONTENT and „Unvergeben" one about
                 responsibility (ADR-0047's addendum, ADR-0054). Silent without a
                 history: one version distinguishes nothing, so the badge appears
                 only once a second version exists — even for a draft Piloti wrote. */}
-            {(file.versionCount ?? 0) > 1 && (
-              <DocumentVersionStateBadge
-                versionState={file.versionState}
-                versionCount={file.versionCount}
-                authoredBy={file.authoredBy}
-                className="mt-1"
-              />
+            {/* An older Fassung says that and only that: „Ersetzt" beside it
+                was the same fact twice, without saying by what. A current one
+                carries its approval state and, after it as quiet text rather
+                than a second badge, „3 Fassungen": the history is not a state.
+                On a 220px card the count beside the name cut the name in half,
+                so here it rides on this line; the list puts it by the name. */}
+            {isOlderFassungEntry(file) ? (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <OlderFassungBadge file={file} />
+              </div>
+            ) : (
+              ((file.versionCount ?? 0) > 1 || fassungCount(file) > 1) && (
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  {(file.versionCount ?? 0) > 1 && (
+                    <DocumentVersionStateBadge
+                      versionState={file.versionState}
+                      versionCount={file.versionCount}
+                      authoredBy={file.authoredBy}
+                    />
+                  )}
+                  <FassungCount file={file} />
+                </div>
+              )
             )}
             {match ? (
               <SemanticMatch snippet={match.snippet} page={match.page} score={match.score} />

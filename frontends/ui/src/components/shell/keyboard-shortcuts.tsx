@@ -3,8 +3,8 @@
 /**
  * Global keyboard shortcuts — the client half of the shortcuts feature.
  *
- * Mounted once from the /app layout, and only when the `keyboard-shortcuts`
- * WorkOS feature flag allows it (the outer gate). The per-user preference
+ * Mounted once from the /app layout, for every session with an organization
+ * (the outer gate). The per-user preference
  * (profile → keyboard shortcuts, default ON) is the inner gate: when the
  * user turns shortcuts off this component registers ZERO listeners and
  * renders nothing, so the whole feature is inert.
@@ -59,7 +59,7 @@ export interface KeyboardShortcutsProps {
    * ADR-0046).
    */
   showSkills?: boolean
-  /** Whether the org-wide Archiv is reachable (`organization-archiv`, ADR-0024). */
+  /** Whether the org-wide Archiv is reachable (ADR-0024). */
   canAccessArchiv?: boolean
   /** Whether the collaboration surfaces are reachable (`collaboration`, ADR-0032…0035). */
   canCollaborate?: boolean

@@ -8,9 +8,31 @@ vi.mock('@/lib/db', () => ({
 }))
 
 import { getDb } from '@/lib/db'
-import { listProfiledConversations } from './repository'
+import { PgDialect } from 'drizzle-orm/pg-core'
+import type { SQL } from 'drizzle-orm'
+import {
+  findProfiledConversation,
+  getSpansForConversation,
+  listProfiledConversations,
+  TIMELINE_SPAN_CAP,
+  TIMELINE_TURN_CAP,
+  type ProfiledConversationFilter,
+} from './repository'
 
 const mockGetDb = vi.mocked(getDb)
+
+/** September 2026, every organization and project. */
+const SEPTEMBER: ProfiledConversationFilter = {
+  start: new Date('2026-09-01T00:00:00.000Z'),
+  endExclusive: new Date('2026-10-01T00:00:00.000Z'),
+  organizationIds: [],
+  projectIds: [],
+}
+
+const PROJECT = '0f0f0f0f-0000-4000-8000-0000000000a1'
+
+const render = (condition: SQL): { sql: string; params: unknown[] } =>
+  new PgDialect().sqlToQuery(condition)
 
 /**
  * Build a db stand-in whose SELECT chain
@@ -23,12 +45,33 @@ function mockSelect(driverRows: unknown[]) {
   const limit = vi.fn().mockResolvedValue(driverRows)
   const orderBy = vi.fn(() => ({ limit }))
   const groupBy = vi.fn(() => ({ orderBy }))
-  const where = vi.fn(() => ({ groupBy }))
+  const where = vi.fn((_condition?: SQL) => ({ groupBy }))
   const leftJoin = vi.fn(() => ({ where }))
   const from = vi.fn(() => ({ leftJoin }))
   mockGetDb.mockReturnValue({ select: vi.fn(() => ({ from })) } as never)
-  return { limit }
+  return { limit, where }
 }
+
+/**
+ * The timeline issues two selects: the newest turn ids (`…groupBy().orderBy().limit()`)
+ * and then their spans (`…where().orderBy().limit()`). Each resolves to the
+ * next queued result.
+ */
+function mockTimelineSelects(turnRows: unknown[], spanRows: unknown[]) {
+  const results = [turnRows, spanRows]
+  const limits: ReturnType<typeof vi.fn>[] = []
+  const select = vi.fn(() => {
+    const limit = vi.fn().mockResolvedValue(results[limits.length])
+    limits.push(limit)
+    const orderBy = vi.fn(() => ({ limit }))
+    const where = vi.fn(() => ({ groupBy: vi.fn(() => ({ orderBy })), orderBy }))
+    return { from: vi.fn(() => ({ where })) }
+  })
+  mockGetDb.mockReturnValue({ select } as never)
+  return { select, limits }
+}
+
+const spanRow = (index: number) => ({ spanId: `span_${index}`, turnId: 'turn_1' })
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -51,7 +94,7 @@ describe('listProfiledConversations', () => {
       },
     ])
 
-    const { rows, capped } = await listProfiledConversations()
+    const { rows, capped } = await listProfiledConversations(SEPTEMBER)
 
     expect(capped).toBe(false)
     expect(rows).toHaveLength(1)
@@ -65,6 +108,8 @@ describe('listProfiledConversations', () => {
     expect(row.conversationId).toBe('conv_1')
     expect(row.organizationId).toBe('org_1')
     expect(row.title).toBe('Bauantrag Wien')
+    // Absent from the driver row (no restricted use): coerced to a real boolean.
+    expect(row.titleWithheld).toBe(false)
     expect(row.turnCount).toBe(2)
     // Chain terminates at the list cap + 1 probe.
     expect(limit).toHaveBeenCalledWith(201)
@@ -81,11 +126,154 @@ describe('listProfiledConversations', () => {
     }))
     mockSelect(driverRows)
 
-    const { rows, capped } = await listProfiledConversations()
+    const { rows, capped } = await listProfiledConversations(SEPTEMBER)
 
     expect(capped).toBe(true)
     // Capped back down to 200, and every retained row is still coerced.
     expect(rows).toHaveLength(200)
     expect(rows.every((r) => r.lastActiveAt instanceof Date)).toBe(true)
+  })
+})
+
+describe('listProfiledConversations search', () => {
+  it("escapes LIKE wildcards in the operator's query", async () => {
+    // Regression: `100%` or `a_b` were used as raw patterns, so `%` matched
+    // every conversation and `_` matched any character.
+    const { where } = mockSelect([])
+    await listProfiledConversations(SEPTEMBER, '100%_x')
+
+    const condition = where.mock.calls[0][0] as SQL
+    const { params } = new PgDialect().sqlToQuery(condition)
+    expect(params).toContain('%100\\%\\_x%')
+  })
+})
+
+describe('listProfiledConversations scope', () => {
+  it('lists conversations with a turn that started in [start, endExclusive)', async () => {
+    const { where } = mockSelect([])
+    await listProfiledConversations(SEPTEMBER)
+
+    const { sql: text, params } = render(where.mock.calls[0][0] as SQL)
+    expect(text).toContain('"agent_profiler_spans"."started_at" >= $')
+    expect(text).toContain('"agent_profiler_spans"."started_at" < $')
+    expect(params).toEqual(
+      expect.arrayContaining(['2026-09-01T00:00:00.000Z', '2026-10-01T00:00:00.000Z'])
+    )
+    // Unnarrowed: no organization or project condition at all.
+    expect(text).not.toContain('coalesce(')
+    expect(text).not.toContain('"project_id"')
+  })
+
+  it("filters by the conversation's organization, falling back to the span's", async () => {
+    const { where } = mockSelect([])
+    await listProfiledConversations({ ...SEPTEMBER, organizationIds: ['org_1', 'org_2'] })
+
+    const { sql: text, params } = render(where.mock.calls[0][0] as SQL)
+    expect(text).toMatch(
+      /coalesce\("conversations"\."organization_id", "agent_profiler_spans"\."organization_id"\) in \(\$\d+, \$\d+\)/
+    )
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'org_2']))
+  })
+
+  it("filters by the conversation's project, and a non-UUID project matches nothing", async () => {
+    const { where } = mockSelect([])
+    await listProfiledConversations({ ...SEPTEMBER, projectIds: [PROJECT, 'nope'] })
+    const scoped = render(where.mock.calls[0][0] as SQL)
+    expect(scoped.sql).toMatch(/"conversations"\."project_id" in \(\$\d+\)/)
+    expect(scoped.params).toContain(PROJECT)
+    expect(scoped.params).not.toContain('nope')
+
+    const { where: invalidWhere } = mockSelect([])
+    await listProfiledConversations({ ...SEPTEMBER, projectIds: ['nope'] })
+    expect(render(invalidWhere.mock.calls[0][0] as SQL).sql).toContain('false')
+  })
+
+  it('searches within the scope rather than instead of it', async () => {
+    const { where } = mockSelect([])
+    await listProfiledConversations({ ...SEPTEMBER, organizationIds: ['org_1'] }, 'Wien')
+    const { sql: text, params } = render(where.mock.calls[0][0] as SQL)
+    expect(text).toContain('ilike')
+    expect(text).toContain('"started_at" <')
+    expect(params).toEqual(expect.arrayContaining(['org_1', '%Wien%']))
+  })
+})
+
+describe('findProfiledConversation', () => {
+  it('reads one conversation in the same scope, or null when it has no turn there', async () => {
+    const { where, limit } = mockSelect([])
+    expect(
+      await findProfiledConversation({ ...SEPTEMBER, organizationIds: ['org_1'] }, 'conv_9')
+    ).toBeNull()
+    const { sql: text, params } = render(where.mock.calls[0][0] as SQL)
+    expect(text).toContain('"started_at" <')
+    expect(text).toContain('coalesce(')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'conv_9']))
+    expect(limit).toHaveBeenCalledWith(1)
+  })
+
+  it('shapes the row like the list does', async () => {
+    mockSelect([
+      {
+        conversationId: 'conv_9',
+        organizationId: 'org_1',
+        title: null,
+        turnCount: 3,
+        totalDurationMsRaw: '900',
+        lastActiveAt: '2026-09-12T08:00:00.000Z',
+      },
+    ])
+    const row = await findProfiledConversation(SEPTEMBER, 'conv_9')
+    expect(row).toMatchObject({ conversationId: 'conv_9', turnCount: 3, totalDurationMs: 900 })
+    expect(row?.lastActiveAt).toBeInstanceOf(Date)
+  })
+})
+
+describe('getSpansForConversation', () => {
+  it('loads the newest turns only, and says when older ones exist', async () => {
+    const turnRows = Array.from({ length: TIMELINE_TURN_CAP }, (_, index) => ({
+      turnId: `t${index}`,
+      totalTurns: '80',
+    }))
+    const { limits } = mockTimelineSelects(turnRows, [spanRow(1)])
+
+    const result = await getSpansForConversation('conv_1')
+
+    expect(limits[0]).toHaveBeenCalledWith(TIMELINE_TURN_CAP)
+    expect(result).toMatchObject({ totalTurns: 80, capped: true })
+  })
+
+  it('is not capped when every turn fits', async () => {
+    mockTimelineSelects([{ turnId: 't1', totalTurns: '1' }], [spanRow(1), spanRow(2)])
+
+    const result = await getSpansForConversation('conv_1')
+    expect(result).toMatchObject({ totalTurns: 1, capped: false })
+    expect(result.spans).toHaveLength(2)
+  })
+
+  it('caps the spans, keeps the newest, and returns them oldest first', async () => {
+    // The span query reads newest first with one row over the ceiling.
+    const newestFirst = Array.from({ length: TIMELINE_SPAN_CAP + 1 }, (_, index) =>
+      spanRow(TIMELINE_SPAN_CAP - index)
+    )
+    const { limits } = mockTimelineSelects([{ turnId: 't1', totalTurns: '1' }], newestFirst)
+
+    const result = await getSpansForConversation('conv_1')
+
+    expect(limits[1]).toHaveBeenCalledWith(TIMELINE_SPAN_CAP + 1)
+    expect(result.capped).toBe(true)
+    expect(result.spans).toHaveLength(TIMELINE_SPAN_CAP)
+    expect(result.spans[0].spanId).toBe('span_1')
+    expect(result.spans.at(-1)?.spanId).toBe(`span_${TIMELINE_SPAN_CAP}`)
+  })
+
+  it('makes no span query for a conversation with no turns', async () => {
+    const { select } = mockTimelineSelects([], [])
+
+    expect(await getSpansForConversation('conv_none')).toEqual({
+      spans: [],
+      totalTurns: 0,
+      capped: false,
+    })
+    expect(select).toHaveBeenCalledTimes(1)
   })
 })

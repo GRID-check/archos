@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn(),
@@ -53,32 +53,6 @@ beforeEach(() => {
   mockSession.mockResolvedValue({ ...session } as never)
 })
 
-afterEach(() => {
-  delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-})
-
-describe('feature gate (answer-feedback)', () => {
-  it('returns 403 feature-disabled when enforcement is on and the flag is not granted', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    mockSession.mockResolvedValue({ ...session, featureFlags: [] } as never)
-
-    const res = await POST(postReq({ messageId: 'msg_1', verdict: 'up' }))
-
-    expect(res.status).toBe(403)
-    expect(await res.json()).toEqual({ error: 'feature-disabled', feature: 'answer-feedback' })
-    expect(mockSubmit).not.toHaveBeenCalled()
-  })
-
-  it('passes when enforcement is on and the flag is granted', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
-    mockSession.mockResolvedValue({ ...session, featureFlags: ['answer-feedback'] } as never)
-    mockSubmit.mockResolvedValue({ messageId: 'msg_1', verdict: 'up', reason: null, comment: null })
-
-    const res = await POST(postReq({ messageId: 'msg_1', verdict: 'up' }))
-    expect(res.status).toBe(200)
-  })
-})
-
 describe('POST /api/feedback/answers', () => {
   it('upserts a vote and returns the stored view', async () => {
     mockSubmit.mockResolvedValue({
@@ -86,6 +60,7 @@ describe('POST /api/feedback/answers', () => {
       verdict: 'down',
       reason: 'wrong_source',
       comment: 'the cited clause is from the wrong OIB guideline',
+      expectedAnswer: null,
     })
 
     const res = await POST(
@@ -104,6 +79,7 @@ describe('POST /api/feedback/answers', () => {
       verdict: 'down',
       reason: 'wrong_source',
       comment: 'the cited clause is from the wrong OIB guideline',
+      expectedAnswer: null,
     })
     expect(mockSubmit).toHaveBeenCalledWith(
       expect.objectContaining({ organizationId: 'org_1' }),
@@ -154,13 +130,13 @@ describe('DELETE /api/feedback/answers', () => {
 
 describe('GET /api/feedback/answers', () => {
   it('returns the caller\'s own feedback for a conversation', async () => {
-    mockGetFeedback.mockResolvedValue([{ messageId: 'msg_1', verdict: 'up', reason: null, comment: null }])
+    mockGetFeedback.mockResolvedValue([{ messageId: 'msg_1', verdict: 'up', reason: null, comment: null, expectedAnswer: null }])
 
     const res = await GET(new Request(`${base}?conversationId=conv_1`))
 
     expect(res.status).toBe(200)
     expect(await res.json()).toEqual({
-      feedback: [{ messageId: 'msg_1', verdict: 'up', reason: null, comment: null }],
+      feedback: [{ messageId: 'msg_1', verdict: 'up', reason: null, comment: null, expectedAnswer: null }],
     })
     expect(mockGetFeedback).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user_1' }), 'conv_1')
   })

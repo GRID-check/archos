@@ -97,6 +97,43 @@ export const INBOX_ITEM_TYPES = [
    * inbox's platform lane, `@/lib/inbox/service`).
    */
   'feedback.submitted',
+  /**
+   * Operational: everything an upload of yours brought in has been read
+   * (ADR-0086, ticket „Was ist angekommen?"). Addressed to the uploader; the
+   * row opens the upload's summary.
+   */
+  'upload.completed',
+  /**
+   * Operational: the content check held a file back before any model read it
+   * (ADR-0086). Addressed to whoever may release or delete it, folded into one
+   * counted row per organization, and opening the quarantine queue.
+   */
+  'document.quarantined',
+  /**
+   * Operational: the uploader of a quarantined file asks for it to be released
+   * (ADR-0086, „Freigabe anfragen"). Addressed to whoever may release it, one
+   * row per file, opening the quarantine queue. It names the file: only the
+   * file's own reviewers receive it.
+   */
+  'document.release_requested',
+  /**
+   * Informational, operational tier: an Outlook archive the recipient started
+   * importing has been filed, or the import stopped (ADR-0085). Addressed to the
+   * person who started it, pointing at the project and anchored on the folder
+   * the import filed under, which is where the row lands.
+   */
+  'mail_import.completed',
+  'mail_import.failed',
+  /**
+   * Informational, operational tier: a newer Fassung of a document the
+   * recipient follows exists (CONTEXT.md „Fassung", ADR-0054, ADR-0099) —
+   * either a person confirmed that another document replaces it, or a new
+   * version was published under its name. Addressed to the people assigned to
+   * the OLDER document and to its uploader, never to the person who made the
+   * change, and only to those who may see the newer document. The row points at
+   * the NEWER document, so the read-time access check is the one that matters.
+   */
+  'document.new_fassung',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 
@@ -121,6 +158,8 @@ export const INBOX_TARGET_TYPES = [
   'organization',
   'project',
   'product_feedback',
+  /** One upload gesture (migration 0110): the target of `upload.completed`. */
+  'upload_batch',
 ] as const
 export type InboxTargetType = (typeof INBOX_TARGET_TYPES)[number]
 

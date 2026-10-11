@@ -3,6 +3,14 @@
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
+vi.mock('@/lib/authz/folder-access', async () => (await import('@/test-utils/folder-access')).openFolderAccessModule())
+vi.mock('@/lib/authz/folder-access-repository', () => ({
+  listProjectDocumentCollections: vi.fn(async () => []),
+  listProjectFolderTree: vi.fn(async () => []),
+}))
+vi.mock('./collection-placement', () => ({
+  placeProjectDocuments: vi.fn(async () => ({ moved: 0, failed: [] })),
+}))
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
 }))
@@ -48,9 +56,13 @@ const row = (id: string) => ({
   parentId: null,
   name: 'Berichte',
   path: 'Berichte',
+  accessMode: 'inherit' as const,
   createdAt: new Date('2026-08-20T00:00:00Z'),
   updatedAt: new Date('2026-08-20T00:00:00Z'),
 })
+
+/** What the service answers for {@link row}: an inheriting folder has no own list. */
+const { accessMode: _accessMode, ...folderOf } = row('folder-new')
 
 /**
  * Get-or-create is two statements, and migration 0063's
@@ -86,7 +98,7 @@ describe('getOrCreateProjectFolderByName', () => {
   it('returns the folder that already exists without inserting', async () => {
     stubSelect([row('folder-1')])
 
-    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte')
+    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte', 'org-1')
 
     expect(folder.id).toBe('folder-1')
     expect(insert).not.toHaveBeenCalled()
@@ -96,9 +108,9 @@ describe('getOrCreateProjectFolderByName', () => {
     stubSelect([])
     stubInsert(async () => [row('folder-new')])
 
-    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte')
+    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte', 'org-1')
 
-    expect(folder).toEqual(row('folder-new'))
+    expect(folder).toEqual(folderOf)
   })
 
   it('recovers the concurrent writer’s folder from a unique violation', async () => {
@@ -109,7 +121,7 @@ describe('getOrCreateProjectFolderByName', () => {
       throw Object.assign(new Error('duplicate key'), { code: '23505' })
     })
 
-    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte')
+    const folder = await getOrCreateProjectFolderByName('proj-1', 'Berichte', 'org-1')
 
     expect(folder.id).toBe('folder-winner')
   })
@@ -120,7 +132,7 @@ describe('getOrCreateProjectFolderByName', () => {
       throw Object.assign(new Error('deadlock detected'), { code: '40P01' })
     })
 
-    await expect(getOrCreateProjectFolderByName('proj-1', 'Berichte')).rejects.toThrow(
+    await expect(getOrCreateProjectFolderByName('proj-1', 'Berichte', 'org-1')).rejects.toThrow(
       'deadlock detected',
     )
     // One lookup: a non-race failure must not be answered by pretending to look
@@ -136,7 +148,7 @@ describe('getOrCreateProjectFolderByName', () => {
       throw Object.assign(new Error('duplicate key'), { code: '23505' })
     })
 
-    await expect(getOrCreateProjectFolderByName('proj-1', 'Berichte')).rejects.toThrow(
+    await expect(getOrCreateProjectFolderByName('proj-1', 'Berichte', 'org-1')).rejects.toThrow(
       'duplicate key',
     )
   })

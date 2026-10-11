@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { FileFilterMenu } from './file-filter-menu'
@@ -32,7 +32,7 @@ describe('the retired filter', () => {
   test('offers a way back to a file somebody archived', async () => {
     // Retiring takes the file out of the listing (`lifecycle = 'active'` is in
     // the query), so this checkbox is the ONLY way back to one. Matched on the
-    // copy the reader sees: „Stillgelegte auch zeigen" / „Also show retired" —
+    // copy the reader sees: „Auch zeigen: Stillgelegte" / „Also show: Retired" —
     // the act is no longer called archiving, because the Archiv is the office
     // archive a document is put INTO to become cross-project knowledge.
     const { onFiltersChange } = renderMenu()
@@ -41,6 +41,37 @@ describe('the retired filter', () => {
     expect(onFiltersChange).toHaveBeenCalledWith(
       expect.objectContaining({ includeArchived: true }),
     )
+  })
+})
+
+describe('the older revisions filter', () => {
+  test('offers the older Fassungen beside their current one, and says it widens', async () => {
+    // Older Fassungen are one entry with their current document; this brings
+    // the older ones back, so it is asked for as „auch“ like the retired filter.
+    const { onFiltersChange } = renderMenu()
+    await open()
+    await userEvent.click(screen.getByLabelText('Older revisions'))
+    expect(onFiltersChange).toHaveBeenCalledWith(
+      expect.objectContaining({ showOlderFassungen: true }),
+    )
+  })
+
+  test('sits with the retired filter, the other toggle that widens, under one heading', async () => {
+    renderMenu()
+    await open()
+    const alsoShow = screen.getByRole('group', { name: 'Also show' })
+    expect(within(alsoShow).getAllByRole('checkbox')).toHaveLength(2)
+    expect(within(alsoShow).getByLabelText('Retired')).toBeInTheDocument()
+    expect(within(alsoShow).getByLabelText('Older revisions')).toBeInTheDocument()
+    // The narrowing filters keep their own section.
+    const origin = screen.getByRole('group', { name: 'Origin and approval' })
+    expect(within(origin).getByLabelText('By Piloti')).toBeInTheDocument()
+    expect(within(origin).getByLabelText('Awaiting approval')).toBeInTheDocument()
+  })
+
+  test('counts the older revisions once on the trigger when they are shown', () => {
+    renderMenu({ filters: { ...NO_FILE_FILTERS, showOlderFassungen: true } })
+    expect(screen.getByTestId('file-filter-count')).toHaveTextContent('1')
   })
 })
 

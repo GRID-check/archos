@@ -1,0 +1,36 @@
+---
+upgrade:
+  - >
+    An uploaded file now reaches colleagues only once its check for
+    sensitive data has passed. Until then only the person who uploaded it
+    and those who may release quarantined files see it.
+  - >
+    A file whose reading failed before the check (an IFC model too large to
+    read, for example) waits in Organization → Quarantine, marked as not
+    checked, until someone who may release files releases or deletes it. The
+    person who uploaded it can ask for the release.
+  - >
+    A corrected file uploaded over an existing document, or a new version of a
+    document published from a draft, is checked before colleagues see it.
+    Until then the document is visible only to the person who uploaded it and
+    those who may release files.
+fixes:
+  - >
+    A file waiting in quarantine no longer shows up for colleagues who may
+    not see it: not in the project overview and its counts, the upload
+    history, the IFC model list, the document roles, the name check of a new
+    upload, or a file's status.
+  - >
+    Refreshing a project's search or restoring a folder from the Papierkorb
+    does not take a file out of quarantine. A release does.
+  - >
+    Until its check has passed, a file shows colleagues no preview, and
+    Piloti does not read a file under review when a revision is requested
+    for it.
+  - >
+    A project admin reviewing a colleague's image that is still being
+    checked sees the image.
+  - >
+    Prüfbuch confirmations (the IFC check log) on an IFC model still under
+    review, and the number of such files in a folder in the Papierkorb, are
+    no longer shown to colleagues who may not see the model or the file.

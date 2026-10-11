@@ -4,7 +4,7 @@
  * Dev preview for the composer's addressee statement (ADR-0034 addendum) — the real
  * `AddresseeIndicator` in all three of its renderings, inside a mock composer that
  * reproduces the real one's geometry (same `max-w-3xl` column, same card surface,
- * same hairline-separated action row), so the line can be reviewed and screenshotted
+ * same action row under the textarea), so the line can be reviewed and screenshotted
  * without a backend.
  *
  * Why this surface needs its own evidence: the whole point of the indicator is that
@@ -70,7 +70,7 @@ function MockComposer({
     <div className="bg-card relative flex flex-col rounded-xl px-4 py-2.5 shadow-sm">
       <p className="min-h-[40px] px-1.5 py-1 text-[14.5px] leading-[1.5] text-foreground">{text}</p>
 
-      <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+      <div className="mt-2 flex flex-wrap items-center gap-1.5">
         <span className="bg-card shadow-xs inline-flex h-8 items-center gap-[7px] rounded-lg border px-[11px]">
           <span className="border-status-active flex size-[14px] shrink-0 items-center justify-center rounded-full border border-dashed">
             <span className="bg-status-active size-[5px] rounded-full" />

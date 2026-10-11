@@ -33,6 +33,9 @@ type OptionalWireField =
   | 'chunkCount'
   | 'contentTypes'
   | 'tags'
+  | 'topics'
+  | 'capture'
+  | 'revisionFacts'
   | 'queueAhead'
   | 'originPath'
   | 'contentHash'
@@ -40,6 +43,7 @@ type OptionalWireField =
   | 'versionState'
   | 'versionCount'
   | 'lifecycle'
+  | 'sourceDeletedAt'
 
 /** Normalize one wire row into the shape every file surface reads. */
 export function toFileItem(row: DocumentWireRow): FileItem {
@@ -60,6 +64,10 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     chunkCount: row.chunkCount ?? null,
     contentTypes: row.contentTypes ?? null,
     tags: row.tags ?? null,
+    topics: row.topics ?? null,
+    capture: row.capture ?? null,
+    revisionFacts: row.revisionFacts ?? null,
+    fassung: row.fassung ?? null,
     queueAhead: row.queueAhead ?? null,
     assignees: row.assignees ?? EMPTY_ASSIGNEES,
     authoredBy: row.authoredBy ?? 'user',
@@ -71,6 +79,7 @@ export function toFileItem(row: DocumentWireRow): FileItem {
     // A listing that did not say is a listing of the working set — which is
     // what every listing but the „Archiviert" one is.
     lifecycle: row.lifecycle ?? 'active',
+    sourceDeletedAt: row.sourceDeletedAt ?? null,
   }
 }
 
@@ -95,6 +104,9 @@ const TRAILING_METADATA: ReadonlySet<keyof FileItem> = new Set<keyof FileItem>([
   'chunkCount',
   'contentTypes',
   'tags',
+  'topics',
+  'capture',
+  'revisionFacts',
 ])
 
 function sameValue(a: unknown, b: unknown): boolean {

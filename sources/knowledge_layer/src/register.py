@@ -11,6 +11,7 @@ import json
 import logging
 import math
 import os
+from collections.abc import Sequence
 from contextlib import nullcontext
 from contextlib import suppress
 from dataclasses import dataclass
@@ -71,7 +72,7 @@ def _is_embedding_mismatch(value: object) -> bool:
 # with surface_documents; citations already peek the cited project file.
 _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "Read and cite passages from the ingested knowledge base (OIB corpus, "
-    "this project's files, the Büroarchiv). This is the evidence tool — it "
+    "this project's files, the Büroablage). This is the evidence tool — it "
     "returns quotable excerpts with a Citation key. It does not open a file "
     "in the UI.\n"
     "WHEN TO CALL — any question that needs a passage from a stored document. "
@@ -93,7 +94,7 @@ _KNOWLEDGE_SEARCH_DESCRIPTION = (
     "characters ('EG') matches as a whole word only. The reader's own files come first.\n"
     "WHEN NOT TO CALL — to put a file on screen (the user asked to SEE or "
     "BROWSE files, no legal question): that is `surface_documents`. After "
-    "you cite a project or Büroarchiv file, do not also call "
+    "you cite a project or Büroablage file, do not also call "
     "`surface_documents`; the UI peeks the cited file. Live Austrian law "
     "(statutes, Bauordnungen) is the RIS tools, not this index. When you "
     "already know WHICH document you need, that is `read_passage` — with the "
@@ -268,7 +269,8 @@ class KnowledgeRetrievalConfig(FunctionBaseConfig, name="knowledge_retrieval"):
             "Who answers the judge's yes/no (llm|jev). `jev` asks the decision model one noul per "
             "passage of the head first (ADR-0064, ~300 ms, a fraction of a cent): a head it finds "
             "sufficient costs no judge call, and only an insufficient head runs requery_llm, for the "
-            "phrasings. A decision that cannot run (no key, ZDR, breaker open) falls back to the judge."
+            "phrasings. A decision that cannot run (no key, a BYOK key on another host, breaker open) falls "
+            "back to the judge."
         ),
     )
     decision_sufficiency_threshold: float = Field(
@@ -534,7 +536,7 @@ def _restrict_scope_to_turn(entries):
     (``focus_shelf`` / ``source_preset``, mapped by ``shelves_for_turn``)
     may only drop entries from it, so a "summarize this upload" turn cannot
     be padded with Archiv hits (#429) and a Projektunterlagen chip cannot
-    keep searching the Büroarchiv (#436).
+    keep searching the Büroablage (#436).
     """
     try:
         from aiq_agent.common.focus_file import get_turn_shelves
@@ -1194,6 +1196,15 @@ def _empty_search_message(
         "Retry once with a shorter topic query"
         + (", a different `file_name` from the inventory" if file_name else ", or `file_name=` an exact inventory name")
         + ", or `title_contains=` a fragment. "
+        # A name taken from the reader's open file filtered a norm question down
+        # to nothing (answer feedback, October 2026): say that the law is not in
+        # that file, so the retry can drop the filter instead of guessing names.
+        + (
+            "If the question is about the law (OIB, Bauordnung) rather than this file's own content, "
+            "retry WITHOUT `file_name=`: the norms are not filed under the reader's documents. "
+            if file_name
+            else ""
+        )
         + (
             f"Nothing is filed under {folder!r}, or nothing there matched — drop `folder=` "
             "to search the whole shelf, or take the exact folder from the inventory. "
@@ -1375,7 +1386,7 @@ def _ambiguous_file_names(chunks) -> set[str]:
 
     A search fans out across the base corpus, the session collection and the
     project collections concurrently, so one result set can carry a project
-    `Plan.pdf` and a Büroarchiv `Plan.pdf` — different documents that a bare
+    `Plan.pdf` and a Büroablage `Plan.pdf` — different documents that a bare
     filename cannot tell apart. Those names (and only those) get a shelf
     qualifier in their citation key, so the common case stays a plain filename.
 
@@ -1664,6 +1675,67 @@ _FAMILY_OVERVIEW_FAILED_NOTICE = (
     "es folgen nur die gerankten Treffer, die Teile sind einzeln mit `read_passage(document=…)` "
     "zu öffnen.\n\n"
 )
+
+
+#: Replaced files one notice names before it counts the rest.
+_HIDDEN_FASSUNGEN_NAMED = 5
+
+
+async def _superseded_files(collections: Sequence[str]) -> dict[str, dict[str, str]]:
+    """Per collection, the files a PERSON replaced by a newer one, each with the file that replaced it, read now.
+
+    Resolved at query time, the way a folder is: whether a file is replaced is
+    not on its chunks, and a link made or lifted a minute ago must apply to the
+    next search. Fail-open: a collection that cannot be read hides nothing.
+    """
+    from aiq_agent.knowledge import get_superseded_files
+
+    answers = await asyncio.gather(
+        *(asyncio.to_thread(get_superseded_files, collection) for collection in collections),
+        return_exceptions=True,
+    )
+    return {
+        collection: dict(sorted(answer.items()))
+        for collection, answer in zip(collections, answers, strict=True)
+        if isinstance(answer, dict) and answer
+    }
+
+
+def _named_older_fassung_notice(file_name: str | None, superseded: dict[str, dict[str, str]]) -> str:
+    """The line that tells the model the file it named (``file_name=…``) is an older Fassung, and which is current.
+
+    Naming the file is how an older Fassung is read on purpose, so its passages are not withheld;
+    the line keeps the answer from presenting them as the document's current state. Follows the
+    links to the end of the chain, and names nothing in a restricted collection nobody admitted.
+    The same words as ``read_passage``'s notice (:func:`older_fassung_line`).
+    """
+    if not file_name:
+        return ""
+    from aiq_agent.knowledge.restricted_use import may_name
+
+    from .read_passage import older_fassung_line
+
+    lines = []
+    for collection, links in superseded.items():
+        if file_name not in links or not may_name(collection):
+            continue
+        seen, current = {file_name}, links[file_name]
+        while current in links and current not in seen:
+            seen.add(current)
+            current = links[current]
+        lines.append(older_fassung_line(file_name, current))
+    return "".join(sorted(set(lines)))
+
+
+def _hidden_fassungen_notice(superseded: dict[str, dict[str, str]]) -> str:
+    """The one line that tells the model older Fassungen were left out of the ranking, and how to read one."""
+    names = sorted({name for hidden in superseded.values() for name in hidden})
+    if not names:
+        return ""
+    shown = ", ".join(names[:_HIDDEN_FASSUNGEN_NAMED])
+    rest = len(names) - _HIDDEN_FASSUNGEN_NAMED
+    tail = f" und {rest} weitere" if rest > 0 else ""
+    return f"Ältere Fassungen ausgeblendet: {shown}{tail} — mit file_name=… gezielt lesbar.\n\n"
 
 
 @dataclass(frozen=True, slots=True)
@@ -2013,6 +2085,38 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         if (match or "meaning").strip().lower() != "meaning":
             return '`match` must be "meaning" (ranked by what a passage says) or "exact" (every literal occurrence).'
 
+        # `folder=` narrows BEFORE ranking, as the exact mode does: the folder
+        # becomes the files filed in it (or under it), and only those are
+        # ranked. It used to be a post-filter over the top `3 × top_k` of the
+        # whole shelf, so a folder whose passages ranked below that pool came
+        # back empty or thin while holding exactly what was asked — the agent
+        # was told "nothing in Pläne" about a folder full of plans. The
+        # post-filter in `_apply_agent_filters` stays as the backstop.
+        folder_files: dict[str, list[str]] | None = None
+        if folder:
+            from .browse import _files_by_collection
+
+            folder_files = (
+                await _files_by_collection(config, file_name=None, folder=folder, doc_class=None, title_contains=None)
+                or {}
+            )
+            target_collections = [entry for entry in target_collections if folder_files.get(entry.collection)]
+            if not target_collections:
+                return (
+                    f"No file in scope is filed in the folder {folder!r}. "
+                    "`list_files` shows the folders that exist and what is in them."
+                )
+
+        # Files a person replaced by a newer one stay out of the RANKING on the
+        # user shelves, so a superseded Fassung cannot outrank its replacement on
+        # similarity alone. Naming the file (`file_name=`) is the way back to it.
+        # The base corpus is untouched: it replaces by its own hash registry.
+        # Read with `file_name=` too, but then only to say the named file is an older Fassung.
+        superseded = await _superseded_files(
+            [entry.collection for entry in target_collections if entry.collection != base_collection]
+        )
+        hidden_fassungen = {} if file_name else superseded
+
         # Cross-lingual bridge. The corpus is German; an English question reaches it
         # only weakly by embedding and not at all lexically. Measured on the golden
         # set, an English question scored MRR 0.276 against 0.605 for the same
@@ -2068,6 +2172,12 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # File exclusions + caller filters apply to the base collection only;
             # session/project collections are user content and are never filtered.
             coll_filters = _base_collection_filters(config, filters) if coll == base_collection else None
+            if folder_files is not None:
+                narrowing = {"file_name": {"$in": sorted(folder_files.get(coll) or [])}}
+                coll_filters = {**coll_filters, **narrowing} if coll_filters else narrowing
+            if hidden_fassungen.get(coll):
+                hidden = {"file_name": {"$nin": sorted(hidden_fassungen[coll])}}
+                coll_filters = {"$and": [coll_filters, hidden]} if coll_filters else hidden
             result = await retriever.retrieve(
                 query=search_query, collection_name=coll, top_k=candidate_k, filters=coll_filters
             )
@@ -2503,7 +2613,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # own formulation was already given a second chance.
             from knowledge_layer.requery import requery_notice
 
-            notice = requery_notice(requery_queries)
+            notice = (
+                _hidden_fassungen_notice(hidden_fassungen)
+                + _named_older_fassung_notice(file_name, superseded)
+                + requery_notice(requery_queries)
+            )
             # The overview raised, and the passages below are what is left of
             # the family question. Said only where there ARE passages: an empty
             # or failed search already tells the model the stronger thing.

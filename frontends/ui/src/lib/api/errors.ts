@@ -8,6 +8,7 @@
  */
 
 import type { RateLimitDecision } from '@/lib/limits/types'
+import { BYTES_PER_MB } from '@/shared/config/request-body-limit'
 
 export class ApiError extends Error {
   constructor(
@@ -56,6 +57,69 @@ export class OrgMemoryDisabledError extends ApiError {
 }
 
 /**
+ * 403 — a conversation that drew on a folder with restricted access may not
+ * carry its content to where others read it (ADR-0087): a deep-research run, a
+ * task, the project profile, or a folder not restricted at least as narrowly.
+ * `revision` is the same refusal for a document rather than a conversation: a
+ * draft in such a folder is not quoted into a project-wide revision task.
+ * The same refusal answers a run's Unterlagen naming a document from such a
+ * folder (`planDocument`): the run's Grundlage is read by the whole project.
+ * Its own code, so a caller (the agent's tools, a card) can tell this refusal
+ * from a missing permission; `details.action` says which door refused. The
+ * message is already the reader's sentence (`lib/conversations/restricted-egress.ts`).
+ */
+export class ConversationConfinedError extends ApiError {
+  constructor(
+    readonly action: 'deepResearch' | 'task' | 'profilePatch' | 'filing' | 'revision' | 'planDocument',
+    message: string
+  ) {
+    super(403, 'CONVERSATION_CONFINED', message, { action })
+  }
+}
+
+/**
+ * 409 — a cross-project lookup (ADR-0094) whose conversation changed who may
+ * read it while the lookup ran: the reach it searched was computed for the old
+ * audience, so nothing is handed out. Asking again searches as the new one. The
+ * message is the reader's sentence, relayed by the agent.
+ */
+export class CrossProjectAudienceChangedError extends ApiError {
+  constructor(message: string) {
+    super(409, 'CROSS_PROJECT_AUDIENCE_CHANGED', message)
+  }
+}
+
+/**
+ * 409 — a memory write from a conversation that drew on another project
+ * (ADR-0094). Project and organization memory are read by everyone in the
+ * project, so nothing found in another project may reach them from a chat.
+ */
+export class CrossProjectMemoryError extends ApiError {
+  constructor(message: string) {
+    super(409, 'CROSS_PROJECT_MEMORY', message)
+  }
+}
+
+/** The machine-readable reason a person no longer has the rights to read a resource's content. */
+export const RIGHTS_LOST_REASON = 'rights-lost'
+
+/**
+ * 403 — the caller is still a party to the resource (a grant, its creator) but
+ * can no longer read what it was drawn from: a conversation that recorded a
+ * folder they may not read now (ADR-0088). Its own code, so the client shows
+ * "you no longer have the rights" instead of "not found", and its message and
+ * details carry nothing of the content: not its title, not the folder.
+ */
+export class ResourceRightsLostError extends ApiError {
+  constructor(readonly resourceType: string) {
+    super(403, 'RESOURCE_RIGHTS_LOST', 'You no longer have the rights to view this content.', {
+      reason: RIGHTS_LOST_REASON,
+      resourceType,
+    })
+  }
+}
+
+/**
  * 404 — resource missing OR the caller may not know it exists.
  * Cross-tenant and no-access lookups throw this (never Forbidden) so
  * responses do not leak resource existence to unauthorized callers.
@@ -83,8 +147,9 @@ export class UnprocessableError extends ApiError {
 /**
  * 413 — the request body was larger than the server will accept.
  *
- * Distinct from the 400 that judges a declared file size: this one is reached
- * when the body has ALREADY been cut off in transit, so nothing downstream can
+ * Distinct from {@link FileTooLargeError}, which judges one named file against
+ * its organization's limit: this one is reached when the body has ALREADY been
+ * cut off in transit, so nothing downstream can
  * name the file — the multipart stream carrying its name is the thing that
  * failed to parse. The limit is worth stating for exactly that reason: it is
  * the only actionable fact left.
@@ -95,7 +160,7 @@ export class PayloadTooLargeError extends ApiError {
       413,
       'PAYLOAD_TOO_LARGE',
       limitBytes
-        ? `Request body exceeds the maximum accepted size of ${Math.round(limitBytes / (1024 * 1024))} MB`
+        ? `Request body exceeds the maximum accepted size of ${formatMegabytes(limitBytes)} MB`
         : 'Request body exceeds the maximum accepted size',
       limitBytes ? { limitBytes } : undefined
     )
@@ -103,9 +168,38 @@ export class PayloadTooLargeError extends ApiError {
 }
 
 /**
+ * A byte limit in the decimal MB it was configured in, for a server message.
+ *
+ * These messages used to divide by 1024², so a 100 MB limit read "95 MB" — a
+ * number nobody configured. One decimal, and only when it is not whole.
+ */
+export function formatMegabytes(bytes: number): string {
+  return String(Math.round((bytes / BYTES_PER_MB) * 10) / 10)
+}
+
+/**
+ * 413 — one uploaded file is larger than its organization may upload.
+ *
+ * The limit is per organization (platform staff may set it, else the deployment
+ * default; `@/lib/storage/upload-limit`) or, for a model, `BIM_MAX_IFC_BYTES`.
+ * The message names that limit in MB because it is what the uploader can act on,
+ * and the client shows the server's sentence as the row's error.
+ */
+export class FileTooLargeError extends ApiError {
+  constructor(details: { fileSize: number; maxSizeBytes: number }) {
+    super(
+      413,
+      'FILE_TOO_LARGE',
+      `File exceeds the maximum upload size of ${formatMegabytes(details.maxSizeBytes)} MB`,
+      details
+    )
+  }
+}
+
+/**
  * 507 — the organization's storage quota would be exceeded by this write.
  *
- * Distinct from 400 "file exceeds the maximum size", which judges the ONE file:
+ * Distinct from 413 {@link FileTooLargeError}, which judges the ONE file:
  * this one says the file is acceptable but the tenant has no room left, so the
  * remedy is different (delete something, or raise the quota) and the UI has to
  * say so. RFC 4918's Insufficient Storage is exactly this case.

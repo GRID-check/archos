@@ -1,9 +1,13 @@
 # Architecture Decision Records
 
-This directory holds the **Architecture Decision Records (ADRs)** for the Grid Agent
-project. An ADR captures a single architecturally significant decision together with
-its context, the decision itself, and its consequences, so the rationale survives
-team and template churn.
+This directory holds the **Architecture Decision Records (ADRs)** for Piloti, the
+workspace for architects and planning offices. An ADR captures a single
+architecturally significant decision together with its context, the decision
+itself, and its consequences, so the rationale survives team and template churn.
+
+For what the product is, read [`VISION.md`](../../VISION.md). Accepted records 0006,
+0025, 0037, 0052 and 0060 were written in the earlier frame of a building-regulation
+assistant, and are read in the light of VISION.md.
 
 New records use [MADR 4](https://adr.github.io/madr/). The shape is in
 [`0000-template.md`](0000-template.md). Records 0001–0049 predate that template
@@ -16,9 +20,9 @@ Working in here: [`AGENTS.md`](AGENTS.md).
 
 ## Why ADRs
 
-Grid is a small team rapidly evolving a product built on a third-party template
-(AI-Q). Decisions that are costly to reverse need a durable rationale trail: new
-services, datastores, external dependencies, auth/tenancy/security models,
+Piloti is a small team rapidly evolving a workspace for planning offices, built on
+a third-party template (AI-Q). Decisions that are costly to reverse need a durable
+rationale trail: new services, datastores, external dependencies, auth/tenancy/security models,
 data-model changes, cross-cutting patterns, or anything that changes a public
 contract. ADRs give us shared context and make onboarding easier.
 
@@ -88,9 +92,9 @@ Consequences, where a reader looks for them.
 | [0026](0026-unified-source-kind-model.md) | Unified source-kind model for citations, Herleitung, and reports | Accepted |
 | [0027](0027-platform-workflow-templates.md) | Platform-managed workflow templates | Superseded by ADR-0046 |
 | [0028](0028-horizontal-agent-scaling-conversation-affinity.md) | Horizontally scaling the aiq-agent container via conversation affinity | Accepted |
-| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Accepted |
+| [0029](0029-aspire-dashboard-telemetry.md) | Aspire standalone dashboard as the live telemetry pane | Superseded by ADR-0100 |
 | [0030](0030-interactive-card-decisions-persist-on-the-message.md) | Interactive-card decisions persist on the message | Accepted |
-| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Accepted |
+| [0031](0031-err2issue-errors-to-github-issues.md) | err2issue — ERROR telemetry becomes deduplicated GitHub issues | Superseded by ADR-0100 |
 | [0032](0032-shareable-resource-model.md) | The shareable-resource model, and where resource-level grants live | Accepted |
 | [0033](0033-server-authoritative-shared-conversations.md) | Server-authoritative shared conversations (and the seam that keeps private ones local-first) | Accepted |
 | [0034](0034-mention-handoff-persisted-state.md) | The mention hand-off is persisted conversation state, not the agent's in-memory HITL | Accepted |
@@ -136,6 +140,30 @@ Consequences, where a reader looks for them.
 | [0074](0074-zero-data-retention-is-the-default-enforced-at-one-seam.md) | Zero data retention is the default, enforced at one OpenRouter seam | Accepted |
 | [0076](0076-ingestion-is-claimed-fairly-from-a-durable-queue.md) | Ingestion is claimed fairly from a durable queue, by a tier that scales on its depth | Proposed |
 | [0077](0077-prompt-context-is-loaded-over-http-not-websocket-headers.md) | Prompt context is loaded over HTTP, not carried in WebSocket headers | Accepted |
+| [0078](0078-folders-are-a-property-of-a-shelf-not-of-a-project.md) | Folders are a property of a shelf, not of a project: the Archiv gains folders through the one folder implementation | Accepted |
+| [0079](0079-background-work-runs-on-one-claim-substrate.md) | Background work runs on one claim substrate, in worker pools KEDA scales on their queues | Proposed |
+| [0080](0080-chat-drops-affinity-for-the-conversation-bus.md) | Chat drops conversation affinity for the conversation bus, and the backend scales on turn occupancy | Proposed |
+| [0081](0081-every-model-call-passes-one-priority-aware-provider-limiter.md) | Every model call passes one priority-aware provider limiter that adapts to 429s | Proposed |
+| [0082](0082-backend-roles-are-split-by-job-and-named-after-it.md) | Backend roles are split by job, and named after it | Proposed |
+| [0083](0083-postgres-connections-go-through-a-transaction-pooler.md) | Postgres connections go through a transaction pooler; session features take a direct connection | Proposed |
+| [0084](0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md) | The backend authorizes a job by the scope the BFF signed | Proposed |
+| [0085](0085-outlook-archives-are-read-by-range-and-filed-as-the-person-per-mail.md) | Outlook archives are read by range and filed as the person, one folder per mail | Proposed |
+| [0086](0086-uploads-are-screened-locally-and-matches-wait-in-quarantine.md) | Uploads are screened locally before any model sees them, and matches wait in quarantine | Accepted |
+| [0087](0087-folder-access-follows-workos-roles-and-a-restricted-folder-is-its-own-collection.md) | Folder access follows WorkOS roles, and a restricted folder is its own retrieval collection (partly superseded by 0088) | Accepted |
+| [0088](0088-folder-access-is-read-write-per-role.md) | Folder access is read/write per role | Accepted |
+| [0089](0089-langfuse-is-the-observability-platform-and-everything-is-observable.md) | Langfuse is the observability platform, and everything the product does is observable in it | Accepted |
+| [0090](0090-a-closed-project-is-read-only-and-open-to-the-office.md) | A closed project is read-only and open to the whole office | Accepted |
+| [0091](0091-the-steckbrief-keeps-people-apart-from-the-profile.md) | The Steckbrief keeps its people apart from the profile (its people list partly superseded by 0101) | Accepted |
+| [0092](0092-ausmisten-proposes-from-metadata-and-bins-through-a-subfolder.md) | „Ausmisten" proposes from metadata, and bins through a subfolder of each document's folder | Accepted |
+| [0093](0093-the-server-marks-the-message-that-drew-on-a-restricted-folder.md) | The server marks the message that drew on a restricted folder, and the mark outlives the chat | Accepted |
+| [0094](0094-the-agent-searches-other-projects-as-the-conversations-audience.md) | The agent searches other projects as the conversation's audience, and a closed project restricts nobody | Accepted |
+| [0095](0095-permitting-memory-is-derived-from-the-documents-at-ingest.md) | Permitting memory is derived from the documents at ingest, read by meaning | Proposed |
+| [0096](0096-a-closed-project-s-experience-is-read-from-its-documents-as-suggestions.md) | A closed project's experience is read from its documents, as suggestions a person confirms | Proposed |
+| [0097](0097-who-holds-a-folder-s-own-list-is-a-workos-folder-role.md) | Who holds a folder's own access list is a WorkOS folder role | Accepted |
+| [0098](0098-the-project-lifecycle-is-a-small-state-machine.md) | The project lifecycle is a small state machine, and the Abschluss belongs to the closing | Proposed |
+| [0099](0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md) | Fassungen across file names are a confirmed link, not a merge | Proposed |
+| [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
+| [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

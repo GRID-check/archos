@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react'
 import { useTranslations } from '@/i18n'
 import { Dialog, DialogContent, DialogTitle } from '@/components/ui/dialog'
 import { documentDisplayName } from '@/lib/documents/display-name'
+import type { FassungFacts } from '@/lib/documents/fassung'
 import type { DocumentScope } from './document-actions'
 import type { FileItem } from './project-file-workspace'
 import { FilePreviewPane } from './file-preview-pane'
@@ -18,12 +19,15 @@ interface FilePreviewDialogProps {
   /** Which corpus this document belongs to — decides the file operations' route. */
   scope?: DocumentScope
   onReingested?: (fileId: string, status: string) => void
-  onTagsUpdated?: (fileId: string, tags: string[]) => void
+  onTagsUpdated?: (fileId: string, tags: string[], topics?: string[]) => void
+  /** The pane asks for another document of this shelf to be opened here. */
+  onOpenDocument?: (fileId: string) => void
+  /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
+  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /** The document was renamed in the pane's header menu. */
   onRenamed?: (fileId: string, displayName: string | null) => void
   /** The document was deleted in the pane's header menu. */
   onDeleted?: (fileId: string) => void
-  showMetadataPanel?: boolean
   /** Whether an `.ifc` preview offers the model workspace (`ifc-models`). */
   showModels?: boolean
   canCollaborate?: boolean
@@ -63,9 +67,10 @@ export function FilePreviewDialog({
   scope = 'files',
   onReingested,
   onTagsUpdated,
+  onOpenDocument,
+  onFassungChanged,
   onRenamed,
   onDeleted,
-  showMetadataPanel,
   showModels,
   canCollaborate,
 }: FilePreviewDialogProps) {
@@ -153,9 +158,10 @@ export function FilePreviewDialog({
             onClose={onClose}
             onReingested={onReingested}
             onTagsUpdated={onTagsUpdated}
+            onOpenDocument={onOpenDocument}
+            onFassungChanged={onFassungChanged}
             onRenamed={onRenamed}
             onDeleted={onDeleted}
-            showMetadataPanel={showMetadataPanel}
             showModels={showModels}
             canCollaborate={canCollaborate}
           />

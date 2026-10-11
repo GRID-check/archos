@@ -1,9 +1,9 @@
 /**
  * @vitest-environment node
  */
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { collectionDocumentsUrl, collectionFileRef, collectionFileUrl } from './collection-file-ref'
+import { collectionDocumentsUrl, collectionFileRef, collectionFileUrl, purgeIngestedChunks } from './collection-file-ref'
 
 const row = {
   collectionName: 'proj_abc',
@@ -105,5 +105,39 @@ describe('the URL builders', () => {
     expect(collectionFileUrl('http://backend:8000', awkward, '/tags')).toBe(
       'http://backend:8000/v1/collections/proj_a%20b/documents/Schnitt%20A-A%2FEG.pdf/tags',
     )
+  })
+})
+
+describe('purgeIngestedChunks — reversible unless said otherwise', () => {
+  const ref = collectionFileRef({
+    collectionName: 'proj_abc',
+    filename: 'EG_Grundriss_Index_B.pdf',
+    authoredBy: 'user',
+    publishedVersionId: null,
+  })!
+  const fetchSpy = vi.fn()
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    fetchSpy.mockReset()
+  })
+
+  const bodyOf = () => JSON.parse(String((fetchSpy.mock.calls[0][1] as RequestInit).body)) as unknown
+
+  it('asks for a reversible purge by default: the backend keeps the Fassung links a person made', async () => {
+    vi.stubGlobal('fetch', fetchSpy.mockResolvedValue(new Response('{}', { status: 200 })))
+
+    await expect(purgeIngestedChunks('http://backend:8000', ref, 1000)).resolves.toBe(true)
+
+    expect(fetchSpy.mock.calls[0][0]).toBe('http://backend:8000/v1/collections/proj_abc/documents')
+    expect(bodyOf()).toEqual({ file_ids: ['EG_Grundriss_Index_B.pdf'] })
+  })
+
+  it('says permanent when the document will not come back, so every link to it is cleared', async () => {
+    vi.stubGlobal('fetch', fetchSpy.mockResolvedValue(new Response('{}', { status: 200 })))
+
+    await purgeIngestedChunks('http://backend:8000', ref, 1000, { permanent: true })
+
+    expect(bodyOf()).toEqual({ file_ids: ['EG_Grundriss_Index_B.pdf'], permanent: true })
   })
 })

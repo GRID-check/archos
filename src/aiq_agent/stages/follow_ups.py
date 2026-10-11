@@ -573,7 +573,6 @@ FOLLOW_UPS = register_stage(
         id="follow_ups",
         agent_group=AgentGroup.FOLLOW_UPS,
         flag_slug="post-answer-follow-ups",
-        env_default="GRID_STAGE_FOLLOW_UPS_ENABLED",
         timeout_s=FOLLOW_UPS_TIMEOUT_S,
         gate=_gate,
         handler=_handler,

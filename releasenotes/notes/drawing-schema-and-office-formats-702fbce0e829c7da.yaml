@@ -6,13 +6,14 @@ features:
     file.
 improvements:
   - >
-    Plans are read more precisely: each drawing on a sheet, such as a floor
-    plan, a section or a detail, is captured with its own scale, rooms,
-    structure and build-ups. Uncertain readings of the image are marked as such.
+    Piloti reads drawings more precisely: each drawing on a sheet, such as a
+    floor plan, a section or a detail, keeps its own scale, rooms, structure and
+    build-ups. Where a reading of the image is uncertain, Piloti marks it as
+    such.
   - >
-    Plans uploaded as images get the same structured reading as plans in a PDF,
-    and a file's detail view shows what was recognised on each drawing.
+    Drawings uploaded as images get the same structured reading as drawings in a
+    PDF, and a file's detail view shows what Piloti recognised on each drawing.
 fixes:
   - >
-    Word documents are read correctly and can be cited in answers. They used to
-    be accepted on upload and then marked as failed.
+    Piloti now reads Word documents correctly, so answers can cite them. Before,
+    they were accepted on upload and then marked as failed.

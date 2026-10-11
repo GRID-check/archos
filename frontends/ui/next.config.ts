@@ -1,5 +1,6 @@
 import path from 'node:path'
 import type { NextConfig } from 'next'
+import type { withPostHogConfig } from '@posthog/nextjs-config'
 import { AVATAR_IMAGE_PATTERNS } from './src/lib/images/avatar-hosts'
 import { LOCAL_IMAGE_PATTERNS } from './src/lib/images/optimizable'
 import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
@@ -19,8 +20,23 @@ import { requestBodyLimitBytes } from './src/shared/config/request-body-limit'
  */
 const requestBodyLimitMB = Math.ceil(requestBodyLimitBytes(process.env) / (1024 * 1024))
 
-const nextConfig: NextConfig = {
+/** The config as written; the default export below adds PostHog source maps on the upload path. */
+export const nextConfig: NextConfig = {
   reactStrictMode: true,
+
+  // PostHog's endpoints end in a slash (`/e/`, `/s/`, `/flags/`). With the
+  // default, Next answers `/ingest/e/` with a 308 to `/ingest/e`, and a
+  // redirected beacon is a lost event (PostHog docs, advanced/proxy/nextjs).
+  // Both forms are served as written; the site has no other use for the
+  // redirect (`trailingSlash` stays unset).
+  skipTrailingSlashRedirect: true,
+
+  // The build typechecks production code only: tsconfig.build.json leaves the
+  // specs and test helpers out of its roots, so a type error in a test cannot
+  // fail `next build`. `task fe:types` (tsc on tsconfig.json) still checks them.
+  typescript: {
+    tsconfigPath: 'tsconfig.build.json',
+  },
 
   images: {
     // The optimizer refuses any remote host that is not named here, which is
@@ -32,8 +48,7 @@ const nextConfig: NextConfig = {
     // same-origin route (`/api/documents/[id]/image`), so they are governed by
     // `localPatterns` below. Presigning them to the object store instead would
     // put them on a per-environment host that resolves to a private IP inside
-    // the compose network — which the optimizer rejects outright — and would
-    // defeat its cache, since every fresh signature is a new cache key.
+    // the compose network, which the optimizer rejects outright.
     remotePatterns: AVATAR_IMAGE_PATTERNS.map((pattern) => ({ ...pattern })),
 
     // Same-origin paths the optimizer may serve. Leaving this unset does NOT
@@ -44,7 +59,36 @@ const nextConfig: NextConfig = {
     // thumbnail in the app. See `optimizable.ts` for the patterns and why the
     // document route is allowed a query string.
     localPatterns: LOCAL_IMAGE_PATTERNS.map((pattern) => ({ ...pattern })),
+
+    // No server-side cache of optimized images. A document image's route
+    // re-checks the token and the reader's folder access on every fetch, and a
+    // cached copy is served WITHOUT that fetch: a hit straight from disk, a
+    // stale entry too while it revalidates, and a failed revalidation (our
+    // 403/404) writes the stale entry back for another `minimumCacheTTL`. So a
+    // picture kept loading, for anyone holding the URL, after its folder was
+    // closed to them and after the token expired. Lowering the TTL does not
+    // close that loop; only switching the cache off does. What it cost: each
+    // request re-encodes. Document URLs carry the person and a five-minute
+    // window, so the cache only ever served that person within those minutes,
+    // mostly to a browser already holding the image; avatars are re-fetched
+    // from workoscdn.com.
+    // `optimizer-cache.spec.ts` runs Next's own cache against this config.
+    maximumDiskCacheSize: 0,
+
+    // The floor on the max-age `/_next/image` sends to the browser, which it
+    // sends as `public` whatever the route said. The default (4 hours) let any
+    // shared cache keep a tenant's picture long after the token had expired.
+    // One token window (`IMAGE_URL_WINDOW_SECONDS`); upstreams that send a
+    // longer max-age, like the avatar CDN, keep theirs.
+    minimumCacheTTL: 300,
   },
+
+  // Loaded from node_modules at runtime instead of bundled into the route that
+  // uses it (the answer-feedback workbook export). exceljs is CommonJS with
+  // ~60 dependencies (archiver, jszip, saxes, …) and circular requires, which
+  // the server bundle gains nothing from inlining; the production image ships
+  // node_modules (deploy/Dockerfile), so Node resolves it as it does in tests.
+  serverExternalPackages: ['exceljs'],
 
   experimental: {
     serverActions: {
@@ -92,7 +136,11 @@ const nextConfig: NextConfig = {
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          // The microphone is allowed for our own origin only: voice dictation
+          // in the composer records from it (docs/architecture/voice-dictation.md).
+          // `microphone=()` refused getUserMedia on every page with a
+          // NotAllowedError that reads exactly like a member denying access.
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(self), geolocation=()' },
           // Behind sign-in, so in no search index; the public site is what
           // gets found. Covers non-HTML responses the metadata cannot reach.
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
@@ -132,4 +180,74 @@ const nextConfig: NextConfig = {
   },
 }
 
-export default nextConfig
+type PostHogSourcemapConfig = Parameters<typeof withPostHogConfig>[1]
+type NextConfigFunction = (
+  phase: string,
+  context: { defaultConfig: NextConfig }
+) => Promise<NextConfig>
+
+/**
+ * PostHog source maps (`@posthog/nextjs-config`), for the one build that can
+ * upload them, or `null` for every other build and for the running server.
+ *
+ * On only when the image build hands `next build` a personal API key
+ * (`POSTHOG_CLI_API_KEY`, read from a BuildKit secret inside the same RUN,
+ * `deploy/Dockerfile`) and a project id. A fork, a pull request, a local build
+ * and the runtime have neither, and get `nextConfig` exactly as written. With
+ * both, the package turns browser maps on, the PostHog CLI injects chunk ids
+ * into the shipped JavaScript, uploads the maps for release `grid-ui` at the
+ * commit being built (the `GRID_GIT_SHA` the container reports) and deletes
+ * them. The Dockerfile then deletes any map left over and fails the build if
+ * one survives: Next serves `.next/static` to anyone, and a map carries the
+ * original source.
+ *
+ * `symbol-set` binds the uploaded maps to the release, as the CLI did before
+ * this package. Its newer `event` mode injects the release id for posthog-js
+ * to send, which the posthog-js this app pins is not known to do.
+ */
+export const posthogSourcemapConfig = (
+  env: NodeJS.ProcessEnv = process.env
+): PostHogSourcemapConfig | null => {
+  const personalApiKey = env.POSTHOG_CLI_API_KEY?.trim()
+  const projectId = env.POSTHOG_PROJECT_ID?.trim()
+  if (!personalApiKey || !projectId) return null
+  const releaseVersion = env.GRID_GIT_SHA?.trim()
+  if (!releaseVersion) {
+    throw new Error('GRID_GIT_SHA is empty; a PostHog release needs the commit it was built from')
+  }
+  return {
+    personalApiKey,
+    projectId,
+    host: env.POSTHOG_CLI_HOST?.trim() || 'https://eu.posthog.com',
+    sourcemaps: {
+      enabled: true,
+      releaseName: 'grid-ui',
+      releaseVersion,
+      releaseMode: 'symbol-set',
+      deleteAfterUpload: true,
+    },
+  }
+}
+
+/**
+ * The config Next loads, at build time and again at runtime. The package is
+ * imported only on the upload path: it is a devDependency (it brings the CLI
+ * and webpack), absent from the runtime image, which loads this file too.
+ * `withPostHogConfig` is the outermost wrapper, as the package requires, and
+ * server maps are switched on beside it so server stack frames resolve too.
+ */
+export default async function config(
+  phase: string,
+  context: { defaultConfig: NextConfig }
+): Promise<NextConfig> {
+  const posthog = posthogSourcemapConfig()
+  if (!posthog) return nextConfig
+  const { withPostHogConfig } = await import('@posthog/nextjs-config')
+  const withServerMaps: NextConfig = {
+    ...nextConfig,
+    experimental: { ...nextConfig.experimental, serverSourceMaps: true },
+  }
+  // Typed as a NextConfig, returned as the function Next calls with the phase.
+  const wrapped = withPostHogConfig(withServerMaps, posthog) as unknown as NextConfigFunction
+  return wrapped(phase, context)
+}

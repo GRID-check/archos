@@ -1,38 +1,13 @@
-/** Organisationsweites Archiv: der projektübergreifende Dokumentenspeicher (ADR-0024). */
+/** Büroablage: der organisationsweite, projektübergreifende Dokumentenspeicher (ADR-0024). */
 export const archiv = {
-  title: 'Archiv',
+  title: 'Büroablage',
   subtitle: 'Gemeinsame Dokumente, die jedem Projekt Ihrer Organisation zur Verfügung stehen',
   backToApp: 'Zurück zu den Projekten',
   backToProject: 'Zurück zum Projekt',
   backToNamedProject: 'Zurück zu {name}',
+  // What only the Büroablage card says: the gold kind chip and where it came from.
   library: {
-    searchPlaceholder: 'Archiv durchsuchen…',
-    searchLabel: 'Archivdokumente durchsuchen',
-    resetSearch: 'Suche zurücksetzen',
-    categoriesLabel: 'Nach Kategorie filtern',
-    allCategories: 'Alle',
-    emptyTitle: 'Das Archiv ist leer',
-    emptyDescription:
-      'Hier abgelegte Dokumente werden zu Bürowissen und stehen jedem Projekt Ihrer Organisation zur Verfügung.',
-    noMatchTitle: 'Keine passenden Dokumente',
-    noMatchDescription: 'Kein Archivdokument entspricht Ihrer Suche oder der gewählten Kategorie.',
-    clearFilters: 'Filter zurücksetzen',
     provenance: 'Aus „{source}“',
-    semantic: {
-      searchPlaceholder: 'Archiv durchsuchen – Enter für semantische Suche …',
-      run: 'Suchen',
-      reset: 'Alle Dokumente anzeigen',
-      banner: 'Semantische Suche: {count} Treffer für „{query}“',
-      searching: 'Archiv wird nach „{query}“ durchsucht …',
-      noResults: 'Keine semantischen Treffer für „{query}“',
-      failed: 'Die Suche konnte nicht ausgeführt werden',
-      failedDescription:
-        'Auf dem Weg zum Index ist etwas schiefgegangen. Das Archiv ist unverändert — versuchen Sie dieselbe Suche erneut oder kehren Sie zu allen Dokumenten zurück.',
-      retry: 'Erneut versuchen',
-      failedBanner: 'Semantische Suche nach „{query}“ konnte nicht ausgeführt werden',
-      noResultsDescription:
-        'Nichts im Archiv entsprach dem Sinn Ihrer Anfrage. Versuchen Sie eine andere Formulierung oder löschen Sie die Suche, um alle Dokumente zu durchsuchen.',
-    },
     kind: {
       floorplan: 'Grundriss',
       section: 'Schnitt / Ansicht',
@@ -51,16 +26,10 @@ export const archiv = {
   toast: {
     // Sobald die asynchrone Verarbeitung abgeschlossen ist und das Dokument
     // organisationsweit zitierbar wird.
-    ingestionComplete: '„{name}“ ist jetzt im Büroarchiv – zitierbar',
+    ingestionComplete: '„{name}“ ist jetzt in der Büroablage – zitierbar',
   },
   workspace: {
-    dropToUpload: 'Dateien hier ablegen, um sie ins Archiv aufzunehmen',
-    dropUnsupported: 'Einige Dateien haben einen nicht unterstützten Typ',
-    uploadProblem: 'Upload-Problem',
-    dismissError: 'Fehler ausblenden',
-    loadError: 'Das Archiv konnte nicht geladen werden.',
-    listTruncated: 'Angezeigt werden die neuesten {count} Dokumente. Ältere fehlen in dieser Liste und in der Suche nach Namen.',
-    tryAgain: 'Erneut versuchen',
+    dropToUpload: 'Dateien hier ablegen, um sie in die Büroablage aufzunehmen',
   },
   actions: {
     label: 'Dateiaktionen für „{name}“',
@@ -71,13 +40,15 @@ export const archiv = {
     reingestAlreadyDone: 'Ist bereits fertig',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
-      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis die neue Fassung fertig ist, stützen sich Antworten weiter auf die bisherige.',
+      'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
     reingestConfirmAction: 'Erneut lesen',
     menuLabel: 'Dateiaktionen',
     download: 'Herunterladen',
     open: 'Öffnen',
     ask: 'Danach fragen',
     copyOriginPath: 'Herkunftspfad kopieren',
+    moved: '„{name}“ nach {folder} verschoben',
+    moveError: 'Das Dokument konnte nicht verschoben werden. Bitte versuchen Sie es erneut.',
     move: 'In Ordner verschieben',
     rename: 'Umbenennen…',
     delete: 'Löschen…',
@@ -102,14 +73,14 @@ export const archiv = {
     },
   },
   delete: {
-    action: 'Aus Archiv löschen',
+    action: 'Aus der Büroablage löschen',
     title: '„{name}“ löschen?',
     confirm:
       'Dadurch wird das Dokument für die gesamte Organisation entfernt. Dies kann nicht rückgängig gemacht werden.',
     confirmAction: 'Löschen',
     cancel: 'Abbrechen',
     deleting: 'Wird gelöscht…',
-    success: '„{name}“ wurde aus dem Archiv entfernt',
+    success: '„{name}“ wurde aus der Büroablage entfernt',
     error: 'Das Dokument konnte nicht gelöscht werden',
     legalHold: 'Das Dokument unterliegt einer rechtlichen Sperre und kann nicht gelöscht werden',
   },

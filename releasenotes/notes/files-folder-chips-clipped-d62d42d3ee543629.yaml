@@ -2,5 +2,5 @@
 fixes:
   - >
     The folder chips above the file list in Dateien are readable again. In
-    projects with a long file list they were squeezed until the folder names
-    were cut through the middle.
+    projects with a long file list, they were squeezed until the folder
+    names were cut off in the middle.

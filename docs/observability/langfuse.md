@@ -1,0 +1,290 @@
+# The Langfuse contract
+
+**Langfuse is Piloti's observability platform** ([ADR-0089](../adr/0089-langfuse-is-the-observability-platform-and-everything-is-observable.md)).
+Everything the product does with a model, every agent step and every quality
+check lands there, and we improve the product from what it shows. This page is
+the contract: what every trace carries, which scores exist, what Langfuse
+itself is configured with, and what a change must do to keep all of it true.
+
+We are actively working on this. If you find something the product does that
+Langfuse does not show, it is a bug. Fix it or file it, and add it to the open
+list in [`langfuse-audit-2026-10.md`](langfuse-audit-2026-10.md).
+
+For the people reading the data rather than producing it (business analysts,
+the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
+
+## What every trace carries
+
+| Field in Langfuse | Where it comes from | Values |
+|---|---|---|
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `fassung-visual-compare` (two page images in one vision call, input shown without the pixels) |
+| Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
+| Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
+| Session | the conversation id (NAT sets `session.id`) | one session per chat |
+| User | the verified WorkOS subject, only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true` | WorkOS user id |
+| Observation type | `nat.span.kind` mapped by `trace_context.observation_type` | `agent` (the turn), `generation` (a model call), `tool`, `retriever` (`retrieve.*`), `chain`, `embedding`, `guardrail`, `evaluator` |
+| Prompt | `PromptLinkProcessor`, generations only | `piloti-system-static` and its version |
+| Usage and cost | `UsageAttributeProcessor` (NAT), `observed_generation` (auxiliary) | input, output, cached and reasoning tokens; the provider's cost when it reports one |
+
+### A chat turn's root observation
+
+The root (`chat-turn`, type `agent`) is the turn as the reader got it: the
+question as input, **the answer text as output**, and the outcome
+(`observability/turn_outcome.py`). A failed turn's root is level `ERROR` with
+the wire's error code; a turn the asker stopped is `WARNING`.
+
+Trace metadata on the root:
+
+| Key | Meaning |
+|---|---|
+| `turn_outcome` | `answered`, `refused`, `handed_off`, `cancelled`, `error` |
+| `answer_route` | `meta`, `shallow`, `deep`, `error` |
+| `answer_confidence`, `answer_confidence_capped` | what the reader saw, and which guard lowered it |
+| `answer_sources`, `answer_cards`, `answer_card_types`, `answer_chars` | what the answer contained |
+| `citations_removed`, `quotes_verbatim`, `quotes_not_found` | verification outcome, as counts |
+| `research_truncated`, `handed_off_to_run`, `skills_activated`, `reasoning_effort` | how the turn ran |
+| `error_code` | on a failed turn |
+| `usage_llm_calls`, `usage_prompt_tokens`, `usage_completion_tokens`, `usage_total_tokens`, `usage_cost_usd`, `usage_cost_source`, `usage_error` | the turn's whole spend (`usage_rollup`) |
+| `answer_dialect` | block census and repairs by kind |
+| `lessons_arm`, `lesson_ids` | the platform-lessons experiment (`turn/context.py`): `treated`, `holdout` or `off`, and the comma-joined ids of the lessons in the digest the turn carried (none on a holdout turn). The holdout is a breakdown on these, not a join to the vote table. Always recorded: neither names a person |
+| `ifc_op`, `ifc_outcome`, `ifc_model`, … | what a building-model tool did (`tools/bim/trace.py`) |
+| `answer_precedent_sources`, `answer_precedent_projects` | cited sources from another project (ADR-0094), and from how many projects: the office's experience reaching the answer |
+| `reference_projects_offered`, `precedent_p`, `reference_prefetch` | the turn's start: how many reference projects the catalog listed, the decision's p(precedent), and whether round 0 searched them on its own (`agents/piloti/register.py`) |
+| `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
+| `organization_id`, `project_id` | the tenant, only with identity attributes on |
+| `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
+
+Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
+`confidence:<…>`, `capped:<…>`, `citations-removed`, `quote-not-found`,
+`research-truncated`, `handed-off`, `error:<code>`, `feature:ifc`,
+`feature:cross-project` (a `project_lookup` ran), `reference-prefetch`,
+`cited-precedent`,
+`feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
+identity attributes on. Tags are labels, never ids or text, with the one
+exception of the tenant tag.
+
+Each `project_lookup` call (ADR-0094) is also a `retrieve.project_lookup`
+retriever observation, as `knowledge_search` is: its input the action and the
+body sent (`scope`, `query`, `offset`, `openFoldersOnly`), its output what came
+back as data, never passage text: `projects_in_scope`, `projects_searched`,
+`next_offset`, the counts of passages, decisions and permit records, each
+project named by id and status, and the picked passages by project, file, page
+and score, with each pick's `solved` and the pool's `solved_any` and
+`injection_flagged` when the hit judge ran (ADR-0064 use 11; `judged: false`
+when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`,
+`audience_changed`, `invalid`, `unreachable` or `invalid_arguments`.
+
+### The decision model
+
+Every call of the decision model (Jev, ADR-0064) is a generation named
+`decide.<slot>`, nested under whatever step is open (`observability/decision_trace.py`):
+`turn`, `reference_fit`, `reference_hits`, `passages`, `rerank`, `plan`,
+`document_tags`, `doc_class`, `feedback_causes`, `experience_verify`. Its input
+is the question names and how many states were asked, never a state (a state
+carries the reader's words); its output is the answers as numbers (one summary
+per state, at most 24), the served model, the latency and the provider's usage,
+which `UsageAttributeProcessor` stamps as the generation's tokens and cost. A
+call that did not run is `{"decided": 0, "skipped": <reason>}`. A `decide_many`
+batch is one generation, its usage summed.
+
+## Scores
+
+Every score Piloti, a reviewer or a judge writes is declared once in
+`aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`. A test fails when
+a name is written but not declared, or declared but not listed here.
+
+| Score | Type | Written by | Meaning |
+|---|---|---|---|
+| `user-feedback` | numeric 0–1 | BFF, on a vote | 1 helpful, 0 not. The mean is the helpful rate |
+| `user-feedback-reason` | categorical | BFF, on a down-vote | `inaccurate`, `wrong_source`, `too_slow`, `other` |
+| `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
+| `answer-grounded` | boolean | agent | false when sources were retrieved but no citation survived |
+| `citations-removed` | numeric | agent | citations verification dropped |
+| `quotes-unverified` | numeric | agent | quoted spans no passage holds |
+| `retrieval-precision` | numeric 0–1 | agent | share of distinct retrieved sources the answer cited |
+| `citation-fallback` | boolean | agent | the single retrieved source was appended for the model |
+| `sources-empty` | boolean | agent | a lookup ran and found nothing |
+| `answer-confidence` | categorical | agent | `low`, `medium`, `high` as shown |
+| `confidence-capped` | categorical | agent | which guard lowered it, or `none` |
+| `quotes-verbatim-rate` | numeric 0–1 | agent | checked quote lines held verbatim |
+| `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
+| `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
+| `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |
+| `review-sources` | categorical | reviewer, in the queue | `right_sources`, `missing_sources`, `wrong_sources` |
+| `judge-answers-question` | numeric 0–1 | LLM judge | how directly the answer addresses the question |
+| `judge-uncited-claims` | boolean | LLM judge | a normative requirement stated without `[N]` |
+| `judge-clarity` | categorical | LLM judge | `clear`, `partly_clear`, `unclear` |
+
+Agent scores are posted to `POST /api/public/scores` from a small bounded pool
+(`langfuse_scores.emit_scores`); they never block or fail a turn, and a
+re-post upserts the same id. The citation scores come from the same outcome
+the `citation_events` ledger records, so the ledger's dashboard and Langfuse
+agree.
+
+## What Langfuse is configured with
+
+Declared in `aiq_agent.observability.langfuse_catalog`, provisioned by:
+
+```bash
+task langfuse:provision              # check: prints what is missing or has drifted
+task langfuse:provision -- --apply   # create what is missing (ask first on a shared project)
+```
+
+* **Score configs** for every score above, so Langfuse validates values and the
+  annotation UI offers the categories.
+* **Annotation queue `answer-review`.** Every down-voted answer's trace is added
+  by the BFF (`frontends/ui/src/lib/langfuse/feedback-score.ts`). Reviewers
+  record `review-correctness` and `review-sources`.
+* **LLM-as-a-judge evaluators** `judge-answers-question`, `judge-uncited-claims`
+  and `judge-clarity`, and the rule `chat-turn-judges` that runs them on one in
+  five answered chat turns' root observations. **The rule is created disabled.**
+  Enabling it sends answers to the project's evaluation model: check that the
+  LLM connection uses a zero-data-retention endpoint (ADR-0074) before you do.
+* **Dataset `golden-questions`**: the answer suite's questions
+  (`tests/fixtures/herleitung/loop_eval_questions.yaml`) with their expected
+  family, Punkt and kind, for experiments that compare prompt or model versions.
+
+The script never changes or deletes what exists; a config that differs is
+reported as drift for a person to resolve.
+
+## PostHog export
+
+Traces, generations and scores reach PostHog **only** through Langfuse's own
+PostHog integration. Grid sends no `$ai_*` event and no LLM trace or score
+to PostHog itself; everything else (product analytics, errors, replay, surveys)
+goes to PostHog directly, and this export is what joins the two. The upstream
+page is [langfuse.com/integrations/analytics/posthog](https://langfuse.com/integrations/analytics/posthog).
+
+### What is exported
+
+Langfuse's worker, on an hourly schedule, batches events to the PostHog host you
+give it:
+
+| Event | One per | Properties that matter to us |
+|---|---|---|
+| `langfuse observation` | observation of any type (`GENERATION`, `SPAN`, `AGENT`, `TOOL`, `RETRIEVER`, `EVENT`, `CHAIN`, `EMBEDDING`, `EVALUATOR`, `GUARDRAIL`) | `langfuse_type`, `langfuse_observation_name`, `langfuse_trace_id`, `langfuse_trace_name`, `langfuse_model`, `langfuse_cost_usd`, `langfuse_input_units` / `_output_units` / `_total_units`, `langfuse_latency`, `langfuse_level`, `langfuse_tags`, `langfuse_environment`, `langfuse_release`, `langfuse_session_id`, `langfuse_user_id` |
+| `langfuse score` | score | `langfuse_score_name`, `_value`, `_string_value`, `_data_type`, `_comment`, `_metadata`, `langfuse_trace_id`, `langfuse_user_id` |
+
+A legacy export source sends `langfuse trace` and `langfuse generation` instead
+of `langfuse observation`; scores are the same in every source. No prompt or
+answer text is in either event. **Score comments and metadata are**: the
+`user-feedback` score's comment carries the voter's own words and what they
+expected (`feedback-score.ts`), so those words land in PostHog as
+`langfuse_score_comment` and `langfuse_score_metadata`. Langfuse's trace
+retention and erasure workers (ADR-0044) do not reach PostHog: an erased
+person's events there are removed in PostHog (delete the person with their
+events).
+
+Facts to plan around: **nothing is backfilled** (the sync is watermark-based,
+and starts when the integration is saved); there is **no filter** by observation
+type, name or level on the integration (the only lever is the export source);
+and PostHog drops events past the free tier's limit without telling Langfuse.
+An upstream issue ([langfuse#12786](https://github.com/langfuse/langfuse/issues/12786))
+reports the first sync of a project with a long history sending it all in one
+unthrottled burst, against the "nothing is backfilled" line, so save the integration
+early or on a project with little history, and watch the first run.
+
+### Which export source
+
+Self-hosted Langfuse has an **Export Source** selector in the integration
+settings (introduced with the v4 preview):
+
+| Source | Events | Reads | Works while |
+|---|---|---|---|
+| Enriched observations (recommended) | `langfuse observation` + `langfuse score` | v4's events table | `langfuse.v4WriteMode` is `dual` or `events_only` |
+| Traces and observations (legacy) | `langfuse trace` + `langfuse generation` + `langfuse score` | v3's tables | `legacy` or `dual`; not selectable once legacy writes are off |
+| Both | all of the above | | `dual`; duplicates by design, for migration only |
+
+Our deployment writes both tables (`langfuseV4WriteMode` defaults to `dual`,
+`deploy/pulumi/src/config.ts`), so either source works today. Upstream moves a
+self-hosted deployment on to the enriched source automatically once the server
+runs in `events_only`; the switch is one-way.
+
+**Volume.** A chat turn is one `AGENT` root plus a span for every retrieval,
+decision-model call, tool call and model call under it, so the enriched source
+exports many events per turn and the legacy source one trace plus its
+generations. All of them are ordinary PostHog events and count against the
+free tier's 1M analytics events a month, not against its AI-observability
+allowance. Because there is no filter, the choice is the legacy source (fewer
+events, deprecated upstream, gone at `events_only`) or the enriched one (every
+observation). Count before you commit: enable it on staging for a week and read
+the monthly `langfuse observation` count in PostHog, then decide. The export
+never reads a trace's body, so this is the whole cost.
+
+### Identity and the replay link
+
+* `user_id` becomes the event's distinct id, so it must be the WorkOS user id
+  PostHog identifies the browser with. That is Langfuse's user, which Grid sets
+  only with `GRID_TRACE_IDENTITY_ATTRIBUTES=true`; without it every event is
+  `langfuse_unknown_user` and joins to no person.
+* `trace.metadata.$posthog_session_id` becomes `$session_id`. Each chat turn
+  carries the browser's PostHog session id there:
+  `getPosthogSessionId()` (`frontends/ui/src/lib/analytics/posthog.ts`) is read
+  per question and sent as `user_message.posthog_session_id`; `_drive` in
+  `aiq_api/chat_socket.py` records it with `record_posthog_session`
+  (`langfuse_trace_attributes.py`). From a trace, open the same `$session_id`
+  in PostHog's replay list.
+* It is **identity-gated**, on the rule in that module's header ("no span names a
+  person" unless the deployment opts in): a session id names no one alone, but on
+  a trace holding the turn's question and answer it is a join key to that person's
+  recording and profile. It rides the same switch as the user id, and costs nothing
+  real: without the user id the events have no person to land on.
+* Only a UUIDv7 is kept, as PostHog generates them; anything else is dropped and
+  the turn runs. PostHog rotates the id after 30 idle minutes, so it is read per
+  turn.
+* The page sends the id only to a server whose hello lists
+  `user_message.posthog_session_id` in `accepts`, which is withheld while
+  `GRID_WIRE_V2_ADDITIVE_FIELDS` is off (its default). Turn that on for the link.
+
+### How to enable
+
+Langfuse configures this integration in the UI and nowhere else. There is no
+environment variable and no `LANGFUSE_INIT_*` for it, and the public API
+(`/api/public`) has an integrations endpoint for blob storage only, so
+`task langfuse:provision` cannot declare it. Do it by hand, once per Langfuse
+project:
+
+1. In Langfuse, open the project, then **Settings -> Integrations -> PostHog**.
+2. Set **PostHog Hostname** to the ingestion host (`https://eu.i.posthog.com`,
+   the same value as `POSTHOG_HOST`) and **PostHog API key** to the project's
+   public token (`POSTHOG_PROJECT_TOKEN`, `phc_...`).
+3. Choose the **Export Source** (above), switch **Enabled** on, and save.
+   Langfuse encrypts the key with `ENCRYPTION_KEY`, which the Langfuse tier
+   sets (`deploy/pulumi/src/platform/langfuse.ts`); a save that fails with an
+   internal error means that variable is missing.
+4. Wait for the next hourly run. In PostHog, `langfuse observation` appears
+   under Data management -> Events; the **AI Metrics** dashboard template is a
+   starting point.
+
+Network: the worker calls the PostHog host over HTTPS. Egress from the `grid`
+namespace is open (`network-policies.ts`, "Egress is left open on purpose"); only
+Gotenberg has an egress policy, so no rule is needed. A spec
+(`platform/langfuse.spec.ts`) fails if a policy ever selects the worker with
+`Egress`.
+
+## When you change the product
+
+| When you | You must |
+|---|---|
+| Add a model call inside a NAT run | Nothing: the exporter's processors cover it. Check the generation shows usage in Langfuse |
+| Add a model call outside one (a route, a script, a worker) | Wrap it in `observed_generation("<feature>", …)` and add the feature to the trace-name table above. `test_model_calls_are_traced.py` covers `aiq_api` routes |
+| Add or change a quality check | Emit a score through `langfuse_scores.emit_scores`, declare it in `SCORE_DEFINITIONS`, add its row here, run `task langfuse:provision` |
+| Add a dimension an analyst should slice by | Trace metadata through `record_trace_metadata` (tools) or `turn_outcome` (turn results); a tag only if it is a low-cardinality label |
+| Change a judge, the queue or the dataset | Edit `langfuse_catalog.py`, then `task langfuse:provision -- --apply` once it is merged |
+| Gate something on identity | Only the user and the tenant. Labels, counts and scores are never behind `GRID_TRACE_IDENTITY_ATTRIBUTES` |
+
+## Where the code is
+
+| Concern | Module |
+|---|---|
+| Environment, release, types, trace names | `src/aiq_agent/observability/trace_context.py` |
+| The processors on NAT's exporter | `src/aiq_agent/observability/langfuse_trace_attributes.py`, installed in `otel_header_redaction_exporter.py` |
+| A turn's outcome on its root | `src/aiq_agent/observability/turn_outcome.py`, bound in `aiq_api/chat_socket.py` `_drive` |
+| Runtime scores | `src/aiq_agent/observability/langfuse_scores.py` |
+| Model calls outside NAT | `src/aiq_agent/observability/direct_trace.py` |
+| Langfuse configuration as code | `src/aiq_agent/observability/langfuse_catalog.py`, `scripts/langfuse_provision.py` |
+| Votes, reasons, review queue | `frontends/ui/src/lib/langfuse/feedback-score.ts` |
+| PostHog session link | `record_posthog_session` in `langfuse_trace_attributes.py`, bound in `aiq_api/chat_socket.py` `_drive`; the browser side is `getPosthogSessionId` in `frontends/ui/src/lib/analytics/posthog.ts` |
+| Retention and erasure | `frontends/ui/workers/langfuse-traces.js` ([`deletion-pipeline.md`](../architecture/deletion-pipeline.md)) |
+| Deployment | `deploy/pulumi/src/platform/langfuse.ts` ([`kubernetes.md`](../deployment/kubernetes.md) § Langfuse) |

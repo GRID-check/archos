@@ -1,0 +1,9 @@
+---
+fixes:
+  - >
+    Piloti now finds comparable past projects by each building's
+    construction, use and building class, as entered in the briefing.
+    Before, it compared projects only by Bundesland and kind of work.
+  - >
+    A precedent from another Bundesland is now marked as decided under a
+    different Bauordnung.

@@ -6,4 +6,5 @@ fixes:
     were all filed as equally important.
   - >
     Piloti no longer ends a conversation without noting what it learned about
-    the project. Its note limit now counts only the notes it actually keeps.
+    the project. The limit on notes now counts only the ones Piloti actually
+    keeps.

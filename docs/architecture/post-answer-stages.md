@@ -318,6 +318,9 @@ primitive gives them one.
 - Otherwise: `GRID_MEMORY_REFLECTION_ENABLED`, **default ON**
   (`feature-flags.ts:86`).
 
+*(Superseded: the gate is the per-org flag alone now, read per turn, with no
+`GRID_ENFORCE_FEATURE_FLAGS` and no `GRID_MEMORY_REFLECTION_ENABLED`; see §7.8.)*
+
 Two things to note. First, **the kill switch takes effect at the next socket
 handshake, not the next turn** — a long-lived tab keeps the old decision.
 Second, `configs/config_oib_openrouter.yml:799-804` claims the runtime gate is
@@ -348,16 +351,15 @@ New package `src/aiq_agent/stages/`. One frozen declaration per stage:
 ```python
 @dataclass(frozen=True)
 class StageSpec:
-    id: str                      # stable wire identity, e.g. "follow_ups"
-    agent_group: AgentGroup      # model selection, org override, BYOK credential
-    flag_slug: str               # WorkOS slug, e.g. "post-answer-follow-ups"
-    env_default: str             # e.g. "GRID_STAGE_FOLLOW_UPS_ENABLED"
-    timeout_s: float             # HARD asyncio bound on the whole handler
-    gate: Callable[[TurnFacts], GateDecision]     # deterministic; no LLM
+    id: str  # stable wire identity, e.g. "follow_ups"
+    agent_group: AgentGroup  # model selection, org override, BYOK credential
+    flag_slug: str  # WorkOS slug, e.g. "post-answer-follow-ups"
+    timeout_s: float  # HARD asyncio bound on the whole handler
+    gate: Callable[[TurnFacts], GateDecision]  # deterministic; no LLM
     handler: Callable[[StageContext], Awaitable[StagePayload | None]]
-    payload_model: type[BaseModel] | None         # validated before delivery
+    payload_model: type[BaseModel] | None  # validated before delivery
     delivery: Literal["frame", "silent"]
-    max_output_tokens: int       # cost ceiling, per §7.5
+    max_output_tokens: int  # cost ceiling, per §7.5
 ```
 
 > **[as built]** `max_output_tokens` is `int | None`, with no default, so a stage
@@ -409,8 +411,8 @@ the handler, where the request context is gone.
 class StageOutcome:
     stage_id: str
     status: Literal["ready", "empty", "skipped", "failed", "timeout", "disabled"]
-    reason: str | None        # required for skipped/failed; a machine key, never prose
-    payload: dict | None      # only when status == "ready"
+    reason: str | None  # required for skipped/failed; a machine key, never prose
+    payload: dict | None  # only when status == "ready"
     duration_ms: int
 ```
 
@@ -508,7 +510,9 @@ owns the graph".
 So: `src/aiq_agent/stages/delivery.py` declares
 
 ```python
-StageFrameSink = Callable[[str, dict], Awaitable[bool]]   # (conversation_id, frame) -> delivered
+StageFrameSink = Callable[[str, dict], Awaitable[bool]]  # (conversation_id, frame) -> delivered
+
+
 def register_stage_frame_sink(sink: StageFrameSink) -> None: ...
 ```
 
@@ -532,7 +536,7 @@ frame type is `grid_`-prefixed.
 > `register_stage_frame_sink(send_stage_frame)` at **import** of
 > `aiq_api/plugin.py`, next to `install_reconnectable_handler()`. Import-time and
 > not inside `add_routes`, because that is what "the front end starts up" means:
-> a process that never loads this front end — a CLI run, a Dask job worker —
+> a process that never loads this front end — a CLI run, a research worker —
 > leaves the sink unset, and a `frame` stage there still runs, is still bounded
 > and still records its outcome. It simply has nobody to tell, which
 > `delivery.py` already documents as a normal state.
@@ -564,8 +568,10 @@ Everything in §7.1 follows from three lines that exist once, in
 
 ```python
 async with _stage_semaphore(loop):
-    with track_agent_profile(agent_name=f"stage:{spec.id}", identity=ident), \
-         track_llm_costs(identity=ident, budget=BudgetSnapshot()):
+    with (
+        track_agent_profile(agent_name=f"stage:{spec.id}", identity=ident),
+        track_llm_costs(identity=ident, budget=BudgetSnapshot()),
+    ):
         payload = await asyncio.wait_for(spec.handler(ctx), timeout=spec.timeout_s)
 ```
 
@@ -763,9 +769,8 @@ transfer of authority. `grid_app` stays single-writer.
 ```python
 FOLLOW_UPS = StageSpec(
     id="follow_ups",
-    agent_group=AgentGroup.FOLLOW_UPS,      # new member; mirror in agent-groups.ts
+    agent_group=AgentGroup.FOLLOW_UPS,  # new member; mirror in agent-groups.ts
     flag_slug="post-answer-follow-ups",
-    env_default="GRID_STAGE_FOLLOW_UPS_ENABLED",
     timeout_s=20.0,
     gate=_follow_ups_gate,
     handler=_run_follow_ups,
@@ -989,7 +994,7 @@ The answer is complete and being streamed before any stage task runs
   `websocket_reconnect.py:475-488`). A stage never chooses a recipient.
 
 **Net: this design adds zero rows to `grid_secure_table`.** That is the claim
-the tenant-isolation job (`ci.yml:199-228`, `task db:test:rls`) would otherwise
+the tenant-isolation suite (`task db:test:rls`, a step of CI's Frontend job) would otherwise
 have to re-prove, and it is deliberate.
 
 ### 7.4 Observability
@@ -1156,13 +1161,16 @@ for memory.
 
 Per stage, config-driven, no deploy:
 
-1. **`StageSpec.flag_slug`** → a per-org WorkOS flag, evaluated in
-   `isPostAnswerStageEnabled(orgId, stageId)` next to `isMemoryReflectionEnabled`
-   (`lib/workos/feature-flags.ts:80-87`), same fail-closed semantics.
-2. **`StageSpec.env_default`** → the non-enforcement fallback, same as
-   `GRID_MEMORY_REFLECTION_ENABLED`. New stages default **OFF**; `memory-reflection`
-   keeps its default **ON** so this refactor changes no behaviour.
-3. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
+1. **`StageSpec.flag_slug`** → a per-org WorkOS flag, mirrored in
+   `POST_ANSWER_STAGE_FLAGS` and evaluated by `enabledPostAnswerStages`
+   (`lib/workos/feature-flags.ts`), fail-closed. Every stage flag is a
+   **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
+   signs in runs every stage. There is no env fallback: the
+   `StageSpec.env_default` field and the `GRID_MEMORY_REFLECTION_ENABLED` /
+   `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
+   enforcement became unconditional. A new stage ships with its flag created
+   OFF in WorkOS.
+2. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
    reflection is today (`register.py:794-799`). Flag ∧ capability, per the
    doctrine in `AGENTS.md`.
 
@@ -1249,7 +1257,7 @@ queued.**
   `MEMORY_REFLECTION_MAX_CONCURRENCY` / `MEMORY_REFLECTION_MAX_PENDING`, which
   the primitive supersedes; `deploy/.env.example` and
   `docs/deployment/environment-variables.md` move with them. Loop-keyed via `WeakKeyDictionary` exactly as `_loop_semaphore`
-  does (`reflection.py:385-395`), because chat and Dask workers run different
+  does (`reflection.py:385-395`), because chat and research workers run different
   loops.
 - `GRID_STAGE_MAX_PENDING`, default 16, counted **across all stages**. At the cap
   the stage is not scheduled and records `outcome:"skipped", reason:"pending_cap"`

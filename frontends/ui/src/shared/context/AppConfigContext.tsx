@@ -11,7 +11,7 @@
 'use client'
 
 import { createContext, useContext, type ReactNode } from 'react'
-import type { PostHogConfig } from '@/lib/analytics/posthog'
+import type { PostHogConfig, PostHogIdentity } from '@/lib/analytics/posthog-config'
 
 /**
  * File upload configuration for validation limits
@@ -21,9 +21,13 @@ export interface FileUploadConfig {
   acceptedTypes: string
   /** Accepted MIME types for drag-drop validation */
   acceptedMimeTypes: string[]
-  /** Maximum total size in MB */
+  /** {@link maxTotalSize} in MB */
   maxTotalSizeMB: number
-  /** Maximum file size in bytes (derived from maxTotalSizeMB) */
+  /**
+   * Maximum size in bytes of ONE file that is not a model: the organization's
+   * own limit when platform staff set one (`maxUploadFileBytes`), else
+   * `FILE_UPLOAD_MAX_SIZE_MB`. The server enforces the same number.
+   */
   maxFileSize: number
   /**
    * Maximum size in bytes for a `.ifc`/`.ifczip`, which gets its own much
@@ -32,7 +36,11 @@ export interface FileUploadConfig {
    * sized for. `0` when IFC upload is off for this session.
    */
   maxIfcFileSize: number
-  /** Maximum total size in bytes (derived from maxTotalSizeMB) */
+  /**
+   * Maximum total size in bytes of a chat session's attachments: the deployment
+   * default, raised to {@link maxFileSize} when the organization's per-file limit
+   * is higher, so one admissible file always fits.
+   */
   maxTotalSize: number
   /** Maximum number of files per session */
   maxFileCount: number
@@ -63,6 +71,13 @@ export interface AppConfig {
    * falls back to the disabled config.
    */
   posthog?: PostHogConfig
+  /**
+   * The signed-in person as the server knows them (PostHog `bootstrap` and the
+   * non-personal super properties). `null` or absent: signed out, analytics off
+   * or the lookup failed; the browser then identifies once AuthKit has restored
+   * its session.
+   */
+  posthogIdentity?: PostHogIdentity | null
 }
 
 const AppConfigContext = createContext<AppConfig | null>(null)

@@ -56,7 +56,7 @@ export const en: LegalContent = {
 
   privacy: {
     title: 'Privacy Policy',
-    updated: '2026-07-10',
+    updated: '2026-10-10',
     intro:
       'This policy explains how personal data is processed when you use Piloti, pursuant to Regulation (EU) 2016/679 (GDPR / DSGVO).',
     sections: [
@@ -75,6 +75,7 @@ export const en: LegalContent = {
           'Usage and billing data: a usage ledger recording, per AI request, the requested and actually serving AI model, token counts and cost, attributed to your organization, project and user.',
           'Audit data: privileged administrative actions (e.g. model configuration changes, budget changes, deletions, legal holds) are recorded with actor, timestamp, IP address and user agent.',
           'Technical data: server logs, session cookie (authentication), locale preference cookie.',
+          'Usage and device data (product analytics): your user ID (the pseudonymous WorkOS identifier), your organization’s ID and name, and your role; pages viewed, clicks (without the labels of the clicked elements) and interaction events (e.g. question sent, document uploaded, export); browser, device and language settings; error reports with technical context; for recorded sessions a replay of your screen in which text and inputs are masked and in which images, the PDF view and the IFC model view are not recorded; survey answers and messages to support, where you submit them. Your email address and name are not sent to product analytics. Passwords, API keys and credentials are never captured.',
         ],
       },
       {
@@ -84,12 +85,14 @@ export const en: LegalContent = {
           'Security, access control, audit trails, abuse prevention (rate limits, admission control) — Art. 6(1)(f) (legitimate interest in secure, accountable operation).',
           'Usage metering and budget enforcement — Art. 6(1)(b) and (f).',
           'Compliance with legal obligations (e.g. retention under legal hold, accounting) — Art. 6(1)(c).',
+          'Product improvement, debugging, support and surveys (product analytics, session replay, error tracking) — Art. 6(1)(f) (legitimate interest in a stable, understandable product). For storage of information on your device see Section 7. You may object to this processing at any time (Sections 7 and 8).',
         ],
       },
       {
         heading: '4. AI processing and recipients of your content',
         paragraphs: [
           'To generate answers, your chat messages, relevant excerpts of your uploaded documents and retrieved regulation passages are transmitted to external AI model providers via the API gateway OpenRouter, Inc. (USA). Web-research queries derived from your questions are sent to the search provider Tavily. Identity and sign-in are handled by WorkOS, Inc. (USA).',
+          'For product analytics, session replay, error tracking, surveys and support we use PostHog (PostHog, Inc.; data stored in the EU Cloud, Frankfurt). PostHog processes this data on our behalf under a data processing agreement (Art. 28 GDPR). PostHog also receives AI-request metadata (time, model, duration, token counts, cost, names of the processing steps) and the ratings you give to answers, including your comment, from our tracing system Langfuse. Chat messages, answers and document contents are not part of it.',
         ],
         notice:
           'Important: which AI model — and therefore which upstream model provider (e.g. DeepSeek, OpenAI, Anthropic, Google, Meta, Mistral and others listed in the OpenRouter catalog) — processes your requests is configurable at runtime by your organization’s administrators. All AI traffic always flows through OpenRouter and never through any other gateway, but the effective downstream provider, and thus the location of that processing (which may be outside the EU/EEA), depends on the model your organization selects. Every model change is validated, versioned, attributable to the administrator who made it, and auditable; the model that actually served each request is recorded. The current list of external services is available on the Subprocessors page.',
@@ -98,6 +101,7 @@ export const en: LegalContent = {
         heading: '5. International transfers (Art. 44 ff GDPR)',
         paragraphs: [
           'Several service providers are located in the United States or other third countries, and the upstream AI model selected by your organization may be hosted outside the EU/EEA. Transfers are based on adequacy decisions (including the EU-US Data Privacy Framework, where the provider is certified) and/or standard contractual clauses. Details per provider are listed on the Subprocessors page. Your organization’s administrators can restrict the selectable models.',
+          'PostHog stores data in the EU; as a US group, PostHog, Inc. may access it from the US, based on the EU-US Data Privacy Framework and standard contractual clauses. PostHog’s AI features, if enabled, run at US model providers.',
         ],
       },
       {
@@ -105,12 +109,15 @@ export const en: LegalContent = {
         paragraphs: [
           'Project content is stored in our application database, in object storage (uploaded documents) and in a vector index (document embeddings) — all operated within our own infrastructure. When a project is deleted it is first soft-deleted and restorable during a grace period, after which an automated purge permanently removes it from all stores (database, object storage, vector index, and the associated authorization records). Deletion can be suspended by a legal hold (Art. 18 GDPR restriction) placed by your organization’s compliance role; every hold and release is recorded in the audit trail.',
           'Usage-ledger and audit records are retained for accountability and billing purposes for as long as the organization’s contract and statutory retention periods require.',
+          'At PostHog, product-analytics events (including error reports, survey answers and the AI metadata received from Langfuse) are kept up to 12 months and session recordings up to 30 days. Messages to support are kept until we delete them. On request we delete the data stored at PostHog under your user ID.',
         ],
       },
       {
         heading: '7. Cookies',
         paragraphs: [
-          'Piloti uses only strictly necessary cookies: an encrypted session cookie for sign-in (WorkOS AuthKit) and a cookie storing your language preference. No advertising or cross-site tracking cookies are set. Because only strictly necessary cookies are used, no cookie consent banner is required (§165 TKG 2021).',
+          'Piloti uses strictly necessary cookies: an encrypted session cookie for sign-in (WorkOS AuthKit) and a cookie storing your language preference.',
+          'In addition, our product analytics (PostHog) stores a pseudonymous identifier, the session ID and a few settings in a cookie and in your browser’s local storage (keys ‘ph_…’, specifically ‘ph_<project token>_posthog’; the cookie expires after 365 days and is also shared with Piloti’s public website on the same domain). When a survey is shown to you, PostHog adds further local-storage entries for it (keys ‘seenSurvey_…’ and ‘lastSeenSurveyDate’). This storage is not strictly necessary; it serves product improvement. We set no advertising or cross-site tracking cookies.',
+          `You can switch product analytics off in your profile settings or object at any time at ${EMAIL}; it then captures nothing and the entries above are no longer updated.`,
         ],
       },
       {
@@ -250,7 +257,7 @@ export const en: LegalContent = {
 
   subprocessors: {
     title: 'External Services & Subprocessors',
-    updated: '2026-07-10',
+    updated: '2026-10-10',
     intro:
       'All external services that can process data when you use Piloti, and the infrastructure the operator runs itself. This page implements the transparency commitment referenced in the Privacy Policy.',
     sections: [
@@ -265,6 +272,13 @@ export const en: LegalContent = {
               'Name, email, organization membership, roles, sign-in events, audit events (incl. IP address)',
               'USA',
               'Yes',
+            ],
+            [
+              'PostHog, Inc.',
+              'Product analytics, session replay, error tracking, surveys, support',
+              'User ID (WorkOS), organization ID and name, role, language, page views, interaction events, device and browser details, error reports, masked session recordings, survey answers and support messages; AI metadata and answer ratings from Langfuse. No email address, no name',
+              'EU (Frankfurt); group headquartered in the USA',
+              'Yes (product analytics, error tracking); session replay sampled and only if enabled; can be switched off in profile settings',
             ],
             [
               'OpenRouter, Inc.',

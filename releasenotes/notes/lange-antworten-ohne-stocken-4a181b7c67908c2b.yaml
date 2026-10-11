@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Long answers and long tables now appear without slowing down. Before,
+    each new line took longer to process, and one long reply could hold up
+    other chats while it was being written.

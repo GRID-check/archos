@@ -12,8 +12,8 @@
  * it is for:
  *
  *   header       "Chat history · N chats" — the sheet names itself and its size.
- *   pinned block New chat, the search field, and (flag on) the All / Chats /
- *                Deep Research scope filter. All stay put while the list
+ *   pinned block New chat, the search field, and (in a project) the All /
+ *                Chats / Deep Research scope filter. All stay put while the list
  *                scrolls: a search field that scrolls away is unusable exactly
  *                when the list is long enough to need it. The search covers
  *                runs as well as chats — one query over the whole past — and
@@ -87,6 +87,8 @@ interface Session {
   hasActiveDeepResearch?: boolean
   /** A run in this thread finished with a report. */
   hasCompletedReport?: boolean
+  /** The reader may no longer read this chat (ADR-0088): a neutral title, no rename. */
+  contentLocked?: boolean
 }
 
 /**
@@ -123,16 +125,12 @@ interface SessionsPanelProps {
   /** Callback when a session is renamed */
   onRenameSession?: (sessionId: string, newTitle: string) => void
   /**
-   * FB-10: render the server-backed "Deep Research" section, the scope filter
-   * and per-session research label chips (gated by the
-   * `research-in-chat-history` flag, threaded from MainLayout). Default off so
-   * existing callers are unaffected.
+   * Active project id — scopes the research-runs fetch (FB-10), which the job
+   * proxy checks and signs, and builds the `?job=` deep links for its runs.
+   * The server-backed "Deep Research" section and its scope filter render only
+   * with one, since the runs belong to a project.
    */
-  showDeepResearchSection?: boolean
-  /** Active project id — builds the `?job=` deep links for research runs. */
   projectId?: string
-  /** Qdrant collection scoping the research-runs fetch (FB-10). */
-  projectCollection?: string
 }
 
 /**
@@ -147,9 +145,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   onDeleteSession,
   onDeleteAllSessions,
   onRenameSession,
-  showDeepResearchSection = false,
   projectId,
-  projectCollection,
 }) {
   const t = useTranslations('research')
   const tCommon = useTranslations('common')
@@ -190,11 +186,11 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   // section to an inline error line with a retry, instead of silence.
   const [deepResearchError, setDeepResearchError] = useState(false)
   const deepResearchFetchInFlightRef = useRef(false)
-  // Tracks the projectCollection the current fetch belongs to. Only an identity
-  // change (a different collection) invalidates an in-flight result — closing the
-  // panel must NOT, because the component stays mounted and the data is still
-  // valid on reopen.
-  const deepResearchCollectionRef = useRef<string | null>(null)
+  // Tracks the project the current fetch belongs to. Only an identity change (a
+  // different project) invalidates an in-flight result — closing the panel must
+  // NOT, because the component stays mounted and the data is still valid on
+  // reopen.
+  const deepResearchProjectRef = useRef<string | null>(null)
 
   // A query — or a scope filter — left behind from last time is a filtered list
   // the user did not ask for, and one that can hide the chat they came back
@@ -212,19 +208,19 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   // resolved data. Crucially, a quick close→reopen while the fetch is pending
   // must still populate the section once it resolves — the component stays
   // mounted, so the result is never stale. We therefore always set state on
-  // settle and only ignore a result whose projectCollection has since changed.
+  // settle and only ignore a result whose project has since changed.
   const fetchDeepResearchRuns = useCallback(() => {
-    if (!projectCollection) return
+    if (!projectId) return
     if (deepResearchFetchInFlightRef.current) return
     deepResearchFetchInFlightRef.current = true
-    const requestedCollection = projectCollection
-    deepResearchCollectionRef.current = requestedCollection
+    const requestedProject = projectId
+    deepResearchProjectRef.current = requestedProject
     setDeepResearchError(false)
-    listResearchRuns({ projectCollection: requestedCollection, limit: 50 })
+    listResearchRuns({ projectId: requestedProject, limit: 50 })
       .then((response) => {
-        // Only a projectCollection (identity) change invalidates this result;
-        // panel visibility does not.
-        if (deepResearchCollectionRef.current !== requestedCollection) return
+        // Only a project (identity) change invalidates this result; panel
+        // visibility does not.
+        if (deepResearchProjectRef.current !== requestedProject) return
         // Newest-first: the panel surfaces the most recent runs at the top.
         const sorted = [...response.jobs].sort(
           (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -232,18 +228,18 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
         setDeepResearchRuns(sorted)
       })
       .catch(() => {
-        if (deepResearchCollectionRef.current === requestedCollection) setDeepResearchError(true)
+        if (deepResearchProjectRef.current === requestedProject) setDeepResearchError(true)
       })
       .finally(() => {
         deepResearchFetchInFlightRef.current = false
       })
-  }, [projectCollection])
+  }, [projectId])
 
-  // Fetch on panel open (flag on) — and again from the retry button below.
+  // Fetch on panel open — and again from the retry button below.
   useEffect(() => {
-    if (!isSessionsPanelOpen || !showDeepResearchSection || !projectCollection) return
+    if (!isSessionsPanelOpen || !projectId) return
     fetchDeepResearchRuns()
-  }, [isSessionsPanelOpen, showDeepResearchSection, projectCollection, fetchDeepResearchRuns])
+  }, [isSessionsPanelOpen, projectId, fetchDeepResearchRuns])
 
   const handleDeleteClick = useCallback((sessionId: string) => {
     setSessionToDelete(sessionId)
@@ -294,12 +290,12 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
   const handleConfirmStop = useCallback(async () => {
     if (!pendingStop) return
     try {
-      await cancelJob(pendingStop.job_id)
+      await cancelJob(pendingStop.job_id, undefined, { projectId })
     } catch (err) {
       console.warn('[SessionsPanel] Failed to stop run:', pendingStop.job_id, err)
     }
     fetchDeepResearchRuns()
-  }, [pendingStop, fetchDeepResearchRuns])
+  }, [pendingStop, projectId, fetchDeepResearchRuns])
 
   const untitledLabel = t('sessionsPanel.untitledSession')
   const trimmedQuery = searchQuery.trim()
@@ -380,7 +376,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
     return runs.filter((run) => runLabel(run).toLowerCase().includes(query))
   }, [deepResearchRuns, trimmedQuery, runLabel])
 
-  const deepResearchEnabled = showDeepResearchSection && Boolean(projectId)
+  const deepResearchEnabled = Boolean(projectId)
   const researchScopeSelected = deepResearchEnabled && scopeFilter === 'research'
   const showChats = !deepResearchEnabled || scopeFilter !== 'research'
   const isResearchLoading = deepResearchRuns === null && !deepResearchError
@@ -734,7 +730,6 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                         isSelected={selectedSessionId === session.id}
                         isBusy={isNavigationBlocked}
                         isSessionActive={isSessionBusy(session.id)}
-                        showResearchLabel={showDeepResearchSection}
                         // The day is already on the group heading, so the row carries
                         // the part it does not: the time. Except under "Today", where
                         // "12 minutes ago" is the more useful reading of recency.
@@ -857,8 +852,6 @@ interface SessionItemProps {
   isBusy?: boolean
   /** Per-session block: true when the socket is mid-turn in this session. */
   isSessionActive?: boolean
-  /** FB-10: show a "Deep Research" chip when this session carries research status. */
-  showResearchLabel?: boolean
   /** Relative ("3 hours ago") vs. clock time ("14:32") — see the call site. */
   showRelativeTime?: boolean
   onSelect?: (sessionId: string) => void
@@ -872,7 +865,6 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
     isSelected,
     isBusy = false,
     isSessionActive = false,
-    showResearchLabel = false,
     showRelativeTime = false,
     onSelect,
     onDelete,
@@ -890,14 +882,18 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
 
   // Brand-new chats persist with an empty title — show a placeholder so the row
   // stays legible and the session remains findable in the history.
-  const displayTitle = session.title.trim() || t('sessionsPanel.untitledSession')
+  const tCollab = useTranslations('collaboration')
+  // A chat the reader may no longer read has no title for them: the real one is
+  // model-written from content they cannot see (ADR-0088).
+  const displayTitle = session.contentLocked
+    ? tCollab('rightsLost.neutralTitle')
+    : session.title.trim() || t('sessionsPanel.untitledSession')
 
   // Persistent timestamp from the session's date. Guard against unparseable
   // dates so a bad value never throws.
   const sessionDate = session.date instanceof Date ? session.date : new Date(session.date)
   const sessionIso = Number.isNaN(sessionDate.getTime()) ? '' : sessionDate.toISOString()
-  const showResearchChip =
-    showResearchLabel && (session.hasActiveDeepResearch || session.hasCompletedReport)
+  const showResearchChip = session.hasActiveDeepResearch || session.hasCompletedReport
 
   // Focus input when entering edit mode
   useEffect(() => {
@@ -1099,25 +1095,27 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
                 : '[background:linear-gradient(to_right,transparent,var(--muted)_1.5rem)]'
             )}
           >
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              onClick={handleEditClick}
-              disabled={isBusy || isSessionActive}
-              aria-label={
-                isBusy || isSessionActive
-                  ? t('sessionsPanel.renameDisabled')
-                  : t('sessionsPanel.rename')
-              }
-              title={
-                isBusy || isSessionActive
-                  ? t('sessionsPanel.cannotRenameBusy')
-                  : t('sessionsPanel.rename')
-              }
-            >
-              <Pencil className="size-4" aria-hidden="true" />
-            </Button>
+            {!session.contentLocked && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                onClick={handleEditClick}
+                disabled={isBusy || isSessionActive}
+                aria-label={
+                  isBusy || isSessionActive
+                    ? t('sessionsPanel.renameDisabled')
+                    : t('sessionsPanel.rename')
+                }
+                title={
+                  isBusy || isSessionActive
+                    ? t('sessionsPanel.cannotRenameBusy')
+                    : t('sessionsPanel.rename')
+                }
+              >
+                <Pencil className="size-4" aria-hidden="true" />
+              </Button>
+            )}
             <Button
               variant="ghost"
               size="icon"

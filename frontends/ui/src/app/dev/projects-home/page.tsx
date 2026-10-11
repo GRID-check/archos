@@ -8,7 +8,9 @@
  * everything else is a dense row list ordered by recency. `?variant=fresh`
  * renders the other branch: a viewer with no activity anywhere, where the rail
  * is filled by project recency and says so ("Your projects") rather than
- * claiming a "continue" that never happened.
+ * claiming a "continue" that never happened. `?variant=lifecycle` puts the
+ * lifecycle in (ADR-0098): the hotel paused, the Turnsaal not realized, two
+ * more closed; the list opens on „Aktiv" and offers Ruhend and Abgeschlossen.
  *
  * Fixture data only, no backend. The `/dev` layout 404s this outside development.
  */
@@ -38,6 +40,13 @@ function makeProject(id: string, name: string, summary: string | null, createdMi
     profilePromptView: null,
     profileDisplay: summary ? { title: name, summary, keyFacts: [], missingInfo: [] } : null,
     profileUpdatedAt: summary ? minutesAgo(createdMinutesAgo) : null,
+    status: 'active',
+    pausedAt: null,
+    closedAt: null,
+    closedBy: null,
+    closedOutcome: null,
+    startedOn: null,
+    endedOn: null,
     deletedAt: null,
     createdAt: minutesAgo(createdMinutesAgo),
   }
@@ -74,8 +83,25 @@ const VIEWER_ACTIVITY: Record<string, string> = {
   p3: minutesAgo(60 * 27).toISOString(),
 }
 
+/** The same office with its lifecycle in: one project paused, three closed, one of them never realized. */
+const WITH_LIFECYCLE: Project[] = PROJECTS.map((project) => {
+  if (project.id === 'p4') return { ...project, status: 'paused', pausedAt: minutesAgo(60 * 24 * 30) }
+  if (project.id === 'p6' || project.id === 'p8' || project.id === 'p9') {
+    return {
+      ...project,
+      status: 'closed',
+      closedAt: minutesAgo(60 * 24 * 60),
+      closedBy: 'user_me',
+      closedOutcome: project.id === 'p6' ? 'cancelled' : 'completed',
+      endedOn: '2026-08-01',
+    }
+  }
+  return project
+})
+
 function ProjectsHomePreview(): JSX.Element {
-  const fresh = useSearchParams()?.get('variant') === 'fresh'
+  const variant = useSearchParams()?.get('variant')
+  const fresh = variant === 'fresh'
   return (
     <main
       data-testid="projects-home-preview"
@@ -83,7 +109,7 @@ function ProjectsHomePreview(): JSX.Element {
     >
       <div className="mx-auto w-full max-w-[1080px]">
         <ProjectsGrid
-          projects={PROJECTS}
+          projects={variant === 'lifecycle' ? WITH_LIFECYCLE : PROJECTS}
           docCounts={DOC_COUNTS}
           viewerActivity={fresh ? {} : VIEWER_ACTIVITY}
         />

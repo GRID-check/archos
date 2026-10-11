@@ -1,14 +1,25 @@
 # Release notes
 
 Every change a customer can notice ships with a release note, in the same pull
-request that makes the change. The notes are published to the changelog on the
-marketing site, automatically, in German and English.
+request that makes the change. The notes in the public sections are published
+to the changelog on the marketing site, automatically, in German and English.
+Security fixes and severe fixes are written down the same way and kept in the
+repository, but never published: the changelog is product news, not a bug
+register.
 
 - **Tool:** [reno](https://docs.openstack.org/reno/latest/), OpenStack's release-note
   manager. One YAML file per change, under `releasenotes/notes/`.
 - **Rule:** [AGENTS.md](../../AGENTS.md), the "Change what a customer can notice"
-  row. Enforced on every PR by the **Release note** job in
-  [`ci.yml`](../../.github/workflows/ci.yml).
+  row. Enforced on every PR by the release-note step of the **Repo checks** job
+  in [`ci.yml`](../../.github/workflows/ci.yml), which goes by file, not by what
+  the diff does: a PR that touches a product file
+  ([`ci/require_release_note.py`](../../ci/require_release_note.py)) and adds
+  no note fails. A note in any section counts, an internal one included, so a
+  security or severe fix satisfies the check without reaching the page. A
+  change no user can notice, a comment or a refactor, takes the
+  `no-release-note` label instead. The job reads the label when it runs, so
+  a label added after the push needs only a re-run of the **Repo checks**
+  job, not a new commit.
 - **Destination:** `https://piloti.at/changelog` (de) and `/en/changelog` (en).
 - **Reader:** the architect using Piloti. Not the reviewer of your diff, and not
   the people who run the platform.
@@ -34,29 +45,35 @@ features:
     failed the first time are picked up without contacting support.
 ```
 
-| Section | For |
-|---|---|
-| `features` | Something the reader could not do before |
-| `improvements` | Something they already had, now better |
-| `fixes` | Something that used to go wrong |
-| `security` | Only what a customer must know; never exploit detail |
-| `deprecations` | What is going away, and what replaces it |
-| `upgrade` | Only when the reader has to do something themselves |
-| `other` | Genuinely user-visible, fits nowhere above |
-| `operators` | **Never published.** Only the people running the platform can act on it |
-| `prelude` | Rarely: a summary for a tagged release. Weeks use `summaries.yaml` |
+| Section | Published | For |
+|---|---|---|
+| `features` | yes | Something the reader could not do before |
+| `improvements` | yes | Something they already had, now better |
+| `fixes` | yes, folded | An ordinary thing that used to go wrong: a button, a label, a slow screen |
+| `deprecations` | yes | What is going away, and what replaces it |
+| `upgrade` | yes | Only when the reader has to do something themselves |
+| `other` | yes | Genuinely user-visible, fits nowhere above |
+| `security` | **never** | A vulnerability, a hardening, a dependency bumped for a CVE, a permission that was not enforced |
+| `incident` | **never** | A severe fix, something that should never have happened: data lost, or kept after it was deleted; a legal hold or permission that did not hold; an answer passed as checked when it was not; a false claim on the website |
+| `operators` | **never** | Only the people running the platform can act on it |
+| `prelude` | yes | Rarely: a summary for a tagged release. Weeks use `summaries.yaml` |
+
+A customer who must hear about a security or incident fix is told directly, by
+the people who run the platform; a changelog line only advertises the hole.
 
 The section list lives in [`releasenotes/config.yaml`](../../releasenotes/config.yaml);
 its German headings live in `SECTION_TITLES_DE` in
 [`scripts/release_notes.py`](../../scripts/release_notes.py), and a test fails if
 the two drift apart. `INTERNAL_SECTIONS` in the same script is what keeps
-`operators` off the page.
+`security`, `incident` and `operators` off the page.
 
 ## The house rules
 
-A note is **published verbatim to a public page**, so it is marketing copy that
-happens to live in the repository. `task release:lint` enforces every rule
-marked *lint*, and each failure says how to fix it.
+A note in a public section is **published verbatim to a public page**, so it is
+marketing copy that happens to live in the repository. The internal sections
+follow the same rules, with four sentences instead of two: the next person
+reads them, and an entry can move to a public section. `task release:lint`
+enforces every rule marked *lint*, and each failure says how to fix it.
 
 1. **English.** *(lint)* The German page is translated from the English. A note
    written in German used to be published as the "English" text and then
@@ -79,6 +96,60 @@ marked *lint*, and each failure says how to fix it.
    "Platform →", "new installations" or "environment variable" outside that
    section fails the lint. Office administrators (roles, budgets, the
    organization's instructions) are customers; their notes stay public.
+7. **Security and severe fixes go under `security` or `incident`.** *(lint, in
+   part)* A public entry that names a vulnerability, a remote-code flaw, a CVE,
+   an exploit, a permission bypass or data loss fails the lint
+   (`SEVERE_PATTERNS`). The list is short on purpose, so most severe fixes pass
+   it: the question to ask is whether a reader would learn that Piloti once
+   lost, kept or showed what it should not have. If so, it is an `incident`.
+8. **Plain words.** *(lint)* A public entry does not name the services under
+   Piloti, the formats they speak, or the mechanics of shipping and running
+   software. The list is `PUBLIC_JARGON` in
+   [`scripts/release_notes.py`](../../scripts/release_notes.py); the failure
+   names the word it found. The classes are below.
+
+### Words a public entry does not use
+
+`PUBLIC_JARGON` is the source of truth. If this section and the list disagree,
+the list is right and this section is stale. It holds four classes:
+
+- **The services under Piloti:** databases, object storage, the model gateway,
+  the tracing platform, and the platforms we run them on.
+- **Interfaces and formats:** how one program talks to another, and the data it
+  sends. API, SDK, webhook, endpoint, socket, JSON, YAML, schema, payload.
+- **Shipping and running:** how software is released and where it runs.
+  Deploy, staging, pipeline, commit, branch, repository, container, cluster,
+  worker, and the data steps (migration, backfill, ingestion).
+- **Search, the model and the controls around them:** index, embedding, token,
+  prompt, cache, queue, configuration, environment variable, feature flag,
+  latency, trace, metric, rate limit.
+
+The German terms are the same classes in German. The Piloti screens' own words
+are not on the list: Papierkorb, Quarantäne, Archiv, Steckbrief, Fassung and the
+rest are how the reader knows the product, so they stay.
+
+How the lint matches: whole words, ignoring case. A trailing `s` or `es` counts,
+so `APIs` and `indexes` are caught. A longer word that starts with a term is a
+different word, so `Tokenizer` and `Kapitel` pass. A space in a term matches any
+space; a hyphen is literal. Quoted labels are checked as well. A label with one
+of these words in it is a sign to describe the thing rather than quote it.
+
+The German check is on the exact words listed. An inflected or compound form
+that is not on the list (`Konfigurationsdatei`, `Konfigurationen`) passes the
+lint. When you meet one, add it to `PUBLIC_JARGON` in the same change.
+
+**Rewriting a term.** Write what the reader sees or can do, in the words the
+screen uses, and leave the system out of it.
+
+| Says | Writes instead |
+|---|---|
+| "Results are cached, so repeat questions are faster." | "Repeat questions come back faster." |
+| "Re-indexing runs after each upload." | "Uploaded documents become searchable without a manual step." |
+| "Set the environment variable to change the default model." | Under `operators`: "The default model can now be changed under Platform → Models." |
+
+If the sentence only makes sense with the jargon word in it, the entry is about
+the system, not the reader. Move it to `operators` (the platform), `security` or
+`incident`, or leave it out.
 
 ### Good and bad
 
@@ -96,7 +167,7 @@ features:
 fixes:
   # Good: the effect, then why it matters.
   - >
-    Uploading a corrected plan under the same name now replaces the old one
+    Uploading a corrected document under the same name now replaces the old one
     instead of adding a second copy that Piloti could no longer find.
 
   # Bad: the mechanism, and a module name.

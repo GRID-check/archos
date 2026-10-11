@@ -16,13 +16,15 @@
  */
 
 import 'server-only'
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { isUuid } from '@/lib/ids'
+import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { deletionQueue, projects, type Project } from '@/lib/db/schema'
 import type { DbTransaction } from '@/lib/storage/repository'
+import type { ProjectOutcome, ProjectStatus } from './project-status'
 
 /** Hard cap for unpaginated org-wide lists. */
 export const PROJECT_LIST_LIMIT = 500
@@ -51,6 +53,11 @@ export async function listProjectsInOrg(
 /**
  * Load a project by id scoped to an organization. Soft-deleted rows are
  * excluded unless `includeDeleted` (restore flows).
+ *
+ * The profile is salvaged like {@link findProjectProfile}'s, for the reason
+ * given there: a never-saved project stores `{}`, and every caller of this
+ * function reads `profile.facts`. A profile nothing can be salvaged from reads
+ * as the empty one, so no caller has to guard it.
  */
 export async function findProjectInOrg(
   projectId: string,
@@ -67,7 +74,8 @@ export async function findProjectInOrg(
       .where(and(...conditions))
       .limit(1)
   )
-  return row ?? null
+  if (!row) return null
+  return { ...row, profile: salvageProjectProfile(row.profile).profile ?? emptyProjectProfile() }
 }
 
 /**
@@ -100,17 +108,75 @@ export async function findProjectInOrg(
  */
 export async function findProjectTenancy(
   projectId: string
-): Promise<Pick<Project, 'organizationId' | 'deletedAt'> | null> {
+): Promise<Pick<Project, 'organizationId' | 'deletedAt' | 'status'> | null> {
   if (!isUuid(projectId)) return null
   const db = getDb()
   const [row] = await withPlatformAccess(
     'project tenancy probe: resolve the owning org before authorizing',
     () =>
       db
-        .select({ organizationId: projects.organizationId, deletedAt: projects.deletedAt })
+        .select({ organizationId: projects.organizationId, deletedAt: projects.deletedAt, status: projects.status })
         .from(projects)
         .where(eq(projects.id, projectId))
         .limit(1)
+  )
+  return row ?? null
+}
+
+/** A move of the lifecycle, as the repository writes it (ADR-0098). */
+export type ProjectStatusWrite =
+  | { status: 'active' }
+  | { status: 'paused'; at: Date }
+  | { status: 'closed'; at: Date; closedBy: string; outcome: ProjectOutcome; endedOn: string }
+
+/**
+ * Move a project from `from` to another state, with that state's own columns:
+ * when it was paused, or when, by whom and how it closed and its Abschluss.
+ * Leaving a state clears its columns, except the outcome and the Abschluss,
+ * which a reopen keeps as the next close's suggestions. Only a row still in
+ * `from` changes, so two people moving it at once write once, and a close
+ * changes nothing when the Beginn moved past its Abschluss meanwhile; null when
+ * nothing changed (either race, deleted, or not in the organization).
+ */
+export async function setProjectStatusInOrg(
+  projectId: string,
+  organizationId: string,
+  from: ProjectStatus,
+  change: ProjectStatusWrite
+): Promise<Project | null> {
+  const db = getDb()
+  const cleared = { pausedAt: null, closedAt: null, closedBy: null }
+  const values =
+    change.status === 'closed'
+      ? {
+          ...cleared,
+          status: 'closed' as const,
+          closedAt: change.at,
+          closedBy: change.closedBy,
+          closedOutcome: change.outcome,
+          endedOn: change.endedOn,
+        }
+      : change.status === 'paused'
+        ? { ...cleared, status: 'paused' as const, pausedAt: change.at }
+        : { ...cleared, status: 'active' as const }
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .update(projects)
+      .set(values)
+      .where(
+        and(
+          eq(projects.id, projectId),
+          eq(projects.organizationId, organizationId),
+          isNull(projects.deletedAt),
+          eq(projects.status, from),
+          // A Steckbrief save that moved the Beginn past this Abschluss since
+          // the service checked it: a lost race (409), not a CHECK violation (500).
+          change.status === 'closed'
+            ? sql`(${projects.startedOn} IS NULL OR ${projects.startedOn} <= ${change.endedOn}::date)`
+            : undefined
+        )
+      )
+      .returning()
   )
   return row ?? null
 }

@@ -108,7 +108,7 @@ describe('DocumentDraftCard — the draft, before it is filed', () => {
 
     expect(screen.queryByText('Filed in the project as a draft')).not.toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open in the project' })).not.toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: 'Send for approval' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
   })
 
   it('files the draft into the project on one press, and remembers that it did', async () => {
@@ -159,9 +159,17 @@ describe('DocumentDraftCard — the draft, before it is filed', () => {
     const user = userEvent.setup()
     render(<DocumentDraftCard {...DRAFT} />)
 
-    await user.click(screen.getByRole('button', { name: 'File into the project' }))
+    const fileButton = screen.getByRole('button', { name: 'File into the project' })
+    fileButton.focus()
+    await user.keyboard('{Enter}')
 
-    expect(await screen.findByRole('button', { name: 'Filing …' })).toBeDisabled()
+    // Locked by `aria-disabled`, not `disabled`, so the press keeps its focus;
+    // a second press while it files does not file twice.
+    const busy = await screen.findByRole('button', { name: 'Filing …' })
+    expect(busy).toHaveAttribute('aria-disabled', 'true')
+    expect(busy).toHaveFocus()
+    await user.keyboard('{Enter}')
+    expect(fetch).toHaveBeenCalledTimes(1)
     resolveFile({
       ok: true,
       status: 201,
@@ -242,8 +250,32 @@ describe('DocumentDraftCard — the draft, before it is filed', () => {
     await user.click(screen.getByRole('button', { name: 'File into the project' }))
 
     await waitFor(() => expect(screen.getByTestId('document-draft-error')).toBeInTheDocument())
-    expect(screen.getByText('This draft has already been filed. Continue in the Files pane.')).toBeInTheDocument()
+    expect(screen.getByText('This draft has already been filed. Continue in Files.')).toBeInTheDocument()
     expect(screen.queryByTestId('document-draft-conflict')).not.toBeInTheDocument()
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('says why a thread that drew on a restricted folder cannot file here (ADR-0087)', async () => {
+    const refusal =
+      'This conversation draws on a folder with restricted access, so nothing from it can be filed there.'
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() =>
+        Promise.resolve({
+          ok: false,
+          status: 403,
+          json: async () => ({ error: refusal, code: 'CONVERSATION_CONFINED', details: { action: 'filing' } }),
+        }),
+      ),
+    )
+    const user = userEvent.setup()
+    render(<DocumentDraftCard {...DRAFT} />)
+
+    await user.click(screen.getByRole('button', { name: 'File into the project' }))
+
+    await waitFor(() => expect(screen.getByTestId('document-draft-error')).toBeInTheDocument())
+    expect(screen.getByText(refusal)).toBeInTheDocument()
+    expect(screen.queryByText('Filing failed. Please try again.')).not.toBeInTheDocument()
     expect(setCardDecision).not.toHaveBeenCalled()
   })
 
@@ -496,7 +528,7 @@ describe('DocumentDraftCard — filed by the reader, after a reload', () => {
     render(<DocumentDraftCard {...DRAFT} />)
 
     await waitFor(() => expect(screen.getByTestId('document-draft-error')).toBeInTheDocument())
-    expect(screen.getByText('This draft has already been filed. Continue in the Files pane.')).toBeInTheDocument()
+    expect(screen.getByText('This draft has already been filed. Continue in Files.')).toBeInTheDocument()
     expect(screen.queryByRole('link', { name: 'Open in the project' })).not.toBeInTheDocument()
     expect(setCardDecision).not.toHaveBeenCalled()
   })
@@ -600,7 +632,7 @@ describe('DocumentDraftCard — filed, and still the reader’s to send', () => 
     const user = userEvent.setup()
     render(<DocumentDraftCard {...FILED} />)
 
-    await user.click(screen.getByRole('button', { name: 'Send for approval' }))
+    await user.click(screen.getByRole('button', { name: 'Submit for approval' }))
 
     await waitFor(() => expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'document_draft-0', 'submitted'))
     // The client's own path and verb — asserted here so a card that hand-rolled
@@ -621,12 +653,12 @@ describe('DocumentDraftCard — filed, and still the reader’s to send', () => 
     const user = userEvent.setup()
     render(<DocumentDraftCard {...FILED} />)
 
-    await user.click(screen.getByRole('button', { name: 'Send for approval' }))
+    await user.click(screen.getByRole('button', { name: 'Submit for approval' }))
 
     await waitFor(() => expect(screen.getByTestId('document-draft-error')).toBeInTheDocument())
     expect(setCardDecision).not.toHaveBeenCalled()
     // Still offered: the cause may be gone by the time the reader presses again.
-    expect(screen.getByRole('button', { name: 'Send for approval' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit for approval' })).toBeInTheDocument()
   })
 
   it('takes no answer it could not keep', () => {
@@ -635,7 +667,7 @@ describe('DocumentDraftCard — filed, and still the reader’s to send', () => 
     // be offered at all (`card-owner.ts`).
     render(<DocumentDraftCard {...FILED} messageId={undefined} decisionsMustPersist />)
 
-    expect(screen.queryByRole('button', { name: 'Send for approval' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'Open in the project' })).toBeInTheDocument()
   })
 })
@@ -644,8 +676,8 @@ describe('DocumentDraftCard — already with a reviewer', () => {
   it('reports the state instead of offering a control that would be refused', () => {
     render(<DocumentDraftCard {...FILED} versionState="in_review" />)
 
-    expect(screen.getByTestId('document-draft-state')).toHaveTextContent('Awaiting approval')
-    expect(screen.queryByRole('button', { name: 'Send for approval' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('document-draft-state')).toHaveTextContent('In review')
+    expect(screen.queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
   })
 
   it('never says a Piloti draft is approved just because a version state is', () => {
@@ -653,19 +685,19 @@ describe('DocumentDraftCard — already with a reviewer', () => {
     // them — it must not imply the agent reached them.
     render(<DocumentDraftCard {...FILED} versionState="approved" />)
     expect(screen.getByTestId('document-draft-state')).toHaveTextContent('Approved')
-    expect(screen.queryByRole('button', { name: 'Send for approval' })).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
   })
 
   it('names a superseded version replaced, never published', () => {
     // A version a newer one overtook is read, but it is no longer the stand —
     // sharing `published` claimed it still was.
     render(<DocumentDraftCard {...FILED} versionState="superseded" />)
-    expect(screen.getByTestId('document-draft-state')).toHaveTextContent('Superseded')
-    expect(screen.queryByRole('button', { name: 'Send for approval' })).not.toBeInTheDocument()
+    expect(screen.getByTestId('document-draft-state')).toHaveTextContent('Replaced')
+    expect(screen.queryByRole('button', { name: 'Submit for approval' })).not.toBeInTheDocument()
   })
 
   it('offers the send again after a reviewer asked for changes', () => {
     render(<DocumentDraftCard {...FILED} versionState="changes_requested" />)
-    expect(screen.getByRole('button', { name: 'Send for approval' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Submit for approval' })).toBeInTheDocument()
   })
 })

@@ -5,7 +5,7 @@ export const projects: typeof en.projects = {
   list: {
     heading: 'Projekte',
     description:
-      'Jedes Bauprojekt in einem Arbeitsbereich — Dokumente, Mitglieder und Chat, fundiert in den Dateien, dem Büroarchiv und dem Baurecht.',
+      'Jedes Bauprojekt in einem Arbeitsbereich: Dokumente, Mitglieder, Aufgaben, Recherche und Chat, mit Büroablage und Baurecht zur Hand.',
     loading: 'Projekte werden geladen…',
     searchPlaceholder: 'Projekte durchsuchen…',
     searchAria: 'Projekte nach Namen durchsuchen',
@@ -27,18 +27,280 @@ export const projects: typeof en.projects = {
     empty: {
       title: 'Starten Sie Ihr erstes Projekt',
       description:
-        'Piloti ist der Arbeitsbereich, in dem ein Planungsbüro ein Bauprojekt führt. Legen Sie ein Projekt an, um Dateien, Mitglieder und Chat zusammenzubringen — und sprechen Sie mit Piloti über die Arbeit, fundiert in den Dateien, dem Büroarchiv und dem österreichischen Baurecht.',
+        'Piloti ist der Arbeitsbereich, in dem ein Planungsbüro ein Bauprojekt führt. Legen Sie ein Projekt an, um Dateien, Mitglieder und Chat zusammenzubringen. Piloti arbeitet darin und zitiert jede Quelle.',
       action: 'Erstellen Sie Ihr erstes Projekt',
+    },
+    filter: {
+      label: 'Projekte nach Status filtern',
+      active: 'Aktiv',
+      paused: 'Ruhend',
+      closed: 'Abgeschlossen',
+      all: 'Alle',
+    },
+    noneInFilter: {
+      active: 'Keine aktiven Projekte',
+      paused: 'Keine ruhenden Projekte',
+      closed: 'Keine abgeschlossenen Projekte',
+      description: 'In dieser Ansicht gibt es keine Projekte.',
+      showAll: 'Alle Projekte zeigen',
     },
   },
   section: {
     loading: 'Wird geladen…',
+  },
+  steckbrief: {
+    heading: 'Steckbrief',
+    dialogDescription: 'Wo, wann und mit wem. Das bleibt, wenn das Projekt abgeschlossen ist.',
+    edit: 'Bearbeiten',
+    showAll: 'Alle ansehen',
+    done: 'Fertig',
+    addressMissing: 'Adresse fehlt, sie wird im Briefing erfasst.',
+    period: 'Zeitraum',
+    since: 'seit {start}',
+    until: 'bis {end}',
+    range: '{start} – {end}',
+    periodOpen: 'Beginn offen',
+    startedOn: 'Beginn',
+    startedOnDefault: 'Der Monat, in dem das Projekt in Piloti angelegt wurde. Ändern Sie ihn, wenn die Arbeit früher begann.',
+    endedOn: 'Abschluss',
+    endedOnRunning: 'Laufend. Der Abschluss wird beim Abschließen des Projekts gesetzt.',
+    month: 'Monat',
+    year: 'Jahr',
+    clear: 'Leeren',
+    periodSaved: 'Beginn gespeichert.',
+    people: 'Beteiligte',
+    peopleCount: '{count, plural, one {# Person} other {# Personen}}',
+    formerCount: '{count} ehemalig',
+    more: '{count, plural, one {# weitere Person} other {# weitere Personen}}',
+    noPeople: 'Noch niemand eingetragen.',
+    peopleHint:
+      'Die Mitglieder des Projekts stehen hier von selbst. Ergänzen Sie, wer ohne Piloti-Konto mitgearbeitet hat: externe Planer, Bauherr, frühere Mitarbeitende.',
+    rosterUnknown: 'Die Mitglieder des Projekts ließen sich gerade nicht laden. Hier steht nur, was eingetragen ist.',
+    privacy: 'Gespeichert werden nur Name, Funktion, Firma und Zeitraum. Piloti verwendet diese Angaben nicht in Antworten.',
+    member: 'Mitglied',
+    former: 'ehemalig',
+    functionMissing: 'Funktion offen',
+    name: 'Name',
+    function: 'Funktion',
+    functionPlaceholder: 'z. B. Statik, Projektleitung, Bauherr',
+    company: 'Firma',
+    from: 'Von',
+    to: 'Bis',
+    periodBackwards: 'Bis liegt vor Von.',
+    add: 'Person hinzufügen',
+    save: 'Speichern',
+    cancel: 'Abbrechen',
+    editPerson: '{name} bearbeiten',
+    remove: '{name} entfernen',
+    removeTitle: 'Person entfernen?',
+    removeDescription: '{name} wird mit allen Angaben endgültig aus dem Steckbrief gelöscht.',
+    removeConfirm: 'Endgültig entfernen',
+    removed: 'Person entfernt.',
+    saved: 'Gespeichert.',
+    error: 'Das hat nicht geklappt. Bitte versuchen Sie es erneut.',
+    closing: {
+      heading: 'Wer war dabei',
+      description:
+        'Prüfen Sie, wer am Projekt mitgearbeitet hat, und ergänzen Sie, wer ohne Piloti-Konto dabei war. Nach dem Abschluss ist der Steckbrief schreibgeschützt.',
+      loadFailed: 'Der Steckbrief konnte nicht geladen werden. Sie können das Projekt trotzdem abschließen.',
+    },
+  },
+  cleanup: {
+    loading: 'Piloti sieht die Dateien durch …',
+    aiNotice:
+      'KI-Vorschlag: erstellt von Piloti aus Dateinamen, Ordnern, Typen und den vorhandenen Zusammenfassungen, ohne den Inhalt der Dateien neu zu lesen. Prüfen Sie jeden Eintrag.',
+    aiUnavailable:
+      'Die KI-Prüfung war gerade nicht verfügbar. Die Vorschläge beruhen nur auf festen Regeln, etwa Sperrdateien, „Kopie von …“ oder ein älterer Index im Dateinamen.',
+    considered: '{count} Dateien geprüft, die Sie bearbeiten dürfen.',
+    none: 'Piloti schlägt nichts zum Entfernen vor.',
+    unavailable: 'Vorschläge konnten nicht geladen werden. Sie können das Projekt trotzdem abschließen.',
+    binNote: 'Ausgewähltes kommt für 14 Tage in den Papierkorb und lässt sich von dort wiederherstellen.',
+    aiChip: 'KI-Vorschlag',
+    selectAll: 'Alle auswählen',
+    confirm: '{count} in den Papierkorb und abschließen',
+    closeOnly: 'Abschließen, ohne etwas zu entfernen',
+    cancel: 'Abbrechen',
+    removed: '{count} Dateien in den Papierkorb gelegt.',
+    error: 'Das Ausmisten hat nicht geklappt; das Projekt ist noch offen.',
+    /** Das Ausmisten ist gescheitert und ließ sich nicht ganz zurücknehmen (ADR-0092): wo nachsehen. */
+    partial:
+      'Das Ausmisten hat nicht geklappt und ließ sich nicht ganz zurücknehmen. Manche Dateien liegen womöglich noch in einem Ordner „{folders}“ in ihrem Ordner oder im Papierkorb. Das Projekt ist noch offen.',
+    rules: {
+      'lock-file': 'Sperrdatei eines Office-Programms',
+      'temp-file': 'Temporäre Datei',
+      'system-file': 'Systemdatei',
+      'copy-name': 'Arbeitskopie (Name)',
+      'old-name': 'Als alt markiert (Name)',
+      'same-content': 'Gleicher Inhalt wie eine ältere Datei',
+      'older-version': 'Ältere Fassung, eine neuere liegt im selben Ordner',
+      'unpublished-draft': 'Entwurf von Piloti, nie veröffentlicht',
+    },
+  },
+  lifecycle: {
+    fileChip: '{name} · abgeschlossen',
+    fileChipNoName: 'Abgeschlossenes Projekt',
+    outcome: {
+      completed: 'Fertiggestellt',
+      cancelled: 'Nicht realisiert',
+    },
+    banner: {
+      title: 'Abgeschlossenes Projekt · nur lesen',
+      endedIn: 'Abschluss {month}.',
+      closedOn: 'In Piloti abgeschlossen am {date}.',
+      cancelled: 'Es wurde nicht realisiert.',
+      body: 'Dateien, Ordner, Briefing und Projektgedächtnis sind schreibgeschützt. Fragen im Chat bleiben möglich.',
+      outsider:
+        'Sie sehen dieses Projekt, weil abgeschlossene Projekte für das ganze Büro lesbar sind. Ordner mit eigener Zugriffsliste bleiben für Sie verborgen.',
+      pausedTitle: 'Ruhendes Projekt',
+      pausedOn: 'Ruht seit {date}.',
+      pausedBody: 'Alles bleibt bearbeitbar. Geplante Aufträge laufen erst wieder, wenn es fortgesetzt wird.',
+    },
+    card: {
+      heading: 'Projektstatus',
+      track: 'Lebenszyklus des Projekts',
+      activeDescription: 'In Arbeit. Seine Mitglieder arbeiten darin, geplante Aufträge laufen.',
+      pausedDescription:
+        'Wartet, etwa auf einen Bescheid oder eine Entscheidung der Bauherrschaft. Es bleibt bearbeitbar und nur für seine Mitglieder sichtbar; geplante Aufträge laufen nicht, und es steht nicht mehr unter „Aktiv“.',
+      closedDescription:
+        'Schreibgeschützt und für das ganze Büro lesbar, als Referenz für künftige Projekte. Ordner mit eigener Zugriffsliste bleiben eingeschränkt. Wieder geöffnet ist es bearbeitbar und nur noch für seine Mitglieder sichtbar.',
+      closedFacts: '{outcome} · Abschluss {month}',
+      closedOn: 'In Piloti abgeschlossen am {date}',
+      pausedOn: 'Ruht seit {date}',
+      whichOne:
+        'Pausieren, wenn das Projekt wartet und weitergeht. Abschließen, wenn die Arbeit vorbei ist, ob gebaut oder nicht.',
+      pause: 'Pausieren',
+      resume: 'Fortsetzen',
+      close: 'Projekt abschließen',
+      reopen: 'Projekt wieder öffnen',
+    },
+    closeDialog: {
+      title: 'Projekt abschließen',
+      stepsLabel: 'Schritte',
+      stepProgress: 'Schritt {current} von {total}',
+      back: 'Zurück',
+      next: 'Weiter',
+      steps: {
+        ending: {
+          label: 'Abschluss',
+          description: 'Wie das Projekt ausgegangen ist und wann. Beides steht danach im Steckbrief.',
+        },
+        keep: {
+          label: 'Was bleibt',
+          description: 'Was dieses Projekt dem Büro hinterlässt. Nichts davon ist Pflicht.',
+        },
+        cleanup: {
+          label: 'Ausmisten',
+          description:
+            'Piloti schlägt vor, was das fertige Projekt nicht mehr braucht: Arbeitskopien, überholte Fassungen, Duplikate, temporäre Dateien und nie veröffentlichte Entwürfe. Sie entscheiden über jeden Eintrag.',
+        },
+      },
+      outcome: {
+        label: 'Wie ist das Projekt ausgegangen?',
+        completedHint: 'Gebaut oder übergeben, die Leistung ist erbracht.',
+        cancelledHint: 'Etwa ein Wettbewerb ohne Zuschlag oder ein zurückgezogener Auftrag.',
+      },
+      endedOn: {
+        label: 'Abschluss',
+        hint: 'Der Monat, in dem die Arbeit endete. Für ein früher beendetes Projekt tragen Sie diesen Monat ein.',
+        invalid: 'Bitte einen Monat wählen.',
+        future: 'Der Abschluss kann nicht in der Zukunft liegen.',
+        beforeStart: 'Der Abschluss liegt vor dem Beginn im Steckbrief.',
+      },
+      changes: {
+        heading: 'Was sich ändert',
+        readOnly: 'Dateien, Ordner, Briefing und Projektgedächtnis werden schreibgeschützt.',
+        office: 'Alle im Büro können das Projekt lesen und dazu fragen. Ordner mit eigener Zugriffsliste bleiben eingeschränkt.',
+        stops: 'Tiefenrecherchen und geplante Aufträge laufen nicht mehr.',
+        reopen: 'Sie können es jederzeit wieder öffnen.',
+      },
+    },
+    debrief: {
+      intro:
+        'Was dieses Projekt gelernt hat, kann jedes künftige Projekt im Büro nutzen: Piloti schlägt es vor, wenn eine ähnliche Frage kommt. Prüfen Sie vor dem Abschluss kurz, was davon bleibt.',
+      fingerprint: {
+        heading: 'Woran Piloti es wiederfindet',
+        description:
+          'Nach diesen Angaben findet Piloti vergleichbare Projekte, und Ihr Büro findet dieses unter „Ähnliche Projekte“. Fehlende ergänzen Sie im Briefing.',
+        missing: '{count, plural, one {# Angabe fehlt} other {# Angaben fehlen}}',
+        complete: 'Vollständig',
+        open: 'offen',
+        notApplicable: 'trifft nicht zu',
+        derivedOpen: 'offen (wird nicht im Briefing erfasst)',
+        edit: 'Im Briefing ergänzen',
+        suggested: 'Vorschlag aus den Unterlagen',
+        accept: 'Übernehmen',
+        oibEdition: 'OIB-Richtlinien {edition}',
+        labels: {
+          bundesland: 'Bundesland',
+          gebaeudeklasse: 'Gebäudeklasse',
+          bauweise: 'Bauweise',
+          nutzungen: 'Nutzungen',
+          vorhabensart: 'Art des Vorhabens',
+          oibEdition: 'OIB-Ausgabe',
+        },
+      },
+      extract: {
+        action: 'Aus den Unterlagen erschließen',
+        pending: 'Piloti liest die Unterlagen …',
+        result:
+          '{suggested, plural, one {# Eckdatum} other {# Eckdaten}} vorgeschlagen, {drafted, plural, one {# Entscheidung} other {# Entscheidungen}} erschlossen aus {documents, plural, one {# Dokument} other {# Dokumenten}}.',
+        none: 'Piloti hat in den Unterlagen nichts Neues gefunden.',
+        errors: {
+          backendUnavailable: 'Piloti konnte die Unterlagen gerade nicht lesen, bitte später erneut.',
+          noDocuments: 'Es gibt noch keine lesbaren Unterlagen in den offenen Ordnern.',
+          failed: 'Das Lesen hat nicht geklappt, bitte später erneut.',
+        },
+      },
+      decisions: {
+        heading: 'Was das Büro behalten soll',
+        description:
+          'Entscheidungen und Vorgaben aus dem Projektgedächtnis. Bestätigte nennt Piloti in anderen Projekten „von einer Person bestätigt".',
+        empty: 'Piloti hat für dieses Projekt noch keine Entscheidungen festgehalten.',
+        confirm: 'Bestätigen',
+        confirmed: 'Bestätigt',
+        dismiss: 'Verwerfen',
+        grounded: 'aus den Unterlagen erschlossen',
+        noted: 'von Piloti notiert',
+        evidencePage: '{file}, S. {page}',
+        kind: { decision: 'Entscheidung', constraint: 'Vorgabe' },
+      },
+      lesson: {
+        label: 'Erkenntnis festhalten',
+        placeholder: 'z. B. „Die Behörde verlangte die Fluchtwegbreite in jedem Grundriss bemaßt."',
+        add: 'Festhalten',
+        added: 'Erkenntnis festgehalten.',
+      },
+      readOnly:
+        'Entscheidungen bestätigen und Erkenntnisse festhalten können nur Personen, die das Projektgedächtnis bearbeiten dürfen. Abschließen können Sie trotzdem.',
+      errors: {
+        load: 'Das Projektgedächtnis konnte nicht geladen werden.',
+        save: 'Das konnte nicht gespeichert werden.',
+      },
+    },
+    reopenDialog: {
+      title: 'Projekt wieder öffnen?',
+      description:
+        'Das Projekt wird wieder bearbeitbar und ist danach nur noch für seine Mitglieder sichtbar.',
+      confirm: 'Wieder öffnen',
+    },
+    toast: {
+      paused: 'Projekt pausiert.',
+      resumed: 'Projekt fortgesetzt.',
+      undo: 'Rückgängig',
+      closed: 'Projekt abgeschlossen.',
+      reopened: 'Projekt wieder geöffnet.',
+      error: 'Der Projektstatus konnte nicht geändert werden.',
+      conflict: 'Jemand hat den Projektstatus inzwischen geändert. Die Seite zeigt jetzt den aktuellen Stand.',
+    },
   },
   card: {
     summaryFallback:
       'Arbeitsbereich des Planungsbüros. Fügen Sie Dokumente und ein Briefing hinzu, damit Piloti aus diesem Projekt arbeiten kann.',
     status: {
       active: 'Aktiv',
+      paused: 'Ruhend',
+      closed: 'Abgeschlossen',
+      cancelled: 'Nicht realisiert',
     },
     lastActivity: 'Letzte Aktivität',
     yourActivity: 'Zuletzt hier gearbeitet',
@@ -49,10 +311,10 @@ export const projects: typeof en.projects = {
     settingsAria: 'Einstellungen für {name} öffnen',
   },
   archivCard: {
-    title: 'Archiv',
+    title: 'Büroablage',
     subtitle:
       'Das organisationsweite Wissen Ihres Büros — geteilte Dokumente und bewährte Details, in jedem Projekt verfügbar.',
-    aria: 'Organisationsweites Archiv öffnen',
+    aria: 'Büroablage der Organisation öffnen',
   },
   dialog: {
     newProject: 'Neues Projekt',
@@ -66,7 +328,7 @@ export const projects: typeof en.projects = {
     createError:
       'Wir konnten dieses Projekt gerade nicht erstellen. Bitte versuchen Sie es in einem Moment erneut.',
     nameLabel: 'Projektname',
-    namePlaceholder: 'OIB-Brandschutzprüfung',
+    namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
     templateLabel: 'Mit einer Vorlage beginnen',
     templates: {
       neubauWohnbau: { label: 'Neubau Wohnbau', name: 'Neubau Wohnbau' },
@@ -78,7 +340,7 @@ export const projects: typeof en.projects = {
       oibBrandschutzAudit: { label: 'OIB Brandschutz-Audit', name: 'OIB Brandschutz-Audit' },
     },
     footnote:
-      'Erstellen Sie einen Arbeitsbereich für Dokumente, Mitglieder und Chat, fundiert in den Projektdateien, dem Büroarchiv und dem Baurecht.',
+      'Erstellen Sie einen Arbeitsbereich für Dokumente, Mitglieder und Chat, fundiert in den Projektdateien, der Büroablage und dem Baurecht.',
     submit: 'Projekt erstellen',
   },
   applicableStandards: {
@@ -146,9 +408,9 @@ export const projects: typeof en.projects = {
     loadError: 'Rechercheläufe konnten nicht geladen werden',
     errorTitle: 'Rechercheläufe konnten nicht geladen werden',
     tryAgain: 'Erneut versuchen',
-    emptyTitle: 'Noch keine Rechercheläufe',
+    emptyTitle: 'Noch keine Tiefenrecherchen',
     emptyDescription:
-      'Tiefe Rechercheläufe erscheinen hier, sobald Sie Piloti im Chat eine komplexe Frage stellen — es durchsucht die OIB/RIS-Quellen und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
+      'Tiefenrecherchen erscheinen hier, sobald Sie Piloti im Chat eine umfassende Frage stellen. Es arbeitet Dateien, Büroablage und Baurecht durch und liefert einen belegten Bericht, den Sie erneut aufrufen können.',
     emptyAction: 'Einen Lauf im Chat starten',
     viewReport: 'Bericht ansehen',
     viewProgress: 'Fortschritt ansehen',
@@ -180,7 +442,7 @@ export const projects: typeof en.projects = {
     eyebrowCreate: 'Projekteinrichtung',
     titleFallback: 'Erzählen Sie Piloti von diesem Projekt',
     subtitle:
-      'Etwa 2 Minuten. Piloti nutzt dieses Briefing, um jede Antwort zu fundieren — und um zu zeigen, welche OIB-Richtlinien auf dieses Gebäude zutreffen.',
+      'Etwa 2 Minuten. Mit diesem Briefing arbeitet Piloti auf Ihr Gebäude zugeschnitten und zeigt, welche OIB-Richtlinien gelten.',
     moduleNav: 'Module',
     moduleNavAria: 'Wizard-Module',
     schnellstart: 'Schnellstart',
@@ -286,6 +548,17 @@ export const projects: typeof en.projects = {
       title:
         'Widerspricht „{note}“ — Piloti durfte diese Notiz nicht ersetzen. Bestätigen oder entfernen Sie einen der beiden Einträge.',
       titleUnknown: 'Widerspricht einer bestätigten Notiz, die nicht mehr in dieser Liste steht.',
+    },
+    restricted: {
+      badge: 'Eingeschränkt',
+      title:
+        'Stammt aus eingeschränkten Ordnern ({folders}). Nur wer für alle diese Ordner freigegeben ist, sieht diese Notiz, und nur deren Chats erhalten sie.',
+      titleUnknown:
+        'Stammt aus eingeschränkten Ordnern. Nur wer für alle diese Ordner freigegeben ist, sieht diese Notiz.',
+      judgedBadge: 'von KI mitbestimmt',
+      judged: 'Ein Sprachmodell hat mitentschieden, wer diese Notiz lesen darf.',
+      judgeFailed:
+        'Das Sprachmodell, das über den Leserkreis entscheidet, gab keine verwertbare Antwort. Deshalb ist die Notiz auf alle eingeschränkten Ordner des Chats beschränkt.',
     },
     time: {
       justNow: 'gerade eben',
@@ -405,7 +678,7 @@ export const projects: typeof en.projects = {
       viewAll: 'Alle ansehen',
       emptyTitle: 'Noch keine Dateien',
       emptyDescription:
-        'Laden Sie Baudokumente hoch — Pläne, Berichte, Auszüge der Bauordnung — damit Piloti Ihr Projekt in seinen Antworten zitieren kann.',
+        'Laden Sie Baudokumente hoch (Zeichnungen, Berichte, Auszüge der Bauordnung), damit Piloti Ihr Projekt in seinen Antworten zitieren kann.',
       emptyAction: 'Dateien hochladen',
     },
   },

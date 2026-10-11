@@ -1,32 +1,24 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig } from "../config";
+import { GridConfig, backendAutoscaled } from "../config";
 import { EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT } from "../constants";
-import { KEDA_NAMESPACE } from "./keda";
+import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
-
-/**
- * `app.kubernetes.io/name` of the Aspire dashboard. Referenced by rule 2 (which
- * must NOT select it) as well as rules 7 and 8 (which grant it exactly two
- * callers), so the three stay in agreement.
- */
-const OBSERVABILITY_DASHBOARD = "aspire-dashboard";
-
-/**
- * `app.kubernetes.io/name` of the err2issue sink (ADR-0031). Held to the same
- * arrangement as the dashboard: withheld from rule 2, granted one caller in
- * rule 9.
- */
-const ERR2ISSUE = "err2issue";
 
 /**
  * `app.kubernetes.io/name` of the two Langfuse workloads and their ClickHouse
  * (ADR-0044). All three are withheld from rule 2 and granted named callers in
- * rules 10-12, on the same reasoning as the dashboard.
+ * rules 10-12.
  */
 const LANGFUSE_WEB = LANGFUSE.web;
 const LANGFUSE_WORKER = LANGFUSE.worker;
 const CLICKHOUSE = LANGFUSE.clickhouse;
+
+/**
+ * The backend roles that carry the Langfuse API keys (`backendEnv`, less the
+ * ingest worker) and so are named callers of the web tier in rule 11d.
+ */
+export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
 
 /**
  * Namespace-scoped NetworkPolicies for `grid`: a **default-deny for ingress**
@@ -43,10 +35,9 @@ const CLICKHOUSE = LANGFUSE.clickhouse;
  *     egress at all, so denying all of it cannot break anything it does.
  *   - **Intra-namespace is allowed wholesale** (frontend→backend, backend→data,
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
- *     here and are far easier to get subtly wrong. The ONE exception is the
- *     Aspire dashboard, which authenticates nobody itself (auth lives on the
- *     Gateway, ADR-0029 Amendment 2) and so cannot be left open to the
- *     namespace — see rules 2 and 8.
+ *     here and are far easier to get subtly wrong. The exceptions are the pods
+ *     whose receivers authenticate nobody or hold a store of every tenant's
+ *     text (Langfuse and its ClickHouse, Gotenberg) — see rule 2.
  *   - Cross-namespace allows are explicit: the **edge** (Envoy Gateway) to the
  *     three public services, and the **CNPG operator** to its managed pods.
  *
@@ -74,36 +65,20 @@ export function installNetworkPolicies(
   });
 
   // 2. Allow any pod in `grid` to reach any other pod in `grid` — EXCEPT the
-  //    Aspire dashboard.
+  //    pods below.
   //
-  //    The dashboard runs `AuthMode=Unsecured` because authentication moved to
-  //    the Gateway SecurityPolicy (ADR-0029 Amendment 2). That makes the
-  //    wholesale allow below actively dangerous for this one pod: it would let
-  //    ANY pod in the namespace — the internet-facing BFF, an LLM agent worker
-  //    running model-chosen tool calls — read every tenant's telemetry
-  //    (prompts, retrieved snippets, LLM output, and span URLs carrying live
-  //    presigned S3 URLs) over :18888 with no credential whatsoever. Before the
-  //    dashboard's own OIDC was removed, that path still met a claim gate.
-  //
-  //    NetworkPolicy has no deny rule and allows are additive, so the narrower
-  //    `allow-edge-to-aspire-dashboard` below cannot subtract anything. NOT
-  //    SELECTING the pod here is the only way to withhold the blanket allow.
-  //    Its one legitimate in-namespace client is granted explicitly in rule 8.
+  //    NetworkPolicy has no deny rule and allows are additive, so a narrower
+  //    allow cannot subtract anything from this one. NOT SELECTING a pod here
+  //    is the only way to withhold the blanket allow; each pod's legitimate
+  //    in-namespace callers are granted explicitly in the rules that follow.
   //
   //    `NotIn` also matches pods that lack the label entirely (Kubernetes label
   //    semantics), so CNPG-managed Postgres pods and anything else without
   //    `app.kubernetes.io/name` keep the intra-namespace allow.
   //
-  //    err2issue (ADR-0031) is withheld on the same grounds when deployed. Its
-  //    OTLP receiver authenticates nobody either, and the pod holds a GitHub
-  //    token with Issues write — so a blanket allow would let any pod in the
-  //    namespace, including the agent worker executing model-chosen tool calls,
-  //    forge issues into the repo. Rule 9 grants its one real caller.
-  //
-  //    The Langfuse tier (ADR-0044) is withheld for a related but distinct
-  //    reason, and the distinction is worth stating because it is easy to argue
-  //    the other way. Unlike the dashboard these pods DO authenticate — the web
-  //    tier has sessions and API keys, ClickHouse has a password. What they do
+  //    The Langfuse tier (ADR-0044) is withheld, and the reason is worth
+  //    stating because it is easy to argue the other way. These pods DO
+  //    authenticate — the web tier has sessions and API keys, ClickHouse has a password. What they do
   //    not have is any legitimate in-namespace caller other than each other and
   //    the collector. Leaving them in the blanket allow would expose, to every
   //    pod in the namespace: an ingestion API that accepts a bearer key
@@ -122,8 +97,6 @@ export function installNetworkPolicies(
           key: "app.kubernetes.io/name",
           operator: "NotIn",
           values: [
-            OBSERVABILITY_DASHBOARD,
-            ...(cfg.err2issue.enabled ? [ERR2ISSUE] : []),
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
           ],
@@ -210,57 +183,12 @@ export function installNetworkPolicies(
     ingress: [{ from: [nsLabel("envoy-gateway-system")] }],
   });
 
-  // 7. Edge → Aspire dashboard (the otel HTTPRoute) — only when the
-  //    observability tier is deployed (ADR-0029).
-  const edgeOtel = cfg.observability.enabled
-    ? mk("allow-edge-to-aspire-dashboard", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          { from: [nsLabel("envoy-gateway-system")], ports: [{ protocol: "TCP", port: 18888 }] },
-        ],
-      })
-    : undefined;
+  // 7-8. Were the Aspire dashboard's (edge → UI, collector → OTLP). Retired with
+  //      it; the numbers are kept so the rules below keep the names that docs
+  //      and ADRs already cite.
 
-  // 8. otel-collector → Aspire dashboard OTLP/HTTP. Rule 2 deliberately leaves
-  //    the dashboard out of the wholesale intra-namespace allow, so its only
-  //    legitimate in-cluster client needs saying explicitly. Port 4318 alone:
-  //    the collector's `otlphttp/aspire` exporter targets
-  //    http://aspire-dashboard:4318 and nothing speaks 4317 to it.
-  //
-  //    Not covered here (deliberately): kubelet probes the dashboard on 18888
-  //    from the host, which is not gated by NetworkPolicy on Cilium — see the
-  //    header. If a future CNI does gate them, this pod's probes are the first
-  //    place that will show up.
-  const collectorToDashboard = cfg.observability.enabled
-    ? mk("allow-collector-to-aspire-dashboard", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": OBSERVABILITY_DASHBOARD } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-            ports: [{ protocol: "TCP", port: 4318 }],
-          },
-        ],
-      })
-    : undefined;
-
-  // 9. otel-collector → err2issue OTLP/HTTP (ADR-0031). Mirrors rule 8: rule 2
-  //    leaves err2issue out of the wholesale allow, and the collector's
-  //    `otlp_http/err2issue` exporter is its only legitimate client. Port 4318
-  //    alone — the sink speaks no gRPC.
-  const collectorToErr2Issue = cfg.err2issue.enabled
-    ? mk("allow-collector-to-err2issue", {
-        podSelector: { matchLabels: { "app.kubernetes.io/name": ERR2ISSUE } },
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-            ports: [{ protocol: "TCP", port: 4318 }],
-          },
-        ],
-      })
-    : undefined;
+  // 9. Was otel-collector → err2issue (ADR-0031), retired with it; the number is
+  //    kept so the rules below keep the names that docs and ADRs already cite.
 
   // 10. Edge → Langfuse web (the langfuse HTTPRoute serves its UI). The
   //     SecurityPolicy on that route is what authorizes the request; this rule
@@ -278,8 +206,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 11. otel-collector → Langfuse web OTLP ingestion. Mirrors rules 8 and 9:
-  //     rule 2 leaves the web tier out of the wholesale allow, and the
+  // 11. otel-collector → Langfuse web OTLP ingestion. Mirrors rule 9: rule 2 leaves the web tier out of the wholesale allow, and the
   //     collector's `otlp_http/langfuse` exporter is its only in-namespace
   //     client. Same port as the UI — Langfuse serves `/api/public/otel/*` on
   //     the one HTTP listener, so this cannot be narrowed further by port. It
@@ -291,6 +218,68 @@ export function installNetworkPolicies(
         ingress: [
           {
             from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
+  // 11b. The purger and the skill-scheduler → Langfuse web, for its public API:
+  //     the purger deletes an erased chat's traces and the scheduler deletes the
+  //     ones past retention (ADR-0044; `workers/langfuse-traces.js`). Rule 2
+  //     withholds the web tier from the wholesale allow, so each caller is named,
+  //     as the collector is in rule 11. Deleting traces is theirs alone: the BFF
+  //     (rule 11c) and the agent (rule 11d) write scores but delete nothing.
+  const workersToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-workers-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: ["purger", "skill-scheduler"].map((name) => ({
+              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+            })),
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
+  // 11c. frontend (the BFF) → Langfuse web public API. The BFF writes every
+  //      answer-feedback vote as a score on its trace (ADR-0044, Amendment 3)
+  //      through `LANGFUSE_HOST`, the in-cluster Service: the public host sits
+  //      behind the edge's OIDC gate, which a server-side call cannot pass.
+  //      Named by caller, like the collector; the backend tiers have their own
+  //      rule (11d).
+  const frontendToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-frontend-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
+          },
+        ],
+      })
+    : undefined;
+
+  // 11d. The backend tiers → Langfuse web public API. The agent writes the
+  //      answer pipeline's checks as scores on each turn's trace (ADR-0089,
+  //      `aiq_agent/observability/langfuse_scores.py`) through `LANGFUSE_HOST`,
+  //      the in-cluster Service, for the reason rule 11c gives. The three roles
+  //      that run answers or serve them: chat (`aiq-agent`), api (`aiq-api`)
+  //      and the research worker (`agent-worker`). The ingest worker is not
+  //      named and does not get the keys (`ingestWorkerEnv`): it writes none.
+  const backendToLangfuse = cfg.langfuse.enabled
+    ? mk("allow-backend-to-langfuse", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": LANGFUSE_WEB } },
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: LANGFUSE_BACKEND_CALLERS.map((name) => ({
+              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+            })),
             ports: [{ protocol: "TCP", port: PORT.langfuseWeb }],
           },
         ],
@@ -321,7 +310,7 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 13. Gotenberg (ADR-0070): the frontend in, nothing out.
+  // 13. Gotenberg (ADR-0070): the frontend and the bff-jobs pool in, nothing out.
   //
   //     It parses untrusted office files, and an office file can reference
   //     external URLs (linked images, OLE links) that LibreOffice resolves
@@ -330,16 +319,24 @@ export function installNetworkPolicies(
   //     another pod, whatever a document asks of it. No DNS either: it has
   //     nothing to resolve.
   //
-  //     Withheld from rule 2 on the same grounds as the dashboard, so the
-  //     frontend BFF is its one caller. The agent never calls it (the BFF hands
-  //     the backend the finished PDF), and nothing else has a reason to.
+  //     Withheld from rule 2 on the same grounds as Langfuse, so the
+  //     frontend BFF is its caller, and the bff-jobs pool is the same BFF
+  //     running the background conversions (ADR-0079), so it is named too: a
+  //     pool left out here would fail every office file with a green plan. The
+  //     agent never calls it (the BFF hands the backend the finished PDF), and
+  //     nothing else has a reason to.
   const gotenberg = cfg.gotenberg.enabled
     ? mk("gotenberg-frontend-only", {
         podSelector: { matchLabels: { "app.kubernetes.io/name": GOTENBERG.name } },
         policyTypes: ["Ingress", "Egress"],
         ingress: [
           {
-            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }],
+            from: [
+              { podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } },
+              ...(cfg.bffJobs.enabled
+                ? [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "bff-jobs" } } }]
+                : []),
+            ],
             ports: [{ protocol: "TCP", port: PORT.gotenberg }],
           },
         ],
@@ -348,14 +345,32 @@ export function installNetworkPolicies(
       })
     : undefined;
 
-  // 14. KEDA (its own namespace) reads the ingest queue's depth to scale the
-  //     ingest-worker tier (ADR-0076). Postgres only, and only when that tier
-  //     runs: the operator runs one COUNT(*) there and needs nothing else.
-  const kedaToPostgres = cfg.ingestWorker.enabled
-    ? mk("allow-keda-to-postgres", {
-        podSelector: { matchLabels: { "cnpg.io/cluster": POSTGRES_CLUSTER } },
+  // 14-15. KEDA (its own namespace) reaches exactly the two kinds of target its
+  //     triggers name, and nothing else in `grid`. The caller is the OPERATOR pod,
+  //     not the namespace: the operator runs every scaler (the metrics server and
+  //     the admission webhooks in `keda` ask it, they poll nothing), so those two
+  //     have no reason to open a connection into the app or data tier.
+  const kedaOperator = [{ ...nsLabel(KEDA_NAMESPACE), podSelector: { matchLabels: { ...KEDA_OPERATOR_LABEL } } }];
+
+  // 14. The queues' depth, to scale the ingest-worker and agent-worker tiers
+  //     (ADR-0076, ADR-0079) and the bff_job_queue's, to scale the bff-jobs pool:
+  //     Postgres only, port 5432 only. The operator runs one COUNT(*) there as the
+  //     read-only scaler login.
+  const kedaToPostgres = mk("allow-keda-to-postgres", {
+    podSelector: { matchLabels: { "cnpg.io/cluster": POSTGRES_CLUSTER } },
+    policyTypes: ["Ingress"],
+    ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: 5432 }] }],
+  });
+
+  // 15. The fleet's running turns, from the backend's internal occupancy route,
+  //     to scale the chat tier (ADR-0080). The backend port only, on the backend
+  //     pods only, and only when that tier autoscales. (Its cpu trigger reads
+  //     `metrics.k8s.io`, which is no connection into `grid`.)
+  const kedaToBackend = backendAutoscaled(cfg)
+    ? mk("allow-keda-to-aiq-agent", {
+        podSelector: { matchLabels: { "app.kubernetes.io/name": "aiq-agent" } },
         policyTypes: ["Ingress"],
-        ingress: [{ from: [nsLabel(KEDA_NAMESPACE)], ports: [{ protocol: "TCP", port: 5432 }] }],
+        ingress: [{ from: kedaOperator, ports: [{ protocol: "TCP", port: PORT.backend }] }],
       })
     : undefined;
 
@@ -364,16 +379,17 @@ export function installNetworkPolicies(
     intra,
     cnpg,
     ...(kedaToPostgres ? [kedaToPostgres] : []),
+    ...(kedaToBackend ? [kedaToBackend] : []),
     edgeFrontend,
     edgeS3,
     edgeWeb,
     ...(edgeRateLimitStore ? [edgeRateLimitStore] : []),
     acmeSolver,
-    ...(edgeOtel ? [edgeOtel] : []),
-    ...(collectorToDashboard ? [collectorToDashboard] : []),
-    ...(collectorToErr2Issue ? [collectorToErr2Issue] : []),
     ...(edgeLangfuse ? [edgeLangfuse] : []),
     ...(collectorToLangfuse ? [collectorToLangfuse] : []),
+    ...(workersToLangfuse ? [workersToLangfuse] : []),
+    ...(frontendToLangfuse ? [frontendToLangfuse] : []),
+    ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
   ];

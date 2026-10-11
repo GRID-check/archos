@@ -16,7 +16,7 @@
  * from by thinking harder.
  *
  * So the copy is „Stilllegen" / „Stillgelegt" (EN: retire / retired), and it
- * carries no archive-box icon either — that glyph is the Büroarchiv's own
+ * carries no archive-box icon either — that glyph is the Büroablage's own
  * provenance signal, and reusing it here would put the collision back in a
  * picture after taking it out of the words.
  *
@@ -68,6 +68,12 @@ export interface DocumentArchiveActionProps {
   /** The archive request is in flight. */
   pending?: boolean
   onArchive: () => void
+  /**
+   * One quiet line instead of the heading, blurb and button: for the rail,
+   * where the block used to be the largest thing in „Fassungen und Freigabe"
+   * and competed with Freigeben. The confirm still lists every consequence.
+   */
+  compact?: boolean
   className?: string
 }
 
@@ -78,29 +84,47 @@ export function DocumentArchiveAction({
   filename,
   pending = false,
   onArchive,
+  compact = false,
   className,
 }: DocumentArchiveActionProps): JSX.Element {
   const t = useTranslations('files')
   const [asking, setAsking] = useState(false)
 
   return (
-    <div className={cn('space-y-1.5 border-t pt-3', className)} data-testid="document-archive-action">
-      <p className="text-xs font-medium">{t('lifecycle.archiveSection.heading')}</p>
-      <p className="text-muted-foreground text-xs">{t('lifecycle.archiveSection.blurb')}</p>
-      <div>
+    <div className={cn(compact ? 'border-t pt-2' : 'space-y-1.5 border-t pt-3', className)} data-testid="document-archive-action">
+      {compact ? (
         <Button
           type="button"
           size="sm"
-          variant="outline"
-          className="h-8"
+          variant="link"
+          className="text-muted-foreground hover:text-foreground touch-target -ml-1 h-auto px-1 py-0.5 text-xs pointer-coarse:h-auto"
           disabled={pending}
           aria-busy={pending}
           data-testid="document-lifecycle-archive"
           onClick={() => setAsking(true)}
         >
-          {t('lifecycle.actions.archive')}
+          {t('preview.fassung.rail.archive')}
         </Button>
-      </div>
+      ) : (
+        <>
+          <p className="text-xs font-medium">{t('lifecycle.archiveSection.heading')}</p>
+          <p className="text-muted-foreground text-xs">{t('lifecycle.archiveSection.blurb')}</p>
+          <div>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-8"
+              disabled={pending}
+              aria-busy={pending}
+              data-testid="document-lifecycle-archive"
+              onClick={() => setAsking(true)}
+            >
+              {t('lifecycle.actions.archive')}
+            </Button>
+          </div>
+        </>
+      )}
 
       <ConfirmDialog
         open={asking}

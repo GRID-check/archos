@@ -11,12 +11,21 @@
 import { type ChangeEvent, type FC, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { CheckCircle2, FileText, Upload, XCircle } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
+import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
-import { AnimatePresence, motion, springDrawer, springPress } from '@/components/motion'
+import type { Transition } from 'motion/react'
+import {
+  AnimatePresence,
+  motion,
+  motionQuick,
+  springDrawer,
+  springPress,
+  useMotionToken,
+} from '@/components/motion'
 import { Label } from '@/components/ui/label'
 import { cn } from '@/lib/utils'
 
@@ -48,6 +57,12 @@ interface FileUploadZoneProps {
   label?: string
 }
 
+/**
+ * A queued file's row: the rise lands on `springDrawer`, the fade is the
+ * `motionQuick` tween (opacity never springs). Instant under reduced motion.
+ */
+const rowTransition: Transition = { ...springDrawer, opacity: motionQuick }
+
 // ============================================================================
 // Component
 // ============================================================================
@@ -62,6 +77,8 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
   label,
 }) => {
   const t = useTranslations('files')
+  const { locale } = useLocale()
+  const row = useMotionToken(rowTransition)
   // Check if current session is busy with operations
   const isBusy = useIsCurrentSessionBusy()
   const targetCollectionName = collectionName ?? sessionId
@@ -168,7 +185,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
           <span className="font-medium text-primary">{t('uploadZone.clickToUpload')}</span>{t('uploadZone.orDragAndDrop')}
         </p>
         <p className="text-xs text-muted-foreground">
-          <span>{t('uploadZone.maxSize', { size: Math.round(maxFileSize / (1024 * 1024)) })}</span>
+          <span>{t('uploadZone.maxSize', { size: formatBytes(maxFileSize, locale) })}</span>
           <span> · </span>
           <span>{t('uploadZone.accepts', { types: acceptedTypes })}</span>
         </p>
@@ -184,7 +201,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
               initial={{ opacity: 0, y: 8 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.97 }}
-              transition={springDrawer}
+              transition={row}
               className="flex items-center gap-3 rounded-xl border bg-card px-3 py-2 shadow-xs"
             >
               <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />

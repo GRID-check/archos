@@ -7,22 +7,60 @@ vi.mock('@/lib/db', () => ({
   getDb: vi.fn(),
 }))
 
+// What happens after a row comes to rest (its upload completes, a quarantine's
+// reviewers hear of it) is `upload-batches/settle`'s subject; here it is the
+// call reconciliation makes.
+vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mockResolvedValue(undefined) }))
+
+// What PostHog hears is `lib/analytics/ingest-events.spec.ts`'s subject; here it is the
+// call reconciliation makes for the rows it moved.
+const captureServer = vi.hoisted(() => vi.fn(() => true))
+vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
+
 import { getDb } from '@/lib/db'
+import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
   extractIngestJobId,
   clearCollectionFilesCache,
   describeBackendIngestState,
+  readFassungNames,
+  refreshCollectionFiles,
   type ReconcilableDocument,
 } from './reconcile-status'
+import { collectionFileRef } from './collection-file-ref'
 
-const makeDbMock = () => {
-  const where = vi.fn().mockResolvedValue(undefined)
+/**
+ * The guarded status write, in its transaction. `moved: false` is the write
+ * another read won: the row had already left the status (or the dispatch) this
+ * read saw, so the UPDATE matched nothing. `values` is the quarantine decision
+ * the same transaction records.
+ */
+const makeDbMock = ({ moved = true }: { moved?: boolean } = {}) => {
+  // What the write returns as it lands: the row's place, and the verdict and
+  // the bytes it judged, which the same transaction records on the versions
+  // holding those bytes (migration 0131).
+  const movedRow = {
+    scope: 'project',
+    projectId: 'p1',
+    filename: 'a.pdf',
+    createdBy: 'user-1',
+    status: 'completed',
+    screeningOutcome: null,
+    screenedHash: 'sha256:judged',
+    dispatchedHash: 'sha256:judged',
+  }
+  const returning = vi.fn().mockResolvedValue(moved ? [movedRow] : [])
+  const where = vi.fn().mockReturnValue({ returning })
   const set = vi.fn().mockReturnValue({ where })
   const update = vi.fn().mockReturnValue({ set })
-  vi.mocked(getDb).mockReturnValue(asDb({ update }))
-  return { update, set, where }
+  const onConflictDoNothing = vi.fn().mockResolvedValue(undefined)
+  const values = vi.fn().mockReturnValue({ onConflictDoNothing })
+  const insert = vi.fn().mockReturnValue({ values })
+  const transaction = vi.fn((run: (tx: unknown) => Promise<unknown>) => run({ update, insert }))
+  vi.mocked(getDb).mockReturnValue(asDb({ transaction }))
+  return { update, set, where, insert, values }
 }
 
 /**
@@ -108,10 +146,10 @@ describe('reconcileDocumentStatuses', () => {
     )
     expect(result.status).toBe('completed')
     expect(result.errorMessage).toBeNull()
-    expect(db.update).toHaveBeenCalledTimes(1)
-    expect(db.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'completed', errorMessage: null })
-    )
+    // The row, then the versions holding the bytes the job judged (migration 0131).
+    expect(db.update).toHaveBeenCalledTimes(2)
+    expect(db.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: 'completed', errorMessage: null }))
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: 'sha256:judged' })
   })
 
   it('marks a row failed with the job error message', async () => {
@@ -227,7 +265,7 @@ describe('reconcileDocumentStatuses', () => {
       expect.any(Object)
     )
     expect(result.status).toBe('completed')
-    expect(db.update).toHaveBeenCalledTimes(1)
+    expect(db.update).toHaveBeenCalledTimes(2)
   })
 
   it('uses the collection file list for legacy rows without a job id', async () => {
@@ -371,6 +409,173 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
 
     expect(result.tags).toBeUndefined()
+  })
+
+  it('merges topics and the photo capture, mapped to camelCase', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          topics: ['Brandschutzkonzept', 'Fluchtweg'],
+          capture: { captured_at: '2026-03-14T09:21:00', latitude: 47.07, longitude: 15.44, camera: 'Canon EOS R6' },
+        },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toEqual(['Brandschutzkonzept', 'Fluchtweg'])
+    expect(result.capture).toEqual({
+      capturedAt: '2026-03-14T09:21:00',
+      latitude: 47.07,
+      longitude: 15.44,
+      camera: 'Canon EOS R6',
+    })
+  })
+
+  it('drops junk topics and an unusable capture, keeping what is valid', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          topics: ['Fluchtweg', '', 7, null, 'Rauchabzug'],
+          capture: { latitude: 47.07, camera: 42 },
+        },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toEqual(['Fluchtweg', 'Rauchabzug'])
+    expect(result.capture).toBeUndefined()
+  })
+
+  it('omits topics and capture when the backend provides none or only empty ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        { file_id: 'f-1', file_name: 'plan.pdf', status: 'success', chunk_count: 5, topics: [], capture: null },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toBeUndefined()
+    expect(result.capture).toBeUndefined()
+  })
+
+  it('merges the title-block facts, mapped to camelCase, and drops junk ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          revision_facts: {
+            document_number: 'A-101',
+            revision: 'C',
+            revision_date: '2026-03-14',
+            page: 2,
+          },
+        },
+        {
+          file_id: 'f-2',
+          file_name: 'junk.pdf',
+          status: 'success',
+          revision_facts: { revision_date: '14.03.2026' },
+        },
+      ])
+    )
+
+    const [present, junk] = await reconcileDocumentStatuses(
+      [
+        makeRow({ status: 'completed' }),
+        makeRow({ id: 'doc-2', filename: 'junk.pdf', status: 'completed' }),
+      ],
+      'org-1'
+    )
+
+    expect(present.revisionFacts).toEqual({
+      documentNumber: 'A-101',
+      revision: 'C',
+      revisionDate: '2026-03-14',
+      page: 2,
+    })
+    expect(junk.revisionFacts).toBeUndefined()
+  })
+
+  it('reads the Fassung links by file name and keeps them out of the row metadata', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          superseded_by: 'plan_B.pdf',
+          supersedes: ['plan_0.pdf'],
+          revision_suggestion: { of: 'plan_0.pdf', confidence: 2, reason: 'Index', basis: 'name' },
+          change_summary: 'Wand entfällt.',
+          change_basis: 'plan_0.pdf',
+        },
+      ])
+    )
+    const row = makeRow({ status: 'completed' })
+
+    const [result] = await reconcileDocumentStatuses([row], 'org-1')
+
+    // A file name is a fact about a document the reader may not see: it never
+    // rides on the row metadata other callers spread onto the wire.
+    expect(JSON.stringify(result)).not.toContain('plan_B.pdf')
+    expect(JSON.stringify(result)).not.toContain('plan_0.pdf')
+    const ref = collectionFileRef(row)
+    if (!ref) throw new Error('a human row has a ref')
+    expect(await readFassungNames(ref)).toEqual({
+      supersededBy: 'plan_B.pdf',
+      supersedes: ['plan_0.pdf'],
+      suggestion: { of: 'plan_0.pdf', confidence: 1, reason: 'Index', basis: 'name' },
+      change: { text: 'Wand entfällt.', basis: 'plan_0.pdf' },
+    })
+  })
+
+  it('answers no Fassung names for a file the listing does not know, a name it lists twice, or a file with none', async () => {
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        { file_name: 'plan.pdf', status: 'success', superseded_by: 'a.pdf' },
+        { file_name: 'plan.pdf', status: 'success', superseded_by: 'b.pdf' },
+        { file_name: 'leer.pdf', status: 'success' },
+      ])
+    )
+    const ref = (filename: string) => {
+      const found = collectionFileRef(makeRow({ filename }))
+      if (!found) throw new Error('a human row has a ref')
+      return found
+    }
+
+    expect(await readFassungNames(ref('plan.pdf'))).toBeNull()
+    expect(await readFassungNames(ref('leer.pdf'))).toBeNull()
+    expect(await readFassungNames(ref('fehlt.pdf'))).toBeNull()
+  })
+
+  it('refreshes the cached listing, so the read after a write sees it', async () => {
+    mockFetch.mockResolvedValueOnce(collectionResponse([{ file_name: 'plan.pdf', status: 'success' }]))
+    const ref = collectionFileRef(makeRow())
+    if (!ref) throw new Error('a human row has a ref')
+    expect(await readFassungNames(ref)).toBeNull()
+
+    mockFetch.mockResolvedValueOnce(
+      collectionResponse([{ file_name: 'plan.pdf', status: 'success', superseded_by: 'plan_B.pdf' }])
+    )
+    await refreshCollectionFiles('proj_abc')
+
+    expect((await readFassungNames(ref))?.supersededBy).toBe('plan_B.pdf')
   })
 
   it('omits fields the backend did not provide', async () => {
@@ -921,6 +1126,78 @@ describe('reconcileDocumentStatuses on a failure the backend settled as interrup
   })
 })
 
+describe('reconcileDocumentStatuses reports finished ingests to PostHog', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  const backend = (job: unknown) =>
+    mockFetch.mockImplementation(async (url: string) =>
+      url.includes('/v1/documents/status/batch')
+        ? batchResponse({ 'job-1': job })
+        : collectionResponse([
+            { file_id: 'f-1', file_name: 'plan.pdf', status: 'success', chunk_count: 12, metadata: { page_count: 4 } },
+          ])
+    )
+
+  it('sends document_ingest_finished for the row this read moved, with counts and no filename', async () => {
+    makeDbMock()
+    backend({ status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success', screening: 'clean' }] })
+    const dispatched = new Date(Date.now() - 120_000)
+
+    await reconcileDocumentStatuses([makeRow({ updatedAt: dispatched })], 'org-1')
+
+    expect(captureServer).toHaveBeenCalledTimes(1)
+    const [[sent]] = captureServer.mock.calls as unknown as [[{ properties: Record<string, unknown> }]]
+    expect(sent).toMatchObject({
+      event: 'document_ingest_finished',
+      distinctId: null,
+      organizationId: 'org-1',
+      properties: { status: 'completed', screening: 'clean', file_type: 'pdf', page_count: 4, chunk_count: 12 },
+    })
+    expect(sent.properties.duration_ms).toBeGreaterThanOrEqual(120_000)
+    expect(sent.properties.duration_ms).toBeLessThan(150_000)
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('plan')
+  })
+
+  it('reports a failure by its status and carries nothing of the error text', async () => {
+    makeDbMock()
+    backend({ status: 'failed', error_message: 'could not read secret-plan.pdf', file_details: [] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(captureServer).toHaveBeenCalledWith(
+      expect.objectContaining({ properties: expect.objectContaining({ status: 'failed' }) })
+    )
+    expect(JSON.stringify(captureServer.mock.calls)).not.toContain('secret')
+  })
+
+  it('sends nothing for a row another read moved first', async () => {
+    makeDbMock({ moved: false })
+    backend({ status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] })
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(captureServer).not.toHaveBeenCalled()
+  })
+
+  it('sends nothing for a job still in progress, or for rows already at rest', async () => {
+    makeDbMock()
+    backend({ status: 'processing', queue_position: 0 })
+
+    await reconcileDocumentStatuses([makeRow(), makeRow({ id: 'doc-2', status: 'completed' })], 'org-1')
+
+    expect(captureServer).not.toHaveBeenCalled()
+  })
+})
+
 describe('extractIngestJobId', () => {
   it('extracts a job id from metadata', () => {
     expect(extractIngestJobId({ ingestJobId: 'job-9' })).toBe('job-9')
@@ -985,6 +1262,18 @@ describe('describeBackendIngestState', () => {
     expect(knowledge).toEqual({ state: 'terminal', resolution: { status: 'completed', errorMessage: null } })
   })
 
+  it("reports absent, not an earlier dispatch's failure, when the backend forgot the job", async () => {
+    // The persisted terminal would be the earlier job's verdict, recorded as
+    // this dispatch's; nothing the backend knows of is this dispatch.
+    routeBackend({}, [{ file_name: 'plan.pdf', status: 'failed', error_message: 'quarantined:{}' }])
+
+    expect(await describeBackendIngestState(makeRow({ status: 'processing' }))).toEqual({ state: 'absent' })
+    expect(await describeBackendIngestState(makeRow({ status: 'processing', metadata: null }))).toEqual({
+      state: 'terminal',
+      resolution: expect.objectContaining({ status: 'quarantined' }),
+    })
+  })
+
   it('reports in-progress when a file under this name is mid-flight', async () => {
     routeBackend({}, [{ file_name: 'plan.pdf', status: 'pending' }])
 
@@ -1007,5 +1296,211 @@ describe('describeBackendIngestState', () => {
     const knowledge = await describeBackendIngestState(makeRow({ status: 'processing', metadata: null }))
 
     expect(knowledge).toEqual({ state: 'unreachable' })
+  })
+})
+
+/**
+ * ADR-0086: the content gate stops a job on purpose. The row must read as
+ * quarantined (waiting on a person), never as an ordinary failure a retry
+ * would re-dispatch into the same gate, and the job's screening outcome lands
+ * on the row so the upload summary can say what was and was not checked.
+ */
+describe('reconcileDocumentStatuses — upload screening', () => {
+  const verdict =
+    'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":1,"pages":[1]}],"checked":"full"}'
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('quarantines a row whose only file the content gate stopped', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'completed',
+          file_details: [{ status: 'failed', error_message: verdict, screening: 'quarantined' }],
+        },
+      })
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect(result.errorMessage).toBe(verdict)
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' })
+    )
+    // The versions holding the bytes this job judged lose any earlier pass (migration 0131).
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: null })
+    // The decision, keyed on its dispatch, owed to the audit trail (ADR-0086):
+    // kinds and terms, never the masked sample or the page list.
+    expect(db.values).toHaveBeenCalledWith({
+      organizationId: 'org-1',
+      documentId: 'doc-1',
+      jobId: 'job-1',
+      scope: 'project',
+      projectId: 'p1',
+      filename: 'a.pdf',
+      reasons: 'term:Lohnzettel',
+      checked: 'full',
+      uploadedBy: 'user-1',
+    })
+  })
+
+  it('quarantines from a failed job too', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: verdict } }))
+
+    const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'quarantined' }))
+    expect(db.values).toHaveBeenCalledWith(expect.objectContaining({ jobId: 'job-1' }))
+  })
+
+  it('records no decision for a row it did not move, nor for one that came to rest otherwise', async () => {
+    const lost = makeDbMock({ moved: false })
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: verdict } }))
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    expect(lost.insert).not.toHaveBeenCalled()
+
+    const completed = makeDbMock()
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'completed' } }))
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+    expect(completed.update).toHaveBeenCalled()
+    expect(completed.insert).not.toHaveBeenCalled()
+  })
+
+  it('quarantines a row that carries no job from the collection file list, a decision of no dispatch', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([{ file_name: 'plan.pdf', status: 'failed', error_message: verdict }])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ metadata: null })], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'quarantined' }))
+    expect(db.values).toHaveBeenCalledWith(expect.objectContaining({ jobId: null }))
+  })
+
+  // The backend lists the first failed entry of a name it still tracks, so a
+  // released file's old quarantine is what the list says while the new
+  // dispatch's job is forgotten. Adopting it put the file back in quarantine
+  // and recorded job-2 as having quarantined it.
+  it('takes no failure from the file list for a row whose job the backend forgot', async () => {
+    const db = makeDbMock()
+    mockFetch
+      .mockResolvedValueOnce(batchResponse({}))
+      .mockResolvedValue(collectionResponse([{ file_name: 'plan.pdf', status: 'failed', error_message: verdict }]))
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ metadata: { ingestJobId: 'job-2' } })], 'org-1')
+
+    expect(result.status).toBe('pending')
+    expect(db.update).not.toHaveBeenCalled()
+    expect(db.insert).not.toHaveBeenCalled()
+  })
+
+  it.each(['clean', 'partial', 'unchecked'])('records the outcome %s of a completed, screened job', async (screening) => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({ 'job-1': { status: 'completed', file_details: [{ status: 'success', screening }] } })
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed', screeningOutcome: screening }))
+  })
+
+  it('leaves the outcome alone for a job that carried no rules (released, or screening off)', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({ 'job-1': { status: 'completed', file_details: [{ status: 'success', screening: null }] } })
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    const written = db.set.mock.calls[0]?.[0] as Record<string, unknown>
+    expect(written.status).toBe('completed')
+    expect('screeningOutcome' in written).toBe(false)
+  })
+
+  it('does not mistake an ordinary failure for a quarantine', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: 'unparseable PDF' } }))
+
+    const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(result.status).toBe('failed')
+    const written = db.set.mock.calls[0]?.[0] as Record<string, unknown>
+    expect('screeningOutcome' in written).toBe(false)
+  })
+})
+
+describe('reconcileDocumentStatuses — settling uploads', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  it('hands every row it brought to rest to the settle hook, with its new status', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': { status: 'completed', file_details: [{ status: 'success' }] },
+        'job-2': { status: 'running' },
+      })
+    )
+
+    await reconcileDocumentStatuses(
+      [makeRow(), makeRow({ id: 'doc-2', metadata: { ingestJobId: 'job-2' } })],
+      'org-1'
+    )
+
+    expect(onDocumentsSettled).toHaveBeenCalledWith('org-1', [{ id: 'doc-1', status: 'completed' }])
+  })
+
+  it('settles nothing when another read moved the row first, and still reports its new status', async () => {
+    // Two reads (two tabs, uploader and reviewer, the sweep) resolve the same
+    // in-flight row at once. Only the read whose guarded write moved it may
+    // settle it, or the quarantine is audited and its reviewers told twice.
+    makeDbMock({ moved: false })
+    const verdict = 'quarantined:{"reasons":[{"kind":"iban"}],"checked":"full"}'
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'completed',
+          file_details: [{ status: 'failed', error_message: verdict, screening: 'quarantined' }],
+        },
+      })
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(result.status).toBe('quarantined')
+    expect(onDocumentsSettled).not.toHaveBeenCalled()
+  })
+
+  it('does not call it when nothing came to rest', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'running' } }))
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(onDocumentsSettled).not.toHaveBeenCalled()
   })
 })

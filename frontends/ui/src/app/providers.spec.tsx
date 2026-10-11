@@ -2,7 +2,7 @@ import type { ReactNode } from 'react'
 import { render } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import type { AppConfig } from '@/shared/context'
-import { identifyPosthog, resetPosthog } from '@/lib/analytics/posthog'
+import { identifyPosthog, initPosthogClient, registerPosthogContext, resetPosthog } from '@/lib/analytics/posthog'
 import { Providers } from './providers'
 
 const layoutState = {
@@ -33,6 +33,7 @@ const authState = {
   isLoading: false,
   authRequired: false,
   user: null as { id: string; email?: string; name?: string } | null,
+  organizationId: undefined as string | undefined,
 }
 
 vi.mock('@/adapters/auth', () => ({
@@ -44,9 +45,10 @@ vi.mock('@/adapters/auth', () => ({
 }))
 
 vi.mock('@/lib/analytics/posthog', () => ({
-  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '' },
+  DISABLED_POSTHOG_CONFIG: { host: '', projectToken: '', sessionReplay: false, replaySampleRate: 0, proxy: false },
   initPosthogClient: vi.fn(),
   identifyPosthog: vi.fn(),
+  registerPosthogContext: vi.fn(),
   resetPosthog: vi.fn(),
   isPosthogEnabled: vi.fn(() => true),
 }))
@@ -89,6 +91,14 @@ const baseConfig: AppConfig = {
   },
 }
 
+const enabledPosthog = {
+  host: 'https://eu.i.posthog.com',
+  projectToken: 'phc_test',
+  sessionReplay: true,
+  replaySampleRate: 1,
+  proxy: true,
+}
+
 describe('Providers', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -120,6 +130,46 @@ describe('Providers', () => {
     expect(setIntervalSpy).not.toHaveBeenCalled()
   })
 
+  describe('theme', () => {
+    afterEach(() => {
+      layoutState.theme = 'dark'
+      document.documentElement.classList.remove('dark')
+      document.head.querySelectorAll('meta[name="theme-color"]').forEach((m) => m.remove())
+    })
+
+    // A layout effect, so the class is on <html> before the browser paints the
+    // committed tree. React's dev remount strips attributes the inline boot
+    // script set; a passive effect let that paint one light frame.
+    test('applies the stored theme before paint and points theme-color at it', () => {
+      const meta = document.createElement('meta')
+      meta.setAttribute('name', 'theme-color')
+      meta.setAttribute('content', '#f6f6f4')
+      document.head.appendChild(meta)
+
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+
+      expect(document.documentElement.classList.contains('dark')).toBe(true)
+      expect(meta.getAttribute('content')).toBe('#191816')
+    })
+
+    test('an explicit light choice removes a dark class the boot script set', () => {
+      layoutState.theme = 'light'
+      document.documentElement.classList.add('dark')
+
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+
+      expect(document.documentElement.classList.contains('dark')).toBe(false)
+    })
+  })
+
   describe('PostHog identity', () => {
     const signedInAs = (id: string): void => {
       authState.authRequired = true
@@ -137,6 +187,114 @@ describe('Providers', () => {
       authState.authRequired = false
       authState.isAuthenticated = false
       authState.user = null
+      authState.organizationId = undefined
+    })
+
+    // The Langfuse audit (docs/observability/langfuse-audit-2026-10.md) flagged
+    // identify() sending email and name. The WorkOS user id is the whole identity.
+    test('identifies with the WorkOS user id only, never email or name', () => {
+      signedInAs('user-a')
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+
+      expect(identifyPosthog).toHaveBeenCalledTimes(1)
+      expect(vi.mocked(identifyPosthog).mock.calls[0]).toEqual(['user-a'])
+    })
+
+    test('stamps the organization after identifying, and follows an organization switch', () => {
+      signedInAs('user-a')
+      authState.organizationId = 'org_1'
+      const view = render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith(
+        expect.objectContaining({ organizationId: 'org_1', locale: 'en' })
+      )
+      expect(vi.mocked(identifyPosthog).mock.invocationCallOrder[0]).toBeLessThan(
+        vi.mocked(registerPosthogContext).mock.invocationCallOrder[0]!
+      )
+
+      authState.organizationId = 'org_2'
+      view.rerender(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith(
+        expect.objectContaining({ organizationId: 'org_2' })
+      )
+      // A switch inside one session is not a new person.
+      expect(identifyPosthog).toHaveBeenCalledTimes(1)
+    })
+
+    test('hands the server-known identity to the SDK at init (bootstrap)', () => {
+      const identity = {
+        distinctId: 'user-a',
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'de',
+      }
+      render(
+        <Providers config={{ ...baseConfig, posthog: enabledPosthog, posthogIdentity: identity }} locale="de">
+          <div>content</div>
+        </Providers>
+      )
+      expect(initPosthogClient).toHaveBeenCalledWith(enabledPosthog, identity)
+    })
+
+    test('registers the organization name and role only for the organization the server saw', () => {
+      signedInAs('user-a')
+      authState.organizationId = 'org_1'
+      const identity = {
+        distinctId: 'user-a',
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'en',
+      }
+      const config = { ...baseConfig, posthog: enabledPosthog, posthogIdentity: identity }
+      const view = render(
+        <Providers config={config} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith({
+        organizationId: 'org_1',
+        organizationName: 'Planungsbüro Muster',
+        role: 'admin',
+        locale: 'en',
+      })
+
+      // A client-side switch to another organization must not keep the old name.
+      authState.organizationId = 'org_2'
+      view.rerender(
+        <Providers config={config} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).toHaveBeenLastCalledWith({
+        organizationId: 'org_2',
+        organizationName: null,
+        role: null,
+        locale: 'en',
+      })
+    })
+
+    test('does not stamp an organization while signed out', () => {
+      signedOut()
+      authState.organizationId = 'org_1'
+      render(
+        <Providers config={baseConfig} locale="en">
+          <div>content</div>
+        </Providers>
+      )
+      expect(registerPosthogContext).not.toHaveBeenCalled()
     })
 
     // A session lost WITHOUT `handleSignOut` — expiry, a failed refresh — used
@@ -152,7 +310,7 @@ describe('Providers', () => {
           <div>content</div>
         </Providers>
       )
-      expect(identifyPosthog).toHaveBeenCalledWith('user-a', expect.anything())
+      expect(identifyPosthog).toHaveBeenCalledWith('user-a')
 
       signedOut()
       view.rerender(
@@ -188,7 +346,7 @@ describe('Providers', () => {
       )
 
       // The reset already happened on the way out, so user-b starts clean.
-      expect(identifyPosthog).toHaveBeenCalledWith('user-b', expect.anything())
+      expect(identifyPosthog).toHaveBeenCalledWith('user-b')
     })
 
     test('does not reset on a first render that was never authenticated', () => {

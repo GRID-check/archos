@@ -7,15 +7,16 @@
  * - AuthKitProvider (WorkOS AuthKit session)
  * - ConversationHydrator (loads server-persisted conversations)
  *
- * Theme (dark/light) is applied directly to the document element via
- * useThemeEffect below — it toggles the `.dark` class that the token
- * stylesheet keys off of. Light is the default (no class). There is no
- * separate theme provider.
+ * Theme (dark/light) is applied directly to the document element: before the
+ * first paint by the inline script from `theme-boot.ts` (rendered in
+ * layout.tsx), and from then on by useThemeEffect below. Both toggle the
+ * `.dark` class that the token stylesheet keys off of. Light is the default
+ * (no class). There is no separate theme provider.
  */
 
 'use client'
 
-import { type ReactNode, useEffect, useRef, useState } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect, useRef } from 'react'
 import { AuthKitProvider } from '@workos-inc/authkit-nextjs/components'
 import { MotionConfig } from 'motion/react'
 import { TooltipProvider } from '@/components/ui/tooltip'
@@ -24,7 +25,8 @@ import { AppConfigProvider, type AppConfig, useAppConfig } from '@/shared/contex
 import { useLayoutStore } from '@/features/layout'
 import { useChatStore } from '@/features/chat/store'
 import type { ThemeMode } from '@/features/layout'
-import { I18nProvider, type Locale } from '@/i18n'
+import { I18nProvider, useLocale, type Locale } from '@/i18n'
+import { THEME_COLOR } from './theme-boot'
 import { fetchUserPreferences, patchUserPreferences } from '@/lib/user-preferences/client'
 import { useAuth } from '@/adapters/auth'
 import {
@@ -32,6 +34,7 @@ import {
   identifyPosthog,
   initPosthogClient,
   isPosthogEnabled,
+  registerPosthogContext,
   resetPosthog,
 } from '@/lib/analytics/posthog'
 
@@ -53,16 +56,26 @@ const isThemeMode = (value: unknown): value is ThemeMode =>
  * restored its session on each page load; sign-out resets PostHog in the auth
  * action before AuthKit redirects. Everything no-ops while analytics is
  * unconfigured (fail-open).
+ *
+ * The identity is the WorkOS user id and nothing else: no email, no name
+ * (pending the owner's permission). The server-known session is handed to the
+ * SDK at init (`posthogIdentity`, PostHog `bootstrap`), so the first pageview is
+ * already the person. The organization (id and name), role and locale ride
+ * along as properties on every event, because group analytics is a paid add-on
+ * (`lib/analytics/posthog.ts`). The identify effect still runs once per load:
+ * it covers the case where the server could not build the bootstrap, and a
+ * switch of user within one page.
  */
 const PostHogIdentitySync = (): null => {
-  const { authRequired, isAuthenticated, user } = useAuth()
-  const { posthog: posthogConfig = DISABLED_POSTHOG_CONFIG } = useAppConfig()
+  const { authRequired, isAuthenticated, user, organizationId } = useAuth()
+  const { posthog: posthogConfig = DISABLED_POSTHOG_CONFIG, posthogIdentity } = useAppConfig()
+  const { locale } = useLocale()
   const previousDistinctId = useRef<string | null>(null)
   const distinctId = authRequired && isAuthenticated && user?.id ? user.id : null
 
   useEffect(() => {
-    initPosthogClient(posthogConfig.host, posthogConfig.projectToken)
-  }, [posthogConfig.host, posthogConfig.projectToken])
+    initPosthogClient(posthogConfig, posthogIdentity)
+  }, [posthogConfig, posthogIdentity])
 
   useEffect(() => {
     if (!distinctId) {
@@ -81,49 +94,73 @@ const PostHogIdentitySync = (): null => {
     if (!isPosthogEnabled() || previousDistinctId.current === distinctId) return
 
     if (previousDistinctId.current) resetPosthog()
-    identifyPosthog(distinctId, {
-      email: user?.email ?? undefined,
-      name: user?.name ?? undefined,
-    })
+    identifyPosthog(distinctId)
     previousDistinctId.current = distinctId
-  }, [distinctId, user?.email, user?.name])
+  }, [distinctId])
+
+  // After the identify effect above (same commit, declaration order), and again
+  // whenever the member switches organization or language without a new sign-in.
+  // The id is the live one from AuthKit; the name and role are the server's, and
+  // only valid for the organization the server saw, so a switched-to organization
+  // gets neither rather than the previous one's.
+  useEffect(() => {
+    if (!distinctId || !isPosthogEnabled()) return
+    const serverKnowsOrganization = posthogIdentity?.organizationId === organizationId
+    registerPosthogContext({
+      organizationId,
+      organizationName: serverKnowsOrganization ? posthogIdentity?.organizationName : null,
+      role: serverKnowsOrganization ? posthogIdentity?.role : null,
+      locale,
+    })
+  }, [distinctId, organizationId, posthogIdentity, locale])
 
   return null
 }
 
 /**
- * Applies theme classes directly to the document element.
- * This ensures theme changes happen without remounting the component tree.
- * Defers application until after hydration to prevent SSR mismatches.
+ * Keeps the document's theme in step with the store after the first paint.
+ *
+ * The first paint is not this hook's job: `THEME_BOOT_SCRIPT` (theme-boot.ts)
+ * sets `.dark` from the same persisted store entry before React runs, so on
+ * mount this re-applies what is already there. A LAYOUT effect, and no
+ * "wait until mounted" gate, because React's dev remount resets `<html>` to the
+ * attributes its JSX declares — a passive effect let that reset paint one light
+ * frame.
+ *
+ * The effect reads the theme from `getState()`, not from the hook's argument.
+ * The store holds the persisted theme from the moment its module loads
+ * (zustand's localStorage hydration is synchronous), but the HYDRATION render
+ * sees the server snapshot, which is the store's initial 'system'. Acting on
+ * that value turned an explicit dark choice on a light OS into a light frame
+ * (~200ms in dev) right after the boot script had painted it dark. `theme`
+ * stays the dependency, so a real change still re-runs the effect.
+ *
+ * It also points `<meta name="theme-color">` at the resolved theme. The
+ * viewport export can only follow the OS; an explicit choice against it would
+ * otherwise leave the browser's bar in the wrong colour.
  */
 const useThemeEffect = (theme: ThemeMode): void => {
-  const [mounted, setMounted] = useState(false)
-
-  // Mark as mounted after first render (client-side only)
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  useEffect(() => {
-    // Skip during SSR and initial hydration
-    if (!mounted) return
-
-    const root = document.documentElement
+  useLayoutEffect(() => {
     const applyDark = (isDark: boolean): void => {
-      root.classList.toggle('dark', isDark)
+      document.documentElement.classList.toggle('dark', isDark)
+      const color = isDark ? THEME_COLOR.dark : THEME_COLOR.light
+      document
+        .querySelectorAll<HTMLMetaElement>('meta[name="theme-color"]')
+        .forEach((meta) => meta.setAttribute('content', color))
     }
 
-    if (theme === 'system') {
-      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
-      applyDark(mediaQuery.matches)
-
-      const handleChange = (e: MediaQueryListEvent): void => applyDark(e.matches)
-      mediaQuery.addEventListener('change', handleChange)
-      return () => mediaQuery.removeEventListener('change', handleChange)
+    const current = useLayoutStore.getState().theme
+    if (current !== 'system') {
+      applyDark(current === 'dark')
+      return
     }
 
-    applyDark(theme === 'dark')
-  }, [theme, mounted])
+    const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)')
+    applyDark(mediaQuery.matches)
+    const handleChange = (e: MediaQueryListEvent): void => applyDark(e.matches)
+    mediaQuery.addEventListener('change', handleChange)
+    return () => mediaQuery.removeEventListener('change', handleChange)
+  }, [theme])
 }
 
 /**
@@ -211,7 +248,6 @@ const useThemePreferenceSync = (): void => {
 /**
  * Theme wrapper that syncs with layout store.
  * Applies theme classes directly to document for instant updates.
- * Uses defer prop to prevent hydration mismatches.
  */
 const ThemeWrapper = ({ children }: { children: ReactNode }): ReactNode => {
   const theme = useLayoutStore((state) => state.theme)

@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  */
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const session = {
   userId: 'user-1',
@@ -51,8 +51,11 @@ describe('/api/organization/llm-credentials', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     session.role = 'admin'
-    session.featureFlags = null
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
+    session.featureFlags = ['byok-llm']
+    vi.stubEnv('REQUIRE_AUTH', 'true')
+  })
+  afterEach(() => {
+    vi.unstubAllEnvs()
   })
 
   it('GET rejects non-admins', async () => {
@@ -70,16 +73,14 @@ describe('/api/organization/llm-credentials', () => {
     expect(JSON.stringify(body)).not.toContain('apiKey')
   })
 
-  it('fails closed under flag enforcement without the byok-llm claim', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
+  it('fails closed without the byok-llm claim', async () => {
     session.featureFlags = ['deep-research']
     const res = await GET(get())
     expect(res.status).toBe(403)
     expect((await res.json()).error).toBe('feature-disabled')
   })
 
-  it('allows the route under enforcement when the org holds the flag', async () => {
-    process.env.GRID_ENFORCE_FEATURE_FLAGS = 'true'
+  it('allows the route when the org holds the flag', async () => {
     session.featureFlags = ['byok-llm']
     expect((await GET(get())).status).toBe(200)
   })

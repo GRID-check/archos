@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    Piloti now searches project memory by meaning, not only by shared words, and
+    finds other projects' decisions even when a question uses different words.
+    Until now, that search by meaning did not run.

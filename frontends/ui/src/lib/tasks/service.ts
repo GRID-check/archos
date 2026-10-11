@@ -6,15 +6,18 @@
  *                                                        │
  *                                                        └─▶ fileAsRequester
  *
- * Two things here are the reason the row exists. `fileAsRequester` files a
- * finished run's report into the project AS THE PERSON WHO ASKED — resolved
- * from the pinned requester, never a service token — so a scheduled report no
- * longer expires unfiled. `previousDecisionsBlock` carries a reviewer's
+ * Two things here are the reason the row exists. A finished run's report is
+ * filed into the project AS THE PERSON WHO ASKED — resolved from the pinned
+ * requester, never a service token — so a scheduled report no longer expires
+ * unfiled. A deep-research report is rendered and filed by a `file_research_
+ * report` job on the `bff-jobs` pool (ADR-0079), which `recordRunOutcome` only
+ * queues; the other kinds file inline. `previousDecisionsBlock` carries a reviewer's
  * rejection into the next run of the same definition, which is the difference
  * between a cron line and delegation.
  */
 
 import 'server-only'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { ApiError, ConflictError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -29,13 +32,17 @@ import {
   transitionDocumentVersion,
 } from '@/lib/documents/lifecycle'
 import { findDocumentInOrg } from '@/lib/documents/repository'
+import { internalRead } from '@/lib/documents/document-reader'
 import { openDraftForRevision } from '@/lib/documents/revision'
-import { fileResearchReport } from '@/lib/documents/research-report'
+import { fileResearchReport, queueResearchReportFiling } from '@/lib/documents/research-report'
+import type { FileResearchReportPayload, JobAttempt } from '@/lib/jobs-queue/types'
+import { sessionOf } from '@/lib/jobs-queue/types'
 import { settleRunLedger } from '@/lib/runs/service'
 import { resolvePeople } from '@/lib/sharing/directory'
 import type { TaskWireRow } from '@/features/tasks/lib/task-view'
 import { loadRunSummaries, toTaskWireRow } from './list-projection'
 import * as repository from './repository'
+import { requireMaySeeSubject, withoutUnreadableSubjects } from './subject-access'
 import { isActiveTaskRunStatus } from './task-vocabulary'
 import type { ReviewTaskInput } from './types'
 
@@ -116,13 +123,13 @@ async function afterClose(run: TaskRun, closed: TaskRun, outcome: TaskOutcome): 
   if (status !== 'succeeded' || !outcome.report || !FILES_ITS_RESULT[run.kind]) {
     return { run: closed, filed: null }
   }
-  const filing = await fileAsRequester(closed, outcome.report, outcome.cards ?? undefined)
-  const withFiling =
-    (await repository.updateRun(run.id, run.organizationId, {
-      filingStatus: filing.status,
-      filingDetail: filing.detail,
-      filedDocumentId: filing.filed?.documentId ?? null,
-    })) ?? closed
+  // The PDF of a research report is rendered off this pod and retried by the
+  // queue; the row says `queued` until the job has an answer.
+  if (run.kind === 'deep-research') {
+    return { run: await queueReportFiling(closed, outcome.report, outcome.cards ?? undefined), filed: null }
+  }
+  const filing = await fileAsRequester(closed, outcome.report)
+  const withFiling = (await repository.updateRun(run.id, run.organizationId, filingPatch(filing))) ?? closed
   return { run: withFiling, filed: filing.filed }
 }
 
@@ -154,23 +161,127 @@ interface FilingResult {
   filed: { documentId: string; filename: string } | null
 }
 
+/** The row's filing columns for one terminal answer. */
+function filingPatch(filing: FilingResult) {
+  return {
+    filingStatus: filing.status,
+    filingDetail: filing.detail,
+    filedDocumentId: filing.filed?.documentId ?? null,
+  }
+}
+
 /**
- * File the report into the run's project as the pinned requester.
+ * Queue the filing of a research run's report and say so on the row.
+ *
+ * `queued` is written BEFORE the job exists, so a job that finishes at once
+ * cannot be overwritten by a late `queued`; a row whose job could not be
+ * written says `failed` with the reason, never `queued` for good. A run whose
+ * report is already filed (a worker retrying its outcome after a half-finished
+ * first attempt) has nothing left to queue.
+ */
+async function queueReportFiling(run: TaskRun, report: string, cards?: unknown[]): Promise<TaskRun> {
+  const record = async (patch: Parameters<typeof repository.updateRun>[2]): Promise<TaskRun> =>
+    (await repository.updateRun(run.id, run.organizationId, patch)) ?? run
+
+  if (run.filingStatus === 'filed' && run.filedDocumentId) return run
+  if (!run.backendJobId) {
+    return record(filingPatch({ status: 'failed', detail: 'run has no backend job id', filed: null }))
+  }
+  try {
+    const queued = await record({ filingStatus: 'queued', filingDetail: null, filedDocumentId: null })
+    await queueResearchReportFiling({
+      organizationId: run.organizationId,
+      payload: {
+        runId: run.backendJobId,
+        projectId: run.projectId,
+        report,
+        ...(cards ? { cards } : {}),
+        taskRunId: run.id,
+        // Null: the run's own pinned requester files it, resolved when the job runs.
+        requester: null,
+      },
+    })
+    return queued
+  } catch (error) {
+    console.error('[runs] queueing the report filing failed for run', run.id, error)
+    const name = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+    return record(filingPatch({ status: 'failed', detail: `could not queue the filing: ${name}`.slice(0, 500), filed: null }))
+  }
+}
+
+/**
+ * The job half of {@link queueReportFiling} (`file_research_report`): render the
+ * report and file it, as a person, and leave the row's filing columns telling
+ * the truth.
+ *
+ * Who files: the reader whose identity the payload carries, else the run's
+ * pinned requester resolved NOW (their membership, their permissions today). A
+ * requester who has left the organization, or may no longer file here, is a
+ * `refused` and the job is finished: a retry would be refused the same way. A
+ * failure of anything else (the renderer, the object store, the database) is
+ * thrown for the queue to retry; the last attempt writes `failed` first, so the
+ * row never stays `queued` after the queue has given up.
+ */
+export async function runReportFilingJob(
+  organizationId: string,
+  payload: FileResearchReportPayload,
+  attempt: JobAttempt,
+): Promise<void> {
+  const run = payload.taskRunId ? await repository.findRunById(payload.taskRunId) : null
+  const record = async (filing: FilingResult): Promise<void> => {
+    if (run) await repository.updateRun(run.id, organizationId, filingPatch(filing))
+  }
+
+  const session = payload.requester
+    ? sessionOf(payload.requester, organizationId)
+    : run
+      ? await resolvePinnedRequesterSession({
+          userId: run.requesterUserId,
+          email: run.requesterEmail,
+          organizationId,
+        })
+      : null
+  if (!session) {
+    return record({ status: 'refused', detail: 'requester is no longer a member of the organization', filed: null })
+  }
+
+  try {
+    const filed = await fileResearchReport({
+      session,
+      projectId: payload.projectId,
+      runId: payload.runId,
+      report: payload.report,
+      cards: payload.cards,
+    })
+    return record({ status: 'filed', detail: null, filed: { documentId: filed.documentId, filename: filed.filename } })
+  } catch (error) {
+    // The authorization ladder answers a missing permission as 404 and a
+    // switched-off feature as 403: both mean "not as this person, not today".
+    if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+      return record({ status: 'refused', detail: `${error.name}: ${error.message}`.slice(0, 500), filed: null })
+    }
+    console.error('[runs] filing the report failed for run', payload.taskRunId ?? payload.runId, error)
+    if (attempt.last) {
+      const name = error instanceof Error ? `${error.name}: ${error.message}` : 'unknown error'
+      await record({ status: 'failed', detail: name.slice(0, 500), filed: null }).catch(() => undefined)
+    }
+    throw error
+  }
+}
+
+/**
+ * File a run's result into its project as the pinned requester, inline: the
+ * kinds whose filing is a cheap write (a revision, a document draft). A
+ * research report is rendered by a job instead ({@link runReportFilingJob}).
  *
  * Three outcomes, and the distinction is the point:
- *   - `filed`   — the same `fileResearchReport` the interactive report GET
- *                 calls, keyed on the same backend job id, so a person opening
- *                 the report later finds it already filed (migration 0064).
+ *   - `filed`   — the document is there, through the lifecycle service.
  *   - `refused` — the requester cannot file here today: left the organization,
  *                 lacks the permission, or the feature is off.
- *   - `failed`  — filing broke (a report over the PDF ceiling, a store error).
+ *   - `failed`  — filing broke (a store error).
  * The detail is for the operator; the client sees the status.
  */
-async function fileAsRequester(
-  run: TaskRun,
-  report: string,
-  cards?: unknown[],
-): Promise<FilingResult> {
+async function fileAsRequester(run: TaskRun, report: string): Promise<FilingResult> {
   if (!run.backendJobId) return { status: 'failed', detail: 'run has no backend job id', filed: null }
 
   const session = await resolvePinnedRequesterSession({
@@ -183,7 +294,7 @@ async function fileAsRequester(
   }
 
   try {
-    const filed = await fileResultFor(run, session, report, cards)
+    const filed = await fileResultFor(run, session, report)
     return { status: 'filed', detail: null, filed }
   } catch (error) {
     // The authorization ladder answers a missing permission as 404 and a
@@ -198,30 +309,18 @@ async function fileAsRequester(
 }
 
 /**
- * The document one finished run leaves behind, by kind.
+ * The document one finished run leaves behind, by kind, filed inline.
  *
- * Three producers, one seam: whichever runs, the write happens in the pinned
- * requester's own session through the SAME lifecycle service a person's own
+ * (A deep-research report is not here: its PDF is rendered by a job,
+ * {@link runReportFilingJob}.) Two producers, one seam: whichever runs, the
+ * write happens in the pinned requester's own session through the SAME lifecycle service a person's own
  * filing goes through (ADR-0055). Nothing here writes a row itself.
  */
 async function fileResultFor(
   run: TaskRun,
   session: AuthorizedSession,
   report: string,
-  cards?: unknown[],
 ): Promise<{ documentId: string; filename: string }> {
-  if (run.kind === 'deep-research') {
-    const filed = await fileResearchReport({
-      session,
-      projectId: run.projectId,
-      // Non-null by the guard in `fileAsRequester`.
-      runId: run.backendJobId as string,
-      report,
-      cards,
-    })
-    return { documentId: filed.documentId, filename: filed.filename }
-  }
-
   if (run.kind === 'revision') {
     const subject = run.plan.subject
     if (!subject) throw new UnprocessableError('A revision run carries no version to revise')
@@ -261,8 +360,35 @@ async function fileResultFor(
       actingHuman: false,
     })
   }
-  const document = await findDocumentInOrg(filed.documentId, session.organizationId)
+  const document = await findDocumentInOrg(filed.documentId, session.organizationId, internalRead('just-written'))
   return { documentId: filed.documentId, filename: document?.filename ?? `task-${run.id}` }
+}
+
+/**
+ * `job_run_finished` for PostHog (ADR-0100): how a run ended and how long it
+ * took, for every kind of run (a schedule, a "run now", a delegated question).
+ * The requester is the distinct id, because the run is theirs even when the
+ * schedule fired it; `job_id` is null for a run with no definition behind it.
+ * Ids, statuses and a duration: never the title, the plan or the report.
+ * Fire-and-forget, so an unreachable PostHog changes nothing here.
+ */
+function announceRunFinished(run: TaskRun, outcome: TaskOutcome, closed: TaskRun): void {
+  const startedAt = new Date(run.startedAt ?? run.createdAt).getTime()
+  const durationMs = Date.now() - startedAt
+  captureServer({
+    event: 'job_run_finished',
+    distinctId: run.requesterUserId,
+    organizationId: run.organizationId,
+    properties: {
+      job_id: run.definitionId,
+      run_id: run.id,
+      status: outcome.status,
+      trigger: run.trigger,
+      output: run.kind,
+      filing_status: closed.filingStatus,
+      duration_ms: Number.isFinite(durationMs) ? Math.max(0, durationMs) : undefined,
+    },
+  })
 }
 
 /**
@@ -303,6 +429,10 @@ export async function recordRunOutcome(
     : await completeRunForOutcome(run, outcome)
   if (!completed) return { notified: false, filed: null, closed: false }
 
+  // The worker's report closes unconditionally so a retry still reaches the
+  // inbox; the event is sent once, for the report that found the run active.
+  if (options.onlyIfActive || isActiveTaskRunStatus(run.status)) announceRunFinished(run, outcome, completed.run)
+
   const type: InboxItemType = outcome.status === 'success' ? 'job.completed' : 'job.failed'
   const anchor = run.backendJobId ?? run.id
   const emitted = await emitInboxItems([
@@ -335,10 +465,15 @@ export async function recordRunOutcome(
   return { notified: emitted > 0, filed: completed.filed, closed: true }
 }
 
-/** A project's runs, newest first. `project:view`, like the definition list. */
+/**
+ * A project's runs, newest first. `project:view`, like the definition list,
+ * without the revision tasks whose document the reader may not read now
+ * (`subject-access.ts`, ADR-0093).
+ */
 export async function listTasks(session: AuthorizedSession, projectId: string): Promise<TaskRun[]> {
   await requireProjectAccess(session, projectId, 'project:view')
-  return repository.listRunsInProject(projectId, session.organizationId)
+  const runs = await repository.listRunsInProject(projectId, session.organizationId)
+  return withoutUnreadableSubjects(session, projectId, runs)
 }
 
 /**
@@ -382,6 +517,7 @@ export async function reviewTask(
   await requireProjectAccess(session, projectId, 'project:edit')
   const run = await repository.findRunInProject(taskId, projectId, session.organizationId)
   if (!run) throw new NotFoundError('Task not found')
+  await requireMaySeeSubject(session, projectId, run)
   if (isActiveTaskRunStatus(run.status)) {
     throw new ConflictError('A task can only be reviewed once it has finished')
   }

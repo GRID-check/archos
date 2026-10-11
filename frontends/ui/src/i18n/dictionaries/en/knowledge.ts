@@ -2,7 +2,7 @@
 export const knowledge = {
   title: 'Knowledge base',
   subtitle:
-    'Every document the assistant can ground its answers in — the shared OIB Richtlinien plus the files uploaded to this project. Nothing else is used.',
+    'The documents Piloti works from in this project: the shared OIB Richtlinien and the files uploaded to it.',
   summary: {
     documents: 'Documents',
     indexed: 'Indexed',
@@ -37,20 +37,17 @@ export const knowledge = {
     ingested: 'Indexed',
     stale: 'Outdated',
     pending: 'Not indexed yet',
-    snapshot: 'Indexed (no original)',
-    removed: 'Source removed',
+    failed: 'Indexing failed',
+    removed: 'Not in corpus',
     inconsistent: 'Index missing',
   },
   stateHints: {
     ingested: 'Fully searchable by the assistant.',
-    stale: 'The file changed on disk since it was indexed; answers still reflect the previous version until the next sync.',
-    pending: 'Uploaded but not processed yet — the assistant cannot use it until the next sync completes.',
-    snapshot: 'Taken from a prepared set; fully searchable, but the source PDF is not stored on this server.',
-    removed: 'The source file was removed; indexed content may still be retrievable until cleanup.',
+    stale: 'The file was replaced since it was indexed; until the next sync, Piloti answers from the previous revision.',
+    pending: 'Uploaded but not processed yet — the assistant cannot use it until an ingest worker has finished it.',
+    failed: 'Processing did not finish. It is not retried until the file changes; select it and use Re-index to try again.',
+    removed: 'The corpus no longer lists this document, but its indexed content is still searchable. Delete it to clear it.',
     inconsistent: 'Recorded as processed but no searchable content was found. Re-run the sync.',
-  },
-  origin: {
-    uploaded: 'Uploaded',
   },
   viewer: {
     view: 'View PDF',

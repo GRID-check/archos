@@ -1,12 +1,11 @@
 /**
  * Where the document stands, said unconditionally.
  *
- * The line this covers used to live inside the control strip and render only
- * when that strip had NOTHING to offer — so the states a reader could act on,
- * and the published upload whose one control was „Archivieren", both got a verb
- * and no sentence. What is asserted here is that the sentence is now always
- * there, and that the track beside it puts the state's word in an order rather
- * than leaving it as a label the reader had to have been taught.
+ * The sentence is what the stand MEANS for answers, not a restatement of the
+ * state word: only a published version is the basis Piloti answers from, so a
+ * version in review says which version answers come from meanwhile. The track
+ * beside it puts the state's word in an order rather than leaving it as a label
+ * the reader had to have been taught.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -14,35 +13,34 @@ import { render, screen } from '@/test-utils'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import { DocumentLifecycleStand } from './document-lifecycle-stand'
 
-function version(state: DocumentVersionState, submittedBy: string | null = null) {
-  return { state, submittedBy }
+function version(state: DocumentVersionState) {
+  return { state }
 }
 
-const names: Record<string, string> = { user_anna: 'Anna Berger' }
-const nameOf = (userId: string | null): string =>
-  userId ? (names[userId] ?? 'Someone') : 'Someone'
-
 describe('DocumentLifecycleStand — the sentence', () => {
-  it('names the submitter the approval is waited on', () => {
-    render(
-      <DocumentLifecycleStand
-        version={version('in_review', 'user_anna')}
-        lifecycle="active"
-        nameOf={nameOf}
-      />,
-    )
+  it('points at the published version while a newer one waits for approval', () => {
+    render(<DocumentLifecycleStand version={version('in_review')} lifecycle="active" live />)
 
-    const waiting = screen.getByTestId('document-review-waiting')
-    expect(waiting).toHaveTextContent('In review')
-    expect(waiting).toHaveTextContent('Anna Berger')
+    const meaning = screen.getByTestId('document-lifecycle-meaning')
+    expect(meaning).toHaveTextContent('Waiting for approval')
+    expect(meaning).toHaveTextContent('answers from the published revision')
   })
 
-  it('states finality on a state nothing leaves', () => {
-    render(
-      <DocumentLifecycleStand version={version('published')} lifecycle="active" nameOf={nameOf} />,
-    )
+  it('does not point at a published version when there is none', () => {
+    render(<DocumentLifecycleStand version={version('in_review')} lifecycle="active" />)
 
-    expect(screen.getByTestId('document-review-waiting')).toHaveTextContent('Published')
+    const meaning = screen.getByTestId('document-lifecycle-meaning')
+    expect(meaning).toHaveTextContent('Waiting for approval')
+    expect(meaning).toHaveTextContent('Piloti does not answer from it')
+    expect(meaning).not.toHaveTextContent('published revision')
+  })
+
+  it('says a published version is the basis for answers', () => {
+    render(<DocumentLifecycleStand version={version('published')} lifecycle="active" />)
+
+    expect(screen.getByTestId('document-lifecycle-meaning')).toHaveTextContent(
+      'Piloti answers from this revision.',
+    )
   })
 
   it('lets the item win over the version once it is retired', () => {
@@ -50,18 +48,28 @@ describe('DocumentLifecycleStand — the sentence', () => {
     // it left the working set is not the question somebody who found it anyway
     // is asking. And it is NOT „archived": the Archiv is where a document goes
     // to become office knowledge, which is the opposite of this.
+    render(<DocumentLifecycleStand version={version('published')} lifecycle="archived" />)
+
+    expect(screen.getByTestId('document-lifecycle-meaning')).toHaveTextContent('Retired')
+  })
+
+  it('says the given sentence instead when the document was replaced by a newer one', () => {
     render(
-      <DocumentLifecycleStand version={version('published')} lifecycle="archived" nameOf={nameOf} />,
+      <DocumentLifecycleStand
+        version={version('published')}
+        lifecycle="active"
+        sentence="Ältere Fassung."
+      />,
     )
 
-    expect(screen.getByTestId('document-review-waiting')).toHaveTextContent('Retired')
+    expect(screen.getByTestId('document-lifecycle-meaning')).toHaveTextContent('Ältere Fassung.')
   })
 })
 
 describe('DocumentLifecycleStand — the track', () => {
   it('fills one segment per stage the document has walked', () => {
     render(
-      <DocumentLifecycleStand version={version('approved')} lifecycle="active" nameOf={nameOf} />,
+      <DocumentLifecycleStand version={version('approved')} lifecycle="active" />,
     )
 
     const track = screen.getByTestId('document-lifecycle-track')
@@ -76,7 +84,6 @@ describe('DocumentLifecycleStand — the track', () => {
       <DocumentLifecycleStand
         version={version('changes_requested')}
         lifecycle="active"
-        nameOf={nameOf}
       />,
     )
 
@@ -87,7 +94,7 @@ describe('DocumentLifecycleStand — the track', () => {
   })
 
   it('says nothing to a screen reader that the sentence does not', () => {
-    render(<DocumentLifecycleStand version={version('draft')} lifecycle="active" nameOf={nameOf} />)
+    render(<DocumentLifecycleStand version={version('draft')} lifecycle="active" />)
 
     expect(screen.getByTestId('document-lifecycle-track')).toHaveAttribute('aria-hidden', 'true')
   })

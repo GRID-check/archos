@@ -31,6 +31,8 @@ import {
 import { normalizeContentGerman } from '@/lib/knowledge/consolidation'
 import { toVectorLiteral } from '@/lib/knowledge/embeddings'
 import { executeRows } from '@/lib/db/execute-rows'
+import { OUTSIDE_RESTRICTED_USE } from '@/lib/feedback/repository'
+import { VOTED_TURN_JOINS } from '@/lib/feedback/turn-join'
 
 /** Hard ceilings on every dashboard list. */
 export const LESSON_LIST_LIMIT = 200
@@ -59,10 +61,17 @@ export interface UnprocessedDownvote {
 
 /**
  * Down-votes with no `platform_lesson_reports` row yet, oldest first so the
- * backlog drains in arrival order. The joins mirror `listFeedbackTurns`
- * (lib/feedback/repository.ts): LEFT throughout, because a vote whose turn was
+ * backlog drains in arrival order. The joins are `listFeedbackTurns`'s own
+ * (`VOTED_TURN_JOINS`, lib/feedback/turn-join.ts): LEFT throughout, because a vote whose turn was
  * never persisted is still a report — reason and comment alone can carry the
  * signal.
+ *
+ * A vote on an answer whose conversation drew on a restricted folder is never
+ * a report (`OUTSIDE_RESTRICTED_USE`: the database's one rule, by the vote's
+ * message, the voted message's conversation and the conversation the vote
+ * names): a lesson is injected into every organization's turns, so its source
+ * text must be one every reader may see. The question is read from the voted message's
+ * own conversation, never from the `conversation_id` the client sent.
  */
 export async function listUnprocessedDownvotes(limit: number): Promise<UnprocessedDownvote[]> {
   const db = getDb()
@@ -77,18 +86,10 @@ export async function listUnprocessedDownvotes(limit: number): Promise<Unprocess
       q.content     as question
     from answer_feedback f
     left join platform_lesson_reports r on r.feedback_id = f.id
-    left join messages m on m.id::text = f.message_id
-    left join lateral (
-      select content
-      from messages
-      where conversation_id = f.conversation_id
-        and role = 'user'
-        and (m.created_at is null or created_at <= m.created_at)
-      order by created_at desc
-      limit 1
-    ) q on true
+    ${VOTED_TURN_JOINS}
     where f.verdict = 'down'
       and r.id is null
+      and ${OUTSIDE_RESTRICTED_USE}
       and f.created_at >= now() - make_interval(days => ${SWEEP_WINDOW_DAYS})
     order by f.created_at asc
     limit ${limit}

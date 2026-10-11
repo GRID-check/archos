@@ -111,8 +111,16 @@ the dates.
 
 ## Measurement: what to set up
 
-The site sets no cookies and runs no tracking, and the privacy policy says
-so. **Do not add Google Analytics.** It sets cookies, it needs a consent
+> **Superseded in October 2026.** The site now measures its public pages with
+> PostHog (page views, referrer and UTM, web vitals, heatmaps, no replay, no
+> person profiles), sets a `ph_…` cookie, and the privacy policy says so. The
+> promise below is retired; the rest of this section stays valid for Search
+> Console and Bing. Configuration: `PUBLIC_POSTHOG_HOST` and
+> `PUBLIC_POSTHOG_PROJECT_TOKEN`, read per request by `/web-analytics.js`
+> (`frontends/web/runtime/web-analytics.mjs`).
+
+At the time of this audit the site set no cookies and ran no tracking, and the
+privacy policy said so. **Do not add Google Analytics.** It sets cookies, it needs a consent
 banner, and it would break a promise the site makes on a page buyers read.
 Measure this way instead:
 

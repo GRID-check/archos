@@ -8,12 +8,18 @@ import type { en } from '../en'
  * meisten Nutzer sehen. Durchgängig Sie-Form, wie im übrigen Produkt.
  */
 export const collaboration: typeof en.collaboration = {
+  rightsLost: {
+    neutralTitle: 'Geteilter Chat',
+    title: 'Ihnen fehlen inzwischen die Rechte, um diesen Chat zu sehen',
+    description:
+      'Der Zugriff auf einen Ordner, aus dem dieser Chat stammt, hat sich seit dem Teilen geändert. Fragen Sie eine Person, die diese Ordner lesen darf, oder Ihre Administration.',
+  },
   sharing: {
     title: 'Teilen',
     action: 'Teilen',
     close: 'Schließen',
     visibilityHeading: 'Wer diesen Chat sehen kann',
-    loading: 'Freigabe-Einstellungen werden geladen…',
+    loading: 'Einstellungen zum Teilen werden geladen…',
     audienceHeading: 'Wer mitliest',
     visibility: {
       private: 'Nur ich',
@@ -57,7 +63,10 @@ export const collaboration: typeof en.collaboration = {
       needsProjectAccess: 'Noch nicht im Projekt',
       needsProjectAccessHint:
         'Fügen Sie die Person zuerst dem Projekt hinzu. Das Teilen eines Chats gewährt niemals Zugriff auf das Projekt selbst.',
+      lacksFolderAccess: 'Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt',
+      lacksFolderAccessBadge: 'Kein Zugriff',
     },
+    lostAccess: 'Hat keinen Zugriff mehr',
     roleHeading: 'Zugriffsstufe',
     manageFor: 'Zugriff verwalten: {name}',
     remove: 'Zugriff entziehen',
@@ -78,10 +87,28 @@ export const collaboration: typeof en.collaboration = {
         'Diese Person ist noch kein Mitglied des Projekts. Fügen Sie sie zuerst dem Projekt hinzu.',
       organizationMembershipRequired: 'Diese Person ist kein Mitglied dieser Organisation.',
       rateLimited:
-        'Zu viele Änderungen an der Freigabe. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
+        'Zu viele Änderungen daran, wer diesen Chat sieht. Bitte warten Sie einige Minuten und versuchen Sie es dann erneut.',
       rosterFull:
         'Dieser Chat hat bereits die maximale Anzahl an Personen. Entziehen Sie zuerst jemandem den Zugriff.',
-      loadFailed: 'Die Freigabe-Einstellungen konnten nicht geladen werden.',
+      restrictedContent:
+        '{name} darf nicht jeden Ordner mit eingeschränktem Zugriff lesen, auf den sich dieser Chat stützt. Deshalb kann er nicht mit dieser Person geteilt werden.',
+      restrictedContentFolders:
+        '{name} darf nicht jeden Ordner mit eingeschränktem Zugriff lesen, auf den sich dieser Chat stützt ({folders}). Deshalb kann er nicht mit dieser Person geteilt werden.',
+      restrictedContentSomeone:
+        'Diese Person darf nicht jeden Ordner mit eingeschränktem Zugriff lesen, auf den sich dieser Chat stützt. Deshalb kann er nicht mit ihr geteilt werden.',
+      restrictedContentSelf:
+        'Sie dürfen nicht jeden Ordner mit eingeschränktem Zugriff lesen, auf den sich dieser Chat stützt, und können ihn deshalb nicht übernehmen.',
+      restrictedContentProject:
+        'Dieser Chat stützt sich auf einen Ordner mit eingeschränktem Zugriff und kann deshalb nicht für das ganze Projekt sichtbar gemacht werden. Teilen Sie ihn mit einzelnen Personen, die den Ordner lesen dürfen.',
+      crossProjectContent:
+        '{name} darf nicht jedes andere Projekt öffnen, auf das sich dieser Chat stützt. Deshalb kann er nicht mit dieser Person geteilt werden.',
+      crossProjectContentSomeone:
+        'Diese Person darf nicht jedes andere Projekt öffnen, auf das sich dieser Chat stützt. Deshalb kann er nicht mit ihr geteilt werden.',
+      crossProjectContentSelf:
+        'Sie dürfen nicht jedes andere Projekt öffnen, auf das sich dieser Chat stützt, und können ihn deshalb nicht übernehmen.',
+      crossProjectContentProject:
+        'Dieser Chat stützt sich auf Inhalte aus anderen Projekten und kann deshalb nicht für das ganze Projekt sichtbar gemacht werden. Teilen Sie ihn mit einzelnen Personen, die diese Projekte öffnen dürfen.',
+      loadFailed: 'Die Einstellungen zum Teilen konnten nicht geladen werden.',
       saveFailed: 'Die Änderung konnte nicht gespeichert werden.',
       tryAgain: 'Erneut versuchen',
       dismiss: 'Diese Meldung ausblenden',
@@ -203,6 +230,10 @@ export const collaboration: typeof en.collaboration = {
     inert: 'Nicht mehr verfügbar',
     bodyUnavailable: 'Dieser Chat ist für Sie nicht mehr verfügbar.',
     inertHint: 'Sie haben keinen Zugriff mehr darauf.',
+    // Die nächste Handlung bei einer neuen Fassung unter anderem Namen: die
+    // beiden nebeneinander sehen. Öffnet die Vorschau mit dem Vergleich.
+    compareFassungen: 'Fassungen vergleichen',
+    compareFassungenLabel: 'Neue und ältere Fassung von „{subject}“ vergleichen',
     empty: {
       needsMeTitle: 'Nichts zu tun',
       needsMeDescription:
@@ -250,16 +281,46 @@ export const collaboration: typeof en.collaboration = {
       },
       // Ein Hintergrundauftrag ist zu Ende. {subject} ist der Name des Auftrags.
       // Kein {actor}: die Arbeit hat Piloti getan, nicht eine Person.
+      // ADR-0086: alles, was ein Upload gebracht hat, ist gelesen. {subject}
+      // ist der Projektname; ein Upload in die Büroablage oder einen Chat hat
+      // keinen und liest bodyNoSubject.
+      uploadCompleted: {
+        title: 'Ihr Upload ist gelesen',
+        body: '{subject}: Öffnen Sie die Übersicht, um zu sehen, was angekommen ist.',
+        bodyNoSubject: 'Öffnen Sie die Übersicht, um zu sehen, was angekommen ist.',
+      },
+      // ADR-0086: die Inhaltsprüfung hat Dateien zurückgehalten.
+      documentQuarantined: {
+        titleOne: '1 Datei wartet in der Quarantäne',
+        titleMany: '{count} Dateien warten in der Quarantäne',
+        titleNone: 'Dateien in der Quarantäne',
+        body: 'Kein Modell hat sie gelesen. Prüfen Sie sie: zulassen oder löschen.',
+      },
+      // ADR-0086: wer eine Datei hochgeladen hat, die in der Quarantäne liegt,
+      // bittet darum, sie zu prüfen. {subject} ist der Dateiname.
+      documentReleaseRequested: {
+        title: '{actor} bittet Sie, „{subject}“ zu prüfen',
+        body: 'Die Datei liegt in der Quarantäne. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.',
+      },
       jobCompleted: {
-        title: '„{subject}" ist fertig',
+        title: '„{subject}“ ist fertig',
         body: 'Piloti hat den Auftrag ausgeführt. Das Ergebnis liegt im Projekt unter Automatisierung.',
       },
+      // Ein Outlook-Archiv ist importiert. {subject} ist der Dateiname des Archivs.
+      mailImportCompleted: {
+        title: '„{subject}“ ist importiert',
+        body: 'Piloti hat die E-Mails und ihre Anhänge im Projekt unter E-Mail-Import abgelegt.',
+      },
+      mailImportFailed: {
+        title: 'Der Import von „{subject}“ wurde abgebrochen',
+        body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
+      },
       jobFailed: {
-        title: '„{subject}" ist fehlgeschlagen',
+        title: '„{subject}“ ist fehlgeschlagen',
         body: 'Der Auftrag konnte nicht abgeschlossen werden. Die Laufhistorie im Projekt nennt den Grund.',
       },
       jobWaiting: {
-        title: '„{subject}" wartet auf Sie',
+        title: '„{subject}“ wartet auf Sie',
         body: 'Piloti hat eine Rückfrage zu diesem Auftrag. Antworten Sie im Verlauf, dann läuft er weiter.',
       },
       // Eine Fassung eines Dokuments wartet auf eine Entscheidung (ADR-0054).
@@ -267,6 +328,16 @@ export const collaboration: typeof en.collaboration = {
       documentReviewRequested: {
         title: '{actor} bittet Sie um die Freigabe von {subject}',
         body: 'Eine neue Fassung wartet auf Ihre Freigabe.',
+      },
+      // Eine neuere Fassung eines Dokuments, dem Sie folgen: ein Satz über die
+      // Person, die sie hochgeladen hat. {actor} ist diese Person, {subject} das
+      // Dokument, dem Sie folgen (ohne Dateiendung). Was sich geändert hat,
+      // steht als Auszug darunter; nur ohne Auszug sagt `bodyNoExcerpt`, wo
+      // man es findet. `titleNoActor`, wenn niemand Bestimmtes es war.
+      documentNewFassung: {
+        title: '{actor} hat eine neue Fassung von „{subject}“ hochgeladen',
+        titleNoActor: 'Neue Fassung von „{subject}“',
+        bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
       },
       unknown: {
         title: 'Es gab Aktivität',
@@ -282,12 +353,12 @@ export const collaboration: typeof en.collaboration = {
     // Begründung, wie die Übergangstabelle sie verlangt.
     review: {
       approve: 'Freigeben',
-      requestChanges: 'Änderung erbeten',
+      requestChanges: 'Änderungen anfordern',
       reject: 'Ablehnen',
       changesLabel: 'Was geändert werden soll',
       reasonLabel: 'Grund der Ablehnung',
-      approveConfirm: 'Ich gebe diesen Stand frei',
-      // Die Unterschrift wie an der Datei: welcher Stand freigegeben wird (das
+      approveConfirm: 'Ich gebe diese Fassung frei',
+      // Die Unterschrift wie an der Datei: welche Fassung freigegeben wird (das
       // Dokument, die Fassungsnummer und wann die Runde eröffnet wurde — die
       // Nummer ist Pflicht, ohne sie wird nicht freigegeben) und wer wann
       // handelt. Der Name der handelnden Person ist hier unbekannt, daher
@@ -295,14 +366,14 @@ export const collaboration: typeof en.collaboration = {
       approveStand: '{subject} · Fassung {number} · Stand vom {date}',
       approveActing: 'Handelnd: {date}',
       standFailed:
-        'Der aktuelle Stand konnte nicht gelesen werden — die Freigabe ist blockiert, bis er vorliegt.',
+        'Die aktuelle Fassung konnte nicht gelesen werden – die Freigabe ist blockiert, bis sie vorliegt.',
       retry: 'Erneut versuchen',
       send: 'Senden',
       cancel: 'Abbrechen',
       open: 'Datei öffnen',
-      decided: 'Entscheidung gesendet — wird aktualisiert.',
+      decided: 'Entscheidung gesendet – wird aktualisiert.',
       failed: 'Das hat nicht geklappt. Es hat sich nichts geändert.',
-      stale: 'Der Stand hat sich geändert — die aktuelle Fassung liegt in der Datei.',
+      stale: 'Jemand hat zuerst entschieden – die aktuelle Fassung liegt in der Datei.',
       reload: 'Aktuelle Fassung öffnen',
     },
   },

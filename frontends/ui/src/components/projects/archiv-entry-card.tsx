@@ -2,11 +2,11 @@
 
 /**
  * Full-width Archiv entry card on the projects home — the door into the
- * org-wide office knowledge store (ADR-0024). The server page renders it only
- * when the `organization-archiv` feature flag is on (the same gate the
- * /app/archiv page and the topbar entry check).
+ * org-wide office knowledge store (ADR-0024). The server page renders it for
+ * every session with an organization (`canAccessArchiv`, the same check the
+ * topbar entry reads).
  *
- * Gold is the Büroarchiv provenance signal (spec §4, `--source-office`),
+ * Gold is the Büroablage provenance signal (spec §4, `--source-office`),
  * always paired with the archive icon + label so color is never the only
  * carrier (a11y). The `--source-*` tokens land with the parallel token retune
  * (WS-1); until then the tint falls back to the warning feedback tokens —

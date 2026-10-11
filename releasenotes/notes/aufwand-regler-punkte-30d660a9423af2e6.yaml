@@ -1,5 +1,5 @@
 ---
 fixes:
   - >
-    In the effort slider the dotted trail no longer slides along with the
-    handle. The dots stay in place and the handle uncovers them as it moves.
+    The effort slider no longer moves its row of dots along with the handle.
+    The dots stay in place, and the handle uncovers them as you move it.

@@ -15,7 +15,7 @@ is fair game.
 
 ## 1. What the click dummy is
 
-A German-language, project-centric shell around one core surface ("Frag Piloti"):
+A German-language, project-centric workspace. The project shell's navigation holds Frag Piloti (chat), Workflows, Dateien, Archiv and Historie:
 
 - **Home = Projektübersicht** (no sidebar): project-card grid (name, address,
   Aktiv/Abgeschlossen chip, last activity, per-card settings) + a full-width
@@ -274,8 +274,8 @@ don't churn):
   workflows   (flagged, gallery + builder)                          [Sidebar]
   archiv      → same Archiv content, project chrome (flagged)       [Sidebar]
   history     NEW: cross-session list + provenance filters          [Sidebar]
-  settings    NEW: project params (intake data) + members + memory
-              + insights(flagged) + danger zone                     [Sidebar, bottom entry]
+  settings    the project hub, labelled Overview (§9.2): a bento
+              dashboard + members · memory · usage · documents     [Sidebar, bottom entry]
   knowledge   stays flagged, linked from Settings (not top-nav)
   research    legacy → redirect into history (completes FB-10)
   intake      unchanged (edit path from Settings)
@@ -385,3 +385,49 @@ confusing third way to do the same thing.
 Follow-up (optional): the surviving profile card could take the dummy's
 stacked labelled-field look instead of the fact-sheet layout — a pure restyle
 on top of this decision, not a change to the one-surface/one-editor rule.
+
+### 9.2 Project hub — a dashboard, then one route per section (2026-10-09)
+
+**Context.** Settings had grown into one scrolling column: identity, the brief
+beside an "Insights" card, applicable standards, the roster, the upload
+history, memory, the reindex card and the danger zone. Three things were wrong
+beyond the length. The Insights card was an empty state promising telemetry,
+while real per-project metering and an enforceable project budget (ADR-0015)
+existed with no project-side UI. The roster rendered for every viewer although
+its endpoint requires `project:members:manage`, so a viewer got an error toast
+on every visit. And every gate was `role === 'project-admin'`, a role-name check.
+
+**Decision.** The pinned rail entry is the project's hub, labelled **Overview**
+(the `/settings` URL and the `g s` jump are kept). It opens on a **bento
+dashboard** (`components/ui/bento.tsx`, `features/projects/components/overview/`):
+a hero (name, brief summary, Ask Piloti / Files / briefing; rename and delete in
+its menu) and one live tile per section, each with its headline number and a
+link into the section. The briefing and the applicable OIB-Richtlinien were a
+section and two tiles in the first cut and were taken out again: they did not
+answer a question a person opens the hub with. The briefing is edited in the
+intake wizard, linked from the hero.
+
+The Steckbrief (ADR-0091, ADR-0101) is a tile like the others, a summary whose
+„Bearbeiten" opens its editor in a dialog; the close/reopen card (ADR-0090) sits
+in the grid as a cell. Similar projects (ADR-0094) arrived as a rail entry of its own and
+moved in here (2026-10-10): it is reference reading about this project, not a
+place to work, so it is a tile with the three most alike and a hub section with
+every one; `/referenzen` redirects to that section. Behind a tab strip, each section answers one question
+and is its own route under `/app/projects/[id]/settings`:
+
+| Section | Question | Gate |
+|---|---|---|
+| Overview (bare `/settings`) | Where does this project stand? Dashboard; rename and delete in the hero menu | view; menu `project:manage` |
+| Members | Who works here, in which role? | `project:members:manage` (section and tile hidden otherwise) |
+| Memory | What has Piloti learned here? | view; controls `project:memory:write` |
+| Usage & budget | What has it cost, what stops it? Replaces Insights | `project:manage` or org budget admin |
+| Documents & index | Who brought which files in, can everyone reach them, is the index current? | view; reindex `project:documents:write` |
+| Similar projects | Which closed projects were most like this one, and what did they decide and get told? (ADR-0094) | view; each reference filtered by the reader's own access |
+
+Gates come from `lib/projects/settings-access.ts` (permissions through
+`decide.ts`), and a section a reader cannot use is absent from the tabs and the
+dashboard and 404s by URL. §9.1 is unchanged: the wizard is the profile's one
+editor.
+New blocks go in the section whose question they answer
+(`features/projects/lib/settings-sections.ts`); one with a headline number also
+earns a tile.

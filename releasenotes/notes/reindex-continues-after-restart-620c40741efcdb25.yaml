@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    Reprocessing a project and rereading its failed documents now carry on
+    after an interruption instead of stopping halfway, and an upload made in
+    the meantime is read first. Both start at once and run in the
+    background, so the page no longer waits for them.

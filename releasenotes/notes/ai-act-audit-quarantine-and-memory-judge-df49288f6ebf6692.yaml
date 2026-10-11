@@ -1,0 +1,14 @@
+---
+features:
+  - >
+    Admins can see when Piloti holds back an upload, and which of the office's
+    rules it matched. They can also see every decision on who may read a note
+    Piloti keeps from a chat with restricted folders, including a note for the
+    whole office that Piloti offered you to save.
+  - >
+    A restricted note in the Projektspeicher now carries the label „von KI
+    mitbestimmt“ when a language model helped decide who may read it.
+  - >
+    Piloti deletes its own record of a held-back upload as soon as the audit log
+    holds it, and within seven days at the latest, because the record names the
+    file and its uploader.

@@ -27,6 +27,7 @@ import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 import { isWebSearchEnabledForOrg } from '@/lib/organizations/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
+import { announceBudgetBlocked } from '@/lib/budgets/budget-events'
 import { isAuthzError } from '@/lib/auth-utils'
 import { isAuthRequired } from '@/lib/backend-proxy'
 
@@ -52,11 +53,21 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { scope, scopedCollections, headerValue, projectId: authorizedProjectId } =
-      await buildCollectionScopeFromRequest(session, {
-        projectId,
-        conversationId,
-      })
+    const {
+      scope,
+      scopedCollections,
+      headerValue,
+      projectId: authorizedProjectId,
+    } = await buildCollectionScopeFromRequest(session, {
+      projectId,
+      conversationId,
+      // The upgrade opens an interactive chat socket: the one scope that may
+      // carry the restricted-folder collections this session, and everyone the
+      // conversation is shared with, is cleared for (ADR-0087). Fixed for the
+      // socket's life; a turn draws on one only through an admission that
+      // checks the conversation's audience again.
+      interactiveChat: true,
+    })
 
     const response: Record<string, unknown> = {
       scope,
@@ -92,11 +103,9 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     // directly dropped the implicit project from every lookup after the scope.
     const effectiveProjectId = authorizedProjectId ?? projectId
 
-    // Gate the async memory-reflection stage: with WorkOS flag enforcement
-    // on, the per-org "memory-reflection" flag is the source of truth; without
-    // enforcement it follows GRID_MEMORY_REFLECTION_ENABLED (default on) — see
-    // isMemoryReflectionEnabled. server.js forwards this as
-    // x-grid-feature-memory-reflection.
+    // Gate the async memory-reflection stage on the per-org
+    // "memory-reflection" flag (see isMemoryReflectionEnabled). server.js
+    // forwards this as x-grid-feature-memory-reflection.
     const memoryReflectionEnabled = await isMemoryReflectionEnabled(organizationId)
     // Budget enforcement (ADR-0015): refuse the upgrade outright when a
     // budget scope is already exhausted, otherwise forward the remaining
@@ -111,6 +120,16 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
         : null
 
     if (budgetStatus?.blocked) {
+      // `budget_blocked` for PostHog (ADR-0100), once per person and scope per
+      // hour. Not awaited: the refusal answers exactly as fast as before.
+      if (organizationId && session && budgetStatus.blockedScope) {
+        void announceBudgetBlocked({
+          organizationId,
+          userId: session.userId,
+          scope: budgetStatus.blockedScope,
+          unit: budgetStatus.unit,
+        })
+      }
       return NextResponse.json(
         {
           error: 'Budget exhausted',
@@ -125,7 +144,9 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     // every tool selection — enforcement, not just UI hiding. Best-effort:
     // a lookup failure must not take chat down (web search stays on).
     const webSearchEnabled = organizationId
-      ? await bestEffort('resolve web-search setting', () => isWebSearchEnabledForOrg(organizationId))
+      ? await bestEffort('resolve web-search setting', () =>
+          isWebSearchEnabledForOrg(organizationId)
+        )
       : null
     // Effective runtime model selection — the platform defaults
     // (`platform_model_defaults`) with the org's own active
@@ -143,7 +164,13 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
 
     if (!organizationId || !session?.userId) {
       const [projectContext, projectMemory, orgInstructions] = await Promise.all([
-        effectiveProjectId ? loadProjectPromptView(effectiveProjectId, organizationId) : Promise.resolve(null),
+        effectiveProjectId
+          ? loadProjectPromptView(effectiveProjectId, organizationId)
+          : Promise.resolve(null),
+        // Open memory only (ADR-0087): a restricted note in the prompt is use of
+        // its folders, and only the live per-turn digest admits that use, against
+        // the conversation's audience at that moment. This copy is the fallback
+        // for a turn whose live fetch failed.
         bestEffort('build project memory digest', () =>
           buildProjectMemoryDigest(effectiveProjectId, organizationId ?? undefined)
         ),

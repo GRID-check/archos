@@ -1,5 +1,7 @@
 # From compliance assistant to agentic workspace
 
+> **Read with [VISION.md](../../VISION.md).** This review predates it; where it calls Piloti a compliance product, the vision's frame holds: the workspace for architects, building law as one capability.
+
 > **Status:** Product and architecture review, 2026-09-01. Not an implementation
 > plan and not a feature list. It says what the product is becoming, which of
 > the existing parts already carry that, where they stop, and in what order to
@@ -423,7 +425,6 @@ Behind the release layer, the backend items that are real and were confirmed:
 | Item | Where | Why it matters for an agentic layer |
 |---|---|---|
 | A plan attached in chat is answered before it is ingested; nothing tells the agent the file is in flight | `InputArea.tsx` ("send is never blocked"), `ingest_status_store` unread on the chat path | The first event trigger (L5) fixes this and PF-2 at once |
-| Two execution paths, `dask` default in code, `db` in compose | `submit.py:30`, `coolify.yaml:100` | One path, then delete the other, per ADR-0021's own migration plan |
 | `research_job_queue` has no migration, no RLS, one index whose predicate the claim query cannot use | `queue.py:63-91` | It becomes the task queue |
 | `ResearchWorker`'s loop and heartbeat cancellation have no test | `worker.py:68-102`; `grep ResearchWorker frontends/aiq_api/tests/` is empty | The most safety-critical code in the tier |
 | No cross-service contract test for the fire path | ADR-0046 Risks records the 403 that broke every scheduled run in a real deployment | The lesson was written down; the test was not |
@@ -504,7 +505,7 @@ Nothing new; each line joins two things that are built.
 | Rank memory in SQL instead of pre-slicing 200 rows; reinforce only on the query-ranked build | `memory-service.ts:105,624,746,816` |
 | One PII filter for both writers, with date shapes excluded | `reflection.py:223-238` → `knowledge/project_memory.py` |
 | Show superseded notes with their replacement and an undo; persist a refused supersede as a conflict, not a `console.warn` | `project-memory-panel.tsx:252`, `memory-service.ts:429-438` |
-| An organisation memory page; the panel gets a rail entry | `/app/organization/*`, `project-settings.tsx:189` |
+| An organisation memory page; the panel gets a rail entry | `/app/organization/*`, `settings/memory-settings.tsx` |
 | Lift files filter and sort into the URL; one filter grammar for the three document shelves | `project-file-workspace.tsx:251-345`, `archiv-library-pane.tsx:231-260` |
 
 **Verification pass B.** A scheduled chat job's answer cites a memory note the
@@ -635,7 +636,6 @@ stop reading its feedback as evidence about those features.
 
 The pass that tries to remove, per `AGENTS.md`:
 
-- The Dask execution path once `GRID_JOB_EXECUTION=db` is the only path
   (`submit.py:30`).
 - Three of the four claim-and-lease implementations once one is shared.
 - `card_generator_llm` from the config and the register (`register.py:639,816`)

@@ -10,8 +10,8 @@ features:
     in view.
 improvements:
   - >
-    An empty project chat now says in one sentence that Piloti also writes file
-    notes, notes and drafts on request.
+    An empty project chat now says in one sentence that Piloti can also write
+    file notes and drafts on request.
 fixes:
   - >
     On a phone, the document type in the file preview header is shortened

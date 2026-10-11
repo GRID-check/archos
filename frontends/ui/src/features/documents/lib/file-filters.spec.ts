@@ -1,10 +1,12 @@
 import { describe, expect, test } from 'vitest'
 import type { FileItem } from '../components/project-file-workspace'
+import type { DocumentKind } from '../document-kind'
 import {
   NO_FILE_FILTERS,
   activeFilterCount,
   applyFileFilters,
   statusGroupOf,
+  tagOptions,
   toggleIn,
   FILE_KIND_FILTERS,
 } from './file-filters'
@@ -33,7 +35,22 @@ describe('statusGroupOf', () => {
     expect(statusGroupOf('processing')).toBe('processing')
     expect(statusGroupOf('ingested')).toBe('ready')
     expect(statusGroupOf('success')).toBe('ready')
+    expect(statusGroupOf('completed')).toBe('ready')
     expect(statusGroupOf('error')).toBe('failed')
+  })
+
+  test('reads the schema-documented processed as ready, not as an unknown', () => {
+    expect(statusGroupOf('processed')).toBe('ready')
+  })
+
+  /**
+   * An agent-authored report and a content-screen hold are in none of the
+   * groups: nothing is being read, nothing is citable, nothing failed.
+   */
+  test('puts a stored, quarantined or uploaded row in no group', () => {
+    expect(statusGroupOf('stored')).toBeNull()
+    expect(statusGroupOf('quarantined')).toBeNull()
+    expect(statusGroupOf('uploaded')).toBeNull()
   })
 
   /**
@@ -43,7 +60,7 @@ describe('statusGroupOf', () => {
    * maps it costs nothing.
    */
   test('treats an unmapped status as in progress, never as citable', () => {
-    expect(statusGroupOf('quarantined')).toBe('processing')
+    expect(statusGroupOf('some-new-state')).toBe('processing')
     expect(statusGroupOf(null)).toBe('processing')
     expect(statusGroupOf(undefined)).toBe('processing')
   })
@@ -78,6 +95,32 @@ describe('activeFilterCount', () => {
     // The one filter that WIDENS still counts: the badge says the listing is
     // not the default one, whichever direction it was moved in.
     expect(activeFilterCount({ ...NO_FILE_FILTERS, includeArchived: true }, false)).toBe(1)
+  })
+})
+
+describe('FILE_KIND_FILTERS', () => {
+  /**
+   * Exhaustive over `DocumentKind`: adding a kind to `document-kind.ts` is a
+   * type error here until the menu offers it, so a kind no filter can select
+   * cannot ship silently.
+   */
+  test('offers every kind inferDocumentKind can return', () => {
+    const everyKind: Record<DocumentKind, true> = {
+      floorplan: true,
+      section: true,
+      siteplan: true,
+      notice: true,
+      photo: true,
+      model: true,
+      sheet: true,
+      text: true,
+      document: true,
+    }
+    expect([...FILE_KIND_FILTERS].sort()).toEqual(Object.keys(everyKind).sort())
+  })
+
+  test('lists the spreadsheet and the text note before the generic document', () => {
+    expect(FILE_KIND_FILTERS.slice(-3)).toEqual(['sheet', 'text', 'document'])
   })
 })
 
@@ -124,6 +167,42 @@ describe('applyFileFilters', () => {
       canCollaborate: true,
     })
     expect(result.map((f) => f.id)).toEqual(['c'])
+  })
+
+  test('a file in no status group matches no status filter, and is shown with none on', () => {
+    const held = [
+      file({ id: 'ready', status: 'ready' }),
+      file({ id: 'stored', status: 'stored' }),
+      file({ id: 'quarantined', status: 'quarantined' }),
+    ]
+    const ctx = { canCollaborate: true }
+
+    expect(applyFileFilters(held, { ...NO_FILE_FILTERS, statuses: ['processing'] }, ctx)).toEqual([])
+    expect(
+      applyFileFilters(held, { ...NO_FILE_FILTERS, statuses: ['ready'] }, ctx).map((f) => f.id)
+    ).toEqual(['ready'])
+    // Ticking every group still does not claim them: they are in none.
+    expect(
+      applyFileFilters(held, { ...NO_FILE_FILTERS, statuses: ['failed', 'processing', 'ready'] }, ctx)
+        .map((f) => f.id)
+    ).toEqual(['ready'])
+    expect(applyFileFilters(held, NO_FILE_FILTERS, ctx)).toBe(held)
+  })
+
+  test('a .csv is a sheet and a .md is a text note, so both are reachable from the kind menu', () => {
+    const notes = [
+      file({ id: 'table', filename: 'Zeitplan.csv', contentType: 'text/csv' }),
+      file({ id: 'note', filename: 'Projektnotiz.md', contentType: 'text/markdown' }),
+      file({ id: 'letter', filename: 'Brief.pdf', contentType: 'application/pdf' }),
+    ]
+    const ctx = { canCollaborate: true }
+
+    expect(
+      applyFileFilters(notes, { ...NO_FILE_FILTERS, kinds: ['sheet'] }, ctx).map((f) => f.id)
+    ).toEqual(['table'])
+    expect(
+      applyFileFilters(notes, { ...NO_FILE_FILTERS, kinds: ['text'] }, ctx).map((f) => f.id)
+    ).toEqual(['note'])
   })
 
   test('ANDs the dimensions', () => {
@@ -183,5 +262,50 @@ describe('Freigabe ausstehend', () => {
 
   test('counts as one constraint on the Filter button', () => {
     expect(activeFilterCount({ ...NO_FILE_FILTERS, reviewPendingOnly: true }, true)).toBe(1)
+  })
+})
+
+describe('tag filter', () => {
+  const files = [
+    file({ id: 'a', tags: ['Brandschutz', 'Gutachten'] }),
+    file({ id: 'b', tags: ['brandschutz'] }),
+    file({ id: 'c', tags: ['Detail'] }),
+    file({ id: 'd', tags: null }),
+  ]
+  const ctx = { canCollaborate: false }
+
+  test('matches a document carrying ANY chosen tag, whatever the case', () => {
+    const narrowed = applyFileFilters(files, { ...NO_FILE_FILTERS, tags: ['brandschutz', 'detail'] }, ctx)
+    expect(narrowed.map((row) => row.id)).toEqual(['a', 'b', 'c'])
+  })
+
+  test('counts once however many tags are chosen', () => {
+    expect(activeFilterCount({ ...NO_FILE_FILTERS, tags: ['a', 'b'] }, false)).toBe(1)
+  })
+
+  test('offers only the tags that exist, most frequent first, spelled as first seen', () => {
+    expect(tagOptions(files, 'de')).toEqual([
+      { key: 'brandschutz', label: 'Brandschutz', count: 2 },
+      { key: 'detail', label: 'Detail', count: 1 },
+      { key: 'gutachten', label: 'Gutachten', count: 1 },
+    ])
+    expect(tagOptions([file({ id: 'x' })], 'de')).toEqual([])
+  })
+})
+
+describe('showOlderFassungen', () => {
+  test('is off by default, on the empty set and in no count', () => {
+    expect(NO_FILE_FILTERS.showOlderFassungen).toBe(false)
+    expect(activeFilterCount(NO_FILE_FILTERS, true)).toBe(0)
+  })
+
+  test('counts once on the Filter button when asked for', () => {
+    expect(activeFilterCount({ ...NO_FILE_FILTERS, showOlderFassungen: true }, false)).toBe(1)
+  })
+
+  test('is not a narrowing in applyFileFilters: the listing rule is applied by the workspace', () => {
+    const files = [file({ id: 'a' }), file({ id: 'b' })]
+    const shown = { ...NO_FILE_FILTERS, showOlderFassungen: true }
+    expect(applyFileFilters(files, shown, { canCollaborate: false })).toBe(files)
   })
 })

@@ -41,6 +41,7 @@
 
 import 'server-only'
 import type { BudgetPolicy, BudgetScope, BudgetUnit, NewLlmUsageEvent } from '@/lib/db/schema'
+import { UNBILLED_USAGE_ACTIVITIES } from '@/lib/db/schema'
 import { getCached, invalidateCached, invalidateCachedPrefix } from '@/lib/cache'
 import { canManageBudgets } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
@@ -262,7 +263,8 @@ export type UsageEventInput = Omit<NewLlmUsageEvent, 'priceUsd' | 'credits' | 'p
  * Price and append ledger rows. Each row is priced ONCE, here, from the
  * pricing active at this moment, and carries that version's id — a later
  * price change never rewrites what a tenant was shown (ADR-0053). A row on
- * the tenant's own key is priced at nothing. The write-through daily rollup
+ * the tenant's own key is priced at nothing, and so is an unbilled activity
+ * (voice dictation), which also never reaches the rollup. The write-through daily rollup
  * (ADR-0019) is incremented in the same transaction by the repository.
  *
  * A pricing lookup failure prices at the boot floor rather than dropping the
@@ -273,7 +275,12 @@ export async function recordUsageEvents(events: UsageEventInput[]): Promise<numb
   const pricing = await getEffectivePricingOrBootFloor()
   return repository.insertUsageEventsWithRollups(
     events.map((event) => {
-      const priced = priceUsage(Number.parseFloat(String(event.costUsd ?? '0')) || 0, event.isByok ?? null, pricing)
+      // Nobody is billed for an unbilled activity (voice dictation); its real
+      // cost stays in `costUsd`. Migration 0107's CHECK refuses anything else.
+      const priced =
+        event.activity && UNBILLED_USAGE_ACTIVITIES.has(event.activity)
+          ? { priceUsd: 0, credits: 0 }
+          : priceUsage(Number.parseFloat(String(event.costUsd ?? '0')) || 0, event.isByok ?? null, pricing)
       return {
         ...event,
         priceUsd: priced.priceUsd.toFixed(8),
@@ -509,6 +516,66 @@ export async function getBudgetStatus(
     remainingUserTokens: tokens(remainingUser),
     remainingProjectTokens: tokens(remainingProject),
   }
+}
+
+/** One limited window of one budget scope, and how much of it is used. */
+export interface BudgetUtilisation {
+  scope: BudgetScope
+  /** The member's user id or the project's id; `null` for the organization. */
+  subjectId: string | null
+  unit: BudgetUnit
+  window: 'day' | 'month'
+  /** In `unit`; always set, because only limited windows are listed. */
+  limit: number
+  used: number
+}
+
+/**
+ * How much of each LIMITED budget window is used, for the scopes that apply to
+ * this user and project: the figures `getBudgetStatus` folds into one
+ * `remaining`, kept apart so a caller can say "80 % of the monthly budget"
+ * instead of only "something is left". Same cached limits and the same rollup
+ * as the enforcement path, so the two cannot disagree about a window.
+ *
+ * Consumed by `budget-events.ts` (PostHog `budget_threshold_crossed`), after a
+ * usage batch lands. Unlimited windows are left out, not reported as 0 %.
+ */
+export async function getBudgetUtilisation(
+  organizationId: string,
+  userId: string | null,
+  projectId: string | null,
+): Promise<BudgetUtilisation[]> {
+  const unit = await getOrgBudgetUnit(organizationId)
+  const [orgLimits, memberLimits, projectLimits] = await Promise.all([
+    getCachedOrgLimits(organizationId, unit),
+    userId ? getCachedScopedLimits(organizationId, unit, 'member', userId) : Promise.resolve(null),
+    projectId ? getCachedScopedLimits(organizationId, unit, 'project', projectId) : Promise.resolve(null),
+  ])
+  const targets: Array<{
+    scope: BudgetScope
+    subjectId: string | null
+    limits: BudgetLimits
+    filter: { userId?: string; projectId?: string }
+  }> = [{ scope: 'organization', subjectId: null, limits: orgLimits, filter: {} }]
+  if (memberLimits && userId) targets.push({ scope: 'member', subjectId: userId, limits: memberLimits, filter: { userId } })
+  if (projectLimits && projectId) {
+    targets.push({ scope: 'project', subjectId: projectId, limits: projectLimits, filter: { projectId } })
+  }
+
+  const spends = await Promise.all(targets.map((target) => getSpendTotals(organizationId, target.filter)))
+  return targets.flatMap((target, index) => {
+    const spend = spends[index]
+    if (!spend) return []
+    const windows = [
+      { window: 'day' as const, limit: target.limits.dailyLimit, used: consumed(spend.day, target.limits.unit) },
+      { window: 'month' as const, limit: target.limits.monthlyLimit, used: consumed(spend.month, target.limits.unit) },
+    ]
+    return windows.flatMap(({ window, limit, used }) =>
+      limit === null
+        ? []
+        : [{ scope: target.scope, subjectId: target.subjectId, unit: target.limits.unit, window, limit, used }],
+    )
+  })
 }
 
 export interface ConnectionDiagnostics {
@@ -810,6 +877,68 @@ export async function getUsageOverview(
     },
     status: { blocked: status.blocked, blockedScope: status.blockedScope },
     scope: admin ? filter : { userId: session.userId },
+  }
+}
+
+export interface ProjectUsage {
+  /** The unit every amount and limit below is in. */
+  unit: BudgetUnit
+  day: TenantSpendWindow
+  month: TenantSpendWindow
+  perModel: Array<{ model: string; month: TenantSpendWindow }>
+  /** This project's own limit, or null when only the organization's applies. */
+  projectLimit: BudgetLimits | null
+  /** The ceiling a project limit may not exceed (validated on write). */
+  orgLimit: BudgetLimits
+  /** Which applicable scope is exhausted right now, if any. */
+  blockedScope: BudgetScope | null
+}
+
+/**
+ * One project's spend and limits, for its Settings page.
+ *
+ * Read by the same people who may write the project's limit: its admins
+ * (`project:manage`) and the organization's budget admins. The per-member
+ * breakdown is left out on purpose, because who spent what stays an org
+ * budget-admin view.
+ */
+export async function getProjectUsage(
+  session: AuthorizedSession,
+  projectId: string,
+): Promise<ProjectUsage> {
+  if (!canManageBudgets(session)) {
+    await requireProjectAccess(session, projectId, 'project:manage')
+  } else {
+    await requireProjectAccess(session, projectId, 'project:view')
+  }
+
+  const unit = await getOrgBudgetUnit(session.organizationId)
+  const project = toTenantWindow(unit)
+
+  const [summary, orgBudget, projectBudget, status] = await Promise.all([
+    getSpendSummary(session.organizationId, { projectId }),
+    getOrgBudget(session.organizationId, unit),
+    getScopedBudget(session.organizationId, 'project', projectId, unit),
+    getBudgetStatus(session.organizationId, null, projectId),
+  ])
+
+  const limits = (policy: BudgetLimits): BudgetLimits => ({
+    unit: policy.unit,
+    dailyLimit: policy.dailyLimit,
+    monthlyLimit: policy.monthlyLimit,
+  })
+
+  return {
+    unit,
+    day: project(summary.day),
+    month: project(summary.month),
+    perModel: summary.perModel
+      .map((entry) => ({ model: entry.model, month: project(entry.month) }))
+      .filter((entry) => entry.month.events > 0)
+      .sort((a, b) => b.month.amount - a.month.amount),
+    projectLimit: projectBudget ? limits(projectBudget) : null,
+    orgLimit: limits(orgBudget),
+    blockedScope: status.blockedScope,
   }
 }
 

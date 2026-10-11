@@ -5,7 +5,7 @@ The Next.js app acts as a BFF layer between the browser and the Python FastAPI b
 ## Why BFF
 
 - **Avoid CORS issues**: Browser requests stay on the same origin (`localhost:3000` in dev, single domain in production).
-- **Centralize auth**: The BFF resolves Grid sessions (WorkOS AuthKit) and forwards credentials as `Authorization` headers. Anonymous mode skips auth entirely.
+- **Centralize auth**: The BFF resolves Piloti sessions (WorkOS AuthKit) and forwards credentials as `Authorization` headers. Anonymous mode skips auth entirely.
 - **Inject collection scope**: Every upstream request gets an `X-Grid-Collection-Scope` header that tells the Python backend which knowledge collections to query.
 - **Normalize errors**: Authz errors from FGA are translated to `403`/`404` HTTP responses. Backend errors are wrapped in a consistent `{ error: { code, message } }` envelope.
 
@@ -110,7 +110,7 @@ Source: `frontends/ui/src/app/api/v1/[...path]/route.ts:119`
 
 ## Streaming routes
 
-Chat and generation routes (`/api/chat`, `/api/generate`, `/api/generate/respond`, `/api/jobs/async/[...path]`) proxy SSE streams without buffering:
+The job proxy (`/api/jobs/async/[...path]`) passes a run's SSE stream through without buffering. There is no HTTP chat route: a chat turn runs on the WebSocket alone (ADR-0068).
 
 ```typescript
 return new NextResponse(response.body, {

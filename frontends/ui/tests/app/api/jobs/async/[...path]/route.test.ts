@@ -11,7 +11,13 @@ vi.mock('@/lib/collection-scope-request', () => ({
   buildCollectionScopeFromRequest: vi.fn(),
 }))
 
+vi.mock('@/lib/projects/repository', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/projects/repository')>()),
+  findProjectTenancy: vi.fn(async () => null),
+}))
+
 import { GET, POST, DELETE } from '@/app/api/jobs/async/[...path]/route'
+import { findProjectTenancy } from '@/lib/projects/repository'
 import { requireAuthorizedSession } from '@/lib/auth/require-auth'
 import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 
@@ -27,7 +33,7 @@ const baseSession = {
   organizationMembershipId: 'om_1',
   role: 'member',
   permissions: [] as string[],
-  featureFlags: null,
+  featureFlags: ['deep-research'],
 }
 
 function createStream(): ReadableStream<Uint8Array> {
@@ -65,6 +71,7 @@ describe('/api/jobs/async/[...path]', () => {
         projectId: 'proj-1',
         conversationId: 'conv-1',
         projectCollectionName: undefined,
+        verifiedConversationId: undefined,
       })
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(createStream(), {
@@ -99,6 +106,7 @@ describe('/api/jobs/async/[...path]', () => {
         projectId: undefined,
         conversationId: 'conv-1',
         projectCollectionName: undefined,
+        verifiedConversationId: undefined,
       })
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ agents: [] }), {
@@ -116,6 +124,33 @@ describe('/api/jobs/async/[...path]', () => {
       expect(res.status).toBe(200)
       expect(mockRequireAuthorizedSession).not.toHaveBeenCalled()
       expect(getHeader(fetchMock.mock.calls[0][1], 'X-Grid-Collection-Scope')).toBe('anon-scope')
+    })
+
+    it('refuses to submit research in a closed project, and forwards nothing (ADR-0090)', async () => {
+      process.env.REQUIRE_AUTH = 'true'
+      mockRequireAuthorizedSession.mockResolvedValue(baseSession)
+      mockBuildCollectionScopeFromRequest.mockResolvedValue({
+        scope: ['proj_proj-1'],
+        scopedCollections: [{ collection: 'proj_proj-1', shelf: 'project' }],
+        headerValue: 'encoded-scope',
+        projectId: 'proj-1',
+        conversationId: 'conv-1',
+        projectCollectionName: undefined,
+        verifiedConversationId: undefined,
+      })
+      vi.mocked(findProjectTenancy).mockResolvedValueOnce({ organizationId: 'org_1', deletedAt: null, status: 'closed' })
+      const fetchMock = vi.fn()
+      global.fetch = fetchMock
+
+      const req = new Request('http://localhost:3000/api/jobs/async/submit', {
+        method: 'POST',
+        body: JSON.stringify({ projectId: 'proj-1', conversationId: 'conv-1' }),
+      })
+      const res = await POST(req, makeParams(['submit']))
+
+      expect(res.status).toBe(403)
+      await expect(res.json()).resolves.toMatchObject({ error: { details: { reason: 'project-closed' } } })
+      expect(fetchMock).not.toHaveBeenCalled()
     })
 
     it('returns 404 when project access is missing', async () => {
@@ -136,6 +171,43 @@ describe('/api/jobs/async/[...path]', () => {
   })
 
   describe('POST', () => {
+    it('refuses a deep-research submit from a session whose organization lacks the flag', async () => {
+      process.env.REQUIRE_AUTH = 'true'
+      mockRequireAuthorizedSession.mockResolvedValue({ ...baseSession, featureFlags: [] })
+      const fetchMock = vi.fn()
+      global.fetch = fetchMock
+
+      const req = new Request('http://localhost:3000/api/jobs/async/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId: 'proj-1', conversationId: 'conv-1' }),
+      })
+      const res = await POST(req, makeParams(['submit']))
+
+      expect(res.status).toBe(403)
+      expect(await res.json()).toEqual({ error: 'feature-disabled', feature: 'deep-research' })
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
+    it('refuses an anonymous deep-research submit — an entitlement is off where nobody signs in', async () => {
+      // It used to skip the gate ("no session to evaluate") while the agent's
+      // per-turn read said ON, so the run was offered and then submitted for
+      // nobody. Both halves now give the entitlement's fixed answer: off.
+      process.env.REQUIRE_AUTH = 'false'
+      const fetchMock = vi.fn()
+      global.fetch = fetchMock
+
+      const req = new Request('http://localhost:3000/api/jobs/async/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ conversationId: 'conv-1' }),
+      })
+      const res = await POST(req, makeParams(['submit']))
+
+      expect(res.status).toBe(403)
+      expect(fetchMock).not.toHaveBeenCalled()
+    })
+
     it('forwards scope header from body', async () => {
       process.env.REQUIRE_AUTH = 'true'
       mockRequireAuthorizedSession.mockResolvedValue(baseSession)
@@ -146,6 +218,7 @@ describe('/api/jobs/async/[...path]', () => {
         projectId: 'proj-1',
         conversationId: 'conv-1',
         projectCollectionName: undefined,
+        verifiedConversationId: undefined,
       })
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ job_id: 'job-1' }), {
@@ -201,6 +274,7 @@ describe('/api/jobs/async/[...path]', () => {
         projectId: 'proj-1',
         conversationId: undefined,
         projectCollectionName: undefined,
+        verifiedConversationId: undefined,
       })
       const fetchMock = vi.fn().mockResolvedValue(
         new Response(JSON.stringify({ status: 'cancelled' }), {

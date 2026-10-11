@@ -713,7 +713,7 @@ class TestDeepResearcherAgent:
         real_tool,
         mock_create_deep_agent,
     ):
-        """All deep research prompts identify as Grid OIB and anchor regulation citations."""
+        """Every deep research prompt names Piloti, a colleague in a planning office, and anchors citations."""
         with (
             patch(
                 "aiq_agent.agents.deep_researcher.factory.create_deep_agent",
@@ -733,14 +733,15 @@ class TestDeepResearcherAgent:
 
             kwargs = create.call_args.kwargs
             subagents = {subagent["name"]: subagent for subagent in kwargs["subagents"]}
-            assert "Grid OIB" in kwargs["system_prompt"]
+            assert "Piloti — a colleague in an Austrian architecture and planning office" in kwargs["system_prompt"]
+            assert "Grid OIB" not in kwargs["system_prompt"]
             assert "Austrian building regulations" in kwargs["system_prompt"]
-            assert "Grid OIB" in subagents["planner-agent"]["system_prompt"]
+            assert "planning office" in subagents["planner-agent"]["system_prompt"]
             assert "Bundesland" in subagents["planner-agent"]["system_prompt"]
-            assert "Grid OIB" in subagents["writer-agent"]["system_prompt"]
+            assert "planning office" in subagents["writer-agent"]["system_prompt"]
             assert "edition/year" in subagents["writer-agent"]["system_prompt"]
             researcher_prompt = create_researcher.call_args.kwargs["system_prompt"]
-            assert "Grid OIB" in researcher_prompt
+            assert "planning office" in researcher_prompt
             assert "regulatory anchor" in researcher_prompt
 
     def test_build_orchestrator_omits_skills_when_disabled(
@@ -2785,7 +2786,7 @@ class TestDeepResearcherQuoteVerification:
 class TestSessionRegistryBinding:
     """The live citation stream needs a registry to read; the chat path owns its own.
 
-    In a Dask worker nothing binds a session registry, so every knowledge-base
+    In a research worker nothing binds a session registry, so every knowledge-base
     and OIB citation failed the "was this actually retrieved?" check and was
     never marked as cited -- a run citing four Richtlinien and one web page
     showed the web page alone. The run binds its own registry so the check has
@@ -2842,7 +2843,7 @@ class TestSessionRegistryBinding:
         during = await self._run_capturing_registry(agent)
 
         assert during is not None, "the worker run bound no registry, so citations cannot be recognised"
-        # Reset afterwards: a Dask worker is reused, and a leaked registry would
+        # Reset afterwards: a research worker is reused, and a leaked registry would
         # hand the next job a previous question's sources.
         assert get_session_registry() is None
 

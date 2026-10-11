@@ -20,11 +20,13 @@ import 'server-only'
 // Explicit, not the `crypto` global: this module is server-only and the global
 // is not guaranteed in every Node/test environment the service is loaded in.
 import { randomUUID } from 'node:crypto'
+import { captureServer } from '@/lib/analytics/posthog-server'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { enforcementOn, requireSkillsEnabled } from '@/lib/authz/feature-flags'
+import { FEATURE_FLAGS, requireSkillsEnabled } from '@/lib/authz/feature-flags'
 import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
@@ -37,7 +39,7 @@ import {
   encodeGridBudgetHeader,
   type GridBudgetSnapshot,
 } from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled, SKILLS_FLAG } from '@/lib/workos/feature-flags'
+import { isMemoryReflectionEnabled, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -53,13 +55,17 @@ import {
   submitJob,
   JobSubmitError,
   JobSubmitSkippedError,
+  type JobPriority,
   type JobSubmitPayload,
 } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
+import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { previousDecisionsBlock } from '@/lib/tasks/service'
 import { taskThreadConversationId } from '@/lib/tasks/task-thread'
+import { isActiveTaskRunStatus, submittedRunStatus } from '@/lib/tasks/task-vocabulary'
 import { createRunMessage } from '@/lib/runs/service'
 import {
+  AGENT_RUN_INPUT_MAX_CHARS,
   emptySkillSnapshot,
   withAlwaysOnSources,
   type CreateJobInput,
@@ -310,6 +316,7 @@ export async function getJob(
   await requireProjectAccess(session, projectId, 'project:view')
   const definition = await repository.findDefinition(jobId, session.organizationId)
   if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
+  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
   return toJobView(definition)
 }
 
@@ -449,6 +456,7 @@ export async function listJobRuns(
 
   const definition = await repository.findDefinition(jobId, session.organizationId)
   if (!definition || definition.projectId !== projectId) throw new NotFoundError('Job not found.')
+  await requireMaySeeSubject(session, projectId, definition, 'Job not found.')
   const runs = await repository.listRunsForDefinition(jobId, session.organizationId, { limit, offset })
   return { runs: runs.map(toJobRunView) }
 }
@@ -541,6 +549,12 @@ export interface AgentRunSpec {
   clarifierResult?: string | null
   /** The Unterlagen the reader named on the plan card. */
   documents?: PlanDocuments | null
+  /**
+   * Where the run goes inside its organization's queue (ADR-0079). Absent is
+   * `interactive`: somebody asked for this run and is waiting on it. A
+   * scheduled fire is `bulk`, so a sweep of twenty never makes a question wait.
+   */
+  priority?: JobPriority
 }
 
 /**
@@ -552,6 +566,8 @@ export interface SubmittedAgentRun {
   conversationId: string | null
   /** Null when the thread is unknown or the message could not be minted. */
   runMessageId: string | null
+  /** The backend queued the job for a free worker instead of starting it at once. */
+  queued: boolean
 }
 
 /**
@@ -567,6 +583,15 @@ export interface SubmittedAgentRun {
  * same fire left a whole empty conversation behind.
  */
 export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgentRun> {
+  // The backend refuses the same prompt with a 422 whose body is a validation
+  // dump, and that body is what the run row would show. Refused here first, in
+  // a sentence, before any context is built for a run that cannot start.
+  if (spec.prompt.length > AGENT_RUN_INPUT_MAX_CHARS) {
+    throw new JobSubmitError(
+      `The run's prompt is ${spec.prompt.length} characters; a run accepts at most ${AGENT_RUN_INPUT_MAX_CHARS}`,
+      422,
+    )
+  }
   const { organizationId, projectId, userId } = spec
   const [
     budgetSnapshot,
@@ -615,6 +640,7 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     owner_email: spec.ownerEmail,
     budget_header: budgetHeader,
     model_overrides: modelOverrides,
+    priority: spec.priority ?? 'interactive',
   }
 
   const contextHeaders = buildGridRequestContextWireHeaders(
@@ -634,11 +660,11 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     process.env.GRID_INTERNAL_API_TOKEN,
   )
 
-  const { jobId } = await submitJob(payload, contextHeaders)
+  const { jobId, queued } = await submitJob(payload, contextHeaders)
   const runMessageId = conversationId
     ? await mintRunMessage(conversationId, spec.runId, spec.title)
     : null
-  return { backendJobId: jobId, conversationId, runMessageId }
+  return { backendJobId: jobId, conversationId, runMessageId, queued }
 }
 
 /**
@@ -696,7 +722,7 @@ export async function fireJob(
     // schedule, or a „Jetzt ausführen" somebody can press again — and its runs
     // belong together in one place rather than in a new conversation per fire.
     const thread = await createTaskThread(definition)
-    const { backendJobId, conversationId, runMessageId } = await submitAgentRun({
+    const submitted = await submitAgentRun({
       organizationId,
       projectId,
       userId: definition.requesterUserId,
@@ -712,9 +738,13 @@ export async function fireJob(
       dataSources: definition.plan.dataSources ?? null,
       runId,
       conversationId: thread,
+      // Nobody is waiting on a schedule: it queues behind the office's own
+      // questions. A person pressing „Jetzt ausführen" is waiting.
+      priority: trigger === 'schedule' ? 'bulk' : 'interactive',
     })
+    const { backendJobId, conversationId, runMessageId } = submitted
     return recordRun(definition, trigger, actor, runId, {
-      status: 'running',
+      status: submittedRunStatus(submitted),
       backendJobId,
       error: null,
       conversationId,
@@ -751,7 +781,7 @@ export async function fireJob(
 
 /** What one fire produced, as the row-writer below needs it. */
 interface FireOutcome {
-  status: 'running' | 'skipped' | 'error'
+  status: 'queued' | 'running' | 'skipped' | 'error'
   backendJobId: string | null
   error: string | null
   conversationId: string | null
@@ -870,36 +900,68 @@ export async function loadJobForFire(jobId: string): Promise<TaskDefinition | nu
 }
 
 /**
- * The scheduler's gate: disabled definition → `disabled`; with WorkOS flag
- * enforcement the per-org `skills` flag is checked and a failure records a
- * `skipped` run (fail-closed); otherwise the run fires. `fireJob` itself never
- * throws for a skip.
+ * The scheduler's gate: disabled definition → `disabled`; the per-org `skills`
+ * flag is checked and anything short of a yes records a `skipped` run
+ * (fail-closed); otherwise the run fires. The scheduler container claims every
+ * due definition and leaves this decision here, per organization, so revoking
+ * an organization's flag pauses its schedules without a deploy. `fireJob`
+ * itself never throws for a skip.
  */
 export async function fireScheduledJob(
   definition: TaskDefinition,
-): Promise<{ fired: boolean; jobId?: string; reason?: 'disabled' | 'feature-disabled' | 'skipped' | 'error' }> {
+): Promise<{
+  fired: boolean
+  jobId?: string
+  reason?: 'disabled' | 'feature-disabled' | 'project-closed' | 'project-paused' | 'skipped' | 'error'
+}> {
   if (!definition.enabled) {
     return { fired: false, reason: 'disabled' }
   }
-  if (enforcementOn()) {
-    let flagOn = false
-    try {
-      flagOn = await isOrgFeatureEnabled(SKILLS_FLAG, definition.organizationId)
-    } catch {
-      flagOn = false
-    }
-    if (!flagOn) {
-      await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
-        status: 'skipped',
-        backendJobId: null,
-        error: 'Skills feature disabled for organization',
-        conversationId: null,
-      })
-      return { fired: false, reason: 'feature-disabled' }
-    }
+  // Only an active project runs its schedules (ADR-0098). A closed one is
+  // read-only and a run files into it (ADR-0090); a paused one was parked so
+  // that nothing runs and spends. The schedule stays, visibly skipped, so
+  // resuming or reopening resumes it: a recurring one at its next turn, a
+  // one-shot (which the claim retired) re-armed by the move back to active.
+  const project = await findProjectInOrg(definition.projectId, definition.organizationId)
+  if (project && !runsOnSchedule(project)) {
+    const closed = isProjectClosed(project)
+    await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
+      status: 'skipped',
+      backendJobId: null,
+      error: closed ? SCHEDULE_SKIPPED_BECAUSE.closed : SCHEDULE_SKIPPED_BECAUSE.paused,
+      conversationId: null,
+    })
+    return { fired: false, reason: closed ? 'project-closed' : 'project-paused' }
+  }
+  if (!(await isOrgFeatureEnabled(FEATURE_FLAGS.skills, definition.organizationId))) {
+    await recordRun(definition, 'schedule', 'scheduler', randomUUID(), {
+      status: 'skipped',
+      backendJobId: null,
+      error: 'Skills feature disabled for organization',
+      conversationId: null,
+    })
+    return { fired: false, reason: 'feature-disabled' }
   }
   const run = await fireJob(definition, 'schedule', 'scheduler')
-  if (run.status === 'running') return { fired: true, jobId: run.backendJobId ?? undefined }
+  if (isActiveTaskRunStatus(run.status)) {
+    // `job_run_started` (ADR-0100): the schedule fired and the backend took the
+    // run. Personless — nobody pressed anything, the scheduler did — and only
+    // for a run that is live: a skip is a `task_runs` row, not a start. The
+    // matching `job_run_finished` comes from `recordRunOutcome`, under the id
+    // `run_id` here, so the two join into one run's duration and result.
+    captureServer({
+      event: 'job_run_started',
+      distinctId: null,
+      organizationId: definition.organizationId,
+      properties: {
+        job_id: definition.id,
+        run_id: run.id,
+        trigger: 'schedule',
+        output: definition.kind === 'deep-research' ? 'deep-research' : 'chat',
+      },
+    })
+    return { fired: true, jobId: run.backendJobId ?? undefined }
+  }
   return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
 }
 

@@ -27,6 +27,9 @@ export function baseStackConfig(): Record<string, string> {
     "grid-oib:openrouterApiKey": "or", // pragma: allowlist secret
     "grid-oib:dragonflyPassword": "df", // pragma: allowlist secret
     "grid-oib:rateLimitStorePassword": "rl", // pragma: allowlist secret
+    // The DB-claimed research queue is the only execution (ADR-0082 B) and fails
+    // closed without a payload KEK; a test about another knob wants neither.
+    "grid-oib:allowPlaintextJobPayloads": "true",
   };
 }
 
@@ -67,9 +70,7 @@ export function langfuseStackConfig(): Record<string, string> {
     "grid-oib:langfuseQueuePassword": "lf-queue", // pragma: allowlist secret
     "grid-oib:langfuseS3SecretKey": "lf-s3", // pragma: allowlist secret
     "grid-oib:langfuseInitUserPassword": "lf-init-user", // pragma: allowlist secret
-    // The tier's capability gate includes the observability one, so the
-    // collector's dependencies have to be present too.
-    "grid-oib:otelPrimaryApiKey": "otel-key", // pragma: allowlist secret
+    // The Connect application Langfuse signs in against and its route is gated by.
     "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
     "grid-oib:otelOidcClientId": "client_otel",
     "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret

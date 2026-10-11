@@ -4,9 +4,10 @@
  * Dev preview for the Files browser — the Finder-style drill-down that
  * replaced the folder tree. Fixtures:
  *
- *  1. The default browser: breadcrumb path row ("All Files › …"), folder cards
- *     beside file cards at the current level, the New-folder popover, and the
- *     cards/list view toggle. Clicking a folder card drills in; the breadcrumb
+ *  1. The default browser: breadcrumb path row ("All Files › …"), the folder
+ *     brief folded to its one line (click it to open), folder cards beside file
+ *     cards at the current level, the New-folder popover, and the cards/list
+ *     view toggle. Clicking a folder card drills in; the breadcrumb
  *     walks back out.
  *  2. A flat reference grid (no `folderNav`) — the Archiv's presentation.
  *  3. A standalone `FileSearchBar` with a live query so the enlarged clear (X)
@@ -45,6 +46,10 @@
  * has its page thumbnail already rendered while the badge still says
  * "Processing", because a PDF preview is produced at upload time and the rest of
  * ingestion runs after it.
+ *
+ * `?variant=fassungen` renders documents with Fassungen (ADR-0099): the count
+ * beside the name, the one badge on an older Fassung, in cards and in the list,
+ * with older Fassungen hidden and shown. See `fassungen-fixture.tsx`.
  */
 
 import type { JSX } from 'react'
@@ -54,9 +59,13 @@ import { FileBrowserPane, type FolderNavigation } from '@/features/documents/com
 import { DocumentActionsTrigger, DocumentObjectMenu } from '@/features/documents/components/document-actions'
 import { FileSearchBar, FileSearchField } from '@/features/documents/components/file-search-bar'
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
+import { projectSearchScope } from '@/features/documents/lib/file-shelf'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { LayoutGrid, List } from 'lucide-react'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
+import { FassungenFixture } from './fassungen-fixture'
+import { FolderBrief } from '@/features/documents/components/folder-brief'
+import { buildFolderBrief } from '@/features/documents/lib/folder-knowledge'
 
 function makeFile(id: string, filename: string, summary: string, extra: Record<string, unknown> = {}): FileItem {
   return {
@@ -74,6 +83,8 @@ function makeFile(id: string, filename: string, summary: string, extra: Record<s
     chunkCount: 48,
     contentTypes: ['text', 'table'],
     tags: null,
+    topics: null,
+    capture: null,
     ...extra,
   }
 }
@@ -243,6 +254,7 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folders-list') return <FoldersInListViewFixture />
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
+  if (variant === 'fassungen') return <FassungenFixture />
   return <FileBrowserFixtures />
 }
 
@@ -276,7 +288,7 @@ function useFixtureFolderNav(): FolderNavigation & { currentFolderId: string | n
  */
 function FolderDropTargetFixture(): JSX.Element {
   const folderNav = useFixtureFolderNav()
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
 
   useEffect(() => {
     const card = document.querySelector('[data-testid="folder-card-f-statik"]')
@@ -335,7 +347,7 @@ function FolderDropTargetFixture(): JSX.Element {
 function FoldersInListViewFixture(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
   const folderNav = useFixtureFolderNav()
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
   const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
 
   return (
@@ -391,7 +403,7 @@ function useSelfDrivenSearch(testId: string, query: string): void {
 /** A ranked semantic answer, rendered in the view the reader actually chose. */
 function SearchInListViewFixture(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
   useSelfDrivenSearch('file-browser-search-list', 'Fluchtwegbreite')
 
   return (
@@ -439,7 +451,7 @@ function SearchInListViewFixture(): JSX.Element {
  */
 function FileContextMenuFixture(): JSX.Element {
   const folderNav = useFixtureFolderNav()
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
   const [selected, setSelected] = useState<string | null>(null)
   const driven = useRef(false)
   useEffect(() => {
@@ -495,7 +507,7 @@ function FileContextMenuFixture(): JSX.Element {
  */
 function FolderCrudFixture({ mode }: { mode: 'menu' | 'rename' }): JSX.Element {
   const folderNav = useFixtureFolderNav()
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
 
   // `reactStrictMode` runs an effect twice on mount, and Enter on the trigger
   // TOGGLES the menu — so an unguarded effect opened it and immediately shut it
@@ -559,7 +571,7 @@ function FolderCrudFixture({ mode }: { mode: 'menu' | 'rename' }): JSX.Element {
  */
 function SearchFailedFixture(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
   useSelfDrivenSearch('file-browser-search-failed', 'Fluchtweg')
 
   return (
@@ -607,7 +619,7 @@ function SearchFailedFixture(): JSX.Element {
  */
 function JustUploadedFixture(): JSX.Element {
   const [selected, setSelected] = useState<string | null>(null)
-  const search = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 p-6">
@@ -635,12 +647,15 @@ function FileBrowserFixtures(): JSX.Element {
   const [selected, setSelected] = useState<string | null>('p3')
   const [view, setView] = useState<'cards' | 'list'>('cards')
   const folderNav = useFixtureFolderNav()
-  const search = useFileSearch({ projectId: 'proj-demo' })
-  const flatSearch = useFileSearch({ projectId: 'proj-demo' })
+  const search = useFileSearch(projectSearchScope('proj-demo'))
+  const flatSearch = useFileSearch(projectSearchScope('proj-demo'))
   // A non-empty query so the search bar's clear (X) target renders in the shot.
   const [barSearch, setBarSearch] = useState('Brandschutz')
 
   const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
+  // The brief as the workspace mounts it: folded to one line, opened on a click.
+  const [briefCollapsed, setBriefCollapsed] = useState(true)
+  const currentFolderName = FOLDERS.find((folder) => folder.id === folderNav.currentFolderId)?.name ?? null
 
   return (
     <main className="mx-auto flex max-w-5xl flex-col gap-8 p-6">
@@ -696,6 +711,17 @@ function FileBrowserFixtures(): JSX.Element {
             view={view}
             onViewChange={setView}
             folderNav={folderNav}
+            brief={
+              <FolderBrief
+                brief={buildFolderBrief(FILES, FOLDERS, folderNav.currentFolderId)}
+                folderName={currentFolderName}
+                shelfKind="project"
+                onSelect={() => {}}
+                onOpenFolder={folderNav.onNavigate}
+                collapsed={briefCollapsed}
+                onCollapsedChange={setBriefCollapsed}
+              />
+            }
             wrapFile={(file, card) => (
               <DocumentObjectMenu
                 document={file}

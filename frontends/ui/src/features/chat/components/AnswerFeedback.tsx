@@ -10,8 +10,10 @@
  *   ✓ Danke für Ihr Feedback.            ← lands on that SAME line after a vote
  *   Was war das Problem?                 ← down only, disclosed below it
  *   [Ungenau] [Zu langsam] [Falsche Quelle] [Sonstiges]
- *   ┌ Noch etwas? ────────┐              ← disclosed once a reason is chosen
- *   └─────────────────────┘  [Hinweis senden]
+ *   ┌ Noch etwas? ────────┐              ← down only, with the reasons
+ *   └─────────────────────┘
+ *   Was hätte in einer guten Antwort stehen sollen?   ← optional, one line
+ *   [ z. B. Brüstungshöhe 1,00 m laut OIB-RL 4 ]  [Hinweis senden]
  *
  * Two placements, one shape: standalone it is that block; `compact` hands the
  * row and the disclosure to the answer's meta row as two items, so the row keeps
@@ -20,8 +22,11 @@
  * The vote is the whole transaction: `useAnswerFeedback` persists it the moment
  * a thumb is pressed, so the confirmation is the truth about what happened and
  * is stated once, on the vote's own line. The reason and the note are a
- * SEPARATE, optional second act, disclosed one step at a time — never an open
- * form sitting under a "thanks" that claims the same act is already finished.
+ * SEPARATE, optional second act — never an open form sitting under a "thanks"
+ * that claims the same act is already finished. Reason and note are each
+ * optional and neither waits for the other: when the note waited for a chip,
+ * a voter who skipped the chips never saw it, and the October 2026 export had
+ * down-votes with neither, nothing the cause labelling could read.
  *
  * ── Weight ───────────────────────────────────────────────────────────────────
  * This sits under EVERY answer, including one-line ones, so at rest it is a
@@ -38,20 +43,26 @@
  * "selected" means one thing in this block.
  *
  * ── Motion ───────────────────────────────────────────────────────────────────
- * `springPress` on the thumb press (the user's own gesture resolving, ≈2px of
- * travel), `springSnap` on the confirmation's check mark only — the confirmation
- * TEXT is never animated, so nothing delays reading it. The reason row is a
- * disclosure: `duration-base` + `ease-entrance`, transform/opacity only, never
- * height. Reduced motion is honoured globally (`MotionConfig reducedMotion`)
- * and per-class for the CSS half.
+ * The shared press (`PRESSABLE`) on the thumbs, `iconSwapTransition` on the
+ * confirmation's check mark (its scale springs, its opacity tweens). The question and the receipt share ONE slot left
+ * of the thumbs and cross-fade in it (`duration-quick`): the question used to
+ * unmount on the vote and the thumbs jumped ~98px left under the pointer that
+ * had just pressed one. The reason disclosure takes its height smoothly
+ * (`HeightArrival`) and stays mounted until it has folded away; inserted and
+ * removed in one frame, it moved everything under it by ~240px. After the note
+ * is sent the form folds and focus moves to the receipt, rather than falling
+ * to the page. Reduced motion gets every end state at once.
  */
 
-import { useCallback, useState, type FC, type FormEvent } from 'react'
+import { useCallback, useRef, useState, type FC, type FormEvent } from 'react'
 import { Check, ThumbsDown, ThumbsUp } from 'lucide-react'
-import { motion, springPress, springSnap } from '@/components/motion'
+import { AnimatePresence, motion, useIconSwapTransition } from '@/components/motion'
+import { HeightArrival } from '@/components/motion/height-arrival'
+import { PRESSABLE } from '@/components/ui/press'
 import { Button } from '@/components/ui/button'
 import { Field, FieldLabel } from '@/components/ui/field'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
+import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useTranslations } from '@/i18n'
@@ -86,6 +97,12 @@ export interface AnswerFeedbackProps {
    */
   compact?: boolean
   className?: string
+  /**
+   * The answer is still arriving: the row holds its place, invisible and
+   * inert, so it cannot be rated before it is complete, and fades in at the
+   * settle (`AgentResponse`).
+   */
+  pending?: boolean
 }
 
 /**
@@ -95,38 +112,57 @@ export interface AnswerFeedbackProps {
  */
 const thumbBase = cn(
   'inline-flex size-6 items-center justify-center rounded-md',
-  'text-muted-foreground/70 transition-colors duration-quick ease-out motion-reduce:transition-none',
+  'text-muted-foreground/70',
+  PRESSABLE,
   'hover:bg-accent hover:text-foreground',
   'touch-target',
-  FOCUS_RING,
+  FOCUS_RING
 )
 
 /** Selected: ink fill. Weight and fill, never chroma. */
 const thumbSelected = 'bg-foreground text-background hover:bg-foreground hover:text-background'
 
-export const AnswerFeedback: FC<AnswerFeedbackProps> = ({ messageId, conversationId, compact = false, className }) => {
+export const AnswerFeedback: FC<AnswerFeedbackProps> = ({
+  messageId,
+  conversationId,
+  compact = false,
+  className,
+  pending = false,
+}) => {
   const t = useTranslations('chat')
+  const swap = useIconSwapTransition()
   const projectId = useChatStore((s) => s.projectId)
   const { state, setFeedback } = useAnswerFeedback(messageId, conversationId, projectId)
   const [comment, setComment] = useState('')
+  const [expected, setExpected] = useState('')
+  const receiptRef = useRef<HTMLParagraphElement>(null)
 
   const verdict = state?.verdict ?? null
   const reason = state?.reason ?? null
-  /** The note is the LAST step and only exists once a reason names the problem;
-   *  a persisted comment means the second act is finished, so it collapses. */
-  const showNote = verdict === 'down' && reason !== null && !state?.comment
+  /** The note sits beside the reasons, not behind them; a persisted comment
+   *  means the second act is finished, so it collapses. */
+  const showNote = verdict === 'down' && !state?.comment && !state?.expectedAnswer
   const promptId = `answer-feedback-reason-${messageId}`
   const commentId = `answer-feedback-comment-${messageId}`
+  const expectedId = `answer-feedback-expected-${messageId}`
 
   const handleUp = useCallback(() => {
     setComment('')
+    setExpected('')
     // Toggle-off deletes; anything else is an upsert.
-    setFeedback(verdict === 'up' ? null : { verdict: 'up', reason: null, comment: null })
+    setFeedback(
+      verdict === 'up' ? null : { verdict: 'up', reason: null, comment: null, expectedAnswer: null }
+    )
   }, [verdict, setFeedback])
 
   const handleDown = useCallback(() => {
     setComment('')
-    setFeedback(verdict === 'down' ? null : { verdict: 'down', reason: null, comment: null })
+    setExpected('')
+    setFeedback(
+      verdict === 'down'
+        ? null
+        : { verdict: 'down', reason: null, comment: null, expectedAnswer: null }
+    )
   }, [verdict, setFeedback])
 
   const handleReason = useCallback(
@@ -137,20 +173,33 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({ messageId, conversatio
         verdict: 'down',
         reason: next ? (next as AnswerFeedbackReason) : null,
         comment: state?.comment ?? null,
+        expectedAnswer: state?.expectedAnswer ?? null,
       })
     },
-    [setFeedback, state?.comment],
+    [setFeedback, state?.comment, state?.expectedAnswer]
   )
 
   const handleCommentSubmit = useCallback(
     (event: FormEvent<HTMLFormElement>) => {
       event.preventDefault()
-      const next = comment.trim()
-      if (!next) return
-      setFeedback({ verdict: 'down', reason: reason ?? 'other', comment: next })
+      const nextComment = comment.trim()
+      const nextExpected = expected.trim()
+      if (!nextComment && !nextExpected) return
+      // A note without a chip keeps its reason null: "other" would be a
+      // reason the voter never chose.
+      setFeedback({
+        verdict: 'down',
+        reason,
+        comment: nextComment || null,
+        expectedAnswer: nextExpected || null,
+      })
       setComment('')
+      setExpected('')
+      // The form folds away under the focus; hand it to the receipt, which
+      // says what was just recorded, instead of dropping it on the page.
+      receiptRef.current?.focus({ preventScroll: true })
     },
-    [comment, setFeedback, reason],
+    [comment, expected, setFeedback, reason]
   )
 
   /* The footnote itself. `min-h-6` is reserved so the confirmation swapping in
@@ -161,61 +210,79 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({ messageId, conversatio
     <div
       className={cn(
         'group/feedback flex min-h-6 flex-wrap items-center gap-x-2 gap-y-1 text-xs',
-        compact && className,
+        'duration-base transition-opacity ease-out motion-reduce:transition-none',
+        pending && 'opacity-0',
+        compact && className
       )}
+      inert={pending}
+      aria-hidden={pending || undefined}
     >
-      {verdict === null && (
-        <span className="text-[11px] text-muted-foreground/80 transition-colors duration-quick ease-out group-hover/feedback:text-muted-foreground motion-reduce:transition-none">
+      {/* One slot, two states: the question and the receipt are stacked in the
+          same grid cell and cross-fade, so the slot is as wide as the wider of
+          the two from the first frame and the thumbs beside it never move. */}
+      <span className="grid items-center">
+        <span
+          aria-hidden={verdict !== null || undefined}
+          className={cn(
+            'text-muted-foreground/80 group-hover/feedback:text-muted-foreground col-start-1 row-start-1 text-[11px]',
+            'duration-quick transition-[color,opacity] ease-out motion-reduce:transition-none',
+            verdict !== null && 'opacity-0'
+          )}
+        >
           {t('feedback.question')}
         </span>
-      )}
+        {/* What the vote alone commits, stated once, on the vote's own line. */}
+        <p
+          ref={receiptRef}
+          role="status"
+          tabIndex={-1}
+          className={cn(
+            'text-muted-foreground col-start-1 row-start-1 flex items-center gap-1 text-[11px] outline-none',
+            'duration-quick transition-opacity ease-out motion-reduce:transition-none',
+            verdict === null && 'opacity-0'
+          )}
+        >
+          {verdict !== null && (
+            <>
+              {/* Only the mark moves; the sentence is legible from frame one. */}
+              <motion.span
+                initial={{ opacity: 0, scale: 0.6 }}
+                animate={{ opacity: 1, scale: 1, transition: swap.enter }}
+                className="inline-flex"
+                aria-hidden="true"
+              >
+                <Check className="size-3" />
+              </motion.span>
+              {/* What the press COMMITTED, not gratitude. The vote is persisted
+                  on the press, so this line is the receipt for it — while the
+                  reason and the note below are a second, optional act. Thanking
+                  here read as if the exchange were over, directly under an open
+                  "Was war das Problem?". */}
+              {t('feedback.voteRecorded')}
+            </>
+          )}
+        </p>
+      </span>
       <div className="flex items-center gap-1">
-        <motion.button
+        <button
           type="button"
           onClick={handleUp}
           aria-pressed={verdict === 'up'}
           aria-label={t('feedback.helpfulAria')}
-          whileTap={{ scale: 0.88 }}
-          transition={springPress}
           className={cn(thumbBase, verdict === 'up' && thumbSelected)}
         >
           <ThumbsUp className="size-3.5" aria-hidden="true" />
-        </motion.button>
-        <motion.button
+        </button>
+        <button
           type="button"
           onClick={handleDown}
           aria-pressed={verdict === 'down'}
           aria-label={t('feedback.notHelpfulAria')}
-          whileTap={{ scale: 0.88 }}
-          transition={springPress}
           className={cn(thumbBase, verdict === 'down' && thumbSelected)}
         >
           <ThumbsDown className="size-3.5" aria-hidden="true" />
-        </motion.button>
+        </button>
       </div>
-      {/* What the vote alone commits, stated once, on the vote's own line. */}
-      <p role="status" className="flex items-center gap-1 text-[11px] text-muted-foreground">
-        {verdict !== null && (
-          <>
-            {/* Only the mark moves; the sentence is legible from frame one. */}
-            <motion.span
-              initial={{ opacity: 0, scale: 0.6 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={springSnap}
-              className="inline-flex"
-              aria-hidden="true"
-            >
-              <Check className="size-3" />
-            </motion.span>
-            {/* What the press COMMITTED, not gratitude. The vote is persisted
-                on the press, so this line is the receipt for it — while the
-                reason and the note below are a second, optional act. Thanking
-                here read as if the exchange were over, directly under an open
-                "Was war das Problem?". */}
-            {t('feedback.voteRecorded')}
-          </>
-        )}
-      </p>
     </div>
   )
 
@@ -225,75 +292,97 @@ export const AnswerFeedback: FC<AnswerFeedbackProps> = ({ messageId, conversatio
      on the answer's rather than hanging off the row's right end. `max-w-md`
      bounds the CONTENT rather than the item, so the full width that claims the
      line survives it. */
-  const disclosure = verdict === 'down' && (
-    <div className="w-full animate-in fade-in-0 slide-in-from-top-1 duration-base ease-entrance motion-reduce:animate-none">
-      <div className="flex max-w-md flex-col gap-2 text-xs">
-        <p id={promptId} className="text-[11px] text-muted-foreground">
-          {t('feedback.reasonPrompt')}
-        </p>
-        {/* Exclusive choice, structurally: Radix renders a radiogroup with
+  const disclosure = (
+    <AnimatePresence initial={false}>
+      {verdict === 'down' && (
+        <HeightArrival key="reasons" className="w-full">
+          <div className="flex max-w-md flex-col gap-2 text-xs">
+            <p id={promptId} className="text-muted-foreground text-[11px]">
+              {t('feedback.reasonPrompt')}
+            </p>
+            {/* Exclusive choice, structurally: Radix renders a radiogroup with
             roving-focus arrow keys, so the chips are one tab stop. */}
-        <ToggleGroup
-          type="single"
-          value={reason ?? ''}
-          onValueChange={handleReason}
-          variant="outline"
-          size="sm"
-          aria-labelledby={promptId}
-          className="gap-1.5"
-        >
-          {REASONS.map((key) => (
-            <ToggleGroupItem
-              key={key}
-              value={key}
-              // Selected is the SAME language as the selected thumb: ink fill,
-              // no chroma, unmistakable at a glance in a row of four.
-              className="h-7 px-2.5 text-xs data-[state=on]:border-transparent data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:shadow-2xs"
+            <ToggleGroup
+              type="single"
+              value={reason ?? ''}
+              onValueChange={handleReason}
+              variant="outline"
+              size="sm"
+              aria-labelledby={promptId}
+              className="gap-1.5"
             >
-              {t(`feedback.reasons.${key}`)}
-            </ToggleGroupItem>
-          ))}
-        </ToggleGroup>
+              {REASONS.map((key) => (
+                <ToggleGroupItem
+                  key={key}
+                  value={key}
+                  // Selected is the SAME language as the selected thumb: ink fill,
+                  // no chroma, unmistakable at a glance in a row of four.
+                  className="data-[state=on]:bg-foreground data-[state=on]:text-background data-[state=on]:shadow-2xs h-7 px-2.5 text-xs data-[state=on]:border-transparent"
+                >
+                  {t(`feedback.reasons.${key}`)}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
 
-        {showNote && (
-          <form
-            className="animate-in fade-in-0 slide-in-from-top-1 duration-base ease-entrance motion-reduce:animate-none"
-            onSubmit={handleCommentSubmit}
-          >
-            <Field className="gap-1.5">
-              <FieldLabel htmlFor={commentId} className="text-[11px] font-normal text-muted-foreground">
-                {t('feedback.commentLabel')}
-              </FieldLabel>
-              <Textarea
-                id={commentId}
-                value={comment}
-                onChange={(event) => setComment(event.target.value)}
-                placeholder={t('feedback.commentPlaceholder')}
-                rows={2}
-                maxLength={2000}
-                // 12px because a footnote about an answer must not out-weigh
-                // the answer. The `md:text-xs` that used to sit here was
-                // beating Textarea's `md:text-sm`; that override is now
-                // `pointer-coarse:text-base`, which this deliberately does NOT
-                // undo — a field this small still zooms iOS on focus, and a
-                // comment box is exactly where somebody is typing prose.
-                className="min-h-14 resize-none rounded-lg py-2 text-xs"
-              />
-              {/* Full ink when it will do something, 40% when it will not:
+            <AnimatePresence initial={false}>
+              {showNote && (
+                <HeightArrival key="note">
+                  <form onSubmit={handleCommentSubmit}>
+                    <Field className="gap-1.5">
+                      <FieldLabel
+                        htmlFor={commentId}
+                        className="text-muted-foreground text-[11px] font-normal"
+                      >
+                        {t('feedback.commentLabel')}
+                      </FieldLabel>
+                      <Textarea
+                        id={commentId}
+                        value={comment}
+                        onChange={(event) => setComment(event.target.value)}
+                        placeholder={t('feedback.commentPlaceholder')}
+                        rows={2}
+                        maxLength={2000}
+                        // 12px because a footnote about an answer must not out-weigh
+                        // the answer. The `md:text-xs` that used to sit here was
+                        // beating Textarea's `md:text-sm`; that override is now
+                        // `pointer-coarse:text-base`, which this deliberately does NOT
+                        // undo — a field this small still zooms iOS on focus, and a
+                        // comment box is exactly where somebody is typing prose.
+                        className="min-h-14 resize-none rounded-lg py-2 text-xs"
+                      />
+                      <FieldLabel
+                        htmlFor={expectedId}
+                        className="text-muted-foreground text-[11px] font-normal"
+                      >
+                        {t('feedback.expectedLabel')}
+                      </FieldLabel>
+                      <Input
+                        id={expectedId}
+                        value={expected}
+                        onChange={(event) => setExpected(event.target.value)}
+                        placeholder={t('feedback.expectedPlaceholder')}
+                        maxLength={2000}
+                        className="h-8 rounded-lg text-xs"
+                      />
+                      {/* Full ink when it will do something, 40% when it will not:
                   the difference is a contrast jump, not grey vs. grey. */}
-              <Button
-                type="submit"
-                size="sm"
-                className="h-7 w-fit px-3 text-xs disabled:opacity-40"
-                disabled={comment.trim() === ''}
-              >
-                {t('feedback.commentSubmit')}
-              </Button>
-            </Field>
-          </form>
-        )}
-      </div>
-    </div>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        className="h-7 w-fit px-3 text-xs disabled:opacity-40"
+                        disabled={comment.trim() === '' && expected.trim() === ''}
+                      >
+                        {t('feedback.commentSubmit')}
+                      </Button>
+                    </Field>
+                  </form>
+                </HeightArrival>
+              )}
+            </AnimatePresence>
+          </div>
+        </HeightArrival>
+      )}
+    </AnimatePresence>
   )
 
   // Compact: two siblings, laid out by the meta row that owns them. Standalone:

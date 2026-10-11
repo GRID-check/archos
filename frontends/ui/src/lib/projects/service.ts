@@ -9,7 +9,8 @@
 
 import 'server-only'
 import { getWorkOS } from '@/lib/workos/client'
-import { requireProjectAccess } from '@/lib/authz/projects'
+import { requireProjectAccess, type ProjectPermission } from '@/lib/authz/projects'
+import { CHAT_PERMISSIONS } from '@/lib/authz/chat'
 import { hasPermission, ORG_PERMISSIONS } from '@/lib/authz/permissions'
 import { checkResourcePermission } from '@/lib/authz/resource-check'
 import { recordAuditEvent } from '@/lib/audit/service'
@@ -28,7 +29,27 @@ import type {
   ProjectMemoryItem,
   ProjectMemoryKind,
 } from '@/lib/db/schema'
-import { getProjectOverviewData } from './overview-query'
+import { getProjectOverviewData, type ProjectOverviewReader } from './overview-query'
+import {
+  abschlussProblem,
+  canTransition,
+  isProjectClosed,
+  keptWhenClosed,
+  openToOrganizationWhenClosed,
+  type ProjectOutcome,
+} from './project-status'
+import { currentMonth, dateToMonth, monthToDate, type Month } from './month'
+import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
+import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
+import { memberReader } from '@/lib/documents/visibility'
+import { withServedEvidence } from './memory-evidence'
+import {
+  clearanceOf,
+  customFolderNames,
+  getHiddenFolderIds,
+  purgedFolderDates,
+  readableFolderIdsFor,
+} from '@/lib/authz/folder-access'
 import {
   createProjectMemoryItem,
   deleteProjectMemoryItem,
@@ -37,13 +58,16 @@ import {
 } from './memory-service'
 import {
   deleteProjectRow,
+  findProjectCollectionName,
   findProjectInOrg,
   insertProject,
   listProjectsInOrg,
   renameProjectInOrg,
   restoreProjectIfPending,
+  setProjectStatusInOrg,
   setProjectWorkosResourceId,
   softDeleteProjectAndEnqueue,
+  type ProjectStatusWrite,
 } from './repository'
 
 /**
@@ -64,24 +88,56 @@ export async function listProjects(
   session: AuthorizedSession,
   order: 'newest' | 'oldest' = 'newest'
 ): Promise<Project[]> {
+  return listProjectsHolding(session, ['project:view'], order)
+}
+
+/**
+ * The projects the caller may CHAT in: the reach of the cross-project lookups
+ * (ADR-0094). Pointing the agent at a project's corpus is chatting in it, which
+ * the turn scope gates on `project:chat` (or the legacy `project:edit`) and not
+ * on `project:view` (`collection-scope-request.ts`): a reader gets a project's
+ * documents through the documents API, not the agent. Same bypass, same
+ * fail-closed checks as {@link listProjects}.
+ */
+export async function listChatProjects(
+  session: AuthorizedSession,
+  order: 'newest' | 'oldest' = 'newest'
+): Promise<Project[]> {
+  return listProjectsHolding(session, CHAT_PERMISSIONS, order)
+}
+
+/** The organization's projects on which the caller holds ANY of `permissions`; see {@link listProjects}. */
+async function listProjectsHolding(
+  session: AuthorizedSession,
+  permissions: readonly ProjectPermission[],
+  order: 'newest' | 'oldest'
+): Promise<Project[]> {
   const projects = await listProjectsInOrg(session.organizationId, { order })
   // The same permission-gated bypass `requireProjectAccess` applies, checked the
   // same way — if these two ever disagreed the grid would list projects the
   // detail view then refuses, or hide ones it would have opened.
   if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return projects
 
-  const visible = await Promise.all(
-    projects.map(async (project) => {
+  const holds = async (project: Project): Promise<boolean> => {
+    // A closed project (ADR-0090), decided as `requireProjectAccess` decides it:
+    // only what a closed project still allows is asked, and what is open to the
+    // whole organization (reading, chatting) every member holds.
+    const asked = isProjectClosed(project) ? keptWhenClosed(permissions) : permissions
+    if (asked.length === 0) return false
+    if (isProjectClosed(project) && openToOrganizationWhenClosed(asked)) return true
+    for (const permissionSlug of asked) {
       const allowed = await checkResourcePermission({
         organizationMembershipId: session.organizationMembershipId,
         organizationId: session.organizationId,
-        permissionSlug: 'project:view',
+        permissionSlug,
         resourceExternalId: project.id,
         resourceTypeSlug: 'project',
       })
-      return allowed ? project : null
-    })
-  )
+      if (allowed) return true
+    }
+    return false
+  }
+  const visible = await Promise.all(projects.map(async (project) => ((await holds(project)) ? project : null)))
   return visible.filter((project): project is Project => project !== null)
 }
 
@@ -113,8 +169,19 @@ export async function getProjectsGridData(
 }> {
   const visible = await listProjects(session, order)
   const visibleIds = visible.map((project) => project.id)
+  // A card's number counts what the project's own list shows this viewer, so
+  // the documents in folders they may not read are left out of it (ADR-0088).
+  const hiddenFolderIds = (await Promise.all(visibleIds.map((id) => getHiddenFolderIds(session, id)))).flat()
+  // Nor does it count a held file the viewer neither uploaded nor reviews
+  // (ADR-0086); each project asks its own reviewers.
+  const readers = await Promise.all(visibleIds.map((projectId) => shelfReaderFor(session, { scope: 'project', projectId })))
+  const reviewedProjectIds = visibleIds.filter((_, index) => readers[index].kind === 'reviewer')
   const [documentCounts, viewerActivity] = await Promise.all([
-    countDocumentsByProject(session.organizationId, visibleIds),
+    countDocumentsByProject(session.organizationId, visibleIds, hiddenFolderIds, {
+      kind: 'projects',
+      userId: session.userId,
+      reviewedProjectIds,
+    }),
     lastProjectActivityByUser(session.organizationId, session.userId, visibleIds),
   ])
   return { projects: visible, documentCounts, viewerActivity }
@@ -226,7 +293,9 @@ export async function deleteProject(
   confirmName: string,
   request: Request
 ): Promise<{ purgeAfter: Date }> {
-  await requireProjectAccess(session, projectId, 'project:manage')
+  // A closed project can still be deleted (ADR-0090): deletion is the GDPR
+  // path, and it is soft, with its grace period, exactly as for an active one.
+  await requireProjectAccess(session, projectId, 'project:manage', { evenWhenClosed: true })
 
   const project = await findProjectInOrg(projectId, session.organizationId)
   if (!project) throw new NotFoundError()
@@ -267,13 +336,118 @@ export async function deleteProject(
   return { purgeAfter }
 }
 
+/** A move of the lifecycle as a caller asks for it (ADR-0098). Closing names how and when it ended. */
+export type ProjectStatusChange =
+  | { status: 'active' }
+  | { status: 'paused' }
+  | { status: 'closed'; outcome: ProjectOutcome; endedOn: Month }
+
+/**
+ * Move a project through its lifecycle (ADR-0098): pause, resume, close,
+ * reopen. `project:manage`, asked as if the project were active: it is the one
+ * write a closed project allows. Closing deletes and purges nothing; it makes
+ * the project read-only and opens it to every member of the organization for
+ * reading, with every folder that has its own role list as restricted as before
+ * (ADR-0090). It names the outcome and the Abschluss month, which may not lie
+ * in the future or before the Beginn.
+ *
+ * A move the lifecycle does not have (pausing a closed project, closing a
+ * closed one) is a 409 `invalid-transition`; so is a move that lost a race, so
+ * a double click writes one event. Every move is audited under its own name.
+ */
+export async function setProjectStatus(
+  session: AuthorizedSession,
+  projectId: string,
+  change: ProjectStatusChange,
+  request?: Request,
+  now: Date = new Date()
+): Promise<Project> {
+  await requireProjectAccess(session, projectId, 'project:manage', { evenWhenClosed: true })
+  const current = await findProjectInOrg(projectId, session.organizationId)
+  if (!current) throw new NotFoundError()
+  const from = current.status
+  if (!canTransition(from, change.status)) {
+    throw new ConflictError(`A ${from} project cannot become ${change.status}.`, {
+      reason: 'invalid-transition',
+      from,
+      to: change.status,
+    })
+  }
+
+  const write: ProjectStatusWrite =
+    change.status === 'closed'
+      ? {
+          status: 'closed',
+          at: now,
+          closedBy: session.userId,
+          outcome: change.outcome,
+          endedOn: monthToDate(abschlussOrRefuse(change.endedOn, dateToMonth(current.startedOn), currentMonth(now))),
+        }
+      : change.status === 'paused'
+        ? { status: 'paused', at: now }
+        : { status: 'active' }
+  const project = await setProjectStatusInOrg(projectId, session.organizationId, from, write)
+  if (!project) {
+    throw new ConflictError('The project changed meanwhile.', { reason: 'invalid-transition', from, to: change.status })
+  }
+  if (change.status === 'active') await rearmParkedOneShots(projectId, session.organizationId)
+
+  await recordAuditEvent({
+    organizationId: session.organizationId,
+    actor: { userId: session.userId, email: session.email },
+    // Each move under the name a person would give it. Literals at the call
+    // site, so the audit registry's coverage scan (`schemas.spec.ts`) sees them.
+    action:
+      change.status === 'closed'
+        ? 'project.closed'
+        : change.status === 'paused'
+          ? 'project.paused'
+          : from === 'closed'
+            ? 'project.reopened'
+            : 'project.resumed',
+    targetType: 'project',
+    targetId: projectId,
+    metadata:
+      change.status === 'closed'
+        ? { name: project.name, from, outcome: change.outcome, endedOn: change.endedOn }
+        : { name: project.name, from },
+    request,
+  })
+  return project
+}
+
+/**
+ * The dated one-shots a pause or close retired, due again now that the project
+ * runs (ADR-0098). After the move has committed, so a failure here is logged,
+ * not turned into an error for a move that happened.
+ */
+async function rearmParkedOneShots(projectId: string, organizationId: string): Promise<void> {
+  try {
+    await rearmOneShotsSkippedWhileParked(projectId, organizationId)
+  } catch (error) {
+    console.error('[projects] re-arming one-shots skipped while the project was not active failed:', error)
+  }
+}
+
+/** The Abschluss a close names, or a 400: within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
+function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
+  const problem = abschlussProblem(endedOn, startedOn, thisMonth)
+  if (problem === 'future') {
+    throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
+  }
+  if (problem === 'beforeStart') {
+    throw new BadRequestError('The Abschluss cannot lie before the Beginn.', { reason: 'abschluss-before-beginn' })
+  }
+  return endedOn
+}
+
 /** Restore a soft-deleted project during its grace period. */
 export async function restoreProject(
   session: AuthorizedSession,
   projectId: string,
   request: Request
 ): Promise<void> {
-  await requireProjectAccess(session, projectId, 'project:manage', { includeDeleted: true })
+  await requireProjectAccess(session, projectId, 'project:manage', { includeDeleted: true, evenWhenClosed: true })
 
   const restored = await restoreProjectIfPending(projectId, session.organizationId)
   if (!restored) {
@@ -292,9 +466,26 @@ export async function restoreProject(
   })
 }
 
+/**
+ * What the overview's count, size and recent list leave out for this session:
+ * the folders hidden from it (ADR-0087) and the held files it neither
+ * uploaded nor reviews (ADR-0086). One answer for every page that renders the
+ * overview data, so a second reader dimension cannot reach one and miss the other.
+ */
+export async function projectOverviewReader(
+  session: AuthorizedSession,
+  projectId: string
+): Promise<ProjectOverviewReader> {
+  return {
+    hiddenFolderIds: await getHiddenFolderIds(session, projectId),
+    reader: await shelfReaderFor(session, { scope: 'project', projectId }),
+  }
+}
+
 export async function getProjectOverview(session: AuthorizedSession, projectId: string) {
   await requireProjectAccess(session, projectId, 'project:view')
-  const data = await getProjectOverviewData(projectId, session.organizationId)
+  const reader = await projectOverviewReader(session, projectId)
+  const data = await getProjectOverviewData(projectId, session.organizationId, reader)
   if (!data) throw new NotFoundError('Project not found')
   return data
 }
@@ -305,16 +496,85 @@ export type ProjectMemoryItemPatch = Partial<
 >
 
 /**
+ * A memory item as the panel receives it. A restricted item (ADR-0087) also
+ * names the folders it is restricted to, for the lock; it only reaches a reader
+ * already cleared for all of them.
+ */
+export type ProjectMemoryListItem = ProjectMemoryItem & {
+  restrictedFolderNames?: string[]
+  /**
+   * When a folder the note came from was purged (ADR-0088): the panel's
+   * „Quelle gelöscht am …". The earliest, when several were.
+   */
+  sourceDeletedAt?: string
+}
+
+/**
+ * Every folder of the project (tombstones included) this session may read now
+ * (ADR-0088): what restricted memory is shown against. A project not found in
+ * the organization reads nothing restricted.
+ */
+export async function memoryClearance(
+  session: AuthorizedSession,
+  projectId: string
+): Promise<{ cleared: readonly string[] }> {
+  const projectCollection = await findProjectCollectionName(projectId, session.organizationId)
+  if (!projectCollection) return { cleared: [] }
+  return { cleared: await readableFolderIdsFor(session.organizationId, projectId, await clearanceOf(session, projectId)) }
+}
+
+/** Name the folders behind each restricted item; open items pass through untouched. */
+async function labelRestrictions(
+  session: AuthorizedSession,
+  projectId: string,
+  items: ProjectMemoryItem[]
+): Promise<ProjectMemoryListItem[]> {
+  if (!items.some((item) => (item.restrictedFolderIds?.length ?? 0) > 0)) return items
+  const [names, purgedAt] = await Promise.all([
+    customFolderNames(session.organizationId, projectId),
+    purgedFolderDates(session.organizationId, projectId),
+  ])
+  return items.map((item) => {
+    if (!item.restrictedFolderIds || item.restrictedFolderIds.length === 0) return item
+    const deleted = item.restrictedFolderIds
+      .flatMap((folderId) => {
+        const at = purgedAt.get(folderId)
+        return at ? [at.toISOString()] : []
+      })
+      .sort()
+    return {
+      ...item,
+      restrictedFolderNames: item.restrictedFolderIds
+        .map((folderId) => names.get(folderId))
+        .filter((name): name is string => name !== undefined),
+      ...(deleted.length > 0 ? { sourceDeletedAt: deleted[0] } : {}),
+    }
+  })
+}
+
+/**
  * List a project's memory items, including the org-wide items that apply to
- * every project in the org.
+ * every project in the org. A restricted item (ADR-0088) is listed only for a
+ * session that may read all of its source folders now; for anyone else it is absent.
  */
 export async function getProjectMemory(
   session: AuthorizedSession,
   projectId: string,
   options: { includeArchived?: boolean; sourceConversationId?: string } = {}
-): Promise<ProjectMemoryItem[]> {
+): Promise<ProjectMemoryListItem[]> {
   await requireProjectAccess(session, projectId, 'project:view')
-  return listProjectMemory(projectId, { ...options, organizationId: session.organizationId })
+  const { cleared } = await memoryClearance(session, projectId)
+  const listed = await listProjectMemory(projectId, {
+    ...options,
+    organizationId: session.organizationId,
+    readableFolderIds: cleared,
+  })
+  // An item's evidence names only the files this person may open now (memory-evidence.ts).
+  const items = await withServedEvidence(session.organizationId, listed, {
+    reader: memberReader(session.userId),
+    clearanceIn: () => cleared,
+  })
+  return labelRestrictions(session, projectId, items)
 }
 
 /** Manually add a memory item — user-authored and user-confirmed by definition. */
@@ -350,7 +610,13 @@ export async function editProjectMemoryItem(
   patch: ProjectMemoryItemPatch
 ): Promise<ProjectMemoryItem> {
   await requireProjectAccess(session, projectId, ['project:memory:write', 'project:edit'])
-  const item = await updateProjectMemoryItem({ projectId }, itemId, patch)
+  // A restricted item the session is not cleared for answers like a missing one.
+  const { cleared } = await memoryClearance(session, projectId)
+  const item = await updateProjectMemoryItem(
+    { projectId, organizationId: session.organizationId, readableFolderIds: cleared },
+    itemId,
+    patch
+  )
   if (!item) throw new NotFoundError()
   return item
 }
@@ -361,6 +627,10 @@ export async function removeProjectMemoryItem(
   itemId: string
 ): Promise<void> {
   await requireProjectAccess(session, projectId, ['project:memory:write', 'project:edit'])
-  const deleted = await deleteProjectMemoryItem({ projectId }, itemId)
+  const { cleared } = await memoryClearance(session, projectId)
+  const deleted = await deleteProjectMemoryItem(
+    { projectId, organizationId: session.organizationId, readableFolderIds: cleared },
+    itemId
+  )
   if (!deleted) throw new NotFoundError()
 }

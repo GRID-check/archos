@@ -1,7 +1,7 @@
 ---
 improvements:
   - >
-    Each line of Das Wichtigste now carries what you would write down, the
+    Each line of "Das Wichtigste" now shows what you would write down: the
     number, the class or the deadline. Expanded, it shows the reference, the
     derivation or the case in which it does not apply.
 fixes:

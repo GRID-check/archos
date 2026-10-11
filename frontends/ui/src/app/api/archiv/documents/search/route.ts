@@ -1,12 +1,10 @@
 /**
  * Archiv API — document-centric semantic search over the org's shared Archiv.
- * Thin handler; all logic lives in `@/lib/archiv/service`. Feature-gated by the
- * dark-launch `organization-archiv` flag (ADR-0024), same as the Archiv list.
+ * Thin handler; all logic lives in `@/lib/archiv/service` (ADR-0024).
  */
 
 import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { FEATURE_FLAGS, requireFeature } from '@/lib/authz/feature-flags'
 import { searchArchivDocuments } from '@/lib/archiv/service'
 
 const searchBodySchema = z.object({
@@ -16,8 +14,6 @@ const searchBodySchema = z.object({
 
 export const POST = apiRoute(
   async ({ session, request }) => {
-    const gated = requireFeature(session, FEATURE_FLAGS.orgArchiv)
-    if (gated) return gated
     const { q, topK } = await parseJsonBody(request, searchBodySchema)
     return searchArchivDocuments(session, q, topK)
   },

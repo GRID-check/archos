@@ -1,5 +1,5 @@
 ---
 fixes:
   - >
-    Quotes from a passage Piloti opened directly now stay in the answer. They
-    used to fail the check, leaving the answer without evidence.
+    Quotes from a passage Piloti opened directly now stay in the answer.
+    Before, a check rejected them and left the answer without evidence.

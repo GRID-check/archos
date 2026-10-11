@@ -12,6 +12,17 @@
  * is a defect in one locale or both.
  */
 export const collaboration = {
+  /**
+   * A chat shared with someone who can no longer read a folder it drew on
+   * (ADR-0088). The title is neutral because the real one is model-written from
+   * the chat, restricted content included; nothing here names a folder.
+   */
+  rightsLost: {
+    neutralTitle: 'Shared chat',
+    title: 'You no longer have the rights to view this chat',
+    description:
+      'Access to a folder this chat draws on has changed since it was shared. Ask someone who can read those folders, or your administrator.',
+  },
   sharing: {
     title: 'Share',
     /** Button in the chat toolbar. */
@@ -69,7 +80,16 @@ export const collaboration = {
       needsProjectAccess: 'Not in this project yet',
       needsProjectAccessHint:
         'Add them to the project first. Sharing a chat never grants access to the project itself.',
+      /**
+       * Disabled row for someone who cannot read every folder the chat drew on
+       * (ADR-0088). Never names the folder: the sharer may not be cleared for
+       * it either, and the server's refusal stays the authority.
+       */
+      lacksFolderAccess: 'Has no access to a folder this chat draws on',
+      lacksFolderAccessBadge: 'No access',
     },
+    /** On the roster: someone still shared with who can no longer read what the chat drew on. */
+    lostAccess: 'No longer has access',
     roleHeading: 'Access level',
     manageFor: 'Manage access: {name}',
     remove: 'Remove access',
@@ -89,6 +109,24 @@ export const collaboration = {
       organizationMembershipRequired: 'That person is not a member of this organization.',
       rateLimited: 'Too many sharing changes. Please wait a few minutes and try again.',
       rosterFull: 'This conversation already has the maximum number of people. Remove someone before inviting more.',
+      restrictedContent:
+        '{name} may not read every folder with restricted access this conversation draws on, so it cannot be shared with them.',
+      restrictedContentFolders:
+        '{name} may not read every folder with restricted access this conversation draws on ({folders}), so it cannot be shared with them.',
+      restrictedContentSomeone:
+        'This person may not read every folder with restricted access this conversation draws on, so it cannot be shared with them.',
+      restrictedContentSelf:
+        'You may not read every folder with restricted access this conversation draws on, so you cannot take it over.',
+      restrictedContentProject:
+        'This conversation draws on a folder with restricted access, so it cannot be made visible to the whole project. Share it with individual people who may read that folder instead.',
+      crossProjectContent:
+        '{name} may not open every other project this conversation draws on, so it cannot be shared with them.',
+      crossProjectContentSomeone:
+        'This person may not open every other project this conversation draws on, so it cannot be shared with them.',
+      crossProjectContentSelf:
+        'You may not open every other project this conversation draws on, so you cannot take it over.',
+      crossProjectContentProject:
+        'This conversation draws on content from other projects, so it cannot be made visible to the whole project. Share it with individual people who may open those projects instead.',
       loadFailed: 'Sharing settings could not be loaded.',
       saveFailed: 'That change could not be saved.',
       tryAgain: 'Try again',
@@ -311,6 +349,12 @@ export const collaboration = {
      */
     bodyUnavailable: 'This conversation is no longer available to you.',
     inertHint: 'You no longer have access to this.',
+    /**
+     * The next move on a new revision filed under another name: see the two side
+     * by side. Opens the file preview with the comparison open.
+     */
+    compareFassungen: 'Compare revisions',
+    compareFassungenLabel: 'Compare the new and the older revision of “{subject}”',
     empty: {
       needsMeTitle: 'Nothing needs you',
       needsMeDescription: 'When a colleague asks for your input, it shows up here.',
@@ -389,7 +433,7 @@ export const collaboration = {
         body: 'from {subject} — open it to triage.',
       },
       storageQuotaWarning: {
-        title: 'Your organisation is running out of storage',
+        title: 'Your organization is running out of storage',
         body: '{subject} of the storage quota is in use. Once it is full, uploads will start failing — delete documents you no longer need, or ask whoever runs Piloti for you to raise the quota.',
       },
       /**
@@ -401,9 +445,36 @@ export const collaboration = {
         title: '{actor} assigned {subject} to you',
         body: 'You are responsible for this file.',
       },
+      // ADR-0086: everything an upload brought in has been read. {subject}
+      // is where it went (a project name, "Büroablage" or "Chat").
+      uploadCompleted: {
+        title: 'Your upload has been read',
+        body: '{subject}: open the summary to see what arrived.',
+        bodyNoSubject: 'Open the summary to see what arrived.',
+      },
+      // ADR-0086: the content check held files back.
+      documentQuarantined: {
+        titleOne: '1 file is waiting in quarantine',
+        titleMany: '{count} files are waiting in quarantine',
+        titleNone: 'Files in quarantine',
+        body: 'No model has read them. Review them: allow or delete.',
+      },
+      documentReleaseRequested: {
+        title: '{actor} asks you to review “{subject}”',
+        body: 'The file is in quarantine. Look at it, then allow or delete it.',
+      },
       jobCompleted: {
         title: '"{subject}" is done',
         body: 'Piloti ran the job. The result is in the project under Automation.',
+      },
+      // An Outlook archive was imported. {subject} is the archive's file name.
+      mailImportCompleted: {
+        title: '“{subject}” has been imported',
+        body: 'Piloti filed the emails and their attachments in the project under E-Mail-Import.',
+      },
+      mailImportFailed: {
+        title: 'The import of “{subject}” stopped',
+        body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
       jobFailed: {
         title: '"{subject}" failed',
@@ -415,11 +486,21 @@ export const collaboration = {
         title: '"{subject}" is waiting for you',
         body: 'Piloti has a question about this task. Answer it in the thread and the run carries on.',
       },
-      // A version of a document is waiting for a decision (ADR-0054).
+      // A revision of a document is waiting for a decision (ADR-0054).
       // {subject} is the document, {actor} whoever submitted it.
       documentReviewRequested: {
         title: '{actor} asked you to review {subject}',
-        body: 'A new version is waiting for your approval.',
+        body: 'A new revision is waiting for your approval.',
+      },
+      // A newer revision (Fassung) of a document you follow, as a sentence about
+      // the person who uploaded it. {actor} is that person, {subject} the
+      // document you follow (without its extension). What changed is the
+      // excerpt below; only without one does `bodyNoExcerpt` say where to look.
+      // `titleNoActor` when nobody in particular did it.
+      documentNewFassung: {
+        title: '{actor} uploaded a new revision of “{subject}”',
+        titleNoActor: 'New revision of “{subject}”',
+        bodyNoExcerpt: 'Open the revision to see what changed.',
       },
       unknown: {
         title: 'Something happened',
@@ -430,7 +511,7 @@ export const collaboration = {
     unknownActor: 'Someone',
     untitledConversation: 'Untitled conversation',
     /**
-     * Triage of a version waiting for a decision, inline on the row: the three
+     * Triage of a revision waiting for a decision, inline on the row: the three
      * decisions without leaving the inbox. Approving carries the same minimum
      * ceremony as on the file (explicit confirmation, never one click); the
      * two refusals carry their words, as the transition table requires.
@@ -441,23 +522,23 @@ export const collaboration = {
       reject: 'Reject',
       changesLabel: 'What needs to change',
       reasonLabel: 'Reason for rejection',
-      approveConfirm: 'I release this version',
-      // The signature mirrors the file pane: which stand is released (the row
-      // names the document, the version number and when the round opened — the
-      // number is required, nothing is released without it) and who acts when.
+      approveConfirm: 'I approve this revision',
+      // The signature mirrors the file pane: which revision is approved (the row
+      // names the document, the revision number and when the round opened — the
+      // number is required, nothing is approved without it) and who acts when.
       // No viewer name is known here, so the acting line is always the
       // date-only form; who asked is already in the title.
-      approveStand: '{subject} · version {number} · as of {date}',
+      approveStand: '{subject} · revision {number} · as of {date}',
       approveActing: 'Acting: {date}',
-      standFailed: 'The current version could not be read — approval is blocked until it is.',
+      standFailed: 'The current revision could not be read — approval is blocked until it is.',
       retry: 'Try again',
       send: 'Send',
       cancel: 'Cancel',
       open: 'Open file',
       decided: 'Decision sent — refreshing.',
       failed: 'That did not go through. Nothing has changed.',
-      stale: 'This has moved on — the current version is in the file.',
-      reload: 'Open current version',
+      stale: 'Someone decided first. The current revision is in the file.',
+      reload: 'Open current revision',
     },
   },
 

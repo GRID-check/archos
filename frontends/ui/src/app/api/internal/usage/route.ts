@@ -10,6 +10,7 @@ import { COST_SOURCES, USAGE_ACTIVITIES } from '@/lib/db/schema'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withTenant } from '@/lib/db/tenant-context'
 import { recordUsageEvents } from '@/lib/budgets/service'
+import { announceBudgetThresholds } from '@/lib/budgets/budget-events'
 
 const usageEventSchema = z.object({
   model: z.string().max(200).nullable().optional(),
@@ -29,6 +30,8 @@ const usageEventSchema = z.object({
     .regex(/^[a-z][a-z0-9_]{0,63}$/)
     .nullable()
     .optional(),
+  /** Seconds of audio a transcription call processed (voice dictation). */
+  audioSeconds: z.number().min(0).max(3600).finite().nullable().optional(),
 })
 
 const usageBatchSchema = z.object({
@@ -39,7 +42,7 @@ const usageBatchSchema = z.object({
   jobId: z.string().max(255).nullable().optional(),
   /** The chat answer the batch's spend belongs to (`turn.response.answer_message_id`). */
   messageId: z.string().max(128).nullable().optional(),
-  /** The kind of work the whole batch served (`ingest` for a document ingestion job). */
+  /** The kind of work the whole batch served (`ingest`, `dictation`). */
   activity: z.enum(USAGE_ACTIVITIES).nullable().optional(),
   events: z.array(usageEventSchema).min(1).max(100),
 })
@@ -78,9 +81,19 @@ export const POST = internalApiRoute(
         costUsd: event.costUsd.toFixed(8),
         costSource: event.costSource,
         isByok: event.isByok ?? null,
+        audioSeconds: event.audioSeconds == null ? null : event.audioSeconds.toFixed(2),
       }))
       )
     )
+    // `budget_threshold_crossed` for PostHog (ADR-0100): the ledger just grew,
+    // so this is the moment a limit can have been crossed. Not awaited and
+    // never throwing, so the tracker's flush returns exactly as fast as before,
+    // and it reads nothing at all while PostHog is off.
+    void announceBudgetThresholds({
+      organizationId: batch.organizationId,
+      userId: batch.userId ?? null,
+      projectId: batch.projectId ?? null,
+    })
     return { recorded }
   },
   { status: 202, tenancy: { fromPayload: 'body.organizationId' } }

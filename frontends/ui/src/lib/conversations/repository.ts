@@ -14,12 +14,17 @@
 import 'server-only'
 import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import type { DbExecutor } from '@/lib/db/executor'
 import { stripJsonNullBytes } from '@/lib/text/jsonb'
 import {
+  answerFeedback,
   conversationReads,
+  conversationRestrictedFolders,
+  conversationSourceProjects,
   conversations,
   deletionQueue,
   messages,
+  projects,
   resourceShares,
   type Conversation,
   type ConversationRead,
@@ -298,6 +303,11 @@ export async function conversationIdsExisting(ids: readonly string[]): Promise<S
 export async function findConversationTenancy(
   conversationId: string,
 ): Promise<Pick<Conversation, 'organizationId' | 'projectId' | 'visibility' | 'createdBy' | 'deletedAt'> | null> {
+  // No uuid guard here, unlike `findProjectTenancy`: `conversations.id` is TEXT
+  // and every id the app mints is `s_<uuid with underscores>`, which `isUuid`
+  // rejects. The guard that stood here (#813) answered null for every real
+  // conversation, so sharing 404'd and the WebSocket conversation gate passed
+  // everything as "not created yet". A text column cannot throw 22P02.
   const db = getDb()
   const [row] = await db
     .select({
@@ -321,9 +331,9 @@ export async function updateConversationVisibilityInOrg(
   conversationId: string,
   organizationId: string,
   visibility: ResourceVisibility,
+  executor: DbExecutor = getDb(),
 ): Promise<Conversation | null> {
-  const db = getDb()
-  const [row] = await db
+  const [row] = await executor
     .update(conversations)
     .set({ visibility, updatedAt: new Date() })
     .where(and(eq(conversations.id, conversationId), eq(conversations.organizationId, organizationId)))
@@ -490,15 +500,66 @@ export async function recordConversationErased(
 }
 
 /**
- * Delete a conversation (messages cascade). Tenant isolation lives in the
- * WHERE clause — deleting by id alone would let any signed-in user delete
- * another org's conversation by guessing ids.
+ * Delete a conversation (messages cascade), the votes cast on its answers, and
+ * the record of the restricted folders and other projects it drew on. Tenant
+ * isolation lives in the WHERE clause — deleting by id alone would let any
+ * signed-in user delete another org's conversation by guessing ids.
+ *
+ * The votes go with the chat because they are its words: a down-vote's comment
+ * and expected answer quote the answer and often the question, and
+ * `answer_feedback` has no foreign key to reach it (a vote must not race a
+ * conversation row that the client creates asynchronously). Left behind they
+ * were erased from nowhere, in a table the platform team reads. A vote is found
+ * by the conversation it names, or by the message id of an answer the chat holds
+ * (a vote cast before the row existed may carry no conversation); the second
+ * lookup needs the messages, so the votes are deleted BEFORE the row cascades
+ * them away. A retry after the row is gone finds the first form again.
+ *
+ * What stays, on purpose: `message_restricted_use` marks (ids only, no text,
+ * and the runtime role may not delete one; ADR-0093) and
+ * `platform_lesson_reports` (anonymised canonical summary and a pseudonymous
+ * org hash; its `feedback_id` then points at nothing, exactly as after a
+ * retracted vote, which that table was built to survive).
  */
 export async function deleteConversationInOrg(conversationId: string, organizationId: string): Promise<void> {
   const db = getDb()
+  // One transaction for the two deletes that must stand or fall together: a
+  // legal-hold trigger (GLH01) can refuse the row, and the votes must not have
+  // been erased for a chat that stays.
+  await db.transaction(async (tx) => {
+    await tx
+      .delete(answerFeedback)
+      .where(
+        and(
+          eq(answerFeedback.organizationId, organizationId),
+          or(
+            eq(answerFeedback.conversationId, conversationId),
+            sql`${answerFeedback.messageId} in (select ${messages.id}::text from ${messages} where ${messages.conversationId} = ${conversationId} and ${messages.organizationId} = ${organizationId})`
+          )
+        )
+      )
+    await tx
+      .delete(conversations)
+      .where(and(eq(conversations.id, conversationId), eq(conversations.organizationId, organizationId)))
+  })
+  // The record has no foreign key (a first turn runs before the row exists),
+  // so it goes here, after the row it describes.
   await db
-    .delete(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.organizationId, organizationId)))
+    .delete(conversationRestrictedFolders)
+    .where(
+      and(
+        eq(conversationRestrictedFolders.organizationId, organizationId),
+        eq(conversationRestrictedFolders.conversationId, conversationId),
+      ),
+    )
+  await db
+    .delete(conversationSourceProjects)
+    .where(
+      and(
+        eq(conversationSourceProjects.organizationId, organizationId),
+        eq(conversationSourceProjects.conversationId, conversationId),
+      ),
+    )
 }
 
 /**
@@ -524,6 +585,9 @@ export async function deleteConversationInOrg(conversationId: string, organizati
  * profile patch is not proposed again next turn (ADR-0030's open question).
  * Tenant-scoped through the conversation's organization, and bounded — a
  * project's whole history of decisions is not what the next turn needs.
+ * Conversations that drew on a restricted folder
+ * (`conversation_restricted_folders`) are left out: their cards may restate
+ * it, and this block is project-wide.
  */
 export async function listRecentMessagesWithCardDecisions(
   projectId: string,
@@ -541,6 +605,14 @@ export async function listRecentMessagesWithCardDecisions(
         eq(conversations.organizationId, organizationId),
         isNull(conversations.deletedAt),
         sql`${messages.metadata} ? 'cardInteractions'`,
+        // A conversation that drew on a restricted folder (ADR-0087) keeps its
+        // proposals to itself: the block is read into every member's digest,
+        // and a card's words can carry what a restricted folder said.
+        sql`not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})`,
+        // Nor does one that drew on another project still restricting its
+        // readers (ADR-0094): its cards can restate what that project's
+        // documents said. A project closed now is read by the whole office.
+        sql`not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))`,
       ),
     )
     .orderBy(desc(messages.createdAt), desc(messages.id))
@@ -747,6 +819,44 @@ export async function writeMessageContent(
     const [row] = await tx
       .update(messages)
       .set({ content, metadata: stripJsonNullBytes(merged) })
+      .where(scope)
+      .returning()
+    return row ?? null
+  })
+}
+
+/** A message's new content and whole metadata, or null to leave the row as it is. */
+export type MessageRevision = (existing: Message) => { content: string; metadata: Record<string, unknown> } | null
+
+/**
+ * Rewrite one message from what is stored: `revise` reads the row under its
+ * lock and returns the content and metadata to write, or null to write
+ * nothing (the stored row is returned).
+ *
+ * For a writer whose new content is a function of the stored one: the cut of
+ * a stopped answer (`cutStoppedAnswer`), which may only ever shorten the text
+ * the row holds, so it must read that text inside the transaction that writes
+ * it. Same lock, same conversation scope and the same NUL stripping as
+ * `writeMessageContent`. Returns null when the message is not in that
+ * conversation; an error `revise` throws rolls the transaction back.
+ */
+export async function reviseMessage(
+  conversationId: string,
+  messageId: string,
+  revise: MessageRevision,
+): Promise<Message | null> {
+  const db = getDb()
+  const scope = and(eq(messages.id, messageId), eq(messages.conversationId, conversationId))
+
+  return db.transaction(async (tx) => {
+    const [existing] = await tx.select().from(messages).where(scope).limit(1).for('update')
+    if (!existing) return null
+
+    const revision = revise(existing)
+    if (!revision) return existing
+    const [row] = await tx
+      .update(messages)
+      .set({ content: revision.content, metadata: stripJsonNullBytes(revision.metadata) })
       .where(scope)
       .returning()
     return row ?? null

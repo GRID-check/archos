@@ -13,8 +13,8 @@ import { baseStackConfig, langfuseStackConfig } from "../test-support/stack-conf
  *   - A collector exporting to the wrong path 404s inside the exporter. Every
  *     pod is Ready; Langfuse is simply empty.
  *   - A missing `LANGFUSE_OTLP_AUTH` env with the exporter still configured
- *     stops the COLLECTOR from starting — taking the Aspire dashboard's
- *     telemetry down with it, for a tier nobody was looking at yet.
+ *     stops the COLLECTOR from starting — taking every export down with it,
+ *     for a tier nobody was looking at yet.
  *   - Two containers both running migrations contend on an advisory lock; the
  *     loser blocks until its startup probe gives up, so a deploy fails on a
  *     probe timeout rather than on anything naming migrations.
@@ -90,11 +90,28 @@ async function s3Identities(): Promise<Array<{ name: string; actions: string[] }
   return JSON.parse(data["s3.json"]).identities;
 }
 
-/** Env of the first container of a Deployment, as a plain key→value map. */
-async function containerEnv(name: string): Promise<Record<string, unknown>> {
-  const spec = (await resolve(find("kubernetes:apps/v1:Deployment", name).inputs.spec)) as any;
+/** Env of the first container of a Deployment (or StatefulSet), as a plain key→value map. */
+async function containerEnv(
+  name: string,
+  type = "kubernetes:apps/v1:Deployment",
+): Promise<Record<string, unknown>> {
+  const spec = (await resolve(find(type, name).inputs.spec)) as any;
   const env = spec.template.spec.containers[0].env as Array<{ name: string; value?: string; valueFrom?: unknown }>;
   return Object.fromEntries(env.map((e) => [e.name, e.value ?? e.valueFrom]));
+}
+
+/** The rollout-checksum annotation on a workload's pod template. */
+async function podChecksum(name: string, type = "kubernetes:apps/v1:Deployment"): Promise<string> {
+  const spec = (await resolve(find(type, name).inputs.spec)) as any;
+  const annotations = (spec.template.metadata.annotations ?? {}) as Record<string, string>;
+  const key = Object.keys(annotations).find((k) => /checksum/i.test(k));
+  if (!key) throw new Error(`${name} has no checksum annotation`);
+  return annotations[key];
+}
+
+/** The `app.kubernetes.io/name` of every caller a NetworkPolicy's first ingress rule admits. */
+function callers(spec: any): string[] {
+  return (spec.ingress[0].from as any[]).map((f) => f.podSelector.matchLabels["app.kubernetes.io/name"]).sort();
 }
 
 describe("with the Langfuse tier enabled", () => {
@@ -120,26 +137,26 @@ describe("with the Langfuse tier enabled", () => {
   });
 
   describe("collector fan-out", () => {
-    it("adds Langfuse to the EXISTING traces pipeline, keeping Aspire on it", () => {
-      // Both, not either. The dashboard is the live pane and Langfuse is the
-      // durable store; a change that quietly replaced one with the other would
-      // still look like "traces are working".
+    it("gives the traces pipeline to Langfuse alone", () => {
       expect(collectorConfig).toMatch(
-        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire, otlp_http\/langfuse\]/,
+        /traces:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/langfuse\]/,
       );
     });
 
-    it("leaves the logs and metrics pipelines alone", () => {
+    it("sends it no logs and no metrics", () => {
       // Langfuse ingests traces. Pointing logs at it would be silently
-      // discarded volume — Langfuse's OTLP receiver is a traces endpoint.
-      expect(collectorConfig).toMatch(/logs:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]/);
-      expect(collectorConfig).toMatch(/metrics:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[memory_limiter, batch\]\s*\n\s*exporters: \[otlp_http\/aspire\]/);
+      // discarded volume — Langfuse's OTLP receiver is a traces endpoint. Logs
+      // go to PostHog (on by default) or end in the nop exporter, and nothing
+      // consumes metrics at all (collector-gate.spec.ts).
+      expect(collectorConfig).not.toMatch(/\n    logs[^:\n]*:\s*\n\s*receivers: \[otlp\]\s*\n\s*processors: \[[^\]]*\]\s*\n\s*exporters: \[[^\]]*langfuse/);
+      expect(collectorConfig).toMatch(/\n    logs[^:\n]*:\s*\n/);
+      expect(collectorConfig).not.toMatch(/\n    metrics:/);
     });
 
     it("uses the component's CURRENT type id, not its deprecated alias", () => {
       // Both `otlp_http` and `otlphttp` resolve today, so nothing fails if this
       // drifts — until the deprecated alias is removed upstream and the
-      // collector refuses to start, taking the dashboard's telemetry with it.
+      // collector refuses to start, taking every export with it.
       // Upstream is explicit: `Type = MustNewType("otlp_http")`,
       // `DeprecatedType = MustNewType("otlphttp")`.
       expect(collectorConfig).toContain("otlp_http/langfuse:");
@@ -186,21 +203,21 @@ describe("with the Langfuse tier enabled", () => {
       expect(Object.keys(spec.template.metadata.annotations ?? {}).join()).toMatch(/checksum/i);
     });
 
-    it("bounds the Langfuse queue so an outage cannot starve the dashboard", () => {
-      // Both exporters share one pipeline, so unbounded buffering on one of
-      // them becomes `memory_limiter` back-pressure on the other.
+    it("bounds the Langfuse queue so an outage cannot grow the collector without limit", () => {
+      // Unbounded buffering behind a slow Langfuse becomes `memory_limiter`
+      // back-pressure on the whole pipeline.
       expect(collectorConfig).toMatch(/sending_queue:\s*\n\s*enabled: true\s*\n\s*queue_size: 2000/);
     });
   });
 
   describe("migrations", () => {
-    it("dual-writes during the v4 migration, on both containers alike", async () => {
-      // `dual` keeps v3's tables written, which is the rollback path; the
-      // cutover to `events_only` is a deliberate config change, never a default.
+    it("writes v4's events table only, on both containers alike", async () => {
+      // v3's tables are no longer written: nothing reads them, and a write mode
+      // that differs between web and worker would split the data.
       for (const name of ["langfuse-web", "langfuse-worker"]) {
         const env = await containerEnv(name);
-        expect(env.LANGFUSE_MIGRATION_V4_WRITE_MODE).toBe("dual");
-        expect(env.LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR).toBe("dual_write");
+        expect(env.LANGFUSE_MIGRATION_V4_WRITE_MODE).toBe("events_only");
+        expect(env.LANGFUSE_MIGRATION_V4_NATIVE_OTEL_BEHAVIOUR).toBe("direct");
         expect(env.LANGFUSE_BACKGROUND_MIGRATION_V4_ENABLE_HISTORIC_BACKFILL).toBe("false");
       }
     });
@@ -245,10 +262,11 @@ describe("with the Langfuse tier enabled", () => {
     // Both Dockerfiles build their runtime user at `ARG UID=1001` and chown
     // /app to it. `runAsUser` OVERRIDES the image's USER, so 1000 — the value
     // every other workload in this repo uses — would run the process as an
-    // identity owning none of its own files. And it cannot be omitted: the
-    // images name their user (`nextjs` / `expressjs`) rather than numbering it,
-    // and `runAsNonRoot` against a non-numeric image user makes the kubelet
-    // refuse the pod outright.
+    // identity owning none of its own files. Kept explicit even though 4.56.0
+    // switched to a numeric `USER 1001`: before that the images named their
+    // user (`nextjs` / `expressjs`), and `runAsNonRoot` against a non-numeric
+    // image user makes the kubelet refuse the pod outright. Pinning the uid
+    // here keeps a rollback to an older digest bootable.
     it.each(["langfuse-web", "langfuse-worker"])("runs %s as the uid its image owns", async (name) => {
       const spec = (await resolve(
         find("kubernetes:apps/v1:Deployment", name).inputs.spec,
@@ -372,6 +390,26 @@ describe("with the Langfuse tier enabled", () => {
       );
     });
 
+    // Langfuse's own PostHog integration runs inside the worker: an hourly job
+    // that POSTs to the configured PostHog host (`eu.i.posthog.com`), with the
+    // host and key saved in Langfuse's project settings and not in any env this
+    // program sets. So there is no egress rule to write for it, and one rule is
+    // enough to break it with every pod Ready: an `Egress` policy selecting the
+    // worker would silently cut the export. Egress is open by design
+    // (network-policies.ts); this holds that line for the one pod that needs it.
+    it("leaves the worker's egress open so the PostHog export can reach its host", async () => {
+      const policies = RESOURCES.filter((r) => r.type === "kubernetes:networking.k8s.io/v1:NetworkPolicy");
+      expect(policies.length).toBeGreaterThan(0);
+      for (const policy of policies) {
+        const spec = (await resolve(policy.inputs.spec)) as any;
+        const selectsWorker =
+          spec.podSelector?.matchLabels?.["app.kubernetes.io/name"] === "langfuse-worker" ||
+          // The wholesale allow selects everyone except a NotIn list; it is Ingress-only.
+          spec.podSelector?.matchExpressions !== undefined;
+        if (selectsWorker) expect(spec.policyTypes, policy.name).not.toContain("Egress");
+      }
+    });
+
     it("names the only two callers ClickHouse has", async () => {
       const spec = (await resolve(
         find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-langfuse-to-clickhouse")
@@ -388,6 +426,18 @@ describe("with the Langfuse tier enabled", () => {
     it("lets the collector and the edge reach the web tier", () => {
       expect(has("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-collector-to-langfuse")).toBe(true);
       expect(has("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-edge-to-langfuse")).toBe(true);
+    });
+
+    it("names the purger and the scheduler as the only API callers, on the web port", async () => {
+      const spec = (await resolve(
+        find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-workers-to-langfuse").inputs.spec,
+      )) as any;
+
+      expect(spec.podSelector.matchLabels["app.kubernetes.io/name"]).toBe("langfuse-web");
+      expect(
+        (spec.ingress[0].from as any[]).map((f) => f.podSelector.matchLabels["app.kubernetes.io/name"]).sort(),
+      ).toEqual(["purger", "skill-scheduler"]);
+      expect(spec.ingress[0].ports).toEqual([{ protocol: "TCP", port: 3000 }]);
     });
   });
 
@@ -407,6 +457,29 @@ describe("with the Langfuse tier enabled", () => {
       expect(spec.oidc.redirectURL).toBe("https://langfuse.example.test/oauth2/callback");
     });
 
+    it("also admits the read-only observability permission, on a rule of its own", async () => {
+      // Analysts get Langfuse without the platform-operator permission. Envoy
+      // ANDs the scopes inside ONE principal, so listing both on one rule
+      // would admit only a token holding both and lock the analyst out. Each
+      // permission must be its own rule (rules are ORed), and requested as a
+      // scope, or WorkOS never puts it on the token.
+      const spec = (await resolve(
+        find("kubernetes:gateway.envoyproxy.io/v1alpha1:SecurityPolicy", "grid-langfuse-security-policy")
+          .inputs.spec,
+      )) as any;
+      const rules = spec.authorization.rules as any[];
+
+      expect(rules.map((r) => r.principal.jwt.scopes)).toEqual([
+        ["platform:organizations:view"],
+        ["platform:observability:view"],
+      ]);
+      expect(rules.every((r) => r.action === "Allow")).toBe(true);
+      expect(new Set(rules.map((r) => r.name)).size).toBe(rules.length);
+      expect(spec.oidc.scopes).toEqual(
+        expect.arrayContaining(["platform:organizations:view", "platform:observability:view"]),
+      );
+    });
+
     it("serves the hostname on its own TLS listener", async () => {
       const spec = (await resolve(
         find("kubernetes:gateway.networking.k8s.io/v1:Gateway", "grid-gateway").inputs.spec,
@@ -416,6 +489,126 @@ describe("with the Langfuse tier enabled", () => {
       expect(listener?.hostname).toBe("langfuse.example.test");
       expect(listener?.tls.certificateRefs[0].name).toBe("grid-langfuse-tls");
     });
+  });
+
+  /**
+   * Answer feedback lands in Langfuse as scores written by the BFF (ADR-0044,
+   * Amendment 3). Every failure here is silent: a missing key or host makes the
+   * BFF's scoring a no-op, a missing NetworkPolicy makes every call time out in
+   * the background, and the vote itself succeeds either way.
+   */
+  describe("the BFF as a score writer", () => {
+    it("hands the frontend the in-cluster API, the public UI and the project", async () => {
+      const env = await containerEnv("frontend");
+
+      expect(env.LANGFUSE_HOST).toBe("http://langfuse-web:3000");
+      expect(env.LANGFUSE_PUBLIC_URL).toBe("https://langfuse.example.test");
+      expect(env.LANGFUSE_PROJECT_ID).toBe("grid-oib");
+    });
+
+    it("passes the keys by reference to the Langfuse Secret, never as literals", async () => {
+      const env = await containerEnv("frontend");
+
+      expect(env.LANGFUSE_PUBLIC_KEY).toEqual({ secretKeyRef: { name: "langfuse-secrets", key: "public-key" } });
+      expect(env.LANGFUSE_SECRET_KEY).toEqual({ secretKeyRef: { name: "langfuse-secrets", key: "secret-key" } });
+    });
+
+    it("lets the frontend, and only it among the app pods, reach the web tier", async () => {
+      const spec = (await resolve(
+        find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-frontend-to-langfuse").inputs.spec,
+      )) as any;
+
+      expect(spec.podSelector.matchLabels["app.kubernetes.io/name"]).toBe("langfuse-web");
+      expect(spec.ingress[0].from).toEqual([{ podSelector: { matchLabels: { "app.kubernetes.io/name": "frontend" } } }]);
+      expect(spec.ingress[0].ports).toEqual([{ protocol: "TCP", port: 3000 }]);
+    });
+  });
+
+  /**
+   * A first SSO sign-in must land somewhere. Without the defaults Langfuse
+   * creates an account in no organization, and the person the edge admitted
+   * sees an empty "create an organization" page, which reads as "Langfuse is
+   * broken" rather than "nobody added you".
+   */
+  describe("default membership for SSO users", () => {
+    it("joins a new user to the seeded org and project as VIEWER", async () => {
+      const web = await containerEnv("langfuse-web");
+
+      expect(web.LANGFUSE_DEFAULT_ORG_ID).toBe("grid");
+      expect(web.LANGFUSE_DEFAULT_ORG_ID).toBe(web.LANGFUSE_INIT_ORG_ID);
+      expect(web.LANGFUSE_DEFAULT_ORG_ROLE).toBe("VIEWER");
+      expect(web.LANGFUSE_DEFAULT_PROJECT_ID).toBe("grid-oib");
+      expect(web.LANGFUSE_DEFAULT_PROJECT_ID).toBe(web.LANGFUSE_INIT_PROJECT_ID);
+      expect(web.LANGFUSE_DEFAULT_PROJECT_ROLE).toBe("VIEWER");
+    });
+
+    it("sets it on the web tier only, which is where accounts are created", async () => {
+      const worker = await containerEnv("langfuse-worker");
+
+      expect(Object.keys(worker).filter((k) => k.startsWith("LANGFUSE_DEFAULT_"))).toEqual([]);
+    });
+  });
+
+  /**
+   * The agent writes its answer checks as scores (ADR-0089). Each failure is
+   * silent: no keys or host and `emit_scores` is a no-op, no NetworkPolicy and
+   * every post times out on a background pool, and the answer ships either way.
+   */
+  describe("the backend as a score writer", () => {
+    const BACKEND_TIERS: Array<[string, string]> = [
+      ["aiq-agent", "kubernetes:apps/v1:StatefulSet"],
+      ["aiq-api", "kubernetes:apps/v1:Deployment"],
+      ["agent-worker", "kubernetes:apps/v1:Deployment"],
+    ];
+
+    it.each(BACKEND_TIERS)("hands %s the in-cluster API and the keys by reference", async (name, type) => {
+      const env = await containerEnv(name, type);
+
+      expect(env.LANGFUSE_HOST).toBe("http://langfuse-web:3000");
+      expect(env.LANGFUSE_PUBLIC_KEY).toEqual({ secretKeyRef: { name: "langfuse-secrets", key: "public-key" } });
+      expect(env.LANGFUSE_SECRET_KEY).toEqual({ secretKeyRef: { name: "langfuse-secrets", key: "secret-key" } });
+      // A capability, not the product decision: the remote prompt stays off.
+      expect(env.LANGFUSE_PROMPTS_ENABLED).toBeUndefined();
+    });
+
+    it("withholds the keys from the ingest worker, which writes no score", async () => {
+      const env = await containerEnv("ingest-worker");
+
+      expect(Object.keys(env).filter((k) => k.startsWith("LANGFUSE_"))).toEqual([]);
+    });
+
+    it("lets exactly the three key-holding backend roles reach the web tier", async () => {
+      const spec = (await resolve(
+        find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-backend-to-langfuse").inputs.spec,
+      )) as any;
+
+      expect(spec.podSelector.matchLabels["app.kubernetes.io/name"]).toBe("langfuse-web");
+      expect(callers(spec)).toEqual(["agent-worker", "aiq-agent", "aiq-api"]);
+      expect(spec.ingress[0].ports).toEqual([{ protocol: "TCP", port: 3000 }]);
+    });
+
+    it("names in the policy every backend tier that carries the keys", async () => {
+      // The two lists are written in different files; this holds them together.
+      const spec = (await resolve(
+        find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-backend-to-langfuse").inputs.spec,
+      )) as any;
+      for (const [name, type] of BACKEND_TIERS) {
+        if ((await containerEnv(name, type)).LANGFUSE_HOST) expect(callers(spec)).toContain(name);
+      }
+    });
+
+    it.each([...BACKEND_TIERS, ["bff-jobs", "kubernetes:apps/v1:Deployment"] as [string, string]])(
+      "rolls %s when the Langfuse keys rotate, as the frontend does",
+      async (name, type) => {
+        // Every pod that reads the keys folds them into one checksum, so they
+        // all carry the frontend's; the ingest worker, which holds none, keeps
+        // the app Secret's alone.
+        const frontend = await podChecksum("frontend");
+
+        expect(await podChecksum(name, type)).toBe(frontend);
+        expect(await podChecksum("ingest-worker")).not.toBe(frontend);
+      },
+    );
   });
 
   it("turns on backend identity attributes, which is what makes traces attributable", async () => {
@@ -430,6 +623,85 @@ describe("with the Langfuse tier enabled", () => {
     );
 
     expect(env.GRID_TRACE_IDENTITY_ATTRIBUTES).toBe("true");
+  });
+});
+
+describe("the app pods without the Langfuse tier", () => {
+  it("get no Langfuse env and keep their rollout checksum as it was", async () => {
+    const { frontendLangfuseEnv, withLangfuseKeysChecksum } = await import("./langfuse");
+    const { langfuseApiEnv } = await import("../app/config");
+    const off = { langfuse: { enabled: false } } as never;
+
+    expect(frontendLangfuseEnv(off)).toEqual([]);
+    expect(langfuseApiEnv(off)).toEqual([]);
+    expect(withLangfuseKeysChecksum(off, "app-sum")).toBe("app-sum");
+  });
+});
+
+describe("the Langfuse keys in a rollout checksum", () => {
+  it("change it when either key rotates", async () => {
+    const { withLangfuseKeysChecksum } = await import("./langfuse");
+    const on = (secretKey: string) =>
+      ({
+        langfuse: { enabled: true, publicKey: pulumi.output("pk-lf-a"), secretKey: pulumi.output(secretKey) },
+      }) as never;
+
+    const before = await resolve(withLangfuseKeysChecksum(on("sk-lf-1"), "app-sum"));
+    const after = await resolve(withLangfuseKeysChecksum(on("sk-lf-2"), "app-sum"));
+
+    expect(before).not.toBe("app-sum");
+    expect(after).not.toBe(before);
+  });
+});
+
+describe("default membership env", () => {
+  it("gives NONE the org alone: the project role has no NONE, and a project grant would contradict it", async () => {
+    const { langfuseDefaultMembershipEnv } = await import("./langfuse");
+    const env = langfuseDefaultMembershipEnv({ orgId: "grid", projectId: "grid-oib", defaultRole: "NONE" });
+
+    expect(env).toEqual([
+      { name: "LANGFUSE_DEFAULT_ORG_ID", value: "grid" },
+      { name: "LANGFUSE_DEFAULT_ORG_ROLE", value: "NONE" },
+    ]);
+  });
+
+  it("gives every other role to both the org and the project", async () => {
+    const { langfuseDefaultMembershipEnv } = await import("./langfuse");
+    const env = langfuseDefaultMembershipEnv({ orgId: "o", projectId: "p", defaultRole: "MEMBER" });
+
+    expect(Object.fromEntries(env.map((e) => [e.name, e.value]))).toEqual({
+      LANGFUSE_DEFAULT_ORG_ID: "o",
+      LANGFUSE_DEFAULT_ORG_ROLE: "MEMBER",
+      LANGFUSE_DEFAULT_PROJECT_ID: "p",
+      LANGFUSE_DEFAULT_PROJECT_ROLE: "MEMBER",
+    });
+  });
+});
+
+describe("the platform OIDC gate", () => {
+  const cfg = {
+    observability: { oidcIssuer: "https://auth.example.test", oidcClientId: "client_x" },
+  } as never;
+
+  it("widens only the route that names a permission, and never repeats one", async () => {
+    const { platformOidcSecurityPolicySpec } = await import("./platform-oidc");
+    const gate = { routeName: "r", domain: "d.example.test", secretName: "s" };
+
+    const plain = platformOidcSecurityPolicySpec(cfg, gate);
+    const doubled = platformOidcSecurityPolicySpec(cfg, {
+      ...gate,
+      alsoAdmit: ["platform:organizations:view", "platform:observability:view"],
+    });
+
+    expect(plain.authorization?.rules?.map((r) => r.principal.jwt?.scopes)).toEqual([["platform:organizations:view"]]);
+    expect(doubled.authorization?.rules?.map((r) => r.principal.jwt?.scopes)).toEqual([
+      ["platform:organizations:view"],
+      ["platform:observability:view"],
+    ]);
+    expect(doubled.oidc?.scopes?.filter((scope) => scope.startsWith("platform:"))).toEqual([
+      "platform:organizations:view",
+      "platform:observability:view",
+    ]);
   });
 });
 
@@ -479,11 +751,27 @@ describe("config gating", () => {
     expect(loadWith({})).toBeNull();
   });
 
-  it("refuses a v4 write mode Langfuse does not know", () => {
-    // Langfuse would fall back to its default, `events_only`: the one-way
-    // cutover, taken by a typo.
-    const error = loadWith({ "grid-oib:langfuseV4WriteMode": "dual-write" });
-    expect(error?.message).toMatch(/langfuseV4WriteMode/);
+  it("refuses a stack that still sets the removed v4 write mode", () => {
+    // Silently ignoring it would let someone believe the v3 tables are kept.
+    const error = loadWith({ "grid-oib:langfuseV4WriteMode": "dual" });
+    expect(error?.message).toMatch(/langfuseV4WriteMode was removed/);
+  });
+
+  it("defaults new Langfuse users to VIEWER", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...langfuseStackConfig() });
+    expect(loadConfig().langfuse.defaultRole).toBe("VIEWER");
+  });
+
+  it.each(["OWNER", "ADMIN", "MEMBER", "VIEWER", "NONE"])("accepts %s as the default role", (role) => {
+    expect(loadWith({ "grid-oib:langfuseDefaultRole": role })).toBeNull();
+    expect(loadConfig().langfuse.defaultRole).toBe(role);
+  });
+
+  it.each(["viewer", "READ", "EDITOR"])("refuses %s as the default role", (role) => {
+    // Langfuse checks the variable against a zod enum at startup, so a value
+    // it does not know is a langfuse-web that never becomes Ready.
+    const error = loadWith({ "grid-oib:langfuseDefaultRole": role });
+    expect(error?.message).toMatch(/langfuseDefaultRole must be one of OWNER, ADMIN, MEMBER, VIEWER, NONE/);
   });
 
   it("refuses a base64 encryption key, which is the natural mistake", () => {
@@ -538,12 +826,12 @@ describe("config gating", () => {
     expect(error?.message).toMatch(/must differ from grid-oib:seaweedfsSecretKey/);
   });
 
-  it("refuses the tier with NetworkPolicies off — via the dependency it inherits", () => {
-    // Langfuse needs policies as much as the dashboard does, but it does not
-    // carry its own check: `langfuseEnabled` implies `observabilityEnabled`,
-    // whose guard fires first, so a second one could never run. Pinned here so
-    // that relaxing the observability guard fails a test that says why rather
-    // than silently allowing an exposed trace store.
+  it("refuses the tier with NetworkPolicies off, on a guard of its own", () => {
+    // Langfuse needs policies as much as the dashboard does. It used to inherit
+    // the dashboard's guard through `observabilityEnabled`; with the collector
+    // no longer needing the dashboard that inheritance is gone, so this tier
+    // states the requirement itself (collector-gate.spec.ts covers the
+    // no-dashboard stack).
     const error = loadWith({ "grid-oib:networkPolicies": "false" });
     expect(error?.message).toMatch(/requires grid-oib:networkPolicies/);
   });

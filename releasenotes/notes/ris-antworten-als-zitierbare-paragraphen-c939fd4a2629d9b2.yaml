@@ -7,6 +7,6 @@ features:
     straight into your text.
 improvements:
   - >
-    Legal research is now one step in the Herleitung and returns the paragraph
-    in question, instead of a hit list, the whole law and text without a
-    reference.
+    Legal research is now one step in the Herleitung, and it returns the
+    paragraph in question instead of a hit list, the whole law or text
+    without a reference.

@@ -19,7 +19,7 @@ import {
   projectIntakeDefinitionV1,
 } from '@/lib/project-profile/intake-definition'
 import { asDb } from '@/test-utils/db-fixtures'
-import { findProjectProfile } from './repository'
+import { findProjectInOrg, findProjectProfile } from './repository'
 
 /** A drizzle stand-in whose every chain resolves to `rows`. */
 function dbReturning(rows: unknown[]) {
@@ -70,5 +70,17 @@ describe('findProjectProfile', () => {
   it('answers null when the project does not exist', async () => {
     vi.mocked(getDb).mockReturnValue(asDb(dbReturning([]) as Record<string, unknown>))
     expect(await runWithTenantSlot(() => findProjectProfile('proj-1', 'org-1'))).toBeNull()
+  })
+})
+
+describe('findProjectInOrg', () => {
+  beforeEach(() => vi.mocked(getDb).mockReset())
+
+  it('hands out a never-saved profile as one every reader can use, like findProjectProfile', async () => {
+    vi.mocked(getDb).mockReturnValue(asDb(dbReturning([{ id: 'proj-1', profile: {} }]) as Record<string, unknown>))
+    const project = await runWithTenantSlot(() => findProjectInOrg('proj-1', 'org-1'))
+
+    expect(project?.profile).toEqual({ facts: {}, goals: {}, unknowns: [], assumptions: {} })
+    expect(() => answersFromProfile(project!.profile!, projectIntakeDefinitionV1)).not.toThrow()
   })
 })

@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    The terms and number checks your office sets now also cover what you type
+    into the chat: before a message with an IBAN or a listed term goes out,
+    Piloti shows what it found and sends only a masked version, or lets you edit
+    it first.
+  - >
+    When your office checks chat messages for sensitive data, Piloti now says
+    plainly that a dictated message is first transcribed by an external provider.
+    Only that text is checked before it is sent.

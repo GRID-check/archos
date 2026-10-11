@@ -1,6 +1,6 @@
 ---
 fixes:
   - >
-    When Piloti searches twice, each step of the Herleitung now shows the files
-    of that search instead of listing both on the first. A summary is no longer
-    presented as a ruling by mistake.
+    When Piloti searches twice, each step of the Herleitung now shows the
+    files of that search instead of listing both on the first. A summary is
+    no longer shown as a ruling by mistake.

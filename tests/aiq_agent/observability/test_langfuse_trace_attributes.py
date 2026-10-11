@@ -333,7 +333,7 @@ class TestToolContributions:
 class TestContributionIsolation:
     """A reused worker must not hand job N's tags to job N+1, across tenants.
 
-    Dask reuses processes: without a per-job bind/reset in ``finally`` (see
+    Workers reuse processes: without a per-job bind/reset in ``finally`` (see
     ``DeepResearcherAgent.run``) the ContextVar still holds job N's dict when
     job N+1 starts. And without copy-on-write, ``asyncio.create_task`` snapshots
     the var's OBJECT reference, so a later in-place ``update``/``append`` rewrites
@@ -798,6 +798,30 @@ class TestUsageAttributeProcessor:
         assert span.attributes["gen_ai.usage.output_tokens"] == 331
         assert span.attributes["gen_ai.request.model"] == "openrouter/deepseek-v4"
 
+    async def test_a_decision_span_gains_its_tokens_cost_and_model_from_its_own_output(self):
+        """Jev bypasses LangChain (ADR-0064): its usage rides the decide.* observation's output."""
+        from aiq_agent.observability.decision_trace import decision_observation
+        from aiq_agent.observability.langfuse_trace_attributes import UsageAttributeProcessor
+        from nat.data_models.span import Span
+
+        _, body_out = decision_observation(
+            questions=["precedent"],
+            states=1,
+            model="typesafe/jev-1.13",
+            input_tokens=341,
+            output_tokens=22,
+            cost_usd=1.4e-05,
+        )
+        span = Span(
+            name="decide.turn", attributes={"nat.event_type": "FUNCTION_START", "output.value": json.dumps(body_out)}
+        )
+
+        span = await UsageAttributeProcessor().process(span)
+
+        assert span.attributes["gen_ai.usage.input_tokens"] == 341
+        assert span.attributes["gen_ai.usage.output_tokens"] == 22
+        assert span.attributes["gen_ai.request.model"] == "typesafe/jev-1.13"
+
     async def test_provider_object_in_metadata_beats_bare_counts(self):
         import json
 
@@ -891,3 +915,113 @@ class TestUsagePipelineWiring:
             assert "grid_usage_attributes" in positions
             assert "langfuse_trace_attributes" not in positions
             assert positions["grid_usage_attributes"] < positions["header_redaction"]
+
+
+class TestPosthogSessionLink:
+    """Langfuse's PostHog export reads ``trace.metadata.$posthog_session_id`` as the event's ``$session_id``."""
+
+    SESSION = "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70"
+
+    def test_the_metadata_key_is_the_one_langfuse_reads(self):
+        from aiq_agent.observability.langfuse_trace_attributes import METADATA_PREFIX
+        from aiq_agent.observability.langfuse_trace_attributes import POSTHOG_SESSION_METADATA_KEY
+
+        assert POSTHOG_SESSION_METADATA_KEY == "$posthog_session_id"
+        assert f"{METADATA_PREFIX}{POSTHOG_SESSION_METADATA_KEY}" == "langfuse.trace.metadata.$posthog_session_id"
+
+    @pytest.mark.parametrize(
+        "value",
+        [SESSION, SESSION.upper(), f"  {SESSION} "],
+    )
+    def test_a_uuid_v7_is_accepted_and_normalized(self, value):
+        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+
+        assert posthog_session_id_or_none(value) == self.SESSION
+
+    @pytest.mark.parametrize(
+        "value",
+        [
+            None,
+            42,
+            "",
+            "not-a-session",
+            "0199d7f2-5b3a-4c4e-9a1d-3e8f2b6c5d70",  # UUIDv4: the version nibble is 4
+            "0199d7f2-5b3a-7c4e-1a1d-3e8f2b6c5d70",  # wrong variant
+            "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70-extra",
+            "0199d7f2-5b3a-7c4e-9a1d-3e8f2b6c5d70\n<script>",
+        ],
+    )
+    def test_anything_else_is_not_a_session_id(self, value):
+        from aiq_agent.observability.langfuse_trace_attributes import posthog_session_id_or_none
+
+        assert posthog_session_id_or_none(value) is None
+
+    def test_it_rides_the_identity_switch_and_lands_in_the_turns_metadata(self, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
+        assert record_posthog_session(self.SESSION) is False
+        assert snapshot_contributions() is None
+
+        monkeypatch.setenv(IDENTITY_ATTRIBUTES_ENV, "true")
+        assert record_posthog_session("nope") is False
+        assert record_posthog_session(self.SESSION) is True
+        assert snapshot_contributions()["metadata"] == {"$posthog_session_id": self.SESSION}
+        reset_contributions()
+
+    def test_the_span_attribute_is_the_trace_metadata_namespace(self):
+        from aiq_agent.observability.langfuse_trace_attributes import langfuse_attributes_for
+
+        attributes = langfuse_attributes_for(
+            organization_id=None,
+            project_id=None,
+            conversation_id=None,
+            contributed={"metadata": {"$posthog_session_id": self.SESSION}, "tags": []},
+        )
+        assert attributes == {"langfuse.trace.metadata.$posthog_session_id": self.SESSION}
+
+
+class TestLessonsMetadata:
+    """The holdout is analysable from the exported observation events (ADR-0100)."""
+
+    LESSON_A = "3f2504e0-4f89-11d3-9a0c-0305e82c3301"
+    LESSON_B = "9b2f6c1a-7d3e-4c1b-8a55-1f0e2d3c4b5a"
+
+    def test_the_arm_and_the_lessons_land_in_the_turns_metadata_without_the_identity_switch(self, monkeypatch):
+        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        monkeypatch.delenv(IDENTITY_ATTRIBUTES_ENV, raising=False)
+        record_lessons("treated", (self.LESSON_A, self.LESSON_B))
+        assert snapshot_contributions()["metadata"] == {
+            "lessons_arm": "treated",
+            "lesson_ids": f"{self.LESSON_A},{self.LESSON_B}",
+        }
+        reset_contributions()
+
+    def test_a_turn_with_no_lessons_records_the_arm_alone(self):
+        from aiq_agent.observability.langfuse_trace_attributes import record_lessons
+        from aiq_agent.observability.langfuse_trace_attributes import reset_contributions
+        from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+
+        reset_contributions()
+        record_lessons("holdout", ())
+        assert snapshot_contributions()["metadata"] == {"lessons_arm": "holdout"}
+        reset_contributions()
+
+    def test_the_span_attributes_are_the_trace_metadata_namespace(self):
+        attributes = langfuse_attributes_for(
+            organization_id=None,
+            project_id=None,
+            conversation_id=None,
+            contributed={"metadata": {"lessons_arm": "treated", "lesson_ids": self.LESSON_A}, "tags": []},
+        )
+        assert attributes == {
+            "langfuse.trace.metadata.lessons_arm": "treated",
+            "langfuse.trace.metadata.lesson_ids": self.LESSON_A,
+        }

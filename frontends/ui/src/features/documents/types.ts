@@ -36,12 +36,30 @@ export interface CreateCollectionRequest {
 // Frontend State Types
 // ============================================================================
 
+/** What a retry must repeat of an upload: its destination and the reader's release. */
+export interface UploadIntent {
+  /** The folder the upload resolved to; `null` is the project root. */
+  folderId: string | null
+  /** That folder's path, which the name screening reads. */
+  folderPath: string | null
+  /** Released from the name screening in the upload dialog. */
+  screeningReleased: boolean
+  /** The document this file was filed as the new Fassung of, chosen in the upload dialog (ADR-0099); null for none. */
+  fassungOf?: string | null
+}
+
 /** Tracked file in the upload queue (client-side) */
 export interface TrackedFile {
   /** Client-generated ID */
   id: string
   /** Original File object (only available for locally uploaded files) */
   file?: File
+  /**
+   * Where this file was sent and what the reader decided about it, as the
+   * upload resolved them, so a retry sends it to the same folder with the same
+   * screening release rather than to wherever the reader stands now.
+   */
+  uploadIntent?: UploadIntent
   /** File name */
   fileName: string
   /** File size in bytes */
@@ -128,6 +146,8 @@ export function trackedFileToFileItem(file: TrackedFile): FileItem {
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   }
 }
 

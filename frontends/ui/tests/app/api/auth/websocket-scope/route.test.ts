@@ -17,6 +17,7 @@ vi.mock('@/lib/collection-scope-request', () => ({
 
 vi.mock('@/lib/project-profile/prompt-view', () => ({
   loadProjectPromptView: vi.fn(),
+  loadProjectBundesland: vi.fn().mockResolvedValue(null),
 }))
 
 // Keep the test hermetic: the real digest builder requires a database.
@@ -39,10 +40,6 @@ describe('/api/auth/websocket-scope', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     delete process.env.REQUIRE_AUTH
-    // Keep the reflection gate at its documented defaults (flags not enforced,
-    // GRID_MEMORY_REFLECTION_ENABLED unset → on) regardless of ambient env.
-    delete process.env.GRID_ENFORCE_FEATURE_FLAGS
-    delete process.env.GRID_MEMORY_REFLECTION_ENABLED
     mockLoadProjectPromptView.mockResolvedValue(null)
   })
 
@@ -56,6 +53,7 @@ describe('/api/auth/websocket-scope', () => {
       projectId: 'proj-1',
       conversationId: 'conv-1',
       projectCollectionName: undefined,
+      verifiedConversationId: undefined,
     })
 
     const req = new Request(
@@ -73,14 +71,15 @@ describe('/api/auth/websocket-scope', () => {
       // and the conversationId it authorized so the signed envelope carries it.
       projectId: 'proj-1',
       conversationId: 'conv-1',
-      // Anonymous mode: no org, and GRID_ENFORCE_FEATURE_FLAGS is off, so the
-      // GRID_MEMORY_REFLECTION_ENABLED fallback decides — and it defaults ON.
+      // Anonymous mode: nobody signs in, so the reflection stage gets a
+      // rollout's fixed answer — ON.
       memoryReflectionEnabled: true,
     })
     expect(mockRequireProjectAccess).not.toHaveBeenCalled()
     expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(null, {
       projectId: 'proj-1',
       conversationId: 'conv-1',
+      interactiveChat: true,
     })
   })
 
@@ -117,6 +116,7 @@ describe('/api/auth/websocket-scope', () => {
       projectId: 'proj-1',
       conversationId: undefined,
       projectCollectionName: undefined,
+      verifiedConversationId: undefined,
     })
 
     const req = new Request('http://localhost:3000/api/auth/websocket-scope?projectId=proj-1')
@@ -129,6 +129,8 @@ describe('/api/auth/websocket-scope', () => {
     expect(mockBuildCollectionScopeFromRequest).toHaveBeenCalledWith(session, {
       projectId: 'proj-1',
       conversationId: undefined,
+      // The upgrade is the one interactive chat scope (ADR-0087).
+      interactiveChat: true,
     })
     expect(mockRequireProjectAccess).not.toHaveBeenCalled()
   })

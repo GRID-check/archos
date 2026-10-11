@@ -26,7 +26,7 @@ projects-home rework grew a second, larger `ProjectResumeCard` beside
 | `components/ui/section-label.tsx`, `components/ui/count-pill.tsx` | The eyebrow and the quiet number beside it. The grid's `SectionHeading` is only the arrangement of these two |
 | `components/projects/project-atoms.tsx` | The **project-specific parts**: links, brief, activity, doc count, initials tile |
 | `components/projects/project-card.tsx` | **The card.** `RaisedCard` + the atoms. Use this by default |
-| `components/projects/project-list-row.tsx` | The dense row — the same atoms in a different arrangement |
+| `components/projects/project-list-row.tsx` | The dense row — the same atoms in a different arrangement, an `Item` in the connected `ItemList` |
 | `components/projects/project-status.tsx` | The status chip and the (deliberately honest) status derivation |
 
 The split matters: the card's geometry is not a project concern. `RaisedCard`
@@ -80,8 +80,10 @@ review.
 2. **Does it need a genuinely different arrangement** (a table row, a compact
    menu item, a mention chip)? Compose it from the atoms, like
    `ProjectListRow` does. The row is the card's material caught in another
-   state — its resting form is the paper with a hairline under it, and on hover
-   it becomes the card surface.
+   state: one row of a connected `ItemList`, divided from its neighbours by the
+   list's hairline, with no radius, border or shadow of its own. On hover it
+   tints like every `Item`. It does not lift, because a lifted row detaches from
+   the rows either side of it.
 3. **Does it need something no atom provides?** Add the atom, then use it. An
    atom added for one surface is available to the others; a bespoke `div` in one
    component is not.

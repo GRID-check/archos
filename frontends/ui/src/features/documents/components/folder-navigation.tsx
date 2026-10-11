@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CountPill } from '@/components/ui/count-pill'
+import { Item } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { AnimatePresence, motion, motionQuick } from '@/components/motion'
@@ -33,6 +34,9 @@ import { folderDragProps, useFolderDropTarget } from '../hooks/use-document-drag
 import { cn } from '@/lib/utils'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
+import { FolderAccessMark, FolderReadOnlyBadge, useFolderOwnAccessLabel } from './folder-access-mark'
+import { FolderReadState } from './folder-read-state'
+import type { KnowledgeTally } from '../lib/folder-knowledge'
 import type { FolderItem } from './project-file-workspace'
 
 /**
@@ -77,13 +81,20 @@ export function FolderBreadcrumbRow({
   currentFolderId,
   onNavigate,
   onCreateFolder,
-  /** Right-aligned extras (the Archiv has none; Files adds nothing yet). */
   children,
   onDropDocument,
   onDropFolder,
   canAcceptFolder,
-}: Pick<FolderNavProps, 'folders' | 'currentFolderId' | 'onNavigate' | 'onCreateFolder'> & {
+  readOnly = false,
+}: Pick<FolderNavProps, 'folders' | 'currentFolderId' | 'onNavigate'> & {
+  /** Absent for a read-only viewer: the path is still walkable, nothing can be created. */
+  onCreateFolder?: FolderNavProps['onCreateFolder']
   children?: ReactNode
+  /**
+   * The reader may only read the level they stand in (ADR-0088): „Nur lesen"
+   * takes the place of „Neuer Ordner".
+   */
+  readOnly?: boolean
   /** Dropping a document on „Alle Dateien" moves it back to the project root. */
   onDropDocument?: (documentId: string, folderId: string | null) => void
   /**
@@ -208,7 +219,13 @@ export function FolderBreadcrumbRow({
       </div>
       <div className="flex shrink-0 items-center gap-2">
         {children}
-        <NewFolderControl currentFolderId={currentFolderId} onCreateFolder={onCreateFolder} />
+        {readOnly ? (
+          <FolderReadOnlyBadge testId="folder-level-read-only" />
+        ) : (
+          onCreateFolder && (
+            <NewFolderControl currentFolderId={currentFolderId} onCreateFolder={onCreateFolder} />
+          )
+        )}
       </div>
     </div>
   )
@@ -283,6 +300,11 @@ interface FolderTileProps {
   itemCount: number
   /** Most recent child's timestamp — the "last change" for this folder, like file cards show file time. */
   lastModified?: string | null
+  /**
+   * Where the folder's whole subtree stands with Piloti (`subtreeTallies`): a
+   * dot beside the name on a tile, the dot and its words on a list-view row.
+   */
+  knowledge?: KnowledgeTally
   onOpen: (id: string) => void
   onRenameFolder: FolderNavProps['onRenameFolder']
   onDeleteFolder: FolderNavProps['onDeleteFolder']
@@ -304,6 +326,28 @@ interface FolderTileProps {
   onDropFolder?: (draggedFolderId: string, parentId: string | null) => void
   /** Whether this tile may receive that folder — see `useFolderDropTarget`. */
   canAcceptFolder?: (draggedFolderId: string, targetFolderId: string | null) => boolean
+  /**
+   * The reader may only read here (ADR-0088): „Nur lesen" beside the name, and
+   * nothing can be dropped on the tile. The server refuses a write anyway.
+   */
+  readOnly?: boolean
+}
+
+/**
+ * The open button's accessible name, and the lock's tooltip on a folder with
+ * its own access list (ADR-0088, `folder.ownAccess`): a restricted folder says
+ * so in both. Null `lockLabel` draws no lock.
+ */
+function useFolderLabels(folder: FolderItem): { openLabel: string; lockLabel: string | null } {
+  const t = useTranslations('files')
+  const ownAccessLabel = useFolderOwnAccessLabel()
+  const lockLabel = folder.ownAccess ? ownAccessLabel(folder.ownAccess) : null
+  return {
+    lockLabel,
+    openLabel: lockLabel
+      ? t('folders.access.openRestricted', { name: folder.name, access: lockLabel })
+      : t('folders.openFolder', { name: folder.name }),
+  }
 }
 
 /** Shared inline rename field — same in-place contract the tree pane had. */
@@ -426,6 +470,7 @@ export function FolderCard({
   folder,
   itemCount,
   lastModified,
+  knowledge,
   onOpen,
   onRenameFolder,
   onDeleteFolder,
@@ -435,8 +480,10 @@ export function FolderCard({
   actions,
   editing: editingProp,
   onEditingChange,
+  readOnly = false,
 }: FolderTileProps): JSX.Element {
   const t = useTranslations('files')
+  const { openLabel, lockLabel } = useFolderLabels(folder)
   const { locale } = useLocale()
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false)
   const editing = editingProp ?? uncontrolledEditing
@@ -446,7 +493,7 @@ export function FolderCard({
     onDropDocument: onDropDocument ?? (() => {}),
     onDropFolder,
     canAcceptFolder,
-    disabled: !onDropDocument && !onDropFolder,
+    disabled: readOnly || (!onDropDocument && !onDropFolder),
   })
 
   return (
@@ -458,7 +505,7 @@ export function FolderCard({
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
       // another, which is the same gesture that moves a document.
-      {...(onDropFolder ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
       {...drop.dropProps}
     >
       <div
@@ -473,7 +520,7 @@ export function FolderCard({
       <button
         type="button"
         onClick={() => onOpen(folder.id)}
-        aria-label={t('folders.openFolder', { name: folder.name })}
+        aria-label={openLabel}
         className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         <GridTileBody className="flex-1 p-0">
@@ -505,23 +552,31 @@ export function FolderCard({
             {editing ? (
               <FolderNameEditor folder={folder} onRenameFolder={onRenameFolder} onDone={() => setEditing(false)} />
             ) : (
-              <p className="truncate text-sm font-medium leading-tight text-foreground" title={folder.name}>
-                {folder.name}
-              </p>
+              <div className="flex min-w-0 items-center gap-1.5">
+                {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
+                <p className="truncate text-sm font-medium leading-tight text-foreground" title={folder.name}>
+                  {folder.name}
+                </p>
+                {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
+                {/* The dot alone, after the name: what a folder holds at a
+                    glance, without a line of words on every tile. */}
+                <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
+              </div>
             )}
           </div>
         </GridTileBody>
-        <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
-          <span className="shrink-0 tabular-nums">{t('folders.items', { count: String(itemCount) })}</span>
-          {lastModified && (
-            <>
-              <span aria-hidden className="text-muted-foreground/40">
-                ·
-              </span>
-              <TimeAgo date={lastModified} locale={locale} className="shrink-0 tabular-nums" />
-            </>
-          )}
-          <span className="flex-1" />
+        <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
+          <span className="min-w-0 truncate tabular-nums">
+            {t('folders.items', { count: itemCount })}
+            {lastModified && (
+              <>
+                <span aria-hidden className="mx-1.5 text-muted-foreground/40">
+                  ·
+                </span>
+                <TimeAgo date={lastModified} locale={locale} className="tabular-nums" />
+              </>
+            )}
+          </span>
         </GridTileFooter>
       </button>
     </GridTileShell>
@@ -537,6 +592,7 @@ export function FolderRow({
   folder,
   itemCount,
   lastModified,
+  knowledge,
   onOpen,
   onRenameFolder,
   onDeleteFolder,
@@ -546,8 +602,9 @@ export function FolderRow({
   actions,
   editing: editingProp,
   onEditingChange,
+  readOnly = false,
 }: FolderTileProps): JSX.Element {
-  const t = useTranslations('files')
+  const { openLabel, lockLabel } = useFolderLabels(folder)
   const { locale } = useLocale()
   const [uncontrolledEditing, setUncontrolledEditing] = useState(false)
   const editing = editingProp ?? uncontrolledEditing
@@ -557,7 +614,7 @@ export function FolderRow({
     onDropDocument: onDropDocument ?? (() => {}),
     onDropFolder,
     canAcceptFolder,
-    disabled: !onDropDocument && !onDropFolder,
+    disabled: readOnly || (!onDropDocument && !onDropFolder),
   })
 
   if (editing) {
@@ -600,22 +657,25 @@ export function FolderRow({
    * motions for one navigation, compounding into a wobble. The level owns the
    * entrance; a row inside it is just content.
    */
+  // One row of the folder run, which `file-browser-pane` draws as an `ItemList`.
+  // The list clips the outer corners and draws the hairlines, so the row carries
+  // no radius, border or shadow of its own. A drop target is marked inside its
+  // box (`ring-inset`): an outer ring on the first or last row would be clipped.
   return (
-    <div
+    <Item
       className={cn(
-        'group border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm',
-        'hover:bg-accent transition-[background-color,box-shadow] duration-quick ease-out hover:shadow-sm motion-reduce:transition-none',
-        drop.isOver && 'ring-ring bg-accent ring-2',
+        'group w-full gap-2 px-3 py-2 text-sm',
+        drop.isOver && 'bg-accent ring-ring ring-2 ring-inset',
       )}
       data-testid={`folder-row-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
-      {...(onDropFolder ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
       {...drop.dropProps}
     >
       <button
         type="button"
         onClick={() => onOpen(folder.id)}
-        aria-label={t('folders.openFolder', { name: folder.name })}
+        aria-label={openLabel}
         className="focus-visible:ring-ring flex min-w-0 flex-1 items-center gap-2.5 rounded-sm text-left focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11"
       >
         {/* One glyph, for the reason the card's comment gives. The row's own
@@ -624,6 +684,8 @@ export function FolderRow({
           <Folder className="text-muted-foreground size-3.5" aria-hidden />
         </span>
         <span className="text-foreground truncate font-medium">{folder.name}</span>
+        {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
+        {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
         {/* The kit's numeric pill, not a fourth hand-rolled one. */}
         <CountPill>{itemCount}</CountPill>
         {lastModified && (
@@ -634,6 +696,8 @@ export function FolderRow({
             <TimeAgo date={lastModified} locale={locale} className="shrink-0 text-xs tabular-nums text-muted-foreground" />
           </>
         )}
+        <span className="flex-1" />
+        <FolderReadState tally={knowledge} />
       </button>
       {actions ?? (
         <FolderActionsMenu
@@ -646,7 +710,7 @@ export function FolderRow({
         className="text-muted-foreground/40 group-hover:text-muted-foreground size-3.5 shrink-0 transition-colors duration-quick ease-out motion-reduce:transition-none"
         aria-hidden
       />
-    </div>
+    </Item>
   )
 }
 
@@ -687,16 +751,13 @@ export function FolderCardSkeleton(): JSX.Element {
 /** A {@link FolderRow} before its name arrives. */
 export function FolderRowSkeleton(): JSX.Element {
   return (
-    <div
-      className="border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2"
-      data-testid="folder-row-skeleton"
-    >
+    <Item className="w-full gap-2 px-3 py-2" data-testid="folder-row-skeleton">
       <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
         <Folder className="text-muted-foreground/40 size-3.5" aria-hidden />
       </span>
       <Skeleton className="h-3.5 w-40" />
       <Skeleton className="h-3.5 w-8 rounded-full" />
-    </div>
+    </Item>
   )
 }
 

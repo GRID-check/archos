@@ -73,6 +73,12 @@ export const config = {
      * - art/ (public/art, the riso prints): the not-found page shows one, and
      *   a signed-out visitor sees that page too
      * - public folder
+     * - ingest/ (the first-party PostHog relay, `app/ingest/[...path]/route.ts`):
+     *   the SDK posts from signed-out pages and mid-expiry, where an AuthKit
+     *   redirect to WorkOS would answer a beacon with a login page, and the
+     *   proxy would buffer megabyte-sized replay bodies against
+     *   `proxyClientMaxBodySize`. The route is `publicApiRoute` and forwards no
+     *   cookie or credential.
      *
      * API auth routes are allow-listed via middlewareAuth.unauthenticatedPaths
      * so AuthKit can complete the OAuth callback without a session.
@@ -83,6 +89,6 @@ export const config = {
      * unset/misconfigured — turning a config gap into a container that never
      * goes healthy).
      */
-    '/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|robots.txt|icons/|art/|public|api/healthz).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|robots.txt|icons/|art/|public|api/healthz|ingest/).*)',
   ],
 }
