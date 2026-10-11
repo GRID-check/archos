@@ -46,14 +46,24 @@ vi.mock('@/adapters/auth', () => ({ useAuth: () => ({ accessToken: null }) }))
 
 // Every element-level animation the answer starts, passed through: the body's
 // fade is read off these calls.
-const animations = vi.hoisted(() => [] as { keyframes: unknown }[])
+// `stops` counts the `stop()` calls on each: in a browser a stopped animation
+// commits the value it had reached (WAAPI `commitStyles`), so a fade stopped
+// half-way leaves the element half-transparent. jsdom has no WAAPI to show it.
+const animations = vi.hoisted(() => [] as { keyframes: unknown; stops: number }[])
 vi.mock('motion/react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('motion/react')>()
   return {
     ...actual,
     animate: ((...args: Parameters<typeof actual.animate>) => {
-      animations.push({ keyframes: args[1] })
-      return (actual.animate as (...a: unknown[]) => unknown)(...args)
+      const record = { keyframes: args[1], stops: 0 }
+      animations.push(record)
+      const controls = (actual.animate as (...a: unknown[]) => { stop: () => void })(...args)
+      const stop = controls.stop.bind(controls)
+      controls.stop = () => {
+        record.stops += 1
+        stop()
+      }
+      return controls
     }) as typeof actual.animate,
   }
 })
@@ -287,6 +297,31 @@ describe('the end of a streamed answer', () => {
     act(() => vi.advanceTimersByTime(1000))
     const fades = animations.filter(({ keyframes }) => JSON.stringify(keyframes) === JSON.stringify({ opacity: [0, 1] }))
     expect(fades).toEqual([])
+  })
+
+  // The settled snapshot drops a citation and renumbers the next one, so the
+  // body is rewritten and fades in again; the reveal then carries on through
+  // the rest of it. Each further word re-ran the fade's effect, whose cleanup
+  // stopped the fade wherever it was, and the run after it exited early (the
+  // body only grew): the finished answer stayed greyed out at that opacity.
+  it('never stops the fade of a rewritten body part-way while the rest is revealed', () => {
+    const streamed = 'Holzbau Wien ist ein Holzbauprojekt [1]. Der Fassadenschnitt zeigt keine Holzkonstruktion [2]. '
+    const { rerender } = render(answer(streamed, true))
+    act(() => vi.advanceTimersByTime(3000))
+    expect(screen.getByTestId('prose').textContent).toBe(streamed)
+
+    animations.length = 0
+    const settled = `Holzbau Wien ist ein Holzbauprojekt. Der Fassadenschnitt zeigt keine Holzkonstruktion [1]. ${STREAMED.repeat(4)}`
+    // The snapshot arrives while the turn still streams, the terminal after it.
+    rerender(answer(settled, true))
+    act(() => vi.advanceTimersByTime(FRAME_MS * 20))
+    rerender(answer(settled, false))
+    act(() => vi.advanceTimersByTime(3000))
+
+    expect(screen.getByTestId('prose').textContent).toBe(settled)
+    const fades = animations.filter(({ keyframes }) => JSON.stringify(keyframes) === JSON.stringify({ opacity: [0, 1] }))
+    expect(fades).toHaveLength(1)
+    expect(fades[0].stops).toBe(0)
   })
 })
 

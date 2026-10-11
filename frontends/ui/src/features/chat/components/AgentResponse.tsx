@@ -1507,6 +1507,13 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   )
   const previousBody = useRef(body)
   const bodyFade = useMotionToken(motionBase)
+  // The fade outlives the commit that started it: the reveal goes on growing
+  // the rewritten body, and every word re-runs the effect below. Stopping it
+  // there froze the answer greyed out, because a stopped animation keeps the
+  // value it reached (WAAPI commits it to the element). It is only ever
+  // finished, by the next rewrite or by unmounting, and finishing is full ink.
+  const bodyFadeControls = useRef<{ complete: () => void } | null>(null)
+  useLayoutEffect(() => () => bodyFadeControls.current?.complete(), [])
   useLayoutEffect(() => {
     const previous = previousBody.current.trimEnd()
     previousBody.current = body
@@ -1516,13 +1523,10 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
     // and the whole answer blinked out and back as the button was pressed.
     if (stopped || failed) return
     if (!mountedLive || !previous || !body || body.startsWith(previous) || !proseRef.current) return
-    const controls = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
+    bodyFadeControls.current?.complete()
+    bodyFadeControls.current = animate(proseRef.current, { opacity: [0, 1] }, bodyFade)
     const frame = frameRef.current
-    const stopGlide = frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
-    return () => {
-      controls.stop()
-      stopGlide?.()
-    }
+    return frame && frameHeight.current !== null ? glideFrameDown(frame, frameHeight.current) : undefined
   }, [body, mountedLive, bodyFade, glideFrameDown, stopped, failed])
 
   // The retraction, on the elements that are already there (nothing remounts).

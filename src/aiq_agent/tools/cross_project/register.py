@@ -28,7 +28,9 @@ A search hit is rendered as an ordinary grounding hit (ADR-0061), with a
 ``Projekt:`` line naming where it is from, and cited by its key like any other
 source. Its passage is all there is: another project's document is not in the
 turn's scope, so ``read_passage`` cannot open it further, which is why the BFF
-returns a longer passage than a hit list does.
+returns a longer passage than a hit list does. The records cite the same
+way, one source each: a project's recorded decisions as
+``Projektgedächtnis (‹Projekt›)`` and its brief as ``Projektdaten (‹Projekt›)``.
 
 Everything an answer carries was recorded by the BFF before it was returned,
 so the tool tells the turn (:func:`note_cross_project_hand_out`): the admission
@@ -686,17 +688,63 @@ def _render_find(body: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+#: The file name a project's brief is cited under: not a document, its confirmed facts.
+BRIEF_SOURCE_NAME = "Projektdaten"
+
+
+def _brief_hit(project: dict[str, Any], body: str) -> GroundingHit:
+    """The brief as one citable source, the way the project's memory is one.
+
+    Without it an answer that states the project's facts cites a source the
+    verifier cannot resolve, and the reader is told a citation was removed
+    from the one claim the office's own record backs.
+    """
+    name = _text(project.get("name")) or "Projekt"
+    return GroundingHit(
+        citation_key=f"{BRIEF_SOURCE_NAME} ({name})",
+        file_name=BRIEF_SOURCE_NAME,
+        page=None,
+        shelf=Shelf.PROJECT,
+        collection=str(project["collection"]),
+        doc_class=None,
+        display_title="Eckdaten und Zusammenfassung (aus den Projektdaten, kein Dokument)",
+        folder_path=None,
+        punkt=None,
+        score=1.0,
+        content_type="text",
+        provenance=None,
+        stored_image_index=None,
+        status_note=None,
+        body=body,
+        body_truncated=False,
+        project=_source_project(project, name),
+    )
+
+
 def _render_brief(body: dict[str, Any]) -> str:
     project = body.get("project") if isinstance(body.get("project"), dict) else {}
     _hand_out([project])
-    lines = [_project_line(project).removeprefix("- ")]
-    if summary := _text(body.get("summary")):
-        lines.append(f"Zusammenfassung: {summary}")
-    facts = str(body.get("facts") or "").strip()
-    lines.append(facts if facts else "Keine bestätigten Eckdaten.")
+    preamble = [_project_line(project).removeprefix("- ")]
     if _any_active([project]):
-        lines.append(_CLOSED_DOORS)
-    return "\n".join(lines)
+        preamble.append(_CLOSED_DOORS)
+    summary = _text(body.get("summary"))
+    facts = str(body.get("facts") or "").strip()
+    content = "\n".join([*([f"Zusammenfassung: {summary}"] if summary else []), facts or "Keine bestätigten Eckdaten."])
+    if not (summary or facts) or not project.get("collection"):
+        # Nothing recorded is nothing to cite: the line stands as the answer.
+        return "\n".join([preamble[0], content, *preamble[1:]])
+    from knowledge_layer.register import _trace_lanes_for_hits
+
+    hit = _brief_hit(project, content)
+    return render_grounding_block(
+        GroundingBlock(
+            preamble="\n".join(preamble),
+            degraded_banner="",
+            hits=(hit,),
+            lanes=_trace_lanes_for_hits([hit]),
+            tool=PROJECT_LOOKUP_TOOL,
+        )
+    )
 
 
 async def _judge(query: str, body: dict[str, Any]) -> HitVerdicts | None:
