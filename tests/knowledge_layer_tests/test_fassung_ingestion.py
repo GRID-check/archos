@@ -731,6 +731,28 @@ class TestAFassungChosenAtUpload:
         assert docs["B.txt"].superseded_by == "C.txt"
         assert docs["C.txt"].supersedes == ["B.txt"]
 
+    def test_the_backstop_row_is_written_before_the_job_reads_as_terminal(
+        self, tmp_path, live_ingestor, stores, model, monkeypatch
+    ):
+        # A caller that waits for COMPLETED and then lists the collection (the BFF's settle,
+        # the test above) must find the row the reconciliation writes. It once ran after the
+        # terminal status, and CI's slower runner listed in between.
+        from aiq_agent.knowledge import factory
+
+        seen: list[str] = []
+        reconcile = factory.reconcile_collection_summaries
+
+        def watching(ingestor, collection, **kwargs):
+            seen.extend(str(job.status) for job in ingestor._jobs.values())
+            return reconcile(ingestor, collection, **kwargs)
+
+        monkeypatch.setattr(factory, "reconcile_collection_summaries", watching)
+
+        _ingest(live_ingestor, tmp_path, "proj_backstop", "C.txt")
+
+        assert seen
+        assert not any("COMPLETED" in status.upper() or "FAILED" in status.upper() for status in seen)
+
     def test_an_older_file_that_is_gone_falls_back_to_the_ordinary_suggestion(
         self, tmp_path, live_ingestor, stores, model
     ):

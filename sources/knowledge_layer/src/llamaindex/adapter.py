@@ -5492,6 +5492,30 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             successful_files = [f for f in job.file_details if f.status == FileStatus.SUCCESS]
 
             # Mark job as terminal based on per-file results
+            # Reconciliation backstop, BEFORE the job reads as terminal: a caller
+            # that waits for COMPLETED and then lists the collection must find
+            # every row (the BFF's settle does exactly that). Catch any document that ingested
+            # successfully (visible/searchable in Chroma) but whose summary row
+            # silently failed to register — e.g. both the LLM summary and tag
+            # classification calls failed. Runs at the end of every ingestion
+            # job inside the knowledge layer, so every caller (the Knowledge
+            # API, oib_sync, and any future caller)
+            # gets this for free without having to remember to call it. Scoped
+            # to THIS job's successful files: the unscoped mode's list_files
+            # reads every chunk metadata in the collection — O(collection) per
+            # single-file upload, painful on the large oib_knowledge corpus.
+            if successful_files:
+                try:
+                    from aiq_agent.knowledge.factory import reconcile_collection_summaries
+
+                    reconcile_collection_summaries(
+                        self,
+                        collection_name,
+                        file_names=[f.file_name for f in successful_files],
+                    )
+                except Exception as e:
+                    logger.warning("Reconciliation failed for collection %s: %s", collection_name, e)
+
             with self._lock:
                 if failed_files and not successful_files:
                     job.status = JobState.FAILED
@@ -5523,28 +5547,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             self._update_collection_timestamp(collection_name)
             # Invalidate any cached retrieval results for this collection.
             bump_collection_version(collection_name)
-
-            # Reconciliation backstop: catch any document that ingested
-            # successfully (visible/searchable in Chroma) but whose summary row
-            # silently failed to register — e.g. both the LLM summary and tag
-            # classification calls failed. Runs at the end of every ingestion
-            # job inside the knowledge layer, so every caller (the Knowledge
-            # API, oib_sync, and any future caller)
-            # gets this for free without having to remember to call it. Scoped
-            # to THIS job's successful files: the unscoped mode's list_files
-            # reads every chunk metadata in the collection — O(collection) per
-            # single-file upload, painful on the large oib_knowledge corpus.
-            if successful_files:
-                try:
-                    from aiq_agent.knowledge.factory import reconcile_collection_summaries
-
-                    reconcile_collection_summaries(
-                        self,
-                        collection_name,
-                        file_names=[f.file_name for f in successful_files],
-                    )
-                except Exception as e:
-                    logger.warning("Reconciliation failed for collection %s: %s", collection_name, e)
 
             logger.info(
                 f"LlamaIndex ingestion completed: {job_id} "
