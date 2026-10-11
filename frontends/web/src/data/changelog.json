@@ -387,6 +387,10 @@
               "de": "Piloti bezeichnet eine Datei nur dann als Plan, wenn sie als Zeichnung erkannt ist. Die Ordnerübersicht und die Antworten von Piloti sprechen stattdessen von Dokument, Datei oder Fassung."
             },
             {
+              "en": "The line above each folder that says how much Piloti has read now opens in place: it stays where you clicked it and the overview unfolds beneath it, instead of the line vanishing and a separate box appearing.",
+              "de": "Die Zeile über jedem Ordner, die anzeigt, wie viel Piloti gelesen hat, klappt jetzt an Ort und Stelle auf: Sie bleibt dort, wo Sie sie angeklickt haben, und die Übersicht klappt darunter auf, statt dass die Zeile verschwindet und ein separates Feld erscheint."
+            },
+            {
               "en": "When you ask how something was solved before, Piloti now starts with the past projects that fit your question, not only those most like your building, and puts the passages that show a solution first.",
               "de": "Wenn Sie fragen, wie etwas früher gelöst wurde, zeigt Piloti jetzt zuerst frühere Projekte, die zu Ihrer Frage passen – nicht nur jene, die Ihrem Gebäude am ähnlichsten sind – und stellt Passagen, die eine Lösung zeigen, an den Anfang."
             },

@@ -2368,6 +2368,10 @@
     "de": "Die Oberfläche wirkt ruhiger und reagiert schneller: Buttons geben bei jedem Klick dezent nach, beim Kopieren einer Antwort erscheint ein Häkchen, und Ladeplatzhalter schimmern, statt grau aufzublitzen."
   },
   {
+    "en": "The line above each folder that says how much Piloti has read now opens in place: it stays where you clicked it and the overview unfolds beneath it, instead of the line vanishing and a separate box appearing.",
+    "de": "Die Zeile über jedem Ordner, die anzeigt, wie viel Piloti gelesen hat, klappt jetzt an Ort und Stelle auf: Sie bleibt dort, wo Sie sie angeklickt haben, und die Übersicht klappt darunter auf, statt dass die Zeile verschwindet und ein separates Feld erscheint."
+  },
+  {
     "en": "The list of references now always sits beside the document and shows which passage you are reading, and the toolbar shows the page you are on.",
     "de": "Die Fundstellenliste steht jetzt immer neben dem Dokument und zeigt, welche Stelle Sie gerade lesen, und die Werkzeugleiste zeigt die aktuelle Seite."
   },
