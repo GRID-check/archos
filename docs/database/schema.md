@@ -91,10 +91,12 @@ export const projects = pgTable('projects', {
 
 ## project_people (migration 0117, ADR-0091)
 
-Everyone who worked on a project, with or without a Piloti account: the Steckbrief's people.
-Personal data of people who mostly never gave it, so: name, function, company, months, an
-optional account link, and nothing else. Never read into the agent's prompt
-(`people-stay-out-of-the-prompt.spec.ts`).
+What the Steckbrief stores about the people on a project. The project's current members are
+not rows: they are read from WorkOS (ADR-0100), and a row with their `user_id` only adds their
+function, company and months. A member removed from the project gets a row then, as a former
+member; everyone without an account is a row added by hand. Personal data of people who mostly
+never gave it, so: name, function, company, months, a member's account, and nothing else. Never
+read into the agent's prompt (`people-stay-out-of-the-prompt.spec.ts`).
 
 | Column | Type | Constraints | Notes |
 |--------|------|-------------|-------|
@@ -105,7 +107,7 @@ optional account link, and nothing else. Never read into the agent's prompt
 | `function` | `text` | ≤ 200 | Funktion: Projektleitung, Statik, Bauherr … |
 | `company` | `text` | ≤ 200 | Firma |
 | `started_on`, `ended_on` | `date` | first of a month; end not before start | von–bis |
-| `user_id` | `text` | | WorkOS user id of their Piloti account, when linked; checked to be an organization member on write |
+| `user_id` | `text` | | WorkOS user id of a member or former member; checked to be an organization member on write. One row per member: the service updates it rather than adding a second |
 | `created_by` | `text` | NOT NULL | |
 | `created_at`, `updated_at` | `timestamptz` | NOT NULL | |
 

@@ -45,7 +45,7 @@ import { ProjectDeleteDialog } from '../project-delete-dialog'
 import { ProjectLifecycleCard } from '../project-lifecycle-card'
 import { useProjectLifecycle } from '../../lib/use-project-lifecycle'
 import { ProjectRenameDialog } from '../project-rename-dialog'
-import { ProjectSteckbrief, type SteckbriefAccount } from '../project-steckbrief'
+import { ProjectSteckbrief } from '../project-steckbrief'
 import type { ProjectUsageView } from '../settings/usage-settings'
 import { ActivityPanel, type ProjectActivityView } from './activity-panel'
 import { DocumentsTile } from './documents-tile'
@@ -73,8 +73,6 @@ export interface ProjectOverviewProps {
   usage: ProjectUsageView | null
   /** The Steckbrief (ADR-0091): period and people, what stays once the project closes. */
   steckbrief?: SteckbriefView
-  /** Accounts a Steckbrief person may be linked to; empty unless the reader may edit it. */
-  steckbriefAccounts?: readonly SteckbriefAccount[]
   /**
    * The similar-projects tile, streamed: finding them reads every closed
    * project's memory and permits, and the rest of the dashboard should not wait
@@ -89,7 +87,6 @@ export function ProjectOverview({
   activity,
   usage,
   steckbrief,
-  steckbriefAccounts = [],
   similar,
   access,
 }: ProjectOverviewProps): JSX.Element {
@@ -124,11 +121,7 @@ export function ProjectOverview({
             span={membersSpan}
           />
         )}
-        {steckbrief && (
-          <BentoCell span={steckbriefSpan}>
-            <ProjectSteckbrief projectId={id} steckbrief={steckbrief} accounts={steckbriefAccounts} />
-          </BentoCell>
-        )}
+        {steckbrief && <ProjectSteckbrief projectId={id} steckbrief={steckbrief} span={steckbriefSpan} />}
         {/* The lifecycle (ADR-0098): pause, resume, close, reopen. Reopening is
             the one change a closed project allows. */}
         {access.changeStatus && (

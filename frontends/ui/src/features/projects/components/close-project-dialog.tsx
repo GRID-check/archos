@@ -32,7 +32,7 @@ import { Chip } from '@/components/ui/chip'
 import { ChoiceCard, ChoiceCardGroup } from '@/components/ui/choice-card'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Field, FieldDescription, FieldError, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { MonthInput } from '@/components/ui/month-input'
 import { Stepper } from '@/components/ui/stepper'
 import { useLocale, useTranslations } from '@/i18n'
 import type { CleanupProposal } from '@/lib/projects/cleanup-types'
@@ -218,15 +218,17 @@ export function CloseProjectDialog({
             </Field>
             <Field>
               <FieldLabel htmlFor="close-ended-on">{t('lifecycle.closeDialog.endedOn.label')}</FieldLabel>
-              <Input
+              <MonthInput
                 id="close-ended-on"
-                type="month"
-                className="w-48"
+                className="max-w-sm"
                 value={endedOn}
-                min={bounds.min ?? undefined}
-                max={bounds.max}
-                onChange={(event) => setEndedOn(event.target.value)}
-                aria-invalid={abschlussError !== null}
+                onChange={setEndedOn}
+                locale={locale}
+                monthLabel={t('lifecycle.closeDialog.endedOn.label')}
+                yearLabel={t('steckbrief.year')}
+                fromYear={bounds.min ? Number(bounds.min.slice(0, 4)) : undefined}
+                toYear={Number(bounds.max.slice(0, 4))}
+                invalid={abschlussError !== null}
               />
               {abschlussError ? (
                 <FieldError>{t(`lifecycle.closeDialog.endedOn.${abschlussError}`)}</FieldError>

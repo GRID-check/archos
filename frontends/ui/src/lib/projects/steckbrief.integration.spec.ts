@@ -97,7 +97,7 @@ describe.skipIf(!url)('the Steckbrief against Postgres', () => {
         endedOn,
       })
     await close('2026-09-01')
-    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2023-03-01', endedOn: '2026-09-01', status: 'closed' })
+    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2023-03-01', endedOn: '2026-09-01', status: 'closed', createdAt: expect.any(Date) })
 
     // The 0116 guard covers the Steckbrief's people too; erasing one is still possible.
     await expect(repo.insertProjectPerson(projectId, ORG, USER, person({ name: 'Später' }))).rejects.toThrow()
@@ -106,7 +106,7 @@ describe.skipIf(!url)('the Steckbrief against Postgres', () => {
     await projectsRepo.setProjectStatusInOrg(projectId, ORG, 'closed', { status: 'active' })
     expect((await repo.findProjectPeriod(projectId, ORG))?.endedOn).toBe('2026-09-01')
     await repo.updateProjectPeriod(projectId, ORG, '2026-10-01')
-    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2026-10-01', endedOn: null, status: 'active' })
+    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2026-10-01', endedOn: null, status: 'active', createdAt: expect.any(Date) })
     await repo.updateProjectPeriod(projectId, ORG, '2023-03-01')
   })
 
