@@ -25,6 +25,13 @@
  *   (route, error name, message) gets a burst per window from PostHog's own
  *   `BucketedRateLimiter`; the rest are dropped, and the first drop leaves one
  *   console line so it is not invisible.
+ * - **A database outage is one issue per code, not one per page and query.**
+ *   Drizzle's `Failed query` message carries the whole SQL text, so every page
+ *   that rendered during a restart would mint its own issue, the way the
+ *   2026-09-25 restart filed nine (#733-#741) before the API wrapper collapsed
+ *   them. An unreachable database (`databaseUnavailableCode`) gets a fixed
+ *   `$exception_fingerprint`, the wrapper's `[db] database unavailable (<code>)`
+ *   as its issue name, and one rate-limit bucket per code.
  *
  * The package is pre-release (pinned to an exact version in `package.json`).
  * Its root export resolves `createOnRequestError` only under the `react-server`
