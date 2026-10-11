@@ -842,7 +842,6 @@ export const files: typeof en.files = {
    */
   // Der Ordnerbrief: was Piloti über einen Ordner und alles darunter weiß.
   brief: {
-    eyebrow: 'Was Piloti hier weiß',
     scopeFolder: 'in „{name}“ und seinen Unterordnern',
     scopeProject: 'in diesem Projekt',
     scopeOffice: 'in der Büroablage',

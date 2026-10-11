@@ -7,6 +7,7 @@
  */
 
 import type { ComponentProps } from 'react'
+import { useState } from 'react'
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
@@ -105,7 +106,7 @@ describe('FolderBrief — the numbers add up', () => {
 describe('FolderBrief — what needs the reader comes first', () => {
   it('orders the body by what the reader has to do, and folds the reference sections', () => {
     renderBrief()
-    const body = document.getElementById('folder-brief-body')!
+    const body = screen.getByTestId('folder-brief-sections')
     const order = [...body.children].map(
       (section) => section.getAttribute('data-testid') ?? section.getAttribute('aria-labelledby')
     )
@@ -165,10 +166,10 @@ describe('FolderBrief — chips', () => {
 })
 
 describe('FolderBrief — folded', () => {
-  it('is one line naming the headline, with no bar, legend or sections, and opens on a click', async () => {
+  it('is one line naming the headline, with no bar, legend or sections, and asks to open on a click', async () => {
     const onCollapsedChange = vi.fn()
     renderBrief(CORPUS, { collapsed: true, onCollapsedChange })
-    const line = screen.getByTestId('folder-brief')
+    const line = screen.getByTestId('folder-brief-toggle')
     expect(line).toHaveTextContent(/3 of 5 documents read/)
     expect(line).toHaveAttribute('aria-expanded', 'false')
     expect(document.querySelector('[data-slot="segment-meter"]')).toBeNull()
@@ -176,5 +177,36 @@ describe('FolderBrief — folded', () => {
     expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()
     await userEvent.click(line)
     expect(onCollapsedChange).toHaveBeenCalledWith(false)
+  })
+
+  it('opens in place: the line clicked is the same element afterwards, now the open card\'s header', async () => {
+    function Live() {
+      const [collapsed, setCollapsed] = useState(true)
+      return (
+        <FolderBrief
+          brief={buildFolderBrief(CORPUS, FOLDERS, null)}
+          folderName={null}
+          shelfKind="project"
+          onSelect={vi.fn()}
+          onOpenFolder={vi.fn()}
+          collapsed={collapsed}
+          onCollapsedChange={setCollapsed}
+        />
+      )
+    }
+    render(<Live />)
+    const line = screen.getByTestId('folder-brief-toggle')
+    expect(screen.getByTestId('folder-brief')).toHaveAttribute('data-state', 'closed')
+
+    await userEvent.click(line)
+    // Not a swap for another element: the node the reader clicked is still there.
+    expect(screen.getByTestId('folder-brief-toggle')).toBe(line)
+    expect(line).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('folder-brief')).toHaveAttribute('data-state', 'open')
+    expect(document.querySelector('[data-slot="segment-meter"]')).not.toBeNull()
+
+    await userEvent.click(line)
+    expect(screen.getByTestId('folder-brief-toggle')).toBe(line)
+    expect(line).toHaveAttribute('aria-expanded', 'false')
   })
 })
