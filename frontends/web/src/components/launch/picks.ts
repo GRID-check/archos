@@ -55,7 +55,7 @@ export const THEMES = [
   {
     id: 'files',
     rows: [
-      ['The Archiv now has folders'],
+      ['The Office filing now has folders'],
       ['A document is now one entry'],
       ['You can import an Outlook archive'],
       ['Two revisions can be compared side by side'],
