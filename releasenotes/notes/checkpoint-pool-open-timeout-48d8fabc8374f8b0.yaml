@@ -1,0 +1,7 @@
+---
+operators:
+  - >
+    When the backend cannot connect to the checkpoint database at start, the
+    error now names the host and the connection error. Before, it said only
+    that no connection came within 30 seconds. The wait is now set with
+    GRID_CHECKPOINT_POOL_OPEN_TIMEOUT_SECONDS (default 30).

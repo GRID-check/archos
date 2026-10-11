@@ -168,6 +168,18 @@ class TestIsPostgresDsn:
         assert is_postgres_dsn("postgresql://user:pass@localhost/db") is True
 
 
+def _closed_pool() -> MagicMock:
+    """A stand-in for a new `AsyncConnectionPool(open=False)`: closed until `open()` is awaited."""
+    pool = MagicMock()
+    pool.closed = True
+
+    async def _open(wait: bool = False, timeout: float = 30.0) -> None:
+        pool.closed = False
+
+    pool.open = AsyncMock(side_effect=_open)
+    return pool
+
+
 class TestGetCheckpointer:
     """Tests for the get_checkpointer function."""
 
@@ -247,7 +259,7 @@ class TestGetCheckpointer:
         """Test that Postgres checkpointer is created for Postgres DSNs."""
         postgres_dsn = "postgresql://user:pass@localhost:5432/testdb"
 
-        mock_pool = MagicMock()
+        mock_pool = _closed_pool()
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
 
@@ -268,7 +280,7 @@ class TestGetCheckpointer:
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
+            patch("aiq_agent.common.AsyncConnectionPool", return_value=_closed_pool()) as mock_pool_class,
             patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
@@ -284,7 +296,7 @@ class TestGetCheckpointer:
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
         with (
-            patch("aiq_agent.common.AsyncConnectionPool", return_value=MagicMock()) as mock_pool_class,
+            patch("aiq_agent.common.AsyncConnectionPool", return_value=_closed_pool()) as mock_pool_class,
             patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
         ):
             await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
@@ -297,7 +309,7 @@ class TestGetCheckpointer:
         """Test that Postgres pools are cached and reused."""
         postgres_dsn = "postgresql://user:pass@localhost:5432/testdb"
 
-        mock_pool = MagicMock()
+        mock_pool = _closed_pool()
         mock_checkpointer = MagicMock()
         mock_checkpointer.setup = AsyncMock()
 
@@ -314,6 +326,73 @@ class TestGetCheckpointer:
             await get_checkpointer(postgres_dsn)
 
             assert mock_pool_class.call_count == 1
+
+    @pytest.mark.asyncio
+    async def test_postgres_pool_is_opened_and_filled_before_setup(self, monkeypatch):
+        """The pool is created closed and opened with wait=True, so setup() never meets an unfilled pool."""
+        monkeypatch.delenv("GRID_CHECKPOINT_POOL_OPEN_TIMEOUT_SECONDS", raising=False)
+        mock_pool = _closed_pool()
+        mock_checkpointer = MagicMock()
+        mock_checkpointer.setup = AsyncMock(side_effect=lambda: mock_pool.open.assert_awaited_once())
+        with (
+            patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool) as mock_pool_class,
+            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+        ):
+            await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
+        assert mock_pool_class.call_args.kwargs["open"] is False
+        mock_pool.open.assert_awaited_once_with(wait=True, timeout=30)
+        mock_checkpointer.setup.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_postgres_pool_open_timeout_env_override(self, monkeypatch):
+        monkeypatch.setenv("GRID_CHECKPOINT_POOL_OPEN_TIMEOUT_SECONDS", "90")
+        mock_pool = _closed_pool()
+        mock_checkpointer = MagicMock()
+        mock_checkpointer.setup = AsyncMock()
+        with (
+            patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool),
+            patch("aiq_agent.common.AsyncPostgresSaver", return_value=mock_checkpointer),
+        ):
+            await get_checkpointer("postgresql://user:pass@localhost:5432/testdb")
+        mock_pool.open.assert_awaited_once_with(wait=True, timeout=90)
+
+    @pytest.mark.asyncio
+    async def test_an_open_pool_is_not_waited_on_again(self):
+        """A second consumer of an open pool gets it at once; waiting again would block while connections are busy."""
+        from aiq_agent.common import open_checkpoint_pool
+
+        mock_pool = _closed_pool()
+        with patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool):
+            first = await open_checkpoint_pool("postgresql://user:pass@localhost:5432/testdb")
+            second = await open_checkpoint_pool("postgresql://user:pass@localhost:5432/testdb")
+        assert first is second is mock_pool
+        mock_pool.open.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_a_pool_that_cannot_open_names_the_host_and_the_cause(self):
+        """The boot failure says which host and why, drops the dead pool, and caches no checkpointer."""
+        import psycopg
+        from psycopg_pool import PoolTimeout
+
+        import aiq_agent.common as common_module
+
+        dsn = "postgresql://user:secret@pooler.internal:6432/checkpoints"
+        mock_pool = _closed_pool()
+        mock_pool.open = AsyncMock(side_effect=PoolTimeout("pool initialization incomplete after 30 sec"))
+        refused = psycopg.OperationalError('connection to server at "pooler.internal", port 6432 failed: refused')
+        with (
+            patch("aiq_agent.common.AsyncConnectionPool", return_value=mock_pool),
+            patch("aiq_agent.common.psycopg.AsyncConnection.connect", AsyncMock(side_effect=refused)),
+            pytest.raises(PoolTimeout) as raised,
+        ):
+            await get_checkpointer(dsn)
+
+        message = str(raised.value)
+        assert "pooler.internal:6432" in message
+        assert "OperationalError" in message and "refused" in message
+        assert "secret" not in message
+        assert dsn not in common_module._postgres_pools
+        assert dsn not in common_module._checkpointers
 
     @pytest.mark.asyncio
     async def test_sqlite_serde_round_trips_all_state_types(self):

@@ -502,10 +502,10 @@ async def _build_store(dsn: str) -> BaseStore:
 
     from langgraph.store.postgres import AsyncPostgresStore
 
-    from aiq_agent.common import get_checkpoint_pool
+    from aiq_agent.common import open_checkpoint_pool
     from aiq_agent.knowledge.leader_lock import keyed_lock_async
 
-    store = AsyncPostgresStore(get_checkpoint_pool(dsn))
+    store = AsyncPostgresStore(await open_checkpoint_pool(dsn))
     # As for the checkpointer (`common.get_checkpointer`): every role runs this, and `setup()` is not safe against it.
     async with keyed_lock_async("langgraph-setup:store"):
         await store.setup()
