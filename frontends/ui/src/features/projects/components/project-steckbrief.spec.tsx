@@ -99,11 +99,17 @@ describe('ProjectSteckbrief', () => {
     expect(fetchMock).toHaveBeenCalledWith('/api/projects/p1/people/person-1', expect.objectContaining({ method: 'DELETE' }))
   })
 
-  test('refuses a period that runs backwards before sending it', async () => {
-    const fetchMock = vi.fn()
+  test('a running project edits its Beginn alone: the Abschluss reads „ongoing" and is the closing\'s to set (ADR-0098)', async () => {
+    const fetchMock = vi.fn(async () => Response.json({ startedOn: '2024-01' }))
     vi.stubGlobal('fetch', fetchMock)
-    render(<ProjectSteckbrief projectId="p1" steckbrief={view({ startedOn: '2025-03', endedOn: '2023-03' })} />)
-    expect(screen.getByText('The completion lies before the start.')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Save period' })).toBeDisabled()
+    render(<ProjectSteckbrief projectId="p1" steckbrief={view({ startedOn: '2023-03', endedOn: null, canEdit: true })} />)
+
+    expect(screen.queryByLabelText('Completion')).not.toBeInTheDocument()
+    expect(screen.getByTestId('steckbrief-end')).toHaveTextContent('Completion: ongoing. It is set when the project is closed.')
+    await userEvent.click(screen.getByRole('button', { name: 'Save start' }))
+    expect(fetchMock).toHaveBeenCalledWith(
+      '/api/projects/p1/steckbrief',
+      expect.objectContaining({ method: 'PUT', body: JSON.stringify({ startedOn: '2023-03' }) })
+    )
   })
 })

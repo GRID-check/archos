@@ -5280,7 +5280,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         fallback_source = f"{first_text}\n{last_text}" if last_text else first_text
                         summary = fallback_summary_from_text(fallback_source)
 
-                    # A person's choice in the upload dialog (ADR-0098): this file replaces
+                    # A person's choice in the upload dialog (ADR-0099): this file replaces
                     # that one. A job is one file; a name meant for it is never read for
                     # another. The base corpus has no Fassungen: it replaces by its own hash
                     # registry.

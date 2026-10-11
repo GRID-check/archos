@@ -1,4 +1,4 @@
--- Reverse 0129. ORDER: roll the frontend back first; the newer build writes and
+-- Reverse 0130. ORDER: roll the frontend back first; the newer build writes and
 -- reads `document_fassung_announcements` on every announcement.
 --
 -- Lossy in the noisy direction: the older build deduplicates by the inbox rows

@@ -138,7 +138,7 @@ const BOUNDARY_MIGRATIONS = [
   // Adds document_fassung_announcements — which new Fassungen have been
   // announced, so a re-read does not announce one again. Keyed directly by its
   // organization; cascades with the newer document.
-  '0129_document_fassung_announcements.sql',
+  '0130_document_fassung_announcements.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -5,7 +5,7 @@ that from the upload to the answer, and says which module owns each step. What
 the word means: [`CONTEXT.md`](../../CONTEXT.md), „Fassung“. What a person sees
 and does: [`documents.md`](../user-guides/documents.md#fassungen-und-freigabe).
 Why the link is not a merge:
-[ADR-0098](../adr/0098-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
+[ADR-0099](../adr/0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
 Why a same-name re-upload is a version:
 [ADR-0054](../adr/0054-document-versions-and-the-publish-door.md).
 
@@ -339,7 +339,7 @@ name, each labelled as what it is.
   comparison on top. „Besprechen“ follows it.
 - **Once.** Each Fassung is announced once: `notifyNewFassung` claims the newer
   document and the item's anchor (the new version, or the older document for a
-  link) in `document_fassung_announcements` (migration 0129) before it writes,
+  link) in `document_fassung_announcements` (migration 0130) before it writes,
   and writes only when the claim took. The settle hook runs on every re-read
   („Erneut lesen“, the folder brief's bulk re-read, a retry), and without the
   record a person assigned since, or whose item had aged out, was told again.

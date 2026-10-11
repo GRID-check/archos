@@ -334,7 +334,7 @@ export interface DispatchIngestExtras {
   priority?: IngestPriority
   /**
    * The FILE NAME of the document in this collection that these bytes replace,
-   * when a person filed the upload as its new Fassung (ADR-0098). Sent as
+   * when a person filed the upload as its new Fassung (ADR-0099). Sent as
    * `fassung_of`; once the file has been read, the ingest job writes the link
    * `PUT /v1/collections/{c}/fassung` writes. Absent for every other dispatch,
    * and then not sent at all.
@@ -477,7 +477,7 @@ export async function dispatchIngest(
     file_name: extras.fileName ?? null,
     // Only a bulk dispatch says so: the backend's default is interactive.
     ...(extras.priority === 'bulk' ? { priority: 'bulk' } : {}),
-    // Only an upload a person filed as a new Fassung says so (ADR-0098).
+    // Only an upload a person filed as a new Fassung says so (ADR-0099).
     ...(extras.fassungOf ? { fassung_of: extras.fassungOf } : {}),
     // Absent for every human document, and the Python side treats absent,
     // null and a non-agent author identically (`parse_agent_provenance`).
@@ -2245,7 +2245,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0098).
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0099).
       await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 

@@ -249,7 +249,7 @@ export const chat: typeof en.chat = {
     pages: 'S. {pages}',
     // Die Meldezeile einer Präzedenz aus einem anderen Projekt: Projekt, Status, dann das Bundesland.
     precedentProject: '{name} · {status}',
-    projectStatus: { active: 'laufend', closed: 'abgeschlossen' },
+    projectStatus: { active: 'laufend', paused: 'ruhend', closed: 'abgeschlossen' },
     // Quellen jenseits der acht Chips falten sich hinter denselben Auslöser wie
     // die gelesenen Quellen: die Zahl zuerst, jeder Name beim Aufklappen.
     more: '+{count} weitere',

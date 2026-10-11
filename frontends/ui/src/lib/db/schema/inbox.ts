@@ -126,7 +126,7 @@ export const INBOX_ITEM_TYPES = [
   'mail_import.failed',
   /**
    * Informational, operational tier: a newer Fassung of a document the
-   * recipient follows exists (CONTEXT.md „Fassung", ADR-0054, ADR-0098) —
+   * recipient follows exists (CONTEXT.md „Fassung", ADR-0054, ADR-0099) —
    * either a person confirmed that another document replaces it, or a new
    * version was published under its name. Addressed to the people assigned to
    * the OLDER document and to its uploader, never to the person who made the

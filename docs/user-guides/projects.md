@@ -10,9 +10,9 @@ The **Projects** page (`/app/projects`) is the app's home, and it is ordered by 
 
 **More projects** — everything else follows as a dense list, most recent first. Each row carries the project's initials, its name and brief, the document count and the timestamp, plus the same settings gear. A project with no brief yet simply has no second line. Rows lift onto the card surface as you point at them; on narrow screens the counts and the initials drop away and the timestamp stays, because that is what you choose a row by. Fewer than four projects and there is no list at all — the cards are the whole page.
 
-A row carries a status chip only for a **Closed** project; an **Active** chip on every row would carry nothing. Once your office has a closed project, a filter above the list switches between **Active**, **Closed** and **All**, each with its count. The page opens on the active projects (or on all of them, when none is active).
+A row carries a status chip only for a project that is not active: **Paused**, **Closed**, or **Not realized** for a closed project that was never built. An **Active** chip on every row would carry nothing. Once your office has a paused or closed project, a filter above the list switches between **Active**, **Paused**, **Closed** and **All**, each with its count; a state with no projects in it has no segment. The page opens on the active projects (or on all of them, when none is active). Only active projects take a place under **Pick up where you left off**: a paused or closed project keeps its place in the list, even if you worked in it last.
 
-Each card is split into a raised header — project name, an **Active** or **Closed** status chip, and the project summary from the brief — and a footer with the activity time (relative, e.g. "2 hours ago") plus a gear icon that jumps straight to that project's settings page. Clicking anywhere else on a card or row opens the project, resuming the section you last used.
+Each card is split into a raised header — project name, the same status chip when the project is not active, and the project summary from the brief — and a footer with the activity time (relative, e.g. "2 hours ago") plus a gear icon that jumps straight to that project's settings page. Clicking anywhere else on a card or row opens the project, resuming the section you last used.
 
 The header row carries the page title, a search field, and the **New project** button. Searching collapses both sections into a single **Matches** list — with a query on screen, "continue where you left off" is not the question being asked.
 
@@ -166,10 +166,10 @@ Source: `frontends/ui/src/features/jobs/`, service in
 **Settings → Steckbrief** keeps the key facts that stay once a project is closed:
 
 - **Address**: the project's address from the brief (edit it in the brief).
-- **Period**: Beginn and Abschluss, as months. Closing the project fills in Abschluss with the current month if it is still empty.
+- **Period**: Beginn and Abschluss, as months. You set the Beginn here. The Abschluss is not a field: while the project runs it reads *ongoing*, and it is the month you name when you [close the project](#closing-a-project).
 - **People**: everyone who worked on the project, including former staff and external planners who have no Piloti account: name, function, company and from–to, optionally linked to their Piloti account. Piloti stores nothing else about them, no e-mail and no phone number, and does not use these details when it answers.
 
-Whoever may edit the brief may change the period and the people. In a closed project the Steckbrief is read-only, but the project's admins can still remove a person: removing a person deletes every detail about them for good, which is how a request to erase someone's data is met.
+Whoever may edit the brief may change the Beginn and the people. In a closed project the Steckbrief is read-only, but the project's admins can still remove a person: removing a person deletes every detail about them for good, which is how a request to erase someone's data is met.
 
 ## Similar projects
 
@@ -182,18 +182,37 @@ The project hub's **Ähnliche Projekte** tile names the three closed projects mo
 
 The page shows what you could open anyway: a closed project is open to the whole office, and a folder with its own access list stays as restricted as everywhere else.
 
-## Closing a project
+## A project's lifecycle
 
-When the work on a project is done, close it: **Settings → Project status → Close project**. You need the project's admin role (`project:manage`).
+A project is in one of three states, and moves between them only on purpose:
 
-Before it closes, Piloti offers to **clear out** („Ausmisten") what the finished project no longer needs: working copies, superseded versions, duplicates, temporary and lock files, and drafts Piloti wrote that were never published. It looks only at files you may edit, and only at their names, folders, types, tags, summaries and version state; it does not read the files again. Only files that passed the upload check reach the AI; a file held in quarantine is never proposed. The list is marked as an AI proposal, with a reason for each file, or says that only fixed rules made it when the AI check is unavailable. Every file starts selected; deselect what should stay. Nothing is removed until you confirm. What you confirm goes to the project's Papierkorb for 14 days, in a folder „Ausgemistet ‹date›" inside the folder it came from, and can be restored from there. Either all of it goes or none of it: if moving one fails, everything is put back and the project stays open. **Close without removing anything** skips this step.
+```
+Active ⇄ Paused → Closed → (reopen) Active
+```
 
-Above the clear-out, the same dialog asks what this project should leave the office. Piloti offers a closed project's experience to every similar project later, in chat and on their [Ähnliche Projekte](#similar-projects) page, so the dialog shows
+- **Active**: being worked on. The normal case, so nothing marks it.
+- **Paused** („Ruhend"): waiting, for a permit, a client decision or a tender, and going on later. It leaves the **Active** view of the projects list (the sidebar's project switcher marks it), and its scheduled tasks are skipped until you resume it. Nothing else changes: it stays editable, and visible to its members only.
+- **Closed** („Abgeschlossen"): the work is over, whether the building was handed over or the project was never realized. Closing is what turns a project into the office's reference: read-only, readable by everyone in the office, and offered as a [similar project](#similar-projects) to every project like it.
 
-- **How Piloti finds it again**: the Bundesland, Gebäudeklasse, Bauweise, uses and kind of work it compares projects by, and the period. A fact still *open* makes the project harder to find; **Add in the brief** opens the intake wizard. A fact the brief does not ask of this project, such as the construction of a retaining wall, says *does not apply* and is not missing. The building class is derived rather than entered in the brief, so it is shown but not counted.
-- **What the office should keep**: the decisions and constraints the project memory holds. **Confirm** the ones that are right, and other projects cite them as confirmed by a person rather than as Piloti's reading. **Record a lesson** adds one in your words.
+Pause when the project is waiting and will go on; close when the work is over. Nothing is ever closed by a date.
 
-Confirming and recording need the right to edit the project memory (`project:memory:write`); without it the dialog shows what stays and you can still close. Nothing here is required: an incomplete profile is named, not enforced. After closing, the project memory is read-only, so this is the last moment to write to it.
+You move a project from its **Overview**: the **Project status** card shows the three states with the current one marked and offers the moves from it, and the **…** menu next to the project's name offers the same. Every page of a paused or closed project opens with a line saying so, with **Resume** or **Reopen project** for whoever may. All of it needs the project's admin role (`project:manage`), and every move is recorded in the audit log.
+
+### Pausing a project
+
+**Pause** asks nothing, because nothing about who may do what changes; the confirmation offers **Undo**. While paused, scheduled tasks are skipped, not queued. **Resume** brings it back to **Active**: a recurring task runs again at its next turn, and a one-time task whose date passed while the project was paused runs right away.
+
+### Closing a project
+
+**Close project** takes three steps. Only the first asks anything you must answer; you can go back to any step you have seen.
+
+1. **Completion** („Abschluss"): how the project ended, **Completed** (built or handed over) or **Not realized** (a competition not won, a commission withdrawn), and the month the work ended. Nothing is preselected unless the project was closed before, in which case its earlier answer is offered. The month defaults to this one; for a project that ended earlier, enter that month. It cannot lie in the future or before the project's Beginn; when the Beginn is still ahead, it is the Beginn's month. Both go into the Steckbrief, and a project that was not realized says so wherever it appears. Below them, the dialog says once what closing changes.
+2. **What stays**: what this project should leave the office. Piloti offers a closed project's experience to every similar project later, in chat and on their [Similar projects](#similar-projects) page, so this step shows
+   - **How Piloti finds it again**: the Bundesland, Gebäudeklasse, Bauweise, uses and kind of work it compares projects by, and the period. A fact still *open* makes the project harder to find; **Add in the brief** opens the intake wizard. A fact the brief does not ask of this project, such as the construction of a retaining wall, says *does not apply* and is not missing. The building class is derived rather than entered in the brief, so it is shown but not counted.
+   - **What the office should keep**: the decisions and constraints the project memory holds. **Confirm** the ones that are right, and other projects cite them as confirmed by a person rather than as Piloti's reading. **Record a lesson** adds one in your words.
+
+   Confirming and recording need the right to edit the project memory (`project:memory:write`); without it the step shows what stays and you can still close. Nothing here is required: an incomplete profile is named, not enforced. After closing, the project memory is read-only, so this is the last moment to write to it.
+3. **Clear out** („Ausmisten"): what the finished project no longer needs: working copies, superseded versions, duplicates, temporary and lock files, and drafts Piloti wrote that were never published. It looks only at files you may edit, and only at their names, folders, types, tags, summaries and version state; it does not read the files again. Only files that passed the upload check reach the AI; a file held in quarantine is never proposed. The list is marked as an AI proposal, with a reason for each file, or says that only fixed rules made it when the AI check is unavailable. Every file starts selected; deselect what should stay. Nothing is removed until you confirm. What you confirm goes to the project's Papierkorb for 14 days, in a folder „Ausgemistet ‹date›" inside the folder it came from, and can be restored from there. Either all of it goes or none of it: if moving one fails, everything is put back and the project stays open. **Close without removing anything** skips this step.
 
 A closed project
 
@@ -201,9 +220,10 @@ A closed project
 - keeps its **Papierkorb** restorable for 14 days: the project's admins can restore a folder from it without reopening the project.
 - stays **searchable**, and you can still **ask about it in chat**.
 - is **readable by everyone in your office**, members of the project or not, so finished work becomes reference for the whole office. Folders with their own access list stay exactly as restricted as before: someone who sees the project only because it is closed sees none of them, even one whose list names them, except the ones every project member may read.
-- opens every page with a banner saying it is closed and since when. Its files say „‹Projekt› · abgeschlossen" wherever they appear: the preview, the chat's sources, the download log.
+- says how and when it ended on its Overview, and opens every page with a line saying when its work ended and when it was closed in Piloti. Its files say „‹Projekt› · abgeschlossen" wherever they appear: the preview, the chat's sources, the download log.
+- leaves the sidebar's project switcher, which lists where you work; you reach it from the projects list.
 
-**Reopen project** in the same place makes it editable again, and visible only to its members. You can still delete a closed project. Closing and reopening are recorded in the audit log.
+**Reopen project** makes it editable again, and visible only to its members; it asks once, because it takes the project away from everyone else in the office. How and when it ended are kept and offered again the next time it is closed, for a project reopened for a defect claim, say. You can still delete a closed project.
 
 ## Members and permissions
 

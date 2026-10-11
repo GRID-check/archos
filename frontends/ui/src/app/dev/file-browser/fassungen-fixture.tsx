@@ -2,7 +2,7 @@
 
 /**
  * `/dev/file-browser?variant=fassungen` — documents with Fassungen, as the
- * listing draws them (ADR-0098, `fassung-chain.ts`).
+ * listing draws them (ADR-0099, `fassung-chain.ts`).
  *
  * Three panes over one corpus, each filtered the way the workspace filters:
  *

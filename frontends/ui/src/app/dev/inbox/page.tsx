@@ -257,7 +257,7 @@ const ITEMS: InboxItemView[] = [
     createdAt: ago(4_100),
     updatedAt: ago(4_100),
   },
-  // A newer Fassung of a document you follow (ADR-0098), as a sentence about
+  // A newer Fassung of a document you follow (ADR-0099), as a sentence about
   // the person who uploaded it. The older document is the subject (without its
   // extension, as `fassungRowNames` writes it), the newer one the second name,
   // and the excerpt is the first line of what changed: the row's only body.

@@ -39,7 +39,7 @@ export interface DocumentNameProbeClient {
   archiv: (names: readonly string[]) => Promise<DocumentNameMatch[]>
   /**
    * What the names continue on a project's shelf: the documents they would be
-   * the next Fassung of (ADR-0098). `landsIn` says where each name lands (the
+   * the next Fassung of (ADR-0099). `landsIn` says where each name lands (the
    * existing folder, or the nearest existing one above a folder the upload
    * creates; null is the root), so only documents of the collection that
    * folder files into are offered (ADR-0087).

@@ -690,7 +690,7 @@ describe('ArchivWorkspace — a file the Archiv already holds', () => {
   })
 
   /*
-   * One file whose name continues a document under another name (ADR-0098):
+   * One file whose name continues a document under another name (ADR-0099):
    * two named outcomes, and the answer reaches the upload. The second button
    * changes the plan AND confirms, and the hook applies only a plan that matches
    * the one the reader was shown, so the confirm has to wait for the plan to

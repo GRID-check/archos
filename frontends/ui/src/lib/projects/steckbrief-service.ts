@@ -29,6 +29,7 @@ import type { ProjectPersonRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { findProjectProfile } from './repository'
 import { dateToMonth, monthToDate, type Month } from './month'
+import { abschlussOf, isProjectClosed, projectClosedError } from './project-status'
 import {
   deleteProjectPersonRow,
   findProjectPeriod,
@@ -93,7 +94,7 @@ export async function getSteckbrief(session: AuthorizedSession, projectId: strin
   return {
     address: addressOf(profile),
     startedOn: dateToMonth(period.startedOn),
-    endedOn: dateToMonth(period.endedOn),
+    endedOn: dateToMonth(abschlussOf(period)),
     people: rows.map((row) => personView(row, accounts)),
     canEdit,
     canErase,
@@ -105,23 +106,24 @@ export async function setProjectPeriod(
   projectId: string,
   input: ProjectPeriodInput,
   request?: Request
-): Promise<{ startedOn: Month | null; endedOn: Month | null }> {
+): Promise<{ startedOn: Month | null }> {
   await requireProjectAccess(session, projectId, STECKBRIEF_WRITE)
-  const row = await updateProjectPeriod(projectId, session.organizationId, {
-    startedOn: toDate(input.startedOn),
-    endedOn: toDate(input.endedOn),
-  })
-  if (!row) throw new NotFoundError()
+  const row = await updateProjectPeriod(projectId, session.organizationId, toDate(input.startedOn))
+  if (!row) {
+    // Closed between the access check and the write, or gone.
+    if (isProjectClosed(await findProjectPeriod(projectId, session.organizationId))) throw projectClosedError()
+    throw new NotFoundError()
+  }
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },
     action: 'project.period.changed',
     targetType: 'project',
     targetId: projectId,
-    metadata: { startedOn: input.startedOn ?? '', endedOn: input.endedOn ?? '' },
+    metadata: { startedOn: input.startedOn ?? '' },
     request,
   })
-  return { startedOn: dateToMonth(row.startedOn), endedOn: dateToMonth(row.endedOn) }
+  return { startedOn: dateToMonth(row.startedOn) }
 }
 
 /** The stored values of a person, the account link checked: it must name a member of this organization. */

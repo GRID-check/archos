@@ -83,28 +83,31 @@ describe.skipIf(!url)('the Steckbrief against Postgres', () => {
       repo.insertProjectPerson(projectId, ORG, USER, person({ startedOn: '2025-03-01', endedOn: '2023-03-01' }))
     ).rejects.toThrow()
     await expect(repo.insertProjectPerson(projectId, ORG, USER, person({ name: '   ' }))).rejects.toThrow()
-    await expect(repo.updateProjectPeriod(projectId, ORG, { startedOn: '2025-03-01', endedOn: '2023-03-01' })).rejects.toThrow()
   })
 
-  it('closing fills the Abschluss with the month of the close, keeps one set by hand, and adds nobody after', async () => {
-    await repo.updateProjectPeriod(projectId, ORG, { startedOn: '2023-03-01', endedOn: null })
+  it('closing sets the Abschluss it names, a reopen keeps it unseen, and a Beginn after it drops it (ADR-0098)', async () => {
+    await repo.updateProjectPeriod(projectId, ORG, '2023-03-01')
     const kept = await repo.insertProjectPerson(projectId, ORG, USER, person())
-    await projectsRepo.setProjectStatusInOrg(projectId, ORG, {
-      status: 'closed',
-      closedBy: USER,
-      at: new Date('2026-10-06T18:00:00Z'),
-    })
-    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2023-03-01', endedOn: '2026-10-01' })
+    const close = (endedOn: string) =>
+      projectsRepo.setProjectStatusInOrg(projectId, ORG, 'active', {
+        status: 'closed',
+        closedBy: USER,
+        at: new Date('2026-10-06T18:00:00Z'),
+        outcome: 'completed',
+        endedOn,
+      })
+    await close('2026-09-01')
+    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2023-03-01', endedOn: '2026-09-01', status: 'closed' })
 
-    // The 0115 guard covers the Steckbrief's people too; erasing one is still possible.
+    // The 0116 guard covers the Steckbrief's people too; erasing one is still possible.
     await expect(repo.insertProjectPerson(projectId, ORG, USER, person({ name: 'Später' }))).rejects.toThrow()
     expect(await repo.deleteProjectPersonRow(projectId, ORG, kept.id)).toBe(true)
 
-    await projectsRepo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
-    await repo.updateProjectPeriod(projectId, ORG, { startedOn: '2023-03-01', endedOn: '2025-06-01' })
-    await projectsRepo.setProjectStatusInOrg(projectId, ORG, { status: 'closed', closedBy: USER, at: new Date('2026-10-06T18:00:00Z') })
-    expect((await repo.findProjectPeriod(projectId, ORG))?.endedOn).toBe('2025-06-01')
-    await projectsRepo.setProjectStatusInOrg(projectId, ORG, { status: 'active' })
+    await projectsRepo.setProjectStatusInOrg(projectId, ORG, 'closed', { status: 'active' })
+    expect((await repo.findProjectPeriod(projectId, ORG))?.endedOn).toBe('2026-09-01')
+    await repo.updateProjectPeriod(projectId, ORG, '2026-10-01')
+    expect(await repo.findProjectPeriod(projectId, ORG)).toEqual({ startedOn: '2026-10-01', endedOn: null, status: 'active' })
+    await repo.updateProjectPeriod(projectId, ORG, '2023-03-01')
   })
 
   it('goes with its project', async () => {

@@ -23,6 +23,7 @@ import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { deletionQueue, projects, type Project } from '@/lib/db/schema'
 import type { DbTransaction } from '@/lib/storage/repository'
+import type { ProjectOutcome, ProjectStatus } from './project-status'
 
 /** Hard cap for unpaginated org-wide lists. */
 export const PROJECT_LIST_LIMIT = 500
@@ -115,42 +116,57 @@ export async function findProjectTenancy(
   return row ?? null
 }
 
+/** A move of the lifecycle, as the repository writes it (ADR-0098). */
+export type ProjectStatusWrite =
+  | { status: 'active' }
+  | { status: 'paused'; at: Date }
+  | { status: 'closed'; at: Date; closedBy: string; outcome: ProjectOutcome; endedOn: string }
+
 /**
- * Close or reopen a project: the status, and when and by whom it was closed
- * (cleared on reopen). Closing also fills the Steckbrief's Abschluss with the
- * month of the close when nobody set one; a reopen leaves it as it is. Only a row in the other state changes, so two people
- * closing at once write once; null when nothing changed (already in that
- * state, deleted, or not in the organization).
+ * Move a project from `from` to another state, with that state's own columns:
+ * when it was paused, or when, by whom and how it closed and its Abschluss.
+ * Leaving a state clears its columns, except the outcome and the Abschluss,
+ * which a reopen keeps as the next close's suggestions. Only a row still in
+ * `from` changes, so two people moving it at once write once, and a close
+ * changes nothing when the Beginn moved past its Abschluss meanwhile; null when
+ * nothing changed (either race, deleted, or not in the organization).
  */
 export async function setProjectStatusInOrg(
   projectId: string,
   organizationId: string,
-  change: { status: 'closed'; closedBy: string; at: Date } | { status: 'active' }
+  from: ProjectStatus,
+  change: ProjectStatusWrite
 ): Promise<Project | null> {
   const db = getDb()
-  const closing = change.status === 'closed'
+  const cleared = { pausedAt: null, closedAt: null, closedBy: null }
+  const values =
+    change.status === 'closed'
+      ? {
+          ...cleared,
+          status: 'closed' as const,
+          closedAt: change.at,
+          closedBy: change.closedBy,
+          closedOutcome: change.outcome,
+          endedOn: change.endedOn,
+        }
+      : change.status === 'paused'
+        ? { ...cleared, status: 'paused' as const, pausedAt: change.at }
+        : { ...cleared, status: 'active' as const }
   const [row] = await withTenant({ organizationId }, () =>
     db
       .update(projects)
-      .set(
-        closing
-          ? {
-              status: 'closed',
-              closedAt: change.at,
-              closedBy: change.closedBy,
-              // The Steckbrief's Abschluss (ADR-0091): the month it was closed
-              // in, unless someone set one. GREATEST keeps it from landing
-              // before a Beginn set in the future.
-              endedOn: sql`COALESCE(${projects.endedOn}, GREATEST(date_trunc('month', ${change.at.toISOString()}::timestamptz)::date, ${projects.startedOn}))`,
-            }
-          : { status: 'active', closedAt: null, closedBy: null }
-      )
+      .set(values)
       .where(
         and(
           eq(projects.id, projectId),
           eq(projects.organizationId, organizationId),
           isNull(projects.deletedAt),
-          eq(projects.status, closing ? 'active' : 'closed')
+          eq(projects.status, from),
+          // A Steckbrief save that moved the Beginn past this Abschluss since
+          // the service checked it: a lost race (409), not a CHECK violation (500).
+          change.status === 'closed'
+            ? sql`(${projects.startedOn} IS NULL OR ${projects.startedOn} <= ${change.endedOn}::date)`
+            : undefined
         )
       )
       .returning()

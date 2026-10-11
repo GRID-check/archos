@@ -1,5 +1,5 @@
 /**
- * Telling people about a new Fassung (CONTEXT.md „Fassung", ADR-0054, ADR-0098).
+ * Telling people about a new Fassung (CONTEXT.md „Fassung", ADR-0054, ADR-0099).
  *
  * Two events make a document newer: a person confirms that another document
  * replaces it (`PUT /api/documents/{id}/fassung`, `./fassung-service`), or a new

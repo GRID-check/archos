@@ -1,5 +1,5 @@
--- 0129: document_fassung_announcements — which new Fassungen have been
--- announced (CONTEXT.md „Fassung"; ADR-0054, ADR-0098).
+-- 0130: document_fassung_announcements — which new Fassungen have been
+-- announced (CONTEXT.md „Fassung"; ADR-0054, ADR-0099).
 --
 -- `document.new_fassung` is written when a document becomes newer: a person
 -- confirms a link, a same-name version is published, or an upload settles

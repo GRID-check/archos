@@ -909,7 +909,14 @@
       "idx": 129,
       "version": "7",
       "when": 1792454400015,
-      "tag": "0129_document_fassung_announcements",
+      "tag": "0129_project_lifecycle",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1792454400016,
+      "tag": "0130_document_fassung_announcements",
       "breakpoints": true
     }
   ]

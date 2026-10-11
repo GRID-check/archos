@@ -1,6 +1,6 @@
 /**
  * Checking a „Als neue Fassung von X ablegen" that arrives with an upload
- * (CONTEXT.md, „Fassung"; ADR-0098), before a byte is stored.
+ * (CONTEXT.md, „Fassung"; ADR-0099), before a byte is stored.
  *
  * The browser sends the id of the older document the reader ticked. Python
  * writes the link once the new file has been read, from the older document's

@@ -30,7 +30,7 @@ export type PlanDocumentSource =
 
 /**
  * Where the offers „Als neue Fassung von X ablegen" come from: a probe asked
- * with the dropped names (`name-probe-client.ts`, ADR-0098), answering for the
+ * with the dropped names (`name-probe-client.ts`, ADR-0099), answering for the
  * names that continue a document on the shelf. `landsIn` says where each name
  * lands (`PlannedFile.landsInFolderId`): a restricted folder is a collection of
  * its own (ADR-0087), and only a document of the same collection can be linked.
@@ -114,7 +114,7 @@ export interface UploadDecision {
       documents: PlanDocumentSource
       /**
        * Asks the shelf which documents the dropped names continue
-       * (ADR-0098). Without it nothing is offered.
+       * (ADR-0099). Without it nothing is offered.
        */
       fassungOffers?: FassungOfferSource
       /**
@@ -173,7 +173,7 @@ export interface UploadDecision {
  *
  * Files that match nothing go out at once; anything that would touch an
  * existing document opens the plan dialog first, and so does a file whose name
- * continues one as its next Fassung (ADR-0098, `fassungOffers`). A folder always
+ * continues one as its next Fassung (ADR-0099, `fassungOffers`). A folder always
  * opens it.
  */
 export function useUploadDecision(): UploadDecision {

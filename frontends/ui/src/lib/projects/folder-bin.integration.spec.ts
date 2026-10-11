@@ -441,7 +441,7 @@ describe.skipIf(!url)('the Papierkorb against live Postgres (migration 0115)', (
       await bin.moveFolderToBin(pl, { projectId, folderId: folder.plaene })
       const purged = vi.mocked(collectionRef.purgeIngestedChunks).mock.calls.map(([, ref]) => ref.filename).sort()
       expect(purged).toEqual(['Archiv.pdf', 'Plan.pdf'])
-      // Reversible: a restore reads them again, and their Fassung links come back (ADR-0098).
+      // Reversible: a restore reads them again, and their Fassung links come back (ADR-0099).
       for (const call of vi.mocked(collectionRef.purgeIngestedChunks).mock.calls) expect(call).toHaveLength(3)
       expect(await docsRepo.documentExistsInCollection(doc.plan, COLLECTION, ORG)).toBe(false)
       expect(await docsRepo.documentExistsInCollection(doc.lageplan, COLLECTION, ORG)).toBe(true)

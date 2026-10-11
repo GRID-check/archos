@@ -685,14 +685,14 @@ describe('uploadDocument ingest dispatch', () => {
 })
 
 /*
- * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0098):
+ * „Als neue Fassung von X ablegen" end to end through the upload (ADR-0099):
  * the browser sends the older document's ID, the upload checks it before a byte
  * is stored (`resolveFassungOf`), the ingest job gets the older document's FILE
  * NAME as `fassung_of`, and the trail records the choice. Each link has its own
  * spec (`fassung-upload.spec.ts`, `dispatch.spec.ts`, the route specs); this is
  * the chain between them.
  */
-describe('uploadDocument filed as a new Fassung (ADR-0098)', () => {
+describe('uploadDocument filed as a new Fassung (ADR-0099)', () => {
   const OLDER_ID = '0b8f3c1e-0d3a-4d2e-9a53-6d1f9d6c2b11'
   const older = (overrides: Parameters<typeof makeDocument>[0] = {}) =>
     makeDocument({

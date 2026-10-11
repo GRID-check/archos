@@ -148,7 +148,7 @@ POST /v1/ingest
 Body: {
   file_ref: str, collection: str, document_id: str,
   file_name: str | None, folder_path: str | None, thumbnail_upload_url: str | None,
-  # the older file this upload replaces, when a person filed it as a new Fassung (ADR-0098)
+  # the older file this upload replaces, when a person filed it as a new Fassung (ADR-0099)
   fassung_of: str | None,
   # office renditions (ADR-0070, ADR-0071): presigned GETs of _render.pdf
   preview_ref: str | None, extraction_ref: str | None,
@@ -252,7 +252,7 @@ Where it sits, per file, against the five places ingestion sends content out:
 
 Each file of a screened job gets `file_details[].screening` on its job status: `quarantined`; `clean` when everything that goes on was screened; `partial` when the text layer was clean but something of the file reaches a model unscreened: pages the triage sends to transcription or drawing analysis (or a PDF it could not measure), or embedded rasters the VLM will caption (pdfplumber's per-page image count, read before any model call; the enrichment step also marks the file `partial` when it sends rasters the count missed); `partial` also when some of the file's text was never read, so never screened: a PDF page the text pass could not read (`pages_failed`; its tables, when the table pass reads them, are screened), or spreadsheet rows past the 10,000-row cap (`rows_over_cap`, not indexed either), or cells the extractors drop or shorten: spreadsheet columns past the 60th and the tail of a spreadsheet or CSV cell longer than 500 characters (`content_cut` on the documents, not indexed either); `unchecked` for a standalone image or a file with no local text. The triage the screen measured is handed to `route_pdf_pages`, so a screened PDF is measured once. Known gaps, accepted for content that cannot be read locally: scanned and drawing pages, standalone images and embedded rasters reach the VLM without being screened; the outcome says so (`partial` or `unchecked`), never `clean`. The thumbnail is drawn after the screen, and only when it passed. The log line for a quarantine names reason kinds and counts only, not the term, the value or the file name.
 
-### Fassungen across file names (ADR-0098)
+### Fassungen across file names (ADR-0099)
 
 Two steps run per file after its summary row is written, on the same `summary_llm` (`sources/knowledge_layer/src/llamaindex/fassungen.py`, the prompts and parsers in `aiq_agent/knowledge/document_revisions.py`). Both are bounded by `FASSUNG_TIMEOUT_SECONDS`, fail-open, skipped for the base corpus (it replaces through its own hash registry) and skipped when summarising is off. Neither links, hides or re-files anything: only a person's `PUT /v1/collections/{collection}/fassung` writes `superseded_by`.
 

@@ -2249,13 +2249,14 @@ What the program already does:
 - **The ClickHouse login needs no new grants.** The image creates it without a
   `<grants>` list, which in ClickHouse means every privilege, so the extra
   grants v4 asks for are already held.
-- **Writes go to both data models** (`langfuseV4WriteMode: dual`): v3's tables,
-  which keep the rollback path open, and v4's events table. The collector sends
-  `x-langfuse-ingestion-version: 4`, so its spans reach v4 at once rather than
-  through the ~15-minute server-side propagation. Users may opt into the v4
-  views. Historic traces are **not** rewritten (`langfuseV4HistoricBackfill:
-  false`), because upstream asks for about three times the current ClickHouse
-  disk as headroom.
+- **Writes go to v4's events table only** (`LANGFUSE_MIGRATION_V4_WRITE_MODE=events_only`,
+  fixed in `langfuse.ts`; there is no stack key, and a stack that still sets
+  the removed `langfuseV4WriteMode` is refused at load time). The collector
+  sends `x-langfuse-ingestion-version: 4`, so its spans reach v4 directly.
+  Historic traces are **not** rewritten (`langfuseV4HistoricBackfill: false`),
+  because upstream asks for about three times the current ClickHouse disk as
+  headroom, so traces written only to v3's tables before the cutover do not
+  show in the v4 views.
 
 What you do before that `up`. None of it can be undone after v4's schema
 migrations run, short of a restore:
@@ -2269,16 +2270,21 @@ migrations run, short of a restore:
    `kubectl exec deploy/langfuse-worker -- wget -qO- 'localhost:3030/api/health?failIfEventPropagationStuck=true'`
    answers 200, not 503.
 
-**The cutover is a later, one-way config change.** Once the v4 views hold what
-you need (new traces at once, history only if you turn the backfill on and have
-the disk), set `langfuseV4WriteMode: events_only` and `up`. From then on v3's
-tables are no longer written and the legacy public APIs (`/api/public/traces`,
-`/observations`, `/sessions`, `/scores`, `/metrics`) answer 404 to reads.
-Nothing in this repo reads them: traces arrive over OTLP, the Python SDK only
-reads prompts, and score WRITES (`POST /api/public/scores`, from the BFF and
-the agent, ADR-0089) are not switched off in any write mode, checked against
-the 4.56.0 source. Rollback before the cutover is upstream's `migrate … goto 37` from the
-v4 web container, then the v3 digests. After it, only the backups.
+**The cutover to events only is done, and it is one-way.** The deploy that
+first carries it stops writing v3's tables; take the Postgres backup and the
+ClickHouse snapshot above before that `up` on each stack. The dual-write phase
+existed to keep a rollback to v3 open, and nothing needs one any more: the
+legacy public APIs (`/api/public/traces`, `/observations`, `/sessions`,
+`/scores`, `/metrics`) answer 404 to reads, and nothing in this repo reads
+them. Traces arrive over OTLP, the Python SDK only reads prompts, score WRITES
+(`POST /api/public/scores`, from the BFF and the agent, ADR-0089) work in every
+write mode (checked against the 4.56.0 source), and the erasure workers list
+through `GET /api/public/v2/observations` and delete through
+`DELETE /api/public/traces`, both v4-safe (`frontends/ui/workers/langfuse-traces.js`).
+Writing one data model instead of two also halves the ClickHouse write load,
+on a disk that has filled once. Langfuse's PostHog export reads this events
+table (its "Enriched observations" source). After the cutover, going back
+means restoring the backups.
 
 ### Signals and attribution
 

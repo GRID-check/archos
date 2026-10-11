@@ -183,6 +183,14 @@
               "de": "Eine Quelle aus einem anderen Projekt ist jetzt als Präzedenzfall gekennzeichnet und enthält den Projektstatus sowie das Bundesland. Verwendet eine Antwort einen solchen Präzedenzfall, unterscheidet sie zwischen den geltenden Vorgaben, der üblichen Vorgehensweise des Büros und dem Projekt, in dem etwas bereits umgesetzt wurde, und weist darauf hin, wenn sich Vorschriften oder Bundesland unterscheiden."
             },
             {
+              "en": "You can now pause a project that is waiting, for a permit or a client decision. It leaves your active projects and its scheduled tasks are skipped until you resume it, without making it read-only or visible to the whole office.",
+              "de": "Sie können ein Projekt, das auf eine Genehmigung oder eine Entscheidung des Auftraggebers wartet, jetzt pausieren. Es wird aus Ihren aktiven Projekten entfernt und geplante Aufgaben werden übersprungen, bis Sie es fortsetzen – ohne es schreibgeschützt zu machen oder für das gesamte Büro sichtbar zu machen."
+            },
+            {
+              "en": "Closing a project now asks how it ended, completed or not realized, and in which month, then what the office keeps, then what to clear out, one step at a time.",
+              "de": "Beim Abschließen eines Projekts werden Sie jetzt Schritt für Schritt gefragt, ob es fertiggestellt oder nicht realisiert wurde und in welchem Monat, was das Büro behält und was aussortiert werden soll."
+            },
+            {
               "en": "Each project now opens its Overview on a dashboard: this month's activity, documents, memory, members and the most similar past projects at a glance, each one click from where you change it. Project admins can set a usage limit for the project.",
               "de": "Jedes Projekt öffnet seine Übersicht jetzt in einem Dashboard: Aktivitäten dieses Monats, Dokumente, Memory, Mitglieder und die ähnlichsten früheren Projekte auf einen Blick – jeweils mit einem Klick zur Bearbeitung. Projektadmins können ein Nutzungslimit für das Projekt festlegen."
             },
@@ -326,6 +334,18 @@
             {
               "en": "The upload area now states the largest file you can upload as a size per file, and the number it shows is the one your organization is held to. It no longer shows 95 MB for a 100 MB limit.",
               "de": "Der Upload-Bereich gibt nun die maximale Dateigröße pro Datei an, die Sie hochladen können. Angezeigt wird der für Ihre Organisation geltende Wert. Bei einem Limit von 100 MB werden nicht mehr 95 MB angezeigt."
+            },
+            {
+              "en": "The completion month of a project is now set when you close it. A running project shows \"ongoing\", and a month typed into one earlier is no longer shown; it is offered again when you close the project.",
+              "de": "Der Fertigstellungsmonat eines Projekts wird jetzt beim Schließen festgelegt. Bei laufenden Projekten wird „laufend“ angezeigt; ein zuvor eingetragener Monat wird nicht mehr angezeigt und beim Schließen erneut vorgeschlagen."
+            },
+            {
+              "en": "Projects closed before this release are marked as completed. If one was never built, reopen it and close it again as not realized.",
+              "de": "Projekte, die vor diesem Release geschlossen wurden, sind als abgeschlossen markiert. Wenn eines davon nie gebaut wurde, öffnen Sie es erneut und schließen Sie es wieder als nicht realisiert."
+            },
+            {
+              "en": "Pausing, closing and reopening are offered from the project's overview menu and from the notice at the top of a paused or closed project, and the project switcher no longer lists every closed project of the office.",
+              "de": "Pausieren, Schließen und Wiederöffnen stehen im Menü der Projektübersicht sowie über den Hinweis oben in einem pausierten oder geschlossenen Projekt zur Verfügung, und der Projektwechsler listet nicht mehr jedes geschlossene Projekt des Büros auf."
             },
             {
               "en": "When the AI provider is busy, answers to your questions now go ahead of background work such as re-indexing a project, so a large upload no longer slows the chat down.",

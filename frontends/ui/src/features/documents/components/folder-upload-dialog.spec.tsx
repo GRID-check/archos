@@ -240,7 +240,7 @@ describe('FolderUploadDialog — loose files', () => {
       }),
     )
 
-    // A new Fassung, in the same words as a file under another name (ADR-0098); never „version".
+    // A new Fassung, in the same words as a file under another name (ADR-0099); never „version".
     expect(screen.getByText('New revision of “EG.pdf”?')).toBeInTheDocument()
     // Named as the corpus names it, so the reader can find what is replaced, and
     // pointing at where the previous one stays: „Fassungen und Freigabe".
@@ -386,7 +386,7 @@ function exportPlan(count = 40): { plan: FolderUploadPlan; files: File[] } {
   return { plan, files }
 }
 
-describe('FolderUploadDialog — new Fassungen, by the same name and across names (ADR-0054, ADR-0098)', () => {
+describe('FolderUploadDialog — new Fassungen, by the same name and across names (ADR-0054, ADR-0099)', () => {
   const renderPlan = (plan: FolderUploadPlan, onFassungChange: (change: FassungChange) => void = vi.fn()) =>
     render(
       <FolderUploadDialog open onOpenChange={vi.fn()} plan={plan} currentFolderName={null} onConfirm={vi.fn()} onFassungChange={onFassungChange} />,

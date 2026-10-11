@@ -696,8 +696,8 @@ export const files = {
       'Your office marks these terms as sensitive, so these files are not uploaded. If one of them belongs in Piloti after all, tick it.',
     releaseFile: 'Upload anyway',
     // Files that come in as a new revision of a document already here: by the
-    // same name (ADR-0054) or by a name series under another name (ADR-0098).
-    // One concept, one word, whichever way Piloti recognised it (ADR-0098). Say
+    // same name (ADR-0054) or by a name series under another name (ADR-0099).
+    // One concept, one word, whichever way Piloti recognised it (ADR-0099). Say
     // document, file, revision: a name with an index does not say what a file is.
     fassung: {
       title: '{count, plural, one {# new revision} other {# new revisions}}',
@@ -838,7 +838,7 @@ export const files = {
     uploadFiles: 'Choose files',
   },
   errors: {
-    projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it in the settings.',
+    projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it from the notice at the top or in the Overview.',
     // Held back by the office's name screening (ADR-0086) on a path with no
     // upload dialog, such as a chat attachment.
     screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',
@@ -954,7 +954,7 @@ export const files = {
     sliceClear: 'Back to the folder',
     sliceEmpty: 'Nothing left here.',
   },
-  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0098). */
+  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0099). */
   fassungBadge: {
     count: '{count, plural, one {# revision} other {# revisions}}',
     countTitle: '{count, plural, one {# revision of this document} other {# revisions of this document}}',
@@ -1034,7 +1034,7 @@ export const files = {
     labelActive: 'Filters ({count} active)',
     reset: 'Reset filters',
     // The two toggles that WIDEN: retired files are not in the listing at all,
-    // and older revisions are one entry with the current one (ADR-0098). Worded
+    // and older revisions are one entry with the current one (ADR-0099). Worded
     // alike under one heading, so neither reads as a narrowing.
     alsoShowLabel: 'Also show',
     alsoShow: {

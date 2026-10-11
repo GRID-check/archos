@@ -329,20 +329,30 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   'project.restored': {
     targets: [{ type: 'project' }],
   },
-  // A project closed (read-only, open to every member) or reopened (ADR-0090).
+  // The project lifecycle (ADR-0098): every move under its own name, with the
+  // state it left. Closing (read-only, open to every member, ADR-0090) also
+  // says how the project ended and its Abschluss month.
+  'project.paused': {
+    targets: [{ type: 'project' }],
+    metadata: { name: 'string', from: 'string' },
+  },
+  'project.resumed': {
+    targets: [{ type: 'project' }],
+    metadata: { name: 'string', from: 'string' },
+  },
   'project.closed': {
     targets: [{ type: 'project' }],
-    metadata: { name: 'string' },
+    metadata: { name: 'string', from: 'string', outcome: 'string', endedOn: 'string' },
   },
   'project.reopened': {
     targets: [{ type: 'project' }],
-    metadata: { name: 'string' },
+    metadata: { name: 'string', from: 'string' },
   },
   // The Steckbrief (ADR-0091). A person is named by id only: the audit log
   // outlives an erasure, and a name in it would not.
   'project.period.changed': {
     targets: [{ type: 'project' }],
-    metadata: { startedOn: 'string', endedOn: 'string' },
+    metadata: { startedOn: 'string' },
   },
   'project.person.added': {
     targets: [{ type: 'project' }],

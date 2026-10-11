@@ -142,7 +142,7 @@ describe('a restriction drawn in a request', () => {
     expect(tagAwaitingPlacementReingest).toHaveBeenCalledWith(ORG, PROJECT, 'bff-job-1')
   })
 
-  it('purges the old collection permanently: a Fassung link lives in one collection and ends on a move (ADR-0098)', async () => {
+  it('purges the old collection permanently: a Fassung link lives in one collection and ends on a move (ADR-0099)', async () => {
     vi.mocked(listPlacementRows).mockResolvedValueOnce([placementRow('Honorarnote.pdf')])
 
     await placeProjectDocuments(ORG, PROJECT)

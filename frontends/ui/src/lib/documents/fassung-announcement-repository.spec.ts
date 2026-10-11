@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * A new Fassung is announced once (migration 0129): the claim is one INSERT
+ * A new Fassung is announced once (migration 0130): the claim is one INSERT
  * that takes the row or finds it taken, so two settles racing on one document
  * cannot both announce, and a re-read finds it taken.
  *

@@ -2,7 +2,7 @@
  * @vitest-environment node
  *
  * The project upload takes the older document's id when the reader filed the
- * file as its new Fassung (ADR-0098), and refuses anything that is not an id.
+ * file as its new Fassung (ADR-0099), and refuses anything that is not an id.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NextRequest } from 'next/server'

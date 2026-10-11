@@ -9,20 +9,31 @@ vi.mock('next/navigation', () => ({ useRouter: () => ({ refresh: vi.fn(), push: 
 // The lifecycle card and the Steckbrief have their own specs; here only where
 // they mount, and for whom, is asserted.
 vi.mock('../project-lifecycle-card', () => ({
-  ProjectLifecycleCard: (props: { status: string }) => (
-    <div data-testid="project-lifecycle-card" data-status={props.status} />
+  ProjectLifecycleCard: (props: { lifecycle: { status: string } }) => (
+    <div data-testid="project-lifecycle-card" data-status={props.lifecycle.status} />
   ),
 }))
 vi.mock('../project-steckbrief', () => ({
   ProjectSteckbrief: () => <div data-testid="project-steckbrief" />,
 }))
 
+const ACTIVE: ProjectOverviewData['lifecycle'] = {
+  status: 'active',
+  pausedAt: null,
+  closedAt: null,
+  closedOutcome: null,
+  endedOn: null,
+  startedOn: null,
+  suggestedEndedOn: null,
+  suggestedOutcome: null,
+}
+
 const DATA: ProjectOverviewData = {
   id: 'p1',
   name: 'Alpine Tower',
   collectionName: 'proj_1',
   status: 'active',
-  closedAt: null,
+  lifecycle: ACTIVE,
   createdAt: '2026-07-01T10:00:00Z',
   profileDisplay: { summary: 'Wohnbau GK4 in Wien.' },
   profile: null,
@@ -152,11 +163,15 @@ describe('ProjectOverview', () => {
     expect(screen.queryByText(/credits/)).not.toBeInTheDocument()
   })
 
-  test('a closed project (ADR-0090): no rename, but the status control and deletion stay with the manager', async () => {
+  test('a closed project (ADR-0090): no rename, but the status control, reopening and deletion stay with the manager', async () => {
     const user = userEvent.setup()
     render(
       <ProjectOverview
-        data={{ ...DATA, status: 'closed', closedAt: '2026-10-06T10:00:00Z' }}
+        data={{
+          ...DATA,
+          status: 'closed',
+          lifecycle: { ...ACTIVE, status: 'closed', closedAt: '2026-10-06T10:00:00Z', closedOutcome: 'completed', endedOn: '2026-09' },
+        }}
         activity={ACTIVITY}
         usage={null}
         access={{ ...ADMIN, manage: false, writeMemory: false }}
@@ -167,7 +182,37 @@ describe('ProjectOverview', () => {
     expect(screen.getByTestId('project-lifecycle-card')).toHaveAttribute('data-status', 'closed')
     await user.click(screen.getByRole('button', { name: 'Project actions' }))
     expect(await screen.findByRole('menuitem', { name: 'Delete project' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Reopen project' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Pause' })).not.toBeInTheDocument()
     expect(screen.queryByRole('menuitem', { name: 'Rename' })).not.toBeInTheDocument()
+  })
+
+  test('an active project offers pausing and closing from the hero menu, and carries no status chip (ADR-0098)', async () => {
+    const user = userEvent.setup()
+    render(<ProjectOverview data={DATA} activity={ACTIVITY} usage={null} access={ADMIN} />)
+
+    expect(within(screen.getByTestId('overview-hero')).queryByText('Active')).not.toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Project actions' }))
+    expect(await screen.findByRole('menuitem', { name: 'Pause' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Close project' })).toBeInTheDocument()
+    expect(screen.queryByRole('menuitem', { name: 'Resume' })).not.toBeInTheDocument()
+  })
+
+  test('a paused project says so in the hero and offers resuming', async () => {
+    const user = userEvent.setup()
+    render(
+      <ProjectOverview
+        data={{ ...DATA, status: 'paused', lifecycle: { ...ACTIVE, status: 'paused', pausedAt: '2026-09-01T10:00:00Z' } }}
+        activity={ACTIVITY}
+        usage={null}
+        access={ADMIN}
+      />
+    )
+
+    expect(within(screen.getByTestId('overview-hero')).getByText('Paused')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Project actions' }))
+    expect(await screen.findByRole('menuitem', { name: 'Resume' })).toBeInTheDocument()
+    expect(screen.getByRole('menuitem', { name: 'Close project' })).toBeInTheDocument()
   })
 
   test('viewers see no status control, but the Steckbrief and similar projects', () => {

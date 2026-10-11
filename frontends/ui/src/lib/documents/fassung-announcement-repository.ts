@@ -1,5 +1,5 @@
 /**
- * Which new Fassungen have been announced (migration 0129). The one writer is
+ * Which new Fassungen have been announced (migration 0130). The one writer is
  * `notifyNewFassung` (`./fassung-notify`): it claims a Fassung before it writes
  * any inbox item and gives the claim back when the announcement fails.
  */

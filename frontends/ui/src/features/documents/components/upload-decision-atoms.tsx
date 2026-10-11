@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils'
  * file name, a count) and WHY or WHERE TO, quieter, under it. The same-name
  * update, the master box over forty proposals, one proposal and one file that
  * needs a choice are four arrangements of that one row, so they read as one
- * family (ADR-0098: a same-name re-upload and a file under another name are both
+ * family (ADR-0099: a same-name re-upload and a file under another name are both
  * a new Fassung). Rows stack under each other rather than in table columns: a
  * second column was what ran off the dialog's edge at 512px and vanished on a
  * phone.

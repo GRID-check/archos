@@ -323,7 +323,7 @@ function compareSeverity(a: KnowledgeTally, b: KnowledgeTally): number {
  * describe content the office has not released, and a failed one's are absent
  * or stale. Their existence is counted; what they say is not.
  *
- * One entry per document, as the listing shows it (ADR-0098,
+ * One entry per document, as the listing shows it (ADR-0099,
  * `fassung-chain.ts`): an older Fassung whose newer one is in the corpus is
  * left out before anything is counted, whatever the listing's „Ältere
  * Fassungen" filter says. Otherwise the headline would count Index A, B and C

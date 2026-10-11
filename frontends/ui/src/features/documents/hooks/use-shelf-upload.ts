@@ -41,7 +41,7 @@ export interface ShelfUploadOptions {
  * A file whose name continues a document already on the shelf (index or date in
  * the name, newer than it) is offered „Als neue Fassung von X ablegen" in the
  * same dialog, decided with `fassungOffers: probeFassungen` and sent as `fassungOf`
- * (ADR-0098).
+ * (ADR-0099).
  *
  * Every path is screened against the office's sensitive-data list (ADR-0086),
  * on both shelves: the plan shows what the screening holds back and takes the
@@ -260,7 +260,7 @@ export function useShelfUpload({
                 return [currentFolderPath, target].filter(Boolean).join('/') || null
               },
               screeningReleased: (file) => plannedByFile.get(file)?.screeningReleased === true,
-              // The reader's tick on „Als neue Fassung von X ablegen" (ADR-0098): the older
+              // The reader's tick on „Als neue Fassung von X ablegen" (ADR-0099): the older
               // document's id, which the server checks again before the link is written.
               fassungOf: (file) => {
                 const offer = plannedByFile.get(file)?.fassungOf

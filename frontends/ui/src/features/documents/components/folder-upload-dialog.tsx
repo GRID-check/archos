@@ -78,8 +78,8 @@ import {
  * So the plan is shown BEFORE anything moves. The decision that changes the
  * outcome is which files come in as a new Fassung of a document already here
  * (CONTEXT.md, „Fassung"): a file of the same name (ADR-0054) or one whose name
- * continues a document under another name (ADR-0098). Both are a new Fassung of
- * one document and the timeline shows both (ADR-0098), so the dialog asks them
+ * continues a document under another name (ADR-0099). Both are a new Fassung of
+ * one document and the timeline shows both (ADR-0099), so the dialog asks them
  * in ONE block, in one row shape and one wording, each group saying why Piloti
  * thinks so (gleicher Name, Namensreihe). Everything else on this surface is a
  * statement, not a question: which folders were matched, which will be created,
@@ -123,7 +123,7 @@ export interface FolderUploadDialogProps {
   onReleaseChange?: (file: File, released: boolean) => void
   /**
    * The reader's answer to „Als neue Fassung von X ablegen" for one file
-   * (ADR-0098). Absent: the offers are listed without a way to answer.
+   * (ADR-0099). Absent: the offers are listed without a way to answer.
    */
   onFassungChange?: (change: FassungChange) => void
 }
@@ -681,7 +681,7 @@ function PlanCount({
  * - **Gleicher Name** (ADR-0054): one box for all of them, because the same
  *   name replaces the live document whatever the reader says about one file;
  *   unticked, they are skipped.
- * - **Namensreihe** (ADR-0098): a publisher export brings forty at once, so the
+ * - **Namensreihe** (ADR-0099): a publisher export brings forty at once, so the
  *   clear matches are one decision (`groupFassungProposals`) under a master box
  *   that sticks to the top while its rows, grouped by folder, go past; each
  *   row can be overridden, and unticked it comes in as a document of its own.

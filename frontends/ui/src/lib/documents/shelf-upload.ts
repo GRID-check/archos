@@ -76,7 +76,7 @@ export interface ShelfUploadInput {
   uploadBatchId?: string | null
   /**
    * The id of the document this file is filed as the new Fassung of, when the
-   * reader ticked „Als neue Fassung von X ablegen" (ADR-0098). Checked before
+   * reader ticked „Als neue Fassung von X ablegen" (ADR-0099). Checked before
    * anything is stored (`resolveFassungOf`); the ingest job then writes the
    * link once the file has been read. Ignored when the older document has this
    * file's own name: that is a new version (ADR-0054).

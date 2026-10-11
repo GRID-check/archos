@@ -476,7 +476,7 @@ same section shows the timeline and the suggestion, without decision buttons.
 
 How it works underneath, from upload to answer:
 [Fassungen](../architecture/fassungen.md). Why a link and not a merge:
-[ADR-0098](../adr/0098-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
+[ADR-0099](../adr/0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md).
 
 ---
 

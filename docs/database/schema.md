@@ -71,17 +71,19 @@ export const projects = pgTable('projects', {
 | `created_by` | `text` | NOT NULL | WorkOS user ID of creator |
 | `collection_name` | `text` | NOT NULL | Milvus collection name for this project's knowledge base |
 | `workos_resource_id` | `text` | UNIQUE | Optional WorkOS FGA resource ID |
-| `status` | `text` | NOT NULL, default `active`, CHECK `IN ('active','closed')` | ADR-0090, migration 0116. A closed project is read-only for files, folders, versions, the profile and project memory, and every organization member may read it |
+| `status` | `text` | NOT NULL, default `active`, CHECK `IN ('active','paused','closed')` | The lifecycle (ADR-0098, migrations 0116 and 0129). Paused: writable, members-only, schedules skipped. Closed (ADR-0090): read-only for files, folders, versions, the profile and project memory, and every organization member may read it. The moves are `PROJECT_TRANSITIONS` (`lib/projects/project-status.ts`) |
+| `paused_at` | `timestamptz` | set exactly when `status = 'paused'` | When it was paused (0129) |
 | `closed_at` | `timestamptz` | set exactly when `status = 'closed'` | When it was closed; cleared on reopen |
 | `closed_by` | `text` | set exactly when `status = 'closed'` | WorkOS user id of whoever closed it |
+| `closed_outcome` | `text` | NOT NULL when closed, `completed` or `cancelled` | How it ended: handed over, or not realized (0129). Kept across a reopen as the next close's suggestion, read only while closed |
 | `started_on` | `date` | first of a month, CHECK | Steckbrief Beginn (ADR-0091, migration 0117) |
-| `ended_on` | `date` | first of a month, not before `started_on` | Steckbrief Abschluss; closing fills it with the month of the close when unset |
+| `ended_on` | `date` | first of a month, not before `started_on`; NOT NULL when closed | Abschluss, named by closing (ADR-0098). Kept across a reopen as the next close's suggestion and read only while closed (`abschlussOf`) |
 | `deleted_at` | `timestamptz` | | Soft delete (ADR-0011) |
 | `created_at` | `timestamptz` | NOT NULL, `defaultNow()` | |
 
 **Indexes:** `projects_org_deleted_created_idx` on `(organization_id, deleted_at, created_at)` — tenant list queries (migration `0014`). `projects_org_status_idx` on `(organization_id, status) WHERE deleted_at IS NULL` (migration 0116).
 
-**Constraints (0115):** `projects_status_check`, and `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set.
+**Constraints (0116, 0129):** `projects_status_check`; `projects_closed_state_check`: closed exactly when `closed_at` and `closed_by` are both set; `projects_paused_state_check`: paused exactly when `paused_at` is set; `projects_closed_outcome_check`: a closed project has a known `closed_outcome` and an `ended_on` (both kept across a reopen).
 
 **The closed-project guard (0116).** `grid_refuse_insert_into_closed_project()` runs `BEFORE INSERT` on `documents`, `project_folders`, `document_versions` and `project_memory`, and raises SQLSTATE `GPC01` when the row names a closed project. It reads the project row `FOR SHARE`, so a close and an insert serialize. Updates are not refused. The down migration refuses while any project is closed.
 
@@ -985,7 +987,7 @@ not yet audited.
 
 ---
 
-## document_fassung_announcements (migration 0129, ADR-0098)
+## document_fassung_announcements (migration 0130, ADR-0099)
 
 Which new Fassungen have been announced to the people who followed the older
 document (`document.new_fassung`, `lib/documents/fassung-notify.ts`). One row
@@ -1689,7 +1691,7 @@ omits it to collapse.
 | `id` | `uuid` | PK, `defaultRandom()` | |
 | `organization_id` | `text` | NOT NULL | A user in two orgs has two inboxes; counts never mix |
 | `recipient_user_id` | `text` | NOT NULL | WorkOS user this is FOR |
-| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0098) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. |
+| `type` | `text` | NOT NULL | The item kind. **The list lives in `INBOX_ITEM_TYPES` (`frontends/ui/src/lib/db/schema/inbox.ts`) and is exhaustive over two registries by construction**, so it is not restated here — this row said four types long after there were eight. Today: the four collaboration ones, `storage.quota_warning`, `document.assigned_to_you`, `job.completed` / `job.failed`, `document.review_requested` (ADR-0054, actionable), and `upload.completed` / `document.quarantined` / `document.release_requested` (ADR-0086; the last is the uploader asking for a release, one row per file and reviewer). `document.new_fassung` (ADR-0054, ADR-0099) tells the followers of a document that a newer Fassung exists: `resource_type`/`resource_id` is the NEWER document, `anchor_id` the older document (a confirmed link) or the new version (a same-name upload), `payload.subject` the followed document, `payload.related` the newer one's name, `payload.excerpt` the first line of the change summary. |
 | `resource_type` / `resource_id` | `text` | NOT NULL | What it points AT — resolved through the sharing registry |
 | `anchor_id` | `text` | | Exact spot inside the resource (a message id), for a deep link |
 | `actor_user_id` | `text` | | Who caused it; NULL for system items |

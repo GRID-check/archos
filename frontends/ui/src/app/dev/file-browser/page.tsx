@@ -46,7 +46,7 @@
  * "Processing", because a PDF preview is produced at upload time and the rest of
  * ingestion runs after it.
  *
- * `?variant=fassungen` renders documents with Fassungen (ADR-0098): the count
+ * `?variant=fassungen` renders documents with Fassungen (ADR-0099): the count
  * beside the name, the one badge on an older Fassung, in cards and in the list,
  * with older Fassungen hidden and shown. See `fassungen-fixture.tsx`.
  */

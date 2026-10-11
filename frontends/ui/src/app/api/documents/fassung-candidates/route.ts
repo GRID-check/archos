@@ -2,7 +2,7 @@
  * Documents API — which documents of the project would these dropped names be
  * the next Fassung of?
  *
- * The upload dialog's „Als neue Fassung von X ablegen" (ADR-0098); the client is
+ * The upload dialog's „Als neue Fassung von X ablegen" (ADR-0099); the client is
  * `lib/documents/name-probe-client.ts`, the contract `name-probe-types.ts`. Asked
  * with the name probe's body, plus where each name lands (`folders`), and gated
  * like it. POST because a folder drop

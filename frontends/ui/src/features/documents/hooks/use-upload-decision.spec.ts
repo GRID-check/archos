@@ -115,7 +115,7 @@ describe('useUploadDecision — what the operating system left in the folder', (
 })
 
 /**
- * ADR-0098: a name that continues a document already on the shelf is a reason
+ * ADR-0099: a name that continues a document already on the shelf is a reason
  * to ask, even when nothing of that name exists, and the reader's answers
  * re-plan like a release does.
  */

@@ -430,7 +430,7 @@ export function FileBrowserPane({
   const folderAggregates = useMemo(() => {
     // One entry per document, like the cards below the tiles: a folder holding
     // Index A, B and C of one drawing counts one item unless older Fassungen
-    // are asked for (ADR-0098).
+    // are asked for (ADR-0099).
     const corpus = withoutOlderFassungen(searchFiles ?? files, showOlderFassungen)
     const allFolders = folderNav?.folders ?? []
     const counts = new Map<string, number>()

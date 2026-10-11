@@ -1,6 +1,6 @@
 /**
  * The Fassung proposals of one upload, grouped so that a drop of forty files is
- * ONE decision and not forty (ADR-0098).
+ * ONE decision and not forty (ADR-0099).
  *
  * An ArchiCAD publisher export brings every sheet again with its new index.
  * Nearly all of them continue exactly one document on the shelf; asking about
@@ -19,7 +19,7 @@
  * same content hash) is not here at all: it is not `new`, so it has no proposal
  * and stays „unverändert, wird übersprungen" in the plan.
  *
- * A file of the SAME name is a new Fassung too (ADR-0054, ADR-0098: the
+ * A file of the SAME name is a new Fassung too (ADR-0054, ADR-0099: the
  * timeline shows both), decided by the dialog's one update box rather than per
  * row. `countNewFassungen` counts both kinds, because the confirm button says
  * how many files come in as a new Fassung, whichever way Piloti recognised it.

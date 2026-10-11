@@ -258,7 +258,7 @@ export function FileFilterMenu({
             „Auch zeigen" so nobody reads either as a narrowing. A retired
             document is not in the listing at all (`lifecycle = 'active'` is in
             the query), so this is the only way back to one. An older Fassung is
-            one entry with its current one (ADR-0098) and comes back beside it.
+            one entry with its current one (ADR-0099) and comes back beside it.
             Each used to sit in a different section, one of them a heading and a
             separator spent on a single checkbox. */}
         <FilterSection label={t('filters.alsoShowLabel')}>

@@ -10,7 +10,7 @@
  * in the wrong place. A document in the Papierkorb is never moved. Idempotent: calling it again retries what failed and
  * moves nothing else.
  *
- * A move ends the document's Fassung links (ADR-0098): Fassungen share one
+ * A move ends the document's Fassung links (ADR-0099): Fassungen share one
  * collection, so the purge in the old collection is permanent and nothing of
  * the link is kept for a later read there. A person links the two again once
  * both live in one collection.

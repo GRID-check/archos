@@ -568,7 +568,7 @@ describe('deleteArchivDocument', () => {
       expect.objectContaining({ method: 'DELETE' }),
     )
     // Permanent, before and after the row goes: the document is gone, and so
-    // are its Fassung links (ADR-0098).
+    // are its Fassung links (ADR-0099).
     const deletes = fetchSpy.mock.calls.filter(([, init]) => (init as RequestInit)?.method === 'DELETE')
     expect(deletes).toHaveLength(2)
     for (const [, init] of deletes) {

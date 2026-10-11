@@ -13,7 +13,7 @@
  *    contradict each other (`lib/fassung-standing.ts`).
  *  - **The body is one timeline, newest first, numbered „Fassung 3, 2, 1"**
  *    across the uploads under this name (`document_versions`, ADR-0054) and the
- *    older documents linked under other names (ADR-0098). The index or date the
+ *    older documents linked under other names (ADR-0099). The index or date the
  *    office gave a Fassung is a secondary tag; „aktuell" marks only the one
  *    Piloti answers from (`lib/fassung-timeline.ts`).
  *  - **Every fact once.** The state is in the header; the date and the person

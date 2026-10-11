@@ -226,7 +226,7 @@ export async function deleteArchivDocument(
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0098).
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0099).
       await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 

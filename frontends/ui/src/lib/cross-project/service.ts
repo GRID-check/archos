@@ -50,6 +50,7 @@ import { searchProjectDecisions, type DecisionScope, type FoundDecision } from '
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { searchPermitRequirements, type FoundPermitRecord } from '@/lib/permits/repository'
 import { bundeslandOf, rankBySimilarity } from './similarity'
+import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
   CROSS_PROJECT_PAGE_PROJECTS,
@@ -114,21 +115,21 @@ function party(caller: CrossProjectCaller): HandOutParty {
   }
 }
 
-/** A project's status (ADR-0090). */
+/** A project's status (ADR-0098): active, paused or closed; anything unreadable reads as active. */
 export function projectStatusOf(project: Pick<Project, 'status'>): ProjectStatus {
-  return project.status === 'closed' ? 'closed' : 'active'
+  return toProjectStatus(project.status)
 }
 
 /**
- * A project's period, as days: the Steckbrief's Beginn and Abschluss (month
- * precision, migration 0117), else the day the project was created in Piloti
- * and an open end.
+ * A project's period, as days: the Steckbrief's Beginn (month precision,
+ * migration 0117), else the day the project was created in Piloti; and its
+ * Abschluss once it is closed, else an open end (ADR-0098).
  */
 export function projectPeriodOf(
-  project: Pick<Project, 'createdAt' | 'startedOn' | 'endedOn'>
+  project: Pick<Project, 'createdAt' | 'startedOn' | 'endedOn' | 'status'>
 ): { start: string; end: string | null } {
   const start = project.startedOn ?? new Date(project.createdAt).toISOString().slice(0, 10)
-  return { start, end: project.endedOn ?? null }
+  return { start, end: abschlussOf(project) }
 }
 
 /** Whether a period overlaps `[from, to]`, both optional and inclusive; an open end runs to today and beyond. */

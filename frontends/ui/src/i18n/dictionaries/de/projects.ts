@@ -33,11 +33,13 @@ export const projects: typeof en.projects = {
     filter: {
       label: 'Projekte nach Status filtern',
       active: 'Aktiv',
+      paused: 'Ruhend',
       closed: 'Abgeschlossen',
       all: 'Alle',
     },
     noneInFilter: {
       active: 'Keine aktiven Projekte',
+      paused: 'Keine ruhenden Projekte',
       closed: 'Keine abgeschlossenen Projekte',
       description: 'In dieser Ansicht gibt es keine Projekte.',
       showAll: 'Alle Projekte zeigen',
@@ -53,11 +55,11 @@ export const projects: typeof en.projects = {
     addressMissing: 'Noch keine Adresse. Sie wird im Briefing erfasst.',
     period: 'Zeitraum',
     startedOn: 'Beginn',
-    endedOn: 'Abschluss',
     open: 'offen',
-    savePeriod: 'Zeitraum speichern',
-    periodSaved: 'Zeitraum gespeichert.',
-    periodInvalid: 'Der Abschluss liegt vor dem Beginn.',
+    running: 'laufend',
+    endedOnRunning: 'Abschluss: {end}. Er wird gesetzt, wenn das Projekt abgeschlossen wird.',
+    savePeriod: 'Beginn speichern',
+    periodSaved: 'Beginn gespeichert.',
     people: 'Personen',
     peopleDescription:
       'Alle, die am Projekt mitgearbeitet haben, auch ehemalige Mitarbeitende und externe Planer ohne Piloti-Konto. Nur Name, Funktion, Firma und Zeitraum; Piloti verwendet diese Angaben nicht in Antworten.',
@@ -82,9 +84,6 @@ export const projects: typeof en.projects = {
     error: 'Das hat nicht geklappt. Bitte versuchen Sie es erneut.',
   },
   cleanup: {
-    title: 'Projekt abschließen',
-    intro:
-      'Vor dem Abschluss kann Piloti ausmisten: Arbeitskopien, überholte Fassungen, Duplikate, temporäre Dateien und nie veröffentlichte Entwürfe. Sie entscheiden über jeden Eintrag.',
     loading: 'Piloti sieht die Dateien durch …',
     aiNotice:
       'KI-Vorschlag: erstellt von Piloti aus Dateinamen, Ordnern, Typen und den vorhandenen Zusammenfassungen, ohne den Inhalt der Dateien neu zu lesen. Prüfen Sie jeden Eintrag.',
@@ -118,26 +117,80 @@ export const projects: typeof en.projects = {
   lifecycle: {
     fileChip: '{name} · abgeschlossen',
     fileChipNoName: 'Abgeschlossenes Projekt',
+    outcome: {
+      completed: 'Fertiggestellt',
+      cancelled: 'Nicht realisiert',
+    },
     banner: {
       title: 'Abgeschlossenes Projekt · nur lesen',
-      closedOn: 'Abgeschlossen am {date}.',
+      endedIn: 'Abschluss {month}.',
+      closedOn: 'In Piloti abgeschlossen am {date}.',
+      cancelled: 'Es wurde nicht realisiert.',
       body: 'Dateien, Ordner, Briefing und Projektgedächtnis sind schreibgeschützt. Fragen im Chat bleiben möglich.',
       outsider:
         'Sie sehen dieses Projekt, weil abgeschlossene Projekte für das ganze Büro lesbar sind. Ordner mit eigener Zugriffsliste bleiben für Sie verborgen.',
+      pausedTitle: 'Ruhendes Projekt',
+      pausedOn: 'Ruht seit {date}.',
+      pausedBody: 'Alles bleibt bearbeitbar. Geplante Aufträge laufen erst wieder, wenn es fortgesetzt wird.',
     },
     card: {
       heading: 'Projektstatus',
-      activeDescription:
-        'Schließen Sie das Projekt ab, wenn die Arbeit erledigt ist. Es bleibt vollständig erhalten und durchsuchbar, wird schreibgeschützt und ist für alle im Büro lesbar. Ordner mit eigener Zugriffsliste bleiben eingeschränkt.',
+      track: 'Lebenszyklus des Projekts',
+      activeDescription: 'In Arbeit. Seine Mitglieder arbeiten darin, geplante Aufträge laufen.',
+      pausedDescription:
+        'Wartet, etwa auf einen Bescheid oder eine Entscheidung der Bauherrschaft. Es bleibt bearbeitbar und nur für seine Mitglieder sichtbar; geplante Aufträge laufen nicht, und es steht nicht mehr unter „Aktiv“.',
       closedDescription:
-        'Das Projekt ist abgeschlossen und schreibgeschützt. Öffnen Sie es wieder, um Dateien, Ordner, Briefing oder Projektgedächtnis zu ändern. Danach sehen es wieder nur seine Mitglieder.',
-      closedOn: 'Abgeschlossen am {date}',
+        'Schreibgeschützt und für das ganze Büro lesbar, als Referenz für künftige Projekte. Ordner mit eigener Zugriffsliste bleiben eingeschränkt. Wieder geöffnet ist es bearbeitbar und nur noch für seine Mitglieder sichtbar.',
+      closedFacts: '{outcome} · Abschluss {month}',
+      closedOn: 'In Piloti abgeschlossen am {date}',
+      pausedOn: 'Ruht seit {date}',
+      whichOne:
+        'Pausieren, wenn das Projekt wartet und weitergeht. Abschließen, wenn die Arbeit vorbei ist, ob gebaut oder nicht.',
+      pause: 'Pausieren',
+      resume: 'Fortsetzen',
       close: 'Projekt abschließen',
       reopen: 'Projekt wieder öffnen',
     },
     closeDialog: {
-      description:
-        'Danach kann niemand mehr Dateien, Ordner, das Briefing oder das Projektgedächtnis ändern, auch Tiefenrecherchen und Aufträge laufen nicht mehr. Alle im Büro können das Projekt lesen und dazu fragen. Sie können es jederzeit wieder öffnen. Ist im Steckbrief noch kein Abschluss eingetragen, wird der aktuelle Monat gesetzt.',
+      title: 'Projekt abschließen',
+      stepsLabel: 'Schritte',
+      stepProgress: 'Schritt {current} von {total}',
+      back: 'Zurück',
+      next: 'Weiter',
+      steps: {
+        ending: {
+          label: 'Abschluss',
+          description: 'Wie das Projekt ausgegangen ist und wann. Beides steht danach im Steckbrief.',
+        },
+        keep: {
+          label: 'Was bleibt',
+          description: 'Was dieses Projekt dem Büro hinterlässt. Nichts davon ist Pflicht.',
+        },
+        cleanup: {
+          label: 'Ausmisten',
+          description:
+            'Piloti schlägt vor, was das fertige Projekt nicht mehr braucht: Arbeitskopien, überholte Fassungen, Duplikate, temporäre Dateien und nie veröffentlichte Entwürfe. Sie entscheiden über jeden Eintrag.',
+        },
+      },
+      outcome: {
+        label: 'Wie ist das Projekt ausgegangen?',
+        completedHint: 'Gebaut oder übergeben, die Leistung ist erbracht.',
+        cancelledHint: 'Etwa ein Wettbewerb ohne Zuschlag oder ein zurückgezogener Auftrag.',
+      },
+      endedOn: {
+        label: 'Abschluss',
+        hint: 'Der Monat, in dem die Arbeit endete. Für ein früher beendetes Projekt tragen Sie diesen Monat ein.',
+        invalid: 'Bitte einen Monat wählen.',
+        future: 'Der Abschluss kann nicht in der Zukunft liegen.',
+        beforeStart: 'Der Abschluss liegt vor dem Beginn im Steckbrief.',
+      },
+      changes: {
+        heading: 'Was sich ändert',
+        readOnly: 'Dateien, Ordner, Briefing und Projektgedächtnis werden schreibgeschützt.',
+        office: 'Alle im Büro können das Projekt lesen und dazu fragen. Ordner mit eigener Zugriffsliste bleiben eingeschränkt.',
+        stops: 'Tiefenrecherchen und geplante Aufträge laufen nicht mehr.',
+        reopen: 'Sie können es jederzeit wieder öffnen.',
+      },
     },
     debrief: {
       intro:
@@ -212,9 +265,13 @@ export const projects: typeof en.projects = {
       confirm: 'Wieder öffnen',
     },
     toast: {
+      paused: 'Projekt pausiert.',
+      resumed: 'Projekt fortgesetzt.',
+      undo: 'Rückgängig',
       closed: 'Projekt abgeschlossen.',
       reopened: 'Projekt wieder geöffnet.',
       error: 'Der Projektstatus konnte nicht geändert werden.',
+      conflict: 'Jemand hat den Projektstatus inzwischen geändert. Die Seite zeigt jetzt den aktuellen Stand.',
     },
   },
   card: {
@@ -222,7 +279,9 @@ export const projects: typeof en.projects = {
       'Arbeitsbereich des Planungsbüros. Fügen Sie Dokumente und ein Briefing hinzu, damit Piloti aus diesem Projekt arbeiten kann.',
     status: {
       active: 'Aktiv',
+      paused: 'Ruhend',
       closed: 'Abgeschlossen',
+      cancelled: 'Nicht realisiert',
     },
     lastActivity: 'Letzte Aktivität',
     yourActivity: 'Zuletzt hier gearbeitet',

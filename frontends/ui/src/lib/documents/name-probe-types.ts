@@ -69,7 +69,7 @@ export type NameProbeResponse = z.infer<typeof nameProbeResponseSchema>
 /**
  * What a dropped name continues: the document of its revision series (the name
  * grammar, `revision-series.ts`) that a new file of this name would replace as
- * a Fassung (CONTEXT.md, „Fassung"; ADR-0098). The upload dialog offers „Als
+ * a Fassung (CONTEXT.md, „Fassung"; ADR-0099). The upload dialog offers „Als
  * neue Fassung von X ablegen" from it. Asked with the same bodies as the name
  * probe, answered for the names that continue something only.
  */

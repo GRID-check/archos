@@ -44,7 +44,7 @@ export interface UploadIntent {
   folderPath: string | null
   /** Released from the name screening in the upload dialog. */
   screeningReleased: boolean
-  /** The document this file was filed as the new Fassung of, chosen in the upload dialog (ADR-0098); null for none. */
+  /** The document this file was filed as the new Fassung of, chosen in the upload dialog (ADR-0099); null for none. */
   fassungOf?: string | null
 }
 

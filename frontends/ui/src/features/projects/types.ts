@@ -1,4 +1,4 @@
-import type { ProjectStatus } from '@/lib/projects/project-status'
+import type { ProjectLifecycleView, ProjectStatus } from '@/lib/projects/project-status'
 import type { ApplicableStandard } from '@/lib/oib/applicable-standards'
 import type { ProjectProfile } from '@/lib/project-profile/types'
 
@@ -15,10 +15,10 @@ export interface ProjectOverviewData {
   id: string
   name: string
   collectionName: string
-  /** `active` or `closed` (ADR-0090). */
+  /** `active`, `paused` or `closed` (ADR-0098). */
   status: ProjectStatus
-  /** ISO timestamp; set when closed. */
-  closedAt: string | null
+  /** Where it stands in its lifecycle, for the status card and the close dialog. */
+  lifecycle: ProjectLifecycleView
   createdAt: string
   profileDisplay: {
     title?: string

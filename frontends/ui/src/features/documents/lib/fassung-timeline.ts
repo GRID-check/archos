@@ -8,7 +8,7 @@
  * A document's history lives in two places. Uploads under the SAME file name are
  * its own versions (ADR-0054, `document_versions`, with a review state each);
  * documents under OTHER names are stored as a confirmed link between two
- * documents (ADR-0098, `FileItem.fassung.history`). A person sees one document
+ * documents (ADR-0099, `FileItem.fassung.history`). A person sees one document
  * with one history, so the two are merged here by date — a rule, not a layout
  * decision, and therefore pure and specced.
  *
@@ -215,7 +215,7 @@ export interface LinkedRow {
 }
 
 /**
- * The newer document that replaced this one (ADR-0098). Always the top row: it
+ * The newer document that replaced this one (ADR-0099). Always the top row: it
  * is the Fassung Piloti answers from, and the one a reader of an older Fassung
  * is most likely to want next.
  */

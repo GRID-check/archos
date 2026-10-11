@@ -3,7 +3,7 @@ import { documents } from './documents'
 
 /**
  * `document_fassung_announcements` — a new Fassung that `document.new_fassung`
- * has been announced for (migration 0129; CONTEXT.md „Fassung", ADR-0098).
+ * has been announced for (migration 0130; CONTEXT.md „Fassung", ADR-0099).
  *
  * Keyed by the newer document and the anchor the inbox item uses: the new
  * version for a same-name Fassung, the older document for a link.

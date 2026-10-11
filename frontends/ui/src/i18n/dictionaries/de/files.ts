@@ -667,7 +667,7 @@ export const files: typeof en.files = {
     releaseFile: 'Trotzdem hochladen',
     // Dateien, die als neue Fassung eines vorhandenen Dokuments hereinkommen: mit
     // gleichem Namen (ADR-0054) oder über eine Namensreihe unter anderem Namen
-    // (ADR-0098). Ein Begriff, gleich wie Piloti es erkannt hat (ADR-0098). Sagen
+    // (ADR-0099). Ein Begriff, gleich wie Piloti es erkannt hat (ADR-0099). Sagen
     // Sie Dokument, Datei, Fassung: ein Name mit Index sagt nicht, was eine Datei ist.
     fassung: {
       title: '{count, plural, one {# neue Fassung} other {# neue Fassungen}}',
@@ -800,7 +800,7 @@ export const files: typeof en.files = {
     uploadFiles: 'Dateien auswählen',
   },
   errors: {
-    projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es in den Einstellungen wieder öffnen.',
+    projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es oben im Hinweis oder in der Übersicht wieder öffnen.',
     // Vom Namensfilter des Büros zurückgehalten (ADR-0086), auf einem Weg ohne
     // Upload-Dialog, etwa im Chat.
     screenedOut: '{count} Datei(en) nicht hochgeladen, weil Ihr Büro sie als sensibel einstuft: {files}',
@@ -911,7 +911,7 @@ export const files: typeof en.files = {
     sliceClear: 'Zurück zum Ordner',
     sliceEmpty: 'Hier liegt nichts mehr vor.',
   },
-  /** Die Anzahl auf Karte und Zeile, wenn ein Dokument Fassungen unter anderen Dateinamen hat (ADR-0098). */
+  /** Die Anzahl auf Karte und Zeile, wenn ein Dokument Fassungen unter anderen Dateinamen hat (ADR-0099). */
   fassungBadge: {
     count: '{count, plural, one {# Fassung} other {# Fassungen}}',
     countTitle: '{count, plural, one {# Fassung dieses Dokuments} other {# Fassungen dieses Dokuments}}',
@@ -991,7 +991,7 @@ export const files: typeof en.files = {
     labelActive: 'Filter ({count} aktiv)',
     reset: 'Filter zurücksetzen',
     // Die beiden Schalter, die ERWEITERN: Stillgelegte stehen gar nicht erst in
-    // der Liste, ältere Fassungen sind ein Eintrag mit der aktuellen (ADR-0098).
+    // der Liste, ältere Fassungen sind ein Eintrag mit der aktuellen (ADR-0099).
     // Gleich formuliert und unter einer Überschrift, damit keiner als
     // Einschränkung gelesen wird.
     alsoShowLabel: 'Auch zeigen',

@@ -17,15 +17,15 @@
  * density it wins on the two things a scan needs: a fixed left edge to index by
  * (the initials tile) and columns that line up down the page.
  *
- * The row carries the status chip only for a CLOSED project (ADR-0090). An
- * „Aktiv" chip on every row would be a solid band of chroma reading as the
- * loudest thing on the page while carrying no information; the exception is
- * the one worth reading.
+ * The row carries the status chip only for a project that is not active
+ * (ADR-0098): Ruhend, Abgeschlossen, Nicht realisiert. An „Aktiv" chip on every
+ * row would be a solid band of chroma reading as the loudest thing on the page
+ * while carrying no information; the exception is the one worth reading.
  */
 
 import type { JSX } from 'react'
 import type { Project } from '@/lib/db/schema'
-import { getProjectStatus, ProjectStatusChip } from './project-status'
+import { ProjectStatusMark } from './project-status'
 import {
   ProjectActivity,
   ProjectDocCount,
@@ -61,7 +61,7 @@ export function ProjectListRow({ project, docCount = 0, activityAt }: ProjectLis
           <span className="truncate">
             <ProjectOpenLink project={project} />
           </span>
-          {getProjectStatus(project) === 'closed' && <ProjectStatusChip status="closed" size="sm" />}
+          <ProjectStatusMark project={project} />
         </span>
         <ProjectSummaryLine project={project} fallback={false} className="mt-0.5" />
       </div>

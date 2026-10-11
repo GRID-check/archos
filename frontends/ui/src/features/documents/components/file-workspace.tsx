@@ -610,7 +610,7 @@ export function FileWorkspace({
  * Built from the UNFILTERED corpus: the brief describes the folder, and a
  * filter that hides half of it must not make Piloti appear to know half as
  * much. One entry per document all the same: `buildFolderBrief` leaves out
- * every older Fassung whose newer one is listed (ADR-0098), so its headline,
+ * every older Fassung whose newer one is listed (ADR-0099), so its headline,
  * pages, chips and „Braucht Sie" agree with the listing. The slice is drawn
  * from the same subtree the brief counted, so a chip that says „Grundriss 12"
  * opens twelve documents.

@@ -5,6 +5,7 @@ import type { ProjectOverviewData } from '@/features/projects/types'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
 import { documentVisibleTo, type ShelfReader } from '@/lib/documents/visibility'
+import { lifecycleViewOf } from './project-status'
 
 export interface ProjectOverviewReader {
   /**
@@ -49,7 +50,11 @@ export async function getProjectOverviewData(
       name: projects.name,
       collectionName: projects.collectionName,
       status: projects.status,
+      pausedAt: projects.pausedAt,
       closedAt: projects.closedAt,
+      closedOutcome: projects.closedOutcome,
+      startedOn: projects.startedOn,
+      endedOn: projects.endedOn,
       createdAt: projects.createdAt,
       profile: projects.profile,
       profileDisplay: projects.profileDisplay,
@@ -129,7 +134,7 @@ export async function getProjectOverviewData(
     name: project.name,
     collectionName: project.collectionName,
     status: project.status,
-    closedAt: project.closedAt ? new Date(project.closedAt).toISOString() : null,
+    lifecycle: lifecycleViewOf(project),
     createdAt: project.createdAt.toISOString(),
     profileDisplay: project.profileDisplay
       ? {
