@@ -1794,8 +1794,9 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               // `border` — draws the edge of the card so it reads as a field to
               // type into rather than as a floating patch of glass. Focus is
               // still signalled by the ring on top of it, never by thickening
-              // the outline. Textarea on top, hairline-separated control row
-              // below.
+              // the outline. Textarea on top, control row below with no rule
+              // between them: a hairline there read as a stray line across the
+              // card, and the card's own edge already groups the two.
               // The ring is the neutral `ring-ring`, the same focus state every
               // other field in the app uses. It was `accent-pop` — a green glow
               // meant to read as "live" — and the accent was withdrawn: on the
@@ -2097,10 +2098,10 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
               )}
             </AnimatePresence>
 
-            {/* Bottom control row — hairline-separated from the textarea.
+            {/* Bottom control row, spaced from the textarea, no rule between.
             Order per the click dummy: scope · Datengrundlage · Deep-Research,
             then attach + send pushed right. */}
-            <div className="mt-2.5 flex flex-wrap items-center gap-1.5 border-t pt-2.5">
+            <div className="mt-2 flex flex-wrap items-center gap-1.5">
               {/* Scope chip — current project; cross-project is honestly disabled.
               Dashed status-active dot + label + chevron (dummy composer). */}
               <Popover>
