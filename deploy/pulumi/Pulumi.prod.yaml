@@ -455,3 +455,9 @@ config:
   # socket, behind the aiq-api Service (BACKEND_URL). Sized like the frontend.
   grid-oib:apiMinReplicas: "1"
   grid-oib:apiMaxReplicas: "3"
+  # ── PostHog (ADR-0100) ── product analytics, error tracking and Langfuse-fed
+  # events. The project token is public (it ships in every browser bundle), so
+  # it is plaintext, not ESC. Session replay is on, with all text masked.
+  grid-oib:posthogHost: https://eu.i.posthog.com
+  grid-oib:posthogProjectToken: phc_CVrz2Nt2hoJSmBQ9duYHDbWSjkdyQkQxKs7GHxDvg27X # pragma: allowlist secret (public project token)
+  grid-oib:posthogSessionReplay: "true"
