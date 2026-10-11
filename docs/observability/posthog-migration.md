@@ -109,8 +109,17 @@ date.
 - [ ] **Legal copy** before replay or the landing site is instrumented:
   `frontends/ui/src/lib/legal/content/{de,en}.ts`, `frontends/web/src/i18n/ui.ts`,
   and PostHog's DPA signed.
-- [ ] **WorkOS source** (if decided): Data pipeline → Sources → WorkOS, a
-  read-only WorkOS API key, tables `organizations`, `users`, daily.
+- [x] **WorkOS source** (connected 2026-09-09): reads the **Production** WorkOS
+  environment through PostHog's webhook endpoint there (`user.*`,
+  `organization.*`), into `workos_users` and `workos_organizations`. The tables
+  change only when WorkOS does, so an old "last synced" date is not a fault.
+  `directory_users` and `directory_groups` are off (no Directory Sync), which
+  is the error the source still shows.
+- [ ] **Joins to the WorkOS tables**: proposed 2026-10-11, waiting for a typed
+  confirm in PostHog. `events.distinct_id` → `workos_users.id` (field
+  `workos_user`) and `events.properties.organization_id` →
+  `workos_organizations.id` (field `workos_organization`), so charts read names
+  and emails from the warehouse copy and the app never sends them.
 
 ## Open decisions
 
@@ -121,31 +130,39 @@ date.
    If observations per turn × turns approaches 1M a month, keep the PostHog
    charts on scores and generations and ask Langfuse for a narrower export
    source.
-3. **WorkOS in PostHog.** The warehouse source gives seat and org charts. It is a
-   second copy of identity data (ADR-0007 forbids one in *our* database, not in
-   an analysis tool). A WorkOS webhook into a PostHog workflow would add login and
-   membership events. Both need a WorkOS API key or endpoint secret, which only
-   a person creates.
-4. **Feedback text in PostHog.** A vote's comment and expected answer are
+3. **WorkOS in PostHog.** Decided: the warehouse source is connected (checklist
+   above). It is a second copy of identity data, which ADR-0007 forbids in *our*
+   database, not in an analysis tool. Still open: login and membership *events*
+   (`authentication.*`, `organization_membership.*`) would need a second WorkOS
+   webhook into a PostHog workflow.
+4. **Feature flags.** Entitlements (`deep-research`, `task-automation`,
+   `byok-llm`, `runtime-model-config`, `collaboration`, `skills`,
+   `mail-import`) stay in WorkOS: they are authorization, ride the signed
+   session, and org targeting in PostHog needs paid groups. Rollouts and kill
+   switches (`web-search`, `project-knowledge-page`, `image-upload`,
+   `wizard-conflict-check`, `ifc-models`, `agent-authored-documents`,
+   `post-answer-follow-ups`) are candidates for PostHog flags evaluated in the
+   BFF; `memory-reflection` is probably core. Its own change after this one.
+5. **Feedback text in PostHog.** A vote's comment and expected answer are
    written into the Langfuse `user-feedback` score, so the integration copies
    them into PostHog (`langfuse_score_comment`, `langfuse_score_metadata`). There
    they sit outside the Langfuse retention sweep and the chat-erasure workers.
    Either stop writing free text into the score and keep it in Postgres, or add
    PostHog person and event deletion to the erasure pipeline.
-5. **Replay link needs two flags.** The browser's session id only reaches the
+6. **Replay link needs two flags.** The browser's session id only reaches the
    trace with `GRID_WIRE_V2_ADDITIVE_FIELDS` on (the hello withholds `accepts`
    otherwise) and `GRID_TRACE_IDENTITY_ATTRIBUTES` on.
-6. **Support replies.** A feedback report opens a PostHog Support ticket, but
+7. **Support replies.** A feedback report opens a PostHog Support ticket, but
    replies are visible to the member only through PostHog's own widget, which
    adds its own bubble. The alternative is an in-app "Antworten vom Support" view
    on `posthog.conversations.getTickets`/`getMessages`, which is not built.
-7. **Browser storage.** Persistence is `localStorage+cookie` (cross-subdomain),
+8. **Browser storage.** Persistence is `localStorage+cookie` (cross-subdomain),
    so the anonymous id and session survive the WorkOS redirect and a reload. The
    privacy notice names the `ph_<token>_posthog` cookie and entry and the survey
    keys (`seenSurvey_*`). The profile page's "usage analytics" switch calls
    `posthog.opt_out_capturing()` for that browser. Changing `persistence` or
    what is stored is a change to the notice: one commit.
-8. **Retiring err2issue and Aspire.** Done in the Pulumi program: the sink, its
+9. **Retiring err2issue and Aspire.** Done in the Pulumi program: the sink, its
    collector pipeline, its NetworkPolicy and its image pin are gone, and so is
    the feedback form's GitHub issue filing that borrowed its token. The owner
    removes the stack keys and revokes the PAT. Aspire is gone too: logs are in
