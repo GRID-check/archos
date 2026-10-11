@@ -261,6 +261,18 @@ class TestThroughTheIngestJob:
         with pytest.raises(ValueError, match=r"bericht\.md fills \d+ of the 1024 tokens.*'punkt_path'"):
             _check_metadata_fits([fits, too_long], 1024, "bericht.md")
 
+    def test_on_a_tie_the_llm_rendering_is_measured_as_the_splitter_does(self):
+        from knowledge_layer.llamaindex.adapter import _check_metadata_fits
+        from llama_index.core import Document
+
+        # Equal lengths: "a" * 400 is a few tokens, each of the 400 emoji is three.
+        document = Document(text="Text.", metadata={"aa": "a" * 400, "bb": "\U0001f004" * 400})
+        document.excluded_embed_metadata_keys = ["bb"]
+        document.excluded_llm_metadata_keys = ["aa"]
+
+        with pytest.raises(ValueError, match="'bb'"):
+            _check_metadata_fits([document], 1024, "notiz.md")
+
     def test_rows_the_sheet_cap_left_out_are_counted_on_the_file_result(
         self, tmp_path, ingestor, summary_db, monkeypatch
     ):
