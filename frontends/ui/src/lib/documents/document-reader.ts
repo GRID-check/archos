@@ -66,6 +66,19 @@ export function hasPassedScreening(row: ScreeningFacts): boolean {
   if (row.status === 'quarantined') return false
   if (row.authoredBy !== 'user') return true
   if ((row.screenedHash ?? null) !== (row.contentHash ?? null)) return false
+  return verdictPasses(row)
+}
+
+/**
+ * Whether the verdict on record lets the bytes it judged through, whichever
+ * bytes those are: a passing outcome, or, with no outcome, a read that settled
+ * (screening off, or indexed before screening existed). `quarantined` holds
+ * them. {@link hasPassedScreening} asks this of the item's current bytes; the
+ * reconcile and a release ask it to record a version's verdict
+ * (`recordVersionVerdict`, migration 0131).
+ */
+export function verdictPasses(row: Pick<ScreeningFacts, 'status' | 'screeningOutcome'>): boolean {
+  if (row.status === 'quarantined') return false
   // `undefined` reads as no verdict: a row read without the column.
   const verdict = row.screeningOutcome ?? null
   if (verdict !== null) return PASSED.has(verdict)
@@ -84,23 +97,28 @@ const ITEM_BYTES_STATES: ReadonlySet<string> = new Set(['published', 'superseded
 export interface VersionScreeningFacts {
   state: string
   contentHash: string | null
+  /** The digest of this version's bytes when a verdict passed them (migration 0131). */
+  screenedHash: string | null
 }
 
 /**
- * Whether the bytes of THIS version may reach a model (ADR-0086): the verdict
- * on record is about the item's bytes, and a version read returns the
- * version's. The item must have passed, and a version that holds bytes a person
- * uploaded must hold exactly the bytes that verdict judged. An earlier upload,
- * replaced while it was still being read or after its reading failed, holds
- * bytes no verdict on record judged; no version records a verdict of its own,
- * so every earlier upload of a person's document is refused, not only those.
- * Workflow text (a draft, a version in review) follows the item, and Piloti's
- * own documents are never held.
+ * Whether the bytes of THIS version may reach a reader who may not see what is
+ * held, a model included (ADR-0086). The item must have passed: a held item
+ * hides every version. Then a version that holds bytes a person uploaded must
+ * hold bytes a passing verdict judged: its own (`screenedHash`, written with
+ * the verdict by the reconcile or a release, and counting only while it names
+ * the bytes the version holds now), or the item's, when the item's verdict is
+ * about exactly these bytes. An earlier upload replaced while it was still
+ * being read, after its reading failed, or while quarantined carries no verdict
+ * of its own and is refused. Workflow text (a draft, a version in review)
+ * follows the item, and Piloti's own documents are never held.
  */
 export function versionBytesPassedScreening(document: ScreeningFacts, version: VersionScreeningFacts): boolean {
   if (!hasPassedScreening(document)) return false
   if (document.authoredBy !== 'user' || !ITEM_BYTES_STATES.has(version.state)) return true
-  return (version.contentHash ?? null) === (document.screenedHash ?? null)
+  const held = version.contentHash ?? null
+  const ownVerdict = held !== null && held === (version.screenedHash ?? null)
+  return ownVerdict || held === (document.screenedHash ?? null)
 }
 
 /**

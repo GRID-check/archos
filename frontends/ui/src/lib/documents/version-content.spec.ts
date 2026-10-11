@@ -141,6 +141,7 @@ function version(overrides: Partial<DocumentVersion> = {}): DocumentVersion {
     contentType: 'text/markdown',
     fileSize: 12,
     contentHash: 'sha256:abc',
+    screenedHash: null,
     submittedBy: null,
     submittedByActor: 'human',
     submittedAt: null,
@@ -584,6 +585,22 @@ describe('readVersionForService — the conversation is part of the predicate', 
       expect(s3Client.send).not.toHaveBeenCalled()
     })
 
+    it('serves an earlier upload whose own verdict passed its bytes (migration 0131)', async () => {
+      vi.mocked(findDocumentVersionInOrg).mockResolvedValue(
+        version({ state: 'superseded', contentHash: 'sha256:before', screenedHash: 'sha256:before' }),
+      )
+
+      await expect(readVersionForService('ver_1', 'org_1', 'conv_1')).resolves.toMatchObject({ content: '# Aktenvermerk' })
+    })
+
+    it('answers 404 for an earlier upload whose own verdict judged other bytes than it holds now', async () => {
+      vi.mocked(findDocumentVersionInOrg).mockResolvedValue(
+        version({ state: 'superseded', contentHash: 'sha256:before', screenedHash: 'sha256:other' }),
+      )
+
+      await expect(readVersionForService('ver_1', 'org_1', 'conv_1')).rejects.toMatchObject({ status: 404 })
+    })
+
     it('serves the version that holds the bytes the verdict judged', async () => {
       vi.mocked(findDocumentVersionInOrg).mockResolvedValue(version({ state: 'published', contentHash: 'sha256:now' }))
 
@@ -786,6 +803,16 @@ describe('reading a version’s text, and the download log', () => {
       await expect(readVersionContent(session, 'doc_1', 'ver_1')).resolves.toBe('# Aktenvermerk')
     })
 
+    it('hands a member the text of an earlier upload whose own verdict passed it (migration 0131)', async () => {
+      vi.mocked(findDocumentVersion).mockResolvedValue(
+        version({ state: 'superseded', contentHash: 'sha256:before', screenedHash: 'sha256:before' }),
+      )
+
+      await expect(readVersionContent(session, 'doc_1', 'ver_1')).resolves.toBe('# Aktenvermerk')
+      expect(maySeeHeld).not.toHaveBeenCalled()
+      expect(recordDocumentAccess).toHaveBeenCalledWith(session, screened, 'version', { versionId: 'ver_1' })
+    })
+
     it('hands a member the text of the version whose bytes the verdict judged', async () => {
       vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'published', contentHash: 'sha256:now' }))
 
@@ -811,7 +838,7 @@ describe('streamVersionFile — an earlier upload under the same name, as bytes'
       version({ state: 'superseded', contentType: 'application/pdf', storageKey: 'org/o/doc/d/v1/a/Werkvertrag.pdf' }),
     )
     vi.mocked(s3Client.send).mockResolvedValue({ Body: bytes() } as never)
-    // No version records a verdict of its own, so an earlier upload is the
+    // This earlier upload carries no verdict of its own, so it is the
     // uploader's and the reviewers' to open: these cases read as one of them.
     vi.mocked(maySeeHeld).mockResolvedValue(true)
   })
@@ -824,6 +851,19 @@ describe('streamVersionFile — an earlier upload under the same name, as bytes'
     expect(maySeeHeld).toHaveBeenCalledWith(session, pdfDocument)
     expect(s3Client.send).not.toHaveBeenCalled()
     expect(recordDocumentAccess).not.toHaveBeenCalled()
+  })
+
+  it('streams a member an earlier upload whose own verdict passed its bytes (migration 0131)', async () => {
+    vi.mocked(maySeeHeld).mockResolvedValue(false)
+    vi.mocked(getAccessibleDocument).mockResolvedValue({ ...pdfDocument, contentHash: 'sha256:now', screenedHash: 'sha256:now' })
+    vi.mocked(findDocumentVersion).mockResolvedValue(
+      version({ state: 'superseded', contentType: 'application/pdf', contentHash: 'sha256:abc', screenedHash: 'sha256:abc' }),
+    )
+
+    const response = await streamVersionFile(session, 'doc_1', 'ver_1')
+
+    expect(await response.text()).toBe('%PDF-1.7 v1')
+    expect(maySeeHeld).not.toHaveBeenCalled()
   })
 
   it('streams a member the version whose bytes the verdict judged', async () => {
@@ -934,5 +974,32 @@ describe('versionBytesReadableBy — the version list asks the rule once', () =>
     const readable = await versionBytesReadableBy(session, screened, [current, earlier])
 
     expect(readable(earlier)).toBe(true)
+  })
+
+  it('offers a member every earlier upload whose own verdict passed, and not the one replaced unread (migration 0131)', async () => {
+    const screenedEarlier = version({ id: 'ver_0', state: 'superseded', contentHash: 'sha256:first', screenedHash: 'sha256:first' })
+    const swapped = version({ id: 'ver_x', state: 'superseded', contentHash: 'sha256:edited', screenedHash: 'sha256:first' })
+
+    const readable = await versionBytesReadableBy(session, screened, [screenedEarlier, earlier, swapped, current])
+
+    expect([screenedEarlier, earlier, swapped, current].map(readable)).toEqual([true, false, false, true])
+  })
+
+  it('asks nobody when every earlier upload carries a passing verdict of its own', async () => {
+    const screenedEarlier = { ...earlier, screenedHash: 'sha256:before' }
+
+    const readable = await versionBytesReadableBy(session, screened, [screenedEarlier, current])
+
+    expect(readable(screenedEarlier)).toBe(true)
+    expect(maySeeHeld).not.toHaveBeenCalled()
+  })
+
+  it('offers nothing of a held item through its versions, whatever they record', async () => {
+    const held = { ...screened, status: 'quarantined', screeningOutcome: 'quarantined' as const }
+    const screenedEarlier = { ...earlier, screenedHash: 'sha256:before' }
+
+    const readable = await versionBytesReadableBy(session, held, [screenedEarlier, current])
+
+    expect([readable(screenedEarlier), readable(current)]).toEqual([false, false])
   })
 })

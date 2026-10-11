@@ -706,6 +706,29 @@ describe('DocumentFassungen — one visible action per row, the rest behind ⋯'
     }
   })
 
+  it('shows a member Öffnen on the screened earlier upload and not on the one no verdict passed (migration 0131)', async () => {
+    await renderOpen({
+      file: fileFixture({ versionCount: 3 }),
+      viewer: viewOnly,
+      client: clientOf([
+        makeVersion(1, 'superseded', { bytesReadable: true }),
+        makeVersion(2, 'superseded', { bytesReadable: false }),
+        makeVersion(3, 'published', { bytesReadable: true }),
+      ]),
+    })
+
+    const rows = await screen.findAllByTestId('fassung-timeline-row')
+    expect(rows).toHaveLength(3)
+    // Newest first: the current upload, the unread one, the screened first upload.
+    expect(within(rows[1]).queryByTestId('fassung-version-open')).toBeNull()
+    expect(within(rows[2]).getByTestId('fassung-version-open')).toHaveAttribute('href', '/api/documents/doc_1/versions/ver_1/file')
+    await openRowMenu(rows[2])
+    expect(await screen.findByTestId('fassung-version-download')).toHaveAttribute(
+      'href',
+      '/api/documents/doc_1/versions/ver_1/file?download=1',
+    )
+  })
+
   it('opens a version that was never published as text, and offers no download of it', async () => {
     await renderOpen({ viewer: reviewer, client: clientOf([makeVersion(1, 'published'), reviewed(2, 'draft')]) })
 

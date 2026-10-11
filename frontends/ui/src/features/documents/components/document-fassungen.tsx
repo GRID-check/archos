@@ -377,9 +377,10 @@ export function DocumentFassungen({
   const renderVersionRow = (row: VersionRow, index: number): JSX.Element => {
     const { version } = row
     const everArrived = version.state === 'published' || version.state === 'superseded'
-    // An earlier upload whose bytes no screening verdict judged is its
-    // uploader's and the reviewers' to open (ADR-0086): the routes refuse it to
-    // everyone else, so nothing here offers what would be a 404.
+    // An earlier upload whose bytes no passing verdict judged (its own,
+    // migration 0131, or the item's) is its uploader's and the reviewers' to
+    // open (ADR-0086): the routes refuse it to everyone else, so nothing here
+    // offers what would be a 404. A screened earlier upload opens for all.
     const openable = version.bytesReadable !== false
     // The newest carries its whole story; an older row, only its last act.
     const acts = row.newest && versionActs(version).length > 0 ? versionActs(version) : [latestAct(version)]

@@ -33,7 +33,19 @@ import { collectionFileRef } from './collection-file-ref'
  * the same transaction records.
  */
 const makeDbMock = ({ moved = true }: { moved?: boolean } = {}) => {
-  const movedRow = { scope: 'project', projectId: 'p1', filename: 'a.pdf', createdBy: 'user-1' }
+  // What the write returns as it lands: the row's place, and the verdict and
+  // the bytes it judged, which the same transaction records on the versions
+  // holding those bytes (migration 0131).
+  const movedRow = {
+    scope: 'project',
+    projectId: 'p1',
+    filename: 'a.pdf',
+    createdBy: 'user-1',
+    status: 'completed',
+    screeningOutcome: null,
+    screenedHash: 'sha256:judged',
+    dispatchedHash: 'sha256:judged',
+  }
   const returning = vi.fn().mockResolvedValue(moved ? [movedRow] : [])
   const where = vi.fn().mockReturnValue({ returning })
   const set = vi.fn().mockReturnValue({ where })
@@ -129,10 +141,10 @@ describe('reconcileDocumentStatuses', () => {
     )
     expect(result.status).toBe('completed')
     expect(result.errorMessage).toBeNull()
-    expect(db.update).toHaveBeenCalledTimes(1)
-    expect(db.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'completed', errorMessage: null })
-    )
+    // The row, then the versions holding the bytes the job judged (migration 0131).
+    expect(db.update).toHaveBeenCalledTimes(2)
+    expect(db.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: 'completed', errorMessage: null }))
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: 'sha256:judged' })
   })
 
   it('marks a row failed with the job error message', async () => {
@@ -248,7 +260,7 @@ describe('reconcileDocumentStatuses', () => {
       expect.any(Object)
     )
     expect(result.status).toBe('completed')
-    expect(db.update).toHaveBeenCalledTimes(1)
+    expect(db.update).toHaveBeenCalledTimes(2)
   })
 
   it('uses the collection file list for legacy rows without a job id', async () => {
@@ -1249,6 +1261,8 @@ describe('reconcileDocumentStatuses — upload screening', () => {
     expect(db.set).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' })
     )
+    // The versions holding the bytes this job judged lose any earlier pass (migration 0131).
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: null })
     // The decision, keyed on its dispatch, owed to the audit trail (ADR-0086):
     // kinds and terms, never the masked sample or the page list.
     expect(db.values).toHaveBeenCalledWith({

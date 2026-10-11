@@ -1115,6 +1115,7 @@ export async function forkDraftVersion(
     contentType: document.contentType,
     fileSize: document.fileSize,
     contentHash: document.contentHash,
+    screenedHash: null,
   }
 
   const transition = findDocumentVersionTransition(null, 'create')
@@ -1131,6 +1132,11 @@ export async function forkDraftVersion(
     contentType: source.contentType,
     fileSize: source.fileSize,
     contentHash: source.contentHash,
+    // The verdict travels with the bytes it is bound to (migration 0131): it
+    // counts only while it equals `contentHash`, so the first edit of the draft
+    // leaves it behind, and a draft published unedited, which is not screened
+    // again (`ingestPublishedUpload`), keeps the verdict its bytes already have.
+    screenedHash: source.screenedHash,
     createdBy: session.userId,
   }).catch(async (error: unknown) => {
     // Two forks both passed the probe above, and the index refused the second

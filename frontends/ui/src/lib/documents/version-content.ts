@@ -393,22 +393,24 @@ async function readObjectText(
   return body
 }
 
+/** The version facts the screening rule reads (`versionBytesPassedScreening`). */
+type VersionScreening = Pick<DocumentVersion, 'state' | 'contentHash' | 'screenedHash'>
+
 /**
- * Whether a PERSON may receive this version's bytes (ADR-0086): bytes the
- * verdict on record judged (`versionBytesPassedScreening`), or the uploader and
- * the reviewers, who may see what is held. A held document's item paths already
- * answer that; a version is the other way in, because an earlier upload under
- * the same name was replaced while it was still being read, or after its
- * reading failed, and no verdict on record is about its bytes. A member gets
- * the 404 an unknown version gets.
- *
- * Since no version records a verdict of its own, this refuses EVERY earlier
- * upload of a person's document to a member, a screened one included.
+ * Whether a PERSON may receive this version's bytes (ADR-0086): bytes a
+ * passing verdict judged (`versionBytesPassedScreening`: the version's own,
+ * migration 0131, or the item's when it is about these bytes), or the uploader
+ * and the reviewers, who may see what is held. A held document's item paths
+ * already answer that; a version is the other way in, because an earlier
+ * upload under the same name may have been replaced while it was still being
+ * read, after its reading failed, or while quarantined, and then no verdict
+ * passed its bytes. A member gets the 404 an unknown version gets; a screened
+ * earlier upload opens for every member who may read the document.
  */
 export async function mayReceiveVersionBytes(
   session: AuthorizedSession,
   document: Document,
-  version: Pick<DocumentVersion, 'state' | 'contentHash'>,
+  version: VersionScreening,
 ): Promise<boolean> {
   if (versionBytesPassedScreening(document, version)) return true
   return maySeeHeld(session, document)
@@ -422,9 +424,9 @@ export async function mayReceiveVersionBytes(
 export async function versionBytesReadableBy(
   session: AuthorizedSession,
   document: Document,
-  versions: readonly Pick<DocumentVersion, 'id' | 'state' | 'contentHash'>[],
-): Promise<(version: Pick<DocumentVersion, 'state' | 'contentHash'>) => boolean> {
-  const judged = (version: Pick<DocumentVersion, 'state' | 'contentHash'>) => versionBytesPassedScreening(document, version)
+  versions: readonly (VersionScreening & Pick<DocumentVersion, 'id'>)[],
+): Promise<(version: VersionScreening) => boolean> {
+  const judged = (version: VersionScreening) => versionBytesPassedScreening(document, version)
   if (versions.every(judged)) return judged
   const seesHeld = await maySeeHeld(session, document)
   return (version) => seesHeld || judged(version)
@@ -435,7 +437,7 @@ export async function versionBytesReadableBy(
  * is recorded here. `forModel` when a model reads the text rather than the
  * person: a held document (ADR-0086) reaches no model, whoever's session
  * fetches it, its uploader and its reviewers included, and neither do a
- * version's bytes the verdict on record did not judge. A person gets those
+ * version's bytes no passing verdict judged. A person gets those
  * bytes only when they may see what is held ({@link mayReceiveVersionBytes}).
  */
 async function fetchVersionText(

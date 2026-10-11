@@ -13,7 +13,7 @@
 import 'server-only'
 import { and, asc, count, desc, eq, inArray, isNull, lt, ne, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
-import type { DbExecutor } from '@/lib/db/executor'
+import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
 import { ARCHIV_SHELF, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
@@ -23,6 +23,7 @@ import {
   bffJobQueue,
   documentQuarantineDecisions,
   documents,
+  documentVersions,
   projectFolders,
   type Document,
   type DocumentAuthor,
@@ -32,6 +33,7 @@ import {
 import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import { auditedQuarantineReasons, parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { documentVisibleTo, heldAtRest, internalRead, SCREENED_ONLY, type DocumentReader } from './visibility'
+import { verdictPasses } from './document-reader'
 
 /**
  * Hard cap on one page of a document listing (project and Archiv alike).
@@ -1545,6 +1547,42 @@ const sameDispatch = (jobId: string | null): SQL =>
 /** The digest the dispatch of the job being reconciled recorded, or the row's earlier one. */
 const screenedHashOfDispatch = sql<string | null>`coalesce(${documents.metadata} ->> 'ingestContentHash', ${documents.screenedHash})`
 
+/** The digest the dispatch of the job being reconciled recorded, and nothing else. */
+const dispatchedHash = sql<string | null>`${documents.metadata} ->> 'ingestContentHash'`
+
+/**
+ * A verdict recorded on the versions that hold the bytes it judged (migration
+ * 0131, ADR-0086): the one writer of `document_versions.screened_hash`, called
+ * only inside the transaction that records the item's verdict, so the item and
+ * its versions never disagree about the same bytes.
+ *
+ * `document_versions.screened_hash` is what keeps an earlier upload readable
+ * once a re-upload replaces it: the item's own `screened_hash` names the
+ * current bytes and is reset by the replace. A pass sets it on every version of
+ * this document holding `judgedHash`; a verdict that holds those bytes
+ * (a quarantine) clears it, so the latest verdict about the bytes is the one on
+ * record. No judged digest (a dispatch from before migration 0123 with nothing
+ * on the item either) records nothing, and those versions stay refused.
+ */
+async function recordVersionVerdict(
+  tx: DbTransaction,
+  documentId: string,
+  organizationId: string,
+  verdict: { judgedHash: string | null; passed: boolean },
+): Promise<void> {
+  if (!verdict.judgedHash) return
+  await tx
+    .update(documentVersions)
+    .set({ screenedHash: verdict.passed ? verdict.judgedHash : null })
+    .where(
+      and(
+        eq(documentVersions.documentId, documentId),
+        eq(documentVersions.organizationId, organizationId),
+        eq(documentVersions.contentHash, verdict.judgedHash),
+      ),
+    )
+}
+
 /**
  * Persist a reconciled ingestion status.
  *
@@ -1603,8 +1641,20 @@ export async function setDocumentReconciledStatus(
           folderId: documents.folderId,
           filename: documents.filename,
           createdBy: documents.createdBy,
+          status: documents.status,
+          screeningOutcome: documents.screeningOutcome,
+          screenedHash: documents.screenedHash,
+          dispatchedHash,
         })
       if (!moved) return false
+      // The versions holding the bytes this job judged take the same verdict
+      // (migration 0131). A read that ended without one (`failed`) says nothing.
+      if (resolution.status !== 'failed') {
+        await recordVersionVerdict(tx, documentId, organizationId, {
+          judgedHash: resolution.status === 'completed' ? moved.screenedHash : moved.dispatchedHash,
+          passed: resolution.status === 'completed' && verdictPasses(moved),
+        })
+      }
       if (resolution.status === 'quarantined') {
         const verdict = parseQuarantine(resolution.errorMessage)
         await tx
@@ -1642,33 +1692,38 @@ export async function markScreeningReleased(
   release: { contentHash: string; releasedBy: string; releasedAt: Date },
 ): Promise<boolean> {
   const db = getDb()
-  const updated = await withTenant({ organizationId }, () =>
-    db
-      .update(documents)
-      .set({
-        status: 'uploaded',
-        errorMessage: null,
-        screeningOutcome: 'released',
-        // The release is a verdict about these bytes (migration 0123).
-        screenedHash: release.contentHash,
-        screeningReleasedHash: release.contentHash,
-        screeningReleasedBy: release.releasedBy,
-        screeningReleasedAt: release.releasedAt,
-        updatedAt: release.releasedAt,
-      })
-      .where(
-        and(
-          eq(documents.id, documentId),
-          eq(documents.organizationId, organizationId),
-          // Held and at rest: a quarantine, or a file the gate never reached a
-          // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
-          heldAtRest(),
-          eq(documents.contentHash, release.contentHash),
-        ),
-      )
-      .returning({ id: documents.id }),
+  return withTenant({ organizationId }, () =>
+    db.transaction(async (tx) => {
+      const updated = await tx
+        .update(documents)
+        .set({
+          status: 'uploaded',
+          errorMessage: null,
+          screeningOutcome: 'released',
+          // The release is a verdict about these bytes (migration 0123).
+          screenedHash: release.contentHash,
+          screeningReleasedHash: release.contentHash,
+          screeningReleasedBy: release.releasedBy,
+          screeningReleasedAt: release.releasedAt,
+          updatedAt: release.releasedAt,
+        })
+        .where(
+          and(
+            eq(documents.id, documentId),
+            eq(documents.organizationId, organizationId),
+            // Held and at rest: a quarantine, or a file the gate never reached a
+            // verdict on (ADR-0086). A file in flight is the job's, not a reviewer's.
+            heldAtRest(),
+            eq(documents.contentHash, release.contentHash),
+          ),
+        )
+        .returning({ id: documents.id })
+      if (updated.length === 0) return false
+      // The versions holding the released bytes are released with them (migration 0131).
+      await recordVersionVerdict(tx, documentId, organizationId, { judgedHash: release.contentHash, passed: true })
+      return true
+    }),
   )
-  return updated.length > 0
 }
 
 /** Bound on one read of the quarantine queue. A queue longer than this is a policy problem, not a list. */

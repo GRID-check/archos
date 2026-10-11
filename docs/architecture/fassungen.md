@@ -354,12 +354,43 @@ name, each labelled as what it is.
 | Rule | Where it holds |
 |---|---|
 | A held or unscreened document's name or content never reaches a model, or a reader who may not see it (ADR-0086, ADR-0087) | `held_file_names` removes held and in-flight names from the judge's candidates, and when the job store cannot be read nothing is suggested. `derive_suggestions` does the same. The BFF refuses a held document in the link, compare and `fassungOf` paths with a 404. `fassung-notify.ts` re-reads both documents with the screened-only reader before it writes a row |
-| An earlier upload's bytes reach a person only if a verdict judged them | `mayReceiveVersionBytes` (`version-content.ts`) on `…/versions/{id}/file` and `/content` (and so the diff): bytes the verdict on record judged (`versionBytesPassedScreening`), or the uploader and the quarantine's reviewers (`maySeeHeld`). Everyone else gets a 404, and the version listing's `bytesReadable` keeps the timeline from offering it |
+| An earlier upload's bytes reach a person only if a passing verdict judged them | `mayReceiveVersionBytes` (`version-content.ts`) on `…/versions/{id}/file` and `/content` (and so the diff): bytes a passing verdict judged (`versionBytesPassedScreening`), or the uploader and the quarantine's reviewers (`maySeeHeld`). Everyone else gets a 404, and the version listing's `bytesReadable` keeps the timeline from offering it. Each version records its own verdict, below |
 | A name the reader may not open never reaches the browser | `resolveFassungFacts` drops a reference it cannot resolve, and a change summary that describes it. `loadFassungFacts` resolves names only to documents of the same collection, active, visible to this reader and outside a closed folder |
 | The history walk drops what the reader cannot see | `walkHistory` follows `supersedes` breadth first (cycle-safe, at most 40), then each entry is looked up with the reader's visibility. A hidden direct predecessor leaves the document's own facts empty while older Fassungen behind it may still show |
 | A restricted folder is never compared by a model | 422 `restricted_folder` in `compareFassungVisually` |
 | GPS never goes to a model | A photo's latitude and longitude are stored for the BFF and are never printed into a prompt (`factory.py`, `set_document_capture`). The judge and the change summary read name, Dokumentart, tags, summary and title block, none of the capture facts |
 | Traces carry no pixels | `fassung_compare.traceable` replaces each page image by its size before it reaches Langfuse |
+
+### Each version carries its own screening verdict
+
+A verdict lives on the item (`documents.screened_hash`, ADR-0086), and a
+re-upload resets it, because the new bytes are unscreened. So the verdict about
+an earlier upload's bytes is kept on its version: `document_versions.screened_hash`
+(migration 0131) is the `content_hash` of those bytes when a verdict passed them.
+
+- **Written with the item's verdict, by one writer.** `recordVersionVerdict`
+  (`lib/documents/repository.ts`) runs in the transaction that records the
+  item's verdict. When the reconcile settles a job as `completed` with a passing
+  outcome, every version of the document holding the bytes that job judged
+  (the hash the dispatch recorded) is marked. A quarantine of those bytes clears
+  the mark, so the latest verdict about the bytes is the one on record. A
+  reviewer's release marks the released bytes. A forked draft carries its
+  source's value with the bytes it copies.
+- **Read by one rule.** `versionBytesPassedScreening` (`document-reader.ts`):
+  the item must have passed, and a version holding a person's upload
+  (`published`, `superseded`) must hold bytes a passing verdict judged, its own
+  (`screened_hash = content_hash`) or the item's. Workflow text follows the
+  item, Piloti's own documents are never held.
+- **So** a member opens, downloads and compares every screened earlier upload,
+  and an upload replaced while it was still being read, after its reading
+  failed or while quarantined stays closed to everyone but its uploader and the
+  reviewers.
+- **Backfill (0131).** A version was marked where the rows prove a pass about
+  exactly its bytes: the item's passing verdict about them, or a reviewer's
+  release of them (`screening_released_hash`) that no current quarantine of the
+  same bytes overrides. A version superseded before 0131 whose item verdict a
+  re-upload had already reset carries no proof and stays closed to members, as
+  it was before. `scripts/rls-test-db.sh` checks the rule row by row.
 
 ## Observability
 
@@ -420,13 +451,11 @@ sequenceDiagram
 
 ## Known gaps
 
-- **An earlier upload under the same name opens only for its uploader and the
-  reviewers.** No version records a screening verdict of its own; the verdict
-  on record is about the document's current bytes. So every earlier upload of a
-  person's document, a screened one included, is refused to an ordinary member
-  (`mayReceiveVersionBytes`), and the timeline shows the row without Öffnen,
-  Herunterladen or the text comparison. Fixing it needs a verdict per version,
-  written by the reconcile when a job passes those bytes.
+- **An earlier upload superseded before migration 0131 may stay closed to
+  members.** Where the item's verdict about it had already been reset by a
+  re-upload, nothing on record proves its bytes passed, so the backfill left it
+  unmarked and only its uploader and the reviewers open it. Nothing re-screens
+  such a version today; a reviewer's release is per document, not per version.
 
 - **A re-read after a failed first ingest loses `fassung_of`.** `reingestDocument`
   dispatches without it (`frontends/ui/src/lib/documents/service.ts`), so the

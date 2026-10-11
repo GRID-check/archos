@@ -130,6 +130,7 @@ vi.mock('@/lib/s3', async (importOriginal) => ({
 }))
 
 import { getAccessibleDocument } from './access'
+import { versionBytesPassedScreening } from './document-reader'
 import { findDocumentInOrg } from './repository'
 import { discardObject } from '@/lib/storage/discard'
 import { purgeIngestedChunks } from './collection-file-ref'
@@ -203,6 +204,7 @@ function version(overrides: Partial<DocumentVersion> = {}): DocumentVersion {
     contentType: 'text/markdown',
     fileSize: 12,
     contentHash: 'sha256:abc',
+    screenedHash: null,
     submittedBy: 'user_author',
     submittedAt: new Date('2026-09-01T00:00:00Z'),
     reviewedBy: null,
@@ -1578,6 +1580,27 @@ describe('listDocumentVersionViews — whether each version opens for this reade
     expect(listing.versions.map((row) => [row.id, row.bytesReadable])).toEqual([
       ['ver_1', false],
       ['ver_2', true],
+    ])
+  })
+
+  it('opens a screened earlier upload to a member and keeps an unscreened one closed (migration 0131)', async () => {
+    const screened = { ...document, contentHash: 'sha256:now', screenedHash: 'sha256:now', screeningOutcome: 'clean' as const }
+    vi.mocked(getAccessibleDocument).mockResolvedValue(screened)
+    const rows = [
+      version({ id: 'ver_1', versionNumber: 1, state: 'superseded', contentHash: 'sha256:first', screenedHash: 'sha256:first' }),
+      version({ id: 'ver_2', versionNumber: 2, state: 'superseded', contentHash: 'sha256:unread', screenedHash: null }),
+      version({ id: 'ver_3', versionNumber: 3, state: 'published', contentHash: 'sha256:now', screenedHash: 'sha256:now' }),
+    ]
+    vi.mocked(listDocumentVersions).mockResolvedValue(rows)
+    // A member, who may not see what is held: the listing answers from the screening rule alone.
+    vi.mocked(versionBytesReadableBy).mockImplementation(async (_session, item) => (row) => versionBytesPassedScreening(item, row))
+
+    const listing = await listDocumentVersionViews(session, 'doc_1')
+
+    expect(listing.versions.map((row) => [row.id, row.bytesReadable])).toEqual([
+      ['ver_1', true],
+      ['ver_2', false],
+      ['ver_3', true],
     ])
   })
 })

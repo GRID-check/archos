@@ -357,7 +357,23 @@ upload recording its version for a document deleted first,
 `submitted_by`/`_at`, `reviewed_by`/`_at`, `approved_by`/`_at`,
 `published_by`/`_at`, `review_comment`, `created_by`,
 `origin_conversation_id` (migration `0084`), `submitted_by_actor` (migration
-`0085`), `created_at`, `updated_at`.
+`0085`), `screened_hash` (migration `0131`), `created_at`, `updated_at`.
+
+**`screened_hash` (migration `0131`, ADR-0086):** the `content_hash` of this
+version's bytes when a screening verdict passed them, the version's own verdict
+that `documents.screened_hash` cannot keep once a re-upload replaces those
+bytes and resets it. It counts only while it equals `content_hash`
+(`versionBytesPassedScreening`), so a content write leaves it behind. One
+writer, `recordVersionVerdict` in `lib/documents/repository.ts`, in the
+transaction that records the item's verdict: the reconcile sets it on every
+version of the document holding the bytes a completed, passing job judged and
+clears it on a quarantine of those bytes; a reviewer's release sets it on the
+released bytes. A forked draft carries its source's value with the bytes it
+copies. Backfilled where the rows prove a pass about exactly those bytes: the
+item's passing verdict about them, or a standing release of them
+(`screening_released_hash`) that no current quarantine of the same bytes
+overrides. A version superseded before 0131 whose item verdict had already been
+reset stays NULL, and stays closed to members.
 
 **Constraints — the ratchet, not decoration:**
 
