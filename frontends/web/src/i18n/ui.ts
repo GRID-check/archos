@@ -41,6 +41,11 @@ const de = {
         description:
           'Was sich in Piloti geändert hat: neue Funktionen, Verbesserungen und Fehlerbehebungen des Arbeitsbereichs für Architekturbüros, laufend aktualisiert.',
       },
+      neu: {
+        title: 'Woche 41: fertige Projekte, Zugriffe, Fassungen – Piloti',
+        description:
+          'Woche 41 bei Piloti: Projekte abschließen und pausieren, frühere Projekte als Präzedenzfälle finden, Ordner nach Rollen freigeben, Fassungen vergleichen.',
+      },
       rechenweg: {
         title: 'Rechenweg: So rechnet der Piloti-Wertrechner – Piloti',
         description:
@@ -420,6 +425,7 @@ const de = {
   invite: {
     blog: 'Wir entwickeln Piloti mit wenigen Pilotbüros. Soll Ihres dabei sein, schreiben Sie uns.',
     changelog: 'Was hier als Nächstes steht, bestimmen die Pilotbüros mit.',
+    neu: 'Die Pilotbüros helfen mit, was als Nächstes kommt. Schreiben Sie uns, wenn Ihr Büro dabei sein soll.',
     rechenweg: 'Gemessen hat das noch niemand. Messen wir es in Ihrem Büro.',
     warum: 'Die beste Probe ist eine Frage aus Ihrem laufenden Projekt. Schicken Sie uns eine.',
   },
@@ -558,6 +564,25 @@ const de = {
     monthCount: '{count} Wochen',
     monthCountOne: '1 Woche',
   },
+  // The week 41 launch page (/neu). Its notes are not here: they come from
+  // src/data/changelog.json, resolved by src/components/launch/picks.ts.
+  launch: {
+    kicker: 'Woche 41, 5. bis 11. Oktober 2026',
+    heading: 'Der Arbeitsbereich für Architekturbüros macht fertige Projekte durchsuchbar.',
+    lede: 'Diese Woche kommt dazu, was ein Büro braucht, um ein Projekt abzuschließen oder zu pausieren, für das nächste auf frühere Projekte zurückzugreifen und pro Ordner festzulegen, wer ihn lesen oder bearbeiten darf. Uploads werden auf die Begriffe und Nummern geprüft, die Ihr Büro festlegt, bevor ein KI-Modell sie liest. Jedes Dokument behält alle seine Fassungen in einem einzigen Eintrag.',
+    themes: {
+      projects: { label: 'Projekte', heading: 'Projekte abschließen und pausieren' },
+      knowledge: { label: 'Wissen', heading: 'Was frühere Projekte schon gelöst haben' },
+      access: { label: 'Zugriff', heading: 'Das Büro legt fest, wer welchen Ordner sieht' },
+      review: { label: 'Prüfung', heading: 'Sensible Daten zurückhalten, bevor sie gelesen oder gesendet werden' },
+      files: { label: 'Dateien', heading: 'Ein Dokument, alle seine Fassungen' },
+      chat: { label: 'Chat', heading: 'Ruhigere Antworten und mehr Kontrolle über den Aufwand' },
+    },
+    upgradeHeading: 'Hinweise zur Umstellung',
+    upgradeLede: 'Für Büros, die schon vor dieser Woche mit Piloti gearbeitet haben.',
+    changelogText: 'Die früheren Wochen und alle Fehlerbehebungen stehen im Changelog.',
+    changelogLink: 'Zum Changelog',
+  },
   notFound: {
     heading: 'Diese Seite ist nicht vorgesehen.',
     body: 'Die gesuchte Seite existiert nicht oder wurde verschoben.',
@@ -683,6 +708,11 @@ const en: typeof de = {
         title: 'What’s new: features and improvements – Piloti',
         description:
           'What changed in Piloti: new features, improvements and fixes to the workspace for architecture and planning firms, updated continuously.',
+      },
+      neu: {
+        title: 'Week 41: finished projects, access, revisions – Piloti',
+        description:
+          'Week 41 at Piloti: close and pause projects, find earlier projects as precedents, set folder access by role and compare document revisions.',
       },
       rechenweg: {
         title: 'The maths behind the Piloti value calculator – Piloti',
@@ -1048,6 +1078,7 @@ const en: typeof de = {
   invite: {
     blog: 'We are building Piloti with a few pilot offices. If yours should be one of them, write to us.',
     changelog: 'The pilot offices help decide what comes next on this list.',
+    neu: 'The pilot offices help decide what comes next. Write to us if your office should be one of them.',
     rechenweg: 'Nobody has measured this yet. Let us measure it in your office.',
     warum: 'The best test is a question from your current project. Send us one.',
   },
@@ -1173,6 +1204,25 @@ const en: typeof de = {
     weekShort: 'Week\u00a0{n}',
     monthCount: '{count} weeks',
     monthCountOne: '1 week',
+  },
+  // The week 41 launch page (/en/neu). Its notes are not here: they come from
+  // src/data/changelog.json, resolved by src/components/launch/picks.ts.
+  launch: {
+    kicker: 'Week 41, 5 to 11 October 2026',
+    heading: 'The workspace for architects keeps finished projects searchable.',
+    lede: 'This week Piloti gets what an office needs to close or pause a project, draw on earlier projects for the next one, and decide per folder who may read or edit it. Uploads are checked against the terms and numbers the office sets before any AI model reads them. Every revision of a document stays in one entry.',
+    themes: {
+      projects: { label: 'Projects', heading: 'Close and pause projects' },
+      knowledge: { label: 'Knowledge', heading: 'What earlier projects already solved' },
+      access: { label: 'Access', heading: 'The office decides who sees which folder' },
+      review: { label: 'Review', heading: 'Hold back sensitive data before it is read or sent' },
+      files: { label: 'Files', heading: 'One document, all its revisions' },
+      chat: { label: 'Chat', heading: 'Calmer answers and more control over effort' },
+    },
+    upgradeHeading: 'Upgrade notes',
+    upgradeLede: 'For offices that were already working in Piloti before this week.',
+    changelogText: 'Earlier weeks and every fix are in the changelog.',
+    changelogLink: 'Read the changelog',
   },
   notFound: {
     heading: 'This page is not part of the site.',
