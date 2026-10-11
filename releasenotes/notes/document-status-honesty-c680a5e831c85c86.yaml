@@ -12,11 +12,11 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    A document stuck on "processing" after an ingestion job was lost can now
-    be retried from its menu instead of deleted and re-uploaded. The retry
-    keeps the document, so sources, chat references and assignments survive,
-    and it refuses while ingestion is genuinely still running.
+    A document stuck in processing can now be retried from its menu, instead
+    of being deleted and uploaded again. The retry keeps the document, so
+    its sources, chat references and assignments stay intact, and Piloti
+    declines the retry while reading is still under way.
   - >
-    A document whose indexing never started no longer wears a green
-    "citable" badge. It now reports a failure with a retry, or a neutral
-    stored state for rows filed before this change.
+    A document that never became citable no longer carries the green badge
+    that marks it as citable. It now shows a failure with a retry option, or
+    a neutral status for documents filed before this change.

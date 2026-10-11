@@ -15,6 +15,7 @@ improvements:
     with your own permissions. Piloti never says a file has been moved,
     renamed or handed over while the card is still waiting.
   - >
-    If part of a batch cannot be applied — a file somebody already moved, a
-    colleague who has left the project — the card says which entries did not
-    go through instead of reporting the whole thing as done.
+    If part of a set of changes cannot be applied, for example because a
+    file has already been moved or a colleague has left the project, the
+    card shows which entries were not carried out instead of reporting
+    everything as done.

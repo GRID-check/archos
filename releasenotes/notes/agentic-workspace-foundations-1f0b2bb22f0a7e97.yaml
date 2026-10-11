@@ -31,12 +31,12 @@ improvements:
     correction reaches the note it means, however long ago it was written.
 fixes:
   - >
-    An answer that touches several documents cites several again. A single PDF
-    could fill every evidence slot of an answer.
+    An answer built on several documents now cites all of them. Before, a
+    single PDF could fill every source reference in an answer.
   - >
-    When a reference or quote fails the check, Piloti now searches once more for
-    the passage and rewrites the answer before it appears. If it still fails,
-    the mark stays.
+    When a reference or quote fails the check, Piloti searches for the passage
+    once more and rewrites the answer before you see it. If it still fails,
+    the mark stays on it.
   - >
     A research run that hits your organization's budget now says so and tells
     you where an admin can raise the limit, instead of reporting an internal
@@ -45,8 +45,8 @@ fixes:
     A single source that does not answer in time no longer ends a deep research;
     the run carries on without it.
   - >
-    The source list of a research report now carries the same numbers the report
-    cites with, so [3] in the text points to the third entry.
+    The source list of a research report now uses the same numbers as the
+    text, so [3] in the text points to the third entry.
   - >
     A date in a project note, such as a submission deadline, is no longer
     mistaken for a phone number and dropped.

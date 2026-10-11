@@ -8,9 +8,10 @@ features:
 upgrade:
   - >
     Follow-up questions in older conversations stay exactly where they were,
-    inside the answer. Nothing was regenerated and nothing was removed — the
-    two positions are simply what changed, and old threads keep their chips.
+    inside the answer. Nothing was regenerated or removed: only the position
+    of new follow-up questions has changed, so older conversations keep
+    theirs.
   - >
-    A finished deep-research report no longer carries follow-up questions. The
-    new step runs on chat answers, and a report is written after the chat turn
-    has already ended.
+    A finished deep-research report no longer carries follow-up questions.
+    They are offered on chat answers instead, since a report is written after
+    the chat turn has already ended.

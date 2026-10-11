@@ -1,7 +1,7 @@
 ---
 improvements:
   - >
-    Re-indexing a project and rescanning failed documents now continue after
-    a restart instead of stopping half way, and an upload made meanwhile is
-    read first. Both start at once and finish in the background, so the page
-    no longer waits for them.
+    Reprocessing a project and rereading its failed documents now carry on
+    after a restart instead of stopping halfway, and an upload made in the
+    meantime is read first. Both start at once and run in the background, so
+    the page no longer waits for them.

@@ -1,12 +1,11 @@
 ---
 fixes:
   - >
-    A diagram filed into a project now says inside the file that Piloti drew it,
-    in the SVG's title and in the PDF's document properties. A filed drawing
-    that leaves the office can no longer pass for one a person drew.
+    A diagram filed into a project now records in the file itself that Piloti
+    drew it. A drawing that leaves the office can no longer pass for one a
+    person drew.
 upgrade:
   - >
-    Nothing Piloti writes can be filed unmarked any more: the filing service
-    reads the finished file and refuses one that does not say who wrote it.
-    Files already in a project are unchanged; file a drawing again to get a
-    marked copy.
+    Nothing Piloti writes can be filed without that mark any more: a file that
+    does not say who wrote it is refused. Files already in a project stay as
+    they are; file a drawing again to get a marked copy.

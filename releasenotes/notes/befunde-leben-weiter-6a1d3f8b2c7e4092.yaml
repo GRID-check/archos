@@ -1,10 +1,10 @@
 ---
 features:
   - >
-    Findings of a report live on in the project: an open finding can be pursued
-    as its own task with Klären, and a finished report offers Bericht
-    fortschreiben, whose new version marks each finding as new, changed or
+    Findings from a report now carry on in the project. An open finding can
+    become its own task with Klären, and a finished report can be updated
+    with Bericht fortschreiben, which marks each finding as new, changed or
     dropped.
   - >
-    The findings of a report go into the project memory as facts and open
-    points.
+    The findings of a report are also saved to the project memory, as facts
+    and open points.
