@@ -75,8 +75,10 @@ property rather than as a PostHog group.
 What only a person with the right account can do. Tick it in the PR, with the
 date.
 
-- [ ] **Billing limits $0** on every product (organization owner). The PostHog API
-  exposes no billing write.
+- [x] **Spend capped at $0** (checked 2026-10-11): the organization is on the
+  free plan with no payment method, so every product's limit is its free
+  allocation and PostHog drops data past it rather than billing. Set $0
+  billing limits per product the day someone adds a card.
 - [ ] **AI data processing** consent for the organization (needed by self-driving,
   PostHog AI, Replay Vision). This sends data to US model providers. It is a
   business decision first.
@@ -116,8 +118,7 @@ date.
   change only when WorkOS does, so an old "last synced" date is not a fault.
   `directory_users` and `directory_groups` are off (no Directory Sync), which
   is the error the source still shows.
-- [ ] **Joins to the WorkOS tables**: proposed 2026-10-11, waiting for a typed
-  confirm in PostHog. `events.distinct_id` → `workos_users.id` (field
+- [x] **Joins to the WorkOS tables** (accepted 2026-10-11): `events.distinct_id` → `workos_users.id` (field
   `workos_user`) and `events.properties.organization_id` →
   `workos_organizations.id` (field `workos_organization`), so charts read names
   and emails from the warehouse copy and the app never sends them.
