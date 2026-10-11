@@ -163,6 +163,7 @@
     "@langfuse/core": "5.11.1",
     "@langfuse/tracing": "5.11.1",
     "postcss": "^8.5.10",
+    "shell-quote": "^1.11.0",
     "uuid": "^14.0.1"
   },
   "msw": {
