@@ -18,18 +18,26 @@ export interface ProjectPeriodRow {
   startedOn: string | null
   endedOn: string | null
   status: ProjectStatus
+  createdAt: Date
+}
+
+const PERIOD_COLUMNS = {
+  startedOn: projects.startedOn,
+  endedOn: projects.endedOn,
+  status: projects.status,
+  createdAt: projects.createdAt,
 }
 
 export async function findProjectPeriod(projectId: string, organizationId: string): Promise<ProjectPeriodRow | null> {
   const db = getDb()
   const [row] = await withTenant({ organizationId }, () =>
     db
-      .select({ startedOn: projects.startedOn, endedOn: projects.endedOn, status: projects.status })
+      .select(PERIOD_COLUMNS)
       .from(projects)
       .where(and(eq(projects.id, projectId), eq(projects.organizationId, organizationId), isNull(projects.deletedAt)))
       .limit(1)
   )
-  return row ?? null
+  return row ? { ...row, createdAt: new Date(row.createdAt) } : null
 }
 
 export async function updateProjectPeriod(
@@ -58,9 +66,9 @@ export async function updateProjectPeriod(
           ne(projects.status, 'closed')
         )
       )
-      .returning({ startedOn: projects.startedOn, endedOn: projects.endedOn, status: projects.status })
+      .returning(PERIOD_COLUMNS)
   )
-  return row ?? null
+  return row ? { ...row, createdAt: new Date(row.createdAt) } : null
 }
 
 export async function listProjectPeople(projectId: string, organizationId: string): Promise<ProjectPersonRow[]> {
@@ -73,6 +81,30 @@ export async function listProjectPeople(projectId: string, organizationId: strin
       .orderBy(asc(projectPeople.startedOn), asc(projectPeople.name), asc(projectPeople.id))
       .limit(PROJECT_PEOPLE_LIMIT)
   )
+}
+
+/** The row describing a member (or former member), when there is one. */
+export async function findProjectPersonByUser(
+  projectId: string,
+  organizationId: string,
+  userId: string
+): Promise<ProjectPersonRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .select()
+      .from(projectPeople)
+      .where(
+        and(
+          eq(projectPeople.projectId, projectId),
+          eq(projectPeople.organizationId, organizationId),
+          eq(projectPeople.userId, userId)
+        )
+      )
+      .orderBy(asc(projectPeople.createdAt))
+      .limit(1)
+  )
+  return row ?? null
 }
 
 export interface ProjectPersonValues {

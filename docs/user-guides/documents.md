@@ -41,10 +41,11 @@ never filed simply have no folder, and the assistant says nothing about one.
 
 ### What Piloti knows about a folder
 
-Every folder opens with a box titled „Was Piloti hier weiß“. It covers the folder
-and everything inside it, subfolders included, so you can see what has been read
-without opening each folder. The box is open by default. The arrow folds it, and
-the choice is remembered in this browser.
+Above every folder's files sits one quiet line, for example „35 von 44
+Dokumenten gelesen in diesem Projekt“. It covers the folder and everything
+inside it, subfolders included, so you can see what has been read without
+opening each folder. Click the line to open the full overview, „Was Piloti hier
+weiß“. The arrow folds it again, and the choice is remembered in this browser.
 
 - The bar counts the documents by state: „gelesen“ (Piloti can cite them),
   „wird gelesen“, „fehlgeschlagen“ and „zurückgehalten“ (the content check holds
@@ -77,9 +78,11 @@ Being read is not the same as being known to be a particular document. A file
 you uploaded but have not yet linked to its role still appears here, because
 Piloti cannot tell that it is the Energieausweis until you link it.
 
-Folder tiles and rows carry the same state in short form: „2 fehlgeschlagen“,
-„3 werden gelesen“, or „Alles gelesen“ when everything Piloti is meant to read is
-ready. A folder with nothing Piloti reads shows no state.
+In the list view, folder rows carry the same state in short form: „2
+fehlgeschlagen“, „3 werden gelesen“, or „Alles gelesen“ when everything Piloti is
+meant to read is ready. A folder with nothing Piloti reads shows no state. In
+the card view a folder tile shows only the coloured dot (green read, blue being
+read, red failed, amber held back); hover it for the words.
 
 ### The file card grid
 
@@ -88,7 +91,7 @@ Files render as cards in a responsive grid. Each card shows:
 - a **content-aware skeleton thumbnail** — the sketch is picked from the document's ingestion tags (or, absent tags, filename heuristics / content type): floor plan (Grundriss), section/elevation (Schnitt/Ansicht), site plan (Lageplan), official notice (Bescheid), photo, or a generic document
 - the file name and, when ingestion generated one, a one-line **AI description**
 - a tinted **extension chip** (PDF, DOCX, …), the file size and a relative upload time
-- the **ingestion status badge** (Ready / Processing / Failed) — failed cards show the failure reason inline
+- an **ingestion status badge** only while the document is not yet citable (Processing / Failed / held back) — failed cards show the failure reason inline. A citable document carries no badge on its card; the list view's status column names every state, „Zitierbar“ included
 
 The last tile of the grid is a dashed **upload card** listing the actually accepted file types and the size limit; drag-and-drop anywhere on the workspace also works. A file dropped on another project page, such as Settings or Members, opens Files and is uploaded there; the chat, the research page and the intake keep their own drop targets.
 

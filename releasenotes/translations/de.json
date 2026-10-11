@@ -244,6 +244,10 @@
     "de": "Ein fertiger Recherchebericht landet jetzt in Ihrem Projekt statt nur im Chat. Sie finden ihn unter „Berichte“, wo Sie ihn wie jede andere Datei öffnen, in der Vorschau ansehen, herunterladen oder löschen und mit den Personen im Projekt teilen können, ohne etwas herauskopieren zu müssen."
   },
   {
+    "en": "A finished answer no longer stays greyed out after Piloti tidies its sources at the end. The text fades back in and always ends at full strength.",
+    "de": "Eine fertige Antwort bleibt nicht mehr ausgegraut, nachdem Piloti am Ende die Quellen bereinigt hat. Der Text wird wieder eingeblendet und ist immer vollständig sichtbar."
+  },
+  {
     "en": "A finished deep-research report no longer carries follow-up questions. They are offered on chat answers instead, since a report is written after the chat answer is complete.",
     "de": "Ein fertiger Tiefenrecherche-Bericht trägt keine Folgefragen mehr. Stattdessen werden sie bei Chat-Antworten angeboten, weil ein Bericht erst geschrieben wird, nachdem die Chat-Antwort abgeschlossen ist."
   },
@@ -834,6 +838,10 @@
   {
     "en": "Bereits abgerufen now marks only a passage that really was fetched again.",
     "de": "„Bereits abgerufen“ steht jetzt nur dort, wo eine Stelle tatsächlich noch einmal geholt wurde."
+  },
+  {
+    "en": "Browsing your files is calmer: the overview of what Piloti has read now sits as one line above each folder and opens on a click, folder tiles show a coloured dot instead of a phrase, and file cards only mark a document while it is being read or could not be read. The list view spells out every state.",
+    "de": "Das Durchsehen Ihrer Dateien ist jetzt übersichtlicher: Die Übersicht darüber, was Piloti gelesen hat, steht als einzelne Zeile über jedem Ordner und lässt sich per Klick öffnen. Ordnerkacheln zeigen statt eines Textes einen farbigen Punkt, und Dateikarten kennzeichnen ein Dokument nur, wenn es gerade gelesen wird oder nicht gelesen werden konnte. In der Listenansicht werden alle Status ausgeschrieben."
   },
   {
     "en": "Building law now stays in the search when a question is about a specific file. „Erfüllt dieser Grundriss die Fluchtweganforderungen?“ used to search the floor plan and no Richtlinie.",
@@ -1546,6 +1554,10 @@
   {
     "en": "On the Skills tab, a skill can be switched off. Switched off, it disappears from the “/” menu and from what Piloti can pick for an answer.",
     "de": "Im Skills-Tab lässt sich ein Skill ausschalten. Ausgeschaltet verschwindet er aus dem „/“-Menü und aus der Auswahl, die Piloti für eine Antwort treffen kann."
+  },
+  {
+    "en": "On the overview the Steckbrief is now a summary with a „Bearbeiten“ dialog, and closing a project asks who was involved, so the record is complete before it becomes read-only.",
+    "de": "In der Übersicht ist der Steckbrief jetzt eine Zusammenfassung mit einem „Bearbeiten“-Dialog; beim Schließen eines Projekts wird abgefragt, wer beteiligt war, damit der Datensatz vollständig ist, bevor er schreibgeschützt wird."
   },
   {
     "en": "Once a newer version is published, Piloti stops answering from the replaced one. The older version stays in the version list and can still be opened.",
@@ -2420,6 +2432,10 @@
     "de": "Der Projekt-Assistent zeigt alle Module mit vollem Namen neben den Fragen, jedes mit der Zahl der schon gemachten Angaben, und Sie springen jederzeit dorthin."
   },
   {
+    "en": "The project's Steckbrief now fills itself: the project's members appear without being typed in, someone taken off the project stays on as a former member, and the start is the month the project was created until you change it.",
+    "de": "Der Steckbrief des Projekts füllt sich jetzt automatisch: Die Projektmitglieder werden ohne manuelle Eingabe angezeigt, entfernte Personen bleiben als ehemalige Mitglieder eingetragen und als Start ist zunächst der Monat der Projekterstellung hinterlegt, bis Sie ihn ändern."
+  },
+  {
     "en": "The replaced document keeps its identity: references from answers, the link in the chat and its folder stay intact.",
     "de": "Das ersetzte Dokument behält seine Identität: Verweise aus Antworten, der Bezug im Chat und der Ablageordner bleiben erhalten."
   },
@@ -2694,6 +2710,10 @@
   {
     "en": "When Piloti searches twice, each step of the Herleitung now shows the files of that search instead of listing both on the first. A summary is no longer shown as a ruling by mistake.",
     "de": "Sucht Piloti zweimal, zeigt jeder Schritt der Herleitung jetzt die Dateien dieser Suche, statt beide beim ersten aufzulisten. Eine Zusammenfassung wird nicht mehr irrtümlich als Bescheid angezeigt."
+  },
+  {
+    "en": "When Piloti states another project's facts from its brief (address, start, Bauweise), the answer cites them as \"Projektdaten\" of that project. Before, that citation was removed and the answer said a source could not be verified.",
+    "de": "Wenn Piloti Fakten aus dem Briefing eines anderen Projekts nennt (Adresse, Start, Bauweise), weist die Antwort sie als „Projektdaten“ dieses Projekts aus. Bislang entfernt die Antwort diesen Verweis und erklärt, dass keine Quelle verifiziert werden kann."
   },
   {
     "en": "When Piloti was updated while your page was open, it now asks you to reload instead of asking you to check your network.",

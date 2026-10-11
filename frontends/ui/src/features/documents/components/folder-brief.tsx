@@ -128,6 +128,29 @@ export function FolderBrief({
   const headline = briefHeadline(tally, t)
   const meterLabel = `${headline} ${scope}. ${legendSentence(tally, t)}`
 
+  // Folded, the brief is one quiet line above the listing, not a card: what
+  // Piloti has read is worth a glance, not the top third of every folder. The
+  // full account (bar, legend, what needs a person) is one click away.
+  if (collapsed) {
+    return (
+      <button
+        type="button"
+        onClick={() => onCollapsedChange(false)}
+        aria-expanded={false}
+        title={t('brief.expand')}
+        className="text-muted-foreground hover:bg-accent/60 hover:text-foreground focus-visible:ring-ring touch-target -mx-2 flex w-[calc(100%+1rem)] min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none"
+        data-testid="folder-brief"
+        data-collapsed=""
+      >
+        <Sparkles className="size-3.5 shrink-0" aria-hidden />
+        <span className="min-w-0 truncate">
+          {headline} {scope}
+        </span>
+        <ChevronDown className="size-3.5 shrink-0" aria-hidden />
+      </button>
+    )
+  }
+
   return (
     <Card
       className="gap-0 py-0"
@@ -151,17 +174,14 @@ export function FolderBrief({
             variant="ghost"
             size="icon"
             className="-mr-1.5 -mt-1 size-7 shrink-0 pointer-coarse:size-11"
-            onClick={() => onCollapsedChange(!collapsed)}
-            aria-expanded={!collapsed}
+            onClick={() => onCollapsedChange(true)}
+            aria-expanded
             aria-controls="folder-brief-body"
-            aria-label={t(collapsed ? 'brief.expand' : 'brief.collapse')}
-            title={t(collapsed ? 'brief.expand' : 'brief.collapse')}
+            aria-label={t('brief.collapse')}
+            title={t('brief.collapse')}
             data-testid="folder-brief-toggle"
           >
-            <ChevronDown
-              className={cn('transition-transform duration-quick ease-out motion-reduce:transition-none', !collapsed && 'rotate-180')}
-              aria-hidden
-            />
+            <ChevronDown className="rotate-180" aria-hidden />
           </Button>
         </div>
 
@@ -178,19 +198,17 @@ export function FolderBrief({
           trouble sits, each folded to one line that already names its content.
           Open in full, the brief was taller than a laptop screen and the
           listing it introduces started below the fold. */}
-      {!collapsed && (
-        <div id="folder-brief-body" className="flex flex-col divide-y border-t">
-          <NeedsYouSection
-            brief={brief}
-            onSelect={onSelect}
-            onReadAgain={onReadAgain}
-            readAgainProgress={readAgainProgress}
-          />
-          {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
-          <AboutSection brief={brief} onSelect={onSelect} />
-          <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
-        </div>
-      )}
+      <div id="folder-brief-body" className="flex flex-col divide-y border-t">
+        <NeedsYouSection
+          brief={brief}
+          onSelect={onSelect}
+          onReadAgain={onReadAgain}
+          readAgainProgress={readAgainProgress}
+        />
+        {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
+        <AboutSection brief={brief} onSelect={onSelect} />
+        <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
+      </div>
     </Card>
   )
 }

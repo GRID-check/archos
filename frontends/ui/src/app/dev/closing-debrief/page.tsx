@@ -22,7 +22,7 @@
  *                           nicht zu", not missing.
  *
  * A module-scope fetch shim (browser + dev only) answers the memory listing,
- * its two writes and the dialog's „Ausmisten" proposal (nothing to remove), so
+ * its two writes, the Steckbrief's „Wer war dabei" and the dialog's „Ausmisten" proposal (nothing to remove), so
  * confirming and recording are live; closing itself is refused, so the preview
  * stays open. Pinned to German, the product's primary
  * language (`docs/ux/visual-screenshots.md`).
@@ -32,6 +32,7 @@ import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 
 import { I18nProvider } from '@/i18n'
+import { answerSteckbrief } from '../_fixtures/steckbrief'
 import { ProjectLifecycleCard } from '@/features/projects/components/project-lifecycle-card'
 import { buildIntakeProfile, projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import type { ProjectAssumption, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
@@ -121,6 +122,9 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
     const real = window.fetch.bind(window)
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
       const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
+      // „Wer war dabei": the Steckbrief of every variant, editable in the preview.
+      const steckbrief = await answerSteckbrief(PROJECT, url, init)
+      if (steckbrief) return steckbrief
       if (url === `/api/projects/${EMPTY}/memory`) return Response.json({ items: [] })
       if (url === `/api/projects/${PROJECT}/memory` && init?.method === 'POST') {
         const body = JSON.parse(String(init.body)) as { content: string }

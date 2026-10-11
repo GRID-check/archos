@@ -1,0 +1,10 @@
+---
+improvements:
+  - >
+    The project's Steckbrief now fills itself: the project's members appear
+    without being typed in, someone taken off the project stays on as a former
+    member, and the start is the month the project was created until you change it.
+  - >
+    On the overview the Steckbrief is now a summary with a „Bearbeiten“ dialog,
+    and closing a project asks who was involved, so the record is complete
+    before it becomes read-only.

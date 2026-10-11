@@ -497,7 +497,8 @@ def _source_lookup_attempted(messages: Sequence[Any]) -> bool:
 #: search. `project_lookup` lists the office's projects, reads one project's
 #: brief, and reports a search over N projects that matched nothing: each is an
 #: answer in its own right („Eine Tiefgarage mit über 100 Stellplätzen hatten
-#: wir noch nicht"), and none registers a passage. Counting them as a failed
+#: wir noch nicht"), and none need register a passage (a brief registers its
+#: facts as one source when it has any, a listing never does). Counting them as a failed
 #: retrieval replaced exactly the honest „nichts Vergleichbares" the feature
 #: promises with „versuchen Sie es noch einmal" (precedent eval, Oct 2026).
 #: Its passages, when it finds some, are cited like any other.

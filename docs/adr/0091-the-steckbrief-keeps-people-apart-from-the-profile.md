@@ -94,6 +94,8 @@ check, audit without names), `people-stay-out-of-the-prompt.spec.ts`, and the 01
 
 ## More Information
 
+* [ADR-0100](0100-the-steckbrief-lists-the-projects-members-on-its-own.md) partly supersedes the people list: members come from the project's roster rather than being typed in, a member who leaves is kept as a former one, and the account link is a member's only.
+
 * [ADR-0090](0090-a-closed-project-is-read-only-and-open-to-the-office.md): closed projects.
 * User guide: [`user-guides/projects.md`](../user-guides/projects.md#the-steckbrief).
 * Table: [`database/schema.md`](../database/schema.md#project_people-migration-0117-adr-0087).

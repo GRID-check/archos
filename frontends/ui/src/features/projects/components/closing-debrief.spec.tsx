@@ -105,16 +105,17 @@ describe('ClosingDebrief', () => {
 
   test('shows the fingerprint, naming each open fact and how many are missing', async () => {
     stubFetch()
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn={null} canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
     expect(within(debrief).getByText('Niederösterreich')).toBeInTheDocument()
     expect(within(debrief).getByText('Holzbau')).toBeInTheDocument()
     // Uses and kind of work are open in the briefing; the class is derived, not
-    // the briefing's to fill; the period is open too: three missing.
+    // the briefing's to fill: two missing. The period is the Steckbrief's, shown
+    // beside the debrief, never counted here.
     expect(within(debrief).getAllByText('open')).toHaveLength(2)
     expect(within(debrief).getByText('open (not set in the brief)')).toBeInTheDocument()
-    expect(within(debrief).getByText('3 facts missing')).toBeInTheDocument()
+    expect(within(debrief).getByText('2 facts missing')).toBeInTheDocument()
     expect(within(debrief).getByRole('link', { name: 'Add in the brief' })).toHaveAttribute('href', '/app/projects/p1/intake')
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
   })
@@ -122,7 +123,7 @@ describe('ClosingDebrief', () => {
   test('a structure that is no building is not asked for its construction, and no link promises otherwise', async () => {
     stubFetch()
     const wall = built({ A2_country: 'at', A2_land: 'tirol', A5: ['neubau'], 'C1@bw1': 'sonstig' })
-    render(<ClosingDebrief projectId="p1" profile={wall} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={wall} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
     expect(within(debrief).getAllByText('does not apply')).toHaveLength(2)
@@ -132,7 +133,7 @@ describe('ClosingDebrief', () => {
 
   test('offers only the active decisions and constraints, the memory other projects search', async () => {
     stubFetch()
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     expect(screen.getByText('Die Behörde verlangt die Fluchtwegbreite in jedem Grundriss.')).toBeInTheDocument()
@@ -142,7 +143,7 @@ describe('ClosingDebrief', () => {
 
   test('names who stands behind each decision as other projects will cite it: Piloti’s own note too', async () => {
     stubFetch({ memory: [...memory, drafted] })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     const noted = await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     expect(within(noted.closest('li') as HTMLElement).getByText('Noted by Piloti')).toBeInTheDocument()
@@ -155,7 +156,7 @@ describe('ClosingDebrief', () => {
 
   test('confirming a decision records a person’s confirmation, and shows it', async () => {
     const fetchMock = stubFetch()
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     // The pinned constraint is already a person's; only the decision asks.
@@ -173,7 +174,7 @@ describe('ClosingDebrief', () => {
 
   test('a lesson in the closer’s words is recorded as a decision', async () => {
     const fetchMock = stubFetch()
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     expect(screen.getByRole('button', { name: 'Record' })).toBeDisabled()
@@ -193,7 +194,7 @@ describe('ClosingDebrief', () => {
 
   test('a reader who may not write the memory sees what stays, and no control that would change it', async () => {
     stubFetch()
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory={false} />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory={false} />)
 
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     expect(screen.queryByRole('button', { name: 'Confirm' })).not.toBeInTheDocument()
@@ -204,7 +205,7 @@ describe('ClosingDebrief', () => {
   test('reading the documents posts the extraction, shows that it is pending, then what it found, and reloads', async () => {
     let answer: (response: Response) => void = () => {}
     const fetchMock = stubFetch({ experience: () => new Promise((resolve) => (answer = resolve)) })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
     await screen.findByText('Kapselung K₂60 mit Gipsfaserplatten, Prüfbericht liegt vor.')
     const gets = memoryGets(fetchMock)
 
@@ -223,7 +224,7 @@ describe('ClosingDebrief', () => {
     const fetchMock = stubFetch({
       experience: async () => Response.json({ suggested: 0, drafted: 0, documentsRead: ['Plan.pdf'], error: null }),
     })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Read from the documents' }))
     expect(await screen.findByText('Piloti found nothing new in the documents.')).toBeInTheDocument()
@@ -239,7 +240,7 @@ describe('ClosingDebrief', () => {
     const fetchMock = stubFetch({
       experience: async () => Response.json({ suggested: 0, drafted: 0, documentsRead: [], error }),
     })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
     const gets = memoryGets(fetchMock)
 
     await userEvent.click(screen.getByRole('button', { name: 'Read from the documents' }))
@@ -250,7 +251,7 @@ describe('ClosingDebrief', () => {
 
   test('a request that fails says the reading did not work', async () => {
     stubFetch({ experience: async () => new Response('{}', { status: 500 }) })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     await userEvent.click(screen.getByRole('button', { name: 'Read from the documents' }))
     expect(await screen.findByText('The reading did not work. Please try again later.')).toBeInTheDocument()
@@ -259,7 +260,7 @@ describe('ClosingDebrief', () => {
   test('a suggested fact shows its reason, still counts as missing, and Accept writes it as a fact', async () => {
     const fetchMock = stubFetch()
     const withSuggestion = { ...profile, assumptions: { vorhabensart: suggestion(['neubau'], 'Baubeschreibung.pdf, S. 2: „Neubau eines Wohnhauses“') } }
-    render(<ClosingDebrief projectId="p1" profile={withSuggestion} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={withSuggestion} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
     const row = within(debrief).getByText('Baubeschreibung.pdf, S. 2: „Neubau eines Wohnhauses“').closest('li')
@@ -267,7 +268,7 @@ describe('ClosingDebrief', () => {
     expect(within(row as HTMLElement).getByText('Suggestion from the documents')).toBeInTheDocument()
     expect(within(row as HTMLElement).getByText('Neubau')).toBeInTheDocument()
     // Accepting is what makes it an answer, so the fact is still missing until then:
-    // uses and this suggested kind of work, the period being set.
+    // uses and this suggested kind of work.
     expect(within(debrief).getByText('2 facts missing')).toBeInTheDocument()
 
     await userEvent.click(within(row as HTMLElement).getByRole('button', { name: 'Accept' }))
@@ -290,7 +291,7 @@ describe('ClosingDebrief', () => {
         oib_ausgabe: suggestion('2019', 'Einreichplan.pdf, S. 1: „OIB-Richtlinien 2019“'),
       },
     }
-    render(<ClosingDebrief projectId="p1" profile={withSuggestions} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={withSuggestions} canWriteMemory />)
 
     const debrief = screen.getByTestId('closing-debrief')
     expect(within(debrief).getAllByText('Suggestion from the documents')).toHaveLength(2)
@@ -312,7 +313,7 @@ describe('ClosingDebrief', () => {
 
   test('a source-grounded decision shows its marker and evidence, and Dismiss removes it', async () => {
     const fetchMock = stubFetch({ memory: [...memory, drafted] })
-    render(<ClosingDebrief projectId="p1" profile={profile} startedOn="2024-03" canWriteMemory />)
+    render(<ClosingDebrief projectId="p1" profile={profile} canWriteMemory />)
 
     const text = await screen.findByText('Fluchttreppe außen in Stahl statt eines zweiten Stiegenhauses.')
     const entry = text.closest('li') as HTMLElement
@@ -333,7 +334,7 @@ describe('ClosingDebrief', () => {
   test('a reader who may not write the memory or the profile sees the suggestions, and no control that would change them', async () => {
     stubFetch({ memory: [...memory, drafted] })
     const withSuggestion = { ...profile, assumptions: { vorhabensart: suggestion(['neubau'], 'Baubeschreibung.pdf, S. 2: „Neubau“') } }
-    render(<ClosingDebrief projectId="p1" profile={withSuggestion} startedOn="2024-03" canWriteMemory={false} />)
+    render(<ClosingDebrief projectId="p1" profile={withSuggestion} canWriteMemory={false} />)
 
     await screen.findByText('Fluchttreppe außen in Stahl statt eines zweiten Stiegenhauses.')
     expect(screen.getByText('Baubeschreibung.pdf, S. 2: „Neubau“')).toBeInTheDocument()

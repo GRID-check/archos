@@ -163,3 +163,18 @@ describe('FolderBrief — chips', () => {
     expect(chip.getAttribute('title')).toContain(LONG_TOPIC)
   })
 })
+
+describe('FolderBrief — folded', () => {
+  it('is one line naming the headline, with no bar, legend or sections, and opens on a click', async () => {
+    const onCollapsedChange = vi.fn()
+    renderBrief(CORPUS, { collapsed: true, onCollapsedChange })
+    const line = screen.getByTestId('folder-brief')
+    expect(line).toHaveTextContent(/3 of 5 documents read/)
+    expect(line).toHaveAttribute('aria-expanded', 'false')
+    expect(document.querySelector('[data-slot="segment-meter"]')).toBeNull()
+    expect(screen.queryByTestId('folder-brief-state-failed')).not.toBeInTheDocument()
+    expect(screen.queryByTestId('folder-brief-needs-failed')).not.toBeInTheDocument()
+    await userEvent.click(line)
+    expect(onCollapsedChange).toHaveBeenCalledWith(false)
+  })
+})

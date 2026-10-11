@@ -400,7 +400,8 @@ the closed projects most like this one (same Bundesland first, then
 Gebäudeklasse, Bauweise and use), and it can search their documents (by topic,
 optionally by document type such as Detail or Gutachten, by OIB discipline,
 and by the project's period), find a project by name or address, and read a
-project's brief. While it searches, the status line says „in anderen
+project's brief. What it states from a brief (address, start, Bauweise) is
+cited as „Projektdaten · ‹Projekt›“, like any other source. While it searches, the status line says „in anderen
 Projekten“; once the answer is done, the Herleitung keeps an „Andere Projekte“
 step. The same list, with what each project shares with this one, is the
 project's [Ähnliche Projekte](projects.md#similar-projects) page. Piloti also finds what other projects **decided**: the decisions and
