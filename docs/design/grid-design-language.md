@@ -395,6 +395,8 @@ Tabbed shells (Organisation, Platform) are **one place**, not a stack of submenu
 
 **List container** — `ItemList` (`rounded-lg border divide-y`) with `Item` / `ItemMedia` / `ItemContent` / `ItemTitle` / `ItemDescription` / `ItemActions`. That is the list molecule for the chat history sheet (`SessionsPanel`), Inbox, Settings rosters, and admin pickers. Do not hand-roll a second `rounded-lg border` + `divide-y` row. The raised product card (Files tiles, project cards) is `RaisedCard`, not `Item`.
 
+**A row in a list is connected, never a pill.** `ItemList` owns the outer corners (`overflow-hidden`) and the hairlines between rows (`divide-y`), so only the first and last row round, and the seam is one line rather than two stacked borders. A row (`Item`) takes no radius, border or shadow of its own. Hover tints the row and does not lift it, because a lifted row detaches from its neighbours. A drop target marks itself with `ring-inset`, since an outer ring on the first or last row is clipped. The three layers are the atom `Item` (one row), the molecule `ItemList` (the connected run), and the organisms that fill it (`ProjectListRow`, `FolderRow`).
+
 **Empty state** — `EmptyState` (`components/ui/empty-state.tsx`), never bare
 text and never hand-rolled. The icon sits in a **raised disc** — border, card
 surface, soft shadow — because a disc that catches the light reads as

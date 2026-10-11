@@ -8,6 +8,7 @@ import { Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ItemList } from '@/components/ui/item'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
@@ -723,10 +724,14 @@ export function FileBrowserPane({
           className={CONTENT_MAX}
         >
             {folderNav && childFolders.length > 0 && (
-              <div className="border-b px-2 py-2" role="group" aria-label={t('folders.heading')}>
-                {childFolders.map((folder) => (
-                  <Fragment key={folder.id}>{folderTile(folder, true)}</Fragment>
-                ))}
+              // The folders are one connected run, not a stack of pills: the
+              // `ItemList` rounds the outer corners and draws the hairlines.
+              <div className="px-2 py-2" role="group" aria-label={t('folders.heading')}>
+                <ItemList className="bg-muted/40">
+                  {childFolders.map((folder) => (
+                    <Fragment key={folder.id}>{folderTile(folder, true)}</Fragment>
+                  ))}
+                </ItemList>
               </div>
             )}
             {orderedFiles.length > 0 && (
@@ -885,10 +890,12 @@ export function FileBrowserSkeleton({
       {view === 'list' ? (
         <div className={CONTENT_MAX}>
           {folderCount > 0 && (
-            <div className="space-y-1 border-b px-2 py-2">
-              {Array.from({ length: folderCount }).map((_, index) => (
-                <FolderRowSkeleton key={index} />
-              ))}
+            <div className="px-2 py-2">
+              <ItemList className="bg-muted/40">
+                {Array.from({ length: folderCount }).map((_, index) => (
+                  <FolderRowSkeleton key={index} />
+                ))}
+              </ItemList>
             </div>
           )}
           <FileListSkeleton rows={files} />

@@ -28,6 +28,7 @@ import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import type { JSX, ReactNode } from 'react'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
+import { ItemList } from '@/components/ui/item'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
 import { FolderCard, FolderRow } from '@/features/documents/components/folder-navigation'
 import { buildFolderBrief, subtreeTallies } from '@/features/documents/lib/folder-knowledge'
@@ -152,11 +153,11 @@ function FolderTiles(): JSX.Element {
           <FolderCard key={folder.id} {...tileProps(folder)} />
         ))}
       </div>
-      <div className="flex flex-col gap-1.5">
+      <ItemList className="bg-muted/40">
         {ROOT_FOLDERS.map((folder) => (
           <FolderRow key={folder.id} {...tileProps(folder)} />
         ))}
-      </div>
+      </ItemList>
     </div>
   )
 }
