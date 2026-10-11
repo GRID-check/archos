@@ -38,11 +38,6 @@ vi.mock('@/lib/projects/memory-service', () => ({
   buildProjectMemoryDigest: (...args: unknown[]) => buildProjectMemoryDigest(...args),
 }))
 
-const isMemoryReflectionEnabled = vi.fn()
-vi.mock('@/lib/workos/feature-flags', () => ({
-  isMemoryReflectionEnabled: (...args: unknown[]) => isMemoryReflectionEnabled(...args),
-}))
-
 const isWebSearchEnabledForOrg = vi.fn()
 vi.mock('@/lib/organizations/service', () => ({
   isWebSearchEnabledForOrg: (...args: unknown[]) => isWebSearchEnabledForOrg(...args),
@@ -113,7 +108,6 @@ describe('GET /api/auth/websocket-scope gate-then-fanout', () => {
     isAuthRequired.mockReturnValue(true)
     getGridSession.mockResolvedValue(SESSION)
     buildCollectionScopeFromRequest.mockResolvedValue(scopeReturning('proj_q'))
-    isMemoryReflectionEnabled.mockResolvedValue(true)
     getBudgetStatus.mockResolvedValue({ ...OPEN_BUDGET })
     isWebSearchEnabledForOrg.mockResolvedValue(true)
     getEffectiveModelOverrides.mockResolvedValue(null)

@@ -69,22 +69,22 @@ class TestUserMessageId:
 class TestMemoryReflectionFlag:
     def test_true_header_enables(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: "true")
-        assert pc.get_memory_reflection_enabled_from_context() is True
+        assert pc.GridRequestContext.from_context().memory_reflection_enabled is True
 
     def test_case_insensitive(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: "TRUE")
-        assert pc.get_memory_reflection_enabled_from_context() is True
+        assert pc.GridRequestContext.from_context().memory_reflection_enabled is True
 
     def test_false_header_disables(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: "false")
-        assert pc.get_memory_reflection_enabled_from_context() is False
+        assert pc.GridRequestContext.from_context().memory_reflection_enabled is False
 
     def test_absent_header_fails_closed(self, monkeypatch):
         monkeypatch.setattr(pc, "_read_header", lambda name: None)
-        assert pc.get_memory_reflection_enabled_from_context() is False
+        assert pc.GridRequestContext.from_context().memory_reflection_enabled is False
 
     def test_reads_the_expected_header(self, monkeypatch):
-        # get_memory_reflection_enabled_from_context() now delegates to
+        # memory_reflection_enabled is parsed by
         # GridRequestContext.from_context(), which reads every X-Grid-*
         # header in one pass (backlog T3-9) — so _read_header is called
         # several times per invocation, not just once. Record every name
@@ -96,7 +96,7 @@ class TestMemoryReflectionFlag:
             return "true"
 
         monkeypatch.setattr(pc, "_read_header", fake)
-        pc.get_memory_reflection_enabled_from_context()
+        pc.GridRequestContext.from_context().memory_reflection_enabled
         assert pc.MEMORY_REFLECTION_FEATURE_HEADER in seen
 
 
@@ -196,7 +196,7 @@ class TestGridRequestContextFromContext:
 
     def test_accessors_delegate_to_from_context(self, monkeypatch):
         """get_project_id_from_context / get_organization_id_from_context /
-        get_memory_reflection_enabled_from_context / get_profile_context_from_context
+        get_profile_context_from_context
         / get_memory_digest_from_context must all agree with the equivalent
         GridRequestContext field for the same underlying headers.
         """
@@ -214,7 +214,7 @@ class TestGridRequestContextFromContext:
         assert pc.get_project_id_from_context() == ctx.project_id == "proj_9"
         assert pc.get_profile_context_from_context() == ctx.project_context == "profile blob"
         assert pc.get_memory_digest_from_context() == ctx.project_memory == "memory blob"
-        assert pc.get_memory_reflection_enabled_from_context() == ctx.memory_reflection_enabled is True
+        assert ctx.memory_reflection_enabled is True
         assert pc.get_project_context_from_context() == "profile blob\n\nmemory blob"
 
 

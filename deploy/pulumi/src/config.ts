@@ -993,6 +993,15 @@ export interface GridConfig {
      * exception to the release by id. Empty = no release link.
      */
     releaseId: string;
+    /**
+     * The project's feature-flags secure API key
+     * (`grid-oib:posthogFeatureFlagsKey`, an ESC secret, absent by default).
+     * When set, the frontend gets it as `POSTHOG_FEATURE_FLAGS_SECURE_API_KEY`
+     * through the shared Secret and evaluates the rollout flags locally
+     * (ADR-0102); absent, it asks PostHog's `/flags` per organization. Unlike
+     * the project token this is a secret: never plain env, never `NEXT_PUBLIC_`.
+     */
+    featureFlagsKey: pulumi.Output<string> | undefined;
   };
 
   /** Cross-service internal token + admin token (must match across services). */
@@ -2618,6 +2627,11 @@ export function loadConfig(): GridConfig {
       sessionReplay: bool(cfg, "posthogSessionReplay", true),
       replaySampleRate: cfg.get("posthogReplaySampleRate") ?? "1",
       releaseId: (cfg.get("posthogReleaseId") ?? "").trim(),
+      // Optional secret: an EMPTY value counts as absent, the rule
+      // `requireSecretsTogether` explains. `cfg.get` only decides presence; the
+      // value itself is read with `getSecret`, so it stays an encrypted Output.
+      featureFlagsKey:
+        (cfg.get("posthogFeatureFlagsKey") ?? "").trim() === "" ? undefined : cfg.getSecret("posthogFeatureFlagsKey"),
     },
 
     internal: {

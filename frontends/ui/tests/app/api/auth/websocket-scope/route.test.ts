@@ -71,8 +71,8 @@ describe('/api/auth/websocket-scope', () => {
       // and the conversationId it authorized so the signed envelope carries it.
       projectId: 'proj-1',
       conversationId: 'conv-1',
-      // Anonymous mode: nobody signs in, so the reflection stage gets a
-      // rollout's fixed answer — ON.
+      // The reflection stage is core and has no flag (ADR-0102); the field
+      // stays on the wire, always true, for an agent older than that.
       memoryReflectionEnabled: true,
     })
     expect(mockRequireProjectAccess).not.toHaveBeenCalled()

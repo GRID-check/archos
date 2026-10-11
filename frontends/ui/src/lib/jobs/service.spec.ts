@@ -57,7 +57,6 @@ vi.mock('@/lib/request-context', () => ({
 
 vi.mock('@/lib/workos/feature-flags', () => ({
   isOrgFeatureEnabled: vi.fn(),
-  isMemoryReflectionEnabled: vi.fn(async () => true),
 }))
 
 vi.mock('@/lib/projects/memory-service', () => ({

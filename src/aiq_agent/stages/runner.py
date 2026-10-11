@@ -171,9 +171,9 @@ def _pre_run_outcome(spec: StageSpec, facts: TurnFacts) -> StageOutcome | None:
     The flag is checked before the gate deliberately: evaluating a gate for a
     stage that is switched off would report ``skipped`` reasons for a stage that
     was never going to run, and the skip reasons are the numbers the gate is
-    judged by.
+    judged by. A core stage (``flag_slug`` is ``None``) has no flag to check.
     """
-    if not facts.stage_enabled(spec.id):
+    if spec.flag_slug is not None and not facts.stage_enabled(spec.id):
         return StageOutcome(stage_id=spec.id, status="disabled", reason="flag_off")
     decision = spec.gate(facts)
     if not decision.run:

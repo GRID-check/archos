@@ -385,7 +385,7 @@ Source: `frontends/ui/src/app/api/feedback/answers/route.ts`; `frontends/ui/src/
 | `POST` | `/api/platform/knowledge/sync` | Platform owner | Run one corpus sync cycle now (proxies `POST /v1/admin/oib/sync`): the same cycle the `base-corpus` housekeeping route runs every ten minutes: it queues an ingest job for every file whose index is not built from its current bytes and records the jobs that finished. | — | `{ filesAdded, filesTotal, message }` |
 | `POST` | `/api/platform/knowledge/reingest` | Platform owner | Rebuild the chunks of SELECTED base-corpus documents (proxies `POST /v1/admin/oib/reingest`). Distinct from `sync`, which gates on each file's recorded hash and chunk-format version and so does nothing for a file the index is built from — this forces the rebuild, which is what is needed after a change to how chunks are *built* (chunking, embedding model, a half-failed ingest). Returns as soon as the work is queued; each document then reads `pending` in `/api/knowledge-base` until its chunks exist again. Unknown names are reported in `unknown` rather than failing the call. | `{ fileNames: string[] }` (non-empty) | `{ status: 'pending'\|'noop', queued, unknown, message }` |
 
-Source: `frontends/ui/src/app/api/knowledge-base/**`, `frontends/ui/src/app/api/platform/knowledge/**` (service: `frontends/ui/src/lib/knowledge/service.ts`). Rendered by the project "Knowledge" page (`/app/projects/{id}/knowledge`, feature-flagged via the per-org `project-knowledge-page` WorkOS flag) and the platform dashboard's "Base knowledge" manager. The platform routes require `GRID_ADMIN_TOKEN` on the frontend service (must match the aiq-agent value).
+Source: `frontends/ui/src/app/api/knowledge-base/**`, `frontends/ui/src/app/api/platform/knowledge/**` (service: `frontends/ui/src/lib/knowledge/service.ts`). Rendered by the project "Knowledge" page (`/app/projects/{id}/knowledge`, feature-flagged via the per-org `project-knowledge-page` rollout flag in PostHog, ADR-0102) and the platform dashboard's "Base knowledge" manager. The platform routes require `GRID_ADMIN_TOKEN` on the frontend service (must match the aiq-agent value).
 
 ## Legal sources (RIS)
 
@@ -694,7 +694,7 @@ Source: `docs/technical-reference/websocket-gateway.md`
 
 ## BIM / IFC models (ADR-0045)
 
-Every route is gated by the `ifc-models` WorkOS flag AND the document's own
+Every route is gated by the `ifc-models` rollout flag (PostHog, ADR-0102) AND the document's own
 access rule, resolved from the document's **shelf** (`documents.scope`,
 ADR-0047) rather than from whether it has a project:
 

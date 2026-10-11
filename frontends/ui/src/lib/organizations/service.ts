@@ -333,8 +333,8 @@ const webSearchCacheKey = (organizationId: string): string => `websearch:${organ
  *
  *  - Tenant layer: `settings.webSearchEnabled` (default TRUE — web search is
  *    a core capability until an org admin turns it off).
- *  - Platform layer: the WorkOS `web-search` flag (a rollout, ON for every
- *    organization; see docs/deployment/workos-provisioning.md).
+ *  - Platform layer: the `web-search` rollout flag (PostHog, ADR-0102: ON for every
+ *    organization unless PostHog answers off; see lib/authz/feature-flags.ts).
  *
  * No org = enabled: an anonymous deployment, where web search is on as every
  * rollout is (`lib/authz/feature-flags.ts`).

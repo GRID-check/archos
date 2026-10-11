@@ -36,9 +36,11 @@ export interface PinnedRequester {
  *
  * Feature flags are resolved per organization (the JWT claim a live session
  * carries is per user+org, and the org-level answer is what the fleet-wide
- * kill switch means). Where nobody authenticates the gates ignore the claim, so
- * the empty set `enabledFlagsForOrganization` answers without a WorkOS key is
- * never read.
+ * kill switch means): the entitlements WorkOS lists for the organization and
+ * the rollouts PostHog has not switched off for it (ADR-0102), the same two
+ * halves `sessionFeatureFlags` gives a live session. Where nobody
+ * authenticates the gates ignore the set, so what `enabledFlagsForOrganization`
+ * answers without a WorkOS key is never read.
  *
  * EVERY flag the organization has, not the one the first caller needed. This
  * resolved only `agent-authored-documents`, and asked for it with the slug and

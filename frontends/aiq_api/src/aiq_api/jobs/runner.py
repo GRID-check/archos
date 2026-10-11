@@ -2229,7 +2229,7 @@ async def _propose_report_follow_ups(
         from aiq_agent.stages.flags import resolve_enabled_stages
         from aiq_agent.stages.follow_ups import FOLLOW_UPS
 
-        enabled = await resolve_enabled_stages(organization_id=organization_id, memory_reflection_enabled=False)
+        enabled = await resolve_enabled_stages(organization_id=organization_id)
         if FOLLOW_UPS.id not in enabled:
             return None
         facts = TurnFacts(query=query, answer=report, organization_id=organization_id)

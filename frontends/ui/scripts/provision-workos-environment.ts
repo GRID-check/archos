@@ -24,14 +24,15 @@
  *   WORKOS_FLAG_TARGETS_JSON        {"<flag-slug>": ["org_id", …]} targeting plan
  *
  * Unset sections are skipped cleanly — a check with none set only verifies the
- * platform organization and reports which flags from the registry are missing.
+ * platform organization and reports which registry entitlements are missing
+ * (rollouts live in PostHog, ADR-0102, and are not WorkOS's to hold).
  *
  * ## Deliberate limits
  *
  * - Resource types have no SDK binding; they stay a dashboard step. A missing
  *   one surfaces in `provision:authz` as a failed permission create naming it.
  * - Flag CREATION has no SDK binding (`listFeatureFlags` exists, create does
- *   not), so missing registry flags are reported as MANUAL, never attempted.
+ *   not), so missing entitlement flags are reported as MANUAL, never attempted.
  * - Flag targeting is ADDITIVE: this script adds missing targets but never
  *   removes one — silently untargeting an org would switch a feature off for
  *   it, so removal stays a human decision.
@@ -46,7 +47,7 @@
 
 import { NotFoundException, WorkOS } from '@workos-inc/node'
 
-import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
+import { ENTITLEMENT_FLAG_SLUGS } from '../src/lib/authz/feature-flags'
 import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan'
 
 const PLATFORM_ORG_EXTERNAL_ID = process.env.GRID_PLATFORM_ORG_EXTERNAL_ID ?? 'grid-platform'
@@ -444,7 +445,7 @@ async function reconcileFlags(): Promise<void> {
   )
   const existingSlugs = new Set(existing)
   // The same verdict `task fe:provision:flags` reaches, from the same helper.
-  const plan = planFlagCheck(REGISTRY_FLAG_SLUGS, existing)
+  const plan = planFlagCheck(ENTITLEMENT_FLAG_SLUGS, existing)
   for (const slug of plan.present) note(`ok       ${slug}`)
   for (const slug of plan.missing) {
     // No SDK binding for flag creation — reporting is all this script can do.

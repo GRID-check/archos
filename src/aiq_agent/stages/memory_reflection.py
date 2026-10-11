@@ -127,6 +127,11 @@ def _gate(facts: TurnFacts) -> GateDecision:
         # The turn only commissioned the work; the run reflects on its own
         # report, on the worker, once that report exists.
         return GateDecision.skip("commissioned_run")
+    if not facts.organization_id:
+        # No tenant to write for. While the stage had a flag, a turn without an
+        # organization never reached this gate (the turn resolves no stages
+        # without one); the stage is core now (ADR-0102), so the gate says it.
+        return GateDecision.skip("no_organization")
     if not facts.project_id:
         # The autonomous stage writes project-scoped memory ONLY (audit S1), so
         # an org-only conversation has nothing it may safely write.
@@ -198,9 +203,9 @@ MEMORY_REFLECTION = register_stage(
     StageSpec(
         id="memory_reflection",
         agent_group=AgentGroup.MEMORY_REFLECTION,
-        # Unchanged from the pre-stage wiring: this migration is not a
-        # user-visible change, so the flag that governed it still does.
-        flag_slug="memory-reflection",
+        # Core (ADR-0102): the `memory-reflection` flag was deleted, and the
+        # stage runs wherever its gate passes and a model is configured for it.
+        flag_slug=None,
         timeout_s=REFLECTION_TIMEOUT_S,
         gate=_gate,
         handler=_handler,

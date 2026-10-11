@@ -29,6 +29,11 @@ export interface AppWiring {
 }
 
 export const SECRET_NAME = "grid-secrets"; // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+/**
+ * The env var (and shared-Secret key) carrying PostHog's feature-flags secure
+ * key to the frontend. Read by `frontends/ui/src/lib/analytics/posthog-server.ts`.
+ */
+export const POSTHOG_FLAGS_KEY = "POSTHOG_FEATURE_FLAGS_SECURE_API_KEY"; // pragma: allowlist secret (an env var name, not a credential)
 export const PULL_SECRET_NAME = "grid-registry-pull"; // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
 
 /**
@@ -196,6 +201,12 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
+    // PostHog's feature-flags secure key (ADR-0102): local evaluation of the
+    // rollout flags in the BFF. Only when the stack set it; absent, the BFF asks
+    // PostHog's `/flags` per organization and no key exists to leak.
+    ...(cfg.posthog.featureFlagsKey === undefined
+      ? {}
+      : { [POSTHOG_FLAGS_KEY]: cfg.posthog.featureFlagsKey }),
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -534,6 +545,9 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
+    // Rollout flags evaluated locally (ADR-0102), from the Secret and only when
+    // the stack configured the key; `buildSecrets` writes it under the same rule.
+    ...(cfg.posthog.featureFlagsKey === undefined ? [] : [sref(POSTHOG_FLAGS_KEY)]),
     // BYOK.
     { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
     sref("GRID_BYOK_LOCAL_KEK"),

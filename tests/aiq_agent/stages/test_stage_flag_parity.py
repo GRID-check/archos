@@ -15,8 +15,12 @@ never be switched on". This is that comment, enforced, the same way
 - a stage the backend declares and the BFF omits is never in the served set, so
   it is `disabled / flag_off` on every turn forever, with nothing logged and no
   way for an operator to switch it on;
-- a slug that differs between the two ends means the WorkOS flag an operator
-  turns on is not the flag that gets evaluated.
+- a slug that differs between the two ends means the flag an operator turns on
+  is not the flag that gets evaluated.
+
+A CORE stage (``flag_slug=None``, memory reflection since ADR-0102) has no
+switch, so it has no entry on either side: a mirror entry for it would be a
+switch that switches nothing.
 
 Parsed rather than exported, for the same reason as the agent-group mirror: a
 generated file would be one more thing to keep in sync, and a mismatch here is a
@@ -57,18 +61,27 @@ def _mirrored_stages(source: str) -> dict[str, str]:
     return dict(entries)
 
 
-def test_every_declared_stage_can_be_switched_on(mirror_source: str):
-    assert set(_mirrored_stages(mirror_source)) == {spec.id for spec in iter_stages()}
+def _flagged() -> dict[str, str]:
+    return {spec.id: spec.flag_slug for spec in iter_stages() if spec.flag_slug is not None}
+
+
+def test_every_flagged_stage_can_be_switched_on(mirror_source: str):
+    assert set(_mirrored_stages(mirror_source)) == set(_flagged())
 
 
 def test_each_stage_is_gated_by_the_slug_it_declares(mirror_source: str):
-    mirrored = _mirrored_stages(mirror_source)
-    assert {spec.id: spec.flag_slug for spec in iter_stages()} == mirrored
+    assert _flagged() == _mirrored_stages(mirror_source)
+
+
+def test_a_core_stage_has_no_switch_on_either_side(mirror_source: str):
+    core = {spec.id for spec in iter_stages() if spec.flag_slug is None}
+    assert "memory_reflection" in core
+    assert not core & set(_mirrored_stages(mirror_source))
 
 
 def test_the_mirror_actually_parses(mirror_source: str):
     """Guards the guard: a regex that stopped matching would compare two empty
     collections and pass over nothing at all."""
     mirrored = _mirrored_stages(mirror_source)
-    assert len(mirrored) >= 2
+    assert len(mirrored) >= 1
     assert all(mirrored.values())

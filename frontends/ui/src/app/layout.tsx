@@ -101,7 +101,7 @@ export const metadata: Metadata = {
 }
 
 /**
- * Whether standalone image upload is offered to this session (WorkOS
+ * Whether standalone image upload is offered to this session (the rollout
  * `image-upload` flag, FB-15a). Read tolerantly — an unauthenticated route or a
  * session-lookup failure must never break the layout; it reads as a session
  * without the claim (off where people sign in, on where nobody does).
@@ -109,7 +109,7 @@ export const metadata: Metadata = {
 const isImageUploadEnabled = async (): Promise<boolean> =>
   isSessionFlagEnabled(FEATURE_FLAGS.imageUpload)
 
-/** Whether IFC model upload is offered to this session (WorkOS `ifc-models`). */
+/** Whether IFC model upload is offered to this session (the `ifc-models` rollout). */
 const isIfcUploadEnabled = async (): Promise<boolean> =>
   isSessionFlagEnabled(FEATURE_FLAGS.ifcModels)
 

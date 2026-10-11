@@ -209,7 +209,7 @@ questions. Pick by who is pulling.
 | Who | Lever | What it does | What it costs |
 |---|---|---|---|
 | **A tenant** that wants Piloti to answer but not write | withhold `project:documents:generate` | Filing is refused for that role, on every producer, before a byte is rendered. Uploads, deletes and re-ingests are untouched. | Put the people on a **custom** project role that omits the permission. Do **not** edit the built-in `project-editor` / `project-admin` roles: they are in `lib/authz/catalog.ts`, and editing them in WorkOS makes `provision:authz --check` fail in CI. |
-| **The operator** who has to stop filing everywhere, now | Switch the `agent-authored-documents` WorkOS flag off (per organization, or for all) | Filing is refused for every affected organization and every producer, at the one seam, before any permission is read. | A dashboard change and no deploy at all; it reaches a signed-in reader at their next sign-in, and the session-less filing paths within the 30 s flag cache. |
+| **The operator** who has to stop filing everywhere, now | Switch the `agent-authored-documents` rollout off in PostHog: a release condition at 0 % for everybody, or one on `organization_id` (ADR-0102; never disable the flag itself, which reads as on) | Filing is refused for every affected organization and every producer, at the one seam, before any permission is read. | A PostHog change and no deploy at all; it reaches signed-in readers and the session-less filing paths within the 30 s flag cache, with no sign-in. |
 
 Both refuse **before** anything is rendered, stored or charged, so neither leaves
 a half-filed document behind. What a reader sees is what a refused quota already

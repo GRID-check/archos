@@ -229,9 +229,12 @@ class StageSpec:
     #: inherits Platform → Models defaults, the org override and the ADR-0022
     #: BYOK credential swap by construction.
     agent_group: AgentGroup
-    #: WorkOS flag slug gating the stage per organization. The BFF decides it
+    #: Flag slug gating the stage per organization. The BFF decides it
     #: (``POST_ANSWER_STAGE_FLAGS``) and there is no environment fallback.
-    flag_slug: str
+    #: ``None`` declares a CORE stage: it has no runtime switch and runs
+    #: wherever its gate and its model allow (memory reflection, ADR-0102).
+    #: Required all the same, so a new stage states which it is.
+    flag_slug: str | None
     #: HARD ``asyncio.wait_for`` bound on the whole handler.
     timeout_s: float
     #: Deterministic, LLM-free predicate over :class:`TurnFacts`.

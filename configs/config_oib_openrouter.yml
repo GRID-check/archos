@@ -1107,16 +1107,14 @@ workflow:
   use_async_deep_research: true
   checkpoint_db: ${AIQ_CHECKPOINT_DB:-./checkpoints.db}
   # Enables the async post-answer memory-reflection stage (reuses the cheap
-  # card_llm). This only makes the capability AVAILABLE; whether it runs is
-  # decided per TURN by the BFF (`GET /api/internal/stages`) from the
-  # `memory-reflection` WorkOS flag, with no env-var fallback. A deployment that
-  # signs nobody in (REQUIRE_AUTH not true) gets it, as every rollout flag is on
-  # there (`frontends/ui/src/lib/authz/feature-flags.ts`).
+  # card_llm). The stage is core (ADR-0102): it has no flag, so setting this
+  # runs it on every turn its gate passes (a project, an organization, a real
+  # answer); unsetting it is the only way to switch it off.
   memory_reflection_llm: card_llm
-  # Enables the async post-answer follow-up-questions stage. As above, this only
-  # makes the capability AVAILABLE; whether it runs is decided per TURN by the
-  # BFF (`GET /api/internal/stages`) from the `post-answer-follow-ups` WorkOS
-  # flag, the same way.
+  # Enables the async post-answer follow-up-questions stage. This only makes
+  # the capability AVAILABLE; whether it runs is decided per TURN by the BFF
+  # (`GET /api/internal/stages`) from the `post-answer-follow-ups` rollout flag
+  # in PostHog (ADR-0102), which is on unless PostHog answers off.
   # The stage delivers a `grid_stage_message` frame, rendered as a rail below
   # the answer card. It ran `silent` for one slice first, so its skip rate,
   # empty rate and true per-turn cost were measured before any reader saw a chip

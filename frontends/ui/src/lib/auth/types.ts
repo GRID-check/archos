@@ -40,9 +40,12 @@ export interface GridSession {
   permissions: string[]
 
   /**
-   * WorkOS feature flags enabled for this user+org context (JWT
-   * `feature_flags` claim). `null` when the token carries no claim —
-   * distinguishable from "no flags enabled" for fail-closed enforcement.
+   * The feature flags on for this user+org context (ADR-0102): the entitlements
+   * the WorkOS JWT `feature_flags` claim carries, plus the rollouts PostHog has
+   * not switched off for the organization (`sessionFeatureFlags` in
+   * `lib/workos/feature-flags.ts`). A token without the claim contributes no
+   * entitlements and changes no rollout. `null` only on a session built by hand
+   * for a caller nobody is signed in as, for which every gate is off.
    */
   featureFlags: string[] | null
 

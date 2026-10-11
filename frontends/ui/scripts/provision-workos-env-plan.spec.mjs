@@ -3,7 +3,7 @@
  */
 import { describe, expect, it } from 'vitest'
 
-import { REGISTRY_FLAG_SLUGS } from '../src/lib/authz/feature-flags.ts'
+import { ENTITLEMENT_FLAG_SLUGS, ROLLOUT_FLAG_SLUGS } from '../src/lib/authz/feature-flags.ts'
 import { diffSets, parseFlagTargets, planFlagCheck, splitList } from './provision-workos-env-plan.ts'
 
 describe('splitList', () => {
@@ -122,11 +122,14 @@ describe('planFlagCheck (task fe:provision:flags)', () => {
     expect(plan.unknown).toEqual(['organization-archiv', 'source-origin-badges'])
   })
 
-  it('checks the whole registry, the stage flags included', () => {
-    // The stage flags used to live outside the registry, so nothing that read
-    // it would have asked WorkOS about them.
-    expect(REGISTRY_FLAG_SLUGS).toEqual(expect.arrayContaining(['memory-reflection', 'post-answer-follow-ups']))
-    const plan = planFlagCheck(REGISTRY_FLAG_SLUGS, REGISTRY_FLAG_SLUGS.filter((slug) => slug !== 'mail-import'))
+  it('checks the entitlements, and asks WorkOS for no rollout (ADR-0102)', () => {
+    // A rollout lives in PostHog and is on without any flag, so WorkOS lacking
+    // one is not drift; one still sitting in WorkOS reads as retired.
+    expect(ENTITLEMENT_FLAG_SLUGS).toEqual(expect.arrayContaining(['deep-research', 'mail-import']))
+    expect(ENTITLEMENT_FLAG_SLUGS).not.toContain('post-answer-follow-ups')
+    const present = ENTITLEMENT_FLAG_SLUGS.filter((slug) => slug !== 'mail-import')
+    const plan = planFlagCheck(ENTITLEMENT_FLAG_SLUGS, [...present, ...ROLLOUT_FLAG_SLUGS])
     expect(plan.missing).toEqual(['mail-import'])
+    expect([...plan.unknown].sort()).toEqual([...ROLLOUT_FLAG_SLUGS].sort())
   })
 })

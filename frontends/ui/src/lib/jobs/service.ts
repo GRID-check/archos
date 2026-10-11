@@ -39,7 +39,7 @@ import {
   encodeGridBudgetHeader,
   type GridBudgetSnapshot,
 } from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -593,6 +593,11 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     )
   }
   const { organizationId, projectId, userId } = spec
+  // Memory reflection is core (ADR-0102): it has no flag left to evaluate, and
+  // the worker runs its reflection pass whenever this says so and a model is
+  // configured. Kept on the payload and the envelope because the worker and an
+  // older agent still read it.
+  const memoryReflectionEnabled = true
   const [
     budgetSnapshot,
     modelOverrides,
@@ -600,7 +605,6 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     projectContext,
     bundesland,
     projectMemory,
-    memoryReflectionEnabled,
     orgInstructions,
   ] = await Promise.all([
     resolveBudgetSnapshot(organizationId, userId, projectId),
@@ -609,7 +613,6 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     loadProjectPromptView(projectId, organizationId).catch(() => null),
     loadProjectBundesland(projectId, organizationId).catch(() => null),
     buildProjectMemoryDigest(projectId, organizationId, { query: spec.prompt }).catch(() => null),
-    isMemoryReflectionEnabled(organizationId).catch(() => false),
     // The organization's standing instruction block. A scheduled or delegated
     // run is a turn like any other, so it carries the same preferences a chat
     // turn does — a task that answered in a voice the office had asked against

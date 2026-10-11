@@ -78,7 +78,10 @@ export interface JobSubmitPayload {
    * sees instead of the intake profile alone.
    */
   project_memory: string | null
-  /** The organization's memory-reflection flag, evaluated here like the WS handshake does. */
+  /**
+   * Whether the worker runs its memory-reflection pass. Always true since
+   * reflection became core (ADR-0102); the worker's own parameter still reads it.
+   */
   memory_reflection_enabled: boolean
   organization_id: string
   user_id: string | null

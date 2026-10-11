@@ -226,9 +226,11 @@ async def _context_blocks(request: GridRequestContext, query_text: str) -> Conte
 async def _turn_flags(request: GridRequestContext, resolve_stages: bool) -> TurnFlags:
     """What this turn may do, decided per TURN, not per socket.
 
-    The feature header is written once at the WS upgrade and frozen, so an
+    A feature header is written once at the WS upgrade and frozen, so an
     operator switching something off never reached an already-open tab — the
-    opposite of what a kill switch is for.
+    opposite of what a kill switch is for. Core stages (memory reflection) are
+    not part of this answer: they have no flag, and the runner runs them
+    whatever it says.
 
     The round-trip is now skipped only when there is NO ORGANIZATION to evaluate
     against. It used to be skipped whenever no stage had a model to run on,
@@ -240,11 +242,7 @@ async def _turn_flags(request: GridRequestContext, resolve_stages: bool) -> Turn
     """
     if not request.organization_id:
         return TurnFlags(enabled_stages=frozenset())
-    flags = await resolve_turn_flags(
-        organization_id=request.organization_id,
-        memory_reflection_enabled=request.memory_reflection_enabled,
-        project_id=request.project_id,
-    )
+    flags = await resolve_turn_flags(organization_id=request.organization_id, project_id=request.project_id)
     if resolve_stages:
         return flags
     # No stage has a model to run on, so the stage half of the answer decides
