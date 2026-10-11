@@ -1,9 +1,9 @@
 ---
 fixes:
   - >
-    Confirming the upload preview checks your office's list once more before a
-    folder is created; if the preview changed meanwhile, nothing is sent and
-    the dialog shows the new preview to confirm.
+    Confirming an upload preview checks your office's list once more before
+    a folder is created. If the preview changed in the meantime, nothing is
+    sent, and the dialog shows the new preview for you to confirm.
 security:
   - >
     The name of a file your office's list holds back no longer leaves your

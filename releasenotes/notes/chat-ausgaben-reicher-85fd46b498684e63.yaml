@@ -6,21 +6,21 @@ features:
     the copy buttons under the answer.
 improvements:
   - >
-    Copied answers keep their formatting: pasted into Word, Outlook or Notion
-    they arrive with real tables, headings and emphasis instead of raw Markdown
-    characters.
+    Copied answers keep their formatting: pasted into Word, Outlook or Notion,
+    they arrive with real tables, headings and emphasis instead of stray
+    symbols.
   - >
-    Tables in answers keep their column alignment, checklists show real ticks,
-    and deeply structured answers keep every heading level.
+    Tables in answers keep their column alignment, checklists show real check
+    marks, and deeply structured answers keep every heading level.
   - >
-    The chat uses the width of the window: the conversation column is wider and
-    answers fill it, and the header above it is smaller.
+    The chat uses the full width of the window: the conversation column is
+    wider and answers fill it, and the header above it is smaller.
 fixes:
   - >
     Buttons on code blocks and time stamps on chat errors now follow the
-    language you set, and Chinese, Japanese or Korean input methods can confirm
-    characters with Enter without sending the message.
+    language you set. When you type in Chinese, Japanese or Korean, pressing
+    Enter to confirm a character no longer sends the message.
 other:
   - >
-    The data source picker in the message box is hidden for now; Piloti draws on
+    The source picker in the message box is hidden for now. Piloti draws on
     every available source, and the Herleitung still shows which ones it used.

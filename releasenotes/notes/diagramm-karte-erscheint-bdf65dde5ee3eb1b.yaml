@@ -1,5 +1,5 @@
 ---
 fixes:
   - >
-    Diagrams now reliably appear as drawings in the answer. A requested diagram
-    could be missing even though the answer announced it.
+    Diagrams you ask for now reliably appear in the answer. Before, a requested
+    diagram could be missing even though the answer announced it.

@@ -5,7 +5,6 @@ improvements:
     searches the full text of every project document. Each result shows the
     passage that matched and its page.
   - >
-    Dateien searches from its header now. The field sits with the controls that
-    act on the same listing — the view switcher, the Alle / Meine / Nicht
-    zugewiesen filter and Hochladen — so the documents start a row higher and
-    there is one search on the page, not two places to look.
+    The search in Dateien now sits in the header, next to the view switcher,
+    the Alle / Meine / Nicht zugewiesen filter and Hochladen. The documents
+    start a row higher, and there is one search on the page instead of two.

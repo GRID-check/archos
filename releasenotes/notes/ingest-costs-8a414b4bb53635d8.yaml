@@ -1,10 +1,10 @@
 ---
 fixes:
   - >
-    Reading and indexing an uploaded document now counts toward usage, booked
-    to its project and to whoever uploaded it. Until now an office's spend
-    left out everything an upload cost, though an upload in progress is still
-    never stopped by a budget.
+    Reading an uploaded document now counts toward your office's usage, booked
+    to its project and to whoever uploaded it. Until now the office's spend
+    left out everything an upload cost, and uploads in progress are not
+    stopped by a budget.
 operators:
   - >
     Platform → Overview shows what ingestion cost: the cost tiles name its

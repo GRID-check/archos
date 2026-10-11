@@ -1,8 +1,9 @@
 ---
 upgrade:
   - >
-    A task no longer attaches a skill; you name it in the request itself with
-    the same / menu as in the chat. Existing schedules keep running unchanged.
+    A task no longer attaches a skill automatically; you name it in the
+    request itself, with the same / menu as in the chat. Existing schedules
+    keep running unchanged.
   - >
-    The skill check is now a step you run before saving. Its findings are yours
-    to weigh and never block saving.
+    Checking the skill is now a step you run before saving. Its findings are
+    yours to weigh, and they never stop you from saving.

@@ -1,8 +1,9 @@
 ---
 features:
   - >
-    Dateien has a filter menu by responsibility, origin, status and file type,
-    with sorting, and a number on the button shows how many filters are active.
+    Dateien now has a filter menu for responsibility, origin, status and
+    file type, with sorting in the same menu, and a number on the button
+    shows how many filters are active.
   - >
     Sorting now applies to both the list and the card view, so switching views
     keeps the order you chose.

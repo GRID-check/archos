@@ -30,12 +30,14 @@ fixes:
     stairwells, are now read correctly and cited with the table's page; the
     search used to mix up the columns for building classes.
   - >
-    Answers on the Bauordnung keep their RIS references and are faster, because
-    a cited paragraph now arrives whole instead of in several pieces.
+    Answers on the Bauordnung keep their RIS references and come faster,
+    because each cited paragraph is now found in one piece instead of
+    several.
   - >
     Questions on permit-free and notifiable building work in Salzburg are
     answered from the Baupolizeigesetz, and the Tiroler Bauordnung is read by
     paragraph.
   - >
-    Sketches are legible on a phone, and diagrams stay dark in dark mode instead
-    of switching to the light palette from the third one on.
+    Sketches are legible on a phone, and in dark mode diagrams keep their
+    dark colours instead of switching to light ones from the third diagram
+    on.

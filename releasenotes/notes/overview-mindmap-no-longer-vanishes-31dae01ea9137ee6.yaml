@@ -1,6 +1,6 @@
 ---
 fixes:
   - >
-    An overview now shows its parts as a table or as a mindmap rather than
-    both. A mindmap that only repeats the table is now rare, so an overview
-    seldom draws one and then removes it when the answer finishes.
+    An overview now shows its parts as a table or as a mindmap, never both. A
+    mindmap that would only repeat the table is now rare, so a mindmap no
+    longer appears on screen only to vanish when the answer finishes.

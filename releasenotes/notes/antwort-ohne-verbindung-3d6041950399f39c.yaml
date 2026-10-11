@@ -1,6 +1,5 @@
 ---
 fixes:
   - >
-    An answer is no longer lost because your device lost its connection: Piloti
-    saves every finished answer itself and shows „Piloti arbeitet weiter“ until
-    it is there.
+    An answer that is still being written is kept when your connection drops,
+    and Piloti shows “Piloti is still working” until the answer appears.

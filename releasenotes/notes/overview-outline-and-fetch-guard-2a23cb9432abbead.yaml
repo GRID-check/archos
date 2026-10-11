@@ -1,13 +1,13 @@
 ---
 improvements:
   - >
-    A question about a whole Richtlinie or a project file now opens the
-    document's outline first, so Piloti sees which points exist instead of
-    guessing a number. The answer names the points it actually read.
+    A question about a whole Richtlinie or a project file now lets Piloti look at
+    the document's outline first, so it sees which points exist instead of
+    guessing. The answer names the points it actually read.
   - >
     The Herleitung shows for every research step what was opened in each
     document, by page or point.
 fixes:
   - >
-    Piloti no longer fetches the same passage twice within one answer and spends
-    the saved lookups on the actual research.
+    Piloti no longer looks up the same passage twice within one answer, and the
+    saved lookups go to the actual research.

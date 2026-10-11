@@ -1,6 +1,6 @@
 ---
 improvements:
   - >
-    The message box is grey and black again instead of green while you type. In
-    Piloti green marks where a source comes from, and two greens on top of each
-    other could not be told apart.
+    The message box is grey and black again while you type, not green. In
+    Piloti, green marks where a source comes from, and two greens on top of
+    each other were hard to tell apart.

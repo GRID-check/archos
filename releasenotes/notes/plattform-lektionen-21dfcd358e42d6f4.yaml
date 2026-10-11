@@ -1,12 +1,10 @@
 ---
 features:
   - >
-    Piloti now learns from answers you mark as not helpful: each report is
-    anonymised and becomes a lesson it reads on every later answer. Your
-    feedback text stays in your organization; only the anonymised lesson leaves
-    it.
+    Piloti now learns from answers you mark as not helpful. A report is first
+    scrubbed of personal details by rule, then an AI model turns it into a
+    short, general lesson that guides later answers in every office, and a
+    lesson that could identify anyone is held back for review.
 improvements:
   - >
-    Giving a thumbs-down with a short note is now the fastest way to improve
-    answers for everyone: each report is matched against known failure patterns,
-    and repeated reports strengthen the caution the assistant already follows.
+    A thumbs-down with a short note helps improve answers.

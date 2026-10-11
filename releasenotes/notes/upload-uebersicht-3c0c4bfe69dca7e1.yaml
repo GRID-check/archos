@@ -2,12 +2,11 @@
 features:
   - >
     The upload summary now shows which files were a new version of a document
-    already there (Geändert) and which went into a folder with its own access
-    list, the folders marked with a lock (Geschützt), as counts and on each
-    file.
+    already there (Geändert), and which went into a folder with its own access
+    list (Geschützt). It counts both and marks each such file.
   - >
-    The upload history in the project settings now reaches back to a project's
-    first upload: Ältere Uploads laden shows the next older ones.
+    The upload history in the project settings now reaches back to the project's
+    first upload. With „Ältere Uploads laden“, you see the next older ones.
 fixes:
   - >
     Files uploaded in the project wizard now get the same inbox notice and

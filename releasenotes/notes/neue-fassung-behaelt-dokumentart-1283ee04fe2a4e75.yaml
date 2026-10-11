@@ -1,6 +1,7 @@
 ---
 fixes:
   - >
-    Uploading a new version of a file under the same name now keeps the document
-    type, display title and folder set for the earlier version. Before, they
-    were lost and Piloti guessed the document type from the file name again.
+    When you upload a new version of a file under the same name, the
+    document type, display title and folder carry over from the earlier
+    version. Before, they were lost, and Piloti guessed the document type
+    from the file name again.

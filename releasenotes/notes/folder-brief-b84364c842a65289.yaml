@@ -1,36 +1,38 @@
 ---
 features:
   - >
-    Every folder now opens with what Piloti knows about it and everything below
-    it: how many documents it can cite, what they are about, and which ones
-    need you. Failed documents can be read again together with "Read all again",
-    and the top level of a project lists the documents Piloti still expects.
+    Each folder now opens with an overview of what Piloti knows about it and the
+    folders below it: how many documents it can cite, what they cover, and which
+    ones need your attention. Failed documents can be read again at once with
+    “Retry failed”, and the top level of a project lists the documents Piloti
+    still expects.
   - >
     Each folder shows the state of everything inside it, such as "2 failed" or
-    "All read", so a problem is visible without opening every subfolder.
+    "All read", so a problem is visible without opening the subfolders.
   - >
     Piloti adds its own topics to a document beside the fixed document types,
     for example "Attika" or "Holzrahmenbau", when it is confident and no fixed
     tag fits. You can correct them, and the file search finds them.
   - >
-    Photos show when they were taken and with which camera, and link to where
-    they were taken. Piloti uses the date to describe a photo but never sends
-    its location to a model.
+    Photos show when and with which camera they were taken, and link to the
+    place where they were taken. Piloti uses the date to describe a photo,
+    but never passes its location on to the AI.
 improvements:
   - >
-    The kind filter now offers spreadsheets and text notes.
+    The filter by file kind now also offers spreadsheets and text notes.
   - >
     A photograph is now tagged as a photo beside what it shows: a photo of a
     floor plan is both "Foto" and "Grundriss".
   - >
     Piloti no longer calls a file a plan unless it knows the file is a
-    drawing. The folder overview and the agent say document, file or revision
-    instead.
+    drawing. The folder overview and Piloti's answers say document, file or
+    revision instead.
 fixes:
   - >
     A correction you make to a document's tags stays when Piloti reads the file
     again. Before, re-reading the file replaced it.
   - >
-    A phone photo taken in portrait is now shown upright and read upright.
+    A phone photo taken in portrait format now appears upright, and Piloti
+    reads it upright too.
   - >
-    The summary of an image no longer starts with "[IMAGE from page 1]".
+    The summary of an image no longer starts with a stray text marker.

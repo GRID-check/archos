@@ -1,7 +1,8 @@
 ---
 features:
   - >
-    Zero data retention is now on for every organization and covers every
-    request Piloti sends to an AI model, including document reading, search
-    and research reports, not only chat answers. Where a model is also hosted
-    in the EU, that location is preferred.
+    Zero data retention is on by default for every organization, and it covers
+    AI requests for chat, document reading, search and research reports unless
+    an admin switches it off under Organization → Models. Where a provider
+    offers EU hosting, Piloti prefers it; that is a preference, not a
+    guarantee of where data is processed.

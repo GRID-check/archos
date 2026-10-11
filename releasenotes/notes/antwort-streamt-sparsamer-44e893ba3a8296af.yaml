@@ -1,7 +1,6 @@
 ---
 improvements:
   - >
-    While an answer is being written, Piloti now re-renders only the section
-    that is still growing instead of the whole answer on every step. Long
-    answers stay smooth to the end, even on a phone, at the same pace and with
-    the same look as before.
+    While Piloti writes an answer, only the part still being written is
+    updated. Long answers stay smooth to the end, even on a phone, at the
+    same pace and with the same look as before.

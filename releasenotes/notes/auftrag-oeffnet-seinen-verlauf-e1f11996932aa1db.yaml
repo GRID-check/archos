@@ -1,6 +1,6 @@
 ---
 improvements:
   - >
-    A task now leads to the conversation it runs in; the three separate views of
-    the same run are gone. A run without a chat shows its state without a dead
-    link.
+    A task now links to the conversation it runs in, and the three separate
+    views of the same run are gone. A task without a chat shows its status
+    without a dead link.

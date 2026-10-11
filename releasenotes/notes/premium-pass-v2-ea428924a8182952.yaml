@@ -12,16 +12,17 @@
 # Delete every section you do not need — an empty one fails the lint.
 improvements:
   - >
-    Answers scan cleaner: sources, export actions and the rating thumbs stay
-    visible while confidence, notes and metadata live behind one details line.
-    Tabs, view switchers and navigation now glide an active pill instead of
-    snapping, and sections unfold smoothly instead of jumping open.
+    Answers are easier to scan: sources, export actions and the rating
+    thumbs stay in view, while confidence, notes and details sit behind a
+    single expandable line. Tabs, view switchers and navigation now slide to
+    the active choice instead of snapping, and sections unfold smoothly
+    instead of jumping open.
 fixes:
   - >
     Filtering the file browser no longer blanks the listing when files match;
     the empty notice only appears when the filter truly emptied it.
   - >
-    Loading placeholders no longer jump when content arrives, file states and
-    error messages are readable instead of technical, failed operations stay
-    visible longer, and the whole interface shares one consistent shape
-    language in light and dark mode.
+    Loading placeholders no longer jump when content arrives, file states
+    and error messages read in plain language, failed actions stay visible
+    longer, and the whole interface uses consistent shapes in light and dark
+    mode.

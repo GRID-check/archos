@@ -1,6 +1,6 @@
 ---
 fixes:
   - >
-    Cards no longer show stray formatting characters, such as a link printed as
-    raw brackets next to the card's own working link. The only links a card
-    offers are the ones it builds from the source it names.
+    Cards no longer show stray characters, such as a link printed in raw
+    brackets next to the card's own working link. A card offers only the
+    links it builds from the source it names.

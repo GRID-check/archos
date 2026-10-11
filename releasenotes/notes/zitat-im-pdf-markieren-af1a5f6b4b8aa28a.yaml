@@ -9,9 +9,10 @@ improvements:
     passage you are reading, and the toolbar shows the page you are on.
 fixes:
   - >
-    When a reference's page number differs from the page in the PDF, as it often
-    does after a cover sheet, the quoted passage is now also sought on the
-    neighbouring pages. If it cannot be found, the window says so.
+    When a reference's page number differs from the page in the PDF, as it
+    often does after a cover sheet, the quoted passage is now also searched
+    for on the neighbouring pages. If it cannot be found, the window says
+    so.
   - >
     On a phone the opened citation no longer jumps past the highlighted passage,
     and the document name is no longer pushed aside by the copy buttons.

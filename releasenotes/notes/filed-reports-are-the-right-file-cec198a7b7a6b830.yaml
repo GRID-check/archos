@@ -1,18 +1,15 @@
 ---
 fixes:
   - >
-    A filed Recherchebericht now always lands in the project the research was
-    actually run for. If you started a run outside a project, or reopened an
-    older run while a different project was open, the report could previously be
-    filed somewhere it did not belong — carrying a cover sheet naming that other
-    project's Bundesland, which is the line that says which Bauordnung the
-    report was checked against.
+    A filed Recherchebericht now always lands in the project its research
+    was run for. Before, a report from a run started outside a project, or
+    from an older run reopened while another project was open, could end up
+    in the wrong project, with that project's Bundesland on its cover sheet.
   - >
-    Files Piloti writes no longer misspell their own names. A report on
-    „Fluchtweglängen Gebäudeklasse 4" is now saved as
-    fluchtweglaengen-gebaeudeklasse-4, the way you would write it yourself and
-    the way you would search for it a year later, and a client name with a
-    Polish or Czech letter in it survives intact.
+    Files Piloti writes now get clean names that you can find again later. A
+    report on „Fluchtweglängen Gebäudeklasse 4“ is saved as
+    fluchtweglaengen-gebaeudeklasse-4, and a client name with a Polish or
+    Czech letter keeps every letter.
   - >
     A report Piloti wrote can no longer be mistaken for one of your own
     documents when the two happen to share a name. Search results, file

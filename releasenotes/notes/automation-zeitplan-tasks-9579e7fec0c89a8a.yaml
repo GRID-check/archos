@@ -1,28 +1,28 @@
 ---
 features:
   - >
-    Automation has a week timetable: every scheduled run is a block in its slot,
-    so overlaps and empty days show at a glance. Long empty hours fold into a
-    marked break.
+    Automation shows a week timetable: each scheduled run is a block in its
+    time slot, so overlaps and free days are visible at a glance. Long empty
+    stretches fold into a marked break.
   - >
     New schedules are set up in four steps, Auftrag, Ergebnis, Rhythmus and
-    Prüfen, instead of on one page of sixteen fields, and the Rhythmus step
-    shows the next three real dates.
+    Prüfen, instead of on one page of sixteen fields. The Rhythmus step shows
+    the next three actual dates.
   - >
     A schedule can run on several weekdays, such as Monday, Wednesday and
     Friday, at any time of day you choose.
   - >
-    A finished task becomes a schedule with one click on Als Zeitplan speichern,
-    with its request already filled in.
+    A finished task becomes a schedule with one click on Als Zeitplan
+    speichern, with its request already filled in.
 improvements:
   - >
-    Each task is a card that opens its details, grouped by today, yesterday and
-    this week, with a coloured status mark and filters for running, unreviewed
-    and failed work.
+    Each task is a card that opens its details, grouped by today, yesterday
+    and this week, with a coloured status mark. Filters show running, not yet
+    reviewed and failed tasks.
   - >
-    Schedule cards now show the request in its own words rather than the skill
-    it uses, and a schedule can be deleted again.
+    Schedule cards now show the request in its own words, not the skill it
+    uses, and you can delete a schedule again.
 fixes:
   - >
-    A finished task that filed no document and opened no chat now opens the
-    report of its run, and a failed one its reasoning.
+    A finished task that saved no document and opened no chat now opens its
+    run report, and a failed one opens its reasoning.

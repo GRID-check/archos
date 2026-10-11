@@ -9,6 +9,6 @@ features:
     when the whole project may read a folder and only some may change it.
 upgrade:
   - >
-    A folder that was restricted to a role now lists the people who held that
-    role when the change was rolled out; someone given the role later has to be
-    added to the folder's list.
+    A folder that was restricted to a role now lists the people who had that
+    role when the change was rolled out. If you give someone that role later,
+    add them to the folder's list yourself.

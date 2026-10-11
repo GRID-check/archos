@@ -1,6 +1,6 @@
 ---
 fixes:
   - >
-    Research runs that had already finished on the server while the history
-    still showed them as running now settle to their real outcome when stopped,
-    instead of staying stuck. Stopping a run asks for confirmation first.
+    Research runs that had already finished, but still showed as running in the
+    history, now show their real outcome when stopped, instead of staying stuck.
+    Stopping a run now asks for confirmation first.

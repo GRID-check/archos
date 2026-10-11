@@ -1,9 +1,9 @@
 ---
 features:
   - >
-    Whether Piloti may file the documents it writes into a project is now a
-    permission of its own, File agent-authored documents. Members without it can
-    still upload, rename and delete their own files.
+    Letting Piloti file the documents it writes into a project is now a
+    permission of its own. Members without it can still upload, rename and
+    delete their own files.
 upgrade:
   - >
     The built-in Project Editor and Project Admin roles receive the new filing
