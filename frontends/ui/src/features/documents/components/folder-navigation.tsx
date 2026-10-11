@@ -23,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { InputGroup, InputGroupAddon } from '@/components/ui/input-group'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { CountPill } from '@/components/ui/count-pill'
+import { Item } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
 import { AnimatePresence, motion, motionQuick } from '@/components/motion'
@@ -656,12 +657,15 @@ export function FolderRow({
    * motions for one navigation, compounding into a wobble. The level owns the
    * entrance; a row inside it is just content.
    */
+  // One row of the folder run, which `file-browser-pane` draws as an `ItemList`.
+  // The list clips the outer corners and draws the hairlines, so the row carries
+  // no radius, border or shadow of its own. A drop target is marked inside its
+  // box (`ring-inset`): an outer ring on the first or last row would be clipped.
   return (
-    <div
+    <Item
       className={cn(
-        'group border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2 text-sm',
-        'hover:bg-accent transition-[background-color,box-shadow] duration-quick ease-out hover:shadow-sm motion-reduce:transition-none',
-        drop.isOver && 'ring-ring bg-accent ring-2',
+        'group w-full gap-2 px-3 py-2 text-sm',
+        drop.isOver && 'bg-accent ring-ring ring-2 ring-inset',
       )}
       data-testid={`folder-row-${folder.id}`}
       data-drop-over={drop.isOver ? '' : undefined}
@@ -706,7 +710,7 @@ export function FolderRow({
         className="text-muted-foreground/40 group-hover:text-muted-foreground size-3.5 shrink-0 transition-colors duration-quick ease-out motion-reduce:transition-none"
         aria-hidden
       />
-    </div>
+    </Item>
   )
 }
 
@@ -747,16 +751,13 @@ export function FolderCardSkeleton(): JSX.Element {
 /** A {@link FolderRow} before its name arrives. */
 export function FolderRowSkeleton(): JSX.Element {
   return (
-    <div
-      className="border-border bg-muted/40 flex w-full items-center gap-2 rounded-lg border px-3 py-2"
-      data-testid="folder-row-skeleton"
-    >
+    <Item className="w-full gap-2 px-3 py-2" data-testid="folder-row-skeleton">
       <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
         <Folder className="text-muted-foreground/40 size-3.5" aria-hidden />
       </span>
       <Skeleton className="h-3.5 w-40" />
       <Skeleton className="h-3.5 w-8 rounded-full" />
-    </div>
+    </Item>
   )
 }
 

@@ -28,6 +28,7 @@ import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
 import { EmptyState } from '@/components/ui/empty-state'
+import { ItemList } from '@/components/ui/item'
 import { PageHeader } from '@/components/ui/page-header'
 import { SearchField } from '@/components/ui/search-field'
 import { SectionLabel } from '@/components/ui/section-label'
@@ -220,9 +221,12 @@ export function ProjectsGrid({
               <SectionHeading id="projects-results" count={rest.length}>
                 {t('list.results.heading')}
               </SectionHeading>
-              {/* `space-y-1`: the rows are full-border rounded pills now, so they
-                  take a 4px gap rather than touching and doubling the seam. */}
-              <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+              {/* One connected list: `ItemList` rounds only the outer corners and
+                  draws the hairlines between rows. `-mx-3` puts the row content on
+                  the heading's left edge. */}
+              <ItemList as="ul" className="-mx-3 bg-card">
+                {rest.map(renderRow)}
+              </ItemList>
             </section>
           )
         ) : (
@@ -257,7 +261,9 @@ export function ProjectsGrid({
                 <SectionHeading id="projects-more" count={rest.length}>
                   {resume.length > 0 ? t('list.more.heading') : t(`list.filter.${activeFilter}`)}
                 </SectionHeading>
-                <ul className="-mx-3 space-y-1">{rest.map(renderRow)}</ul>
+                <ItemList as="ul" className="-mx-3 bg-card">
+                  {rest.map(renderRow)}
+                </ItemList>
               </section>
             )}
           </div>

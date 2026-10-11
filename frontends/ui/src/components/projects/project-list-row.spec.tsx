@@ -1,17 +1,32 @@
 import { render, screen } from '@/test-utils'
 import { describe, expect, test } from 'vitest'
 
+import { ItemList } from '@/components/ui/item'
 import { makeProject } from '@/test-utils/db-fixtures'
 import { ProjectListRow } from './project-list-row'
 
+// The list the projects page draws the row in, so the row is tested in place.
 const renderRow = (props: Partial<Parameters<typeof ProjectListRow>[0]> = {}) =>
   render(
-    <ul>
+    <ItemList as="ul">
       <ProjectListRow project={makeProject({ id: 'p1', name: 'Wohnbau Seestadt' })} {...props} />
-    </ul>,
+    </ItemList>,
   )
 
 describe('ProjectListRow', () => {
+  /**
+   * Rows are one connected list, so only the list's outer corners are rounded.
+   * A row that brings its own radius, border or shadow is a pill again: the
+   * corners go orphaned over the hairline, and the seam doubles.
+   */
+  test('is a row of the connected list, with no pill of its own', () => {
+    renderRow()
+
+    const row = screen.getByRole('link', { name: 'Open Wohnbau Seestadt' }).closest('li')
+    expect(row?.parentElement).toHaveAttribute('data-slot', 'item-list')
+    expect(row?.className).not.toMatch(/\brounded|\bborder\b|\bshadow/)
+  })
+
   test('opens the project in Chat and keeps settings as its own link', () => {
     renderRow()
 

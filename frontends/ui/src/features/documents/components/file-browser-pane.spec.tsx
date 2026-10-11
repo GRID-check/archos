@@ -219,6 +219,19 @@ describe('FileBrowserPane — folder drill-down', () => {
     expect(within(card).getByText('2 items')).toBeInTheDocument()
   })
 
+  /**
+   * In the list view the folders are one connected run with the file table
+   * under it. A row that carries its own radius, border or shadow is a pill, and
+   * the run stops reading as one list.
+   */
+  it('lists the level’s folders as one connected run in the list view', () => {
+    renderPane({ folderNav: folderNav(null), view: 'list' })
+    const row = screen.getByTestId('folder-row-root-1')
+    // Not the direct parent: the row's context menu wraps it in a block div.
+    expect(row.closest('[data-slot="item-list"]')).not.toBeNull()
+    expect(row.className).not.toMatch(/\brounded|\bborder\b|\bshadow/)
+  })
+
   it('a typed query escapes the current folder and searches the corpus', async () => {
     const user = userEvent.setup()
     renderPane({

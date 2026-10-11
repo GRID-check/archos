@@ -1,4 +1,5 @@
 import type { JSX } from 'react'
+import { Item, ItemList } from '@/components/ui/item'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ShellContent } from '@/components/shell'
 import { getTranslations } from '@/i18n/server'
@@ -68,14 +69,12 @@ export default async function ProjectsLoading(): Promise<JSX.Element> {
         </section>
         <section>
           <Skeleton className="mb-3 h-3 w-28" />
-          <div className="space-y-1">
-            {/* A `ProjectListRow`: initials tile, name, doc-count column,
-                timestamp column, gear — `h-11 rounded-lg border`, as listed. */}
+          {/* The connected list the projects rows sit in: an `ItemList` of `Item`s,
+              one `ProjectListRow` each (initials tile, name, doc-count column,
+              timestamp column, gear), `h-11`, as listed. */}
+          <ItemList as="ul" className="-mx-3 bg-card">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div
-                key={i}
-                className="flex h-11 items-center gap-3 rounded-lg border border-border px-3"
-              >
+              <Item key={i} as="li" className="h-11 gap-3 px-3 py-0">
                 <Skeleton className="hidden size-9 shrink-0 sm:block" />
                 <div className="min-w-0 flex-1">
                   <Skeleton
@@ -87,9 +86,9 @@ export default async function ProjectsLoading(): Promise<JSX.Element> {
                 <Skeleton className="hidden h-4 w-[104px] shrink-0 rounded-md lg:block" />
                 <Skeleton className="h-4 w-[72px] shrink-0 rounded-md sm:w-[104px]" />
                 <Skeleton className="size-7 shrink-0 rounded-lg" />
-              </div>
+              </Item>
             ))}
-          </div>
+          </ItemList>
         </section>
       </div>
     </ShellContent>
