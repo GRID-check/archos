@@ -302,11 +302,16 @@ override-dependencies = [
     "pillow>=12.2.0,<13",
     "pygments>=2.20.0,<3",
     "pyopenssl>=26.0.0,<27",
-    "tornado>=6.5.5",
+    "tornado>=6.5.9",
     "banks>=2.4.2,<3",
     "lxml>=6.1.0,<7",
     "nltk>=3.9.4,<4",
     "pyasn1>=0.6.3,<0.7",
+    "anyio>=4.14.2",
+    "urllib3>=2.8.0",
+    "virtualenv>=21.7.13",
+    "langgraph-sdk>=0.4.4",
+    "fsspec>=2026.6.0",
 ]
 
 [tool.uv.pip]
