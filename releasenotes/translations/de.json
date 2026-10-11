@@ -2440,6 +2440,10 @@
     "de": "Die Dateiliste eines Projekts kommt jetzt mit der Seite, statt Ordner für Ordner hinter grauen Platzhaltern nachzuladen."
   },
   {
+    "en": "The project list and the folder rows above the files now read as one connected list: only its top and bottom corners are rounded, and the rows are divided by a single line instead of separate boxes with gaps.",
+    "de": "Die Projektliste und die Ordnerzeilen oberhalb der Dateien bilden jetzt eine zusammenhängende Liste: Nur die oberen und unteren Ecken sind abgerundet, und die Zeilen werden durch eine einzelne Linie statt durch separate Boxen mit Zwischenräumen getrennt."
+  },
+  {
     "en": "The project wizard lists all its modules by full name beside the questions, each with how many answers it already has, and you can jump to any of them.",
     "de": "Der Projekt-Assistent zeigt alle Module mit vollem Namen neben den Fragen, jedes mit der Zahl der schon gemachten Angaben, und Sie springen jederzeit dorthin."
   },

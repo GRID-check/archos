@@ -363,6 +363,10 @@
               "de": "Im Nachrichtenfeld gibt es keine Trennlinie mehr zwischen der Texteingabe und den darunterliegenden Projekt- und Anhangsoptionen."
             },
             {
+              "en": "The project list and the folder rows above the files now read as one connected list: only its top and bottom corners are rounded, and the rows are divided by a single line instead of separate boxes with gaps.",
+              "de": "Die Projektliste und die Ordnerzeilen oberhalb der Dateien bilden jetzt eine zusammenhängende Liste: Nur die oberen und unteren Ecken sind abgerundet, und die Zeilen werden durch eine einzelne Linie statt durch separate Boxen mit Zwischenräumen getrennt."
+            },
+            {
               "en": "A document's revisions and their approval now use one word each, everywhere: every state of a document is a revision, numbered \"Revision 3 of 5\", and a revision sent back reads \"Changes requested\", matching the button.",
               "de": "Fassungen und Freigabe heißen jetzt überall gleich: Jeder Stand eines Dokuments ist eine Fassung, nummeriert als „Fassung 3 von 5“, und eine zurückgegebene Fassung heißt „Änderungen angefordert“, wie die Schaltfläche."
             },
