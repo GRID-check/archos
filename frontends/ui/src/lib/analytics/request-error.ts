@@ -42,6 +42,7 @@ import {
 } from '@posthog/next'
 
 import { isAuthzError } from '@/lib/auth-utils'
+import { databaseUnavailableCode } from '@/lib/db/errors'
 
 import { posthogServerSettings, serverSuperProperties } from './posthog-server'
 import { scrubServerEvent } from './scrub-server-event'
@@ -92,10 +93,19 @@ export const beforeCapture = (
   capture: OnRequestErrorBeforeCaptureContext
 ): Record<string, unknown> | false => {
   if (isAuthzError(capture.error)) return false
-  if (limiter.consumeRateLimit(fingerprintOf(capture))) return false
+  const unavailable = databaseUnavailableCode(capture.error)
+  const fingerprint = unavailable ? `database-unavailable|${unavailable}` : fingerprintOf(capture)
+  if (limiter.consumeRateLimit(fingerprint)) return false
   // The package's client is not ours to `register` on, so the super
   // properties every other server event carries travel per event here.
-  return { source: 'bff-on-request-error', ...serverSuperProperties() }
+  const properties = { source: 'bff-on-request-error', ...serverSuperProperties() }
+  if (!unavailable) return properties
+  return {
+    ...properties,
+    $exception_fingerprint: fingerprint,
+    $issue_name: `[db] database unavailable (${unavailable})`,
+    database_unavailable_code: unavailable,
+  }
 }
 
 /** What `createOnRequestError` is built with; `null` while PostHog is off. */
