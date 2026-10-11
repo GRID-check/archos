@@ -7,36 +7,57 @@
 # characters; the German is translated like any note. `task release:lint`
 # checks this file too. A week without an entry shows its notes only.
 
+2026-W41: >
+  You can now close a finished project, which keeps it searchable and read-only,
+  and clear out the working copies, duplicates and temporary files Piloti
+  proposes, deciding on each one yourself. Piloti draws on similar closed
+  projects as precedents, and your office decides per folder which roles may
+  read or edit it. Uploads are screened for IBANs and other listed terms before
+  any model reads them, and each document keeps all its revisions in one entry
+  you can compare.
+
+2026-W40: >
+  Piloti can now search every file in a project for a word, name or number and
+  list each place it appears, and it goes through all of a project's files, not
+  only the first 50 or so names. Word, Excel and PowerPoint files open as a PDF
+  preview, and pictures inside Word and PowerPoint files can be cited. A scanned
+  PDF is now read word for word, up to 500 pages.
+
 2026-W39: >
-  Answers now appear while Piloti writes them, with each reference checked in
-  place, and come structured as tables, numbered steps and tabs for the
-  variants you compare. An answer survives a dropped connection, and questions
-  on garages and parking decks find OIB-Richtlinie 2.2.
+  Answers now appear while Piloti writes them, and each reference becomes a
+  clickable source once it is verified. Answers come structured as tables,
+  numbered steps and tabs for the variants you compare, and they survive a
+  dropped connection. Questions on garages and parking decks now find
+  OIB-Richtlinie 2.2.
 
 2026-W38: >
   Questions about Austrian law are answered with citable paragraphs from the
   RIS, and an office can give Piloti standing instructions that apply to every
-  question. From 18 September deep research and the Automation section are
-  switched on per office, on request.
+  question. Deep research and the Automation section are switched off for now,
+  and an office that needs them can ask us to switch them on.
 
 2026-W37: >
-  Files now have versions and an approval path: submit, approve, publish.
-  Piloti can write an Aktenvermerk, a Protokoll or a checklist as a draft and
-  file it in the project when you ask. Usage is shown in points instead of
-  euros, so check your budget limits once.
+  Every file now keeps its versions, and a version can be submitted for
+  approval, approved and then published, with exactly one version published at
+  a time. Piloti can write an Aktenvermerk, a Protokoll or a checklist as a
+  draft and file it in the project when you ask, and nothing it writes is
+  searchable until someone approves it. Usage and budgets are now shown in
+  points instead of euros, so check your limits once.
 
 2026-W36: >
-  Piloti can look at your plans as images, and references now name the point
-  of the Richtlinie, not just the page. Legal sources from the RIS open inside
-  Piloti with the cited passage highlighted, and whole folders can be uploaded
-  and matched against the project.
+  Piloti can now look at your drawings as images when a question turns on what
+  they show. References name the point of the Richtlinie as well as the page,
+  and legal sources from the RIS open inside Piloti with the cited passage
+  highlighted. Whole folders can be uploaded and matched against the project's
+  existing folders.
 
 2026-W35: >
-  Piloti works properly on a phone. Answers can be downloaded as Word
-  documents, diagrams are real drawings, and Excel, PowerPoint and CSV files
-  can be uploaded and cited sheet by sheet.
+  Piloti now works properly on a phone. Answers can be downloaded as Word
+  documents, and diagrams are real drawings. Excel, PowerPoint and CSV files can
+  be uploaded, and answers cite the right sheet or slide.
 
 2026-W34: >
-  Research reports are filed in your project under Berichte and say that
-  Piloti wrote them. Project folders can be renamed, moved and deleted, and
-  Piloti knows which folder a document is in. This changelog started this week.
+  Research reports are now filed in your project under Berichte, marked as
+  written by Piloti. Project folders can be renamed, moved and deleted without
+  losing documents, and Piloti knows which folder each one is in. This changelog
+  started this week.

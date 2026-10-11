@@ -1,12 +1,10 @@
 ---
 fixes:
   - >
-    A file whose reading was cut short by a restart of the service that reads
-    it now shows as failed with a retry, instead of staying in progress
-    forever and refusing to be read again. A restart while a Word or
-    PowerPoint file is still being converted is not covered: that file stays
-    at Wird gelesen until you choose Erneut lesen.
+    A file whose reading was cut short by an interruption now shows as failed,
+    with a retry, instead of staying in progress and being impossible to read
+    again.
   - >
-    A PDF with a few damaged pages is now indexed up to its last page instead of
-    stopping at the first damaged one; a PDF with too many damaged pages fails
-    with a retry instead of being indexed with holes.
+    A PDF with a few damaged pages is now read up to its last page instead
+    of stopping at the first damaged one. A PDF with too many damaged pages
+    fails with a retry instead of being read with gaps.

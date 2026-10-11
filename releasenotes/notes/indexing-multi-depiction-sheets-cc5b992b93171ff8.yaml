@@ -12,7 +12,6 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Plans that show several drawings on one sheet, such as two floor plans
-    side by side, are now read and indexed as separate depictions instead of
-    a single merged description. The detailed information view also says
-    which of the sheet's depictions each entry describes.
+    Sheets that show several drawings at once, such as two floor plans side by
+    side, are now read drawing by drawing instead of as one merged description.
+    The detail view also says which drawing on the sheet each entry describes.

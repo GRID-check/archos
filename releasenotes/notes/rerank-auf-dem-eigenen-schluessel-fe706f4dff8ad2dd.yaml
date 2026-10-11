@@ -1,9 +1,9 @@
 ---
 improvements:
   - >
-    Organizations with their own model key now use it for ranking search results
-    too; those calls always went through the platform key.
+    Organizations with their own AI key now use it for sorting search results
+    too. Until now those requests ran on the platform's AI key.
   - >
-    The usage overview now includes the model calls Piloti makes to rank
-    passages before it answers, which used to appear on no bill and in no
-    budget.
+    The usage overview now includes the AI requests that sort search results
+    before Piloti answers. Until now, those requests were not counted in the
+    usage overview or any budget.

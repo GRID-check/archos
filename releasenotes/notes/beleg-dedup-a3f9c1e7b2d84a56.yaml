@@ -1,5 +1,5 @@
 ---
 fixes:
   - >
-    Evidence under an answer no longer appears twice when the answer spells a
-    Richtlinie differently in the text and in its source list.
+    Sources under an answer no longer appear twice when the answer names a
+    Richtlinie differently in its text and in its source list.

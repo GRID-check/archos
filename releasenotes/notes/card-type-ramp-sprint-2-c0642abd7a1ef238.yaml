@@ -1,5 +1,6 @@
 ---
 improvements:
   - >
-    Comparison and data tables in chat cards are now set in normal text size
-    instead of the smallest type, and column headings stand out by weight.
+    Comparison and data tables in chat answers now use normal text size
+    instead of the smallest, and their column headings stand out more
+    clearly.

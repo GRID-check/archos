@@ -1,14 +1,13 @@
 ---
 fixes:
   - >
-    A semantic search over your files or the Archiv that could not run — the
-    index unreachable, the request timed out — was reported as "no matches for
-    …", which is a statement about your own documents that the app had no way
-    of making. It now says the search failed and offers to run the same query
-    again, instead of asking you to start over.
+    A search over your files or the Archiv that failed to run, for instance
+    because it timed out, used to report "no matches for …", a statement
+    about your own documents that Piloti had no way of making. Now it says
+    the search failed and offers to run the same query again.
 improvements:
   - >
-    A document whose indexing failed can be sent back through it from its own
-    card: Retry indexing is in the ⋯ menu, beside rename and delete, wherever
-    the failure is shown. Until now the card told you it had failed and the
-    only retry was two clicks inside a viewer you had no reason to open.
+    A document whose reading failed can be read again from its own card:
+    "Erneut lesen" is in the ⋯ menu, beside rename and delete, wherever the
+    failure is shown. Until now the card only said it had failed, and the
+    one retry was two clicks inside a viewer you had no reason to open.

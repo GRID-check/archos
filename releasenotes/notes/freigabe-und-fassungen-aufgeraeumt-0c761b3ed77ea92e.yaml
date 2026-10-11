@@ -1,9 +1,10 @@
 ---
 improvements:
   - >
-    Freigabe und Fassungen now sits folded at the end of the file info and shows
-    the state, the path from draft to published and what the file is waiting
-    for. It opens by itself when a version is waiting for you.
+    The „Freigabe und Fassungen“ section now sits at the end of the file
+    info, collapsed, and shows the status, the path from draft to published
+    and what the file is waiting for. It opens by itself when a version is
+    waiting for you.
 fixes:
   - >
     Archivieren is now called Stilllegen, since filing into the Archiv is what

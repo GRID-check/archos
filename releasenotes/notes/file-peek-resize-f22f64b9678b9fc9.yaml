@@ -2,9 +2,9 @@
 improvements:
   - >
     The file preview can be made much wider than before, wide enough for an A3
-    plan at a readable zoom, and remembers the width you set.
+    drawing at a readable zoom, and remembers the width you set.
 fixes:
   - >
     The file preview beside a chat can be resized again. The divider used to
-    stop after about twenty pixels and now follows the pointer across the whole
-    row.
+    stop after a short distance and now follows your pointer across the whole
+    width.

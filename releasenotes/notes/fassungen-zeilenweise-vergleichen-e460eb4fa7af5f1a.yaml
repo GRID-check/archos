@@ -1,9 +1,10 @@
 ---
 features:
   - >
-    Mit … vergleichen now shows what changed between two versions, line by line:
-    added lines with a plus and a solid rule, removed lines with a minus and a
-    dashed rule. Long unchanged stretches fold into a counted gap.
+    Comparing two versions now shows what changed, line by line: added lines
+    carry a plus and a solid rule, removed lines a minus and a dashed rule.
+    Long unchanged stretches collapse into a gap that shows how many lines
+    it hides.
 improvements:
   - >
     Two identical versions are reported in a sentence instead of an empty list,

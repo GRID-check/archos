@@ -5,8 +5,8 @@ features:
     creates a schedule that keeps running. Creating one needs the permission to
     manage schedules in the project.
   - >
-    Every start attempt now appears under Aufgaben, including runs that were
-    skipped or failed before they began, each with its reason.
+    Every attempt to start a task now appears under Aufgaben, including runs
+    that were skipped or failed before they began, each with its reason.
 improvements:
   - >
     Tasks and schedules are one list, schedules on top and single runs below,

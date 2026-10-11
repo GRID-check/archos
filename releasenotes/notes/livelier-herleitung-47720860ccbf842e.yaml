@@ -22,8 +22,8 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    While Piloti works, the Herleitung shows its whole reasoning graph again,
-    with a spinning icon and moving connectors, instead of a cut-off window.
+    While Piloti works, the Herleitung shows its full set of steps again, with a
+    spinning icon and moving connectors, instead of a cut-off window.
   - >
     The end of an answer no longer shows a hard cut and stray marks just above
-    the question field.
+    the input box.

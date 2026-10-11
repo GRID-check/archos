@@ -1,13 +1,13 @@
 ---
 improvements:
   - >
-    Images inside PDFs are now read as thoroughly as whole plan pages, so a
-    scanned plan embedded in a PDF is captured drawing by drawing with its own
-    scale.
+    Images inside PDFs are now read as thoroughly as whole drawing pages, so
+    each scanned drawing embedded in a PDF is captured on its own, with its
+    own scale.
   - >
     In a file's detail view you can expand what was recognised: rooms,
-    circulation, structure, services, build-ups and key figures, each marked as
-    labelled on the drawing or derived from it.
+    circulation, structure, building technology, build-ups and key figures,
+    each marked as labelled on the drawing or derived from it.
   - >
     A sheet that mixes a floor plan, a section, a chart and a photo has each
     part recognised and read on its own terms. Values read off a chart are

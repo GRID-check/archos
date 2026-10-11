@@ -1,9 +1,10 @@
 ---
 features:
   - >
-    The skill editor is now a three-step wizard: name and description, then
-    instructions, then the check. Rarely needed settings sit behind Erweitert.
+    The skill editor now guides you through three steps: name and
+    description, then instructions, then the check. Rarely needed settings
+    are kept behind Erweitert.
   - >
-    Findings of the skill check now appear under the field they concern, and
-    Erneut prüfen checks the revised text; a finding on text that has since
-    changed is marked as outdated.
+    Findings of the skill check now appear under the field they concern.
+    „Erneut prüfen“ checks the revised text, and a finding on text that has
+    since changed is marked as outdated.

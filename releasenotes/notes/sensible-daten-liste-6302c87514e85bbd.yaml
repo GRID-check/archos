@@ -6,6 +6,8 @@ features:
     checks for IBANs, Austrian social security numbers and card numbers. Piloti
     starts you on a suggested list you can keep, change or switch off.
   - >
-    Before an upload starts, you see which files that list holds back and why,
-    and those files never leave your computer. A single file, such as a
-    Bauvertrag in a folder called „Verträge“, can be released with one tick.
+    Files the name rules hold back stay on this computer, and the upload dialog
+    lists each one with its reason, so a single file, such as a Bauvertrag in a
+    folder called “Verträge”, can be released with one tick. Piloti checks the
+    content of an upload on its own servers before any AI model reads it, and no
+    model reads a file held in quarantine until someone releases it.
