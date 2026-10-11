@@ -57,7 +57,7 @@ def _ingestor(collection: _FakeCollection) -> LlamaIndexIngestor:
 def _patch_side_effects(monkeypatch):
     """Neutralise the persistence side effects delete_file triggers."""
     monkeypatch.setattr(adapter_mod, "bump_collection_version", lambda *_: None)
-    monkeypatch.setattr(knowledge_pkg, "unregister_summary", lambda *_: None, raising=False)
+    monkeypatch.setattr(knowledge_pkg, "unregister_summary", lambda *_, **__: None, raising=False)
 
 
 def test_delete_matches_percent_encoded_stored_name(monkeypatch):
@@ -104,11 +104,33 @@ def test_delete_returns_false_when_no_chunks_match_but_still_forgets_the_file(mo
     the BFF had already dropped its row, and every later delete took the same
     exit."""
     monkeypatch.setattr(adapter_mod, "bump_collection_version", lambda *_: None)
-    forgotten: list[tuple[str, str]] = []
-    monkeypatch.setattr(knowledge_pkg, "unregister_summary", lambda c, f: forgotten.append((c, f)), raising=False)
+    forgotten: list[tuple[str, str, bool]] = []
+    monkeypatch.setattr(
+        knowledge_pkg,
+        "unregister_summary",
+        lambda c, f, permanent=False: forgotten.append((c, f, permanent)),
+        raising=False,
+    )
     collection = _FakeCollection({"c1": {"file_name": "something-else.pdf"}})
     ing = _ingestor(collection)
 
     assert ing.delete_file("missing.pdf", "proj_test") is False
     assert set(collection._chunks) == {"c1"}
-    assert forgotten == [("proj_test", "missing.pdf")]
+    assert forgotten == [("proj_test", "missing.pdf", False)]
+
+
+def test_a_permanent_delete_tells_the_store_so(monkeypatch):
+    """``permanent`` reaches the metadata store on both paths; without it the store keeps a person's Fassung facts."""
+    monkeypatch.setattr(adapter_mod, "bump_collection_version", lambda *_: None)
+    forgotten: list[tuple[str, bool]] = []
+    monkeypatch.setattr(
+        knowledge_pkg,
+        "unregister_summary",
+        lambda _c, f, permanent=False: forgotten.append((f, permanent)),
+        raising=False,
+    )
+    ing = _ingestor(_FakeCollection({"c1": {"file_name": "plan.pdf"}}))
+
+    assert ing.delete_file("plan.pdf", "proj_test", permanent=True) is True
+    ing.delete_file("missing.pdf", "proj_test", permanent=True)
+    assert forgotten == [("plan.pdf", True), ("missing.pdf", True)]

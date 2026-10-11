@@ -1321,3 +1321,62 @@ $MIGRATE -v ON_ERROR_STOP=1 -q -f "drizzle/0129_project_lifecycle.sql" >/dev/nul
 }
 $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM projects WHERE $P129"
 echo "==> 0129 project lifecycle and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0131: a version records the verdict on its own bytes (ADR-0086),
+# its backfill per row shape, and its DOWN.
+#
+# On a database of its own, migrated to 0130. The backfill sets a version's
+# verdict only where the rows prove a pass about exactly its bytes: the item's
+# passing verdict about them, or a reviewer's release of them that no current
+# quarantine of the same bytes overrides. A superseded upload whose verdict a
+# re-upload reset, a quarantined or in-flight upload, stays NULL.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0131 version verdict backfill and its down migration on grid_vhash"
+migrate_until grid_vhash 0130_document_fassung_announcements
+sql_in grid_vhash <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000131', 'org_0131', 'Fassungen 0131', 'user_1', 'proj_0131');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id,
+                       content_hash, screening_outcome, screened_hash,
+                       screening_released_hash, screening_released_by, screening_released_at) VALUES
+  -- screened now; its first upload's verdict was reset by the re-upload
+  ('d1d1d1d1-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'a.pdf', 'k/0131/a2', 'proj_0131', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:a2', 'clean', 'sha256:a2', NULL, NULL, NULL),
+  -- the first upload was released by a reviewer, the second screened clean
+  ('d2d2d2d2-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'b.pdf', 'k/0131/b2', 'proj_0131', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:b2', 'clean', 'sha256:b2', 'sha256:b1', 'user_2', now()),
+  -- the re-upload is quarantined
+  ('d3d3d3d3-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'c.pdf', 'k/0131/c2', 'proj_0131', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:c2', 'quarantined', NULL, NULL, NULL, NULL),
+  -- the re-upload is still being read
+  ('d4d4d4d4-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'd.pdf', 'k/0131/d2', 'proj_0131', 'pending', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:d2', NULL, NULL, NULL, NULL, NULL),
+  -- released once, quarantined again on the same bytes
+  ('d5d5d5d5-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'e.pdf', 'k/0131/e1', 'proj_0131', 'quarantined', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:e1', 'quarantined', NULL, 'sha256:e1', 'user_2', now()),
+  -- read with screening off: no outcome, a settled read
+  ('d6d6d6d6-0000-4000-8000-000000000131', 'org_0131', 'user_1', 'f.pdf', 'k/0131/f1', 'proj_0131', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000131',
+   'sha256:f1', NULL, 'sha256:f1', NULL, NULL, NULL);
+INSERT INTO document_versions (organization_id, document_id, project_id, version_number, state, storage_key, content_hash, created_by, approved_by, approved_at) VALUES
+  ('org_0131', 'd1d1d1d1-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'superseded', 'k/0131/a1', 'sha256:a1', 'user_1', 'user_1', now()),
+  ('org_0131', 'd1d1d1d1-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 2, 'published',  'k/0131/a2', 'sha256:a2', 'user_1', 'user_1', now()),
+  ('org_0131', 'd2d2d2d2-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'superseded', 'k/0131/b1', 'sha256:b1', 'user_1', 'user_1', now()),
+  ('org_0131', 'd2d2d2d2-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 2, 'published',  'k/0131/b2', 'sha256:b2', 'user_1', 'user_1', now()),
+  ('org_0131', 'd3d3d3d3-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'superseded', 'k/0131/c1', 'sha256:c1', 'user_1', 'user_1', now()),
+  ('org_0131', 'd3d3d3d3-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 2, 'published',  'k/0131/c2', 'sha256:c2', 'user_1', 'user_1', now()),
+  ('org_0131', 'd4d4d4d4-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'superseded', 'k/0131/d1', 'sha256:d1', 'user_1', 'user_1', now()),
+  ('org_0131', 'd4d4d4d4-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 2, 'published',  'k/0131/d2', 'sha256:d2', 'user_1', 'user_1', now()),
+  ('org_0131', 'd5d5d5d5-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'published',  'k/0131/e1', 'sha256:e1', 'user_1', 'user_1', now()),
+  ('org_0131', 'd6d6d6d6-0000-4000-8000-000000000131', 'aaaaaaaa-0000-4000-8000-000000000131', 1, 'published',  'k/0131/f1', 'sha256:f1', 'user_1', 'user_1', now());
+SQL
+V131="SELECT string_agg(d.filename || ':' || v.version_number || '=' || coalesce(v.screened_hash, '-'), ',' ORDER BY d.filename, v.version_number) FROM document_versions v JOIN documents d ON d.id = v.document_id WHERE v.organization_id = 'org_0131'"
+apply_in grid_vhash 0131_document_version_screened_hash.sql
+check_in grid_vhash "$V131" "a.pdf:1=-,a.pdf:2=sha256:a2,b.pdf:1=sha256:b1,b.pdf:2=sha256:b2,c.pdf:1=-,c.pdf:2=-,d.pdf:1=-,d.pdf:2=-,e.pdf:1=-,f.pdf:1=sha256:f1" \
+  "the backfill passes the item's passing verdict and a standing release, and nothing a re-upload reset, a quarantine holds or a read has not finished"
+apply_in grid_vhash 0131_document_version_screened_hash.down.sql
+check_in grid_vhash "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_versions' AND column_name = 'screened_hash'" "0" "down dropped the column"
+apply_in grid_vhash 0131_document_version_screened_hash.sql
+apply_in grid_vhash 0131_document_version_screened_hash.sql
+check_in grid_vhash "SELECT count(*) FROM document_versions WHERE organization_id = 'org_0131' AND screened_hash = content_hash" "4" "0131 re-applies, twice, to the same verdicts"
+echo "==> 0131 version verdict backfill and down migration verified"

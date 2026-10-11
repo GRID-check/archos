@@ -41,6 +41,8 @@
 
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
+import { MoreHorizontal } from 'lucide-react'
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
@@ -88,6 +90,19 @@ const PRIMARY_ACTION: Partial<Record<DocumentLifecycleGesture, true>> = {
   approve: true,
 }
 
+/**
+ * The decisions that stay behind the ⋯ beside „Änderungen anfordern". A rail is
+ * 248px wide: four equal buttons stacked four high there, and the refusal stood
+ * at the same weight as the safe ones. The two visible ones are the answers a
+ * review usually ends in; „Piloti überarbeiten lassen" is a variant of asking
+ * for changes and „Ablehnen" ends the round for good, so both are one tap
+ * further away, never hidden.
+ */
+const OVERFLOW_ACTION: Partial<Record<DocumentLifecycleGesture, true>> = {
+  [DELEGATE_REVISION]: true,
+  reject: true,
+}
+
 /** One person the version may be sent to — `GET …/versions/reviewers`. */
 export interface ReviewerOption {
   userId: string
@@ -127,6 +142,17 @@ export interface DocumentReviewControlsProps {
   reviewers?: readonly ReviewerOption[]
   /** Display name of the acting person (the viewer), when the surface knows it. */
   actingName?: string | null
+  /**
+   * The number the reader knows this Fassung by („Fassung 5" in the rail, which
+   * counts linked older documents too). Defaults to the stored `versionNumber`.
+   */
+  fassungNumber?: number
+  /**
+   * Leave out the publish section's heading and blurb, keeping its button: for
+   * a surface whose header already says publishing is the next step and what it
+   * does (the rail's „Nächster Schritt: Veröffentlichung").
+   */
+  publishBare?: boolean
   className?: string
 }
 
@@ -138,6 +164,8 @@ export function DocumentReviewControls({
   onAct,
   reviewers = [],
   actingName = null,
+  fassungNumber,
+  publishBare = false,
   className,
 }: DocumentReviewControlsProps): JSX.Element | null {
   const t = useTranslations('files')
@@ -223,6 +251,36 @@ export function DocumentReviewControls({
   // The row holds the decisions and the item-level act; submit and publish own
   // their sections below and never stand here as equal siblings.
   const rowGestures = gestures.filter((gesture) => gesture !== 'submit' && gesture !== 'publish')
+  const visibleGestures = rowGestures.filter((gesture) => !OVERFLOW_ACTION[gesture])
+  const overflow: ActionMenuEntry[] = rowGestures
+    .filter((gesture) => OVERFLOW_ACTION[gesture])
+    .map((gesture) => ({
+      type: 'item',
+      id: gesture,
+      label: t(ACTION_LABEL[gesture]),
+      variant: gesture === 'reject' ? 'destructive' : 'default',
+      disabled: pending !== null,
+      onSelect: () => start(gesture),
+      testId: `document-lifecycle-${gesture}`,
+    }))
+  const primary = visibleGestures.filter((gesture) => PRIMARY_ACTION[gesture])
+  const secondary = visibleGestures.filter((gesture) => !PRIMARY_ACTION[gesture])
+  const shownNumber = fassungNumber ?? version?.versionNumber ?? 0
+  const decisionButton = (gesture: DocumentLifecycleGesture) => (
+    <Button
+      key={gesture}
+      type="button"
+      size="sm"
+      variant={PRIMARY_ACTION[gesture] ? 'default' : 'outline'}
+      className="h-8 flex-1"
+      disabled={pending !== null}
+      aria-busy={pending === gesture}
+      data-testid={`document-lifecycle-${gesture}`}
+      onClick={() => start(gesture)}
+    >
+      {t(ACTION_LABEL[gesture])}
+    </Button>
+  )
 
   // A reviewer is required wherever there is somebody to choose between. With
   // nobody (a sole editor), the round falls back to the submitter as a
@@ -349,22 +407,34 @@ export function DocumentReviewControls({
       )}
 
       {rowGestures.length > 0 && (
+        /* Freigeben, and beside it the group „Änderungen anfordern" + ⋯. Where
+           both fit (English) they share a line; where they do not (German at
+           248px) the group wraps under the primary and both take the width. */
         <div className="flex flex-wrap items-center gap-1.5">
-          {rowGestures.map((gesture) => (
-            <Button
-              key={gesture}
-              type="button"
-              size="sm"
-              variant={PRIMARY_ACTION[gesture] ? 'default' : 'outline'}
-              className="h-8"
-              disabled={pending !== null}
-              aria-busy={pending === gesture}
-              data-testid={`document-lifecycle-${gesture}`}
-              onClick={() => start(gesture)}
-            >
-              {t(ACTION_LABEL[gesture])}
-            </Button>
-          ))}
+          {primary.length > 0 && <div className="flex min-w-fit grow gap-1.5">{primary.map(decisionButton)}</div>}
+          <div className="flex min-w-fit grow items-center gap-1.5">
+            {secondary.map(decisionButton)}
+            {overflow.length > 0 && (
+              <ActionMenu
+                mode="dropdown"
+                entries={overflow}
+                trigger={
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="outline"
+                    className="size-8 shrink-0"
+                    aria-label={t('lifecycle.actions.more')}
+                    title={t('lifecycle.actions.more')}
+                    disabled={pending !== null}
+                    data-testid="document-review-more"
+                  >
+                    <MoreHorizontal className="size-4" aria-hidden />
+                  </Button>
+                }
+              />
+            )}
+          </div>
         </div>
       )}
 
@@ -379,7 +449,7 @@ export function DocumentReviewControls({
         >
           <p className="text-xs font-medium" data-testid="document-review-approve-stand">
             {t('lifecycle.approveConfirm.stand', {
-              number: version.versionNumber,
+              number: shownNumber,
               date: formatAbsoluteTime(version.updatedAt, locale),
             })}
           </p>
@@ -497,11 +567,15 @@ export function DocumentReviewControls({
            issuing it to the submission set / the authority (here) are two acts
            by possibly two people — so this never stands beside approval as an
            equal sibling. */
-        <div className="space-y-1.5 border-t pt-3" data-testid="document-review-publish">
-          <p className="text-xs font-medium">{t('lifecycle.publishSection.heading')}</p>
-          <p className="text-muted-foreground text-xs">
-            {t('lifecycle.publishSection.blurb', { number: version.versionNumber })}
-          </p>
+        <div className={cn('space-y-1.5', !publishBare && 'border-t pt-3')} data-testid="document-review-publish">
+          {!publishBare && (
+            <>
+              <p className="text-xs font-medium">{t('lifecycle.publishSection.heading')}</p>
+              <p className="text-muted-foreground text-xs">
+                {t('lifecycle.publishSection.blurb', { number: shownNumber })}
+              </p>
+            </>
+          )}
           <div>
             <Button
               type="button"

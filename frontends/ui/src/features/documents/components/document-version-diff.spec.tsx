@@ -43,10 +43,10 @@ describe('DocumentVersionDiff', () => {
     expect(rowKinds()).toEqual(['context', 'added', 'context'])
   })
 
-  it('names the two versions it is comparing', () => {
+  it('names the two revisions it is comparing', () => {
     renderDiff('a\n', 'b\n')
 
-    expect(screen.getByTestId('document-version-diff')).toHaveTextContent('Version 1 → version 2')
+    expect(screen.getByTestId('document-version-diff')).toHaveTextContent('Revision 1 → revision 2')
   })
 
   it('says so rather than showing an empty list when the versions are identical', () => {

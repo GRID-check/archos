@@ -29,6 +29,8 @@ import { toListedDocuments, toListedPage, type ListedDocument } from '@/lib/docu
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
 import type { DocumentListCursor } from '@/lib/documents/list-cursor'
 import type { DocumentNameMatchRow } from '@/lib/documents/repository'
+import { fassungCandidatesOnShelf } from '@/lib/documents/fassung-candidates'
+import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
 import { eraseDocumentObjectsOrKeepRow } from '@/lib/documents/object-cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { DocumentAuthor } from '@/lib/db/schema'
@@ -149,6 +151,18 @@ export async function probeArchivDocumentNames(
   return findArchivDocumentsByNames(session.organizationId, names, { reader: await archivReader(session) })
 }
 
+/**
+ * What the dropped names continue in the Archiv — the upload dialog's „Als neue
+ * Fassung von X ablegen" (`fassungCandidatesOnShelf`). Any org member may read,
+ * as with the name probe above.
+ */
+export async function probeArchivFassungCandidates(
+  session: AuthorizedSession,
+  names: readonly string[],
+): Promise<FassungCandidateMatch[]> {
+  return fassungCandidatesOnShelf(ARCHIV_SHELF, session.organizationId, names, { reader: await archivReader(session) })
+}
+
 export type UploadArchivDocumentResult = UploadDocumentResult
 
 /**
@@ -172,9 +186,10 @@ export function uploadArchivDocument(
     originPath = null,
     screeningRelease,
     uploadBatchId,
+    fassungOf,
   }: Omit<ShelfUploadInput, 'file' | 'folderId'> & { folderId?: string | null } = {},
 ): Promise<UploadArchivDocumentResult> {
-  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId }, request)
+  return uploadToShelf(session, ARCHIV_SHELF, { file, folderId, originPath, screeningRelease, uploadBatchId, fassungOf }, request)
 }
 
 /**
@@ -211,7 +226,8 @@ export async function deleteArchivDocument(
   // `null`: nothing of its own to purge. `false`: the backend did not confirm,
   // and the audit row says so — the platform vector reconcile is the sweep.
   const chunksPurged = purgeRef
-    ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+    ? // Permanent: the document is gone, and its Fassung links with it (ADR-0099).
+      await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
     : null
 
   // Every version's objects and derivatives, or a 502 and the row stays — the
@@ -225,7 +241,7 @@ export async function deleteArchivDocument(
   // and kept chunks it inserted after the first purge (ADR-0054, correction
   // 18). Any check from here on reads „gone“ and discards its own. Logged
   // inside, never thrown: the row is gone, and the orphan sweep is the net.
-  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS)
+  if (purgeRef) await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_FETCH_TIMEOUT_MS, { permanent: true })
 
   await recordAuditEvent({
     organizationId: session.organizationId,

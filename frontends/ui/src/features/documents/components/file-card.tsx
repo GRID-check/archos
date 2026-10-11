@@ -17,6 +17,8 @@ import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { AuthorshipLine } from './authorship-line'
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import { DocumentVersionStateBadge } from './document-version-badge'
+import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
+import { fassungCount } from '../lib/fassung-chain'
 import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './document-status'
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
@@ -341,7 +343,10 @@ export function FileCard({
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
                 // underneath instead of hiding it.
-                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
+                // `bg-background/80` is a light ground, and the destructive
+                // variant's ink is white: „Fehlgeschlagen" was white on paper,
+                // invisible. Its ink becomes the error red on this ground.
+                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
               />
             )}
           </GridTileMedia>
@@ -385,13 +390,29 @@ export function FileCard({
                 responsibility (ADR-0047's addendum, ADR-0054). Silent without a
                 history: one version distinguishes nothing, so the badge appears
                 only once a second version exists — even for a draft Piloti wrote. */}
-            {(file.versionCount ?? 0) > 1 && (
-              <DocumentVersionStateBadge
-                versionState={file.versionState}
-                versionCount={file.versionCount}
-                authoredBy={file.authoredBy}
-                className="mt-1"
-              />
+            {/* An older Fassung says that and only that: „Ersetzt" beside it
+                was the same fact twice, without saying by what. A current one
+                carries its approval state and, after it as quiet text rather
+                than a second badge, „3 Fassungen": the history is not a state.
+                On a 220px card the count beside the name cut the name in half,
+                so here it rides on this line; the list puts it by the name. */}
+            {isOlderFassungEntry(file) ? (
+              <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                <OlderFassungBadge file={file} />
+              </div>
+            ) : (
+              ((file.versionCount ?? 0) > 1 || fassungCount(file) > 1) && (
+                <div className="mt-1 flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                  {(file.versionCount ?? 0) > 1 && (
+                    <DocumentVersionStateBadge
+                      versionState={file.versionState}
+                      versionCount={file.versionCount}
+                      authoredBy={file.authoredBy}
+                    />
+                  )}
+                  <FassungCount file={file} />
+                </div>
+              )
             )}
             {match ? (
               <SemanticMatch snippet={match.snippet} page={match.page} score={match.score} />

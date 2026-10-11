@@ -139,6 +139,13 @@ export interface UploadFilesOptions {
    */
   screeningReleased?: (file: File) => boolean
   /**
+   * The document this file is filed as the new Fassung of (its id), when the
+   * reader ticked „Als neue Fassung von X ablegen" in the upload dialog
+   * (ADR-0099). Sent as `fassungOf`; the server checks that the reader may
+   * change that document before the ingest job writes the link.
+   */
+  fassungOf?: (file: File) => string | null | undefined
+  /**
    * What the upload dialog's screening already held back, one entry per file
    * (its matches). Recorded on the upload's batch by term and count, so the
    * summary can say why something is missing; never sent by name.
@@ -394,6 +401,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         return (target === undefined ? folderId : target) ?? null
       }
 
+      // The older document a file is filed as the new Fassung of (ADR-0099), or null.
+      const fassungOfFile = (file: File): string | null => options?.fassungOf?.(file) ?? null
+
       // Paired by INDEX, not by filename: two files selected in one batch can
       // legitimately share a name (from different folders), and a name-keyed map
       // silently drops one of them.
@@ -413,6 +423,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             folderId: resolvedFolderId(file),
             folderPath: options?.folderPathFor?.(file) ?? null,
             screeningReleased: options?.screeningReleased?.(file) === true,
+            ...(fassungOfFile(file) ? { fassungOf: fassungOfFile(file) } : {}),
           },
         } satisfies TrackedFile as TrackedFile,
       }))
@@ -478,6 +489,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           }
           formData.append('file', file)
           if (options?.screeningReleased?.(file)) formData.append('screeningRelease', 'name')
+          const fassungOf = shelf === 'session' ? null : fassungOfFile(file)
+          if (fassungOf) formData.append('fassungOf', fassungOf)
           if (batchId) formData.append('uploadBatchId', batchId)
           // Where the file sat before it came here. Set by a folder INPUT
           // (`webkitdirectory`) and stamped onto a dropped tree's files by
@@ -758,6 +771,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           folderIdFor: (each) => intentOf(each)?.folderId,
           folderPathFor: (each) => intentOf(each)?.folderPath,
           screeningReleased: (each) => intentOf(each)?.screeningReleased === true,
+          fassungOf: (each) => intentOf(each)?.fassungOf,
         }
         try {
           if (shelf !== 'session') return await uploadFiles(files, retryOptions)

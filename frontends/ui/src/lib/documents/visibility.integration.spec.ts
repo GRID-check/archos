@@ -291,6 +291,119 @@ describe.skipIf(!url)('the hold on a document, against Postgres', () => {
     })
   })
 
+  describe('a version records the verdict on its own bytes (migration 0131)', () => {
+    let versions: typeof import('./version-repository')
+    let reader: typeof import('./document-reader')
+
+    beforeAll(async () => {
+      versions = await import('./version-repository')
+      reader = await import('./document-reader')
+    })
+
+    /** A person's upload of `hash` as the document's next published version, as a re-upload records it. */
+    async function upload(documentId: string, hash: string): Promise<void> {
+      await inTenant(() => versions.insertPublishedVersion({
+        organizationId: ORG,
+        documentId,
+        projectId,
+        state: 'published',
+        storageKey: `k/${hash}`,
+        storageBucket: null,
+        contentType: 'application/pdf',
+        fileSize: 10,
+        contentHash: hash,
+        createdBy: OTHER,
+        approvedBy: OTHER,
+        approvedAt: new Date(),
+        publishedBy: OTHER,
+        publishedAt: new Date(),
+      }))
+      // The replace resets the item's verdict: the new bytes are unscreened (`replaceDocumentBytes`).
+      await inTenant(() =>
+        db.execute(sql`
+          UPDATE documents SET status = 'uploaded', screening_outcome = NULL, screened_hash = NULL
+          WHERE id = ${documentId}::uuid
+        `)
+      )
+    }
+
+    /** One job over the document's current bytes, and the verdict it brings back. */
+    async function screen(documentId: string, job: string, resolution: { status: 'completed' | 'quarantined'; outcome: 'clean' | 'quarantined' }) {
+      await expect(repo.setDocumentIngestJob(documentId, ORG, job)).resolves.toBe(true)
+      await expect(
+        repo.setDocumentReconciledStatus(
+          documentId,
+          ORG,
+          {
+            status: resolution.status,
+            errorMessage: resolution.status === 'quarantined' ? 'quarantined:{}' : null,
+            screeningOutcome: resolution.outcome,
+          },
+          { status: 'pending', jobId: job },
+        ),
+      ).resolves.toBe(true)
+    }
+
+    const verdicts = async (documentId: string) =>
+      (await inTenant(() => versions.listDocumentVersions(documentId, ORG))).map(
+        (version) => `${version.versionNumber}:${version.state}=${version.screenedHash ?? '-'}`,
+      )
+
+    /** What a member who did not upload it may open, by version number. */
+    async function readableByAMember(documentId: string): Promise<number[]> {
+      const document = await repo.findDocumentInOrg(documentId, ORG, memberReader('user_vis_nobody'))
+      if (!document) return []
+      const rows = await inTenant(() => versions.listDocumentVersions(documentId, ORG))
+      return rows.filter((version) => reader.versionBytesPassedScreening(document, version)).map((version) => version.versionNumber)
+    }
+
+    it('is written by the reconcile and a release with the item, and an earlier screened upload stays readable', async () => {
+      const item = await insert({ scope: 'project', status: 'uploaded', outcome: null, authoredBy: 'user', createdBy: OTHER, screened: 'none' })
+      const first = `sha256:first-${STAMP}`
+      const held = `sha256:held-${STAMP}`
+      const unread = `sha256:unread-${STAMP}`
+      const latest = `sha256:latest-${STAMP}`
+
+      await upload(item.id, first)
+      await screen(item.id, 'job-0131-a', { status: 'completed', outcome: 'clean' })
+      expect(await verdicts(item.id)).toEqual([`1:published=${first}`])
+
+      // A re-upload the gate quarantines: its version records no pass.
+      await upload(item.id, held)
+      await screen(item.id, 'job-0131-b', { status: 'quarantined', outcome: 'quarantined' })
+      expect(await verdicts(item.id)).toEqual([`1:superseded=${first}`, '2:published=-'])
+
+      // A reviewer releases it: the release is a verdict about those bytes.
+      const releasedAt = new Date()
+      await expect(repo.markScreeningReleased(item.id, ORG, { contentHash: held, releasedBy: UPLOADER, releasedAt })).resolves.toBe(true)
+      expect(await verdicts(item.id)).toEqual([`1:superseded=${first}`, `2:published=${held}`])
+
+      // A re-upload replaced while it was still being read never passes.
+      await upload(item.id, unread)
+      await upload(item.id, latest)
+      await screen(item.id, 'job-0131-d', { status: 'completed', outcome: 'clean' })
+      expect(await verdicts(item.id)).toEqual([
+        `1:superseded=${first}`,
+        `2:superseded=${held}`,
+        '3:superseded=-',
+        `4:published=${latest}`,
+      ])
+
+      // So a member opens the screened earlier uploads, and not the unread one.
+      expect(await readableByAMember(item.id)).toEqual([1, 2, 4])
+    })
+
+    it('is cleared when a later verdict holds the same bytes', async () => {
+      const item = await insert({ scope: 'project', status: 'uploaded', outcome: null, authoredBy: 'user', createdBy: OTHER, screened: 'none' })
+      const bytes = `sha256:again-${STAMP}`
+      await upload(item.id, bytes)
+      await screen(item.id, 'job-0131-e', { status: 'completed', outcome: 'clean' })
+      await upload(item.id, bytes)
+      await screen(item.id, 'job-0131-f', { status: 'quarantined', outcome: 'quarantined' })
+      expect(await verdicts(item.id)).toEqual(['1:superseded=-', '2:published=-'])
+    })
+  })
+
   describe('the item read', () => {
     const pendingOf = (createdBy: string) =>
       rows.find(

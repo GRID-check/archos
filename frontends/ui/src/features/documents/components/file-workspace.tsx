@@ -27,6 +27,11 @@ import { useModelStage } from '../hooks/use-model-stage'
 import { useSettleTrackedUploads } from '../hooks/use-settle-tracked-uploads'
 import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
+import { useBriefCollapsed } from '../hooks/use-brief-collapsed'
+import { useBulkReingest } from '../hooks/use-bulk-reingest'
+import { useCompareParam } from '../hooks/use-compare-param'
+import { useMissingDocuments } from '../hooks/use-missing-documents'
+import { buildFolderBrief, selectInBrief, type BriefSelection } from '../lib/folder-knowledge'
 import type { DocumentWireRow } from '../lib/file-item'
 import {
   NO_FILE_FILTERS,
@@ -47,6 +52,8 @@ import { FileBrowserPane } from './file-browser-pane'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
+import { FolderBrief } from './folder-brief'
+import { withoutOlderFassungen } from '../lib/fassung-chain'
 import { FileSearchField } from './file-search-bar'
 import { FolderAccessDialog } from './folder-access-dialog'
 import { FolderUploadDialog } from './folder-upload-dialog'
@@ -178,13 +185,27 @@ export function FileWorkspace({
    * returns, and the card, the list row and the preview header all read the
    * same `files` — they carry the change in the same frame the dialog closes.
    */
+  /*
+   * The preview opens ANOTHER document of this shelf by id (a Fassung in its
+   * timeline). The handler is part of `handlers`, which the preview channel
+   * takes, and the channel's `open` is built from `handlers`: so the handler
+   * reaches `files` and `open` through refs and the object stays one value.
+   */
+  const filesRef = useRef(files)
+  const openRef = useRef<(file: FileItem) => void>(() => undefined)
   const handlers = useMemo<PreviewHandlers>(
     () => ({
+      onOpenDocument: (id) => {
+        const file = filesRef.current.find((candidate) => candidate.id === id)
+        if (file) openRef.current(file)
+      },
+      // A link was confirmed or taken back: the section reports BOTH documents of it.
+      onFassungChanged: (id, fassung) => patchFile(id, { fassung }),
       // After a successful re-ingestion the document is back to 'pending'; the
       // dead-end failure UI clears and the badge flips to "Processing".
       onReingested: (id, status) => patchFile(id, { status, errorMessage: null }),
       // The pane is reused across files and re-seeds from the tags on switch.
-      onTagsUpdated: (id, tags) => patchFile(id, { tags }),
+      onTagsUpdated: (id, tags, topics) => patchFile(id, topics === undefined ? { tags } : { tags, topics }),
       // A Freigabe decision moved the document's state; the panel has just
       // re-read the version list, so both numbers are the server's own.
       onLifecycleChanged: (id, summary: { versionState: DocumentVersionState; versionCount: number }) =>
@@ -196,6 +217,12 @@ export function FileWorkspace({
   )
 
   const channel = usePreviewChannel(shelf, files, handlers)
+  // `?compare=<older>` beside `?doc=`: the inbox's „Fassungen vergleichen“.
+  const compareElement = useCompareParam(files)
+  useEffect(() => {
+    filesRef.current = files
+    openRef.current = channel.open
+  })
   const stage = useModelStage(shelf.showModels, files)
 
   /**
@@ -263,15 +290,35 @@ export function FileWorkspace({
     () => applyFileFilters(files, filters, { canCollaborate, currentUserId: shelf.currentUserId }),
     [files, filters, canCollaborate, shelf.currentUserId]
   )
+  // One entry per document: an older Fassung leaves the listing when its newer
+  // one is listed (`isOlderFassung`). Asked after the other filters, over what
+  // they kept, so an older one whose newer one a filter hid stays visible. The
+  // search runs on `filteredFiles` and applies the same rule to its own matches
+  // in the pane, and the folder tiles count what the listing shows. The brief
+  // is built over the current Fassungen whatever this filter says
+  // (`buildFolderBrief`), so it never counts or re-reads a replaced one.
+  const listedFiles = useMemo(
+    () => withoutOlderFassungen(filteredFiles, filters.showOlderFassungen),
+    [filteredFiles, filters.showOlderFassungen]
+  )
   // A search escapes the folder, so it runs over the corpus.
   const levelFiles = useMemo(
     () =>
       tree.error
-        ? filteredFiles
-        : filteredFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
-    [filteredFiles, selectedFolderId, tree.error]
+        ? listedFiles
+        : listedFiles.filter((file) => (file.folderId ?? null) === selectedFolderId),
+    [listedFiles, selectedFolderId, tree.error]
   )
   const tagOptions = useMemo(() => tagOptionsOf(files, locale), [files, locale])
+  const briefSurface = useFolderBriefSurface({
+    shelf,
+    files,
+    folders: tree.error ? [] : folders,
+    selectedFolderId,
+    onOpenFolder: selectFolder,
+    onReingested: handlers.onReingested,
+    mayReadAgain: canManage && writableHere,
+  })
   const filterEmptyNotice = useFilterEmptyNotice({
     filters,
     setFilters,
@@ -437,6 +484,7 @@ export function FileWorkspace({
             <FileBrowserPane
               files={levelFiles}
               searchFiles={filteredFiles}
+              showOlderFassungen={filters.showOlderFassungen}
               selectedFileId={channel.openId}
               onSelectFile={handleSelectFile}
               isLoading={listing.isLoading || tree.isLoading}
@@ -475,6 +523,8 @@ export function FileWorkspace({
                 label: t('workspace.uploadDocuments'),
               })}
               uploadCard={uploader({ variant: 'dropcard' })}
+              brief={briefSurface.brief}
+              slice={briefSurface.slice}
             />
           )}
         </div>
@@ -494,6 +544,7 @@ export function FileWorkspace({
         pending={shelfUpload.decision.pending}
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
+        onFassungChange={shelfUpload.onFassungChange}
       />
 
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
@@ -522,6 +573,8 @@ export function FileWorkspace({
           showModels={shelf.showModels}
           onReingested={handlers.onReingested}
           onTagsUpdated={handlers.onTagsUpdated}
+          onOpenDocument={handlers.onOpenDocument}
+          onFassungChanged={handlers.onFassungChanged}
           onRenamed={handlers.onRenamed}
           onDeleted={handlers.onDeleted}
         />
@@ -544,8 +597,98 @@ export function FileWorkspace({
           canCollaborate={canCollaborate}
         />
       )}
+
+      {compareElement}
     </div>
   )
+}
+
+/**
+ * The folder brief and the slice of the subtree it opens, for the level the
+ * reader stands on.
+ *
+ * Built from the UNFILTERED corpus: the brief describes the folder, and a
+ * filter that hides half of it must not make Piloti appear to know half as
+ * much. One entry per document all the same: `buildFolderBrief` leaves out
+ * every older Fassung whose newer one is listed (ADR-0099), so its headline,
+ * pages, chips and „Braucht Sie" agree with the listing. The slice is drawn
+ * from the same subtree the brief counted, so a chip that says „Grundriss 12"
+ * opens twelve documents.
+ */
+function useFolderBriefSurface({
+  shelf,
+  files,
+  folders,
+  selectedFolderId,
+  onOpenFolder,
+  onReingested,
+  mayReadAgain,
+}: {
+  shelf: FileShelf
+  files: readonly FileItem[]
+  folders: readonly FolderItem[]
+  selectedFolderId: string | null
+  onOpenFolder: (id: string | null) => void
+  onReingested: (id: string, status: string) => void
+  mayReadAgain: boolean
+}) {
+  const t = useTranslations('files')
+  const [collapsed, setCollapsed] = useBriefCollapsed()
+  const [selection, setSelection] = useState<{ folderId: string | null; selection: BriefSelection } | null>(null)
+  const bulk = useBulkReingest(onReingested)
+  const missing = useMissingDocuments(shelf.projectId)
+  const brief = useMemo(() => buildFolderBrief(files, folders, selectedFolderId), [files, folders, selectedFolderId])
+  const folderName = selectedFolderId
+    ? (folders.find((folder) => folder.id === selectedFolderId)?.name ?? null)
+    : null
+
+  // A slice belongs to the folder it was opened in; walking elsewhere drops it.
+  const active = selection && selection.folderId === selectedFolderId ? selection.selection : null
+
+  const readAgain = useCallback(async () => {
+    const ids = brief.attention.failed.map((file) => file.id)
+    const result = await bulk.run(ids)
+    const started = result.done - result.failed
+    if (started > 0) toast.success(t('brief.readAgainDone', { count: started }))
+    if (result.failed > 0) toast.error(t('brief.readAgainPartial', { count: result.failed }))
+  }, [brief.attention.failed, bulk, t])
+
+  const sliceLabel = (current: BriefSelection): string => {
+    const what =
+      current.kind === 'tag'
+        ? current.tag
+        : current.kind === 'topic'
+          ? current.topic
+          : current.kind === 'state'
+            ? t(`brief.slice.${current.state}`)
+            : t(`brief.slice.${current.kind}`)
+    const where = folderName ? t('brief.sliceScopeFolder', { name: folderName }) : t('brief.sliceScopeRoot')
+    return `${what} · ${where}`
+  }
+
+  return {
+    brief: (
+      <FolderBrief
+        brief={brief}
+        folderName={folderName}
+        shelfKind={shelf.source}
+        onSelect={(next) => setSelection({ folderId: selectedFolderId, selection: next })}
+        onOpenFolder={onOpenFolder}
+        onReadAgain={mayReadAgain ? () => void readAgain() : undefined}
+        readAgainProgress={bulk.progress}
+        collapsed={collapsed}
+        onCollapsedChange={setCollapsed}
+        missing={missing}
+      />
+    ),
+    slice: active
+      ? {
+          files: selectInBrief(brief, active),
+          label: sliceLabel(active),
+          onClear: () => setSelection(null),
+        }
+      : undefined,
+  }
 }
 
 /**

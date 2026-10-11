@@ -17,6 +17,7 @@
 
 import { inferDocumentKind, type DocumentKind } from '../document-kind'
 import type { FileItem } from '../components/project-file-workspace'
+import { readStateOf } from './folder-knowledge'
 
 /** Who is on the hook — `Alle · Meine · Unvergeben`, one at a time. */
 export type AssignmentFilter = 'all' | 'mine' | 'unassigned'
@@ -28,38 +29,43 @@ export type AssignmentFilter = 'all' | 'mine' | 'unassigned'
  * `uploaded`, `ingested`, `success`, …) that differ only in which stage of the
  * pipeline emitted them. Nobody filters for `ingesting` as opposed to
  * `processing`; they ask "what is broken", "what is not ready yet" and "what
- * can Piloti cite". Grouping is done here rather than in the menu so the
- * mapping has one home — `file-sort.ts` ranks the same vocabulary and the two
- * must not drift.
+ * can Piloti cite". The grouping is not a second vocabulary: it is a view of
+ * `readStateOf` (folder-knowledge), which reads `DOCUMENT_STATUS_FACTS`, so a
+ * status is declared once and every surface that groups it agrees.
+ * `file-sort.ts` ranks through {@link statusGroupOf} for the same reason.
  */
 export type FileStatusGroup = 'failed' | 'processing' | 'ready'
 
 export const FILE_STATUS_GROUPS: readonly FileStatusGroup[] = ['failed', 'processing', 'ready']
 
-const STATUS_GROUP: Record<string, FileStatusGroup> = {
-  failed: 'failed',
-  error: 'failed',
-  uploading: 'processing',
-  pending: 'processing',
-  processing: 'processing',
-  ingesting: 'processing',
-  ready: 'ready',
-  uploaded: 'ready',
-  ingested: 'ready',
-  success: 'ready',
-  completed: 'ready',
-}
-
 /**
- * An unknown status counts as `processing`, not as `ready`.
+ * The group a raw status is in, or `null` when it is in none of the three.
  *
- * The two are not symmetric: calling something ready when it is not tells a
- * reader Piloti can cite a document it cannot, and that is the error that
- * wastes an afternoon. A new pipeline state showing up under "in Arbeit" until
- * somebody maps it is the harmless direction to be wrong in.
+ * - `readable` → `ready`: Piloti can cite it. Covers every indexed spelling
+ *   (`ready`, `ingested`, `success`, `completed`, `processed`).
+ * - `reading` → `processing`: in flight, or unknown.
+ * - `failed` → `failed`.
+ * - `held` (the content screen stopped it) and `unindexed` (stored on purpose,
+ *   or the birth status `uploaded`) → `null`. Neither is being read, neither
+ *   is citable, and neither failed, so no status filter claims them.
+ *
+ * An unknown status is `reading` (see `readStateOf`), so it lands in
+ * processing and never in ready. Calling something citable that is not is the
+ * error that wastes an afternoon; a new state under "in Arbeit" until somebody
+ * declares it is the harmless direction to be wrong in.
  */
-export function statusGroupOf(status: string | null | undefined): FileStatusGroup {
-  return STATUS_GROUP[(status ?? '').toLowerCase()] ?? 'processing'
+export function statusGroupOf(status: string | null | undefined): FileStatusGroup | null {
+  switch (readStateOf(status)) {
+    case 'readable':
+      return 'ready'
+    case 'reading':
+      return 'processing'
+    case 'failed':
+      return 'failed'
+    case 'held':
+    case 'unindexed':
+      return null
+  }
 }
 
 /** The kinds the menu offers, in the order it offers them. */
@@ -70,6 +76,8 @@ export const FILE_KIND_FILTERS: readonly DocumentKind[] = [
   'notice',
   'photo',
   'model',
+  'sheet',
+  'text',
   'document',
 ]
 
@@ -109,6 +117,15 @@ export interface FileFilters {
    * gesture.
    */
   includeArchived: boolean
+  /**
+   * Show the older Fassungen of a document beside its current one.
+   *
+   * Answered by the WORKSPACE, not by `applyFileFilters`: the rule is "an older
+   * Fassung leaves the listing when its newer one is listed" (`fassung-chain.ts`),
+   * and it has to be asked after every other filter, over what those filters
+   * kept. Like `includeArchived` it WIDENS, and the menu says „auch“.
+   */
+  showOlderFassungen: boolean
   /** Empty means every kind — an empty set is "no constraint", never "nothing". */
   kinds: readonly DocumentKind[]
   /** Empty means every status, for the same reason. */
@@ -139,7 +156,10 @@ export interface TagOption {
 export function tagOptions(files: readonly FileItem[], locale: string): TagOption[] {
   const counts = new Map<string, TagOption>()
   for (const file of files) {
-    for (const tag of file.tags ?? []) {
+    // Topics sit beside the controlled tags in the one „Kategorie" filter: to a
+    // person both are words Piloti put on the file, and two menus for them would
+    // ask the reader to know which list a word came from.
+    for (const tag of new Set([...(file.tags ?? []), ...(file.topics ?? [])])) {
       const key = tag.toLowerCase()
       const entry = counts.get(key)
       if (entry) entry.count += 1
@@ -156,6 +176,7 @@ export const NO_FILE_FILTERS: FileFilters = {
   agentAuthoredOnly: false,
   reviewPendingOnly: false,
   includeArchived: false,
+  showOlderFassungen: false,
   kinds: [],
   statuses: [],
   tags: [],
@@ -176,6 +197,7 @@ export function activeFilterCount(filters: FileFilters, canCollaborate: boolean)
   if (filters.agentAuthoredOnly) count += 1
   if (filters.reviewPendingOnly) count += 1
   if (filters.includeArchived) count += 1
+  if (filters.showOlderFassungen) count += 1
   if (filters.kinds.length > 0) count += 1
   if (filters.statuses.length > 0) count += 1
   if (filters.tags.length > 0) count += 1
@@ -220,12 +242,17 @@ export function applyFileFilters<T extends FileItem>(
     ) {
       return false
     }
-    if (filters.statuses.length > 0 && !filters.statuses.includes(statusGroupOf(file.status))) {
-      return false
+    if (filters.statuses.length > 0) {
+      // A file in none of the groups (held, unindexed) matches no status filter.
+      const group = statusGroupOf(file.status)
+      if (group === null || !filters.statuses.includes(group)) return false
     }
     // A row whose version state is unknown (a listing that did not read it) is
     // not „ausstehend": the honest answer to a question nobody asked is no.
-    if (filters.tags.length > 0 && !file.tags?.some((tag) => filters.tags.includes(tag.toLowerCase()))) {
+    if (
+      filters.tags.length > 0 &&
+      ![...(file.tags ?? []), ...(file.topics ?? [])].some((tag) => filters.tags.includes(tag.toLowerCase()))
+    ) {
       return false
     }
     if (filters.reviewPendingOnly && file.versionState !== 'in_review') return false

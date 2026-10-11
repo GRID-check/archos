@@ -3,7 +3,7 @@ export const projects = {
   list: {
     heading: 'Projects',
     description:
-      'Every building project in one workspace — documents, members, and chat, grounded in the files, Office filing, and building law.',
+      'Every building project in one workspace: documents, members, tasks, research and chat, with Office filing and building law at hand.',
     loading: 'Loading projects…',
     searchPlaceholder: 'Search projects…',
     searchAria: 'Search projects by name',
@@ -30,7 +30,7 @@ export const projects = {
     empty: {
       title: 'Start your first project',
       description:
-        'Piloti is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together — then ask Piloti about the work, grounded in the files, Office filing, and Austrian building law.',
+        'Piloti is the workspace in which a planning office runs a building project. Create a project to bring its documents, members, and chat together. Piloti works in it and cites every source.',
       action: 'Create your first project',
     },
     filter: {
@@ -91,7 +91,7 @@ export const projects = {
     aiNotice:
       'AI proposal: made by Piloti from file names, folders, types and the existing summaries, without reading the files again. Check every item.',
     aiUnavailable:
-      'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, "Copy of …" or older version numbers.',
+      'The AI check was not available just now. The proposals come from fixed rules only, such as lock files, “Copy of …” or an older index in the file name.',
     considered: '{count} files checked that you may edit.',
     none: 'Piloti proposes nothing to remove.',
     unavailable: 'The proposals could not be loaded. You can still close the project.',
@@ -113,7 +113,7 @@ export const projects = {
       'copy-name': 'Working copy (name)',
       'old-name': 'Marked as old (name)',
       'same-content': 'Same content as an older file',
-      'older-version': 'Older version; a newer one is in the same folder',
+      'older-version': 'Older revision; a newer one is in the same folder',
       'unpublished-draft': 'Draft by Piloti, never published',
     },
   },
@@ -310,7 +310,7 @@ export const projects = {
     nameTooLong: 'Project name must be at most 255 characters.',
     createError: "We couldn't create this project just now. Please try again in a moment.",
     nameLabel: 'Project name',
-    namePlaceholder: 'OIB fire safety review',
+    namePlaceholder: 'e.g. Apartment building, 12 Main Street',
     templateLabel: 'Start from a template',
     templates: {
       neubauWohnbau: { label: 'New residential build', name: 'New residential build' },
@@ -393,7 +393,7 @@ export const projects = {
     tryAgain: 'Try again',
     emptyTitle: 'No research runs yet',
     emptyDescription:
-      'Deep research runs appear here once you ask Piloti an involved question in Chat — it works the OIB/RIS sources and returns a cited report you can revisit.',
+      'Deep research runs appear here once you ask Piloti an involved question in Chat. It works through the project’s files, Office filing and building law, and returns a cited report you can revisit.',
     emptyAction: 'Start a run in Chat',
     viewReport: 'View report',
     viewProgress: 'View progress',
@@ -423,7 +423,7 @@ export const projects = {
     eyebrowCreate: 'Project setup',
     titleFallback: 'Tell Piloti about this project',
     subtitle:
-      'About 2 minutes. Piloti uses this brief to ground every answer — and to show which OIB Richtlinien apply to this building.',
+      'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
     schnellstart: 'Quick start',
@@ -652,7 +652,7 @@ export const projects = {
       viewAll: 'View all',
       emptyTitle: 'No files yet',
       emptyDescription:
-        'Upload building documents — plans, reports, the Bauordnung excerpts — so Piloti can cite your project when it answers.',
+        'Upload building documents — drawings, reports, the Bauordnung excerpts — so Piloti can cite your project when it answers.',
       emptyAction: 'Upload files',
     },
   },

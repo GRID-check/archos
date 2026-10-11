@@ -20,8 +20,11 @@ import {
   extractIngestJobId,
   clearCollectionFilesCache,
   describeBackendIngestState,
+  readFassungNames,
+  refreshCollectionFiles,
   type ReconcilableDocument,
 } from './reconcile-status'
+import { collectionFileRef } from './collection-file-ref'
 
 /**
  * The guarded status write, in its transaction. `moved: false` is the write
@@ -30,7 +33,19 @@ import {
  * the same transaction records.
  */
 const makeDbMock = ({ moved = true }: { moved?: boolean } = {}) => {
-  const movedRow = { scope: 'project', projectId: 'p1', filename: 'a.pdf', createdBy: 'user-1' }
+  // What the write returns as it lands: the row's place, and the verdict and
+  // the bytes it judged, which the same transaction records on the versions
+  // holding those bytes (migration 0131).
+  const movedRow = {
+    scope: 'project',
+    projectId: 'p1',
+    filename: 'a.pdf',
+    createdBy: 'user-1',
+    status: 'completed',
+    screeningOutcome: null,
+    screenedHash: 'sha256:judged',
+    dispatchedHash: 'sha256:judged',
+  }
   const returning = vi.fn().mockResolvedValue(moved ? [movedRow] : [])
   const where = vi.fn().mockReturnValue({ returning })
   const set = vi.fn().mockReturnValue({ where })
@@ -126,10 +141,10 @@ describe('reconcileDocumentStatuses', () => {
     )
     expect(result.status).toBe('completed')
     expect(result.errorMessage).toBeNull()
-    expect(db.update).toHaveBeenCalledTimes(1)
-    expect(db.set).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'completed', errorMessage: null })
-    )
+    // The row, then the versions holding the bytes the job judged (migration 0131).
+    expect(db.update).toHaveBeenCalledTimes(2)
+    expect(db.set).toHaveBeenNthCalledWith(1, expect.objectContaining({ status: 'completed', errorMessage: null }))
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: 'sha256:judged' })
   })
 
   it('marks a row failed with the job error message', async () => {
@@ -245,7 +260,7 @@ describe('reconcileDocumentStatuses', () => {
       expect.any(Object)
     )
     expect(result.status).toBe('completed')
-    expect(db.update).toHaveBeenCalledTimes(1)
+    expect(db.update).toHaveBeenCalledTimes(2)
   })
 
   it('uses the collection file list for legacy rows without a job id', async () => {
@@ -389,6 +404,173 @@ describe('reconcileDocumentStatuses metadata enrichment', () => {
     const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
 
     expect(result.tags).toBeUndefined()
+  })
+
+  it('merges topics and the photo capture, mapped to camelCase', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          topics: ['Brandschutzkonzept', 'Fluchtweg'],
+          capture: { captured_at: '2026-03-14T09:21:00', latitude: 47.07, longitude: 15.44, camera: 'Canon EOS R6' },
+        },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toEqual(['Brandschutzkonzept', 'Fluchtweg'])
+    expect(result.capture).toEqual({
+      capturedAt: '2026-03-14T09:21:00',
+      latitude: 47.07,
+      longitude: 15.44,
+      camera: 'Canon EOS R6',
+    })
+  })
+
+  it('drops junk topics and an unusable capture, keeping what is valid', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          topics: ['Fluchtweg', '', 7, null, 'Rauchabzug'],
+          capture: { latitude: 47.07, camera: 42 },
+        },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toEqual(['Fluchtweg', 'Rauchabzug'])
+    expect(result.capture).toBeUndefined()
+  })
+
+  it('omits topics and capture when the backend provides none or only empty ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        { file_id: 'f-1', file_name: 'plan.pdf', status: 'success', chunk_count: 5, topics: [], capture: null },
+      ])
+    )
+
+    const [result] = await reconcileDocumentStatuses([makeRow({ status: 'completed' })], 'org-1')
+
+    expect(result.topics).toBeUndefined()
+    expect(result.capture).toBeUndefined()
+  })
+
+  it('merges the title-block facts, mapped to camelCase, and drops junk ones', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          revision_facts: {
+            document_number: 'A-101',
+            revision: 'C',
+            revision_date: '2026-03-14',
+            page: 2,
+          },
+        },
+        {
+          file_id: 'f-2',
+          file_name: 'junk.pdf',
+          status: 'success',
+          revision_facts: { revision_date: '14.03.2026' },
+        },
+      ])
+    )
+
+    const [present, junk] = await reconcileDocumentStatuses(
+      [
+        makeRow({ status: 'completed' }),
+        makeRow({ id: 'doc-2', filename: 'junk.pdf', status: 'completed' }),
+      ],
+      'org-1'
+    )
+
+    expect(present.revisionFacts).toEqual({
+      documentNumber: 'A-101',
+      revision: 'C',
+      revisionDate: '2026-03-14',
+      page: 2,
+    })
+    expect(junk.revisionFacts).toBeUndefined()
+  })
+
+  it('reads the Fassung links by file name and keeps them out of the row metadata', async () => {
+    makeDbMock()
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        {
+          file_id: 'f-1',
+          file_name: 'plan.pdf',
+          status: 'success',
+          superseded_by: 'plan_B.pdf',
+          supersedes: ['plan_0.pdf'],
+          revision_suggestion: { of: 'plan_0.pdf', confidence: 2, reason: 'Index', basis: 'name' },
+          change_summary: 'Wand entfällt.',
+          change_basis: 'plan_0.pdf',
+        },
+      ])
+    )
+    const row = makeRow({ status: 'completed' })
+
+    const [result] = await reconcileDocumentStatuses([row], 'org-1')
+
+    // A file name is a fact about a document the reader may not see: it never
+    // rides on the row metadata other callers spread onto the wire.
+    expect(JSON.stringify(result)).not.toContain('plan_B.pdf')
+    expect(JSON.stringify(result)).not.toContain('plan_0.pdf')
+    const ref = collectionFileRef(row)
+    if (!ref) throw new Error('a human row has a ref')
+    expect(await readFassungNames(ref)).toEqual({
+      supersededBy: 'plan_B.pdf',
+      supersedes: ['plan_0.pdf'],
+      suggestion: { of: 'plan_0.pdf', confidence: 1, reason: 'Index', basis: 'name' },
+      change: { text: 'Wand entfällt.', basis: 'plan_0.pdf' },
+    })
+  })
+
+  it('answers no Fassung names for a file the listing does not know, a name it lists twice, or a file with none', async () => {
+    mockFetch.mockResolvedValue(
+      collectionResponse([
+        { file_name: 'plan.pdf', status: 'success', superseded_by: 'a.pdf' },
+        { file_name: 'plan.pdf', status: 'success', superseded_by: 'b.pdf' },
+        { file_name: 'leer.pdf', status: 'success' },
+      ])
+    )
+    const ref = (filename: string) => {
+      const found = collectionFileRef(makeRow({ filename }))
+      if (!found) throw new Error('a human row has a ref')
+      return found
+    }
+
+    expect(await readFassungNames(ref('plan.pdf'))).toBeNull()
+    expect(await readFassungNames(ref('leer.pdf'))).toBeNull()
+    expect(await readFassungNames(ref('fehlt.pdf'))).toBeNull()
+  })
+
+  it('refreshes the cached listing, so the read after a write sees it', async () => {
+    mockFetch.mockResolvedValueOnce(collectionResponse([{ file_name: 'plan.pdf', status: 'success' }]))
+    const ref = collectionFileRef(makeRow())
+    if (!ref) throw new Error('a human row has a ref')
+    expect(await readFassungNames(ref)).toBeNull()
+
+    mockFetch.mockResolvedValueOnce(
+      collectionResponse([{ file_name: 'plan.pdf', status: 'success', superseded_by: 'plan_B.pdf' }])
+    )
+    await refreshCollectionFiles('proj_abc')
+
+    expect((await readFassungNames(ref))?.supersededBy).toBe('plan_B.pdf')
   })
 
   it('omits fields the backend did not provide', async () => {
@@ -1079,6 +1261,8 @@ describe('reconcileDocumentStatuses — upload screening', () => {
     expect(db.set).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' })
     )
+    // The versions holding the bytes this job judged lose any earlier pass (migration 0131).
+    expect(db.set).toHaveBeenNthCalledWith(2, { screenedHash: null })
     // The decision, keyed on its dispatch, owed to the audit trail (ADR-0086):
     // kinds and terms, never the masked sample or the page list.
     expect(db.values).toHaveBeenCalledWith({

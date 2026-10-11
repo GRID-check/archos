@@ -107,7 +107,7 @@ describe('UploadSummaryView', () => {
   })
 
   // T4.2: the uploader of a file held back can ask the people who may release it.
-  describe('„Freigabe anfragen" on a quarantined file', () => {
+  describe('„Prüfung anfragen" on a file held back', () => {
     afterEach(() => vi.unstubAllGlobals())
 
     const stubAsk = (notified: number) =>

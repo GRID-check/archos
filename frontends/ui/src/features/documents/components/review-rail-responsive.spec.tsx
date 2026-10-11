@@ -1,7 +1,7 @@
 /**
  * The review rail at phone width (ledger 40).
  *
- * The rail — „Freigabe und Fassungen" plus everything ingestion derived — is a
+ * The rail — „Fassungen und Freigabe" plus everything ingestion derived — is a
  * 280px column beside the document on a wide container and a stacked block
  * under it on a narrow one, and the whole flip is expressed in Tailwind
  * container-query classes. Nothing had ever opened it at 400px, for a reason
@@ -44,6 +44,8 @@ const file = {
   chunkCount: null,
   contentTypes: null,
   tags: ['Grundriss'],
+  topics: null,
+  capture: null,
 }
 
 const listing: DocumentVersionListResponse = {
@@ -101,14 +103,14 @@ describe('the review rail is a column on a wide container and a stacked block on
   it('mounts at all when the surface passes lifecycle permissions', async () => {
     renderPane()
     // The whole of ADR-0054's reader-facing half hangs off this one condition.
-    expect(await screen.findByTestId('document-lifecycle-panel')).toBeInTheDocument()
+    expect(await screen.findByTestId('document-fassungen')).toBeInTheDocument()
   })
 
   it('the rail is full width by default and only becomes a 280px column at @2xl', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-lifecycle-panel')
+    await screen.findByTestId('document-fassungen')
 
-    const rail = container.querySelector('[data-testid="document-lifecycle-panel"]')
+    const rail = container.querySelector('[data-testid="document-fassungen"]')
       ?.parentElement as HTMLElement
     expect(rail).toBeTruthy()
     const cls = rail.className
@@ -130,9 +132,9 @@ describe('the review rail is a column on a wide container and a stacked block on
 
   it('the body stacks vertically and only becomes a row at @2xl', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-lifecycle-panel')
+    await screen.findByTestId('document-fassungen')
 
-    const rail = container.querySelector('[data-testid="document-lifecycle-panel"]')
+    const rail = container.querySelector('[data-testid="document-fassungen"]')
       ?.parentElement as HTMLElement
     const body = rail.parentElement as HTMLElement
     expect(body.className).toContain('flex-col')
@@ -144,7 +146,7 @@ describe('the review rail is a column on a wide container and a stacked block on
 
   it('the type chip may shrink, so it cannot run under the header controls', async () => {
     const { container } = renderPane()
-    await screen.findByTestId('document-lifecycle-panel')
+    await screen.findByTestId('document-fassungen')
     // Scoped to the HEADER: the same tag is also a chip down in the rail's tag
     // list, and only the header one is squeezed by the controls beside it.
     const nameColumn = container.querySelector('h3')?.parentElement as HTMLElement
@@ -178,10 +180,15 @@ describe('the review controls wrap, and the comment box takes the whole width', 
     )
     const row = container.querySelector('[data-testid="document-review-controls"] > div')
     expect(row?.className).toContain('flex-wrap')
-    // All four, or the wrap is being asserted on a set that never needed it.
-    // Four and not five since „Archivieren" left this row: it is item-level and
-    // a one-way door, so it has its own set-apart block with its consequences.
-    expect(screen.getAllByRole('button')).toHaveLength(4)
+    // Two decisions and the ⋯ that holds the other two („Piloti überarbeiten
+    // lassen", „Ablehnen"): four equal buttons stacked four high in a 248px
+    // rail. „Archivieren" left this row long ago: it is item-level and a
+    // one-way door, so it has its own set-apart block with its consequences.
+    expect(screen.getAllByRole('button').map((button) => button.getAttribute('data-testid'))).toEqual([
+      'document-lifecycle-approve',
+      'document-lifecycle-request_changes',
+      'document-review-more',
+    ])
   })
 
   it('the comment box is a full-width block under the controls, not beside them', async () => {

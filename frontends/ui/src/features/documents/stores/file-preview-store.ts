@@ -16,6 +16,7 @@ import { create } from 'zustand'
 import { useChatStore } from '@/features/chat/store'
 import type { DocumentScope } from '../components/document-actions'
 import type { FileItem } from '../components/project-file-workspace'
+import type { FassungFacts } from '@/lib/documents/fassung'
 import type {
   DocumentLifecyclePermission,
   DocumentVersionState,
@@ -116,7 +117,14 @@ export interface FilePreviewContext {
   onRenamed?: (fileId: string, displayName: string | null) => void
   onDeleted?: (fileId: string) => void
   onReingested?: (fileId: string, status: string) => void
-  onTagsUpdated?: (fileId: string, tags: string[]) => void
+  onTagsUpdated?: (fileId: string, tags: string[], topics?: string[]) => void
+  /**
+   * The pane asks the surface to open another document of its shelf (an older
+   * or newer Fassung). Absent where the surface cannot open one by id.
+   */
+  onOpenDocument?: (fileId: string) => void
+  /** A link was confirmed or taken back: the Fassung facts of one of the two documents, so the listing moves both cards. */
+  onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /**
    * A decision was taken in the pane's Freigabe section, so the listing behind
    * it can move the badge without re-reading the whole corpus — the same shape

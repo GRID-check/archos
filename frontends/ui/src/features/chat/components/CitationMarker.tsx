@@ -250,6 +250,7 @@ const ResolvedCitationPeek: FC<{
       onDownload={downloadTarget ? () => void download() : undefined}
       downloadPending={isDownloading}
       unavailable={!url && !resolving && !downloadTarget && !openable}
+      supersededBy={target.kind === 'document' || target.kind === 'download' ? target.supersededBy : undefined}
     />
   )
 }

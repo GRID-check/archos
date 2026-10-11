@@ -911,6 +911,20 @@
       "when": 1792454400015,
       "tag": "0129_project_lifecycle",
       "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1792454400016,
+      "tag": "0130_document_fassung_announcements",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1792454400017,
+      "tag": "0131_document_version_screened_hash",
+      "breakpoints": true
     }
   ]
 }

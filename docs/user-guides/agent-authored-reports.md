@@ -61,17 +61,17 @@ getting it.
 
 The report is a normal file in the **Berichte** folder, with three marks on it.
 
-**A byline: „Von Piloti erstellt".** A quiet line under the file name, on the
+**A byline: „Von Piloti erstellt“.** A quiet line under the file name, on the
 card and in the preview. It says who *wrote* it. It is deliberately not a face
 and never appears in the assignment row, because a face on a file means
 something else entirely — see below.
 
-**A neutral status badge: „Abgelegt".** Not green, not red. Green would promise
+**A neutral status badge: „Abgelegt“.** Not green, not red. Green would promise
 that the file is searchable, which it is not; red would say something went
 wrong, which nothing did. The bytes are here and indexing was deliberately
 skipped, and *Abgelegt* is the word for exactly that.
 
-**„Unvergeben" in the footer.** Nobody is responsible for this report yet, and
+**„Unvergeben“ in the footer.** Nobody is responsible for this report yet, and
 that is the correct state, not a gap someone forgot to fill. Piloti cannot carry
 professional responsibility for a document; only a person can. Until somebody
 clicks **Zuweisen** (or **Mir zuweisen**), the report is a draft nobody has put
@@ -93,17 +93,17 @@ Two filters find these files, and they combine:
 the hook for it — which is the entire point of the gesture.
 
 Taking responsibility is *not* the same act as approving what the report says.
-„Verantwortlich" answers who is on the hook; **Freigabe** answers whether the
+„Verantwortlich“ answers who is on the hook; **Freigabe** answers whether the
 office stands behind the content. A file can be Anna's and not yet freigegeben,
-and a file can be freigegeben and still „Unvergeben". The next section is about
+and a file can be freigegeben and still „Unvergeben“. The next section is about
 the second of those.
 
 ---
 
-## Freigabe und Versionen
+## Fassungen und Freigabe
 
-Every file in a project now has a **version history** and an **editorial state**,
-and Piloti's reports walk the same states your own uploads do. There is one
+Every file in a project now has its **Fassungen** and a **Freigabestatus**
+(approval status), and Piloti's reports walk the same states your own uploads do. There is one
 vocabulary, not two: a reviewer does not have to know who wrote a file in order
 to know what state it is in.
 
@@ -113,65 +113,74 @@ to know what state it is in.
 |---|---|
 | **Entwurf** | Written, not yet handed to anybody. This is where a report Piloti files starts. |
 | **In Prüfung** | Submitted. Whoever was asked has an entry in their Postfach. |
-| **Änderungen erbeten** | Sent back, with the reason written on the version. |
-| **Freigegeben** | A person has asserted the content. |
-| **Veröffentlicht** | Issued — this is the version the file now serves. |
-| **Ersetzt** | A newer version was published. The bytes stay and can still be opened. |
+| **Änderungen angefordert** | Sent back, with the reason written on the Fassung. |
+| **Freigegeben** | A person has asserted the content. Piloti does not answer from it yet. |
+| **Veröffentlicht** | Piloti answers from this Fassung. |
+| **Ersetzt** | A newer Fassung was published. The bytes stay and can still be opened. |
 | **Abgelehnt** | Refused, with a reason. |
-| **Archiviert** | The file has left the working set. Nothing is deleted. |
+| **Stillgelegt** | The file has left the file list and the knowledge base. Nothing is deleted. |
 
-The badge is deliberately colourless. In this product colour means provenance —
+The badge is deliberately colorless. In this product color means provenance —
 where something came from — and an editorial state is not provenance.
 
 **You will not see a badge on most of your files, and that is correct.** A file
 you upload is *published* the moment it lands: you put it there, and that is the
 assertion. The badge appears when there is something to know — the file has more
-than one version, or Piloti wrote it. On the file's own page you always see the
+than one Fassung, or Piloti wrote it. On the file's own page you always see the
 state, because there the state is what you came for.
 
 ### What you can do, and when
 
-Open a file and the panel **Freigabe und Fassungen** sits in the right-hand
-column, under the byline and the „Verantwortlich" row. It offers exactly the
-steps the current state allows and that your role permits — nothing greyed out
-that could never be pressed:
+Open a file and the section **Fassungen und Freigabe** sits in the right-hand
+column, under Piloti's reading of the document. Its header says where the
+newest Fassung stands, who acts next („Nächster Schritt: Freigabe durch Sabine
+Gruber“) and which Fassung Piloti answers from. The steps below sit **under the
+header**, and the section opens by itself when a decision is yours. **Freigeben**
+and **Änderungen anfordern** are in view; **Piloti überarbeiten lassen** and
+**Ablehnen** are behind the ⋯ beside them. It offers exactly the steps the
+current state allows and that your role permits — nothing greyed out that could
+never be pressed:
 
 - **Zur Freigabe einreichen** on an Entwurf, or on one that came back for
   changes. Whoever is asked gets a Postfach entry naming the file.
-- **Freigeben** on a version in Prüfung. **Not** available to the person who
+- **Freigeben** on a Fassung in Prüfung. **Not** available to the person who
   submitted it: an assertion nobody but the author has read is not one.
 - **Änderungen anfordern** and **Ablehnen**, both of which ask you to type why.
-  The reason stays on the version, so „was ist noch offen" is answered by
+  The reason stays on the Fassung, so „was ist noch offen“ is answered by
   reading the file rather than by remembering a conversation.
-- **Piloti überarbeiten lassen**, beside Änderungen anfordern and with the same
-  reason required. Piloti drafts the next version from your comment and submits
+- **Piloti überarbeiten lassen**, behind the ⋯ beside Änderungen anfordern, with the same
+  reason required. Piloti drafts the next Fassung from your comment and submits
   it, so the file comes back to your Postfach instead of to a colleague's desk.
   Not for a file in a folder that not everyone in the project may read: Piloti
   would have to quote it into an Auftrag the whole project sees. The button then
   says why and changes nothing; Änderungen anfordern still works.
-- **Veröffentlichen** on a freigegebene Fassung. Approving on Tuesday and
-  issuing with the Einreichung on Friday are two acts, so they are two buttons.
-- **Archivieren**, which takes the file out of the listings. The bytes and every
-  version stay; it is not a delete.
+- **Veröffentlichen** on a freigegebene Fassung. It makes that Fassung the one
+  Piloti answers from. Approving asserts the content and publishing puts it to
+  use, so they are two acts and two buttons.
+- **Stilllegen**, which takes the file out of the file list and the knowledge
+  base. The bytes and every Fassung stay; it is not a delete.
 
-If two people decide at the same moment, the second one is told: **„Der Stand
-hat sich geändert"**, and the panel reloads to show what actually happened. The
+If two people decide at the same moment, the second one is told: **„Jemand hat
+zuerst entschieden“**, and the section reloads to show what actually happened. The
 database, not the screen, decides who was first.
 
-### The version list
+### The timeline
 
-Under the controls, every version: its number and state, who submitted, approved
-and published it and when, the reviewer's words, and **Öffnen** for that
-version's own bytes — including the superseded ones. Re-uploading a corrected
-plan under the same name no longer throws the old file away; it becomes version
-N+1 and the previous one stays readable. „Was stand im März drin" is a question
+Newest first, every Fassung of the file — its uploads under this name and the
+older documents linked under other names (see
+[Fassungen und Freigabe](documents.md#fassungen-und-freigabe)), numbered „Fassung 3, 2, 1“:
+who submitted, approved and published it and when, the reviewer's words, and
+**Öffnen** for that Fassung's own bytes — including the replaced ones. Download
+and the text comparison are behind each row's ⋯. Re-uploading a corrected
+file under the same name no longer throws the old file away; it becomes the next
+Fassung and the previous one stays readable. „Was stand im März drin“ is a question
 with an answer.
 
-**Mit … vergleichen** shows what changed between two versions, line by line:
+**Text mit Fassung 2 vergleichen** shows what changed between two Fassungen, line by line:
 added lines are marked with a `+` and a solid rule, removed ones with a `−` and
 a dashed one, long unchanged stretches fold into a counted gap, and both
-versions' line numbers run down the left so you can see an insert push them
-apart. No red and no green — colour in Piloti means where something came from,
+Fassungen's line numbers run down the left so you can see an insert push them
+apart. No red and no green — color in Piloti means where something came from,
 never what happened to it.
 
 ### Finding what is waiting
@@ -184,11 +193,11 @@ taken on, that is waiting for a decision, is one query.
 
 ## Über ein Dokument sprechen
 
-**Besprechen** steht auf jeder Datei — in der Dateiablage, auf der
+**Besprechen** steht auf jeder Datei — unter Dateien, auf der
 Berichtskarte im Chat und auf der Freigabe-Aufforderung im Posteingang — und
 öffnet ein Gespräch, das genau um dieses Dokument geht. Es funktioniert auch bei
 einem Entwurf, den noch niemand veröffentlicht hat: Piloti liest die Fassung
-dann direkt und beantwortet Fragen wie „warum steht in Abschnitt 3 GK 4?" aus
+dann direkt und beantwortet Fragen wie „warum steht in Abschnitt 3 GK 4?“ aus
 dem Text selbst. Aus dem Gespräch heraus lässt sich derselbe Entwurf auch
 ändern und wieder ablegen — es entsteht eine neue Fassung desselben Dokuments,
 kein zweites.
@@ -225,14 +234,14 @@ matters most, because the chat window stays inside your office and the document
 does not.
 
 - **On page one, in the document itself:** a block headed
-  **„KI-generiert — nicht geprüft"**, saying that Piloti wrote it, that no human
+  **„KI-generiert — nicht geprüft“**, saying that Piloti wrote it, that no human
   has reviewed it, and that it is a draft rather than a Nachweis. It is printed
   content, not screen chrome — it survives printing, forwarding, and being
   attached to an e-mail.
 - **In the file's properties:** `AIGenerated`, `AIGenerator`,
   `AIHumanReviewed` and the run id. A records system can detect the document as
   machine-written without anyone reading it. In the filed **PDF** they sit in
-  the document's `Keywords` field, with „Piloti" as the *Creator* and the
+  the document's `Keywords` field, with „Piloti“ as the *Creator* and the
   headline repeated as the *Subject* — the three fields a viewer's
   document-properties panel shows. A PDF has no place for named custom
   properties the way a Word file does, so the marking uses the closest fields
@@ -246,11 +255,11 @@ it, the properties are for the system that files it.
 Every file Piloti produces — the filed report and a document a chat turn wrote —
 also carries a short block of the product's own words, inside the bytes rather
 than around them. One line at the top names what made the file and for which
-office („Erstellt mit Piloti für …"); two sentences say that Piloti drafted it
+office („Erstellt mit Piloti für …“); two sentences say that Piloti drafted it
 and that responsibility for its content belongs to the person who gives it
 Freigabe, and to nobody before that; one line at the foot of every page repeats
-„Entwurf, nicht freigegeben" so a single sheet pulled out of a folder still says
-what it is. That block is not the „KI-generiert" marking above and does not
+„Entwurf, nicht freigegeben“ so a single sheet pulled out of a folder still says
+what it is. That block is not the „KI-generiert“ marking above and does not
 replace it: the marking says how much of the document to trust, and this says
 who is answerable for it. Nothing has to be switched on, and there is nothing to
 configure — an office that later wants its own wording gets it without the

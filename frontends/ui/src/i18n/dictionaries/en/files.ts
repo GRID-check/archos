@@ -130,17 +130,87 @@ export const files = {
     removeTag: 'Remove tag {tag}',
     suggestionsLabel: 'Tag suggestions',
     noTagMatch: 'No matching tag — pick one of the suggested labels.',
+    reading: {
+      classifiedAs: 'Piloti reads this as',
+      noType: 'Piloti did not recognize a document type.',
+      correct: 'Correct',
+      assign: 'Assign',
+      done: 'Done',
+      correctionKept: 'Your choice stays, even when Piloti reads the file again.',
+      topics: 'Topics',
+      addTopic: 'Add topic',
+      topicsSaveError: 'The topics could not be saved.',
+      capturedAt: 'Taken on {when}',
+      location: 'Location',
+    },
+    /** Where the document stands among its Fassungen (document-fassungen.tsx). Never „plan“: a name does not say what a file is. */
+    fassung: {
+      unlink: 'Remove link',
+      timeline: 'All revisions of this document',
+      current: 'current',
+      open: 'Open',
+      compare: 'Compare',
+      changedSince: 'What changed since {name}:',
+      changedSincePrevious: 'What changed since the previous revision:',
+      changeHint: 'Summarized by Piloti from both revisions. Check dimensions and values in the document itself.',
+      suggestion: 'Is this a newer revision of {name}?',
+      basisTitleBlock: 'The drawing number and index in the title block suggest so.',
+      basisName: 'The index and date in the file name suggest so.',
+      basisContent: 'Piloti read both:',
+      confirm: 'Yes, newer revision',
+      dismiss: 'No',
+      askEditor: 'Anyone who may edit this folder can confirm it.',
+      saveError: 'The link could not be saved. Please try again.',
+      versions: {
+        open: 'Open',
+        download: 'Download',
+        compareText: 'Compare text with revision {number}',
+      },
+      /** The section in the rail (document-fassungen.tsx). Revisions are numbered newest first, across same-name uploads and linked documents; the header says where the NEWEST stands. */
+      rail: {
+        number: 'Revision {number}',
+        dateTag: 'as of {date}',
+        stepOf: 'Step {step} of {total}: {stage}',
+        next: {
+          approve: 'Next step: approval by {who}',
+          approveYou: 'Next step: your approval',
+          approveOpen: 'Next step: approval',
+          revise: 'Next step: rework by {who}',
+          reviseYou: 'Next step: your rework',
+          submit: 'Next step: submission for approval by {who}',
+          submitYou: 'Next step: submit it for approval',
+          publish: 'Next step: publication',
+          publishYou: 'Next step: publish it',
+        },
+        whoMore: '{names} or {count} others',
+        /** Only when the name is truly unknown. Never “someone”. */
+        someone: 'a team member',
+        answer: {
+          this: 'Piloti answers from this revision.',
+          older: 'Piloti still answers from revision {number}.',
+          newer: 'Piloti answers from the newer revision {number}; this one stays readable, also for comparing.',
+          notYet: 'Piloti answers from it only once it is published.',
+          never: 'Piloti does not answer from it.',
+        },
+        /** {name} arrives with the date: “Anna Berger · 14 Aug 2026”, kept on one line. */
+        act: '{act} by {name}',
+        actAnonymous: '{act} on {date}',
+        byYou: 'you',
+        bySomeone: 'a team member',
+        rowMenu: 'More actions for revision {number}',
+        approveExplain:
+          'Approving means the office stands behind the content. It can then be published; only then does Piloti answer from it.',
+        changedSince: 'Changed since revision {number}:',
+        archive: 'Retire this file …',
+      },
+    },
     indexed: {
       title: 'Read by Piloti',
       documentType: 'Document type',
       project: 'Project',
       updated: 'Updated',
-      caption: 'Automatically detected on upload — your corrections improve future answers.',
       pending: 'Piloti is still reading this document – its summary and properties appear here once it is done.',
     },
-    pages: 'Pages',
-    chunks: 'Passages',
-    contents: 'Contents',
     contentTypeNames: {
       text: 'Text',
       table: 'Tables',
@@ -195,7 +265,7 @@ export const files = {
           transformed: 'transformed',
         },
         source: {
-          text: 'labelled text',
+          text: 'labeled text',
           visual: 'read from the drawing',
           inferred: 'inferred',
         },
@@ -231,7 +301,7 @@ export const files = {
     downloadFailed: "The download couldn't be started. Please try again.",
     ingestionFailed: 'Reading failed',
     ingestionFailedPreviousVersionKept:
-      'Search and Piloti still use the previous version. The download serves the new file.',
+      'Search and Piloti still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
     retryingIngestion: 'Retrying…',
     retryIngestionError: "Reading couldn't be restarted. Please try again.",
@@ -252,12 +322,12 @@ export const files = {
     peekIndexingHint: 'Piloti cannot cite this file until it has been read.',
     peekFailedHint: 'Reading failed. Piloti cannot cite this file.',
     /**
-     * The same failure on a document with an earlier version: the index keeps
-     * that version's passages, so the file is still citable, just not the new
+     * The same failure on a document with an earlier revision: the index keeps
+     * that revision's passages, so the file is still citable, just not the new
      * bytes. Mirrors `ingestionFailedPreviousVersionKept` in the pane.
      */
     peekFailedPreviousVersionHint:
-      'The new file could not be read — Piloti is still citing the previous version.',
+      'The new file could not be read — Piloti is still citing the previous revision.',
     /** The way out of that: the enlarged view carries the error and the retry. */
     peekFailedAction: 'Details',
   },
@@ -267,7 +337,7 @@ export const files = {
    * text stays behind `details`.
    */
   ingestFailure: {
-    rendition_failed: "The PDF version of this file couldn't be created. Try reading it again, or upload it as a PDF.",
+    rendition_failed: "The PDF preview of this file couldn't be created. Try reading it again, or upload it as a PDF.",
     download_failed: "The uploaded file couldn't be fetched from storage. Try reading it again, or upload it once more.",
     interrupted: 'Reading stopped when the service restarted. Read it again to finish.',
     unreadable_pages:
@@ -279,7 +349,7 @@ export const files = {
     empty: 'No text was found in this file. It may be password-protected, damaged or empty.',
     deleted: 'The file was deleted while Piloti was reading it.',
     quarantined:
-      'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin releases or deletes it.',
+      'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
   },
@@ -301,7 +371,7 @@ export const files = {
     folderEmptyDescription: 'Upload documents here, or pick another folder from the sidebar.',
     noDocumentsTitle: 'No documents yet',
     noDocumentsDescription:
-      "Add your building's plans, permits and reports. Piloti reads them to ground every answer in your project's own documents — not generic guidance.",
+      'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
     searchPlaceholder: 'Search files...',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
@@ -352,7 +422,7 @@ export const files = {
     newInside: 'New folder inside',
     open: 'Open',
     move: 'Move to folder',
-    items: '{count} item(s)',
+    items: '{count, plural, one {# item} other {# items}}',
     openFolder: 'Open folder “{name}”',
     breadcrumb: 'Folder path',
     movedFolder: '“{name}” moved to “{parent}”.',
@@ -369,7 +439,7 @@ export const files = {
       inherit: 'Same as the parent folder',
       inheritHint:
         'The folder takes the access of the folder above it. At the top, the project applies: whoever may read reads, whoever may edit edits.',
-      custom: 'Own access',
+      custom: 'Custom access',
       customHint:
         'Only the listed people get into the folder, each with “Read” or “Edit”. Anyone not listed does not see it, unless all project members may read. Organization admins may always do everything.',
       everyoneReads: 'All project members may read',
@@ -435,7 +505,7 @@ export const files = {
     purge: 'Delete permanently',
     purgeTitle: 'Permanently delete “{name}”?',
     purgeDescription:
-      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every version and preview. This cannot be undone. What Piloti derived from them follows your organization’s setting.',
+      'The folder, its subfolders and {documents, plural, one {# document} other {# documents}} are deleted now, with every revision and preview. This cannot be undone. What Piloti derived from them follows your organization’s setting.',
     purged: '“{name}” is permanently deleted.',
     held: 'This folder is under a retention obligation and cannot be deleted right now.',
     purgeError: 'The folder could not be permanently deleted. Please try again.',
@@ -458,7 +528,7 @@ export const files = {
       'This folder holds content you may not delete. It can be deleted by someone who may edit all of its subfolders.',
     deleteFolderIndexDown: 'The folder was not deleted because the search index did not answer. Please try again.',
     openBin: 'Bin',
-    corpusSubtitle: 'Project knowledge — these documents ground Piloti’s answers',
+    corpusSubtitle: 'Project knowledge: documents Piloti reads and cites.',
     uploadDocuments: 'Upload documents',
     uploadProblem: 'Upload problem',
     dismissError: 'Dismiss error',
@@ -500,7 +570,7 @@ export const files = {
     reingestAlreadyDone: 'Already finished',
     reingestConfirmTitle: 'Read “{name}” again?',
     reingestConfirmDescription:
-      'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Answers keep using the current version until the new one is ready.',
+      'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
     reingestConfirmAction: 'Read again',
     reingestError: "Reading couldn't be restarted. Please try again.",
     label: 'File actions for “{name}”',
@@ -571,14 +641,24 @@ export const files = {
     compareError: 'Could not compare with what is already here. Nothing was uploaded.',
     planChanged: 'The preview has changed. Nothing was uploaded. Please review it and confirm again.',
     single: {
-      updateTitle: 'Upload a new version of “{name}”?',
+      // One dropped file that is a new revision of a document here, by its name
+      // (same name, `update`) or by the name series it continues (`fassung`).
+      newFassungTitle: 'New revision of “{name}”?',
       updateExplain:
-        '“{name}” is already here. The new version becomes the current one; the previous one stays under Versions.',
+        '“{name}” is already here under this name. The new file becomes the current revision; the previous one stays readable under “Revisions and approval”.',
+      fassungExplain:
+        '“{file}” continues “{name}”: the index or date in its name is newer. The older revision stays readable, Piloti answers from the new one and notes what changed; the link can be undone later.',
+      unclearTitle: 'Is “{file}” a new revision?',
+      unclearExplain:
+        'By its name, several documents could be meant. Choose the one this file continues, or upload it as a separate document.',
+      notNewerExplain:
+        'By its name, “{file}” is not newer than “{name}”. Filed as a new revision, it would still become the current one.',
       unchangedTitle: 'Unchanged – already here',
       unchangedExplain: '“{name}” is identical to this file. Nothing is uploaded.',
       refiled: 'The document is currently in another folder and moves to “{folder}”.',
-      archived: 'The document is archived. The new version is added to it and only shows in the list again once the document is restored.',
-      confirmUpdate: 'Upload as new version',
+      archived: 'The document is archived. The new revision is added to it and only shows in the list again once the document is restored.',
+      confirmFassung: 'File as a new revision',
+      confirmSeparate: 'Upload as a separate document',
     },
     destination: 'Its folder structure is recreated inside “{folder}”.',
     // The re-sync fold: the dropped folder IS the folder they are standing in,
@@ -596,14 +676,14 @@ export const files = {
     // somebody has renamed it here and the name in the drop no longer says so.
     alreadyHereAs: 'here as “{name}”',
     archivedMatch: 'archived document',
-    updatePrompt: 'Update the {count} document(s) that already exist',
-    updateExplain:
-      'They keep their name, their citations and everything assigned to them. The new version becomes the current one; the previous one stays under Versions.',
-    refiled: '{count} of them are filed elsewhere at the moment and move to where this folder puts them.',
+    refiled:
+      '{count, plural, one {# of them is filed elsewhere at the moment and moves to where this folder puts it.} other {# of them are filed elsewhere at the moment and move to where this folder puts them.}}',
     // The unchanged ones send no bytes, so nothing about the upload would move
     // them — they are moved on their own, or the tree is not really recreated.
-    moving: '{count} unchanged document(s) are filed elsewhere and are moved to where this folder puts them.',
-    duplicates: '{count} file(s) are already in the project under a different name',
+    moving:
+      '{count, plural, one {# unchanged document is filed elsewhere and is moved to where this folder puts it.} other {# unchanged documents are filed elsewhere and are moved to where this folder puts them.}}',
+    duplicates:
+      '{count, plural, one {# file is already in the project under a different name} other {# files are already in the project under a different name}}',
     duplicatesExplain:
       'Uploading them would add a second copy rather than replace anything, so they are not sent. Rename the document here, or the file on disk, so the two agree.',
     collisions: '{count} files share a name with another file in this upload',
@@ -611,28 +691,55 @@ export const files = {
       'A project holds one document per filename, so these are not uploaded. Rename them and drop them again.',
     // Held back by the office's name screening (ADR-0086): the files do not
     // leave this computer unless someone releases one of them.
-    excluded: '{count} file(s) stay on your computer',
+    excluded: '{count, plural, one {# file stays on your computer} other {# files stay on your computer}}',
     excludedExplain:
       'Your office marks these terms as sensitive, so these files are not uploaded. If one of them belongs in Piloti after all, tick it.',
     releaseFile: 'Upload anyway',
-    showAll: 'Show all {count} files',
+    // Files that come in as a new revision of a document already here: by the
+    // same name (ADR-0054) or by a name series under another name (ADR-0099).
+    // One concept, one word, whichever way Piloti recognised it (ADR-0099). Say
+    // document, file, revision: a name with an index does not say what a file is.
+    fassung: {
+      title: '{count, plural, one {# new revision} other {# new revisions}}',
+      consequence:
+        'The older revision stays readable, Piloti answers from the new one and notes what changed; unticked files come in as separate documents, and any link can be undone later.',
+      sameNameTitle:
+        '{count, plural, one {# file of the same name as a new revision} other {# files of the same name as new revisions}}',
+      sameNameReason:
+        'Same name as a document here: each keeps its name, citations and assignments, and its previous revision stays readable under “Revisions and approval”. Unticked, these are not uploaded.',
+      masterAll: '{count, plural, one {As a new revision} other {All # as new revisions}}',
+      masterSome: '{ticked} of {count} as new revisions',
+      masterNone: '{count, plural, one {Not as a new revision} other {None of # as new revisions}}',
+      seriesReason: 'Name series: an index or date in the name continues a document here.',
+      ofPrefix: 'Revision of',
+      offer: 'File as a new revision of “{name}”',
+      unclearTitle: '{count, plural, one {# file needs your choice} other {# files need your choice}}',
+      unclearHint: 'Nothing is ticked for you. Choose a document or tick the file, and it is filed as a new revision.',
+      reasonNotNewer: 'Not newer than the current revision “{name}”',
+      reasonSeveral: 'Several documents could be meant',
+      pick: 'Choose the document…',
+    },
+    showAll: '{count, plural, one {Show the file} other {Show all # files}}',
     action: {
       new: 'New',
-      update: 'Update',
+      fassung: 'New revision',
       unchanged: 'Unchanged',
       collision: 'Conflict',
       duplicate: 'Already here',
       skipped: 'Skipped',
       excluded: 'Excluded',
     },
-    confirm: 'Upload {count} file(s)',
+    confirm: '{count, plural, one {Upload # file} other {Upload # files}}',
+    // The same, when some of them come in as a new revision: the button moves with the boxes.
+    confirmWithFassungen:
+      '{count, plural, one {Upload # file} other {Upload # files}}, {fassungen, plural, one {# as a new revision} other {# as new revisions}}',
     // Nothing to upload, but the tree still says these belong elsewhere.
-    confirmMoveOnly: 'Move {count} document(s)',
+    confirmMoveOnly: '{count, plural, one {Move # document} other {Move # documents}}',
     nothingToDo: 'Nothing to upload',
     cancel: 'Cancel',
     // The summary after the plan has been applied.
-    done: '{uploaded} file(s) uploaded, {skipped} unchanged.',
-    doneMoved: '{uploaded} file(s) uploaded, {skipped} unchanged, {moved} moved.',
+    done: '{uploaded, plural, one {# file uploaded} other {# files uploaded}}, {skipped} unchanged.',
+    doneMoved: '{uploaded, plural, one {# file uploaded} other {# files uploaded}}, {skipped} unchanged, {moved} moved.',
     foldersError: 'The folders for this upload could not be created. Nothing was uploaded.',
     // Distinct from `foldersError`: the folders were made and the upload itself
     // is what went wrong, which is a different thing to retry.
@@ -776,10 +883,164 @@ export const files = {
    * people asked for. The count on the button is the price of hiding them — a
    * filter nobody can see is worse than a crowded strip.
    */
+  // The folder brief: what Piloti knows about a folder and everything under it.
+  brief: {
+    eyebrow: 'What Piloti knows here',
+    scopeFolder: 'in “{name}” and its subfolders',
+    scopeProject: 'in this project',
+    scopeOffice: 'in Office filing',
+    headlineAll: '{count, plural, one {The document is read} other {All # documents read}}',
+    headlineSome: '{readable} of {count, plural, one {# document} other {# documents}} read',
+    headlineNone: '{count, plural, one {The document is not read yet} other {None of the # documents read yet}}',
+    headlineNothingToRead: '{count, plural, one {# document, not part of the knowledge base} other {# documents, none part of the knowledge base}}',
+    states: {
+      readable: '{count} read',
+      reading: '{count} being read',
+      failed: '{count} failed',
+      held: '{count} held back',
+      unindexed: '{count} not in the knowledge base',
+    },
+    allRead: 'All read',
+    unplacedShort: '{count} without a document type',
+    /** Beside the legend: documents Piloti never reads. Not part of the headline's “of N”. */
+    unindexedAside: 'plus {count} not in the knowledge base',
+    /** Run-in labels of the two chip families under “What this is about”. */
+    typesLabel: 'Document type',
+    disciplinesLabel: 'Discipline',
+    /** Accessible names of the “Show” buttons: three identical buttons are three different things. */
+    showFailed: '{count, plural, one {Show the failed document} other {Show the # failed documents}}',
+    showHeld: '{count, plural, one {Show the held-back document} other {Show the # held-back documents}}',
+    showUnplaced: '{count, plural, one {Show the document without a document type} other {Show the # documents without a document type}}',
+    showState: 'Show “{state}” documents across all subfolders',
+    showTag: 'Show every “{tag}” document in this folder and its subfolders',
+    pages: '{count, plural, one {{formatted} page read} other {{formatted} pages read}}',
+    aboutTitle: 'What this is about',
+    noTypes: 'Piloti has not recognized a document type here yet.',
+    contains: 'Contains {list}',
+    needsTitle: 'Needs your attention',
+    failedLine: '{count, plural, one {Piloti could not read # document.} other {Piloti could not read # documents.}}',
+    readAgainAll: '{count, plural, one {Read again} other {Read all # again}}',
+    readAgainProgress: 'Starting {done} of {count}…',
+    readAgainDone: '{count, plural, one {# document is being read again} other {# documents are being read again}}',
+    readAgainPartial: '{count, plural, one {# document could not be restarted} other {# documents could not be restarted}}',
+    heldLine:
+      '{count, plural, one {# document is held back by the content check until someone reviews it.} other {# documents are held back by the content check until someone reviews them.}}',
+    unplacedLine:
+      '{count, plural, one {Piloti could not assign # document to a document type.} other {Piloti could not assign # documents to a document type.}}',
+    unplacedHint:
+      'You don’t have to enter anything, Piloti assigns types on its own. For these, only you can: open the document and choose “Assign”.',
+    show: 'Show',
+    missingTitle: 'What Piloti is still missing',
+    missingLead: 'From the project details, Piloti expects these documents and does not know them yet:',
+    missingMore: '+{count} more',
+    missingHint:
+      'If one of them is already here, Piloti just doesn’t know which file it is, and will call it missing in answers. Read does not mean matched to its role.',
+    topicsTitle: 'Topics Piloti recognized',
+    photos: '{count, plural, one {# photo} other {# photos}} from {span}',
+    whereTitle: 'Where it’s stuck',
+    expand: 'Expand',
+    collapse: 'Collapse',
+    slice: {
+      readable: 'Read',
+      reading: 'Being read',
+      failed: 'Failed',
+      held: 'Held back',
+      unindexed: 'Not in the knowledge base',
+      unplaced: 'Without a document type',
+      photos: 'Photos with a date taken',
+    },
+    sliceScopeFolder: '“{name}” and its subfolders',
+    sliceScopeRoot: 'all folders',
+    sliceClear: 'Back to the folder',
+    sliceEmpty: 'Nothing left here.',
+  },
+  /** The count on a document's card and row when it has Fassungen under other file names (ADR-0099). */
+  fassungBadge: {
+    count: '{count, plural, one {# revision} other {# revisions}}',
+    countTitle: '{count, plural, one {# revision of this document} other {# revisions of this document}}',
+    older: 'Older revision',
+    /** Tooltip of an older revision: what replaced it. {name} is the newer one's file name. */
+    olderTitle: 'Replaced by “{name}”',
+  },
+  /** Visual comparison of two Fassungen: side by side, overlaid, swiped (fassung-compare/). */
+  compare: {
+    title: 'Compare revisions',
+    olderLabel: 'Older',
+    newerLabel: 'Newer',
+    close: 'Close',
+    viewMode: 'View mode',
+    modeSide: 'Side by side',
+    modeOverlay: 'Overlay',
+    modeSwipe: 'Swipe',
+    legendOlder: 'Older (cyan)',
+    legendNewer: 'Newer (orange)',
+    legendLabel: 'Color key',
+    legendUnchanged: 'Unchanged (dark)',
+    captionOlder: 'Older revision',
+    captionNewer: 'Newer revision',
+    paneOlder: 'Older revision: {name}',
+    paneNewer: 'Newer revision: {name}',
+    pageOf: 'Page {n} of {m}',
+    pageOfTotal: 'of {m}',
+    pageInput: 'Page, {m} in total',
+    pageNavigation: 'Page',
+    previousPage: 'Previous page',
+    nextPage: 'Next page',
+    pageCountDiffers: 'These revisions differ in page count: {older} against {newer}.',
+    pageMissing: 'This revision has no page {n}.',
+    zoomIn: 'Zoom in',
+    zoomOut: 'Zoom out',
+    zoomLabel: 'Zoom',
+    zoomFit: 'Fit',
+    zoomPercent: '{percent}%',
+    zoomFitActive: 'Whole page fitted',
+    zoomFitAction: '{percent}% of the fitted size. Fit the whole page',
+    zoomHint: 'Ctrl + scroll or two fingers to zoom, drag to pan',
+    opacity: 'Show newer revision',
+    opacityValue: '{percent}%',
+    swipeDivider: 'Divider between the older and the newer revision',
+    swipeValue: '{percent}% older revision',
+    swipeHint: 'Drag or use ← → to move, double-click to centre',
+    keysHint: 'Arrow keys change the page, 1, 2 and 3 the view, Esc closes the comparison.',
+    keysHintVisible: '← → change page · 1 2 3 view · Esc close',
+    loading: 'Loading the pages…',
+    failedFile: 'The pages of {name} could not be loaded.',
+    failedBoth: 'The pages of both revisions could not be loaded.',
+    failedDescription: 'Often the connection only dropped for a moment. If a second try does not help, open the file on its own.',
+    retry: 'Try again',
+    notComparableTitle: 'These files cannot be compared visually',
+    notComparableDescription:
+      'Only pages and images can be laid over each other. The text comparison in the revision history shows what changed in the wording.',
+    openTextCompare: 'Open text comparison',
+    backToHistory: 'Back to the revision history',
+    changesRegion: 'Changes',
+    changesHeading: 'Changes ({count})',
+    pageGroup: 'Page {page}',
+    pageGroupShown: 'on screen',
+    changeShow: 'Change {number}: {label}. Show on the page.',
+    changeTag: 'Change {number}: {label}',
+    markPage: 'Compare page {page} with Piloti',
+    markingPage: 'Piloti is comparing page {page}…',
+    markedPage: 'Page {page} is marked',
+    markPageMissing: 'Only one revision has page {page}',
+    markSlow: 'This usually takes a few seconds.',
+    caveat: 'Marked by Piloti. Check dimensions in the document.',
+    markNotRead: 'This revision is still being read. You can compare as soon as it is citable.',
+    markUnavailable: 'Piloti is not reachable right now. Try again in a minute.',
+    markFailed: 'The comparison failed. Please try again.',
+  },
   filters: {
     label: 'Filter',
     labelActive: 'Filters ({count} active)',
     reset: 'Reset filters',
+    // The two toggles that WIDEN: retired files are not in the listing at all,
+    // and older revisions are one entry with the current one (ADR-0099). Worded
+    // alike under one heading, so neither reads as a narrowing.
+    alsoShowLabel: 'Also show',
+    alsoShow: {
+      retired: 'Retired',
+      olderFassungen: 'Older revisions',
+    },
     // What the reader is missing when type or status emptied the level: the
     // fact that a filter, and not an empty folder, is the reason.
     emptyTitle: 'No file matches these filters',
@@ -796,7 +1057,7 @@ export const files = {
       processing: 'Reading',
       ready: 'Citable',
     },
-    originLabel: 'Origin',
+    originLabel: 'Origin and approval',
     tagLabel: 'Category',
     kindLabel: 'File type',
     kind: {
@@ -806,6 +1067,8 @@ export const files = {
       notice: 'Official notice',
       photo: 'Photo',
       model: '3D model (IFC)',
+      sheet: 'Spreadsheet',
+      text: 'Text / note',
       document: 'Document',
     },
   },
@@ -826,20 +1089,18 @@ export const files = {
     notInKnowledge: 'Created by Piloti — not in the knowledge base',
   },
   /**
-   * Freigabe und Fassungen — the editorial state of a document (ADR-0054).
+   * Fassungen und Freigabe — the editorial state of a document (ADR-0054).
    *
    * A separate vocabulary from `status`, which is where a document is in the
    * INGESTION pipeline. „Freigegeben" and „Zitierbar" answer different
    * questions, and the two word lists must not borrow from each other.
    */
   lifecycle: {
-    title: 'Approval and versions',
+    title: 'Revisions and approval',
     /** Hover text on the badge; the state word is interpolated. */
-    badgeTitle: 'Version status: {state}',
+    badgeTitle: 'Approval status: {state}',
     /** The filter chip, beside By Piloti. */
     filter: 'Awaiting approval',
-    /** The one filter that WIDENS: retired files are not in the listing at all. */
-    archivedFilter: 'Also show retired',
     states: {
       draft: 'Draft',
       inReview: 'In review',
@@ -847,7 +1108,7 @@ export const files = {
       approved: 'Approved',
       published: 'Published',
       rejected: 'Rejected',
-      superseded: 'Superseded',
+      superseded: 'Replaced',
       /**
        * NOT "archived". Office filing (Büroablage, once "Archiv") is where a
        * document is placed so that it BECOMES cross-project office knowledge.
@@ -862,13 +1123,15 @@ export const files = {
       submit: 'Submit for approval',
       approve: 'Approve',
       requestChanges: 'Request changes',
-      /** The same decision, plus one thing: Piloti writes the next version. */
+      /** The same decision, plus one thing: Piloti writes the next revision. */
       delegateRevision: 'Have Piloti revise it',
       reject: 'Reject',
       publish: 'Publish',
       archive: 'Retire',
+      /** The ⋯ beside “Request changes”: have Piloti revise it, reject. */
+      more: 'More decisions',
     },
-    /** Who should release the version. Everyone who may is the default. */
+    /** Who should approve the revision. Everyone who may is the default. */
     reviewer: {
       every: 'All editors',
     },
@@ -884,30 +1147,31 @@ export const files = {
       orderLabel: 'Order for the reviewer',
       orderPlaceholder: 'In one sentence: what should be checked?',
       dueLabel: 'Due date (optional)',
-      needReviewer: 'Choose who should review this version.',
+      needReviewer: 'Choose who should review this revision.',
       needOrder: 'State the order in one sentence.',
       selfReviewNote:
         'No other editors — the approval will be recorded as a self-review.',
     },
     /**
      * Approving is the office asserting the content, so it is never one click:
-     * the act names its stand (version + date), the acting person and the
+     * the act names its stand (revision + date), the acting person and the
      * moment, and the checkbox is the signature.
      */
     approveConfirm: {
-      stand: 'Version {number} · as of {date}',
+      stand: 'Revision {number} · as of {date}',
       actingWithName: 'Acting: {name} · {date}',
       actingDateOnly: 'Acting: {date}',
-      checkbox: 'I release this version',
+      checkbox: 'I approve this revision',
     },
     /**
      * Publication is its own act in its own section — never a sibling button
-     * beside approval. Approving asserts the content; publishing issues it to
-     * the submission set / the authority.
+     * beside approval. Approving asserts the content; publishing makes the
+     * revision the one Piloti answers from: only a published revision is read
+     * into the knowledge base (ADR-0054).
      */
     publishSection: {
       heading: 'Publication',
-      blurb: 'Target: submission set / authority — version {number} is issued.',
+      blurb: 'Publishing makes revision {number} the one Piloti answers from.',
     },
     /**
      * Archiving is the one act in this section that cannot be taken back from
@@ -916,7 +1180,7 @@ export const files = {
      * it runs — never a fifth button in a row of review decisions.
      */
     archiveSection: {
-      heading: 'Take out of the working set',
+      heading: 'Take out of the file list',
       blurb:
         'Retiring removes the file from the file list and from the knowledge base. Nothing is deleted.',
       confirmTitle: 'Retire this file?',
@@ -925,46 +1189,51 @@ export const files = {
         listing:
           'The file leaves the file list. The “Also show retired” filter brings it back into view.',
         knowledge: 'Piloti stops citing it: its knowledge-base entries are removed.',
-        kept: 'The file and every version are kept — this is not a delete.',
+        kept: 'The file and every revision are kept. This is not a delete.',
         permanent: 'This cannot be undone here.',
       },
     },
     /**
-     * A control that is not offered is a muted line, never nothing: the reader
-     * sees what the version is waiting for and — where that is a known fact —
-     * who submitted it. Who was ASKED is server-side (the reviewer chain), so
-     * no name is invented for them.
+     * What a state means for the reader, in one sentence. The state words
+     * („In review", „Approved") are only informative to somebody who knows what
+     * a state changes, and exactly one thing changes: whether Piloti answers
+     * from this revision. Only a published revision is read into the knowledge
+     * base (ADR-0054); when none stands behind the newest one, the sentence
+     * cannot point at it („Alone").
      */
-    waiting: {
-      draft: 'Draft — waiting to be submitted for approval.',
-      inReview: 'In review — waiting for approval.',
-      inReviewBy: 'In review — waiting for approval · submitted by {name}.',
-      changesRequested: 'Changes requested — waiting for a new version.',
-      approved: 'Approved — waiting to be published.',
-      published: 'Published — no further step.',
-      rejected: 'Rejected — no further step.',
-      superseded: 'Superseded by a newer version.',
-      archived: 'Retired — no longer in the working set.',
-      none: 'No version yet.',
+    meaning: {
+      draftLive: 'A draft of a new revision. Piloti keeps answering from the published revision.',
+      draftAlone: 'A draft. Piloti answers from it only once it is approved and published.',
+      inReviewLive: 'Waiting for approval. Piloti answers from the published revision.',
+      inReviewAlone: 'Waiting for approval. Until then Piloti does not answer from it.',
+      changesRequestedLive:
+        'Changes requested. Piloti answers from the published revision until the reworked one is published.',
+      changesRequestedAlone:
+        'Changes requested. Piloti answers from the reworked revision only once it is published.',
+      approvedLive:
+        'Approved, waiting to be published. Until then Piloti answers from the published revision.',
+      approvedAlone: 'Approved, waiting to be published. Only then does Piloti answer from it.',
+      published: 'Piloti answers from this revision.',
+      rejectedLive: 'Rejected. Piloti answers from the published revision.',
+      rejectedAlone: 'Rejected. Piloti does not answer from it.',
+      superseded: 'Replaced by a newer revision.',
+      archived: 'Retired. Gone from the file list; Piloti stops citing it.',
+      none: 'No revision yet.',
+      olderFassung: 'An older revision. Piloti answers from the newer one.',
     },
     comment: {
       /** Rejecting needs a reason; asking for changes needs the changes. */
       reasonLabel: 'Reason for rejection',
       changesLabel: 'What needs to change',
       /** Said where the decision is taken, not in a tooltip. */
-      delegateNote: 'Piloti then drafts the next version and submits it for approval.',
-      placeholder: 'The next version reads this.',
+      delegateNote: 'Piloti then drafts the next revision and submits it for approval.',
+      placeholder: 'The next revision reads this.',
       cancel: 'Cancel',
     },
     versions: {
-      title: 'Versions',
-      number: 'Version {number}',
-      /** The version the document currently serves. */
-      live: 'Current',
-      open: 'Open',
-      compare: 'Compare with {number}',
-      comparing: 'Loading both versions…',
-      compareFailed: 'The two versions could not be loaded.',
+      number: 'Revision {number}',
+      comparing: 'Loading both revisions…',
+      compareFailed: 'The two revisions could not be loaded.',
       /**
        * The line diff. No red and no green anywhere in it: chroma belongs to
        * provenance, and an editorial change is not provenance, so a changed line
@@ -974,19 +1243,21 @@ export const files = {
        */
       diff: {
         heading: 'What changed',
-        between: 'Version {from} → version {to}',
+        between: 'Revision {from} → revision {to}',
         added: '{count, plural, one {# line added} other {# lines added}}',
         removed: '{count, plural, one {# line removed} other {# lines removed}}',
         gap: '{count, plural, one {# line unchanged} other {# lines unchanged}}',
-        identical: 'The two versions are identical, line for line.',
+        identical: 'The two revisions are identical, line for line.',
         truncated: 'This comparison is long — showing the first {count} lines.',
         addedLine: 'added',
         removedLine: 'removed',
       },
+      uploaded: 'Uploaded',
+      created: 'Created',
       submitted: 'Submitted',
       approved: 'Approved',
       published: 'Published',
-      // Refusals leave milestones too: a version sent back must name who sent
+      // Refusals leave milestones too: a revision sent back must name who sent
       // it and when, or the refusal is invisible in the history.
       changesRequested: 'Changes requested',
       rejected: 'Rejected',
@@ -996,11 +1267,11 @@ export const files = {
     },
     errors: {
       /** The compare-and-swap lost: somebody decided first, so re-read. */
-      conflict: 'This has moved on — reloading the current state.',
+      conflict: 'Someone decided first. Reloading the current revision.',
       /** The file has not passed its upload screening yet (ADR-0086). */
-      held: 'This file is still being checked. It can be submitted once the check has cleared it.',
+      held: 'This file is still being checked. You can submit it once the check is complete.',
       actionFailed: 'That did not go through. Nothing has changed.',
-      loadFailed: 'The version history could not be loaded.',
+      loadFailed: 'The revision history could not be loaded.',
     },
   },
   assignment: {

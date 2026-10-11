@@ -15,7 +15,7 @@
  *
  * `?variant=review` is the one that answers "has anybody opened the review rail
  * on a phone?" (ledger 40): it passes the `lifecyclePermissions` the pane needs
- * before it mounts „Freigabe und Fassungen", which no preview had ever done, so
+ * before it mounts „Fassungen und Freigabe", which no preview had ever done, so
  * the section shipped unphotographed at every width.
  */
 
@@ -80,6 +80,8 @@ const FIXTURE: FileItem = {
     'Nutzungssicherheit/Barrierefreiheit',
     'Schallschutz',
   ],
+  topics: null,
+  capture: null,
   // Somebody is on the hook for this document. `Unvergeben` is the other state
   // and the generated fixture below keeps it, so one run photographs both.
   assignees: [
@@ -129,6 +131,8 @@ const GENERATED_FIXTURE: FileItem = {
   chunkCount: 0,
   contentTypes: [],
   tags: [],
+  topics: null,
+  capture: null,
 }
 
 /**
@@ -154,6 +158,8 @@ const TEXT_FIXTURES: Record<'markdown' | 'csv' | 'text', FileItem> = {
     chunkCount: 4,
     contentTypes: ['text'],
     tags: ['Checkliste'],
+    topics: null,
+    capture: null,
   },
   csv: {
     id: 'dev-doc-csv',
@@ -170,6 +176,8 @@ const TEXT_FIXTURES: Record<'markdown' | 'csv' | 'text', FileItem> = {
     chunkCount: 2,
     contentTypes: ['text', 'table'],
     tags: [],
+    topics: null,
+    capture: null,
   },
   text: {
     id: 'dev-doc-txt',
@@ -186,6 +194,8 @@ const TEXT_FIXTURES: Record<'markdown' | 'csv' | 'text', FileItem> = {
     chunkCount: 1,
     contentTypes: ['text'],
     tags: [],
+    topics: null,
+    capture: null,
   },
 }
 
@@ -213,6 +223,8 @@ const officeFixture = (variant: OfficeVariant): FileItem => ({
   chunkCount: 12,
   contentTypes: ['text', 'table'],
   tags: [],
+  topics: null,
+  capture: null,
 })
 
 /**
@@ -494,8 +506,8 @@ const REVIEW_FIXTURE: FileItem = {
 /**
  * Scroll the review section into view before the shot — at every viewport.
  *
- * The harness captures a page at rest, and „Freigabe und Fassungen" is not at
- * rest's top any more: it is LAST in the rail, under the summary and the facts,
+ * The harness captures a page at rest, and „Fassungen und Freigabe" is not at
+ * rest's top: it sits in the rail under the summary and Piloti's reading,
  * because a review apparatus is not what a reader opens a file for. At 390px
  * the rail also stacks under the document. Either way the panel is a scroll
  * away, and a shot of the top of the rail is evidence of the identity block
@@ -517,7 +529,7 @@ function ScrollRailIntoView(): null {
   useEffect(() => {
     const timer = setInterval(() => {
       if (scrolledIntoView) return clearInterval(timer)
-      const panel = document.querySelector('[data-testid="document-lifecycle-panel"]')
+      const panel = document.querySelector('[data-testid="document-fassungen"]')
       if (!panel) return
       panel.scrollIntoView({ block: 'start', behavior: 'instant' })
       const box = panel.getBoundingClientRect()
@@ -622,7 +634,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         return Response.json({ text: body, truncated: textMatch[1] === 'dev-doc-txt' })
       }
       // ── the review rail ─────────────────────────────────────────────────
-      // `?variant=review` mounts `DocumentLifecyclePanel` INSIDE the pane's
+      // `?variant=review` mounts `DocumentFassungen` INSIDE the pane's
       // rail, which is the only place it actually ships and the one place it
       // had never been photographed (ledger 40). The panel reaches the network
       // through the typed client, so the fixture goes here rather than through
@@ -716,7 +728,7 @@ export default function FilePreviewDevPage({
   // rail mounts it (ledger 40).
   //
   // Not through `FilePreviewDialog`: that mount forwards neither
-  // `lifecyclePermissions` nor `viewerUserId`, so „Freigabe und Fassungen" can
+  // `lifecyclePermissions` nor `viewerUserId`, so „Fassungen und Freigabe" can
   // never appear inside it — the rail ships through `file-preview-host`, which
   // renders `FilePreviewPane` directly in a `h-[85vh] w-[min(960px,…)]` box.
   // The box below is that box, so the preview photographs the geometry the

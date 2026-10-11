@@ -689,6 +689,66 @@ describe('ArchivWorkspace — a file the Archiv already holds', () => {
     expect(probed).toEqual([['brandschutz-gutachten.pdf']])
   })
 
+  /*
+   * One file whose name continues a document under another name (ADR-0099):
+   * two named outcomes, and the answer reaches the upload. The second button
+   * changes the plan AND confirms, and the hook applies only a plan that matches
+   * the one the reader was shown, so the confirm has to wait for the plan to
+   * carry the answer; a same-tick confirm would refuse with „Die Vorschau hat
+   * sich geändert" or send the old tick.
+   */
+  describe('one file that continues a document', () => {
+    const OLDER = 'doc-older-b'
+    beforeEach(() => {
+      server.use(
+        http.post('/api/archiv/documents/fassung-candidates', async ({ request }) => {
+          const { names } = (await request.json()) as { names: string[] }
+          return HttpResponse.json({
+            candidates: names.map((name) => ({
+              name,
+              candidates: [{ id: OLDER, filename: 'Gutachten_Index_B.pdf', displayName: null, label: 'Index B' }],
+              newer: true,
+              unambiguous: true,
+            })),
+          })
+        })
+      )
+    })
+
+    const fassungOfSent = async (): Promise<string | null> => {
+      await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
+      const [files, options] = mockUploadFiles.mock.calls[0] as [File[], { fassungOf: (file: File) => string | null }]
+      return options.fassungOf(files[0])
+    }
+
+    it('files it as the new Fassung with „Als neue Fassung ablegen"', async () => {
+      const user = userEvent.setup()
+      render(<ArchivWorkspace canManage />)
+      await screen.findByText('brandschutz-gutachten.pdf')
+
+      pick(new File(['c'], 'Gutachten_Index_C.pdf', { type: 'application/pdf' }))
+      const dialog = await screen.findByTestId('folder-upload-dialog')
+      await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-fassung'))
+      await user.click(within(dialog).getByTestId('folder-upload-sole-fassung'))
+
+      expect(await fassungOfSent()).toBe(OLDER)
+    })
+
+    it('uploads it as a document of its own with „Als eigenes Dokument hochladen"', async () => {
+      const user = userEvent.setup()
+      render(<ArchivWorkspace canManage />)
+      await screen.findByText('brandschutz-gutachten.pdf')
+
+      pick(new File(['c'], 'Gutachten_Index_C.pdf', { type: 'application/pdf' }))
+      const dialog = await screen.findByTestId('folder-upload-dialog')
+      await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-fassung'))
+      await user.click(within(dialog).getByTestId('folder-upload-sole-separate'))
+
+      expect(await fassungOfSent()).toBeNull()
+      expect(toastError).not.toHaveBeenCalled()
+    })
+  })
+
   // Paged listing: the oldest Archiv document may not be loaded, and the upload
   // versions it anyway. The probe is what knows.
   it('asks about a same-name document the loaded listing does not hold', async () => {

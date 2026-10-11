@@ -67,7 +67,7 @@ class _RecordingIngestor:
             FileInfo(file_id="f1", file_name="plan.pdf", collection_name=collection_name, status=FileStatus.SUCCESS)
         ]
 
-    def delete_files(self, file_ids, collection_name):
+    def delete_files(self, file_ids, collection_name, *, permanent=False):
         self._record("delete_files")
         return {"successful": list(file_ids), "failed": [], "total_deleted": len(file_ids)}
 
@@ -118,7 +118,7 @@ def store_threads(monkeypatch):
 
         return call
 
-    monkeypatch.setattr(documents_module, "update_document_tags", recorder("update_document_tags", True))
+    monkeypatch.setattr(documents_module, "set_document_tags_by_person", recorder("set_document_tags_by_person", True))
     monkeypatch.setattr(documents_module, "set_document_display_title", recorder("set_document_display_title", True))
     monkeypatch.setattr(documents_module, "set_document_folder_path", recorder("set_document_folder_path", True))
     monkeypatch.setattr(documents_module, "rewrite_document_folder_paths", recorder("rewrite", 3))

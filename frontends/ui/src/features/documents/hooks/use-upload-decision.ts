@@ -5,13 +5,17 @@ import { useCallback, useRef, useState } from 'react'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { digestFiles } from '../lib/content-digest'
+import type { FassungCandidateMatch } from '@/lib/documents/name-probe-types'
+import type { FassungChange } from '../lib/fassung-proposals'
 import {
   buildFolderUploadPlan,
+  continuesASeries,
   isFolderUpload,
   needsUploadDecision,
   type FolderUploadPlan,
   type FolderUploadPlanInput,
   type PlanDocument,
+  type PlannedFile,
 } from '../lib/folder-upload-plan'
 
 /**
@@ -24,6 +28,18 @@ export type PlanDocumentSource =
   | readonly PlanDocument[]
   | ((names: readonly string[]) => Promise<readonly PlanDocument[]>)
 
+/**
+ * Where the offers „Als neue Fassung von X ablegen" come from: a probe asked
+ * with the dropped names (`name-probe-client.ts`, ADR-0099), answering for the
+ * names that continue a document on the shelf. `landsIn` says where each name
+ * lands (`PlannedFile.landsInFolderId`): a restricted folder is a collection of
+ * its own (ADR-0087), and only a document of the same collection can be linked.
+ */
+export type FassungOfferSource = (
+  names: readonly string[],
+  landsIn: ReadonlyMap<string, string | null>,
+) => Promise<readonly FassungCandidateMatch[]>
+
 /** What the dialog is about: a directory tree, or files picked or dropped loose. */
 export type UploadDecisionKind = 'folder' | 'files'
 
@@ -35,6 +51,39 @@ async function documentsFor(source: PlanDocumentSource, files: readonly File[]):
   if (typeof source !== 'function') return source
   if (files.length === 0) return []
   return source([...new Set(files.map((file) => file.name))])
+}
+
+/**
+ * What these files continue on the shelf. Only names that read as part of a
+ * revision series are asked about, so an ordinary drop makes no request. An
+ * offer is a convenience, never a gate: when the probe cannot answer, the files
+ * are planned without one and upload as they always did.
+ */
+async function offersFor(
+  source: FassungOfferSource | undefined,
+  files: readonly File[],
+  planned: readonly PlannedFile[],
+): Promise<readonly FassungCandidateMatch[]> {
+  const names = [...new Set(files.map((file) => file.name).filter(continuesASeries))]
+  if (!source || names.length === 0) return []
+  const wanted = new Set(names)
+  const landsIn = new Map(
+    planned.filter((entry) => wanted.has(entry.file.name)).map((entry) => [entry.file.name, entry.landsInFolderId ?? null] as const),
+  )
+  try {
+    return await source(names, landsIn)
+  } catch {
+    return []
+  }
+}
+
+/** The input with these offers added; a later answer for the same name replaces the earlier. */
+function withOffers(input: FolderUploadPlanInput, found: readonly FassungCandidateMatch[]): FolderUploadPlanInput {
+  if (found.length === 0) return input
+  return {
+    ...input,
+    fassungOffers: new Map([...(input.fassungOffers ?? []), ...found.map((offer) => [offer.name, offer] as const)]),
+  }
 }
 
 /** The input with these documents added, each once: two answers about one name must not list it twice. */
@@ -58,8 +107,16 @@ export interface UploadDecision {
    * could touch rather than against the page of the listing on screen.
    */
   propose: (
-    input: Omit<FolderUploadPlanInput, 'documents' | 'digests' | 'screening'> & {
+    input: Omit<
+      FolderUploadPlanInput,
+      'documents' | 'digests' | 'screening' | 'fassungOffers' | 'fassungChoices'
+    > & {
       documents: PlanDocumentSource
+      /**
+       * Asks the shelf which documents the dropped names continue
+       * (ADR-0099). Without it nothing is offered.
+       */
+      fassungOffers?: FassungOfferSource
       /**
        * The path of the folder the reader stands in, from the shelf root, or
        * null at the root: files are screened against where they land too.
@@ -86,6 +143,13 @@ export interface UploadDecision {
    * replaced this one meanwhile.
    */
   settle: () => Promise<SettledPlan | null>
+  /**
+   * The reader's answer to „Als neue Fassung von X ablegen" for one file or
+   * for all of a group at once: ticked or not, and which candidate. Picking a
+   * candidate ticks the row unless said otherwise. Re-plans at once; the answer
+   * is part of the plan the reader confirms.
+   */
+  changeFassung: (change: FassungChange) => void
   plan: FolderUploadPlan | null
   kind: UploadDecisionKind
   open: boolean
@@ -108,7 +172,9 @@ export interface UploadDecision {
  * it did not carry used to be versioned without a word.
  *
  * Files that match nothing go out at once; anything that would touch an
- * existing document opens the plan dialog first. A folder always opens it.
+ * existing document opens the plan dialog first, and so does a file whose name
+ * continues one as its next Fassung (ADR-0099, `fassungOffers`). A folder always
+ * opens it.
  */
 export function useUploadDecision(): UploadDecision {
   const [plan, setPlan] = useState<FolderUploadPlan | null>(null)
@@ -125,6 +191,7 @@ export function useUploadDecision(): UploadDecision {
   const lastInput = useRef<FolderUploadPlanInput | null>(null)
   /** Where the last plan's documents came from, and the names the probe was already asked. */
   const lastSource = useRef<PlanDocumentSource>([])
+  const lastOfferSource = useRef<FassungOfferSource | undefined>(undefined)
   const probed = useRef<Set<string>>(new Set())
   /** Release probes not yet answered: a confirm waits for them, or a file goes out as `new` that is a version. */
   const asking = useRef<Set<Promise<void>>>(new Set())
@@ -135,7 +202,7 @@ export function useUploadDecision(): UploadDecision {
     if (input.files.length === 0) return
     const current = ++generation.current
     const isFolder = isFolderUpload(input.files)
-    const { screeningBasePath, documents: source, ...planInput } = input
+    const { screeningBasePath, documents: source, fassungOffers: offerSource, ...planInput } = input
     // The screening first, and alone: the name probe is a request, and a name
     // the office's policy holds back must not leave the browser in it either
     // (ADR-0086). Without the policy nothing is planned and nothing is sent.
@@ -144,12 +211,16 @@ export function useUploadDecision(): UploadDecision {
     const screening = { policy, basePath: screeningBasePath ?? null, released: new Set<File>() }
     const screened = buildFolderUploadPlan({ ...planInput, documents: [], screening })
     const admitted = screened.files.filter((file) => file.action !== 'excluded').map((file) => file.file)
-    const documents = await documentsFor(source, admitted)
+    const [documents, offers] = await Promise.all([
+      documentsFor(source, admitted),
+      offersFor(offerSource, admitted, screened.files),
+    ])
     if (current !== generation.current) return
     lastSource.current = source
+    lastOfferSource.current = offerSource
     probed.current = new Set(admitted.map((file) => file.name))
     asking.current = new Set()
-    const base: FolderUploadPlanInput = { ...planInput, documents, screening }
+    const base = withOffers({ ...planInput, documents, screening }, offers)
     // First pass names the plausible duplicates; only those are read into
     // memory. Everything else is an upload either way. An excluded file is not
     // `new`, so the reader is always shown what the screening held back.
@@ -178,12 +249,15 @@ export function useUploadDecision(): UploadDecision {
   const probe = useCallback(async (files: readonly File[], current: number): Promise<void> => {
     const unasked = files.filter((file) => !probed.current.has(file.name))
     if (unasked.length === 0) return
-    const found = await documentsFor(lastSource.current, unasked)
+    const [found, offers] = await Promise.all([
+      documentsFor(lastSource.current, unasked),
+      offersFor(lastOfferSource.current, unasked, lastInput.current ? buildFolderUploadPlan(lastInput.current).files : []),
+    ])
     if (current !== generation.current || !lastInput.current) return
     // Kept the moment it is known, before the read below: the name is not asked
     // again, so an answer dropped with a failed read would plan a version as new.
     for (const file of unasked) probed.current.add(file.name)
-    lastInput.current = withDocuments(lastInput.current, found)
+    lastInput.current = withOffers(withDocuments(lastInput.current, found), offers)
     setPlan(buildFolderUploadPlan(lastInput.current))
     const asked = lastInput.current
     const unread = buildFolderUploadPlan(asked).hashCandidates.filter((candidate) => !asked.digests?.has(candidate))
@@ -231,6 +305,17 @@ export function useUploadDecision(): UploadDecision {
     [probe]
   )
 
+  const changeFassung = useCallback<UploadDecision['changeFassung']>(({ files, chosen, targetId }) => {
+    const input = lastInput.current
+    if (!input) return
+    const choices = new Map(input.fassungChoices ?? [])
+    for (const file of files) {
+      choices.set(file, { ...choices.get(file), ...(targetId ? { targetId, chosen: chosen ?? true } : { chosen }) })
+    }
+    lastInput.current = { ...input, fassungChoices: choices }
+    setPlan(buildFolderUploadPlan(lastInput.current))
+  }, [])
+
   const settle = useCallback<UploadDecision['settle']>(async () => {
     const current = generation.current
     while (asking.current.size > 0) await Promise.all([...asking.current])
@@ -250,5 +335,5 @@ export function useUploadDecision(): UploadDecision {
     return { plan: settled, policy }
   }, [probe])
 
-  return { propose, setReleased, settle, plan, kind, open, setOpen, pending, setPending }
+  return { propose, setReleased, settle, changeFassung, plan, kind, open, setOpen, pending, setPending }
 }

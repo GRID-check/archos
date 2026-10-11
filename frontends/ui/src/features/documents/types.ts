@@ -44,6 +44,8 @@ export interface UploadIntent {
   folderPath: string | null
   /** Released from the name screening in the upload dialog. */
   screeningReleased: boolean
+  /** The document this file was filed as the new Fassung of, chosen in the upload dialog (ADR-0099); null for none. */
+  fassungOf?: string | null
 }
 
 /** Tracked file in the upload queue (client-side) */
@@ -144,6 +146,8 @@ export function trackedFileToFileItem(file: TrackedFile): FileItem {
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   }
 }
 

@@ -487,13 +487,16 @@ window in which a file nobody had screened was everybody's.
   document opens no revision task. The two version reads return a VERSION's
   bytes, and the verdict on record is about the item's, so the check is bound to
   the bytes returned (`versionBytesPassedScreening`): a version holding bytes a
-  person uploaded (`published`, `superseded`) passes only while it holds exactly
-  the bytes the item's verdict judged. No version records a verdict of its own,
-  so a model reads no earlier upload of a person's document, including one that
-  was screened in its day; workflow text (a draft, a version in review) follows
-  the item. A person opening an earlier version (the version list, the diff) is
-  not narrowed this way: telling a screened earlier upload from one replaced
-  before its verdict needs a verdict per version, which is not recorded yet.
+  person uploaded (`published`, `superseded`) passes only while it holds bytes
+  a passing verdict judged. Since 2026-10-11 (migration 0131) each version
+  records its own verdict (`document_versions.screened_hash`), written in the
+  transaction that records the item's, by the reconcile and a release; a
+  version passes on its own verdict or on the item's when that is about the
+  same bytes. An earlier upload replaced before its verdict, after its reading
+  failed or while quarantined passes on neither. Workflow text (a draft, a
+  version in review) follows the item. A person opening an earlier version (the
+  version list, the diff) is held to the same rule (`mayReceiveVersionBytes`),
+  except the uploader and the reviewers, who may see what is held.
 * **A held document opens no review round.** Its uploader reaches the version
   workflow, because the hold lets them see their own file, and may fork and edit
   a draft. Submitting it (the transitions with `openReviewInbox`) answers `409`

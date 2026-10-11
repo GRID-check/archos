@@ -108,6 +108,9 @@ const ALL_TYPES = [
   'document.release_requested',
   'mail_import.completed',
   'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -131,6 +134,9 @@ const OPERATIONAL_TYPES = [
   // collaboration imports mail too.
   'mail_import.completed',
   'mail_import.failed',
+  // A newer Fassung of a document you follow (ADR-0054): documents are not a
+  // chat feature, and an office without collaboration still has uploaders.
+  'document.new_fassung',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')
@@ -331,6 +337,30 @@ describe('listInbox — projection', () => {
     expect(byId.get('padded')!.subject).toBe('spaced')
     expect(byId.get('padded')!.excerpt!.length).toBeLessThanOrEqual(501)
     expect(byId.get('empty')).toMatchObject({ subject: null, excerpt: null })
+  })
+
+  it('carries the second name of a row (a new Fassung\'s newer document) and withholds it with the rest of the payload', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: '  Grundriss B  ' } }),
+      row({ id: 'junk', type: 'document.new_fassung', resourceId: 'conv_ok', payload: { subject: 'Grundriss A', related: 42 } }),
+      row({ id: 'inert', type: 'document.new_fassung', inertAt: at, payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+      row({ id: 'gone', type: 'document.new_fassung', resourceId: 'conv_gone', payload: { subject: 'Grundriss A', related: 'Grundriss B' } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    // The row is a sentence about a person: who made the change comes from the
+    // directory by `actorUserId`, never from the payload.
+    expect(byId.get('ok')).toMatchObject({ subject: 'Grundriss A', related: 'Grundriss B', actorName: 'Anna Berger' })
+    expect(byId.get('junk')!.related).toBeNull()
+    // The newer document's name is content: a reader who lost the document sees neither.
+    expect(byId.get('inert')!.related).toBeNull()
+    expect(byId.get('gone')!.related).toBeNull()
   })
 
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {

@@ -281,6 +281,22 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     gate: 'operational',
     email: IN_APP_ONLY,
   },
+  /*
+    A newer Fassung of a document the recipient follows (ADR-0054, ADR-0099).
+    `per-anchor`: the anchor is the older document (a confirmed link) or the new
+    version (a same-name upload), so two Fassungen of one document are two rows
+    and confirming the same link twice folds into one. Informational: the
+    document opens from the row and nothing waits on the reader. Operational,
+    like `document.review_requested`: documents are not a chat feature, and an
+    office without collaboration still has uploaders to tell.
+  */
+  'document.new_fassung': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+  },
 }
 
 /**

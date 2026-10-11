@@ -31,6 +31,7 @@ import { resolveSubjectMembership, userHoldsProjectPermission } from '@/lib/auth
 import type { Document, UploadBatch } from '@/lib/db/schema'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { internalRead } from '@/lib/documents/document-reader'
+import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
@@ -54,6 +55,13 @@ export async function onDocumentsSettled(organizationId: string, settled: readon
       settled.map((row) => row.id)
     )
     await settleUploadBatches(organizationId, batchIds)
+    // A same-name upload is held until now; the people who followed the
+    // document hear about the new Fassung once it is readable. Detached:
+    // it asks the directory about each person and logs its own failures.
+    void announceSettledVersions(
+      organizationId,
+      settled.filter((row) => row.status !== 'quarantined').map((row) => row.id)
+    ).catch((error) => console.warn('[upload-batches] announcing new Fassungen failed:', error))
   } catch (error) {
     console.warn('[upload-batches] settling after reconciliation failed; the sweep retries:', error)
   }

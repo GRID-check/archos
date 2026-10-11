@@ -299,7 +299,7 @@ export const platform = {
       topicsHint: 'Comma-separated — the agent reaches for this entry on these subjects.',
       topicsPlaceholder: 'Fire safety, escape routes',
       aliases: 'Aliases',
-      aliasesHint: 'Comma-separated — alternative names the entry is also recognised under',
+      aliasesHint: 'Comma-separated — alternative names the entry is also recognized under',
       aliasesPlaceholder: 'OIB 2, Richtlinie 2',
       documentNumber: 'Document number (Dokumentnummer)',
       documentNumberHint:

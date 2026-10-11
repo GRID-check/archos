@@ -78,6 +78,7 @@ from .routes.dictation import add_dictation_routes
 from .routes.document_search import add_document_search_routes
 from .routes.documents import add_document_routes
 from .routes.drafts import add_draft_routes
+from .routes.fassung_compare import add_fassung_compare_routes
 from .routes.feedback_digest import add_feedback_digest_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
 from .routes.generate_summary import add_generate_summary_routes
@@ -318,6 +319,9 @@ def api_routers(llm_configs: Mapping[str, Any]) -> tuple[Callable[[APIRouter], N
     return (
         add_collection_routes,
         add_document_routes,
+        # What changed between two Fassungen of a page, marked on it and said in
+        # words: one vision call for the pair, cached (CONTEXT.md, „Fassung").
+        add_fassung_compare_routes,
         add_document_search_routes,
         add_generate_summary_routes,
         add_cleanup_proposal_routes,

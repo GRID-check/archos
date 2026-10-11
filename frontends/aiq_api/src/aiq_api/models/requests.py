@@ -27,6 +27,14 @@ class DeleteFilesRequest(BaseModel):
     """Request body for batch file deletion."""
 
     file_ids: list[str] = Field(..., description="List of file IDs to delete")
+    permanent: bool = Field(
+        False,
+        description=(
+            "True when nobody will undo this delete (an erase, a move to another collection): the Fassung facts "
+            "a person made on the files go with them. False (the default) keeps those facts for the files' "
+            "return after an archive, the folder bin or a publish."
+        ),
+    )
 
 
 class ScreeningPolicy(BaseModel):
@@ -134,6 +142,18 @@ class IngestRequest(BaseModel):
             "basename is not the name the document is known by: the chunk `file_name` metadata "
             "is the join key every chunk purge addresses, and a name derived from the key is a "
             "guess about a string the BFF already knows."
+        ),
+    )
+    fassung_of: str | None = Field(
+        None,
+        max_length=512,
+        description=(
+            "File name of the document in this collection that this file replaces, when a person chose "
+            "'als neue Fassung ablegen' in the upload dialog (CONTEXT.md, Fassung). Once the file has been "
+            "read, the ingest job writes the same confirmed link `PUT /v1/collections/{c}/fassung` writes, "
+            "with the change summary. The BFF checks that the person may change the older document; an "
+            "older file the collection does not hold, or a link that would close a loop, falls back to "
+            "the ordinary suggestion. Omit for every other upload."
         ),
     )
     authored_by: str | None = Field(

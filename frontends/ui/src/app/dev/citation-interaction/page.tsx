@@ -26,6 +26,8 @@
 import { useEffect, type FC, type ReactNode } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AgentResponse } from '@/features/chat/components/AgentResponse'
+import { CitationPeek } from '@/features/chat/components/CitationPeek'
+import { buildCitationModel } from '@/features/chat/lib/citations'
 import type { CitationSource } from '@/features/chat/types'
 
 const at = new Date('2026-07-28T14:30:00')
@@ -97,6 +99,31 @@ const answer = [
   `- [3] [KB] ${OIB}, p.18`,
   '- [4] [RIS] Bauordnung für Wien § 108 — https://www.ris.bka.gv.at/GeltendeFassung.wxe?Abfrage=LrW&Gesetzesnummer=20000006',
 ].join('\n')
+
+/** A project document a person has since replaced by Index C: the peek of a citation of the older one. */
+const olderFassungRef = () => {
+  const fileName = 'EG_Grundriss_Index_B.pdf'
+  const [document] = buildCitationModel({
+    citations: [
+      {
+        id: 'older-fassung',
+        content: `[KB] ${fileName}, p.1`,
+        citationKey: `${fileName}, p.1`,
+        fileName,
+        collection: 'proj_1',
+        title: 'EG Grundriss, Index B',
+        origin: 'kb',
+        kind: 'projekt',
+        shelf: 'project',
+        page: 1,
+        number: 1,
+        isCited: true,
+        timestamp: at,
+      },
+    ],
+  })
+  return document ? { document, locus: document.loci[0] } : null
+}
 
 const Block: FC<{ title: string; note: string; children: ReactNode }> = ({
   title,
@@ -188,6 +215,24 @@ export default function CitationInteractionPreview() {
           routingDecision="deep"
           answerConfidence="high"
         />
+      </Block>
+
+      <Block
+        title="A citation of an older Fassung"
+        note="When the cited document is a Fassung a person has since replaced, the peek adds one muted line — ‚Ältere Fassung — aktuell: …‘ — and the name opens the current Fassung beside the conversation. The citation itself stays as it was: an older Fassung is read on request."
+      >
+        <div className="w-80 rounded-lg border bg-popover p-3">
+          {(() => {
+            const ref = olderFassungRef()
+            return ref ? (
+              <CitationPeek
+                citation={ref}
+                snippet="Die Wand in Achse 3 liegt 12 cm weiter westlich."
+                supersededBy={{ id: 'doc-c', filename: 'EG_Grundriss_Index_C_2026-08-14.pdf' }}
+              />
+            ) : null
+          })()}
+        </div>
       </Block>
 
       <Block

@@ -25,6 +25,8 @@ const files: FileItem[] = [
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   },
   {
     id: 'f2',
@@ -41,6 +43,8 @@ const files: FileItem[] = [
     chunkCount: null,
     contentTypes: null,
     tags: null,
+    topics: null,
+    capture: null,
   },
 ]
 
@@ -209,7 +213,7 @@ describe('FileBrowserPane — folder drill-down', () => {
     })
     // Pläne holds one document and one subfolder — two items.
     const card = screen.getByTestId('folder-card-root-1')
-    expect(within(card).getByText('2 item(s)')).toBeInTheDocument()
+    expect(within(card).getByText('2 items')).toBeInTheDocument()
   })
 
   it('a typed query escapes the current folder and searches the corpus', async () => {
@@ -602,10 +606,37 @@ describe('FileBrowserPane — folder aggregates', () => {
     const card = screen.getByTestId('folder-card-root-a')
     // One document + one subfolder directly inside: two items, not the three
     // things that exist underneath it.
-    expect(within(card).getByText('2 item(s)')).toBeInTheDocument()
+    expect(within(card).getByText('2 items')).toBeInTheDocument()
     // The newest thing under it is in the SUBFOLDER, so the walk has to reach
     // it — the folder's own document is two months older.
     expect(within(card).getByRole('time')).toHaveAttribute('datetime', '2026-03-09T00:00:00Z')
+  })
+
+  it('counts one entry per document: a replaced Fassung leaves the tile unless older ones are shown', () => {
+    const older: FileItem = {
+      ...files[1],
+      id: 'older',
+      folderId: 'root-a',
+      status: 'failed',
+      fassung: { supersededBy: { id: 'in-root', filename: 'x.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+    }
+    const nav = {
+      folders: tree,
+      currentFolderId: null,
+      onNavigate: vi.fn(),
+      onCreateFolder: vi.fn(),
+      onRenameFolder: vi.fn(),
+      onDeleteFolder: vi.fn(),
+    }
+    const { unmount } = renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav })
+    const card = screen.getByTestId('folder-card-root-a')
+    expect(within(card).getByText('2 items')).toBeInTheDocument()
+    // The replaced Fassung failed to read, and nobody is told about it on the tile.
+    expect(within(card).getByTestId('folder-read-state')).not.toHaveAttribute('data-state', 'failed')
+    unmount()
+
+    renderPane({ files: [], searchFiles: [...corpus, older], folderNav: nav, showOlderFassungen: true })
+    expect(within(screen.getByTestId('folder-card-root-a')).getByText('3 items')).toBeInTheDocument()
   })
 
   it('survives a parent cycle in the folder rows rather than overflowing the stack', () => {
@@ -663,5 +694,46 @@ describe('FileBrowserPane — server-rendered markup', () => {
     // on an empty render.
     expect(html).toContain('site-plan.pdf')
     expect(html).toContain('Brandschutz')
+  })
+})
+
+describe('FileBrowserPane — older Fassungen in search', () => {
+  // `current.pdf` replaces `plan_v1.pdf`; the older one is a document of its own
+  // in the corpus, and the current one knows the name it was stored under.
+  const older: FileItem = {
+    ...files[0],
+    id: 'old',
+    filename: 'plan_v1.pdf',
+    fassung: { supersededBy: { id: 'current', filename: 'current.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+  }
+  const current: FileItem = {
+    ...files[1],
+    id: 'current',
+    filename: 'current.pdf',
+    fassung: {
+      supersededBy: null,
+      supersedes: [{ id: 'old', filename: 'plan_v1.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+      history: [{ id: 'old', filename: 'plan_v1.pdf', createdAt: null, changeSummary: null }],
+    },
+  }
+
+  it('finds the current document by the name of an older Fassung, once', async () => {
+    const user = userEvent.setup()
+    renderPane({ files: [older, current] })
+
+    await user.type(screen.getByRole('textbox', { name: /search files/i }), 'plan_v1')
+    expect(screen.getByText('current.pdf')).toBeInTheDocument()
+    expect(screen.queryByText('plan_v1.pdf')).not.toBeInTheDocument()
+  })
+
+  it('lists the older Fassung among the matches when older Fassungen are shown', async () => {
+    const user = userEvent.setup()
+    renderPane({ files: [older, current], showOlderFassungen: true })
+
+    await user.type(screen.getByRole('textbox', { name: /search files/i }), 'plan_v1')
+    expect(screen.getByText('current.pdf')).toBeInTheDocument()
+    expect(screen.getByText('plan_v1.pdf')).toBeInTheDocument()
   })
 })

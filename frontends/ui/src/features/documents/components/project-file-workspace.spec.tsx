@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi, beforeEach } from 'vitest'
 import { type ReactElement, type ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, within } from '@testing-library/react'
+import { act, render, screen, fireEvent, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { strToU8, zipSync } from 'fflate'
@@ -688,19 +688,19 @@ describe('ProjectFileWorkspace — a picked file the project already holds', () 
     fireEvent.change(input)
   }
 
-  it('asks „new version of X?" and uploads it on yes', async () => {
+  it('asks „new Fassung of X?" and uploads it on yes', async () => {
     renderWithCorpus()
     const revised = new File(['revised bytes'], 'EG.pdf', { type: 'application/pdf' })
     pick(revised)
 
     const dialog = await screen.findByTestId('folder-upload-dialog')
     await waitFor(() => expect(dialog).toHaveAttribute('data-kind', 'single-update'))
-    expect(within(dialog).getByText('Upload a new version of “EG.pdf”?')).toBeInTheDocument()
+    expect(within(dialog).getByText('New revision of “EG.pdf”?')).toBeInTheDocument()
     // Nothing leaves on the strength of the gesture alone.
     expect(mockUploadFiles).not.toHaveBeenCalled()
 
     const confirm = within(dialog).getByTestId('folder-upload-confirm')
-    expect(confirm).toHaveTextContent('Upload as new version')
+    expect(confirm).toHaveTextContent('File as a new revision')
     await userEvent.click(confirm)
 
     await waitFor(() => expect(mockUploadFiles).toHaveBeenCalledTimes(1))
@@ -1312,8 +1312,9 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     const user = userEvent.setup()
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
 
-    // Open doc-a and add a discipline tag via the inline add-tag input.
+    // Open doc-a, correct Piloti's reading, and add a discipline tag via the inline add-tag input.
     fireEvent.click(await findFileButton(/alpha\.txt/i))
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await user.type(await screen.findByRole('textbox', { name: /add tag/i }), 'Brandschutz{Enter}')
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
@@ -1332,6 +1333,8 @@ describe('ProjectFileWorkspace — saved tags survive reselect', () => {
     fireEvent.click(await findFileButton(/alpha\.txt/i))
     await screen.findByRole('dialog')
 
+    // The reading is static again; open the editor to see what was saved.
+    await user.click(await screen.findByRole('button', { name: 'Correct' }))
     await waitFor(() =>
       expect(screen.getByRole('button', { name: 'Remove tag Brandschutz' })).toBeDefined()
     )
@@ -2339,5 +2342,106 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
 
     expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
     expect(requests).toBe(20)
+  })
+})
+
+describe('ProjectFileWorkspace — Fassungen', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+  })
+
+  const row = (id: string, filename: string, fassung: DocumentWireRow['fassung']): DocumentWireRow =>
+    ({
+      id,
+      filename,
+      displayName: null,
+      fileSize: 2048,
+      contentType: 'application/pdf',
+      status: 'ready',
+      folderId: null,
+      createdAt: '2026-06-14T09:00:00.000Z',
+      errorMessage: null,
+      summary: null,
+      pageCount: null,
+      chunkCount: null,
+      contentTypes: null,
+      tags: null,
+      assignees: [],
+      authoredBy: 'user',
+      fassung,
+    }) as DocumentWireRow
+
+  it('lists one entry for a document and opens its older Fassung by id from the preview', async () => {
+    const older = row('doc-v1', 'Gutachten_v1.pdf', {
+      supersededBy: { id: 'doc-v2', filename: 'Gutachten_v2.pdf' },
+      supersedes: [],
+      suggestion: null,
+      changeSummary: null,
+    })
+    const current = row('doc-v2', 'Gutachten_v2.pdf', {
+      supersededBy: null,
+      supersedes: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf' }],
+      suggestion: null,
+      changeSummary: null,
+      history: [{ id: 'doc-v1', filename: 'Gutachten_v1.pdf', createdAt: null, changeSummary: null }],
+    })
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[current, older]}
+        initialFolders={[]}
+      />,
+    )
+
+    expect(await findFileButton(/Gutachten_v2\.pdf/)).toBeInTheDocument()
+    expect(screen.queryByText('Gutachten_v1.pdf')).not.toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Gutachten_v2\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-v2'))
+
+    act(() => useFilePreviewStore.getState().context.onOpenDocument?.('doc-v1'))
+    expect(useFilePreviewStore.getState().file?.id).toBe('doc-v1')
+  })
+
+  it('moves BOTH listing entries when the preview confirms a link', async () => {
+    const unlinked = { supersededBy: null, supersedes: [], suggestion: null, changeSummary: null }
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[
+          row('doc-new', 'Statik_Entwurf.pdf', unlinked),
+          row('doc-old', 'Tragwerk_Altstand.pdf', unlinked),
+        ]}
+        initialFolders={[]}
+      />,
+    )
+    expect(await findFileButton(/Tragwerk_Altstand\.pdf/)).toBeInTheDocument()
+
+    fireEvent.click(await findFileButton(/Statik_Entwurf\.pdf/))
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-new'))
+
+    const { onFassungChanged } = useFilePreviewStore.getState().context
+    act(() => {
+      onFassungChanged?.('doc-new', {
+        ...unlinked,
+        supersedes: [{ id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' }],
+      })
+      onFassungChanged?.('doc-old', {
+        ...unlinked,
+        supersededBy: { id: 'doc-new', filename: 'Statik_Entwurf.pdf' },
+      })
+    })
+
+    // The older document folds into the newer one's entry; the open one carries the link.
+    await waitFor(() => expect(screen.queryByText('Tragwerk_Altstand.pdf')).not.toBeInTheDocument())
+    expect(useFilePreviewStore.getState().file?.fassung?.supersedes).toEqual([
+      { id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' },
+    ])
   })
 })

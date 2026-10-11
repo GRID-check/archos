@@ -102,6 +102,24 @@ describe('POST /api/documents/by-name', () => {
     })
   })
 
+  it('carries the reader-visible Fassung link of a replaced document, for the citation peek', async () => {
+    vi.mocked(resolveProjectDocumentsByName).mockResolvedValueOnce([
+      {
+        ...LISTED,
+        fassung: {
+          supersededBy: { id: 'doc_2', filename: 'Bestand-1962_Index_B.pdf' },
+          supersedes: [],
+          suggestion: null,
+          changeSummary: null,
+        },
+      } as ListedDocument,
+    ])
+
+    const [row] = await client.project('proj_1', ['Bestand-1962.pdf'])
+
+    expect(row?.fassung?.supersededBy).toEqual({ id: 'doc_2', filename: 'Bestand-1962_Index_B.pdf' })
+  })
+
   it('asks nothing for no names', async () => {
     expect(await client.project('proj_1', [])).toEqual([])
     expect(resolveProjectDocumentsByName).not.toHaveBeenCalled()

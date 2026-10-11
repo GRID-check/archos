@@ -34,7 +34,7 @@ does this stand".
   first token retune.
 - **The body** is `ItemList` + `Item`: one block with hairlines between its
   rows, which is what a list of rounds is — the same three atoms
-  `document-version-list.tsx` composes, and for the same stated reason (three
+  `document-fassungen.tsx` composes, and for the same stated reason (three
   bordered boxes read as three cards rather than as one history).
 - **The phase acts** are `dt`/`dd` rows at the version history's own weight: the
   same kind of fact („eingereicht von X am Y") in another vocabulary.
