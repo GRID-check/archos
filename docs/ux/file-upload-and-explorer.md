@@ -261,13 +261,17 @@ being relied on.
 At the Jour fixe of 2026-10-09, feld72 raised three things. The read state of
 nested folders was not visible. Answers called documents missing that had been
 read. And checking folder by folder did not scale. The folder brief and the
-state on each folder tile answer all three from the listing the Files view
+state on each folder row answer all three from the listing the Files view
 already holds.
 
 The brief sits above the file list at every folder level, in Dateien and in the
 Büroablage, under the heading „Was Piloti hier weiß“. It describes the folder
-and everything below it, not only the level on screen. It opens by default, and
-its fold is remembered per browser, as the card and list choice is.
+and everything below it, not only the level on screen. It is folded by default
+to one muted line, the headline and its scope („35 von 44 Dokumenten gelesen in
+diesem Projekt“), with no card, bar or legend. A click on the line opens the
+full card below. The fold is remembered per browser, as the card and list
+choice is. Open by default, the card took the top third of every folder for a
+status most people opening a folder were not asking about.
 
 | Part | What it says | Each count opens |
 |---|---|---|
@@ -297,15 +301,20 @@ because a re-read changes the document for everybody who can open it. It sends
 the same request as a document's own „Erneut lesen“, four at a time, and each
 row turns to „Wird gelesen“ as its answer comes in.
 
-**Folder tiles and rows** show the worst state of everything in their subtree,
-as one swatch and one phrase (on a tile, on its own line under the name, so a
-two-column phone grid does not clip it), in this order: failed, held back, being read, and
-then „Alles gelesen“ when every document Piloti is meant to read is citable. An
-unplaced document is not named on a tile. It appears only in the brief's „Where
-it sticks“, because on most folders of a project it would be noise. An empty
+**Folder rows in the list view** show the worst state of everything in their
+subtree, as one swatch and one phrase, in this order: failed, held back, being
+read, and then „Alles gelesen“ when every document Piloti is meant to read is
+citable. The folder tiles of the card view show no read state: the card view is
+for browsing, the list view is the detail view, and a state on every tile was
+louder than browsing needs. For the same reason a file card carries a status
+badge only when the document is not simply citable (being read, failed, held
+back, never indexed); „Zitierbar“ is spelled out in the list view's status
+column. An unplaced document is not named on a row. It appears only in the
+brief's „Where it sticks“, because on most folders of a project it would be
+noise. An empty
 folder, or one holding only documents Piloti never reads, shows nothing.
 
-**Where the data comes from.** Nothing is fetched for the brief or the tiles.
+**Where the data comes from.** Nothing is fetched for the brief or the rows.
 The browser computes both from the listing the Files view already loads:
 `buildFolderBrief` for the folder on screen, and `subtreeTallies` for every
 folder at once, in one pass over the documents. The one extra request is
@@ -455,7 +464,7 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
 | Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
 | The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |
-| A folder's read state on its tile or row | `src/features/documents/components/folder-read-state.tsx` |
+| A folder's read state on its list-view row | `src/features/documents/components/folder-read-state.tsx` |
 | Bulk re-read, four requests at a time, and the one request each sends | `src/features/documents/hooks/use-bulk-reingest.ts`; `src/features/documents/lib/reingest-request.ts` |
 | The missing list, shared with the agent's prompt | `src/lib/document-roles/prompt-loader.ts` (`loadMissingDocuments`); `src/features/documents/hooks/use-missing-documents.ts` |
 | Phase model, batch summary, rate/ETA estimator | `src/features/documents/lib/upload-progress.ts` |

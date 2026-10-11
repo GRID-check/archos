@@ -7,13 +7,14 @@ import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
  * on folder tiles — the real `FolderBrief` and `FolderCard`, over the
  * „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
  *
- * Six sections, one per state the brief has to show: the project root, a
- * nested folder with failures, the collapsed header, a folder where everything
- * is read (no „Needs you"), the office shelf's root, and the folder tiles with
- * their subtree read state. The corpus holds three replaced Fassungen (one a
- * failed read); the brief and the tiles count one entry per document, so the
- * root reads „35 von 44“ over 48 files and no replaced Fassung is listed under
- * failures. The Fassungen timeline is at `/dev/fassungen`.
+ * Six sections, one per state the brief has to show: the project root (folded
+ * to its one line, as the product opens it; click to open), a nested folder
+ * with failures, the folded line again, a folder where everything is read (no
+ * „Needs you"), the office shelf's root, and the folders as card-view tiles
+ * (no read state) and list-view rows (with their subtree read state). The
+ * corpus holds three replaced Fassungen (one a failed read); the brief and the
+ * rows count one entry per document, so the root reads „35 von 44“ over 48
+ * files and no replaced Fassung is listed under failures. The Fassungen timeline is at `/dev/fassungen`.
  * `?section=a|b|c|d|e|f` shows just one of them, for captures; the default
  * shows all six.
  *
@@ -28,7 +29,7 @@ import type { JSX, ReactNode } from 'react'
 import { Suspense, useEffect, useRef, useState } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
-import { FolderCard } from '@/features/documents/components/folder-navigation'
+import { FolderCard, FolderRow } from '@/features/documents/components/folder-navigation'
 import { buildFolderBrief, subtreeTallies } from '@/features/documents/lib/folder-knowledge'
 import { withoutOlderFassungen } from '@/features/documents/lib/fassung-chain'
 import type { BulkReingestProgress } from '@/features/documents/hooks/use-bulk-reingest'
@@ -58,7 +59,8 @@ const READ_AGAIN_TICK_MS = 450
  * Every fourth answer is a refusal, so the progress object carries both numbers.
  */
 function LiveRootBrief(): JSX.Element {
-  const [collapsed, setCollapsed] = useState(false)
+  // Folded, as the product opens it (`useBriefCollapsed`); the line opens it.
+  const [collapsed, setCollapsed] = useState(true)
   const [progress, setProgress] = useState<BulkReingestProgress | null>(null)
   const timer = useRef<ReturnType<typeof setInterval> | null>(null)
 
@@ -129,23 +131,32 @@ function itemCountOf(folderId: string): number {
   return documents + subfolders
 }
 
+/**
+ * The same folders twice: as the card view's tiles, which carry no read state,
+ * and as the list view's rows, which do. The list view is where the state lives.
+ */
 function FolderTiles(): JSX.Element {
+  const tileProps = (folder: (typeof ROOT_FOLDERS)[number]) => ({
+    folder,
+    itemCount: itemCountOf(folder.id),
+    lastModified: TALLIES.get(folder.id)?.latest ?? null,
+    knowledge: TALLIES.get(folder.id),
+    onOpen: noop,
+    onRenameFolder: resolveFalse,
+    onDeleteFolder: resolveFalse,
+  })
   return (
-    // Two columns on a phone, four on a desktop: the widths the read state
-    // under each name has to survive.
-    <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-      {ROOT_FOLDERS.map((folder) => (
-        <FolderCard
-          key={folder.id}
-          folder={folder}
-          itemCount={itemCountOf(folder.id)}
-          lastModified={TALLIES.get(folder.id)?.latest ?? null}
-          knowledge={TALLIES.get(folder.id)}
-          onOpen={noop}
-          onRenameFolder={resolveFalse}
-          onDeleteFolder={resolveFalse}
-        />
-      ))}
+    <div className="flex flex-col gap-6">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        {ROOT_FOLDERS.map((folder) => (
+          <FolderCard key={folder.id} {...tileProps(folder)} />
+        ))}
+      </div>
+      <div className="flex flex-col gap-1.5">
+        {ROOT_FOLDERS.map((folder) => (
+          <FolderRow key={folder.id} {...tileProps(folder)} />
+        ))}
+      </div>
     </div>
   )
 }
@@ -231,7 +242,7 @@ function FolderBriefPreview(): JSX.Element {
         )}
 
         {shows('f') && (
-          <Section id="f" title="Folder tiles">
+          <Section id="f" title="Folder tiles (card view) and rows (list view)">
             <FolderTiles />
           </Section>
         )}

@@ -272,8 +272,9 @@ describe('ArchivWorkspace — a settling document settles on screen', () => {
 
     await vi.advanceTimersByTimeAsync(4_100)
     await waitFor(() => expect(statusCalls).toBe(1))
-    // The badge the user is actually looking at flips, without a reload.
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    // The badge the user is actually looking at clears, without a reload: a
+    // citable document carries no badge on its card.
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
     // The poll never drained the listing again.
     expect(documentCalls).toBe(1)
 
@@ -467,14 +468,13 @@ describe('ArchivWorkspace — only the newest answer may win', () => {
     expect(onComplete).toBeTypeOf('function')
     onComplete?.()
     await waitFor(() => expect(documentCalls).toBe(2))
-    await waitFor(() => expect(screen.getByText('Citable')).toBeInTheDocument())
+    await waitFor(() => expect(screen.queryByText('Reading')).not.toBeInTheDocument())
 
     // Now the stale poll answers. It is older than what is on screen, so it
     // must not commit.
     gate.release?.()
     await flushWithoutPolling()
 
-    expect(screen.getByText('Citable')).toBeInTheDocument()
     expect(screen.queryByText('Reading')).not.toBeInTheDocument()
 
     // …and it must not resurrect the poll either.

@@ -1,0 +1,7 @@
+---
+improvements:
+  - >
+    Browsing your files is calmer: the overview of what Piloti has read now sits
+    as one line above each folder and opens on a click, and folder tiles and file
+    cards only mark a document while it is being read or could not be read. The
+    list view still shows the reading state of every folder and document.

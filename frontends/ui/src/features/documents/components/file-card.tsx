@@ -219,9 +219,6 @@ export interface FileCardProps {
   source?: 'projekt' | 'buero' | null
   /** Localized label for the provenance chip. */
   sourceLabel?: string
-  /** Hide the ingestion-status badge when the document is `ready` (noise in a
-   * discovery context where every surfaced document is already ingested). */
-  hideStatusWhenReady?: boolean
   /** Accessible label for the click action (defaults to the filename content). */
   ariaLabel?: string
   /** Dim + progress cursor while an action (e.g. opening) resolves. */
@@ -262,7 +259,6 @@ export function FileCard({
   match,
   source,
   sourceLabel,
-  hideStatusWhenReady,
   ariaLabel,
   isBusy,
   footerLead,
@@ -279,7 +275,11 @@ export function FileCard({
   // The card is one click target, so it carries no disclosure: the sentence
   // shows, the stored text is the tooltip, and the preview pane has „Details".
   const failureReason = isFailed ? (failureText?.sentence ?? t('ingestFailure.unknown')) : undefined
-  const showStatus = !!file.status && !(hideStatusWhenReady && isCitableStatus(file.status))
+  // A badge only when the document is NOT simply citable — being read, failed,
+  // held, never indexed. „Zitierbar" is the normal state; on every card it was
+  // a status nobody browsing a folder was asking about. The list view's status
+  // column is where every document's state is spelled out.
+  const showStatus = !!file.status && !isCitableStatus(file.status)
   // The AI summary is the last thing ingestion produces, so a document that is
   // still being read has an empty description slot. Left blank it reads as a
   // card that failed to render; skeleton lines say the sentence is on its way —
