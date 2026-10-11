@@ -3,9 +3,9 @@
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 
 /**
- * Dev preview for the folder brief („Was Piloti hier weiß") and the read state
- * on folder tiles — the real `FolderBrief` and `FolderCard`, over the
- * „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
+ * Dev preview for the folder brief (the read line that opens in place) and the
+ * read state on folder tiles — the real `FolderBrief` and `FolderCard`, over
+ * the „Wohnbau Seestadt Nord" corpus in `fixtures.ts`.
  *
  * Six sections, one per state the brief has to show: the project root (folded
  * to its one line, as the product opens it; click to open), a nested folder

@@ -265,13 +265,18 @@ state on each folder row answer all three from the listing the Files view
 already holds.
 
 The brief sits above the file list at every folder level, in Dateien and in the
-Büroablage, under the heading „Was Piloti hier weiß“. It describes the folder
-and everything below it, not only the level on screen. It is folded by default
-to one muted line, the headline and its scope („35 von 44 Dokumenten gelesen in
-diesem Projekt“), with no card, bar or legend. A click on the line opens the
-full card below. The fold is remembered per browser, as the card and list
-choice is. Open by default, the card took the top third of every folder for a
+Büroablage. It describes the folder and everything below it, not only the level
+on screen. It is folded by default to one muted line, the headline and its scope
+(„35 von 44 Dokumenten gelesen in diesem Projekt“), with no border, bar or
+legend. Open by default, the card took the top third of every folder for a
 status most people opening a folder were not asking about.
+
+The line is the card's header in both states, and it opens in place: a click
+leaves it where it is, fades the card's border in around it, and opens the bar,
+legend and sections below it. A first version swapped the line for a separate
+card with its own heading, so the thing just clicked disappeared and its words
+came back elsewhere in another size. The fold is remembered per browser, as the
+card and list choice is.
 
 | Part | What it says | Each count opens |
 |---|---|---|

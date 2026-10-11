@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    The line above each folder that says how much Piloti has read now opens in
+    place: it stays where you clicked it and the overview unfolds beneath it,
+    instead of the line vanishing and a separate box appearing.

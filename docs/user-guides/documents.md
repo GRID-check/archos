@@ -44,8 +44,8 @@ never filed simply have no folder, and the assistant says nothing about one.
 Above every folder's files sits one quiet line, for example „35 von 44
 Dokumenten gelesen in diesem Projekt“. It covers the folder and everything
 inside it, subfolders included, so you can see what has been read without
-opening each folder. Click the line to open the full overview, „Was Piloti hier
-weiß“. The arrow folds it again, and the choice is remembered in this browser.
+opening each folder. Click the line and the full overview opens around it; click
+it again to fold it. The choice is remembered in this browser.
 
 - The bar counts the documents by state: „gelesen“ (Piloti can cite them),
   „wird gelesen“, „fehlgeschlagen“ and „zurückgehalten“ (the content check holds

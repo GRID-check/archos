@@ -885,7 +885,6 @@ export const files = {
    */
   // The folder brief: what Piloti knows about a folder and everything under it.
   brief: {
-    eyebrow: 'What Piloti knows here',
     scopeFolder: 'in “{name}” and its subfolders',
     scopeProject: 'in this project',
     scopeOffice: 'in Office filing',
