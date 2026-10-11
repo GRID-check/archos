@@ -2,8 +2,8 @@
 features:
   - >
     The effort slider now warns when it is set to Maximum, and the level label
-    in the message field turns amber while it is on. Maximum thinks much
-    longer and costs far more, and is rarely smarter than High.
+    in the message field turns amber while it is on. Maximum thinks much longer
+    and costs far more than High.
 fixes:
   - >
     The dots in the effort slider no longer seem to slide along with the

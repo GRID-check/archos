@@ -1,6 +1,8 @@
 ---
 features:
   - >
-    Piloti now checks the text of every upload on its own servers, before any
-    AI model reads it. A file that matches waits in Quarantäne until an office
-    or project admin releases or deletes it under Organisation → Quarantäne.
+    Where an office has upload screening switched on, Piloti checks the text
+    of each upload on its servers before any AI model reads it. A file the
+    check holds back waits in Quarantine, where no model reads it, until an
+    office or project admin releases or deletes it under Organization →
+    Quarantine.

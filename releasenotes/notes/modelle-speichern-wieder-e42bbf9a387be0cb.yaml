@@ -1,8 +1,8 @@
 ---
 fixes:
   - >
-    Your organization's choice of AI model can be saved again. Saving had
-    failed while a setting for a retired task was still stored.
+    Your organization's choice of AI model can be saved again. Saving had failed
+    while a setting from a retired feature was still stored.
 operators:
   - >
     Saving under Platform → Models works again: settings for tasks that no

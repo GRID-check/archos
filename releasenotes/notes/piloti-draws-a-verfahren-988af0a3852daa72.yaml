@@ -2,11 +2,9 @@
 features:
   - >
     Piloti can now draw a procedure. Where an answer turns on a sequence that
-    a paragraph cannot hold, such as who hands what to whom, it returns a
+    text cannot convey well, such as who hands what to whom, it returns a
     drawing beside the text, and one click files that drawing into the project
-    as an SVG and a PDF you can attach to an Einreichung.
+    as a drawing file and a PDF you can attach to an Einreichung (submission).
   - >
-    Drawings never carry a measurement. A section, a staircase, an escape
-    route or a distance still comes back as one of the fifteen technical
-    schematics, where Piloti supplies the values and computes the drawing from
-    them, so the picture cannot disagree with its own numbers.
+    A section, a staircase, an escape route or a distance is drawn from the
+    values Piloti reads, so the drawing and the numbers come from one source.

@@ -1,10 +1,9 @@
 ---
 fixes:
   - >
-    When your browser runs out of room, your chat history is not wiped:
-    Piloti clears only the content of the oldest conversations, and their
-    titles, drafts and list entries stay. Such a conversation loads its
-    content again when you open it.
+    When your browser runs out of room, your chat history is not wiped: Piloti
+    clears only the text of the oldest chats, and their titles, drafts and
+    list entries stay, and a chat loads its text again when you open it.
   - >
-    Sending a question, receiving an answer and switching conversations no
-    longer stall a phone.
+    Sending a question, receiving an answer and switching chats no longer
+    stall a phone.

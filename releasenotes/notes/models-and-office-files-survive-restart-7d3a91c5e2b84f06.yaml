@@ -2,7 +2,6 @@
 improvements:
   - >
     IFC models, Word and presentation files and finished research reports now
-    survive a restart: a model no longer stays at "extracting", and a file no
-    longer stays at "processing". A large folder of office files no longer
-    slows other offices down, and a report whose PDF failed is tried again
-    instead of being lost.
+    survive an interruption, and none of them stays at “Reading” any more. A
+    large folder of office files no longer slows other offices down, and a
+    report whose PDF failed is tried again instead of being lost.

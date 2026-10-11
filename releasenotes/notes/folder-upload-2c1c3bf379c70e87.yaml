@@ -5,10 +5,10 @@ features:
     folder onto the file list, with every level beneath it. Files Piloti cannot
     read are rejected one by one, not the whole folder.
   - >
-    The detail view shows where a file came from on your office server, and one
-    click copies the path so you can keep working on the original.
+    The detail view shows where the file sat inside the folder you uploaded,
+    and one click copies that path.
 fixes:
   - >
-    Uploads into a project or the archive are no longer limited to 100 MB at a
-    time, so a complete Einreichung goes through. Only your organization's
-    storage quota applies now.
+    Uploads into a project or into Office filing are no longer limited to 100
+    MB at a time, so a complete Einreichung goes through. Only your
+    organization's storage quota applies now.

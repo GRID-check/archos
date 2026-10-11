@@ -12,7 +12,5 @@
 # Delete every section you do not need — an empty one fails the lint.
 fixes:
   - >
-    Choosing Anmelden on the Piloti website leads to the sign-in page again:
-    visitors on piloti.at used to be sent to a separate development system,
-    where their accounts do not exist. Signing in directly in the app was
-    never affected.
+    Choosing the sign-in button on the Piloti website leads to the sign-in page
+    again.

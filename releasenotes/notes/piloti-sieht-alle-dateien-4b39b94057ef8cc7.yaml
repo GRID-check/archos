@@ -1,22 +1,22 @@
 ---
 features:
   - >
-    Piloti can now go through every file in the project, the office archive and
-    this chat the way the Dateien view does, by folder, name, document type and
-    upload date, instead of seeing only the first 50 or so names. „Was ist diese
-    Woche neu?“ or „Was liegt im Ordner Brandschutz?“ now get a complete answer,
-    and files still being prepared are named as such.
+    Piloti can now go through the files in the project, the Office filing and
+    this chat the way the Files view does, by folder, name, document type and
+    upload date, instead of seeing only about 50 file names. “Was ist diese
+    Woche neu?” or “Was liegt im Ordner Brandschutz?” now get an answer that
+    draws on the matching files, and files still being prepared are named as
+    such.
   - >
-    Piloti can now find every place a word, name or number appears in your
-    files, like a search across the whole project: „Wo kommt BA-03 überall
-    vor?“ lists each matching file, how often and on which pages, with passages
-    it can quote. Capitals and spellings such as ä or ae, ß or ss count as the
-    same.
+    Piloti can now find where a word, name or number appears in your files, like
+    a search across the whole project: “Wo kommt BA-03 überall vor?” lists each
+    matching file, how often and on which pages, with passages it can quote.
+    Capitals and spellings such as ä or ae, ß or ss count as the same.
 improvements:
   - >
     File names that Piloti writes in an answer now open their file more reliably,
     because each name appears exactly as the file has it.
 fixes:
   - >
-    In a large project, Piloti can now rename, move and assign files beyond the
-    first 50 as well. It used to refuse them as unknown files.
+    In a large project, Piloti can now also rename, move and assign files beyond
+    the first 50 files. It used to refuse them as unknown files.

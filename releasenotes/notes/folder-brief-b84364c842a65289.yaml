@@ -1,14 +1,14 @@
 ---
 features:
   - >
-    Every folder now opens with an overview of what Piloti knows about it
-    and the folders below it: how many documents it can cite, what they
-    cover, and which ones need your attention. Failed documents can be read
-    again at once with „Read all again“, and the top level of a project
-    lists the documents Piloti still expects.
+    Each folder now opens with an overview of what Piloti knows about it and the
+    folders below it: how many documents it can cite, what they cover, and which
+    ones need your attention. Failed documents can be read again at once with
+    “Retry failed”, and the top level of a project lists the documents Piloti
+    still expects.
   - >
     Each folder shows the state of everything inside it, such as "2 failed" or
-    "All read", so a problem is visible without opening every subfolder.
+    "All read", so a problem is visible without opening the subfolders.
   - >
     Piloti adds its own topics to a document beside the fixed document types,
     for example "Attika" or "Holzrahmenbau", when it is confident and no fixed
@@ -35,5 +35,4 @@ fixes:
     A phone photo taken in portrait format now appears upright, and Piloti
     reads it upright too.
   - >
-    The summary of an image no longer starts with a stray marker such as
-    „[IMAGE from page 1]“.
+    The summary of an image no longer starts with a stray text marker.

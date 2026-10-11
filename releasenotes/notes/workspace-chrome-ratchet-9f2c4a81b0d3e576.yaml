@@ -1,6 +1,6 @@
 ---
 improvements:
   - >
-    A missing chat permission now names Piloti rather than a research agent.
-    The last step of the Herleitung shows how far the reading got, not an
-    assessment of the answer.
+    A missing chat permission now names Piloti, not an internal research step.
+    The last step of the derivation (Herleitung) shows how far the reading got,
+    not an assessment of the answer.

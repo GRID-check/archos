@@ -12,13 +12,10 @@ features:
     reaches the next run of the same task, so a correction such as „Atrium ist
     OIB 2.3“ is made once.
   - >
-    A reference now names the point of the Richtlinie, not just the page: „Pkt.
-    3.5.2 · S. 7“ instead of „S. 7“. That is how building law is cited, and it
-    survives a reload and a shared conversation.
+    A reference now names the point of the Richtlinie, not just the page:
+    „Pkt. 3.5.2 · S. 7“ instead of „S. 7“. That is how building law is cited,
+    and it is kept after a reload and in shared chats.
 improvements:
-  - >
-    What Piloti searched for in an answer now survives a reload and is visible
-    to colleagues in a shared conversation.
   - >
     Piloti remembers your decisions on its suggestions: a rejected suggestion or
     discarded note does not come back in the next answer.

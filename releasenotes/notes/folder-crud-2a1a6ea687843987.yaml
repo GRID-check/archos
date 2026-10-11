@@ -6,7 +6,7 @@ features:
     lets you edit the name in place, and Delete asks once before removing
     the folder.
   - >
-    Deleting a folder never deletes what is in it: its documents and
-    subfolders move into the folder above first. The confirmation says where
-    they go, for example to Brandschutz, and a message afterwards repeats
-    the count.
+    Deleting a folder moved its documents and subfolders into the folder above
+    first, and the confirmation said where they went, for example to
+    Brandschutz. A message afterwards repeated the count, and project folders
+    have since gone to the bin instead.

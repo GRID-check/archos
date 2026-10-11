@@ -3,6 +3,6 @@ features:
   - >
     Questions about one of the office's working methods (Gebäudeklasse,
     Brandschutz, Einreichcheck, Bestand and the others) get answers faster.
-    Piloti recognises from the start which method a question is about, instead
-    of loading it in a separate step, and the "Skills used" section still names
-    the methods it followed.
+    Piloti recognizes from the start which method a question is about, with no
+    separate step, and the section “Skills used for this answer” still names the
+    methods it followed.

@@ -1,16 +1,16 @@
 ---
 improvements:
   - >
-    Every question now reaches Piloti with all its tools, so „zeig mir die
-    Grundrisse“ or „was weißt du über das Projekt“ can show and read files
-    instead of answering from the project profile alone.
+    Questions now reach Piloti with everything it can do, so “zeig mir die
+    Grundrisse” or “was weißt du über das Projekt” can show and read files
+    instead of answering from the project description alone.
   - >
-    In the Herleitung, project documents, the office archive and chat
-    attachments now each have their own label and colour instead of all
-    appearing as building law.
+    In the derivation, project documents, the Office filing and chat attachments
+    now each have their own label and color instead of all appearing as building
+    law.
   - >
-    When Piloti hands a question to deep research, it now says why in its own
-    words, shown in the Herleitung.
+    When a question goes to deep research, Piloti now says why in its own words,
+    shown in the derivation.
   - >
     An answer with sound references and one quote that could not be confirmed
     word for word is now rated medium instead of low, and the quote stays

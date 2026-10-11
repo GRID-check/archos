@@ -8,7 +8,7 @@ features:
 fixes:
   - >
     Scheduled research reports are filed into the project again in offices
-    whose features are switched on individually; they had been held back.
+    where this feature is enabled for them; they had been held back.
 operators:
   - >
     The Outlook archive import is off by default. With feature-flag enforcement

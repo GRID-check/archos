@@ -6,6 +6,6 @@ fixes:
     person drew.
 upgrade:
   - >
-    Nothing Piloti writes can be filed without that mark any more: a file that
-    does not say who wrote it is refused. Files already in a project stay as
-    they are; file a drawing again to get a marked copy.
+    Files Piloti writes now carry that mark, and a file without it is refused.
+    Files already in a project stay as they are; file a drawing again to get a
+    marked copy.

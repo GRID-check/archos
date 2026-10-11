@@ -18,18 +18,18 @@ features:
     starting, when you can still stop it, and links to the finished file with
     „Im Projekt öffnen“. If nothing could be filed, it promises nothing.
   - >
-    Every file Piloti writes says so. In the app it carries the line „Von Piloti
-    erstellt", and the Word export opens with „KI-generiert — nicht geprüft", so
-    a document that leaves your hands still says what it is.
+    A report Piloti writes says so. In the app it carries the label “Created by
+    Piloti”, and the Word export opens with “AI-generated — not reviewed”, so a
+    document that leaves your hands still says what it is.
 upgrade:
   - >
     Only runs you start yourself file a report at the moment. Scheduled runs
-    still deliver into their conversation and will follow later.
+    deliver their reports into their chat.
   - >
     Reports from runs finished before this change stay where they were, in their
     conversation. Nothing was filed retroactively.
 other:
   - >
-    Piloti does not use its own reports as sources, so an answer never cites
-    a Piloti report as if it were a document you supplied. To use a report
-    in later answers, upload it yourself once you have checked it.
+    Reports Piloti writes are not cited as sources until someone approves and
+    publishes them. To use one sooner, upload it yourself once you have checked
+    it.

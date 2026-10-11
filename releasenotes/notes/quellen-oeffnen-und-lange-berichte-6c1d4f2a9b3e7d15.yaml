@@ -28,8 +28,8 @@ fixes:
     still fails, the message gives the reason.
   - >
     If an answer really breaks off, Piloti now says so after about a minute
-    instead of up to forty, and a running research is no longer reported as
-    interrupted.
+    instead of up to forty minutes, and a running research is no longer reported
+    as interrupted.
   - >
     Laws in the RIS reader are now shown in full. Before, the Bauordnung für Wien
     was cut short, so § 108 could not be read.

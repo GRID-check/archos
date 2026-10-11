@@ -2,13 +2,12 @@
 features:
   - >
     Piloti starts reading before it starts thinking: for a question about a
-    regulation or a project file, it fetches the likely passages first, so most
-    questions are answered one step sooner. The Herleitung shows this as the
-    first search step.
+    regulation or a project file, it fetches the likely passages first, so
+    questions can be answered one step sooner. The derivation (Herleitung) shows
+    this as the first search step.
   - >
-    Piloti checks its search results faster: a quick decision step judges
-    whether the first hits already answer the question, and only a search that
-    came up short asks again with other wordings.
+    Piloti checks its first search results faster, and searches again with other
+    wording only when they fall short.
   - >
     Follow-up questions such as „und in Gebäudeklasse 4?“ are answered from the
     passages the previous answer already read, so a follow-up takes one step
