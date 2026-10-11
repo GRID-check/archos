@@ -70,7 +70,7 @@ If the FGA check fails, the function throws `"Not found"` (not `"Forbidden"`) to
 
 The project creator is automatically assigned `project-admin` via `workos.authorization.assignRole()` in the same transaction that inserts the project. No additional setup is needed.
 
-Source: `frontends/ui/src/app/projects/actions.ts:57`
+Source: `frontends/ui/src/lib/projects/service.ts`, `createProject`
 
 ## Project-org validation
 
