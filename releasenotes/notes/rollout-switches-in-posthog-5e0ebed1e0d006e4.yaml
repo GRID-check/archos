@@ -1,0 +1,12 @@
+---
+operators:
+  - >
+    The switches that withdraw a shipped feature (web search, the knowledge
+    page, image upload, the intake conflict check, IFC models, filed documents,
+    follow-up questions) are now PostHog flags per organization. A feature
+    stays on unless PostHog answers off, and a change reaches open sessions
+    within a minute. Withdraw one with a release condition, never by disabling
+    the flag.
+  - >
+    Piloti's memory of a project is no longer behind a switch: it notes what a
+    conversation settled wherever a model is configured for it.

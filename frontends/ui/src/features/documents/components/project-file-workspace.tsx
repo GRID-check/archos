@@ -24,7 +24,7 @@ interface ProjectFileWorkspaceProps {
   projectName: string
   collectionName: string
   /**
-   * Whether the model workspace is reachable (WorkOS `ifc-models`, ADR-0046).
+   * Whether the model workspace is reachable (the `ifc-models` rollout, ADR-0046).
    *
    * It decides the smallest of the things the flag has been: whether the preview
    * offers the way on to the stage. A click always opens the preview, and

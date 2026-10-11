@@ -416,56 +416,95 @@ drown the admin trail.
 
 ### 6. Feature Flags (native WorkOS product)
 
-Every feature switch is a **WorkOS Feature Flag**, per organization,
-delivered in the AuthKit JWT `feature_flags` claim (registry:
-`frontends/ui/src/lib/authz/feature-flags.ts`). There is one semantic: a flag is
-on exactly when WorkOS says so for the organization, and anything short of a
-yes — a stale token, a slug missing from WorkOS, a failed lookup, no
-organization — is off. There are no env switches and no enforcement toggle.
+Every feature switch is a flag per organization (registry:
+`frontends/ui/src/lib/authz/feature-flags.ts`), and its **kind** (`FLAG_KINDS`)
+decides where it lives (ADR-0102):
 
-The one exception is a deployment that signs nobody in (`REQUIRE_AUTH` not
-`true`: local dev, an anonymous compose stack). It has no claim to read, so
-each flag answers by its **kind** (`FLAG_KINDS` in the registry): a
-**rollout** — shipped to everybody, kept as a kill switch — is ON, an
-**entitlement** — granted per organization because it costs money or widens
-who reads what — is OFF. To exercise an entitlement locally, sign in against
-the Staging WorkOS environment.
+- An **entitlement**, granted per organization because it costs money or widens
+  who reads what, is a **WorkOS Feature Flag**, delivered in the AuthKit JWT
+  `feature_flags` claim. It is on exactly when WorkOS says so for the
+  organization; anything short of a yes (a stale token, a slug missing from
+  WorkOS, a failed lookup, no organization) is off. This section is about them.
+- A **rollout**, shipped to everybody and kept as a kill switch, is a **PostHog
+  flag** since ADR-0102, evaluated per organization in the BFF and on unless
+  PostHog answers off. It is no longer read from WorkOS, even where WorkOS still
+  holds its slug. See [Rollouts live in PostHog](#rollouts-live-in-posthog-adr-0102)
+  below.
+
+There are no env switches and no enforcement toggle. The one exception is a
+deployment that signs nobody in (`REQUIRE_AUTH` not `true`: local dev, an
+anonymous compose stack). It has no claim to read, so each flag answers by its
+kind: a rollout is ON, an entitlement is OFF. To exercise an entitlement
+locally, sign in against the Staging WorkOS environment.
+
+The entitlements, the only flags WorkOS must hold:
 
 | Flag slug | Kind | Gates |
 |---|---|---|
 | `runtime-model-config` | entitlement | Runtime AI model configuration (org page card + all 4 API routes) |
 | `deep-research` | entitlement | Deep-research runs, on all three paths that reach one: job submission (`POST /api/jobs/async/submit`), the commissioned run (`POST /api/internal/tasks`, op `research`), and — since the agent reads it per turn — whether a run is OFFERED at all, so the escalation and its plan-approval card never appear for a tenant without it. **OFF for all organizations in Production since 2026-09-18**; ON in Staging |
 | `byok-llm` | entitlement | BYOK LLM credentials (ADR-0022): org page card, all `/api/organization/llm-credentials` routes, and the internal resolution endpoint |
-| `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade (like `memory-reflection`), combined with the tenant's own `settings.webSearchEnabled` toggle |
-| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
-| `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
 | `skills` | entitlement | Agent Skills and the project Jobs that attach them (ADR-0046): the project **Automation** section (its Tasks / Zeitplan / Skills tabs, its rail entry, its ⌘K entries and the `g j` jump), every `/api/skills` and `/api/projects/[id]/jobs` route, and every scheduled fire (`fireScheduledJob` asks per organization and records a `skipped` run when it is off; the `skill-scheduler` itself has no gate). Created 2026-09-18, **OFF for all organizations in both environments** |
 | `task-automation` | entitlement | Delegated TASKS and their schedules (ADR-0051/0054, `task_definitions` + `task_runs`): work a chat turn hands over instead of answering, plus the recurring `cadence` form the scheduler fires. Gates the agent's `create_task` tool — told to the model in its per-turn prompt block and refused at `POST /api/internal/tasks`, so a turn neither offers one nor creates one — and the session-bearing `/api/projects/[id]/tasks`. **Deliberately separate from `skills`**, which shipped with it and is not the same feature: a skill is an instruction the agent may follow inside a turn, a task is work that outlives the turn, costs the requester's budget and runs under their permissions. It is also the second door into `deep-research`, since a task's agent type may be `researcher` or `deep_researcher`. Created 2026-09-18, **OFF for all organizations in both environments** |
 | `collaboration` | entitlement | Shared chats, `@`-mentions with the agent hand-off, and the inbox (ADR-0032…0035): the inbox nav entry + page, the share surfaces, the mention picker, and every `/api/inbox/*`, `/api/sharing/*` and `/api/stream` route. An entitlement because the feature changes who can READ a conversation. The flag hides the surfaces, it does not revoke grants: a thread shared while it was on stays shared in the database after it goes off |
 | `mail-import` | entitlement | The Outlook archive import into a project's Dateien (ADR-0085): the **Outlook-Archiv importieren** action and the routes that start and complete an import (`isMailImportEnabled`, `lib/authz/feature-flags.ts`). **Not created yet in either environment**, so the import is off for everybody until it is: create it OFF, then switch it on per organization once its Art. 28 notice covers imported correspondence |
+
+#### Rollouts live in PostHog (ADR-0102)
+
+These seven are PostHog flags in the project the BFF sends to
+(`NEXT_PUBLIC_POSTHOG_HOST`, `NEXT_PUBLIC_POSTHOG_PROJECT_TOKEN`), keyed by the
+same slug and evaluated by `frontends/ui/src/lib/analytics/rollout-flags.ts` as
+the organization: distinct id `org:<organizationId>`, person property
+`organization_id`. A rollout is ON unless PostHog answers `false` for it: no
+PostHog configured, no flag of that key, a failed evaluation and an
+organization-less caller all leave it on. Answers are cached 30 s per
+organization.
+
+| Flag key | Kind | Gates |
+|---|---|---|
+| `web-search` | rollout | Platform-layer web-search gate (ADR-0022). Evaluated live per org at the WS upgrade, combined with the tenant's own `settings.webSearchEnabled` toggle |
+| `image-upload` | rollout | Standalone PNG/JPG upload via VLM captioning (FB-15a). Availability = this flag **AND** a derived VLM capability (`vlm_available` on `GET /v1/data_sources`, computed from the VLM key). Server-computed in the root layout, prop-drilled into `AppConfig.fileUpload.acceptedTypes` (client accept-list includes image types only when flag AND capability hold); the BFF upload route (`uploadDocument`) independently re-applies the same flag∧capability rule via a short-TTL-cached backend probe and rejects image extensions with a 400 (fail-closed when the capability can't be confirmed). **Prerequisite (in addition to this flag):** a configured VLM (`AIQ_VLM_*`). No `FILE_UPLOAD_ACCEPTED_TYPES` image opt-in is needed — images are derived from the capability, not the env list (env-listed images without a VLM stay excluded) |
+| `wizard-conflict-check` | rollout | End-of-wizard intake conflict check (FB-13). Server-computed in the intake page, prop-drilled to `ProjectIntakeWizard`. On Save: structured answers are checked deterministically on the client (instant), free-text answers by the LLM (`POST /api/projects/[id]/consistency-check` → backend `/v1/consistency-check`, skipped when there is no substantive free text); findings hold the save for "Trotzdem speichern" / "Überarbeiten". Off → the wizard saves exactly as before |
 | `ifc-models` | rollout | IFC/BIM models (ADR-0045): the `.ifc` entry in the upload accept-list (client **and** the server-side allow-list), the model surfaces, every `/api/**/bim/*` route, and the agent's `ifc_query` tool via the internal service route. Worth knowing before enabling it for a customer: the feature renders OIB compliance verdicts, and `docs/roadmap/ifc-review-findings.md` lists the rules that still overstate |
 | `agent-authored-documents` | rollout | The ONE filing seam for documents Piloti writes — a finished Recherchebericht, a drawn diagram — into a project as `documents` rows (`lib/documents/generated.ts`, ADR-0047). Deliberately alongside the `project:documents:generate` permission, not instead of it: the permission is the TENANT's (per project, per role, set by the org's own admin), this flag is the OPERATOR's — the lever that stops filing for every producer and every tenant at once without editing a built-in role (which would then fail `provision:authz --check` in CI) |
-| `project-knowledge-page` | rollout | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. The platform owner's base-knowledge manager is NOT gated by this. OFF for all organizations in both environments |
-| `memory-reflection` | rollout | The post-answer memory-reflection stage, read per TURN by the agent tier (`GET /api/internal/stages`). ON for all organizations in both environments |
-| `post-answer-follow-ups` | rollout | The post-answer follow-up-questions stage, read the same way. ON for all organizations in both environments, and the only source of follow-up questions since the in-answer card was retired |
+| `project-knowledge-page` | rollout | The project-level knowledge-base transparency page (`/knowledge` route plus its ⌘K entry), showing the shared OIB corpus and the project's documents with their live index state. The platform owner's base-knowledge manager is NOT gated by this. In WorkOS it was ON in Staging and OFF in Production; a rollout fails open, so its PostHog flag must answer off for the Production organizations before this ships, or the page appears there |
+| `post-answer-follow-ups` | rollout | The post-answer follow-up-questions stage, read per TURN by the agent tier (`GET /api/internal/stages`). The only source of follow-up questions since the in-answer card was retired |
 
-**Retired flags (delete them from WorkOS in both environments).** Eight slugs
+**Withdrawing a rollout** is a release-condition change in PostHog: 0 % for
+everybody, or a condition on `organization_id` for one office. **Never disable
+the flag itself.** Without the secure key the BFF evaluates remotely, and remote
+evaluation omits a disabled flag; an omitted flag fails open, so the feature
+stays on. The change reaches open sessions within the 30 s cache (plus the 30 s
+definition poll with local evaluation), with no sign-in.
+
+One PostHog project serves Staging and Production. Where a rollout must differ
+between them, write the condition on the organizations' ids, which differ between
+the two WorkOS environments.
+
+The seven slugs are still in WorkOS, where nothing reads them now; delete them
+there once their PostHog flags exist (`task fe:provision:flags` lists them as
+`RETIRED?`). Each was ON for all organizations in both environments except
+`project-knowledge-page` (Staging only).
+
+**Retired flags (delete them from WorkOS in both environments).** Nine slugs
 exist in WorkOS and nothing in the code reads them any more: the seven finished
 UX rollouts `answer-feedback`, `chat-confidence-chip`, `files-metadata-panel`,
 `research-in-chat-history`, `keyboard-shortcuts`, `organization-archiv` and
 `ifc-preview-first` (ON for all organizations for about three months, so their
 features are simply on now: the Archiv for every member of an organization, the
 keyboard shortcuts for every session with one, the rest for everybody), and
-`source-origin-badges`, whose only reader went with the research side panel. A
-flag left in the dashboard after its code is gone reads like a switch and
-switches nothing.
+`source-origin-badges`, whose only reader went with the research side panel,
+and `memory-reflection`, whose stage is core since ADR-0102 (it runs wherever a
+model is configured for it). A flag left in the dashboard after its code is gone
+reads like a switch and switches nothing.
 
 Rollout order (per environment): 1) create the flag in the WorkOS dashboard
 (Feature Flags — flag create/update events are covered by WorkOS's own event
 log), in BOTH environments and in the same change that adds the slug to the
 registry, 2) target the organizations that should have it (dashboard, or
-`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). `task
-fe:provision:flags` lists every registry slug missing from an environment
+`workos.featureFlags.addFlagTarget({ slug, targetId: 'org_…' })`). That is the
+order for an ENTITLEMENT; a rollout needs a PostHog flag instead. `task
+fe:provision:flags` lists every registry entitlement missing from an environment
 (read-only, `WORKOS_API_KEY` of that environment). Tokens minted before a change carry the old claim — users pick it up at their
 next sign-in. ✅ All four flags exist in Staging AND Production
 (2026-07-13): `runtime-model-config` and `web-search` enabled for ALL
@@ -511,11 +550,12 @@ which ran it off, rehearsed a different code path from the one that shipped.
 WorkOS is the control plane for features: per organization, per flag, no
 redeploy.
 
-**A registry flag absent from WorkOS is off for everybody.** The registry is
-TypeScript and the flags are remote state, so `task verify` cannot see across
-the gap. `task fe:provision:flags` can: it lists the environment's flags
-read-only, fails on any registry slug missing there, and reports (without
-failing) flags no code reads. The weekly **WorkOS drift** workflow runs it
+**A registry entitlement absent from WorkOS is off for everybody.** The
+registry is TypeScript and the flags are remote state, so `task verify` cannot
+see across the gap. `task fe:provision:flags` can: it lists the environment's
+flags read-only, fails on any registry entitlement missing there, and reports
+(without failing) flags no code reads from WorkOS, the moved rollouts among
+them. The weekly **WorkOS drift** workflow runs it
 against Staging; Production has no key in CI, so run it there by hand with the
 Production key. **Create the flag in both environments in the same change.**
 
@@ -558,9 +598,11 @@ actually gets; prefer it over reading `flagEnabled` per flag.
 
 ##### Withdrawing a feature from here
 
-One WorkOS toggle, per organization or for all, effective at the reader's next
-sign-in (the claim rides the AuthKit JWT). No deploy. That is the point of
-enforcing.
+For an entitlement: one WorkOS toggle, per organization or for all, effective
+at the reader's next sign-in (the claim rides the AuthKit JWT). No deploy. That
+is the point of enforcing. For a rollout: a release condition in PostHog,
+effective within about a minute and without a sign-in (see
+[Rollouts live in PostHog](#rollouts-live-in-posthog-adr-0102)).
 
 There is no stack key to change alongside: the `skill-scheduler` always runs
 and the BFF skips a schedule whose organization lacks `skills`, so re-enabling

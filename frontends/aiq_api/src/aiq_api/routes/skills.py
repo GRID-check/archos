@@ -152,7 +152,10 @@ class SkillSubmitPayload(BaseModel):
     )
     memory_reflection_enabled: bool = Field(
         False,
-        description="Whether the worker may run the post-run memory reflection pass (the org's flag, BFF-evaluated)",
+        description=(
+            "Whether the worker may run the post-run memory reflection pass. The BFF sends true: "
+            "reflection is core and has no flag (ADR-0102)"
+        ),
     )
     organization_id: str = Field(..., description="WorkOS organization id owning the run (required)")
     user_id: str | None = Field(None, description="Skill owner's WorkOS user id")

@@ -5,8 +5,12 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   FEATURE_FLAGS,
   FLAG_KINDS,
+  ENTITLEMENT_FLAG_SLUGS,
   REGISTRY_FLAG_SLUGS,
-  flagsFromWorkOS,
+  ROLLOUT_FLAG_SLUGS,
+  flagsAreLive,
+  isEntitlementFlag,
+  isRolloutFlag,
   isAgentAuthoredDocumentsEnabled,
   isCollaborationEnabled,
   isFeatureEnabled,
@@ -26,11 +30,37 @@ afterEach(() => {
 })
 
 describe('the registry', () => {
-  it('contains the known flags with their WorkOS slugs', () => {
+  it('contains the known flags with their slugs', () => {
     expect(FEATURE_FLAGS.modelConfiguration).toBe('runtime-model-config')
     expect(FEATURE_FLAGS.deepResearch).toBe('deep-research')
-    expect(FEATURE_FLAGS.memoryReflection).toBe('memory-reflection')
     expect(FEATURE_FLAGS.postAnswerFollowUps).toBe('post-answer-follow-ups')
+  })
+
+  it('has no memory-reflection flag: the stage is core (ADR-0102)', () => {
+    expect(REGISTRY_FLAG_SLUGS as readonly string[]).not.toContain('memory-reflection')
+  })
+
+  it('splits the registry into the two kinds, every slug in exactly one', () => {
+    expect([...ENTITLEMENT_FLAG_SLUGS, ...ROLLOUT_FLAG_SLUGS].sort()).toEqual([...REGISTRY_FLAG_SLUGS].sort())
+    expect([...ROLLOUT_FLAG_SLUGS].sort()).toEqual(
+      [
+        'agent-authored-documents',
+        'ifc-models',
+        'image-upload',
+        'post-answer-follow-ups',
+        'project-knowledge-page',
+        'web-search',
+        'wizard-conflict-check',
+      ].sort()
+    )
+  })
+
+  it('knows no kind for a string that is not a registry slug', () => {
+    expect(isEntitlementFlag('memory-reflection')).toBe(false)
+    expect(isRolloutFlag('memory-reflection')).toBe(false)
+    expect(isRolloutFlag('toString')).toBe(false)
+    expect(isEntitlementFlag('skills')).toBe(true)
+    expect(isRolloutFlag('web-search')).toBe(true)
   })
 
   it('classifies every slug, and nothing that is not one', () => {
@@ -55,13 +85,13 @@ describe('the registry', () => {
   })
 })
 
-describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed', () => {
+describe('where people sign in (REQUIRE_AUTH=true): the session set decides', () => {
   beforeEach(() => {
     vi.stubEnv('REQUIRE_AUTH', 'true')
   })
 
-  it('reads flags from WorkOS', () => {
-    expect(flagsFromWorkOS()).toBe(true)
+  it('evaluates flags live', () => {
+    expect(flagsAreLive()).toBe(true)
   })
 
   it('passes only sessions carrying the flag slug', () => {
@@ -70,14 +100,16 @@ describe('where people sign in (REQUIRE_AUTH=true): WorkOS decides, fail-closed'
     expect(isFeatureEnabled({ featureFlags: [] }, FLAG)).toBe(false)
   })
 
-  it('fails a token without the claim closed (stale session)', () => {
+  it('turns everything off for a hand-made session with no set at all', () => {
     expect(isFeatureEnabled({ featureFlags: null }, FLAG)).toBe(false)
+    expect(isFeatureEnabled({ featureFlags: null }, FEATURE_FLAGS.ifcModels)).toBe(false)
   })
 
-  it('gives a rollout no default either — absent from the claim is off', () => {
+  it('gives a rollout no default in the gate: the session set already carries PostHog’s answer', () => {
     // The default-ON env gates (`GRID_IFC_MODELS_ENABLED`,
-    // `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`) are gone; what WorkOS says is
-    // what the session gets.
+    // `GRID_AGENT_AUTHORED_DOCUMENTS_ENABLED`) are gone. Failing open is the
+    // job of the code that BUILDS the set (`sessionFeatureFlags`), not of the
+    // gate that reads it.
     expect(isIfcModelsEnabled({ featureFlags: [] })).toBe(false)
     expect(isAgentAuthoredDocumentsEnabled({ featureFlags: [] })).toBe(false)
     expect(isIfcModelsEnabled({ featureFlags: [FEATURE_FLAGS.ifcModels] })).toBe(true)
@@ -122,8 +154,8 @@ describe('where nobody signs in (REQUIRE_AUTH unset): rollouts on, entitlements 
     vi.stubEnv('REQUIRE_AUTH', '')
   })
 
-  it('does not read flags from WorkOS', () => {
-    expect(flagsFromWorkOS()).toBe(false)
+  it('does not evaluate flags live', () => {
+    expect(flagsAreLive()).toBe(false)
   })
 
   it('answers each flag by its kind, whatever the session carries', () => {

@@ -29,6 +29,7 @@ are the program's defaults (`deploy/pulumi/src/config.ts`), and each event's
 | No release markers | PostHog annotations and error-tracking releases per deploy | `deploy.yml` steps, skipped without the secret | Code in this change |
 | WorkOS users and organizations | PostHog data warehouse (read-only copy, for analysis) | PostHog's WorkOS source (needs a WorkOS API key) | Decision open, see below |
 | Feature entitlements, authorization | WorkOS (unchanged) | — | Flags in PostHog are rollout switches, never authorization |
+| Rollout switches (7 WorkOS flags) | PostHog flags, per organization (ADR-0102) | `lib/analytics/rollout-flags.ts` on the server client, merged into the session's flag set; fail-open | Code in this change; the seven flags to create in PostHog, then delete in WorkOS |
 
 ## What is already configured in PostHog
 
@@ -135,14 +136,22 @@ date.
    database, not in an analysis tool. Still open: login and membership *events*
    (`authentication.*`, `organization_membership.*`) would need a second WorkOS
    webhook into a PostHog workflow.
-4. **Feature flags.** Entitlements (`deep-research`, `task-automation`,
-   `byok-llm`, `runtime-model-config`, `collaboration`, `skills`,
-   `mail-import`) stay in WorkOS: they are authorization, ride the signed
-   session, and org targeting in PostHog needs paid groups. Rollouts and kill
-   switches (`web-search`, `project-knowledge-page`, `image-upload`,
-   `wizard-conflict-check`, `ifc-models`, `agent-authored-documents`,
-   `post-answer-follow-ups`) are candidates for PostHog flags evaluated in the
-   BFF; `memory-reflection` is probably core. Its own change after this one.
+4. **Feature flags.** Decided (ADR-0102). Entitlements (`deep-research`,
+   `task-automation`, `byok-llm`, `runtime-model-config`, `collaboration`,
+   `skills`, `mail-import`) stay in WorkOS: they are authorization and ride the
+   signed session. Rollouts (`web-search`, `project-knowledge-page`,
+   `image-upload`, `wizard-conflict-check`, `ifc-models`,
+   `agent-authored-documents`, `post-answer-follow-ups`) are PostHog flags with
+   those keys, evaluated in the BFF per organization
+   (`frontends/ui/src/lib/analytics/rollout-flags.ts`): distinct id
+   `org:<organizationId>` with an `organization_id` person property, so no paid
+   groups. A rollout is on unless PostHog answers off, so an outage or a missing
+   flag never withdraws one; withdraw one by its release condition, never by
+   disabling the flag (remote evaluation omits a disabled flag, and omitted reads
+   as on). With `POSTHOG_FEATURE_FLAGS_SECURE_API_KEY` (Pulumi
+   `grid-oib:posthogFeatureFlagsKey`) the BFF evaluates locally; each poll is
+   one flag request, ten when definitions changed. `memory-reflection` is no
+   longer a flag: the stage is core.
 5. **Feedback text in PostHog.** A vote's comment and expected answer are
    written into the Langfuse `user-feedback` score, so the integration copies
    them into PostHog (`langfuse_score_comment`, `langfuse_score_metadata`). There

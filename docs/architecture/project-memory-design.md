@@ -216,13 +216,14 @@ Enablement (two gates):
 - **Capability** — the config key `memory_reflection_llm` must point at an LLM,
   or the stage is compiled out entirely (unset by default historically; now set
   to `card_llm` in `config_oib_openrouter.yml`).
-- **Runtime** — each turn is gated by `isMemoryReflectionEnabled`
-  (`frontends/ui/src/lib/workos/feature-flags.ts`), evaluated by the BFF at the
-  WS upgrade and forwarded to the backend as the
-  `x-grid-feature-memory-reflection` header (fail-closed: absent header → off).
-  The per-org `memory-reflection` **WorkOS feature flag** is the source of
-  truth, with no env fallback. It is a rollout flag, so a deployment where
-  nobody signs in (`REQUIRE_AUTH` not `true`) runs reflection for every turn.
+- **Runtime** — no flag. The stage is core since ADR-0102
+  (`StageSpec.flag_slug=None`): the runner reaches its gate on every turn, and
+  the gate skips a turn without an organization or a project, a commissioned
+  run, an empty or truncated turn. The `memory-reflection` WorkOS flag and
+  `isMemoryReflectionEnabled` are deleted; the
+  `x-grid-feature-memory-reflection` header and the envelope's
+  `memoryReflectionEnabled` are still sent, always `true`, and the chat path no
+  longer reads them.
 
 Safety limits (see [memory-reflection-audit.md](./memory-reflection-audit.md)):
 - **Project scope only** — the autonomous stage never writes `organization`-scoped

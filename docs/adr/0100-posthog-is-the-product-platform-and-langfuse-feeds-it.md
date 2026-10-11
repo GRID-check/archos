@@ -164,3 +164,6 @@ What goes where:
 * ADR-0007 (no local identity sync) is untouched. PostHog's WorkOS warehouse
   source is a read-only copy in PostHog for analysis, not a mirror our code reads.
   Whether to connect it is in the migration plan.
+* Amended by ADR-0102, which decides which flags move: rollout switches are
+  PostHog flags evaluated per organization in the BFF, entitlements stay WorkOS
+  flags, and `memory-reflection` is no longer a flag.

@@ -804,14 +804,17 @@ class TestMemoryReflectionAsAStage:
     reflection does must be unchanged, only how it is wired and bounded."""
 
     def _facts(self, **overrides):
+        # An organization since ADR-0102: the stage is core, and its gate now
+        # skips a turn without one, which the flag path used to do implicitly.
+        # No served stage set either: a core stage runs without one.
         base = TurnFacts(
             conversation_id="c",
-            organization_id=None,
+            organization_id="org-1",
             project_id="proj-1",
             query="q",
             answer="a",
             routing_decision="shallow",
-            enabled_stages=frozenset({"memory_reflection"}),
+            enabled_stages=frozenset(),
         )
         return dataclasses.replace(base, **overrides)
 

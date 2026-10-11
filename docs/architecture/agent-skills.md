@@ -827,7 +827,8 @@ from the job row itself, and it never throws for a skip:
    overrides (ADR-0014), the project's ordered collection scope, project
    context, Bundesland, **the project-memory digest** (ranked against the
    fire prompt, the way a chat turn's digest is ranked against its question)
-   and **the organization's memory-reflection flag** — exactly what the
+   and **`memory_reflection_enabled`** (always true since memory reflection
+   became core, ADR-0102) — exactly what the
    interactive path attaches. The signed `X-Grid-Request-Context` envelope is
    built from those same values through the shared builder, so the job path's
    wire format cannot drift from the interactive one. The digest travels as

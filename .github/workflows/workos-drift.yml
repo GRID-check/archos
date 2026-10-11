@@ -2,10 +2,11 @@ name: WorkOS drift
 
 # Weekly + on-demand read-only verification that the WorkOS environment still
 # agrees with what this repo declares (the authorization catalog, the audit
-# schema registry and the feature-flag registry). Every check is CHECK-mode:
+# schema registry and the feature-flag registry's entitlements; rollouts live
+# in PostHog, ADR-0102, and are not checked here). Every check is CHECK-mode:
 # they write nothing and exit non-zero on drift, so a red job here means someone
-# changed the dashboard (or the code shipped ahead of provisioning). A
-# feature-flag slug missing from WorkOS is off for every organization.
+# changed the dashboard (or the code shipped ahead of provisioning). An
+# entitlement slug missing from WorkOS is off for every organization.
 #
 # REQUIRES a repository secret named WORKOS_API_KEY_STAGING — a WorkOS secret
 # key (sk_…) for the STAGING environment. Without it every step fails fast with
@@ -54,7 +55,7 @@ jobs:
         run: task fe:provision:audit-schemas
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}
-      - name: Feature-flag registry vs WorkOS
+      - name: Feature-flag entitlements vs WorkOS
         run: task fe:provision:flags
         env:
           WORKOS_API_KEY: ${{ secrets.WORKOS_API_KEY_STAGING }}

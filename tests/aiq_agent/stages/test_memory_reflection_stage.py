@@ -15,8 +15,6 @@ import pytest
 from aiq_agent.common.canned_replies import GENERIC_ERROR_MESSAGE
 from aiq_agent.memory.restriction import RestrictionEvidence
 from aiq_agent.stages import get_stage
-from aiq_agent.stages.flags import legacy_enabled_stages
-from aiq_agent.stages.flags import stages_for_flag_slug
 from aiq_agent.stages.memory_reflection import MEMORY_REFLECTION
 from aiq_agent.stages.memory_reflection import MemoryReflectionPayload
 from aiq_agent.stages.memory_reflection import matches_escalation_keywords
@@ -59,31 +57,32 @@ class TestDeclaration:
         provider's 120s x 2 retries, holding one of four concurrency slots."""
         assert MEMORY_REFLECTION.timeout_s == 45.0
 
-    def test_it_delivers_a_frame_and_keeps_its_flag(self):
+    def test_it_delivers_a_frame_and_has_no_flag(self):
         """Slice 4b: the DB write is still the durable act, and the turn that
         caused it is now TOLD. That frame is the whole reason the per-answer
         memory poll could be deleted rather than merely slowed down — with
         `silent` there was no channel, so a browser had to guess when to ask.
 
-        The flag does not move: an operator who switches `memory-reflection` off
-        still switches off the writes AND the frame, which is what they mean.
+        The stage is core (ADR-0102): the `memory-reflection` flag was deleted,
+        so the stage declares no slug and the BFF's stage registry omits it.
         """
         assert MEMORY_REFLECTION.delivery == "frame"
-        assert MEMORY_REFLECTION.flag_slug == "memory-reflection"
+        assert MEMORY_REFLECTION.flag_slug is None
 
 
-class TestFlagPlumbing:
-    def test_the_legacy_boolean_still_switches_the_stage_on(self):
-        """One release of overlap: an older BFF sends only
-        `memoryReflectionEnabled`, and a mixed deployment must not go dark."""
-        assert "memory_reflection" in legacy_enabled_stages(memory_reflection_enabled=True)
+class TestCoreStage:
+    def test_it_runs_with_no_stage_enabled_by_the_bff(self):
+        """A failed or empty per-turn stage read switches off flagged stages
+        only. The runner reaches this stage's gate whatever the served set."""
+        from aiq_agent.stages.runner import _pre_run_outcome
 
-    def test_the_legacy_boolean_off_switches_it_off(self):
-        assert legacy_enabled_stages(memory_reflection_enabled=False) == frozenset()
+        facts = _facts(enabled_stages=frozenset())
+        assert _pre_run_outcome(MEMORY_REFLECTION, facts) is None
 
-    def test_the_mapping_follows_the_declared_slug_not_a_hardcoded_id(self):
-        assert stages_for_flag_slug(MEMORY_REFLECTION.flag_slug) == frozenset({"memory_reflection"})
-        assert stages_for_flag_slug("no-such-flag") == frozenset()
+    def test_a_turn_without_an_organization_writes_nothing(self):
+        """The turn used to resolve no stages without an organization; the gate
+        now says so itself, so a core stage never writes tenant-less memory."""
+        assert _gate(organization_id=None).reason == "no_organization"
 
 
 class TestGate:

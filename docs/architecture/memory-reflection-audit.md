@@ -75,7 +75,9 @@ Round 4:
    can be rolled out per-organization without a redeploy, and stays off by
    default. The earlier `MEMORY_REFLECTION_ENABLED` anonymous-mode env
    fallback was removed (Round 5): one gate, not two; anonymous/non-WorkOS
-   deployments can no longer enable reflection.
+   deployments can no longer enable reflection. *(Superseded by ADR-0102: the
+   flag is deleted and the stage is core; `memory_reflection_llm` is the only
+   switch, and the gate skips a turn without an organization.)*
 
 Round 5:
 10. **PII/secret filter (S4).** `_finding_from_entry` drops any finding

@@ -4,6 +4,7 @@
 
 import { getTokenClaims, withAuth } from '@workos-inc/authkit-nextjs'
 import { getWorkOS } from '@/lib/workos/client'
+import { sessionFeatureFlags } from '@/lib/workos/feature-flags'
 import { getCached } from '@/lib/cache'
 import { resolveMembershipRoles } from './membership-roles'
 import { clearTenantContext, enterTenantContext } from '@/lib/db/tenant-context'
@@ -83,12 +84,18 @@ export async function getGridSession(): Promise<GridSession | null> {
 
   const organizationId = auth.organizationId ?? null
 
-  const [organizationMembershipId, memberRoles] = organizationId
-    ? await Promise.all([
-        resolveOrganizationMembershipId(auth.user.id, organizationId),
-        resolveMembershipRoles(organizationId, auth.user.id),
-      ])
-    : [null, null]
+  // The session's flags (ADR-0102): the claim's entitlements plus the rollouts
+  // PostHog has not switched off for this organization. Resolved here, beside
+  // the membership lookups, so every gate stays a synchronous read.
+  const [[organizationMembershipId, memberRoles], featureFlags] = await Promise.all([
+    organizationId
+      ? Promise.all([
+          resolveOrganizationMembershipId(auth.user.id, organizationId),
+          resolveMembershipRoles(organizationId, auth.user.id),
+        ])
+      : Promise.resolve([null, null] as const),
+    sessionFeatureFlags(auth.featureFlags ?? null, organizationId),
+  ])
   const tokenRole = auth.role ?? (typeof claims.role === 'string' ? claims.role : null)
 
   const session: GridSession = {
@@ -104,7 +111,7 @@ export async function getGridSession(): Promise<GridSession | null> {
     // minute; the token's claim only when WorkOS could not be asked.
     roles: memberRoles ?? sessionRoles(auth.roles, claims.roles, tokenRole),
     permissions: auth.permissions ?? [],
-    featureFlags: auth.featureFlags ?? null,
+    featureFlags,
     profilePictureUrl: auth.user.profilePictureUrl ?? null,
   }
 

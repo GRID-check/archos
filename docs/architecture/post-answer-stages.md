@@ -18,6 +18,12 @@
 > corrected on
 > contact with the code are marked **[as built]** — each states the correction
 > and why the original was wrong.
+> **Flags since ADR-0102:** memory reflection has **no flag**; it is a core
+> stage (`flag_slug=None`) that runs wherever its gate passes and a model is
+> configured. `post-answer-follow-ups` is a **PostHog** rollout flag, on unless
+> PostHog answers off for the organization. Statements below that name the
+> `memory-reflection` WorkOS flag describe the design before that decision; the
+> notes marked **[ADR-0102]** say what changed.
 > **Scope:** the *stage* as a reusable shape, its wire contract, and the two
 > instances that must run on it — memory reflection (exists, in a bespoke form)
 > and follow-up questions (new).
@@ -321,6 +327,11 @@ primitive gives them one.
 *(Superseded: the gate is the per-org flag alone now, read per turn, with no
 `GRID_ENFORCE_FEATURE_FLAGS` and no `GRID_MEMORY_REFLECTION_ENABLED`; see §7.8.)*
 
+*(Superseded again by ADR-0102: there is no `memory-reflection` flag at all.
+`isMemoryReflectionEnabled` is deleted, and the BFF sends
+`memoryReflectionEnabled: true` only so an older agent and the job worker's
+parameter keep reading a value.)*
+
 Two things to note. First, **the kill switch takes effect at the next socket
 handshake, not the next turn** — a long-lived tab keeps the old decision.
 Second, `configs/config_oib_openrouter.yml:799-804` claims the runtime gate is
@@ -353,7 +364,7 @@ New package `src/aiq_agent/stages/`. One frozen declaration per stage:
 class StageSpec:
     id: str  # stable wire identity, e.g. "follow_ups"
     agent_group: AgentGroup  # model selection, org override, BYOK credential
-    flag_slug: str  # WorkOS slug, e.g. "post-answer-follow-ups"
+    flag_slug: str | None  # flag slug, e.g. "post-answer-follow-ups"; None = core, no switch
     timeout_s: float  # HARD asyncio bound on the whole handler
     gate: Callable[[TurnFacts], GateDecision]  # deterministic; no LLM
     handler: Callable[[StageContext], Awaitable[StagePayload | None]]
@@ -758,6 +769,12 @@ transfer of authority. `grid_app` stays single-writer.
 > so an operator switching it off switches off the writes and the frame
 > together, which is what they mean by it.
 >
+> **[ADR-0102]** The flag is gone. Memory reflection declares `flag_slug=None`,
+> the runner skips the flag check for a core stage, and the only way to switch
+> it off is to unset `memory_reflection_llm` (the capability bit). Its gate
+> gained `no_organization`: a turn without an organization resolves no stage
+> flags, and the stage used to inherit that skip from the flag path.
+>
 > **`GET /api/projects/{id}/memory?conversationId=…` keeps its filter.** The
 > chip was its only caller and the parameter is now dead, but removing it would
 > make an old tab still polling during a deploy overlap receive the project's
@@ -1161,15 +1178,18 @@ for memory.
 
 Per stage, config-driven, no deploy:
 
-1. **`StageSpec.flag_slug`** → a per-org WorkOS flag, mirrored in
+1. **`StageSpec.flag_slug`** → a per-org flag, mirrored in
    `POST_ANSWER_STAGE_FLAGS` and evaluated by `enabledPostAnswerStages`
-   (`lib/workos/feature-flags.ts`), fail-closed. Every stage flag is a
-   **rollout** in the registry (`FLAG_KINDS`), so a deployment where nobody
-   signs in runs every stage. There is no env fallback: the
-   `StageSpec.env_default` field and the `GRID_MEMORY_REFLECTION_ENABLED` /
-   `GRID_STAGE_FOLLOW_UPS_ENABLED` variables it named were removed when flag
-   enforcement became unconditional. A new stage ships with its flag created
-   OFF in WorkOS.
+   (`lib/workos/feature-flags.ts`). Every stage flag is a **rollout** in the
+   registry (`FLAG_KINDS`), so a deployment where nobody signs in runs every
+   stage. There is no env fallback: the `StageSpec.env_default` field and the
+   `GRID_MEMORY_REFLECTION_ENABLED` / `GRID_STAGE_FOLLOW_UPS_ENABLED` variables
+   it named were removed when flag enforcement became unconditional.
+   **[ADR-0102]** A rollout is a PostHog flag and fails OPEN: on unless PostHog
+   answers off for the organization, so a stage that must launch dark needs its
+   PostHog flag created at 0 % before the code ships. `flag_slug=None` declares
+   a core stage with no switch (memory reflection), absent from
+   `POST_ANSWER_STAGE_FLAGS` on purpose.
 2. **Capability bit:** a stage whose `AgentGroup` resolves no LLM is a no-op, as
    reflection is today (`register.py:794-799`). Flag ∧ capability, per the
    doctrine in `AGENTS.md`.
@@ -1228,6 +1248,12 @@ is a map lookup, not a WorkOS round-trip.
 > It fails **open to the connection-time value**, not closed. A BFF blip must
 > degrade to the previous behaviour; failing closed would silently disable every
 > stage for as long as the blip lasts, which is worse than the defect.
+>
+> **[ADR-0102]** The fallback below is gone with the flag. A failed per-turn read
+> now switches every FLAGGED stage off for that turn; core stages run anyway, so
+> the blip costs the follow-up rail and nothing durable. `legacy_enabled_stages`
+> and `MEMORY_REFLECTION_FLAG_SLUG` are deleted, and the boolean stays on the
+> envelope, always `true`, until the wire field is retired in a change of its own.
 >
 > Consequently the envelope keeps its `memoryReflectionEnabled` boolean and does
 > **not** gain `stagesEnabled: string[]`: the envelope is the fallback now, not

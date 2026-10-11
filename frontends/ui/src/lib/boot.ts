@@ -19,13 +19,16 @@
  * ## Where the flags come from, not what each one says
  *
  * The line used to carry four env gates (`skills`, `collaboration`,
- * `enforceFlags`, `agentDocs`). Those are gone: every feature is a WorkOS flag
- * per organization now (`lib/authz/feature-flags.ts`), so no process-wide value
+ * `enforceFlags`, `agentDocs`). Those are gone: every feature is a flag per
+ * organization now (`lib/authz/feature-flags.ts`), so no process-wide value
  * exists to print. What a process CAN say is where its answers come from —
  * `flags=workos` wherever people sign in (`REQUIRE_AUTH=true`), `flags=defaults`
  * in a deployment that authenticates nobody, where every rollout is on and
  * every entitlement off. That is the first fork of any "the feature is not
- * there" report. The rule is duplicated from `flagsFromWorkOS` deliberately:
+ * there" report. `workos` names live evaluation and keeps its name although
+ * the rollouts now come from PostHog (ADR-0102): the line is grepped across
+ * replicas and `server.js` prints a byte-for-byte copy. The rule is duplicated
+ * from `flagsAreLive` deliberately:
  * this module is imported by a health route and by nothing that has a session,
  * so it must not pull `next/server` or WorkOS in behind it.
  *
@@ -64,7 +67,7 @@ export function deployedSha(env: NodeJS.ProcessEnv = process.env): string {
 }
 
 /**
- * `flagsFromWorkOS`, for this process's env: WorkOS wherever people sign in.
+ * `flagsAreLive`, for this process's env: live wherever people sign in.
  * The exact rule `isAuthRequired` applies — case-insensitive, NOT trimmed — so
  * the line cannot claim WorkOS for a value the gate reads as anonymous.
  */

@@ -73,23 +73,20 @@ class TestFetchEnabledStages:
 
 class TestResolveEnabledStages:
     @pytest.mark.asyncio
-    async def test_the_live_answer_wins_over_the_connection_time_value(self):
+    async def test_the_live_answer_decides_this_turn(self):
         """The whole point: 'off' has to mean off on the NEXT TURN, not on the
         next socket handshake."""
         with patch("urllib.request.urlopen", return_value=_body({"enabled": []})):
-            resolved = await flags.resolve_enabled_stages(organization_id="org_1", memory_reflection_enabled=True)
+            resolved = await flags.resolve_enabled_stages(organization_id="org_1")
         assert resolved == frozenset()
 
     @pytest.mark.asyncio
-    async def test_a_bff_failure_degrades_to_the_connection_time_value(self):
+    async def test_a_bff_failure_switches_every_flagged_stage_off(self):
+        """No connection-time value is left to fall back to: memory reflection
+        was the only stage it stood for, and it is core now (ADR-0102). The core
+        stages run regardless, so the failure costs the turn its follow-ups."""
         with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
-            resolved = await flags.resolve_enabled_stages(organization_id="org_1", memory_reflection_enabled=True)
-        assert "memory_reflection" in resolved
-
-    @pytest.mark.asyncio
-    async def test_a_bff_failure_never_switches_a_disabled_stage_on(self):
-        with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
-            resolved = await flags.resolve_enabled_stages(organization_id="org_1", memory_reflection_enabled=False)
+            resolved = await flags.resolve_enabled_stages(organization_id="org_1")
         assert resolved == frozenset()
 
 
@@ -145,24 +142,24 @@ class TestResolveTurnFlags:
     async def test_a_bff_failure_never_withdraws_deep_research(self):
         """The one that matters: a blip must not look like a withdrawn flag."""
         with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
-            resolved = await flags.resolve_turn_flags(organization_id="org_1", memory_reflection_enabled=False)
+            resolved = await flags.resolve_turn_flags(organization_id="org_1")
         assert resolved.deep_research_allowed is True
 
     @pytest.mark.asyncio
     async def test_a_bff_failure_never_withdraws_tasks(self):
         with patch("urllib.request.urlopen", side_effect=OSError("connection refused")):
-            resolved = await flags.resolve_turn_flags(organization_id="org_1", memory_reflection_enabled=False)
+            resolved = await flags.resolve_turn_flags(organization_id="org_1")
         assert resolved.tasks_allowed is True
 
     @pytest.mark.asyncio
     async def test_a_malformed_body_never_withdraws_deep_research(self):
         with patch("urllib.request.urlopen", return_value=_body({"stages": []})):
-            resolved = await flags.resolve_turn_flags(organization_id="org_1", memory_reflection_enabled=True)
+            resolved = await flags.resolve_turn_flags(organization_id="org_1")
         assert resolved.deep_research_allowed is True
-        assert "memory_reflection" in resolved.enabled_stages
+        assert resolved.enabled_stages == frozenset()
 
     @pytest.mark.asyncio
     async def test_the_live_withdrawal_reaches_this_turn(self):
         with patch("urllib.request.urlopen", return_value=_body({"enabled": [], "features": {"deepResearch": False}})):
-            resolved = await flags.resolve_turn_flags(organization_id="org_1", memory_reflection_enabled=True)
+            resolved = await flags.resolve_turn_flags(organization_id="org_1")
         assert resolved.deep_research_allowed is False

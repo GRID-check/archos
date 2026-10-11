@@ -1960,6 +1960,12 @@ frontend and bff-jobs, `POSTHOG_HOST` and `POSTHOG_PROJECT_TOKEN` on
 neither: with one unset every runtime stays off. Changing either rolls the pods,
 because they are literal env values in the pod template.
 
+The one PostHog secret is optional: `grid-oib:posthogFeatureFlagsKey`, the
+project's feature-flags secure key. When set, `buildSecrets` writes it to the
+shared Secret and the frontend (and bff-jobs, which inherits its env) reads it as
+`POSTHOG_FEATURE_FLAGS_SECURE_API_KEY`, so the BFF evaluates the rollout flags
+locally (ADR-0102). Absent, nothing is written and flags are evaluated remotely.
+
 ### The platform Connect application
 
 Langfuse's route is gated at the edge, and its UI signs in, against a

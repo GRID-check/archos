@@ -1,43 +1,61 @@
 /**
- * Feature-flag registry — WORKOS-NATIVE (Feature Flags product).
+ * Feature-flag registry: every switch the code reads, and which kind it is.
  *
- * Flags are created and targeted in the WorkOS dashboard (per-organization
- * or per-user targets; changes are covered by WorkOS's own event log) and
- * arrive in the AuthKit JWT as the `feature_flags` claim — the same
- * delivery path as permissions, zero extra lookups. A caller with no session
- * (a scheduled fire, an internal service route, the per-turn stage read) asks
- * WorkOS per organization instead: `isOrgFeatureEnabled` in
- * `lib/workos/feature-flags.ts`, which applies the same rules as this module.
+ * A flag is one of two kinds ({@link FLAG_KINDS}), and the kind decides where
+ * its answer comes from (ADR-0102, amending ADR-0100):
  *
- * ## One semantic, and where it comes from
+ *   - an `entitlement` is AUTHORIZATION. It is granted per organization because
+ *     it costs money or changes who can read what (deep research, tasks, BYOK,
+ *     model configuration, collaboration, the mail import, skills). It lives in
+ *     WorkOS's Feature Flags product, is targeted in the WorkOS dashboard, and
+ *     arrives in the AuthKit JWT as the `feature_flags` claim: signed, and the
+ *     same delivery path as permissions.
+ *   - a `rollout` is a KILL SWITCH. It is a feature we ship to everybody (web
+ *     search, the knowledge page, image upload, the wizard's conflict check, IFC
+ *     models, filing agent-written documents, the follow-up stage), and the flag
+ *     exists so an operator can withdraw it without a deploy. It lives in
+ *     PostHog and is evaluated per ORGANIZATION
+ *     (`lib/analytics/rollout-flags.ts`).
  *
- * A flag is ON for a session exactly when WorkOS says so. Anything short of a
- * yes is a no: a token minted before the claim existed, a slug missing from
- * WorkOS, a failed lookup, a caller with no organization. There used to be
- * four semantics here — fail-open while `GRID_ENFORCE_FEATURE_FLAGS` was off,
- * an env opt-in that defaulted off, an env opt-out that defaulted on, and
- * fail-closed under enforcement — chosen per flag, and production ran the last
- * one while every other environment rehearsed one of the first three. Both
- * stacks enforced flags, so every `GRID_*_ENABLED` fallback was dead config in
- * them, and compose and local dev exercised a different code path from the one
- * that shipped.
+ * PostHog flags are never authorization (ADR-0100). That is why the split runs
+ * along the kind: nothing an organization pays for, or that changes who may
+ * read what, is decided by an analytics vendor.
+ *
+ * ## Where a session's flags come from
+ *
+ * `session.featureFlags` is assembled where a session is built
+ * (`sessionFeatureFlags` in `lib/workos/feature-flags.ts`, which
+ * `lib/auth/session.ts` calls, and `enabledFlagsForOrganization`, which
+ * `lib/auth/pinned-session.ts` calls): the entitlements the WorkOS claim
+ * carries, plus the rollouts PostHog has not switched off for the
+ * organization. A rollout slug still sitting in the WorkOS claim is ignored. So
+ * every gate below stays a synchronous read of one array. A caller with no
+ * session (a scheduled fire, an internal route, the per-turn stage read) asks
+ * `isOrgFeatureEnabled` in the same module, which routes by kind the same way.
+ *
+ * ## Two semantics, one per kind
+ *
+ * An entitlement is ON exactly when WorkOS says so. Anything short of a yes is
+ * a no: a token minted before the claim existed, a slug missing from WorkOS, a
+ * failed lookup, a caller with no organization. An outage never hands out what
+ * an organization was not granted.
+ *
+ * A rollout is ON unless PostHog explicitly answers off for the organization.
+ * PostHog not configured, the flag not created there, an evaluation that fails
+ * and a stale token all leave it on: it is shipped to everybody, and an outage
+ * of the analytics vendor must not withdraw it.
  *
  * ## The one exception: a deployment that authenticates nobody
  *
  * With `REQUIRE_AUTH` not `true` (local dev, an anonymous compose stack) there
  * is no signed-in user, so there is no claim and usually no organization to
- * ask WorkOS about. Such a deployment gets a FIXED answer per flag, decided by
- * the flag's kind in {@link FLAG_KINDS}:
+ * ask about. Such a deployment gets a FIXED answer per flag, decided by its
+ * kind:
  *
- *   - a `rollout` is ON. It is a feature we ship to everybody and keep a kill
- *     switch for (web search, the model surfaces, filing agent-written
- *     documents, the post-answer stages). A developer must see what customers
- *     see.
- *   - an `entitlement` is OFF. It is granted per organization because it costs
- *     money or changes who can read what (deep research, tasks, BYOK, model
- *     configuration, collaboration, the mail import, skills). An unauthenticated
- *     deployment that is reachable from somewhere it should not be must not
- *     hand those out — the same direction every other failure here takes.
+ *   - a `rollout` is ON. A developer must see what customers see.
+ *   - an `entitlement` is OFF. An unauthenticated deployment that is reachable
+ *     from somewhere it should not be must not hand those out, the same
+ *     direction every other entitlement failure takes.
  *
  * The condition is `REQUIRE_AUTH` rather than `NODE_ENV`, because the built
  * image runs `NODE_ENV=production` in compose too, and rather than the absence
@@ -46,9 +64,10 @@
  * Staging WorkOS environment: that is the code path production runs, and the
  * only one worth rehearsing.
  *
- * Every slug below must exist in BOTH WorkOS environments, or it is off for
- * everybody: `task fe:provision:flags` checks that, read-only (runbook:
- * docs/deployment/workos-provisioning.md).
+ * Every entitlement slug must exist in BOTH WorkOS environments, or it is off
+ * for everybody: `task fe:provision:flags` checks that, read-only (runbook:
+ * docs/deployment/workos-provisioning.md). A rollout needs no flag anywhere to
+ * be on; it needs a PostHog flag to be switchable off.
  */
 
 import type { GridSession } from '@/lib/auth/types'
@@ -149,8 +168,9 @@ export const FEATURE_FLAGS = {
    *     filing has to stop now, and it stops filing for every producer and every
    *     tenant without touching a single role.
    *
-   * A rollout: ON for every organization in WorkOS, and switching it off for
-   * one (or all) is a dashboard toggle, no deploy.
+   * A rollout: ON for every organization unless its PostHog flag answers off,
+   * and switching it off for one organization (or all) is a release-condition
+   * change in PostHog, no deploy.
    */
   agentAuthoredDocuments: 'agent-authored-documents',
   /** Agent Skills: the org toolbox of agentskills.io-format skills plus the
@@ -164,25 +184,29 @@ export const FEATURE_FLAGS = {
    *  switches it on per organization, deliberately. */
   mailImport: 'mail-import',
   /**
-   * The post-answer memory-reflection stage (`docs/architecture/
-   * project-memory-design.md` §3.5). Read per turn by the agent tier through
+   * The post-answer follow-up-questions stage (`docs/architecture/
+   * post-answer-stages.md`). Read per turn by the agent tier through
    * `GET /api/internal/stages` (`POST_ANSWER_STAGE_FLAGS` in
-   * `lib/workos/feature-flags.ts`), never from a session.
+   * `lib/workos/feature-flags.ts`), never from a session. The memory-reflection
+   * stage had a flag beside it and has none now: it is core, and runs wherever
+   * a model is configured for it.
    */
-  memoryReflection: 'memory-reflection',
-  /** The post-answer follow-up-questions stage, read the same way. */
   postAnswerFollowUps: 'post-answer-follow-ups',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
 
+/** The two kinds of switch; see the module header. */
+export type FlagKind = 'entitlement' | 'rollout'
+
 /**
- * What kind of switch each flag is — which decides only its answer in a
- * deployment that authenticates nobody (see the module header). A `Record`
- * over every slug, so a flag added to the registry does not compile until
- * somebody has said which kind it is.
+ * What kind of switch each flag is, which decides where its answer comes from
+ * (WorkOS or PostHog) and its fixed answer in a deployment that authenticates
+ * nobody (see the module header). Checked against every slug, so a flag added
+ * to the registry does not compile until somebody has said which kind it is,
+ * and kept as literal types, so each kind is a type as well as a list.
  */
-export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'rollout'>> = {
+export const FLAG_KINDS = {
   'runtime-model-config': 'entitlement',
   'deep-research': 'entitlement',
   'task-automation': 'entitlement',
@@ -196,18 +220,45 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   'wizard-conflict-check': 'rollout',
   'ifc-models': 'rollout',
   'agent-authored-documents': 'rollout',
-  'memory-reflection': 'rollout',
   'post-answer-follow-ups': 'rollout',
+} as const satisfies Readonly<Record<KnownFeatureFlag, FlagKind>>
+
+/** A slug WorkOS decides: authorization, carried by the signed claim. */
+export type EntitlementFlag = {
+  [Slug in KnownFeatureFlag]: (typeof FLAG_KINDS)[Slug] extends 'entitlement' ? Slug : never
+}[KnownFeatureFlag]
+
+/** A slug PostHog decides: a kill switch over something shipped to everybody. */
+export type RolloutFlag = Exclude<KnownFeatureFlag, EntitlementFlag>
+
+const KIND_OF: Readonly<Record<string, FlagKind | undefined>> = FLAG_KINDS
+
+/** Whether `slug` is a registry entitlement. Any other string is not. */
+export function isEntitlementFlag(slug: string): slug is EntitlementFlag {
+  return KIND_OF[slug] === 'entitlement'
 }
 
-/** Every slug the code reads, for the WorkOS drift check. */
+/** Whether `slug` is a registry rollout. Any other string is not. */
+export function isRolloutFlag(slug: string): slug is RolloutFlag {
+  return KIND_OF[slug] === 'rollout'
+}
+
+/** Every slug the code reads. */
 export const REGISTRY_FLAG_SLUGS: readonly KnownFeatureFlag[] = Object.values(FEATURE_FLAGS)
 
+/** The slugs WorkOS must hold, for the drift check (`task fe:provision:flags`). */
+export const ENTITLEMENT_FLAG_SLUGS: readonly EntitlementFlag[] = REGISTRY_FLAG_SLUGS.filter(isEntitlementFlag)
+
+/** The slugs PostHog decides: the keys of the flags it needs to switch one off. */
+export const ROLLOUT_FLAG_SLUGS: readonly RolloutFlag[] = REGISTRY_FLAG_SLUGS.filter(isRolloutFlag)
+
 /**
- * Whether flags come from WorkOS here — true wherever people sign in. The one
- * definition the session gates and the session-less ones share.
+ * Whether flags are evaluated live here (entitlements by WorkOS, rollouts by
+ * PostHog) rather than given their fixed per-kind answer: true wherever people
+ * sign in. The one definition the session gates and the session-less ones
+ * share.
  */
-export function flagsFromWorkOS(): boolean {
+export function flagsAreLive(): boolean {
   return isAuthRequired()
 }
 
@@ -221,8 +272,12 @@ export function isFeatureEnabled(
   session: Pick<GridSession, 'featureFlags'>,
   flag: KnownFeatureFlag
 ): boolean {
-  if (!flagsFromWorkOS()) return unauthenticatedDefault(flag)
-  if (session.featureFlags === null) return false // stale token — re-auth picks flags up
+  if (!flagsAreLive()) return unauthenticatedDefault(flag)
+  // A session `getGridSession` or `resolvePinnedRequesterSession` built is never
+  // null here: a stale token's missing claim already reads as "no
+  // entitlements", and its rollouts came from PostHog. `null` is the hand-made
+  // session of a caller nobody is signed in as, and everything is off for it.
+  if (session.featureFlags === null) return false
   return session.featureFlags.includes(flag)
 }
 

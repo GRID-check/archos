@@ -264,7 +264,8 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | **`workosClientId`** / 🔒 `workosApiKey` / 🔒 `workosCookiePassword` | — | WorkOS |
 | `platformOwnerEmails` / `platformOrgExternalId` | — / `grid-platform` | Platform tier |
 | `disableSelfServeOrgs` | `false` | Tenancy toggle |
-| *(feature flags)* | — | No stack keys. Every feature is a WorkOS flag per organization (`frontends/ui/src/lib/authz/feature-flags.ts`), read from the WorkOS environment `requireAuth` signs in against. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
+| *(feature flags)* | — | No stack keys. Every feature is a flag per organization (`frontends/ui/src/lib/authz/feature-flags.ts`, ADR-0102): an entitlement is a WorkOS flag, read from the WorkOS environment `requireAuth` signs in against; a rollout is a PostHog flag in the project `posthogHost`/`posthogProjectToken` name, on unless PostHog answers off. The retired keys `enforceFeatureFlags`, `skillsEnabled`, `collaborationEnabled`, `mailImportEnabled`, `agentAuthoredDocumentsEnabled`, `ifcModelsEnabled` and `memoryReflectionEnabled` are ignored |
+| 🔒 `posthogFeatureFlagsKey` | — | Optional. PostHog's feature-flags secure key: the frontend (and bff-jobs, which inherits its env) gets it from the shared Secret as `POSTHOG_FEATURE_FLAGS_SECURE_API_KEY` and evaluates the rollout flags locally. Absent (the default), nothing is written and the BFF asks PostHog's `/flags` per organization |
 | `auditLogsEnabled` | `false` | WorkOS audit-log emission from the frontend (`GRID_AUDIT_LOGS_ENABLED`) — default OFF |
 | `byokSecretBackend` / 🔒 `byokLocalKek` | — | BYOK backends |
 | `allowAgentOrgMemory` | `false` | Org-memory write path |

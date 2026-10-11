@@ -13,6 +13,14 @@
  * project token is public by design, so the server needs no secret of its own
  * to capture.
  *
+ * Rollout flags (`rollout-flags.ts`, ADR-0102) are evaluated on this same
+ * client. With `POSTHOG_FEATURE_FLAGS_SECURE_API_KEY` set (the project's
+ * feature-flags secure key, a server-side secret) it is passed as posthog-node's
+ * `secretKey`, which polls flag definitions and evaluates them locally; without
+ * it every evaluation is a remote `/flags` request. `secretKey` rather than the
+ * `personalApiKey` option the PostHog docs still name: posthog-node 5 marks
+ * `personalApiKey` deprecated and reads `secretKey ?? personalApiKey`.
+ *
  * Server events carry no GeoIP: the caller is our cluster, not the user, so a
  * lookup would attribute every event to the data centre. They carry the
  * deployed commit and the service as super properties (`register`), and a
@@ -70,6 +78,22 @@ export const posthogServerSettings = (): { host: string; projectToken: string } 
   return { host, projectToken }
 }
 
+/**
+ * The feature-flags secure key that switches on local flag evaluation, or
+ * `undefined`. A value that is the public project token (`phc_…`) is refused
+ * with a warning rather than passed on: posthog-node throws on one at
+ * construction, and that would take every capture down with the flags.
+ */
+export const posthogFlagsSecretKey = (): string | undefined => {
+  const key = (process.env.POSTHOG_FEATURE_FLAGS_SECURE_API_KEY ?? '').trim()
+  if (!key) return undefined
+  if (key.startsWith('phc_')) {
+    console.warn('[posthog] POSTHOG_FEATURE_FLAGS_SECURE_API_KEY holds a project token; evaluating flags remotely')
+    return undefined
+  }
+  return key
+}
+
 /** Whether the BFF sends anything to PostHog: both settings reached it. */
 export const isPosthogServerEnabled = (): boolean => posthogServerSettings() !== null
 
@@ -84,8 +108,11 @@ export const getPosthogServer = (): PostHog | null => {
   if (resolved) return client
   const config = posthogServerSettings()
   if (config) {
+    const secretKey = posthogFlagsSecretKey()
     client = new PostHog(config.projectToken, {
       host: config.host,
+      // Local flag evaluation (rollout-flags.ts); absent, flags go to `/flags`.
+      ...(secretKey ? { secretKey } : {}),
       disableGeoip: true,
       // Every event passes the scrubber last, whichever path queued it: a
       // credential in a URL must not depend on each caller remembering.

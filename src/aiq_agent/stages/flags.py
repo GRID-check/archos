@@ -7,23 +7,20 @@ way to spend that budget and nothing else.
 
 Which stages are switched on for this turn.
 
-A stage's runtime gate is *flag ∧ capability*: the WorkOS flag (or its env
-fallback) decides whether the tenant gets the stage at all, and the runner
-decides separately whether a model is configured for it. This module owns the
-first half.
+A flagged stage's runtime gate is *flag ∧ capability*: the BFF's flag decision
+(a PostHog rollout for follow-ups, ADR-0102) says whether the tenant gets the
+stage at all, and the runner decides separately whether a model is configured
+for it. This module owns the first half. A CORE stage (``flag_slug=None``,
+memory reflection) has no first half and is not asked about here.
 
 The set is resolved **per turn**, not per connection. That is a deliberate
-correction: the ``x-grid-feature-memory-reflection`` header is written once, at
-the WebSocket upgrade, and is then frozen for the life of the socket — so an
-operator reaching for the kill switch did not reach an already-open tab, which
-is the opposite of what a kill switch is for. The resolution follows the pattern
-the live memory digest already uses (``fetch_memory_digest``): ask the BFF at
-the start of the turn, and fall back to the connection-time value only when the
-call fails, so a BFF hiccup degrades to the previous behaviour rather than
-silently disabling every stage.
-
-Nothing here branches on a stage id: the legacy fallback is driven by the
-``flag_slug`` a stage *declares*.
+correction: a header written once, at the WebSocket upgrade, is frozen for the
+life of the socket — so an operator reaching for the kill switch did not reach
+an already-open tab, which is the opposite of what a kill switch is for. The
+resolution follows the pattern the live memory digest already uses
+(``fetch_memory_digest``): ask the BFF at the start of the turn. When the call
+fails, every flagged stage is off for that turn; the core stages run anyway, so
+a BFF hiccup costs the reader the follow-up rail and nothing durable.
 """
 
 from __future__ import annotations
@@ -36,12 +33,7 @@ import urllib.parse
 import urllib.request
 from dataclasses import dataclass
 
-from aiq_agent.stages.registry import iter_stages
-
 logger = logging.getLogger(__name__)
-
-#: The flag slug the pre-stage `memoryReflectionEnabled` boolean stood for.
-MEMORY_REFLECTION_FLAG_SLUG = "memory-reflection"
 
 #: The flag slug gating deep research, mirrored from the BFF registry
 #: (``frontends/ui/src/lib/authz/feature-flags.ts``). Named here for the log
@@ -79,22 +71,6 @@ class TurnFlags:
 #: live memory-digest fetch, so a slow BFF must never stall the turn. On timeout
 #: the caller keeps the connection-time value.
 _TIMEOUT_SECONDS = 1.5
-
-
-def stages_for_flag_slug(flag_slug: str) -> frozenset[str]:
-    """Ids of the registered stages declaring ``flag_slug``."""
-    return frozenset(spec.id for spec in iter_stages() if spec.flag_slug == flag_slug)
-
-
-def legacy_enabled_stages(*, memory_reflection_enabled: bool) -> frozenset[str]:
-    """The enabled set implied by the single connection-time boolean.
-
-    Kept for one release so a mixed deployment — new backend, older BFF that
-    only sends ``memoryReflectionEnabled`` — does not go dark.
-    """
-    if not memory_reflection_enabled:
-        return frozenset()
-    return stages_for_flag_slug(MEMORY_REFLECTION_FLAG_SLUG)
 
 
 def _internal_base_url() -> str:
@@ -145,27 +121,22 @@ def fetch_turn_flags(*, organization_id: str | None, project_id: str | None = No
     )
 
 
-async def resolve_turn_flags(
-    *, organization_id: str | None, memory_reflection_enabled: bool, project_id: str | None = None
-) -> TurnFlags:
-    """This turn's flags, with the connection-time values as fallback.
+async def resolve_turn_flags(*, organization_id: str | None, project_id: str | None = None) -> TurnFlags:
+    """This turn's flags, with permissive capabilities as the fallback.
 
-    Fail-open to the frozen value rather than fail-closed to nothing: a BFF
-    hiccup must degrade to the previous behaviour, not silently switch every
-    stage off for as long as the blip lasts. The same reasoning keeps deep
-    research allowed here — and it is not the last word on the job either way,
-    since ``POST /api/jobs/async/submit`` re-checks the flag with the reader's
-    own session.
+    On a failed read every FLAGGED stage is off for the turn (there is no
+    connection-time value to fall back to since memory reflection became core
+    and stopped being one), while the core stages run regardless. Deep research
+    and tasks stay allowed: a BFF hiccup must not withdraw them for as long as
+    the blip lasts, and this is not the last word on either, since
+    ``POST /api/jobs/async/submit`` and ``POST /api/internal/tasks`` re-check
+    the flag themselves.
     """
     try:
         return await asyncio.to_thread(fetch_turn_flags, organization_id=organization_id, project_id=project_id)
     except Exception:
-        logger.warning("Live per-turn flags unavailable; using the connection-time value", exc_info=True)
-        return TurnFlags(
-            enabled_stages=legacy_enabled_stages(memory_reflection_enabled=memory_reflection_enabled),
-            deep_research_allowed=True,
-            tasks_allowed=True,
-        )
+        logger.warning("Live per-turn flags unavailable; flagged stages are off for this turn", exc_info=True)
+        return TurnFlags(enabled_stages=frozenset(), deep_research_allowed=True, tasks_allowed=True)
 
 
 def fetch_enabled_stages(*, organization_id: str | None) -> frozenset[str]:
@@ -173,14 +144,12 @@ def fetch_enabled_stages(*, organization_id: str | None) -> frozenset[str]:
     return fetch_turn_flags(organization_id=organization_id).enabled_stages
 
 
-async def resolve_enabled_stages(*, organization_id: str | None, memory_reflection_enabled: bool) -> frozenset[str]:
+async def resolve_enabled_stages(*, organization_id: str | None) -> frozenset[str]:
     """The enabled stage set for THIS turn. See :func:`resolve_turn_flags`.
 
     Kept as the stage-only name the stage code and its tests read. It delegates
     rather than fetching: two fetchers against one endpoint would eventually
     disagree about what a missing field means.
     """
-    flags = await resolve_turn_flags(
-        organization_id=organization_id, memory_reflection_enabled=memory_reflection_enabled
-    )
+    flags = await resolve_turn_flags(organization_id=organization_id)
     return flags.enabled_stages

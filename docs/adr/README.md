@@ -164,6 +164,7 @@ Consequences, where a reader looks for them.
 | [0099](0099-fassungen-across-file-names-are-a-confirmed-link-not-a-merge.md) | Fassungen across file names are a confirmed link, not a merge | Proposed |
 | [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
+| [0102](0102-rollout-switches-are-posthog-flags-entitlements-stay-workos-flags.md) | Rollout switches are PostHog flags; entitlements stay WorkOS flags | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

@@ -23,7 +23,6 @@ import { buildCollectionScopeFromRequest } from '@/lib/collection-scope-request'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 import { isWebSearchEnabledForOrg } from '@/lib/organizations/service'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
 import { getBudgetStatus } from '@/lib/budgets/service'
@@ -103,10 +102,12 @@ export const GET = tenantSlotRoute(async function GET(req: Request): Promise<Res
     // directly dropped the implicit project from every lookup after the scope.
     const effectiveProjectId = authorizedProjectId ?? projectId
 
-    // Gate the async memory-reflection stage on the per-org
-    // "memory-reflection" flag (see isMemoryReflectionEnabled). server.js
-    // forwards this as x-grid-feature-memory-reflection.
-    const memoryReflectionEnabled = await isMemoryReflectionEnabled(organizationId)
+    // The memory-reflection stage is core (ADR-0102): it has no flag, and the
+    // agent runs it without asking. The field stays on the wire, always true,
+    // for an agent older than that decision, which still reads it (server.js
+    // forwards it as x-grid-feature-memory-reflection) as its fallback when the
+    // per-turn stage read fails.
+    const memoryReflectionEnabled = true
     // Budget enforcement (ADR-0015): refuse the upgrade outright when a
     // budget scope is already exhausted, otherwise forward the remaining
     // budget so the backend tracker can stop a runaway turn mid-flight.

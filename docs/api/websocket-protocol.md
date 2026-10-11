@@ -87,7 +87,7 @@ The `server.js` gateway handles WebSocket upgrade requests:
    - `x-grid-project-id` — the authorized project. Authenticated handshakes do
      not carry the project brief, memory or office instructions: those are
      loaded over HTTP at turn setup (ADR-0077).
-   - `x-grid-feature-memory-reflection` (`true`/`false`) — whether the async memory-reflection stage is enabled for the caller (per-org `memory-reflection` WorkOS flag; no env-var fallback). Fail-closed: absent → off.
+   - `x-grid-feature-memory-reflection` — always `true`. The memory-reflection stage is core and has no flag (ADR-0102); the header stays for an agent older than that decision, which reads it as its fallback when the per-turn stage read fails. The current agent does not read it.
    - `authorization: Bearer <accessToken>` — forwards backend access token.
 3. **Backend proxy:** Forwards the upgraded socket to `BACKEND_WS_URL + '/websocket'`.
 4. **Auth rejection:** If scope resolution returns 401/403, the gateway writes the HTTP error response and destroys the socket without proxying.

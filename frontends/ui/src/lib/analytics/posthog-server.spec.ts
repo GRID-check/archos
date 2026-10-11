@@ -153,3 +153,37 @@ describe('captureServer', () => {
     })
   })
 })
+
+describe('local flag evaluation (ADR-0102)', () => {
+  beforeEach(() => {
+    vi.unstubAllEnvs()
+    vi.restoreAllMocks()
+    constructed.length = 0
+    resetPosthogServerForTests()
+  })
+
+  test('is off without the secure key: no secret reaches the client, flags go to /flags', () => {
+    enable()
+    getPosthogServer()
+
+    expect(constructed[0]?.options).not.toHaveProperty('secretKey')
+    expect(constructed[0]?.options).not.toHaveProperty('personalApiKey')
+  })
+
+  test('hands the secure key to posthog-node as `secretKey`, the option it reads first', () => {
+    enable()
+    vi.stubEnv('POSTHOG_FEATURE_FLAGS_SECURE_API_KEY', ' phs_secure ')
+    getPosthogServer()
+
+    expect(constructed[0]?.options.secretKey).toBe('phs_secure')
+  })
+
+  test('refuses a project token in the secret slot rather than let the client throw', () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => {})
+    enable()
+    vi.stubEnv('POSTHOG_FEATURE_FLAGS_SECURE_API_KEY', 'phc_test')
+
+    expect(getPosthogServer()).not.toBeNull()
+    expect(constructed[0]?.options).not.toHaveProperty('secretKey')
+  })
+})

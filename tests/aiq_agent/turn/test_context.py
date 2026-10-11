@@ -72,8 +72,8 @@ def stubs(monkeypatch):
             raise value
         return value
 
-    async def turn_flags(*, organization_id, memory_reflection_enabled, project_id=None):
-        calls["stages_args"] = (organization_id, memory_reflection_enabled)
+    async def turn_flags(*, organization_id, project_id=None):
+        calls["stages_args"] = organization_id
         calls["flags_project"] = project_id
         return TurnFlags(
             enabled_stages=calls["stages"],
@@ -166,7 +166,7 @@ class TestLoadTurnContext:
             _request(organization_id="org"), conversation_id="c1", query_text="q", resolve_stages=False
         )
 
-        assert stubs["stages_args"] == ("org", False)
+        assert stubs["stages_args"] == "org"
         assert context.stage_facts.enabled_stages == frozenset()
         assert context.deep_research_allowed is False
 
