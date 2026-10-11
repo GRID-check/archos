@@ -267,15 +267,28 @@ tasks:
       # and `Frontend coverage` failed at the far end with an ENOENT naming a
       # directory nothing in this repo mentions. Pinned here, a future move of
       # the default cannot reach the workflow. The name carries the shard
-      # (`blob-1-6.json`) because all six artifacts are downloaded into one
+      # (`blob-1-4.json`) because all four artifacts are downloaded into one
       # directory with `merge-multiple: true`, where a fixed name would
-      # overwrite five of them.
+      # overwrite three of them.
+      #
+      # Which files a shard gets is decided by the cost of each file, not their
+      # count: config/vitest/balanced-shards.ts, refreshed by fe:test:weights.
       #
       # On GitHub Actions the github-actions reporter is added as well. Vitest
       # adds it on its own only while no reporter is named, and this task names
       # two, so without it a failing test is a log line instead of an
       # annotation on the pull request's diff.
       - bun run test:shard -- --shard={{.SHARD}} --reporter=default{{if .GITHUB_ACTIONS}} --reporter=github-actions{{end}} --outputFile=.vitest-reports/blob-{{.SHARD | replace "/" "-"}}.json
+
+  fe:test:weights:
+    desc: 'Rewrite the shard weights (config/vitest/shard-weights.json) from the blob reports in frontends/ui/.vitest-reports'
+    dir: '{{.UI}}'
+    cmds:
+      # CI's shards cut by these weights (config/vitest/balanced-shards.ts).
+      # Refresh them from CI's own timings, not a laptop's: unzip the four
+      # `vitest-blob-*` artifacts of a green pull request run into
+      # .vitest-reports first (docs/contributing/ci.md has the command).
+      - bun run test:merge -- --coverage.enabled=false --reporter=./config/vitest/shard-weights-reporter.ts
 
   fe:test:merge:
     desc: Merge sharded blob reports into one result + the coverage CI comments on

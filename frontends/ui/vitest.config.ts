@@ -1,6 +1,7 @@
 import path from 'path'
 import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vitest/config'
+import BalancedSequencer from './config/vitest/balanced-shards'
 
 export default defineConfig({
   plugins: [react()],
@@ -43,6 +44,8 @@ export default defineConfig({
     ],
     exclude: ['**/mocks/**', '**/node_modules/**'],
     setupFiles: ['./config/vitest/polyfills.ts', './config/vitest/vitest.setup.ts'],
+    // CI's `--shard` cuts by measured cost, not by file count: balanced-shards.ts.
+    sequence: { sequencer: BalancedSequencer },
     clearMocks: true,
     server: {
       deps: {

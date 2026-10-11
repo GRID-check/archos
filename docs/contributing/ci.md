@@ -229,11 +229,39 @@ nine minutes for a runner.
 So the rule is: work that shares a toolchain shares a job, unless splitting it
 shortens the critical path. Lint, the release-note checks and gitleaks share the
 Python job; the aiq_api and `sources/` suites ride with the core suite; tenant
-isolation rides with UI lint and types; the UI has four shards, not six. That
-costs about a minute of wall clock on an idle runner pool: on the first runs the
-slowest shard's tests took 4:04 against 3:16 for the backend lane, because
-vitest shards by file and the heavy files land together. Balancing the files is
-the fix for that minute; adding shards back spends slots on it. Security
+isolation rides with UI lint and types; the UI has four shards, not six.
+
+### Balanced UI shards
+
+Vitest's own `--shard` hands each shard an equal number of files, sorted by a
+hash of the path. The files are not equal. On 2026-10-11 (CI run 38133156377)
+the four shards spent 477, 511, 477 and 640 seconds of worker time, and the
+fourth carried one spec that alone took 193 seconds. The slowest shard was the
+critical path in 16 of 23 pull request runs.
+
+`frontends/ui/config/vitest/balanced-shards.ts` cuts them by cost instead:
+heaviest file first, each to the shard with the least work so far. The cost
+of a file is everything its worker spent on it (environment, setup files,
+import, tests), kept in `config/vitest/shard-weights.json`. On the same run
+that cut gives 526 seconds to each shard. A file the table does not name
+counts as the median, so a stale table degrades towards Vitest's own cut, never
+to a broken run.
+
+Refresh the table from CI's own timings when the shards drift apart (the
+`Frontend tests` step times on a run summary tell you):
+
+```bash
+cd frontends/ui && mkdir -p .vitest-reports
+gh run download <run-id> --pattern 'vitest-blob-*' --dir .vitest-reports
+find .vitest-reports -name 'blob-*.json' -exec mv {} .vitest-reports/ \;
+task fe:test:weights
+```
+
+A single file still cannot be split across workers, so a file far heavier than
+the rest sets a floor no cut removes. The fix for that is the file:
+`streaming-markdown-equivalence.spec.tsx` rendered its whole-text reference
+once per splitter, and rendering it once per step for all splitters took it
+from 135 to 96 seconds locally with every assertion kept. Security
 scans that cannot be caused by a change moved to the weekly run.
 
 One duplicate remains outside this repository's files: GitHub's **CodeQL

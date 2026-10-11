@@ -123,14 +123,19 @@ const pluginsFor = (step: Step): PluggableList => [
 ]
 
 /**
- * The first step whose HTML differs between the block renderer (splitting with
- * `split`) and the whole text rendered at once, or `null`.
+ * The first step whose HTML differs between a block renderer (one per split in
+ * `splits`) and the whole text rendered at once, or `null`. All the splits are
+ * checked in one pass, so the whole text, the expensive render, is rendered
+ * once per step however many splits are under test.
  */
-function firstMismatch(steps: readonly Step[], split: Split): { body: string; blocks: string; whole: string } | null {
+function firstMismatch(
+  steps: readonly Step[],
+  ...splits: Split[]
+): { split: number; body: string; blocks: string; whole: string } | null {
   const view = (step: Step, plugins: PluggableList) => (
     <MarkdownRenderer content={step.body} isStreaming={step.streaming} remarkPlugins={plugins} compact />
   )
-  const blocks = render(<div />)
+  const candidates = splits.map(() => render(<div />))
   const whole = render(<div />)
   try {
     // The plugin list keeps its identity while its inputs do, as the chat's does.
@@ -139,18 +144,20 @@ function firstMismatch(steps: readonly Step[], split: Split): { body: string; bl
     for (const step of steps) {
       const key = stepKey({ ...step, body: '' })
       if (key !== pluginsKey) [plugins, pluginsKey] = [pluginsFor(step), key]
-      splitter.current = split
-      blocks.rerender(view(step, plugins))
       splitter.current = () => null
       whole.rerender(view(step, plugins))
-      if (blocks.container.innerHTML !== whole.container.innerHTML) {
-        return { body: step.body, blocks: blocks.container.innerHTML, whole: whole.container.innerHTML }
+      const expected = whole.container.innerHTML
+      for (const [index, split] of splits.entries()) {
+        splitter.current = split
+        candidates[index].rerender(view(step, plugins))
+        const actual = candidates[index].container.innerHTML
+        if (actual !== expected) return { split: index, body: step.body, blocks: actual, whole: expected }
       }
     }
     return null
   } finally {
     splitter.current = null
-    blocks.unmount()
+    for (const candidate of candidates) candidate.unmount()
     whole.unmount()
   }
 }
@@ -178,9 +185,7 @@ const RECORDED = Object.keys(STREAM_FRAMES) as (keyof typeof STREAM_FRAMES)[]
 
 describe('the streamed answer rendered block by block', () => {
   it.each(RECORDED)('renders every prefix of the recorded %s answer as the whole text does', (name) => {
-    const steps = recordedSteps(name)
-    expect(firstMismatch(steps, everyCut)).toBeNull()
-    expect(firstMismatch(steps, splitMarkdownBlocks)).toBeNull()
+    expect(firstMismatch(recordedSteps(name), everyCut, splitMarkdownBlocks)).toBeNull()
   }, 300_000)
 
   it('renders every prefix of the constructs that reach across blocks as the whole text does', () => {
