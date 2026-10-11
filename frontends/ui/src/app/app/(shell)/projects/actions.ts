@@ -1,19 +1,19 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
 import { withPageSession } from '@/lib/auth/require-auth'
 import { createProject as createProjectInOrg } from '@/lib/projects/service'
 
 export interface CreateProjectState {
   error?: string
+  projectId?: string
 }
 
 /**
  * Create a project from the projects-page form.
  *
  * Server actions are transport, exactly like route handlers: open a scope,
- * resolve the session, validate the input shape, call the service, redirect.
+ * resolve the session, validate the input shape, call the service, answer.
  * This one used to re-implement the whole of `projects/service.ts#createProject`
  * — the same insert, the same WorkOS resource, the same role assignment, the
  * same audit event — which meant the two copies could (and did) drift.
@@ -21,6 +21,12 @@ export interface CreateProjectState {
  * A server action gets no route factory, so like a page it opens its own tenant
  * slot; without one every query underneath runs with no context and fails
  * closed under row-level security.
+ *
+ * It answers with the new project's id and the form navigates, rather than
+ * calling `redirect()` here. The form calls this action directly, and a direct
+ * call that redirects rejects its promise with NEXT_REDIRECT: the form's code
+ * after the await never ran (so `project_created` was never captured) and every
+ * create reported an unhandled exception.
  */
 export async function createProject(
   _prevState: CreateProjectState,
@@ -47,7 +53,7 @@ export async function createProject(
   //
   // The rail's project list is now resolved in the `(shell)` LAYOUT, not in the
   // page — that is what makes it persist across navigation. The flip side is
-  // that a page-scoped revalidation no longer reaches it: the redirect below
+  // that a page-scoped revalidation no longer reaches it: the form's navigation
   // walks to a route whose shell segment is already in the client router cache,
   // so Next would reuse the cached layout payload and the switcher would open
   // without the project that was just created. Revalidating the layout marks
@@ -56,9 +62,5 @@ export async function createProject(
   // `router.refresh()`, which refetches the current route INCLUDING its
   // layouts, so the new name reaches the switcher without a server action.)
   revalidatePath('/app', 'layout')
-  // Land new projects directly in intake: the brief is what makes Piloti's answers
-  // (and the applicable-standards panel) useful, so setup flows straight into it.
-  // Outside the scope on purpose: `redirect()` reports itself by throwing, and a
-  // throw is not something the tenant slot should be unwinding through.
-  redirect(`/app/projects/${projectId.id}/intake`)
+  return { projectId: projectId.id }
 }

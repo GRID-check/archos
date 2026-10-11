@@ -2,6 +2,7 @@
 
 import type { JSX } from 'react'
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { z } from 'zod'
 import { useAppForm } from '@/components/form'
 import { Alert, AlertDescription } from '@/components/ui/alert'
@@ -25,6 +26,7 @@ const TEMPLATE_KEYS = [
 
 export function CreateProjectForm(): JSX.Element {
   const t = useTranslations('projects')
+  const router = useRouter()
   const [serverError, setServerError] = useState<string | null>(null)
 
   const createProjectSchema = z.object({
@@ -43,14 +45,18 @@ export function CreateProjectForm(): JSX.Element {
       const formData = new FormData()
       formData.set('name', value.name.trim())
       const result = await createProject({}, formData)
-      if (result?.error) {
+      if (!result.projectId) {
         console.error('[CreateProjectForm] create failed:', result.error)
         // The server action re-validates and can surface vendor/database exception
         // text. Never show that to an architect — log it, show a calm message.
         setServerError(t('form.createError'))
-      } else {
-        capturePosthog('project_created')
+        return
       }
+      capturePosthog('project_created')
+      // Land new projects directly in intake: the brief is what makes Piloti's
+      // answers (and the applicable-standards panel) useful, so setup flows
+      // straight into it.
+      router.push(`/app/projects/${result.projectId}/intake`)
     },
   })
 
