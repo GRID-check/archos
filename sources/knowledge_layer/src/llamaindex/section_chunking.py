@@ -86,7 +86,7 @@ _WORD_NUMBERED_RE = re.compile(
 #: Wrappers that make a word-numbered heading the TOP level when a document uses them.
 _CHAPTER_WORDS = ("Kapitel", "Abschnitt", "Teil", "Anhang", "Anlage", "Beilage")
 _DOT_LEADER_RE = re.compile(r"\.{4,}")
-MAX_HEADING_CHARS = 120
+_MAX_HEADING_CHARS = 120
 _MAX_HEADING_WORDS = 14
 #: Bold-only (body size, no number) headings are shorter still: a bold lead-in sentence
 #: is emphasis, not structure.
@@ -276,7 +276,7 @@ def body_size(lines: list[Line]) -> float | None:
 
 def _shape_ok(text: str) -> bool:
     """Short, not a sentence, not a contents-page entry."""
-    if len(text) > MAX_HEADING_CHARS or len(text.split()) > _MAX_HEADING_WORDS:
+    if len(text) > _MAX_HEADING_CHARS or len(text.split()) > _MAX_HEADING_WORDS:
         return False
     if _DOT_LEADER_RE.search(text):
         return False
@@ -360,9 +360,14 @@ def _numbered_heading(
     return (number, title) if _title_like(title) else None
 
 
+def fits_heading(title: str) -> bool:
+    """Whether a marked heading's title is short enough to be one; a longer one is a paragraph."""
+    return len(title) <= _MAX_HEADING_CHARS
+
+
 def _atx_heading(line: Line) -> tuple[str, str] | None:
     """A Markdown heading's ``(number, title)``; the author (or the transcriber) marked it."""
-    if len(line.text) > MAX_HEADING_CHARS:
+    if not fits_heading(line.text):
         return None
     numbered = _numbered(line.text)
     return (numbered[0], numbered[1]) if numbered else ("", line.text)

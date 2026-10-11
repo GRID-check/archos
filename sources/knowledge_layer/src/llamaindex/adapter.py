@@ -831,11 +831,11 @@ def _check_metadata_fits(documents: list[Any], chunk_size: int, file_name: str) 
         if tokens < chunk_size:
             continue
         hidden = set(document.excluded_embed_metadata_keys) & set(document.excluded_llm_metadata_keys)
-        shown = {key: str(value) for key, value in document.metadata.items() if key not in hidden}
-        longest = max(shown, key=lambda key: len(shown[key]))
+        shown = [key for key in document.metadata if key not in hidden]
+        longest = max(shown, key=lambda key: len(str(document.metadata[key])))
         raise ValueError(
             f"The metadata of {file_name} fills {tokens} of the {chunk_size} tokens in a chunk; "
-            f"the longest field is {longest!r} ({len(shown[longest])} characters)"
+            f"the longest field is {longest!r} ({len(str(document.metadata[longest]))} characters)"
         )
 
 

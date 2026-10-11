@@ -40,6 +40,9 @@ Nettofläche 398 m².
 Stahlbeton C25/30.
 """
 
+#: A paragraph someone marked with "#": far longer than any heading.
+PARAGRAPH = "Die Anforderungen an Wände und Decken gelten für alle Geschoße des Gebäudes. " * 20
+
 
 def _write(tmp_path, name: str, data: bytes) -> str:
     path = tmp_path / name
@@ -110,12 +113,11 @@ class TestMarkdown:
         header it rendered was larger than the chunk, so ``SentenceSplitter`` raised."""
         from llama_index.core.node_parser import SentenceSplitter
 
-        paragraph = "Die Anforderungen an Wände und Decken gelten für alle Geschoße des Gebäudes. " * 20
-        data = f"# Bericht\n\n## Brandschutz\n\n## {paragraph}\n\nText darunter.\n".encode()
+        data = f"# Bericht\n\n## Brandschutz\n\n## {PARAGRAPH}\n\nText darunter.\n".encode()
         docs = extract_text_format_documents(_write(tmp_path, "bericht.md", data), "bericht.md", 1)
 
         assert [doc.metadata.get("punkt_id") for doc in docs] == ["Brandschutz"]
-        assert paragraph.strip() in docs[0].text
+        assert PARAGRAPH.strip() in docs[0].text
         assert "Text darunter." in docs[0].text
         SentenceSplitter(chunk_size=1024, chunk_overlap=128).get_nodes_from_documents(docs)
 
@@ -241,12 +243,11 @@ class TestThroughTheIngestJob:
         assert docs[0].metadata["source_encoding"] == "cp1252"
 
     def test_a_markdown_file_with_a_paragraph_marked_as_a_heading_is_indexed(self, tmp_path, ingestor, summary_db):
-        paragraph = "Die Anforderungen an Wände und Decken gelten für alle Geschoße des Gebäudes. " * 20
-        data = f"# Bericht\n\n## {paragraph}\n".encode()
+        data = f"# Bericht\n\n## {PARAGRAPH}\n".encode()
         status = _run(ingestor, _write(tmp_path, "tmp_upload", data), "Bericht.md")
 
         assert status.file_details[0].status == "success", status.file_details[0].error_message
-        assert paragraph.strip() in _indexed()[0].text
+        assert PARAGRAPH.strip() in _indexed()[0].text
 
     def test_metadata_that_fills_the_chunk_fails_the_file_and_names_the_field(self):
         from knowledge_layer.llamaindex.adapter import _check_metadata_fits
