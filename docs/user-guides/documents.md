@@ -99,7 +99,11 @@ Right-click a file, a folder, or the empty listing — the same operations as th
 
 The **detail view** (the list toggle) is a dense sortable table for a corpus past what a card grid can hold. It is fully keyboard-navigable: one tab stop into the list, then arrows to walk it and Home/End to jump to either end — and the tab stop stays on the row you walked to, so tabbing away and back does not return you to the top. Enter opens the row.
 
-A **search field** above the grid filters the current listing client-side by file name, ingestion tags, and the AI description. Folders are the drill-down inside the listing itself (breadcrumb, tiles, `?folder=` in the URL); a search escapes the current folder and runs over everything.
+A folder opens on its first hundred documents, and more load as you scroll to the end of the grid or list (a **Weitere laden** button does the same from the keyboard). A folder with thousands of documents, such as a large Büroablage root, therefore opens right away instead of waiting for the whole shelf. The folder tiles, the count in the header and the folder brief are counted by the server for the whole shelf, so they stay right however little of a folder has loaded.
+
+A **search field** above the grid searches the file names and renames of the whole shelf: it narrows what is on screen as you type and asks the server a moment after you stop, so a document two folders down is found from anywhere. To search the contents (the AI description, tags, the text), press Enter for the semantic search. Folders are the drill-down inside the listing itself (breadcrumb, tiles, `?folder=` in the URL); a search escapes the current folder and runs over everything.
+
+Most filters and the sort order are answered by the server per folder. A few still need every document of the shelf in the browser and load them when you turn them on: the kind and tag (Kategorie) filters, the assignment filter, „Freigabe ausstehend", sorting by status, and in the folder brief the „Worum es hier geht" details and the lists its chips open. For a very large shelf these take a moment the first time.
 
 Semantic results arrive in whichever view you are in. In the detail view the ranking is preserved rather than being re-sorted by upload date: **Relevance** is the column the list opens sorted by (and can be sorted the other way), and each row carries the passage that matched with its page number in place of the document's summary.
 
