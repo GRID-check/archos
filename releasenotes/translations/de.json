@@ -2680,6 +2680,10 @@
     "de": "Varianten, die Sie vergleichen, etwa zwei Entwurfslösungen, zwei Bundesländer oder Bestand und Umbau, erscheinen als Reiter mit je eigener Tabelle; im Word-Export stehen sie untereinander."
   },
   {
+    "en": "Very large folders in the Büroablage and in a project's files now open right away, and more documents load as you scroll to the end. The folder counts and the folder overview still cover every document in the folder.",
+    "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
+  },
+  {
     "en": "Visiting piloti.at now opens the Piloti website, and addresses starting with www lead to the same page.",
     "de": "Wer piloti.at aufruft, landet jetzt auf der Piloti-Website, und Adressen mit www führen auf dieselbe Seite."
   },
