@@ -157,6 +157,17 @@ vulnerabilities:
       references in a ClientHello. No TLS listener or TLS client is configured
       on this collector (plaintext in-cluster receivers and exporters), so no
       ClientHello reaches crypto/tls. See the block note.
+  - id: CVE-2026-78669
+    expired_at: 2026-10-23
+    statement: |
+      golang.org/x/net v0.58.0 and the Go 1.26.8 stdlib HTTP/2 server: denial
+      of service through a flood of SETTINGS frames. Unlike the two above this
+      code is reached: the OTLP gRPC receiver speaks HTTP/2. But only pods in
+      the namespace can dial it (NetworkPolicy, no route, no Gateway listener),
+      so an attacker needs a foothold in a pod first, and the worst outcome is
+      the collector restarting and dropping traces, never a user request.
+      Fixed in x/net 0.60.0 and Go 1.26.9, which no contrib release carries yet
+      (first red on PR #1012, 2026-10-12). Same exit as the block: bump the pin.
 
 secrets:
   - id: gcp-service-account
