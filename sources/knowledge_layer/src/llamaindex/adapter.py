@@ -852,6 +852,49 @@ def _apply_metadata_exclusions(document: Any) -> None:
             logger.debug("Could not set %s on %r", attribute, type(document).__name__)
 
 
+#: Keys rendered into the header whatever its length: what users ask by, short by
+#: construction, and ``file_name`` is how a file's chunks are found and deleted.
+_ALWAYS_RENDERED_METADATA_KEYS = frozenset({"file_name", "page_label", "content_type", "doc_class"})
+
+
+def _rendered_metadata_tokens(document: Any) -> int:
+    """Tokens of the longer of the document's two metadata renderings, as the splitter counts them."""
+    from llama_index.core.schema import MetadataMode
+    from llama_index.core.utils import get_tokenizer
+
+    tokenizer = get_tokenizer()
+    return max(len(tokenizer(document.get_metadata_str(mode=mode))) for mode in (MetadataMode.EMBED, MetadataMode.LLM))
+
+
+def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
+    """Stop rendering the longest free-text keys until the metadata header fits ``limit`` tokens.
+
+    ``SentenceSplitter`` prepends the rendered metadata to every chunk and raises when it
+    alone exceeds the chunk size, which fails the whole file, not the one chunk. Keys
+    such as ``punkt_title``/``punkt_path`` carry text read out of the document, so their
+    length is the document's to choose. The value stays stored for display and
+    filtering; it only leaves the embedded header, and the chunk body already starts
+    with the same breadcrumb. Returns the keys dropped, for the caller to log.
+    """
+    dropped: list[str] = []
+    while _rendered_metadata_tokens(document) > limit:
+        rendered = [
+            key
+            for key in document.metadata
+            if key not in _ALWAYS_RENDERED_METADATA_KEYS
+            and (key not in document.excluded_embed_metadata_keys or key not in document.excluded_llm_metadata_keys)
+        ]
+        if not rendered:
+            break
+        key = max(rendered, key=lambda name: len(str(document.metadata[name])))
+        for attribute in ("excluded_embed_metadata_keys", "excluded_llm_metadata_keys"):
+            excluded = getattr(document, attribute)
+            if key not in excluded:
+                excluded.append(key)
+        dropped.append(key)
+    return dropped
+
+
 #: Collection-metadata keys recording which embedding produced a collection's vectors.
 #: Namespaced so they cannot collide with a user-supplied `metadata` dict.
 EMBED_FINGERPRINT_KEY = "aiq:embed_fingerprint"
@@ -5194,10 +5237,20 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # row — and an empty dict for every human document leaves
                     # those chunks byte-for-byte unchanged.
                     provenance = _provenance_from_config(config)
+                    unrendered: set[str] = set()
                     for doc in all_documents:
                         doc.metadata["doc_class"] = doc_class
                         doc.metadata.update(provenance)
                         _apply_metadata_exclusions(doc)
+                        # Never more than half the chunk: past the chunk size the
+                        # splitter fails the whole file.
+                        unrendered.update(_fit_rendered_metadata(doc, self.chunk_size // 2))
+                    if unrendered:
+                        logger.warning(
+                            "Metadata too long to embed in %s; left out of the header: %s",
+                            file_name,
+                            ", ".join(sorted(unrendered)),
+                        )
 
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.

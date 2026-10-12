@@ -88,6 +88,11 @@ _CHAPTER_WORDS = ("Kapitel", "Abschnitt", "Teil", "Anhang", "Anlage", "Beilage")
 _DOT_LEADER_RE = re.compile(r"\.{4,}")
 _MAX_HEADING_CHARS = 120
 _MAX_HEADING_WORDS = 14
+#: A heading wraps over three lines at most, and joined it stays within two lines' worth.
+#: A longer run in heading type is a block set large, not a heading (``find_headings``).
+_MAX_WRAPPED_HEADING_LINES = 3
+_MAX_WRAPPED_HEADING_CHARS = 2 * _MAX_HEADING_CHARS
+_MAX_WRAPPED_HEADING_WORDS = 2 * _MAX_HEADING_WORDS
 #: Bold-only (body size, no number) headings are shorter still: a bold lead-in sentence
 #: is emphasis, not structure.
 _MAX_BOLD_HEADING_CHARS = 90
@@ -435,6 +440,15 @@ def _continues_heading(previous: Line, line: Line, number: str) -> bool:
     return not number and previous.size == line.size and previous.bold == line.bold
 
 
+def _wrap_ok(joined: str, span: int) -> bool:
+    """Whether a heading wrapped to ``span`` lines, reading ``joined``, is still heading-sized."""
+    return (
+        span <= _MAX_WRAPPED_HEADING_LINES
+        and len(joined) <= _MAX_WRAPPED_HEADING_CHARS
+        and len(joined.split()) <= _MAX_WRAPPED_HEADING_WORDS
+    )
+
+
 def _numeric(number: str) -> tuple[int, ...]:
     """``"3.2"`` -> ``(3, 2)``; empty for a word number (``§ 3``) or none."""
     return tuple(int(part) for part in number.split(".")) if number[:1].isdigit() else ()
@@ -458,21 +472,38 @@ def find_headings(lines: list[Line]) -> dict[int, Heading]:
     word-numbered heading with no title on its line (``§ 3`` above ``Begriffe``) takes
     the next line as its title when that line is heading-shaped. Either way the extra
     line is part of the heading (``span``), not of the body.
+
+    A wrap holds only while the joined title is still heading-shaped. A longer run in
+    one heading type is a block set large (a drawing's legend, a cover sheet), and none
+    of it is a heading: joined, a plan sheet's legend became one 470-token "heading"
+    that the breadcrumb metadata carried three times, past the splitter's chunk size,
+    and the whole file failed (2026-10, ``WR_25003_P*.pdf``).
     """
     body = body_size(lines)
     found: list[list[Any]] = []  # [index, number, title, span]
     numbering: tuple[int, ...] = ()
+    block: Line | None = None  # the last line of a run found too long to be a heading
     for index, line in enumerate(lines):
         last = found[-1] if found else None
         if last is not None and index < last[0] + last[3]:
             continue
         result = classify(line, body, lines[index + 1] if index + 1 < len(lines) else None)
         if result is None or _goes_backwards(result[0], numbering):
+            block = None
             continue
         number, title = result
+        if block is not None and _continues_heading(block, line, number):
+            block = line
+            continue
+        block = None
         numbering = _numeric(number) or numbering
         if last and index == last[0] + last[3] and not last[1] and _continues_heading(lines[index - 1], line, number):
-            last[2], last[3] = f"{last[2]} {title}", last[3] + 1
+            joined = f"{last[2]} {title}"
+            if _wrap_ok(joined, last[3] + 1):
+                last[2], last[3] = joined, last[3] + 1
+            else:
+                found.pop()
+                block = line
             continue
         following = lines[index + 1].text if index + 1 < len(lines) else ""
         span = 2 if number and not title and following and _shape_ok(following) else 1
