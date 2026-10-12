@@ -163,6 +163,8 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
       s3AccessKey: "grid-langfuse",
       s3SecretKey: pulumi.secret("langfuse-secret"), // pragma: allowlist secret
     },
+    // No worker groups: no nodeSelector, as on every stack but prod.
+    nodeGroups: {},
   };
   return {
     ...base,

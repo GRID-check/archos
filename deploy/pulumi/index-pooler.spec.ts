@@ -223,7 +223,10 @@ describe("Postgres routing", () => {
       pgbouncer: { poolMode: string; parameters: Record<string, string> };
       template: {
         metadata: { labels: Record<string, string> };
-        spec: { containers: Array<{ name: string; image: string }>; topologySpreadConstraints?: unknown[] };
+        spec: {
+          containers: Array<{ name: string; image: string }>;
+          topologySpreadConstraints: Array<{ labelSelector: { matchLabels: Record<string, string> } }>;
+        };
       };
     };
 
@@ -264,8 +267,13 @@ describe("Postgres routing", () => {
       expect(pdb, "a PDB for the poolers").toBeDefined();
       const pdbSpec = pdb!.inputs.spec as { maxUnavailable: number; selector: { matchLabels: Record<string, string> } };
       expect(pdbSpec.maxUnavailable).toBe(1);
-      // The PDB selects the pods the Pooler template labels.
-      expect(pdbSpec.selector.matchLabels).toEqual(spec().template.metadata.labels);
+      // By the label the operator sets, not the template's: CloudNativePG
+      // overwrites `app.kubernetes.io/name` and `managed-by` on the pods, so a
+      // selector on the template's labels matched no pooler (2026-10-12).
+      expect(pdbSpec.selector.matchLabels).toEqual({ "cnpg.io/poolerName": POOLER });
+      expect(spec().template.spec.topologySpreadConstraints[0].labelSelector.matchLabels).toEqual({
+        "cnpg.io/poolerName": POOLER,
+      });
     });
   });
 });
