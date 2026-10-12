@@ -17,10 +17,64 @@ vi.mock('@/lib/documents/service', () => ({
   deleteDocument: vi.fn(),
   renameDocument: vi.fn(),
 }))
+vi.mock('@/lib/documents/listed-document', () => ({ getListedDocument: vi.fn() }))
+vi.mock('@/lib/documents/lifecycle', () => ({
+  summarizeDocumentVersions: vi.fn().mockResolvedValue(new Map([['doc-1', { versionCount: 3, state: 'published' }]])),
+}))
 
 import { deleteDocument, renameDocument } from '@/lib/documents/service'
+import { getListedDocument } from '@/lib/documents/listed-document'
+import { toDocumentWireRow } from '@/lib/documents/list-projection'
+import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { BadRequestError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
-import { DELETE, PATCH } from './route'
+import { DELETE, GET, PATCH } from './route'
+
+const LISTED: ListedDocument = {
+  id: 'doc-1',
+  filename: 'plan.pdf',
+  displayName: null,
+  fileSize: 10,
+  contentType: 'application/pdf',
+  status: 'completed',
+  authoredBy: 'user',
+  publishedVersionId: null,
+  lifecycle: 'active',
+  collectionName: 'proj_c',
+  folderId: null,
+  originPath: null,
+  contentHash: null,
+  createdAt: new Date('2026-10-01T00:00:00Z'),
+  updatedAt: new Date('2026-10-02T00:00:00Z'),
+  errorMessage: null,
+  assignees: [],
+}
+
+const read = (id: string) =>
+  GET(new Request(`https://grid.test/api/documents/${id}`) as unknown as NextRequest, {
+    params: Promise.resolve({ id }),
+  })
+
+// A link to a document the paged Files level has not loaded (ADR-0102).
+describe('GET /api/documents/[id]', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it("answers with the row the shelf's listing would carry, version state included", async () => {
+    vi.mocked(getListedDocument).mockResolvedValue(LISTED)
+
+    const response = await read('doc-1')
+
+    expect(response.status).toBe(200)
+    expect((await response.json()).document).toEqual(
+      JSON.parse(JSON.stringify(toDocumentWireRow(LISTED, { versionCount: 3, state: 'published' }))),
+    )
+    expect(getListedDocument).toHaveBeenCalledWith(expect.objectContaining({ userId: 'user-1' }), 'doc-1')
+  })
+
+  it('maps a document the reader may not see to a 404', async () => {
+    vi.mocked(getListedDocument).mockRejectedValue(new NotFoundError())
+    expect((await read('held-1')).status).toBe(404)
+  })
+})
 
 const call = (id: string) =>
   DELETE(

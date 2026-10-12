@@ -115,9 +115,38 @@ describe('ArchivWorkspace — library listing', () => {
     expect(screen.getAllByText('Document').length).toBeGreaterThan(0)
   })
 
+  // The count is the shelf's, counted by the server (ADR-0102): the listing on
+  // screen is one level's first page and could not say it.
   it('states how much the Archiv holds beside its title', async () => {
+    const folderTally = { readable: 2390, reading: 0, failed: 10, held: 0, unindexed: 0, latest: null }
+    server.use(
+      http.get('/api/archiv/documents/summary', () =>
+        HttpResponse.json({
+          folders: [{ folderId: null, total: 2400, ...folderTally }],
+          failed: [],
+          failedTruncated: false,
+        })
+      )
+    )
     render(<ArchivWorkspace canManage />)
-    expect(await screen.findByTestId('archiv-document-count')).toHaveTextContent('2')
+    expect(await screen.findByTestId('archiv-document-count')).toHaveTextContent('2400')
+  })
+
+  it('reads the root of the Archiv as a level, page by page, and never drains it', async () => {
+    const requests: URLSearchParams[] = []
+    server.use(
+      http.get('/api/archiv/documents', ({ request }) => {
+        requests.push(new URL(request.url).searchParams)
+        return HttpResponse.json({ documents: archivDocuments, nextCursor: null, collectionName: 'archiv_org-1', canManage: true })
+      })
+    )
+    render(<ArchivWorkspace canManage />)
+
+    expect(await screen.findByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
+    expect(requests).toHaveLength(1)
+    expect(requests[0].get('folderId')).toBe('root')
+    expect(requests[0].get('sort')).toBe('added')
+    expect(requests[0].get('limit')).toBe('100')
   })
 
   // The category chips are the shared filter menu's „Kategorie" now, over the
@@ -140,8 +169,9 @@ describe('ArchivWorkspace — library listing', () => {
     expect(await screen.findByText(/documents couldn't be loaded/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
-  // Paged, not capped: the Archiv used to stop at its newest 500 without a word.
-  it('reads every page of the Archiv, following the cursor', async () => {
+  // A level is read page by page (ADR-0102): the next page is the reader's to
+  // ask for, never drained up front.
+  it('reads the next page of the level when the reader asks for it', async () => {
     const cursors: Array<string | null> = []
     server.use(
       http.get('/api/archiv/documents', ({ request }) => {
@@ -157,29 +187,10 @@ describe('ArchivWorkspace — library listing', () => {
     )
     render(<ArchivWorkspace canManage />)
 
+    expect(await screen.findByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await screen.findByText('fassadendetail.pdf')).toBeInTheDocument()
-    expect(screen.getByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
     expect(cursors).toEqual([null, 'page-2'])
-    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
-  })
-
-  it('says where it stopped when the Archiv outruns the page ceiling', async () => {
-    let requests = 0
-    server.use(
-      http.get('/api/archiv/documents', () => {
-        requests += 1
-        return HttpResponse.json({
-          documents: [{ ...archivDocuments[0], id: `doc-${requests}`, filename: `plan-${requests}.pdf` }],
-          nextCursor: `c${requests}`,
-          collectionName: 'archiv_org-1',
-          canManage: true,
-        })
-      })
-    )
-    render(<ArchivWorkspace canManage />)
-
-    expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
-    expect(requests).toBe(20)
   })
 })
 

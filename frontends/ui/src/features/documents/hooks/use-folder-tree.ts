@@ -23,6 +23,12 @@ export interface FolderTreeOptions {
   initialRootAccess?: FolderAccessLevel
   /** What deleting a folder needs to name: how much is inside it. */
   files: readonly FileItem[]
+  /**
+   * How many documents are filed directly in a folder, when the caller knows
+   * it better than `files` (a paged level holds one folder's first pages, the
+   * shelf summary counts every folder, ADR-0102). Absent: counted in `files`.
+   */
+  documentCountIn?: (folderId: string) => number
   selectedFolderId: string | null
   onSelectFolder: (id: string | null) => void
   /** Re-read the documents after a change that moved some (a delete re-files them). */
@@ -52,6 +58,7 @@ export function useFolderTree({
   initialFolders,
   initialRootAccess = 'write',
   files,
+  documentCountIn,
   selectedFolderId,
   onSelectFolder,
   reloadFiles,
@@ -197,7 +204,7 @@ export function useFolderTree({
     async (folderId: string) => {
       const folder = folders.find((f) => f.id === folderId)
       if (!folder) return false
-      const inside = files.filter((f) => f.folderId === folderId).length
+      const inside = documentCountIn ? documentCountIn(folderId) : files.filter((f) => f.folderId === folderId).length
       const nested = folders.filter((f) => f.parentId === folderId).length
       const parent = folder.parentId
         ? (folders.find((f) => f.id === folder.parentId)?.name ?? t('folders.allFiles'))
@@ -251,7 +258,7 @@ export function useFolderTree({
       )
       return true
     },
-    [foldersUrl, binHref, t, locale, router, folders, files, selectedFolderId, onSelectFolder, load, reloadFiles]
+    [foldersUrl, binHref, t, locale, router, folders, files, documentCountIn, selectedFolderId, onSelectFolder, load, reloadFiles]
   )
 
   /** `isLoading` is any read in flight (the upload plan waits for it); this is only the first. */

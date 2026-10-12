@@ -11,11 +11,11 @@
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { isCollaborationEnabled } from '@/lib/authz/feature-flags'
 import { listAssignmentsWithoutAccessCheck, type AssignedPerson } from '@/lib/assignments/service'
-import { encodeDocumentListCursor } from './list-cursor'
+import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
 import { reconcileDocumentStatuses, type DocumentMetadata } from './reconcile-status'
 import type { FassungFacts } from './fassung'
 import { loadFassungFacts } from './fassung-facts'
-import type { DocumentListPage, DocumentListRow } from './repository'
+import type { DocumentLevelPage, DocumentListPage, DocumentListRow } from './repository'
 import { keepReadable, type ListingReader, type ShelfReader } from './document-reader'
 
 /**
@@ -99,5 +99,21 @@ export async function toListedPage(
   return {
     documents: await toListedDocuments(session, page.rows, reader),
     nextCursor: page.nextCursor ? encodeDocumentListCursor(page.nextCursor) : null,
+  }
+}
+
+/**
+ * A level page as it leaves the service (ADR-0102): the same hydration as the
+ * drain's page, one page at a time, and the level cursor. The backend is asked
+ * about the rows of THIS page only, which is the point of reading by level.
+ */
+export async function toListedLevelPage(
+  session: AuthorizedSession,
+  page: DocumentLevelPage,
+  reader: ShelfReader,
+): Promise<{ documents: ListedDocument[]; nextCursor: string | null }> {
+  return {
+    documents: await toListedDocuments(session, page.rows, reader),
+    nextCursor: page.nextCursor ? encodeDocumentLevelCursor(page.nextCursor) : null,
   }
 }

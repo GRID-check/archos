@@ -1195,7 +1195,8 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
     // `Brandschutz` onto it would cut the subtree off from the tree.
     searchParams = new URLSearchParams('folder=f-a')
     renderWithFolders()
-    const target = screen.getByTestId('folder-card-f-a1')
+    // A nested level is read from the server: its tiles land with the first page.
+    const target = await screen.findByTestId('folder-card-f-a1')
 
     fireEvent.dragOver(target, { dataTransfer: folderDragTransfer('f-a') })
     expect(target).not.toHaveAttribute('data-drop-over')
@@ -1210,7 +1211,7 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
 
     // „Alle Dateien" is the only way OUT: every other target nests one folder
     // inside another, so without it a folder goes deeper and never back.
-    const root = screen.getByRole('button', { name: 'All Files' })
+    const root = await screen.findByRole('button', { name: 'All Files' })
     fireEvent.dragOver(root, { dataTransfer: folderDragTransfer('f-a1') })
     fireEvent.drop(root, { dataTransfer: folderDragTransfer('f-a1') })
 
@@ -2054,6 +2055,12 @@ describe('ProjectFileWorkspace — the open file is on the URL', () => {
     vi.clearAllMocks()
     resetPreviewStore()
     searchParams = new URLSearchParams()
+    // The level is read from the server whenever the seed does not answer the
+    // request on screen; it holds the same one document.
+    server.use(
+      http.get('/api/projects/:projectId/folders', () => HttpResponse.json({ folders: [] })),
+      http.get('/api/documents', () => HttpResponse.json({ documents: [doc], nextCursor: null })),
+    )
   })
 
   afterEach(() => {
@@ -2212,15 +2219,16 @@ describe('ProjectFileWorkspace — the open file is on the URL', () => {
 })
 
 /**
- * A project larger than one page of the listing.
+ * A folder larger than one page (ADR-0102).
  *
- * `GET /api/documents` used to answer the newest 500 and stop, silently: the
- * oldest plans of a big project were not on screen, search and filters could
- * not find them, and a dropped folder labelled them „Neu". The listing is paged
- * now, and the workspace reads it to the end — or says, visibly, where it
- * stopped.
+ * `GET /api/documents` used to answer the newest 500 and stop, silently, and
+ * then the workspace drained the whole shelf before it could draw a folder: a
+ * Büroablage with 2 000 documents at its root waited for all of them. It now
+ * reads the level the reader stands on, a page at a time, and the next page
+ * when the reader reaches the end of the list. It never drains the shelf for
+ * the default view.
  */
-describe('ProjectFileWorkspace — a corpus larger than one page', () => {
+describe('ProjectFileWorkspace — a folder larger than one page', () => {
   const row = (id: string, filename: string): DocumentWireRow => ({
     id,
     filename,
@@ -2243,16 +2251,20 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
   const oldest = row('doc-old', 'EG.pdf')
 
   let cursors: Array<string | null>
+  let levels: Array<string | null>
 
   beforeEach(() => {
     vi.clearAllMocks()
     searchParams = new URLSearchParams()
     resetPreviewStore()
     cursors = []
+    levels = []
     server.use(
       http.get('/api/documents', ({ request }) => {
-        const cursor = new URL(request.url).searchParams.get('cursor')
+        const params = new URL(request.url).searchParams
+        const cursor = params.get('cursor')
         cursors.push(cursor)
+        levels.push(params.get('folderId'))
         return cursor === 'page-2'
           ? HttpResponse.json({ documents: [oldest], nextCursor: null })
           : HttpResponse.json({ documents: [newest], nextCursor: 'page-2' })
@@ -2261,16 +2273,26 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
     )
   })
 
-  it('follows the cursor until the last page, so the oldest document is there too', async () => {
+  it('reads the first page of the level, and the next one only when the reader reaches the end', async () => {
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
 
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    // One level, its first page: nothing drains the shelf behind it.
+    expect(cursors).toEqual([null])
+    expect(levels).toEqual(['root'])
+    expect(screen.queryByText('EG.pdf')).not.toBeInTheDocument()
+    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
+
+    // The end of the list asks for the next page; the first stays.
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
     expect(cursors).toEqual([null, 'page-2'])
-    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
+    // The last page says so: no way on is offered.
+    await waitFor(() => expect(screen.queryByTestId('load-more-button')).not.toBeInTheDocument())
   })
 
-  it('draws the first page while the rest is still on its way', async () => {
+  it('keeps the first page on screen while the next one is on its way', async () => {
     let releaseSecondPage: () => void = () => undefined
     const secondPageHeld = new Promise<void>((resolve) => {
       releaseSecondPage = resolve
@@ -2288,20 +2310,18 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
       <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" initialFolders={[]} />,
     )
 
-    // The first page is on screen while the second has not answered: no
-    // skeleton for as long as the slowest of twenty requests takes.
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     await waitFor(() => expect(cursors).toEqual([null, 'page-2']))
     expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
-    expect(screen.queryByText('EG.pdf')).not.toBeInTheDocument()
+    expect(screen.getByTestId('load-more')).toBeInTheDocument()
 
-    // The next page is appended behind it, and the first stays.
     releaseSecondPage()
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
   })
 
-  it('reads the rest after a first-page seed, and a dropped folder then knows the old file', async () => {
+  it('continues a first-page seed from its cursor, and a dropped folder still knows the old file', async () => {
     probeShelf = [newest, oldest]
     renderWorkspace(
       <ProjectFileWorkspace
@@ -2313,14 +2333,17 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
         initialFolders={[]}
       />,
     )
-    // The seed paints at once, without a skeleton over it …
+    // The seed paints at once, without a skeleton over it, and nothing is read
+    // until the reader asks for more.
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
     expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
-    // … and the page it did not carry arrives behind it, read from the
-    // server's cursor: the seeded first page is not asked for a second time.
+    expect(cursors).toEqual([])
+
+    // The page it did not carry is read from the server's cursor: the seeded
+    // first page is not asked for a second time.
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
     expect(cursors).toEqual(['page-2'])
-    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
 
     const file = new File(['x'.repeat(10)], 'EG.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'webkitRelativePath', { value: 'Wohnbau/EG.pdf', configurable: true })
@@ -2328,23 +2351,56 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
     Object.defineProperty(input, 'files', { value: [file], configurable: true })
     fireEvent.change(input)
 
-    // The U2 symptom: compared against the newest page alone, this said „Neu".
-    // The plan asks the server by name now; the shelf holds both.
+    // The U2 symptom: compared against the newest page alone, this said "Neu".
+    // The plan asks the server by name; the shelf holds both.
     const dialog = await screen.findByTestId('folder-upload-dialog')
     await waitFor(() => expect(within(dialog).getByTestId('folder-upload-count-update')).toHaveTextContent('1'))
     expect(within(dialog).getByTestId('folder-upload-count-new')).toHaveTextContent('0')
   })
 
-  it('stops at the page ceiling and says so, rather than pretending to be whole', async () => {
+  it('opens a document a link names that no loaded page holds, by its id', async () => {
+    server.use(
+      http.get('/api/documents/:id', ({ params }) =>
+        params.id === 'doc-old' ? HttpResponse.json({ document: oldest }) : new HttpResponse(null, { status: 404 }),
+      ),
+    )
+    searchParams = new URLSearchParams('doc=doc-old')
+    renderWorkspace(
+      <ProjectFileWorkspace
+        projectId="proj-1"
+        projectName="Test"
+        collectionName="test-coll"
+        initialFiles={[newest]}
+        initialNextCursor="page-2"
+        initialFolders={[]}
+      />,
+    )
+
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBe('doc-old'))
+    // Read on its own: the level was not drained to find it.
+    expect(cursors).toEqual([])
+  })
+
+  it('drains the shelf only for a filter the server cannot answer, and says where the drain stopped', async () => {
     let requests = 0
     server.use(
-      http.get('/api/documents', () => {
+      http.get('/api/documents', ({ request }) => {
+        // The level's own read carries a sort; the drain carries none.
+        if (new URL(request.url).searchParams.has('sort')) {
+          return HttpResponse.json({ documents: [newest], nextCursor: null })
+        }
         requests += 1
         return HttpResponse.json({ documents: [row(`doc-${requests}`, `plan-${requests}.pdf`)], nextCursor: `c${requests}` })
       }),
     )
-
     renderWorkspace(<ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" />)
+
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    expect(requests).toBe(0)
+
+    // The status order is the browser's alone: it needs the whole shelf.
+    await userEvent.click(screen.getByTestId('file-filter-menu-trigger'))
+    await userEvent.click(await screen.findByRole('radio', { name: /^status$/i }))
 
     expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
     expect(requests).toBe(20)
