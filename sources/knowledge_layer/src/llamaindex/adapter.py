@@ -875,7 +875,12 @@ def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
     length is the document's to choose. The value stays stored for display and
     filtering; it only leaves the embedded header, and the chunk body already starts
     with the same breadcrumb. Returns the keys dropped, for the caller to log.
+
+    The header can stay over ``limit`` when only ``_ALWAYS_RENDERED_METADATA_KEYS``
+    remain; the caller measures and reports that (``_stamp_chunk_metadata``).
     """
+    if limit <= 0:
+        raise ValueError(f"Metadata token budget must be positive, got {limit}")
     dropped: list[str] = []
     while _rendered_metadata_tokens(document) > limit:
         rendered = [
@@ -893,6 +898,42 @@ def _fit_rendered_metadata(document: Any, limit: int) -> list[str]:
                 excluded.append(key)
         dropped.append(key)
     return dropped
+
+
+def _stamp_chunk_metadata(
+    documents: list[Any], *, doc_class: Any, provenance: dict[str, Any], chunk_size: int, file_name: str
+) -> None:
+    """Stamp ``doc_class`` and provenance on a file's documents and fit each header to half of ``chunk_size``.
+
+    ``chunk_size`` is the one this job's splitter runs with (the job config's, which
+    ``_ingest_job`` also sets on ``Settings``), not the ingestor's default: budgeted
+    against a larger default, a header passes here and still fails the file in the
+    splitter. Logs once per file, not once per page: the keys left out of the header,
+    and a header still over budget with only the always-rendered keys left.
+    """
+    limit = chunk_size // 2
+    unrendered: set[str] = set()
+    longest = 0
+    for doc in documents:
+        doc.metadata["doc_class"] = doc_class
+        doc.metadata.update(provenance)
+        _apply_metadata_exclusions(doc)
+        unrendered.update(_fit_rendered_metadata(doc, limit))
+        longest = max(longest, _rendered_metadata_tokens(doc))
+    if unrendered:
+        logger.warning(
+            "Metadata too long to embed in %s; left out of the header: %s", file_name, ", ".join(sorted(unrendered))
+        )
+    if longest > limit:
+        logger.warning(
+            "Metadata header of %s stays at %d tokens with only %s rendered, over its %d-token budget "
+            "(chunk size %d); past the chunk size the splitter fails the file",
+            file_name,
+            longest,
+            ", ".join(sorted(_ALWAYS_RENDERED_METADATA_KEYS)),
+            limit,
+            chunk_size,
+        )
 
 
 #: Collection-metadata keys recording which embedding produced a collection's vectors.
@@ -4563,7 +4604,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
             # Configure LlamaIndex settings
             Settings.embed_model = self._embed_model
-            Settings.chunk_size = config.get("chunk_size", self.chunk_size)
+            # Resolved once: the splitter runs with it, and the metadata header is
+            # budgeted against it (`_stamp_chunk_metadata`), never the default.
+            chunk_size = config.get("chunk_size", self.chunk_size)
+            Settings.chunk_size = chunk_size
             Settings.chunk_overlap = config.get("chunk_overlap", self.chunk_overlap)
 
             # Get multimodal settings from config or instance defaults
@@ -5237,20 +5281,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # row — and an empty dict for every human document leaves
                     # those chunks byte-for-byte unchanged.
                     provenance = _provenance_from_config(config)
-                    unrendered: set[str] = set()
-                    for doc in all_documents:
-                        doc.metadata["doc_class"] = doc_class
-                        doc.metadata.update(provenance)
-                        _apply_metadata_exclusions(doc)
-                        # Never more than half the chunk: past the chunk size the
-                        # splitter fails the whole file.
-                        unrendered.update(_fit_rendered_metadata(doc, self.chunk_size // 2))
-                    if unrendered:
-                        logger.warning(
-                            "Metadata too long to embed in %s; left out of the header: %s",
-                            file_name,
-                            ", ".join(sorted(unrendered)),
-                        )
+                    _stamp_chunk_metadata(
+                        all_documents,
+                        doc_class=doc_class,
+                        provenance=provenance,
+                        chunk_size=chunk_size,
+                        file_name=file_name,
+                    )
 
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.

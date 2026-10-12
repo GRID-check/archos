@@ -11,10 +11,13 @@ from wherever it comes, from failing a file.
 
 from __future__ import annotations
 
+import logging
+
 import pytest
 from knowledge_layer.llamaindex.adapter import _apply_metadata_exclusions
 from knowledge_layer.llamaindex.adapter import _fit_rendered_metadata
 from knowledge_layer.llamaindex.adapter import _rendered_metadata_tokens
+from knowledge_layer.llamaindex.adapter import _stamp_chunk_metadata
 from llama_index.core import Document
 from llama_index.core.node_parser import SentenceSplitter
 from llama_index.core.schema import MetadataMode
@@ -70,3 +73,38 @@ def test_a_normal_header_is_left_alone():
 
     assert _fit_rendered_metadata(document, 512) == []
     assert "Wände" in document.get_metadata_str(mode=MetadataMode.EMBED)
+
+
+def test_a_budget_that_is_not_positive_is_refused_outright():
+    with pytest.raises(ValueError, match="must be positive"):
+        _fit_rendered_metadata(_drawing_chunk(), 0)
+
+
+def _stamp(documents: list[Document], chunk_size: int) -> None:
+    _stamp_chunk_metadata(documents, doc_class="Statik", provenance={}, chunk_size=chunk_size, file_name=FILE)
+
+
+def test_the_header_is_budgeted_against_the_chunk_size_the_job_splits_with():
+    # Fits half of the 1024 default, not half of the 256 this job splits with.
+    title = " ".join(["Bewehrungsplan Decke über Erdgeschoss"] * 20)
+    document = Document(text="Stahlbeton 25 cm.", metadata={"file_name": "s.pdf", "punkt_title": title})
+    assert 128 < _rendered_metadata_tokens(document) <= 512
+
+    _stamp([document], chunk_size=256)
+
+    assert _rendered_metadata_tokens(document) <= 128
+    assert document.metadata["doc_class"] == "Statik"
+    assert SentenceSplitter(chunk_size=256, chunk_overlap=32).get_nodes_from_documents([document])
+
+
+def test_a_header_that_cannot_shrink_is_reported_once_per_file(caplog):
+    pages = [
+        Document(text="Seite.", metadata={"file_name": f"{LEGEND}.pdf", "page_label": str(page)}) for page in range(3)
+    ]
+
+    with caplog.at_level(logging.WARNING, logger="knowledge_layer.llamaindex.adapter"):
+        _stamp(pages, chunk_size=1024)
+
+    over = [record for record in caplog.records if "over its 512-token budget" in record.getMessage()]
+    assert len(over) == 1
+    assert "file_name" in over[0].getMessage()
