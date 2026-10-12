@@ -18,7 +18,20 @@ import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/ten
 import { ARCHIV_SHELF, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
-import { CURSOR_TIMESTAMP_FORMAT, type DocumentListCursor } from './list-cursor'
+import {
+  CURSOR_TIMESTAMP_FORMAT,
+  type DocumentLevelCursor,
+  type DocumentLevelSort,
+  type DocumentListCursor,
+} from './list-cursor'
+import type { DocumentLevelQuery } from './list-query'
+import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily } from './document-status'
+import {
+  SHELF_SUMMARY_FAILED_LIMIT,
+  SHELF_SUMMARY_FOLDER_LIMIT,
+  type ShelfFolderTally,
+  type ShelfSummary,
+} from './shelf-summary-types'
 import {
   bffJobQueue,
   documentQuarantineDecisions,
@@ -363,6 +376,297 @@ export function listProjectDocumentPage(
   options: Omit<ListProjectDocumentsOptions, 'offset'> & { cursor?: DocumentListCursor },
 ): Promise<DocumentListPage> {
   return listDocumentPage(projectShelf(projectId), organizationId, options)
+}
+
+// --- A folder level, page by page (ADR-0102) ---------------------------------
+
+/** The filters every read of a shelf shares: what the listing's own WHERE takes. */
+export type ShelfReadFilters = Pick<ListProjectDocumentsOptions, 'authoredBy' | 'includeArchived' | 'hiddenFolderIds' | 'reader'>
+
+/** One page of a level read, and where the next one starts. */
+export interface DocumentLevelPage {
+  rows: DocumentListRow[]
+  /** The position after the last row, or `null` when this page is the last. */
+  nextCursor: DocumentLevelCursor | null
+}
+
+/**
+ * The sort key of a level order, as SQL. The cursor's value is read off the
+ * row by the same expression ({@link levelCursorValueColumn}) and compared
+ * against it ({@link afterDocumentLevelCursor}), so the three cannot disagree
+ * about where a row sits: a name case-folded by JavaScript and one case-folded
+ * by Postgres need not be the same string.
+ */
+function levelSortKey(sort: DocumentLevelSort): SQL {
+  switch (sort) {
+    case 'added':
+      return sql`${documents.createdAt}`
+    case 'name':
+      return sql`lower(coalesce(${documents.displayName}, ${documents.filename}))`
+    case 'size':
+      // An unknown size sorts as the smallest, never as NULL: a NULL key would
+      // need its own arm in every cursor comparison.
+      return sql`coalesce(${documents.fileSize}, -1)`
+  }
+}
+
+/** The sort key as text, for the cursor; `added` at microsecond precision in UTC, like the listing cursor. */
+function levelCursorValueColumn(sort: DocumentLevelSort): SQL<string> {
+  switch (sort) {
+    case 'added':
+      return cursorCreatedAtColumn
+    case 'name':
+      return sql<string>`lower(coalesce(${documents.displayName}, ${documents.filename}))`
+    case 'size':
+      return sql<string>`coalesce(${documents.fileSize}, -1)::text`
+  }
+}
+
+/** The cursor's text back as a value of the key's own type. */
+function levelCursorBound(cursor: DocumentLevelCursor): SQL {
+  switch (cursor.sort) {
+    case 'added':
+      return sql`(${cursor.value}::timestamp AT TIME ZONE 'UTC')`
+    case 'name':
+      return sql`${cursor.value}::text`
+    case 'size':
+      return sql`${cursor.value}::integer`
+  }
+}
+
+/**
+ * Rows strictly after `cursor` in its order: past the key in the cursor's
+ * direction, or on the same key with a greater id. The id breaks ties
+ * ascending in both directions, so `added DESC` is the drain's own
+ * `created_at DESC, id ASC` and the listing index serves it as it stands.
+ */
+export function afterDocumentLevelCursor(cursor: DocumentLevelCursor): SQL {
+  const key = levelSortKey(cursor.sort)
+  const bound = levelCursorBound(cursor)
+  const past = cursor.dir === 'asc' ? sql`${key} > ${bound}` : sql`${key} < ${bound}`
+  return sql`(${past} OR (${key} = ${bound} AND ${documents.id} > ${cursor.id}::uuid))`
+}
+
+/**
+ * Documents whose file name or rename contains `q`, case-insensitively, in
+ * either Unicode form (a name off a Mac is decomposed). `strpos` and not
+ * `LIKE`, so a `%` or `_` in what the reader typed is a character, not a
+ * wildcard. Nothing for an empty query.
+ */
+export function nameContains(q: string | undefined): SQL | undefined {
+  const needle = q?.trim() ?? ''
+  if (needle === '') return undefined
+  const variants = [...new Set([needle.normalize('NFC'), needle.normalize('NFD')])]
+  return or(
+    ...variants.flatMap((variant) => [
+      sql`strpos(lower(${documents.filename}), lower(${variant})) > 0`,
+      sql`strpos(lower(coalesce(${documents.displayName}, '')), lower(${variant})) > 0`,
+    ]),
+  )
+}
+
+/**
+ * Documents in one of `states`, by the family their status belongs to
+ * (`documentReadFamily`). `reading` is every status no other family declares,
+ * the unknown ones included, exactly as the browser reads them. Nothing when
+ * every family, or none, is asked for.
+ */
+export function readFamilyWhere(states: readonly DocumentReadFamily[] | undefined): SQL | undefined {
+  const wanted = [...new Set(states ?? [])]
+  if (wanted.length === 0 || wanted.length === DOCUMENT_READ_FAMILIES.length) return undefined
+  const lowered = sql`lower(${documents.status})`
+  const declaredElsewhere = DOCUMENT_READ_FAMILIES.filter((family) => family !== 'reading').flatMap(declaredStatusesIn)
+  return or(
+    ...wanted.map((family) =>
+      family === 'reading' ? notInArray(lowered, declaredElsewhere) : inArray(lowered, declaredStatusesIn(family)),
+    ),
+  )
+}
+
+/** The level's own predicates: its folder, the name search, the families, the cursor. */
+function levelWhere({ folderId, q, states, cursor }: DocumentLevelQuery): SQL[] {
+  const where: SQL[] = []
+  if (folderId !== undefined) where.push(folderId === null ? isNull(documents.folderId) : eq(documents.folderId, folderId))
+  const named = nameContains(q)
+  if (named) where.push(named)
+  const family = readFamilyWhere(states)
+  if (family) where.push(family)
+  if (cursor) where.push(afterDocumentLevelCursor(cursor))
+  return where
+}
+
+/**
+ * Split `limit + 1` fetched rows into the page and its next cursor (the probe
+ * row answers "is there more" without a COUNT), coercing at the boundary.
+ */
+export function readDocumentLevelPage(
+  fetched: Array<DocumentListRow & { cursorValue: string }>,
+  level: Pick<DocumentLevelQuery, 'sort' | 'dir'>,
+  limit: number,
+): DocumentLevelPage {
+  const bounded = boundListLimit(limit)
+  const hasMore = fetched.length > bounded
+  const page = hasMore ? fetched.slice(0, bounded) : fetched
+  const rows = page.map(({ cursorValue: _cursor, ...row }) => ({
+    ...row,
+    createdAt: new Date(row.createdAt),
+    updatedAt: new Date(row.updatedAt),
+  }))
+  const last = page.at(-1)
+  return {
+    rows,
+    nextCursor:
+      hasMore && last ? { sort: level.sort, dir: level.dir, value: String(last.cursorValue), id: last.id } : null,
+  }
+}
+
+/**
+ * One page of a folder LEVEL of a shelf, in the order the reader chose — what
+ * the Files workspace reads instead of draining the shelf (ADR-0102). The
+ * shelf, lifecycle, author, hidden-folder and hold predicates are the
+ * listing's own (`listingWhere`); the level adds its folder, the name search,
+ * the read-state families and the cursor.
+ *
+ * Bounded like every listing: `limit` is clamped to {@link DOCUMENT_LIST_LIMIT}
+ * and one probe row says whether there is more. The composite indexes of
+ * migration 0132 serve `added`; `name` and `size` sort the level's rows, which
+ * the same indexes narrow to the folder first.
+ */
+export async function listDocumentLevelPage(
+  shelf: DocumentShelf,
+  organizationId: string,
+  { level, ...filters }: ShelfReadFilters & { level: DocumentLevelQuery },
+): Promise<DocumentLevelPage> {
+  const db = getDb()
+  const bounded = boundListLimit(level.limit)
+  const key = levelSortKey(level.sort)
+  const fetched = await withTenant({ organizationId }, () =>
+    db
+      .select({ ...documentListColumns, cursorValue: levelCursorValueColumn(level.sort) })
+      .from(documents)
+      .where(and(listingWhere(shelf, organizationId, filters), ...levelWhere(level)))
+      .orderBy(level.dir === 'asc' ? asc(key) : desc(key), asc(documents.id))
+      .limit(bounded + 1),
+  )
+  return readDocumentLevelPage(fetched, level, bounded)
+}
+
+/**
+ * One document of a shelf as a listing row, for a deep link to a document the
+ * paged level has not loaded (`GET /api/documents/[id]`, ADR-0102). Archived
+ * documents are found when `includeArchived` says so; the hold and the
+ * hidden-folder rule are the listing's.
+ */
+export async function findShelfDocumentListRow(
+  shelf: DocumentShelf,
+  organizationId: string,
+  documentId: string,
+  filters: ShelfReadFilters,
+): Promise<DocumentListRow | null> {
+  const db = getDb()
+  const [row] = await withTenant({ organizationId }, () =>
+    db
+      .select(documentListColumns)
+      .from(documents)
+      .where(and(eq(documents.id, documentId), listingWhere(shelf, organizationId, filters)))
+      .limit(1),
+  )
+  return row ?? null
+}
+
+// --- What Postgres can say about a whole shelf (ADR-0102) --------------------
+
+/** `count(*)` of the rows in one read-state family, by the status vocabulary's own declaration. */
+function familyCount(family: Exclude<DocumentReadFamily, 'reading'>): SQL<number> {
+  return sql<number>`count(*) FILTER (WHERE ${inArray(sql`lower(${documents.status})`, declaredStatusesIn(family))})`
+}
+
+/** The ISO-8601 the browser compares `createdAt` with (`Date#toISOString`). */
+const ISO_MILLISECOND_FORMAT = 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'
+
+/**
+ * Per folder of a shelf (`null` is the root), the documents filed directly in
+ * it, counted by read-state family, and the newest one's `created_at`: the
+ * folder tiles and the folder brief, folded up the tree by the browser
+ * (`foldTallies`). One aggregate over the listing's own WHERE, so it counts
+ * exactly the rows a listing would show this reader, and no backend call:
+ * the status is the stored one (rows still `pending` in Postgres are
+ * reconciled by the upload sweep, or when a page holding them is read).
+ *
+ * Bounded by the number of folders ({@link SHELF_SUMMARY_FOLDER_LIMIT}). The
+ * reading family is what is left of the total, so a status nobody declared is
+ * counted as being read, as the browser counts it.
+ */
+export async function summarizeShelfFolders(
+  shelf: DocumentShelf,
+  organizationId: string,
+  filters: ShelfReadFilters,
+): Promise<ShelfFolderTally[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({
+        folderId: documents.folderId,
+        total: sql<number>`count(*)`,
+        readable: familyCount('readable'),
+        failed: familyCount('failed'),
+        held: familyCount('held'),
+        unindexed: familyCount('unindexed'),
+        latest: sql<string | null>`to_char(max(${documents.createdAt}) AT TIME ZONE 'UTC', ${ISO_MILLISECOND_FORMAT})`,
+      })
+      .from(documents)
+      .where(listingWhere(shelf, organizationId, filters))
+      .groupBy(documents.folderId)
+      .limit(SHELF_SUMMARY_FOLDER_LIMIT),
+  )
+  // Coerced at the boundary: `count(*)` is a bigint, which the driver hands back as text.
+  return rows.map((row) => {
+    const total = Number(row.total)
+    const readable = Number(row.readable)
+    const failed = Number(row.failed)
+    const held = Number(row.held)
+    const unindexed = Number(row.unindexed)
+    return {
+      folderId: row.folderId,
+      total,
+      readable,
+      reading: Math.max(0, total - readable - failed - held - unindexed),
+      failed,
+      held,
+      unindexed,
+      latest: row.latest === null ? null : String(row.latest),
+    }
+  })
+}
+
+/**
+ * The failed documents of a shelf, newest first, at most
+ * {@link SHELF_SUMMARY_FAILED_LIMIT}: what „Alle erneut lesen“ sends back
+ * through ingestion. One probe row past the limit says whether it was cut.
+ */
+export async function listShelfFailedDocuments(
+  shelf: DocumentShelf,
+  organizationId: string,
+  filters: ShelfReadFilters,
+): Promise<Pick<ShelfSummary, 'failed' | 'failedTruncated'>> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({ id: documents.id, folderId: documents.folderId })
+      .from(documents)
+      .where(
+        and(
+          listingWhere(shelf, organizationId, filters),
+          inArray(sql`lower(${documents.status})`, declaredStatusesIn('failed')),
+        ),
+      )
+      .orderBy(desc(documents.createdAt), asc(documents.id))
+      .limit(SHELF_SUMMARY_FAILED_LIMIT + 1),
+  )
+  return {
+    failed: rows.slice(0, SHELF_SUMMARY_FAILED_LIMIT).map((row) => ({ id: row.id, folderId: row.folderId })),
+    failedTruncated: rows.length > SHELF_SUMMARY_FAILED_LIMIT,
+  }
 }
 
 /**

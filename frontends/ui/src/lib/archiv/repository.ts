@@ -16,7 +16,9 @@ import { documents, type Document } from '@/lib/db/schema'
 import {
   findDocumentsByFilenames,
   findDocumentsByNames,
+  listDocumentLevelPage,
   listDocumentPage,
+  type DocumentLevelPage,
   type DocumentListPage,
   type DocumentListRow,
   type DocumentNameMatchRow,
@@ -25,7 +27,7 @@ import { ARCHIV_SHELF } from '@/lib/documents/shelf'
 import { documentVisibleTo, type DocumentReader } from '@/lib/documents/visibility'
 
 /**
- * One keyset page of an organization's Archiv, most-recent first — the shared
+ * One keyset page of an organization's Archiv, most-recent first - the shared
  * shelf listing (`listDocumentPage`) on the Archiv shelf, so it filters by
  * lifecycle and author, orders, pages and cursors exactly as a project's does
  * (ADR-0078). Bounded per page; the whole Archiv is reachable by following
@@ -36,6 +38,17 @@ export function listArchivDocuments(
   options: Parameters<typeof listDocumentPage>[2],
 ): Promise<DocumentListPage> {
   return listDocumentPage(ARCHIV_SHELF, organizationId, options)
+}
+
+/**
+ * One page of a folder level of the Archiv, in the reader's order - the shared
+ * level read (`listDocumentLevelPage`, ADR-0102) on the Archiv shelf.
+ */
+export function listArchivDocumentLevel(
+  organizationId: string,
+  options: Parameters<typeof listDocumentLevelPage>[2],
+): Promise<DocumentLevelPage> {
+  return listDocumentLevelPage(ARCHIV_SHELF, organizationId, options)
 }
 
 /**

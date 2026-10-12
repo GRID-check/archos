@@ -119,6 +119,7 @@ vi.mock('./repository', () => ({
   findProjectCollectionsHoldingFilename: vi.fn().mockResolvedValue([]),
   listProjectDocuments: vi.fn(),
   listProjectDocumentPage: vi.fn().mockResolvedValue({ rows: [], nextCursor: null }),
+  listDocumentLevelPage: vi.fn().mockResolvedValue({ rows: [], nextCursor: null }),
   findProjectDocumentsByFilenames: vi.fn().mockResolvedValue([]),
   findProjectDocumentsByNames: vi.fn().mockResolvedValue([]),
   deleteProjectDocument: vi.fn().mockResolvedValue(undefined),
@@ -180,6 +181,7 @@ import {
   findFolderPathInProject,
   findFolderPathInArchiv,
   listProjectDocumentPage,
+  listDocumentLevelPage,
   findProjectDocumentsByFilenames,
   findProjectDocumentsByNames,
   findProjectCollectionsHoldingFilename,
@@ -226,7 +228,7 @@ import {
   AgentAuthoredDocumentNotIndexableError,
   INGEST_DISPATCH_FAILED_MESSAGE,
 } from './service'
-import { encodeDocumentListCursor } from './list-cursor'
+import { encodeDocumentLevelCursor, encodeDocumentListCursor } from './list-cursor'
 import {
   reconcileDocumentStatuses,
   describeBackendIngestState,
@@ -864,6 +866,26 @@ describe('listDocuments', () => {
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
     const page = await listDocumentsPage(session, 'proj-1')
     expect(page.nextCursor).toBeNull()
+  })
+
+  // A folder level (ADR-0102): the same gate and reader, the level query in
+  // place of the drain, and the level cursor on the way out.
+  it('reads a level instead of draining, behind the same gate, and encodes the level cursor', async () => {
+    const next = { sort: 'name', dir: 'asc', value: 'plan.pdf', id: '00000000-0000-4000-8000-000000000002' } as const
+    vi.mocked(listDocumentLevelPage).mockResolvedValueOnce({ rows: [], nextCursor: next })
+    vi.mocked(reconcileDocumentStatuses).mockResolvedValue([])
+    const level = { folderId: null, sort: 'name', dir: 'asc', limit: 100 } as const
+
+    const page = await listDocumentsPage(session, 'proj-1', { level })
+
+    expect(requireProjectAccess).toHaveBeenCalledWith(session, 'proj-1', 'project:view')
+    expect(listDocumentLevelPage).toHaveBeenCalledWith(
+      { kind: 'project', projectId: 'proj-1' },
+      session.organizationId,
+      expect.objectContaining({ level, includeArchived: undefined })
+    )
+    expect(listProjectDocumentPage).not.toHaveBeenCalled()
+    expect(page.nextCursor).toBe(encodeDocumentLevelCursor(next))
   })
 
   it('asks for every author when the caller states no filter', async () => {
