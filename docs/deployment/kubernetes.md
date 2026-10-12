@@ -221,24 +221,35 @@ groups is unchanged): `nodeGroupApp`, `nodeGroupData`, `nodeGroupBatch`
 (`onNodeGroup` in `src/platform/scheduling.ts`). Prod sets them to `Node`,
 `data` and `batch`.
 
-Pinned now:
+Every pod template in the program is pinned:
 
-- `aiq-agent` (the chat role) on `Node`.
-- `chroma` on `data`. It also carries
+- `data`: the Postgres instances and both PgBouncers, `chroma`, SeaweedFS,
+  ClickHouse and the three Dragonfly instances. Chroma also carries
   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on every stack: it
   is one replica, so an autoscaler scale-down that evicts it is an outage. A
   drain for a node upgrade still moves it.
-- `ingest-worker` on `batch`, at 8Gi requested and a 12Gi limit in prod
-  (§6.3b).
+- `batch`: `ingest-worker` (8Gi requested, 12Gi limit in prod, §6.3b),
+  Gotenberg and the legacy corpus import.
+- `Node`: everything else, the chat, api and agent-worker tiers, the frontend,
+  web, Langfuse, the collector, the workers and every Job.
 
 An IPAX group cannot be tainted from the Control Center, so placement is a
-nodeSelector only. It keeps a pinned tier on its group. It does not keep other
-pods off that group, so unpinned tiers can still land on `data` or `batch`.
+nodeSelector only. It keeps a pinned tier on its group but not other pods off
+it, so the data nodes stay the stores' only because every other template
+selects a different group. `index-node-groups.spec.ts` fails on a workload that
+selects none. The provider's volumes carry no node affinity, so a store follows
+its PVC to the new group; a single-replica store is down while it restarts.
 
-Postgres, SeaweedFS, ClickHouse, Dragonfly, `aiq-api`, the frontend and every
-other tier are not placed yet. They move in a later migration, one tier at a
-time, because moving a store with a PVC stops the store while it moves and its
-volume has to be able to attach on the new group.
+With a data group set, the Postgres instances must run on different nodes
+(`podAntiAffinityType: required`) and the two PgBouncers must too
+(`DoNotSchedule` spread). The group is fixed at 4 nodes, so neither rule can
+strand a replica. The PgBouncer spread and its PDB select
+`cnpg.io/poolerName`: the operator overwrites `app.kubernetes.io/name` on the
+pods it builds, and a selector on the template's own labels matched no pod
+(both PgBouncers ran on one node until 2026-10).
+
+The operators (CloudNativePG, KEDA, cert-manager, Envoy Gateway,
+metrics-server) are Helm releases in their own namespaces and are not pinned.
 
 **Cluster-autoscaler scales on *unschedulable pods*, not utilisation.** Its
 documented prerequisites — an HPA as the first scaling tier, `requests`/`limits`

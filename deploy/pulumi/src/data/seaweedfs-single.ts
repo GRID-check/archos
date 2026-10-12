@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -89,6 +90,7 @@ export function installSingleNodeSeaweedFS(
             // default is thin for a store that may be mid-write.
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "seaweedfs",

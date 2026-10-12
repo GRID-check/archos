@@ -9,7 +9,7 @@ import {
   toResourceRequirements,
 } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import {
   ROLLOUT,
@@ -93,6 +93,7 @@ export function installApi(
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             securityContext: { runAsNonRoot: true, runAsUser: UID.backend, runAsGroup: UID.backend },
             topologySpreadConstraints: spreadAcrossNodes(labels),
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "aiq-api",

@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, assertPgConnectionBudget } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedJobSecurityContext } from "../platform/security";
 import {
   BOOTSTRAP_JOB_RESOURCES,
@@ -202,6 +202,7 @@ export function installPostgres(
         template: {
           spec: {
             restartPolicy: "OnFailure",
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "wait",
@@ -432,12 +433,14 @@ export function installPostgres(
         // right default when the provider drains/replaces nodes on its own.
         primaryUpdateStrategy: cfg.postgres.primaryUpdateStrategy,
         // Keep primary and replicas off the same worker node so a single node
-        // loss / upgrade drain can't take the whole cluster down. `preferred` so
-        // a small (or single-node) cluster still schedules.
+        // loss / upgrade drain can't take the whole cluster down. Required on a
+        // data group, which is fixed in size; `preferred` without one, so a
+        // small (or single-node) cluster still schedules.
         affinity: {
           enablePodAntiAffinity: true,
           topologyKey: "kubernetes.io/hostname",
-          podAntiAffinityType: "preferred",
+          podAntiAffinityType: cfg.nodeGroups.data ? "required" : "preferred",
+          ...onNodeGroup(cfg.nodeGroups.data),
         },
         storage: {
           size: cfg.postgres.storageSize,
@@ -594,6 +597,12 @@ export function installPostgres(
    * `prepare: false`, which predates this.
    */
   const poolerLabels = commonLabels("pgbouncer");
+  // The operator overwrites `app.kubernetes.io/name` and `managed-by` on the
+  // pods it builds from the template, so `poolerLabels` match no pooler pod.
+  // Select on the label it sets itself. Until 2026-10 the spread and the PDB
+  // used `poolerLabels`: both matched nothing, and both PgBouncers ran on one
+  // node.
+  const poolerPods = { "cnpg.io/poolerName": POSTGRES_POOLER.name };
   const pooler = new k8s.apiextensions.CustomResource(
     "grid-pg-pooler-rw",
     {
@@ -616,11 +625,12 @@ export function installPostgres(
         template: {
           metadata: { labels: poolerLabels },
           spec: {
-            // Soft spread, the same shape as every other multi-replica tier:
-            // two poolers on one node are one pooler when that node drains.
+            // Two poolers on one node are one pooler when that node drains.
+            // Required on a data group (fixed in size), soft without one.
             ...(cfg.postgres.pooler.instances > 1
-              ? { topologySpreadConstraints: spreadAcrossNodes(poolerLabels) }
+              ? { topologySpreadConstraints: spreadAcrossNodes(poolerPods, Boolean(cfg.nodeGroups.data)) }
               : {}),
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 // The operator picks the PgBouncer container by this name.
@@ -638,7 +648,7 @@ export function installPostgres(
   // A voluntary drain takes one pooler at a time. Not for a single pooler: a
   // PDB on one replica would block the provider's automatic node upgrades.
   if (cfg.postgres.pooler.instances > 1) {
-    installPdb(POSTGRES_POOLER.name, namespace, provider, poolerLabels, [pooler]);
+    installPdb(POSTGRES_POOLER.name, namespace, provider, poolerPods, [pooler]);
   }
 
   /**
@@ -832,6 +842,7 @@ export function installPostgres(
           spec: {
             enableServiceLinks: false, // see chroma.ts — legacy env collisions
             restartPolicy: "OnFailure",
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "psql",

@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -140,6 +141,7 @@ export function installSeaweedFS(
           spec: {
             enableServiceLinks: false,
             restartPolicy: "OnFailure",
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "bucket-init",

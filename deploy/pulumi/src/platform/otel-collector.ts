@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig } from "../config";
 import { commonLabels } from "./namespaces";
@@ -262,6 +263,7 @@ service:
             securityContext: { runAsNonRoot: true, runAsUser: 10001, runAsGroup: 10001 },
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.observability).terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "collector",

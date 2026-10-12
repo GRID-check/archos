@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "./scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import type { IHTTPRouteSpec } from "@kubernetes-models/gateway-api/gateway.networking.k8s.io/v1/HTTPRouteSpec";
 import { GridConfig, pullPolicyFor } from "../config";
@@ -512,6 +513,7 @@ export function installLangfuse(
             // no endpoint-propagation wait at all — the classic "a few 502s on
             // every deploy", which `endpointDrainSeconds` exists to remove.
             terminationGracePeriodSeconds: webShutdown.terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "langfuse-web",
@@ -634,6 +636,7 @@ export function installLangfuse(
             securityContext: podSecurity,
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.langfuse).terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "langfuse-worker",

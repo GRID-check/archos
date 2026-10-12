@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, backendImage, toResourceRequirements } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import {
   agentWorkerRollout,
@@ -95,6 +95,7 @@ export function installAgentWorker(
             // Spread workers across nodes (autoscaler prerequisite + survives a
             // single node loss / automatic-upgrade node replacement).
             topologySpreadConstraints: spreadAcrossNodes(labels),
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "agent-worker",
