@@ -925,6 +925,8 @@ def _stamp_chunk_metadata(
             "Metadata too long to embed in %s; left out of the header: %s", file_name, ", ".join(sorted(unrendered))
         )
     if longest > limit:
+        # "tokens" here are tokenizer counts; the line logs a file name and integers only.
+        # nosemgrep: python.lang.security.audit.logging.logger-credential-leak.python-logger-credential-disclosure
         logger.warning(
             "Metadata header of %s stays at %d tokens with only %s rendered, over its %d-token budget "
             "(chunk size %d); past the chunk size the splitter fails the file",
