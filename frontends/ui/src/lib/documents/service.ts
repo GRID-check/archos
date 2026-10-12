@@ -70,9 +70,10 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { Document, DocumentAuthor } from '@/lib/db/schema'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
-import { toListedDocuments, toListedPage, type ListedDocument } from './shelf-listing'
+import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
 import { loadFassungFacts } from './fassung-facts'
 import { projectShelf } from './shelf'
+import type { DocumentLevelQuery } from './list-query'
 import { uploadToShelf, type UploadDocumentResult } from './shelf-upload'
 import { resolveDocumentFolderPath } from './folder-path'
 import {
@@ -86,6 +87,7 @@ import {
   findDocumentInOrg,
   findStorageKeyByCollectionAndFilename,
   findStorageKeyByIdAndCollection,
+  listDocumentLevelPage,
   listProjectDocumentPage,
   findProjectDocumentsByFilenames,
   findProjectDocumentsByNames,
@@ -534,7 +536,17 @@ export async function listDocumentsPage(
    * and filtering after the fact would read the whole project's corpus — plus
    * reconcile and assignment-hydrate every row of it — to return a handful.
    */
-  options: { authoredBy?: DocumentAuthor; includeArchived?: boolean; cursor?: DocumentListCursor } = {}
+  options: {
+    authoredBy?: DocumentAuthor
+    includeArchived?: boolean
+    cursor?: DocumentListCursor
+    /**
+     * Read one folder level in the reader's order instead of draining the
+     * shelf (ADR-0102). The same gate, reader and hydration; `cursor` is
+     * ignored beside it (the level carries its own).
+     */
+    level?: DocumentLevelQuery
+  } = {}
 ): Promise<{ documents: ListedDocument[]; nextCursor: string | null }> {
   await requireProjectAccess(session, projectId, 'project:view')
 
@@ -542,15 +554,22 @@ export async function listDocumentsPage(
   // page size, and a second copy of it here could drift from the real one.
   // A file in quarantine is listed for its uploader and its reviewers only (ADR-0086).
   const reader = await shelfReaderFor(session, { scope: 'project', projectId })
-  const page = await listProjectDocumentPage(projectId, session.organizationId, {
+  const filters = {
     hiddenFolderIds: await getHiddenFolderIds(session, projectId),
     reader,
     authoredBy: options.authoredBy,
     // Archived documents have LEFT the working set, so they are absent unless
     // the caller says otherwise (ADR-0054).
     includeArchived: options.includeArchived,
-    cursor: options.cursor,
-  })
+  }
+  if (options.level) {
+    const levelPage = await listDocumentLevelPage(projectShelf(projectId), session.organizationId, {
+      ...filters,
+      level: options.level,
+    })
+    return toListedLevelPage(session, levelPage, reader)
+  }
+  const page = await listProjectDocumentPage(projectId, session.organizationId, { ...filters, cursor: options.cursor })
   return toListedPage(session, page, reader)
 }
 

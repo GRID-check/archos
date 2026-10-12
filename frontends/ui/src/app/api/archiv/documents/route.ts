@@ -4,7 +4,9 @@
  * and the same rows as a project's `GET /api/documents`: `?includeArchived=true`
  * and `?authoredBy=agent|user` (`@/lib/documents/list-query`), each row through
  * `toDocumentWireRows` — folder, origin path, author, lifecycle and version
- * state included (ADR-0078).
+ * state included (ADR-0078). The level parameters (`folderId`, `sort`, `dir`,
+ * `q`, `state`, `limit`) read one folder level in the reader's order instead
+ * of draining the Archiv (ADR-0102).
  * Thin handler; all logic lives in `@/lib/archiv/service` (ADR-0024).
  */
 

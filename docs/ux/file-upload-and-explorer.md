@@ -516,8 +516,10 @@ Archiv now has all of them because it is the same component.
 `FileWorkspace` (`features/documents/components/file-workspace.tsx`) takes a
 `FileShelf` descriptor (`lib/file-shelf.ts`). `ProjectFileWorkspace` and
 `ArchivWorkspace` are adapters that build one and supply the header. Shared, and
-therefore no longer able to drift: `useFileListing` (the paged drain with its
-generation guard and settling poll), `useFolderTree` (load, create, rename,
+therefore no longer able to drift: `useLevelListing` and `useShelfSummary`
+(one folder level page by page and the shelf's counts, ADR-0102),
+`useFileListing` (the paged drain with its generation guard and settling poll,
+now the fallback), `useFolderTree` (load, create, rename,
 move, delete, with the `files` strings), `useDocumentMoves`, `useShelfUpload`
 (the plan, the ensure request, moves of unchanged documents, `folderIdFor`),
 `useFolderParam` (`?folder=`), `useViewPreference` (`grid.files.view`),
@@ -577,6 +579,10 @@ Three decisions worth keeping:
 
 **Date:** 2026-10-12 · **Surfaces:** project Files workspace, org Büroablage
 
+*Superseded for the default view by the next section (ADR-0102): the drain
+described here is now the fallback, turned on only for what the server cannot
+answer. The rendering points below hold for both.*
+
 Search, filters, folder counts, the brief and the upload plan all read the
 listing in the browser, so the workspace still holds every row (up to the
 ceiling of 20 pages of 500, with the visible notice past it). What changed is
@@ -616,7 +622,70 @@ the cost of getting there and of drawing it:
   on `GridTileShell`). List rows are table rows, which CSS containment does not
   apply to, so the detail view does not get this until it is virtualised.
 
-Not in this change, and the next step for shelves past a few thousand
-documents: folder, sort and filter answered by the server per page, the folder
-counts and brief from an aggregate read, a by-id read for one row, and a
-virtualised grid and list.
+### A folder level, page by page
+
+**Date:** 2026-10-12 · **Surfaces:** project Files workspace, org Büroablage · **ADR:** [0102](../adr/0102-file-workspaces-load-a-folder-level-by-pages.md)
+
+A Büroablage with more than 2 000 documents in its root still downloaded and
+hydrated all of them before the root could be drawn. The workspace now reads
+the folder level the reader stands on from the server, a page at a time, and
+never drains the shelf for the default view.
+
+- **One level, its first hundred.** `useLevelListing` (`hooks/use-level-listing.ts`)
+  asks the shelf's listing route for `folderId=<id>|root&sort=&dir=&limit=100`
+  and draws the page. The end of the grid or list carries a `LoadMore` sentinel
+  (`components/ui/load-more.tsx`, an `IntersectionObserver` with a 600 px
+  margin through `useInView`): reaching it reads the next page from the level
+  cursor, one at a time, and a button is always there for a keyboard, an engine
+  without the observer, and after a failed page (never retried on its own).
+- **A new folder starts over; a new order or search does not flash.** Walking
+  into another folder drops the rows and shows the skeleton. Changing the
+  order, the status filter or the search keeps the rows on screen until the new
+  answer replaces them. Each first-page read aborts the one before it and is
+  stamped, so an answer for a level the reader has left is dropped.
+- **Order, search and status are the server's.** The sort menu's `added`,
+  `name` and `size` are request parameters (`name` is the shown name,
+  case-folded by Postgres). The search field narrows the loaded rows at every
+  keystroke and asks the server 250 ms after the last one, across the whole
+  shelf (`q`, without a folder); it matches file names and renames, and the
+  empty result says so and points to Enter for the semantic search over the
+  content. The status filter is `state=` (read-state families). „Von Piloti“
+  and „auch archivierte“ were already server filters.
+- **The folder tiles, the header count and the brief come from the shelf
+  summary** (`useShelfSummary`, `GET {list}/summary`): one aggregate per
+  folder, folded up the tree in the browser (`talliesFromSummary`,
+  `buildFolderBriefFromSummary`), read again after an upload, a move, a delete
+  or a re-read. The brief's headline, legend, „Hier sind Sie gefragt“ (with
+  „Alle erneut lesen“ over the failed ids the summary names) and „Wo es hakt“
+  are the summary's. „Worum es hier geht“ needs what the backend put on each
+  document, so a summary-built brief shows the section folded with a „Laden“
+  button instead of claiming Piloti recognised nothing; pressing it, or opening
+  one of the brief's slices, turns the drain on and the brief is built from the
+  whole shelf as before.
+- **What still drains the shelf**: a kind, tag, assignment or „Freigabe
+  ausstehend“ filter, the status order, and the brief's content facts and
+  slices. These read facts Postgres does not hold in the documents table. The
+  drain is the unchanged `useFileListing`, `enabled` only for them, with its
+  page ceiling and notice.
+- **Older Fassungen are hidden per loaded page.** Which document replaces which
+  is a link in the backend's index, so an older Fassung whose newer one is on a
+  later page shows until that page loads, and the summary counts it.
+- **A link to a document no page holds is read by id.** `?doc=` and
+  `?compare=` name documents that may be in another folder or far down a long
+  one; `useLinkedDocuments` reads each missing id from `GET /api/documents/{id}`
+  and pins the row beside the level, so the preview and the comparison open
+  without draining. A `403`/`404` settles it as absent. The Archiv's
+  `?model=` resolves its file by name the same way.
+- **The first paint is the level the URL names.** The Files page reads the
+  first page of `?folder=` (or the root) in the default order on the server and
+  hands it down with its cursor (`initialFiles`, `initialNextCursor`,
+  `initialFolderId`); the workspace uses it once, while the reader is still on
+  that level, and reads the next page from its cursor.
+- **Uploads, moves and deletes.** An upload settling reloads the level quietly
+  (as many rows as are on screen, up to 500, swapped in whole) and the summary.
+  A move or delete patches the loaded rows at once and re-reads the summary, so
+  the tiles' counts follow.
+
+Still open: a virtualised grid and list, and the kind/tag filters and the
+brief's content facts on the server once the backend's tags are mirrored into
+Postgres.

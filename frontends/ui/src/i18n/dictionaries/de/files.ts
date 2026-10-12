@@ -363,6 +363,13 @@ export const files: typeof en.files = {
     clearFilters: 'Filter zurücksetzen',
     resetSearch: 'Suche zurücksetzen',
     recentlyUploaded: 'Zuletzt hochgeladen',
+    /** Leere Suche, wenn die Suche nur im Namen sucht (der Ordner wird seitenweise geladen, ADR-0102). */
+    noMatchNamesDescription:
+      'Gesucht wird im Dateinamen. Drücken Sie Enter, um auch im Inhalt zu suchen – oder löschen Sie die Suche, um alle Dateien zu sehen.',
+    /** Ende der Liste eines großen Ordners: der Rest kommt beim Weiterscrollen. */
+    loadMore: 'Weitere laden',
+    loadingMore: 'Weitere Dokumente werden geladen …',
+    loadMoreFailed: 'Weitere Dokumente konnten nicht geladen werden.',
     semantic: {
       searchPlaceholder: 'Dateien durchsuchen – Enter für semantische Suche …',
       run: 'Suchen',
@@ -872,6 +879,12 @@ export const files: typeof en.files = {
     pages: '{count, plural, one {{formatted} Seite gelesen} other {{formatted} Seiten gelesen}}',
     aboutTitle: 'Worum es hier geht',
     noTypes: 'Piloti hat hier noch keine Dokumentart erkannt.',
+    /** „Worum es hier geht“, solange nur die Zahlen des Ordners geladen sind (ADR-0102). */
+    aboutDeferred: 'Dokumentarten, Fachbereiche und Themen',
+    aboutDeferredHint:
+      'Was Piloti in den Dokumenten erkannt hat, steht bei jedem Dokument. Für einen großen Ordner wird es erst geladen, wenn Sie es ansehen wollen.',
+    loadDetails: 'Laden',
+    loadingDetails: 'Wird geladen …',
     contains: 'Enthält {list}',
     needsTitle: 'Hier sind Sie gefragt',
     failedLine: '{count, plural, one {Piloti konnte # Dokument nicht lesen.} other {Piloti konnte # Dokumente nicht lesen.}}',

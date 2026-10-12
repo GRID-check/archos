@@ -1,0 +1,12 @@
+---
+improvements:
+  - >
+    Very large folders in the Büroablage and in a project's files now open
+    right away, and more documents load as you scroll to the end. The folder
+    counts and the folder overview still cover every document in the folder.
+operators:
+  - >
+    Migration 0132 adds two indexes on documents
+    (documents_project_folder_listing_idx, documents_org_scope_folder_listing_idx).
+    It is not built concurrently: writes to documents wait while it builds,
+    which takes seconds on the largest shelves we hold.

@@ -42,14 +42,15 @@ interface ProjectFileWorkspaceProps {
    */
   lifecyclePermissions?: readonly DocumentLifecyclePermission[]
   /**
-   * The folder tree and the corpus as the SERVER already read them, for the
-   * first paint — see {@link FileWorkspace}. `initialNextCursor` is the
-   * server's `nextCursor` for that page: null when it was the whole shelf, else
-   * where the workspace continues reading.
+   * The folder tree and the first page of the folder level the URL names, as
+   * the SERVER already read them, for the first paint — see {@link FileWorkspace}.
+   * `initialNextCursor` is where that level continues (null: it was the whole
+   * level); `initialFolderId` the level (null: the root, ADR-0102).
    */
   initialFolders?: readonly FolderItem[]
   initialFiles?: readonly DocumentWireRow[]
   initialNextCursor?: string | null
+  initialFolderId?: string | null
   /**
    * Whether this reader may change who may read and write a folder
    * (`project:manage`, resolved on the server, ADR-0088). Shows „Zugriff…" in the
@@ -85,6 +86,7 @@ export function ProjectFileWorkspace({
   initialFolders,
   initialFiles,
   initialNextCursor = null,
+  initialFolderId = null,
   canManageFolderAccess = false,
   initialRootAccess = 'write',
   mailImportEnabled = false,
@@ -131,6 +133,7 @@ export function ProjectFileWorkspace({
       initialFolders={initialFolders}
       initialFiles={initialFiles}
       initialNextCursor={initialNextCursor}
+      initialFolderId={initialFolderId}
     />
   )
 }
