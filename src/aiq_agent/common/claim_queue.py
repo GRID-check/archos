@@ -60,6 +60,7 @@ from sqlalchemy import inspect
 from sqlalchemy import text
 
 from aiq_agent.common.db_utils import lock_schema
+from aiq_agent.common.db_utils import present_indexes
 
 logger = logging.getLogger(__name__)
 
@@ -255,14 +256,21 @@ class ClaimQueue:
         for statement in statements:
             _execute_constant(conn, statement)
         self._add_missing_columns(conn, ts)
-        for statement in (
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_status_created ON {t} (status, created_at)",
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_status_lane_created ON {t} (status, lane, created_at)",
-            f"CREATE INDEX IF NOT EXISTS ix_{t}_lane_priority_created ON {t} (lane, priority, created_at)",
-            # Superseded by the priority index above; a second index is write cost for no read.
-            f"DROP INDEX IF EXISTS ix_{t}_lane_created",
+        # Only the MISSING indexes: ``CREATE INDEX IF NOT EXISTS`` takes the table's
+        # SHARE lock before it checks the name, so run on every start it blocked every
+        # heartbeat and claim, and behind one idle-in-transaction writer it wedged the
+        # whole queue (2026-10-11). On a current table this issues no DDL.
+        present = present_indexes(conn, t)
+        for name, columns in (
+            (f"ix_{t}_status_created", "status, created_at"),
+            (f"ix_{t}_status_lane_created", "status, lane, created_at"),
+            (f"ix_{t}_lane_priority_created", "lane, priority, created_at"),
         ):
-            _execute_constant(conn, statement)
+            if name not in present:
+                _execute_constant(conn, f"CREATE INDEX IF NOT EXISTS {name} ON {t} ({columns})")
+        # Superseded by the priority index above; a second index is write cost for no read.
+        if f"ix_{t}_lane_created" in present:
+            _execute_constant(conn, f"DROP INDEX IF EXISTS ix_{t}_lane_created")
 
     def _add_missing_columns(self, conn, ts: str) -> None:
         """Additive upgrade of a table created before lanes, priority and dead rows existed.

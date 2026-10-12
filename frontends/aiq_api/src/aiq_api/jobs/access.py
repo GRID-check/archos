@@ -17,6 +17,8 @@ from sqlalchemy.engine import Connection
 from aiq_agent.auth import Principal
 from aiq_agent.auth import get_current_principal
 from aiq_agent.common.db_utils import ensure_schema
+from aiq_agent.common.db_utils import present_columns
+from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.knowledge.restricted_collections import base_collection_of
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
@@ -570,18 +572,27 @@ def _ensure_job_access_schema(db_url: str) -> None:
 
 def _create_job_access_schema(conn: Connection, db_url: str) -> None:
     conn.execute(text(_job_access_table_sql(db_url)))
-    conn.execute(text(_JOB_ACCESS_INDEX_SQL))
+    # Every index and column is checked before its DDL: ``CREATE INDEX IF NOT
+    # EXISTS`` and ``ADD COLUMN IF NOT EXISTS`` lock the table before they check,
+    # so issued on every start they block its writers or readers for nothing, and
+    # queue behind any session a dead node left holding the table
+    # (``aiq_agent.common.db_utils.present_columns``). On a current table this
+    # issues no DDL at all.
+    indexes = present_indexes(conn, "job_access")
+    if "idx_job_access_owner" not in indexes:
+        conn.execute(text(_JOB_ACCESS_INDEX_SQL))
     # Backfill columns onto pre-existing tables BEFORE creating the
     # project_collection index below -- on a deployment where job_access
     # already existed without that column, CREATE TABLE IF NOT EXISTS is a
     # no-op and the index creation would otherwise fail with
     # "column project_collection does not exist".
     if _is_postgres(db_url):
-        for statement in _job_access_add_column_statements(db_url):
+        for statement in _job_access_add_column_statements(db_url, present_columns(conn, "job_access")):
             conn.execute(text(statement))
     else:
         _ensure_sqlite_job_access_columns(conn)
-    conn.execute(text(_JOB_ACCESS_PROJECT_INDEX_SQL))
+    if "idx_job_access_owner_project" not in indexes:
+        conn.execute(text(_JOB_ACCESS_PROJECT_INDEX_SQL))
 
 
 def _job_access_table_sql(db_url: str) -> str:
@@ -602,22 +613,27 @@ def _job_access_table_sql(db_url: str) -> str:
     )
 
 
-def _job_access_add_column_statements(db_url: str) -> list[str]:
-    """Backfill columns onto pre-existing job_access tables.
+#: Columns added after ``job_access`` first shipped, and the statement that adds each.
+_JOB_ACCESS_BACKFILL_COLUMNS = {
+    "conversation_id": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS conversation_id VARCHAR",
+    "project_collection": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS project_collection VARCHAR",
+    "organization_id": "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS organization_id VARCHAR",
+}
+
+
+def _job_access_add_column_statements(db_url: str, present: set[str] | frozenset[str] = frozenset()) -> list[str]:
+    """Backfill the columns a pre-existing job_access table lacks; none of those in ``present``.
 
     CREATE TABLE IF NOT EXISTS only creates the table with the new columns
     when it doesn't already exist. Deployments with a pre-existing job_access
     table need these columns added explicitly. Postgres supports
     ``ADD COLUMN IF NOT EXISTS``; SQLite does not, so column additions there
     are guarded with a manual existence check (mirroring the rest of this
-    module's Postgres/SQLite branching).
+    module's Postgres/SQLite branching). ``present`` is what the table already
+    has: the statement locks the table even when the column exists.
     """
     if _is_postgres(db_url):
-        return [
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS conversation_id VARCHAR",
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS project_collection VARCHAR",
-            "ALTER TABLE job_access ADD COLUMN IF NOT EXISTS organization_id VARCHAR",
-        ]
+        return [statement for column, statement in _JOB_ACCESS_BACKFILL_COLUMNS.items() if column not in present]
     return []
 
 

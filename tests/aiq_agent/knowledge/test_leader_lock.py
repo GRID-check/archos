@@ -201,6 +201,72 @@ def test_the_lock_engine_never_pools_and_does_not_open_a_transaction():
     lock_module._lock_engines.pop(DIRECT, None)
 
 
+def test_lock_connections_ask_libpq_for_tcp_keepalives(monkeypatch):
+    # A lock server that vanishes without closing TCP must be noticed, not waited on.
+    captured: dict = {}
+
+    def fake_create_engine(url, **kwargs):
+        captured.update(kwargs)
+        return MagicMock()
+
+    monkeypatch.setattr("sqlalchemy.create_engine", fake_create_engine)
+    lock_module._lock_engines.pop(DIRECT, None)
+    lock_module._lock_engine(DIRECT)
+    lock_module._lock_engines.pop(DIRECT, None)
+
+    assert captured["connect_args"]["keepalives"] == 1
+    assert captured["connect_args"]["keepalives_idle"] > 0
+
+
+# --- keyed locks: the wait is bounded ----------------------------------------
+#
+# On 2026-10-12 live ingest workers waited for keyed locks held by the sessions of
+# workers whose node had died. Postgres kept those sessions (no FIN, no RST), the
+# wait had no limit, and ingestion stopped with every worker idle.
+
+
+def test_a_keyed_lock_bounds_its_wait_before_it_waits(monkeypatch):
+    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
+    _, conn = _engine(monkeypatch)
+
+    with keyed_lock("reingest:proj:x.pdf"):
+        pass
+
+    statements = _sql(conn)
+    assert "set_config('lock_timeout'" in statements[0]
+    assert conn.execute.call_args_list[0].args[1] == {"timeout": "900s"}
+    assert "pg_advisory_lock(" in statements[1]
+    assert "pg_advisory_unlock(" in statements[-1]
+
+
+@pytest.mark.parametrize(
+    ("raw", "expected"),
+    [("30", "30s"), ("0", "0s"), ("not-a-number", "900s"), ("-5", "900s")],
+)
+def test_the_keyed_lock_wait_is_configurable_and_zero_means_no_limit(monkeypatch, raw, expected):
+    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
+    monkeypatch.setenv("GRID_KEYED_LOCK_TIMEOUT_SECONDS", raw)
+    _, conn = _engine(monkeypatch)
+
+    with keyed_lock("reingest:proj:x.pdf"):
+        pass
+
+    assert conn.execute.call_args_list[0].args[1] == {"timeout": expected}
+
+
+def test_a_keyed_lock_that_times_out_ends_its_session_and_does_not_run_the_body(monkeypatch, caplog):
+    monkeypatch.setenv("AIQ_LOCK_DB_URL", DIRECT)
+    _, conn = _engine(monkeypatch)
+    conn.execute.side_effect = [MagicMock(), RuntimeError("canceling statement due to lock timeout")]
+
+    with caplog.at_level("WARNING"), pytest.raises(RuntimeError, match="lock timeout"):
+        with keyed_lock("reingest:proj:x.pdf"):
+            pytest.fail("the body must not run unguarded")
+
+    conn.close.assert_called_once()
+    assert "keyed_lock acquisition failed" in caplog.text
+
+
 # --- the start-up check ------------------------------------------------------
 
 SQLITE = "sqlite+aiosqlite:///./summaries.db"

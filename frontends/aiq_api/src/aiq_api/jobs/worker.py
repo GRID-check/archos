@@ -300,7 +300,12 @@ class ResearchWorker:
                 logger.exception("Failed to mark exhausted job %s FAILURE", job_id)
 
     async def run(self) -> None:
-        await asyncio.to_thread(queue.ensure_research_queue_table, self.db_url)
+        try:
+            await asyncio.to_thread(queue.ensure_research_queue_table, self.db_url)
+        except Exception:
+            # A schema lock that timed out (or a database not up yet) must not
+            # end the worker at start: every claim ensures the table again.
+            logger.warning("Research queue table not ensured at start; the claim loop retries", exc_info=True)
         # Depth, oldest age and dead rows are gauges this process reports for the fleet.
         queue.queue_for(self.db_url).observe()
         logger.info(

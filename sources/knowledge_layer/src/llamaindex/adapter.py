@@ -276,6 +276,44 @@ def _retrieval_dependency_error(cause: BaseException) -> RuntimeError:
     )
 
 
+# @environment_variable AIQ_CHROMA_HTTP_TIMEOUT_SECONDS
+# @category Knowledge Layer
+# @type float
+# @default 120
+# @required false
+# The longest one request to the shared Chroma server may take (connecting is
+# bounded at 5 s within it). chromadb's HTTP client sets no timeout of its own
+# (`httpx.Client(timeout=None)` in chromadb 1.5), so a request on a connection
+# to a Chroma pod whose node died, which sends neither FIN nor RST, never
+# returns, and every thread that makes one is lost to the process. Must exceed
+# the slowest legitimate call, a metadata scan of the largest collection.
+#: Fallback for :data:`AIQ_CHROMA_HTTP_TIMEOUT_SECONDS`.
+_CHROMA_HTTP_TIMEOUT_SECONDS = 120.0
+#: Upper bound on establishing the TCP connection, within the request timeout.
+_CHROMA_CONNECT_TIMEOUT_SECONDS = 5.0
+
+
+def _bound_chroma_http(client) -> None:
+    """Give a chromadb HTTP client's session a timeout; chromadb leaves it unbounded.
+
+    The session is private (``Client._server._session``, an ``httpx.Client``):
+    chromadb exposes connection-pool settings but no timeout. Reaching in is the
+    lesser evil. Unbounded, one dead Chroma pod drained the API's whole thread
+    pool on 2026-10-12: every ``asyncio.to_thread`` call that touched Chroma
+    blocked on a socket read that could not end, until the process was
+    restarted. ``test_chroma_http_timeout.py`` fails if a chromadb upgrade moves
+    the attribute, so the reach-in cannot go stale silently.
+    """
+    session = getattr(getattr(client, "_server", None), "_session", None)
+    if session is None:
+        logger.warning("chromadb client has no _server._session; Chroma requests stay unbounded")
+        return
+    import httpx
+
+    seconds = _env_float("AIQ_CHROMA_HTTP_TIMEOUT_SECONDS", _CHROMA_HTTP_TIMEOUT_SECONDS)
+    session.timeout = httpx.Timeout(seconds, connect=min(_CHROMA_CONNECT_TIMEOUT_SECONDS, seconds))
+
+
 def _make_chroma_client(persist_dir: str):
     """Return a ChromaDB client: shared HTTP server when configured, else embedded."""
     import chromadb
@@ -307,7 +345,9 @@ def _make_chroma_client(persist_dir: str):
         os.makedirs(persist_dir, exist_ok=True)
         return chromadb.PersistentClient(path=persist_dir, settings=settings)
 
-    return chromadb.HttpClient(host=host, port=port, ssl=ssl, settings=settings)
+    client = chromadb.HttpClient(host=host, port=port, ssl=ssl, settings=settings)
+    _bound_chroma_http(client)
+    return client
 
 
 # Image extraction settings - filters out small icons/logos
@@ -3568,14 +3608,21 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             return []
 
     def get_collection(self, name: str) -> CollectionInfo | None:
-        """Get metadata for a specific collection."""
+        """Metadata for one collection; None only when Chroma says the collection does not exist.
+
+        Any other failure (the server unreachable, a timeout, a transport error)
+        raises. Returned as None it read as "missing": during a Chroma outage
+        ``oib_sync`` took that for a wiped index and re-ingested the whole corpus.
+        """
         try:
             client = self._get_chroma_client()
 
             try:
                 collection = client.get_collection(name=name)
-            except Exception:
-                return None
+            except Exception as exc:
+                if _is_missing_collection(exc):
+                    return None
+                raise
 
             col_metadata = collection.metadata or {}
             description = col_metadata.get("description")
@@ -3609,7 +3656,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
         except Exception as e:
             logger.error(f"Failed to get collection {name}: {e}")
-            return None
+            raise
 
     # =========================================================================
     # File Management Implementation

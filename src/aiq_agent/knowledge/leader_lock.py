@@ -27,11 +27,11 @@ Three shapes:
   fallback.
 - :func:`leader_lock_async` is the same election for a caller on an event loop
   (the ghost-job reaper): the blocking connect and query run on a thread.
-- :func:`keyed_lock` WAITS for one string key, in this process and, on
-  Postgres, across every replica. The ingestor holds one per (collection,
+- :func:`keyed_lock` WAITS, up to ``GRID_KEYED_LOCK_TIMEOUT_SECONDS``, for one
+  string key, in this process and, on Postgres, across every replica. The ingestor holds one per (collection,
   document name) while it replaces a document's previous version, so two jobs
   for the same name cannot both retire the same predecessor and keep both new
-  versions. Also fail-closed: when the lock cannot be taken it RAISES, the
+  versions. Also fail-closed: when the lock cannot be taken in time it RAISES, the
   ingest attempt fails and the claim queue retries it, rather than replacing a
   document unguarded across replicas. :func:`keyed_lock_async` is the same wait
   for a caller on an event loop.
@@ -115,6 +115,13 @@ def _lock_url() -> str | None:
     return None
 
 
+# libpq TCP keepalives on every lock connection (psycopg passes them to libpq):
+# a lock server that vanishes without closing TCP is noticed in about a minute,
+# instead of a holder or a waiter sitting on a dead socket. The server's own
+# keepalives, set in the Postgres deployment, end the session of a client that
+# vanished, and with it the locks that session held.
+_KEEPALIVES = {"keepalives": 1, "keepalives_idle": 30, "keepalives_interval": 10, "keepalives_count": 3}
+
 # One engine per URL for the life of the process; the URLs are fixed by the environment.
 _lock_engines: dict[str, object] = {}
 _LOCK_ENGINES_GUARD = threading.Lock()
@@ -136,7 +143,10 @@ def _lock_engine(url: str):
             from aiq_agent.common.db_utils import normalize_db_url
 
             engine = create_engine(
-                normalize_db_url(url, async_mode=False), poolclass=NullPool, isolation_level="AUTOCOMMIT"
+                normalize_db_url(url, async_mode=False),
+                poolclass=NullPool,
+                isolation_level="AUTOCOMMIT",
+                connect_args=_KEEPALIVES,
             )
             _lock_engines[url] = engine
         return engine
@@ -234,10 +244,34 @@ def _process_lock(key: str) -> threading.Lock:
         return _PROCESS_LOCKS.setdefault(key, threading.Lock())
 
 
+_DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS = 900
+
+
+# @environment_variable GRID_KEYED_LOCK_TIMEOUT_SECONDS
+# @category Knowledge Layer
+# @type int
+# @default 900
+# @required false
+# The longest a `keyed_lock` waits for another holder of the same key (an ingest
+# replacing a document's previous version, the OIB sync cycle) before it gives
+# up, and the attempt fails and is retried by the claim queue. Bounds the wait on
+# a session that died without closing TCP and still holds the lock. Must exceed
+# the longest a live holder keeps one (a file's ingestion). 0 for no limit.
+def _keyed_lock_timeout_seconds() -> int:
+    try:
+        value = int(os.environ.get("GRID_KEYED_LOCK_TIMEOUT_SECONDS", ""))
+    except ValueError:
+        return _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS
+    return value if value >= 0 else _DEFAULT_KEYED_LOCK_TIMEOUT_SECONDS
+
+
 def _acquire_keyed(key: str):
     """The connection holding ``key``'s advisory lock, or None when there is no Postgres to lock on.
 
-    Raises when the lock cannot be taken: the caller must not proceed unguarded.
+    The wait is bounded by ``GRID_KEYED_LOCK_TIMEOUT_SECONDS`` (``lock_timeout``
+    on the lock's own session, which advisory lock waits honour). Raises when
+    the lock cannot be taken, a timeout included: the caller must not proceed
+    unguarded.
     """
     url = _lock_url()
     if url is None:
@@ -247,6 +281,11 @@ def _acquire_keyed(key: str):
     conn = None
     try:
         conn = _lock_engine(url).connect()
+        # Session-wide on purpose: this connection only ever holds this lock, and closes with it.
+        conn.execute(
+            text("SELECT set_config('lock_timeout', :timeout, false)"),
+            {"timeout": f"{_keyed_lock_timeout_seconds()}s"},
+        )
         conn.execute(
             text("SELECT pg_advisory_lock(:namespace, hashtext(:key))"),
             {"namespace": _KEYED_LOCK_NAMESPACE, "key": key},
@@ -265,13 +304,19 @@ def keyed_lock(key: str):
     Blocking, not a try-lock: the caller has work that must happen, only not at
     the same time as another holder's. The key is hashed to the advisory lock's
     32-bit half, so two different keys can share a lock and serialise needlessly,
-    never the reverse. A replica that dies ends its session, and Postgres
-    releases what it held.
+    never the reverse.
+
+    A replica that exits, or whose process dies on a live node, closes its
+    connection, and Postgres releases what the session held at once. A node that
+    dies without closing TCP does not: its session, and the lock, stay until the
+    server's TCP keepalives (set in the Postgres deployment) end it. The wait is
+    therefore bounded, by ``GRID_KEYED_LOCK_TIMEOUT_SECONDS``.
 
     Fail-closed: with no Postgres (single-node dev, the tests) only the process
-    lock holds, but with Postgres an unreachable lock database raises, logged, and
-    the body does not run. The caller's attempt fails and is retried, which is
-    cheaper than two replicas replacing the same document at once.
+    lock holds, but with Postgres an unreachable lock database, or a wait that
+    timed out, raises, logged, and the body does not run. The caller's attempt
+    fails and is retried, which is cheaper than two replicas replacing the same
+    document at once.
     """
     with _process_lock(key):
         conn = _acquire_keyed(key)

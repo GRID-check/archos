@@ -28,6 +28,25 @@ def _require_ingestor() -> BaseIngestor:
     return ingestor
 
 
+async def require_collection(ingestor: BaseIngestor, name: str) -> CollectionInfo:
+    """The collection ``name``: 404 when the store says it does not exist, 503 when the store cannot say.
+
+    ``get_collection`` raises when the vector store cannot be reached. It used to
+    answer None, the same as "missing", so a Chroma outage read as a 404 on every
+    document route and, in the OIB sync, as a wiped index (a full re-ingest of
+    the corpus). The two answers mean different things to a caller: retry later,
+    or the collection is gone.
+    """
+    try:
+        collection = await asyncio.to_thread(ingestor.get_collection, name)
+    except Exception as e:
+        logger.warning("Could not read collection '%s' from the vector store: %s", name, type(e).__name__)
+        raise HTTPException(status_code=503, detail="Vector store unavailable") from e
+    if collection is None:
+        raise HTTPException(status_code=404, detail=f"Collection '{name}' not found")
+    return collection
+
+
 def add_collection_routes(router: APIRouter):
     """Add collection management routes to the FastAPI app."""
 
@@ -64,11 +83,8 @@ def add_collection_routes(router: APIRouter):
         name: str,
         ingestor: BaseIngestor = Depends(_require_ingestor),
     ) -> CollectionInfo:
-        """Get details for a specific collection."""
-        collection = await asyncio.to_thread(ingestor.get_collection, name)
-        if collection is None:
-            raise HTTPException(status_code=404, detail=f"Collection '{name}' not found")
-        return collection
+        """Get details for a specific collection: 404 when it does not exist, 503 when the store cannot say."""
+        return await require_collection(ingestor, name)
 
     @router.delete(
         "/v1/collections/{name}",

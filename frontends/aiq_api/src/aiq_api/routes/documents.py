@@ -56,6 +56,7 @@ from ..jobs import ingest_dispatch
 from ..models.requests import DeleteFilesRequest
 from ..models.requests import UploadResponse
 from .collections import _require_ingestor
+from .collections import require_collection
 from .generate_summary import _llm_settings
 
 logger = logging.getLogger(__name__)
@@ -343,9 +344,7 @@ def add_document_routes(router: APIRouter):
             raise HTTPException(status_code=400, detail="No files provided")
 
         # Verify collection exists
-        collection = await asyncio.to_thread(ingestor.get_collection, collection_name)
-        if collection is None:
-            raise HTTPException(status_code=404, detail=f"Collection '{collection_name}' not found")
+        await require_collection(ingestor, collection_name)
 
         temp_paths = []
         original_filenames = []
@@ -417,9 +416,7 @@ def add_document_routes(router: APIRouter):
     ) -> list[FileInfo]:
         """List all documents in a collection."""
         # Verify collection exists
-        collection = await asyncio.to_thread(ingestor.get_collection, collection_name)
-        if collection is None:
-            raise HTTPException(status_code=404, detail=f"Collection '{collection_name}' not found")
+        await require_collection(ingestor, collection_name)
 
         try:
             files = await asyncio.to_thread(ingestor.list_files, collection_name)
@@ -779,9 +776,7 @@ def add_document_routes(router: APIRouter):
         With it, those facts go and the files it replaced are current again for good.
         """
         # Verify collection exists
-        collection = await asyncio.to_thread(ingestor.get_collection, collection_name)
-        if collection is None:
-            raise HTTPException(status_code=404, detail=f"Collection '{collection_name}' not found")
+        await require_collection(ingestor, collection_name)
 
         if not request.file_ids:
             return {
