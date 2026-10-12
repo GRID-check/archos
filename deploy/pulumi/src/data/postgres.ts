@@ -531,11 +531,17 @@ export function installPostgres(
         // `max_connections` is the ceiling `assertPgConnectionBudget` holds the
         // pooler and the direct connections under. LISTEN/NOTIFY and session
         // locks need a direct session; they take `grid-pg-rw` (see `PgRoute`),
-        // everything else goes through the pooler below.
+        // everything else goes through the pooler below. The keepalives and the
+        // idle-in-transaction timeout free what a dead client held (see
+        // `POSTGRES_TUNING`); they are user-level, so the operator reloads.
         postgresql: {
           parameters: {
             max_connections: POSTGRES_TUNING.maxConnections,
             shared_buffers: POSTGRES_TUNING.sharedBuffers,
+            tcp_keepalives_idle: POSTGRES_TUNING.tcpKeepalivesIdle,
+            tcp_keepalives_interval: POSTGRES_TUNING.tcpKeepalivesInterval,
+            tcp_keepalives_count: POSTGRES_TUNING.tcpKeepalivesCount,
+            idle_in_transaction_session_timeout: POSTGRES_TUNING.idleInTransactionSessionTimeout,
           },
         },
         resources: DATA_RESOURCES.postgres,
@@ -604,6 +610,7 @@ export function installPostgres(
             max_client_conn: POSTGRES_POOLER.maxClientConn,
             default_pool_size: String(cfg.postgres.pooler.poolSize),
             max_prepared_statements: POSTGRES_POOLER.maxPreparedStatements,
+            idle_transaction_timeout: POSTGRES_POOLER.idleTransactionTimeout,
           },
         },
         template: {

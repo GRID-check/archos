@@ -77,6 +77,12 @@ def schema_lock_key(name: str) -> int:
     return int.from_bytes(digest[:8], "big", signed=True)
 
 
+#: The longest the schema transaction waits for any lock: the creation lock, or
+#: the table an ``ALTER``/``CREATE INDEX`` needs. Another replica's DDL takes
+#: milliseconds; a wait longer than this is a session that is not coming back.
+SCHEMA_LOCK_TIMEOUT = "5s"
+
+
 def lock_schema(conn, name: str) -> None:
     """Serialise the DDL that follows on ``conn`` against every other creator of ``name``.
 
@@ -93,6 +99,14 @@ def lock_schema(conn, name: str) -> None:
     through a transaction pooler. A session lock does not (ADR-0083). The
     caller commits, and marks its "ensured" flag only after that.
 
+    Every lock wait in the transaction is bounded by :data:`SCHEMA_LOCK_TIMEOUT`
+    (``SET LOCAL lock_timeout``), the advisory lock's included. Without it the
+    DDL queues behind any session holding the table, such as an idle-in-
+    transaction reader orphaned by a node that died, for as long as that
+    session lives, and a process start that runs it never finishes. With it the
+    transaction fails with ``LockNotAvailable``, the caller leaves its "ensured"
+    flag unset, and a later call tries again.
+
     SQLite (single process: dev and tests) has no concurrent creator to guard
     against, so there the DDL runs as it is.
     """
@@ -100,7 +114,36 @@ def lock_schema(conn, name: str) -> None:
         return
     from sqlalchemy import text
 
+    # set_config(..., true) is SET LOCAL with a bound value: it ends with the transaction.
+    conn.execute(text("SELECT set_config('lock_timeout', :timeout, true)"), {"timeout": SCHEMA_LOCK_TIMEOUT})
     conn.execute(text("SELECT pg_advisory_xact_lock(CAST(:key AS bigint))"), {"key": schema_lock_key(name)})
+
+
+def present_columns(conn, table: str) -> set[str]:
+    """The names of ``table``'s columns now, read from the catalog: no lock on the table itself.
+
+    Check before an ``ALTER TABLE ... ADD COLUMN IF NOT EXISTS``. That statement
+    takes the table's ACCESS EXCLUSIVE lock BEFORE it looks at the column, so run
+    for a column that exists it still blocks every reader for its duration, on
+    every process start, and queued behind one stuck reader it stalls the start
+    and every query that arrives after it (2026-10-12, ``document_metadata``).
+    """
+    from sqlalchemy import inspect
+
+    return {column["name"] for column in inspect(conn).get_columns(table)}
+
+
+def present_indexes(conn, table: str) -> set[str]:
+    """The names of ``table``'s indexes now, read from the catalog: no lock on the table itself.
+
+    Check before a ``CREATE INDEX IF NOT EXISTS``, which takes the table's SHARE
+    lock before it looks at the name: run for an index that exists it still
+    blocks every writer, and behind one idle-in-transaction writer it stalled a
+    queue's heartbeats and claims (2026-10-11, ``ingest_job_queue``).
+    """
+    from sqlalchemy import inspect
+
+    return {index["name"] for index in inspect(conn).get_indexes(table) if index.get("name")}
 
 
 def ensure_schema(engine, name: str, ddl: Callable[[Any], None]) -> None:

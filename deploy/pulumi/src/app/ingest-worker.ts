@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, assertVlmPeakFitsCeiling, backendImage, toResourceRequirements } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { agentWorkerRollout, gracefulShutdown, secretChecksumAnnotations, surgeRollout } from "../platform/rollout";
 import { AppSecrets, AppWiring, ingestWorkerEnv } from "./config";
@@ -78,6 +78,9 @@ export function installIngestWorker(
             securityContext: { runAsNonRoot: true, runAsUser: UID.backend, runAsGroup: UID.backend },
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
             topologySpreadConstraints: spreadAcrossNodes(labels),
+            // The batch group (`nodeGroupBatch`), when the stack has worker groups:
+            // a big PDF holds gigabytes, which the app group's nodes cannot spare.
+            ...onNodeGroup(cfg.nodeGroups.batch),
             containers: [
               {
                 name: "ingest-worker",

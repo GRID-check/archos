@@ -183,6 +183,37 @@ describe("Postgres routing", () => {
     }
   });
 
+  describe("the Cluster's server parameters", () => {
+    const parameters = () => {
+      const cluster = RESOURCES.find((r) => r.type === "kubernetes:postgresql.cnpg.io/v1:Cluster")!;
+      return (cluster.inputs.spec as { postgresql: { parameters: Record<string, string> } }).postgresql.parameters;
+    };
+
+    it("finds a dead client in about two minutes, through TCP keepalives", () => {
+      // A node that dies closes no TCP connection. With the OS default (7200 s
+      // idle) the server kept such sessions, and their session advisory locks,
+      // for 16 to 55 minutes in the 2026-10 incident. 60 + 6 x 10 s = 120 s.
+      expect(parameters()).toMatchObject({
+        tcp_keepalives_idle: "60",
+        tcp_keepalives_interval: "10",
+        tcp_keepalives_count: "6",
+      });
+    });
+
+    it("ends a session left idle inside a transaction after ten minutes", () => {
+      expect(parameters().idle_in_transaction_session_timeout).toBe("10min");
+    });
+
+    it("sets no statement or idle-session timeout: a session-lock holder is idle on purpose", () => {
+      expect(parameters()).not.toHaveProperty("statement_timeout");
+      expect(parameters()).not.toHaveProperty("idle_session_timeout");
+    });
+
+    it("keeps the connection ceiling the pooler budget is held to", () => {
+      expect(parameters()).toMatchObject({ max_connections: "200", shared_buffers: "256MB" });
+    });
+  });
+
   describe("the Pooler", () => {
     const pooler = () => RESOURCES.find((r) => r.type === "kubernetes:postgresql.cnpg.io/v1:Pooler")!;
     const spec = () => pooler().inputs.spec as {
@@ -207,11 +238,14 @@ describe("Postgres routing", () => {
       expect(spec().pgbouncer.poolMode).toBe("transaction");
     });
 
-    it("lets psycopg3 and asyncpg keep their prepared statements, and sizes the pools", () => {
+    it("lets psycopg3 and asyncpg keep their prepared statements, sizes the pools, and drops idle-in-transaction clients", () => {
       expect(spec().pgbouncer.parameters).toEqual({
         max_client_conn: "2000",
         default_pool_size: "12",
         max_prepared_statements: "200",
+        // A client idle inside a transaction pins a server connection and its
+        // locks; ten minutes, the server's own idle_in_transaction timeout.
+        idle_transaction_timeout: "600",
       });
     });
 

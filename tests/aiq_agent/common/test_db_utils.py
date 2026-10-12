@@ -11,8 +11,11 @@ from sqlalchemy import inspect
 from sqlalchemy import text
 
 from aiq_agent.common import redact_db_url
+from aiq_agent.common.db_utils import SCHEMA_LOCK_TIMEOUT
 from aiq_agent.common.db_utils import ensure_schema
 from aiq_agent.common.db_utils import lock_schema
+from aiq_agent.common.db_utils import present_columns
+from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.common.db_utils import redact_db_url as redact_db_url_direct
 from aiq_agent.common.db_utils import schema_lock_key
 
@@ -66,7 +69,7 @@ def test_schema_lock_key_is_a_stable_signed_64_bit_integer_per_name():
     assert -(2**63) <= key < 2**63
 
 
-def test_postgres_takes_the_transaction_scoped_lock_before_any_ddl():
+def test_postgres_bounds_every_lock_wait_then_takes_the_transaction_scoped_lock_before_any_ddl():
     executed: list[tuple[str, dict]] = []
     conn = SimpleNamespace(
         dialect=SimpleNamespace(name="postgresql"),
@@ -75,10 +78,37 @@ def test_postgres_takes_the_transaction_scoped_lock_before_any_ddl():
 
     lock_schema(conn, "ingest_jobs")
 
-    [(statement, params)] = executed
+    [(bound, bound_params), (statement, params)] = executed
+    # Transaction-local (the third argument is true), so it ends with the DDL's commit
+    # and never leaks onto a pooled connection the next transaction gets.
+    assert "set_config('lock_timeout', :timeout, true)" in bound
+    assert bound_params == {"timeout": SCHEMA_LOCK_TIMEOUT}
     assert "pg_advisory_xact_lock" in statement
     assert "pg_advisory_lock(" not in statement
     assert params == {"key": schema_lock_key("ingest_jobs")}
+
+
+def test_sqlite_issues_nothing_before_the_ddl():
+    executed: list[str] = []
+    conn = SimpleNamespace(
+        dialect=SimpleNamespace(name="sqlite"),
+        execute=lambda statement, params=None: executed.append(statement),
+    )
+
+    lock_schema(conn, "ingest_jobs")
+
+    assert executed == []
+
+
+def test_present_columns_and_indexes_read_the_catalog(tmp_path):
+    engine = create_engine(f"sqlite:///{tmp_path}/catalog.db")
+    with engine.begin() as conn:
+        conn.execute(text("CREATE TABLE t (id INTEGER PRIMARY KEY, lane TEXT, priority INTEGER)"))
+        conn.execute(text("CREATE INDEX ix_t_lane ON t (lane)"))
+
+    with engine.connect() as conn:
+        assert present_columns(conn, "t") == {"id", "lane", "priority"}
+        assert present_indexes(conn, "t") == {"ix_t_lane"}
 
 
 def test_sqlite_runs_the_ddl_plainly_and_commits_it(tmp_path):

@@ -28,6 +28,25 @@
   },
   "releases": [
     {
+      "id": "2026-W42",
+      "kind": "week",
+      "version": null,
+      "date": "2026-10-12",
+      "dateEnd": "2026-10-18",
+      "summary": null,
+      "sections": [
+        {
+          "key": "fixes",
+          "notes": [
+            {
+              "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
+              "de": "Nach einer kurzen Störung auf unserer Seite werden gerade eingelesene Dokumente nun selbstständig weiterverarbeitet, und Antworten stocken nicht mehr, während Piloti Ihre Dateien durchsucht."
+            }
+          ]
+        }
+      ]
+    },
+    {
       "id": "2026-W41",
       "kind": "week",
       "version": null,

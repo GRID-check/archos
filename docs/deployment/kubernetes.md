@@ -22,7 +22,7 @@ their own namespaces.
 | `aiq-api` (the **`api` role**, `GRID_ROLE=api`: every other backend HTTP route; `BACKEND_URL` names its Service, ADR-0082) | Deployment + HPA + PDB | `apiMinReplicas`→`apiMaxReplicas` (default 2→4; prod 1→3, dev 1→2) | — | Horizontally (CPU HPA, `apiHpaCpuTargetPercent`). Stateless: no volume. Drains for 60 s (the SSE close and short requests), not for a chat turn |
 | `frontend` (Next.js + BFF + WS gateway) | Deployment + HPA | `frontendMinReplicas`→`frontendMaxReplicas` (default 2→6; prod and dev 1→3) | — | Horizontally (CPU HPA) |
 | `agent-worker` (research) | Deployment + KEDA ScaledObject | `agentWorkerMinReplicas`→`agentWorkerMaxReplicas` (default 1→8; prod 1→3, dev 0→3) | — | Horizontally, on `research_job_queue` depth (§6.3) |
-| `ingest-worker` (ingestion) | Deployment + KEDA ScaledObject | `ingestWorkerMinReplicas`→`ingestWorkerMaxReplicas` (default 1→5; prod 1→5, dev 0→3) | — | Horizontally, on `ingest_job_queue` depth; the ceiling is held to the provider budget (§6.3b, §6.3d) |
+| `ingest-worker` (ingestion) | Deployment + KEDA ScaledObject | `ingestWorkerMinReplicas`→`ingestWorkerMaxReplicas` (default 1→5; prod 1→3, dev 0→3) | — | Horizontally, on `ingest_job_queue` depth; the ceiling is held to the provider budget (§6.3b, §6.3d) |
 | `bff-jobs` (the BFF's background pool: reindex, rescan, IFC, rendition, report filing; no Service, no route) | Deployment + KEDA ScaledObject | `bffJobsMinReplicas`→`bffJobsMaxReplicas` (default 1→4; prod 1→4, dev 0→2) | — | Horizontally, on `bff_job_queue` depth (§6.3c) |
 | KEDA (`keda` namespace) | Helm release, chart pinned to the release the plan's CRDs are validated against | 1 operator | — | n/a; what it may read and reach is §6.3d |
 | `purger` | Deployment | 1 | — | n/a (SKIP LOCKED-safe) |
@@ -194,13 +194,51 @@ specs and flips pullPolicy to `Always`) — never a bare `pulumi up --refresh`.
 
 **Size worker groups against the autoscaler ceilings.** The cluster autoscaler
 only adds nodes within a worker group's min/max. In prod the ceilings are
-frontend 3 (HPA) + agent-worker 3 + ingest-worker 8 + bff-jobs 4 (KEDA), plus
+frontend 3 (HPA) + agent-worker 3 + ingest-worker 3 + bff-jobs 4 (KEDA), plus
 the chat tier's `backendMaxReplicas` (1 while affinity is on, §6.4b) and the
 fixed tiers; the defaults for a stack that sets none are frontend 6, agent-worker
-8, ingest-worker 8, bff-jobs 4 and web 4. If the sum of limits at those ceilings
+8, ingest-worker 5, bff-jobs 4 and web 4. If the sum of limits at those ceilings
 exceeds the group's max capacity, the extra pods sit Pending forever. Check it
 against the group product when sizing, and again whenever a `…MaxReplicas` is
-raised: the ingest tier's is also bounded by the provider budget (§6.3d).
+raised: the ingest tier's is also bounded by the provider budget (§6.3d). A tier
+pinned to a group (below) counts against that group only.
+
+### Worker groups (IPAX)
+
+Prod has three IPAX worker groups. IPAX labels every node
+`k8s.at/node-group: <group name>`, and the value is case-sensitive:
+
+| Group | Nodes | Size | For |
+|---|---|---|---|
+| `Node` | k8s1.gp.large, 4 vCPU / 16 GB | autoscale 2-6 | the app tier |
+| `data` | k8s1.m.large, 4 vCPU / 32 GB | fixed, 4 | the data stores |
+| `batch` | k8s1.m.xlarge, 8 vCPU / 64 GB | autoscale 2-4 | ingestion |
+
+The groups are created, sized and deleted only in the IPAX Control Center.
+Pulumi does not manage them. Pulumi only selects on the label, through three
+knobs that are unset by default (no nodeSelector, so dev and any stack without
+groups is unchanged): `nodeGroupApp`, `nodeGroupData`, `nodeGroupBatch`
+(`onNodeGroup` in `src/platform/scheduling.ts`). Prod sets them to `Node`,
+`data` and `batch`.
+
+Pinned now:
+
+- `aiq-agent` (the chat role) on `Node`.
+- `chroma` on `data`. It also carries
+  `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on every stack: it
+  is one replica, so an autoscaler scale-down that evicts it is an outage. A
+  drain for a node upgrade still moves it.
+- `ingest-worker` on `batch`, at 8Gi requested and a 12Gi limit in prod
+  (§6.3b).
+
+An IPAX group cannot be tainted from the Control Center, so placement is a
+nodeSelector only. It keeps a pinned tier on its group. It does not keep other
+pods off that group, so unpinned tiers can still land on `data` or `batch`.
+
+Postgres, SeaweedFS, ClickHouse, Dragonfly, `aiq-api`, the frontend and every
+other tier are not placed yet. They move in a later migration, one tier at a
+time, because moving a store with a PVC stops the store while it moves and its
+volume has to be able to attach on the new group.
 
 **Cluster-autoscaler scales on *unschedulable pods*, not utilisation.** Its
 documented prerequisites — an HPA as the first scaling tier, `requests`/`limits`
@@ -771,13 +809,26 @@ schema.
   opening at most `pgPoolerPoolSize` (default 12) server connections per
   (database, role) pair. The plan refuses a stack whose pooler worst case plus
   the direct reserve passes `max_connections` (200): `assertPgConnectionBudget`
-  prints every part. Prod is 74 pooled + 82 direct = 156; a fresh stack with
+  prints every part. Prod is 74 pooled + 76 direct = 150; a fresh stack with
   everything on is 196. Clients past the pool wait in PgBouncer instead of
   failing, so saturation shows as waiting clients rather than errors:
   PgBouncer's `SHOW POOLS` reports them as `cl_waiting`, and a value above 0 for
   long means raise `pgPoolerPoolSize` (and the budget with it). The image is
   CloudNativePG's PgBouncer, pinned by tag and digest and scanned by the
   `image-scan` job.
+- **A dead client's session is closed, and its locks with it.** A node that
+  dies closes no TCP connection, so with the OS keepalive default (7200 s) the
+  primary kept those clients' sessions, their session advisory locks and open
+  transactions for 16 to 55 minutes, and ingestion and the api's start-up
+  waited behind them (2026-10). The Cluster sets `tcp_keepalives_idle` 60,
+  `tcp_keepalives_interval` 10 and `tcp_keepalives_count` 6 (a dead client is
+  dropped after about two minutes; a live idle one answers the probes) and
+  `idle_in_transaction_session_timeout` 10min; the Pooler sets PgBouncer's
+  `idle_transaction_timeout` to 600 s. All are reload-level, so changing them
+  restarts nothing. There is deliberately no `statement_timeout` and no
+  `idle_session_timeout`: a session-lock holder on `AIQ_LOCK_DB_URL` sits idle
+  for minutes on purpose. The values live in `POSTGRES_TUNING` and
+  `POSTGRES_POOLER` (`src/constants.ts`).
 - **Backups (PITR) — IMPLEMENTED, with an honest scope.** With
   `grid-oib:pgBackupsEnabled: true` (prod default) CNPG archives WAL
   continuously and takes a nightly base backup (plus one immediately on
@@ -1094,10 +1145,19 @@ lost on restart. Now:
 
 Sizing: at `ingestWorkerMaxReplicas` the tier asks for max × the ingest-worker
 limits; make the worker group's max hold that (below), or the extra replicas
-sit Pending and add nothing. The ceiling is also bounded from the other side:
+sit Pending and add nothing. A worker holds 4 to 6 GB while it parses, so the
+default memory request is 4Gi (limit 6Gi), and its pods spread across nodes
+(`maxSkew` 1 on `kubernetes.io/hostname`, `ScheduleAnyway`). At the old 1536Mi
+request the scheduler packed three workers onto one 16 GB node, they outgrew
+it, and nodes went NotReady one after another (2026-10). Big PDFs, three
+files at once, were then OOMKilled at the 6Gi limit. Prod therefore runs the
+tier on the `batch` worker group (§2b, 64 GB nodes) at 500m / 8Gi requested
+and 4 CPU / 12Gi limits, with a ceiling of 3: all three at their limit fit on
+one batch node. Raise the ceiling only with batch-node memory to match. The
+ceiling is also bounded from the other side:
 `ingestWorkerMaxReplicas` × `ingestWorkerConcurrency` × `vlmBatchWorkers` is the
 tier's peak of vision calls, and the program fails the deploy when that is more
-than twice `vlmFleetConcurrency` (§6.3d). Prod's 5 × 3 × 4 is 60, within 2 × 32 = 64.
+than twice `vlmFleetConcurrency` (§6.3d). Prod's 3 × 3 × 4 is 36, within 2 × 32 = 64.
 
 ### 6.3c BFF background jobs — a pool of frontend-image pods on `bff_job_queue` (ADR-0079)
 
@@ -1254,7 +1314,8 @@ parts that are not about their own signal, and `keda-scaling.spec.ts` holds it.
   from 12 to 8 replicas for it (144 → 96 against a pool of 48), then to 5 (60
   against a pool of 32) when the vision model's own pool, which the 48 never
   cleared, was counted: the replicas it lost could not have run a vision call a
-  slot existed for. Raise the model limit and the pool together, and the
+  slot existed for. It is now 3 (36), held there by node memory rather than by
+  this budget (§6.3b). Raise the model limit and the pool together, and the
   provider's own limit with them, before the replicas.
 - **KEDA reaches exactly its triggers' targets.** Two NetworkPolicies admit the
   KEDA **operator** pod (the metrics server and the webhooks in `keda` poll

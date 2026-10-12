@@ -568,6 +568,10 @@
     "de": "Admins sehen jetzt, wann Piloti einen Upload zurückhält und welche Regel des Büros dabei angeschlagen hat. Außerdem sehen sie jede Entscheidung darüber, wer eine Notiz lesen darf, die Piloti aus einem Chat mit eingeschränkten Ordnern festhält, auch eine Notiz für das ganze Büro, die Piloti Ihnen zum Speichern angeboten hat."
   },
   {
+    "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
+    "de": "Nach einer kurzen Störung auf unserer Seite werden gerade eingelesene Dokumente nun selbstständig weiterverarbeitet, und Antworten stocken nicht mehr, während Piloti Ihre Dateien durchsucht."
+  },
+  {
     "en": "After a thumbs-down, the note field now opens straight away, so you can say what went wrong without first picking a reason.",
     "de": "Wenn Sie auf den Daumen nach unten klicken, öffnet sich das Notizfeld jetzt sofort. So können Sie beschreiben, was schiefgelaufen ist, ohne zuerst einen Grund auszuwählen."
   },

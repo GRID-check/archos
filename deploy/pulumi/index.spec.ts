@@ -234,6 +234,74 @@ describe("the program constructs in the split topology", () => {
     );
   });
 
+  /** A workload's pod template, read with the fields the sizing cases need. */
+  type SizedPod = {
+    metadata: { labels: Record<string, string> };
+    spec: {
+      topologySpreadConstraints?: Array<{
+        maxSkew: number;
+        topologyKey: string;
+        whenUnsatisfiable: string;
+        labelSelector: { matchLabels: Record<string, string> };
+      }>;
+      containers: Array<{ name: string; resources: { requests: Record<string, string>; limits: Record<string, string> } }>;
+    };
+  };
+  const podOf = (type: string, name: string): SizedPod => {
+    const found = RESOURCES.find((r) => r.type === type && r.name === name);
+    expect(found, `${type} ${name}`).toBeDefined();
+    return (found!.inputs.spec as unknown as { template: SizedPod }).template;
+  };
+
+  it("reserves what an ingest worker holds while it parses, not its idle floor", () => {
+    // 2026-10: at a 1536Mi request three workers packed onto one 16 GB node,
+    // grew to 4-6 GB each against a 6Gi limit, and the node went NotReady.
+    const [container] = podOf("kubernetes:apps/v1:Deployment", "ingest-worker").spec.containers;
+
+    expect(container.resources.requests.memory).toBe("4Gi");
+    expect(container.resources.limits.memory).toBe("6Gi");
+  });
+
+  it("spreads the ingest workers across nodes, softly, by their own pod labels", () => {
+    const pod = podOf("kubernetes:apps/v1:Deployment", "ingest-worker");
+
+    expect(pod.spec.topologySpreadConstraints).toEqual([
+      {
+        maxSkew: 1,
+        topologyKey: "kubernetes.io/hostname",
+        whenUnsatisfiable: "ScheduleAnyway",
+        labelSelector: { matchLabels: pod.metadata.labels },
+      },
+    ]);
+  });
+
+  it("places nothing on a worker group when the stack sets no nodeGroup knob", () => {
+    // Dev and any stack without IPAX worker groups: a nodeSelector here would
+    // match no node and leave the tier Pending. `index-node-groups.spec.ts`
+    // has prod's placement.
+    const withSelector = RESOURCES.filter((r) => JSON.stringify(r.inputs).includes('"nodeSelector"'));
+
+    expect(withSelector.map((r) => r.name)).toEqual([]);
+  });
+
+  it("asks the cluster-autoscaler never to evict the one Chroma pod", () => {
+    const pod = podOf("kubernetes:apps/v1:StatefulSet", "chroma") as SizedPod & {
+      metadata: { annotations?: Record<string, string> };
+    };
+
+    expect(pod.metadata.annotations).toEqual({ "cluster-autoscaler.kubernetes.io/safe-to-evict": "false" });
+  });
+
+  it("gives Chroma a request the scheduler has to keep room for, and the burst limit prod runs", () => {
+    const [container] = podOf("kubernetes:apps/v1:StatefulSet", "chroma").spec.containers;
+
+    expect(container.name).toBe("chroma");
+    expect(container.resources).toEqual({
+      requests: { cpu: "1", memory: "3Gi" },
+      limits: { cpu: "4", memory: "6Gi" },
+    });
+  });
+
   it("keeps the S3 endpoint on the name the app tier already uses", () => {
     // A rename here silently removes the `allow-edge-to-seaweedfs` NetworkPolicy
     // from the pods that serve S3, and breaks `SEAWEED_ENDPOINT` for every tier.
