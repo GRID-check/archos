@@ -317,9 +317,48 @@ runner with a fixed egress IP.
 always provisioned and cannot be removed, so `installMetricsServer` defaults to
 **false** — installing our own would just fight it (the HPAs read the built-in
 one). Managed **Backups** (Velero) and **Metrics** (Grafana) are paid Control-
-Center add-ons; CNPG PITR and a Prometheus/Grafana/Loki stack remain the
-in-cluster follow-ups in §7. A cheap interim backup is a scheduled
-**VolumeSnapshot** (SnapshotClass `lightbits`) of the Postgres and SeaweedFS PVCs.
+Center add-ons. Prod has the backups add-on booked (below). IPAX also runs a
+VictoriaMetrics agent with node-exporter and kube-state-metrics in the
+`victoria` namespace.
+
+### Cluster backups (IPAX Velero)
+
+Prod is backed up off the cluster every night by IPAX's managed Velero. Nothing
+in this repo creates or configures it. Read live on 2026-10-12:
+
+| | |
+|---|---|
+| Schedule | `velero-ipax-autobackup-k8s100193`, daily at 00:30 UTC |
+| Scope | every namespace except `velero`: the Kubernetes objects and every PVC |
+| Kept | 30 days (`ttl: 730h`) |
+| Where | backup storage location `b101294.backupspace.at` (S3, outside the cluster) |
+| How | a CSI snapshot of each PVC (`--features=EnableCSI`), whose data Kopia then copies to the storage location (`snapshotMoveData: true`) |
+
+The 2026-10-12 run copied all seven PVCs: `grid-pg-1` to `-3`,
+`data-seaweedfs-0` (the documents), `data-chroma-0`, `data-clickhouse-0` and
+`data-aiq-agent-0`, about 30 GB in under three minutes. A new PVC in `grid` is
+included without any change here.
+
+Each volume is snapshotted on its own, minutes apart, so a restore is
+crash-consistent per volume and not across them. Postgres recovers like after a
+power loss (WAL replay). Postgres and SeaweedFS can disagree about a document
+uploaded during the run. For a Postgres point in time inside the day, use the
+CNPG archive (§5), whose bucket sits on the SeaweedFS PVC and is copied off the
+cluster with it.
+
+Check the last run, and that every volume made it:
+
+```bash
+kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp
+kubectl -n velero get datauploads.velero.io \
+  -l velero.io/backup-name=<backup> \
+  -o custom-columns='PVC:.spec.sourcePVC,PHASE:.status.phase,BYTES:.status.progress.totalBytes'
+```
+
+A restore is `velero restore create --from-backup <backup>` (narrow it with
+`--include-namespaces grid`), or a request to IPAX. Velero skips objects that
+already exist, so restore into an emptied namespace or a new cluster, not over a
+running one.
 
 ---
 
@@ -847,11 +886,11 @@ schema.
   integration. The default target is the in-cluster SeaweedFS
   `grid-pg-backups` bucket (auto-created; the Cluster is gated on it so
   archiving never races the bucket): that protects against **Postgres PVC
-  loss/corruption**, but NOT against cluster deletion or a SeaweedFS-volume
-  loss — the backup lives on the same `Delete`-reclaim CSI. For real offsite
-  PITR, point `pgBackupEndpoint` (+ `pgBackupBucket`,
-  `pgBackupAccessKey`/`pgBackupSecretKey`) at an external S3, or book the
-  provider's Velero addon.
+  loss/corruption**. The archive itself lives on the SeaweedFS PVC, which the
+  nightly Velero backup copies off the cluster (§2b, "Cluster backups"), so a
+  lost cluster leaves last night's archive, not a point in time after it. For
+  continuous offsite PITR, point `pgBackupEndpoint` (+ `pgBackupBucket`,
+  `pgBackupAccessKey`/`pgBackupSecretKey`) at an external S3.
   Tune with `pgBackupRetention` (default `30d`) and `pgBackupSchedule` (6-field
   cron, default `0 0 2 * * *`). Restore is `kubectl cnpg` / a bootstrap
   `recovery` from the same object store.

@@ -192,6 +192,42 @@ class TestHeadingRecognition:
         assert headings[0].title == "Brandschutzkonzept für die Wohnanlage Musterstraße"
         assert headings[0].span == 2
 
+    def test_a_heading_wrapped_over_three_lines_is_one_heading(self):
+        lines = [
+            _line("Brandschutztechnische Beurteilung", 16.0),
+            _line("der Tiefgarage und des Stiegenhauses", 16.0),
+            _line("im Bauteil Nord", 16.0),
+            *[_line(f"Text {n} über die Anlage.") for n in range(10)],
+        ]
+        headings = sc.find_headings(lines)
+        assert list(headings) == [0]
+        assert headings[0].span == 3
+
+    def test_a_long_run_in_heading_type_is_a_block_not_a_heading(self):
+        """A plan sheet's legend, set large: joined it was one 470-token "heading".
+
+        The breadcrumb metadata carried it three times (punkt_id, punkt_title,
+        punkt_path), past the splitter's chunk size, and the whole file failed
+        (2026-10, ``WR_25003_P1240_0.pdf``).
+        """
+        legend = [
+            "STB-Fertigteil",
+            "FDUK FUNDAMENT UNTERKANTE",
+            "RDOK ROHDECKE OBERKANTE",
+            "STB-Elementwand (Hohlwand)",
+            "RDUK ROHDECKE UNTERKANTE",
+            "RDVK ROHDECKE VORDERKANTE",
+            "Beton unbewehrt",
+            "Mauerwerk Bestand",
+        ]
+        lines = [_line(text, 16.0) for text in legend]
+        lines += [_line(f"Text {n} über die Anlage.") for n in range(10)]
+        lines += [_line("Statische Vorbemessung", 16.0), *[_line(f"Satz {n}.") for n in range(10)]]
+
+        headings = sc.find_headings(lines)
+
+        assert [heading.title for heading in headings.values()] == ["Statische Vorbemessung"]
+
     def test_levels_follow_numbering_and_font_rank(self):
         lines = [
             _line("Titel", 18.0),

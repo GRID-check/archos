@@ -69,8 +69,15 @@ def _clean(cell: Any) -> str:
 
 
 def _caption_above(page: Any, top: float) -> tuple[str, str] | None:
-    """The „Tabelle N: title" standing just above ``top``, title joined across its lines."""
-    region = page.within_bbox((0, max(0.0, top - _CAPTION_REACH), page.width, max(1.0, top)))
+    """The „Tabelle N: title" standing just above ``top``, title joined across its lines.
+
+    The region is built from the page's own box, not from ``0`` and ``page.width``: a
+    page whose box does not start at the origin (a CAD export, ``(-1162, 1275, 1162,
+    3826)``) made pdfplumber refuse the region, and every table on it went unread
+    (2026-10, ``WR_25003_P*.pdf``).
+    """
+    x0, page_top, x1, _bottom = page.bbox
+    region = page.within_bbox((x0, max(page_top, top - _CAPTION_REACH), x1, max(page_top + 1.0, top)))
     lines = [line.strip() for line in (region.extract_text() or "").splitlines() if line.strip()]
     for index in range(len(lines) - 1, -1, -1):
         match = CAPTION_RE.match(lines[index])
@@ -96,7 +103,7 @@ def extract_page_tables(page: Any, page_number: int, previous: PageTable | None)
         caption = _caption_above(page, table.bbox[1])
         if caption:
             found.append((PageTable(caption[0], caption[1], rows, page_number), table.bbox))
-        elif _continues(previous, page_number) and not found and table.bbox[1] < _CONTINUATION_TOP:
+        elif _continues(previous, page_number) and not found and table.bbox[1] - page.bbox[1] < _CONTINUATION_TOP:
             found.append(
                 (PageTable(previous.table_id, previous.title, rows, page_number, continuation=True), table.bbox)
             )
