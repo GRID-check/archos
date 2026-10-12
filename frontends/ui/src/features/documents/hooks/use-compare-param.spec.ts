@@ -67,6 +67,19 @@ describe('useCompareParam', () => {
     expect(replace).toHaveBeenCalledWith('/app/projects/p1/files?doc=doc-b', { scroll: false })
   })
 
+  it('waits for the rest of the listing before concluding the older document is missing', () => {
+    // The listing streams in page by page; the older Fassung is usually further
+    // down it than the newer one.
+    search = new URLSearchParams('doc=doc-b&compare=doc-a')
+    const { rerender } = renderHook(({ files, complete }) => useCompareParam(files, complete), {
+      initialProps: { files: [NEWER] as FileItem[], complete: false },
+    })
+    expect(replace).not.toHaveBeenCalled()
+    rerender({ files: [NEWER, OLDER], complete: true })
+    expect(openFassungCompare).toHaveBeenCalledTimes(1)
+    expect(replace).toHaveBeenCalledWith('/app/projects/p1/files?doc=doc-b', { scroll: false })
+  })
+
   it('does nothing without the parameter', () => {
     search = new URLSearchParams('doc=doc-b')
     renderHook(() => useCompareParam([NEWER, OLDER]))

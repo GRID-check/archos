@@ -196,11 +196,25 @@ export interface ActionMenuProps {
   side?: 'top' | 'right' | 'bottom' | 'left'
   onOpenChange?: (open: boolean) => void
   /**
+   * Dropdown mode only: hold the open state outside, for a caller that opens
+   * the menu itself (a row that mounts its menu on the press that asks for it).
+   * Absent leaves it to the trigger.
+   */
+  open?: boolean
+  /**
    * Context mode only: clone the child as the trigger (a `forwardRef` host
    * such as a table row). Default wraps in a div, which is the safe option
    * for a card that does not forward a ref.
    */
   asChild?: boolean
+  /**
+   * Context mode only: keep the context-menu host around the children while
+   * `entries` is empty, for a caller that builds the entries in `onOpenChange`
+   * (the first right-click on a row). Without it an empty list returns the
+   * children bare, and the entries arriving later would wrap them in a new
+   * host, which remounts the card or row under the pointer.
+   */
+  keepHost?: boolean
 }
 
 export function ActionMenu({
@@ -212,9 +226,11 @@ export function ActionMenu({
   align = 'end',
   side = 'bottom',
   onOpenChange,
+  open,
   asChild = false,
+  keepHost = false,
 }: ActionMenuProps): ReactNode {
-  if (entries.length === 0) {
+  if (entries.length === 0 && !(mode === 'context' && keepHost)) {
     // A context host with nothing to offer is still the listing; swallowing
     // it would blank the pane. A dropdown with nothing to offer is not a
     // control.
@@ -224,7 +240,7 @@ export function ActionMenu({
   if (mode === 'dropdown') {
     if (!trigger) return null
     return (
-      <DropdownMenu onOpenChange={onOpenChange}>
+      <DropdownMenu open={open} onOpenChange={onOpenChange}>
         <DropdownMenuTrigger asChild>{trigger}</DropdownMenuTrigger>
         <DropdownMenuContent align={align} side={side} className={contentClassName}>
           {renderEntries(entries, DROPDOWN_PARTS)}

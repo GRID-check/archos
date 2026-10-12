@@ -20,9 +20,14 @@ import { COMPARE_PARAM } from '../lib/fassung-compare-link'
  * `?doc=` is left to its one writer (`useDocParamSync`), which opens the
  * preview behind the comparison.
  *
+ * `listingComplete` is what makes "the older is not there" a conclusion: the
+ * listing arrives page by page, and an older Fassung is usually further down
+ * it than the newer one. Until the last page is in, a missing older row is a
+ * row still on its way.
+ *
  * Returns the element to render once, anywhere in the workspace.
  */
-export function useCompareParam(files: readonly FileItem[]): JSX.Element | null {
+export function useCompareParam(files: readonly FileItem[], listingComplete = true): JSX.Element | null {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -38,8 +43,9 @@ export function useCompareParam(files: readonly FileItem[]): JSX.Element | null 
     const newer = newerId ? files.find((file) => file.id === newerId) : undefined
     // Rows still loading: the render that has them asks again.
     if (!newer) return
-    handled.current = key
     const older = files.find((file) => file.id === olderId)
+    if (!older && !listingComplete) return
+    handled.current = key
     if (older && older.id !== newer.id) {
       openFassungCompare(
         { id: older.id, filename: older.filename },
@@ -51,7 +57,7 @@ export function useCompareParam(files: readonly FileItem[]): JSX.Element | null 
     const query = params.toString()
     const path = pathname ?? ''
     router.replace(query ? `${path}?${query}` : path, { scroll: false })
-  }, [files, newerId, olderId, openFassungCompare, pathname, router, searchParams])
+  }, [files, listingComplete, newerId, olderId, openFassungCompare, pathname, router, searchParams])
 
   return compareElement
 }

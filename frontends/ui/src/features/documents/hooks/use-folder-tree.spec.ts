@@ -66,6 +66,26 @@ describe.each([
     expect(result.current.error).toBe(false)
   })
 
+  it('re-reads behind the tree it already has: only the first read is a first load', async () => {
+    const { result } = render()
+    expect(result.current.isFirstLoad).toBe(true)
+    await waitFor(() => expect(result.current.folders).toEqual(FOLDERS))
+    expect(result.current.isFirstLoad).toBe(false)
+
+    // A rename or a move re-reads the tree; the tiles on screen stay there.
+    let reread: Promise<unknown> = Promise.resolve()
+    act(() => {
+      reread = result.current.load()
+    })
+    expect(result.current.isLoading).toBe(true)
+    expect(result.current.isFirstLoad).toBe(false)
+    expect(result.current.folders).toEqual(FOLDERS)
+    await act(async () => {
+      await reread
+    })
+    expect(result.current.isLoading).toBe(false)
+  })
+
   it('reports a failed read as an error with an empty tree', async () => {
     server.use(http.get(foldersUrl, () => HttpResponse.json({}, { status: 500 })))
     const { result } = render()

@@ -62,6 +62,12 @@ export function useFolderTree({
   const router = useRouter()
   const [folders, setFolders] = useState<FolderItem[]>(() => [...(initialFolders ?? [])])
   const [isLoading, setIsLoading] = useState(initialFolders === undefined)
+  /**
+   * Whether any read has answered yet (the seed counts). A rename or a move
+   * re-reads the tree; the tiles already on screen stay there while it does,
+   * so only a tree that was never read is a reason to draw a skeleton.
+   */
+  const [hasAnswer, setHasAnswer] = useState(initialFolders !== undefined)
   const [error, setError] = useState(false)
   /** What the reader may do at the root (ADR-0088); each folder carries its own `access`. */
   const [rootAccess, setRootAccess] = useState<FolderAccessLevel>(initialRootAccess)
@@ -82,7 +88,10 @@ export function useFolderTree({
         setFolders([])
         setError(true)
       })
-      .finally(() => setIsLoading(false))
+      .finally(() => {
+        setIsLoading(false)
+        setHasAnswer(true)
+      })
   }, [foldersUrl])
 
   // The seeded first render is already the answer: skip the mount load once.
@@ -245,5 +254,8 @@ export function useFolderTree({
     [foldersUrl, binHref, t, locale, router, folders, files, selectedFolderId, onSelectFolder, load, reloadFiles]
   )
 
-  return { folders, rootAccess, isLoading, error, load, create, rename, move, remove }
+  /** `isLoading` is any read in flight (the upload plan waits for it); this is only the first. */
+  const isFirstLoad = isLoading && !hasAnswer
+
+  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, move, remove }
 }

@@ -572,3 +572,51 @@ Three decisions worth keeping:
   (`withZipAccepted`, `acceptZip`), not through the accept-list the server
   enforces and not in the chat, where an archive is not a document. `.ifczip`
   stays a model: the pattern needs the dot.
+
+### A big shelf: what loads when
+
+**Date:** 2026-10-12 · **Surfaces:** project Files workspace, org Büroablage
+
+Search, filters, folder counts, the brief and the upload plan all read the
+listing in the browser, so the workspace still holds every row (up to the
+ceiling of 20 pages of 500, with the visible notice past it). What changed is
+the cost of getting there and of drawing it:
+
+- **The first page is drawn when it arrives.** `useFileListing` commits each
+  page as `fetchListingPages` hands it over (`onPage`) instead of after the last
+  one: the skeleton stands only until the first 500 rows are in, and later pages
+  are appended behind them. The Files page reads the first page on the server
+  and passes its `nextCursor` down (`initialNextCursor`); the workspace
+  continues from that cursor (`from`) rather than reading the seeded page again.
+- **A reload of the listing on screen does not flash.** A listing the pane does
+  not hold yet (first read, a filter flip, a retry) streams in behind a
+  skeleton. A reload of the same listing (an upload landed, a folder was
+  deleted) keeps every row in place and swaps the answer in whole when it is
+  complete. The two asks of one upload (`isUploading` turning false, then
+  `onComplete`) are both quiet and coalesce into one drain (`reloadQuietly`).
+  The folder tree's re-read after a rename or move no longer brings the
+  skeleton back either: only `isFirstLoad` does.
+- **`complete` gates conclusions about absence.** `?compare=` waits for the
+  whole listing before deciding the older Fassung is not there; `?doc=` already
+  waited for its row.
+- **A card asks for its thumbnail once it has been on screen** (`useSeenOnce`
+  in `FileCard`), not on mount. Before, opening a folder of two thousand
+  documents sent two thousand thumbnail requests.
+- **Each row's menu is built on the first ask.** `DocumentObjectMenu` starts as
+  the tile, the right-click host and a plain ⋯ button. The first right-click,
+  long-press, press or Enter/Space/ArrowDown on the ⋯ builds the entries, mounts
+  the rename and confirm dialogs and the dropdown (opened by that same press),
+  and the row stays live. The move targets are labelled and sorted once per
+  tree in the workspace (`sortedFolderDestinations`), not once per row.
+- **Unchanged rows do not re-render.** Grid cells (`FileTile`), cards and list
+  rows (`FileListRowItem`) are memoised and handed stable callbacks; the
+  type-ahead filter over the corpus runs on a deferred query, so the field
+  answers every keystroke.
+- **Off-screen tiles are not laid out or painted** (`content-visibility: auto`
+  on `GridTileShell`). List rows are table rows, which CSS containment does not
+  apply to, so the detail view does not get this until it is virtualised.
+
+Not in this change, and the next step for shelves past a few thousand
+documents: folder, sort and filter answered by the server per page, the folder
+counts and brief from an aggregate read, a by-id read for one row, and a
+virtualised grid and list.
