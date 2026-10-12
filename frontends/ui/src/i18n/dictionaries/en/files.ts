@@ -381,6 +381,13 @@ export const files = {
     clearFilters: 'Clear filters',
     resetSearch: 'Reset search',
     recentlyUploaded: 'Recently uploaded',
+    /** Empty search when the search matches names only (the folder loads page by page, ADR-0102). */
+    noMatchNamesDescription:
+      'The search looks at file names. Press Enter to search the contents too, or clear the search to see every file.',
+    /** The end of a large folder's list: the rest arrives as you scroll. */
+    loadMore: 'Load more',
+    loadingMore: 'Loading more documents…',
+    loadMoreFailed: 'More documents could not be loaded.',
     semantic: {
       searchPlaceholder: 'Search files — press Enter for semantic search…',
       run: 'Search',
@@ -915,6 +922,12 @@ export const files = {
     pages: '{count, plural, one {{formatted} page read} other {{formatted} pages read}}',
     aboutTitle: 'What this is about',
     noTypes: 'Piloti has not recognized a document type here yet.',
+    /** "What this is about" while only the folder's counts are loaded (ADR-0102). */
+    aboutDeferred: 'Document types, disciplines and topics',
+    aboutDeferredHint:
+      'What Piloti recognized in the documents is kept with each document. For a large folder it is loaded only when you want to see it.',
+    loadDetails: 'Load',
+    loadingDetails: 'Loading…',
     contains: 'Contains {list}',
     needsTitle: 'Needs your attention',
     failedLine: '{count, plural, one {Piloti could not read # document.} other {Piloti could not read # documents.}}',

@@ -79,6 +79,14 @@ export interface FolderBriefProps {
    * null when unknown, so an unread list is never presented as "nothing missing".
    */
   missing?: readonly MissingDocument[] | null
+  /**
+   * Load what Piloti put on each document, for a {@link FolderBriefData.partial}
+   * brief (ADR-0102): the workspace then reads the whole shelf once and the
+   * brief is built from it. Absent offers nothing to load.
+   */
+  onLoadDetails?: () => void
+  /** The shelf is being read for {@link onLoadDetails}. */
+  detailsLoading?: boolean
 }
 
 /**
@@ -116,6 +124,8 @@ export function FolderBrief({
   collapsed,
   onCollapsedChange,
   missing,
+  onLoadDetails,
+  detailsLoading = false,
 }: FolderBriefProps): JSX.Element | null {
   const t = useTranslations('files')
   const { tally } = brief
@@ -200,7 +210,11 @@ export function FolderBrief({
               readAgainProgress={readAgainProgress}
             />
             {folderName === null && missing && missing.length > 0 && <MissingSection missing={missing} />}
-            <AboutSection brief={brief} onSelect={onSelect} />
+            {brief.partial ? (
+              <DeferredAboutSection tally={tally} onLoadDetails={onLoadDetails} loading={detailsLoading} />
+            ) : (
+              <AboutSection brief={brief} onSelect={onSelect} />
+            )}
             <HotspotSection hotspots={brief.hotspots} onOpenFolder={onOpenFolder} />
           </div>
         </CollapsibleContent>
@@ -345,6 +359,43 @@ function AboutSection({ brief, onSelect }: { brief: FolderBriefData; onSelect: (
 }
 
 /**
+ * „Worum es hier geht“ before the documents are loaded (ADR-0102). The folder
+ * is read page by page, and what Piloti put on each document lives beside the
+ * rows rather than in the counts, so the section says that and offers to load
+ * them instead of claiming Piloti recognised nothing.
+ */
+function DeferredAboutSection({
+  tally,
+  onLoadDetails,
+  loading,
+}: {
+  tally: KnowledgeTally
+  onLoadDetails?: () => void
+  loading: boolean
+}) {
+  const t = useTranslations('files')
+  if (tally.readable === 0) return null
+  return (
+    <BriefDisclosure id="folder-brief-about" title={t('brief.aboutTitle')} summary={t('brief.aboutDeferred')}>
+      <p className="text-muted-foreground text-xs leading-relaxed">{t('brief.aboutDeferredHint')}</p>
+      {onLoadDetails && (
+        <Button
+          type="button"
+          size="sm"
+          variant="outline"
+          className="h-7 self-start"
+          onClick={onLoadDetails}
+          disabled={loading}
+          data-testid="folder-brief-load-details"
+        >
+          {loading ? t('brief.loadingDetails') : t('brief.loadDetails')}
+        </Button>
+      )}
+    </BriefDisclosure>
+  )
+}
+
+/**
  * One family of chips under its run-in label — „Dokumentart", „Fachbereich",
  * „Themen" — so a type and a discipline are told apart by a word, not only by
  * fill against outline.
@@ -446,18 +497,22 @@ function NeedsYouSection({
   readAgainProgress?: BulkReingestProgress | null
 }) {
   const t = useTranslations('files')
-  const { failed, held, unplaced } = brief.attention
-  if (failed.length + held.length + unplaced.length === 0) return null
+  // Counted from the tally, which both briefs carry exactly; the attention
+  // lists only NAME documents for an action, and a summary-built brief names
+  // the failed ones alone, up to the summary's limit (ADR-0102). The re-read
+  // button counts what it will send.
+  const { failed, held, unplaced } = brief.tally
+  if (failed + held + unplaced === 0) return null
   return (
     <section className="flex flex-col gap-2.5 px-3 py-3" aria-labelledby="folder-brief-needs">
       <h3 id="folder-brief-needs" className="text-muted-foreground text-xs font-medium">
         {t('brief.needsTitle')}
       </h3>
-      {failed.length > 0 && (
+      {failed > 0 && (
         <AttentionRow
           tone="destructive"
-          text={t('brief.failedLine', { count: failed.length })}
-          showLabel={t('brief.showFailed', { count: failed.length })}
+          text={t('brief.failedLine', { count: failed })}
+          showLabel={t('brief.showFailed', { count: failed })}
           onShow={() => onSelect({ kind: 'state', state: 'failed' })}
           testId="folder-brief-needs-failed"
         >
@@ -474,26 +529,26 @@ function NeedsYouSection({
               <RotateCcw className={cn('size-3.5', readAgainProgress && 'animate-spin motion-reduce:animate-none')} aria-hidden />
               {readAgainProgress
                 ? t('brief.readAgainProgress', { done: readAgainProgress.done, count: readAgainProgress.total })
-                : t('brief.readAgainAll', { count: failed.length })}
+                : t('brief.readAgainAll', { count: brief.attention.failed.length })}
             </Button>
           )}
         </AttentionRow>
       )}
-      {held.length > 0 && (
+      {held > 0 && (
         <AttentionRow
           tone="warning"
-          text={t('brief.heldLine', { count: held.length })}
-          showLabel={t('brief.showHeld', { count: held.length })}
+          text={t('brief.heldLine', { count: held })}
+          showLabel={t('brief.showHeld', { count: held })}
           onShow={() => onSelect({ kind: 'state', state: 'held' })}
           testId="folder-brief-needs-held"
         />
       )}
-      {unplaced.length > 0 && (
+      {unplaced > 0 && (
         <AttentionRow
           tone="muted"
-          text={t('brief.unplacedLine', { count: unplaced.length })}
+          text={t('brief.unplacedLine', { count: unplaced })}
           hint={t('brief.unplacedHint')}
-          showLabel={t('brief.showUnplaced', { count: unplaced.length })}
+          showLabel={t('brief.showUnplaced', { count: unplaced })}
           onShow={() => onSelect({ kind: 'unplaced' })}
           testId="folder-brief-needs-unplaced"
         />

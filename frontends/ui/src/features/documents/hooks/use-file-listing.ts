@@ -26,7 +26,19 @@ export interface FileListingOptions {
    * for the seeded page again.
    */
   initialNextCursor?: string | null
+  /**
+   * Whether the shelf is drained at all (default true). The Files workspace
+   * reads a folder level page by page (ADR-0102) and turns the drain on only
+   * for what still needs the whole shelf in the browser: a filter the server
+   * cannot answer, the status order, the brief's content facts and its slices.
+   * While off, nothing is read, `load` and `reloadQuietly` do nothing, and no
+   * settling poll runs.
+   */
+  enabled?: boolean
 }
+
+/** No rows to poll: what a disabled drain hands the settling poll. */
+const NO_FILES: readonly FileItem[] = []
 
 /** What a foreground load does with the rows it reads. */
 type Commit = 'per-page' | 'at-end'
@@ -78,12 +90,13 @@ export function useFileListing({
   includeArchived,
   initialFiles,
   initialNextCursor = null,
+  enabled = true,
 }: FileListingOptions) {
   const seededWith = initialFiles !== undefined
   const [files, setFiles] = useState<FileItem[]>(() => (initialFiles ?? []).map(toFileItem))
   // Seeded means loaded: starting at `true` with the answer in state would draw
   // the skeleton over a listing this render could paint.
-  const [isLoading, setIsLoading] = useState(!seededWith)
+  const [isLoading, setIsLoading] = useState(!seededWith && enabled)
   const [complete, setComplete] = useState(seededWith && initialNextCursor === null)
   const [error, setError] = useState(false)
   /** The drain stopped at its page ceiling: older documents are not loaded. */
@@ -94,7 +107,7 @@ export function useFileListing({
   const settlingReads = useSettlingStatusReads(files, setFiles)
   const { beginLoad } = settlingReads
   // Re-ask while anything is still being read, and stop once all is terminal.
-  useSettlingRefresh(files, settlingReads.tick)
+  useSettlingRefresh(enabled ? files : NO_FILES, settlingReads.tick)
 
   const { list, listParams } = endpoints
   const paramsKey = JSON.stringify(listParams ?? {})
@@ -103,7 +116,8 @@ export function useFileListing({
   const shownUrl = useRef<string | null>(seededWith ? url : null)
 
   const drain = useCallback(
-    ({ quiet, from }: { quiet: boolean; from?: { cursor: string } }) => {
+    ({ quiet, from }: { quiet: boolean; from?: { cursor: string } }): Promise<void> => {
+      if (!enabled) return Promise.resolve()
       const generation = ++loadGeneration.current
       const withNewerReads = beginLoad()
       const isStale = () => generation !== loadGeneration.current
@@ -159,7 +173,7 @@ export function useFileListing({
           if (showsSkeleton) setIsLoading(false)
         })
     },
-    [url, beginLoad]
+    [url, beginLoad, enabled]
   )
 
   /** @param quiet Refresh without the skeleton or the error state — a reload behind a grid being read. */

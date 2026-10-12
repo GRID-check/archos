@@ -21,7 +21,8 @@
  * and logic in a render function can only be tested by mounting a tree.
  */
 
-import { documentStatusFacts } from '@/lib/documents/document-status'
+import { documentReadFamily, type DocumentReadFamily } from '@/lib/documents/document-status'
+import type { ShelfSummary } from '@/lib/documents/shelf-summary-types'
 import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS, documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import type { FileItem, FolderItem } from '../file-types'
 import { withoutOlderFassungen } from './fassung-chain'
@@ -36,10 +37,11 @@ import { withoutOlderFassungen } from './fassung-chain'
  * - `unindexed` — at rest and deliberately not in the knowledge base (an
  *                 agent-authored report, a row stranded at birth).
  *
- * Derived from {@link documentStatusFacts} and from nothing else, so the five
- * spellings of "indexed" stay one decision with one home.
+ * The family is declared beside the status vocabulary
+ * (`documentReadFamily`, `lib/documents/document-status.ts`), because the shelf
+ * summary counts the same families in SQL and the two must agree.
  */
-export type ReadState = 'readable' | 'reading' | 'failed' | 'held' | 'unindexed'
+export type ReadState = DocumentReadFamily
 
 /**
  * An unknown status reads as `reading`, never as `readable`: calling something
@@ -47,18 +49,7 @@ export type ReadState = 'readable' | 'reading' | 'failed' | 'held' | 'unindexed'
  * state under "being read" until somebody maps it is the harmless direction.
  */
 export function readStateOf(status: string | null | undefined): ReadState {
-  switch (documentStatusFacts(status)?.variant) {
-    case 'success':
-      return 'readable'
-    case 'destructive':
-      return 'failed'
-    case 'warning':
-      return 'held'
-    case 'secondary':
-      return 'unindexed'
-    default:
-      return 'reading'
-  }
+  return documentReadFamily(status)
 }
 
 /**
@@ -140,6 +131,11 @@ export function subtreeTallies(
   files: readonly FileItem[],
   folders: readonly FolderItem[]
 ): Map<string, KnowledgeTally> {
+  return foldTallies(directTallies(files), folders)
+}
+
+/** The tally of the documents filed DIRECTLY in each folder, keyed by folder id; the root's are left out. */
+function directTallies(files: readonly FileItem[]): Map<string, KnowledgeTally> {
   const direct = new Map<string, KnowledgeTally>()
   for (const file of files) {
     if (file.folderId == null) continue
@@ -147,7 +143,18 @@ export function subtreeTallies(
     if (!tally) direct.set(file.folderId, (tally = emptyTally()))
     addFile(tally, file)
   }
+  return direct
+}
 
+/**
+ * Fold per-folder DIRECT tallies up the tree into every folder's subtree tally.
+ * Shared by the corpus path ({@link subtreeTallies}) and the paged one, where
+ * the direct tallies come from the shelf summary ({@link talliesFromSummary}).
+ */
+export function foldTallies(
+  direct: ReadonlyMap<string | null, KnowledgeTally>,
+  folders: readonly FolderItem[]
+): Map<string, KnowledgeTally> {
   const childrenByParent = childrenIndex(folders)
   const result = new Map<string, KnowledgeTally>()
   const visited = new Set<string>()
@@ -176,6 +183,41 @@ export function subtreeTallies(
     }
   }
   return result
+}
+
+/** One summary row as a tally: what Postgres can count. Unplaced and pages need the backend's tags and counts, so they are 0. */
+export function tallyFromSummaryRow(row: ShelfSummary['folders'][number]): KnowledgeTally {
+  return {
+    total: row.total,
+    readable: row.readable,
+    reading: row.reading,
+    failed: row.failed,
+    held: row.held,
+    unindexed: row.unindexed,
+    unplaced: 0,
+    pages: 0,
+    latest: row.latest,
+  }
+}
+
+export interface SummaryTallies {
+  /** The documents filed directly in each folder; `null` is the shelf root. */
+  direct: Map<string | null, KnowledgeTally>
+  /** Every folder's whole subtree, as {@link subtreeTallies} would fold it from the corpus. */
+  subtree: Map<string, KnowledgeTally>
+  /** Every document on the shelf this reader may see. */
+  total: number
+}
+
+/** The folder tiles' numbers, from the shelf summary instead of from the corpus (ADR-0102). */
+export function talliesFromSummary(summary: ShelfSummary, folders: readonly FolderItem[]): SummaryTallies {
+  const direct = new Map<string | null, KnowledgeTally>()
+  let total = 0
+  for (const row of summary.folders) {
+    direct.set(row.folderId, tallyFromSummaryRow(row))
+    total += row.total
+  }
+  return { direct, subtree: foldTallies(direct, folders), total }
 }
 
 function childrenIndex(folders: readonly FolderItem[]): Map<string, FolderItem[]> {
@@ -235,10 +277,23 @@ export interface FolderLocation {
   tally: KnowledgeTally
 }
 
+/** A document the brief names by id: enough to act on it („Alle erneut lesen“). */
+export interface BriefDocument {
+  id: string
+}
+
 export interface FolderBrief {
   /** The whole subtree's tally. */
   tally: KnowledgeTally
-  /** Every document in the subtree, in listing order. */
+  /**
+   * Built from the shelf summary rather than from the corpus (ADR-0102): the
+   * counts are Postgres', and what Piloti put ON each document (types,
+   * disciplines, topics, contents, photos, „ohne Dokumentart“, pages) is not
+   * known until the documents themselves are loaded. Those fields are empty and
+   * the brief offers to load them.
+   */
+  partial?: boolean
+  /** Every document in the subtree, in listing order. Empty for a {@link partial} brief. */
   files: readonly FileItem[]
   /** Document types present among READABLE documents, most frequent first. */
   documentTypes: CountedLabel[]
@@ -246,11 +301,15 @@ export interface FolderBrief {
   disciplines: CountedLabel[]
   /** Content categories (`text`, `table`, `image`, `chart`, …) and how many documents hold each. */
   contents: CountedLabel[]
-  /** Documents that need a person, by why. */
+  /**
+   * Documents that need a person, by why. How MANY is the tally's to say; these
+   * name them for an action, and a {@link partial} brief names only the failed
+   * ones (up to the summary's limit).
+   */
   attention: {
-    failed: FileItem[]
-    held: FileItem[]
-    unplaced: FileItem[]
+    failed: BriefDocument[]
+    held: BriefDocument[]
+    unplaced: BriefDocument[]
   }
   /** Documents still being read. */
   reading: FileItem[]
@@ -405,28 +464,74 @@ function findHotspots(
   folders: readonly FolderItem[],
   folderId: string | null
 ): FolderLocation[] {
+  return hotspotsFrom(directTallies(files), folders, folderId)
+}
+
+/** {@link findHotspots} over per-folder direct tallies, whichever path counted them. */
+function hotspotsFrom(
+  direct: ReadonlyMap<string | null, KnowledgeTally>,
+  folders: readonly FolderItem[],
+  folderId: string | null
+): FolderLocation[] {
   const below = subtreeFolderIds(folders, folderId)
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
-  const direct = new Map<string, FileItem[]>()
-  for (const file of files) {
-    if (file.folderId == null || file.folderId === folderId) continue
-    if (!byId.has(file.folderId)) continue
-    if (below !== null && !below.has(file.folderId)) continue
-    const bucket = direct.get(file.folderId)
-    if (bucket) bucket.push(file)
-    else direct.set(file.folderId, [file])
-  }
-
   const spots: FolderLocation[] = []
-  for (const [id, own] of direct) {
-    const tally = tallyOf(own)
+  for (const [id, tally] of direct) {
+    if (id === null || id === folderId) continue
+    const folder = byId.get(id)
+    if (!folder) continue
+    if (below !== null && !below.has(id)) continue
     if (tally.failed + tally.held + tally.reading + tally.unplaced === 0) continue
-    const folder = byId.get(id)!
     spots.push({ folder, trail: trailBetween(byId, folder, folderId), tally })
   }
   return spots
     .sort((a, b) => compareSeverity(a.tally, b.tally) || a.folder.name.localeCompare(b.folder.name))
     .slice(0, MAX_HOTSPOTS)
+}
+
+/**
+ * The brief of `folderId` from the shelf summary, for a workspace that reads
+ * the folder level page by page and does not hold the corpus (ADR-0102).
+ *
+ * The headline, the legend, „Hier sind Sie gefragt“ (failed and held) and
+ * „Wo es hakt“ are the summary's, counted by Postgres over every document of
+ * the subtree. The rest needs what the backend put on each document, so the
+ * brief is {@link FolderBrief.partial} and those fields are empty until the
+ * corpus is loaded (`buildFolderBrief` then takes over).
+ *
+ * One difference from {@link buildFolderBrief} that cannot be closed here: an
+ * older Fassung is counted. Which document replaces which is a link in the
+ * backend's index (ADR-0099), not a column Postgres could leave a row out by.
+ */
+export function buildFolderBriefFromSummary(
+  summary: ShelfSummary,
+  folders: readonly FolderItem[],
+  folderId: string | null
+): FolderBrief {
+  const { direct } = talliesFromSummary(summary, folders)
+  const ids = subtreeFolderIds(folders, folderId)
+  const inSubtree = (id: string | null): boolean => ids === null || (id !== null && ids.has(id))
+  const tally = emptyTally()
+  for (const [id, own] of direct) {
+    if (inSubtree(id)) addTally(tally, own)
+  }
+  return {
+    tally,
+    partial: true,
+    files: [],
+    documentTypes: [],
+    disciplines: [],
+    contents: [],
+    attention: {
+      failed: summary.failed.filter((document) => inSubtree(document.folderId)).map((document) => ({ id: document.id })),
+      held: [],
+      unplaced: [],
+    },
+    reading: [],
+    hotspots: hotspotsFrom(direct, folders, folderId),
+    topics: [],
+    photos: null,
+  }
 }
 
 /** Folder names from just below `stopAt` down to `folder`, cycle-safe. */
