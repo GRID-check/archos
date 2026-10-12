@@ -37,6 +37,8 @@ from zoneinfo import ZoneInfo
 from aiq_agent.common.db_utils import ensure_schema
 from aiq_agent.common.db_utils import lock_schema
 from aiq_agent.common.db_utils import normalize_db_url as _normalize_db_url
+from aiq_agent.common.db_utils import present_columns
+from aiq_agent.common.db_utils import present_indexes
 from aiq_agent.common.db_utils import redact_db_url
 from aiq_agent.knowledge.document_classification import MAX_TOPIC_VOCABULARY
 from aiq_agent.knowledge.title_block import normalise_revision_facts
@@ -423,8 +425,14 @@ class DocumentMetadataStore:
 
         # Backfill any optional column that predates the current schema
         # (covers a just-renamed legacy table and older document_metadata ones).
+        # Only the MISSING ones: ``ADD COLUMN IF NOT EXISTS`` locks the table
+        # exclusively before it checks, so running it for every column on every
+        # start blocked all readers, and behind one stuck reader it hung the API's
+        # start (see ``present_columns``). On a current table this issues no DDL.
+        present = present_columns(conn, TABLE_NAME)
         for column in _OPTIONAL_COLUMNS:
-            self._add_column_if_missing(conn, column)
+            if column not in present:
+                self._add_column_if_missing(conn, column)
 
         self._ensure_index(conn)
         self._create_retained_table(conn)
@@ -490,8 +498,11 @@ class DocumentMetadataStore:
         """Create the collection index under the new name; drop the legacy one."""
         from sqlalchemy import text
 
-        # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
-        conn.execute(text(f"CREATE INDEX IF NOT EXISTS {_INDEX_NAME} ON {TABLE_NAME} (collection)"))
+        # Checked first: ``CREATE INDEX IF NOT EXISTS`` takes the table's SHARE lock
+        # before it looks at the name (see ``present_indexes``).
+        if _INDEX_NAME not in present_indexes(conn, TABLE_NAME):
+            # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+            conn.execute(text(f"CREATE INDEX IF NOT EXISTS {_INDEX_NAME} ON {TABLE_NAME} (collection)"))
         # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
         conn.execute(text(f"DROP INDEX IF EXISTS {_LEGACY_INDEX_NAME}"))
 

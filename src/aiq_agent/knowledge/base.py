@@ -443,7 +443,12 @@ class BaseIngestor(ABC):
             name: Collection name.
 
         Returns:
-            CollectionInfo if found, None otherwise.
+            CollectionInfo if found, None when the store says the collection
+            does not exist.
+
+        Raises:
+            Exception: when the store cannot answer (unreachable, timed out).
+            That is not "missing", and a caller must not treat it as one.
         """
 
     # =========================================================================

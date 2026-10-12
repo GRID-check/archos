@@ -193,6 +193,20 @@ config:
 
   # grid-oib:protectDataResources: "true"
 
+  # ── Worker groups (IPAX) ──
+  # Three groups, made and sized in the IPAX Control Center (not here). IPAX
+  # labels every node `k8s.at/node-group: <group name>`, case-sensitive:
+  #   Node   k8s1.gp.large  4 vCPU / 16 GB, autoscale 2-6: the app tier
+  #   data   k8s1.m.large   4 vCPU / 32 GB, fixed 4: the data stores
+  #   batch  k8s1.m.xlarge  8 vCPU / 64 GB, autoscale 2-4: ingestion
+  # A group cannot be tainted from the console, so these are nodeSelectors: they
+  # keep a tier on its group, not other pods off it. Only aiq-agent, Chroma and
+  # ingest-worker are placed; Postgres, SeaweedFS, ClickHouse, Dragonfly and the
+  # rest move in a later migration of their own.
+  grid-oib:nodeGroupApp: Node
+  grid-oib:nodeGroupData: data
+  grid-oib:nodeGroupBatch: batch
+
   # ── Postgres (CloudNativePG) ──
   grid-oib:pgInstances: "3" # HA: 1 primary + 2 streaming replicas
   grid-oib:pgStorageSize: 20Gi
@@ -291,8 +305,18 @@ config:
   # cluster-autoscaler adds nodes for Pending replicas up to the worker group's
 
   # max, so size that group for maxReplicas × the limits below.
+  # 3, not 5: five workers on three 16 GB nodes took the nodes down one after
+  # another (2026-10). The tier now runs on the batch group (nodeGroupBatch,
+  # 8 vCPU / 64 GB nodes). Raise it only with batch-node memory to match.
   grid-oib:ingestWorkerMinReplicas: "1"
-  grid-oib:ingestWorkerMaxReplicas: "5"
+  grid-oib:ingestWorkerMaxReplicas: "3"
+  # Big PDFs, three files at once, were OOMKilled at a 6Gi limit. Even all three
+  # workers at their 12Gi limit on one 64 GB batch node (36 GB) do not overcommit
+  # it, which is the failure the app nodes had.
+  grid-oib:ingestWorkerRequestsCpu: 500m
+  grid-oib:ingestWorkerRequestsMemory: 8Gi
+  grid-oib:ingestWorkerLimitsCpu: "4"
+  grid-oib:ingestWorkerLimitsMemory: 12Gi
   grid-oib:ingestWorkerConcurrency: "3"
   grid-oib:ingestWorkerDrainSeconds: "600"
   # Chat/web replicas. Safe at >1 via conversation affinity (the frontend WS
@@ -432,8 +456,10 @@ config:
   # What the one OpenRouter key is asked to carry, written down here instead of
   # left to the backend image's defaults (these ARE those defaults). Vision calls
   # are held to vlmFleetConcurrency fleet-wide whatever the replica count, so the
-  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (5) x
-  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 60, within 2 x 32. The
+  # ingest tier's ceiling is sized against it: ingestWorkerMaxReplicas (3) x
+  # ingestWorkerConcurrency (3) x vlmBatchWorkers (4) = 36, within 2 x 32. Node
+  # memory, not this budget, holds it at 3 (see the ingestion tier above); the
+  # budget alone would allow 5. The
   # program refuses a stack past 2x (assertVlmPeakFitsCeiling), because replicas
   # beyond it only queue on the pool. It was 12 replicas (144), then 8 (96 against
   # a pool of 48), before this: a vision call also holds a slot in its model's own
@@ -451,8 +477,8 @@ config:
   # ── Postgres pooler (ADR-0083) ──
   # Two PgBouncers, spread across nodes, so a drain takes one. Budget against the
   # primary's max_connections of 200 (assertPgConnectionBudget): 2 x (3 pooled
-  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 82 held
-  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 156, 44 to spare.
+  # database/role pairs x pgPoolerPoolSize 12 + 1 auth session) = 74, plus 76 held
+  # for the direct connections (see POSTGRES_DIRECT_RESERVE) = 150, 50 to spare.
   grid-oib:pgPoolerInstances: "2"
   # ── The api tier (ADR-0082 step B) ── every backend HTTP route but the chat
   # socket, behind the aiq-api Service (BACKEND_URL). Sized like the frontend.

@@ -2,7 +2,7 @@ import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, backendAutoscaled, backendImage, toResourceRequirements } from "../config";
 import { commonLabels } from "../platform/namespaces";
-import { installPdb, spreadAcrossNodes } from "../platform/scheduling";
+import { installPdb, onNodeGroup, spreadAcrossNodes } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import {
   backendRollout,
@@ -90,6 +90,8 @@ export function installBackend(
             // The chat tier may run >1 replica — spread across nodes so an upgrade
             // node-drain / node loss can't take every chat replica down.
             ...(multiReplica ? { topologySpreadConstraints: spreadAcrossNodes(labels) } : {}),
+            // The app group (`nodeGroupApp`), when the stack has worker groups.
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "aiq-agent",
