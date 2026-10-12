@@ -11,6 +11,20 @@ export interface GridTileShellProps extends Omit<ComponentProps<'div'>, 'ref'> {
 }
 
 /**
+ * A tile the reader cannot see is not laid out or painted.
+ *
+ * `content-visibility: auto` lets the browser skip the inside of every tile
+ * outside the viewport, which is most of them in a folder of a thousand
+ * documents: the DOM, the focus order, find-in-page and the accessibility tree
+ * are untouched, only the rendering work waits until a tile scrolls near. A
+ * skipped tile is sized from `contain-intrinsic-block-size`: the estimate until
+ * it has been drawn once, its real height after (`auto`), so the scrollbar does
+ * not jump as the reader scrolls back. The shell already clips its contents
+ * (`overflow-hidden`), so the paint containment this brings clips nothing new.
+ */
+const OFF_SCREEN_SKIP = '[content-visibility:auto] [contain-intrinsic-block-size:auto_240px]'
+
+/**
  * Single rewrite point for the file grid's tiles: the raised card every cell of
  * the grid is built on — a white body on a muted tray, one shadow lifecycle, one
  * hover lift, one footer alignment. Changing `gap` or `rounded-xl` here moves
@@ -38,6 +52,7 @@ export function GridTileShell({ interactive = true, className, children, ...rest
     <div
       className={cn(
         'border-border bg-muted/50 shadow-xs relative flex h-full min-w-0 flex-col overflow-hidden rounded-xl border',
+        OFF_SCREEN_SKIP,
         'transition-shadow duration-quick ease-out motion-reduce:transition-none',
         interactive && 'hover:shadow-md',
         className,

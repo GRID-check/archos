@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, frontendImage } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -112,6 +113,7 @@ function internalSweepCronJob(
                   runAsUser: UID.frontend,
                   runAsGroup: UID.frontend,
                 },
+                ...onNodeGroup(cfg.nodeGroups.app),
                 containers: [
                   {
                     name: sweep.name,
@@ -186,6 +188,7 @@ export function installWorkers(
             // Room to finish the purge tick in flight (S3 deletes + DB writes)
             // rather than being SIGKILLed part-way through one.
             terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
+            ...onNodeGroup(cfg.nodeGroups.app),
             containers: [
               {
                 name: "purger",
@@ -232,6 +235,7 @@ export function installWorkers(
                 securityContext: { runAsNonRoot: true, runAsUser: UID.frontend, runAsGroup: UID.frontend },
                 // Finish the claimed scheduler batch before exiting.
                 terminationGracePeriodSeconds: shutdown.terminationGracePeriodSeconds,
+                ...onNodeGroup(cfg.nodeGroups.app),
                 containers: [
                   {
                     name: "skill-scheduler",

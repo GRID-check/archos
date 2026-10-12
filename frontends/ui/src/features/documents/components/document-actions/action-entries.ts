@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import type { ActionMenuEntry } from '@/components/ui/action-menu'
 import { isCitableStatus, isFailedStatus, isSettlingStatus } from '../document-status'
-import { sortedFolderDestinations, type PathFolder } from '../../lib/folder-path-label'
+import { sortedFolderDestinations, type FolderDestination, type PathFolder } from '../../lib/folder-path-label'
 import type { ActionableDocument } from './use-document-actions'
 
 export type DocumentActionKind =
@@ -70,6 +70,12 @@ export interface DocumentActionEntriesInput {
   actions?: readonly DocumentActionKind[]
   canManage?: boolean
   folders?: readonly PathFolder[]
+  /**
+   * The move targets, labelled and sorted once by the caller
+   * (`sortedFolderDestinations`). A listing with a menu per row passes this
+   * instead of `folders`, so the tree is not walked and sorted again per row.
+   */
+  destinations?: readonly FolderDestination[]
   isDownloading?: boolean
   isReingesting?: boolean
   isMoving?: boolean
@@ -121,6 +127,7 @@ export function documentActionEntries({
   actions = DEFAULT_DOCUMENT_ACTIONS,
   canManage = true,
   folders,
+  destinations: sortedDestinations,
   isDownloading = false,
   isReingesting = false,
   isMoving = false,
@@ -133,6 +140,7 @@ export function documentActionEntries({
   onMove,
   onCopyOriginPath,
 }: DocumentActionEntriesInput): ActionMenuEntry[] {
+  const destinations = sortedDestinations ?? (folders ? sortedFolderDestinations(folders) : undefined)
   const offers = (kind: DocumentActionKind): boolean => {
     if (!actions.includes(kind)) return false
     if (kind === 'download') return true
@@ -142,7 +150,7 @@ export function documentActionEntries({
       return Boolean(document.originPath && onCopyOriginPath)
     }
     if (kind === 'reingest') return canManage && reingestOffer(document) !== null
-    if (kind === 'move') return canManage && Boolean(folders && folders.length > 0)
+    if (kind === 'move') return canManage && Boolean(destinations && destinations.length > 0)
     return canManage
   }
 
@@ -212,8 +220,7 @@ export function documentActionEntries({
       testId: 'document-action-rename',
     })
   }
-  if (offers('move') && folders) {
-    const destinations = sortedFolderDestinations(folders)
+  if (offers('move') && destinations) {
     const current = document.folderId ?? null
     entries.push({
       type: 'sub',

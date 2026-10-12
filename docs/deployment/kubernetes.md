@@ -221,24 +221,35 @@ groups is unchanged): `nodeGroupApp`, `nodeGroupData`, `nodeGroupBatch`
 (`onNodeGroup` in `src/platform/scheduling.ts`). Prod sets them to `Node`,
 `data` and `batch`.
 
-Pinned now:
+Every pod template in the program is pinned:
 
-- `aiq-agent` (the chat role) on `Node`.
-- `chroma` on `data`. It also carries
+- `data`: the Postgres instances and both PgBouncers, `chroma`, SeaweedFS,
+  ClickHouse and the three Dragonfly instances. Chroma also carries
   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on every stack: it
   is one replica, so an autoscaler scale-down that evicts it is an outage. A
   drain for a node upgrade still moves it.
-- `ingest-worker` on `batch`, at 8Gi requested and a 12Gi limit in prod
-  (§6.3b).
+- `batch`: `ingest-worker` (8Gi requested, 12Gi limit in prod, §6.3b),
+  Gotenberg and the legacy corpus import.
+- `Node`: everything else, the chat, api and agent-worker tiers, the frontend,
+  web, Langfuse, the collector, the workers and every Job.
 
 An IPAX group cannot be tainted from the Control Center, so placement is a
-nodeSelector only. It keeps a pinned tier on its group. It does not keep other
-pods off that group, so unpinned tiers can still land on `data` or `batch`.
+nodeSelector only. It keeps a pinned tier on its group but not other pods off
+it, so the data nodes stay the stores' only because every other template
+selects a different group. `index-node-groups.spec.ts` fails on a workload that
+selects none. The provider's volumes carry no node affinity, so a store follows
+its PVC to the new group; a single-replica store is down while it restarts.
 
-Postgres, SeaweedFS, ClickHouse, Dragonfly, `aiq-api`, the frontend and every
-other tier are not placed yet. They move in a later migration, one tier at a
-time, because moving a store with a PVC stops the store while it moves and its
-volume has to be able to attach on the new group.
+With a data group set, the Postgres instances must run on different nodes
+(`podAntiAffinityType: required`) and the two PgBouncers must too
+(`DoNotSchedule` spread). The group is fixed at 4 nodes, so neither rule can
+strand a replica. The PgBouncer spread and its PDB select
+`cnpg.io/poolerName`: the operator overwrites `app.kubernetes.io/name` on the
+pods it builds, and a selector on the template's own labels matched no pod
+(both PgBouncers ran on one node until 2026-10).
+
+The operators (CloudNativePG, KEDA, cert-manager, Envoy Gateway,
+metrics-server) are Helm releases in their own namespaces and are not pinned.
 
 **Cluster-autoscaler scales on *unschedulable pods*, not utilisation.** Its
 documented prerequisites — an HPA as the first scaling tier, `requests`/`limits`
@@ -306,9 +317,48 @@ runner with a fixed egress IP.
 always provisioned and cannot be removed, so `installMetricsServer` defaults to
 **false** — installing our own would just fight it (the HPAs read the built-in
 one). Managed **Backups** (Velero) and **Metrics** (Grafana) are paid Control-
-Center add-ons; CNPG PITR and a Prometheus/Grafana/Loki stack remain the
-in-cluster follow-ups in §7. A cheap interim backup is a scheduled
-**VolumeSnapshot** (SnapshotClass `lightbits`) of the Postgres and SeaweedFS PVCs.
+Center add-ons. Prod has the backups add-on booked (below). IPAX also runs a
+VictoriaMetrics agent with node-exporter and kube-state-metrics in the
+`victoria` namespace.
+
+### Cluster backups (IPAX Velero)
+
+Prod is backed up off the cluster every night by IPAX's managed Velero. Nothing
+in this repo creates or configures it. Read live on 2026-10-12:
+
+| | |
+|---|---|
+| Schedule | `velero-ipax-autobackup-k8s100193`, daily at 00:30 UTC |
+| Scope | every namespace except `velero`: the Kubernetes objects and every PVC |
+| Kept | 30 days (`ttl: 730h`) |
+| Where | backup storage location `b101294.backupspace.at` (S3, outside the cluster) |
+| How | a CSI snapshot of each PVC (`--features=EnableCSI`), whose data Kopia then copies to the storage location (`snapshotMoveData: true`) |
+
+The 2026-10-12 run copied all seven PVCs: `grid-pg-1` to `-3`,
+`data-seaweedfs-0` (the documents), `data-chroma-0`, `data-clickhouse-0` and
+`data-aiq-agent-0`, about 30 GB in under three minutes. A new PVC in `grid` is
+included without any change here.
+
+Each volume is snapshotted on its own, minutes apart, so a restore is
+crash-consistent per volume and not across them. Postgres recovers like after a
+power loss (WAL replay). Postgres and SeaweedFS can disagree about a document
+uploaded during the run. For a Postgres point in time inside the day, use the
+CNPG archive (§5), whose bucket sits on the SeaweedFS PVC and is copied off the
+cluster with it.
+
+Check the last run, and that every volume made it:
+
+```bash
+kubectl -n velero get backups.velero.io --sort-by=.metadata.creationTimestamp
+kubectl -n velero get datauploads.velero.io \
+  -l velero.io/backup-name=<backup> \
+  -o custom-columns='PVC:.spec.sourcePVC,PHASE:.status.phase,BYTES:.status.progress.totalBytes'
+```
+
+A restore is `velero restore create --from-backup <backup>` (narrow it with
+`--include-namespaces grid`), or a request to IPAX. Velero skips objects that
+already exist, so restore into an emptied namespace or a new cluster, not over a
+running one.
 
 ---
 
@@ -836,11 +886,11 @@ schema.
   integration. The default target is the in-cluster SeaweedFS
   `grid-pg-backups` bucket (auto-created; the Cluster is gated on it so
   archiving never races the bucket): that protects against **Postgres PVC
-  loss/corruption**, but NOT against cluster deletion or a SeaweedFS-volume
-  loss — the backup lives on the same `Delete`-reclaim CSI. For real offsite
-  PITR, point `pgBackupEndpoint` (+ `pgBackupBucket`,
-  `pgBackupAccessKey`/`pgBackupSecretKey`) at an external S3, or book the
-  provider's Velero addon.
+  loss/corruption**. The archive itself lives on the SeaweedFS PVC, which the
+  nightly Velero backup copies off the cluster (§2b, "Cluster backups"), so a
+  lost cluster leaves last night's archive, not a point in time after it. For
+  continuous offsite PITR, point `pgBackupEndpoint` (+ `pgBackupBucket`,
+  `pgBackupAccessKey`/`pgBackupSecretKey`) at an external S3.
   Tune with `pgBackupRetention` (default `30d`) and `pgBackupSchedule` (6-field
   cron, default `0 0 2 * * *`). Restore is `kubectl cnpg` / a bootstrap
   `recovery` from the same object store.

@@ -448,6 +448,24 @@ export const documents = pgTable('documents', {
   statusIdx: index('documents_status_idx').on(table.status),
   orgScopeIdx: index('documents_org_scope_idx').on(table.organizationId, table.scope),
   /**
+   * One folder level of a shelf, newest first, a page at a time (migration
+   * 0132, ADR-0102): the shelf's equality columns, the folder, then the
+   * listing's order, so a page is a range read that stops at its last row.
+   */
+  projectFolderListingIdx: index('documents_project_folder_listing_idx').on(
+    table.projectId,
+    table.folderId,
+    table.createdAt.desc(),
+    table.id
+  ),
+  orgScopeFolderListingIdx: index('documents_org_scope_folder_listing_idx').on(
+    table.organizationId,
+    table.scope,
+    table.folderId,
+    table.createdAt.desc(),
+    table.id
+  ),
+  /**
    * One live document per filename in a collection, over every row that can own
    * chunks (migrations 0074, restated by 0077, widened by 0083).
    *

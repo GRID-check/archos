@@ -15,7 +15,7 @@
 
 import { sql } from 'drizzle-orm'
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
-import { REVIEWER_READER } from '@/lib/documents/document-reader'
+import { memberReader, REVIEWER_READER } from '@/lib/documents/document-reader'
 
 vi.mock('server-only', () => ({}))
 
@@ -101,6 +101,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     const { withPlatformAccess } = await import('@/lib/db/tenant-context')
     await withPlatformAccess('test teardown', async () => {
       await db.execute(sql`DELETE FROM documents WHERE organization_id = ${ORG}`)
+      await db.execute(sql`DELETE FROM project_folders WHERE organization_id = ${ORG}`)
       await db.execute(sql`DELETE FROM projects WHERE organization_id = ${ORG}`)
     })
     const { closeDb } = await import('@/lib/db')
@@ -228,5 +229,160 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
     )
     expect(byName['plan-6.pdf'].lifecycle).toBe('archived')
     expect(byName['plan-0.pdf'].authoredBy).toBe('user')
+  })
+
+  /**
+   * A folder LEVEL, page by page (ADR-0102). Each order is walked two rows a
+   * page and compared with the order Postgres itself computes for the same
+   * expression: every row of the level exactly once, none from another level,
+   * and a held row only for the readers the hold lets see it.
+   */
+  describe('a folder level', () => {
+    let folderId: string
+    /** Names that tie once case-folded, a rename, sizes that tie and one unknown, timestamps that tie. */
+    const LEVEL_ROWS: Array<{ name: string; display: string | null; size: number | null; at: string; status: string }> = [
+      { name: 'b.pdf', display: null, size: 300, at: '2026-04-01 10:00:00.000500+00', status: 'completed' },
+      { name: 'A.pdf', display: null, size: 300, at: '2026-04-01 10:00:00.000500+00', status: 'completed' },
+      { name: 'a.pdf', display: null, size: null, at: '2026-04-01 10:00:00.000100+00', status: 'failed' },
+      { name: 'z.pdf', display: 'Aa Umbenannt.pdf', size: 10, at: '2026-03-01 09:00:00+00', status: 'pending' },
+      { name: 'c.pdf', display: null, size: 5000, at: '2026-02-01 08:00:00.123456+00', status: 'completed' },
+      { name: 'held.pdf', display: null, size: 1, at: '2026-01-15 08:00:00+00', status: 'quarantined' },
+    ]
+    const ORDER_BY: Record<'added' | 'name' | 'size', string> = {
+      added: 'created_at',
+      name: 'lower(coalesce(display_name, filename))',
+      size: 'coalesce(file_size, -1)',
+    }
+
+    beforeAll(async () => {
+      const folders = await inTenant(() =>
+        db.execute<{ id: string }>(sql`
+          INSERT INTO project_folders (organization_id, project_id, name, path)
+          VALUES (${ORG}, ${projectId}::uuid, 'Ebene', 'Ebene')
+          RETURNING id
+        `),
+      )
+      folderId = String(Array.from(folders)[0].id)
+      await inTenant(async () => {
+        for (const [index, row] of LEVEL_ROWS.entries()) {
+          await db.execute(sql`
+            INSERT INTO documents
+              (organization_id, created_by, filename, display_name, file_size, storage_key, collection_name, status,
+               scope, project_id, folder_id, created_at)
+            VALUES
+              (${ORG}, ${USER}, ${`level-${row.name}`}, ${row.display}, ${row.size}, ${`k/level/${index}`}, 'coll_listpage',
+               ${row.status}, 'project', ${projectId}::uuid, ${folderId}::uuid, ${row.at}::timestamptz)
+          `)
+        }
+        // Archived: it has left the working set, so no level shows it.
+        await db.execute(sql`
+          INSERT INTO documents
+            (organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id, folder_id,
+             lifecycle)
+          VALUES
+            (${ORG}, ${USER}, 'level-archived.pdf', 'k/level/archived', 'coll_listpage', 'completed', 'project',
+             ${projectId}::uuid, ${folderId}::uuid, 'archived')
+        `)
+      })
+    })
+
+    async function expectedLevel(sort: 'added' | 'name' | 'size', dir: 'asc' | 'desc'): Promise<string[]> {
+      const rows = await inTenant(async () =>
+        Array.from(
+          await db.execute<{ id: string }>(sql`
+            SELECT id FROM documents
+            WHERE organization_id = ${ORG} AND scope = 'project' AND project_id = ${projectId}::uuid
+              AND folder_id = ${folderId}::uuid AND lifecycle = 'active'
+            ORDER BY ${sql.raw(ORDER_BY[sort])} ${sql.raw(dir.toUpperCase())}, id ASC
+          `),
+        ),
+      )
+      return rows.map((row) => String(row.id))
+    }
+
+    async function walk(
+      level: Omit<import('./list-query').DocumentLevelQuery, 'cursor' | 'limit'>,
+      reader: import('./document-reader').ShelfReader = REVIEWER_READER,
+    ): Promise<string[]> {
+      const seen: string[] = []
+      let cursor: import('./list-cursor').DocumentLevelCursor | undefined
+      for (let guard = 0; guard < 20; guard++) {
+        const page = await repo.listDocumentLevelPage({ kind: 'project', projectId }, ORG, {
+          reader,
+          level: { ...level, limit: 2, cursor },
+        })
+        seen.push(...page.rows.map((row) => row.id))
+        if (!page.nextCursor) break
+        cursor = page.nextCursor
+      }
+      return seen
+    }
+
+    it.each([
+      ['added', 'desc'],
+      ['added', 'asc'],
+      ['name', 'asc'],
+      ['name', 'desc'],
+      ['size', 'desc'],
+      ['size', 'asc'],
+    ] as const)('visits every row of the level once, in %s %s order', async (sort, dir) => {
+      const seen = await walk({ folderId, sort, dir })
+      expect(seen).toEqual(await expectedLevel(sort, dir))
+      expect(new Set(seen).size).toBe(LEVEL_ROWS.length)
+    })
+
+    it('keeps the level to its folder, and the root to the root', async () => {
+      const inFolder = new Set(await walk({ folderId, sort: 'added', dir: 'desc' }))
+      const root = await walk({ folderId: null, sort: 'added', dir: 'desc' })
+      expect(root.length).toBeGreaterThan(0)
+      expect(root.filter((id) => inFolder.has(id))).toEqual([])
+    })
+
+    it('shows a held row to its uploader and the reviewers only', async () => {
+      const everyone = await walk({ folderId, sort: 'name', dir: 'asc' })
+      const uploader = await walk({ folderId, sort: 'name', dir: 'asc' }, memberReader(USER))
+      const colleague = await walk({ folderId, sort: 'name', dir: 'asc' }, memberReader('user_listpage_other'))
+      expect(uploader).toEqual(everyone)
+      // Only a settled read passes the hold without a verdict (ADR-0086): the
+      // quarantined, the pending and the failed upload are the uploader's alone.
+      expect(colleague).toHaveLength(3)
+      expect(everyone.filter((id) => colleague.includes(id))).toEqual(colleague)
+    })
+
+    it('finds a name anywhere on the shelf, case-insensitively, by the file name or the rename', async () => {
+      const byFile = await walk({ sort: 'name', dir: 'asc', q: 'LEVEL-A' })
+      expect(byFile).toHaveLength(2)
+      const byRename = await walk({ sort: 'name', dir: 'asc', q: 'umbenannt' })
+      expect(byRename).toHaveLength(1)
+    })
+
+    it('narrows to read-state families', async () => {
+      expect(await walk({ folderId, sort: 'added', dir: 'desc', states: ['failed'] })).toHaveLength(1)
+      // `pending` is being read; nothing else in the level is.
+      expect(await walk({ folderId, sort: 'added', dir: 'desc', states: ['reading'] })).toHaveLength(1)
+    })
+
+    it('counts the level in the shelf summary by family, archived and held rows as the listing has them', async () => {
+      const rows = await repo.summarizeShelfFolders({ kind: 'project', projectId }, ORG, { reader: REVIEWER_READER })
+      expect(rows.find((row) => row.folderId === folderId)).toMatchObject({
+        total: 6,
+        readable: 3,
+        reading: 1,
+        failed: 1,
+        held: 1,
+        unindexed: 0,
+        latest: '2026-04-01T10:00:00.000Z',
+      })
+      const colleague = await repo.summarizeShelfFolders({ kind: 'project', projectId }, ORG, {
+        reader: memberReader('user_listpage_other'),
+      })
+      expect(colleague.find((row) => row.folderId === folderId)).toMatchObject({
+        total: 3,
+        readable: 3,
+        reading: 0,
+        failed: 0,
+        held: 0,
+      })
+    })
   })
 })

@@ -87,7 +87,7 @@ config:
   # dynamically from the merge commit — prod merge shas never have GHCR images;
 
   # only develop tips do.
-  grid-oib:imageTag: sha-6e7854f2e3b5bf0cd8f61a6c212f89228b1523d4
+  grid-oib:imageTag: sha-77d5643d843ec78072c4a14b8190fbde6b0f7a53
   # ── Storage (provider CSI, NVMe/TCP) ──
 
   # Classes offered by the provider (see `kubectl get storageclass`):
@@ -200,9 +200,9 @@ config:
   #   data   k8s1.m.large   4 vCPU / 32 GB, fixed 4: the data stores
   #   batch  k8s1.m.xlarge  8 vCPU / 64 GB, autoscale 2-4: ingestion
   # A group cannot be tainted from the console, so these are nodeSelectors: they
-  # keep a tier on its group, not other pods off it. Only aiq-agent, Chroma and
-  # ingest-worker are placed; Postgres, SeaweedFS, ClickHouse, Dragonfly and the
-  # rest move in a later migration of their own.
+  # keep a tier on its group, not other pods off it. So every workload selects
+  # one: the stores on data, ingestion on batch, the rest on Node. A data group
+  # also makes the Postgres and PgBouncer spread required (kubernetes.md §2b).
   grid-oib:nodeGroupApp: Node
   grid-oib:nodeGroupData: data
   grid-oib:nodeGroupBatch: batch

@@ -36,8 +36,25 @@
       "summary": null,
       "sections": [
         {
+          "key": "improvements",
+          "notes": [
+            {
+              "en": "Large folders in a project's files and in the Archiv now open and scroll faster: the first documents appear right away while the rest load behind them, and previews load as you scroll to them.",
+              "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
+            },
+            {
+              "en": "Very large folders in the Büroablage and in a project's files now open right away, and more documents load as you scroll to the end. The folder counts and the folder overview still cover every document in the folder.",
+              "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
+            }
+          ]
+        },
+        {
           "key": "fixes",
           "notes": [
+            {
+              "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
+              "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
             {
               "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
               "de": "Nach einer kurzen Störung auf unserer Seite werden gerade eingelesene Dokumente nun selbstständig weiterverarbeitet, und Antworten stocken nicht mehr, während Piloti Ihre Dateien durchsucht."

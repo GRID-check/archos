@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { render, screen, within } from '@/test-utils'
+import { installLayoutObservers } from '@/test-utils/layout-observers'
 import userEvent from '@testing-library/user-event'
 import { FileBrowserPane } from './file-browser-pane'
 import { FileSearchField } from './file-search-bar'
@@ -92,22 +93,28 @@ function renderPane(overrides: HarnessProps = {}) {
 
 describe('FileBrowserPane — card grid', () => {
   it('renders one card per file with a content-aware skeleton thumbnail', async () => {
-    renderPane()
-    const cards = screen.getAllByTestId('file-card')
-    expect(cards).toHaveLength(2)
-    // Kind inference drives the thumbnail: "site-plan.pdf" → siteplan sketch.
-    // The thumbnail request settles (a brief skeleton first) before the fallback.
-    const sitePlanCard = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
-    expect(await within(sitePlanCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
-      'data-kind',
-      'siteplan'
-    )
-    // "permit.pdf" → official-notice sketch.
-    const permitCard = cards.find((c) => within(c).queryByText('permit.pdf'))!
-    expect(await within(permitCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
-      'data-kind',
-      'notice'
-    )
+    // A card asks for its thumbnail once it has been on screen; here, at once.
+    const restoreObservers = installLayoutObservers({ intersecting: true })
+    try {
+      renderPane()
+      const cards = screen.getAllByTestId('file-card')
+      expect(cards).toHaveLength(2)
+      // Kind inference drives the thumbnail: "site-plan.pdf" → siteplan sketch.
+      // The thumbnail request settles (a brief skeleton first) before the fallback.
+      const sitePlanCard = cards.find((c) => within(c).queryByText('site-plan.pdf'))!
+      expect(await within(sitePlanCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
+        'data-kind',
+        'siteplan'
+      )
+      // "permit.pdf" → official-notice sketch.
+      const permitCard = cards.find((c) => within(c).queryByText('permit.pdf'))!
+      expect(await within(permitCard).findByTestId('document-kind-thumbnail')).toHaveAttribute(
+        'data-kind',
+        'notice'
+      )
+    } finally {
+      restoreObservers()
+    }
   })
 
   it('shows the tinted extension chip and size, and a status badge only when the document is not citable', () => {

@@ -10,6 +10,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { render, screen, waitFor } from '@/test-utils'
 import { http, HttpResponse } from 'msw'
 import { server } from '@/mocks/server'
+import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { FileCard, ThumbnailWithFallback, resetThumbnailCache } from './file-card'
 import type { FileItem } from './project-file-workspace'
 
@@ -422,6 +423,53 @@ describe('FileCard headlines carry no version numbers', () => {
     expect(screen.getAllByTestId('document-version-badge')).toHaveLength(1)
     expect(screen.getByTestId('document-version-badge')).toHaveTextContent('In review')
     expect(screen.getByTestId('file-card').textContent).not.toMatch(/\bv\d+\b/i)
+  })
+})
+
+/**
+ * A folder of two thousand documents asked for two thousand thumbnails the
+ * moment it opened. A card asks once it has been on screen, and not before.
+ */
+describe('FileCard asks for its thumbnail once it has been seen', () => {
+  let restoreObservers: (() => void) | null = null
+  afterEach(() => {
+    restoreObservers?.()
+    restoreObservers = null
+  })
+
+  const countThumbnailRequests = () => {
+    const hits = vi.fn()
+    server.use(
+      http.get('/api/documents/:id/thumbnail', () => {
+        hits()
+        return HttpResponse.json({ url: null })
+      })
+    )
+    return hits
+  }
+
+  it('does not ask for a card that has not been on screen, and holds the skeleton', async () => {
+    const hits = countThumbnailRequests()
+    restoreObservers = installLayoutObservers({ intersecting: false })
+
+    render(<FileCard file={file('v1', 'Plan.pdf', 'application/pdf')} isSelected={false} onSelect={() => {}} locale="de" />)
+
+    expect(screen.getByTestId('thumbnail-skeleton')).toBeInTheDocument()
+    await new Promise((resolve) => setTimeout(resolve, 20))
+    expect(hits).not.toHaveBeenCalled()
+    expect(screen.getByTestId('thumbnail-skeleton')).toBeInTheDocument()
+  })
+
+  it('asks once the card comes on screen', async () => {
+    const hits = countThumbnailRequests()
+    restoreObservers = installLayoutObservers({ intersecting: true })
+
+    render(<FileCard file={file('v2', 'Plan.pdf', 'application/pdf')} isSelected={false} onSelect={() => {}} locale="de" />)
+
+    await waitFor(() =>
+      expect(screen.getByTestId('document-kind-thumbnail')).toHaveAttribute('data-state', 'placeholder')
+    )
+    expect(hits).toHaveBeenCalledTimes(1)
   })
 })
 

@@ -175,3 +175,53 @@ export function isKnownDocumentStatus(status: string | null | undefined): status
 export const IN_FLIGHT_DOCUMENT_STATUSES: ReadonlySet<string> = new Set(
   KNOWN_DOCUMENT_STATUSES.filter((status) => DOCUMENT_STATUS_FACTS[status].phase === 'in-flight'),
 )
+
+/**
+ * Where a document stands with Piloti, in the five answers a reader acts on —
+ * the families of the folder brief and the status filter
+ * (`features/documents/lib/folder-knowledge.ts`, `readStateOf`).
+ *
+ * - `readable`  — indexed; Piloti can find and cite it.
+ * - `reading`   — in flight, or a status nobody declared.
+ * - `failed`    — the read went wrong; a person can retry it.
+ * - `held`      — the content screen stopped it (ADR-0086).
+ * - `unindexed` — at rest and deliberately not in the knowledge base.
+ *
+ * Declared here, beside the vocabulary, because the browser (the brief, the
+ * filter) and Postgres (the shelf summary and the level listing's status
+ * filter, `lib/documents/repository.ts`) must put a status in the same family.
+ */
+export type DocumentReadFamily = 'readable' | 'reading' | 'failed' | 'held' | 'unindexed'
+
+export const DOCUMENT_READ_FAMILIES: readonly DocumentReadFamily[] = ['readable', 'reading', 'failed', 'held', 'unindexed']
+
+/** The family is the badge colour: one decision, so the badge and the brief cannot disagree. */
+const READ_FAMILY_BY_VARIANT: Record<DocumentStatusVariant, DocumentReadFamily> = {
+  success: 'readable',
+  info: 'reading',
+  destructive: 'failed',
+  warning: 'held',
+  secondary: 'unindexed',
+}
+
+/**
+ * The family of a status. An unknown status reads as `reading`, never as
+ * `readable`: calling something citable that is not is the error that wastes an
+ * afternoon, and a new pipeline state under "being read" until somebody maps it
+ * is the harmless direction.
+ */
+export function documentReadFamily(status: string | null | undefined): DocumentReadFamily {
+  const facts = documentStatusFacts(status)
+  return facts ? READ_FAMILY_BY_VARIANT[facts.variant] : 'reading'
+}
+
+/**
+ * The declared statuses of one family, lower-case as the column holds them.
+ * `reading` is the declared in-flight set only; the SQL that asks for it also
+ * takes every status no family declares (`notInArray` over the other four).
+ */
+export function declaredStatusesIn(family: DocumentReadFamily): string[] {
+  return KNOWN_DOCUMENT_STATUSES.filter(
+    (status) => READ_FAMILY_BY_VARIANT[DOCUMENT_STATUS_FACTS[status].variant] === family,
+  )
+}
