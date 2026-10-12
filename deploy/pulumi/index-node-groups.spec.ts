@@ -4,7 +4,7 @@ import { join } from "node:path";
 import { load } from "js-yaml";
 import * as pulumi from "@pulumi/pulumi";
 import { NODE_GROUP_LABEL } from "./src/constants";
-import { baseStackConfig } from "./src/test-support/stack-config";
+import { baseStackConfig, langfuseStackConfig } from "./src/test-support/stack-config";
 
 /**
  * Worker-group placement, with the knobs prod sets (IPAX, 2026-10).
@@ -47,6 +47,7 @@ const PROD_KNOBS = [
   "ingestWorkerRequestsMemory",
   "ingestWorkerLimitsCpu",
   "ingestWorkerLimitsMemory",
+  "seaweedfsTopology",
 ];
 
 /** Every `nodeSelector` anywhere in a resource's inputs, by resource. */
@@ -64,6 +65,25 @@ function nodeSelectors(): Record<string, unknown[]> {
   return found;
 }
 
+/** Pulumi names of the workloads that belong on the data and batch groups. */
+const DATA = [
+  "grid-pg",
+  "grid-pg-pooler-rw",
+  "chroma",
+  "seaweedfs",
+  "clickhouse",
+  "dragonfly",
+  "dragonfly-ratelimit",
+  "dragonfly-langfuse",
+];
+const BATCH = ["ingest-worker", "gotenberg", "legacy-corpus-import"];
+
+/** Every resource that makes pods, as `Kind/name`: what must carry a group. */
+function workloads(): string[] {
+  const podMakers = /:(apps\/v1:(Deployment|StatefulSet)|batch\/v1:(Job|CronJob)|postgresql\.cnpg\.io\/v1:(Cluster|Pooler))$/;
+  return RESOURCES.filter((r) => podMakers.test(r.type)).map((r) => `${r.type.split(":").pop()}/${r.name}`);
+}
+
 type Pod = {
   metadata: { annotations?: Record<string, string> };
   spec: { containers: Array<{ resources: unknown }> };
@@ -73,9 +93,12 @@ const podOf = (type: string, name: string): Pod =>
 
 describe("worker-group placement with prod's knobs", () => {
   beforeAll(async () => {
+    // Prod's shape: Langfuse and its ClickHouse, queue and collector deployed,
+    // SeaweedFS as one node. Every workload prod runs is rendered and checked.
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      "grid-oib:observabilityEnabled": "false",
+      ...langfuseStackConfig(),
+      "grid-oib:observabilityEnabled": "true",
       ...Object.fromEntries(PROD_KNOBS.map((key) => [`grid-oib:${key}`, String(PROD[`grid-oib:${key}`])])),
     });
     const stack = (await import("./index")) as Record<string, unknown>;
@@ -92,14 +115,57 @@ describe("worker-group placement with prod's knobs", () => {
     expect(PROD["grid-oib:nodeGroupBatch"]).toBe("batch");
   });
 
-  it("places the chat tier, Chroma and the ingest workers, and nothing else", () => {
-    // Postgres, SeaweedFS, ClickHouse, Dragonfly, aiq-api and the frontend are
-    // a later migration. A selector on any of them here moves a tier unplanned.
-    expect(nodeSelectors()).toEqual({
-      "StatefulSet/aiq-agent": [{ [NODE_GROUP_LABEL]: "Node" }],
-      "StatefulSet/chroma": [{ [NODE_GROUP_LABEL]: "data" }],
-      "Deployment/ingest-worker": [{ [NODE_GROUP_LABEL]: "batch" }],
-    });
+  it("places every workload, the stores on data and ingestion on batch", () => {
+    // A group cannot be tainted, so the data nodes stay the stores' only while
+    // nothing else selects them: an unplaced pod lands wherever there is room,
+    // which on 2026-10-12 was the 32 GB data nodes for the frontend tier, and
+    // the Postgres primary, both PgBouncers and every Dragonfly on one app node.
+    const selectors = nodeSelectors();
+    const unplaced = workloads().filter((w) => !(w in selectors));
+    const groupOf = (w: string): string => {
+      const found = selectors[w] ?? [];
+      expect(found, w).toHaveLength(1);
+      return (found[0] as Record<string, string>)[NODE_GROUP_LABEL];
+    };
+
+    expect(unplaced).toEqual([]);
+    for (const w of workloads()) {
+      const name = w.split("/")[1];
+      const want = DATA.includes(name) ? "data" : BATCH.includes(name) ? "batch" : "Node";
+      expect(groupOf(w), w).toBe(want);
+    }
+    expect(workloads()).toEqual(expect.arrayContaining(DATA.map((n) => expect.stringContaining(`/${n}`))));
+  });
+
+  it("keeps the Postgres instances on different nodes, required", () => {
+    const cluster = RESOURCES.find((r) => r.name === "grid-pg")!.inputs as {
+      spec: { affinity: { podAntiAffinityType: string; topologyKey: string } };
+    };
+
+    expect(cluster.spec.affinity.podAntiAffinityType).toBe("required");
+    expect(cluster.spec.affinity.topologyKey).toBe("kubernetes.io/hostname");
+  });
+
+  it("spreads the PgBouncers by a label their pods carry, and budgets them by it", () => {
+    // CloudNativePG overwrites `app.kubernetes.io/name` and `managed-by` on the
+    // pods it builds from the template. Selecting on those matched no pod: the
+    // spread did nothing and the PDB guarded nothing (2026-10-12).
+    const pooler = RESOURCES.find((r) => r.type.endsWith(":Pooler"))!.inputs as {
+      spec: { template: { spec: { topologySpreadConstraints: unknown[] } } };
+    };
+    const pdb = RESOURCES.find((r) => r.name === "grid-pg-pooler-rw" && r.type.endsWith(":PodDisruptionBudget"))!
+      .inputs as { spec: { selector: unknown } };
+    const operatorSet = { matchLabels: { "cnpg.io/poolerName": "grid-pg-pooler-rw" } };
+
+    expect(pooler.spec.template.spec.topologySpreadConstraints).toEqual([
+      {
+        maxSkew: 1,
+        topologyKey: "kubernetes.io/hostname",
+        whenUnsatisfiable: "DoNotSchedule",
+        labelSelector: operatorSet,
+      },
+    ]);
+    expect(pdb.spec.selector).toEqual(operatorSet);
   });
 
   it("selects on the label IPAX sets", () => {

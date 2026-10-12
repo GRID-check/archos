@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, appPullPolicy, backendImage } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -48,6 +49,7 @@ export function importLegacyCorpus(
             restartPolicy: "OnFailure",
             securityContext: { runAsNonRoot: true, runAsUser: UID.backend, runAsGroup: UID.backend },
             volumes: [{ name: "legacy", persistentVolumeClaim: { claimName, readOnly: true } }],
+            ...onNodeGroup(cfg.nodeGroups.batch),
             containers: [
               {
                 name: "legacy-corpus-import",

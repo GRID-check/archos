@@ -1,4 +1,5 @@
 import * as k8s from "@pulumi/kubernetes";
+import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
@@ -139,6 +140,7 @@ export function installSeaweedFSBackup(
           metadata: { labels },
           spec: {
             enableServiceLinks: false,
+            ...onNodeGroup(cfg.nodeGroups.data),
             containers: [
               {
                 name: "filer-backup",
@@ -204,6 +206,7 @@ echo "metadata snapshot stored"
               spec: {
                 enableServiceLinks: false,
                 restartPolicy: "OnFailure",
+                ...onNodeGroup(cfg.nodeGroups.data),
                 containers: [
                   {
                     name: "meta-snapshot",

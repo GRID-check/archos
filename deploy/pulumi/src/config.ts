@@ -501,11 +501,17 @@ export interface GridConfig {
    * which is every stack without worker groups. The groups themselves are made
    * in the IPAX Control Center, not here.
    *
-   * Only three tiers are placed: `aiq-agent` on app, Chroma on data,
-   * `ingest-worker` on batch. Postgres, SeaweedFS, ClickHouse, Dragonfly, the
-   * api tier, the frontend and the rest are NOT placed yet. Moving a store with
-   * a PVC to another group is its own migration (the volume has to be able to
-   * follow it, and the store is down while it moves), done one tier at a time.
+   * Every pod template is placed: the stores (Postgres and its PgBouncers,
+   * Chroma, SeaweedFS, ClickHouse, Dragonfly) on data, ingestion (the ingest
+   * workers, Gotenberg, the corpus import) on batch, everything else, Jobs
+   * included, on app. The provider's volumes carry no node affinity, so a store
+   * follows its PVC to the new group; a single-replica store is down while it
+   * restarts there.
+   *
+   * With a data group set, the Postgres instances and the PgBouncers must sit on
+   * different nodes (required anti-affinity, `DoNotSchedule` spread) rather than
+   * prefer to: the group is fixed in size, so the rule cannot strand a replica
+   * the way it could on a small, unplaced cluster.
    */
   nodeGroups: {
     app?: string;
