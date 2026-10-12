@@ -327,8 +327,8 @@ export interface GridConfig {
        * primary's 200 connections, against a direct reserve of up to 122 (62
        * fixed or sized by the ingest tier at 5 x 3, 20 for Langfuse, 40 for a
        * filer that keeps its namespace in Postgres) = 196. Prod, on the single
-       * SeaweedFS topology, holds 74 + 82 = 156. It is not a demand number: a
-       * transaction holds a server connection for milliseconds, and 24 per pair
+       * SeaweedFS topology and an ingest tier of 3 x 3, holds 74 + 76 = 150.
+       * It is not a demand number: a transaction holds a server connection for milliseconds, and 24 per pair
        * across the two poolers serves hundreds of statements a second. Clients
        * past the pool queue in PgBouncer, which shows as `cl_waiting` rather than
        * as an error. Raise it only together with `max_connections`.
@@ -493,6 +493,25 @@ export interface GridConfig {
    * (a scratch dev cluster) set this false — see Pulumi.dev.yaml.
    */
   protectDataResources: boolean;
+
+  /**
+   * The worker group each placed tier runs on, as the value of the node label
+   * `NODE_GROUP_LABEL` (`nodeGroupApp`, `nodeGroupData`, `nodeGroupBatch`).
+   * Unset means no nodeSelector: the tier goes wherever the scheduler puts it,
+   * which is every stack without worker groups. The groups themselves are made
+   * in the IPAX Control Center, not here.
+   *
+   * Only three tiers are placed: `aiq-agent` on app, Chroma on data,
+   * `ingest-worker` on batch. Postgres, SeaweedFS, ClickHouse, Dragonfly, the
+   * api tier, the frontend and the rest are NOT placed yet. Moving a store with
+   * a PVC to another group is its own migration (the volume has to be able to
+   * follow it, and the store is down while it moves), done one tier at a time.
+   */
+  nodeGroups: {
+    app?: string;
+    data?: string;
+    batch?: string;
+  };
 
   gotenberg: {
     /**
@@ -1314,6 +1333,21 @@ function refuseLangfuseV4WriteMode(value: string | undefined): void {
   throw new Error(
     `langfuseV4WriteMode was removed: Langfuse writes v4 events only. Drop "${value}" with \`pulumi config rm grid-oib:langfuseV4WriteMode\`.`,
   );
+}
+
+/**
+ * A `nodeGroup*` knob: the worker group's name, or undefined when unset or
+ * blank (no placement). Refused at load time when it cannot be a label value,
+ * because a nodeSelector no node matches plans clean and leaves the tier
+ * Pending forever.
+ */
+function nodeGroup(cfg: pulumi.Config, key: string): string | undefined {
+  const value = cfg.get(key)?.trim();
+  if (!value) return undefined;
+  if (value.length > 63 || !/^[A-Za-z0-9]([-A-Za-z0-9_.]*[A-Za-z0-9])?$/.test(value)) {
+    throw new Error(`grid-oib:${key} must be a Kubernetes label value, the worker group's name (got "${value}").`);
+  }
+  return value;
 }
 
 function bool(cfg: pulumi.Config, key: string, fallback: boolean): boolean {
@@ -2345,6 +2379,12 @@ export function loadConfig(): GridConfig {
 
     protectDataResources: bool(cfg, "protectDataResources", true),
 
+    nodeGroups: {
+      app: nodeGroup(cfg, "nodeGroupApp"),
+      data: nodeGroup(cfg, "nodeGroupData"),
+      batch: nodeGroup(cfg, "nodeGroupBatch"),
+    },
+
     gotenberg: {
       enabled: bool(cfg, "gotenbergEnabled", true),
       // Pinned, LibreOffice-only variant (no Chromium, so no HTML/URL routes).
@@ -2540,9 +2580,15 @@ export function loadConfig(): GridConfig {
     },
 
     ingestWorker: {
+      // The memory request is what a worker measurably holds while it parses
+      // (4 to 6 GB on prod, 2026-10), not its idle floor. At the old 1536Mi the
+      // scheduler packed three workers onto one 16 GB node against limits of
+      // 6Gi each; they grew past the node's RAM, workers were OOMKilled and the
+      // node went NotReady. A default rather than a prod override, because the
+      // number is the workload's, whichever stack runs it.
       resources: {
         requestsCpu: cfg.get("ingestWorkerRequestsCpu") ?? "500m",
-        requestsMemory: cfg.get("ingestWorkerRequestsMemory") ?? "1536Mi",
+        requestsMemory: cfg.get("ingestWorkerRequestsMemory") ?? "4Gi",
         limitsCpu: cfg.get("ingestWorkerLimitsCpu") ?? "2",
         limitsMemory: cfg.get("ingestWorkerLimitsMemory") ?? "6Gi",
       },

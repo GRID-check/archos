@@ -3,7 +3,8 @@ import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, pullPolicyFor } from "../config";
 import { commonLabels } from "../platform/namespaces";
 import { ROLLOUT, gracefulShutdown, orderedRollout } from "../platform/rollout";
-import { DATA_RESOURCES, PORT } from "../constants";
+import { onNodeGroup } from "../platform/scheduling";
+import { AUTOSCALER_SAFE_TO_EVICT, DATA_RESOURCES, PORT } from "../constants";
 
 export interface Chroma {
   statefulSet: k8s.apps.v1.StatefulSet;
@@ -45,8 +46,17 @@ export function installChroma(
         ...orderedRollout(ROLLOUT.dataPlane),
         selector: { matchLabels: labels },
         template: {
-          metadata: { labels },
+          metadata: {
+            labels,
+            // One replica: an autoscaler scale-down that evicts it is a retrieval
+            // and ingest outage to save a node, and the PVC has to follow it.
+            // Always set, whatever group it runs on; a drain for an upgrade
+            // still moves it.
+            annotations: { [AUTOSCALER_SAFE_TO_EVICT]: "false" },
+          },
           spec: {
+            // The data group (`nodeGroupData`), when the stack has worker groups.
+            ...onNodeGroup(cfg.nodeGroups.data),
             terminationGracePeriodSeconds:
               gracefulShutdown(ROLLOUT.dataPlane).terminationGracePeriodSeconds,
             // Legacy Docker-link env injection (CHROMA_PORT=tcp://…) collides

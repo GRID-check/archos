@@ -166,6 +166,20 @@ export const PLATFORM_RESOURCES = {
   },
 } as const;
 
+/**
+ * The node label IPAX puts on every node of a worker group, valued with the
+ * group's name as the Control Center shows it (case-sensitive: prod's general
+ * group is `Node`). The `nodeGroup*` knobs select on it (`onNodeGroup`).
+ */
+export const NODE_GROUP_LABEL = "k8s.at/node-group";
+
+/**
+ * Tells the cluster-autoscaler not to evict a pod when it scales a node group
+ * down. Set on single-replica stores, where an eviction is an outage and buys
+ * nothing but a cheaper node.
+ */
+export const AUTOSCALER_SAFE_TO_EVICT = "cluster-autoscaler.kubernetes.io/safe-to-evict";
+
 /** Data-tier fixed resource envelopes (storage sizes are knobs; CPU/memory of
  *  the single-replica data services are platform decisions). */
 export const DATA_RESOURCES = {
@@ -175,9 +189,19 @@ export const DATA_RESOURCES = {
   },
   dragonflyRequests: { cpu: "50m", memory: "128Mi" },
   dragonflyCpuLimit: "500m", // memory limit is the `dragonflyMemoryLimit` knob
+  /**
+   * One Chroma serves every tier's reads and the whole ingest tier's writes. In
+   * the 2026-10 incident its 512Mi request reserved almost nothing on a node it
+   * shared with three ingest workers, and that node went NotReady with Chroma
+   * on it. The request now reserves half the limit, so the
+   * scheduler keeps real room for it; the limit is the headroom a reindex burst
+   * gets (the limits were live-patched on prod that night and are codified
+   * here; the request was raised with them).
+   * A change here rolls the single replica: a short outage of retrieval.
+   */
   chroma: {
-    requests: { cpu: "250m", memory: "512Mi" },
-    limits: { cpu: "2", memory: "4Gi" },
+    requests: { cpu: "1", memory: "3Gi" },
+    limits: { cpu: "4", memory: "6Gi" },
   },
   /**
    * The single-node topology: one process doing all three jobs. Left exactly as
@@ -462,6 +486,31 @@ export const APP_DEFAULTS = {
 export const POSTGRES_TUNING = {
   maxConnections: "200",
   sharedBuffers: "256MB",
+  /**
+   * TCP keepalive on every client socket the server holds: first probe after
+   * 60 s of silence, then every 10 s, and the session is closed after 6
+   * unanswered, so a dead client is found in about two minutes. Without these
+   * the server inherits the OS default of 7200 s. When a node dies it closes no
+   * TCP connection, and the server kept its clients' sessions (with their
+   * session advisory locks and open transactions) for 16 to 55 minutes in the
+   * 2026-10 incident, stalling ingestion and the api's start-up behind locks
+   * nobody would release. A live client that sits idle on purpose, such as a
+   * session-lock holder on `AIQ_LOCK_DB_URL`, answers the probes at the kernel
+   * level and is not affected. All three are user-level settings, so a change
+   * is a reload, not a restart.
+   */
+  tcpKeepalivesIdle: "60",
+  tcpKeepalivesInterval: "10",
+  tcpKeepalivesCount: "6",
+  /**
+   * Ends a session that has sat inside an open transaction, sending nothing,
+   * for this long. A live client never does that for minutes; a half-open one
+   * the keepalives have not yet caught, or a client stuck between statements,
+   * otherwise holds its row and transaction locks indefinitely. No
+   * `statement_timeout` and no `idle_session_timeout`: a session advisory lock
+   * holder is idle outside a transaction on purpose, for minutes. Reload-level.
+   */
+  idleInTransactionSessionTimeout: "10min",
 } as const;
 
 /**
@@ -482,6 +531,17 @@ export const POSTGRES_POOLER = {
    * driver needs a `prepare_threshold=None` style workaround here.
    */
   maxPreparedStatements: "200",
+  /**
+   * Seconds a client may sit idle inside an open transaction before PgBouncer
+   * disconnects it. In transaction mode that client pins a server connection
+   * for the whole time, so one dead or stuck client takes a slot of its pool
+   * and keeps its locks on the primary. PgBouncer's default is 0 (never). It
+   * is the pooler's side of `POSTGRES_TUNING.idleInTransactionSessionTimeout`,
+   * at the same ten minutes: the server's ends PgBouncer's server connection,
+   * this one ends the client that held it. CloudNativePG lists it among the
+   * parameters a Pooler may set, and applies a change by reloading PgBouncer.
+   */
+  idleTransactionTimeout: "600",
   /**
    * Server sessions each PgBouncer holds for its own `auth_query`
    * (`cnpg_pooler_pgbouncer` on `postgres`). One in the steady state; a second

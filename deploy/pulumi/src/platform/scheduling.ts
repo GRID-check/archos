@@ -1,5 +1,6 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
+import { NODE_GROUP_LABEL } from "../constants";
 
 /**
  * Scheduling helpers for the provider's managed-k0s behaviour.
@@ -41,6 +42,20 @@ export function spreadAcrossNodes(
       labelSelector: { matchLabels },
     },
   ];
+}
+
+/**
+ * Pin a pod to one worker group, by the label IPAX puts on the group's nodes
+ * (`NODE_GROUP_LABEL`). A nodeSelector, not a taint and toleration, because an
+ * IPAX worker group cannot be tainted from the Control Center: this keeps the
+ * placed tier ON its group but does not keep other pods OFF it. Spread onto a
+ * pod `spec`; with no group (the knob unset) it adds nothing.
+ *
+ * Only `aiq-agent`, Chroma and `ingest-worker` call this (`GridConfig.nodeGroups`
+ * says why the rest wait for their own migration).
+ */
+export function onNodeGroup(group: string | undefined): { nodeSelector?: { [k: string]: string } } {
+  return group ? { nodeSelector: { [NODE_GROUP_LABEL]: group } } : {};
 }
 
 /**

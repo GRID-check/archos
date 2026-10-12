@@ -153,11 +153,12 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `rateLimitStoreMaxmemory` | `256mb` | Counter-store dataset cap (floor 256mb — Dragonfly's per-thread boot minimum) |
 | `rateLimitStoreMemoryLimit` | `384Mi` | Counter-store pod memory limit; must exceed maxmemory |
 | `protectDataResources` | `true` | Pulumi `protect` on the CNPG Cluster + SeaweedFS/Chroma StatefulSets: refuses any delete/replace, so a stray rename or `pulumi destroy` fails loudly instead of destroying data. `false` on scratch stacks; lift one resource with `pulumi state unprotect <urn>` |
+| `nodeGroupApp` / `nodeGroupData` / `nodeGroupBatch` | unset (prod: `Node` / `data` / `batch`) | IPAX worker group, as the value of the node label `k8s.at/node-group` (case-sensitive), that `aiq-agent` / Chroma / `ingest-worker` are pinned to by nodeSelector. Unset renders no nodeSelector. No other tier is placed yet. The groups themselves are managed in the IPAX Control Center ([kubernetes.md §2b](../../docs/deployment/kubernetes.md#worker-groups-ipax)) |
 | **Postgres (CNPG)** | | |
 | `pgInstances` | `1` (prod template: 3) | 1 = single primary; 3 = HA with auto-failover |
 | `pgStorageSize` | `20Gi` | Per-instance volume (expandable via config — CNPG manages PVCs) |
 | `pgPoolerInstances` | `2` (dev: 1) | PgBouncers in the transaction pooler (`grid-pg-pooler-rw`, ADR-0083), spread across nodes with a PDB when more than 1 |
-| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 82 = 156, a fresh stack with everything on 196 (`assertPgConnectionBudget`) |
+| `pgPoolerPoolSize` | `12` | Server connections each PgBouncer opens per (database, role) pair. The plan fails when `pgPoolerInstances x (3 pooled pairs x this + 1)` plus the direct reserve passes `max_connections` (200): prod 74 + 76 = 150, a fresh stack with everything on 196 (`assertPgConnectionBudget`) |
 | `pgPoolerImage` | digest-pinned `ghcr.io/cloudnative-pg/pgbouncer:1.26.0@sha256:…` | PgBouncer image, must be 1.21 or newer (prepared statements in transaction mode). Scanned by the trivy `image-scan` job; override only for a deliberate upgrade |
 | `legacyCorpusClaim` | unset (prod, dev: `data-aiq-agent-0`) | The pre-A2 backend data volume the one-shot `legacy-corpus-import` Job reads the base corpus from (ADR-0082 A2). Set only where that claim exists: a Job mounting a missing claim never schedules. Remove with the importer once it has run |
 | `pgAppUser` | `aiq` | Role owning all three databases |
@@ -232,8 +233,8 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `apiHpaCpuTargetPercent` | `70` | HPA target average CPU, as a percentage of requests (`apiRequestsCpu`) |
 | `apiRequestsCpu/Memory`, `apiLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
 | **Ingestion tier, BFF pool and KEDA** (ADR-0076, ADR-0079) | | |
-| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency` |
-| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 1536Mi / 2 / 6Gi | Sizing |
+| `ingestWorkerMinReplicas` / `ingestWorkerMaxReplicas` | 1 / 5 (prod 1 / 3) | KEDA bounds for the ingest tier, which scales on `ingest_job_queue` depth. The ceiling is held to the provider budget below: the deploy fails when it is more than 2x `vlmFleetConcurrency`. Prod is held lower by node memory: a worker holds 4-6 GB while it parses |
+| `ingestWorkerRequestsCpu/Memory`, `ingestWorkerLimitsCpu/Memory` | 500m / 4Gi / 2 / 6Gi (prod: 500m / 8Gi / 4 / 12Gi, on the batch group) | Sizing. The memory request is what a worker holds while it parses, so the scheduler cannot pack several onto one node |
 | `ingestWorkerConcurrency` / `ingestWorkerDrainSeconds` | 3 / 600 | Jobs per worker (also KEDA's jobs-per-replica target) / SIGTERM budget; the grace period is the drain plus 30 s |
 | `ingestMaxPerOrg` | `0` | Most ingest jobs one organisation may run fleet-wide at once; 0 = no cap (the claim is fair regardless) |
 | `bffJobsEnabled` | `true` | Run the `bff-jobs` pool. It runs project reindex, failed-ingestion rescan, IFC extraction, Office → PDF rendition and research-report filing, so with it off none of those runs |

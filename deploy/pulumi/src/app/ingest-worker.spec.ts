@@ -48,6 +48,21 @@ describe("the ingest-worker tier", () => {
     expect(read("deploy", "pulumi", "src", "app", "ingest-worker.ts")).toContain("JOBS_QUEUE_AUTH");
   });
 
+  it("caps prod at three workers on the batch group, sized for big PDFs", () => {
+    // Five took the app nodes down one after another, and big PDFs were
+    // OOMKilled at 6Gi (2026-10). The provider budget would allow five; node
+    // memory is the bound here. Three at their 12Gi limit fit one 64 GB node.
+    const prod = read("deploy", "pulumi", "Pulumi.prod.yaml");
+    const knob = (key: string) => prod.match(new RegExp(`^\\s*grid-oib:${key}: "?([^"\\s]+)"?\\s*$`, "m"))?.[1];
+
+    expect(knob("ingestWorkerMaxReplicas")).toBe("3");
+    expect(knob("nodeGroupBatch")).toBe("batch");
+    expect(knob("ingestWorkerRequestsCpu")).toBe("500m");
+    expect(knob("ingestWorkerRequestsMemory")).toBe("8Gi");
+    expect(knob("ingestWorkerLimitsCpu")).toBe("4");
+    expect(knob("ingestWorkerLimitsMemory")).toBe("12Gi");
+  });
+
   it("runs the role the entrypoint knows", () => {
     expect(read("deploy", "entrypoint.py")).toContain('role == "ingest-worker"');
     expect(configSource).toContain('{ name: "GRID_ROLE", value: "ingest-worker" }');
