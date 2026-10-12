@@ -1,7 +1,7 @@
 'use client'
 
 import type { JSX } from 'react'
-import { Fragment, useCallback, useMemo, useState, type ReactNode } from 'react'
+import { Fragment, memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import type { FileItem, FolderItem } from '../file-types'
 import type { CardExtras } from '../lib/file-shelf'
 import { Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
@@ -17,7 +17,7 @@ import type { FileSearch } from '../hooks/use-file-search'
 import { useLevelDirection } from '../hooks/use-level-direction'
 import { motion, motionEntrance } from '@/components/motion'
 import { ActionMenu } from '@/components/ui/action-menu'
-import { FileCard } from './file-card'
+import { FileCard, type FileCardProps } from './file-card'
 import { FileGrid, FileCardSkeleton } from './file-grid'
 import { FileListSkeleton, FileListView } from './file-list-view'
 import { FolderActionsTrigger, FolderObjectMenu } from './folder-object-menu'
@@ -174,6 +174,56 @@ interface FileBrowserPaneProps {
   slice?: { files: readonly FileItem[]; label: string; onClear: () => void }
 }
 
+interface FileTileProps {
+  file: FileItem
+  isSelected: boolean
+  onSelectFile: (id: string | null) => void
+  locale: string
+  match?: FileCardProps['match']
+  showAssignment: boolean
+  cardExtras?: (file: FileItem) => CardExtras
+  renderActions?: (file: FileItem) => ReactNode
+  wrapFile?: (file: FileItem, node: ReactNode) => ReactNode
+  draggable: boolean
+}
+
+/**
+ * One cell of the grid: the card and its menu.
+ *
+ * Memoised, and handed only stable functions by the workspace, so a pane that
+ * re-renders (a poll patched one row, the reader typed, the preview opened
+ * another file) re-renders the cells whose document or selection changed and
+ * leaves the other few thousand alone.
+ */
+const FileTile = memo(function FileTile({
+  file,
+  isSelected,
+  onSelectFile,
+  locale,
+  match,
+  showAssignment,
+  cardExtras,
+  renderActions,
+  wrapFile,
+  draggable,
+}: FileTileProps): ReactNode {
+  const onSelect = useCallback(() => onSelectFile(file.id), [onSelectFile, file.id])
+  const card = (
+    <FileCard
+      file={file}
+      isSelected={isSelected}
+      onSelect={onSelect}
+      locale={locale}
+      match={match}
+      footerLead={showAssignment ? <AssignmentFaces assignees={file.assignees} /> : undefined}
+      {...cardExtras?.(file)}
+      actions={renderActions?.(file)}
+      draggable={draggable}
+    />
+  )
+  return wrapFile ? wrapFile(file, card) : card
+})
+
 /** The names a document's older Fassungen are stored under: what a search for them should find the document by. */
 function olderFassungNames(file: FileItem): string[] {
   const facts = file.fassung
@@ -211,7 +261,11 @@ export function FileBrowserPane({
 }: FileBrowserPaneProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
-  const { query, semantic } = search
+  const { semantic } = search
+  // The field answers every keystroke; the filter over the whole corpus, and
+  // everything drawn from it, follows a beat behind and is dropped for a newer
+  // keystroke. Typing stays immediate at five thousand documents.
+  const query = useDeferredValue(search.query)
 
   // The level, ordered. The list view re-applies the identical sort to the rows
   // it is handed — a no-op, and cheaper than teaching every branch below which
@@ -289,24 +343,20 @@ export function FileBrowserPane({
     ],
   )
 
-  const fileCard = (file: FileItem, extra: { match?: Parameters<typeof FileCard>[0]['match'] } = {}) => {
-    const card = (
-      <FileCard
-        file={file}
-        isSelected={selectedFileId === file.id}
-        onSelect={() => onSelectFile(file.id)}
-        locale={locale}
-        match={extra.match}
-        footerLead={
-          showAssignment ? <AssignmentFaces assignees={file.assignees} /> : undefined
-        }
-        {...cardExtras?.(file)}
-        actions={renderActions?.(file)}
-        draggable={Boolean(onDropDocumentInFolder)}
-      />
-    )
-    return wrapFile ? wrapFile(file, card) : card
-  }
+  const fileCard = (file: FileItem, extra: { match?: FileCardProps['match'] } = {}) => (
+    <FileTile
+      file={file}
+      isSelected={selectedFileId === file.id}
+      onSelectFile={onSelectFile}
+      locale={locale}
+      match={extra.match}
+      showAssignment={showAssignment}
+      cardExtras={cardExtras}
+      renderActions={renderActions}
+      wrapFile={wrapFile}
+      draggable={Boolean(onDropDocumentInFolder)}
+    />
+  )
 
   const folderTile = (folder: FolderItem, asRow: boolean) => {
     const props = {

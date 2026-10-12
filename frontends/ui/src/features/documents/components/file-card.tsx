@@ -1,7 +1,8 @@
 'use client'
 
-import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
+import { memo, useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import Image from 'next/image'
+import { useSeenOnce } from '@/hooks/use-seen-once'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { isOfficeRenditionSource } from '@/lib/documents/preview-types'
 import type { FileItem } from './project-file-workspace'
@@ -119,8 +120,13 @@ function loadThumbnail(fileId: string, provisional = false): Promise<string | nu
  * GENUINE failure (5xx / network / broken image url) shows a distinct
  * "couldn't load" treatment. The route is scope-aware, so this serves both
  * project uploads and Büroablage documents by id.
+ *
+ * `visible` false holds the request (and the skeleton) until the card has been
+ * on screen: a folder of two thousand documents asked for two thousand
+ * thumbnails on open, nearly all for cards nobody had scrolled to. Absent
+ * means asked at once, for a surface that only ever shows a handful.
  */
-export function ThumbnailWithFallback({ file }: { file: FileItem }) {
+export function ThumbnailWithFallback({ file, visible = true }: { file: FileItem; visible?: boolean }) {
   const t = useTranslations('files')
   const kind = inferDocumentKind(file)
   // Office files too: ingest renders their `_thumb.jpg` from the PDF rendition
@@ -138,6 +144,8 @@ export function ThumbnailWithFallback({ file }: { file: FileItem }) {
       setState('none')
       return
     }
+    // Off screen so far: stay the skeleton, ask once the card is seen.
+    if (!visible) return
     let cancelled = false
     setState('loading')
     loadThumbnail(file.id, isSettlingStatus(file.status))
@@ -159,7 +167,7 @@ export function ThumbnailWithFallback({ file }: { file: FileItem }) {
     // `file.status` is a dependency, not noise: it is the signal that a document
     // which had no preview when the page loaded has finished being read, and so
     // the moment to ask the route again.
-  }, [file.id, canHaveThumbnail, file.status])
+  }, [file.id, canHaveThumbnail, file.status, visible])
 
   if (state === 'ready' && imgUrl) {
     return (
@@ -250,8 +258,12 @@ export interface FileCardProps {
  * size · time, and a spring hover-lift. Shared by the Files browser and the chat
  * `document_grid` surfacing card. Chat passes {@link FileCardProps.hideFooter}
  * and no {@link FileCardProps.match} — ranking chrome stays in Files search.
+ *
+ * Memoised: the Files grid holds thousands of these and re-renders on every
+ * poll and selection. The thumbnail is asked for once the card has been on
+ * screen (`useSeenOnce`), not on mount.
  */
-export function FileCard({
+export const FileCard = memo(function FileCard({
   file,
   isSelected,
   onSelect,
@@ -285,6 +297,7 @@ export function FileCard({
   // card that failed to render; skeleton lines say the sentence is on its way —
   // the same promise the thumbnail well makes while its request is in flight.
   const isAwaitingSummary = !match && !isFailed && !file.summary && isSettlingStatus(file.status)
+  const [mediaRef, seen] = useSeenOnce<HTMLDivElement>()
 
   return (
     <GridTileShell
@@ -334,8 +347,8 @@ export function FileCard({
             the white block instead puts every footer on the bottom edge, so the
             row reads as one strip whatever each card carries above it. */}
         <GridTileBody className={cn('flex-1 p-0', hideFooter && 'rounded-none')}>
-          <GridTileMedia className="h-[124px]">
-            <ThumbnailWithFallback file={file} />
+          <GridTileMedia ref={mediaRef} className="h-[124px]">
+            <ThumbnailWithFallback file={file} visible={seen} />
             {showStatus && (
               <DocumentStatusBadge
                 status={file.status}
@@ -455,4 +468,4 @@ export function FileCard({
       </button>
     </GridTileShell>
   )
-}
+})

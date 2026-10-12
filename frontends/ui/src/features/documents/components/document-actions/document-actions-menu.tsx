@@ -17,7 +17,7 @@
 import { useState, type ReactNode } from 'react'
 import { MoreHorizontal } from 'lucide-react'
 import { toast } from 'sonner'
-import { ActionMenu } from '@/components/ui/action-menu'
+import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
@@ -28,9 +28,11 @@ import {
   type DocumentActionKind,
 } from './action-entries'
 import { useDocumentActions, type ActionableDocument, type DocumentScope } from './use-document-actions'
-import type { PathFolder } from '../../lib/folder-path-label'
+import type { FolderDestination, PathFolder } from '../../lib/folder-path-label'
 
 export type { DocumentActionKind }
+
+const NO_ENTRIES: readonly ActionMenuEntry[] = []
 
 /** Overflow-only default: Open / Ask / Copy path belong on the tile, not here. */
 const DEFAULT_ACTIONS: readonly DocumentActionKind[] = [
@@ -52,6 +54,8 @@ export interface DocumentActionsMenuProps {
   onDeleted?: (documentId: string) => void
   onReingested?: (documentId: string, status: string) => void
   folders?: readonly MoveTargetFolder[]
+  /** The move targets, sorted once by a listing — see `documentActionEntries`. Wins over `folders`. */
+  destinations?: readonly FolderDestination[]
   onMoved?: (documentId: string, folderId: string | null) => void
   onOpen?: () => void
   onAsk?: () => void
@@ -69,10 +73,20 @@ export function useDocumentActionMenu({
   onDeleted,
   onReingested,
   folders,
+  destinations,
   onMoved,
   onOpen,
   onAsk,
-}: Omit<DocumentActionsMenuProps, 'trigger' | 'align' | 'side'>) {
+  live = true,
+}: Omit<DocumentActionsMenuProps, 'trigger' | 'align' | 'side'> & {
+  /**
+   * Whether the menu is wanted yet. A listing mounts one of these per row and
+   * passes false until the reader first opens that row's menu: the state is
+   * kept, but no entries are built and no dialogs are mounted for a row
+   * nobody has asked about.
+   */
+  live?: boolean
+}) {
   const t = useTranslations(scope)
   const filesT = useTranslations('files')
   const [renameOpen, setRenameOpen] = useState(false)
@@ -86,6 +100,8 @@ export function useDocumentActionMenu({
     onReingested,
     onMoved,
   })
+
+  if (!live) return { entries: NO_ENTRIES, dialogs: null, name: documentActions.name }
 
   const copyOriginPath = (): void => {
     const path = document.originPath
@@ -113,6 +129,7 @@ export function useDocumentActionMenu({
     actions,
     canManage,
     folders,
+    destinations,
     isDownloading: documentActions.isDownloading,
     isReingesting: documentActions.isReingesting,
     isMoving: documentActions.isMoving,

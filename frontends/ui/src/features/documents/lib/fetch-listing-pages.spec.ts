@@ -50,6 +50,36 @@ describe('fetchListingPages', () => {
     expect(result.documents).toHaveLength(MAX_LISTING_PAGES)
   })
 
+  it('resumes after a page already read, and counts that page toward the ceiling', async () => {
+    const { fetcher, urls } = pages({ documents: ['b'], nextCursor: 'c3' }, { documents: ['c'], nextCursor: null })
+    const result = await fetchListingPages<string>('/api/documents?projectId=p', {
+      fetcher,
+      from: { cursor: 'c2', pagesRead: 1 },
+    })
+    // Page one is never asked for again: the first request already carries the cursor.
+    expect(urls).toEqual(['/api/documents?projectId=p&cursor=c2', '/api/documents?projectId=p&cursor=c3'])
+    expect(result).toMatchObject({ documents: ['b', 'c'], truncated: false })
+
+    const endless = Array.from({ length: MAX_LISTING_PAGES }, (_, i) => ({ documents: [String(i)], nextCursor: `c${i}` }))
+    const ceiling = pages(...endless)
+    const capped = await fetchListingPages<string>('/x', { fetcher: ceiling.fetcher, from: { cursor: 'c', pagesRead: 1 } })
+    expect(capped.truncated).toBe(true)
+    expect(ceiling.urls).toHaveLength(MAX_LISTING_PAGES - 1)
+  })
+
+  it('hands each page over as it arrives, before asking for the next', async () => {
+    const { fetcher, urls } = pages({ documents: ['a'], nextCursor: 'c' }, { documents: ['b'], nextCursor: null })
+    const seen: Array<{ rows: string[]; index: number; requested: number }> = []
+    await fetchListingPages<string>('/x', {
+      fetcher,
+      onPage: ({ rows, index }) => seen.push({ rows, index, requested: urls.length }),
+    })
+    expect(seen).toEqual([
+      { rows: ['a'], index: 0, requested: 1 },
+      { rows: ['b'], index: 1, requested: 2 },
+    ])
+  })
+
   it('throws with the status of a failed page, so a caller can read 403 as absent', async () => {
     const { fetcher } = pages({ documents: ['a'], nextCursor: 'c' }, 403)
     await expect(fetchListingPages<string>('/x', { fetcher })).rejects.toMatchObject({

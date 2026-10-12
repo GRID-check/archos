@@ -54,6 +54,7 @@ import { FileFilterMenu } from './file-filter-menu'
 import { FilePreviewDialog } from './file-preview-dialog'
 import { FolderBrief } from './folder-brief'
 import { withoutOlderFassungen } from '../lib/fassung-chain'
+import { sortedFolderDestinations } from '../lib/folder-path-label'
 import { FileSearchField } from './file-search-bar'
 import { FolderAccessDialog } from './folder-access-dialog'
 import { FolderUploadDialog } from './folder-upload-dialog'
@@ -79,19 +80,23 @@ export interface FileWorkspaceProps {
   /**
    * Where the shelf's controls (view, filter, search, upload) go, and what
    * frames them: a project's section header, the Archiv's identity row.
-   * `count` is null until the listing is in.
+   * `count` is null until the whole listing is in.
    */
   renderHeader: (controls: ReactNode, state: { count: number | null }) => ReactNode
   /**
    * The folder tree and the corpus as the SERVER already read them, for the
    * first paint. They seed state; everything after the first frame goes through
-   * the same loaders it always did. `initialFilesComplete` false means the seed
-   * is only the first page and the rest is read quietly right after.
+   * the same loaders it always did. `initialNextCursor` is the server's
+   * `nextCursor` for the page it read: when there is one, the seed is only the
+   * first page and the rest is read quietly from there, page by page.
    */
   initialFolders?: readonly FolderItem[]
   initialFiles?: readonly DocumentWireRow[]
-  initialFilesComplete?: boolean
+  initialNextCursor?: string | null
 }
+
+/** The ⋯ slot every card and row renders; the row's {@link DocumentObjectMenu} fills it. */
+const renderDocumentActions = (): ReactNode => <DocumentActionsTrigger />
 
 /**
  * The file workspace of a shelf of documents — one component for a project's
@@ -110,7 +115,7 @@ export function FileWorkspace({
   renderHeader,
   initialFolders,
   initialFiles,
-  initialFilesComplete = true,
+  initialNextCursor = null,
 }: FileWorkspaceProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -137,7 +142,7 @@ export function FileWorkspace({
     agentAuthoredOnly: filters.agentAuthoredOnly,
     includeArchived: filters.includeArchived,
     initialFiles,
-    initialFilesComplete,
+    initialNextCursor,
   })
   const { files, setFiles } = listing
   const collectionName = shelf.collectionName ?? listing.collectionName
@@ -218,7 +223,8 @@ export function FileWorkspace({
 
   const channel = usePreviewChannel(shelf, files, handlers)
   // `?compare=<older>` beside `?doc=`: the inbox's „Fassungen vergleichen“.
-  const compareElement = useCompareParam(files)
+  // It waits for the whole listing before deciding the older one is missing.
+  const compareElement = useCompareParam(files, listing.complete)
   useEffect(() => {
     filesRef.current = files
     openRef.current = channel.open
@@ -242,6 +248,14 @@ export function FileWorkspace({
     },
     [files, channel]
   )
+  // What the cards, rows and menus are handed: one function for the life of the
+  // workspace, reaching the current `files` through a ref, so a memoised card is
+  // not re-rendered because a poll changed some other row.
+  const selectFileRef = useRef(handleSelectFile)
+  useEffect(() => {
+    selectFileRef.current = handleSelectFile
+  }, [handleSelectFile])
+  const selectFile = useCallback((id: string | null) => selectFileRef.current(id), [])
   useDocParamSync({
     openId: channel.openId,
     files,
@@ -252,12 +266,15 @@ export function FileWorkspace({
   useCompletionToast(files, shelf)
   useErrorToast(error)
 
-  // Refetch the corpus when an upload batch settles (covers non-orchestrated paths).
+  // Refetch the corpus when an upload batch settles (covers non-orchestrated
+  // paths). Quietly, like `onComplete`: the grid is on screen, and the two asks
+  // of one upload coalesce into one drain (`reloadQuietly`).
+  const { reloadQuietly } = listing
   const wasUploading = useRef(false)
   useEffect(() => {
-    if (wasUploading.current && !isUploading) void listing.load()
+    if (wasUploading.current && !isUploading) reloadQuietly()
     wasUploading.current = isUploading
-  }, [isUploading, listing])
+  }, [isUploading, reloadQuietly])
 
   // This session's own uploads for this shelf's corpus, in every phase, so the
   // tray carries a batch from queued to its summary. `file` being present marks
@@ -392,24 +409,38 @@ export function FileWorkspace({
     </div>
   )
 
-  const objectMenu = (file: FileItem, node: ReactNode, asChild = false) => (
-    <DocumentObjectMenu
-      asChild={asChild}
-      document={file}
-      scope={shelf.documentScope}
-      canManage={canManage}
-      actions={access.documentActionsAt(file.folderId)}
-      folders={folders}
-      onOpen={() => handleSelectFile(file.id)}
-      onAsk={shelf.askAbout ? () => shelf.askAbout?.(file) : undefined}
-      onRenamed={handlers.onRenamed}
-      onDeleted={handlers.onDeleted}
-      onMoved={moves.moved}
-      onReingested={handlers.onReingested}
-    >
-      {node}
-    </DocumentObjectMenu>
+  /*
+   * One menu per card and row, built lazily (`DocumentObjectMenu`) and handed
+   * only stable values, so the memoised tiles in the pane re-render when THEIR
+   * document changed and not when anything at all did. The move targets are
+   * labelled and sorted once per tree here, not once per row.
+   */
+  const folderDestinations = useMemo(() => sortedFolderDestinations(folders), [folders])
+  const { documentActionsAt } = access
+  const { askAbout, documentScope } = shelf
+  const objectMenu = useCallback(
+    (file: FileItem, node: ReactNode, asChild: boolean) => (
+      <DocumentObjectMenu
+        asChild={asChild}
+        document={file}
+        scope={documentScope}
+        canManage={canManage}
+        actions={documentActionsAt(file.folderId)}
+        destinations={folderDestinations}
+        onOpen={() => selectFile(file.id)}
+        onAsk={askAbout ? () => askAbout(file) : undefined}
+        onRenamed={handlers.onRenamed}
+        onDeleted={handlers.onDeleted}
+        onMoved={moves.moved}
+        onReingested={handlers.onReingested}
+      >
+        {node}
+      </DocumentObjectMenu>
+    ),
+    [documentScope, canManage, documentActionsAt, folderDestinations, selectFile, askAbout, handlers, moves.moved]
   )
+  const wrapFile = useCallback((file: FileItem, card: ReactNode) => objectMenu(file, card, false), [objectMenu])
+  const wrapFileRow = useCallback((file: FileItem, row: ReactNode) => objectMenu(file, row, true), [objectMenu])
 
   return (
     <div className="relative flex h-full flex-col" {...(canManage ? dragHandlers : {})} data-testid="workspace-dropzone">
@@ -422,7 +453,10 @@ export function FileWorkspace({
         />
       )}
 
-      {renderHeader(controls, { count: listing.isLoading || listing.error ? null : files.length })}
+      {/* The count is a claim about the whole shelf, so it waits for the last page. */}
+      {renderHeader(controls, {
+        count: listing.isLoading || listing.error || !listing.complete ? null : files.length,
+      })}
 
       {error && (
         <div className="border-b px-4 py-3 animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none">
@@ -479,8 +513,10 @@ export function FileWorkspace({
               searchFiles={filteredFiles}
               showOlderFassungen={filters.showOlderFassungen}
               selectedFileId={channel.openId}
-              onSelectFile={handleSelectFile}
-              isLoading={listing.isLoading || tree.isLoading}
+              onSelectFile={selectFile}
+              // A skeleton only while there is nothing to show: a reload of the
+              // listing or the tree keeps what is on screen until it lands.
+              isLoading={listing.isLoading || tree.isFirstLoad}
               search={search}
               view={view}
               onViewChange={selectView}
@@ -493,9 +529,9 @@ export function FileWorkspace({
               onPickFiles={canManage ? () => pickFilesRef.current?.() : undefined}
               onPickFolder={canManage ? () => pickFolderRef.current?.() : undefined}
               cardExtras={shelf.cardExtras}
-              wrapFile={(file, card) => objectMenu(file, card)}
-              wrapFileRow={(file, row) => objectMenu(file, row, true)}
-              renderActions={() => <DocumentActionsTrigger />}
+              wrapFile={wrapFile}
+              wrapFileRow={wrapFileRow}
+              renderActions={renderDocumentActions}
               {...(tree.error
                 ? {}
                 : {

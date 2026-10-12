@@ -1,0 +1,6 @@
+---
+improvements:
+  - >
+    Large folders in a project's files and in the Archiv now open and scroll
+    faster: the first documents appear right away while the rest load behind
+    them, and previews load as you scroll to them.

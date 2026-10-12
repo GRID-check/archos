@@ -26,9 +26,13 @@ export function folderPathLabel(folder: PathFolder, byId: Map<string, PathFolder
   return parts.join(' / ')
 }
 
-export function sortedFolderDestinations(
-  folders: readonly PathFolder[],
-): { folder: PathFolder; label: string }[] {
+/** A folder a document can be moved into, with the full path it is listed by. */
+export interface FolderDestination {
+  folder: PathFolder
+  label: string
+}
+
+export function sortedFolderDestinations(folders: readonly PathFolder[]): FolderDestination[] {
   const byId = new Map(folders.map((folder) => [folder.id, folder]))
   return folders
     .map((folder) => ({ folder, label: folderPathLabel(folder, byId) }))

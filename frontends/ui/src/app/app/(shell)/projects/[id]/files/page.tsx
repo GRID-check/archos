@@ -66,8 +66,8 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
      * the waterfall this removes from the other.
      */
     // The FIRST page only: the paint needs rows now, not the whole corpus. The
-    // workspace reads the remaining pages itself when `nextCursor` says there
-    // are any (`initialFilesComplete`).
+    // workspace reads the remaining pages itself, starting from this page's
+    // `nextCursor` (`initialNextCursor`) rather than from the top again.
     const [initialFolders, { documents: initialDocuments, nextCursor }] = await Promise.all([
       listProjectFolders(id, session),
       listDocumentsPage(session, id),
@@ -108,7 +108,7 @@ export default async function FilesPage({ params }: FilesPageProps): Promise<JSX
         initialFiles={initialDocuments.map((row) =>
           toDocumentWireRow(row, versionSummaries.get(row.id)),
         )}
-        initialFilesComplete={nextCursor === null}
+        initialNextCursor={nextCursor}
         projectName={project.name}
         collectionName={project.collectionName}
         showModels={showModels}

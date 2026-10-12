@@ -2,7 +2,7 @@
 
 import { SourceDeletedNote } from '@/components/projects/source-deleted-note'
 import type { JSX } from 'react'
-import { useCallback, useMemo, useRef, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent, type ReactNode } from 'react'
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { FileItem } from './project-file-workspace'
 import { DocumentStatusBadge } from './document-status'
@@ -126,26 +126,39 @@ export function FileListView({
    * Roving focus down the list. A file list that cannot be walked with the
    * arrow keys is a list you have to aim at, and aiming at a 28px row is the
    * difference between skimming a hundred documents and hunting through them.
+   *
+   * One function for the life of the list, reading the rows through a ref, so
+   * the memoised rows below are not all re-rendered when one of them changes.
    */
+  const rowsRef = useRef(rows)
+  useEffect(() => {
+    rowsRef.current = rows
+  }, [rows])
   const handleKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLTableRowElement>, index: number) => {
+    (event: KeyboardEvent<HTMLTableRowElement>, index: number) => {
+      // A key pressed on a control inside the row (its ⋯) is that control's:
+      // Enter there opens the menu, it does not also open the preview, and
+      // ArrowDown moves inside the menu, not to the next row.
+      if (event.target !== event.currentTarget) return
+      const current = rowsRef.current
       const step = event.key === 'ArrowDown' ? 1 : event.key === 'ArrowUp' ? -1 : 0
       // Home/End are what a hundred-row list is actually walked with; arrowing
       // from the last row to the first is thirty keystrokes nobody presses.
-      const absolute = event.key === 'Home' ? 0 : event.key === 'End' ? rows.length - 1 : null
+      const absolute = event.key === 'Home' ? 0 : event.key === 'End' ? current.length - 1 : null
       if (step !== 0 || absolute !== null) {
         event.preventDefault()
-        const next = absolute ?? Math.min(rows.length - 1, Math.max(0, index + step))
+        const next = absolute ?? Math.min(current.length - 1, Math.max(0, index + step))
         const target = bodyRef.current?.querySelectorAll<HTMLTableRowElement>('tr[data-file-row]')[next]
         target?.focus()
         return
       }
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
-        onSelectFile(rows[index].id)
+        const file = current[index]
+        if (file) onSelectFile(file.id)
       }
     },
-    [rows, onSelectFile]
+    [onSelectFile]
   )
 
   return (
@@ -248,202 +261,251 @@ export function FileListView({
           </TableRow>
         </TableHeader>
         <TableBody ref={bodyRef}>
-          {rows.map((file, index) => {
-            const ext = fileExtensionLabel(file.filename)
-            const isSelected = selectedFileId === file.id
-            // The badge rule's subject, with the listing's nulls narrowed to
-            // what the rule reads: `null` lifecycle is "the working set", i.e.
-            // absent, and an unknown state is no badge.
-            const approvalSubject = {
-              versionState: file.versionState ?? null,
-              versionCount: file.versionCount ?? null,
-              lifecycle: file.lifecycle ?? undefined,
-              authoredBy: file.authoredBy ?? null,
-            }
-            const approvalState = documentBadgeState(approvalSubject)
-            const row = (
-              <TableRow
-                key={file.id}
-                data-file-row
-                data-testid="file-list-row"
-                {...(draggable ? documentDragProps(file.id) : {})}
-                data-state={isSelected ? 'selected' : undefined}
-                // Roving tabindex: one stop for the whole list, then arrows.
-                tabIndex={index === tabStop ? 0 : -1}
-                aria-selected={isSelected}
-                onClick={() => onSelectFile(file.id)}
-                onFocus={() => setFocusedIndex(index)}
-                onKeyDown={(event) => handleKeyDown(event, index)}
-                className={cn(
-                  'cursor-pointer focus-visible:outline-none',
-                  'transition-colors duration-snap ease-out motion-reduce:transition-none',
-                  isSelected ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
-                  'focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50'
-                )}
-              >
-                <TableCell className={CELL}>
-                  <div className="flex min-h-8 min-w-0 items-center gap-2.5">
-                    <span
-                      aria-hidden
-                      // 8.5px is load-bearing and stays: this glyph holds a four-letter
-                      // extension ("DOCX") inside a 24px square, and the ramp's next
-                      // step overflows it.
-                      className="flex size-6 shrink-0 items-center justify-center rounded-sm text-[8.5px] font-bold uppercase leading-none"
-                      style={extChipTint(ext)}
-                    >
-                      {ext || '—'}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      {/* „· 3 Fassungen" after the name, on the same line: the
-                          history belongs to the document, not to the „Freigabe"
-                          column, and here it never makes a row taller. */}
-                      <span className="flex min-w-0 items-baseline gap-1.5 text-xs font-medium leading-[1.4] text-foreground">
-                        <span className="min-w-0 truncate" title={documentDisplayName(file)}>
-                          {documentDisplayName(file)}
-                        </span>
-                        <FassungCount file={file} />
-                      </span>
-                      {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} />}
-                      {/* The summary earns its line here in a way it cannot on
-                          a card: the row is already one line tall, so a second
-                          one doubles the information without doubling the
-                          scroll the way a taller card would. */}
-                      {/* In a ranked result the second line is WHY this row is
-                          here. The summary describes the document; the snippet
-                          answers the query, and a search result that hides it
-                          asks the reader to take the ranking on trust. */}
-                      {semantic ? (
-                        (file.snippet ?? '') !== '' && (
-                          <span
-                            className="block truncate text-xs leading-tight text-muted-foreground"
-                            title={file.snippet}
-                            data-testid="file-list-snippet"
-                          >
-                            {file.page !== null && file.page !== undefined && (
-                              <span className="mr-1 font-medium tabular-nums text-primary/80">
-                                {t('browser.semantic.page', { page: String(file.page) })}
-                              </span>
-                            )}
-                            {file.snippet}
-                          </span>
-                        )
-                      ) : (
-                        file.summary && (
-                          <span className="block truncate text-xs leading-tight text-muted-foreground">
-                            {file.summary}
-                          </span>
-                        )
-                      )}
-                    </span>
-                  </div>
-                </TableCell>
-                {semantic && (
-                  <TableCell
-                    className={cn(
-                      'hidden whitespace-nowrap text-right text-xs tabular-nums sm:table-cell',
-                      CELL,
-                    )}
-                  >
-                    <span
-                      className="font-medium text-foreground"
-                      title={t('browser.semantic.relevance', { percent: String(percentOf(file.score)) })}
-                      data-testid="file-list-relevance"
-                    >
-                      {percentOf(file.score)}%
-                    </span>
-                  </TableCell>
-                )}
-                <TableCell className={CELL}>
-                  {/* `max-w-full truncate` is what keeps a long localized status
-                      inside its column. The badge is `w-fit whitespace-nowrap`,
-                      so without a ceiling it renders at whatever width its label
-                      needs and simply overlaps the cell beside it — invisible in
-                      English ("Citable"), plainly wrong in German ("Wird
-                      hochgeladen"). `title` carries the full label for the states
-                      that do get clipped, which are the transient ones. */}
-                  {file.status && (
-                    <DocumentStatusBadge
-                      status={file.status}
-                      queueAhead={file.queueAhead}
-                      className="max-w-full truncate"
-                    />
-                  )}
-                </TableCell>
-                <TableCell className={cn('hidden sm:table-cell', CELL)}>
-                  {/* The editorial state, in the same words the card badge uses:
-                      the column that makes bulk approval state visible where
-                      bulk work happens. Silent by the same rule as the card — a
-                      plain upload has one published version and shows nothing —
-                      so the triage signal is exactly the rows that need work.
-                      `documentBadgeState` is the rule read directly, so an empty
-                      slot renders the same `—` a missing page count does. */}
-                  {/* An older Fassung shows one badge, „Ältere Fassung", with
-                      what replaced it on hover: the lifecycle's „Ersetzt" said
-                      the same thing again. One badge, so the cell never wraps. */}
-                  {isOlderFassungEntry(file) ? (
-                    <OlderFassungBadge file={file} className="max-w-full truncate" />
-                  ) : approvalState ? (
-                    <DocumentVersionStateBadge
-                      versionState={approvalSubject.versionState}
-                      versionCount={approvalSubject.versionCount}
-                      lifecycle={approvalSubject.lifecycle}
-                      authoredBy={approvalSubject.authoredBy}
-                      className="max-w-full truncate"
-                    />
-                  ) : (
-                    <span className="text-xs text-muted-foreground" data-testid="file-list-approval-empty">
-                      —
-                    </span>
-                  )}
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums lg:table-cell',
-                    CELL
-                  )}
-                >
-                  {file.pageCount ?? '—'}
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums sm:table-cell',
-                    CELL
-                  )}
-                >
-                  {formatBytes(file.fileSize, locale)}
-                </TableCell>
-                <TableCell
-                  className={cn(
-                    'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums md:table-cell',
-                    CELL
-                  )}
-                >
-                  <time
-                    dateTime={file.createdAt}
-                    title={formatAbsoluteTime(file.createdAt, locale)}
-                    suppressHydrationWarning
-                  >
-                    {formatRelativeTime(file.createdAt, locale)}
-                  </time>
-                </TableCell>
-                {renderActions && (
-                  <TableCell
-                    className="px-1 py-1.5 text-right"
-                    onClick={(event) => event.stopPropagation()}
-                    onPointerDown={(event) => event.stopPropagation()}
-                  >
-                    {renderActions(file)}
-                  </TableCell>
-                )}
-              </TableRow>
-            )
-            return wrapRow ? wrapRow(file, row) : row
-          })}
+          {rows.map((file, index) => (
+            <FileListRowItem
+              key={file.id}
+              file={file}
+              index={index}
+              isSelected={selectedFileId === file.id}
+              isTabStop={index === tabStop}
+              semantic={semantic}
+              draggable={draggable}
+              onSelectFile={onSelectFile}
+              onFocusIndex={setFocusedIndex}
+              onRowKeyDown={handleKeyDown}
+              renderActions={renderActions}
+              wrapRow={wrapRow}
+            />
+          ))}
         </TableBody>
       </Table>
     </div>
   )
 }
+
+interface FileListRowItemProps {
+  file: FileListRow
+  index: number
+  isSelected: boolean
+  /** Whether this row holds the list's one tab stop (roving tabindex). */
+  isTabStop: boolean
+  semantic: boolean
+  draggable: boolean
+  onSelectFile: (id: string | null) => void
+  onFocusIndex: (index: number) => void
+  onRowKeyDown: (event: KeyboardEvent<HTMLTableRowElement>, index: number) => void
+  renderActions?: (file: FileItem) => ReactNode
+  wrapRow?: (file: FileItem, row: ReactNode) => ReactNode
+}
+
+/**
+ * One row of the list. Memoised, and handed only stable functions, so a list
+ * of thousands re-renders the rows whose document, selection or tab stop
+ * changed and leaves the rest alone.
+ */
+const FileListRowItem = memo(function FileListRowItem({
+  file,
+  index,
+  isSelected,
+  isTabStop,
+  semantic,
+  draggable,
+  onSelectFile,
+  onFocusIndex,
+  onRowKeyDown,
+  renderActions,
+  wrapRow,
+}: FileListRowItemProps): ReactNode {
+  const t = useTranslations('files')
+  const { locale } = useLocale()
+  const ext = fileExtensionLabel(file.filename)
+  // The badge rule's subject, with the listing's nulls narrowed to
+  // what the rule reads: `null` lifecycle is "the working set", i.e.
+  // absent, and an unknown state is no badge.
+  const approvalSubject = {
+    versionState: file.versionState ?? null,
+    versionCount: file.versionCount ?? null,
+    lifecycle: file.lifecycle ?? undefined,
+    authoredBy: file.authoredBy ?? null,
+  }
+  const approvalState = documentBadgeState(approvalSubject)
+  const row = (
+    <TableRow
+      data-file-row
+      data-testid="file-list-row"
+      {...(draggable ? documentDragProps(file.id) : {})}
+      data-state={isSelected ? 'selected' : undefined}
+      // Roving tabindex: one stop for the whole list, then arrows.
+      tabIndex={isTabStop ? 0 : -1}
+      aria-selected={isSelected}
+      onClick={() => onSelectFile(file.id)}
+      onFocus={() => onFocusIndex(index)}
+      onKeyDown={(event) => onRowKeyDown(event, index)}
+      className={cn(
+        'cursor-pointer focus-visible:outline-none',
+        'transition-colors duration-snap ease-out motion-reduce:transition-none',
+        isSelected ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
+        'focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50'
+      )}
+    >
+      <TableCell className={CELL}>
+        <div className="flex min-h-8 min-w-0 items-center gap-2.5">
+          <span
+            aria-hidden
+            // 8.5px is load-bearing and stays: this glyph holds a four-letter
+            // extension ("DOCX") inside a 24px square, and the ramp's next
+            // step overflows it.
+            className="flex size-6 shrink-0 items-center justify-center rounded-sm text-[8.5px] font-bold uppercase leading-none"
+            style={extChipTint(ext)}
+          >
+            {ext || '—'}
+          </span>
+          <span className="min-w-0 flex-1">
+            {/* „· 3 Fassungen" after the name, on the same line: the
+                history belongs to the document, not to the „Freigabe"
+                column, and here it never makes a row taller. */}
+            <span className="flex min-w-0 items-baseline gap-1.5 text-xs font-medium leading-[1.4] text-foreground">
+              <span className="min-w-0 truncate" title={documentDisplayName(file)}>
+                {documentDisplayName(file)}
+              </span>
+              <FassungCount file={file} />
+            </span>
+            {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} />}
+            {/* The summary earns its line here in a way it cannot on
+                a card: the row is already one line tall, so a second
+                one doubles the information without doubling the
+                scroll the way a taller card would. */}
+            {/* In a ranked result the second line is WHY this row is
+                here. The summary describes the document; the snippet
+                answers the query, and a search result that hides it
+                asks the reader to take the ranking on trust. */}
+            {semantic ? (
+              (file.snippet ?? '') !== '' && (
+                <span
+                  className="block truncate text-xs leading-tight text-muted-foreground"
+                  title={file.snippet}
+                  data-testid="file-list-snippet"
+                >
+                  {file.page !== null && file.page !== undefined && (
+                    <span className="mr-1 font-medium tabular-nums text-primary/80">
+                      {t('browser.semantic.page', { page: String(file.page) })}
+                    </span>
+                  )}
+                  {file.snippet}
+                </span>
+              )
+            ) : (
+              file.summary && (
+                <span className="block truncate text-xs leading-tight text-muted-foreground">
+                  {file.summary}
+                </span>
+              )
+            )}
+          </span>
+        </div>
+      </TableCell>
+      {semantic && (
+        <TableCell
+          className={cn(
+            'hidden whitespace-nowrap text-right text-xs tabular-nums sm:table-cell',
+            CELL,
+          )}
+        >
+          <span
+            className="font-medium text-foreground"
+            title={t('browser.semantic.relevance', { percent: String(percentOf(file.score)) })}
+            data-testid="file-list-relevance"
+          >
+            {percentOf(file.score)}%
+          </span>
+        </TableCell>
+      )}
+      <TableCell className={CELL}>
+        {/* `max-w-full truncate` is what keeps a long localized status
+            inside its column. The badge is `w-fit whitespace-nowrap`,
+            so without a ceiling it renders at whatever width its label
+            needs and simply overlaps the cell beside it — invisible in
+            English ("Citable"), plainly wrong in German ("Wird
+            hochgeladen"). `title` carries the full label for the states
+            that do get clipped, which are the transient ones. */}
+        {file.status && (
+          <DocumentStatusBadge
+            status={file.status}
+            queueAhead={file.queueAhead}
+            className="max-w-full truncate"
+          />
+        )}
+      </TableCell>
+      <TableCell className={cn('hidden sm:table-cell', CELL)}>
+        {/* The editorial state, in the same words the card badge uses:
+            the column that makes bulk approval state visible where
+            bulk work happens. Silent by the same rule as the card — a
+            plain upload has one published version and shows nothing —
+            so the triage signal is exactly the rows that need work.
+            `documentBadgeState` is the rule read directly, so an empty
+            slot renders the same `—` a missing page count does. */}
+        {/* An older Fassung shows one badge, „Ältere Fassung", with
+            what replaced it on hover: the lifecycle's „Ersetzt" said
+            the same thing again. One badge, so the cell never wraps. */}
+        {isOlderFassungEntry(file) ? (
+          <OlderFassungBadge file={file} className="max-w-full truncate" />
+        ) : approvalState ? (
+          <DocumentVersionStateBadge
+            versionState={approvalSubject.versionState}
+            versionCount={approvalSubject.versionCount}
+            lifecycle={approvalSubject.lifecycle}
+            authoredBy={approvalSubject.authoredBy}
+            className="max-w-full truncate"
+          />
+        ) : (
+          <span className="text-xs text-muted-foreground" data-testid="file-list-approval-empty">
+            —
+          </span>
+        )}
+      </TableCell>
+      <TableCell
+        className={cn(
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums lg:table-cell',
+          CELL
+        )}
+      >
+        {file.pageCount ?? '—'}
+      </TableCell>
+      <TableCell
+        className={cn(
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums sm:table-cell',
+          CELL
+        )}
+      >
+        {formatBytes(file.fileSize, locale)}
+      </TableCell>
+      <TableCell
+        className={cn(
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums md:table-cell',
+          CELL
+        )}
+      >
+        <time
+          dateTime={file.createdAt}
+          title={formatAbsoluteTime(file.createdAt, locale)}
+          suppressHydrationWarning
+        >
+          {formatRelativeTime(file.createdAt, locale)}
+        </time>
+      </TableCell>
+      {renderActions && (
+        <TableCell
+          className="px-1 py-1.5 text-right"
+          onClick={(event) => event.stopPropagation()}
+          onPointerDown={(event) => event.stopPropagation()}
+        >
+          {renderActions(file)}
+        </TableCell>
+      )}
+    </TableRow>
+  )
+  return wrapRow ? wrapRow(file, row) : row
+})
 
 /**
  * A sortable column header.

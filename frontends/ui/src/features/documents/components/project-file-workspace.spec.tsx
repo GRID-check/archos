@@ -2270,6 +2270,37 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
     expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
   })
 
+  it('draws the first page while the rest is still on its way', async () => {
+    let releaseSecondPage: () => void = () => undefined
+    const secondPageHeld = new Promise<void>((resolve) => {
+      releaseSecondPage = resolve
+    })
+    server.use(
+      http.get('/api/documents', async ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor')
+        cursors.push(cursor)
+        if (cursor !== 'page-2') return HttpResponse.json({ documents: [newest], nextCursor: 'page-2' })
+        await secondPageHeld
+        return HttpResponse.json({ documents: [oldest], nextCursor: null })
+      }),
+    )
+    renderWorkspace(
+      <ProjectFileWorkspace projectId="proj-1" projectName="Test" collectionName="test-coll" initialFolders={[]} />,
+    )
+
+    // The first page is on screen while the second has not answered: no
+    // skeleton for as long as the slowest of twenty requests takes.
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+    await waitFor(() => expect(cursors).toEqual([null, 'page-2']))
+    expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
+    expect(screen.queryByText('EG.pdf')).not.toBeInTheDocument()
+
+    // The next page is appended behind it, and the first stays.
+    releaseSecondPage()
+    expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
+  })
+
   it('reads the rest after a first-page seed, and a dropped folder then knows the old file', async () => {
     probeShelf = [newest, oldest]
     renderWorkspace(
@@ -2278,15 +2309,18 @@ describe('ProjectFileWorkspace — a corpus larger than one page', () => {
         projectName="Test"
         collectionName="test-coll"
         initialFiles={[newest]}
-        initialFilesComplete={false}
+        initialNextCursor="page-2"
         initialFolders={[]}
       />,
     )
     // The seed paints at once, without a skeleton over it …
     expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
     expect(screen.queryByTestId('file-browser-skeleton')).not.toBeInTheDocument()
-    // … and the page it did not carry arrives behind it.
+    // … and the page it did not carry arrives behind it, read from the
+    // server's cursor: the seeded first page is not asked for a second time.
     expect(await findFileButton(/EG\.pdf/)).toBeInTheDocument()
+    expect(cursors).toEqual(['page-2'])
+    expect(await findFileButton(/Neu-Plan\.pdf/)).toBeInTheDocument()
 
     const file = new File(['x'.repeat(10)], 'EG.pdf', { type: 'application/pdf' })
     Object.defineProperty(file, 'webkitRelativePath', { value: 'Wohnbau/EG.pdf', configurable: true })

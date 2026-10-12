@@ -43,12 +43,13 @@ interface ProjectFileWorkspaceProps {
   lifecyclePermissions?: readonly DocumentLifecyclePermission[]
   /**
    * The folder tree and the corpus as the SERVER already read them, for the
-   * first paint — see {@link FileWorkspace}. `initialFilesComplete` is false when
-   * the server read only one bounded page.
+   * first paint — see {@link FileWorkspace}. `initialNextCursor` is the
+   * server's `nextCursor` for that page: null when it was the whole shelf, else
+   * where the workspace continues reading.
    */
   initialFolders?: readonly FolderItem[]
   initialFiles?: readonly DocumentWireRow[]
-  initialFilesComplete?: boolean
+  initialNextCursor?: string | null
   /**
    * Whether this reader may change who may read and write a folder
    * (`project:manage`, resolved on the server, ADR-0088). Shows „Zugriff…" in the
@@ -83,7 +84,7 @@ export function ProjectFileWorkspace({
   lifecyclePermissions,
   initialFolders,
   initialFiles,
-  initialFilesComplete = true,
+  initialNextCursor = null,
   canManageFolderAccess = false,
   initialRootAccess = 'write',
   mailImportEnabled = false,
@@ -129,7 +130,7 @@ export function ProjectFileWorkspace({
       )}
       initialFolders={initialFolders}
       initialFiles={initialFiles}
-      initialFilesComplete={initialFilesComplete}
+      initialNextCursor={initialNextCursor}
     />
   )
 }
