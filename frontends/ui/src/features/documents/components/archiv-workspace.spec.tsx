@@ -169,8 +169,9 @@ describe('ArchivWorkspace — library listing', () => {
     expect(await screen.findByText(/documents couldn't be loaded/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /try again/i })).toBeInTheDocument()
   })
-  // Paged, not capped: the Archiv used to stop at its newest 500 without a word.
-  it('reads every page of the Archiv, following the cursor', async () => {
+  // A level is read page by page (ADR-0102): the next page is the reader's to
+  // ask for, never drained up front.
+  it('reads the next page of the level when the reader asks for it', async () => {
     const cursors: Array<string | null> = []
     server.use(
       http.get('/api/archiv/documents', ({ request }) => {
@@ -186,29 +187,10 @@ describe('ArchivWorkspace — library listing', () => {
     )
     render(<ArchivWorkspace canManage />)
 
+    expect(await screen.findByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
+    fireEvent.click(await screen.findByTestId('load-more-button'))
     expect(await screen.findByText('fassadendetail.pdf')).toBeInTheDocument()
-    expect(screen.getByText('brandschutz-gutachten.pdf')).toBeInTheDocument()
     expect(cursors).toEqual([null, 'page-2'])
-    expect(screen.queryByText(/showing the newest/i)).not.toBeInTheDocument()
-  })
-
-  it('says where it stopped when the Archiv outruns the page ceiling', async () => {
-    let requests = 0
-    server.use(
-      http.get('/api/archiv/documents', () => {
-        requests += 1
-        return HttpResponse.json({
-          documents: [{ ...archivDocuments[0], id: `doc-${requests}`, filename: `plan-${requests}.pdf` }],
-          nextCursor: `c${requests}`,
-          collectionName: 'archiv_org-1',
-          canManage: true,
-        })
-      })
-    )
-    render(<ArchivWorkspace canManage />)
-
-    expect(await screen.findByText(/showing the newest 20 documents/i)).toBeInTheDocument()
-    expect(requests).toBe(20)
   })
 })
 

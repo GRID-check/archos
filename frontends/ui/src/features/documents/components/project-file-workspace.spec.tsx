@@ -1195,7 +1195,8 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
     // `Brandschutz` onto it would cut the subtree off from the tree.
     searchParams = new URLSearchParams('folder=f-a')
     renderWithFolders()
-    const target = screen.getByTestId('folder-card-f-a1')
+    // A nested level is read from the server: its tiles land with the first page.
+    const target = await screen.findByTestId('folder-card-f-a1')
 
     fireEvent.dragOver(target, { dataTransfer: folderDragTransfer('f-a') })
     expect(target).not.toHaveAttribute('data-drop-over')
@@ -1210,7 +1211,7 @@ describe('ProjectFileWorkspace — dragging a folder into a folder', () => {
 
     // „Alle Dateien" is the only way OUT: every other target nests one folder
     // inside another, so without it a folder goes deeper and never back.
-    const root = screen.getByRole('button', { name: 'All Files' })
+    const root = await screen.findByRole('button', { name: 'All Files' })
     fireEvent.dragOver(root, { dataTransfer: folderDragTransfer('f-a1') })
     fireEvent.drop(root, { dataTransfer: folderDragTransfer('f-a1') })
 
@@ -2054,6 +2055,12 @@ describe('ProjectFileWorkspace — the open file is on the URL', () => {
     vi.clearAllMocks()
     resetPreviewStore()
     searchParams = new URLSearchParams()
+    // The level is read from the server whenever the seed does not answer the
+    // request on screen; it holds the same one document.
+    server.use(
+      http.get('/api/projects/:projectId/folders', () => HttpResponse.json({ folders: [] })),
+      http.get('/api/documents', () => HttpResponse.json({ documents: [doc], nextCursor: null })),
+    )
   })
 
   afterEach(() => {
