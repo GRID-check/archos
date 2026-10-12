@@ -1,0 +1,30 @@
+---
+fixes:
+  - >
+    When one of our servers is replaced, documents that are being read carry on
+    instead of waiting until the service is restarted, and answers no longer
+    stall while Piloti looks something up in your files.
+incident:
+  - >
+    2026-10-11/12: five worker nodes failed during heavy ingestion. Postgres kept
+    the dead clients' sessions, transactions and session advisory locks for up to
+    two hours (no server TCP keepalives), and every wait behind them was
+    unbounded: keyed-lock waiters, the start-up schema DDL and the readers queued
+    behind it. Separately, chromadb's HTTP client has no timeout, so API and chat
+    threads hung on connections to dead Chroma pods until restart, and
+    get_collection reported an unreachable Chroma as a missing collection, which
+    made the OIB sync re-queue the whole base corpus. Fixed by server keepalives
+    and idle-transaction timeouts (Postgres and PgBouncer), bounded lock waits,
+    start-up DDL that runs only for a missing column or index, a Chroma request
+    timeout, and get_collection raising on an unreachable store.
+operators:
+  - >
+    Production now runs three IPAX worker groups, labelled k8s.at/node-group:
+    Node (app tier), data (fixed size, data stores) and batch (ingestion). The new
+    Pulumi knobs nodeGroupApp, nodeGroupData and nodeGroupBatch pin aiq-agent,
+    Chroma and ingest-worker; unset, nothing is placed. The other tiers are
+    placed in a separate migration. Worker groups exist only in the IPAX Control
+    Center, not in Pulumi. This deploy restarts Chroma once (single replica: a
+    short pause in retrieval) and rolls ingest-worker; Postgres and PgBouncer only
+    reload. New environment variables: AIQ_CHROMA_HTTP_TIMEOUT_SECONDS and
+    GRID_KEYED_LOCK_TIMEOUT_SECONDS.
