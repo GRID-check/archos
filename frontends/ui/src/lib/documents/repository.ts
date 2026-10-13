@@ -840,6 +840,7 @@ export interface DocumentNameMatchRow {
   displayName: string | null
   fileSize: number | null
   contentHash: string | null
+  status: string
   folderId: string | null
   authoredBy: DocumentAuthor
   lifecycle: DocumentLifecycle
@@ -851,6 +852,7 @@ export const documentNameMatchColumns = {
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentHash: documents.contentHash,
+  status: documents.status,
   folderId: documents.folderId,
   authoredBy: documents.authoredBy,
   lifecycle: documents.lifecycle,
