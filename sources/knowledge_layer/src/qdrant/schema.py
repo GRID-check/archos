@@ -69,6 +69,9 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "project_id",
     "grid_document_id",
     "folder_path",
+    # Every folder a document is filed in or beneath, case-folded: "this
+    # folder and below" is one exact match (``prefilter.folder_ancestors``).
+    "folder_ancestors",
     "tags",
     "topics",
 )
@@ -145,8 +148,7 @@ def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int
         ),
         metadata=dict(identity),
     )
-    for field in sorted(INDEXED_FIELDS):
-        client.create_payload_index(name, field, field_schema=_field_schema(field), wait=True)
+    ensure_payload_indexes(client, name)
     client.update_collection_aliases(
         change_aliases_operations=[
             models.CreateAliasOperation(
@@ -155,6 +157,23 @@ def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int
         ]
     )
     logger.info("Created Qdrant collection %s behind alias %s", name, ALIASES[physical])
+
+
+def ensure_payload_indexes(client: QdrantClient, collection: str) -> list[str]:
+    """Create every index in :data:`INDEXED_FIELDS` the collection lacks; returns the fields created.
+
+    The migration for a field added after a collection was made: strict mode
+    refuses a filter on it until its index exists, so every process that
+    reads or writes a collection runs this once before its first query.
+    Idempotent: an index that exists is left alone, its points untouched.
+    """
+    present = set(client.get_collection(collection).payload_schema or {})
+    missing = sorted(INDEXED_FIELDS - present)
+    for field in missing:
+        client.create_payload_index(collection, field, field_schema=_field_schema(field), wait=True)
+    if missing and present:
+        logger.info("Qdrant collection %s: created missing payload indexes %s", collection, missing)
+    return missing
 
 
 def _alias_exists(client: QdrantClient, alias: str) -> bool:
@@ -190,3 +209,4 @@ def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int,
     mismatch = identity_mismatch(stored, identity)
     if mismatch:
         raise RuntimeError(f"{alias}: {mismatch}")
+    ensure_payload_indexes(client, alias)

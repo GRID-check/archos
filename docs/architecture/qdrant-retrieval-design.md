@@ -208,9 +208,14 @@ project status and facts are all edited by people in Postgres. They are
   grows a payload check: it samples points per document, compares them with
   Postgres and repairs drift.
 
-This removes the 3× over-fetch, the `$in`/`$nin` file lists and every
-post-filter in `register.py`. Each filter becomes a pre-filter inside the
-vector search.
+This removes the 3× over-fetch and the `$in`/`$nin` file lists. Each filter
+becomes a pre-filter inside the vector search. The post-filters in
+`register.py` stay as a backstop over hits that already match, because a
+mirror can lag: a pre-filter may only narrow what the Postgres post-filter
+allows, never widen it. A stale fact can therefore cost recall but cannot
+show something wrong. The superseded exclusion is the one case where a stale
+fact *would* show something wrong (a replaced Fassung back in the ranking), so
+the Postgres list still drops those hits after retrieval.
 
 ## 5. Access: one scope compiler
 
@@ -504,6 +509,8 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
+| `knowledge_search` pre-filters under `qdrant`: `doc_class = X` (the stored class over the chunk's guess, as `_hit_doc_class` resolves), `superseded != true` on user shelves unless `file_name=` names a file, `folder` as one match on `folder_ancestors` (case-folded paths, `/`-bounded). No 3× over-fetch and no `file_name $in/$nin` lists for them. The Postgres post-filters stay as a backstop, and the Postgres superseded list still drops hits a lagging mirror let through. The span carries `prefiltered: [fields]` | `qdrant/prefilter.py`; `register.py` — `search` |
+| Payload indexes added to an existing collection on first read or write (`ensure_payload_indexes`), so a new indexed field needs no rebuild | `qdrant/schema.py`, `store.py` — `exists`, `ensure` |
 
 ### Where slice 1 departs from the target, and why
 
@@ -521,10 +528,29 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   the slice that removes Chroma.
 * **Registry reads stay on Chroma.** File listings, text samples, visual
   details and page reads still read Chroma, which still holds everything.
-* **Post-filters stay.** `doc_class`, title, folder and tag filters in
-  `register.py` and the BFF still run after retrieval; the facts are now on the
-  points, so pushing them into the search is a change to the callers, not to
-  the store.
+* **Some filters still run after retrieval.**
+  * `title_contains` stays a post-filter with the 3× over-fetch. It is a
+    case-insensitive substring of the file name or display title, and
+    Qdrant's full-text index matches tokens (`schutz` is in
+    `Brandschutzkonzept` but is not one of its tokens), so a token pre-filter
+    would drop documents the substring rule keeps.
+  * `file_name=` also stays a post-filter with the over-fetch, because either
+    name may contain the other.
+  * The tag and project-fact filters of cross-project search still run in the
+    BFF; `knowledge_search` has no tag parameter.
+  * `match="exact"` keeps its file lists.
+* **`folder_ancestors` holds paths, not folder ids.** The envelope still
+  speaks paths (ADR-0049), so the field holds case-folded paths. Qdrant
+  1.19's keyword `prefix` match was the alternative. It is case-sensitive and
+  crosses the `/` boundary (`Brandschutz` matches `Brandschutzkonzepte`), so
+  it would need a folded copy of the path and two conditions. Points written
+  before the field existed carry no ancestors, and a folder search misses them
+  until `scripts/backfill_qdrant.py --facts-only` has run.
+* **A cleared Dokumentart is not mirrored.** When a person clears the stored
+  `doc_class`, the payload keeps the old class, because the chunk's own guess
+  that the post-filter falls back to cannot be recovered from the payload. A
+  `doc_class=` search can then miss that document until it is re-ingested.
+  The post-filter keeps a wrong class from being shown.
 * **One API key.** The read-only key is configured on the server and not yet
   used by the backend (ADR-0104, Confirmation).
 * **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
@@ -535,8 +561,9 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.
-2. Slice 2: ids in the envelope, `restriction_id`, pre-filters instead of
-   post-filters, project facts on points for cross-project filters and boosts.
+2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
+   `folder_ancestors`, project facts on points for cross-project filters and
+   boosts, and the cross-project tag filter moved into the query.
 3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads
    from Postgres and Qdrant, Chroma, the `$contains` channel and the text
    mirror removed.

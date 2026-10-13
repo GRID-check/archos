@@ -126,7 +126,11 @@ def mirror_file(
         )
         records = [record for record in records_from_chroma(fetched) if record.chunk_id not in skip]
         base = enrichment(scope, config)
-        base.update(facts_by_file(scope, [file_name]).get(file_name, {}))
+        # A fact the store does not hold yet (None) leaves the job's own value,
+        # as before the store stated a root folder; the refresh that follows
+        # the store's write (``refresh_facts``) settles it.
+        facts = facts_by_file(scope, [file_name]).get(file_name, {})
+        base.update({key: value for key, value in facts.items() if value is not None})
         return store.upsert(scope, records, base)
 
     return _guarded(f"mirror {scope}/{file_name}", work, 0)

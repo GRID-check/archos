@@ -44,7 +44,8 @@ _MAX_CHUNKS_PER_DOC = 2
 # Retrieval over-fetch factor applied when the caller narrows results with the
 # agentic filters (doc_class / title_contains / file_name): post-merge
 # filtering drops candidates, so each layer fetches 3x top_k to leave enough
-# survivors.
+# survivors. Under AIQ_VECTOR_BACKEND=qdrant only the filters that cannot run
+# inside the search do (``qdrant.prefilter.post_filtered``).
 _AGENT_FILTER_OVERFETCH = 3
 
 # Substring identifying an embedding-fingerprint mismatch in a layer failure.
@@ -2044,8 +2045,15 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
         effective_top_k = get_retrieval_setting("knowledge.top_k", top_k)
         effective_max_per_document = get_retrieval_setting("knowledge.max_chunks_per_document", max_per_document)
 
-        # Over-fetch when agentic filters will drop candidates post-merge.
-        narrowed = bool(doc_class or title_contains or file_name or folder)
+        # Over-fetch when agentic filters will drop candidates post-merge. On
+        # Qdrant, `doc_class`, `folder` and the superseded exclusion run INSIDE
+        # the search (`qdrant/prefilter.py`), so only the filters left after it do.
+        from .qdrant import prefilter as qdrant_prefilter
+
+        pushdown = qdrant_prefilter.plan(doc_class=doc_class, folder=folder, file_name=file_name)
+        narrowed = qdrant_prefilter.post_filtered(
+            pushdown, doc_class=doc_class, title_contains=title_contains, file_name=file_name, folder=folder
+        )
         candidate_k = effective_top_k * _AGENT_FILTER_OVERFETCH if narrowed else effective_top_k
         if rerank_llm_obj is not None or cross_encoder is not None:
             candidate_k = max(candidate_k, config.rerank_candidates)
@@ -2172,15 +2180,21 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
             # File exclusions + caller filters apply to the base collection only;
             # session/project collections are user content and are never filtered.
             coll_filters = _base_collection_filters(config, filters) if coll == base_collection else None
-            if folder_files is not None:
+            if pushdown is not None:
+                coll_filters = pushdown.narrow(coll_filters, user_shelf=coll != base_collection)
+            if folder_files is not None and pushdown is None:
                 narrowing = {"file_name": {"$in": sorted(folder_files.get(coll) or [])}}
                 coll_filters = {**coll_filters, **narrowing} if coll_filters else narrowing
-            if hidden_fassungen.get(coll):
+            if hidden_fassungen.get(coll) and pushdown is None:
                 hidden = {"file_name": {"$nin": sorted(hidden_fassungen[coll])}}
                 coll_filters = {"$and": [coll_filters, hidden]} if coll_filters else hidden
             result = await retriever.retrieve(
                 query=search_query, collection_name=coll, top_k=candidate_k, filters=coll_filters
             )
+            if pushdown is not None and hidden_fassungen.get(coll) and getattr(result, "chunks", None):
+                result = result.model_copy(
+                    update={"chunks": qdrant_prefilter.without_files(result.chunks, hidden_fassungen[coll])}
+                )
             # Tag each chunk with its collection so the merge does not lose the
             # per-hit stratum — the trace UI's lane labels and source_lane read it.
             # The SHELF rides along explicitly (ADR-0047): this is the last point
@@ -2563,6 +2577,10 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     from .qdrant.config import vector_backend
 
                     search_input["vector_backend"] = vector_backend()
+                    if pushdown is not None:
+                        search_input["prefiltered"] = pushdown.fields(
+                            user_shelves=any(entry.collection != base_collection for entry in target_collections)
+                        )
                     search_input["normalized_query"] = _normalized_query_for_span(query)
                     if file_name:
                         search_input["file_name"] = file_name
