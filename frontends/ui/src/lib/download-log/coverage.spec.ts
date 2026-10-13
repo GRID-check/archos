@@ -68,7 +68,7 @@
 import { describe, expect, it } from 'vitest'
 import { readdirSync, readFileSync, existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { DOWNLOAD_LOG_KINDS, type DownloadLogKind } from './kinds'
 
 const SRC = join(process.cwd(), 'src')

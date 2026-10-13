@@ -59,9 +59,18 @@ fi
 # candidate is rebuilt on a final 3.14 here, or the sync fails saying why.
 uv sync --group dev
 
+# Bun, pinned where CI pins it (.github/actions/setup-bun). The container's own
+# Bun is whatever its image shipped, and `bun check` (`task fe:types`) reports
+# what the pinned version reports, so a different one is a different gate.
+BUN_VERSION="$(awk -F'"' '/default:/ {print $2; exit}' .github/actions/setup-bun/action.yml)"
+if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
+  step "bun ${BUN_VERSION} (npm, as CI installs it)"
+  npm i -g "bun@${BUN_VERSION}" || step "bun ${BUN_VERSION} install failed; using $(bun --version 2>/dev/null || echo none)"
+fi
+
 step "UI dependencies (bun)"
-# Bun is the INSTALLER and script runner only, never the runtime — see
-# `fe:install`. Do not add `--bun`.
+# Bun is the toolchain, never the runtime (ADR-0103) — see `fe:install`.
+# Do not add `--bun`.
 (cd frontends/ui && bun install --frozen-lockfile)
 
 step "web/landing dependencies (npm)"

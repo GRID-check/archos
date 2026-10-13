@@ -40,11 +40,10 @@ updates:
         patterns:
           - "@opentelemetry/*"
     ignore:
-      # TypeScript 7 is the Go-native compiler and ships no JS compiler API,
-      # which `next build` loads to typecheck (next.config.ts `typescript`).
-      # Lift this once Next.js supports TypeScript 7 and we adopt it in the
-      # same PR.
-      - dependency-name: "typescript"
+      # `typescript-api` is TypeScript 6 under an npm alias, for the specs that
+      # parse source with the compiler API TypeScript 7.0 does not ship
+      # (ADR-0103). Moving it to 7 removes that API. It goes when 7.1's lands.
+      - dependency-name: "typescript-api"
         versions: [">=7"]
       # The runtime is Node 22 (`FROM node:22-slim` in the Dockerfiles,
       # node-version "22" in CI), so newer @types/node majors type APIs that
