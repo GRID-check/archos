@@ -1,0 +1,7 @@
+---
+features:
+  - >
+    Scheduled and delegated work now acts with the rights of the person who
+    commissioned it, so Piloti can file drafts and propose changes to files
+    while the work runs. If that person leaves the office or loses access to
+    the project, their running work stops acting for them.

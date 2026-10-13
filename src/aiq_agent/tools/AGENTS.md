@@ -48,9 +48,19 @@ Re-signing a payload here would work, which is the danger: the internal token
 and the signing secret are the same secret, so a Python tier that built its own
 envelope would be CHOOSING the user id with a credential that only authenticates
 the service. Hence the rule, in three words: **echo, never sign.** A run with no
-envelope (CLI, eval, job worker) has no acting person, and the tool refuses
-rather than falling back to the unsigned individual headers, which a caller could
-have set.
+envelope (CLI, eval, a background run that carries none) has no acting person,
+and the tool refuses rather than falling back to the unsigned individual
+headers, which a caller could have set.
+
+A background run acts as the person who commissioned it (ADR-0108), and the job
+worker is then one more echoing party, not a signing one. The job API keeps the
+envelope the BFF sent with the submit, only when it verifies for the run's
+requester, inside the encrypted job payload; the worker injects those two
+strings at claim under the names a chat turn uses, and asks the BFF
+(`POST /api/internal/runs/{runId}/envelope`) for a fresh one when the carried one
+is over an hour old. Every refusal or failure leaves the run without an
+envelope. The whole path is `frontends/aiq_api/src/aiq_api/jobs/run_envelope.py`;
+nothing on it builds or signs an envelope.
 
 The BFF decides identity and permission. This tier decides only *which bytes* and
 *which reference*, and the reference is the conversation's

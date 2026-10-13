@@ -125,6 +125,7 @@ import {
   updateJob,
 } from './service'
 import { AGENT_RUN_INPUT_MAX_CHARS } from './types'
+import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
 const skillSnapshot: SkillSnapshot = {
@@ -813,6 +814,23 @@ describe('submitAgentRun', () => {
     await expect(refusal).rejects.toBeInstanceOf(JobSubmitError)
     await expect(refusal).rejects.toThrow(`at most ${AGENT_RUN_INPUT_MAX_CHARS}`)
     expect(submitJob).not.toHaveBeenCalled()
+  })
+
+  it('signs an envelope the worker can act on as the requester: the thread and a fresh issuedAt (ADR-0108)', async () => {
+    const before = Date.now()
+    await submitAgentRun(spec)
+
+    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    expect(input).toMatchObject({
+      organizationId: 'org_1',
+      userId: 'user_1',
+      projectId: 'proj_1',
+      conversationId: 's_conv',
+    })
+    // Without `issuedAt` the BFF refuses the envelope as an acting identity
+    // (`verifyGridRequestContextEnvelope`), and every person-acting tool with it.
+    expect(input.issuedAt).toBeGreaterThanOrEqual(before)
+    expect(input.issuedAt).toBeLessThanOrEqual(Date.now())
   })
 
   it('never searches a restricted folder: its report is filed for the whole project (ADR-0087)', async () => {

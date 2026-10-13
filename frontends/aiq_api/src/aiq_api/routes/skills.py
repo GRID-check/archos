@@ -282,6 +282,7 @@ def add_skill_routes(router: APIRouter) -> None:
 
         # Import the async-job layer lazily (it pulls NAT) so this module
         # stays cheap to import next to the maintenance routes.
+        from ..jobs.run_envelope import capture_request_envelope
         from ..jobs.submit import DuplicateJobIdError
         from ..jobs.submit import MissingPrincipalError
         from ..jobs.submit import submit_agent_job as submit_authorized_job
@@ -350,6 +351,14 @@ def add_skill_routes(router: APIRouter) -> None:
             "budget_header": body.budget_header,
         }
 
+        # The requester's envelope the BFF signed for this fire, carried so the
+        # run's person-acting tools act as them (ADR-0108). Kept only when it
+        # speaks for the body's requester in the body's organization: the
+        # internal token authenticates the BFF, not a person.
+        request_envelope = capture_request_envelope(
+            request.headers, user_id=body.user_id, organization_id=body.organization_id
+        )
+
         try:
             job_id = await submit_authorized_job(
                 agent_type=agent_type,
@@ -377,6 +386,7 @@ def add_skill_routes(router: APIRouter) -> None:
                 clarifier_result=body.clarifier_result,
                 documents=body.documents,
                 priority=body.priority,
+                request_envelope=request_envelope,
             )
         except JobAdmissionError as exc:
             raise HTTPException(429, str(exc), headers={"Retry-After": str(exc.retry_after_seconds)})
@@ -392,12 +402,13 @@ def add_skill_routes(router: APIRouter) -> None:
             raise HTTPException(500, "Failed to persist skill job authorization metadata")
 
         logger.info(
-            "Submitted skill %s job %s for org %s (owner %s, output %s, %d attached skill(s))",
+            "Submitted skill %s job %s for org %s (owner %s, output %s, %d attached skill(s), acts as requester: %s)",
             agent_type,
             job_id,
             body.organization_id,
             owner,
             output,
             len(body.skills),
+            request_envelope is not None,
         )
         return SkillSubmitResponse(job_id=job_id, queued=True)
