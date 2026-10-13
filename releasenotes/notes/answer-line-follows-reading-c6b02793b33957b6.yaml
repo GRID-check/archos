@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    When you upload a new revision of a file, the document now says that
+    Piloti still answers from the previous revision until the new one has been
+    read, and keeps saying so if reading it fails. Before, it claimed the new
+    revision answered as soon as it was uploaded.

@@ -217,6 +217,12 @@ export const research = {
     pleaseWait: 'Please wait...',
     typeAhead: 'Type your next question …',
     typeAheadHint: 'You can send once the answer is finished.',
+    // While Piloti works on the reader's own question: Enter sends the text
+    // into the running answer as steering, not as a new question.
+    steer: 'Steer Piloti …',
+    steerHint: 'Enter adds to the running answer; Piloti reads it before its next step.',
+    steerChip: 'steering',
+    steerSent: 'Note sent',
     messageNotSent: 'Message not sent',
     messageNotSentDesc: 'Something went wrong sending your message. Please try again.',
     unsupportedFileType: 'Unsupported file type',

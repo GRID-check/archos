@@ -48,6 +48,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Popover, PopoverAnchor, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { Spinner } from '@/components/ui/spinner'
+import { Chip } from '@/components/ui/chip'
 import { Textarea } from '@/components/ui/textarea'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { cn } from '@/lib/utils'
@@ -678,7 +679,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     [setComposerSubject]
   )
 
-  const { sendMessage, isLoading, respondToInteraction, pendingInteraction, noteSendIntent } =
+  const { sendMessage, isLoading, respondToInteraction, pendingInteraction, noteSendIntent, steer, canSteer } =
     wsChat
 
   /*
@@ -848,6 +849,13 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   const draftLocked = !capabilities.canDraft
   /** Typing ahead: the field is live, but Enter will not send until the settle. */
   const typingAhead = disabled && !draftLocked
+  /**
+   * Steering: the reader's own turn is running and its server reads notes, so
+   * Enter does not wait for the settle. It sends the text into the running
+   * answer as a `steer`, which Piloti reads before its next step; a note it
+   * never reads is asked as the next question (`use-websocket-chat`).
+   */
+  const steering = typingAhead && showStop && Boolean(canSteer)
   const typeAheadHintId = useId()
 
   // Autosize: grow the textarea with content, capped at TEXTAREA_MAX_HEIGHT_PX.
@@ -930,6 +938,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
   const getPlaceholder = (): string => {
     if (!isAuthenticated) return t('inputArea.signInToStart')
     if (isResponseMode) return t('inputArea.typeResponse')
+    if (steering) return t('inputArea.steer')
     // Before the subject line: while the field is live but Enter waits for the
     // settle, the placeholder is the one place that says so without a hint
     // competing with the answer for attention.
@@ -1249,7 +1258,7 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
    */
   const handleSubmit = useCallback(async (heldText?: string, maskedText?: string) => {
     const source = maskedText ?? heldText ?? message
-    if (!source.trim() || disabled) return
+    if (!source.trim() || (disabled && !steering)) return
     // Backstop for a send that never saw a focus event (prefill, deep link). A no-op
     // when focus already declared it.
     noteSendIntent()
@@ -1270,6 +1279,18 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     // Capture the session up front — the draft is cleared against THIS id on a
     // successful send, even if the session changes underneath us mid-await.
     const submittingSessionId = currentConversationId
+
+    // The reader's own turn runs: the text goes into it as a note, not as a
+    // question (screened above like one). Refused (the socket went, the turn
+    // just ended), it stays in the field as typed-ahead text.
+    if (disabled && steering) {
+      if (!steer({ text: currentMessage })) return
+      setMessage('')
+      setMentionQuery(null)
+      onStoppedTyping()
+      if (submittingSessionId) clearComposerDraft(submittingSessionId)
+      return
+    }
 
     // HITL responses always go through immediately — no file-pending check
     if (isResponseMode && respondToInteraction) {
@@ -1385,6 +1406,8 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     message,
     mentions,
     disabled,
+    steering,
+    steer,
     pendingCount,
     isResponseMode,
     respondToInteraction,
@@ -1982,8 +2005,21 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
             {/* Text Input */}
             {typingAhead && (
               <span id={typeAheadHintId} className="sr-only">
-                {t('inputArea.typeAheadHint')}
+                {steering ? t('inputArea.steerHint') : t('inputArea.typeAheadHint')}
               </span>
+            )}
+            {/* While the reader's own answer runs, Enter steers it: said once,
+            small, beside the field, so nobody mistakes the note for a question. */}
+            {steering && (
+              <Chip
+                size="sm"
+                variant="outline"
+                className="mb-1 self-start"
+                title={t('inputArea.steerHint')}
+                data-testid="composer-steer-chip"
+              >
+                {t('inputArea.steerChip')}
+              </Chip>
             )}
             <Textarea
               ref={textareaRef}

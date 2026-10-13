@@ -210,6 +210,21 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
     expect(again?.payload).toEqual({ id: 'a0', cursor: 'page-3' })
   })
 
+  it('lets a waiting job wait: given back with its progress and its attempt, not claimed before its time', async () => {
+    const id = await seed('a0', A, '2026-09-30T10:00:00Z')
+    expect((await claim('w1'))?.attempts).toBe(1)
+
+    const later = new Date(Date.now() + 60_000)
+    expect(await queue.defer(sql, id, 'w1', { id: 'a0', waits: 1 }, later)).toBe(true)
+    expect(await queue.defer(sql, id, 'w1', { id: 'a0', waits: 2 }, later)).toBe(false) // no longer w1's
+    expect(await claim('w2')).toBeNull() // waiting until `later`
+
+    await withPlatformScope(sql, (tx) => tx`UPDATE bff_job_queue SET not_before = now() - interval '1 second' WHERE job_id = ${id}::uuid`)
+    const again = await claim('w2')
+    expect(again?.attempts).toBe(1) // the wait cost nothing
+    expect(again?.payload).toEqual({ id: 'a0', waits: 1 })
+  })
+
   it('refuses progress from a worker that lost the claim', async () => {
     const id = await seed('a0', A, '2026-09-30T10:00:00Z')
     await claim('w1')

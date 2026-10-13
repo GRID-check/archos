@@ -22,7 +22,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'
-import { INBOX_TARGET_REGISTRY, findInboxTarget } from './targets'
+import { INBOX_TARGET_REGISTRY, findInboxTarget, type InboxTargetLinkContext } from './targets'
 
 function makeSession(organizationId = 'org_1'): AuthorizedSession {
   return {
@@ -191,5 +191,75 @@ describe('the project target', () => {
   it('redacts the row, rather than throwing, for a project the reader can no longer open', async () => {
     vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('forbidden'))
     await expect(projectTarget.resolve(makeSession(), 'proj_gone')).resolves.toBeNull()
+  })
+})
+
+describe('where an anchor lands (marks, proposals and Fassungen anchor rows too)', () => {
+  const reachable = {
+    role: 'collaborator',
+    reason: 'visibility-project',
+    visibility: 'project',
+    container: { organizationId: 'org_1', projectId: 'proj_1' },
+    canEscalate: false,
+    contentLocked: false,
+  } as const
+
+  const deepLink = vi.fn((_id: string, _options?: unknown) => '/somewhere')
+
+  async function linkFor(target: 'document' | 'conversation', context: InboxTargetLinkContext) {
+    vi.mocked(resolveResourceAccess).mockResolvedValue(reachable)
+    vi.mocked(describeResource).mockReturnValue({ deepLink } as never)
+    const access = await INBOX_TARGET_REGISTRY[target].resolve(makeSession(), 'res_1')
+    access!.deepLink(context)
+    return deepLink.mock.calls.at(-1)?.[1]
+  }
+
+  it.each(['piloti.asks_you', 'piloti.work_done', 'piloti.work_failed'] as const)(
+    'opens a document at the mark for %s',
+    async (itemType) => {
+      expect(await linkFor('document', { itemType, anchorId: 'ann-1' })).toEqual({
+        anchorId: undefined,
+        markId: 'ann-1',
+        projectId: 'proj_1',
+      })
+    },
+  )
+
+  it('keeps a Fassung anchor a Fassung anchor: a review request is not a mark', async () => {
+    expect(await linkFor('document', { itemType: 'document.review_requested', anchorId: 'version-1' })).toEqual({
+      anchorId: 'version-1',
+      markId: undefined,
+      projectId: 'proj_1',
+    })
+  })
+
+  it('does not read a proposal id as a message of the chat it was made in', async () => {
+    expect(await linkFor('conversation', { itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toEqual({
+      anchorId: undefined,
+      markId: undefined,
+      projectId: 'proj_1',
+    })
+  })
+
+  it('still lands a mention on its message', async () => {
+    expect(await linkFor('conversation', { itemType: 'mention.requested', anchorId: 'msg-1' })).toEqual({
+      anchorId: 'msg-1',
+      markId: undefined,
+      projectId: 'proj_1',
+    })
+  })
+
+  it('is unreachable for a document the reader has no role on, so a mark row is redacted', async () => {
+    vi.mocked(resolveResourceAccess).mockResolvedValue({ ...reachable, role: null, reason: null })
+    expect(await INBOX_TARGET_REGISTRY.document.resolve(makeSession(), 'res_1')).toBeNull()
+  })
+
+  it('sends a proposal with no chat to the project chat, and redacts it for a reader who cannot view the project', async () => {
+    vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
+    const access = await INBOX_TARGET_REGISTRY.project.resolve(makeSession(), 'proj_1')
+    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/projects/proj_1/chat')
+
+    vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('forbidden'))
+    expect(await INBOX_TARGET_REGISTRY.project.resolve(makeSession(), 'proj_1')).toBeNull()
   })
 })

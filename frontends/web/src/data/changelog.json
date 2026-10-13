@@ -117,6 +117,10 @@
           "key": "fixes",
           "notes": [
             {
+              "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
+              "de": "Wenn Sie eine neue Revision einer Datei hochladen, weist das Dokument jetzt darauf hin, dass Piloti weiterhin auf Grundlage der vorherigen Revision antwortet, bis die neue eingelesen wurde, und zeigt diesen Hinweis auch an, wenn das Einlesen fehlschlägt. Zuvor hieß es, Piloti antworte direkt nach dem Upload bereits auf Grundlage der neuen Revision."
+            },
+            {
               "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
               "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
             },

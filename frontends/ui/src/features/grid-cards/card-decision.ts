@@ -24,6 +24,13 @@ import type { GridCard } from '@/shared/cards/schemas'
 export type CardInteractivity =
   /** Asks the user something and acts on the answer — the answer MUST persist. */
   | 'interactive'
+  /**
+   * A window onto server objects (ADR-0105, ADR-0109). Its controls write to
+   * the OBJECT, and the object is the record: who decided, when and what is
+   * true now are read back from it, live, by every reader. It therefore never
+   * writes `cardInteractions` (`card-interactivity.spec.tsx` holds it to that).
+   */
+  | 'live'
   /** Read-only presentation. Nothing to remember. */
   | 'presentational'
 
@@ -34,6 +41,13 @@ export type CardInteractivity =
  * `npm run generate:cards` regenerates the union with a new type, `tsc` fails
  * until you add a line here. That failure is deliberate — it is the only
  * checkpoint between "a new card exists" and "its user decisions are durable".
+ *
+ * A card that SHOWS server objects and writes to them (a mark, a proposal row)
+ * is `'live'`, not `'interactive'`: the object records the decision (ADR-0105),
+ * so the card must not also keep one on the message. It is still excluded from
+ * surfaces and from observers like an interactive card, and a `'live'` card is
+ * not done until `card-interactivity.spec.tsx` has a case that presses its
+ * controls and sees nothing written to `cardInteractions`.
  *
  * If you classify a card as `'interactive'`, the card is NOT done until:
  *   1. its component takes `messageId` + `cardKey` props and drives its
@@ -61,7 +75,25 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // them is idempotent — a card that forgot it had been accepted would move the
   // same files a second time (or fail confusingly, because they are no longer
   // where the card says they are).
+  //
+  // Still interactive, though a card that carries a `proposal_id` decides on
+  // the SERVER (ADR-0105): its Accept and Discard apply or dismiss the proposed
+  // change through `/api/proposals/[id]`, the object records who decided and
+  // when, and nothing is written to `cardInteractions`. The classification
+  // stays for the cards without one, stored before proposals were objects or
+  // emitted as the fallback, which still run in the browser and keep their
+  // answer on the message.
   file_operation_proposal: 'interactive',
+  // Reports the marks Piloti set on a document and the threads it answered in,
+  // and asks, per proposed mark, „übernehmen oder verwerfen?" (or all at once).
+  // A window onto objects, not a copy of them: the card reads the marks live
+  // and the turn's changes from the server (`piloti_changes`), and every answer
+  // is a write to the mark itself (status move, or the server's undo), so the
+  // mark is the record. Taking a mark over twice is harmless, a discarded mark
+  // shows as discarded to every reader, and the `piloti-decision` score is
+  // posted server-side. Nothing is written to `cardInteractions`; answers a
+  // message stored before the card went live still draw read-only.
+  canvas_activity: 'live',
 
   // The Rechenweg computes its own result from the operands it was given and
   // reveals where those numbers came from on click. Nothing is written, and
@@ -120,13 +152,32 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   surface: 'presentational',
 }
 
+const typesClassifiedAs = (kind: CardInteractivity): Array<GridCard['type']> =>
+  Object.entries(CARD_INTERACTIVITY)
+    .filter(([, classified]) => classified === kind)
+    .map(([type]) => type) as Array<GridCard['type']>
+
 /** The card types whose user decisions must be persisted (see the map above). */
-export const INTERACTIVE_CARD_TYPES = Object.entries(CARD_INTERACTIVITY)
-  .filter(([, kind]) => kind === 'interactive')
-  .map(([type]) => type) as Array<GridCard['type']>
+export const INTERACTIVE_CARD_TYPES = typesClassifiedAs('interactive')
+
+/**
+ * The card types that show server objects and write to them. They keep no
+ * decision on the message, so they are not pending decisions either: nothing
+ * about them waits on the message, and a reload reads the objects again.
+ */
+export const LIVE_CARD_TYPES = typesClassifiedAs('live')
 
 export const isInteractiveCardType = (type: GridCard['type']): boolean =>
   CARD_INTERACTIVITY[type] === 'interactive'
+
+export const isLiveCardType = (type: GridCard['type']): boolean => CARD_INTERACTIVITY[type] === 'live'
+
+/**
+ * Types that act (they write something), so an observer is never handed one
+ * and a surface never holds one as a leaf: the two classes that are not
+ * read-only presentation.
+ */
+export const ACTING_CARD_TYPES = [...INTERACTIVE_CARD_TYPES, ...LIVE_CARD_TYPES]
 
 /**
  * The terminal outcomes a user can reach on an interactive card. One flat union
@@ -138,13 +189,21 @@ export const CARD_DECISIONS = [
   /**
    * project_profile_patch: the patch was applied to the project brief.
    * file_operation_proposal: every operation on the card was applied.
+   * canvas_activity (per mark): the reader took Piloti's mark over. Read-only
+   * now: the card is `live`, and the mark itself records the answer. Kept for
+   * the messages that stored one.
    *
    * The file card reuses this pair rather than growing its own: the reader's
    * answer is the same answer, and the card's payload already says which verb
    * it was.
    */
   'accepted',
-  /** project_profile_patch / file_operation_proposal: the user declined. */
+  /**
+   * project_profile_patch / file_operation_proposal: the user declined.
+   * canvas_activity (per mark): the reader discarded Piloti's mark.
+   * canvas_activity (per change): the reader undid a change Piloti made for them.
+   * Both are read-only fallbacks for messages stored before the card went live.
+   */
   'rejected',
   /** memory_proposal: written org-wide. */
   'savedOrg',
@@ -216,6 +275,25 @@ export type CardInteractions = Record<string, CardInteraction>
 export const cardKey = (card: Pick<GridCard, 'type'>, index: number): string =>
   `${card.type}-${index}`
 
+/**
+ * The key ONE ITEM's decision is stored under, for a card that asks per item:
+ * the card's key, a `#`, the item's own id (`canvas_activity` once keyed each
+ * mark by its annotation id, so „take over #4, discard #5" were two decisions;
+ * the card is live now and only reads those back).
+ *
+ * `#` because no card key contains it — `${type}-${index}`, or a surface
+ * leaf's `${type}-${index}.${leafId}` — so the card an item decision belongs
+ * to is always the part before it ({@link cardKeyOfDecisionKey}). The PATCH
+ * route caps a key at 64 characters: `canvas_activity-19#` and a uuid are 55.
+ */
+export const itemDecisionKey = (key: string, itemId: string): string => `${key}#${itemId}`
+
+/** The card a stored decision belongs to: the key itself, or the part before an item's `#`. */
+export const cardKeyOfDecisionKey = (key: string): string => {
+  const hash = key.indexOf('#')
+  return hash === -1 ? key : key.slice(0, hash)
+}
+
 const DECISIONS: ReadonlySet<string> = new Set(CARD_DECISIONS)
 
 export const isCardDecision = (value: unknown): value is CardDecision =>
@@ -275,7 +353,8 @@ export const reconcileCardInteractions = (
     }
   })
 
-  const kept = Object.entries(interactions).filter(([key]) => survivors.has(key))
+  // An item's decision (`itemDecisionKey`) lives and dies with its card.
+  const kept = Object.entries(interactions).filter(([key]) => survivors.has(cardKeyOfDecisionKey(key)))
   return kept.length > 0 ? Object.fromEntries(kept) : undefined
 }
 

@@ -63,6 +63,18 @@ const SHARE_LIMIT = { name: 'share', limit: 60, windowMs: 60 * 60 * 1000 }
 const TYPING_LIMIT = { name: 'typing', limit: 120, windowMs: 60 * 1000 }
 
 /**
+ * What a viewer sends to a document's room (`POST /api/documents/:id/live`):
+ * its pointer at most every 80ms while it moves, where it is scrolled to at
+ * most every 200ms, and a presence claim every 10s
+ * (`lib/annotations/room-types.ts`). A pointer that never stops for a minute
+ * costs about 750 calls; the budget is twice that, for two tabs. Shedding is
+ * free for the same reason as typing: a pointer is worthless a moment later,
+ * and the client drops a refused one rather than retrying it.
+ * @type {LimitRule}
+ */
+const ROOM_LIMIT = { name: 'document-room', limit: 1500, windowMs: 60 * 1000 }
+
+/**
  * Sending mentions (counted per mentioned person, not per message).
  * @type {LimitRule}
  */
@@ -294,6 +306,7 @@ module.exports = {
   DOCUMENT_UPLOAD_LIMIT,
   SHARE_LIMIT,
   TYPING_LIMIT,
+  ROOM_LIMIT,
   MENTION_LIMIT,
   WS_UPGRADE_LIMIT,
   CHAT_TURN_LIMIT,

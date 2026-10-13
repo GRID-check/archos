@@ -40,6 +40,7 @@ import {
   markResourceItemsRead,
   openRecipientsOfGroup,
   resolveInboxItemsForTargets,
+  resolveOpenItemsAnchoredOn,
   upsertInboxItems,
   type InboxResolutionTarget,
 } from './repository'
@@ -186,6 +187,22 @@ export async function resolveInboxItemsFor(
     ),
   )
   return resolved
+}
+
+/**
+ * Resolve the open items of these types anchored on one thing (a mark, a
+ * proposal), for one recipient or for everyone. Session-less, like the emitter:
+ * the caller is the domain event that settled the request.
+ */
+export async function resolveInboxItemsAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+  recipientUserId?: string
+}): Promise<number> {
+  const recipients = await resolveOpenItemsAnchoredOn(input)
+  await Promise.all(recipients.map((userId) => publishToUser(userId, { kind: 'inbox.changed', pending: -1 })))
+  return recipients.length
 }
 
 /**

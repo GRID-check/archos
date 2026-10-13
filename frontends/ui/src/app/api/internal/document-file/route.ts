@@ -103,6 +103,7 @@ async function lookUp({ collection, filename, imageIndex }: DocumentFileQuery, o
   const document = await findDocumentStorageKey(collection, filename, organizationId)
   if (!document) throw new NotFoundError('Document not found')
   return {
+    documentId: document.id,
     storageKey: document.storageKey,
     // The bucket, not just the key (ADR-0043). Per-organization buckets
     // mean the key alone no longer locates an object, and the agent tier

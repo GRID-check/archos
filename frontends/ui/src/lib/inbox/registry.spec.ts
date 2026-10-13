@@ -9,6 +9,8 @@ import {
   inboxIsReachable,
   inboxItemIsActionable,
   inboxRetentionCutoff,
+  MARK_ANCHORED_INBOX_TYPES,
+  PROPOSAL_ANCHORED_INBOX_TYPES,
   platformInboxTypes,
   visibleInboxTypes,
 } from './registry'
@@ -191,5 +193,41 @@ describe('inboxIsReachable', () => {
     // itself, instead of leaving a page that renders a permanently empty list.
     expect(inboxIsReachable(false)).toBe(visibleInboxTypes(false).length > 0)
     expect(inboxIsReachable(true)).toBe(visibleInboxTypes(true).length > 0)
+  })
+})
+
+/**
+ * What Piloti's work on marks and proposals puts in the inbox (ADR-0105, ADR-0106).
+ * The asks are requests against a person and wait in the badge until settled;
+ * the reports are not.
+ */
+describe('the Piloti types', () => {
+  const asks = ['piloti.asks_you', 'piloti.proposal_waiting'] as const
+  const reports = ['piloti.work_done', 'piloti.work_failed'] as const
+
+  it('count in the badge only while a person has something to decide', () => {
+    for (const type of asks) expect(inboxItemIsActionable(type), type).toBe(true)
+    for (const type of reports) expect(inboxItemIsActionable(type), type).toBe(false)
+  })
+
+  it('are one row per mark or proposal, never collapsed', () => {
+    for (const type of [...asks, ...reports]) {
+      expect(INBOX_TYPE_DEFINITIONS[type].grouping, type).toBe('per-anchor')
+      expect(() => inboxGroupKey(type, 'document', 'doc_1'), type).toThrow(/groups per anchor/)
+    }
+    expect(inboxGroupKey('piloti.asks_you', 'document', 'doc_1', 'ann_1')).not.toBe(
+      inboxGroupKey('piloti.asks_you', 'document', 'doc_1', 'ann_2'),
+    )
+  })
+
+  it('stay visible to an office without collaboration: marks are not a chat feature', () => {
+    for (const type of [...asks, ...reports]) {
+      expect(visibleInboxTypes(false), type).toContain(type)
+    }
+  })
+
+  it('name the types whose anchor is a mark or a proposal, and only those', () => {
+    expect([...MARK_ANCHORED_INBOX_TYPES].sort()).toEqual(['piloti.asks_you', 'piloti.work_done', 'piloti.work_failed'])
+    expect(PROPOSAL_ANCHORED_INBOX_TYPES).toEqual(['piloti.proposal_waiting'])
   })
 })

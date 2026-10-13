@@ -502,6 +502,35 @@ export const collaboration = {
         titleNoActor: 'New revision of “{subject}”',
         bodyNoExcerpt: 'Open the revision to see what changed.',
       },
+      // Piloti worked an Anmerkung you delegated or mentioned it on (ADR-0106).
+      // {related} is the mark's running number, {subject} the document. No
+      // {actor}: that was Piloti.
+      pilotiWorkDone: {
+        title: 'Piloti is done with an annotation',
+        titleRelated: 'Piloti is done with annotation {related}',
+        body: 'The answer is in the annotation’s thread in {subject}.',
+        bodyNoSubject: 'The answer is in the annotation’s thread.',
+      },
+      pilotiWorkFailed: {
+        title: 'Piloti could not finish an annotation',
+        titleRelated: 'Piloti could not finish annotation {related}',
+        body: 'Open the annotation in {subject}: you can take it over yourself or ask Piloti again.',
+        bodyNoSubject: 'Open the annotation: you can take it over yourself or ask Piloti again.',
+      },
+      // Piloti asked a question and waits for a person. The question is the
+      // excerpt below.
+      pilotiAsksYou: {
+        title: 'Piloti has a question on an annotation',
+        titleRelated: 'Piloti has a question on annotation {related}',
+        body: 'In {subject}. Answer in the annotation’s thread.',
+        bodyNoSubject: 'Answer in the annotation’s thread.',
+      },
+      // A proposal the server holds (ADR-0105). What it changes is the excerpt
+      // below.
+      pilotiProposalWaiting: {
+        title: 'Piloti has a proposal for you',
+        body: 'Apply it or dismiss it.',
+      },
       unknown: {
         title: 'Something happened',
         body: 'in {subject}',

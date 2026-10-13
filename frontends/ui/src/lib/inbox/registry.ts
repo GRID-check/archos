@@ -297,7 +297,73 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     gate: 'operational',
     email: IN_APP_ONLY,
   },
+  /*
+    Piloti finished a turn on an Anmerkung for the person who woke it (ADR-0106).
+    `per-anchor` on the MARK: a second answer on the same mark folds into the
+    row it has, which is the row the reader is about to open. Informational: the
+    answer is in the thread, nothing waits on the reader. Operational, like
+    `document.review_requested`: marks are not a chat feature. Short retention:
+    it announces work that is already visible on the mark. A failure is the one
+    worth keeping and mailing, as `job.failed` is: the person delegated the mark
+    and may have left.
+  */
+  'piloti.work_done': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 30,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+  },
+  'piloti.work_failed': {
+    actionable: false,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+  },
+  /*
+    Piloti asked a question and waits for a person. Actionable, because the
+    mark is stuck until someone answers and the badge is what shows it; resolved
+    by `onMarkSettledByPerson`, so it never sits there for good. `per-anchor` on
+    the mark: a follow-up question folds into the row, and a second mark is a
+    second row. Kept as long as a mention, for the same reason.
+  */
+  'piloti.asks_you': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 180,
+    gate: 'operational',
+    email: { send: 'if-unread', afterMinutes: 60 },
+  },
+  /*
+    A stored proposal waits for a decision (ADR-0105). Actionable until it is
+    applied or dismissed. In-app only: it is a suggestion Piloti made while the
+    person was working with it, not a request against them, so it does not earn
+    mail. `per-anchor` on the proposal.
+  */
+  'piloti.proposal_waiting': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+  },
 }
+
+/**
+ * The types whose `anchorId` is an Anmerkung (a mark) of the document they
+ * point at. Their link opens the Prüfansicht at that mark; every other type
+ * anchored on a document anchors on something else (a Fassung), and must not be
+ * read as a mark.
+ */
+export const MARK_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = [
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+]
+
+/** The types anchored on a proposal: a deep link into a chat must not read that anchor as a message. */
+export const PROPOSAL_ANCHORED_INBOX_TYPES: readonly InboxItemType[] = ['piloti.proposal_waiting']
 
 /**
  * The permission that opens the platform lane of a reader's inbox.

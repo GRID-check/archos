@@ -139,9 +139,10 @@ are the words a reader sees.
    needs: B, the Fassungen moved with their `seq` on B, B's and A's
    `current_version_id` before the attach, and the shares and assignments moved
    from B. Detaching applies that row backwards in one transaction: the
-   Fassungen return to B with their old `seq`, both pointers are restored (A's
-   to its own current Fassung if the one it held came from B), the moved shares
-   and assignments return to B unless a person changed them on A since, the
+   Fassungen return to B with their old `seq`, B's pointer is restored, A's
+   saved pointer is restored only while A still points at the Fassung the
+   attach made current (a Fassung that became current on A since stays
+   current), the moved shares and assignments return to B unless a person changed them on A since, the
    alias is lifted, and the row is closed. Only the latest attach of B can be
    detached; a Fassung added to A after the attach stays on A.
 8. **The reading status is a closed set on the Fassung,** with a CHECK:

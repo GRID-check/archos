@@ -49,6 +49,9 @@ SYSTEM_CARD_TYPES = frozenset(
         # to stop the model writing on its own.
         "task_created",
         "file_operation_proposal",
+        # `canvas_activity` from the canvas tools: the card names marks and
+        # replies the BFF has already written, by their ids and numbers.
+        "canvas_activity",
     }
 )
 
@@ -222,8 +225,14 @@ def retired_card_markdown(payload: object) -> str | None:
 # write which opens an inbox item on a colleague. The rule above is about the
 # answer, not about the emission, so it is a member. Its OTHER control, on an
 # unfiled card, writes nothing at all: it prefills the composer.
+#
+# `canvas_activity` carries Piloti's PROPOSED marks, which a person takes over or
+# dismisses from the card as well as on the document: a non-idempotent write
+# per mark, so its decisions are stored per mark. (On the frontend it is classified
+# `'live'`: the mark is the record, not the message. "Interactive" here means
+# "asks the user", which a live card still does.)
 INTERACTIVE_CARD_TYPES = frozenset(
-    {"project_profile_patch", "memory_proposal", "file_operation_proposal", "document_draft"}
+    {"project_profile_patch", "memory_proposal", "file_operation_proposal", "document_draft", "canvas_activity"}
 )
 
 # Card types offered on the chat envelope only. A `surface` is taught by the

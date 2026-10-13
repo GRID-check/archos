@@ -1369,7 +1369,7 @@ export async function findStorageKeyByCollectionAndFilename(
   collectionName: string,
   filename: string,
   organizationId?: string,
-): Promise<{ storageKey: string; storageBucket: string | null; contentType: string | null } | null> {
+): Promise<{ id: string; storageKey: string; storageBucket: string | null; contentType: string | null } | null> {
   const db = getDb()
   const [row] = await withOptionalTenant(
     organizationId,
@@ -1378,6 +1378,9 @@ export async function findStorageKeyByCollectionAndFilename(
     () =>
       db
         .select({
+          // The id lets a tool that resolved a file by name act on the
+          // document through the routes keyed by id (its Anmerkungen).
+          id: documents.id,
           storageKey: documents.storageKey,
           // The agent tier calls get_object directly (ADR-0039), so it needs
           // the bucket as well as the key — recomputing it there would be a

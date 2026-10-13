@@ -71,6 +71,15 @@ TOOLS: dict[str, tuple[str, str]] = {
     "describe_card": ("no_collection_content", "returns a card type's schema"),
     "file_draft": ("no_collection_content", "files the conversation's own draft; returns the filing outcome"),
     "create_task": ("no_collection_content", "queues work; returns the task it created"),
+    # The review canvas, a function group: `look` renders through
+    # view_knowledge_image's own body and reports the collection it read; the
+    # other six return Anmerkungen rows and room presence of a document the BFF
+    # admits against the conversation's audience and the turn's signed scope
+    # before it answers (lib/annotations/agent.ts, ADR-0093).
+    "document_canvas": (
+        "reports",
+        "tests/aiq_agent/tools/canvas/test_look.py::test_a_look_reports_the_collection_it_read",
+    ),
     "project_memory_remember": (
         "no_collection_content",
         "writes a note; restricted memory is served into a prompt only after the BFF admits its folders",
@@ -102,12 +111,13 @@ _KINDS = {"reports", "lists_nothing_restricted", "no_collection_content", "exter
 
 
 def _registered_tool_types() -> set[str]:
+    """Every registered NAT function AND function group: a group's tools reach the model like any other."""
     for entry_point in importlib.metadata.entry_points(group="nat.plugins"):
         entry_point.load()
+    registry = GlobalTypeRegistry.get()
+    infos = [*registry.get_registered_functions(), *registry.get_registered_function_groups()]
     return {
-        info.config_type.static_type()
-        for info in GlobalTypeRegistry.get().get_registered_functions()
-        if not info.config_type.static_type().startswith("grid_test_")
+        info.config_type.static_type() for info in infos if not info.config_type.static_type().startswith("grid_test_")
     }
 
 

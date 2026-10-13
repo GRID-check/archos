@@ -11,6 +11,7 @@ import { fileItemFromStatus } from '@/features/documents/lib/document-question'
 import { isUuid } from '@/lib/ids'
 import { useCitationPeek } from '@/features/documents/hooks/use-citation-peek'
 import { useFilePreviewStore } from '@/features/documents/stores/file-preview-store'
+import { REVIEW_PARAM, showDocumentBeside } from '@/features/documents/lib/open-review'
 
 export interface ProjectChatClientProps {
   projectId: string
@@ -213,10 +214,41 @@ const ProjectChatContent = ({
     }
   }, [isAuthenticated, runParam, sessionParam, projectId, pathname, router, searchParams])
 
+  // `?doc=<id>&review=1[&mark=<id>]` is a link INTO a document's review, the
+  // one „Link kopieren" on a thread writes. There `doc` is the review's
+  // address, not an ask's subject: the document opens beside the chat, the
+  // pane opens the review and strips `review` and `mark`, and then `doc` goes
+  // too, so a reload does not read it as an ask. The ref holds the address
+  // until it has left the URL, so the prefill below never takes it in between.
+  // (In-app moves, a chat card's „Im Dokument zeigen", open the peek
+  // themselves and write `review` and `mark` alone: `open-review.ts`.)
+  const reviewDoc =
+    searchParams?.get(REVIEW_PARAM) && docPrefill && isUuid(docPrefill) ? docPrefill : null
+  const reviewDocRef = useRef<string | null>(null)
+
+  useEffect(() => {
+    if (reviewDoc) {
+      reviewDocRef.current = reviewDoc
+      void showDocumentBeside(reviewDoc, { projectId, projectName, canCollaborate })
+      return
+    }
+    const held = reviewDocRef.current
+    if (!held) return
+    if (docPrefill !== held || !pathname) {
+      reviewDocRef.current = null
+      return
+    }
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    params.delete('doc')
+    const query = params.toString()
+    router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
+  }, [reviewDoc, docPrefill, projectId, projectName, canCollaborate, pathname, router, searchParams])
+
   useEffect(() => {
     // Files, IFC walls and applicable standards all land here: one Ask Piloti
     // pipe (`setComposerPrefill`). `doc` is the optional subject of that ask,
-    // not a second chat.
+    // not a second chat — unless it is a review link's address (above).
+    if (reviewDoc || (docPrefill !== null && docPrefill === reviewDocRef.current)) return
     const token = `${askPrefill ?? ''}|${docPrefill ?? ''}|${filePrefill ?? ''}`
     if ((!askPrefill && !docPrefill) || consumedAskRef.current === token) return
     consumedAskRef.current = token
@@ -242,7 +274,7 @@ const ProjectChatContent = ({
       const query = params.toString()
       router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false })
     }
-  }, [askPrefill, docPrefill, filePrefill, searchParams, pathname, router, setComposerPrefill])
+  }, [askPrefill, docPrefill, filePrefill, reviewDoc, searchParams, pathname, router, setComposerPrefill])
 
   const composerSubject = useChatStore((s) => s.composerSubject)
   const subjectId = composerSubject?.resourceId ?? docPrefill

@@ -36,6 +36,7 @@ import {
   markAllInboxItemsRead,
   markInboxItemsRead,
   markResourceItemsRead,
+  resolveOpenItemsAnchoredOn,
   upsertInboxItem,
   upsertInboxItems,
 } from './repository'
@@ -258,5 +259,46 @@ describe('archiveInboxItemsOfType — retiring a condition that no longer holds'
     expect(sql).toContain('"anchor_id" is null or')
     expect(sql).toContain('"anchor_id" <> ')
     expect(params).toContain('90')
+  })
+})
+
+describe('resolveOpenItemsAnchoredOn', () => {
+  beforeEach(() => {
+    captured.length = 0
+  })
+
+  it('resolves the open items of the named types on one anchor, in one organization, for everyone', async () => {
+    await resolveOpenItemsAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you'],
+      anchorId: 'ann_1',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toMatch(/^update "inbox_items" set "resolved_at" = /)
+    expect(sql).toContain('"organization_id" = $')
+    expect(sql).toContain('"type" in ($')
+    expect(sql).toContain('"anchor_id" = $')
+    expect(sql).toContain('"resolved_at" is null')
+    expect(sql).not.toContain('"recipient_user_id" = $')
+    expect(params).toEqual(expect.arrayContaining(['org_1', 'piloti.asks_you', 'ann_1']))
+  })
+
+  it('narrows to one recipient when one is named', async () => {
+    await resolveOpenItemsAnchoredOn({
+      organizationId: 'org_1',
+      types: ['piloti.asks_you'],
+      anchorId: 'ann_1',
+      recipientUserId: 'user_me',
+    })
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"recipient_user_id" = $')
+    expect(params).toContain('user_me')
+  })
+
+  it('touches nothing for an empty type list', async () => {
+    expect(await resolveOpenItemsAnchoredOn({ organizationId: 'org_1', types: [], anchorId: 'a' })).toEqual([])
+    expect(captured).toHaveLength(0)
   })
 })

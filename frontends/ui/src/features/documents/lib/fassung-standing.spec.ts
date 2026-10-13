@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import type { DocumentReadFamily } from '@/lib/documents/document-status'
 import type { DocumentVersionState, DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { fassungStanding, resolvePerson } from './fassung-standing'
 import { buildFassungTimeline } from './fassung-timeline'
@@ -48,6 +49,8 @@ function standingOf(
     reviewerUserIds?: string[]
     viewer?: typeof REVIEWER | typeof WRITER
     lifecycle?: 'active' | 'archived'
+    read?: DocumentReadFamily
+    agent?: boolean
   } = {},
 ) {
   const rows = buildFassungTimeline({
@@ -57,6 +60,8 @@ function standingOf(
     directIds: new Set(),
     headAt: '2026-08-01T00:00:00.000Z',
     newer: options.newer ?? null,
+    newestRead: options.read,
+    predecessorStandsIn: !options.agent,
   })
   const newest = versions.reduce<DocumentVersionView | null>(
     (best, row) => (best === null || row.versionNumber > best.versionNumber ? row : best),
@@ -68,6 +73,7 @@ function standingOf(
     lifecycle: options.lifecycle ?? 'active',
     reviewerUserIds: options.reviewerUserIds,
     viewer: options.viewer,
+    newestRead: options.read,
   })
 }
 
@@ -130,6 +136,31 @@ describe('fassungStanding — no fake approval', () => {
 
   it('answers from the document itself when its versions were not read', () => {
     expect(standingOf([])).toMatchObject({ number: 1, state: null, progress: null, answer: { kind: 'this' } })
+  })
+})
+
+describe('fassungStanding — published is not yet answerable until it has been read', () => {
+  it('keeps answering from the previous upload while a re-upload is read, and after its reading failed', () => {
+    for (const read of ['reading', 'failed', 'held'] as const) {
+      expect(standingOf([upload(1, 'superseded'), upload(2)], { read }).answer).toEqual({ kind: 'older', number: 1 })
+    }
+  })
+
+  it('says a first upload answers once read, and not at all when its reading failed', () => {
+    expect(standingOf([upload(1)], { read: 'reading' }).answer).toEqual({ kind: 'notYetRead' })
+    expect(standingOf([upload(1)], { read: 'failed' }).answer).toEqual({ kind: 'never' })
+    expect(standingOf([], { read: 'reading' }).answer).toEqual({ kind: 'notYetRead' })
+  })
+
+  it('does not lean on the previous Fassung of a Piloti document, whose publish removed it first', () => {
+    const versions = [reviewed(1, 'superseded'), reviewed(2, 'published')]
+    expect(standingOf(versions, { read: 'reading', agent: true }).answer).toEqual({ kind: 'notYetRead' })
+    expect(standingOf(versions, { read: 'failed', agent: true }).answer).toEqual({ kind: 'never' })
+  })
+
+  it('leaves a review waiting on the newest alone: the reading status is about the published one then', () => {
+    const versions = [reviewed(1, 'published'), reviewed(2, 'in_review')]
+    expect(standingOf(versions, { read: 'reading' }).answer).toEqual({ kind: 'older', number: 1 })
   })
 })
 

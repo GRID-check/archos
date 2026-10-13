@@ -137,6 +137,13 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # the reach from the person the envelope names; no project header, because
     # the projects it reads are not the conversation's.
     "project_lookup": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # The review canvas (`tools/canvas/`, the `canvas` function group): a
+    # document's Anmerkungen and its room, worked on as the person the envelope
+    # names (ADR-0105). No project header: the document is named by the model
+    # or resolved by the BFF from the conversation, and may belong to no
+    # project (an Archiv or session upload). The envelope is supplied as for
+    # `file_draft` above; without one every canvas tool refuses.
+    "document_canvas": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
 }
 
 

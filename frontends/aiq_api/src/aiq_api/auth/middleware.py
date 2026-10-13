@@ -249,9 +249,13 @@ def detect_internal_caller(headers: dict[bytes, bytes]) -> dict[str, Any]:
     """Classify an internal request without validating any presented token."""
     token = extract_auth_token(headers)
     headless = is_headless_request(headers)
+    # ``headless`` beside ``skip_clarifier``: an anonymous caller skips the
+    # clarifier too, but only an ``X-AIQ-Mode: headless`` caller has nobody
+    # holding the socket to answer a question (``ask_user`` refuses for it).
+    marks = {"skip_clarifier": headless, **({"headless": True} if headless else {})}
     if token:
-        return {"type": "unverified_jwt", "token": token, "skip_clarifier": headless}
-    return {"type": "internal", "skip_clarifier": headless}
+        return {"type": "unverified_jwt", "token": token, **marks}
+    return {"type": "internal", **marks}
 
 
 async def resolve_request_user(
@@ -277,6 +281,7 @@ async def resolve_request_user(
         if user is not None:
             if is_headless_request(headers):
                 user["skip_clarifier"] = True
+                user["headless"] = True
             return user, None, is_external, None
 
         if is_external and require_auth:

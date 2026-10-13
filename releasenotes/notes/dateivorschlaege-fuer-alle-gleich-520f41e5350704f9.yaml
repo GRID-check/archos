@@ -1,0 +1,12 @@
+---
+features:
+  - >
+    When Piloti proposes to move, rename, file or assign documents, everyone in
+    the conversation now sees the same proposal and the same decision: once
+    someone accepts it, it is applied in that person's name and with their
+    rights, and the card shows who decided and what landed.
+fixes:
+  - >
+    Accepting a proposal to move an office document into one of the
+    Büroablage's folders now finds that folder, and a proposal to assign a
+    document to the person accepting it no longer fails.

@@ -43,8 +43,8 @@ def config() -> dict:
 
 def _bound_tool_types(config: dict, agent: str) -> dict[str, str]:
     """Bound tool name -> its NAT function type, the identity the contract is keyed by."""
-    functions = config["functions"]
-    return {name: functions[name]["_type"] for name in functions[agent]["tools"] if name in functions}
+    declared = {**config["functions"], **(config.get("function_groups") or {})}
+    return {name: declared[name]["_type"] for name in config["functions"][agent]["tools"] if name in declared}
 
 
 @pytest.mark.parametrize("agent", ["shallow_research_agent", "deep_research_agent"])
@@ -67,7 +67,7 @@ def test_the_delegation_tool_declares_its_project_scope_and_its_person():
     assert set(TOOL_CONTEXT_REQUIREMENTS["create_task"]) == {PROJECT_ID_HEADER, *ENVELOPE}
 
 
-@pytest.mark.parametrize("kind", ["file_draft", "create_task", "project_lookup"])
+@pytest.mark.parametrize("kind", ["file_draft", "create_task", "project_lookup", "document_canvas"])
 def test_every_tool_that_acts_as_a_person_declares_the_envelope(kind: str):
     """The tools that echo `get_request_envelope_from_context()` to the BFF."""
     assert set(ENVELOPE) <= set(TOOL_CONTEXT_REQUIREMENTS[kind])
@@ -95,6 +95,7 @@ def test_the_memory_tool_declares_its_project_scope():
 
 def test_every_declared_requirement_names_a_function_type_the_config_binds(config: dict):
     """A requirement for a type nobody binds is a typo that would guard nothing."""
-    bound_types = {entry.get("_type") for entry in config["functions"].values() if isinstance(entry, dict)}
+    declared = [*config["functions"].values(), *(config.get("function_groups") or {}).values()]
+    bound_types = {entry.get("_type") for entry in declared if isinstance(entry, dict)}
     unknown = [kind for kind in TOOL_CONTEXT_REQUIREMENTS if kind not in bound_types]
     assert unknown == [], unknown

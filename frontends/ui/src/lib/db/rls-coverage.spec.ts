@@ -140,6 +140,20 @@ const BOUNDARY_MIGRATIONS = [
   // announced, so a re-read does not announce one again. Keyed directly by its
   // organization; cascades with the newer document.
   '0130_document_fassung_announcements.sql',
+  // Adds document_annotations and document_annotation_replies — marks people
+  // and Piloti set at a place on a page, and the thread under each (CONTEXT.md
+  // „Anmerkung"). Keyed by their organization AND the document's (the mark's,
+  // for a reply), so a row cannot be planted on another tenant's document.
+  '0138_document_annotations.sql',
+  // The record of each wake of Piloti on an Anmerkung (ADR-0106). Keyed by its
+  // organization AND the mark's.
+  '0139_piloti_wakes.sql',
+  // Adds proposed_changes — a workspace change Piloti proposes and a person
+  // applies (ADR-0105). Keyed by its organization AND the project's.
+  '0140_proposed_changes.sql',
+  // Adds piloti_changes — every change Piloti applied, with the turn that made
+  // it (ADR-0109). Keyed by its organization AND its document's.
+  '0142_piloti_changes.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

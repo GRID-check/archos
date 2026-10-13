@@ -569,6 +569,118 @@ export const chat = {
       unavailable: {
         noProject: 'This chat is not attached to a project, so there is no file store to change.',
       },
+      // A card whose proposal the server holds (ADR-0105): its status, the
+      // result of every row and who decided are read from that object, so a
+      // colleague's decision is what every reader sees.
+      live: {
+        partial: '{applied} of {total} applied.',
+        failed: 'Nothing could be applied. Nothing was changed.',
+        decidedBy: {
+          applied: 'Applied by {name} · {when}',
+          partially_applied: 'Applied by {name} · {when}',
+          failed: 'Tried by {name} · {when}',
+          dismissed: 'Discarded by {name} · {when}',
+        },
+        // The decider's name is not known to this reader.
+        someone: 'a colleague',
+        // The click arrived after somebody else had decided.
+        overtaken: 'This was decided in the meantime.',
+        readOnly: 'You can read this proposal, but not apply it in this project.',
+        loadError: 'The state of this proposal could not be loaded.',
+        dismissError: 'Could not be discarded.',
+      },
+    },
+    // What Piloti did on a document: marks it set, threads it answered in.
+    // One „take over" or „discard" per mark, and the way into the review at
+    // exactly that place.
+    canvasActivity: {
+      headline: {
+        proposed: '{count, plural, one {# annotation proposed} other {# annotations proposed}}',
+        repliedOne: 'Replied in the thread of #{number}',
+        repliedMany: 'Replied in {count} threads',
+        created: '{count, plural, one {# annotation set} other {# annotations set}}',
+        changed: '{count, plural, one {# annotation changed} other {# annotations changed}}',
+        deleted: '{count, plural, one {# annotation deleted} other {# annotations deleted}}',
+        repliedPart: 'replied in {threads, plural, one {one thread} other {# threads}}',
+      },
+      kinds: {
+        hint: 'Note',
+        question: 'Question',
+        defect: 'Defect',
+      },
+      page: 'Page {page}',
+      repliedIn: 'Reply in the thread of #{number}',
+      show: 'Show in document',
+      showMarkLabel: 'Show annotation {number} in the document',
+      showThreadLabel: 'Show the thread of annotation {number} in the document',
+      showError: 'The document could not be opened.',
+      accept: 'Take over',
+      accepting: 'Taking over …',
+      acceptLabel: 'Take over annotation {number}',
+      reject: 'Discard',
+      rejectLabel: 'Discard annotation {number}',
+      state: {
+        proposed: 'Proposed',
+        open: 'Taken over',
+        resolved: 'Resolved',
+        dismissed: 'Discarded',
+        gone: 'No longer there',
+      },
+      error: 'Could not be saved.',
+      forbidden: 'You cannot change this annotation.',
+      // What Piloti changed on a mark at the person's request, in their words:
+      // „#4 resolved“, „#4 assigned to Anna“.
+      change: {
+        taken: 'taken over',
+        reopened: 'reopened',
+        resolved: 'resolved',
+        dismissed: 'discarded',
+        assigned: 'assigned to {name}',
+        someone: 'someone',
+        unassigned: 'assignee removed',
+        due: 'due {date}',
+        undue: 'due date removed',
+        kind: 'marked as {kind}',
+        body: 'text reworded',
+      },
+      status: {
+        proposed: 'proposed',
+        open: 'open',
+        resolved: 'resolved',
+        dismissed: 'discarded',
+      },
+      undo: 'Undo',
+      undoing: 'Undoing …',
+      undoLabel: 'Undo the change to annotation {number}',
+      undone: 'Undone',
+      movedSince: 'Changed since, now {state}',
+      deleted: 'Annotation #{number} deleted',
+      // Who the turn acted for, and why an undo did not happen (ADR-0109).
+      forPerson: 'for {name}',
+      movedOn: 'Someone changed this in the meantime, so it stays as it is.',
+      alreadyUndone: 'Already undone.',
+      // Several proposals at once (take over or discard per annotation stays)
+      // and the state of the thread at a glance.
+      batch: {
+        acceptAll: 'Take over all',
+        accepting: 'Taking over …',
+        rejectRest: 'Discard the rest',
+        rejecting: 'Discarding …',
+        confirmTitle:
+          '{count, plural, one {Discard this annotation?} other {Discard # annotations?}}',
+        confirmBody: 'This cannot be undone from here.',
+        confirm: 'Discard',
+        cancel: 'Cancel',
+        already: 'already handled',
+        alreadyBy: 'already handled by {name}',
+        failed:
+          '{count, plural, one {One annotation could not be saved.} other {# annotations could not be saved.}}',
+      },
+      thread: {
+        count: '{count, plural, one {# reply} other {# replies}}',
+        last: 'latest {name}: “{excerpt}”',
+        someone: 'someone',
+      },
     },
     verdictHeader: {
       confidenceHigh: 'high confidence',
@@ -880,6 +992,15 @@ export const chat = {
           draftFiled: 'Filing the draft in the project …',
           draftSubmitted: 'Sending the draft for approval …',
           taskCreated: 'Creating the task …',
+          // Annotations on a document. Piloti only suggests its own findings: a
+          // person takes each one over or dismisses it. It sets, changes and
+          // deletes only what the person asks for.
+          annotationsRead: 'Reading the annotations …',
+          annotationsPropose: 'Suggesting annotations …',
+          annotationsSet: 'Setting annotations …',
+          annotationsUpdate: 'Changing an annotation …',
+          annotationsDelete: 'Deleting an annotation …',
+          annotationsReply: 'Replying to an annotation …',
         },
         // The tools are done, the answer is being written. The same words as
         // `activity.composing` above: one vocabulary for one thing — whether
@@ -896,6 +1017,12 @@ export const chat = {
         repair:
           'A quotation differs from the source’s wording — correcting it against the original …',
         escalation: 'A quick lookup is not enough — starting deep research',
+        // A note the person typed while Piloti works. `{text}` is their own
+        // words; `{round}` the round in which Piloti read it.
+        steer: {
+          received: 'Added: “{text}” — taking it into account …',
+          applied: 'Note applied in round {round}: “{text}”',
+        },
       },
     },
     // The one skill event a reader sees, keyed on WHO decided. Two sentences
@@ -920,6 +1047,8 @@ export const chat = {
       /** The draft leaves the working directory: filed, or submitted for approval. */
       filing: 'Filing',
       task: 'Task',
+      /** Annotations on the document: read, suggested or answered. */
+      annotations: 'Annotations',
       /** The file actions PROPOSE and write nothing (ADR-0003). */
       fileProposal: 'File proposal',
       // One chip per skill the turn actually applied. `{name}` is resolved by

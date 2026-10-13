@@ -3016,6 +3016,10 @@
     "de": "Wenn Sie einen Chat teilen, der aus einem eingeschränkten Ordner geschöpft hat, bietet Piloti nur Kolleginnen und Kollegen an, die alle diese Ordner lesen dürfen, und zeigt die anderen ausgegraut mit „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt“. Den Ordner nennt es nie."
   },
   {
+    "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
+    "de": "Wenn Sie eine neue Revision einer Datei hochladen, weist das Dokument jetzt darauf hin, dass Piloti weiterhin auf Grundlage der vorherigen Revision antwortet, bis die neue eingelesen wurde, und zeigt diesen Hinweis auch an, wenn das Einlesen fehlschlägt. Zuvor hieß es, Piloti antworte direkt nach dem Upload bereits auf Grundlage der neuen Revision."
+  },
+  {
     "en": "When you upload a new version of a file under the same name, the document type, display title and folder carry over from the earlier version. Before, they were lost, and Piloti guessed the document type from the file name again.",
     "de": "Wenn Sie eine neue Fassung einer Datei unter demselben Namen hochladen, bleiben Dokumentart, Anzeigetitel und Ordner der früheren Fassung erhalten. Bisher gingen sie verloren, und Piloti leitete die Dokumentart erneut aus dem Dateinamen ab."
   },

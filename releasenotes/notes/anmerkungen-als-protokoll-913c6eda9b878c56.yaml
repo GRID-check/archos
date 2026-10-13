@@ -1,0 +1,8 @@
+---
+features:
+  - >
+    Export a document's annotations from the review as minutes for a site
+    meeting or the client, as PDF, Word or Markdown: each one by number, with
+    its page, status, who is responsible, the due date and its thread. Choose
+    open ones or all, and add Piloti's unreviewed proposals under their own
+    heading if you want them.

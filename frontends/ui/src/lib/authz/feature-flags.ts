@@ -172,6 +172,31 @@ export const FEATURE_FLAGS = {
   memoryReflection: 'memory-reflection',
   /** The post-answer follow-up-questions stage, read the same way. */
   postAnswerFollowUps: 'post-answer-follow-ups',
+  /**
+   * Events on Piloti's work wake a turn (ADR-0106): a reply that addresses
+   * Piloti in an Anmerkung's thread, a reply on Piloti's own open question, and
+   * a mark delegated to Piloti are answered by the server, as the person who
+   * acted, with nobody's browser open. Read when the event is written (the
+   * person's session) and again when the wake job runs (their pinned session).
+   *
+   * An entitlement, off until an operator targets the organization: a wake is
+   * a model call nobody typed. With it off, an @Piloti reply is asked by the
+   * browser that wrote it, exactly as before, and a mark cannot be delegated.
+   */
+  pilotiWakes: 'piloti-wakes',
+  /**
+   * Piloti acts when asked (ADR-0105): sets a mark open, changes one (resolve,
+   * reopen, dismiss, take over, assign, date, reword) or deletes one, in the
+   * asker's name, when the person asks for exactly that. Read from the asker's
+   * pinned session on `POST /api/internal/document-annotations`.
+   *
+   * An entitlement, off until an operator targets the organization: an office
+   * starts with Piloti proposing only and switches this on once it trusts it.
+   * With it off, those ops are refused (`piloti-acts-off`) and Piloti proposes
+   * instead; reads, the room, pointing, highlighting, replies and proposals are
+   * untouched.
+   */
+  pilotiActs: 'piloti-acts',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -190,6 +215,8 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   collaboration: 'entitlement',
   skills: 'entitlement',
   'mail-import': 'entitlement',
+  'piloti-wakes': 'entitlement',
+  'piloti-acts': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',
@@ -241,6 +268,16 @@ export function isProjectKnowledgePageEnabled(session: Pick<GridSession, 'featur
  */
 export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.mailImport)
+}
+
+/** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
+export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
+}
+
+/** Whether Piloti may apply a change to Anmerkungen when the asker asks, or only propose (ADR-0105). */
+export function isPilotiActsEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiActs)
 }
 
 /** Collaboration (ADR-0032…0035). */
