@@ -25,6 +25,11 @@
  *   `plan`     a plan sheet cited for two depictions of a Sitztreppe: the
  *              dialog marks the Grundriss and the Schnitt by their boxes
  *              rather than searching the sheet for text (issue #433).
+ *   `states`   the viewer's own states: search with hits and the page rail,
+ *              the chat peek's width, a document that cannot be opened, and
+ *              an encrypted one asking for its password.
+ *   `enlarged` the plain enlarged viewer the knowledge pages and the Files
+ *              preview's expand button open.
  *   `quote`    the dialog with a passage the READER selected, and the offer
  *              that turns it into a citation. Driven by selecting a range and
  *              releasing the pointer — the same path a drag takes — because a
@@ -44,7 +49,8 @@ import {
   type StoredDocumentRef,
 } from '@/features/chat/lib/citations'
 import type { CitationSource } from '@/features/chat/types'
-import { assemblePdf, buildPdf, pdfString, type PdfLine } from '../_fixtures/sample-pdf'
+import { assemblePdf, buildPdf, encryptedPdf, pdfString, type PdfLine } from '../_fixtures/sample-pdf'
+import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 
 const FILE_NAME = 'bescheid_ba-2026-0417.pdf'
 const TITLE = 'Bescheid BA-2026-0417'
@@ -286,6 +292,101 @@ const SelectOnLoad: FC<{ contains: string }> = ({ contains }) => {
   return null
 }
 
+/**
+ * Open the in-document search and type `query` into it, the way a reader
+ * would: Cmd+F on the document, then the word. Retries until the document
+ * has pages, for the same reason `SelectOnLoad` does. Scoped to the element
+ * marked `data-search-on-load`, so the other panes on the page stay as they are.
+ */
+const SearchOnLoad: FC<{ query: string }> = ({ query }) => {
+  useEffect(() => {
+    let attempts = 0
+    let timer = 0
+    const tick = (): void => {
+      const scope = document.querySelector('[data-search-on-load]')
+      const frame = scope?.querySelector<HTMLElement>('[data-testid="pdf-scroll"]')
+      if (frame && scope?.querySelector('[data-page]')) {
+        frame.dispatchEvent(new KeyboardEvent('keydown', { key: 'f', ctrlKey: true, bubbles: true }))
+        window.setTimeout(() => {
+          const field = scope.querySelector<HTMLInputElement>('input[type="search"]')
+          if (!field) return
+          const setValue = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set
+          setValue?.call(field, query)
+          field.dispatchEvent(new Event('input', { bubbles: true }))
+        }, 100)
+        return
+      }
+      if (attempts++ > 80) return
+      timer = window.setTimeout(tick, 50)
+    }
+    tick()
+    return () => window.clearTimeout(timer)
+  }, [query])
+  return null
+}
+
+/** Serve fixture bytes as a blob URL for the life of the component. */
+const useBlobUrl = (build: () => Uint8Array<ArrayBuffer>): string | null => {
+  const [url, setUrl] = useState<string | null>(null)
+  useEffect(() => {
+    const next = URL.createObjectURL(new Blob([build()], { type: 'application/pdf' }))
+    setUrl(next)
+    return () => URL.revokeObjectURL(next)
+  }, [build])
+  return url
+}
+
+const buildBescheid = (): Uint8Array<ArrayBuffer> => buildPdf(PAGES)
+
+/**
+ * `?variant=states`: the viewer's own states side by side, each in the frame a
+ * real host gives it. Search running over the Bescheid in a wide stage (page
+ * rail showing); the same document at the chat peek's width, where the rail
+ * and the page arrows give way; a document pdf.js cannot open; and an
+ * encrypted one asking for its password (`piloti`).
+ */
+const StatesPreview = () => {
+  const bescheid = useBlobUrl(buildBescheid)
+  const locked = useBlobUrl(encryptedPdf)
+  const pane = 'flex min-w-0 flex-col rounded-lg border border-border bg-card p-3'
+  const label = 'mb-2 shrink-0 text-xs font-medium uppercase tracking-[0.05em] text-muted-foreground'
+  return (
+    <div className="grid h-[calc(100dvh-3rem)] grid-cols-[minmax(0,1fr)_340px] grid-rows-2 gap-4">
+      <div className={`${pane} row-span-1`} data-search-on-load>
+        <p className={label}>Suche im Dokument</p>
+        {bescheid && <PdfDocumentView src={bescheid} title={`${TITLE}.pdf`} />}
+        <SearchOnLoad query="Fluchtwege" />
+      </div>
+      <div className={`${pane} row-span-2`}>
+        <p className={label}>Schmale Bühne (Chat-Seitenleiste)</p>
+        {bescheid && <PdfDocumentView src={bescheid} title={`${TITLE}.pdf`} page={2} />}
+      </div>
+      <div className="grid min-h-0 grid-cols-2 gap-4">
+        <div className={pane}>
+          <p className={label}>Nicht lesbar</p>
+          <PdfDocumentView src="/dev/does-not-exist.pdf" title="kaputt.pdf" />
+        </div>
+        <div className={pane}>
+          <p className={label}>Kennwortgeschützt</p>
+          {locked && <PdfDocumentView src={locked} title="geschuetzt.pdf" />}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+/**
+ * `?variant=enlarged`: the plain enlarged viewer, as the knowledge pages and
+ * the Files preview's expand button open it — no citation, no rail of
+ * Fundstellen, the document and its controls.
+ */
+const EnlargedPreview = () => {
+  const bescheid = useBlobUrl(buildBescheid)
+  return bescheid ? (
+    <PdfViewerDialog open onOpenChange={() => {}} fileName={FILE_NAME} title={`${TITLE}.pdf`} src={bescheid} />
+  ) : null
+}
+
 /** The real dialog, mounted open, over the fixture document. */
 const DialogPreview = ({
   sources,
@@ -351,6 +452,22 @@ export default function PdfPassagePreviewPage() {
     setSrc(url)
     return () => URL.revokeObjectURL(url)
   }, [])
+
+  if (variant === 'states') {
+    return (
+      <div className="min-h-dvh bg-background p-6">
+        <StatesPreview />
+      </div>
+    )
+  }
+
+  if (variant === 'enlarged') {
+    return (
+      <div className="min-h-dvh bg-background p-6">
+        <EnlargedPreview />
+      </div>
+    )
+  }
 
   if (variant === 'plan') {
     return (

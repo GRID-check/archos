@@ -87,7 +87,7 @@ export const fakePdfjsRuntime = (state: FakePdfState) => ({
   loadPdfjs: async () => {
     if (state.fail) throw new Error('worker unavailable')
     return {
-      getDocument: (parameters: { password?: string }) => ({
+      getDocument: (parameters: { password?: string } = {}) => ({
         promise: (state.password && parameters.password !== state.password
           ? Promise.reject(
               Object.assign(new Error('No password given'), {

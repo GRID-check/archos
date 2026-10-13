@@ -1,0 +1,20 @@
+---
+improvements:
+  - >
+    A PDF now opens the same way everywhere: a cited source, a file in Files,
+    its enlarged view and the file beside the chat. The pages lie on one
+    stage, with the controls in one bar at its foot.
+  - >
+    Type a page number to jump to it, turn pages with Page Up and Page Down,
+    and zoom to fit the width or the whole page, or pinch to zoom in where
+    the pointer is.
+  - >
+    A wide view shows every page down its left edge, so a page in a long document is found
+    by how it looks rather than by its number.
+  - >
+    Ctrl+F (Cmd+F on a Mac) inside a PDF searches the document. It counts
+    the matches and steps through them.
+  - >
+    A password-protected PDF asks for its password instead of failing. A
+    PDF that cannot be opened offers to try again, or to open it in the
+    browser.
