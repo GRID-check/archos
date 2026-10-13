@@ -585,6 +585,7 @@ export async function promoteVersionToPublished(
   organizationId: string,
   expected: DocumentVersionState,
   patch: Partial<Omit<NewDocumentVersion, 'id' | 'organizationId' | 'documentId'>> = {},
+  review?: ReviewRoundWrite,
 ): Promise<{ version: DocumentVersion; superseded: DocumentVersion[] } | null> {
   const db = getDb()
   try {
@@ -619,6 +620,9 @@ export async function promoteVersionToPublished(
       // 409 the caller is about to get. Thrown and caught below, never
       // `tx.rollback()` — see {@link LostCompareAndSwap}.
       if (!swapped) throw new LostCompareAndSwap()
+      // „Freigeben" decides the round and publishes in one step (ADR-0104
+      // rule 5), so the decision lands with the promotion or not at all.
+      if (review) await writeReviewRound(tx, swapped, review)
 
       await tx
         .update(documents)

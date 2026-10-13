@@ -408,7 +408,8 @@ The header is always visible, also when the section is shut. It is about the
   Veröffentlicht, Ersetzt, Abgelehnt or Stillgelegt. A file you uploaded has no
   state word: nobody approved it, you put it there.
 - **The four steps, named:** Entwurf, In Prüfung, Freigegeben, Veröffentlicht,
-  with the step the Fassung has reached set darker. A file you uploaded has no
+  with the step the Fassung has reached set darker. Approving fills the track to
+  the end: it publishes the Fassung in the same step. A file you uploaded has no
   track, and neither has a Fassung a newer one replaced.
 - **The next step, with a person:** „Nächster Schritt: Freigabe durch Sabine
   Gruber“ (whoever the round was sent to), „Nächster Schritt: Ihre Freigabe“ when
@@ -420,7 +421,7 @@ The header is always visible, also when the section is shut. It is about the
   |---|---|
   | The newest is published, or is a file you uploaded | Piloti antwortet aus dieser Fassung. |
   | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
-  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie veröffentlicht ist. |
+  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie freigegeben ist. |
   | The newest was refused, nothing published | Piloti antwortet nicht daraus. |
   | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
   | Stillgelegt | Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr. |

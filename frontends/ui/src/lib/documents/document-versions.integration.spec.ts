@@ -79,11 +79,11 @@ describe.skipIf(!url)('document versions under concurrency', () => {
     createdBy: USER,
   })
 
+  /** A person's upload as `createDocumentVersion` writes it: published, approved by nobody (migration 0137). */
   const published = (documentId: string, storageKey: string, fileSize = 1_000) => ({
     ...baseVersion(documentId, storageKey, fileSize),
     state: 'published' as const,
-    approvedBy: USER,
-    approvedAt: new Date(),
+    origin: 'upload' as const,
     publishedBy: USER,
     publishedAt: new Date(),
   })
@@ -256,6 +256,67 @@ describe.skipIf(!url)('document versions under concurrency', () => {
       `),
     )
     await expect(refusal).rejects.toThrow()
+  })
+
+  /*
+   * ADR-0104 rules 5 and 6 (migration 0137): an upload is published with no
+   * approver, a version that began as a draft never is, and „Freigeben"
+   * promotes the version and decides its round in one transaction.
+   */
+  it('publishes an upload without an approver, and refuses a draft published without one', async () => {
+    const doc = await seedDocument()
+    await inTenant(() => repo.insertPublishedVersion(published(doc.id, `${doc.storageKey}.u1`)))
+    expect(await versionsOf(doc.id)).toMatchObject([{ state: 'published' }])
+
+    const other = await seedDocument()
+    const unapproved = inTenant(() =>
+      repo.insertPublishedVersion({ ...published(other.id, `${other.storageKey}.d1`), origin: 'draft' }),
+    ).then(
+      () => null,
+      (error: unknown) => error,
+    )
+    const cause = ((await unapproved) as { cause?: { code?: string; constraint_name?: string } } | null)?.cause
+    expect(cause?.code).toBe('23514')
+    expect(cause?.constraint_name).toBe('document_versions_published_is_approved')
+  })
+
+  it('approves in one step: the promotion and the round decision land together, or neither does', async () => {
+    const doc = await seedDocument()
+    await inTenant(() => repo.insertPublishedVersion(published(doc.id, `${doc.storageKey}.a1`)))
+    const draft = await inTenant(() =>
+      repo.insertDocumentVersion({ ...baseVersion(doc.id, `${doc.storageKey}.a2`), state: 'draft' }),
+    )
+    const submit = { state: 'in_review' as const, submittedBy: 'user_author', submittedByActor: 'human' as const, submittedAt: new Date() }
+    await inTenant(() =>
+      repo.compareAndSwapVersionState(draft.id, ORG, 'draft', submit, {
+        kind: 'open',
+        requestedBy: 'user_author',
+        requestedByActor: 'human',
+        reviewerUserIds: [],
+      }),
+    )
+
+    const now = new Date()
+    const approve = {
+      state: 'published' as const,
+      reviewedBy: 'user_reviewer',
+      reviewedAt: now,
+      approvedBy: 'user_reviewer',
+      approvedAt: now,
+      publishedBy: 'user_reviewer',
+      publishedAt: now,
+    }
+    const decide = { kind: 'decide' as const, outcome: 'approved' as const, decidedBy: 'user_reviewer', comment: null }
+    const outcomes = await Promise.all([
+      inTenant(() => repo.promoteVersionToPublished(draft.id, doc.id, ORG, 'in_review', approve, decide)),
+      inTenant(() => repo.promoteVersionToPublished(draft.id, doc.id, ORG, 'in_review', approve, decide)),
+    ])
+
+    expect(outcomes.filter((outcome) => outcome === null)).toHaveLength(1)
+    expect((await versionsOf(doc.id)).map((row) => row.state)).toEqual(['superseded', 'published'])
+    expect(await roundsOf(draft.id)).toEqual([
+      { outcome: 'approved', requested_by: 'user_author', decided_by: 'user_reviewer', comment: null },
+    ])
   })
 
   it('lets exactly one of two writers holding the same If-Match win the content swap', async () => {

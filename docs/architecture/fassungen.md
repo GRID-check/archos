@@ -234,19 +234,24 @@ content of a version. It is not the link between two documents.
 | State | Meaning |
 |---|---|
 | `draft`, `in_review`, `changes_requested` | Being worked on. At most one open version per document. |
-| `approved` | A person asserted the content. Not yet answering. |
+| `approved` | Only a version approved before approval became one step (ADR-0104): asserted, not yet answering, published by „Veröffentlichen“. Nothing lands here any more. |
 | `published` | The version the index holds. |
 | `superseded` | Replaced by a later published version. Bytes stay. |
 | `rejected` | Closed without publishing. |
 
 - **Only a published version is indexed.** The database holds the chain: a version
-  may be published only if a person approved it, and only the `publish` and
-  `upload` transitions promote a version. `ingestPublished` appears on the
-  `publish` row of the transition table and nowhere else
-  (`lib/documents/lifecycle-types.ts`).
-- **A person's upload is born published and approved.** Putting the file there is
-  the assertion. Approval matters for what Piloti wrote and for revisions that
-  need a second pair of eyes.
+  that began as a draft (`origin = 'draft'`) may be published only if a person
+  approved it, and only the `upload`, `approve` and `publish` transitions promote
+  a version. `ingestPublished` appears on the `approve` and `publish` rows of the
+  transition table and nowhere else (`lib/documents/lifecycle-types.ts`).
+- **„Freigeben“ is one step** (ADR-0104 rule 5). Approving a version in review
+  publishes it: it becomes the one Piloti answers from, and the open review round
+  is decided in the same transaction. `publish` remains only for a version
+  approved before this.
+- **A person's upload is born published, and approved by nobody**
+  (`origin = 'upload'`, migration 0137). Putting the file there is the assertion;
+  no approver column carries the uploader's name. Approval matters for what
+  Piloti wrote and for revisions that need a second pair of eyes.
 - **Piloti answers from the published version** while a newer one is in review.
   The section says so („Piloti antwortet aus der veröffentlichten Fassung“).
 - **Publishing purges first.** The previous version's chunks go before the new
