@@ -282,12 +282,11 @@ class QdrantStore:
             ]
         )
 
-    def set_file_payload(self, scope: str, file_name: str, payload: Mapping[str, Any]) -> None:
-        """Overwrite these payload fields on every chunk of one file (a person changed a fact); others are kept."""
-        self.set_file_payloads(scope, {file_name: payload})
-
     def set_file_payloads(self, scope: str, payloads: Mapping[str, Mapping[str, Any]]) -> None:
-        """:meth:`set_file_payload` for many files, a bounded batch per request instead of one request each."""
+        """Overwrite these payload fields on every chunk of each file (a person changed a fact); others are kept.
+
+        A bounded batch per request, never one request per file.
+        """
         payloads = {name: dict(values) for name, values in payloads.items() if values}
         if not payloads or not self.exists(scope):
             return
@@ -426,7 +425,10 @@ class QdrantStore:
         if self.count(scope) == 0:
             return False
         selector = models.Filter(must=[scope_condition([scope])])
-        self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+        with_retry(
+            f"set payload on {scope}",
+            lambda: self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True),
+        )
         return True
 
     # ------------------------------------------------------------------ plain reads

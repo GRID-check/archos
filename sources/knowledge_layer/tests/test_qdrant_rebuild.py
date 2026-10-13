@@ -126,6 +126,33 @@ def test_copy_keeps_the_live_shape_by_default_and_refuses_existing_targets(store
         rebuild.copy_collection(store.client, schema.Physical.OFFICE, alias + "_v2")
 
 
+def test_copy_retries_a_transient_failure_instead_of_leaving_a_half_copy(store, monkeypatch):
+    """A refused target is dropped by a person, so one 503 mid-copy must not end the rebuild."""
+    import httpx
+    from knowledge_layer.qdrant import store as store_module
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
+    store.upsert("proj_rebuild", _records(20))
+    alias = schema.ALIASES[schema.Physical.OFFICE]
+    pauses: list[float] = []
+    monkeypatch.setattr(store_module, "_sleep", pauses.append)
+    real = store.client.upsert
+    calls = {"n": 0}
+
+    def upsert(*args, **kwargs):
+        calls["n"] += 1
+        if calls["n"] == 2:
+            raise UnexpectedResponse(503, "Service Unavailable", b"", httpx.Headers())
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store.client, "upsert", upsert)
+
+    report = rebuild.copy_collection(store.client, schema.Physical.OFFICE, alias + "_v2", page_size=7)
+
+    assert report.complete and report.copied == 20
+    assert pauses == [0.2]
+
+
 def test_cli_copies_then_switches_and_exits_two_when_unreachable(store, monkeypatch):
     store.upsert("proj_rebuild", _records(5))
     alias = schema.ALIASES[schema.Physical.OFFICE]

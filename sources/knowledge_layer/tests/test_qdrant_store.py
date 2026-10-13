@@ -22,7 +22,6 @@ from knowledge_layer.qdrant.payload import build_payload
 from knowledge_layer.qdrant.payload import point_id
 from knowledge_layer.qdrant.scope import scope_filter
 from knowledge_layer.qdrant.scope import translate
-from knowledge_layer.qdrant.search import facet_counts
 from knowledge_layer.qdrant.search import grouped_search
 from knowledge_layer.qdrant.search import hybrid_search
 from knowledge_layer.qdrant.search import phrase
@@ -220,9 +219,9 @@ def test_deletes_address_scope_file_and_chunk(store):
     assert store.count("proj_a") == 0 and store.count("proj_b") == 1
 
 
-def test_set_file_payload_mirrors_a_persons_fact(store):
+def test_set_file_payloads_mirror_a_persons_fact(store):
     store.upsert("proj_a", [_record("eins", "a.pdf"), _record("zwei", "b.pdf")])
-    store.set_file_payload("proj_a", "a.pdf", {"superseded": True, "tags": ["bescheid"]})
+    store.set_file_payloads("proj_a", {"a.pdf": {"superseded": True, "tags": ["bescheid"]}})
     assert store.count("proj_a", {"superseded": True}) == 1
     assert store.count("proj_a", {"tags": "bescheid"}) == 1
 
@@ -245,9 +244,10 @@ def test_grouped_search_ranks_projects_in_one_call(store):
     assert len(by_scope["proj_a"]) == 2
 
 
-def test_facets_count_per_value(store):
+def test_file_names_facet_one_scope_only(store):
     store.upsert("proj_a", [_record("x", "a.pdf"), _record("y", "a.pdf"), _record("z", "b.pdf")])
-    assert dict(facet_counts(store, ["proj_a"], "file_name")) == {"a.pdf": 2, "b.pdf": 1}
+    store.upsert("proj_b", [_record("w", "c.pdf")])
+    assert sorted(store.file_names("proj_a")) == ["a.pdf", "b.pdf"]
 
 
 def test_strict_mode_refuses_an_unindexed_filter_at_the_server(store):
@@ -540,3 +540,19 @@ def test_a_string_boolean_is_read_for_what_it_says():
     assert coerce_field("superseded", "true") is True
     assert coerce_field("superseded", 1) is True
     assert coerce_field("superseded", "vielleicht") is None
+
+
+def test_a_list_value_is_any_of_on_every_field_type(store):
+    """``project_facts.*`` are keyword fields holding lists; a list equality was one string and matched nothing."""
+    from knowledge_layer.qdrant.payload import project_payload
+
+    store.upsert(
+        "proj_a",
+        [_record("x", "a.pdf", section_order=2)],
+        project_payload({"nutzungen": ["wohnen", "buero"], "gebaeudeklasse": [4]}, "active"),
+    )
+    assert store.count("proj_a", {"project_facts.nutzungen": ["buero", "handel"]}) == 1
+    assert store.count("proj_a", {"project_facts.nutzungen": ["handel"]}) == 0
+    assert store.count("proj_a", {"project_facts.gebaeudeklasse": [3, "4"]}) == 1
+    assert store.count("proj_a", {"section_order": ["2"]}) == 1
+    assert store.count("proj_a", {"file_name": ["a.pdf"]}) == 1
