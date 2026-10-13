@@ -589,7 +589,14 @@ Each gate is a number with the place it is measured.
 - Ranked `§` lookups regressed against Chroma's `$contains`; the `paragraph_refs` keyword channel closed it („§ 8“ P@10 0.50 on both paths, [re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 - Two defects in the Qdrant path, found and fixed there: the text index
   dropped digits, and BM25 was sent unpriced.
-- G1, G3, G4 and G5 are not measured by that run.
+- G1 passes. The answer suite through the real agent (29 questions, two
+  runs each, two passes per path) held the same 180 of 192 checks on Qdrant
+  as on the pre-migration Chroma baseline, with no content expectation lost,
+  and the same seconds and reasoning tokens per question (median deltas
+  −0.3 s and −22 tokens). Retrieval differs by about 15 points of result
+  overlap beyond run-to-run noise without reaching a checked answer
+  ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)).
+- G3, G4 and G5 are not measured by these runs.
 - The ranking sweep (`--variants all`) measured rescoring, RRF `k`, dense
   weights, DBSF, MMR and BM25 compound splitting against the same corpus and
   adopted one setting, a cosine tie-break for RRF ties. The exact-id and
@@ -688,6 +695,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | From the sweep: RRF ties ordered by cosine, then chunk id, with a tie straddling the cut fetched whole (repeated calls returned another top-60 for 86 of 105 queries, now 0), in grouped search before the grouping; the settings named once (`RANKING`) and on the span as `ranking` | `qdrant/search.py` — `Ranking`, `RANKING`, `_cosine_ordered_ties`; `register.py` |
 | From the sweep: BM25 never asked for the umlaut stopwords Qdrant's folding lets through (`über`, `für`, …) or for the pieces of a file name | `retrieval.bm25_candidates`, used by `_qdrant_lexical_inputs` |
 | From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, and runs the same exact-term channels, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`, `_search_grouped_sync`; `retrieval.term_frequencies` |
+| Gate G1: the answer suite through the real agent on the pre-migration Chroma baseline and on Qdrant, one ingest read by both ([results](qdrant-gates-2026-10.md#g1-answer-quality-pass)) | `task be:eval:answer-suite -- --ingest --corpus data/oib`, `scripts/turn_census/suite.py` — `use_local_corpus` |
 
 ### Hardened after review (2026-10-13)
 
@@ -825,10 +833,13 @@ index changes went in place.
    then run the gates in §10.
    - Before the first flip, settle the open items in
      [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
-     G1 on a deployed stack. TurboQuant oversampling is measured and rejected
+     TurboQuant oversampling is measured and rejected
      ([sweep](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)). Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
      both paths after the `paragraph_refs` channel
-     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
+     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)). G1 is
+     closed: the answer suite held every baseline check on Qdrant
+     ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)); re-run its
+     Qdrant side after any ranking change.
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
    `folder_ancestors`, and the envelope saying `project_status = closed`
    instead of listing ids for wide chats (the facts are on the points for it
