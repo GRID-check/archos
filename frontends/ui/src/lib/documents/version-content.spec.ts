@@ -23,7 +23,7 @@ import type { Document, DocumentVersion } from '@/lib/db/schema'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
-vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn() }))
+vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), markDocumentNotIndexed: vi.fn() }))
 vi.mock('./version-repository', () => ({
   findDocumentVersion: vi.fn(),
   findDocumentVersionInOrg: vi.fn(),
@@ -75,7 +75,7 @@ import { placementCollectionFor } from '@/lib/authz/folder-access'
 import { admitRestrictedUse } from '@/lib/conversations/restricted-use'
 import { getAccessibleDocument } from './access'
 import { purgeIngestedChunks } from './collection-file-ref'
-import { findDocumentInOrg } from './repository'
+import { findDocumentInOrg, markDocumentNotIndexed } from './repository'
 import { mayReadDocument } from './document-reader'
 import {
   findDocumentVersion,
@@ -699,6 +699,11 @@ describe('archiveDocument', () => {
     expect(recordAuditEvent).toHaveBeenCalledWith(
       expect.objectContaining({ metadata: expect.objectContaining({ chunksPurged: true }) }),
     )
+  })
+
+  it('stops saying the document was read, so it no longer shows as citable', async () => {
+    await archiveDocument(session, 'doc_1')
+    expect(markDocumentNotIndexed).toHaveBeenCalledWith('doc_1', 'org_1')
   })
 
   it('purges nothing for an agent draft, which owns no passages to purge', async () => {

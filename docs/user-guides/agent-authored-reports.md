@@ -204,26 +204,32 @@ kein zweites.
 
 ---
 
-## Why it is not in the knowledge base
+## When it is in the knowledge base
 
-**Besprechen** works on a generated report; what it carries is a note saying
-what the conversation cannot do:
+**Besprechen** works on a generated report at every stage. While nobody has
+published it, the button carries a note saying what the conversation cannot do:
 
 > Von Piloti erstellt — nicht in der Wissensbasis
 
-Piloti reads the report itself when you discuss it, and it will never *retrieve*
-it. That is a design decision, not a missing feature and not a wait: a report
-Piloti wrote is never indexed, so no searchable passages of it exist anywhere.
+Piloti reads the report itself when you discuss it, but it does not *retrieve*
+it: a report nobody published has no searchable passages anywhere.
 
-The reason is worth knowing, because it protects you. If a generated report were
-searchable, Piloti could retrieve its own earlier draft and cite it back to you
-as evidence — with the same green *Projektwissen* badge as a stamped Gutachten,
-and no way for you to tell the two apart. A claim it made on Tuesday would come
-back on Friday looking like a source. Not indexing the report makes that
-impossible rather than merely unlikely.
+That changes in one way only. When a colleague approves the report and publishes
+it, that Fassung is read into the knowledge base, and the note disappears. Piloti
+then finds it like any other document, and cites it under its own label,
+**Piloti-Dokument**, with who wrote it and who approved it. It never wears the
+*Projektwissen* badge of a document a person uploaded, and a verdict in an
+answer may not rest on it alone.
 
-The file is still a file: you can search for it **by name** in Dateien, preview
-it, and read it. It is only the *retrieval* layer that has never heard of it.
+The reason is worth knowing, because it protects you. If an unapproved report
+were searchable, Piloti could retrieve its own earlier draft and cite it back to
+you as evidence, looking like a source. A claim it made on Tuesday would come
+back on Friday as if somebody had checked it. Only a report a person approved
+and published is searchable, and even then you can see whose words it is.
+
+A report from deep research is never read into the knowledge base, published or
+not. The file is still a file: you can find it **by name** in Dateien, preview
+it and read it.
 
 ---
 

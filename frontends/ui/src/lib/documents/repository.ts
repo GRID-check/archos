@@ -840,6 +840,7 @@ export interface DocumentNameMatchRow {
   displayName: string | null
   fileSize: number | null
   contentHash: string | null
+  status: string
   folderId: string | null
   authoredBy: DocumentAuthor
   lifecycle: DocumentLifecycle
@@ -851,6 +852,7 @@ export const documentNameMatchColumns = {
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentHash: documents.contentHash,
+  status: documents.status,
   folderId: documents.folderId,
   authoredBy: documents.authoredBy,
   lifecycle: documents.lifecycle,
@@ -1600,6 +1602,27 @@ export async function setDocumentIngestJob(
       .returning({ id: documents.id }),
   )
   return moved.length > 0
+}
+
+/**
+ * Say that the row's bytes are deliberately not in the index: an archived
+ * document, whose chunks `archiveDocument` purged, and a re-upload onto one,
+ * which `dispatchDocument` does not send. `stored` is the status for "the bytes
+ * are here and nothing reads them", which is what the row now is; leaving it
+ * `completed` showed a document Piloti can no longer cite as „Zitierbar“.
+ *
+ * A held row keeps `quarantined`: the hold is what keeps it from every reader
+ * but its uploader and the reviewers (ADR-0086), and archiving it decides
+ * nothing about its content.
+ */
+export async function markDocumentNotIndexed(documentId: string, organizationId: string): Promise<void> {
+  const db = getDb()
+  await withTenant({ organizationId }, () =>
+    db
+      .update(documents)
+      .set({ status: 'stored', updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+  )
 }
 
 /**
