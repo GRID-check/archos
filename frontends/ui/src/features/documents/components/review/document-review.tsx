@@ -64,9 +64,14 @@ function Presence({
   onFollow: (peerId: string | null) => void
 }): JSX.Element | null {
   const t = useTranslations('files')
+  const tPresence = useTranslations('presence')
   const others = people(review.room.peers)
-  // Piloti in the room as itself: a peer the server publishes while it works on the document.
+  // Piloti in the room as itself: a peer the server publishes while it works on
+  // the document, naming whose request it works on (ADR-0105). The full name
+  // here, where there is room; the cursor tag carries the first name.
   const piloti = review.room.peers.find(isPilotiPeer) ?? null
+  const forName = piloti?.peer.forName
+  const onBehalf = forName ? tPresence('piloti.onBehalfOf', { name: forName }) : null
   if (others.length === 0 && !piloti) return null
   return (
     <div className="flex items-center -space-x-1" data-testid="review-presence">
@@ -74,10 +79,19 @@ function Presence({
         <Tooltip>
           <TooltipTrigger asChild>
             <span data-testid="review-presence-piloti" className="ring-background rounded-full ring-2">
-              <PilotiGlyph size="md" working={Boolean(piloti.activity)} label="Piloti" />
+              <PilotiGlyph size="md" working={Boolean(piloti.activity)} label={onBehalf ?? 'Piloti'} />
             </span>
           </TooltipTrigger>
-          <TooltipContent>{piloti.activity?.label || t('review.pilotiWorking')}</TooltipContent>
+          <TooltipContent>
+            {onBehalf ? (
+              <>
+                <span className="block">{onBehalf}</span>
+                {piloti.activity?.label && <span className="block opacity-80">{piloti.activity.label}</span>}
+              </>
+            ) : (
+              piloti.activity?.label || t('review.pilotiWorking')
+            )}
+          </TooltipContent>
         </Tooltip>
       )}
       {others.map((state) => {

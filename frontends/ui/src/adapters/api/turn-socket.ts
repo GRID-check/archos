@@ -92,6 +92,23 @@ export interface TurnSocketOptions {
   refreshAuth?: () => Promise<void>
   /** Default: 1 s doubling to 30 s, 12 attempts, which outlasts a rolling deploy of both tiers. */
   ladder?: RetryLadderOptions
+  /**
+   * How a socket is opened: the browser's `WebSocket` by default. A server
+   * caller (the BFF's wake job, ADR-0106) passes one built on Node's `ws`,
+   * which can set the upgrade's headers a browser cannot.
+   */
+  createWebSocket?: (url: string) => WebSocketLike
+}
+
+/** The part of a WebSocket this driver uses, which the browser's and Node's `ws` both have. */
+export interface WebSocketLike {
+  readonly readyState: number
+  onopen: ((event: Event) => void) | null
+  onmessage: ((event: MessageEvent) => void) | null
+  onclose: ((event: CloseEvent) => void) | null
+  onerror: ((event: Event) => void) | null
+  send: (data: string) => void
+  close: () => void
 }
 
 export interface TurnSocket {
@@ -190,7 +207,7 @@ const typeOf = (raw: unknown): string => {
 export function createTurnSocket(options: TurnSocketOptions): TurnSocket {
   const ladder = createRetryLadder(options.ladder ?? { baseMs: 1_000, maxMs: 30_000, budget: 12 })
   const warned = new Set<string>()
-  let socket: WebSocket | null = null
+  let socket: WebSocketLike | null = null
   let opening: Promise<void> | null = null
   let stopped = true
   /** The current socket's server said hello: it speaks v2, and `send` may use it. */
@@ -325,7 +342,7 @@ export function createTurnSocket(options: TurnSocketOptions): TurnSocket {
     const url = await urlOf()
     if (stopped) return
     lastFailure = 'failed'
-    const ws = new WebSocket(url)
+    const ws: WebSocketLike = options.createWebSocket ? options.createWebSocket(url) : new WebSocket(url)
     socket = ws
     ws.onopen = () => {
       if (socket === ws) awaitHello()

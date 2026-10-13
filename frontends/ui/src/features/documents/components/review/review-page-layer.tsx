@@ -59,6 +59,48 @@ export function pilotiHighlightOf(state: RoomPeerState, now = Date.now()): Pilot
 export const isPilotiPeer = (state: RoomPeerState): boolean => state.peer.kind === 'piloti'
 
 /**
+ * The first name of the person Piloti acts for, short enough for a tag beside
+ * a pointer: „Anna" for „Anna Berger", the local part for a bare address.
+ * Null when the server could not name them.
+ */
+export function pilotiForShort(peer: Pick<RoomPeerState['peer'], 'forName'>): string | null {
+  const first = peer.forName?.trim().split(/\s+/)[0]?.split('@')[0]
+  return first || null
+}
+
+/**
+ * Piloti's own pointer, moved by its tools: ink, its spark, what it is doing
+ * as the tag, with dots while it works, and always whose request it works on
+ * („Piloti · für Anna", „Treppe · für Anna"; ADR-0105, EU AI Act Art. 50).
+ * The words truncate; the „für Anna" after them never does.
+ */
+function PilotiCursor({ state }: { state: RoomPeerState }): JSX.Element {
+  const tPresence = useTranslations('presence')
+  const forShort = pilotiForShort(state.peer)
+  const dots = state.activity ? <WorkingDots className="ml-0.5" /> : undefined
+  return (
+    <LiveCursor
+      color="var(--foreground)"
+      label={state.label || state.activity?.label || 'Piloti'}
+      icon={<Sparkles className="size-3" aria-hidden />}
+      busy={
+        forShort ? (
+          <>
+            <span data-testid="piloti-cursor-for" className="shrink-0">
+              {tPresence('piloti.forSuffix', { name: forShort })}
+            </span>
+            {dots}
+          </>
+        ) : (
+          dots
+        )
+      }
+      className="[&_path]:fill-foreground"
+    />
+  )
+}
+
+/**
  * The boxes Piloti pointed out, each shown until it points out the next or
  * {@link HIGHLIGHT_MS} passes: a highlight is a gesture, not a mark.
  */
@@ -476,15 +518,7 @@ export function ReviewPageLayer({
         pointers.map((state) => (
           <GlidingCursor key={state.peer.peerId} x={state.cursor.x} y={state.cursor.y} size={size}>
             {isPilotiPeer(state) ? (
-              // Piloti's own pointer, moved by its tools: ink, its spark, and
-              // what it is doing as the tag, with dots while it works.
-              <LiveCursor
-                color="var(--foreground)"
-                label={state.label || state.activity?.label || 'Piloti'}
-                icon={<Sparkles className="size-3" aria-hidden />}
-                busy={state.activity ? <WorkingDots className="ml-0.5" /> : undefined}
-                className="[&_path]:fill-foreground"
-              />
+              <PilotiCursor state={state} />
             ) : (
             <LiveCursor
               color={identityInk(state.peer.userId)}

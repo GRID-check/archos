@@ -37,6 +37,9 @@
  *
  *   - `complete`   the job is done: the row is deleted.
  *   - `release`    give it back WITHOUT spending an attempt (a drain, a cap).
+ *   - `defer`      give it back WITHOUT spending an attempt, with its progress,
+ *                  not to be claimed before a time the job named (it waits on
+ *                  something outside it, ADR-0106).
  *   - `fail`       the attempt went wrong: queued again AFTER A BACKOFF
  *                  (`not_before`, doubling per attempt), or `dead` when it was
  *                  the last one. A dead row keeps its reason in `last_error`.
@@ -84,7 +87,7 @@ const DEAD = 'dead'
  * what it was for; everything else (the report text, the requester, storage
  * keys, file names) goes with the attempt that failed.
  */
-const KEPT_PAYLOAD_KEYS = ['runId', 'projectId', 'documentId', 'taskRunId']
+const KEPT_PAYLOAD_KEYS = ['runId', 'projectId', 'documentId', 'taskRunId', 'wakeId', 'annotationId']
 
 /** Wait before a failed job's second attempt; each further one doubles it. 0 retries at once. */
 const DEFAULT_RETRY_BACKOFF_SECONDS = 30
@@ -369,6 +372,34 @@ async function release(sql, jobId, worker) {
 }
 
 /**
+ * Give a claim back WITHOUT spending an attempt, saving the job's progress, and
+ * hold it until `notBefore`: the job is waiting on something outside it (a
+ * wake whose person's thread runs another turn), which is not a failure and
+ * must not bring it closer to dead. False when it was not this worker's.
+ *
+ * @param {Sql} sql
+ * @param {string} jobId
+ * @param {string} worker
+ * @param {Record<string, unknown>} payload
+ * @param {Date} notBefore
+ * @returns {Promise<boolean>}
+ */
+async function defer(sql, jobId, worker, payload, notBefore) {
+  const rows = await withPlatformScope(
+    sql,
+    (tx) => tx`
+      UPDATE bff_job_queue
+      SET status = ${QUEUED}, claimed_by = NULL, claimed_at = NULL, heartbeat_at = NULL,
+          payload = ${JSON.stringify(payload)}::text::jsonb,
+          not_before = ${notBefore.toISOString()}::timestamptz, attempts = GREATEST(attempts - 1, 0)
+      WHERE job_id = ${jobId}::uuid AND claimed_by = ${worker} AND status = ${CLAIMED}
+      RETURNING job_id
+    `,
+  )
+  return rows.length > 0
+}
+
+/**
  * The attempt went wrong. The job is queued again while it has attempts left,
  * not before `retryBackoffSeconds` (doubling with each attempt, at most
  * {@link MAX_RETRY_BACKOFF_SECONDS}): three attempts in the same few seconds
@@ -512,6 +543,7 @@ module.exports = {
   claimNext,
   complete,
   depth,
+  defer,
   describeError,
   enqueue,
   eraseLane,

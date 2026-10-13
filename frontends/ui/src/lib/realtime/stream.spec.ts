@@ -12,6 +12,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({
+  loadOrganizationDirectory: vi.fn(
+    async () => new Map([['user_1', { userId: 'user_1', email: null, name: 'Anna Berger', profilePictureUrl: null }]])
+  ),
+}))
 
 import { BadRequestError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -195,7 +200,7 @@ describe('openRealtimeStream', () => {
     expect(hubStats()).toEqual({ topics: 0, listeners: 0 })
   })
 
-  it('carries what Piloti is reading, as a Piloti peer', async () => {
+  it('carries what Piloti is reading, as a Piloti peer acting for its person', async () => {
     const read = reader(await openRealtimeStream(SESSION, ['doc:doc_1'], request('')))
     await settle()
 
@@ -211,7 +216,7 @@ describe('openRealtimeStream', () => {
       ch: 'doc:doc_1',
       event: {
         kind: 'activity',
-        peer: { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti' },
+        peer: { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' },
         state: 'reading',
         box: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.1 },
         label: 'Fluchtweg prüfen',

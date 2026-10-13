@@ -3,8 +3,8 @@
  */
 /**
  * Piloti in the document room, and the server's snapshot of who is there:
- * Piloti is one peer per conversation, stamped by the server and impossible
- * for a browser to be; and the snapshot holds what people last said about
+ * Piloti is one peer per conversation, stamped by the server with the person
+ * it acts for, and impossible for a browser to be or to name; and the snapshot holds what people last said about
  * their page, view, selection and draft, per organization, bounded and TTL'd.
  */
 
@@ -12,11 +12,13 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 
 import { BadRequestError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { createInProcessStore, setLimitStore } from '@/lib/limits'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { __resetGrantsForTests } from './channel'
 import { publishAsAgent, roomSnapshot } from './document-channel'
 import { __setHubTransportForTests, subscribe } from './hub'
@@ -38,7 +40,8 @@ const SESSION = {
 } as Partial<AuthorizedSession> as AuthorizedSession
 
 const AGENT = { conversationId: 'conv_42', onBehalfOf: 'user_1' }
-const PILOTI = { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti' }
+const PILOTI = { peerId: 'piloti-conv_42', userId: 'user_1', name: 'Piloti', kind: 'piloti', forName: 'Anna Berger' }
+const DIRECTORY = new Map([['user_1', { userId: 'user_1', email: 'a@grid.test', name: 'Anna Berger', profilePictureUrl: null }]])
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -48,6 +51,7 @@ beforeEach(async () => {
   await __setHubTransportForTests(null)
   __setRosterBackendForTests(createInProcessRosterBackend())
   vi.mocked(getAccessibleDocument).mockResolvedValue({} as never)
+  vi.mocked(loadOrganizationDirectory).mockResolvedValue(DIRECTORY)
 })
 
 const listen = () => {
@@ -77,6 +81,28 @@ describe('publishAsAgent', () => {
     ])
   })
 
+  it('names the person it acts for, from that organization’s directory', async () => {
+    const room = listen()
+    await publishAsAgent('doc_1', 'org_1', AGENT, { op: 'presence', state: 'here' })
+    room.release()
+    expect(loadOrganizationDirectory).toHaveBeenCalledWith('org_1')
+    expect(room.heard).toEqual([expect.objectContaining({ peer: expect.objectContaining({ forName: 'Anna Berger' }) })])
+  })
+
+  it('still acts when the name cannot be read, without one', async () => {
+    const room = listen()
+    vi.mocked(loadOrganizationDirectory).mockRejectedValueOnce(new Error('WorkOS down'))
+    await publishAsAgent('doc_1', 'org_1', AGENT, { op: 'presence', state: 'here' })
+    vi.mocked(loadOrganizationDirectory).mockResolvedValueOnce(new Map())
+    await publishAsAgent('doc_1', 'org_1', AGENT, { op: 'presence', state: 'gone' })
+    room.release()
+    const { forName: _, ...nameless } = PILOTI
+    expect(room.heard).toEqual([
+      { kind: 'presence', peer: nameless, state: 'here', ttlMs: 25_000 },
+      { kind: 'presence', peer: nameless, state: 'gone', ttlMs: 25_000 },
+    ])
+  })
+
   it('refuses a box off the page rather than draw it', async () => {
     await expect(
       publishAsAgent('doc_1', 'org_1', AGENT, { op: 'highlight', box: { page: 1, x: 0.9, y: 0, w: 2, h: 0.1 } })
@@ -85,7 +111,7 @@ describe('publishAsAgent', () => {
 })
 
 describe('a browser cannot be Piloti', () => {
-  it('is stamped a person whatever it sends, and cannot send Piloti’s vocabulary', async () => {
+  it('is stamped a person whatever it sends, names nobody it acts for, and cannot send Piloti’s vocabulary', async () => {
     const room = listen()
     await sendToChannel(SESSION, { ch: 'doc:doc_1', msg: { peerId: 'piloti-conv_42', presence: 'here' } })
     room.release()
@@ -98,6 +124,8 @@ describe('a browser cannot be Piloti', () => {
       { peerId: 'peer_abcdef12', name: 'Piloti' },
       { peerId: 'peer_abcdef12', cursor: { page: 1, x: 0.1, y: 0.1 }, label: 'Piloti' },
       { peerId: 'peer_abcdef12', highlight: { page: 1, x: 0, y: 0, w: 0.1, h: 0.1 } },
+      { peerId: 'peer_abcdef12', presence: 'here', forName: 'Ben Huber' },
+      { peerId: 'peer_abcdef12', peer: { kind: 'piloti', forName: 'Ben Huber' } },
     ]) {
       await expect(sendToChannel(SESSION, { ch: 'doc:doc_1', msg: forged })).rejects.toBeInstanceOf(BadRequestError)
     }
@@ -130,7 +158,7 @@ describe('roomSnapshot', () => {
         draft: { page: 3, x: 0.4, y: 0.4, w: 0.1, h: 0.2 },
         expiresAt: expect.any(String),
       },
-      expect.objectContaining({ peerId: 'piloti-conv_42', kind: 'piloti', page: null, selected: null }),
+      expect.objectContaining({ peerId: 'piloti-conv_42', kind: 'piloti', forName: 'Anna Berger', page: null, selected: null }),
     ])
 
     // A selection alone changes only the selection.

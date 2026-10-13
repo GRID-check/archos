@@ -2,10 +2,12 @@
  * The canvas's questions to Piloti: which driver carries each, and how an ask
  * moves from the box being drawn to the answer.
  *
- * What is pinned: one conversation per document per tab; over the chat, a
- * question is a turn of the chat's conversation through the chat's sender and
- * read back from the chat store (never a second driver on it); elsewhere it
- * goes to the canvas client; a thread reply's entry goes once its turn ended.
+ * What is pinned: one thread per person per document, the server's (ADR-0106);
+ * over the chat, a question is a turn of the chat's conversation through the
+ * chat's sender and read back from the chat store (never a second driver on
+ * it); elsewhere it goes to the canvas client; a thread reply's entry goes
+ * once its turn ended; a reply the server wakes Piloti for runs nothing here
+ * and waits.
  */
 
 import { act, renderHook } from '@testing-library/react'
@@ -19,7 +21,7 @@ import {
 import { initialTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
 import { useChatStore } from '@/features/chat/store'
 import type { CanvasQuestion, CanvasTurnClient, CanvasTurnClientOptions } from '../lib/canvas-turn-client'
-import { askRegionOf, useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
+import { askRegionOf, useCanvasAsk, WAKE_REPLY_TIMEOUT_MS, type UseCanvasAskOptions } from './use-canvas-ask'
 
 const REGION = { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.2 }
 
@@ -59,13 +61,27 @@ const finished = (turnId: string, text: string): TurnView => ({
   text,
 })
 
+/** The server's thread for this person and document: one id per document, as `POST …/thread` answers. */
+const resolveThread = vi.fn(async (documentId: string) => `s_thread_${documentId}`)
+
 const hook = (options: Partial<UseCanvasAskOptions> & Pick<UseCanvasAskOptions, 'createClient'>) =>
   renderHook((props: Partial<UseCanvasAskOptions>) =>
-    useCanvasAsk({ documentId: 'doc_1', enabled: true, projectId: 'proj_1', fileName: 'Grundriss.pdf', ...options, ...props })
+    useCanvasAsk({
+      documentId: 'doc_1',
+      enabled: true,
+      projectId: 'proj_1',
+      fileName: 'Grundriss.pdf',
+      resolveThread,
+      ...options,
+      ...props,
+    })
   )
 
+/** Let the thread lookup and the ask behind it settle. */
+const flush = () => act(async () => {})
+
 beforeEach(() => {
-  window.sessionStorage.clear()
+  resolveThread.mockClear()
 })
 
 afterEach(() => {
@@ -73,7 +89,7 @@ afterEach(() => {
 })
 
 describe('asking Piloti on the canvas', () => {
-  it('turns a composing card into a question, and follows its turn to the answer', () => {
+  it('turns a composing card into a question, and follows its turn to the answer', async () => {
     const { made, createClient } = fakeClients()
     const { result } = hook({ createClient })
 
@@ -88,6 +104,7 @@ describe('asking Piloti on the canvas', () => {
     act(() => {
       asked = result.current.ask({ id: composing, text: 'Was ist das?', region: REGION, intent: 'what' })
     })
+    await flush()
     expect(result.current.asks).toHaveLength(1)
     expect(result.current.asks[0]).toMatchObject({ id: asked, status: 'thinking', backend: 'canvas', intent: 'what' })
     expect(result.current.openId).toBe(asked)
@@ -98,30 +115,55 @@ describe('asking Piloti on the canvas', () => {
     expect(result.current.asks[0]).toMatchObject({ status: 'answered', view: { text: 'Eine Brandschutztür.' } })
   })
 
-  it('keeps one conversation per document for the tab', () => {
+  it('asks in the person’s own thread about the document, the one the server keeps', async () => {
     const first = fakeClients()
     const a = hook({ createClient: first.createClient })
     act(() => void a.result.current.ask({ text: 'Eins', region: REGION }))
+    await flush()
     a.unmount()
 
     const second = fakeClients()
     const b = hook({ createClient: second.createClient })
     act(() => void b.result.current.ask({ text: 'Zwei', region: REGION }))
+    await flush()
+    expect(second.made[0].options.conversationId).toBe('s_thread_doc_1')
     expect(second.made[0].options.conversationId).toBe(first.made[0].options.conversationId)
+    // The server created it: the client creates nothing before its socket opens.
+    expect(second.made[0].options.conversationExists).toBe(true)
+    expect(resolveThread).toHaveBeenCalledWith('doc_1', 'Grundriss.pdf · Review')
 
     const other = fakeClients()
     const c = hook({ createClient: other.createClient, documentId: 'doc_2' })
     act(() => void c.result.current.ask({ text: 'Drei', region: REGION }))
-    expect(other.made[0].options.conversationId).not.toBe(first.made[0].options.conversationId)
+    await flush()
+    expect(other.made[0].options.conversationId).toBe('s_thread_doc_2')
   })
 
-  it('names the Anmerkung a box belongs to, and drops a thread reply once its turn ended', () => {
+  it('asks an @Piloti reply under the turn id the server would give it', async () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient })
+    act(() => {
+      result.current.ask({
+        text: '@Piloti stimmt das?',
+        region: REGION,
+        annotationId: 'ann_3',
+        replyInThread: true,
+        turnId: 'turn-of-the-reply',
+      })
+    })
+    await flush()
+    expect(made[0].asked[0].turnId).toBe('turn-of-the-reply')
+    expect(result.current.asks[0].turnId).toBe('turn-of-the-reply')
+  })
+
+  it('names the Anmerkung a box belongs to, and drops a thread reply once its turn ended', async () => {
     const { made, createClient } = fakeClients()
     const { result } = hook({ createClient })
     let id = ''
     act(() => {
       id = result.current.ask({ text: '@Piloti stimmt das?', region: REGION, annotationId: 'ann_3', replyInThread: true, baseline: 0 })
     })
+    await flush()
     expect(made[0].asked[0].question).toMatchObject({ region: { ...REGION, annotation_id: 'ann_3' }, replyInThread: true })
     // No card for a thread reply: the thread shows it.
     expect(result.current.openId).toBeNull()
@@ -167,10 +209,11 @@ describe('asking Piloti on the canvas', () => {
     act(() => useChatStore.setState({ turns: {} }))
   })
 
-  it('stands alone when no chat is there to carry the question', () => {
+  it('stands alone when no chat is there to carry the question', async () => {
     const { made, createClient } = fakeClients()
     const { result } = hook({ createClient, chatHosted: true })
     act(() => void result.current.ask({ text: 'Was ist das?', region: REGION }))
+    await flush()
     expect(made).toHaveLength(1)
     expect(result.current.asks[0].backend).toBe('canvas')
   })
@@ -193,11 +236,12 @@ describe('askRegionOf', () => {
 describe('while Piloti works', () => {
   const BOX = { page: 2, x: 0.4, y: 0.2, w: 0.2, h: 0.2 }
 
-  it('makes a box asked about meanwhile a note for the running turn, not a second question', () => {
+  it('makes a box asked about meanwhile a note for the running turn, not a second question', async () => {
     const { made, createClient } = fakeClients()
     const { result } = hook({ createClient })
     let running = ''
     act(() => void (running = result.current.ask({ text: 'Markier die Tür.', region: REGION })))
+    await flush()
 
     let composing = ''
     act(() => void (composing = result.current.compose(BOX)))
@@ -209,10 +253,11 @@ describe('while Piloti works', () => {
     expect(result.current.openId).toBe(running)
   })
 
-  it('asks a note the turn never read next, about the same box', () => {
+  it('asks a note the turn never read next, about the same box', async () => {
     const { made, createClient } = fakeClients()
     const { result } = hook({ createClient })
     act(() => void result.current.ask({ text: 'Markier die Tür.', region: REGION }))
+    await flush()
     act(() => void result.current.steer('und das Podest?', BOX))
 
     const [{ onLeftover }] = made[0].steered
@@ -220,6 +265,7 @@ describe('while Piloti works', () => {
       made[0].options.onTurn(finished(made[0].asked[0].turnId, 'Tür markiert.'))
       onLeftover?.('und das Podest?')
     })
+    await flush()
 
     expect(made[0].asked.at(-1)).toMatchObject({ question: { text: 'und das Podest?', region: BOX } })
   })
@@ -247,5 +293,47 @@ describe('while Piloti works', () => {
     expect(made).toEqual([])
     withdraw()
     act(() => useChatStore.setState({ turns: {}, currentConversation: null }))
+  })
+})
+
+describe('a reply the server wakes Piloti for (ADR-0106)', () => {
+  it('runs nothing here, keeps the canvas free, and says „später" when the reply is slow', () => {
+    vi.useFakeTimers()
+    try {
+      const { made, createClient } = fakeClients()
+      const { result } = hook({ createClient })
+      act(() => {
+        result.current.awaitWake({ annotationId: 'ann_3', region: REGION, question: 'Stimmt das?', baseline: 1, outcome: 'queued' })
+      })
+      expect(made).toEqual([])
+      expect(resolveThread).not.toHaveBeenCalled()
+      expect(result.current.asks[0]).toMatchObject({
+        backend: 'server',
+        status: 'thinking',
+        annotationId: 'ann_3',
+        replyInThread: true,
+        baseline: 1,
+        turnId: null,
+      })
+      // The server's wake keeps nothing on this tab busy.
+      expect(result.current.busy).toBe(false)
+
+      act(() => void vi.advanceTimersByTime(WAKE_REPLY_TIMEOUT_MS))
+      expect(result.current.asks[0].status).toBe('later')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('says once that a cap held it, and goes when dismissed', () => {
+    const { createClient } = fakeClients()
+    const { result } = hook({ createClient })
+    let id = ''
+    act(() => {
+      id = result.current.awaitWake({ annotationId: 'ann_3', region: null, question: 'x', baseline: 0, outcome: 'suppressed' })
+    })
+    expect(result.current.asks[0]).toMatchObject({ backend: 'server', status: 'held' })
+    act(() => result.current.dismiss(id))
+    expect(result.current.asks).toEqual([])
   })
 })

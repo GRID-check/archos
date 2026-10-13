@@ -9,6 +9,8 @@ import { runningTurnIn } from '@/features/chat/stores/messages-store'
 import { useTranslations } from '@/i18n'
 import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
+import { documentThread } from '@/lib/annotations/client'
+import { regionAround } from '@/lib/annotations/types'
 import {
   CanvasTurnError,
   createCanvasTurnClient,
@@ -30,7 +32,15 @@ export interface CanvasAskRegion {
 export const CANVAS_ASK_INTENTS = ['what', 'dimensions', 'oib', 'question'] as const
 export type CanvasAskIntent = (typeof CANVAS_ASK_INTENTS)[number]
 
-export type CanvasAskStatus = 'composing' | 'thinking' | 'answered' | 'failed'
+/**
+ * `later`: the server was to wake Piloti and its reply has not arrived within
+ * {@link WAKE_REPLY_TIMEOUT_MS}; it may still. `held`: a cap held the wake, so
+ * Piloti does not answer this one.
+ */
+export type CanvasAskStatus = 'composing' | 'thinking' | 'answered' | 'failed' | 'later' | 'held'
+
+/** How long the thread shows „Piloti antwortet …" for a wake the server runs, before it says „später". */
+export const WAKE_REPLY_TIMEOUT_MS = 120_000
 
 /**
  * Which driver carries a question. `chat`: the review is open over the chat,
@@ -38,8 +48,10 @@ export type CanvasAskStatus = 'composing' | 'thinking' | 'answered' | 'failed'
  * (`features/chat/lib/canvas-bridge.ts`). `canvas`: the review stands alone
  * (the Files area), and the question goes into the document's own
  * conversation on this tab's canvas client (`canvas-turn-client.ts`).
+ * `server`: an @Piloti reply the server wakes Piloti for (ADR-0106); this tab
+ * runs nothing and waits for Piloti's reply to arrive through the room.
  */
-export type CanvasAskBackend = 'chat' | 'canvas'
+export type CanvasAskBackend = 'chat' | 'canvas' | 'server'
 
 /** One question to Piloti on the canvas, from the box being drawn to the answer. */
 export interface CanvasAsk {
@@ -74,6 +86,23 @@ export interface CanvasAskInput {
   intent?: CanvasAskIntent | null
   baseline?: number
   effort?: CanvasQuestion['effort'] | null
+  /**
+   * The turn's id, when it is already decided: an @Piloti reply asked by this
+   * tab runs under uuid5 of the reply (`wakeTurnId`), the id a server wake of
+   * the same reply would use, so the two can never both run.
+   */
+  turnId?: string
+}
+
+/** A reply the server wakes Piloti for: the thread waits for Piloti's answer, nothing runs here. */
+export interface CanvasWakeInput {
+  annotationId: string
+  region: CanvasAskRegion | null
+  question: string
+  /** Piloti's replies in the thread when it was asked: one more is its answer. */
+  baseline: number
+  /** What the server said: it wakes Piloti (`queued`), or a cap held it (`suppressed`). */
+  outcome: 'queued' | 'suppressed'
 }
 
 export interface UseCanvasAskOptions {
@@ -92,25 +121,8 @@ export interface UseCanvasAskOptions {
   chatHosted?: boolean
   /** The client factory; specs inject one built on a fake socket. */
   createClient?: (options: CanvasTurnClientOptions) => CanvasTurnClient
-}
-
-const storageKey = (documentId: string) => `piloti:canvas-conversation:${documentId}`
-
-/** One conversation per document per tab: the same thread for every question asked on it. */
-function conversationIdFor(documentId: string): string {
-  try {
-    const stored = window.sessionStorage.getItem(storageKey(documentId))
-    if (stored) return stored
-  } catch {
-    // Storage refused (a private window, a sandbox): a fresh conversation per mount.
-  }
-  const id = uuidv4()
-  try {
-    window.sessionStorage.setItem(storageKey(documentId), id)
-  } catch {
-    // As above: the id still works for this mount.
-  }
-  return id
+  /** The person's thread about the document; `documentThread` by default, a stand-in in specs. */
+  resolveThread?: (documentId: string, title: string) => Promise<string>
 }
 
 /** Where the chat opens a conversation: `?session=`, the parameter `useSessionUrl` reads. */
@@ -119,22 +131,14 @@ export const canvasConversationHref = (conversationId: string, projectId?: strin
     ? `/app/projects/${encodeURIComponent(projectId)}/chat?session=${encodeURIComponent(conversationId)}`
     : `/app/chat?session=${encodeURIComponent(conversationId)}`
 
-/** A point asked about becomes a box this wide and tall around it (shares of the page). */
-const POINT_BOX = 0.08
-
 /** The box a place stands for: a region as it is, a point as a small box around it, kept on its page. */
-export function askRegionOf(place: {
+export const askRegionOf = (place: {
   page: number
   x: number
   y: number
   w?: number | null
   h?: number | null
-}): CanvasAskRegion {
-  if (place.w && place.h) return { page: place.page, x: place.x, y: place.y, w: place.w, h: place.h }
-  const round = (value: number) => Math.round(value * 10_000) / 10_000
-  const start = (value: number) => round(Math.min(1 - POINT_BOX, Math.max(0, value - POINT_BOX / 2)))
-  return { page: place.page, x: start(place.x), y: start(place.y), w: POINT_BOX, h: POINT_BOX }
-}
+}): CanvasAskRegion => regionAround(place)
 
 /** A turn's steps in the order they began, for the live line (`liveLine`). */
 export const stepsOf = (view: TurnView | null): StoredThinkingStep[] =>
@@ -164,7 +168,9 @@ const blankAsk = (id: string): CanvasAsk => ({
  * (or the whole document), each with its live turn, and which driver carries
  * it ({@link CanvasAskBackend}): the chat's, when the review is open over the
  * chat, so the canvas and the transcript are one conversation in two views;
- * else one document-subject conversation per document per tab.
+ * else the person's own thread about the document (`POST
+ * /api/documents/{id}/thread`, ADR-0106), the one a wake of Piloti by their
+ * reply runs in too.
  *
  * While Piloti works, what the person adds is not a second question but a
  * note for the running turn ({@link steer}): typed into the working card, or
@@ -183,6 +189,9 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
   const [openId, setOpenIdState] = useState<string | null>(null)
   const [conversationId, setConversationId] = useState<string | null>(null)
   const client = useRef<CanvasTurnClient | null>(null)
+  const clientPending = useRef<Promise<CanvasTurnClient> | null>(null)
+  /** The timers that turn a server wake's „antwortet …" into „später". */
+  const wakeTimers = useRef(new Map<string, ReturnType<typeof setTimeout>>())
   // Mirrors of the two states, for callbacks that must keep their identity
   // (the review's `select` closes the card through them on every click).
   const asksRef = useRef<CanvasAsk[]>([])
@@ -247,33 +256,52 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
     [onTurn, patch]
   )
 
-  const clientFor = useCallback((): CanvasTurnClient => {
-    if (client.current) return client.current
+  /**
+   * The canvas client, on the person's own thread about the document: asked
+   * of the server once (it creates the thread when there is none), so the
+   * canvas and a wake of Piloti by this person's reply share one conversation.
+   */
+  const clientFor = useCallback((): Promise<CanvasTurnClient> => {
+    if (client.current) return Promise.resolve(client.current)
     const current = latest.current
-    const id = conversationIdFor(current.documentId)
-    client.current = (current.createClient ?? createCanvasTurnClient)({
-      conversationId: id,
-      projectId: current.projectId,
-      documentId: current.documentId,
-      title: titleRef.current,
-      refreshAuth: current.refreshAuth,
-      onTurn,
-      onConversation: () => setConversationId(id),
-    })
-    return client.current
+    const resolveThread =
+      current.resolveThread ?? ((documentId: string, title: string) => documentThread(documentId, { title }))
+    clientPending.current ??= resolveThread(current.documentId, titleRef.current)
+      .then((id) => {
+        // The document changed while the thread was asked for: this client is not for it.
+        if (latest.current.documentId !== current.documentId) throw new CanvasTurnError('closed')
+        client.current ??= (current.createClient ?? createCanvasTurnClient)({
+          conversationId: id,
+          conversationExists: true,
+          projectId: current.projectId,
+          documentId: current.documentId,
+          title: titleRef.current,
+          refreshAuth: current.refreshAuth,
+          onTurn,
+          onConversation: () => setConversationId(id),
+        })
+        return client.current
+      })
+      .finally(() => {
+        clientPending.current = null
+      })
+    return clientPending.current
   }, [onTurn])
 
   // A different document is a different conversation; leaving closes the socket.
-  useEffect(
-    () => () => {
+  useEffect(() => {
+    const timers = wakeTimers.current
+    return () => {
       client.current?.close()
       client.current = null
+      clientPending.current = null
+      for (const timer of timers.values()) clearTimeout(timer)
+      timers.clear()
       setAsks(() => [])
       setOpen(null)
       setConversationId(null)
-    },
-    [documentId, setAsks, setOpen]
-  )
+    }
+  }, [documentId, setAsks, setOpen])
 
   const available = enabled && Boolean(projectId)
 
@@ -404,9 +432,10 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         effort: input.effort ?? undefined,
       }
       if (askInChat(entry, question)) return id
-      patch(id, { backend: 'canvas', turnId: id })
+      const turnId = input.turnId ?? id
+      patch(id, { backend: 'canvas', turnId })
       clientFor()
-        .ask(question, id)
+        .then((canvasClient) => canvasClient.ask(question, turnId))
         .catch((error: unknown) =>
           patch(id, { status: 'failed', error: error instanceof CanvasTurnError ? error.code : 'unknown' })
         )
@@ -418,6 +447,46 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
     askRef.current = ask
   })
 
+  /**
+   * The server wakes Piloti for a reply (ADR-0106): the thread shows „Piloti
+   * antwortet …" until Piloti's reply arrives through the room, or for
+   * {@link WAKE_REPLY_TIMEOUT_MS}, then a quiet „Piloti antwortet später".
+   * This tab runs no turn: the server's would end the second one anyway, but
+   * the person would see two.
+   */
+  const awaitWake = useCallback(
+    (input: CanvasWakeInput): string => {
+      const id = uuidv4()
+      const held = input.outcome === 'suppressed'
+      setAsks((current) => [
+        ...current,
+        {
+          ...blankAsk(id),
+          backend: 'server',
+          region: input.region,
+          annotationId: input.annotationId,
+          replyInThread: true,
+          question: input.question,
+          status: held ? 'held' : 'thinking',
+          baseline: input.baseline,
+        },
+      ])
+      if (!held) {
+        wakeTimers.current.set(
+          id,
+          setTimeout(() => {
+            wakeTimers.current.delete(id)
+            setAsks((current) =>
+              current.map((entry) => (entry.id === id && entry.status === 'thinking' ? { ...entry, status: 'later' } : entry))
+            )
+          }, WAKE_REPLY_TIMEOUT_MS)
+        )
+      }
+      return id
+    },
+    [setAsks]
+  )
+
   /** Close an ask: a running one is stopped first. */
   const dismiss = useCallback(
     (id: string) => {
@@ -426,6 +495,9 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         if (entry.backend === 'canvas') client.current?.cancel(entry.turnId)
         else if (useChatStore.getState().turns[entry.turnId]?.phase === 'running') useChatStore.getState().stopStreaming()
       }
+      const timer = wakeTimers.current.get(id)
+      if (timer) clearTimeout(timer)
+      wakeTimers.current.delete(id)
       remove(id)
     },
     [remove]
@@ -458,15 +530,17 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
       asks,
       openId,
       open,
-      busy: asks.some((entry) => entry.status === 'thinking'),
+      // A wake the server runs keeps nothing here busy: the canvas may still ask.
+      busy: asks.some((entry) => entry.status === 'thinking' && entry.backend !== 'server'),
       compose,
       ask,
+      awaitWake,
       steer,
       dismiss,
       retry,
       conversationHref,
     }),
-    [available, asks, openId, open, compose, ask, steer, dismiss, retry, conversationHref]
+    [available, asks, openId, open, compose, ask, awaitWake, steer, dismiss, retry, conversationHref]
   )
 }
 

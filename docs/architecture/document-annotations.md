@@ -32,6 +32,15 @@ cannot route around them:
 `scripts/rls-test-db.sh` refuses each CHECK against a real PostgreSQL, then
 applies the down migration and re-applies the up migration.
 
+Migration `0136_piloti_wakes.sql` adds what wakes Piloti (below, „Events wake
+Piloti“):
+
+| Where | Holds | CHECK |
+|---|---|---|
+| `document_annotation_replies.addresses_agent` | the reply addresses Piloti: the composer's @Piloti chip, never read from the text | default false |
+| `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
+| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to (`queued`, `started`, `suppressed`, `refused`, `failed`) | a reason exactly when it started no turn; `settled_at` exactly when it left `queued`; RLS on the org and the mark's org |
+
 Numbers are allocated under an advisory lock per document, so two people
 setting a mark at the same moment never share a number. Status moves are
 compare-and-swap on the expected status (`updateDocumentAnnotation`): a
@@ -59,6 +68,13 @@ Routes:
 | `/api/documents/[id]/annotations` | GET, POST |
 | `/[annotationId]` | PATCH, DELETE |
 | `/[annotationId]/replies` | POST |
+| `/api/documents/[id]/thread` | POST: the caller's own thread about the document (below) |
+
+The list answers `pilotiWakes`, whether the organization lets events wake
+Piloti. A reply answers `{annotation, replyId, wake}` and a PATCH that
+delegates `{annotation, wake}`, where `wake` is `none` (no rule met), `off`
+(the switch is off), `queued` (the server wakes Piloti) or `suppressed` (a cap
+held it).
 
 The UI and Piloti are equal clients of one service (ADR-0055).
 
@@ -176,6 +192,80 @@ Mentioning Piloti in a thread sends the same turn with `reply_in_thread`. The
 prompt tells the model it was asked in that thread, and the model answers there
 with `canvas__reply`: nothing is posted on its behalf. The turn runs without
 restricted folders in scope, so its own research cannot keep the reply out.
+Whether the browser or the server sends that turn is the next section's.
+
+The canvas asks in the person's own thread about the document, `POST
+/api/documents/{id}/thread` (`lib/annotations/document-thread.ts`): its id is
+uuid5 of the document and the person, created with the document as its subject
+on first use, the construction `lib/tasks/task-thread.ts` uses. The canvas, the
+chat and a wake of Piloti by the person's reply agree on it without a lookup;
+the per-tab id the canvas used to keep in session storage is gone.
+
+### Events wake Piloti (ADR-0106)
+
+People answer Piloti where the work is, often with nobody's chat open. These
+events wake it, and only these, by a rule people can read (ADR-0036):
+
+| Event | Wakes Piloti when | Trigger |
+|---|---|---|
+| A person's reply in a mark's thread | it addresses Piloti (the composer's chip, stored as `addresses_agent`) | `thread_mention` |
+| A person's reply in a mark's thread | the mark is Piloti's own `question`, still proposed or open | `thread_reply` |
+| A person makes Piloti the delegate on an open mark | always | `assigned` |
+| A person takes over or dismisses Piloti's mark | never | |
+
+`lib/annotations/wake.ts` decides; the service enqueues the wake **in the
+write's own transaction** (`insertAnnotationReply` / `updateDocumentAnnotation`
+take a hook that runs in it), so a reply that rolls back leaves no wake. The
+wake's id is uuid5 of the event (`wake-ids.ts`), which is its `piloti_wakes`
+row, its `bff_job_queue` job (`piloti_wake`) and the turn id: one event wakes
+Piloti at most once.
+
+**Who it runs as.** The person whose act is the event: the replier, or the
+person who delegated. The job (`lib/annotations/wake-job.ts`) asks everything
+again when it runs, because the queue can hold it: the person's pinned session
+of today (`resolvePinnedRequesterSession`), the organization's switch, their
+right to write the document, the mark, the caps. It writes the trigger into the
+person's thread as a question row („Anna Berger in Anmerkung 4: „…““), resolves
+the turn context for that session and thread (`lib/turns/turn-context.ts`,
+which refuses a spent budget), and opens the chat socket as an internal caller
+with the signed envelope and `X-AIQ-Mode: headless` (`lib/turns/headless-turn.ts`).
+The `user_message` carries `trigger`, `if_idle`, the mark's region with its
+`annotation_id`, and `reply_in_thread`. The contract:
+[`websocket-protocol.md`](../api/websocket-protocol.md#a-turn-an-event-woke-trigger--if_idle).
+
+**What the socket answers.** `RUN_STARTED`: the job records `started` and
+detaches, the turn persists itself. `busy` (another turn of that thread runs):
+the job waits without spending an attempt (`notBefore`, 15 s doubling to
+5 min, twelve times) and asks again under the same id. `duplicate_turn`: done.
+A refusal (admission, the budget): recorded as `refused`. A wrong envelope is
+retried by the queue and recorded as `failed` on the last attempt.
+
+**Guards.** Piloti's own replies never wake it. Only a person who may write
+the document can reply, so only they can wake it. At most
+`GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
+`GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
+`piloti_wakes` rows at enqueue and again at claim. The WorkOS flag
+`piloti-wakes`, an entitlement off by default. A wake that started no turn has
+no trace, so it is on its row and in the audit trail as
+`piloti.wake.suppressed`.
+
+**With the switch off** the reply answers `wake: 'off'` and the browser asks
+Piloti itself, as before, under the turn id a server wake of the same reply
+would use (`wakeTurnId(replyId)`), so the two could never both run. With it on
+the browser runs nothing: the thread shows „Piloti antwortet …“ until Piloti's
+reply arrives through the room, or after two minutes a quiet „Piloti antwortet
+später“.
+
+### Piloti as the delegate
+
+Work is assigned to people and delegated to agents (ADR-0105, the pattern
+Linear ships). „An Piloti delegieren“ in the thread's menu (offered while the
+switch is on, on an open mark) sets `delegated_by` and `delegated_at` and wakes
+Piloti; the mark keeps its assignee, and the thread shows „Piloti arbeitet
+daran · für Miriam“. „Von Piloti zurücknehmen“ clears it without a wake. Piloti
+hands the mark back by replying (its reply clears the delegation in the same
+statement), and resolves it only when the person who delegated asked for that;
+closing the mark ends the delegation. Piloti cannot delegate to itself.
 
 The trace carries `turn_surface` and `focus_region_viewed`
 ([`docs/observability/langfuse.md`](../observability/langfuse.md)).
@@ -213,6 +303,9 @@ is the way from the chat onto the canvas and back:
    is gone with its thread; its row only says so.
 
 ## Known debts
+
+- The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.
+- The „Geweckt durch“ prompt block names the turn's verified principal, which an internal caller does not have, so a woken turn reads „Eine Person“ there; the person's name is in the trigger row and in `author_name`.
 
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.
 - The Python side posts to internal routes through several near-identical helpers.

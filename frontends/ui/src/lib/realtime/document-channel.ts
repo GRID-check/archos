@@ -13,10 +13,12 @@
  *   hint ({@link publishToDocumentRoom});
  * - Piloti, a participant of its own on the canvas ({@link publishAsAgent}):
  *   present, pointing, saying what it does, and highlighting a region. Its
- *   identity is stamped here, `kind: 'piloti'`, one peer per conversation. A
- *   browser cannot be Piloti: the send path stamps every browser `person`, and
- *   the browser's vocabulary (`roomPostSchema`) has no activity, highlight or
- *   label to send.
+ *   identity is stamped here, `kind: 'piloti'`, one peer per conversation,
+ *   with the name of the person it acts for (`forName`), so the room always
+ *   sees whose request it works on (ADR-0105; EU AI Act Art. 50). A browser
+ *   cannot be Piloti, nor say whom it acts for: the send path stamps every
+ *   browser `person` from its session, and the browser's vocabulary
+ *   (`roomPostSchema`) has no activity, highlight, label or `forName` to send.
  *
  * Every relayed claim and fact also lands in the server roster (`./roster`),
  * which {@link roomSnapshot} reads: who is here, on which page, scrolled where,
@@ -25,6 +27,7 @@
 
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { ROOM_LIMIT } from '@/lib/limits'
 import {
   CURSOR_CHAT_MAX,
@@ -128,10 +131,31 @@ export async function publishToDocumentRoom(documentId: string, event: RoomEvent
 
 // ── Piloti in the room ──────────────────────────────────────────────────────
 
-/** Who Piloti is in a room: one peer per conversation, so two conversations working on one document are two. */
-export function pilotiPeer(conversationId: string, onBehalfOf: string): RoomPeer {
+/**
+ * Who Piloti is in a room: one peer per conversation, so two conversations
+ * working on one document are two, carrying the name of the person it acts
+ * for when there is one.
+ */
+export function pilotiPeer(conversationId: string, onBehalfOf: string, forName?: string | null): RoomPeer {
   const id = conversationId.replace(/[^A-Za-z0-9_-]/g, '').slice(0, 56)
-  return { peerId: `piloti-${id}`.padEnd(8, '0'), userId: onBehalfOf, name: 'Piloti', kind: 'piloti' }
+  const name = forName?.trim().slice(0, 120)
+  return {
+    peerId: `piloti-${id}`.padEnd(8, '0'),
+    userId: onBehalfOf,
+    name: 'Piloti',
+    kind: 'piloti',
+    ...(name ? { forName: name } : {}),
+  }
+}
+
+/**
+ * The display name of the person Piloti acts for, from the organization
+ * directory (itself cached per organization). Fails open to no name: a WorkOS
+ * hiccup costs the „für Anna" on the canvas, never Piloti's move.
+ */
+async function actingName(organizationId: string, userId: string): Promise<string | null> {
+  const directory = await loadOrganizationDirectory(organizationId).catch(() => null)
+  return directory?.get(userId)?.name ?? null
 }
 
 /** What Piloti can do in a room. Boxes and points are shares of the page, 0…1, top-left origin. */
@@ -174,7 +198,8 @@ export async function publishAsAgent(
   agent: { conversationId: string; onBehalfOf: string },
   op: AgentRoomOp
 ): Promise<RoomEvent> {
-  const event = agentRoomEvent(pilotiPeer(agent.conversationId, agent.onBehalfOf), op)
+  const forName = await actingName(organizationId, agent.onBehalfOf)
+  const event = agentRoomEvent(pilotiPeer(agent.conversationId, agent.onBehalfOf, forName), op)
   await publishToDocumentRoom(documentId, event)
   observeRoom(documentId, organizationId, [event])
   return event
@@ -186,6 +211,8 @@ export interface RoomSnapshotPeer {
   userId: string
   name: string
   kind: 'person' | 'piloti'
+  /** For Piloti: the person it acts for. */
+  forName?: string
   /** The page their pointer was last on; null when it is off the pages or never was on them. */
   page: number | null
   viewport: { page: number; y: number } | null
@@ -202,6 +229,7 @@ const toSnapshotPeer = (entry: RosterEntry): RoomSnapshotPeer => ({
   userId: entry.peer.userId,
   name: entry.peer.name,
   kind: entry.peer.kind,
+  ...(entry.peer.forName ? { forName: entry.peer.forName } : {}),
   page: entry.page,
   viewport: entry.viewport,
   selected: entry.selected,

@@ -14,10 +14,14 @@ import { ROOM_PEER_HEADER } from './peer-header'
 import {
   annotationListResponseSchema,
   annotationResponseSchema,
+  documentThreadResponseSchema,
+  replyResponseSchema,
   type AnnotationListResponse,
+  type AnnotationResponse,
   type AnnotationView,
   type CreateAnnotationRequest,
   type CreateReplyRequest,
+  type ReplyResponse,
   type UpdateAnnotationRequest,
 } from './types'
 
@@ -99,16 +103,47 @@ export function updateAnnotation(
   input: UpdateAnnotationRequest,
   { peerId, run = defaultFetch }: WriteOptions = {}
 ): Promise<AnnotationView> {
-  return request(run, annotationPath(documentId, annotationId), json('PATCH', input, peerId), one)
+  return updateAnnotationWithWake(documentId, annotationId, input, { peerId, run }).then(({ annotation }) => annotation)
 }
 
+/** A change, and what the server did with it as an event that could wake Piloti (a delegation). */
+export function updateAnnotationWithWake(
+  documentId: string,
+  annotationId: string,
+  input: UpdateAnnotationRequest,
+  { peerId, run = defaultFetch }: WriteOptions = {}
+): Promise<AnnotationResponse> {
+  return request(run, annotationPath(documentId, annotationId), json('PATCH', input, peerId), (value) =>
+    annotationResponseSchema.parse(value)
+  )
+}
+
+/**
+ * Answer in the thread. The response says whether the server wakes Piloti for
+ * it (`wake: 'queued'`): then this tab must not ask Piloti itself.
+ */
 export function replyToAnnotation(
   documentId: string,
   annotationId: string,
   input: CreateReplyRequest,
   { peerId, run = defaultFetch }: WriteOptions = {}
-): Promise<AnnotationView> {
-  return request(run, `${annotationPath(documentId, annotationId)}/replies`, json('POST', input, peerId), one)
+): Promise<ReplyResponse> {
+  return request(run, `${annotationPath(documentId, annotationId)}/replies`, json('POST', input, peerId), (value) =>
+    replyResponseSchema.parse(value)
+  )
+}
+
+/** The caller's own thread about a document, created when it does not exist (ADR-0106). */
+export function documentThread(
+  documentId: string,
+  { title, run = defaultFetch }: { title?: string; run?: AnnotationFetch } = {}
+): Promise<string> {
+  return request(
+    run,
+    `${documentPath(documentId)}/thread`,
+    json('POST', title ? { title } : {}),
+    (value) => documentThreadResponseSchema.parse(value).conversationId
+  )
 }
 
 export function deleteAnnotation(

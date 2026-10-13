@@ -32,12 +32,14 @@ import { runPurgeBinnedChunksSlice, runRestoreFolderSlice } from '@/lib/projects
 import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'
 import { runReportFilingJob } from '@/lib/tasks/service'
+import { runPilotiWake } from '@/lib/annotations/wake-job'
 import { isLastAttempt } from './attempts'
 import {
   bimExtractPayloadSchema,
   fileResearchReportPayloadSchema,
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
+  pilotiWakePayloadSchema,
   placementReingestPayloadSchema,
   purgeBinnedChunksPayloadSchema,
   reindexProjectPayloadSchema,
@@ -128,6 +130,15 @@ const mailImportHandler: JobHandler = async ({ organizationId, payload }) => {
   return runMailImportSlice(session, parsed, organizationId)
 }
 
+/**
+ * A wake of Piloti (ADR-0106). Not {@link handler}: it resolves the person
+ * itself, because a person who left ends the wake WITH a record on its
+ * `piloti_wakes` row, and it may answer „not yet" (`notBefore`) while another
+ * turn of the person's thread runs.
+ */
+const pilotiWakeHandler: JobHandler = async ({ organizationId, payload, attempts }) =>
+  runPilotiWake(organizationId, pilotiWakePayloadSchema.parse(payload), { last: isLastAttempt(attempts) })
+
 /** One handler per kind; the record's type makes a kind without one a compile error. */
 export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   reindex_project: handler(reindexProjectPayloadSchema, runReindexSlice),
@@ -139,4 +150,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   office_rendition: systemHandler(officeRenditionPayloadSchema, runOfficeRenditionJob),
   file_research_report: systemHandler(fileResearchReportPayloadSchema, runReportFilingJob),
   mail_import: mailImportHandler,
+  piloti_wake: pilotiWakeHandler,
 }

@@ -168,6 +168,9 @@ const base = {
   closedBy: null,
   closedByName: null,
   closedAt: null,
+  delegatedBy: null,
+  delegatedByName: null,
+  delegatedAt: null,
   replies: [] as AnnotationReplyView[],
   canEdit: true,
   canDelete: true,
@@ -181,6 +184,7 @@ const reply = (annotationId: string, by: { userId: string; name: string }, minut
   createdBy: by.userId,
   createdByName: by.name,
   createdAt: minutesAgo(minutes),
+  addressesPiloti: false,
 })
 
 let annotations: AnnotationView[] = [
@@ -213,6 +217,10 @@ let annotations: AnnotationView[] = [
     canDelete: false,
     createdAt: minutesAgo(60),
     updatedAt: minutesAgo(60),
+    // Piloti works it for Jakob (ADR-0105): the delegate chip in the thread.
+    delegatedBy: 'u-3',
+    delegatedByName: JAKOB.name,
+    delegatedAt: minutesAgo(20),
   },
   {
     ...base,
@@ -295,6 +303,26 @@ const annaPeer = peer(ANNA, 'peer-anna-0001')
 const jakobPeer = peer(JAKOB, 'peer-jakob-001')
 /** Piloti in the room, as `publishAsAgent` names it: on behalf of the person who asked. */
 const pilotiPeer: RoomPeer = { peerId: 'piloti-dev-conv', userId: ME.userId, name: 'Piloti', kind: 'piloti' }
+
+/** `?wakes=1`: the organization lets events wake Piloti, so the server answers an @Piloti reply. */
+const WAKES = typeof window !== 'undefined' && new URLSearchParams(window.location.search).has('wakes')
+
+/** The server's wake, answered: Piloti's reply arrives through the room, as it would from the job. */
+const wakeReply = (annotationId: string) => {
+  const answer: AnnotationReplyView = {
+    ...reply(annotationId, ME, 0, 'Im Schnitt B-B sind 1,20 m zwischen den Wangen kotiert; die Statik rechnet mit 1,10 m.'),
+    id: `${annotationId}-wake-${Date.now()}`,
+    authorKind: 'piloti',
+    createdByName: 'Piloti',
+  }
+  annotations = annotations.map((one) => (one.id === annotationId ? { ...one, replies: [...one.replies, answer] } : one))
+  broadcast({
+    kind: 'annotations.changed',
+    annotationIds: [annotationId],
+    change: 'replied',
+    actor: { peerId: null, userId: ME.userId, name: 'Piloti', kind: 'piloti' },
+  })
+}
 
 /** Piloti's three findings, once: the `?piloti=1` script and a whole-document review both set them. */
 const proposeFindings = () => {
@@ -843,13 +871,15 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (replies) {
         const current = annotations.find((annotation) => annotation.id === replies[1])
         if (!current) return json({ error: 'Not found', code: 'NOT_FOUND' }, 404)
-        const next = {
-          ...current,
-          replies: [...current.replies, reply(current.id, ME, 0, String(body().body).trim())],
-          updatedAt: new Date().toISOString(),
-        }
+        const input = body()
+        const added = { ...reply(current.id, ME, 0, String(input.body).trim()), addressesPiloti: input.addressesPiloti === true }
+        const next = { ...current, replies: [...current.replies, added], updatedAt: new Date().toISOString() }
         annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
-        return json({ annotation: next }, 201)
+        // `?wakes=1`: the organization's switch is on, so the server answers an
+        // @Piloti reply itself (ADR-0106); here, a moment later, through the room.
+        const wake = !added.addressesPiloti ? 'none' : WAKES ? 'queued' : 'off'
+        if (wake === 'queued') setTimeout(() => wakeReply(current.id), 4_000)
+        return json({ annotation: next, replyId: added.id, wake }, 201)
       }
       const one = new RegExp(`/api/documents/${FILE.id}/annotations/([^/?]+)$`).exec(url)
       if (one) {
@@ -859,13 +889,20 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           annotations = annotations.filter((annotation) => annotation.id !== current.id)
           return new Response(null, { status: 204 })
         }
-        const change = body() as Partial<AnnotationView>
+        const { delegateToPiloti, ...change } = body() as Partial<AnnotationView> & { delegateToPiloti?: boolean }
         const now = new Date().toISOString()
+        const delegation =
+          delegateToPiloti === undefined
+            ? {}
+            : delegateToPiloti
+              ? { delegatedBy: ME.userId, delegatedByName: ME.name, delegatedAt: now }
+              : { delegatedBy: null, delegatedByName: null, delegatedAt: null }
         const status = change.status ?? current.status
         const moved = status !== current.status
         const next: AnnotationView = {
           ...current,
           ...change,
+          ...delegation,
           status,
           ...(change.assigneeUserId !== undefined ? { assigneeName: change.assigneeUserId ? NAMES[change.assigneeUserId] ?? null : null } : {}),
           ...(moved && (status === 'resolved' || status === 'dismissed')
@@ -878,7 +915,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           updatedAt: now,
         }
         annotations = annotations.map((annotation) => (annotation.id === next.id ? next : annotation))
-        return json({ annotation: next })
+        return json({ annotation: next, ...(delegateToPiloti ? { wake: 'queued' } : {}) })
       }
       if (url.endsWith(`/api/documents/${FILE.id}/annotations`)) {
         if (method === 'POST') {
@@ -901,7 +938,11 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
           annotations = [...annotations, created]
           return json({ annotation: created }, 201)
         }
-        return json({ annotations, canAnnotate: true })
+        return json({ annotations, canAnnotate: true, pilotiWakes: WAKES })
+      }
+      // The person's own thread about the document, which the canvas asks in.
+      if (method === 'POST' && url.endsWith(`/api/documents/${FILE.id}/thread`)) {
+        return json({ conversationId: 's_dev_document_thread' })
       }
       if (url.endsWith(`/api/documents/${FILE.id}/file`)) {
         return new Response(buildSheet(), { headers: { 'Content-Type': 'application/pdf' } })

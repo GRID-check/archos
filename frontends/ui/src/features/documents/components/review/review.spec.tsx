@@ -26,6 +26,7 @@ import type { TurnSocket, TurnSocketOptions } from '@/adapters/api/turn-socket'
 import type { ClientMessage } from '@/adapters/api/wire-v2'
 import type { RoomFrame, RoomPost } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
+import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
 import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
 import { useDocumentReview } from '../../hooks/use-document-review'
@@ -68,6 +69,9 @@ const view = (overrides: Partial<AnnotationView>): AnnotationView => ({
   closedBy: null,
   closedByName: null,
   closedAt: null,
+  delegatedBy: null,
+  delegatedByName: null,
+  delegatedAt: null,
   replies: [],
   canEdit: true,
   canDelete: true,
@@ -178,8 +182,10 @@ function Harness({
   )
 }
 
-const serve = (annotations: AnnotationView[], canAnnotate = true) =>
-  server.use(http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate })))
+const serve = (annotations: AnnotationView[], canAnnotate = true, pilotiWakes = false) =>
+  server.use(
+    http.get('/api/documents/:id/annotations', () => HttpResponse.json({ annotations, canAnnotate, pilotiWakes }))
+  )
 
 beforeEach(() => {
   vi.restoreAllMocks()
@@ -200,6 +206,11 @@ function captureSurface() {
 function serveConversation() {
   const posted: Array<{ path: string; body: unknown }> = []
   server.use(
+    // The person's own thread about the document (ADR-0106), which the canvas asks in.
+    http.post('/api/documents/:id/thread', async ({ request }) => {
+      posted.push({ path: 'thread', body: await request.json() })
+      return HttpResponse.json({ conversationId: 's_thread_doc_1' })
+    }),
     http.post('/api/conversations', async ({ request }) => {
       posted.push({ path: 'conversation', body: await request.json() })
       return HttpResponse.json({}, { status: 201 })
@@ -398,16 +409,10 @@ describe('the review', () => {
 
     await askAboutABox(piloti)
 
-    expect(posted[0]).toEqual({
-      path: 'conversation',
-      body: {
-        id: expect.any(String),
-        title: 'Grundriss.pdf · Review',
-        projectId: 'proj_1',
-        subjectResourceType: 'document',
-        subjectResourceId: 'doc_1',
-      },
-    })
+    // The person's own thread about the document, which the server creates (ADR-0106).
+    expect(posted[0]).toEqual({ path: 'thread', body: { title: 'Grundriss.pdf · Review' } })
+    expect(posted.some((entry) => entry.path === 'conversation')).toBe(false)
+    expect(piloti.questions()[0].conversation_id).toBe('s_thread_doc_1')
     expect(posted[1]).toEqual({
       path: 'message',
       body: {
@@ -445,7 +450,7 @@ describe('the review', () => {
     expect(within(card).queryByText(/card:1/)).toBeNull()
     expect(within(card).getByTestId('piloti-card-chat')).toHaveAttribute(
       'href',
-      `/app/projects/proj_1/chat?session=${(posted[0].body as { id: string }).id}`
+      '/app/projects/proj_1/chat?session=s_thread_doc_1'
     )
   })
 
@@ -481,7 +486,7 @@ describe('the review', () => {
     expect(await screen.findByTestId('review-thread')).toBeInTheDocument()
   })
 
-  it('brings Piloti into a thread with @Piloti: the reply is saved, then Piloti is asked to answer there', async () => {
+  it('brings Piloti into a thread with @Piloti: the reply is saved, then this tab asks Piloti while wakes are off', async () => {
     serve([view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })])
     serveConversation()
     const replies: unknown[] = []
@@ -505,9 +510,12 @@ describe('the review', () => {
                 createdBy: 'user_me',
                 createdByName: 'Miriam Hofer',
                 createdAt: '2026-10-01T09:00:00.000Z',
+                addressesPiloti: true,
               },
             ],
           }),
+          replyId: 'r1',
+          wake: 'off',
         })
       })
     )
@@ -522,9 +530,13 @@ describe('the review', () => {
     expect(within(thread).getByTestId('thread-reply-mention-chip')).toHaveTextContent('@Piloti')
     await userEvent.type(box, 'Stimmt die Breite?{Enter}')
 
-    await waitFor(() => expect(replies).toEqual([{ body: 'Stimmt die Breite?' }]))
+    // The mention is a flag on the reply, never read from its text.
+    await waitFor(() => expect(replies).toEqual([{ body: 'Stimmt die Breite?', addressesPiloti: true }]))
     await waitFor(() => expect(piloti.questions()).toHaveLength(1))
     expect(piloti.questions()[0]).toMatchObject({
+      // The id a server wake of the same reply would use: the two can never both run.
+      message_id: wakeTurnId('r1'),
+      conversation_id: 's_thread_doc_1',
       text: 'Stimmt die Breite?',
       reply_in_thread: true,
       focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.25, annotation_id: 'ann_1' },
@@ -536,6 +548,105 @@ describe('the review', () => {
     piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
     piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Ja, 1,20 m.' } })
     await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+  })
+
+  it('leaves an @Piloti reply to the server when it wakes Piloti, and waits for the reply in the thread', async () => {
+    const mark = view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })
+    const asked: AnnotationView['replies'][number] = {
+      id: 'r1',
+      annotationId: 'ann_1',
+      authorKind: 'person',
+      body: 'Stimmt die Breite?',
+      createdBy: 'user_me',
+      createdByName: 'Miriam Hofer',
+      createdAt: '2026-10-01T09:00:00.000Z',
+      addressesPiloti: true,
+    }
+    serve([mark], true, true)
+    const posted = serveConversation()
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', () =>
+        HttpResponse.json({ annotation: { ...mark, replies: [asked] }, replyId: 'r1', wake: 'queued' }, { status: 201 })
+      )
+    )
+    const piloti = scriptedPiloti()
+    const room = scriptedRoom()
+    render(<Harness transport={room.transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    const box = within(thread).getByTestId('thread-reply')
+    await userEvent.type(box, '@pil')
+    await userEvent.click(within(thread).getByTestId('thread-reply-mention-option'))
+    await userEvent.type(box, 'Stimmt die Breite?{Enter}')
+
+    // „Piloti antwortet …“, and nothing runs in this tab: no thread, no socket, no question.
+    expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-piloti-pending')).toBeInTheDocument()
+    expect(piloti.questions()).toEqual([])
+    expect(posted).toEqual([])
+
+    // Piloti's reply arrives through the room, as the wake job's turn writes it.
+    const answered = {
+      ...mark,
+      replies: [
+        asked,
+        { ...asked, id: 'r2', authorKind: 'piloti' as const, body: '1,20 m im Schnitt B-B.', addressesPiloti: false },
+      ],
+    }
+    serve([answered], true, true)
+    room.send({
+      kind: 'event',
+      event: {
+        kind: 'annotations.changed',
+        annotationIds: ['ann_1'],
+        change: 'replied',
+        actor: { peerId: null, userId: 'user_me', name: 'Piloti', kind: 'piloti' },
+      },
+    })
+    await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+    expect(within(screen.getByTestId('review-thread')).getByText('1,20 m im Schnitt B-B.')).toBeInTheDocument()
+  })
+
+  it('delegates an open mark to Piloti from the thread, and shows for whom Piloti works it', async () => {
+    serve([view({ id: 'ann_1' })], true, true)
+    const patches: unknown[] = []
+    server.use(
+      http.patch('/api/documents/:id/annotations/:annotationId', async ({ request }) => {
+        patches.push(await request.json())
+        return HttpResponse.json({
+          annotation: view({
+            id: 'ann_1',
+            delegatedBy: 'user_me',
+            delegatedByName: 'Miriam Hofer',
+            delegatedAt: '2026-10-13T09:00:00.000Z',
+          }),
+          wake: 'queued',
+        })
+      })
+    )
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    expect(within(thread).queryByTestId('thread-delegate')).toBeNull()
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    await userEvent.click(await screen.findByRole('menuitem', { name: 'Delegate to Piloti' }))
+
+    await waitFor(() => expect(patches).toEqual([{ delegateToPiloti: true }]))
+    expect(await within(screen.getByTestId('review-thread')).findByTestId('thread-delegate')).toHaveTextContent(
+      'Piloti is working on it · for Miriam Hofer'
+    )
+  })
+
+  it('offers no delegation while the organization does not let events wake Piloti', async () => {
+    serve([view({ id: 'ann_1' })])
+    render(<Harness transport={scriptedRoom().transport} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    await userEvent.click(within(thread).getByRole('button', { name: 'More' }))
+    expect(await screen.findByRole('menuitem', { name: 'Copy link' }).catch(() => null)).toBeDefined()
+    expect(screen.queryByRole('menuitem', { name: 'Delegate to Piloti' })).toBeNull()
   })
 
   it("draws Piloti's own pointer and what it points out, from the room", async () => {

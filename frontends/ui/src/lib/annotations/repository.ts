@@ -11,6 +11,7 @@
 import 'server-only'
 import { and, asc, eq, inArray, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
+import type { DbTransaction } from '@/lib/db/executor'
 import {
   documentAnnotationReplies,
   documentAnnotations,
@@ -228,7 +229,15 @@ export interface AnnotationChanges {
     closedBy: string | null
     closedAt: Date | null
   }
+  /** Piloti as the delegate (migration 0136): both set, or both cleared, as the CHECK holds. */
+  delegation?: { delegatedBy: string; delegatedAt: Date } | { delegatedBy: null; delegatedAt: null }
 }
+
+/**
+ * Work that must commit or roll back with a write: the wake of Piloti the
+ * write is the event of (`./wake.ts`), enqueued in the write's transaction.
+ */
+export type InTransaction<T> = (tx: DbTransaction, row: T) => Promise<void>
 
 /**
  * Apply a change to one Anmerkung; null when it is gone, or when its status
@@ -240,25 +249,30 @@ export async function updateDocumentAnnotation(
   documentId: string,
   annotationId: string,
   expectedStatus: AnnotationStatus,
-  changes: AnnotationChanges
+  changes: AnnotationChanges,
+  /** Runs in the update's transaction when a row was changed. */
+  afterUpdate?: InTransaction<DocumentAnnotationRow>
 ): Promise<DocumentAnnotationRow | null> {
-  const { transition, ...fields } = changes
+  const { transition, delegation, ...fields } = changes
   const db = getDb()
-  const [row] = await withTenant({ organizationId }, () =>
-    db
-      .update(documentAnnotations)
-      .set({ ...fields, ...(transition ?? {}), updatedAt: new Date() })
-      .where(
-        and(
-          eq(documentAnnotations.organizationId, organizationId),
-          eq(documentAnnotations.documentId, documentId),
-          eq(documentAnnotations.id, annotationId),
-          eq(documentAnnotations.status, expectedStatus)
+  return withTenant({ organizationId }, () =>
+    db.transaction(async (tx) => {
+      const [row] = await tx
+        .update(documentAnnotations)
+        .set({ ...fields, ...(transition ?? {}), ...(delegation ?? {}), updatedAt: new Date() })
+        .where(
+          and(
+            eq(documentAnnotations.organizationId, organizationId),
+            eq(documentAnnotations.documentId, documentId),
+            eq(documentAnnotations.id, annotationId),
+            eq(documentAnnotations.status, expectedStatus)
+          )
         )
-      )
-      .returning()
+        .returning()
+      if (row && afterUpdate) await afterUpdate(tx, row)
+      return row ?? null
+    })
   )
-  return row ?? null
 }
 
 /** Delete one Anmerkung and its thread; whether a row went. Its number is not reused while a higher one exists. */
@@ -289,14 +303,25 @@ export class ReplyLimitReachedError extends Error {}
 /**
  * Append one reply to an Anmerkung the service read for writing, and touch the
  * mark's `updated_at`, so „zuletzt aktiv" moves with its thread.
+ *
+ * `handBack` clears the mark's delegation in the same statement: Piloti's
+ * reply on a mark it was delegated is how it hands the mark back (ADR-0105).
+ * `afterInsert` runs in the same transaction, so a wake the reply is the event
+ * of exists exactly when the reply does.
  */
-export async function insertAnnotationReply(input: {
-  organizationId: string
-  annotationId: string
-  authorKind: AnnotationAuthor
-  body: string
-  createdBy: string
-}): Promise<DocumentAnnotationReplyRow> {
+export async function insertAnnotationReply(
+  input: {
+    organizationId: string
+    annotationId: string
+    authorKind: AnnotationAuthor
+    body: string
+    createdBy: string
+    addressesAgent?: boolean
+    handBack?: boolean
+  },
+  afterInsert?: InTransaction<DocumentAnnotationReplyRow>
+): Promise<DocumentAnnotationReplyRow> {
+  const { handBack, ...values } = input
   const db = getDb()
   return withTenant({ organizationId: input.organizationId }, () =>
     db.transaction(async (tx) => {
@@ -313,16 +338,17 @@ export async function insertAnnotationReply(input: {
           )
         )
       if (Number(current?.count ?? 0) >= MAX_REPLIES_PER_ANNOTATION) throw new ReplyLimitReachedError()
-      const [reply] = await tx.insert(documentAnnotationReplies).values(input).returning()
+      const [reply] = await tx.insert(documentAnnotationReplies).values(values).returning()
       await tx
         .update(documentAnnotations)
-        .set({ updatedAt: new Date() })
+        .set({ updatedAt: new Date(), ...(handBack ? { delegatedBy: null, delegatedAt: null } : {}) })
         .where(
           and(
             eq(documentAnnotations.organizationId, input.organizationId),
             eq(documentAnnotations.id, input.annotationId)
           )
         )
+      if (afterInsert) await afterInsert(tx, reply)
       return reply
     })
   )

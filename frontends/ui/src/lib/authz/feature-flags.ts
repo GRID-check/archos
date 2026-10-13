@@ -172,6 +172,18 @@ export const FEATURE_FLAGS = {
   memoryReflection: 'memory-reflection',
   /** The post-answer follow-up-questions stage, read the same way. */
   postAnswerFollowUps: 'post-answer-follow-ups',
+  /**
+   * Events on Piloti's work wake a turn (ADR-0106): a reply that addresses
+   * Piloti in an Anmerkung's thread, a reply on Piloti's own open question, and
+   * a mark delegated to Piloti are answered by the server, as the person who
+   * acted, with nobody's browser open. Read when the event is written (the
+   * person's session) and again when the wake job runs (their pinned session).
+   *
+   * An entitlement, off until an operator targets the organization: a wake is
+   * a model call nobody typed. With it off, an @Piloti reply is asked by the
+   * browser that wrote it, exactly as before, and a mark cannot be delegated.
+   */
+  pilotiWakes: 'piloti-wakes',
 } as const
 
 export type KnownFeatureFlag = (typeof FEATURE_FLAGS)[keyof typeof FEATURE_FLAGS]
@@ -190,6 +202,7 @@ export const FLAG_KINDS: Readonly<Record<KnownFeatureFlag, 'entitlement' | 'roll
   collaboration: 'entitlement',
   skills: 'entitlement',
   'mail-import': 'entitlement',
+  'piloti-wakes': 'entitlement',
   'web-search': 'rollout',
   'project-knowledge-page': 'rollout',
   'image-upload': 'rollout',
@@ -241,6 +254,11 @@ export function isProjectKnowledgePageEnabled(session: Pick<GridSession, 'featur
  */
 export function isMailImportEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
   return isFeatureEnabled(session, FEATURE_FLAGS.mailImport)
+}
+
+/** Whether events on Piloti's work wake a turn for this organization (ADR-0106). */
+export function isPilotiWakesEnabled(session: Pick<GridSession, 'featureFlags'>): boolean {
+  return isFeatureEnabled(session, FEATURE_FLAGS.pilotiWakes)
 }
 
 /** Collaboration (ADR-0032…0035). */

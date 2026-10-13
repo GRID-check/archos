@@ -141,6 +141,8 @@ const RECORD: AnnotationRecord = {
   acceptedAt: null,
   closedBy: null,
   closedAt: null,
+  delegatedBy: null,
+  delegatedAt: null,
   fassungNumber: 2,
   replies: [],
 }
@@ -176,6 +178,7 @@ beforeEach(() => {
     body: 'x',
     createdBy: 'user_1',
     createdAt: new Date(),
+    addressesAgent: false,
   })
   vi.mocked(loadOrganizationDirectory).mockResolvedValue(
     new Map([
@@ -235,7 +238,7 @@ describe('GET /api/documents/[id]/annotations', () => {
   it('carries none on a chat attachment', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue({ ...DOC, scope: 'session' } as Document)
 
-    await expect(listAnnotations('doc_1', run)).resolves.toEqual({ annotations: [], canAnnotate: false })
+    await expect(listAnnotations('doc_1', run)).resolves.toEqual({ annotations: [], canAnnotate: false, pilotiWakes: false })
   })
 })
 
@@ -321,7 +324,7 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
         acceptedBy: 'user_1',
         acceptedAt: expect.any(Date),
       },
-    })
+    }, undefined)
   })
 
   it('refuses a take-over from a copy once a colleague dismissed the proposal, rather than reopening it', async () => {
@@ -412,13 +415,19 @@ describe('POST /api/documents/[id]/annotations/[annotationId]/replies', () => {
   it('answers in the thread as the person, trimmed, and tells the room', async () => {
     await replyToAnnotation('doc_1', 'ann_1', { body: '  Ist im Index D drin.  ' }, { run })
 
-    expect(insertAnnotationReply).toHaveBeenCalledWith({
-      organizationId: 'org_1',
-      annotationId: 'ann_1',
-      authorKind: 'person',
-      body: 'Ist im Index D drin.',
-      createdBy: 'user_1',
-    })
+    expect(insertAnnotationReply).toHaveBeenCalledWith(
+      {
+        organizationId: 'org_1',
+        annotationId: 'ann_1',
+        authorKind: 'person',
+        body: 'Ist im Index D drin.',
+        createdBy: 'user_1',
+        addressesAgent: false,
+        handBack: false,
+      },
+      // A reply on a person's mark that does not address Piloti wakes nothing.
+      undefined
+    )
     expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'replied' }))
   })
 

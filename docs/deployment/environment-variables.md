@@ -271,7 +271,7 @@ The one-off tag-backfill script runs **outside** the NAT runtime, so it builds a
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `BACKEND_URL` | Yes | `http://aiq-api:8000` (Docker), `http://localhost:8000` (local) | The backend's **`api` role** (ADR-0082): every HTTP call of the BFF, the purger, the housekeeping clock and the workers goes here. It serves no chat socket. |
-| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://aiq-agent:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
+| `BACKEND_CHAT_URL` | Yes (the gateway, `server.js`) | `http://aiq-agent:8000` (Docker), `http://localhost:8001` (local) | The backend's **`chat` role**, dialled by the WebSocket proxy and by the wake job of the `bff-jobs` pod (`lib/turns/headless-turn.ts`, ADR-0106), and by nothing else. Required with no fallback to `BACKEND_URL`: the gateway refuses to start without it. |
 | `BACKEND_REPLICAS` | No | `1` | Kubernetes only (Pulumi-injected). The modulus of the conversation-id hash while `GRID_CHAT_AFFINITY` is on, so it must equal the StatefulSet's replica count. With one replica, or with affinity off, every socket goes to `BACKEND_CHAT_URL`. |
 | `BACKEND_POD_WS_TEMPLATE` | No | unset | Kubernetes only (Pulumi-injected). The per-pod WebSocket address with a literal `{i}`, e.g. `ws://aiq-agent-{i}.aiq-agent-headless:8000`. Unset means every socket goes to `BACKEND_CHAT_URL`. |
 | `GRID_CHAT_AFFINITY` | No | `1` (on) | See [Backend Configuration](#backend-configuration). Read by the gateway at start-up: off sends every chat socket to `BACKEND_CHAT_URL`. |
@@ -341,11 +341,20 @@ Read by `frontends/ui/workers/jobs/index.js`, the entry point of the `bff-jobs` 
 | `GRID_BFF_JOBS_POLL_MS` | No | `2000` | Idle wait between claims. |
 | `GRID_BFF_JOBS_DRAIN_SECONDS` | No | `60` | After SIGTERM the loop lets the slice in hand finish for up to this long, gives every claim back **without spending an attempt**, then stops the BFF. Pulumi `bffJobsDrainSeconds`; the pod's grace period is this plus 30 s. |
 | `GRID_BFF_JOBS_STALE_SECONDS` | No | `180` | A claim whose worker has sent no heartbeat for this long is claimed again by another worker. Never below four heartbeats (60 s). |
-| `GRID_BFF_JOBS_MAX_ATTEMPTS` | No | `3` | Claims of one job before it is marked `dead` (its reason kept in `last_error`, its payload reduced to ids; deleted after `GRID_BFF_JOBS_DEAD_RETENTION_DAYS`). Only a drain or a cap gives an attempt back: a failed slice, a slice timeout and a BFF that did not answer all spend one. |
+| `GRID_BFF_JOBS_MAX_ATTEMPTS` | No | `3` | Claims of one job before it is marked `dead` (its reason kept in `last_error`, its payload reduced to ids; deleted after `GRID_BFF_JOBS_DEAD_RETENTION_DAYS`). Only a drain, a cap or a slice that says it waits (`notBefore`, a wake of Piloti whose person's thread is busy) gives an attempt back: a failed slice, a slice timeout and a BFF that did not answer all spend one. |
 | `GRID_BFF_JOBS_RETRY_BACKOFF_SECONDS` | No | `30` | How long a failed job waits before its second attempt; each further attempt doubles it, to at most 15 minutes. `0` retries at once. |
 | `GRID_BFF_JOBS_DEAD_RETENTION_DAYS` | No | `14` | How long a `dead` job is kept as a trace before it is deleted (checked every ten minutes by every `bff-jobs` replica). A project's purge deletes its jobs at once. |
 | `GRID_BFF_JOBS_MAX_PER_ORG` | No | `0` | Most jobs one organisation may run **across the whole fleet**; 0 for no cap. The claim is fair without it. Hard: a claim that raced past the cap gives its job back. Pulumi `bffJobsMaxPerOrg`. |
 | `GRID_BFF_JOBS_SLICE_TIMEOUT_MS` | No | `300000` | Ceiling on one slice's request to the BFF; a slice that outlives it is a failed attempt. |
+
+### Wakes of Piloti (ADR-0106)
+
+An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `GRID_CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `GRID_INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_WAKE_MAX_PER_MARK_HOUR` | No | `6` | Most wakes of Piloti one Anmerkung gets in a rolling hour. Counted over the `piloti_wakes` rows that were let through, at enqueue and again when the job is claimed; a held wake is recorded as `suppressed` (`cap:mark-hour`) and audited as `piloti.wake.suppressed`. `0` lets none through. |
+| `GRID_WAKE_MAX_PER_PERSON_DAY` | No | `50` | Most wakes one person's acts cause in a rolling day, across every document of the organization. Held the same way (`cap:person-day`). |
 
 ---
 

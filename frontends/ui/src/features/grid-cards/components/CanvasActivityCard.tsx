@@ -22,8 +22,11 @@
  *
  * The canvas is live and the message is not. So the card reads the marks once
  * it is seen and lets that list win: a mark a colleague took over on the
- * canvas reads „Übernommen · Anna" here too. A move somebody beat the reader
- * to answers 409, and the row re-reads and shows what happened instead.
+ * canvas reads „Übernommen · Anna" here too. While the card is on screen it
+ * listens to the document's room and reads again on every change, sharing one
+ * subscription with every other card on that document (`use-canvas-document`),
+ * and a small dot beside Piloti's glyph says so. A move somebody beat the
+ * reader to answers 409, and the row re-reads and shows what happened instead.
  *
  * Taking over is read-then-write. The API lets a discarded mark be opened
  * again (`dismissed → open` is the way back for a person who discarded one by
@@ -44,13 +47,14 @@
  * A deleted mark is gone with its thread, and the row only says so.
  */
 
-import { useState, type JSX } from 'react'
+import { useCallback, useState, type JSX } from 'react'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Check, MapPin, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { useInView } from '@/hooks/use-in-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
@@ -113,10 +117,21 @@ export function CanvasActivityCard({
   decisionsMustPersist,
 }: CanvasActivityCardProps): JSX.Element {
   const t = useTranslations('chat')
+  // Seen once: read the marks and the picture. On screen now: keep the marks
+  // live, and let the document's channel go again when the card scrolls away.
   const [seenRef, seen] = useSeenOnce<HTMLDivElement>()
+  const [viewRef, onScreen] = useInView<HTMLDivElement>()
+  const cardRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      seenRef(node)
+      viewRef(node)
+    },
+    [seenRef, viewRef]
+  )
   const counts = activityCounts(items)
   const setCount = counts.proposed + counts.created
-  const live = useLiveMarks(document.id, seen && setCount + counts.changed > 0)
+  const hasMarks = setCount + counts.changed > 0
+  const live = useLiveMarks(document.id, { seen: seen && hasMarks, onScreen: onScreen && hasMarks })
   const thumbnail = useFirstPageThumbnail(document.id, seen && setCount > 0)
   const [aspect, setAspect] = useState(DEFAULT_PAGE_ASPECT)
   const show = useShowInDocument(document.id)
@@ -153,9 +168,17 @@ export function CanvasActivityCard({
 
   return (
     <ProposalShell tone={tone}>
-      <div ref={seenRef} className="flex flex-col gap-3" data-testid="canvas-activity-card">
+      <div ref={cardRef} className="flex flex-col gap-3" data-testid="canvas-activity-card">
         <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <PilotiGlyph size="xs" />
+          {live.connected && (
+            // Live: changes on the canvas reach this card while it is on screen.
+            <span
+              aria-hidden
+              data-testid="canvas-activity-live"
+              className="bg-foreground/60 animate-caret-breathe size-1.5 shrink-0 rounded-full motion-reduce:animate-none"
+            />
+          )}
           <p className="card-title text-foreground min-w-0">
             {headline(t, counts)}
             <span className="text-muted-foreground font-normal">

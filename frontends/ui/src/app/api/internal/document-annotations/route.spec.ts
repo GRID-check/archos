@@ -169,7 +169,11 @@ describe('POST /api/internal/document-annotations', () => {
   })
 
   it('answers in a thread as Piloti', async () => {
-    vi.mocked(replyToAnnotation).mockResolvedValue({ annotation: { id: OTHER_DOC, number: 2, replies: [{}] } as never })
+    vi.mocked(replyToAnnotation).mockResolvedValue({
+      annotation: { id: OTHER_DOC, number: 2, replies: [{}] } as never,
+      replyId: 'reply_1',
+      wake: 'none',
+    })
 
     await post({ op: 'reply', annotationId: OTHER_DOC, body: 'Die lichte Breite ist im Schnitt B-B kotiert.' })
 
@@ -401,14 +405,16 @@ const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
   acceptedAt: null,
   closedBy: null,
   closedAt: null,
+  delegatedBy: null,
+  delegatedAt: null,
   fassungNumber: null,
   replies: [],
   ...patch,
 })
 
 /**
- * The CHECKs of migration 0135 that an author or a status move touches, as
- * predicates over a row: what the database would refuse.
+ * The CHECKs of migrations 0135 and 0136 that an author, a status move or a
+ * delegation touches, as predicates over a row: what the database would refuse.
  */
 function violatedChecks(row: DocumentAnnotationRow): string[] {
   const broken: string[] = []
@@ -421,6 +427,8 @@ function violatedChecks(row: DocumentAnnotationRow): string[] {
   if (closed !== (row.closedBy !== null) || (row.closedBy === null) !== (row.closedAt === null)) {
     broken.push('closing_complete')
   }
+  if ((row.delegatedBy === null) !== (row.delegatedAt === null)) broken.push('delegation_complete')
+  if (row.delegatedBy !== null && row.status !== 'open') broken.push('delegated_while_open')
   return broken
 }
 
@@ -449,15 +457,21 @@ function fakeRepository() {
     async (_org, _doc, id, expected, changes: AnnotationChanges) => {
       const current = marks.get(id)
       if (!current || current.status !== expected) return null
-      const { transition, ...fields } = changes
-      const next = { ...current, ...fields, ...(transition ?? {}), updatedAt: NOW }
+      const { transition, delegation, ...fields } = changes
+      const next = { ...current, ...fields, ...(transition ?? {}), ...(delegation ?? {}), updatedAt: NOW }
       marks.set(id, next)
       return next
     }
   )
   vi.mocked(insertAnnotationReply).mockImplementation(async (input) => {
     const current = marks.get(input.annotationId)
-    const reply: DocumentAnnotationReplyRow = { id: `reply_${current?.replies.length ?? 0}`, createdAt: NOW, ...input }
+    const { handBack: _handBack, ...values } = input
+    const reply: DocumentAnnotationReplyRow = {
+      id: `reply_${current?.replies.length ?? 0}`,
+      createdAt: NOW,
+      ...values,
+      addressesAgent: values.addressesAgent ?? false,
+    }
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply
   })
@@ -511,13 +525,19 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     })
     expect(stored()).toMatchObject({ status: 'resolved', closedBy: 'user_1' })
     expect(violatedChecks(stored())).toEqual([])
-    expect(insertAnnotationReply).toHaveBeenCalledWith({
-      organizationId: 'org_1',
-      annotationId: MARK_ID,
-      authorKind: 'piloti',
-      body: NOTE,
-      createdBy: 'user_1',
-    })
+    expect(insertAnnotationReply).toHaveBeenCalledWith(
+      {
+        organizationId: 'org_1',
+        annotationId: MARK_ID,
+        authorKind: 'piloti',
+        body: NOTE,
+        createdBy: 'user_1',
+        addressesAgent: false,
+        handBack: false,
+      },
+      // Piloti's own reply never wakes Piloti.
+      undefined
+    )
     expect(vi.mocked(updateDocumentAnnotation).mock.calls[0][3]).toBe('open')
   })
 

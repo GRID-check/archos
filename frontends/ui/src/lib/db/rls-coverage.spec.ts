@@ -144,6 +144,9 @@ const BOUNDARY_MIGRATIONS = [
   // „Anmerkung"). Keyed by their organization AND the document's (the mark's,
   // for a reply), so a row cannot be planted on another tenant's document.
   '0135_document_annotations.sql',
+  // The record of each wake of Piloti on an Anmerkung (ADR-0106). Keyed by its
+  // organization AND the mark's.
+  '0136_piloti_wakes.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -691,6 +691,37 @@ a server whose hello lists it (`user_message.trigger`, `user_message.if_idle`).
   budget refused it; record it on the job. `auth_expired` /
   `conversation_mismatch`: the session or envelope is wrong; fail the job.
 
+**The client that keeps it (the BFF's wake job, ADR-0106).**
+`lib/annotations/wake-job.ts` runs the `piloti_wake` job of the `bff-jobs`
+pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
+`createTurnSocket` (`adapters/api/turn-socket.ts`) over Node's `ws`
+(`createWebSocket`), with `openTurns` empty so nothing is re-attached.
+
+- **Where it dials.** Straight to the chat role, picked as `server.js` picks it
+  (`lib/proxy/backend-target.js`: `BACKEND_CHAT_URL`, or with
+  `GRID_CHAT_AFFINITY` the conversation's pod), not through the gateway, which
+  resolves a browser's cookie. With no `authorization` header and a host on
+  the internal network the backend reads an internal caller, marked headless,
+  and takes who acts from the envelope.
+- **What it sends.** The headers `server.js` sends, built by the same
+  `turnContextHeaders` (`lib/turns/turn-headers.js`) from the same
+  `resolveTurnContext` (`lib/turns/turn-context.ts`), for the acting person's
+  pinned session and their own thread about the document, plus `x-aiq-mode:
+  headless`. The envelope carries `conversationId`. `message_id` is
+  `wakeTurnId(<event id>)`, `author_name` the person's directory name.
+- **When it sends.** Only once the hello names `user_message.trigger`,
+  `user_message.if_idle`, `user_message.focus_region` and
+  `user_message.reply_in_thread`; otherwise the job waits and asks again.
+- **What it does with the answer.** `RUN_STARTED`: it waits five seconds for
+  an early refusal, records `started` and closes. `busy`, or no server: the
+  slice answers `{done: false, notBefore}` and the runner gives the job back
+  without spending an attempt (15 s doubling to 5 min, twelve waits).
+  `duplicate_turn`: done. `RUN_FINISHED{refused}`: recorded `refused`.
+  `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
+  with a fresh envelope, and the last attempt records `failed`. Each outcome
+  is on the `piloti_wakes` row; one without a turn is also audited as
+  `piloti.wake.suppressed`.
+
 ### `user_message.posthog_session_id`
 
 The browser's PostHog session id (`posthog.get_session_id()`), sent per question

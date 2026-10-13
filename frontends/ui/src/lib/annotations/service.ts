@@ -19,6 +19,11 @@
  * that Piloti's mark is open only with a person behind it, so the rule does
  * not depend on this file.
  *
+ * A reply that addresses Piloti, a reply on Piloti's own open question, and
+ * making Piloti the delegate on a mark wake Piloti (ADR-0106, `./wake.ts`):
+ * the wake is enqueued in the write's own transaction, and the response says
+ * whether the server will answer (`wake`), so the browser never asks twice.
+ *
  * Every write tells the document's room (the `doc:<id>` live channel,
  * `lib/realtime/document-channel.ts`), so everyone looking at the document
  * re-reads; a failed publish never fails the write.
@@ -56,6 +61,8 @@ import {
 } from './repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import type { AnnotationChange } from './room-types'
+import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
+import { delegationEventId } from './wake-ids'
 import {
   annotationBox,
   annotationProposalSchema,
@@ -75,7 +82,9 @@ import {
   type CreateAnnotationRequest,
   type CreateReplyRequest,
   type InternalAnnotation,
+  type PilotiWakeTrigger,
   type UpdateAnnotationRequest,
+  type WakeOutcome,
 } from './types'
 
 /** Who acts: a person in their own session, or Piloti in the asker's. `peerId` is the person's tab, when it says. */
@@ -123,6 +132,7 @@ function toReplyView(reply: DocumentAnnotationReplyRow, names: Names): Annotatio
     createdBy: reply.createdBy,
     createdByName: nameOf(names, reply.createdBy),
     createdAt: reply.createdAt.toISOString(),
+    addressesPiloti: reply.addressesAgent,
   }
 }
 
@@ -164,6 +174,9 @@ function toView(
     closedBy: record.closedBy,
     closedByName: nameOf(names, record.closedBy),
     closedAt: record.closedAt ? record.closedAt.toISOString() : null,
+    delegatedBy: record.delegatedBy,
+    delegatedByName: nameOf(names, record.delegatedBy),
+    delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
     replies: record.replies.map((reply) => toReplyView(reply, names)),
     canEdit: writable,
     canDelete: writable && record.authorKind === 'person' && record.createdBy === session.userId,
@@ -298,14 +311,14 @@ const toMark = (input: {
 /** Every Anmerkung on a document this session may read, live ones first. */
 export async function listAnnotations(session: AuthorizedSession, documentId: string): Promise<AnnotationListResponse> {
   const doc = await getAccessibleDocument(session, documentId, 'read')
-  if (!annotatable(doc)) return { annotations: [], canAnnotate: false }
+  if (!annotatable(doc)) return { annotations: [], canAnnotate: false, pilotiWakes: false }
   const [records, writable, names] = await Promise.all([
     listDocumentAnnotations(session.organizationId, doc.id),
     mayWrite(session, doc.id),
     directoryNames(session.organizationId),
   ])
   const annotations = records.map((record) => toView(record, doc, session, writable, names)).sort(compareAnnotations)
-  return { annotations, canAnnotate: writable }
+  return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
 }
 
 /** A person sets one Anmerkung on the Fassung the document shows now. */
@@ -412,14 +425,49 @@ export function transition(
 
 const conflict = () => new ConflictError('Somebody changed this Anmerkung a moment ago. Look again.')
 
-/** Change one Anmerkung: take it over, dismiss, resolve or reopen it, reword it, assign it, give it a date. */
+/**
+ * The delegation a change makes, or none. Making Piloti the delegate is a
+ * person's act on an open mark, and only with the organization's switch on;
+ * a mark already delegated is not delegated again, so a second click is no
+ * second event. Closing a mark ends a delegation, because nobody works a
+ * closed mark.
+ */
+function delegationOf(
+  session: AuthorizedSession,
+  existing: AnnotationRecord,
+  parsed: { delegateToPiloti?: boolean; status?: 'open' | 'resolved' | 'dismissed' },
+  actor: AnnotationActor,
+  now: Date
+): AnnotationChanges['delegation'] | undefined {
+  const cleared = { delegatedBy: null, delegatedAt: null } as const
+  const closing = parsed.status === 'resolved' || parsed.status === 'dismissed'
+  if (parsed.delegateToPiloti === undefined) return closing && existing.delegatedBy ? cleared : undefined
+  if (actor.kind === 'piloti') throw new ForbiddenError('Piloti cannot delegate a mark to itself.')
+  if (!parsed.delegateToPiloti) return existing.delegatedBy ? cleared : undefined
+  if (!wakesEnabled(session)) {
+    throw new ForbiddenError('Delegating to Piloti is not switched on for this organization.', {
+      reason: 'piloti-wakes-off',
+    })
+  }
+  if ((parsed.status ?? existing.status) !== 'open') {
+    throw new UnprocessableError('Only an open Anmerkung can be delegated to Piloti.', { field: 'delegateToPiloti' })
+  }
+  return existing.delegatedBy ? undefined : { delegatedBy: session.userId, delegatedAt: now }
+}
+
+/**
+ * Change one Anmerkung: take it over, dismiss, resolve or reopen it, reword
+ * it, assign it, give it a date, delegate it to Piloti or take it back.
+ * Delegating wakes Piloti, enqueued in the change's transaction; nothing else
+ * a change does wakes it, taking over or dismissing Piloti's mark included.
+ */
 export async function updateAnnotation(
   session: AuthorizedSession,
   documentId: string,
   annotationId: string,
   input: UpdateAnnotationRequest,
   actor: AnnotationActor = PERSON
-): Promise<{ annotation: AnnotationView }> {
+): Promise<{ annotation: AnnotationView; wake?: WakeOutcome }> {
   const parsed = updateAnnotationRequestSchema.parse(input)
   const doc = await requireWritableDocument(session, documentId)
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
@@ -427,6 +475,7 @@ export async function updateAnnotation(
   if (parsed.expectedStatus && parsed.expectedStatus !== existing.status) throw conflict()
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
 
+  const now = new Date()
   const changes: AnnotationChanges = {
     ...(parsed.kind !== undefined && { kind: parsed.kind }),
     ...(parsed.body !== undefined && { body: parsed.body }),
@@ -434,16 +483,63 @@ export async function updateAnnotation(
     ...(parsed.assigneeUserId !== undefined && { assigneeUserId: parsed.assigneeUserId }),
     ...(parsed.dueOn !== undefined && { dueOn: parsed.dueOn }),
   }
-  if (parsed.status !== undefined && parsed.status !== existing.status) {
-    changes.transition = transition(existing.status, parsed.status, existing, session.userId, new Date())
+  const moves = parsed.status !== undefined && parsed.status !== existing.status
+  if (moves && parsed.status) {
+    changes.transition = transition(existing.status, parsed.status, existing, session.userId, now)
   }
+  const delegation = delegationOf(session, existing, { ...parsed, status: moves ? parsed.status : undefined }, actor, now)
+  if (delegation) changes.delegation = delegation
   if (Object.keys(changes).length === 0) return { annotation: await viewOf(session, doc, annotationId) }
 
-  const updated = await updateDocumentAnnotation(session.organizationId, doc.id, annotationId, existing.status, changes)
+  const delegating = delegation?.delegatedBy ? delegation.delegatedAt : null
+  // Set in the write's transaction; a holder, because a closure's assignment is not narrowed.
+  const enqueued: { wake: EnqueuedWake | null } = { wake: null }
+  const updated = await updateDocumentAnnotation(
+    session.organizationId,
+    doc.id,
+    annotationId,
+    existing.status,
+    changes,
+    delegating
+      ? async (tx) => {
+          enqueued.wake = await enqueueWake(tx, {
+            organizationId: session.organizationId,
+            documentId: doc.id,
+            annotationId,
+            trigger: 'assigned',
+            eventId: delegationEventId(annotationId, delegating),
+            actor: { userId: session.userId, email: session.email || null },
+          })
+        }
+      : undefined
+  )
   // Gone, or a colleague moved it first: say so rather than overwrite their move.
   if (!updated) throw conflict()
   announce(session, doc.id, [annotationId], 'updated', actor)
-  return { annotation: await viewOf(session, doc, annotationId) }
+  auditHeldWake(session, doc.id, annotationId, 'assigned', enqueued.wake)
+  const annotation = await viewOf(session, doc, annotationId)
+  return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
+}
+
+/** A wake a cap held at enqueue goes into the audit trail, after its write committed. */
+function auditHeldWake(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  trigger: PilotiWakeTrigger,
+  wake: EnqueuedWake | null
+): void {
+  if (wake?.outcome !== 'suppressed') return
+  auditSuppressedWake({
+    organizationId: session.organizationId,
+    actor: { userId: session.userId, email: session.email || null },
+    annotationId,
+    documentId,
+    trigger,
+    status: 'suppressed',
+    reason: wake.reason,
+    stage: 'enqueue',
+  })
 }
 
 /** Delete one Anmerkung the session set itself. Piloti's proposals are dismissed, never deleted. */
@@ -546,32 +642,63 @@ export async function updateAnnotationForAsker(
   return { before, after: annotation, changed }
 }
 
-/** Answer in an Anmerkung's thread, as a person or as Piloti for one. */
+/**
+ * Answer in an Anmerkung's thread, as a person or as Piloti for one.
+ *
+ * A person's reply that addresses Piloti, or answers Piloti's own open
+ * question, wakes Piloti: with the organization's switch on, the wake is
+ * enqueued in the reply's transaction (`wake: 'queued'`, or `'suppressed'`
+ * when a cap holds it); with it off, the response says `'off'` and the
+ * browser asks Piloti itself, as before. Piloti's reply never wakes it, and
+ * on a mark it was delegated it hands the mark back.
+ */
 export async function replyToAnnotation(
   session: AuthorizedSession,
   documentId: string,
   annotationId: string,
   input: CreateReplyRequest,
   actor: AnnotationActor = PERSON
-): Promise<{ annotation: AnnotationView }> {
-  const { body } = createReplyRequestSchema.parse(input)
+): Promise<{ annotation: AnnotationView; replyId: string; wake: WakeOutcome }> {
+  const { body, addressesPiloti } = createReplyRequestSchema.parse(input)
   const doc = await requireWritableDocument(session, documentId)
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!existing) throw new NotFoundError()
-  await insertAnnotationReply({
-    organizationId: session.organizationId,
-    annotationId,
-    authorKind: actor.kind,
-    body,
-    createdBy: session.userId,
-  }).catch((error: unknown) => {
+  const addresses = actor.kind === 'person' && Boolean(addressesPiloti)
+  const trigger = replyTrigger(existing, { authorKind: actor.kind, addressesPiloti: addresses })
+  const enabled = trigger !== null && wakesEnabled(session)
+  const enqueued: { wake: EnqueuedWake | null } = { wake: null }
+  const reply = await insertAnnotationReply(
+    {
+      organizationId: session.organizationId,
+      annotationId,
+      authorKind: actor.kind,
+      body,
+      createdBy: session.userId,
+      addressesAgent: addresses,
+      handBack: actor.kind === 'piloti' && Boolean(existing.delegatedBy),
+    },
+    enabled && trigger
+      ? async (tx, row) => {
+          enqueued.wake = await enqueueWake(tx, {
+            organizationId: session.organizationId,
+            documentId: doc.id,
+            annotationId,
+            trigger,
+            eventId: row.id,
+            actor: { userId: session.userId, email: session.email || null },
+          })
+        }
+      : undefined
+  ).catch((error: unknown) => {
     if (error instanceof ReplyLimitReachedError) {
       throw new UnprocessableError(`A thread carries at most ${MAX_REPLIES_PER_ANNOTATION} replies.`)
     }
     throw error
   })
   announce(session, doc.id, [annotationId], 'replied', actor)
-  return { annotation: await viewOf(session, doc, annotationId) }
+  if (trigger) auditHeldWake(session, doc.id, annotationId, trigger, enqueued.wake)
+  const outcome: WakeOutcome = trigger === null ? 'none' : enabled ? wakeOutcomeOf(enqueued.wake) : 'off'
+  return { annotation: await viewOf(session, doc, annotationId), replyId: reply.id, wake: outcome }
 }
 
 /** The Anmerkungen as Piloti reads them: place as a box, without a reader's controls. */

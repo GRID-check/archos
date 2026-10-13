@@ -64,6 +64,8 @@ export function useDocumentReview(
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
   const [annotations, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
+  /** The organization lets events wake Piloti: an @Piloti reply is the server's to answer, and a mark can be delegated. */
+  const [pilotiWakes, setPilotiWakes] = useState(false)
   const [attempt, setAttempt] = useState(0)
   const [tool, setToolState] = useState<ReviewTool>('select')
   const [draft, setDraft] = useState<ReviewDraft | null>(null)
@@ -81,6 +83,7 @@ export function useDocumentReview(
     const result = await listAnnotations(documentId)
     setAnnotations(result.annotations)
     setCanAnnotate(result.canAnnotate)
+    setPilotiWakes(result.pilotiWakes)
     setLoad('ready')
     return result.annotations
   }, [documentId])
@@ -214,11 +217,23 @@ export function useDocumentReview(
     [documentId, guard, replace, write]
   )
 
+  /**
+   * Answer in a thread. `addressesPiloti` is the composer's @Piloti chip; the
+   * answer says whether the server wakes Piloti for it (`wake`), and the
+   * reply's id, which a tab that asks Piloti itself turns into the turn id.
+   */
   const reply = useCallback(
-    async (annotationId: string, body: string) => {
-      const updated = await guard(() => replyToAnnotation(documentId, annotationId, { body }, write))
-      replace(updated)
-      return updated
+    async (annotationId: string, body: string, options: { addressesPiloti?: boolean } = {}) => {
+      const result = await guard(() =>
+        replyToAnnotation(
+          documentId,
+          annotationId,
+          { body, ...(options.addressesPiloti ? { addressesPiloti: true } : {}) },
+          write
+        )
+      )
+      replace(result.annotation)
+      return result
     },
     [documentId, guard, replace, write]
   )
@@ -278,6 +293,7 @@ export function useDocumentReview(
     listed,
     counts,
     canAnnotate,
+    pilotiWakes,
     tool,
     setTool,
     draft,

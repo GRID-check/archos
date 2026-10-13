@@ -32,6 +32,27 @@ export type AnnotationAuthor = (typeof ANNOTATION_AUTHORS)[number]
 export const ANNOTATION_STATUSES = ['proposed', 'open', 'resolved', 'dismissed'] as const
 export type AnnotationStatus = (typeof ANNOTATION_STATUSES)[number]
 
+/**
+ * What woke Piloti on a mark (ADR-0106): a reply that addresses it
+ * (`thread_mention`), a reply on its own open question (`thread_reply`), or
+ * being made the mark's delegate (`assigned`). The wire's `TurnTrigger.kind`.
+ */
+export const PILOTI_WAKE_TRIGGERS = ['thread_mention', 'thread_reply', 'assigned'] as const
+export type PilotiWakeTrigger = (typeof PILOTI_WAKE_TRIGGERS)[number]
+
+/** What a wake came to (`piloti_wakes.status`, migration 0136). */
+export const PILOTI_WAKE_STATUSES = ['queued', 'started', 'suppressed', 'refused', 'failed'] as const
+export type PilotiWakeStatus = (typeof PILOTI_WAKE_STATUSES)[number]
+
+/**
+ * What the BFF did with an event that could wake Piloti, as the writer's
+ * response says it: `none` (no wake rule met), `off` (the organization's
+ * switch is off: the browser asks Piloti itself, as before), `queued` (the
+ * server will wake it; the browser must not), `suppressed` (a cap held it).
+ */
+export const WAKE_OUTCOMES = ['none', 'off', 'queued', 'suppressed'] as const
+export type WakeOutcome = (typeof WAKE_OUTCOMES)[number]
+
 /** The CHECKs `…_body_length` (trimmed) and `…_basis_length`. */
 export const MAX_ANNOTATION_BODY = 2000
 export const MAX_ANNOTATION_BASIS = 300
@@ -124,12 +145,28 @@ export const updateAnnotationRequestSchema = z
      * taking over a proposal must not reopen one somebody just dismissed.
      */
     expectedStatus: z.enum(ANNOTATION_STATUSES).optional(),
+    /**
+     * Make Piloti the delegate on this open mark (true), or take the work back
+     * from it (false). The mark keeps its assignee; the caller becomes
+     * `delegatedBy`, and Piloti is woken to work it on their behalf. A
+     * person's act: Piloti never delegates to itself.
+     */
+    delegateToPiloti: z.boolean().optional(),
   })
   .strict()
   .refine(({ expectedStatus: _, ...changes }) => Object.keys(changes).length > 0, 'nothing to change')
 export type UpdateAnnotationRequest = z.input<typeof updateAnnotationRequestSchema>
 
-export const createReplyRequestSchema = z.object({ body: text(MAX_ANNOTATION_BODY) }).strict()
+export const createReplyRequestSchema = z
+  .object({
+    body: text(MAX_ANNOTATION_BODY),
+    /**
+     * The reply addresses Piloti: the composer's @Piloti chip. A structured
+     * flag the person set, never read from the text (ADR-0036).
+     */
+    addressesPiloti: z.boolean().optional(),
+  })
+  .strict()
 export type CreateReplyRequest = z.input<typeof createReplyRequestSchema>
 
 export const annotationReplyViewSchema = z.object({
@@ -140,6 +177,8 @@ export const annotationReplyViewSchema = z.object({
   createdBy: z.string(),
   createdByName: z.string().nullable(),
   createdAt: z.string(),
+  /** It addressed Piloti (the @Piloti chip). Absent from a server that predates wakes. */
+  addressesPiloti: z.boolean().default(false),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 
@@ -181,6 +220,13 @@ export const annotationViewSchema = z.object({
   closedBy: z.string().nullable(),
   closedByName: z.string().nullable(),
   closedAt: z.string().nullable(),
+  /**
+   * Piloti works this mark on this person's behalf (the delegate), or null.
+   * Absent from a server that predates delegation, which is none.
+   */
+  delegatedBy: z.string().nullable().default(null),
+  delegatedByName: z.string().nullable().default(null),
+  delegatedAt: z.string().nullable().default(null),
   replies: z.array(annotationReplyViewSchema),
   /** Whether THIS reader may change it: take it over, resolve it, reword it, assign it, reply. */
   canEdit: z.boolean(),
@@ -193,11 +239,35 @@ export const annotationListResponseSchema = z.object({
   annotations: z.array(annotationViewSchema),
   /** Whether this reader may set a new Anmerkung on the document. */
   canAnnotate: z.boolean(),
+  /**
+   * Whether the organization lets events wake Piloti (the `piloti-wakes`
+   * switch): a mark can be delegated to Piloti, and an @Piloti reply is
+   * answered by the server rather than by this tab. Absent from a server
+   * that predates wakes, which is off.
+   */
+  pilotiWakes: z.boolean().default(false),
 })
 export type AnnotationListResponse = z.infer<typeof annotationListResponseSchema>
 
-export const annotationResponseSchema = z.object({ annotation: annotationViewSchema })
+export const annotationResponseSchema = z.object({
+  annotation: annotationViewSchema,
+  /** What the BFF did with the write as an event that could wake Piloti; absent on writes that cannot. */
+  wake: z.enum(WAKE_OUTCOMES).optional(),
+})
 export type AnnotationResponse = z.infer<typeof annotationResponseSchema>
+
+/** A reply: the mark with its thread, the new reply's id, and whether the server wakes Piloti for it. */
+export const replyResponseSchema = z.object({
+  annotation: annotationViewSchema,
+  /** Absent only from a server that predates wakes. */
+  replyId: z.string().optional(),
+  /** `none` from a server that predates wakes: the browser asks Piloti itself, as before. */
+  wake: z.enum(WAKE_OUTCOMES).default('none'),
+})
+export type ReplyResponse = z.infer<typeof replyResponseSchema>
+
+/** `POST /api/documents/{id}/thread`: the caller's own thread about the document (ADR-0106). */
+export const documentThreadResponseSchema = z.object({ conversationId: z.string().min(1) })
 
 /** Whether an Anmerkung still asks something of somebody. */
 export const isLive = (annotation: Pick<AnnotationView, 'status'>): boolean =>
@@ -213,6 +283,27 @@ export function compareAnnotations(a: AnnotationView, b: AnnotationView): number
 /** Whether an open Anmerkung's date has passed, on the reader's calendar day `today` (`YYYY-MM-DD`). */
 export function isOverdue(annotation: Pick<AnnotationView, 'status' | 'dueOn'>, today: string): boolean {
   return annotation.status === 'open' && annotation.dueOn !== null && annotation.dueOn < today
+}
+
+/** A point asked about becomes a box this wide and tall around it (shares of the page). */
+const POINT_BOX = 0.08
+
+/**
+ * The box a place stands for when Piloti is asked about it: a region as it
+ * is, a point as a small box around it, kept on its page. The canvas asks
+ * with it, and so does a wake (`lib/annotations/wake-job.ts`).
+ */
+export function regionAround(place: { page: number; x: number; y: number; w?: number | null; h?: number | null }): {
+  page: number
+  x: number
+  y: number
+  w: number
+  h: number
+} {
+  if (place.w && place.h) return { page: place.page, x: place.x, y: place.y, w: place.w, h: place.h }
+  const round = (value: number) => Math.round(value * 10_000) / 10_000
+  const start = (value: number) => round(Math.min(1 - POINT_BOX, Math.max(0, value - POINT_BOX / 2)))
+  return { page: place.page, x: start(place.x), y: start(place.y), w: POINT_BOX, h: POINT_BOX }
 }
 
 /** A mark's place as a box, `[x0, y0, x1, y1]`; a point is a box of no size. */

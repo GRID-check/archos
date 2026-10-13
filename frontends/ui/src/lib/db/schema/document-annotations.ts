@@ -1,5 +1,6 @@
 import { sql } from 'drizzle-orm'
 import {
+  boolean,
   check,
   date,
   doublePrecision,
@@ -17,10 +18,14 @@ import {
   ANNOTATION_KINDS,
   ANNOTATION_SHAPES,
   ANNOTATION_STATUSES,
+  PILOTI_WAKE_STATUSES,
+  PILOTI_WAKE_TRIGGERS,
   type AnnotationAuthor,
   type AnnotationKind,
   type AnnotationShape,
   type AnnotationStatus,
+  type PilotiWakeStatus,
+  type PilotiWakeTrigger,
 } from '@/lib/annotations/types'
 import { documentVersions } from './document-versions'
 import { documents } from './documents'
@@ -67,6 +72,14 @@ export const documentAnnotations = pgTable(
     acceptedAt: timestamp('accepted_at', { withTimezone: true }),
     closedBy: text('closed_by'),
     closedAt: timestamp('closed_at', { withTimezone: true }),
+    /**
+     * Piloti is the delegate: it works the mark on this person's behalf
+     * (migration 0136, ADR-0105). The mark keeps its human assignee. Set by the
+     * person's own PATCH, cleared when Piloti replies (it hands the mark back)
+     * or the mark closes.
+     */
+    delegatedBy: text('delegated_by'),
+    delegatedAt: timestamp('delegated_at', { withTimezone: true }),
   },
   (table) => ({
     documentFk: foreignKey({
@@ -116,6 +129,14 @@ export const documentAnnotations = pgTable(
       'document_annotations_basis_length',
       sql`${table.basis} IS NULL OR char_length(${table.basis}) BETWEEN 1 AND 300`
     ),
+    delegationComplete: check(
+      'document_annotations_delegation_complete',
+      sql`(${table.delegatedBy} IS NULL) = (${table.delegatedAt} IS NULL)`
+    ),
+    delegatedWhileOpen: check(
+      'document_annotations_delegated_while_open',
+      sql`${table.delegatedBy} IS NULL OR ${table.status} = 'open'`
+    ),
   })
 )
 
@@ -133,6 +154,8 @@ export const documentAnnotationReplies = pgTable(
     body: text('body').notNull(),
     createdBy: text('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    /** The reply addresses Piloti: the composer's mention chip, never a match on the text (migration 0136). */
+    addressesAgent: boolean('addresses_agent').notNull().default(false),
   },
   (table) => ({
     annotationFk: foreignKey({
@@ -154,3 +177,55 @@ export const documentAnnotationReplies = pgTable(
 )
 
 export type DocumentAnnotationReplyRow = typeof documentAnnotationReplies.$inferSelect
+
+/**
+ * `piloti_wakes` — one row per event on an Anmerkung that met a wake rule
+ * (migration 0136, ADR-0106). Its id is the `bff_job_queue` job id and the
+ * turn id, uuid5 of the event (`lib/annotations/wake-ids.ts`), so one event
+ * wakes Piloti at most once. The queue forgets a finished job; this row keeps
+ * what the wake came to, and the caps count it.
+ */
+export const pilotiWakes = pgTable(
+  'piloti_wakes',
+  {
+    id: uuid('id').primaryKey(),
+    organizationId: text('organization_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    annotationId: uuid('annotation_id').notNull(),
+    triggerKind: text('trigger_kind').$type<PilotiWakeTrigger>().notNull(),
+    /** The reply id, or the delegation's event id. */
+    eventId: text('event_id').notNull(),
+    /** The person whose act is the event: the turn runs as them. */
+    actorUserId: text('actor_user_id').notNull(),
+    status: text('status').$type<PilotiWakeStatus>().notNull().default('queued'),
+    /** Why it started no turn; set exactly when the status says so. */
+    reason: text('reason'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    settledAt: timestamp('settled_at', { withTimezone: true }),
+  },
+  (table) => ({
+    annotationFk: foreignKey({
+      name: 'piloti_wakes_annotation_fkey',
+      columns: [table.annotationId],
+      foreignColumns: [documentAnnotations.id],
+    }).onDelete('cascade'),
+    annotationIdx: index('idx_piloti_wakes_annotation_created').on(table.annotationId, table.createdAt),
+    actorIdx: index('idx_piloti_wakes_actor_created').on(table.organizationId, table.actorUserId, table.createdAt),
+    triggerKnown: check('piloti_wakes_trigger_known', sql`${table.triggerKind} IN (${list(PILOTI_WAKE_TRIGGERS)})`),
+    statusKnown: check('piloti_wakes_status_known', sql`${table.status} IN (${list(PILOTI_WAKE_STATUSES)})`),
+    reasonWhenNotStarted: check(
+      'piloti_wakes_reason_when_not_started',
+      sql`(${table.status} IN ('suppressed', 'refused', 'failed')) = (${table.reason} IS NOT NULL)`
+    ),
+    reasonLength: check(
+      'piloti_wakes_reason_length',
+      sql`${table.reason} IS NULL OR char_length(${table.reason}) BETWEEN 1 AND 500`
+    ),
+    settledWhenNotQueued: check(
+      'piloti_wakes_settled_when_not_queued',
+      sql`(${table.status} = 'queued') = (${table.settledAt} IS NULL)`
+    ),
+  })
+)
+
+export type PilotiWakeRow = typeof pilotiWakes.$inferSelect

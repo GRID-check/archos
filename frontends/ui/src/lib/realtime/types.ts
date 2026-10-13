@@ -53,11 +53,18 @@ export const realtimePeerSchema = z.object({
   name: z.string(),
   /** Piloti while it works on the resource, a person otherwise. */
   kind: z.enum(['person', 'piloti']),
+  /**
+   * For Piloti: the display name of the person it acts for, so everyone in the
+   * channel sees whose request it is working on (ADR-0105; EU AI Act Art. 50).
+   * Only the server stamps it (`publishAsAgent`); a browser's peer is stamped
+   * from its session and never has one. Absent when the name could not be read.
+   */
+  forName: z.string().min(1).max(120).optional(),
 })
 export type RealtimePeer = z.infer<typeof realtimePeerSchema>
 
 /** Who the server takes the reader of a connection to be. */
-export const realtimeSelfSchema = realtimePeerSchema.omit({ peerId: true })
+export const realtimeSelfSchema = realtimePeerSchema.omit({ peerId: true, forName: true })
 export type RealtimeSelf = z.infer<typeof realtimeSelfSchema>
 
 export const PRESENCE_STATES = ['here', 'gone'] as const

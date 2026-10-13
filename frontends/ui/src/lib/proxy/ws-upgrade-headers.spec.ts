@@ -92,7 +92,9 @@ describe('server.js strips before it writes', () => {
 
   it('runs it on the upgrade before the first context header is set', () => {
     const strip = source.indexOf('stripClientContextHeaders(req.headers)')
-    const firstWrite = source.indexOf("req.headers['x-grid-")
+    // The context headers are written in one place: `turnContextHeaders`
+    // (`lib/turns/turn-headers.js`), assigned onto the upgrade request.
+    const firstWrite = source.indexOf('turnContextHeaders(result.data')
     expect(strip, 'the upgrade handler no longer strips client headers').toBeGreaterThan(-1)
     expect(firstWrite).toBeGreaterThan(-1)
     expect(strip).toBeLessThan(firstWrite)

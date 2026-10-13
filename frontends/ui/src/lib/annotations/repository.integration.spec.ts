@@ -19,7 +19,11 @@
  *     state finds nothing to move;
  *   - a thread comes back in order and goes with its mark;
  *   - another organization reads none of them and cannot plant one on this
- *     organization's document.
+ *     organization's document;
+ *   - a wake of Piloti (migration 0136, ADR-0106) is recorded and queued in
+ *     the reply's transaction, and a reply that rolls back leaves neither; the
+ *     caps count the recorded wakes; a delegation is both columns or neither,
+ *     only on an open mark, and Piloti's reply hands the mark back.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -47,6 +51,8 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
   let withTenant: typeof import('@/lib/db/tenant-context').withTenant
   let withPlatformAccess: typeof import('@/lib/db/tenant-context').withPlatformAccess
   let repo: typeof import('./repository')
+  let wake: typeof import('./wake')
+  let wakeIds: typeof import('./wake-ids')
   const ids = { project: '', document: '', second: '', v1: '', v2: '' }
 
   const inOrg = <T>(organizationId: string, run: () => PromiseLike<T>) =>
@@ -126,6 +132,8 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     withPlatformAccess = context.withPlatformAccess
     db = (await import('@/lib/db')).getDb()
     repo = await import('./repository')
+    wake = await import('./wake')
+    wakeIds = await import('./wake-ids')
     ids.project = await project(ORG, 'Wohnbau')
     await project(OTHER_ORG, 'Fremd')
     ids.document = await document(ids.project, 'EG_Grundriss.pdf')
@@ -138,6 +146,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     if (!db) return
     await withPlatformAccess('test teardown', async () => {
       for (const organizationId of [ORG, OTHER_ORG]) {
+        await db.execute(sql`delete from bff_job_queue where lane = ${organizationId}`)
         await db.execute(sql`delete from projects where organization_id = ${organizationId}`)
       }
     })
@@ -270,5 +279,125 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(Number(Array.from(leaked)[0]?.n)).toBe(0)
 
     await expect(insert(ids.document, [mark()], { organizationId: OTHER_ORG })).rejects.toThrow()
+  })
+
+  describe('waking Piloti (migration 0136)', () => {
+    const count = async (query: ReturnType<typeof sql>) =>
+      Number(Array.from(await inOrg(ORG, () => db.execute<{ n: number }>(query)))[0]?.n)
+    const event = (annotationId: string, eventId: string) => ({
+      organizationId: ORG,
+      documentId: ids.document,
+      annotationId,
+      trigger: 'thread_mention' as const,
+      eventId,
+      actor: { userId: USER, email: null },
+    })
+
+    it('records the wake and queues its job in the reply’s transaction, under one id', async () => {
+      const [row] = await insert(ids.document)
+      const reply = await inOrg(ORG, () =>
+        repo.insertAnnotationReply(
+          { organizationId: ORG, annotationId: row.id, authorKind: 'person', body: '@Piloti?', createdBy: USER, addressesAgent: true },
+          async (tx, inserted) => {
+            await wake.enqueueWake(tx, event(row.id, inserted.id))
+          }
+        )
+      )
+      expect(reply.addressesAgent).toBe(true)
+      const id = wakeIds.wakeTurnId(reply.id)
+      expect(await count(sql`select count(*)::int as n from piloti_wakes where id = ${id}::uuid and status = 'queued'`)).toBe(1)
+      expect(
+        await count(sql`select count(*)::int as n from bff_job_queue where job_id = ${id}::uuid and kind = 'piloti_wake'`)
+      ).toBe(1)
+    })
+
+    it('leaves no wake and no job when the reply rolls back', async () => {
+      const [row] = await insert(ids.document)
+      let wakeId = ''
+      await expect(
+        inOrg(ORG, () =>
+          repo.insertAnnotationReply(
+            { organizationId: ORG, annotationId: row.id, authorKind: 'person', body: '@Piloti?', createdBy: USER, addressesAgent: true },
+            async (tx, inserted) => {
+              wakeId = wakeIds.wakeTurnId(inserted.id)
+              await wake.enqueueWake(tx, event(row.id, inserted.id))
+              throw new Error('the write failed after the wake was enqueued')
+            }
+          )
+        )
+      ).rejects.toThrow(/after the wake/)
+      expect(wakeId).not.toBe('')
+      expect(await count(sql`select count(*)::int as n from piloti_wakes where id = ${wakeId}::uuid`)).toBe(0)
+      expect(await count(sql`select count(*)::int as n from bff_job_queue where job_id = ${wakeId}::uuid`)).toBe(0)
+      expect(await count(sql`select count(*)::int as n from document_annotation_replies where annotation_id = ${row.id}::uuid`)).toBe(0)
+    })
+
+    it('counts the wakes it let through against the cap, and records the one it held', async () => {
+      const [row] = await insert(ids.document)
+      const limits = { perMarkHour: 2, perPersonDay: 50 }
+      const outcomes = []
+      for (const n of [1, 2, 3]) {
+        outcomes.push(
+          await inOrg(ORG, () => db.transaction((tx) => wake.enqueueWake(tx, event(row.id, `cap-${STAMP}-${n}`), { limits })))
+        )
+      }
+      expect(outcomes.map((outcome) => outcome.outcome)).toEqual(['queued', 'queued', 'suppressed'])
+      expect(
+        await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid and status = 'suppressed' and reason = 'cap:mark-hour' and settled_at is not null`)
+      ).toBe(1)
+      // The same event a second time is not a second wake.
+      const again = await inOrg(ORG, () => db.transaction((tx) => wake.enqueueWake(tx, event(row.id, `cap-${STAMP}-1`), { limits: { perMarkHour: 9, perPersonDay: 50 } })))
+      expect(again.outcome).toBe('queued')
+      expect(await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid`)).toBe(3)
+    })
+
+    it('refuses a wake record that says it did not start without saying why', async () => {
+      const [row] = await insert(ids.document)
+      await expect(
+        inOrg(ORG, () =>
+          db.execute(sql`
+            insert into piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, settled_at)
+            values (gen_random_uuid(), ${ORG}, ${ids.document}::uuid, ${row.id}::uuid, 'thread_mention', 'e', ${USER}, 'refused', now())`)
+        )
+      ).rejects.toThrow()
+    })
+
+    it('keeps a delegation whole, on an open mark only, and lets Piloti’s reply hand it back', async () => {
+      const [row] = await insert(ids.document)
+      const delegated = await inOrg(ORG, () =>
+        repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', {
+          delegation: { delegatedBy: USER, delegatedAt: new Date() },
+        })
+      )
+      expect(delegated).toMatchObject({ delegatedBy: USER })
+      await expect(
+        inOrg(ORG, () => db.execute(sql`update document_annotations set delegated_at = null where id = ${row.id}::uuid`))
+      ).rejects.toThrow()
+      await expect(
+        inOrg(ORG, () =>
+          db.execute(sql`update document_annotations set status = 'resolved', closed_by = ${USER}, closed_at = now() where id = ${row.id}::uuid`)
+        )
+      ).rejects.toThrow()
+
+      await inOrg(ORG, () =>
+        repo.insertAnnotationReply({
+          organizationId: ORG,
+          annotationId: row.id,
+          authorKind: 'piloti',
+          body: 'Erledigt.',
+          createdBy: USER,
+          handBack: true,
+        })
+      )
+      const after = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id))
+      expect(after).toMatchObject({ delegatedBy: null, delegatedAt: null })
+    })
+
+    it('shows another organization none of the wakes', async () => {
+      const leaked = await inOrg(OTHER_ORG, () =>
+        db.execute<{ n: number }>(sql`select count(*)::int as n from piloti_wakes`)
+      )
+      expect(Number(Array.from(leaked)[0]?.n)).toBe(0)
+    })
   })
 })

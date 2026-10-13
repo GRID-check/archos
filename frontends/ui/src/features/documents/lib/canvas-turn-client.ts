@@ -7,8 +7,9 @@
  * `foldTurnEvent` (the one reader of the wire), and only the essentials of the
  * driver between them:
  *
- * - **The conversation first.** `POST /api/conversations` (idempotent for its
- *   creator) is awaited before the socket opens: a socket opened onto a
+ * - **The conversation first.** The person's thread about the document
+ *   (`POST /api/documents/{id}/thread`, ADR-0106), or `POST /api/conversations`
+ *   (idempotent for its creator), exists before the socket opens: a socket opened onto a
  *   conversation the database does not hold carries no verified conversation
  *   id in its envelope (ADR-0084), and the subject document is then refused.
  *   The question is stored by this browser (`POST …/messages`), as the chat
@@ -90,6 +91,12 @@ export class CanvasTurnError extends Error {
 
 export interface CanvasTurnClientOptions {
   conversationId: string
+  /**
+   * The conversation row exists already: the person's own thread about the
+   * document, which `POST /api/documents/{id}/thread` created (ADR-0106).
+   * Nothing is created before the socket opens.
+   */
+  conversationExists?: boolean
   projectId?: string | null
   documentId: string
   /** The conversation's title, when it is created. */
@@ -308,6 +315,9 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
   }
 
   const ensureConversation = (): Promise<void> => {
+    if (options.conversationExists && !conversation) {
+      conversation = Promise.resolve().then(() => options.onConversation?.())
+    }
     conversation ??= (async () => {
       const response = await run(
         '/api/conversations',

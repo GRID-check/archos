@@ -126,8 +126,15 @@ the office's. A mark the person asked Piloti to set is open at once, in that
 person's name, and when asked Piloti changes or deletes marks as the person
 could, leaving a short note in the mark's thread. Marks are set and discussed
 in the *Prüfansicht*, the document opened full screen, together and live.
+A person can hand an open mark to Piloti (*an Piloti delegieren*): the mark
+keeps its *Zuständige*, and Piloti works it on behalf of the person who
+delegated („Piloti arbeitet daran · für Miriam“) and hands it back by
+answering in its thread. An answer in the thread that names Piloti (@Piloti),
+or answers Piloti's own open Rückfrage, *weckt* Piloti: it answers there even
+when nobody has the chat open (ADR-0106).
 _Avoid_: ticket, issue, Mangel for every mark (a Mangel is one *Art*); comment,
-for the mark itself rather than an answer in its thread.
+for the mark itself rather than an answer in its thread; „Piloti zuweisen“:
+work is assigned to people and delegated to Piloti.
 
 **Zurückgehalten** (held back):
 An upload the content check (*Inhaltsprüfung*) keeps from every model until

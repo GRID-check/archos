@@ -88,7 +88,10 @@ export const nextConfig: NextConfig = {
   // ~60 dependencies (archiver, jszip, saxes, …) and circular requires, which
   // the server bundle gains nothing from inlining; the production image ships
   // node_modules (deploy/Dockerfile), so Node resolves it as it does in tests.
-  serverExternalPackages: ['exceljs'],
+  // `ws` likewise: the wake job's chat socket (`lib/turns/headless-turn.ts`),
+  // whose optional native peers (`bufferutil`, `utf-8-validate`) a bundler
+  // would try to resolve and inline.
+  serverExternalPackages: ['exceljs', 'ws'],
 
   experimental: {
     serverActions: {
