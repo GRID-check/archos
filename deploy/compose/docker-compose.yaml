@@ -377,6 +377,13 @@ services:
     profiles: ["qdrant"]
     environment:
       QDRANT__TELEMETRY_DISABLED: "true"
+      # The Pulumi peers' settings (data/qdrant.ts): /metrics alone on its own
+      # port, and writes refused with 507 near the memory or disk limit rather
+      # than an OOM kill mid-optimisation. Same defaults as qdrantQuota*Percent.
+      QDRANT__SERVICE__METRICS_PORT: "6336"
+      QDRANT__STORAGE__QUOTAS__ENABLED: "true"
+      QDRANT__STORAGE__QUOTAS__MAX_RESIDENT_MEMORY_PERCENT: "${QDRANT_QUOTA_MEMORY_PERCENT:-90}"
+      QDRANT__STORAGE__QUOTAS__MAX_DISK_USAGE_PERCENT: "${QDRANT_QUOTA_DISK_PERCENT:-85}"
     volumes:
       - qdrant_data:/qdrant/storage
     networks:
