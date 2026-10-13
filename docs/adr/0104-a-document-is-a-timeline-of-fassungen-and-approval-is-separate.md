@@ -82,7 +82,7 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
 | Noun | Table | Holds | Does not hold |
 |---|---|---|---|
 | **Dokument** | `documents` | identity, name, folder, Dokumentart, roles, shares, assignments; `current_version_id`; `archived_at` | bytes, reading status, screening |
-| **Fassung** | `document_versions` (kept, extended) | one immutable set of bytes; `seq` within the document; the file name it arrived under; Stand (Index or date); origin (`upload`, `piloti`); reading status; screening verdict | approval |
+| **Fassung** | `document_versions` (kept, extended) | one immutable set of bytes; `seq` within the document; the file name it arrived under; Stand (Index or date); origin (`upload`, `draft`); reading status; screening verdict | approval |
 | **Freigabe** | `document_version_reviews` | one review round on one Fassung: who asked, whom, outcome (`requested`, `approved`, `changes_requested`, `rejected`), comment | the history |
 
 Names in code are English (repository rule), so the tables keep the names
@@ -96,7 +96,7 @@ are the words a reader sees.
    it. There is no `superseded` state and no `superseded_by` link.
 2. **Every Fassung that is read stays in the index, keyed by its id.** Being
    read and being found are two things. A person's upload is read when it
-   arrives; a `piloti` Fassung only once a person approved it (rule 4); a
+   arrives; a `draft` Fassung only once a person approved it (rule 4); a
    Fassung kept out on purpose stays `not_read` (rule 8). Once read, its
    chunks stay, whether or not it is current. Chunks and the
    knowledge layer's metadata row carry `version_id` and `document_id`. Search
@@ -108,11 +108,15 @@ are the words a reader sees.
 3. **A person's upload becomes current once it is read**, not when it lands.
    Until then the previous Fassung keeps answering, and the UI says so. A failed
    read leaves the previous Fassung current.
-4. **A Fassung Piloti wrote becomes current only through an approved review.**
-   A CHECK plus the guarded `UPDATE … WHERE` that sets the pointer refuse a
-   `piloti` Fassung without an `approved` round. This is ADR-0054's chain
-   ("indexed ⟹ published ⟹ approved by a person") restated for the new tables:
-   a `piloti` Fassung is indexed only while it is current or was current.
+4. **A Fassung that began as a draft becomes current only through an approved
+   review.** Its origin is `draft`: Piloti wrote it, or a person forked it to
+   revise through review. A person's upload is `upload`. The origin records how
+   the Fassung began, not who typed the bytes, because a person's fork is
+   reviewed exactly like Piloti's draft. A CHECK plus the guarded
+   `UPDATE … WHERE` that sets the pointer refuse a `draft` Fassung without an
+   `approved` round. This is ADR-0054's chain ("indexed ⟹ published ⟹ approved
+   by a person") restated for the new tables: a `draft` Fassung is indexed only
+   while it is current or was current.
 5. **Freigabe is one step.** „Freigeben“ approves the Fassung and makes it
    current. ADR-0054 kept `approved` and `published` apart for "approve on
    Tuesday, issue with the Einreichung on Friday"; in practice an approved file
@@ -146,7 +150,7 @@ are the words a reader sees.
    say why. `not_read` is a Fassung deliberately kept out of the index (a Piloti
    Fassung under review, a deep-research PDF, an archived document).
 9. **Piloti's text before filing is an Arbeitsdatei**, not an Entwurf. Filing it
-   creates a `piloti` Fassung with an open review round, through one route that
+   creates a `draft` Fassung with an open review round, through one route that
    the agent and the browser both call (ADR-0055). The agent reads the live
    state from that route; it keeps no copy of it.
 
@@ -221,7 +225,7 @@ Ausgeschlossen in copy, and every one of the internal status spellings.
 Each rule lands with the gate that keeps it, slice by slice:
 
 * Rule 4: a CHECK and a guarded pointer update, exercised by `task db:test:rls`
-  and a spec that tries to make an unapproved `piloti` Fassung current.
+  and a spec that tries to make an unapproved `draft` Fassung current.
 * Rule 8: a CHECK on the reading status; `document-status.spec.ts` keeps
   failing for an undeclared writer until the column cannot hold one.
 * Rule 2: a knowledge-layer test that a search without a file name returns only
