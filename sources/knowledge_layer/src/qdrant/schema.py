@@ -50,6 +50,8 @@ SCOPE_FIELD = "scope"
 #: Payload field holding the chunk text: what BM25 reads, what the full-text
 #: index serves phrase queries from, and what a hit's content is.
 TEXT_FIELD = "text"
+#: Tokenizer of the full-text index on TEXT_FIELD (see ``_field_schema``).
+TEXT_TOKENIZER = models.TokenizerType.WORD
 #: Payload field holding the chunk id every caller knows (the id Chroma gave it).
 CHUNK_ID_FIELD = "chunk_id"
 
@@ -111,7 +113,12 @@ def _field_schema(field: str) -> Any:
     if field == TEXT_FIELD:
         return models.TextIndexParams(
             type=models.TextIndexType.TEXT,
-            tokenizer=models.TokenizerType.MULTILINGUAL,
+            # WORD, not MULTILINGUAL: the multilingual tokenizer drops digit
+            # tokens, so the phrase „REI 90“ matched every REI class and „§ 3“ or
+            # „5.1.1“ matched nothing (measured on the OIB corpus,
+            # docs/architecture/qdrant-gates-2026-10.md). WORD splits on
+            # non-alphanumerics and keeps the numbers an exact term is about.
+            tokenizer=TEXT_TOKENIZER,
             lowercase=True,
             ascii_folding=True,
             phrase_matching=True,
@@ -186,7 +193,23 @@ def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int,
         except Exception:
             if not _alias_exists(client, alias):
                 raise
-    stored = client.get_collection(alias).config.metadata
-    mismatch = identity_mismatch(stored, identity)
+    info = client.get_collection(alias)
+    mismatch = identity_mismatch(info.config.metadata, identity)
     if mismatch:
         raise RuntimeError(f"{alias}: {mismatch}")
+    _repair_text_index(client, alias, (info.payload_schema or {}).get(TEXT_FIELD))
+
+
+def _repair_text_index(client: QdrantClient, alias: str, current: Any) -> None:
+    """Rebuild the full-text index when an earlier release built it with another tokenizer.
+
+    The index is derived from the stored text, so this re-indexes in place: no
+    point is rewritten and nothing is re-embedded. A phrase filter issued while it
+    rebuilds is refused by strict mode rather than answered from a scan.
+    """
+    if getattr(getattr(current, "params", None), "tokenizer", None) == TEXT_TOKENIZER:
+        return
+    logger.warning("Rebuilding the %s text index of %s with the %s tokenizer", TEXT_FIELD, alias, TEXT_TOKENIZER)
+    if current is not None:
+        client.delete_payload_index(alias, TEXT_FIELD, wait=True)
+    client.create_payload_index(alias, TEXT_FIELD, field_schema=_field_schema(TEXT_FIELD), wait=True)

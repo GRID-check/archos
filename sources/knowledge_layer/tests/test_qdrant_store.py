@@ -160,6 +160,51 @@ def test_exact_term_channel_lifts_the_chunk_with_the_phrase(store):
     assert hits[0].payload["file_name"] == "bescheid.pdf"
 
 
+@pytest.mark.parametrize(
+    "asked, matching, neighbour",
+    [
+        ("REI 90", "Tragende Bauteile in REI 90.", "Tragende Bauteile in REI 60."),
+        ("§ 3", "Gemäß § 3 der Statuten.", "Gemäß § 30 der Statuten."),
+        ("5.1.1", "Punkt 5.1.1 regelt die Gehweglänge.", "Punkt 5.1.2 regelt die Gehweglänge."),
+        ("Gebäudeklasse 5", "Für Gebäudeklasse 5 gilt.", "Für Gebäudeklasse 4 gilt."),
+    ],
+)
+def test_phrase_matching_keeps_the_numbers_in_a_term(store, asked, matching, neighbour):
+    """The exact-term channel's numbers are its signal (qdrant-gates-2026-10.md).
+
+    The multilingual tokenizer dropped digit tokens: „REI 90“ matched REI 60 as
+    well, and „§ 3“ or „5.1.1“, nothing left but punctuation, matched nothing.
+    """
+    store.upsert("proj_a", [_record(matching, "match.pdf"), _record(neighbour, "neighbour.pdf")])
+    found, _ = store.client.scroll(
+        schema.ALIASES[schema.Physical.OFFICE], scroll_filter=scope_filter(["proj_a"], None, phrase(asked))
+    )
+    assert [record.payload["file_name"] for record in found] == ["match.pdf"]
+
+
+def test_an_older_text_index_is_rebuilt_with_the_current_tokenizer(store):
+    """A collection created before the tokenizer change is repaired on the next ensure, in place."""
+    store.upsert("proj_a", [_record("Tragende Bauteile in REI 90.", "a.pdf"), _record("in REI 60.", "b.pdf")])
+    alias = schema.ALIASES[schema.Physical.OFFICE]
+    from qdrant_client import models
+
+    store.client.delete_payload_index(alias, schema.TEXT_FIELD, wait=True)
+    legacy = models.TextIndexParams(
+        type=models.TextIndexType.TEXT,
+        tokenizer=models.TokenizerType.MULTILINGUAL,
+        lowercase=True,
+        phrase_matching=True,
+    )
+    store.client.create_payload_index(alias, schema.TEXT_FIELD, field_schema=legacy, wait=True)
+    assert store.count("proj_a", None, phrase("REI 90")) == 2, "the legacy index is the defect"
+
+    schema.ensure_collection(store.client, schema.Physical.OFFICE, DIM, IDENTITY)
+
+    assert store.count("proj_a", None, phrase("REI 90")) == 1
+    params = store.client.get_collection(alias).payload_schema[schema.TEXT_FIELD].params
+    assert params.tokenizer == models.TokenizerType.WORD
+
+
 def test_hit_cosine_is_the_true_dense_similarity(store):
     record = _record("Brandabschnitt", "a.pdf")
     store.upsert("proj_a", [record])

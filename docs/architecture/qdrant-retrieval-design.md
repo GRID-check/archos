@@ -437,12 +437,24 @@ Each gate is a number with the place it is measured.
 | Gate | Pass when | Measured by |
 |---|---|---|
 | G1 answer quality | No regression on the answer suite; per-expectation diff reviewed | `task be:eval:answer-suite`, Chroma vs Qdrant |
-| G1b lexical | Qdrant German BM25 recall ≥ Postgres `german` FTS on the lexical query set, including `§`, `5.1.1`, ALLCAPS codes and compounds; exact mode served by phrase match | `task be:eval:retrieval` lexical channel, extended with these queries |
+| G1b lexical | Qdrant German BM25 recall ≥ Postgres `german` FTS on the lexical query set, including `§`, `5.1.1`, ALLCAPS codes and compounds; exact mode returns what Chroma `$regex` returns | `task be:eval:qdrant-parity`, lexical and exact-mode sections |
 | G2 latency | p95 store time per `knowledge_search` ≤ today's 230 ms with one Query API call | Langfuse `retrieve.knowledge_search` |
 | G3 isolation | 50k random envelopes, zero foreign `office_id` or uncleared `restriction_id`; strict mode rejects an unindexed filter | New property test in the knowledge-layer suite |
 | G4 operations | SeaweedFS snapshot upload and restore works; killing a pod mid-ingest at RF 2 loses no acknowledged write; node-replacement drill timed and written as a runbook | Spike runbook |
 | G5 memory | A full backfill and optimization run stays under the memory limit without OOM | Pod metrics during backfill |
-| G6 dimension | Recall at 1024-d derived from the stored 3072-d vectors is within 1 point of 3072-d | `be:eval:retrieval` dense channel on the production embedder |
+| G6 dimension | Recall at 1024-d derived from the stored 3072-d vectors is within 1 point of 3072-d | `task be:eval:qdrant-parity` dimension section, on the production embedder |
+
+**Measured 2026-10-13 on the OIB corpus:**
+[`qdrant-gates-2026-10.md`](qdrant-gates-2026-10.md).
+
+- G1b passes, with exact mode identical to `$regex`. G2 passes locally (p95
+  34 ms).
+- G6 fails its 1-point bound: recall@1 drops by one to two of 46 questions,
+  so `dense` stays 3072-d.
+- Ranked `§` lookups regress against Chroma's `$contains` and stay open.
+- Two defects in the Qdrant path, found and fixed there: the text index
+  dropped digits, and BM25 was sent unpriced.
+- G1, G3, G4 and G5 are not measured by that run.
 
 Open questions the spike answers:
 
@@ -452,7 +464,11 @@ Open questions the spike answers:
   `already_read`, Langfuse scores)? If yes, keep `legacy_chunk_id` on points for
   one release.
 - **Q3.** Can Qdrant BM25 retire the Postgres `chunk_text` mirror entirely, or
-  does exact mode keep it?
+  does exact mode keep it? *Measured:* the mirror is not needed for either job.
+  BM25 matches or beats it on the lexical set. Exact mode stays a regex over a
+  Qdrant scroll (`find_text`): the phrase index alone misses in-word matches
+  (`Geschoss` 88 of 255) and cannot see `§`
+  ([gate report](qdrant-gates-2026-10.md#g1b-lexical-pass)).
 - **Q4.** How many points does the largest office hold, and is that enough to
   justify custom sharding now?
 
@@ -504,6 +520,8 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
+| The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
+| From that measurement: a full-text index that keeps numbers (`word` tokenizer, rebuilt in place on older collections), and BM25 terms priced by the German mirror's own rule (`german_text.select_terms`) | `qdrant/schema.py` — `TEXT_TOKENIZER`, `_repair_text_index`; `adapter.py` — `_qdrant_lexical_inputs` |
 
 ### Where slice 1 departs from the target, and why
 
@@ -527,14 +545,21 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   the store.
 * **One API key.** The read-only key is configured on the server and not yet
   used by the backend (ADR-0104, Confirmation).
-* **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
-  BM25 and phrase matching cover it; the Chroma path still reads it.
+* **The Postgres `chunk_text` mirror stays** while the Chroma path reads it.
+  G1b has since shown that the Qdrant path needs it for neither BM25 nor exact
+  mode ([gate report](qdrant-gates-2026-10.md)), so it goes with Chroma in
+  slice 3.
 
 ### Next
 
 1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.
+   - The backfill's first write rebuilds a text index an earlier release
+     created.
+   - Before the first flip, settle the open items in
+     [the gate report](qdrant-gates-2026-10.md#open-before-the-flip): ranked
+     `§` lookups, TurboQuant oversampling, and G1 on a deployed stack.
 2. Slice 2: ids in the envelope, `restriction_id`, pre-filters instead of
    post-filters, project facts on points for cross-project filters and boosts.
 3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads

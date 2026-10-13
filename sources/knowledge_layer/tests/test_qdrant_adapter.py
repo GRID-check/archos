@@ -126,6 +126,20 @@ async def test_retrieve_applies_the_callers_filter(retriever):
     assert [chunk.content for chunk in result.chunks] == ["Punkt eins"]
 
 
+def test_bm25_terms_are_priced_like_the_german_mirror(retriever):
+    """Ubiquitous or absent terms leave BM25 silent instead of ranking the corpus (qdrant-gates-2026-10.md)."""
+    rows = [_row(f"OIB-Richtlinie Ausgabe Mai 2023, Abschnitt {i}.", "rl.pdf") for i in range(27)]
+    rows += [_row("Ausgabe Mai 2023: Fluchtwege sind zu kennzeichnen.", "rl.pdf")]
+    _ingest(retriever, "oib_knowledge", rows)
+
+    text, _terms = retriever._qdrant_lexical_inputs("oib-rl_2_ausgabe_mai_2023.pdf", "oib_knowledge")
+    assert text == "", "every term is on the whole corpus or on none of it"
+
+    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege Ausgabe", "oib_knowledge")
+    assert text == "fluchtwege"
+    assert ("oib_knowledge", 28, "fluchtwege") in retriever._qdrant_term_df, "a priced term is cached per size"
+
+
 async def test_a_foreign_embedder_fails_the_retrieval_loudly(retriever, monkeypatch):
     _ingest(retriever, "proj_a", [_row("x", "a.pdf")])
     store_module.reset_store()

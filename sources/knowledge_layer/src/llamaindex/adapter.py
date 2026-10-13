@@ -5891,6 +5891,10 @@ class LlamaIndexRetriever(BaseRetriever):
         # `$contains` channel's DF ceiling costs one `get` per new term rather
         # than one per retrieval. See `_selective_exact_terms`.
         self._exact_term_df: dict[tuple[str, int, str], int] = {}
+        # The same, as Qdrant counts it (a phrase on the word-tokenized text index,
+        # not a byte substring): its own cache, because the two counts of one term
+        # differ and the backend is chosen per call.
+        self._qdrant_term_df: dict[tuple[str, int, str], int] = {}
 
         # Result cache for static corpora (the shared OIB knowledge base):
         # identical questions recur across users and conversations, and the
@@ -6356,33 +6360,60 @@ class LlamaIndexRetriever(BaseRetriever):
         return [(scope, [self._chunk_from_hit(hit) for hit in hits]) for scope, hits in grouped]
 
     def _qdrant_lexical_inputs(self, query: str, collection_name: str) -> tuple[str, list[str]]:
-        """The BM25 query text and the selective exact terms; fails open to dense-only parts."""
+        """The BM25 query text and the selective exact terms, both priced against the collection.
+
+        The BM25 terms go through the rule the German mirror has always applied
+        (``german_text.select_terms``): a term absent from the collection or on
+        more than a quarter of it is dropped, and with no alphabetic term left
+        BM25 is not asked at all. Empty beats noisy. Sent unpriced, BM25 ranked
+        whole Richtlinien for „OIB-RL 2“ on the digit and for a file name on
+        „ausgabe mai 2023“, and fusion promoted that over the dense hits:
+        exact-id MRR 0.30 against Chroma's 0.53 (``qdrant-gates-2026-10.md``).
+
+        Fails open to the unpriced inputs: pricing sharpens the channels, it
+        never gates a search.
+        """
+        from aiq_agent.common import german_text
+
         from .hybrid import extract_exact_terms
         from .hybrid import selective_terms
 
-        lexical_text = self._bm25_text(query)
-        terms = extract_exact_terms(query) if extract_exact_terms is not None else []
-        if not terms:
-            return lexical_text, []
+        exact = extract_exact_terms(query) if extract_exact_terms is not None else []
+        candidates = german_text.query_terms(query, extra_terms=self._expansion_terms(query))
         try:
             from ..qdrant import retrieval as qdrant_retrieval
 
-            total, frequencies = qdrant_retrieval.term_frequencies(collection_name, terms)
-            return lexical_text, selective_terms(frequencies, total)
+            if len(self._qdrant_term_df) >= _EXACT_TERM_DF_CACHE_MAX:
+                self._qdrant_term_df.clear()
+            total, frequencies = qdrant_retrieval.term_frequencies(
+                collection_name, [*candidates, *exact], cache=self._qdrant_term_df
+            )
         except Exception as e:  # noqa: BLE001 - same fail-open as the Chroma path's pricing
-            logger.warning("Exact-term frequencies unavailable (%s); keeping all terms", e)
-            return lexical_text, terms
+            logger.warning("Term frequencies unavailable (%s); BM25 and exact terms unpriced", e)
+            return self._bm25_text(query), exact
+        lexical = german_text.select_terms(candidates, frequencies, total)
+        terms = selective_terms({term: frequencies[term] for term in exact}, total) if exact else []
+        return " ".join(lexical), terms
 
     @staticmethod
-    def _bm25_text(query: str) -> str:
-        """The BM25 query: the question plus the EN->DE glossary terms the German mirror was given."""
+    def _expansion_terms(query: str) -> list[str]:
+        """The EN->DE glossary terms the German mirror is given for ``query``; none when unavailable."""
         try:
             from aiq_agent.common.query_expansion import expansion_terms
 
-            return " ".join([query, *expansion_terms(query)])
+            return list(expansion_terms(query))
         except Exception:  # noqa: BLE001 - the glossary widens recall, it never gates a search
             logger.debug("Query expansion unavailable for the BM25 channel", exc_info=True)
-            return query
+            return []
+
+    @classmethod
+    def _bm25_text(cls, query: str) -> str:
+        """The unpriced BM25 query: the question plus the EN->DE glossary terms the German mirror was given.
+
+        Cross-project grouped search sends this (its scopes are many, and the
+        pricing above counts one); a single-collection search prices it first.
+        """
+        return " ".join([query, *cls._expansion_terms(query)])
 
     def _chunk_from_hit(self, hit: Any) -> Chunk:
         """A Qdrant hit as a Chunk, through the same ``normalize`` every Chroma hit takes.
