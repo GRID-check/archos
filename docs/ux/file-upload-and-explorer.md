@@ -183,6 +183,14 @@ decorated afterwards. Where each one landed:
 9. **Recognize, diagnose, recover.** The server's own reason ("File exceeds the
    100 MB upload limit") lands on the row that owns it, with retry beside it. A
    cancelled file reads as a decision, not a failure — it never colours red.
+   What retry does depends on where the file failed. One that never reached
+   the server is sent again. One the server accepted and could not read is
+   read again, through the same request as „Erneut lesen“, so the retry rule
+   (`lib/documents/retry-policy.ts`) decides: a file that would fail the same
+   way loses its retry and a notice says to upload a new Fassung. Sending the
+   same bytes again went around that rule. The chat's shelf still sends again.
+   A row the server refused for a reason a retry meets again (a re-upload onto
+   a file waiting in quarantine) offers no retry at all (`mayRetryUpload`).
 10. **Help and documentation.** The processing line says *"Reading. There is
     no time estimate, so you can keep working."*, which is the help a user needs
     at exactly the moment they would otherwise sit and watch. When the tray

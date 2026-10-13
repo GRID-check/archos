@@ -22,7 +22,7 @@ import { useLayoutStore } from '@/features/layout/store'
 import { mayRetryUpload, type TrackedFile, type UploadIntent } from '../types'
 import { mapUploadResponseStatus } from '../utils'
 import { shouldEmitProgress } from '../lib/upload-progress'
-import { isJoblessIngesting } from '../lib/document-status-reads'
+import { isJoblessIngesting, trackedPatchFromStatus } from '../lib/document-status-reads'
 import { runWithConcurrency, sendWaitingOutRateLimit, UPLOAD_CONCURRENCY } from '../lib/upload-queue'
 import { validateFileUpload, type ValidationContext } from '../validation'
 import { summarizeValidation } from '../lib/validation-messages'
@@ -37,6 +37,9 @@ import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '../lib/upload-batch'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { fileExtensionLabel } from '../document-kind'
+import { failedWhileReading } from '../lib/ingest-failure'
+import { requestReingest } from '../lib/reingest-request'
+import { toast } from 'sonner'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
@@ -782,6 +785,34 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       // Nor is a file refused for a reason the retry meets again.
       if (!file || !mayRetryUpload(file)) return
 
+      // A file the server accepted and then could not READ is read again, not
+      // sent again. A re-upload of the same bytes went around the retry rule
+      // (`lib/documents/retry-policy.ts`): the shelf upload re-ingests a
+      // failed row whatever its failure, so a file certain to fail the same
+      // way was read again on every press. The re-read request is the one
+      // „Erneut lesen“ sends, and the server answers it by that rule. The
+      // chat's shelf keeps the re-upload: its attachments have their own
+      // routes.
+      if (file.status === 'failed' && file.serverFileId && failedWhileReading(file) && shelf !== 'session') {
+        const outcome = await requestReingest(file.serverFileId)
+        if (outcome.kind === 'failed') {
+          setError(t('actions.reingestError'))
+          return
+        }
+        if (outcome.kind === 'unchanged') {
+          // Refused on purpose. The row keeps its reason and loses its retry;
+          // the way out is a new revision of the file.
+          updateTrackedFile(fileId, { retryable: false })
+          toast.info(t('actions.reingestWouldFailAgain'))
+          return
+        }
+        const settled = outcome.kind === 'settled' ? trackedPatchFromStatus(outcome.status) : null
+        updateTrackedFile(fileId, settled ?? { status: 'ingesting', errorMessage: null, jobId: undefined, progress: 0 })
+        UploadOrchestrator.watchDocuments([fileId])
+        notifyDocumentsChanged()
+        return
+      }
+
       if (!file.file) {
         setError(t('errors.cannotRetryServerFile'))
         return
@@ -823,7 +854,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       pendingRetriesRef.current = { files, done }
       await done
     },
-    [trackedFiles, removeTrackedFile, uploadFiles, setError, t, shelf]
+    [trackedFiles, removeTrackedFile, updateTrackedFile, uploadFiles, setError, t, shelf]
   )
 
   return {

@@ -102,6 +102,12 @@ vi.mock('@/features/chat', () => {
   return { useChatStore }
 })
 
+const mockRequestReingest = vi.fn()
+vi.mock('../lib/reingest-request', () => ({
+  requestReingest: (documentId: string) => mockRequestReingest(documentId),
+}))
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() } }))
+
 vi.mock('../orchestrator', () => ({
   UploadOrchestrator: mockOrchestratorFns,
 }))
@@ -367,6 +373,50 @@ describe('useFileUpload', () => {
 
       expect(mockDocumentsStoreState.removeTrackedFile).toHaveBeenCalledWith('file-1')
       expect(mockClient.deleteFiles).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('retryFile on a file the server could not read', () => {
+    const readFailure = {
+      id: 'file-1',
+      fileName: 'plan.pdf',
+      collectionName: 'proj-1',
+      fileSize: 1000,
+      status: 'failed',
+      serverFileId: 'doc-1',
+      errorMessage: 'empty_document: nothing to read',
+      file: new File(['x'], 'plan.pdf'),
+    }
+
+    test('reads it again instead of sending the bytes again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'started', status: 'pending' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockRequestReingest).toHaveBeenCalledWith('doc-1')
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
+        'file-1',
+        expect.objectContaining({ status: 'ingesting', errorMessage: null })
+      )
+      expect(mockOrchestratorFns.watchDocuments).toHaveBeenCalledWith(['file-1'])
+    })
+
+    test('takes the retry away when the server says the same bytes would fail again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'unchanged' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith('file-1', { retryable: false })
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
     })
   })
 

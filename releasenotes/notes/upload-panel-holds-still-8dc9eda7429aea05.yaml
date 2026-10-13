@@ -4,3 +4,7 @@ fixes:
     The upload panel no longer jumps or cuts off status words while a batch
     uploads and is read, and it folds away smoothly once everything is read.
     A held file can now be sent for review right from the panel.
+  - >
+    Retrying a file Piloti could not read now reads it again instead of
+    uploading it again, and a file that would fail the same way says so
+    instead of failing once more.
