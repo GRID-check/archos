@@ -34,7 +34,7 @@
 
 import { z } from 'zod'
 import { ANNOTATION_KINDS, PILOTI_WAKE_TRIGGERS } from '@/lib/annotations/types'
-import { PROPOSED_CHANGE_KINDS } from '@/lib/proposals/types'
+import { PROPOSED_CHANGE_KINDS, type ProposedChangeStatus } from '@/lib/proposals/types'
 import { TASK_KINDS } from '@/lib/tasks/task-vocabulary'
 
 // ---------------------------------------------------------------------------
@@ -351,6 +351,20 @@ export type WaitingItem = z.infer<typeof waitingItemSchema>
 export const ENDED_WAKE_STATUSES = ['answered', 'stopped', 'failed', 'refused'] as const
 export type EndedWakeStatus = (typeof ENDED_WAKE_STATUSES)[number]
 
+/**
+ * What a failed or refused wake ran into, in words a person can act on. The
+ * stored reason is written for the log (`budget: …`, `rejected: auth_expired`,
+ * `gave up waiting: …`); the server classifies it so the view never shows it
+ * as the sentence (`wakeEndReasonKind` in `./service`):
+ *
+ * - `budget`: the person's, the project's or the office's budget refused it.
+ * - `busy`: Piloti could not start in time (the job gave up waiting).
+ * - `access`: the person's sign-in or rights no longer carried the turn.
+ * - `error`: the turn started and broke off without an answer.
+ */
+export const WAKE_END_REASON_KINDS = ['budget', 'busy', 'access', 'error'] as const
+export type WakeEndReasonKind = (typeof WAKE_END_REASON_KINDS)[number]
+
 /** A wake that reached its final word since `recent.since`. `at` is `ended_at`. */
 export const recentWakeSchema = z
   .object({
@@ -363,8 +377,10 @@ export const recentWakeSchema = z
      * turn started (the person's rights or budget refused it).
      */
     status: z.enum(ENDED_WAKE_STATUSES),
-    /** Why, for `failed` and `refused` only (the stored reason, ≤ 500 characters); null otherwise. */
+    /** Why, for `failed` and `refused` only (the stored reason, ≤ 500 characters); null otherwise. For a tooltip, never the sentence. */
     reason: z.string().nullable(),
+    /** The class of `reason` the view words the row by; null exactly when `reason` is. */
+    reasonKind: z.enum(WAKE_END_REASON_KINDS).nullable(),
     trigger: z.enum(PILOTI_WAKE_TRIGGERS),
     forPerson: activityPersonSchema,
     document: activityDocumentSchema,
@@ -424,10 +440,44 @@ export const recentChangesSchema = z
   .strict()
 export type RecentChanges = z.infer<typeof recentChangesSchema>
 
+/** How a decided proposal ended: every `PROPOSED_CHANGE_STATUSES` but the open one. */
+export const DECIDED_PROPOSAL_STATUSES = [
+  'applied',
+  'partially_applied',
+  'failed',
+  'dismissed',
+] as const satisfies readonly Exclude<ProposedChangeStatus, 'proposed'>[]
+
+/**
+ * A proposal a person decided since `recent.since` (`proposed_changes.decided_at`):
+ * who decided what Piloti proposed, for whom. `at` is `decided_at`. Gated as
+ * the open ones in `waiting` are.
+ */
+export const recentProposalSchema = z
+  .object({
+    kind: z.literal('proposal_decided'),
+    /** The proposal's id. */
+    id: z.string().min(1),
+    at: instant,
+    proposalKind: z.enum(PROPOSED_CHANGE_KINDS),
+    status: z.enum(DECIDED_PROPOSAL_STATUSES),
+    /** The same one line as a waiting proposal's `summary`. */
+    summary: z.string(),
+    /** The person whose turn proposed it (`on_behalf_of`). */
+    forPerson: activityPersonSchema,
+    /** The person who decided it (`decided_by`). */
+    decidedBy: activityPersonSchema,
+    /** The card in its turn, or the project chat for a proposal made outside a conversation. */
+    target: activityTargetSchema,
+  })
+  .strict()
+export type RecentProposal = z.infer<typeof recentProposalSchema>
+
 export const recentItemSchema = z.discriminatedUnion('kind', [
   recentWakeSchema,
   recentRunSchema,
   recentChangesSchema,
+  recentProposalSchema,
 ])
 export type RecentItem = z.infer<typeof recentItemSchema>
 
