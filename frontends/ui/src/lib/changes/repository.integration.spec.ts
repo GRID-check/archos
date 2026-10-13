@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * The change record (migration 0139, ADR-0109) against a REAL Postgres
+ * The change record (migration 0142, ADR-0109) against a REAL Postgres
  * through the restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \

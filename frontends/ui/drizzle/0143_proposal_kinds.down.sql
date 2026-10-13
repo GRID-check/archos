@@ -1,4 +1,4 @@
--- Reverse 0140. ORDER: roll the frontend back first; the newer build writes the
+-- Reverse 0143. ORDER: roll the frontend back first; the newer build writes the
 -- two new kinds and the card index.
 --
 -- Lossy: proposals of the two new kinds are deleted (the older build cannot

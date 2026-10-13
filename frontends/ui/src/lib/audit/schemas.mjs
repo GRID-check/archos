@@ -691,7 +691,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   // person lost the right to write the document, their budget refused it, or
   // no server took it: `stage` enqueue or claim, no model call, no Langfuse
   // trace), or one whose turn ran and failed (`stage: 'turn'`, migration
-  // 0138). This and its `piloti_wakes` row are its record. The actor is the
+  // 0141). This and its `piloti_wakes` row are its record. The actor is the
   // person whose act woke, or would have woken, Piloti.
   'piloti.wake.suppressed': {
     targets: [{ type: 'document_annotation' }],

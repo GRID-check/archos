@@ -14,7 +14,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
 
 /**
  * `piloti_changes` — every change Piloti applied to an Anmerkung or a thread,
- * with the turn that made it (migration 0139, ADR-0109;
+ * with the turn that made it (migration 0142, ADR-0109;
  * `docs/architecture/document-annotations.md`).
  *
  * `annotation_id` has no foreign key on purpose: a `delete` outlives the mark

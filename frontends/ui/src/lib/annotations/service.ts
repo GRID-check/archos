@@ -1,6 +1,6 @@
 /**
  * Anmerkungen service — the logic and the authorization for a document's
- * Anmerkungen and their threads (migration 0135; CONTEXT.md „Anmerkung").
+ * Anmerkungen and their threads (migration 0138; CONTEXT.md „Anmerkung").
  *
  * Access follows the document and nothing else: whoever may read the document
  * reads its Anmerkungen, and whoever may write in its folder sets, takes over,
@@ -17,7 +17,7 @@
  * over or dismisses. A mark the asker asked for is born open, taken over by
  * the asker in the same move (`accepted_by`); a change the asker asked for runs
  * through `updateAnnotation` like a person's PATCH, and Piloti says what it did
- * in the mark's thread (`updateAnnotationForAsker`). The CHECKs in 0135 hold
+ * in the mark's thread (`updateAnnotationForAsker`). The CHECKs in 0138 hold
  * that Piloti's mark is open only with a person behind it, so the rule does
  * not depend on this file.
  *

@@ -1441,7 +1441,7 @@ check_in grid_pshape "SELECT count(*) FROM projects WHERE organization_id = 'org
 echo "==> 0133 project profile shape and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0135: document_annotations and their replies, the CHECKs, and the
+# Migration 0138: document_annotations and their replies, the CHECKs, and the
 # DOWN.
 #
 # On a database of its own, migrated to 0134. A point is a share of the page
@@ -1450,17 +1450,17 @@ echo "==> 0133 project profile shape and down migration verified"
 # document; a discarded version leaves the mark standing; a thread goes with
 # its mark.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0135 Anmerkungen tables and their down migration on grid_annot"
+echo "==> verifying the 0138 Anmerkungen tables and their down migration on grid_annot"
 migrate_until grid_annot 0134_document_ingest_failure_facts
-apply_in grid_annot 0135_document_annotations.sql
-check_in grid_annot "SELECT string_agg(relrowsecurity::text, ',' ORDER BY relname) FROM pg_class WHERE relname IN ('document_annotations', 'document_annotation_replies')" "true,true" "0135 brings both tables up under row-level security"
+apply_in grid_annot 0138_document_annotations.sql
+check_in grid_annot "SELECT string_agg(relrowsecurity::text, ',' ORDER BY relname) FROM pg_class WHERE relname IN ('document_annotations', 'document_annotation_replies')" "true,true" "0138 brings both tables up under row-level security"
 sql_in grid_annot <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000135', 'org_0135', 'Anmerkungen 0135', 'user_1', 'proj_0135');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000135', 'org_0135', 'Anmerkungen 0138', 'user_1', 'proj_0135');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000135', 'org_0135', 'user_1', 'a.pdf', 'k/0135/a', 'proj_0135', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000135');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000135', 'org_0135', 'user_1', 'a.pdf', 'k/0138/a', 'proj_0135', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000135');
 INSERT INTO document_versions (id, organization_id, document_id, project_id, version_number, state, storage_key, content_hash, created_by, approved_by, approved_at)
-VALUES ('e1e1e1e1-0000-4000-8000-000000000135', 'org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 'aaaaaaaa-0000-4000-8000-000000000135', 1, 'superseded', 'k/0135/a1', 'sha256:a1', 'user_1', 'user_1', now());
+VALUES ('e1e1e1e1-0000-4000-8000-000000000135', 'org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 'aaaaaaaa-0000-4000-8000-000000000135', 1, 'superseded', 'k/0138/a1', 'sha256:a1', 'user_1', 'user_1', now());
 INSERT INTO document_annotations (id, organization_id, document_id, version_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
 VALUES ('f1f1f1f1-0000-4000-8000-000000000135', 'org_0135', 'd1d1d1d1-0000-4000-8000-000000000135', 'e1e1e1e1-0000-4000-8000-000000000135', 1, 2, 'point', 0.25, 0.75, 'defect', 'Brandschutztür fehlt', 'person', 'open', 'user_1');
 INSERT INTO document_annotations (organization_id, document_id, number, page, shape, x, y, w, h, kind, body, basis, author_kind, status, created_by)
@@ -1486,40 +1486,40 @@ sql_in grid_annot <<<"DELETE FROM document_versions WHERE id = 'e1e1e1e1-0000-40
 check_in grid_annot "SELECT string_agg(number || ':' || coalesce(version_id::text, 'null') || ':' || status, ',' ORDER BY number) FROM document_annotations" "1:null:resolved,2:null:open" "a discarded version leaves the mark standing, and a taken-over proposal is open"
 sql_in grid_annot <<<"DELETE FROM document_annotations WHERE number = 1"
 check_in grid_annot "SELECT count(*) FROM document_annotation_replies" "0" "a thread goes with its mark"
-apply_in grid_annot 0135_document_annotations.down.sql
+apply_in grid_annot 0138_document_annotations.down.sql
 check_in grid_annot "SELECT count(*) FROM information_schema.tables WHERE table_name IN ('document_annotations', 'document_annotation_replies')" "0" "down dropped both tables"
-apply_in grid_annot 0135_document_annotations.sql
-apply_in grid_annot 0135_document_annotations.sql
-check_in grid_annot "SELECT count(*) FROM document_annotations" "0" "0135 re-applies, twice, empty"
-echo "==> 0135 Anmerkungen tables and down migration verified"
+apply_in grid_annot 0138_document_annotations.sql
+apply_in grid_annot 0138_document_annotations.sql
+check_in grid_annot "SELECT count(*) FROM document_annotations" "0" "0138 re-applies, twice, empty"
+echo "==> 0138 Anmerkungen tables and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0136: what wakes Piloti on an Anmerkung, the delegation to Piloti,
+# Migration 0139: what wakes Piloti on an Anmerkung, the delegation to Piloti,
 # the record of each wake, and the DOWN.
 #
-# On a database of its own, migrated to 0135. A reply says whether it
+# On a database of its own, migrated to 0138. A reply says whether it
 # addressed Piloti (false for every older reply); a delegation is both columns
 # or neither, and only on an open mark; a wake record says why it started no
 # turn exactly when it did not, and is settled exactly when it left `queued`;
 # a wake goes with its mark.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0136 wake record, the delegation and their down migration on grid_wake"
-migrate_until grid_wake 0135_document_annotations
+echo "==> verifying the 0139 wake record, the delegation and their down migration on grid_wake"
+migrate_until grid_wake 0138_document_annotations
 sql_in grid_wake <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000136', 'org_0136', 'Wecken 0136', 'user_1', 'proj_0136');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000136', 'org_0136', 'Wecken 0139', 'user_1', 'proj_0136');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000136', 'org_0136', 'user_1', 'a.pdf', 'k/0136/a', 'proj_0136', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000136');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000136', 'org_0136', 'user_1', 'a.pdf', 'k/0139/a', 'proj_0136', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000136');
 INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
 VALUES ('f1f1f1f1-0000-4000-8000-000000000136', 'org_0136', 'd1d1d1d1-0000-4000-8000-000000000136', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
 INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
 VALUES ('f2f2f2f2-0000-4000-8000-000000000136', 'org_0136', 'd1d1d1d1-0000-4000-8000-000000000136', 2, 1, 'point', 0.2, 0.2, 'question', 'Laufbreite?', 'piloti', 'proposed', 'user_1');
 INSERT INTO document_annotation_replies (organization_id, annotation_id, author_kind, body, created_by)
-VALUES ('org_0136', 'f1f1f1f1-0000-4000-8000-000000000136', 'person', 'Vor 0136 geschrieben', 'user_2');
+VALUES ('org_0136', 'f1f1f1f1-0000-4000-8000-000000000136', 'person', 'Vor 0139 geschrieben', 'user_2');
 SQL
-apply_in grid_wake 0136_piloti_wakes.sql
-check_in grid_wake "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_wakes'" "t" "0136 brings the wake record up under row-level security"
-check_in grid_wake "SELECT string_agg(addresses_agent::text, ',') FROM document_annotation_replies" "false" "a reply written before 0136 addressed nobody but people"
+apply_in grid_wake 0139_piloti_wakes.sql
+check_in grid_wake "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_wakes'" "t" "0139 brings the wake record up under row-level security"
+check_in grid_wake "SELECT string_agg(addresses_agent::text, ',') FROM document_annotation_replies" "false" "a reply written before 0139 addressed nobody but people"
 refused_in grid_wake "UPDATE document_annotations SET delegated_by = 'user_1' WHERE number = 1" "document_annotations_delegation_complete" "a delegation without its time was accepted"
 refused_in grid_wake "UPDATE document_annotations SET delegated_at = now() WHERE number = 1" "document_annotations_delegation_complete" "a delegation without its person was accepted"
 refused_in grid_wake "UPDATE document_annotations SET delegated_by = 'user_1', delegated_at = now() WHERE number = 2" "document_annotations_delegated_while_open" "a proposal was delegated to Piloti"
@@ -1538,32 +1538,32 @@ sql_in grid_wake <<<"$W136, 'assigned', 'e2', 'user_1', 'suppressed', 'cap:mark-
 check_in grid_wake "SELECT count(*) FROM piloti_wakes" "2" "a queued wake and a suppressed one with its reason are kept"
 sql_in grid_wake <<<"DELETE FROM document_annotations WHERE number = 2"
 check_in grid_wake "SELECT count(*) FROM piloti_wakes" "0" "a wake goes with its mark"
-apply_in grid_wake 0136_piloti_wakes.down.sql
+apply_in grid_wake 0139_piloti_wakes.down.sql
 check_in grid_wake "SELECT count(*) FROM information_schema.tables WHERE table_name = 'piloti_wakes'" "0" "down dropped the wake record"
 check_in grid_wake "SELECT count(*) FROM information_schema.columns WHERE (table_name, column_name) IN (('document_annotations', 'delegated_by'), ('document_annotations', 'delegated_at'), ('document_annotation_replies', 'addresses_agent'))" "0" "down dropped the three columns"
 check_in grid_wake "SELECT count(*) FROM document_annotation_replies" "1" "down left the threads"
-apply_in grid_wake 0136_piloti_wakes.sql
-apply_in grid_wake 0136_piloti_wakes.sql
-check_in grid_wake "SELECT count(*) FROM piloti_wakes" "0" "0136 re-applies, twice, empty"
-echo "==> 0136 wake record, delegation and down migration verified"
+apply_in grid_wake 0139_piloti_wakes.sql
+apply_in grid_wake 0139_piloti_wakes.sql
+check_in grid_wake "SELECT count(*) FROM piloti_wakes" "0" "0139 re-applies, twice, empty"
+echo "==> 0139 wake record, delegation and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0137: proposed_changes, the CHECKs, and the DOWN.
+# Migration 0140: proposed_changes, the CHECKs, and the DOWN.
 #
-# On a database of its own, migrated to 0136. A proposal is decided by
+# On a database of its own, migrated to 0139. A proposal is decided by
 # somebody at some time exactly when it left `proposed`; it carries results
 # exactly when it was applied, as an array; the apply claim is both columns or
 # neither, and only while it is still `proposed`; the project and the
 # conversation are this organization's; it goes with either.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0137 proposed changes and their down migration on grid_prop"
-migrate_until grid_prop 0136_piloti_wakes
-apply_in grid_prop 0137_proposed_changes.sql
-check_in grid_prop "SELECT relrowsecurity FROM pg_class WHERE relname = 'proposed_changes'" "t" "0137 brings proposed_changes up under row-level security"
+echo "==> verifying the 0140 proposed changes and their down migration on grid_prop"
+migrate_until grid_prop 0139_piloti_wakes
+apply_in grid_prop 0140_proposed_changes.sql
+check_in grid_prop "SELECT relrowsecurity FROM pg_class WHERE relname = 'proposed_changes'" "t" "0140 brings proposed_changes up under row-level security"
 sql_in grid_prop <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000137', 'org_0137', 'Vorschläge 0137', 'user_1', 'proj_0137'),
-       ('bbbbbbbb-0000-4000-8000-000000000137', 'org_other', 'Fremd 0137', 'user_9', 'proj_other_0137');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000137', 'org_0137', 'Vorschläge 0140', 'user_1', 'proj_0137'),
+       ('bbbbbbbb-0000-4000-8000-000000000137', 'org_other', 'Fremd 0140', 'user_9', 'proj_other_0137');
 INSERT INTO conversations (id, organization_id, created_by, project_id)
 VALUES ('conv_0137', 'org_0137', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000137'),
        ('conv_other_0137', 'org_other', 'user_9', 'bbbbbbbb-0000-4000-8000-000000000137');
@@ -1596,29 +1596,29 @@ sql_in grid_prop <<<"DELETE FROM conversations WHERE id = 'conv_0137'"
 check_in grid_prop "SELECT count(*) FROM proposed_changes" "1" "a proposal goes with its conversation"
 sql_in grid_prop <<<"DELETE FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000137'"
 check_in grid_prop "SELECT count(*) FROM proposed_changes" "0" "a proposal goes with its project"
-apply_in grid_prop 0137_proposed_changes.down.sql
+apply_in grid_prop 0140_proposed_changes.down.sql
 check_in grid_prop "SELECT count(*) FROM information_schema.tables WHERE table_name = 'proposed_changes'" "0" "down dropped proposed_changes"
 check_in grid_prop "SELECT count(*) FROM conversations" "1" "down left the conversations"
-apply_in grid_prop 0137_proposed_changes.sql
-apply_in grid_prop 0137_proposed_changes.sql
-check_in grid_prop "SELECT count(*) FROM proposed_changes" "0" "0137 re-applies, twice, empty"
-echo "==> 0137 proposed changes and down migration verified"
+apply_in grid_prop 0140_proposed_changes.sql
+apply_in grid_prop 0140_proposed_changes.sql
+check_in grid_prop "SELECT count(*) FROM proposed_changes" "0" "0140 re-applies, twice, empty"
+echo "==> 0140 proposed changes and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0138: a wake's END, and the DOWN.
+# Migration 0141: a wake's END, and the DOWN.
 #
-# On a database of its own, migrated to 0137. A wake has an end exactly when it
-# has its final word (not `queued`, not `started`); the rows 0136 settled
+# On a database of its own, migrated to 0140. A wake has an end exactly when it
+# has its final word (not `queued`, not `started`); the rows 0139 settled
 # already ended when they settled; `answered` and `stopped` carry no reason,
 # `failed` does.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0138 wake ends and their down migration on grid_wend"
-migrate_until grid_wend 0137_proposed_changes
+echo "==> verifying the 0141 wake ends and their down migration on grid_wend"
+migrate_until grid_wend 0140_proposed_changes
 sql_in grid_wend <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000138', 'org_0138', 'Enden 0138', 'user_1', 'proj_0138');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000138', 'org_0138', 'Enden 0141', 'user_1', 'proj_0138');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000138', 'org_0138', 'user_1', 'a.pdf', 'k/0138/a', 'proj_0138', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000138');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000138', 'org_0138', 'user_1', 'a.pdf', 'k/0141/a', 'proj_0138', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000138');
 INSERT INTO document_annotations (id, organization_id, document_id, number, page, shape, x, y, kind, body, author_kind, status, created_by)
 VALUES ('f1f1f1f1-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 1, 1, 'point', 0.5, 0.5, 'defect', 'Türbreite', 'person', 'open', 'user_1');
 INSERT INTO piloti_wakes (id, organization_id, document_id, annotation_id, trigger_kind, event_id, actor_user_id, status, reason, settled_at)
@@ -1626,8 +1626,8 @@ VALUES ('a1a1a1a1-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-
        ('a2a2a2a2-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'thread_mention', 'e2', 'user_1', 'started', NULL, now()),
        ('a3a3a3a3-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'assigned', 'e3', 'user_1', 'suppressed', 'cap:mark-hour', now());
 SQL
-apply_in grid_wend 0138_wake_ends.sql
-check_in grid_wend "SELECT string_agg(status || ':' || (ended_at IS NOT NULL)::text, ',' ORDER BY event_id) FROM piloti_wakes" "queued:false,started:false,suppressed:true" "a wake 0136 settled without a turn ended when it settled; the others have not ended"
+apply_in grid_wend 0141_wake_ends.sql
+check_in grid_wend "SELECT string_agg(status || ':' || (ended_at IS NOT NULL)::text, ',' ORDER BY event_id) FROM piloti_wakes" "queued:false,started:false,suppressed:true" "a wake 0139 settled without a turn ended when it settled; the others have not ended"
 refused_in grid_wend "UPDATE piloti_wakes SET status = 'answered' WHERE event_id = 'e2'" "piloti_wakes_ended_when_final" "an answered wake without its end was accepted"
 refused_in grid_wend "UPDATE piloti_wakes SET ended_at = now() WHERE event_id = 'e2'" "piloti_wakes_ended_when_final" "a running wake with an end was accepted"
 refused_in grid_wend "UPDATE piloti_wakes SET status = 'snoozed', ended_at = now() WHERE event_id = 'e2'" "piloti_wakes_status_known" "an unknown end was accepted"
@@ -1640,35 +1640,35 @@ VALUES ('a4a4a4a4-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-
        ('a5a5a5a5-0000-4000-8000-000000000138', 'org_0138', 'd1d1d1d1-0000-4000-8000-000000000138', 'f1f1f1f1-0000-4000-8000-000000000138', 'assigned', 'e5', 'user_1', 'stopped', NULL, now(), now() + interval '1 minute');
 SQL
 check_in grid_wend "SELECT count(*) FROM piloti_wakes WHERE ended_at IS NOT NULL" "4" "an answered, a stopped and a failed turn keep their ends"
-apply_in grid_wend 0138_wake_ends.down.sql
+apply_in grid_wend 0141_wake_ends.down.sql
 check_in grid_wend "SELECT string_agg(status, ',' ORDER BY event_id) FROM piloti_wakes" "queued,started,suppressed,started,started" "down folds every end of a turn that ran back into started"
 check_in grid_wend "SELECT count(*) FROM information_schema.columns WHERE table_name = 'piloti_wakes' AND column_name = 'ended_at'" "0" "down dropped ended_at"
-apply_in grid_wend 0138_wake_ends.sql
-apply_in grid_wend 0138_wake_ends.sql
-check_in grid_wend "SELECT count(*) FROM piloti_wakes WHERE ended_at IS NOT NULL" "1" "0138 re-applies, twice: only the suppressed wake has ended"
-echo "==> 0138 wake ends and down migration verified"
+apply_in grid_wend 0141_wake_ends.sql
+apply_in grid_wend 0141_wake_ends.sql
+check_in grid_wend "SELECT count(*) FROM piloti_wakes WHERE ended_at IS NOT NULL" "1" "0141 re-applies, twice: only the suppressed wake has ended"
+echo "==> 0141 wake ends and down migration verified"
 
 # ---------------------------------------------------------------------------
-# Migration 0139: piloti_changes, the CHECKs, and the DOWN.
+# Migration 0142: piloti_changes, the CHECKs, and the DOWN.
 #
-# On a database of its own, migrated to 0138. A change names a known object
+# On a database of its own, migrated to 0141. A change names a known object
 # and op; a create has no before, a delete no after, an update both; a reply
 # is only ever created; a mark's change names the mark as its object; states
 # are objects; an undo is by somebody at some time; the document and the
 # conversation are this organization's; it goes with either, and outlives the
 # mark it deleted.
 # ---------------------------------------------------------------------------
-echo "==> verifying the 0139 change record and its down migration on grid_chg"
-migrate_until grid_chg 0138_wake_ends
-apply_in grid_chg 0139_piloti_changes.sql
-check_in grid_chg "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_changes'" "t" "0139 brings piloti_changes up under row-level security"
+echo "==> verifying the 0142 change record and its down migration on grid_chg"
+migrate_until grid_chg 0141_wake_ends
+apply_in grid_chg 0142_piloti_changes.sql
+check_in grid_chg "SELECT relrowsecurity FROM pg_class WHERE relname = 'piloti_changes'" "t" "0142 brings piloti_changes up under row-level security"
 sql_in grid_chg <<'SQL'
 INSERT INTO projects (id, organization_id, name, created_by, collection_name)
-VALUES ('aaaaaaaa-0000-4000-8000-000000000139', 'org_0139', 'Änderungen 0139', 'user_1', 'proj_0139'),
-       ('bbbbbbbb-0000-4000-8000-000000000139', 'org_other', 'Fremd 0139', 'user_9', 'proj_other_0139');
+VALUES ('aaaaaaaa-0000-4000-8000-000000000139', 'org_0139', 'Änderungen 0142', 'user_1', 'proj_0139'),
+       ('bbbbbbbb-0000-4000-8000-000000000139', 'org_other', 'Fremd 0142', 'user_9', 'proj_other_0139');
 INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id)
-VALUES ('d1d1d1d1-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'a.pdf', 'k/0139/a', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139'),
-       ('d2d2d2d2-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'b.pdf', 'k/0139/b', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139');
+VALUES ('d1d1d1d1-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'a.pdf', 'k/0142/a', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139'),
+       ('d2d2d2d2-0000-4000-8000-000000000139', 'org_0139', 'user_1', 'b.pdf', 'k/0142/b', 'proj_0139', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000139');
 INSERT INTO conversations (id, organization_id, created_by, project_id)
 VALUES ('conv_0139', 'org_0139', 'user_1', 'aaaaaaaa-0000-4000-8000-000000000139'),
        ('conv_other_0139', 'org_other', 'user_9', 'bbbbbbbb-0000-4000-8000-000000000139');
@@ -1700,10 +1700,10 @@ sql_in grid_chg <<<"DELETE FROM documents WHERE id = 'd2d2d2d2-0000-4000-8000-00
 check_in grid_chg "SELECT count(*) FROM piloti_changes" "2" "a change goes with its document"
 sql_in grid_chg <<<"DELETE FROM conversations WHERE id = 'conv_0139'"
 check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "a change goes with the conversation of its turn"
-apply_in grid_chg 0139_piloti_changes.down.sql
+apply_in grid_chg 0142_piloti_changes.down.sql
 check_in grid_chg "SELECT count(*) FROM information_schema.tables WHERE table_name = 'piloti_changes'" "0" "down dropped piloti_changes"
 check_in grid_chg "SELECT count(*) FROM documents" "1" "down left the documents"
-apply_in grid_chg 0139_piloti_changes.sql
-apply_in grid_chg 0139_piloti_changes.sql
-check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "0139 re-applies, twice, empty"
-echo "==> 0139 change record and down migration verified"
+apply_in grid_chg 0142_piloti_changes.sql
+apply_in grid_chg 0142_piloti_changes.sql
+check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "0142 re-applies, twice, empty"
+echo "==> 0142 change record and down migration verified"

@@ -16,10 +16,10 @@ import { ProjectProfilePatchOperationSchema } from '@/lib/project-profile/types'
 import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/projects/memory-vocabulary'
 
 /**
- * `file_operation`: move, rename, create a folder, assign (0137).
- * `memory`: a note for the project's or the office's memory (0140).
+ * `file_operation`: move, rename, create a folder, assign (0140).
+ * `memory`: a note for the project's or the office's memory (0143).
  * `project_profile`: a change to the project's facts, goals, unknowns or
- * assumptions, as a JSON patch on the profile (0140).
+ * assumptions, as a JSON patch on the profile (0143).
  */
 export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile'] as const
 export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
@@ -172,7 +172,7 @@ const internalCreateBase = {
   answerMessageId: z.string().uuid().optional(),
   /**
    * Which card of that answer this is. With `answerMessageId` it makes the
-   * create idempotent: the same card twice returns the first proposal (0140).
+   * create idempotent: the same card twice returns the first proposal (0143).
    */
   originCardIndex: z.number().int().min(0).optional(),
 }

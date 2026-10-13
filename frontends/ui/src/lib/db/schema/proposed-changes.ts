@@ -21,7 +21,7 @@ export const APPLIED_STATUSES = ['applied', 'partially_applied', 'failed'] as co
 
 /**
  * `proposed_changes` — a change to the workspace Piloti proposes and a person
- * applies (migration 0137, ADR-0105; `docs/architecture/proposed-changes.md`).
+ * applies (migration 0140, ADR-0105; `docs/architecture/proposed-changes.md`).
  *
  * `payload` is the contract's payload for `kind` (`lib/proposals/types.ts`),
  * parsed on every read. The CHECKs carry the lifecycle: decided exactly when
@@ -42,7 +42,7 @@ export const proposedChanges = pgTable(
     onBehalfOf: text('on_behalf_of').notNull(),
     originConversationId: text('origin_conversation_id'),
     originMessageId: uuid('origin_message_id'),
-    /** Which card of that answer made it (0140): one card, one proposal, however often the turn's finish runs. */
+    /** Which card of that answer made it (0143): one card, one proposal, however often the turn's finish runs. */
     originCardIndex: integer('origin_card_index'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     decidedBy: text('decided_by'),

@@ -1,6 +1,6 @@
 /**
  * Proposed changes repository — the SQL over `proposed_changes` (migrations
- * 0137, 0140). No authorization here; `./service` owns it. Every statement is
+ * 0140, 0143). No authorization here; `./service` owns it. Every statement is
  * keyed by the organization as well as the id, and runs in its tenant scope.
  *
  * Every transition is a compare-and-swap on `proposed`, so two people (or two
@@ -27,7 +27,7 @@ export interface NewProposedChange {
   onBehalfOf: string
   originConversationId: string | null
   originMessageId: string | null
-  /** Which card of the origin answer made it; needs `originMessageId` (0140's CHECK). */
+  /** Which card of the origin answer made it; needs `originMessageId` (0143's CHECK). */
   originCardIndex?: number | null
 }
 

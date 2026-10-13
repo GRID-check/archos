@@ -1,4 +1,4 @@
--- Reverse 0136. ORDER: roll the frontend back first; the newer build reads and
+-- Reverse 0139. ORDER: roll the frontend back first; the newer build reads and
 -- writes the wake record, the delegation and the reply's addressee flag.
 --
 -- Lossy: the record of every wake goes with its table, every delegation to

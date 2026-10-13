@@ -71,7 +71,7 @@ Chosen option: 2.
   outcome to `POST /api/internal/turns/outcome` (`answered`, `refused`,
   `handed_off`, `stopped`, `failed`, the last also for `RUN_ERROR`, which
   persists nothing), and the wake records it (`answered | stopped | failed`,
-  `ended_at`, migration 0138). A delegation is handed back when ITS turn ends,
+  `ended_at`, migration 0141). A delegation is handed back when ITS turn ends,
   never by any Piloti reply; taking the mark back, resolving, dismissing or
   deleting it stops that turn (`cancel_turn`, sent as an internal caller).
 * **The thread always hears back.** A turn asked to answer in a thread whose

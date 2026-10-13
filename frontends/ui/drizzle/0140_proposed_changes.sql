@@ -1,4 +1,4 @@
--- 0137: proposed_changes — a change to the workspace Piloti proposes and a
+-- 0140: proposed_changes — a change to the workspace Piloti proposes and a
 -- person applies, kept as a server object (ADR-0105;
 -- docs/architecture/proposed-changes.md).
 --

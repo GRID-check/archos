@@ -1,5 +1,5 @@
 /**
- * A document's Anmerkungen (CONTEXT.md „Anmerkung", migration 0135).
+ * A document's Anmerkungen (CONTEXT.md „Anmerkung", migration 0138).
  *
  * GET lists them, each with its thread, and whether the reader may set one;
  * POST sets one, a point or a region, on the Fassung the document shows now.

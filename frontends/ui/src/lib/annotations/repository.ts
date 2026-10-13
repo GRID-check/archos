@@ -1,6 +1,6 @@
 /**
  * Anmerkungen repository — the SQL over `document_annotations` and
- * `document_annotation_replies` (migration 0135).
+ * `document_annotation_replies` (migration 0138).
  *
  * No authorization here; the service owns that. Every read is keyed by a
  * document the service already loaded through its reader
@@ -229,7 +229,7 @@ export interface AnnotationChanges {
     closedBy: string | null
     closedAt: Date | null
   }
-  /** Piloti as the delegate (migration 0136): both set, or both cleared, as the CHECK holds. */
+  /** Piloti as the delegate (migration 0139): both set, or both cleared, as the CHECK holds. */
   delegation?: { delegatedBy: string; delegatedAt: Date } | { delegatedBy: null; delegatedAt: null }
 }
 

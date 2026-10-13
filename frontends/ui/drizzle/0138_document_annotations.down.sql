@@ -1,4 +1,4 @@
--- Reverse 0135. ORDER: roll the frontend back first; the newer build reads and
+-- Reverse 0138. ORDER: roll the frontend back first; the newer build reads and
 -- writes both tables whenever a document is opened.
 --
 -- Lossy: every Anmerkung and every reply is deleted with the tables. Export

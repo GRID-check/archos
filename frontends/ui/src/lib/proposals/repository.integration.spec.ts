@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Proposed changes (migrations 0137, 0140) against a REAL Postgres through the
+ * Proposed changes (migrations 0140, 0143) against a REAL Postgres through the
  * restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
@@ -268,7 +268,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     expect(await inOrg(ORG, () => repo.findProposedChange(ORG, inDoomed.id))).toBeNull()
   })
 
-  describe('one card, one proposal (0140)', () => {
+  describe('one card, one proposal (0143)', () => {
     const ANSWER = '7d6e5f4a-3b2c-4d1e-8f0a-1b2c3d4e5f60'
     const MEMORY = { scope: 'project', kind: 'decision', content: 'Flachdach, extensiv begrünt', confidence: 'high' }
     const PROFILE = { title: 'Geschoße', patch: [{ op: 'replace', path: '/facts/geschosse', value: 4 }] }

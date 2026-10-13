@@ -298,10 +298,10 @@ const GUARDED_TABLES: Record<string, string> = {
   // What a Bescheid said (permitting memory, ADR-0095): derived from a document, served to the agent.
   permitRecords: 'permit_records',
   permitRequirements: 'permit_requirements',
-  // Where a person marked a page (migration 0135): a document fact, keyed by the document.
+  // Where a person marked a page (migration 0138): a document fact, keyed by the document.
   documentAnnotations: 'document_annotations',
   documentAnnotationReplies: 'document_annotation_replies',
-  // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0139, ADR-0109): a document fact.
+  // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0142, ADR-0109): a document fact.
   pilotiChanges: 'piloti_changes',
 }
 

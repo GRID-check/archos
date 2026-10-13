@@ -8,7 +8,7 @@
  *
  * The record's repository is an in-memory fake that keeps the undo claim a
  * compare-and-swap on `undone_at IS NULL` and holds every row to the CHECKs of
- * migration 0139. The annotations service is a fake over an in-memory set of
+ * migration 0142. The annotations service is a fake over an in-memory set of
  * marks at its seam (`listAnnotations`, `updateAnnotation`, `createAnnotation`),
  * with `updateAnnotation`'s compare-and-swap on `expectedStatus`; its real
  * state machine (`transition`) decides which status moves have a way back.
@@ -167,7 +167,7 @@ const row = (extra: Partial<PilotiChangeRow> = {}): PilotiChangeRow => ({
   ...extra,
 })
 
-/** The CHECKs of migration 0139, held against every row the fake stores. */
+/** The CHECKs of migration 0142, held against every row the fake stores. */
 function assertChecks(stored: PilotiChangeRow): void {
   expect(stored.objectKind !== 'annotation_reply' || stored.op === 'create', 'piloti_changes_reply_is_created').toBe(true)
   expect(stored.objectKind !== 'annotation' || stored.objectId === stored.annotationId, 'piloti_changes_annotation_is_object').toBe(true)

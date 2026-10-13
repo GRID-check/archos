@@ -8,7 +8,7 @@ a Mangel) and a thread of replies under it.
 
 ## A proposal is not a finding
 
-Piloti's marks are born ``proposed`` (the CHECKs of migration 0135 hold it on
+Piloti's marks are born ``proposed`` (the CHECKs of migration 0138 hold it on
 the BFF side): they appear on the document as Piloti's suggestions, and count
 only once a person takes one over („übernehmen“) or dismisses it
 („verwerfen“). VISION.md principle 4, suggest then confirm. So the ``mark``

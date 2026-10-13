@@ -74,7 +74,7 @@ dismiss, take over, assign, set a date, edit, delete a mark the person set.
 Its own findings, made without being asked for each one, arrive as proposals.
 
 * The person who asked is recorded as accountable (`accepted_by`,
-  `closed_by`). The CHECKs of migration 0135 hold unchanged: an open Piloti
+  `closed_by`). The CHECKs of migration 0138 hold unchanged: an open Piloti
   mark always has a person behind it.
 * Every change to an existing mark posts one short note in its thread, signed
   as Piloti, in the same request.
