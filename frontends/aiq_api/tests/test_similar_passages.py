@@ -300,20 +300,23 @@ async def test_a_corpus_passage_is_looked_up_in_the_corpus_and_searched_in_the_o
 
 
 @pytest.mark.parametrize(
-    ("scope", "body"),
+    ("scope", "collections", "refused"),
     [
-        # A searched collection outside the signed scope: the other tenant's project.
-        (SEARCHED, {**_body(chunk_id="x"), "collections": [*SEARCHED, "proj_c"]}),
+        # A searched collection outside the signed scope: another project nobody signed.
+        (SEARCHED, [*SEARCHED, "proj_c"], "proj_c"),
         # The source's collection outside it: its vector may not be read either.
-        (["proj_b", "archiv_org1"], {**_body(chunk_id="x"), "collections": ["proj_b", "archiv_org1"]}),
+        (["proj_b", "archiv_org1"], ["proj_b", "archiv_org1"], "proj_a"),
     ],
 )
-async def test_a_collection_outside_the_signed_scope_is_404_and_nothing_is_searched(stack, scope, body):
+async def test_a_collection_outside_the_signed_scope_is_404_and_nothing_is_searched(stack, scope, collections, refused):
     app, store, embedder = stack
-    _seed(store)
+    ids = _seed(store)
+    # A request that would succeed but for the scope: a real chunk and text to embed.
+    body = {**_body(chunk_id=ids["source_chunk"], text=SOURCE_TEXT, kind="selected"), "collections": collections}
     async with _client(app) as client:
         res = await client.post("/v1/collections/similar", json=body, headers=_scope_headers(scope))
     assert res.status_code == 404
+    assert refused in res.json()["detail"]
     assert embedder.calls == []
 
 
