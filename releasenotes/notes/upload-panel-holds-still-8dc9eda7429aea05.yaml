@@ -1,0 +1,6 @@
+---
+fixes:
+  - >
+    The upload panel no longer jumps or cuts off status words while a batch
+    uploads and is read, and it folds away smoothly once everything is read.
+    A held file can now be sent for review right from the panel.

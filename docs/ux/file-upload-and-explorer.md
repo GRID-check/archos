@@ -52,7 +52,9 @@ Two terminal phases are neither a success nor a failure:
 - **`held`**, „Zurückgehalten“ (“Held back”), in the warning colour: the content
   check held the file back (ADR-0086). The row lists what was found
   (`QuarantineFindings`, without page buttons, because the tray cannot show
-  the document). It can be dismissed and is **never** retried, not by the row
+  the document) and offers „Prüfung anfragen“, the uploader's request for a
+  review (`RequestReviewButton`, as in the upload summary and the preview). It
+  can be dismissed and is **never** retried, not by the row
   and not by „Fehlgeschlagene wiederholen“: a re-upload onto a held file is
   refused (409), and nothing went wrong to repeat. A batch with a held file in
   it does not retire itself, the header says „1 Dokument zurückgehalten“ or
@@ -136,11 +138,25 @@ decorated afterwards. Where each one landed:
    remembered per browser. The list is fully keyboard-navigable with a roving
    tabindex, and sorts filenames with a numeric collator so `Plan_2` precedes
    `Plan_10` — a set of drawings is numbered, and lexicographic order scatters it.
-8. **Aesthetic and minimalist design.** A settled row collapses to a single line,
-   so a batch visibly gets quieter as it lands instead of holding twelve
-   animating bars. A wholly successful batch retires itself after six seconds.
-   The preview pane lost a footer band that restated the page count already in
-   the rail.
+8. **Aesthetic and minimalist design.** A row is one line of one height in
+   every live phase: queued, sending, being read and read. The file's byte
+   track sits on the row's bottom edge instead of on a line of its own, and
+   only while bytes move; while the backend reads, the row says „Wird gelesen“
+   and the header's track sweeps once for the batch, instead of a sweeping bar
+   under every row. Size, status and actions each have a fixed column, so the
+   longest German status word („Zurückgehalten“) fits and a row gaining a
+   button does not push its neighbours sideways. On a phone the status sits
+   under the name and the size is left out.
+   The only rows that grow are a held or failed one, whose reason folds open
+   beneath it. Nothing uses a layout animation, which draws a resizing row
+   squashed. The tray folds in above the listing when a batch starts and folds
+   away when it retires; a dismissed row folds away so the rows below slide up.
+   A wholly successful batch retires itself six seconds after it settles,
+   however often the upload store re-renders it in between. The preview pane
+   lost a footer band that restated the page count already in the rail.
+   Measured on `/dev/upload-tray`'s live run: the tray used to change height
+   about ten times between drop and settle, moving the listing below with it
+   each time; it now holds one height until the first file settles.
 9. **Recognize, diagnose, recover.** The server's own reason ("File exceeds the
    100 MB upload limit") lands on the row that owns it, with retry beside it. A
    cancelled file reads as a decision, not a failure — it never colours red.

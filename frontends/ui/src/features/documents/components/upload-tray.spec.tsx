@@ -2,6 +2,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { UploadTray } from './upload-tray'
+
+const requestQuarantineRelease = vi.fn(async (_documentId: string) => ({ notified: 1 }))
+vi.mock('@/adapters/api/upload-screening-client', () => ({
+  requestQuarantineRelease: (documentId: string) => requestQuarantineRelease(documentId),
+}))
 import type { TrackedFile } from '../types'
 
 const tracked = (overrides: Partial<TrackedFile> = {}): TrackedFile => ({
@@ -177,6 +182,20 @@ describe('UploadTray', () => {
       expect(onDismiss).toHaveBeenCalledWith(['f1'])
     })
 
+    it('still retires when the parent keeps re-rendering the same settled batch', () => {
+      // A poll or a store write hands a new array (and so a new dismiss) every
+      // few seconds; the timer used to restart on each one and never fire.
+      const onDismiss = vi.fn()
+      const { rerender } = renderTray([tracked({ status: 'success' })], { onDismiss })
+
+      for (let second = 0; second < 6; second++) {
+        act(() => vi.advanceTimersByTime(1_000))
+        rerender(<UploadTray files={[tracked({ status: 'success' })]} onRetry={vi.fn()} onDismiss={(ids) => onDismiss(ids)} />)
+      }
+
+      expect(onDismiss).toHaveBeenCalledWith(['f1'])
+    })
+
     it('does not retire out from under a keyboard user', () => {
       const onDismiss = vi.fn()
       renderTray([tracked({ status: 'success' })], { onDismiss })
@@ -229,6 +248,14 @@ describe('UploadTray', () => {
       // The tray cannot show the document, so the pages are words, not buttons.
       expect(screen.queryByTestId('upload-row-held-page-2')).toBeNull()
       expect(screen.queryByText(/^quarantined:/)).toBeNull()
+    })
+
+    it('lets the uploader ask for a review from the row', async () => {
+      const user = userEvent.setup()
+      renderTray([held()])
+
+      await user.click(screen.getByTestId('upload-row-request-review'))
+      expect(requestQuarantineRelease).toHaveBeenCalledWith('doc-h')
     })
 
     it('is not retried by „Retry failed", and has no retry of its own', async () => {

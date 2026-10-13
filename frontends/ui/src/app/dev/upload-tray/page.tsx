@@ -20,6 +20,7 @@
 
 import { notFound } from 'next/navigation'
 import { UploadTray } from '@/features/documents/components/upload-tray'
+import { LiveRun } from './live-run'
 import { FileListView } from '@/features/documents/components/file-list-view'
 import type { TrackedFile } from '@/features/documents/types'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
@@ -188,6 +189,17 @@ export default function UploadTrayDevPage() {
           time instead of a number nobody measured.
         </p>
       </div>
+
+      <Stage
+        title="Live · one batch from drop to settled"
+        note="Two uploads at a time; one file is held back and one fails, so the batch settles with something to act on."
+      >
+        <LiveRun />
+      </Stage>
+
+      <Stage title="Live · a clean batch" note="Everything reads; the tray confirms and then retires itself.">
+        <LiveRun clean />
+      </Stage>
 
       <Stage
         title="1 · Transferring"
