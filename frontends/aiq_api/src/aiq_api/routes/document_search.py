@@ -288,7 +288,7 @@ def add_document_search_routes(router: APIRouter):
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:
-            logger.error("Grouped document search failed: %s", e)
+            logger.exception("Grouped document search failed")
             raise HTTPException(status_code=500, detail="grouped document search failed") from e
         return DocumentSearchResponse(
             hits=_ranked_group_hits(grouped, request.files_per_group, request.snippet_max_chars)

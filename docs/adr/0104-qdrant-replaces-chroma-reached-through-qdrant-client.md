@@ -79,8 +79,9 @@ way to reach those features (the LlamaIndex store uses none of them).
 
 ### Confirmation
 
-Before acceptance: the spike gates G1–G6 in the design doc §10 pass, with the
-answer-suite reports attached to the PR.
+Before `vectorBackend=qdrant` in any environment: the spike gates G1–G6 in the
+design doc §10 pass, with the answer-suite reports attached to the PR that
+flips the flag. Nothing enforces this yet; review is the only gate.
 
 After acceptance:
 * `sources/knowledge_layer/tests/test_qdrant_import_boundary.py` allows

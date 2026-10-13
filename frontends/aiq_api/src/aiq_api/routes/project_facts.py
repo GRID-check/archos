@@ -10,6 +10,7 @@ A stale copy never widens access: who may read a point is the signed scope
 and the scope filter alone. A fact on a point only ranks and narrows.
 """
 
+import asyncio
 import logging
 
 from fastapi import APIRouter
@@ -58,10 +59,12 @@ def add_project_facts_routes(router: APIRouter):
         if not writes_qdrant():
             raise HTTPException(status_code=409, detail="this deployment does not write Qdrant")
         try:
-            applied = retrieval.set_project_facts(
-                collection_name, request.facts.model_dump(mode="json"), request.status
+            # One set_payload over the whole scope: off the event loop, as the
+            # store's other blocking calls are.
+            applied = await asyncio.to_thread(
+                retrieval.set_project_facts, collection_name, request.facts.model_dump(mode="json"), request.status
             )
         except Exception as e:
-            logger.error("Mirroring project facts onto %s failed: %s", collection_name, e)
+            logger.exception("Mirroring project facts onto %s failed", collection_name)
             raise HTTPException(status_code=502, detail="the vector store refused the project facts") from e
         return ProjectFactsResult(collection=collection_name, applied=applied)
