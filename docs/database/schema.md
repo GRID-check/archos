@@ -535,6 +535,33 @@ boundary, so it is deliberately not in that list.
 
 ---
 
+## document_version_reviews (migration 0136, ADR-0104)
+
+One review round on one version. A submit opens a round (`outcome = 'requested'`);
+an approval, a request for changes or a rejection decides it. Written in the
+transaction that swaps the version's `state` (`compareAndSwapVersionState`,
+`lib/documents/version-repository.ts`), so a round and the state it describes
+cannot disagree.
+
+| Column | Type | Constraints | Notes |
+|---|---|---|---|
+| `id` | `uuid` | PK | |
+| `organization_id` | `text` | NOT NULL | RLS: `organization_id = grid_current_org()` |
+| `document_id`, `version_id` | `uuid` | NOT NULL, FK `(version_id, document_id)` → `document_versions (id, document_id)` ON DELETE CASCADE | |
+| `requested_by`, `requested_by_actor` | `text` | NOT NULL; actor `human` \| `agent` | Who sent it, and whose hand |
+| `requested_at` | `timestamptz` | NOT NULL | |
+| `reviewer_user_ids` | `text[]` | NOT NULL, DEFAULT `'{}'` | Whom the round was sent to; empty means the project's editors |
+| `outcome` | `text` | `requested` \| `approved` \| `changes_requested` \| `rejected` | At most one `requested` per version (partial unique index) |
+| `decided_by`, `decided_at` | | Both NULL exactly while `requested` | |
+| `comment` | `text` | NOT NULL for `changes_requested` and `rejected` | |
+
+**Nothing reads it yet.** This is step 1 of ADR-0104's slice 4: the version's own
+approval columns stay authoritative until the readers move here. The backfill
+recovered the latest round of every version that was ever submitted; a person's
+upload, which was never submitted, has no round, because its approval was the
+synthetic one ADR-0104 stops recording.
+
+
 ## tasks (migration 0075, ADR-0051) — LEGACY since 0086
 
 **Superseded by `task_definitions` + `task_runs` (migration 0086, next section).

@@ -94,6 +94,7 @@ import {
 } from './lifecycle-types'
 import {
   compareAndSwapVersionState,
+  type ReviewRoundWrite,
   findDocumentVersion,
   listDocumentVersionSummaries,
   findOpenVersion,
@@ -891,6 +892,34 @@ function stampFor(
 }
 
 /**
+ * What a transition writes to the version's review rounds (migration 0136,
+ * ADR-0104), beside the stamp {@link stampFor} writes on the version. Only the
+ * four review transitions touch a round; publish, update and archive do not.
+ */
+function reviewRoundFor(
+  to: DocumentVersionState,
+  session: AuthorizedSession,
+  input: TransitionInput,
+): ReviewRoundWrite | undefined {
+  const comment = input.comment?.trim() || null
+  switch (to) {
+    case 'in_review':
+      return {
+        kind: 'open',
+        requestedBy: session.userId,
+        requestedByActor: input.actingHuman === false ? 'agent' : 'human',
+        reviewerUserIds: input.reviewerUserIds ?? [],
+      }
+    case 'approved':
+    case 'changes_requested':
+    case 'rejected':
+      return { kind: 'decide', outcome: to, decidedBy: session.userId, comment }
+    default:
+      return undefined
+  }
+}
+
+/**
  * Move one version through one transition.
  *
  * The order is deliberate and is the whole of the concurrency story:
@@ -965,7 +994,13 @@ export async function transitionDocumentVersion(
     : null
   const swapped = transition.promotes
     ? (promoted?.version ?? null)
-    : await compareAndSwapVersionState(versionId, session.organizationId, version.state, stamp)
+    : await compareAndSwapVersionState(
+        versionId,
+        session.organizationId,
+        version.state,
+        stamp,
+        reviewRoundFor(transition.to, session, effectInput),
+      )
   if (!swapped) {
     throw new ConflictError('The version changed while you were deciding', { op })
   }

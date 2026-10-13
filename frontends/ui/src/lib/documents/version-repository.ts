@@ -12,8 +12,11 @@ import 'server-only'
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import {
+  documentVersionReviews,
   documentVersions,
   documents,
+  type DocumentReviewOutcome,
+  type DocumentSubmitActor,
   type DocumentVersion,
   type NewDocumentVersion,
 } from '@/lib/db/schema'
@@ -437,20 +440,94 @@ export async function compareAndSwapVersionState(
   organizationId: string,
   expected: DocumentVersionState,
   patch: Partial<Omit<NewDocumentVersion, 'id' | 'organizationId' | 'documentId'>>,
+  review?: ReviewRoundWrite,
 ): Promise<DocumentVersion | null> {
   const db = getDb()
-  const [row] = await db
-    .update(documentVersions)
-    .set({ ...patch, updatedAt: new Date() })
-    .where(
-      and(
-        eq(documentVersions.id, versionId),
-        eq(documentVersions.organizationId, organizationId),
-        eq(documentVersions.state, expected),
-      ),
-    )
-    .returning()
-  return row ?? null
+  const swap = (tx: Pick<Transaction, 'update'>) =>
+    tx
+      .update(documentVersions)
+      .set({ ...patch, updatedAt: new Date() })
+      .where(
+        and(
+          eq(documentVersions.id, versionId),
+          eq(documentVersions.organizationId, organizationId),
+          eq(documentVersions.state, expected),
+        ),
+      )
+      .returning()
+  if (!review) {
+    const [row] = await swap(db)
+    return row ?? null
+  }
+  try {
+    return await db.transaction(async (tx) => {
+      const [row] = await swap(tx)
+      if (!row) throw new LostCompareAndSwap()
+      await writeReviewRound(tx, row, review)
+      return row
+    })
+  } catch (error) {
+    if (error instanceof LostCompareAndSwap) return null
+    throw error
+  }
+}
+
+/**
+ * What a transition does to the version's review rounds (migration 0136,
+ * ADR-0104): a submit opens one, an approval, a request for changes or a
+ * rejection decides the open one. Written in the transaction that swaps the
+ * state, so a round and the state it describes can never disagree.
+ */
+export type ReviewRoundWrite =
+  | {
+      kind: 'open'
+      requestedBy: string
+      requestedByActor: DocumentSubmitActor
+      reviewerUserIds: readonly string[]
+    }
+  | {
+      kind: 'decide'
+      outcome: Exclude<DocumentReviewOutcome, 'requested'>
+      decidedBy: string
+      comment: string | null
+    }
+
+async function writeReviewRound(tx: Transaction, version: DocumentVersion, review: ReviewRoundWrite): Promise<void> {
+  const now = new Date()
+  const keys = { organizationId: version.organizationId, documentId: version.documentId, versionId: version.id }
+  if (review.kind === 'open') {
+    // A version leaves `draft` only by this transition, so an open round can
+    // exist only for data written outside it; the old round stands and this
+    // one is not duplicated (`uniq_document_version_reviews_open_per_version`).
+    await tx
+      .insert(documentVersionReviews)
+      .values({
+        ...keys,
+        requestedBy: review.requestedBy,
+        requestedByActor: review.requestedByActor,
+        requestedAt: now,
+        reviewerUserIds: [...review.reviewerUserIds],
+      })
+      .onConflictDoNothing()
+    return
+  }
+  const decision = { outcome: review.outcome, decidedBy: review.decidedBy, decidedAt: now, comment: review.comment }
+  const decided = await tx
+    .update(documentVersionReviews)
+    .set(decision)
+    .where(and(eq(documentVersionReviews.versionId, version.id), eq(documentVersionReviews.outcome, 'requested')))
+    .returning({ id: documentVersionReviews.id })
+  if (decided.length > 0) return
+  // A version submitted before 0136 whose round the backfill could not
+  // recover: the decision is still recorded, against the submit the version
+  // itself remembers.
+  await tx.insert(documentVersionReviews).values({
+    ...keys,
+    requestedBy: version.submittedBy ?? review.decidedBy,
+    requestedByActor: version.submittedByActor ?? 'human',
+    requestedAt: version.submittedAt ?? now,
+    ...decision,
+  })
 }
 
 /**
