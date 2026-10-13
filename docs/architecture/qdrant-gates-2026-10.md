@@ -283,8 +283,13 @@ between 62 and 89 ms across the same runs.
    quantization cost.
 4. **G1** on a deployed stack, with the per-expectation diff reviewed; **G4**
    and **G5** as ops drills.
-5. Cross-project grouped search (`search_grouped`) still sends unpriced BM25
-   over several scopes. It is not measured here: this corpus has one scope.
+5. ~~Cross-project grouped search sends unpriced BM25~~: closed.
+   `search_grouped` prices the BM25 terms with the same `select_terms` rule,
+   on document frequencies counted over the union of the searched scopes, the
+   corpus its IDF is already computed over. Pinned against a real Qdrant with
+   three projects (`test_grouped_search_prices_bm25_over_the_searched_scopes`,
+   `test_term_frequencies_count_over_the_union_of_the_searched_scopes`). Its
+   ranking effect is still not measured: this corpus has one scope.
 
 ## Re-run on the merged code
 

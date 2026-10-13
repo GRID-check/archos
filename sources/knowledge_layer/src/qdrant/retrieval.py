@@ -18,7 +18,9 @@ from qdrant_client import models
 from .boost import parse_boost
 from .payload import project_payload
 from .schema import TEXT_FIELD
+from .scope import scope_filter
 from .search import Hit
+from .search import _alias as search_alias
 from .search import exact_term
 from .search import grouped_search
 from .search import hybrid_search
@@ -89,23 +91,38 @@ def set_project_facts(scope: str, facts: Mapping[str, Any] | None, status: str) 
 
 
 def term_frequencies(
-    scope: str, terms: Sequence[str], cache: MutableMapping[tuple[str, int, str], int] | None = None
+    scopes: str | Sequence[str],
+    terms: Sequence[str],
+    cache: MutableMapping[tuple[str, int, str], int] | None = None,
 ) -> tuple[int, dict[str, int]]:
-    """How many chunks ``scope`` holds, and how many contain each exact term (``search.exact_term``).
+    """How many chunks ``scopes`` hold together, and how many contain each exact term (``search.exact_term``).
 
-    ``cache`` keeps a count per ``(scope, total, term)``: a corpus that has not
-    changed size answers a recurring term without a round trip, and any write
-    that changes the count invalidates it.
+    Over several scopes (cross-project search) both counts are over their
+    union: the corpus the BM25 channel's IDF is computed over
+    (``search._prefetches``), so a term is judged selective where it is ranked.
+
+    ``cache`` keeps a count per ``(scopes, total, term)``, the scopes joined
+    sorted: a corpus that has not changed size answers a recurring term without
+    a round trip, and any write that changes the count invalidates it.
     """
+    names = [scopes] if isinstance(scopes, str) else list(dict.fromkeys(scopes))
     store = get_store()
-    total = store.count(scope)
+    if not names or not store.exists(names[0]):
+        return 0, dict.fromkeys(terms, 0)
+    alias = search_alias(store, names)
+
+    def count(*extra: models.Condition) -> int:
+        return store.client.count(alias, count_filter=scope_filter(names, None, *extra), exact=True).count
+
+    total = count()
+    label = ",".join(sorted(names))
     counts: dict[str, int] = {}
     for term in dict.fromkeys(terms):
-        key = (scope, total, term)
+        key = (label, total, term)
         if cache is not None and key in cache:
             counts[term] = cache[key]
             continue
-        counts[term] = store.count(scope, None, exact_term(term))
+        counts[term] = count(exact_term(term))
         if cache is not None:
             cache[key] = counts[term]
     return total, counts

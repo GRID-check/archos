@@ -512,6 +512,68 @@ async def test_a_hit_carries_the_chunks_own_dokumentart_as_chroma_does(retriever
     assert result.chunks[0].metadata.get("doc_class") == "einreichplan"
 
 
+# ---------------------------------------------------------------- grouped search: BM25 priced over the union
+
+
+def _write(retriever: LlamaIndexRetriever, scope: str, texts: list[str]) -> None:
+    from knowledge_layer.qdrant.payload import ChunkRecord
+
+    records = [
+        ChunkRecord(str(uuid.uuid4()), text, _vector(text), {"file_name": f"{scope}_{i}.pdf", "page_label": "1"})
+        for i, text in enumerate(texts)
+    ]
+    store_module.get_store(retriever._identity()).upsert(scope, records)
+
+
+@pytest.fixture
+def three_projects(retriever):
+    """Two searched projects (56 chunks together) and one that is not searched.
+
+    „Ausgabe“ is on every searched chunk; „Holzbau“ on half of proj_a (13 of
+    26) but under a quarter of the union (13 of 56); „Fluchttreppe“ only in
+    proj_c, which the search does not reach.
+    """
+    _write(retriever, "proj_a", [f"Ausgabe {i}: Holzbau im Wohnbau" for i in range(13)])
+    _write(retriever, "proj_a", [f"Ausgabe {i}: Fassade aus Glas" for i in range(13, 26)])
+    _write(retriever, "proj_b", [f"Ausgabe {i}: Stahlbeton und Decken" for i in range(30)])
+    _write(retriever, "proj_c", [f"Fluchttreppe Nummer {i}" for i in range(30)])
+    return retriever
+
+
+def test_term_frequencies_count_over_the_union_of_the_searched_scopes(three_projects):
+    from knowledge_layer.qdrant import retrieval
+
+    total, counts = retrieval.term_frequencies(["proj_a", "proj_b"], ["holzbau", "ausgabe", "fluchttreppe"])
+    assert (total, counts) == (56, {"holzbau": 13, "ausgabe": 56, "fluchttreppe": 0})
+    assert retrieval.term_frequencies("proj_a", ["holzbau"]) == (26, {"holzbau": 13})
+
+
+async def test_grouped_search_prices_bm25_over_the_searched_scopes(three_projects, monkeypatch):
+    """Cross-project search sent the raw question to BM25 (qdrant-gates-2026-10.md, "Open, before the flip").
+
+    Priced over the union: the ubiquitous „Ausgabe“ and the unreachable
+    „Fluchttreppe“ drop out, and „Holzbau“, common in one project but selective
+    across both, stays.
+    """
+    from knowledge_layer.qdrant import retrieval
+
+    sent: list[str] = []
+    real = retrieval.search_grouped
+
+    def spy(scopes, **kwargs):
+        sent.append(kwargs["lexical_text"])
+        return real(scopes, **kwargs)
+
+    monkeypatch.setattr(retrieval, "search_grouped", spy)
+    three_projects.hybrid_search = True
+
+    groups = await three_projects.search_grouped("Holzbau Fluchttreppe Ausgabe", ["proj_a", "proj_b"], 5, 2)
+
+    assert sent == ["holzbau"]
+    assert groups and {scope for scope, _ in groups} <= {"proj_a", "proj_b"}
+    assert ("proj_a,proj_b", 56, "holzbau") in three_projects._qdrant_term_df
+
+
 # ---------------------------------------------------------------- health
 
 
