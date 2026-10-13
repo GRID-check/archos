@@ -21,6 +21,7 @@ import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FieldError } from '@/components/ui/field'
+import { Kbd } from '@/components/ui/kbd'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { TimeAgo } from '@/components/ui/time-ago'
 import { useLocale, useTranslations } from '@/i18n'
@@ -185,13 +186,14 @@ function MetaChip({
   children,
   tone,
   ...props
-}: { icon: typeof UserRound; tone?: 'warning'; children: React.ReactNode } & React.ComponentProps<'button'>) {
+}: { icon: typeof UserRound; tone?: 'urgent'; children: React.ReactNode } & React.ComponentProps<'button'>) {
   return (
     <button
       type="button"
       className={cn(
         'border-border/80 text-muted-foreground hover:text-foreground hover:bg-accent/60 inline-flex h-6 items-center gap-1 rounded-full border px-2 text-[11px] font-medium transition-colors duration-quick ease-out disabled:pointer-events-none',
-        tone === 'warning' && 'text-warning border-warning/40'
+        // Overdue is ink and weight, not gold: gold is the Büroablage's colour.
+        tone === 'urgent' && 'text-foreground border-foreground/50 font-semibold'
       )}
       {...props}
     >
@@ -259,7 +261,7 @@ function ResponsibilityRow({
       <span className="relative inline-flex">
         <MetaChip
           icon={CalendarClock}
-          tone={overdue ? 'warning' : undefined}
+          tone={overdue ? 'urgent' : undefined}
           disabled={!editable}
           onClick={() => dateRef.current?.showPicker?.()}
         >
@@ -318,11 +320,17 @@ function Card({ flip, children, testId }: { flip: boolean; children: React.React
       data-testid={testId}
       role="dialog"
       className={cn(
-        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none absolute -top-7 w-[19rem] rounded-xl border shadow-xl',
-        flip ? 'right-3 origin-top-right' : 'left-9 origin-top-left'
+        'bg-popover text-popover-foreground border-border/70 animate-in fade-in-0 zoom-in-95 duration-base ease-entrance motion-reduce:animate-none absolute top-0 w-[20rem] rounded-xl border shadow-xl',
+        flip ? 'right-4 origin-top-right' : 'left-4 origin-top-left'
       )}
       onPointerDown={(event) => event.stopPropagation()}
     >
+      {/* The hairline from the mark's edge to its card: which mark this is
+          about, without the card sitting on it. */}
+      <span
+        aria-hidden
+        className={cn('bg-foreground/40 absolute top-3.5 h-px w-4', flip ? '-right-4' : '-left-4')}
+      />
       {children}
     </div>
   )
@@ -347,12 +355,7 @@ export function DraftCard({
   return (
     <Card flip={flip} testId="review-draft">
       <div className="space-y-3 p-3">
-        <div className="flex items-center justify-between gap-2">
-          <KindPicker value={kind} onChange={setKind} />
-          <span className="text-muted-foreground text-[11px]">
-            {draft.shape === 'region' ? t('review.region') : t('review.point')}
-          </span>
-        </div>
+        <KindPicker value={kind} onChange={setKind} />
         <Composer
           autoFocus
           testId="review-draft-body"
@@ -546,30 +549,33 @@ export function ThreadCard({
       </div>
 
       {proposed && annotation.canEdit && (
-        <div className="bg-muted/50 flex items-center gap-2 border-t px-3 py-2">
-          <p className="text-muted-foreground flex-1 text-[11px] leading-4">{t('review.proposalHint')}</p>
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            className="h-7 px-2.5 text-xs"
-            disabled={busy}
-            data-testid="thread-dismiss"
-            onClick={() => void move('dismissed')}
-          >
-            {t('review.dismiss')}
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            className="h-7 px-2.5 text-xs"
-            disabled={busy}
-            data-testid="thread-accept"
-            title={`${t('review.accept')} (E)`}
-            onClick={() => void move('open')}
-          >
-            {t('review.accept')}
-          </Button>
+        <div className="bg-muted/40 space-y-2 border-t px-3 py-2.5">
+          <p className="text-muted-foreground text-[11px] leading-4">{t('review.proposalHint')}</p>
+          <div className="grid grid-cols-2 gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 justify-between text-xs"
+              disabled={busy}
+              data-testid="thread-dismiss"
+              onClick={() => void move('dismissed')}
+            >
+              {t('review.dismiss')}
+              <Kbd className="ml-2">⌫</Kbd>
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              className="h-8 justify-between text-xs"
+              disabled={busy}
+              data-testid="thread-accept"
+              onClick={() => void move('open')}
+            >
+              {t('review.accept')}
+              <Kbd className="bg-background/15 text-background ml-2 border-transparent">E</Kbd>
+            </Button>
+          </div>
         </div>
       )}
 

@@ -1,13 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
+import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import { MessageSquarePlus, MousePointer2, Sparkles, SquareDashed, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
-import { ToolbarIconButton } from '@/components/ui/floating-toolbar'
+import { Kbd } from '@/components/ui/kbd'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { useTranslations } from '@/i18n'
@@ -233,25 +233,44 @@ export function DocumentReviewMode({
     return () => window.removeEventListener('keydown', onKey)
   }, [open, draft, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
 
-  const toolbarLead = useMemo(
-    () =>
-      review.canAnnotate
-        ? TOOLS.map(({ tool: option, key, icon: Icon }) => (
-            <ToolbarIconButton
-              key={option}
+  /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
+  const tools = review.canAnnotate ? (
+    <div
+      role="toolbar"
+      aria-label={t('review.toolsLabel')}
+      data-testid="review-tools"
+      className="bg-popover/95 border-border/70 pointer-events-auto absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-xl border p-1 shadow-md backdrop-blur-md"
+    >
+      {TOOLS.map(({ tool: option, key, icon: Icon }) => (
+        <Tooltip key={option}>
+          <TooltipTrigger asChild>
+            <button
+              type="button"
               data-testid={`review-tool-${option}`}
               aria-pressed={tool === option}
               aria-keyshortcuts={key}
               aria-label={t(`review.tools.${option}`)}
-              title={`${t(`review.tools.${option}`)} (${key})`}
               onClick={() => setTool(option)}
+              className={cn(
+                'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 [&_svg]:size-4',
+                tool === option ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+              )}
             >
               <Icon aria-hidden />
-            </ToolbarIconButton>
-          ))
-        : null,
-    [review.canAnnotate, tool, setTool, t]
-  )
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            {t(`review.tools.${option}`)} <Kbd className="ml-1">{key}</Kbd>
+          </TooltipContent>
+        </Tooltip>
+      ))}
+    </div>
+  ) : null
+
+  const walkProposals = useCallback(() => {
+    const next = review.step(1, 'proposed')
+    if (next) bring(next)
+  }, [review, bring])
 
   const followedState = following ? room.peers.find((state) => state.peer.peerId === following) : null
 
@@ -292,20 +311,16 @@ export function DocumentReviewMode({
             </DialogDescription>
           </div>
           <div className="ml-auto flex items-center gap-3">
-            <span
-              className={cn(
-                'text-muted-foreground inline-flex items-center gap-1.5 text-[11px] font-medium',
-                room.status !== 'live' && 'opacity-60'
-              )}
-              data-testid="review-live"
-              title={room.status === 'live' ? t('review.liveHint') : t('review.offlineHint')}
-            >
+            {room.status === 'offline' && (
               <span
-                aria-hidden
-                className={cn('size-1.5 rounded-full', room.status === 'live' ? 'bg-success' : 'bg-muted-foreground')}
-              />
-              {room.status === 'live' ? t('review.live') : t('review.offline')}
-            </span>
+                className="text-muted-foreground text-[11px] font-medium"
+                data-testid="review-offline"
+                title={t('review.offlineHint')}
+                role="status"
+              >
+                {t('review.offline')}
+              </span>
+            )}
             <Presence review={review} following={following} onFollow={setFollowing} />
             {onReviewWithPiloti && review.canAnnotate && (
               <Button
@@ -345,12 +360,12 @@ export function DocumentReviewMode({
                 </span>
               </>
             )}
+            {tools}
             <PdfDocumentView
               src={documentFileUrl(review.documentId)}
               title={documentName}
               focus={focus}
               onViewport={room.sendViewport}
-              toolbarLead={toolbarLead}
               pageOverlay={(page) => (
                 <ReviewPageLayer
                   page={page}
@@ -386,7 +401,7 @@ export function DocumentReviewMode({
               className="size-full"
             />
           </div>
-          <ReviewPanel review={review} onOpen={bring} />
+          <ReviewPanel review={review} onOpen={bring} onWalkProposals={walkProposals} />
         </div>
       </DialogContent>
     </Dialog>

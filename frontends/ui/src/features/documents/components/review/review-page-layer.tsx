@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type CSSProperties, type JSX, type Pointer
 import { Crosshair, Sparkles, SquareDashed } from 'lucide-react'
 import { motion, springGlide, useMotionToken } from '@/components/motion'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
-import { identityInk, personInitials } from '@/components/ui/avatar-identity'
+import { identityInk } from '@/components/ui/avatar-identity'
 import { LiveCursor } from '@/components/ui/live-cursor'
 import { useTranslations } from '@/i18n'
 import { isLive, type AnnotationView } from '@/lib/annotations/types'
@@ -26,12 +26,6 @@ const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
 /** Whose colour a mark wears: Piloti's ink, or the person who set it. */
 export function markInk(annotation: Pick<AnnotationView, 'authorKind' | 'createdBy'>): string {
   return annotation.authorKind === 'piloti' ? 'var(--foreground)' : identityInk(annotation.createdBy)
-}
-
-/** What a mark's bubble holds: the setter's initials, or Piloti's glyph. */
-export function MarkFace({ annotation }: { annotation: Pick<AnnotationView, 'authorKind' | 'createdByName'> }): JSX.Element {
-  if (annotation.authorKind === 'piloti') return <Sparkles className="size-3" aria-hidden />
-  return <>{personInitials(annotation.createdByName ?? '?')}</>
 }
 
 /** The point on a page an event hit, as shares of the page, clamped onto it. */
@@ -177,9 +171,14 @@ export function ReviewPageLayer({
 
   const selected = marks.find((annotation) => annotation.id === selectedId) ?? null
   const draftHere = draft?.page === page ? draft : null
-  // Beside the mark's pin, which is at its point or its region's top-left
-  // corner: to the right, or to the left when the pin is near the page's right edge.
-  const anchorOf = (place: { x: number; y: number }) => ({ x: place.x, y: place.y, flip: place.x > 0.62 })
+  // Beside the mark's whole box, on the side with more room, top-aligned with
+  // it: a card never covers what it is about. `x` is the edge it hangs from.
+  const anchorOf = (place: { x: number; y: number; w: number | null }) => {
+    const left = place.x
+    const right = place.x + (place.w ?? 0)
+    const flip = 1 - right < left
+    return { x: flip ? left : right, y: place.y, flip }
+  }
 
   return (
     <div ref={layerRef} className="pointer-events-none absolute inset-0" data-testid={`review-layer-${page}`}>
@@ -204,19 +203,21 @@ export function ReviewPageLayer({
         return (
           <div key={annotation.id} className={cn('contents', active && '[&>*]:z-20')}>
             {annotation.shape === 'region' && annotation.w && annotation.h && (
+              // An outline, not a fill: the linework under a region is what it
+              // is about. A tint arrives only while the mark is in hand, and
+              // multiplies, so a dimension under it stays black.
               <span
                 data-testid="review-region"
                 aria-hidden
                 className={cn(
-                  'absolute rounded-[3px] border-[1.5px] transition-opacity duration-quick ease-out motion-reduce:transition-none',
+                  'absolute rounded-[2px] border-[1.5px] mix-blend-multiply transition-[background-color,opacity] duration-quick ease-out motion-reduce:transition-none',
                   proposed && 'border-dashed',
-                  done && 'opacity-40',
-                  active && 'border-2'
+                  done && 'opacity-40'
                 )}
                 style={{
                   ...box(annotation.x, annotation.y, annotation.w, annotation.h),
                   borderColor: ink,
-                  backgroundColor: `color-mix(in oklch, ${ink} ${active ? 12 : 7}%, transparent)`,
+                  backgroundColor: active ? `color-mix(in oklch, ${ink} 9%, transparent)` : 'transparent',
                 }}
               />
             )}
@@ -227,7 +228,6 @@ export function ReviewPageLayer({
               <CommentPin
                 data-testid="review-pin"
                 number={annotation.number}
-                face={<MarkFace annotation={annotation} />}
                 color={ink}
                 proposed={proposed}
                 done={done}
@@ -270,16 +270,18 @@ export function ReviewPageLayer({
           {draftHere.shape === 'region' && draftHere.w && draftHere.h && (
             <span
               aria-hidden
-              className="border-foreground absolute z-20 rounded-[3px] border-2"
+              className="border-foreground absolute z-20 rounded-[2px] border-2 mix-blend-multiply"
               style={{
                 ...box(draftHere.x, draftHere.y, draftHere.w, draftHere.h),
-                backgroundColor: 'color-mix(in oklch, var(--foreground) 8%, transparent)',
+                backgroundColor: 'color-mix(in oklch, var(--foreground) 6%, transparent)',
               }}
             />
           )}
-          <span className={cn('absolute z-20', COMMENT_PIN_ON_POINT)} style={at(draftHere.x, draftHere.y)}>
-            <CommentPin as="span" face={<span className="bg-white/90 size-1.5 rounded-full" />} active />
-          </span>
+          {draftHere.shape === 'point' && (
+            <span className={cn('absolute z-20', COMMENT_PIN_ON_POINT)} style={at(draftHere.x, draftHere.y)}>
+              <CommentPin as="span" active color="var(--foreground)" />
+            </span>
+          )}
         </>
       )}
 

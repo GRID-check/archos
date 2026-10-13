@@ -1092,7 +1092,8 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
       onKeyDown={onKeyDown}
     >
       <Ground className="flex min-h-0 flex-1 flex-row">
-        {doc && railOpen && (
+        {/* A rail of one thumbnail is a 150px column that says „1". */}
+        {doc && railOpen && doc.numPages > 1 && (
           <PdfThumbnailRail
             doc={doc}
             pages={pages}

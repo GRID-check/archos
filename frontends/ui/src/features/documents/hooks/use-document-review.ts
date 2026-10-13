@@ -22,7 +22,7 @@ import {
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
 export type ReviewTool = 'select' | 'point' | 'region'
-export type ReviewFilter = 'open' | 'proposed' | 'closed'
+export type ReviewFilter = 'open' | 'closed'
 
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
 export interface ReviewDraft {
@@ -74,6 +74,8 @@ export function useDocumentReview(
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
+  /** Only what is on this reader's plate: assigned to them, or set by them. */
+  const [mine, setMine] = useState(false)
   const [tour, setTour] = useState<PilotiTour | null>(null)
   const [notice, setNotice] = useState<'conflict' | null>(null)
   const tourQueue = useRef<string[]>([])
@@ -232,22 +234,24 @@ export function useDocumentReview(
     [annotations]
   )
 
+  const me = room.self?.userId ?? null
   const listed = useMemo(
     () =>
-      annotations.filter((annotation) =>
-        filter === 'open'
-          ? isLive(annotation)
-          : filter === 'proposed'
-            ? annotation.status === 'proposed'
-            : !isLive(annotation)
+      annotations.filter(
+        (annotation) =>
+          (filter === 'open' ? isLive(annotation) : !isLive(annotation)) &&
+          (!mine || (me !== null && (annotation.assigneeUserId === me || annotation.createdBy === me)))
       ),
-    [annotations, filter]
+    [annotations, filter, mine, me]
   )
 
   /** Step to the next or previous live mark, in the order a review walks them. */
   const step = useCallback(
-    (direction: 1 | -1) => {
-      const live = annotations.filter((annotation) => isLive(annotation) && annotation.onCurrentFassung)
+    (direction: 1 | -1, scope: 'live' | 'proposed' = 'live') => {
+      const live = annotations.filter(
+        (annotation) =>
+          annotation.onCurrentFassung && (scope === 'proposed' ? annotation.status === 'proposed' : isLive(annotation))
+      )
       if (live.length === 0) return null
       const index = live.findIndex((annotation) => annotation.id === selectedId)
       const next = live[(index + direction + live.length) % live.length] ?? live[0]
@@ -276,6 +280,8 @@ export function useDocumentReview(
     hover: setHoveredId,
     filter,
     setFilter,
+    mine,
+    setMine,
     tour,
     notice,
     dismissNotice: () => setNotice(null),

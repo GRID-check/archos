@@ -10,7 +10,7 @@ import { useTranslations } from '@/i18n'
 import { isLive } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview } from '../../hooks/use-document-review'
-import { MarkFace, markInk } from './review-page-layer'
+import { markInk } from './review-page-layer'
 
 /** Live marks the rail shows before it sends the reader into the review for the rest. */
 const PREVIEWED = 3
@@ -56,7 +56,6 @@ export function AnnotationsSummary({
             <CommentPin
               as="span"
               number={annotation.number}
-              face={<MarkFace annotation={annotation} />}
               color={markInk(annotation)}
               proposed={annotation.status === 'proposed'}
             />
