@@ -194,29 +194,39 @@ def _free_port() -> int:
 
 
 @pytest.fixture
-def chroma_server(chroma_dir):
+def chroma_server(chroma_dir, tmp_path):
     persist, held = chroma_dir
     port = _free_port()
     chroma_cli = pathlib.Path(sys.executable).with_name("chroma")
+    # The server's own output, so a start that fails says why (CI showed only
+    # "did not come up" while its output went to /dev/null).
+    log_path = tmp_path / "chroma-server.log"
+    log = log_path.open("wb")
     process = subprocess.Popen(
         [str(chroma_cli), "run", "--path", str(persist), "--port", str(port)],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+        stdout=log,
+        stderr=subprocess.STDOUT,
     )
     url = f"http://127.0.0.1:{port}"
     try:
-        for _ in range(100):
+        # A cold CI runner takes longer than a laptop to start the server.
+        deadline = time.monotonic() + 60
+        while True:
             try:
                 urllib.request.urlopen(f"{url}/api/v2/heartbeat", timeout=1)
                 break
             except OSError:
-                time.sleep(0.2)
-        else:
-            pytest.fail("the Chroma server did not come up")
+                if process.poll() is not None or time.monotonic() > deadline:
+                    log.flush()
+                    output = log_path.read_text(errors="replace")[-4000:]
+                    state = f"exited with {process.returncode}" if process.poll() is not None else "still starting"
+                    pytest.fail(f"the Chroma server did not come up ({state}); its output:\n{output}")
+                time.sleep(0.25)
         yield url, held
     finally:
         process.terminate()
         process.wait(timeout=30)
+        log.close()
 
 
 def test_http_mode_exports_what_the_server_holds(chroma_server, tmp_path):
