@@ -606,7 +606,10 @@ export function DocumentFassungen({
           <FassungHeader standing={standing} person={person} headerAct={headerAct} />
         </div>
 
-        <CollapsibleContent className="[&>*+*]:border-border/60 [&>*+*]:border-t">
+        {/* `empty:hidden`: open with nothing to say (no viewer, no suggestion,
+            a lone Fassung) it would still take the group's hairline above it
+            and draw a second rule along the group's foot. */}
+        <CollapsibleContent className="[&>*+*]:border-border/60 [&>*+*]:border-t empty:hidden">
           {viewer !== undefined && listing !== null && newest !== null && (
             <div className="space-y-1.5 p-3">
               <DocumentReviewControls

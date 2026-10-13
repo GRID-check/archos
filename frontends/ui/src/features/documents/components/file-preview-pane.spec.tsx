@@ -490,6 +490,60 @@ describe('FilePreviewPane', () => {
       expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/visual-details'))).toBe(false)
     })
 
+    describe('turning to a page from its reading', () => {
+      // The well mounts its viewer once it has been seen. The suite's
+      // IntersectionObserver never reports anything, so the well is never
+      // seen and no page link would ever render; without one the hook takes
+      // the well as seen, which is what a real browser reports.
+      beforeEach(() => vi.stubGlobal('IntersectionObserver', undefined))
+      afterEach(() => vi.unstubAllGlobals())
+
+      const withReading = (detail: Record<string, unknown>, previewUrl: string) =>
+        vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
+          String(input).includes('/visual-details')
+            ? ({ ok: true, json: async () => ({ details: [detail] }) } as Response)
+            : ({ ok: true, json: async () => ({ url: previewUrl }) } as Response),
+        )
+
+      it('links each reading to its page where the well is the PDF viewer', async () => {
+        withReading(
+          { page: 7, contentType: 'drawing', drawingType: 'floor_plan', scale: '1:100', text: 'Regelgeschoss.' },
+          'https://example.test/plan.pdf',
+        )
+        render(<FilePreviewPane file={{ ...mockFile, contentTypes: ['text', 'drawing'] }} projectId="proj-1" />)
+        expect((await screen.findByTitle('Show page 7 in the document')).tagName).toBe('BUTTON')
+      })
+
+      it('offers no page link where the well is not the PDF viewer', async () => {
+        // A photo has no page to turn to: an entry drawn as a link would do
+        // nothing, and in the peek it would also flip to the Document tab.
+        withReading(
+          { page: 1, contentType: 'image', drawingType: 'photo', scale: '', text: 'Ein Baustellenfoto.' },
+          'https://example.test/photo.jpg',
+        )
+        render(
+          <FilePreviewPane
+            file={{ ...mockFile, filename: 'Baustelle.jpg', contentType: 'image/jpeg', contentTypes: ['image'] }}
+            projectId="proj-1"
+          />
+        )
+        expect(await screen.findByText('Ein Baustellenfoto.')).toBeDefined()
+        expect(screen.queryByTitle(/show page/i)).toBeNull()
+      })
+    })
+
+    it('asks for no descriptions when the metadata panel is off', () => {
+      const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue({ ok: false, json: async () => ({}) } as Response)
+      render(
+        <FilePreviewPane
+          file={{ ...mockFile, contentTypes: ['text', 'drawing'] }}
+          projectId="proj-1"
+          showMetadataPanel={false}
+        />
+      )
+      expect(fetchSpy.mock.calls.some(([input]) => String(input).includes('/visual-details'))).toBe(false)
+    })
+
     it('translates a drawing type it knows', async () => {
       vi.spyOn(globalThis, 'fetch').mockImplementation(async (input: RequestInfo | URL) =>
         String(input).includes('/visual-details')

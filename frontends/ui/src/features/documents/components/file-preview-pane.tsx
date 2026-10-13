@@ -312,12 +312,14 @@ export function FilePreviewPane({
    */
   const [detailsFailed, setDetailsFailed] = useState(false)
   /**
-   * The page a reading asked the viewer to turn to. Cleared and set again on
-   * the next frame, so asking for the page the viewer was last sent to still
-   * moves it after the reader has scrolled away: the viewer scrolls when its
-   * `page` changes, and 7 → 7 is no change.
+   * The page a reading asked the viewer to turn to. `'turning'` for the one
+   * frame between two asks: the viewer scrolls when its `page` CHANGES, and
+   * 7 → 7 is no change, so a second ask for the page the reader has since
+   * scrolled away from goes through null first. Null-for-a-frame alone would
+   * hand the viewer the quarantine finding's page in between, a second jump.
    */
-  const [shownPage, setShownPage] = useState<number | null>(null)
+  const [shownPage, setShownPage] = useState<number | 'turning' | null>(null)
+  const turnFrame = useRef<number | null>(null)
   /**
    * An `.ifc` is a building, and it previews as one. This is the ONLY thing
    * this pane knows about the BIM subsystem — `inferDocumentKind` already
@@ -558,8 +560,17 @@ export function FilePreviewPane({
   useEffect(() => {
     setDetails(null)
     setDetailsFailed(false)
+    // A turn still in flight belongs to the previous document.
+    if (turnFrame.current !== null) cancelAnimationFrame(turnFrame.current)
+    turnFrame.current = null
     setShownPage(null)
   }, [file.id])
+  useEffect(
+    () => () => {
+      if (turnFrame.current !== null) cancelAnimationFrame(turnFrame.current)
+    },
+    [],
+  )
 
   // An answer is about the document AS IT WAS when asked. Opened while it was
   // still being read, the section got an empty list and kept it for good, so
@@ -577,7 +588,9 @@ export function FilePreviewPane({
   // document has nothing to describe and costs no request. Cancelled on change
   // so a slow answer for the previous document, or basis, never lands.
   useEffect(() => {
-    if (!hasVisualContent || details !== null) return
+    // Nothing to show them in when the metadata panel is off (the peek's
+    // Details-less mount, a host that hides the rail): no request either.
+    if (!showMetadataPanel || !hasVisualContent || details !== null) return
     let cancelled = false
     setDetailsLoading(true)
     fetch(`/api/documents/${file.id}/visual-details`)
@@ -604,13 +617,17 @@ export function FilePreviewPane({
     }
     // `detailsBasis` too: a change that lands while a request is in flight
     // retires that request rather than letting its older answer stand.
-  }, [hasVisualContent, details, file.id, detailsBasis])
+  }, [showMetadataPanel, hasVisualContent, details, file.id, detailsBasis])
 
   /** Turn the viewer to `page`, from the reading that describes it. */
   const showPage = useCallback((page: number) => {
     setPeekView('document')
-    setShownPage(null)
-    requestAnimationFrame(() => setShownPage(page))
+    setShownPage('turning')
+    if (turnFrame.current !== null) cancelAnimationFrame(turnFrame.current)
+    turnFrame.current = requestAnimationFrame(() => {
+      turnFrame.current = null
+      setShownPage(page)
+    })
   }, [])
   const retryDetails = useCallback(() => {
     setDetailsFailed(false)
@@ -1015,7 +1032,7 @@ export function FilePreviewPane({
                     key={file.id}
                     src={documentFileUrl(file.id)}
                     title={actions.name}
-                    page={shownPage ?? shownFinding?.page ?? null}
+                    page={shownPage === 'turning' ? null : (shownPage ?? shownFinding?.page ?? null)}
                     highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}
@@ -1375,7 +1392,10 @@ export function FilePreviewPane({
                 loading={detailsLoading}
                 failed={detailsFailed}
                 onRetry={retryDetails}
-                onShowPage={showInlinePdf ? showPage : undefined}
+                // Only where the well IS the inline PDF viewer: an image, a
+                // PDF whose preview failed or is still loading has no page to
+                // turn to, and a link that does nothing is worse than none.
+                onShowPage={pdfInWell && showInlinePdf ? showPage : undefined}
                 className={cn((showIndexedHeading || fassungenShown) && 'mt-5')}
               />
             )}
@@ -1474,7 +1494,16 @@ export function FilePreviewPane({
                     <QuarantineFindings
                       errorMessage={file.errorMessage}
                       // A page to jump to only where the well is the PDF viewer.
-                      onShowFinding={shownType === 'application/pdf' ? setShownFinding : undefined}
+                      onShowFinding={
+                        shownType === 'application/pdf'
+                          ? (finding) => {
+                              // The finding is the page asked for now; a page
+                              // reading picked earlier must not mask it.
+                              setShownPage(null)
+                              setShownFinding(finding)
+                            }
+                          : undefined
+                      }
                       shownFinding={shownFinding}
                       testId="preview-held-findings"
                     />
