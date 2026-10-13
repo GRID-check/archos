@@ -79,6 +79,14 @@ export const PORT = {
    * `network-policies.ts`.
    */
   qdrantP2p: 6335,
+  /**
+   * Qdrant's dedicated metrics listener (`service.metrics_port`, 1.19): it
+   * serves `/metrics` and nothing else, WITHOUT the API key (every other path
+   * answers 404), so the collector scrapes it holding no credential. Our
+   * choice, not an upstream default: unset, Qdrant opens no such port. Only the
+   * collector may dial it (`allow-collector-to-qdrant-metrics`).
+   */
+  qdrantMetrics: 6336,
 } as const;
 
 /**
@@ -663,6 +671,22 @@ export const QDRANT = {
   secret: "qdrant-credentials", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
   /** CronJob name and `app.kubernetes.io/name` of its pods. */
   snapshotJob: "qdrant-snapshot",
+  /**
+   * Key prefix in `snapshotBucket` under which the snapshot CronJob records
+   * `GET /aliases` on every pass (`aliases-YYYY-MM-DD-HH-MM-SS.json`): aliases
+   * live in consensus, not in any collection snapshot, and every client
+   * addresses the store through them.
+   */
+  aliasesPrefix: "aliases/",
+  /** ConfigMap holding the Prometheus alerting rules for the cluster (`qdrant-alerts.ts`). */
+  alertRules: "qdrant-alert-rules",
+  /**
+   * `app.kubernetes.io/name` an operator gives a throwaway pod to reach the
+   * client ports (the runbook's `kubectl run … --labels`): a named caller in
+   * `allow-app-to-qdrant`, so a restore or a shard move can be driven from
+   * inside the namespace without borrowing a workload's label.
+   */
+  opsLabel: "qdrant-ops",
   /**
    * The SeaweedFS bucket shard snapshots are uploaded to (`snapshots_config`
    * s3). A platform bucket: the init Job creates it, and it is withheld from

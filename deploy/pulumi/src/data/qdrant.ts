@@ -12,6 +12,7 @@ import {
 } from "../platform/rollout";
 import { installPdb, onNodeGroup } from "../platform/scheduling";
 import { hardenedContainerSecurityContext } from "../platform/security";
+import { qdrantAlertRules } from "./qdrant-alerts";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -19,14 +20,19 @@ export interface Qdrant {
   statefulSet: k8s.apps.v1.StatefulSet;
   service: k8s.core.v1.Service;
   snapshotCronJob: k8s.batch.v1.CronJob;
+  /** The Prometheus alerting rules, rendered against this stack's limits. */
+  alertRules: k8s.core.v1.ConfigMap;
   /** In-cluster URL every backend tier points AIQ_QDRANT_URL at. */
   url: pulumi.Output<string>;
+  /** `host:port` of every peer's metrics listener, which the collector scrapes. */
+  metricsTargets: pulumi.Output<string[]>;
 }
 
 /** Keys of the `qdrant-credentials` Secret. */
 const KEY = {
   apiKey: "api-key", // pragma: allowlist secret (Secret key name, not a credential)
   readOnlyApiKey: "read-only-api-key", // pragma: allowlist secret (Secret key name, not a credential)
+  altApiKey: "alt-api-key", // pragma: allowlist secret (Secret key name, not a credential)
   s3SecretKey: "s3-secret-key", // pragma: allowlist secret (Secret key name, not a credential)
 } as const;
 
@@ -49,7 +55,13 @@ const CURL_UID = 100;
  * - No root `chown` init container: the pod runs as uid 1000 from its first
  *   start, and `fsGroup` owns the volume.
  * - Shard snapshots go to the in-cluster SeaweedFS (`snapshots_config` s3),
- *   taken by the `qdrant-snapshot` CronJob below.
+ *   taken by the `qdrant-snapshot` CronJob below, which also records the
+ *   aliases no snapshot holds.
+ * - `/metrics` is served on its own port without the key, for the collector
+ *   (`otel-collector.ts`), and the alerting rules ship as a ConfigMap.
+ *
+ * Operating it (restore, peer replacement, rebuilds, upgrades, key rotation):
+ * `docs/deployment/qdrant-runbook.md`.
  */
 export function installQdrant(
   cfg: GridConfig,
@@ -134,6 +146,7 @@ export function installQdrant(
           { port: PORT.qdrantHttp, targetPort: PORT.qdrantHttp, name: "http" },
           { port: PORT.qdrantGrpc, targetPort: PORT.qdrantGrpc, name: "grpc" },
           { port: PORT.qdrantP2p, targetPort: PORT.qdrantP2p, name: "p2p" },
+          { port: PORT.qdrantMetrics, targetPort: PORT.qdrantMetrics, name: "metrics" },
         ],
       },
     },
@@ -162,13 +175,31 @@ export function installQdrant(
     installPdb(QDRANT.name, namespace, provider, labels, [statefulSet]);
   }
 
-  const snapshotCronJob = installSnapshotCronJob(cfg, provider, namespace, [secret, service, ...snapshotDeps]);
+  const snapshotCronJob = installSnapshotCronJob(cfg, provider, namespace, s3Endpoint, [
+    secret,
+    service,
+    ...snapshotDeps,
+  ]);
+
+  // Rules, not an evaluator: nothing in the cluster evaluates Prometheus rules
+  // today (`qdrant-alerts.ts` says what reads them). Rendered here so the
+  // memory rule divides by this stack's limit, not a number copied by hand.
+  const alertRules = new k8s.core.v1.ConfigMap(
+    QDRANT.alertRules,
+    {
+      metadata: { name: QDRANT.alertRules, namespace, labels },
+      data: { "qdrant.rules.yaml": qdrantAlertRules(cfg) },
+    },
+    { provider },
+  );
 
   return {
     statefulSet,
     service,
     snapshotCronJob,
+    alertRules,
     url: pulumi.interpolate`http://${QDRANT.name}.${ns}.svc.cluster.local:${PORT.qdrantHttp}`,
+    metricsTargets: ns.apply((n) => metricsTargets(n, cfg.qdrant.replicas)),
   };
 }
 
@@ -186,6 +217,8 @@ function qdrantSecret(
     [KEY.apiKey]: cfg.qdrant.apiKey,
     [KEY.readOnlyApiKey]: cfg.qdrant.readOnlyApiKey,
     [KEY.s3SecretKey]: cfg.qdrant.snapshots.s3SecretKey,
+    // Only during a key rotation; its arrival and its removal each roll the peers.
+    ...(cfg.qdrant.altApiKey ? { [KEY.altApiKey]: cfg.qdrant.altApiKey } : {}),
   };
   const secret = new k8s.core.v1.Secret(
     QDRANT.secret,
@@ -237,6 +270,9 @@ export function qdrantEnv(cfg: GridConfig, s3Endpoint: pulumi.Input<string>): En
     { name: "QDRANT__LOG_LEVEL", value: "INFO" },
     { name: "QDRANT__TELEMETRY_DISABLED", value: "true" },
     { name: "QDRANT__SERVICE__HTTP_PORT", value: String(PORT.qdrantHttp) },
+    // `/metrics` alone, without the key, on a port only the collector may
+    // dial. On 6333 the same path needs a key the collector would then hold.
+    { name: "QDRANT__SERVICE__METRICS_PORT", value: String(PORT.qdrantMetrics) },
     // Explicit: the image's production.yaml leaves gRPC commented out, and the
     // client prefers it.
     { name: "QDRANT__SERVICE__GRPC_PORT", value: String(PORT.qdrantGrpc) },
@@ -246,7 +282,25 @@ export function qdrantEnv(cfg: GridConfig, s3Endpoint: pulumi.Input<string>): En
     // the probes use stay open (they are whitelisted in Qdrant itself).
     qref("QDRANT__SERVICE__API_KEY", KEY.apiKey),
     qref("QDRANT__SERVICE__READ_ONLY_API_KEY", KEY.readOnlyApiKey),
+    // A second read-write key, accepted on the API and on p2p, for the length
+    // of a rotation (drilled 2026-10-13: three rolls, no failed write).
+    ...(cfg.qdrant.altApiKey ? [qref("QDRANT__SERVICE__ALT_API_KEY", KEY.altApiKey)] : []),
     { name: "QDRANT__CLUSTER__ENABLED", value: String(clustered) },
+    // Writes refused with 507 near the memory limit or a full volume, rather
+    // than an OOM kill mid-optimisation or a WAL that cannot grow. The ingest
+    // queue retries a refused write. Seeds the quota manager on a cluster's
+    // first start only (config.ts `quotas`); `PUT /quotas` changes it after.
+    { name: "QDRANT__STORAGE__QUOTAS__ENABLED", value: "true" },
+    {
+      name: "QDRANT__STORAGE__QUOTAS__MAX_RESIDENT_MEMORY_PERCENT",
+      value: String(cfg.qdrant.quotas.memoryPercent),
+    },
+    { name: "QDRANT__STORAGE__QUOTAS__MAX_DISK_USAGE_PERCENT", value: String(cfg.qdrant.quotas.diskPercent) },
+    // Recovery only: load segments without making them resident, for a peer
+    // that OOMs while loading. Unset is Qdrant's `disabled`.
+    ...(cfg.qdrant.lowMemoryMode
+      ? [{ name: "QDRANT__STORAGE__LOW_MEMORY_MODE", value: cfg.qdrant.lowMemoryMode }]
+      : []),
     // Peers must present the read-write key on p2p (1.18+). Safe because every
     // peer runs one version from its first start; a future rolling upgrade
     // across a version that changes internal auth turns it off for the roll
@@ -315,6 +369,7 @@ function qdrantPodSpec(
           { containerPort: PORT.qdrantHttp, name: "http" },
           { containerPort: PORT.qdrantGrpc, name: "grpc" },
           { containerPort: PORT.qdrantP2p, name: "p2p" },
+          { containerPort: PORT.qdrantMetrics, name: "metrics" },
         ],
         // Loading segments precedes the API, so a large collection takes
         // minutes to answer at all: 15 minutes before liveness takes over.
@@ -341,41 +396,68 @@ function qdrantPodSpec(
   };
 }
 
+/** Peer `i`'s fully qualified headless DNS name. */
+function peerHost(namespace: string, i: number): string {
+  return `${QDRANT.name}-${i}.${QDRANT.headless}.${namespace}.svc.cluster.local`;
+}
+
 /** Every peer's REST URL, by headless DNS name. */
 export function peerUrls(namespace: string, replicas: number): string[] {
-  return Array.from(
-    { length: replicas },
-    (_, i) => `http://${QDRANT.name}-${i}.${QDRANT.headless}.${namespace}.svc.cluster.local:${PORT.qdrantHttp}`,
-  );
+  return Array.from({ length: replicas }, (_, i) => `http://${peerHost(namespace, i)}:${PORT.qdrantHttp}`);
 }
 
 /**
- * The CronJob's script. Qdrant has no cluster-wide snapshot: a collection
- * snapshot taken on a peer holds that peer's shards only, so every collection
- * is snapshotted on every peer. Then snapshots older than RETENTION_DAYS are
- * deleted, read from the timestamp Qdrant puts in each name
- * (`<collection>-<peer>-YYYY-MM-DD-HH-MM-SS.snapshot`); a name in any other
- * shape is never deleted. A 404 on delete is another peer having deleted the
- * same object from the shared bucket first.
+ * Every peer's metrics listener as a scrape target. Per peer, never the
+ * ClusterIP Service: `/metrics` reports only the peer that answers, so a
+ * load-balanced scrape would sample a different peer each time.
+ */
+export function metricsTargets(namespace: string, replicas: number): string[] {
+  return Array.from({ length: replicas }, (_, i) => `${peerHost(namespace, i)}:${PORT.qdrantMetrics}`);
+}
+
+/**
+ * The CronJob's script, in two parts.
+ *
+ * First the aliases. Every client addresses a collection through an alias
+ * (`piloti_office` → `piloti_office_v1`), aliases live in consensus, and no
+ * snapshot holds them: a cluster restored from snapshots alone answers every
+ * search with "collection not found". So `GET /aliases` is read from the first
+ * peer that answers and uploaded to `$S3_BUCKET/aliases/` as the snapshot
+ * identity, SigV4-signed by curl itself.
+ *
+ * Then the shards. Qdrant has no cluster-wide snapshot: a collection snapshot
+ * taken on a peer holds that peer's shards only, so every collection is
+ * snapshotted on every peer.
+ *
+ * Both are expired after RETENTION_DAYS, read from the timestamp in each name
+ * (`<collection>-<peer>-YYYY-MM-DD-HH-MM-SS.snapshot`,
+ * `aliases-YYYY-MM-DD-HH-MM-SS.json`); a name in any other shape is never
+ * deleted. A 404 on a snapshot delete is another peer having deleted the same
+ * object from the shared bucket first.
  *
  * Every peer and collection is attempted; any failure fails the Job at the
- * end, with each one named in the log. Aliases are not in snapshots and are
- * not recorded here.
+ * end, with each one named in the log. `names` and the key listing end in
+ * `|| true` because grep exits 1 on no match, and under `pipefail` an empty
+ * cluster would otherwise read as one that cannot be listed.
  */
 export function snapshotScript(): string {
   return String.raw`set -eu -o pipefail
 q() { curl -fsS --connect-timeout 10 -H "api-key: $QDRANT_API_KEY" "$@"; }
-names() { grep -o '"name":"[^"]*"' | cut -d'"' -f4; }
+s3() { curl -fsS --connect-timeout 10 --aws-sigv4 "aws:amz:$S3_REGION:s3" --user "$S3_ACCESS_KEY:$S3_SECRET_KEY" "$@"; }
+names() { grep -o '"name":"[^"]*"' | cut -d'"' -f4 || true; }
 cutoff=$(date -u -d "@$(( $(date +%s) - RETENTION_DAYS * 86400 ))" +%Y%m%d%H%M%S)
 failed=0
 fail() { echo "FAILED: $*"; failed=1; }
+# True when a name stamped -YYYY-MM-DD-HH-MM-SS before suffix $2 is older than the cutoff.
+expired() {
+  ts=$(echo "$1" | sed -n "s/.*-\([0-9]\{4\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)$2\$/\1\2\3\4\5\6/p")
+  [ -n "$ts" ] && awk -v t="$ts" -v c="$cutoff" 'BEGIN { exit !(t < c) }'
+}
 expire() {
   peer=$1 c=$2
   snapshots=$(q "$peer/collections/$c/snapshots" | names) || { fail "cannot list snapshots of $c on $peer"; return; }
   for s in $snapshots; do
-    ts=$(echo "$s" | sed -n 's/.*-\([0-9]\{4\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)-\([0-9]\{2\}\)\.snapshot$/\1\2\3\4\5\6/p')
-    [ -n "$ts" ] || continue
-    awk -v t="$ts" -v c="$cutoff" 'BEGIN { exit !(t < c) }' || continue
+    expired "$s" '\.snapshot' || continue
     code=$(curl -sS -o /dev/null -w '%{http_code}' -X DELETE -H "api-key: $QDRANT_API_KEY" "$peer/collections/$c/snapshots/$s?wait=true") || code=000
     case "$code" in
       200|404) echo "expired $s" ;;
@@ -383,6 +465,28 @@ expire() {
     esac
   done
 }
+expire_aliases() {
+  keys=$(s3 "$S3_ENDPOINT/$S3_BUCKET?list-type=2&prefix=$ALIASES_PREFIX" | { grep -o '<Key>[^<]*</Key>' || true; } | sed 's/<[^>]*>//g') || { fail "cannot list $ALIASES_PREFIX"; return; }
+  for k in $keys; do
+    expired "$k" '\.json' || continue
+    if s3 -X DELETE "$S3_ENDPOINT/$S3_BUCKET/$k" >/dev/null; then echo "expired $k"; else fail "delete $k"; fi
+  done
+}
+record_aliases() {
+  for peer in $PEERS; do
+    aliases=$(q --retry 3 --retry-all-errors "$peer/aliases") || continue
+    key="$ALIASES_PREFIX""aliases-$(date -u +%Y-%m-%d-%H-%M-%S).json"
+    if printf '%s' "$aliases" | s3 -X PUT -H 'content-type: application/json' --data-binary @- "$S3_ENDPOINT/$S3_BUCKET/$key" >/dev/null; then
+      echo "recorded $key from $peer: $aliases"
+      expire_aliases
+    else
+      fail "upload $key"
+    fi
+    return
+  done
+  fail "cannot read aliases from any peer"
+}
+record_aliases
 for peer in $PEERS; do
   collections=$(q --retry 3 --retry-all-errors "$peer/collections" | names) || { fail "cannot list collections on $peer"; continue; }
   [ -n "$collections" ] || echo "no collections on $peer"
@@ -399,14 +503,16 @@ exit "$failed"`;
 }
 
 /**
- * Daily shard snapshots of every collection to the SeaweedFS bucket
- * (design §9 "Backups"). `Forbid`: a run that overruns into the next tick
- * must not be joined by it, or two snapshot passes stage on the PVC at once.
+ * Daily shard snapshots of every collection, and the aliases beside them, to
+ * the SeaweedFS bucket (design §9 "Backups"). `Forbid`: a run that overruns
+ * into the next tick must not be joined by it, or two snapshot passes stage on
+ * the PVC at once.
  */
 function installSnapshotCronJob(
   cfg: GridConfig,
   provider: k8s.Provider,
   namespace: pulumi.Input<string>,
+  s3Endpoint: pulumi.Input<string>,
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.CronJob {
   const labels = commonLabels(QDRANT.snapshotJob);
@@ -451,6 +557,14 @@ function installSnapshotCronJob(
                       // From the env: the script names the variable, so
                       // `kubectl describe pod` shows no key.
                       qref("QDRANT_API_KEY", KEY.apiKey),
+                      // The alias record goes up as the snapshot identity,
+                      // the one credential already scoped to this bucket alone.
+                      { name: "S3_ENDPOINT", value: s3Endpoint },
+                      { name: "S3_BUCKET", value: QDRANT.snapshotBucket },
+                      { name: "S3_REGION", value: QDRANT.s3Region },
+                      { name: "S3_ACCESS_KEY", value: cfg.qdrant.snapshots.s3AccessKey },
+                      qref("S3_SECRET_KEY", KEY.s3SecretKey),
+                      { name: "ALIASES_PREFIX", value: QDRANT.aliasesPrefix },
                     ],
                   },
                 ],

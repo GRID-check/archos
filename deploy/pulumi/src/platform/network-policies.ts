@@ -21,10 +21,11 @@ const CLICKHOUSE = LANGFUSE.clickhouse;
 export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
 
 /**
- * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`) plus
- * the snapshot CronJob: the named callers of Qdrant's client ports in rule 16.
- * A pod that reads or writes vectors and is missing here times out on every
- * call while its plan is green.
+ * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`), the
+ * snapshot CronJob, and the operator's throwaway `qdrant-ops` pod (the
+ * runbook's restore and shard moves, run from inside the namespace): the named
+ * callers of Qdrant's client ports in rule 16. A pod that reads or writes
+ * vectors and is missing here times out on every call while its plan is green.
  */
 export const QDRANT_CALLERS = [
   "aiq-agent",
@@ -33,6 +34,7 @@ export const QDRANT_CALLERS = [
   "ingest-worker",
   "legacy-corpus-import",
   QDRANT.snapshotJob,
+  QDRANT.opsLabel,
 ] as const;
 
 /**
@@ -431,6 +433,25 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 18. otel-collector → each Qdrant peer's metrics port, which answers without
+  //     a key (`PORT.qdrantMetrics`): the collector alone, that port alone. Rule
+  //     2 withholds Qdrant, and rules 16-17 grant neither the collector nor this
+  //     port, so without it every scrape times out and `up` reads 0 for every
+  //     peer, which looks exactly like the cluster being down.
+  const collectorToQdrant =
+    cfg.qdrant.enabled && cfg.observability.enabled
+      ? mk("allow-collector-to-qdrant-metrics", {
+          ...qdrantPod,
+          policyTypes: ["Ingress"],
+          ingress: [
+            {
+              from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
+              ports: [{ protocol: "TCP", port: PORT.qdrantMetrics }],
+            },
+          ],
+        })
+      : undefined;
+
   return [
     deny,
     intra,
@@ -451,5 +472,6 @@ export function installNetworkPolicies(
     ...(gotenberg ? [gotenberg] : []),
     ...(appToQdrant ? [appToQdrant] : []),
     ...(qdrantPeers ? [qdrantPeers] : []),
+    ...(collectorToQdrant ? [collectorToQdrant] : []),
   ];
 }

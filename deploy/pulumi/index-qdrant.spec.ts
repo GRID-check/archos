@@ -71,6 +71,7 @@ type Manifests = {
     };
   };
   Secret: { stringData: Record<string, string> | { value: Record<string, string> } };
+  ConfigMap: { data: Record<string, string> };
 };
 
 const RESOURCES: Array<{ type: string; name: string; inputs: unknown }> = [];
@@ -102,6 +103,7 @@ const TYPE = {
   PodDisruptionBudget: "kubernetes:policy/v1:PodDisruptionBudget",
   NetworkPolicy: "kubernetes:networking.k8s.io/v1:NetworkPolicy",
   Secret: "kubernetes:core/v1:Secret",
+  ConfigMap: "kubernetes:core/v1:ConfigMap",
 } as const;
 const DEPLOYMENT = TYPE.Deployment;
 const SERVICE = TYPE.Service;
@@ -256,13 +258,33 @@ describe("Qdrant, three peers on the data group", () => {
     );
   });
 
-  it("publishes the three ports on the headless Service, not-ready addresses included", () => {
+  it("publishes the four ports on the headless Service, not-ready addresses included", () => {
     const spec = find("Service", "qdrant-headless").spec;
     expect(spec.clusterIP).toBe("None");
     expect(spec.publishNotReadyAddresses).toBe(true);
-    expect(spec.ports.map((p) => p.port)).toEqual([6333, 6334, 6335]);
-    // Clients never see p2p.
+    expect(spec.ports.map((p) => p.port)).toEqual([6333, 6334, 6335, 6336]);
+    // Clients never see p2p, nor the keyless metrics port.
     expect(find("Service", "qdrant").spec.ports.map((p) => p.port)).toEqual([6333, 6334]);
+  });
+
+  // `service.metrics_port` serves /metrics without the key and nothing else
+  // (drilled: 200 there, 401 on 6333, 404 for any other path on it).
+  it("serves /metrics on its own keyless port", () => {
+    const [container] = qdrantPod().containers;
+    expect(envOf(container).QDRANT__SERVICE__METRICS_PORT.value).toBe("6336");
+    expect(container.ports).toContainEqual({ containerPort: 6336, name: "metrics" });
+  });
+
+  // 507 near the limits instead of an OOM kill or a full volume; the env path
+  // and the quota_exceeded metric were checked against the real image.
+  it("turns the quotas on below the memory limit and a full volume", () => {
+    const env = envOf(qdrantPod().containers[0]);
+    expect(env.QDRANT__STORAGE__QUOTAS__ENABLED.value).toBe("true");
+    expect(env.QDRANT__STORAGE__QUOTAS__MAX_RESIDENT_MEMORY_PERCENT.value).toBe("90");
+    expect(env.QDRANT__STORAGE__QUOTAS__MAX_DISK_USAGE_PERCENT.value).toBe("85");
+    // Recovery knobs stay off unless set.
+    expect(env.QDRANT__STORAGE__LOW_MEMORY_MODE).toBeUndefined();
+    expect(env.QDRANT__SERVICE__ALT_API_KEY).toBeUndefined();
   });
 
   it("lets a drain take one peer at a time", () => {
@@ -285,6 +307,31 @@ describe("Qdrant, three peers on the data group", () => {
     ));
     expect(env.RETENTION_DAYS.value).toBe("7");
     expect(env.QDRANT_API_KEY.valueFrom!.secretKeyRef).toEqual({ name: "qdrant-credentials", key: "api-key" });
+  });
+
+  // Aliases live in consensus, not in any snapshot: a cluster restored from
+  // snapshots alone answers every search "collection not found".
+  it("records the aliases beside the snapshots, as the snapshot identity", () => {
+    const [container] = find("CronJob", "qdrant-snapshot").spec.jobTemplate.spec.template.spec.containers;
+    const env = envOf(container);
+    // The same endpoint Qdrant uploads its snapshots to.
+    expect(env.S3_ENDPOINT.value).toBe("http://seaweedfs:8333");
+    expect(env.S3_BUCKET.value).toBe("qdrant-snapshots");
+    expect(env.S3_ACCESS_KEY.value).toBe("grid-qdrant");
+    expect(env.S3_SECRET_KEY.valueFrom!.secretKeyRef).toEqual({ name: "qdrant-credentials", key: "s3-secret-key" });
+    expect(env.ALIASES_PREFIX.value).toBe("aliases/");
+    const script = container.command![2];
+    expect(script).toContain('--aws-sigv4 "aws:amz:$S3_REGION:s3"');
+    // Called, and before the snapshot loop, so a long pass cannot starve it.
+    const call = script.indexOf("\nrecord_aliases\n");
+    expect(call).toBeGreaterThan(0);
+    expect(call).toBeLessThan(script.indexOf("\nfor peer in $PEERS; do\n  collections="));
+  });
+
+  it("ships the alert rules, rendered against this stack's memory limit", () => {
+    const rules = find("ConfigMap", "qdrant-alert-rules").data["qdrant.rules.yaml"];
+    expect(rules).toContain("alert: QdrantPeerDown");
+    expect(rules).toContain(`memory_resident_bytes{job=\\"qdrant\\"}) / ${16 * 2 ** 30} > 0.8`);
   });
 
   it("hands every backend tier the URL, the key and the backend selector", () => {
@@ -324,13 +371,15 @@ describe("Qdrant, three peers on the data group", () => {
     const app = policy("allow-app-to-qdrant").ingress[0];
     const callers = app.from.map((f) => f.podSelector.matchLabels["app.kubernetes.io/name"]);
     expect(callers).toEqual(
-      expect.arrayContaining(["aiq-agent", "aiq-api", "agent-worker", "ingest-worker", "qdrant-snapshot"]),
+      expect.arrayContaining(["aiq-agent", "aiq-api", "agent-worker", "ingest-worker", "qdrant-snapshot", "qdrant-ops"]),
     );
     expect(app.ports.map((p) => p.port)).toEqual([6333, 6334]);
 
     const peers = policy("qdrant-peers").ingress[0];
     expect(peers.from).toEqual([{ podSelector: { matchLabels: { "app.kubernetes.io/name": "qdrant" } } }]);
     expect(peers.ports.map((p) => p.port)).toEqual([6333, 6334, 6335]);
+    // No collector on this stack, so nobody is admitted to the metrics port.
+    expect(RESOURCES.some((r) => r.name === "allow-collector-to-qdrant-metrics")).toBe(false);
   });
 
   it("exports the in-cluster URL", () => {

@@ -1972,7 +1972,7 @@ Chroma):
 > **The Aspire dashboard is retired.** It was an in-memory ring buffer that a
 > restart emptied, with no alerting, behind its own host and a Connect
 > application. Traces now live in Langfuse (§9b), logs go to PostHog, and
-> nothing in the cluster consumes metrics. A stack that still carries the
+> nothing in the cluster stores or evaluates metrics. A stack that still carries the
 > dashboard's keys (`otelPrimaryApiKey`, `otelDomain`, `dashboardImage`,
 > `dashboardMaxLogCount`, `dashboardMaxTraceCount`) ignores them; remove them
 > from the stack file. The next `pulumi up` deletes the dashboard, its
@@ -2019,12 +2019,22 @@ no trace provider (below); logs from all five tiers - the Python tiers via the
 `otelcollector_logs` NAT logging method
 (`src/aiq_agent/observability/otlp_logging_method.py`, attaches to the root
 logger) and the Node tiers (grid-ui, skill-scheduler, purger) via the
-`frontends/ui/observability/otel-logs.js` console bridge. **Metrics: none.** The
-collector has no metrics pipeline and no process installs a meter provider. The
-instruments (`grid.queue.*`, `grid.provider.*`, `grid.http.*`, `grid.boot.*`)
-still exist and are no-ops until a sink is chosen for them; the Aspire dashboard
-was their only one. Until then, queue depth and age are
-readable from Postgres, which is where the KEDA scalers read them.
+`frontends/ui/observability/otel-logs.js` console bridge. **Metrics: from
+Qdrant only, and nothing stores them.** No process installs a meter provider:
+the instruments (`grid.queue.*`, `grid.provider.*`, `grid.http.*`,
+`grid.boot.*`) still exist and are no-ops until a sink is chosen for them; the
+Aspire dashboard was their only one. Until then, queue depth and age are
+readable from Postgres, which is where the KEDA scalers read them. With
+`qdrantEnabled`, the collector carries one metrics pipeline, `metrics/qdrant`:
+its `prometheus/qdrant` receiver scrapes every Qdrant peer's keyless metrics
+port (6336) by headless name every 30 s (job `qdrant`, label `peer`), and its
+`prometheus` exporter re-exposes the series on `otel-collector:8889/metrics`.
+There is no metrics backend to export to, so that endpoint is the hand-off: a
+Prometheus, Grafana Alloy or any OpenMetrics scraper pointed at it gets every
+peer's series, and the alert rules for them ship in the `qdrant-alert-rules`
+ConfigMap; until one exists, `kubectl port-forward svc/otel-collector 8889`
+reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)). A scraper in
+another namespace needs a NetworkPolicy rule admitting it to port 8889.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
@@ -2032,6 +2042,9 @@ grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purge
         ▼
   otel-collector ──▶ traces ──▶ Langfuse
                  ──▶ logs   ──▶ PostHog (WARN+)
+        ▲        ──▶ metrics ─▶ :8889/metrics (Prometheus text, no consumer yet)
+        │ scrape every 30 s, keyless port 6336
+  qdrant-0 / qdrant-1 / qdrant-2 (qdrantEnabled only)
 ```
 
 A signal no consumer takes ends in the collector's own `nop` exporter, because
@@ -2050,8 +2063,10 @@ filter:
 PostHog Logs takes `{posthogHost}/i/v1/logs` with `Authorization: Bearer
 <project token>`. The token is PostHog's public `phc_` key, the same one the
 browser bundle carries, so it sits in the collector ConfigMap as plain config:
-no env var and no secret checksum on the pod. Only logs go: LLM traces reach
-PostHog through Langfuse's own integration, and nothing sends metrics. The WARN
+no env var on the pod. The collector reads its config once, at start, so the
+pod template carries a digest of it (with the Langfuse key's): a changed token,
+or Qdrant turned on, rolls the collector. Only logs go: LLM traces reach
+PostHog through Langfuse's own integration, and no producer sends metrics. The WARN
 floor and the 1000-batch bounded queue are what keep the signal inside
 PostHog's 10 GB free tier and a PostHog outage out of the rest of the
 collector. Not done: the `k8sattributes` processor (pod, namespace and node

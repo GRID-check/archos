@@ -32,6 +32,13 @@ export type BarmanEncryption = "AES256" | "aws:kms";
 
 /** The values `vectorBackend` / `AIQ_VECTOR_BACKEND` accept (ADR-0103). */
 export const VECTOR_BACKENDS = ["chroma", "dual", "qdrant"] as const;
+
+/**
+ * `storage.low_memory_mode` (Qdrant 1.19): how segments load at start. A
+ * recovery knob for a peer that OOMs while loading, never a steady state.
+ */
+export const QDRANT_LOW_MEMORY_MODES = ["no_resident", "no_populate"] as const;
+export type QdrantLowMemoryMode = (typeof QDRANT_LOW_MEMORY_MODES)[number];
 export type VectorBackend = (typeof VECTOR_BACKENDS)[number];
 
 /**
@@ -589,6 +596,33 @@ export interface GridConfig {
     apiKey: pulumi.Output<string>;
     /** `service.read_only_api_key`: search only. Must differ from `apiKey`. */
     readOnlyApiKey: pulumi.Output<string>;
+    /**
+     * `service.alt_api_key`: a second read-write key the peers accept, on the
+     * API and on p2p, while the first is rotated (the runbook's "Rotate the
+     * API key"). Undefined outside a rotation, and then no env var is set.
+     */
+    altApiKey: pulumi.Output<string> | undefined;
+    /**
+     * `storage.low_memory_mode` for every peer, or undefined (Qdrant's
+     * `disabled`). Set only to get a peer that OOMs while loading its segments
+     * back up, then removed (the runbook's "OOM crash loop").
+     */
+    lowMemoryMode: QdrantLowMemoryMode | undefined;
+    /**
+     * The cluster-wide resource quotas (`storage.quotas`, Qdrant 1.19): above
+     * either percentage a peer refuses writes with HTTP 507 instead of being
+     * OOM-killed or filling its volume, and reports `quota_exceeded{resource}`.
+     * They SEED the quota manager on a cluster's first start only; afterwards
+     * Qdrant keeps them in consensus (`quota.json`), so a changed value here
+     * reaches a running cluster through `PUT /quotas` (the runbook's
+     * "Quotas"), not through a deploy.
+     */
+    quotas: {
+      /** Resident memory as a percentage of the cgroup limit. */
+      memoryPercent: number;
+      /** Use of the data volume's filesystem, in percent. */
+      diskPercent: number;
+    };
     snapshots: {
       /** 5-field cron for the `qdrant-snapshot` CronJob. */
       schedule: string;
@@ -1499,6 +1533,18 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBa
     throw new Error(`grid-oib:qdrantSnapshotSchedule must be a 5-field cron expression (got "${schedule}").`);
   }
   if (enabled) assertQdrantSecrets(cfg);
+  const quotas = {
+    memoryPercent: percent(cfg, "qdrantQuotaMemoryPercent", 90),
+    diskPercent: percent(cfg, "qdrantQuotaDiskPercent", 85),
+  };
+  const lowMemoryMode = cfg.get("qdrantLowMemoryMode")?.trim() || undefined;
+  const knownMode = QDRANT_LOW_MEMORY_MODES.find((m) => m === lowMemoryMode);
+  if (lowMemoryMode && !knownMode) {
+    throw new Error(
+      `grid-oib:qdrantLowMemoryMode must be one of ${QDRANT_LOW_MEMORY_MODES.join(", ")} (got "${lowMemoryMode}"); ` +
+        "remove the key for Qdrant's default. An unknown value stops every peer at start.",
+    );
+  }
   return {
     vectorBackend: backend,
     qdrant: {
@@ -1510,6 +1556,9 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBa
       storageSize: cfg.get("qdrantStorageSize") ?? "100Gi",
       apiKey: cfg.getSecret("qdrantApiKey") ?? pulumi.secret(""),
       readOnlyApiKey: cfg.getSecret("qdrantReadOnlyApiKey") ?? pulumi.secret(""),
+      altApiKey: (cfg.get("qdrantAltApiKey") ?? "").trim() ? cfg.requireSecret("qdrantAltApiKey") : undefined,
+      lowMemoryMode: knownMode,
+      quotas,
       snapshots: {
         schedule,
         retentionDays,
@@ -1518,6 +1567,15 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBa
       },
     },
   };
+}
+
+/** A whole percentage in (0, 100). */
+function percent(cfg: pulumi.Config, key: string, fallback: number): number {
+  const v = num(cfg, key, fallback);
+  if (!Number.isInteger(v) || v <= 0 || v >= 100) {
+    throw new Error(`grid-oib:${key} must be a whole percentage between 1 and 99 (got ${v}).`);
+  }
+  return v;
 }
 
 /**
@@ -1538,6 +1596,14 @@ function assertQdrantSecrets(cfg: pulumi.Config): void {
     throw new Error(
       "grid-oib:qdrantReadOnlyApiKey must differ from grid-oib:qdrantApiKey: a request carrying it would " +
         "match the read-write key, so every holder of the read-only key could write.",
+    );
+  }
+  // The rotation key is a read-write key: equal to the read-only one, every
+  // holder of the read-only key could write.
+  if (raw("qdrantAltApiKey") && raw("qdrantAltApiKey") === raw("qdrantReadOnlyApiKey")) {
+    throw new Error(
+      "grid-oib:qdrantAltApiKey must differ from grid-oib:qdrantReadOnlyApiKey: the peers accept it as a " +
+        "read-write key, so every holder of the read-only key could write.",
     );
   }
   // SeaweedFS authenticates by key, so a shared secret hands this identity

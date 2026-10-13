@@ -2,5 +2,6 @@
 
 ``config`` says which store a process reads and writes; ``schema`` owns the
 physical collections; ``scope`` builds every read filter (ADR-0104); ``store``
-holds the client and the writes; ``search`` runs the ranked reads.
+holds the client and the writes; ``search`` runs the ranked reads; ``rebuild``
+copies a collection into a new ``_vN`` and moves its alias.
 """
