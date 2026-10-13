@@ -518,6 +518,22 @@ tasks:
       # this when AIQ_EMBED_MODEL, data/oib or the golden questions change.
       - '{{.PY}} -m oib_retrieval_eval.record_vector'
 
+  be:eval:qdrant-parity:
+    desc: 'Qdrant migration gates G1b/G2/G6 — Chroma path vs Qdrant path on the OIB corpus, same vectors (NEEDS data/oib, a Qdrant 1.19 server, OPENROUTER_API_KEY; writes results/qdrant_parity)'
+    env:
+      PYTHONPATH: src:frontends/benchmarks/oib_retrieval/src:sources/knowledge_layer/src
+    cmds:
+      # The numbers the AIQ_VECTOR_BACKEND flip waits on (qdrant-retrieval-design.md
+      # §10; last run: docs/architecture/qdrant-gates-2026-10.md). Embeds the corpus
+      # once with the production model through make_embed_model (cached under
+      # .cache/qdrant_parity, about $0.12 cold), fills Chroma, copies it into Qdrant
+      # with the migration's backfill, and reads both through the production
+      # retriever. Uses PostgreSQL server binaries for the real German mirror when
+      # present. `-- --embedder hashed` runs it keyless as a wiring check only;
+      # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
+      # or localhost:6333). Only uniquely named parity_* collections are touched.
+      - '{{.PY}} -m oib_retrieval_eval.qdrant_parity.runner {{.CLI_ARGS}}'
+
   be:eval:decisions:
     desc: 'Decision-model eval — does Jev pick the right OIB family, corpus and evidence need on the loop-eval questions (NEEDS OPENROUTER_API_KEY; no backend)'
     cmds:

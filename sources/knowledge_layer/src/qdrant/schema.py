@@ -274,8 +274,8 @@ def ensure_payload_indexes(client: QdrantClient, collection: str) -> list[str]:
     if drift:
         logger.error(
             "Qdrant collection %s: the %r full-text index was built differently (%s). Phrase and exact-term "
-            "matching on numbers (§ 3, 5.1.1) is wrong until it is rebuilt: create a new _vN collection, copy "
-            "the points (scripts/backfill_qdrant.py) and switch the alias (qdrant-retrieval-design.md §9)",
+            "matching on numbers (§ 3, 5.1.1) is wrong until it is rebuilt: copy into a new _vN collection and "
+            "switch the alias (scripts/qdrant_rebuild.py, docs/deployment/qdrant-runbook.md)",
             collection,
             TEXT_FIELD,
             drift,

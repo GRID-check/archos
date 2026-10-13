@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Mapping
+from collections.abc import MutableMapping
 from collections.abc import Sequence
 from typing import Any
 
@@ -87,11 +88,27 @@ def set_project_facts(scope: str, facts: Mapping[str, Any] | None, status: str) 
     return get_store().set_scope_payload(scope, project_payload(facts, status))
 
 
-def term_frequencies(scope: str, terms: Sequence[str]) -> tuple[int, dict[str, int]]:
-    """How many chunks ``scope`` holds, and how many contain each exact term (``search.exact_term``)."""
+def term_frequencies(
+    scope: str, terms: Sequence[str], cache: MutableMapping[tuple[str, int, str], int] | None = None
+) -> tuple[int, dict[str, int]]:
+    """How many chunks ``scope`` holds, and how many contain each exact term (``search.exact_term``).
+
+    ``cache`` keeps a count per ``(scope, total, term)``: a corpus that has not
+    changed size answers a recurring term without a round trip, and any write
+    that changes the count invalidates it.
+    """
     store = get_store()
     total = store.count(scope)
-    return total, {term: store.count(scope, None, exact_term(term)) for term in terms}
+    counts: dict[str, int] = {}
+    for term in dict.fromkeys(terms):
+        key = (scope, total, term)
+        if cache is not None and key in cache:
+            counts[term] = cache[key]
+            continue
+        counts[term] = store.count(scope, None, exact_term(term))
+        if cache is not None:
+            cache[key] = counts[term]
+    return total, counts
 
 
 #: A character class standing between words in a ``browse.phrase_pattern``:
