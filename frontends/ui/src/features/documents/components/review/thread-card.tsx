@@ -339,7 +339,6 @@ function Card({ flip, children, testId }: { flip: boolean; children: React.React
 /** Setting a new mark: what kind, what is there, optionally who and by when. */
 export function DraftCard({
   review,
-  draft,
   flip,
   canPickAssignee,
 }: {

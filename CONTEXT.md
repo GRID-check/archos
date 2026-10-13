@@ -116,6 +116,17 @@ say „Piloti antwortet aus dieser Fassung“, never „Grundlage für Antworten
 _Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for sharing
 (see **Share**); „Änderungen erbeten“; “Superseded”.
 
+**Anmerkung** (annotation):
+A mark someone sets on one page of one Fassung: a point or a drawn box (*Bereich*)
+with what it says, a running number („Nummer 4“, what a Jour fixe and a
+Protokoll name), optionally a person responsible and a date, and a thread of
+answers. It is *offen*, *erledigt* or *verworfen*. Piloti may set one too, but
+its marks are *Vorschläge* until a person takes them over (*übernehmen*); only
+then are they the office's. Marks are set and discussed in the *Prüfansicht*,
+the document opened full screen, together and live.
+_Avoid_: ticket, issue, Mangel for every mark (a Mangel is one *Art*); comment,
+for the mark itself rather than an answer in its thread.
+
 **Zurückgehalten** (held back):
 An upload the content check (*Inhaltsprüfung*) keeps from every model until
 someone with the right *prüft* it and lets it through (*zulassen*, “allow”) or
