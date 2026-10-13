@@ -87,7 +87,7 @@ export function UploadedFileRow({
               {name}
             </p>
           )}
-          <DocumentStatusBadge status={document.status} />
+          <DocumentStatusBadge status={document.status} errorMessage={document.errorMessage} />
         </div>
 
         {(document.replaced || document.restricted || type || tags.length > 0 || document.pageCount) && (

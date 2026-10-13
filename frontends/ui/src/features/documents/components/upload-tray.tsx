@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, X } from 'lucide-react'
-import type { TrackedFile } from '../types'
+import { mayRetryUpload, type TrackedFile } from '../types'
 import {
   isDeterminate,
   summarizeTransfer,
@@ -149,7 +149,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
    * re-upload onto it, so retrying it would turn a reason into a 409.
    */
   const retryAll = useMemo(() => {
-    const failed = visible.filter((file) => uploadPhase(file) === 'failed')
+    const failed = visible.filter((file) => uploadPhase(file) === 'failed' && mayRetryUpload(file))
     if (failed.length === 0) return null
     return () => failed.forEach((file) => onRetry(file.id))
   }, [visible, onRetry])
@@ -534,7 +534,7 @@ function UploadRow({
         </div>
 
         <span className="flex w-[52px] shrink-0 items-center justify-end gap-1 pointer-coarse:w-[92px]">
-          {isFailed && (
+          {isFailed && mayRetryUpload(file) && (
             <RowAction label={tc('actions.retry')} onClick={() => onRetry(file.id)} icon={RotateCcw} />
           )}
           {canCancel && (

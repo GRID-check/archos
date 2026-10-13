@@ -269,6 +269,16 @@ describe('UploadTray', () => {
       expect(within(heldRow).queryByRole('button', { name: 'Retry' })).toBeNull()
     })
 
+    it('offers no retry for a failure a retry would only repeat', () => {
+      // The quarantined-replace 409: uploading again gets the same refusal.
+      renderTray([
+        tracked({ id: 'r', fileName: 'r.pdf', status: 'failed', errorMessage: 'refused', retryable: false }),
+        tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' }),
+      ])
+      expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
+    })
+
     it('offers no „Retry failed" when nothing but a held file is left', () => {
       renderTray([held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })])
       expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
