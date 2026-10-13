@@ -20,9 +20,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { InsetStage } from '@/components/ui/inset-stage'
 import { useTranslations } from '@/i18n'
 import { PdfDocumentView } from './pdf-document-view'
 import { RegionMarks } from './region-marks'
+import { PageSheet } from './pdf-viewer-atoms'
 import type { PageRegion } from '../lib/page-region'
 
 export interface PdfViewerDialogProps {
@@ -163,7 +165,9 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
           {aside}
           {open &&
             (isImage ? (
-              <div className="min-h-0 w-full flex-1 overflow-auto overscroll-contain rounded-lg border border-border bg-surface-sunken">
+              // The same stage a PDF lies on, so an enlarged image and an
+              // enlarged PDF are one surface with different things on it.
+              <InsetStage className="min-h-0 w-full flex-1 overflow-auto overscroll-contain p-3">
                 {/* The source streams at whatever size it happens to be, so
                     there is no intrinsic ratio to declare: 0/0 plus explicit
                     `w-auto h-auto` hands sizing back to CSS and keeps the image
@@ -173,7 +177,7 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
                 {/* `relative w-fit`: the wrapper shrinks to the image, so a
                     region's percentages are shares of the IMAGE, not of the
                     scroll frame around it. */}
-                <div className="relative mx-auto w-fit max-w-full">
+                <PageSheet className="mx-auto w-fit max-w-full">
                   <Image
                     src={src}
                     alt={title ?? fileName}
@@ -184,8 +188,8 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
                     className="block h-auto w-auto max-w-full"
                   />
                   {regions?.length ? <RegionMarks regions={regions} color={highlightColor} /> : null}
-                </div>
-              </div>
+                </PageSheet>
+              </InsetStage>
             ) : (
               <PdfDocumentView
                 src={baseSrc}
