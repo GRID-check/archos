@@ -59,12 +59,12 @@ export function CreateProjectDialog({
           {label ?? t('dialog.newProject')}
         </Button>
       </DialogTrigger>
-      <DialogContent>
+      <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>{t('dialog.title')}</DialogTitle>
           <DialogDescription>{t('dialog.description')}</DialogDescription>
         </DialogHeader>
-        <CreateProjectForm />
+        <CreateProjectForm onCancel={() => handleOpenChange(false)} />
       </DialogContent>
     </Dialog>
   )
