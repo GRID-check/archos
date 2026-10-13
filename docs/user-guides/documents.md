@@ -420,15 +420,21 @@ The header is always visible, also when the section is shut. It is about the
 
   | Situation | What the header says |
   |---|---|
-  | The newest is published, or is a file you uploaded | Piloti antwortet aus dieser Fassung. |
+  | The newest is published, or is a file you uploaded, and Piloti has read it | Piloti antwortet aus dieser Fassung. |
   | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
+  | You uploaded a new Fassung and Piloti is still reading it, or could not read it | Piloti antwortet weiter aus Fassung 1. |
   | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie freigegeben ist. |
-  | The newest was refused, nothing published | Piloti antwortet nicht daraus. |
+  | Your first upload is still being read | Piloti antwortet daraus, sobald sie gelesen ist. |
+  | The newest was refused, or could not be read, and nothing stands behind it | Piloti antwortet nicht daraus. |
   | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
   | Stillgelegt | Stillgelegt. Nicht mehr in der Dateiliste, Piloti zitiert sie nicht mehr. |
 
   Only a **published** Fassung is read into the knowledge base, so a draft or a
-  round in review never replaces the Fassung answers come from.
+  round in review never replaces the Fassung answers come from. When you upload
+  a new Fassung of a file, the previous one keeps answering until the new one
+  has been read, and goes on answering if the reading fails; „aktuell“ stays on
+  it until then. A document Piloti wrote has no such overlap: publishing removes
+  the previous Fassung from the knowledge base first.
 
 When a decision is yours, **Freigeben** and **Änderungen anfordern** sit under
 the header; **Piloti überarbeiten lassen** and **Ablehnen** are behind the ⋯

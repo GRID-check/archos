@@ -42,6 +42,8 @@ from aiq_agent.observability.turn_trace import current_trace_id_hex
 from aiq_agent.project_context import ORGANIZATION_ID_HEADER
 from aiq_agent.project_context import PROJECT_ID_HEADER
 from aiq_agent.project_context import PROJECT_MEMORY_HEADER
+from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
+from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import USER_ID_HEADER
 from aiq_agent.project_context import compose_project_context
 
@@ -56,6 +58,7 @@ from .outcome_notify import notify_job_outcome
 from .phase_events import PHASE_DONE
 from .phase_events import PhaseProgressCallback
 from .phase_events import emit_phase_event
+from .run_envelope import envelope_headers_for_run
 from .run_ledger_fold import RunLedgerFold
 
 logger = logging.getLogger(__name__)
@@ -129,6 +132,13 @@ _OWNERSHIP_LOST_REASON = "queue claim reclaimed by another worker"
 #: `tests/aiq_agent/test_tool_context_contract.py`: a tool that needs a header
 #: the worker does not inject fails that test rather than every unattended run.
 WORKER_IDENTITY_HEADERS: tuple[str, ...] = (PROJECT_ID_HEADER, ORGANIZATION_ID_HEADER, USER_ID_HEADER)
+
+#: The signed request-context envelope, which the worker injects ONLY when the
+#: run carries one the BFF signed for its requester (ADR-0108,
+#: ``jobs/run_envelope.py``). Never built here: the worker echoes the bytes the
+#: BFF minted at submit, or the fresh ones it minted on renewal. A run without
+#: one injects neither header, and the tools that act as a person refuse.
+WORKER_ENVELOPE_HEADERS: tuple[str, ...] = (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER)
 
 
 def _identity_values(identity: dict) -> tuple[object, object, object]:
@@ -987,6 +997,10 @@ async def run_agent_job(
     # The Unterlagen the reader named on the plan card (``plan_documents``
     # contract), sanitised here into the agent state and the run ledger.
     documents: dict | None = None,
+    # The requester's signed request-context envelope, ``{header, signature}``
+    # exactly as the BFF sent it with the submit (ADR-0108). Absent for a run
+    # nobody signed for, and for a job queued before it existed.
+    request_envelope: dict | None = None,
 ):
     """
     Run any registered agent as a research job, with cancellation support and telemetry.
@@ -1049,6 +1063,11 @@ async def run_agent_job(
             flush the run's ledger to the BFF. Without it the ledger is still
             folded and still streamed as ``run.ledger`` events, but nothing is
             written to the run's message.
+        request_envelope: Optional ``{header, signature}`` of the requester's
+            signed request-context envelope. Injected into the run's request
+            metadata (renewed first when it is past
+            ``run_envelope.RUN_ENVELOPE_RENEW_AFTER_MS``) so the tools that act
+            as a person echo it; dropped on any refusal or failure.
         claim_owner: Optional DB-queue claim owner (worker id) for the
             still-owner publish gate. ``None`` (unclaimed at submit) skips the
             ownership check and only the terminal verdict
@@ -1363,6 +1382,16 @@ async def run_agent_job(
             }
             if _identity_headers:
                 _inject_worker_headers(context_state, _identity_headers)
+
+            # AS WHOM it acts (ADR-0108). The identity headers above say whose
+            # project this is; only the envelope the BFF signed lets a tool act
+            # as that person (file, delegate, look into another project). It is
+            # echoed, renewed by the BFF when stale, and never built here.
+            _envelope_headers = await envelope_headers_for_run(
+                request_envelope, run_id=run_id, job_id=job_id, identity=_identity
+            )
+            if _envelope_headers:
+                _inject_worker_headers(context_state, _envelope_headers)
 
             # WHAT the project already knows. The chat path fetches a live digest
             # per turn and falls back to the connection-time one only on failure

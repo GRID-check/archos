@@ -25,8 +25,9 @@
  *     turn start makes). A person who lost read gets nothing, whatever the
  *     scope signed hours ago.
  *
- * Without an envelope (a job worker, which has no per-turn credential to
- * forward) a restricted folder's collection is never answered for, and any
+ * Without an envelope (a caller acting as nobody, or a background run whose
+ * envelope the BFF refused to renew, ADR-0108) a restricted folder's
+ * collection is never answered for, and any
  * other collection is looked up as before: by name, narrowed to the
  * organization an `archiv_<orgId>` collection names. An envelope that is
  * presented and does not verify is a 401, never a fall back to that path.
@@ -132,7 +133,7 @@ export const GET = internalApiRoute(
         return lookUp(query, context.organizationId)
       })
     }
-    // No envelope: a run that is not a chat turn. The backend derives an
+    // No envelope: a caller acting as nobody. The backend derives an
     // organization only from an `archiv_<orgId>` collection; for `proj_<uuid>`
     // it has none to send, and no restricted folder's collection is answered.
     return withOptionalTenant(
