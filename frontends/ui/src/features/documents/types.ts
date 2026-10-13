@@ -103,6 +103,13 @@ export interface TrackedFile {
   uploadStartedAt?: number
   /** Error message if failed */
   errorMessage?: string | null
+  /**
+   * `false` when sending the same bytes again cannot succeed: the server
+   * refused the upload for a reason a retry meets again (a re-upload onto a
+   * quarantined file, `QUARANTINED_REPLACE_REASON`). Absent reads as retryable.
+   * {@link mayRetryUpload} is the rule every retry surface asks.
+   */
+  retryable?: false
   /** Backend file_id once uploaded */
   serverFileId?: string
   /** Ingestion job ID */
@@ -117,6 +124,16 @@ export interface TrackedFile {
   collectionName?: string
   /** When the file was uploaded (from server) */
   uploadedAt?: string | null
+}
+
+/**
+ * Whether sending this upload again can come out differently. A held file is
+ * refused a re-upload (ADR-0086) and nothing went wrong to repeat, and a row
+ * marked `retryable: false` was refused for a reason the retry meets again.
+ * `retryFile` refuses both; a surface offering „Erneut versuchen“ asks this.
+ */
+export function mayRetryUpload(file: Pick<TrackedFile, 'status' | 'retryable'>): boolean {
+  return file.status !== 'held' && file.retryable !== false
 }
 
 /** Tracks which banners have been shown for a job */

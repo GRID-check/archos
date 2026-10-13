@@ -6,6 +6,7 @@
 
 import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
 import type { DocumentFileStatus, TrackedFileStatus } from './types'
+import type { ListedFileStatus } from '@/adapters/api/documents-schemas'
 import type { FileSourceStatus } from '@/features/layout/components/FileSourceCard'
 
 /**
@@ -36,7 +37,16 @@ export const trackedStatusOfJobFile = (jobFile: {
   error_message?: string | null
 }): TrackedFileStatus => {
   if (jobFile.status === 'failed' && jobFile.error_message?.startsWith(QUARANTINED_PREFIX)) return 'held'
+  // The two at-rest states only a listing says (`ListedFileStatusSchema`):
+  // kept as they are, or a re-list would read them as an upload in flight.
+  if (isAtRestListedStatus(jobFile.status)) return jobFile.status
   return mapBackendStatus(jobFile.status)
+}
+
+const AT_REST_LISTED_STATUSES: ReadonlySet<string> = new Set<ListedFileStatus>(['stored', 'held'])
+
+function isAtRestListedStatus(status: string): status is 'stored' | 'held' {
+  return AT_REST_LISTED_STATUSES.has(status)
 }
 
 /**

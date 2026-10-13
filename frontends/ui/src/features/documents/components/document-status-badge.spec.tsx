@@ -15,3 +15,22 @@ describe('DocumentStatusBadge queue position', () => {
     expect(screen.queryByText(/ahead/)).toBeNull()
   })
 })
+
+describe('DocumentStatusBadge state', () => {
+  it('says the file is uploading while the bytes arrive, not that it is being read', () => {
+    render(<DocumentStatusBadge status="uploading" />)
+    const badge = screen.getByText('Uploading')
+    expect(badge).toHaveAttribute('data-variant', 'info')
+  })
+
+  it('draws a failed row carrying the gate verdict as held, in the hold colour', () => {
+    render(<DocumentStatusBadge status="failed" errorMessage={'quarantined:{"reasons":[]}'} />)
+    const badge = screen.getByText('Held back')
+    expect(badge).toHaveAttribute('data-variant', 'warning')
+  })
+
+  it('keeps a failed read failed', () => {
+    render(<DocumentStatusBadge status="failed" errorMessage="parser crashed" />)
+    expect(screen.getByText('Failed')).toHaveAttribute('data-variant', 'destructive')
+  })
+})

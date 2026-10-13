@@ -16,6 +16,21 @@ import type { NameMatch } from './name-screen'
 
 export const QUARANTINED_PREFIX = 'quarantined:'
 
+/**
+ * `details.reason` of the 409 a re-upload onto a quarantined file answers
+ * (`assertMayReplaceHeld`, `./quarantine-reviewers`). Here, beside the verdict,
+ * because the browser reads it too: the upload row it refuses is not retried,
+ * since a retry meets the same 409 until somebody deletes or releases the file.
+ */
+export const QUARANTINED_REPLACE_REASON = 'quarantined'
+
+/** The error envelope of that 409 (`{ error, code, details: { reason } }`). */
+export function isQuarantinedReplaceBody(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false
+  const details = (body as { details?: unknown }).details
+  return !!details && typeof details === 'object' && (details as { reason?: unknown }).reason === QUARANTINED_REPLACE_REASON
+}
+
 const reasonSchema = z.object({
   kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']),
   term: z.string().optional(),

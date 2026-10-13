@@ -431,6 +431,7 @@ const FileListRowItem = memo(function FileListRowItem({
         {file.status && (
           <DocumentStatusBadge
             status={file.status}
+            errorMessage={file.errorMessage}
             queueAhead={file.queueAhead}
             className="max-w-full truncate"
           />

@@ -737,7 +737,12 @@ export function FilePreviewPane({
               explains why the Ask button in the rail is grey. */}
             <div className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
               {!isCitable(file) && (
-                <DocumentStatusBadge status={file.status} queueAhead={file.queueAhead} className="shrink-0" />
+                <DocumentStatusBadge
+                  status={file.status}
+                  errorMessage={file.errorMessage}
+                  queueAhead={file.queueAhead}
+                  className="shrink-0"
+                />
               )}
               {/* WHERE THE DOCUMENT STANDS, at the top with its name.
 
