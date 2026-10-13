@@ -9,7 +9,9 @@
  * strict schema); a turn outside a project gets a typed 422 the tool relays;
  * the asker must be able to read the project, as their pinned session; every
  * item carries the fields its verb needs; and the proposal is filed as Piloti's
- * on the asker's behalf, born `proposed`, through the REAL service.
+ * on the asker's behalf, born `proposed`, through the REAL service. Each kind
+ * is filed with its own payload, and the same card of the same answer twice
+ * returns the first proposal.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -41,6 +43,10 @@ vi.mock('@/lib/archiv/service', () => ({}))
 vi.mock('@/lib/documents/move-to-folder', () => ({}))
 vi.mock('@/lib/documents/service', () => ({}))
 vi.mock('@/lib/projects/folder-service', () => ({}))
+// The memory and profile appliers' services are not reached when proposing either.
+vi.mock('@/lib/projects/service', () => ({ MEMORY_WRITE_PERMISSIONS: ['project:memory:write', 'project:edit'] }))
+vi.mock('@/lib/project-profile/profile-service', () => ({}))
+vi.mock('@/lib/conversations/cross-project-use', () => ({}))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
 vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
@@ -102,10 +108,10 @@ beforeEach(() => {
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
   vi.mocked(findConversationInOrg).mockResolvedValue({ id: 'conv_1' } as Partial<Conversation> as Conversation)
-  vi.mocked(insertProposedChange).mockImplementation(
-    async (input: NewProposedChange) =>
-      ({ ...input, id: NEW_ID, status: 'proposed', createdAt: new Date() }) as Partial<ProposedChangeRow> as ProposedChangeRow
-  )
+  vi.mocked(insertProposedChange).mockImplementation(async (input: NewProposedChange) => ({
+    row: { ...input, id: NEW_ID, status: 'proposed', createdAt: new Date() } as Partial<ProposedChangeRow> as ProposedChangeRow,
+    created: true,
+  }))
 })
 
 afterEach(() => {
@@ -128,6 +134,7 @@ describe('POST /api/internal/proposals', () => {
       onBehalfOf: 'user_1',
       originConversationId: 'conv_1',
       originMessageId: ANSWER,
+      originCardIndex: null,
     })
   })
 
@@ -187,5 +194,49 @@ describe('POST /api/internal/proposals', () => {
     const response = await post(MOVE, 'wrong')
     expect(response.status).toBe(403)
     expect(requireVerifiedContext).not.toHaveBeenCalled()
+  })
+
+  it('files a memory note and a profile change, each with its own payload', async () => {
+    const note = { scope: 'organization', kind: 'preference', content: 'Pläne immer im Maßstab 1:100', confidence: 'medium' }
+    expect((await post({ op: 'create', kind: 'memory', payload: note, answerMessageId: ANSWER })).status).toBe(200)
+    expect(insertProposedChange).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'memory', payload: note }))
+
+    const profile = {
+      title: 'Bundesland: Tirol',
+      patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'tirol' }],
+    }
+    expect((await post({ op: 'create', kind: 'project_profile', payload: profile })).status).toBe(200)
+    expect(insertProposedChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: 'project_profile', payload: profile, originMessageId: null })
+    )
+  })
+
+  it('refuses a payload that is not its kind’s, a profile value outside the vocabulary, and an unknown kind', async () => {
+    expect((await post({ op: 'create', kind: 'memory', payload: MOVE.payload })).status).toBe(400)
+    expect((await post({ op: 'create', kind: 'steckbrief', payload: {} })).status).toBe(400)
+    const outside = await post({
+      op: 'create',
+      kind: 'project_profile',
+      payload: { title: 'Bundesland', patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'atlantis' }] },
+    })
+    expect(outside.status).toBe(422)
+    await expect(outside.json()).resolves.toMatchObject({ details: { reason: 'proposal-profile-vocabulary' } })
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('returns the first proposal for the same card of the same answer', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValueOnce({
+      row: { id: NEW_ID, status: 'applied' } as Partial<ProposedChangeRow> as ProposedChangeRow,
+      created: false,
+    })
+    const response = await post({ ...MOVE, originCardIndex: 1 })
+
+    expect(response.status).toBe(200)
+    expect(await response.json()).toEqual({ id: NEW_ID, status: 'applied' })
+    expect(insertProposedChange).toHaveBeenCalledWith(expect.objectContaining({ originMessageId: ANSWER, originCardIndex: 1 }))
+  })
+
+  it('refuses a negative card index', async () => {
+    expect((await post({ ...MOVE, originCardIndex: -1 })).status).toBe(400)
   })
 })

@@ -403,11 +403,15 @@ async def _register_envelope_cards(
     — a bounded call on the small card model, never a round — and a card that
     still fails is dropped and recorded (``status:card:invalid:N``). Cards
     register in array order after whatever the tools pushed, and the prose's
-    markers are moved to those positions. Fail-open throughout: no registry
+    markers are moved to those positions. Registering is where a card that
+    proposes a change (``project_profile_patch``) gets its server proposal
+    (``cards/envelope.register_envelope_card``): the one place the model's cards
+    become final. Fail-open throughout: no registry
     bound (a CLI run) means the answer ships without cards, as it always did.
     """
     from aiq_agent.cards.catalog import retired_card_markdown
     from aiq_agent.cards.envelope import envelope_card_objects
+    from aiq_agent.cards.envelope import register_envelope_card
     from aiq_agent.cards.registry import get_card_registry
 
     raw = envelope_card_objects(meta.cards if meta is not None else None)
@@ -434,7 +438,7 @@ async def _register_envelope_cards(
                 fallbacks[index + 1] = markdown
                 logger.info("answer envelope's retired '%s' card laid out as Markdown", raw[index].get("type"))
             continue
-        registry.add(validated)
+        await register_envelope_card(registry, validated)
         positions[index + 1] = len(registry)
         logger.info("answer envelope registered a '%s' card as card %d", validated["type"], len(registry))
     return _renumber_envelope_markers(content, handed=handed, positions=positions, count=len(raw), fallbacks=fallbacks)

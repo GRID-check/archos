@@ -71,7 +71,16 @@ describe('mapServerMessageToChatMessage', () => {
     expect(mapped!.messageType).toBe('error')
     expect(mapped!.errorData).toEqual({ errorCode: 'system.unknown', errorMessage: 'boom' })
     expect(mapped!.cards).toEqual([
-      { type: 'memory_proposal', title: 'Merken?', content: 'REI 90', kind: 'preference', confidence: 'medium' },
+      {
+        type: 'memory_proposal',
+        title: 'Merken?',
+        content: 'REI 90',
+        kind: 'preference',
+        confidence: 'medium',
+        // A stored card parses with the fields it predates: no proposal, no correction.
+        proposal_id: null,
+        supersedes: null,
+      },
     ])
     expect(mapped!.enabledDataSources).toEqual(['web_search'])
     expect(mapped!.messageFiles).toEqual([{ id: 'f1', fileName: 'a.pdf' }])

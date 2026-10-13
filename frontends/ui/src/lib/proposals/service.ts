@@ -8,33 +8,39 @@
  *   proposal's surface, and its payload names files and folders; a reader who
  *   cannot see the conversation (a restricted folder's audience, a private
  *   chat) learns nothing from the id. Every refusal is a 404.
- * - **Deciding** (apply, dismiss) takes the read, plus write access to the
- *   project's documents (`project:documents:write`, or the older
- *   `project:edit`); a reader without it gets a 403. A closed project is
+ * - **Deciding** (apply, dismiss) takes the read, plus the right the KIND
+ *   writes with (`./kinds` `DECIDE_PERMISSIONS`): the project's documents
+ *   (`project:documents:write`) for a file operation, its memory
+ *   (`project:memory:write`) for a note or a profile change, `project:edit`
+ *   for all three. A reader without it gets a 403. A closed project is
  *   read-only and refuses with its own 403.
  * - **After a decision** (committed, never awaited, never failing it) three
  *   things follow: the live channel `proposal:<id>` hears of it, so every open
  *   card re-reads (`lib/realtime/proposal-channel.ts`); the inbox is told
  *   nothing waits any more (`./attention`); and the decision is a score on the
  *   trace of the turn that proposed it (`lib/langfuse/decision-score.ts`).
- * - **Applying** runs each item through the document, folder and assignment
- *   services in the DECIDING person's session (`./executors`), so every check
- *   they make by hand is made again. It is a compare-and-swap on `proposed`:
- *   the claim is committed before the first item runs and the settle clears
- *   it, so a double click or a second tab is a 409.
+ * - **Applying** runs the kind's applier in the DECIDING person's session:
+ *   the document, folder and assignment services for a file operation
+ *   (`./executors`), the memory and profile services for the other two
+ *   (`./appliers`), so every check they make by hand is made again. It is a
+ *   compare-and-swap on `proposed`: the claim is committed before the first
+ *   item runs and the settle clears it, so a double click or a second tab is a
+ *   409. An applier that throws (a refusal of the decider) gives the claim back.
+ * - **Creating** is idempotent per card: with the answer's message id and the
+ *   card's index, the same card twice returns the first proposal.
  */
 
 import 'server-only'
-import { ConflictError, ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import { defaultLocale, type Locale } from '@/i18n/config'
+import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { DOCUMENT_WRITE_PERMISSIONS } from '@/lib/authz/folder-access-rule'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
 import { onProposalCreated, onProposalDecided } from './attention'
-import { applyFileOperations, operationLabel, REQUIRED_FIELDS } from './executors'
+import { applyKind, DECIDE_PERMISSIONS, parseKindPayload, requireProposable, summaryOf } from './kinds'
 import { publishProposalDecided } from './live'
 import {
   claimProposedChange,
@@ -45,13 +51,7 @@ import {
   settleProposedChange,
   type ProposedChangeRow,
 } from './repository'
-import {
-  fileOperationPayloadSchema,
-  type FileOperationPayload,
-  type ProposedChangeKind,
-  type ProposedChangeResult,
-  type ProposedChangeView,
-} from './types'
+import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeResult, ProposedChangeView } from './types'
 
 /**
  * How long an apply may hold its claim before another decision may take over.
@@ -68,52 +68,41 @@ const claimIsLive = (row: ProposedChangeRow, now = Date.now()) =>
 export interface CreateProposalInput {
   projectId: string
   kind: ProposedChangeKind
-  payload: FileOperationPayload
+  /** The contract's payload for `kind`; parsed here. */
+  payload: unknown
   /** The turn's conversation, from the signed envelope; null for a turn outside one. */
   conversationId: string | null
   answerMessageId: string | null
-}
-
-/** Every item carries the fields its verb needs, or the proposal is refused (422). */
-function requireItemFields(payload: FileOperationPayload): void {
-  const required = REQUIRED_FIELDS[payload.operation]
-  payload.operations.forEach((item, index) => {
-    const missing = required.filter((field) => {
-      const value = item[field]
-      return typeof value !== 'string' || value.trim().length === 0
-    })
-    if (missing.length > 0) {
-      throw new UnprocessableError(`Item ${index + 1} of a ${payload.operation} lacks ${missing.join(', ')}`, {
-        reason: 'proposal-item-incomplete',
-        index,
-        missing,
-      })
-    }
-  })
+  /** Which card of that answer; with `answerMessageId` the create is idempotent. */
+  originCardIndex?: number | null
 }
 
 /**
  * File Piloti's proposal on behalf of `session`'s person, in a project they can
- * read. Proposing changes nothing, so reading is enough; deciding takes write.
+ * read. Proposing changes nothing, so reading is enough; deciding takes the
+ * kind's write. The same card of the same answer a second time returns the
+ * first proposal as it stands, and tells nobody again.
  */
 export async function createProposal(session: AuthorizedSession, input: CreateProposalInput): Promise<ProposedChangeRow> {
   await requireProjectAccess(session, input.projectId, 'project:view')
-  const payload = fileOperationPayloadSchema.parse(input.payload)
-  requireItemFields(payload)
+  const typed = parseKindPayload(input.kind, input.payload)
+  requireProposable(typed)
   if (input.conversationId) {
     const conversation = await findConversationInOrg(input.conversationId, session.organizationId)
     if (!conversation) throw new NotFoundError('Conversation not found')
   }
-  const row = await insertProposedChange({
+  const { row, created } = await insertProposedChange({
     organizationId: session.organizationId,
     projectId: input.projectId,
-    kind: input.kind,
-    payload,
+    kind: typed.kind,
+    payload: typed.payload,
     proposedByKind: 'piloti',
     onBehalfOf: session.userId,
     originConversationId: input.conversationId,
     originMessageId: input.answerMessageId,
+    originCardIndex: input.answerMessageId ? (input.originCardIndex ?? null) : null,
   })
+  if (!created) return row
   bestEffort('attention (created)', () =>
     onProposalCreated({
       organizationId: row.organizationId,
@@ -121,7 +110,7 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
       proposalId: row.id,
       originConversationId: row.originConversationId,
       onBehalfOf: row.onBehalfOf,
-      summary: summaryOf(payload),
+      summary: summaryOf(typed),
     })
   )
   return row
@@ -134,16 +123,6 @@ function bestEffort(what: string, run: () => Promise<unknown>): void {
     .catch((error: unknown) => {
       console.warn(`[proposals] ${what} failed (non-fatal):`, error)
     })
-}
-
-/** How many names the inbox row lists before it counts the rest. */
-const SUMMARY_NAMES = 2
-
-/** One line naming what a proposal touches: the first names, then how many more. No verb, so it needs no language. */
-function summaryOf(payload: FileOperationPayload): string {
-  const names = payload.operations.map((item) => operationLabel(payload.operation, item)).filter(Boolean)
-  const shown = names.slice(0, SUMMARY_NAMES).join(', ')
-  return names.length > SUMMARY_NAMES ? `${shown} +${names.length - SUMMARY_NAMES}` : shown
 }
 
 /**
@@ -185,10 +164,10 @@ export async function requireReadableProposal(session: AuthorizedSession, id: st
   return row
 }
 
-/** Whether `session` may change the project's documents; a closed project or no grant is a no. */
-async function mayDecide(session: AuthorizedSession, projectId: string): Promise<boolean> {
+/** Whether `session` holds the right this kind is decided with; a closed project or no grant is a no. */
+async function mayDecide(session: AuthorizedSession, row: ProposedChangeRow): Promise<boolean> {
   try {
-    await requireProjectAccess(session, projectId, DOCUMENT_WRITE_PERMISSIONS)
+    await requireProjectAccess(session, row.projectId, DECIDE_PERMISSIONS[row.kind])
     return true
   } catch (error) {
     if (error instanceof NotFoundError || error instanceof ForbiddenError) return false
@@ -196,14 +175,15 @@ async function mayDecide(session: AuthorizedSession, projectId: string): Promise
   }
 }
 
-/** Refuse a decision from a reader who may not write here: 403, or the closed project's own 403. */
-async function requireDecider(session: AuthorizedSession, projectId: string): Promise<void> {
+/** Refuse a decision from a reader without the kind's right: 403, or the closed project's own 403. */
+async function requireDecider(session: AuthorizedSession, row: ProposedChangeRow): Promise<void> {
   try {
-    await requireProjectAccess(session, projectId, DOCUMENT_WRITE_PERMISSIONS)
+    await requireProjectAccess(session, row.projectId, DECIDE_PERMISSIONS[row.kind])
   } catch (error) {
     if (error instanceof NotFoundError) {
-      throw new ForbiddenError("Only someone who may change this project's documents can decide a proposal", {
+      throw new ForbiddenError('Only someone who may make this change in the project can decide this proposal', {
         reason: 'proposal-decider-needs-write',
+        kind: row.kind,
       })
     }
     throw error
@@ -220,10 +200,9 @@ async function toView(session: AuthorizedSession, row: ProposedChangeRow): Promi
   const nameOf = (userId: string | null) => (userId ? (directory.get(userId)?.name ?? null) : null)
   const undecided = row.status === 'proposed' && !claimIsLive(row)
   return {
+    ...parseKindPayload(row.kind, row.payload),
     id: row.id,
     projectId: row.projectId,
-    kind: row.kind,
-    payload: fileOperationPayloadSchema.parse(row.payload),
     status: row.status,
     proposedByKind: row.proposedByKind,
     onBehalfOf: row.onBehalfOf,
@@ -235,7 +214,7 @@ async function toView(session: AuthorizedSession, row: ProposedChangeRow): Promi
     decidedByName: nameOf(row.decidedBy),
     decidedAt: row.decidedAt ? row.decidedAt.toISOString() : null,
     results: row.results ?? null,
-    canDecide: undecided && (await mayDecide(session, row.projectId)),
+    canDecide: undecided && (await mayDecide(session, row)),
   }
 }
 
@@ -249,19 +228,27 @@ const outcomeOf = (results: readonly ProposedChangeResult[]) => {
   return applied === 0 ? ('failed' as const) : ('partially_applied' as const)
 }
 
+/** What the deciding person brings to an apply besides their session. */
+export interface ApplyProposalOptions extends ApplyProposalRequest {
+  /** Their language, for a refusal they read (the profile's confinement). */
+  locale?: Locale
+}
+
 /**
- * Apply the proposal as `session`'s person: claim it, run every item in order
- * through the services, record each result, settle. 409 when it is no longer
- * `proposed` or somebody is applying it right now.
+ * Apply the proposal as `session`'s person: claim it, run the kind's applier,
+ * record each result, settle. 409 when it is no longer `proposed` or somebody
+ * is applying it right now. `memoryScope: 'project'` files an organization
+ * note in the project instead; other kinds ignore it.
  */
 export async function applyProposal(
   session: AuthorizedSession,
   id: string,
-  request: Request
+  request: Request,
+  options: ApplyProposalOptions = {}
 ): Promise<ProposedChangeView> {
   const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
-  await requireDecider(session, row.projectId)
+  await requireDecider(session, row)
   const claim = await claimProposedChange(session.organizationId, id, session.userId, staleBefore())
   if (!claim) {
     const now = await findProposedChange(session.organizationId, id)
@@ -269,11 +256,13 @@ export async function applyProposal(
   }
   let results: ProposedChangeResult[]
   try {
-    const payload = fileOperationPayloadSchema.parse(claim.payload)
-    results = await applyFileOperations(payload.operation, payload.operations, {
+    results = await applyKind(parseKindPayload(claim.kind, claim.payload), {
       session,
       projectId: claim.projectId,
       request,
+      originConversationId: claim.originConversationId,
+      locale: options.locale ?? defaultLocale,
+      memoryScope: options.memoryScope,
     })
   } catch (error) {
     await releaseProposedChange(session.organizationId, claim)
@@ -291,7 +280,7 @@ export async function applyProposal(
 export async function dismissProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeView> {
   const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
-  await requireDecider(session, row.projectId)
+  await requireDecider(session, row)
   const dismissed = await dismissProposedChange(session.organizationId, id, session.userId, staleBefore())
   if (!dismissed) {
     const now = await findProposedChange(session.organizationId, id)

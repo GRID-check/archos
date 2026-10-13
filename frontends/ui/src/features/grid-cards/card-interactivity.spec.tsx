@@ -66,19 +66,6 @@ const SETTLE_CASES: Partial<
     } as GridCard,
     action: 'No',
   },
-  file_operation_proposal: {
-    card: {
-      type: 'file_operation_proposal',
-      title: 'Move two files',
-      operation: 'move',
-      operations: [
-        { document: 'Grundriss EG.pdf', source: 'projekt', current: '', target_folder: 'Einreichung' },
-      ],
-    } as GridCard,
-    // Discard settles without touching a route, like Reject above: this spec
-    // is about the wiring, and the accept path has its own spec.
-    action: 'Discard',
-  },
   canvas_activity: {
     card: {
       type: 'canvas_activity',
@@ -180,6 +167,18 @@ const SETTLE_CASES: Partial<
   },
 }
 
+/**
+ * Interactive types with no settle case on purpose. `file_operation_proposal`
+ * is decided on the SERVER (ADR-0105): with a `proposal_id` its Apply and
+ * Discard go to `/api/proposals/[id]` and nothing is written to the message
+ * (`FileOperationProposalCard.live.spec.tsx`); without one it is read-only and
+ * only replays a decision recorded before server proposals
+ * (`FileOperationProposalCard.spec.tsx`). So there is no click here that ends
+ * in `setCardDecision`. Classifying such a type apart from `'interactive'`
+ * (a `'live'` class) retires this set.
+ */
+const DECIDED_ON_THE_SERVER: ReadonlySet<GridCard['type']> = new Set(['file_operation_proposal'])
+
 describe('interactive card wiring', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -193,7 +192,7 @@ describe('interactive card wiring', () => {
   })
 
   it('has a settle case for every card classified as interactive', () => {
-    const uncovered = INTERACTIVE_CARD_TYPES.filter((type) => !SETTLE_CASES[type])
+    const uncovered = INTERACTIVE_CARD_TYPES.filter((type) => !SETTLE_CASES[type] && !DECIDED_ON_THE_SERVER.has(type))
     expect(
       uncovered,
       `Card type(s) ${uncovered.join(', ')} are classified 'interactive' in CARD_INTERACTIVITY but ` +

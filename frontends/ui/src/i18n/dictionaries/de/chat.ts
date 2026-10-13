@@ -545,50 +545,68 @@ export const chat: typeof en.chat = {
       },
       // Die oberste Ebene hat keinen Pfad, aber einen Namen, den Menschen sagen.
       root: 'Oberste Ebene',
-      prompt: 'Übernehmen?',
-      accept: 'Übernehmen',
-      reject: 'Verwerfen',
-      applying: 'Wird übernommen …',
       applied: {
         move: '{count, plural, one {Datei verschoben.} other {# Dateien verschoben.}}',
         rename: '{count, plural, one {Datei umbenannt.} other {# Dateien umbenannt.}}',
         create_folder: '{count, plural, one {Ordner angelegt.} other {# Ordner angelegt.}}',
         assign: '{count, plural, one {Datei zugewiesen.} other {# Dateien zugewiesen.}}',
       },
-      // Teils übernommen, teils nicht. WELCHE, wird nicht gespeichert (eine
-      // Entscheidung ist eine Entscheidung und ein Zeitpunkt) — nach dem Neuladen
-      // ist das alles, was die Karte ehrlich sagen kann, und sie sagt, wo man
-      // nachsieht, statt zu raten.
+      // Einige Einträge einer Karte, die vor den Vorschlägen auf dem Server
+      // entschieden wurde. WELCHE, wird dort nicht gespeichert (eine Entscheidung
+      // ist eine Entscheidung und ein Zeitpunkt) — die Karte sagt, wo man nachsieht,
+      // statt zu raten.
       partial:
         'Teilweise übernommen. Einige Einträge konnten nicht ausgeführt werden – sehen Sie unter Dateien nach.',
+      // Eine Karte, deren Vorschlag der Server hält, nennt die Zahl der
+      // gelungenen Einträge aus dem Ergebnis je Zeile.
+      partialCount: '{applied} von {total} übernommen.',
       dismissed: 'Verworfen. Es wurde nichts geändert.',
-      error: 'Konnte nicht übernommen werden.',
-      // Der eine Fall, in dem die Karte nichts auszuführen hat. Der Vorschlag
-      // bleibt lesbar, die Schaltfläche erscheint nicht, und hier steht warum —
-      // statt beim Klick zu scheitern.
-      unavailable: {
-        noProject:
-          'Diese Unterhaltung gehört zu keinem Projekt, es gibt hier also keine Ablage zu ändern.',
+      // Eine Karte ohne gespeicherten Vorschlag (eine Antwort aus der Zeit
+      // davor, oder einer, den der Agent nicht ablegen konnte). Im Browser wird
+      // nichts mehr ausgeführt: Der Vorschlag bleibt lesbar, übernehmen lässt er
+      // sich nicht, und hier steht warum.
+      notStored:
+        'Konnte nicht als Vorschlag angelegt werden. Bitten Sie Piloti, die Änderung noch einmal vorzuschlagen.',
+    },
+    // Ein Vorschlag, den der Server hält (ADR-0105), gleich welcher Art: Datei-
+    // änderung, Notiz oder Änderung am Projektkontext. Stand, Ergebnis und wer
+    // entschieden hat, kommen aus diesem Objekt — jede Leserin sieht die
+    // Entscheidung der Kollegin.
+    proposalReceipt: {
+      prompt: 'Übernehmen?',
+      accept: 'Übernehmen',
+      reject: 'Verwerfen',
+      applying: 'Wird übernommen …',
+      failed: 'Nichts konnte übernommen werden. Es wurde nichts geändert.',
+      applyError: 'Konnte nicht übernommen werden.',
+      dismissError: 'Konnte nicht verworfen werden.',
+      decidedBy: {
+        applied: 'Übernommen von {name} · {when}',
+        partially_applied: 'Übernommen von {name} · {when}',
+        failed: 'Versucht von {name} · {when}',
+        dismissed: 'Verworfen von {name} · {when}',
       },
-      // Eine Karte, deren Vorschlag der Server hält (ADR-0105): Stand, Ergebnis
-      // je Zeile und wer entschieden hat, kommen aus diesem Objekt, also sieht
-      // jede Leserin die Entscheidung der Kollegin.
-      live: {
-        partial: '{applied} von {total} übernommen.',
-        failed: 'Nichts konnte übernommen werden. Es wurde nichts geändert.',
-        decidedBy: {
-          applied: 'Übernommen von {name} · {when}',
-          partially_applied: 'Übernommen von {name} · {when}',
-          failed: 'Versucht von {name} · {when}',
-          dismissed: 'Verworfen von {name} · {when}',
+      // Der Name ist dieser Leserin nicht bekannt.
+      someone: 'einer Kollegin oder einem Kollegen',
+      // Der Klick kam an, nachdem jemand anderes entschieden hatte.
+      overtaken: 'Inzwischen wurde darüber entschieden.',
+      readOnly: 'Sie können diesen Vorschlag lesen, in diesem Projekt aber nicht übernehmen.',
+      loadError: 'Der Stand dieses Vorschlags konnte nicht geladen werden.',
+      memory: {
+        confidence: { low: 'Sicherheit: gering', medium: 'Sicherheit: mittel', high: 'Sicherheit: hoch' },
+        goesInto: {
+          organization: 'Kommt in das Gedächtnis des Büros, für alle Projekte.',
+          project: 'Kommt in das Gedächtnis dieses Projekts.',
         },
-        // Der Name ist dieser Leserin nicht bekannt.
-        someone: 'einer Kollegin oder einem Kollegen',
-        // Der Klick kam an, nachdem jemand anderes entschieden hatte.
-        overtaken: 'Inzwischen wurde darüber entschieden.',
-        readOnly: 'Sie können diesen Vorschlag lesen, in diesem Projekt aber nicht übernehmen.',
-        loadError: 'Der Stand dieses Vorschlags konnte nicht geladen werden.',
-        dismissError: 'Konnte nicht verworfen werden.',
+        supersedes: 'Ersetzt: „{note}“',
+        onlyInProject: 'Nur im Projekt merken',
+        saving: 'Wird gespeichert …',
+        saved: 'Notiz gemerkt.',
+        dismissed: 'Verworfen. Es wurde nichts gemerkt.',
+      },
+      profile: {
+        applied: 'Projektkontext aktualisiert.',
+        dismissed: 'Verworfen. Der Projektkontext blieb unverändert.',
       },
     },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem

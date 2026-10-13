@@ -547,47 +547,64 @@ export const chat = {
       },
       // The project root has a path of nothing; it needs a name a person uses.
       root: 'Top level',
-      prompt: 'Apply this?',
-      accept: 'Apply',
-      reject: 'Discard',
-      applying: 'Applying…',
       applied: {
         move: '{count, plural, one {File moved.} other {# files moved.}}',
         rename: '{count, plural, one {File renamed.} other {# files renamed.}}',
         create_folder: '{count, plural, one {Folder created.} other {# folders created.}}',
         assign: '{count, plural, one {File assigned.} other {# files assigned.}}',
       },
-      // Some of it landed and some did not. WHICH is not stored (a decision is
-      // a decision plus a timestamp), so after a reload this is all the card
-      // can honestly say — and it says where to look instead of guessing.
+      // Some entries of a card decided before proposals lived on the server.
+      // WHICH is not stored there (a decision is a decision plus a timestamp),
+      // so this is all the card can honestly say — and it says where to look.
       partial: 'Applied in part. Some entries could not be applied — check the file list.',
+      // A card whose proposal the server holds counts the entries that went
+      // through from the result per row.
+      partialCount: '{applied} of {total} applied.',
       dismissed: 'Discarded. Nothing was changed.',
-      error: 'Could not be applied.',
-      // The one case where the card has nothing to run. The proposal still
-      // reads; the control does not appear, and this says why rather than
-      // failing on click.
-      unavailable: {
-        noProject: 'This chat is not attached to a project, so there is no file store to change.',
+      // A card with no stored proposal (an answer from before them, or one the
+      // agent could not file). Nothing runs in the browser any more: the
+      // proposal still reads, it cannot be applied, and this says why.
+      notStored: 'Could not be created as a proposal. Ask Piloti to propose the change again.',
+    },
+    // A proposal the server holds (ADR-0105), whatever its kind: a file change,
+    // a note or a change to the project context. Its status, its result and who
+    // decided are read from that object, so every reader sees a colleague's
+    // decision.
+    proposalReceipt: {
+      prompt: 'Apply this?',
+      accept: 'Apply',
+      reject: 'Discard',
+      applying: 'Applying…',
+      failed: 'Nothing could be applied. Nothing was changed.',
+      applyError: 'Could not be applied.',
+      dismissError: 'Could not be discarded.',
+      decidedBy: {
+        applied: 'Applied by {name} · {when}',
+        partially_applied: 'Applied by {name} · {when}',
+        failed: 'Tried by {name} · {when}',
+        dismissed: 'Discarded by {name} · {when}',
       },
-      // A card whose proposal the server holds (ADR-0105): its status, the
-      // result of every row and who decided are read from that object, so a
-      // colleague's decision is what every reader sees.
-      live: {
-        partial: '{applied} of {total} applied.',
-        failed: 'Nothing could be applied. Nothing was changed.',
-        decidedBy: {
-          applied: 'Applied by {name} · {when}',
-          partially_applied: 'Applied by {name} · {when}',
-          failed: 'Tried by {name} · {when}',
-          dismissed: 'Discarded by {name} · {when}',
+      // The decider's name is not known to this reader.
+      someone: 'a colleague',
+      // The click arrived after somebody else had decided.
+      overtaken: 'This was decided in the meantime.',
+      readOnly: 'You can read this proposal, but not apply it in this project.',
+      loadError: 'The state of this proposal could not be loaded.',
+      memory: {
+        confidence: { low: 'Confidence: low', medium: 'Confidence: medium', high: 'Confidence: high' },
+        goesInto: {
+          organization: "Goes into the office's memory, for every project.",
+          project: "Goes into this project's memory.",
         },
-        // The decider's name is not known to this reader.
-        someone: 'a colleague',
-        // The click arrived after somebody else had decided.
-        overtaken: 'This was decided in the meantime.',
-        readOnly: 'You can read this proposal, but not apply it in this project.',
-        loadError: 'The state of this proposal could not be loaded.',
-        dismissError: 'Could not be discarded.',
+        supersedes: 'Replaces: “{note}”',
+        onlyInProject: 'Remember in the project only',
+        saving: 'Saving…',
+        saved: 'Note remembered.',
+        dismissed: 'Discarded. Nothing was remembered.',
+      },
+      profile: {
+        applied: 'Project context updated.',
+        dismissed: 'Discarded. The project context is unchanged.',
       },
     },
     // What Piloti did on a document: marks it set, threads it answered in.

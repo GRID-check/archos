@@ -1,7 +1,7 @@
 /**
- * Proposed changes repository — the SQL over `proposed_changes` (migration
- * 0137). No authorization here; `./service` owns it. Every statement is keyed
- * by the organization as well as the id, and runs in its tenant scope.
+ * Proposed changes repository — the SQL over `proposed_changes` (migrations
+ * 0137, 0140). No authorization here; `./service` owns it. Every statement is
+ * keyed by the organization as well as the id, and runs in its tenant scope.
  *
  * Every transition is a compare-and-swap on `proposed`, so two people (or two
  * tabs) deciding at once cannot both win: the loser's update finds no row and
@@ -9,11 +9,11 @@
  */
 
 import 'server-only'
-import { and, eq, isNull, lt, or } from 'drizzle-orm'
+import { and, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { proposedChanges, type ProposedChangeRow, type ProposerKind } from '@/lib/db/schema/proposed-changes'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { FileOperationPayload, ProposedChangeKind, ProposedChangeResult, ProposedChangeStatus } from './types'
+import type { ProposedChangeKind, ProposedChangeResult, ProposedChangeStatus } from './types'
 
 export type { ProposedChangeRow }
 
@@ -21,22 +21,60 @@ export interface NewProposedChange {
   organizationId: string
   projectId: string
   kind: ProposedChangeKind
-  payload: FileOperationPayload
+  /** The contract's payload for `kind`, parsed by the service before it gets here. */
+  payload: unknown
   proposedByKind: ProposerKind
   onBehalfOf: string
   originConversationId: string | null
   originMessageId: string | null
+  /** Which card of the origin answer made it; needs `originMessageId` (0140's CHECK). */
+  originCardIndex?: number | null
 }
 
-export async function insertProposedChange(input: NewProposedChange): Promise<ProposedChangeRow> {
+/** What an insert came to: the row, and whether this call made it or found the card's earlier one. */
+export interface InsertedProposedChange {
+  row: ProposedChangeRow
+  created: boolean
+}
+
+/**
+ * Store a proposal. With a card index it is idempotent on
+ * `uniq_proposed_changes_origin_card`: the same card of the same answer a
+ * second time inserts nothing and returns the FIRST proposal, as it stands.
+ */
+export async function insertProposedChange(input: NewProposedChange): Promise<InsertedProposedChange> {
   const db = getDb()
-  const [row] = await withTenant({ organizationId: input.organizationId }, () =>
-    db
+  const { organizationId, originMessageId, originCardIndex } = input
+  return withTenant({ organizationId }, async () => {
+    const values = { ...input, originCardIndex: originCardIndex ?? null, status: 'proposed' as const }
+    if (originCardIndex === null || originCardIndex === undefined || !originMessageId) {
+      const [row] = await db.insert(proposedChanges).values(values).returning()
+      return { row, created: true }
+    }
+    const [inserted] = await db
       .insert(proposedChanges)
-      .values({ ...input, status: 'proposed' })
+      .values(values)
+      .onConflictDoNothing({
+        target: [proposedChanges.organizationId, proposedChanges.originMessageId, proposedChanges.originCardIndex],
+        where: sql`${proposedChanges.originCardIndex} IS NOT NULL`,
+      })
       .returning()
-  )
-  return row
+    if (inserted) return { row: inserted, created: true }
+    const [existing] = await db
+      .select()
+      .from(proposedChanges)
+      .where(
+        and(
+          eq(proposedChanges.organizationId, organizationId),
+          eq(proposedChanges.originMessageId, originMessageId),
+          eq(proposedChanges.originCardIndex, originCardIndex)
+        )
+      )
+      .limit(1)
+    // The conflict was on this card's row, so it is there: a miss is a bug, not a race.
+    if (!existing) throw new Error('A proposal for this card conflicted and could not be read back')
+    return { row: existing, created: false }
+  })
 }
 
 /** One proposed change of this organization, or null. */

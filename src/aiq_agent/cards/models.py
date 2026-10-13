@@ -145,6 +145,16 @@ PROFILE_FACT_VOCABULARY = (
 )
 
 
+#: A server proposal's id (``POST /api/internal/proposals``, ADR-0105).
+PROPOSAL_ID_PATTERN = r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+
+#: Fields of a model-composed card that only the server may fill. Stripped from
+#: whatever the model writes (``cards/envelope.validate_model_card``) and hidden
+#: from the shapes the model is taught (``cards/catalog._shape``): an id the model
+#: made up would point a person's Accept at somebody else's proposal.
+SERVER_FILLED_CARD_FIELDS = frozenset({"proposal_id"})
+
+
 class ProjectProfilePatchOperation(CardModel):
     """A JSON Patch operation targeting a project profile section."""
 
@@ -196,10 +206,19 @@ class ProjectProfilePatchCard(CardModel):
     preview: list[ProjectProfilePatchPreviewItem] = Field(
         default_factory=list,
         description=(
-            "Optional and not rendered. The card builds its before/after rows from the PATCH "
-            "and the live profile (`buildPatchPreviewRows`), never from a model-supplied "
+            "Optional and not rendered or recorded. The card builds its before/after rows from the "
+            "PATCH and the live profile (`buildPatchPreviewRows`), never from a model-supplied "
             "preview — what the user consents to has to be what is written. Kept as an "
             "optional field rather than removed so an older stored card still validates."
+        ),
+    )
+    proposal_id: str | None = Field(
+        default=None,
+        pattern=PROPOSAL_ID_PATTERN,
+        description=(
+            "The server proposal this card shows (POST /api/internal/proposals), set where the answer's "
+            "cards become final and never by the model. Absent: the browser applies the patch, as before "
+            "proposals were server objects"
         ),
     )
 
@@ -208,14 +227,29 @@ class MemoryProposalCard(CardModel):
     """A proposal to save a finding to long-term memory, confirmed by the user.
 
     System-emitted by the `remember` tool when an org-scoped write needs human
-    authorization; the user chooses org-wide or project scope and the write goes
-    through their authenticated session."""
+    authorization. With `proposal_id` the note is a stored proposal (kind
+    `memory`) the server files in the accepting person's session, org-wide or,
+    if they choose, in the project; without one the browser writes it through the
+    reader's own session."""
 
     type: Literal["memory_proposal"]
     title: str = Field(min_length=1, description="Short title for the memory proposal")
     content: str = Field(min_length=1, description="The finding to remember (shown to the user verbatim)")
     kind: Literal["decision", "constraint", "open_question", "derived_fact", "preference"]
     confidence: Literal["low", "medium", "high"] = Field(default="medium")
+    supersedes: str | None = Field(
+        default=None,
+        max_length=500,
+        description="The earlier note this one corrects, quoted verbatim; accepting the proposal retires it",
+    )
+    proposal_id: str | None = Field(
+        default=None,
+        pattern=PROPOSAL_ID_PATTERN,
+        description=(
+            "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser "
+            "writes the note through the reader's own session, as before proposals were server objects"
+        ),
+    )
 
 
 # ── Schematic cards: shared sub-structures ───────────────────────────────────
@@ -1016,8 +1050,8 @@ class TaskCreatedCard(CardModel):
 #
 # The batch is why `operations` is a list, capped, every entry sharing the
 # card's `operation` kind: „Räum die Einreichunterlagen zusammen" is four
-# moves. A stored proposal cannot grow, so today only the browser-executed card
-# batches; a server-backed one carries the call that created it
+# moves. A stored proposal cannot grow, so a card carries the one operation of
+# the call that created it and the list is the contract's shape, not a batch
 # (`tools/files/cards.py` says why).
 
 #: How many operations one card may carry. A tidying turn proposes a handful;
@@ -1089,9 +1123,8 @@ class FileOperationProposalCard(CardModel):
     shows a proposal stored on the server (ADR-0105), which the server applies
     in the accepting person's session; it then carries the one operation of
     the call that created it. Without one (an older BFF, a run with no
-    envelope) the reader's Accept runs the rows through the existing
-    document/folder/assignment routes from the browser, and repeated calls of
-    one ``operation`` extend the card.
+    envelope, a refusal) the proposal was not stored: the UI draws the card
+    read-only, saying so, and the browser executes nothing.
     """
 
     type: Literal["file_operation_proposal"] = "file_operation_proposal"
@@ -1105,10 +1138,10 @@ class FileOperationProposalCard(CardModel):
     note: str | None = Field(default=None, description="One line of context under the list, when it adds something")
     proposal_id: str | None = Field(
         default=None,
-        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        pattern=PROPOSAL_ID_PATTERN,
         description=(
-            "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser executes "
-            "the rows, as before proposals were server objects"
+            "The server proposal this card shows (POST /api/internal/proposals). Absent: the proposal was not "
+            "stored, and the card is a read-only notice that nothing was proposed"
         ),
     )
 

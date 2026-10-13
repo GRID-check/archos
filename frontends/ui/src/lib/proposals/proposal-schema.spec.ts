@@ -31,9 +31,19 @@ describe('proposed changes JSON Schema', () => {
   })
 
   it('closes the request: the project is the envelope’s, so the body cannot name one', () => {
-    const request = (proposalsJsonSchema().$defs as Record<string, Node>).InternalProposalRequest
-    expect(request.additionalProperties).toBe(false)
-    expect(Object.keys(request.properties ?? {}).sort()).toEqual(['answerMessageId', 'kind', 'op', 'payload'])
+    // One closed object per kind: none of them can name a project.
+    const request = (proposalsJsonSchema().$defs as Record<string, Node & { oneOf?: Node[] }>).InternalProposalRequest
+    expect(request.oneOf).toHaveLength(3)
+    for (const option of request.oneOf ?? []) {
+      expect(option.additionalProperties).toBe(false)
+      expect(Object.keys(option.properties ?? {}).sort()).toEqual([
+        'answerMessageId',
+        'kind',
+        'op',
+        'originCardIndex',
+        'payload',
+      ])
+    }
   })
 
   it('bounds the payload as the card did: four verbs, at most twenty items', () => {

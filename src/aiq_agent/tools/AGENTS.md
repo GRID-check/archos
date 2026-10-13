@@ -75,24 +75,46 @@ server object, emits ONE `file_operation_proposal` card carrying its id, and
 returns text whose first words are that nothing has happened. It was four tools
 until they merged; the card vocabulary kept its four operation kinds.
 
-**A proposal is a server object (ADR-0105).** The tool sends
-`POST /api/internal/proposals` (op `create`, kind `file_operation`, the card's
-rows as `payload`), with the turn's envelope echoed like every call here, and
-the card carries the returned `proposal_id` (`files/client.py`). The BFF
-records the person Piloti acted for. Accepting the card asks the server to
-apply the proposal in the DECIDING person's session, through the services the
-Files pane uses, in order, recording a result per row; the decision is a server
-row Piloti can read and Langfuse can score, not the browser's word. The body is
+**A proposal is a server object (ADR-0105), of one of three kinds.** The client
+is `proposals_client.py` (`POST /api/internal/proposals`, op `create`, the turn's
+envelope echoed like every call here); the BFF records the person Piloti acted
+for, and accepting the card asks the server to apply the proposal in the
+DECIDING person's session, through the services the person's own surfaces use,
+recording a result per item. The decision is a server row Piloti can read and
+Langfuse can score, not the browser's word. The body is
 `internalProposalRequestSchema` in `frontends/ui/src/lib/proposals/types.ts`,
-exported as `frontends/ui/tests/fixtures/proposals.schema.json`.
+exported as `frontends/ui/tests/fixtures/proposals.schema.json`. Each kind has
+exactly one creator, and the card carries the returned `proposal_id`:
+
+| `kind` | Created by | Card | Payload |
+|---|---|---|---|
+| `file_operation` | `propose_file_change` (`files/cards.py`) | `file_operation_proposal` | `operation`, `operations`, `note` |
+| `memory` | `remember` (`memory/register.py`), only when an organization-scoped write is refused and the turn is not restricted | `memory_proposal` | `scope`, `kind`, `content`, `confidence`, `supersedes` |
+| `project_profile` | `register_envelope_card` (`cards/envelope.py`), called by `_register_envelope_cards` in `agents/piloti/answer_pipeline.py`, for the model's own `project_profile_patch` card in a turn that is not confined | `project_profile_patch` | `title`, `rationale`, `patch` (the model's `preview` is neither rendered nor recorded) |
+
+The profile card is the odd one: the MODEL composes it in the answer envelope
+and no tool runs, so the only place a turn can create its proposal is where the
+envelope's cards become final. `validate_model_card` strips a `proposal_id` the
+model wrote, and `proposal_id` is left out of the shapes the model is taught
+(`SERVER_FILLED_CARD_FIELDS`): an id on a card is always one the BFF returned.
+
+Every request names the card: `answerMessageId` and `originCardIndex`, the
+card's position in the turn's `CardRegistry`. With the answer's id the index
+makes the create idempotent at the database, so a card asked for twice returns
+its first proposal. `add_card` therefore puts the card in the registry first and
+asks for the proposal second, so the index is the position the card really has
+even while a sibling tool adds its own.
 
 When the route is not there (an older BFF answers 404, a run has no envelope,
-the BFF is unreachable) the card goes out without `proposal_id`, and accepting
-it runs the operation from the browser, as the signed-in user, through the
-routes the Files pane uses — `PATCH /api/documents/[id]`,
-`PATCH /api/documents/[id]/folder`, `POST /api/projects/[id]/folders`,
-`POST /api/assignments/document/[id]`. Either way no route is added for the
-agent that a person could not reach themselves, so `requireProjectAccess`, the
+the BFF is unreachable, the server refuses) no file operation runs from the
+browser any more. The card stays in the registry without `proposal_id` (card
+positions are identity: `cardKey` is `type-index` and `originCardIndex` is the
+idempotency key of the proposals after it, so it is never taken back out), the UI
+draws it read-only with „Konnte nicht als Vorschlag angelegt werden“, and
+`propose_file_operation` returns `False`, so the tool tells the model it could
+not propose (`_NOT_PROPOSED` in `files/register.py`). A memory note and a
+profile patch without an id still go through their own person routes from the
+browser. No route is added for the agent that a person could not reach themselves, so `requireProjectAccess`, the
 audit trail and the feature gates are the ones that were already there — which
 is ADR-0055 read from this side: one HTTP surface per primitive, and this tier
 is a client of it like everybody else, never a second implementation.
@@ -109,12 +131,11 @@ Three consequences worth knowing before adding a fifth operation:
 - **A stored proposal does not grow; one call is one proposal.** The internal
   route has `create` and nothing else, so a second move cannot join the first
   one's proposal, and a card that grew on the client would show two moves and
-  apply one. A server-backed card is therefore closed, and „Räum die
-  Einreichunterlagen zusammen" is four cards. Only the browser-executed
-  fallback card still extends: repeated calls with the same `operation` append
-  to it up to `MAX_FILE_OPERATIONS`. Batching server proposals again means
+  apply one. Every card is therefore one call's, and „Räum die
+  Einreichunterlagen zusammen" is four cards. Batching server proposals again means
   creating them once the turn's cards are final, at the turn's finish, not
-  per call (`files/cards.py` says why).
+  per call (`files/cards.py` says why); `register_envelope_card` is that place
+  for cards the model composes.
 - **An operation with no route behind it does not ship.** `set_doc_class`
   was the fifth verb and is gone: the Dokumentart is settable only on the
   platform corpus, a project document has no such route, and the card therefore
@@ -148,10 +169,11 @@ its own say-so would let the agent decide access.
 | Change what is stored per draft | Remember DeepAgents rebuilds the stored value from `content`/`encoding` on every edit: a key not re-stamped after the operation is gone | Nothing local. The version counter silently resets to 1 |
 | Take text from the model and compare it to stored text | NFC-normalise both, at the backend seam | An `edit_file` that fails with a string identical to the one in the file. [`gotchas.md`](../../../docs/contributing/gotchas.md) |
 | Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`src/aiq_agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |
-| Add an operation that WRITES | Make it propose: its branch in `propose_file_change` (`files/register.py`) and its line in `_DESCRIPTION`, emitting a `file_operation_proposal` card and a result saying nothing changed. Then its kind in `FileOperationKind` (`cards/models.py`) and in `FILE_OPERATIONS` (`frontends/ui/src/lib/proposals/types.ts`), the server's applier for it, and the browser fallback's executor in `grid-cards/lib/file-operations.ts`. The action key and the `TOOL_CONTEXT_REQUIREMENTS` row belong to the tool and are already there; a new write-side TOOL needs both | Nothing local — which is the point. A tool that wrote directly would pass every test and bypass `requireProjectAccess`, the audit trail and the reader's consent in one call |
+| Add a file operation that WRITES | Make it propose: its branch in `propose_file_change` (`files/register.py`) and its line in `_DESCRIPTION`, emitting a `file_operation_proposal` card and a result saying nothing changed. Then its kind in `FileOperationKind` (`cards/models.py`) and in `FILE_OPERATIONS` (`frontends/ui/src/lib/proposals/types.ts`), and the server's applier for it (`lib/proposals/executors.ts`). The action key and the `TOOL_CONTEXT_REQUIREMENTS` row belong to the tool and are already there; a new write-side TOOL needs both | Nothing local — which is the point. A tool that wrote directly would pass every test and bypass `requireProjectAccess`, the audit trail and the reader's consent in one call |
+| Add a write that is not a file operation (a fourth proposal kind) | Add the kind to `PROPOSED_CHANGE_KINDS`, its payload to `internalProposalRequestSchema` and its applier on the BFF side first; then create it from ONE place with `proposals_client.add_card` (a tool that pushes its own card, or `register_envelope_card` for a card the model composes), carrying `proposal_id` on the card and falling back to the old card on every failure. Give the card `proposal_id` in `cards/models.py` (and add the field to `SERVER_FILLED_CARD_FIELDS` if the model can compose the card) | `tests/aiq_agent/tools/files/test_proposals.py`, which fails when the contract has a kind this client cannot ask for. Nothing else: a write that skipped the proposal would apply in the agent's name, not the person's |
 | Write a rule about how one of these tools is used | Put it in that tool's DESCRIPTION. The prompt blocks that used to hold these rules (`<entwuerfe>`, `<aufraeumen>`, `<delegieren>`) are gone: every one of them restated a bound tool's contract in prose charged on every call of every turn (ADR-0060 (d) and its amendment). The prompt keeps only what no description can carry: an antecedent that lives in the transcript | Review, and 1,500 tokens per turn. The rule also half-applies: a description reaches the model with the call, a prompt paragraph competes with everything else on the page |
 | Add a canvas tool that WRITES something everyone who opens the document sees | Call `policy.shared_write_refusal()` before the request, as `mark`, `update`, `delete`, `reply`, `highlight` and a labelled `point` do | Nothing local: a thread or a highlight is read by the document's whole audience, and a conversation that drew on a restricted folder would leak it there. `tests/aiq_agent/tools/canvas/test_targets_and_policy.py` covers the six that exist |
 | Call the BFF from a tool that acts as a PERSON | Echo `GridRequestContext.envelope_header` / `envelope_signature` unchanged. Never build or sign an envelope here, and never read the acting user off the unsigned `x-grid-user-id` header | Nothing local, and everything downstream: the internal token is the signing secret, so a self-signed envelope is a tool choosing whose permissions it runs under |
 | Delete a conversation's working directory | Go through `DELETE /v1/drafts/{conversation_id}` (`frontends/aiq_api/routes/drafts.py`), which sweeps the store namespace. Nothing else may reach into `("conversation", id, "drafts")` | Nothing local. The drafts outlive the conversation as bytes under a key that names nothing |
-| Change the shape of a proposal request or response | Nothing by hand: the contract is `frontends/ui/tests/fixtures/proposals.schema.json`, exported from `lib/proposals/types.ts`. There is no Pydantic twin | `tests/aiq_agent/tools/files/test_proposals.py`, which validates the body the tool really builds against that file |
+| Change the shape of a proposal request or response | Nothing by hand: the contract is `frontends/ui/tests/fixtures/proposals.schema.json`, exported from `lib/proposals/types.ts`. There is no Pydantic twin | `tests/aiq_agent/tools/files/test_proposals.py`, which validates the bodies the client really builds, for all three kinds, against that file; `tests/aiq_agent/memory/test_register.py` and `tests/aiq_agent/cards/test_register_envelope_card.py` for the two other creators |
 | Change the shape of a lifecycle request or response | Nothing by hand — the contract is `frontends/ui/tests/fixtures/document-lifecycle.schema.json`, generated from the BFF's zod (ADR-0055). There is no Pydantic twin | `tests/aiq_agent/tools/documents/test_wire_contract.py`, which validates the payloads the tool really builds against that file |

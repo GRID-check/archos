@@ -4,12 +4,14 @@
  * organization id; items are never visible across organizations. Any member
  * may read and write org memory (deliberately not admin-gated).
  *
- * Thin handlers; all logic lives in `@/lib/projects/memory-service`.
+ * Thin handlers; the write is `createOrganizationMemoryItem`
+ * (`@/lib/projects/service`), the one an accepted memory proposal uses too.
  */
 
 import { z } from 'zod'
 import { apiRoute, parseJsonBody } from '@/lib/api/handler'
-import { createProjectMemoryItem, listOrganizationMemory } from '@/lib/projects/memory-service'
+import { listOrganizationMemory } from '@/lib/projects/memory-service'
+import { createOrganizationMemoryItem } from '@/lib/projects/service'
 import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/db/schema'
 
 const createOrgMemorySchema = z.object({
@@ -35,18 +37,7 @@ export const GET = apiRoute(
 export const POST = apiRoute(
   async ({ session, request }) => {
     const input = await parseJsonBody(request, createOrgMemorySchema)
-    const item = await createProjectMemoryItem({
-      scope: 'organization',
-      projectId: null,
-      organizationId: session.organizationId,
-      kind: input.kind,
-      content: input.content,
-      confidence: input.confidence ?? 'medium',
-      pinned: input.pinned ?? false,
-      provenanceType: 'user',
-      verification: 'user_confirmed',
-      createdBy: session.userId,
-    })
+    const item = await createOrganizationMemoryItem(session, input)
     return { item }
   },
   {

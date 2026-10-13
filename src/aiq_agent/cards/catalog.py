@@ -642,9 +642,12 @@ def _is_discriminator(field_name: str, field_info: Any) -> bool:
 
 def _shape(model_cls: type, nested: list[type], *, with_desc: bool) -> str:
     """Render a model's fields as `{ name*: type (desc; constraints), ... }`."""
+    from aiq_agent.cards.models import SERVER_FILLED_CARD_FIELDS  # models import this module
+
     parts: list[str] = []
     for field_name, field_info in model_cls.model_fields.items():
-        if _is_discriminator(field_name, field_info):
+        # A field only the server fills (`proposal_id`) is not the model's to write.
+        if _is_discriminator(field_name, field_info) or field_name in SERVER_FILLED_CARD_FIELDS:
             continue
         req = "*" if field_info.is_required() else ""
         type_str = _annotation_str(field_info.annotation, nested)

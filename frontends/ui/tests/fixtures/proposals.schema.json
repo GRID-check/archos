@@ -4,160 +4,323 @@
   "description": "Generated from frontends/ui/src/lib/proposals/types.ts. Do not edit by hand: proposal-schema.spec.ts rewrites this file and fails when it is stale.",
   "$defs": {
     "InternalProposalRequest": {
-      "type": "object",
-      "properties": {
-        "op": {
-          "const": "create"
-        },
-        "kind": {
-          "const": "file_operation"
-        },
-        "payload": {
+      "oneOf": [
+        {
           "type": "object",
           "properties": {
-            "operation": {
-              "type": "string",
-              "enum": [
-                "move",
-                "rename",
-                "create_folder",
-                "assign"
-              ]
+            "op": {
+              "const": "create"
             },
-            "operations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "document": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 512
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "source": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "projekt",
-                          "buero"
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "originCardIndex": {
+              "type": "integer"
+            },
+            "kind": {
+              "const": "file_operation"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "operation": {
+                  "type": "string",
+                  "enum": [
+                    "move",
+                    "rename",
+                    "create_folder",
+                    "assign"
+                  ]
+                },
+                "operations": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "document": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512
+                          },
+                          {
+                            "type": "null"
+                          }
                         ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "current": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 512
+                      "source": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "projekt",
+                              "buero"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "target_folder": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 1024
+                      "current": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 512
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "new_display_name": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 512
+                      "target_folder": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "folder_name": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                      "new_display_name": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 512
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "parent_folder": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 1024
+                      "folder_name": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "member": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
+                      "parent_folder": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "maxLength": 1024
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       },
-                      {
-                        "type": "null"
+                      "member": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 256
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
                       }
-                    ]
-                  }
+                    },
+                    "additionalProperties": false
+                  },
+                  "maxItems": 8
                 },
-                "additionalProperties": false
-              },
-              "maxItems": 8
-            },
-            "note": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 500
-                },
-                {
-                  "type": "null"
+                "note": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
-              ]
+              },
+              "required": [
+                "operation",
+                "operations"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
-            "operation",
-            "operations"
+            "op",
+            "kind",
+            "payload"
           ],
           "additionalProperties": false
         },
-        "answerMessageId": {
-          "type": "string",
-          "format": "uuid"
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "create"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "originCardIndex": {
+              "type": "integer"
+            },
+            "kind": {
+              "const": "memory"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "project",
+                    "organization"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "decision",
+                    "constraint",
+                    "open_question",
+                    "derived_fact",
+                    "preference"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "supersedes": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "scope",
+                "kind",
+                "content",
+                "confidence"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "op",
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "create"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "originCardIndex": {
+              "type": "integer"
+            },
+            "kind": {
+              "const": "project_profile"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "rationale": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 600
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "patch": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "enum": [
+                          "add",
+                          "replace",
+                          "remove"
+                        ]
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "value": {}
+                    },
+                    "required": [
+                      "op",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "maxItems": 20
+                }
+              },
+              "required": [
+                "title",
+                "patch"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "op",
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": false
         }
-      },
-      "required": [
-        "op",
-        "kind",
-        "payload"
       ],
-      "additionalProperties": false
+      "discriminator": {
+        "propertyName": "kind"
+      }
     },
     "InternalProposalResponse": {
       "type": "object",
@@ -318,297 +481,123 @@
       ],
       "additionalProperties": false
     },
-    "ProposedChangeView": {
+    "MemoryPayload": {
       "type": "object",
       "properties": {
-        "id": {
+        "scope": {
           "type": "string",
-          "format": "uuid"
-        },
-        "projectId": {
-          "type": "string"
+          "enum": [
+            "project",
+            "organization"
+          ]
         },
         "kind": {
           "type": "string",
           "enum": [
-            "file_operation"
+            "decision",
+            "constraint",
+            "open_question",
+            "derived_fact",
+            "preference"
           ]
         },
-        "payload": {
-          "type": "object",
-          "properties": {
-            "operation": {
+        "content": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "confidence": {
+          "type": "string",
+          "enum": [
+            "low",
+            "medium",
+            "high"
+          ]
+        },
+        "supersedes": {
+          "anyOf": [
+            {
               "type": "string",
-              "enum": [
-                "move",
-                "rename",
-                "create_folder",
-                "assign"
-              ]
-            },
-            "operations": {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "document": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 512
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "source": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "enum": [
-                          "projekt",
-                          "buero"
-                        ]
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "current": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 512
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "target_folder": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 1024
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "new_display_name": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 512
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "folder_name": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "parent_folder": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "maxLength": 1024
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  },
-                  "member": {
-                    "anyOf": [
-                      {
-                        "type": "string",
-                        "minLength": 1,
-                        "maxLength": 256
-                      },
-                      {
-                        "type": "null"
-                      }
-                    ]
-                  }
-                },
-                "additionalProperties": false
-              },
-              "maxItems": 8
-            },
-            "note": {
-              "anyOf": [
-                {
-                  "type": "string",
-                  "maxLength": 500
-                },
-                {
-                  "type": "null"
-                }
-              ]
-            }
-          },
-          "required": [
-            "operation",
-            "operations"
-          ],
-          "additionalProperties": false
-        },
-        "status": {
-          "type": "string",
-          "enum": [
-            "proposed",
-            "applied",
-            "partially_applied",
-            "failed",
-            "dismissed"
-          ]
-        },
-        "proposedByKind": {
-          "type": "string",
-          "enum": [
-            "piloti",
-            "person"
-          ]
-        },
-        "onBehalfOf": {
-          "type": "string"
-        },
-        "onBehalfOfName": {
-          "anyOf": [
-            {
-              "type": "string"
+              "maxLength": 500
             },
             {
               "type": "null"
             }
           ]
-        },
-        "originConversationId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "originMessageId": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "createdAt": {
-          "type": "string"
-        },
-        "decidedBy": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "decidedByName": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "decidedAt": {
-          "anyOf": [
-            {
-              "type": "string"
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "results": {
-          "anyOf": [
-            {
-              "type": "array",
-              "items": {
-                "type": "object",
-                "properties": {
-                  "label": {
-                    "type": "string"
-                  },
-                  "ok": {
-                    "type": "boolean"
-                  },
-                  "reason": {
-                    "type": "string"
-                  }
-                },
-                "required": [
-                  "label",
-                  "ok"
-                ],
-                "additionalProperties": true
-              }
-            },
-            {
-              "type": "null"
-            }
-          ]
-        },
-        "canDecide": {
-          "type": "boolean"
         }
       },
       "required": [
-        "id",
-        "projectId",
+        "scope",
         "kind",
-        "payload",
-        "status",
-        "proposedByKind",
-        "onBehalfOf",
-        "onBehalfOfName",
-        "originConversationId",
-        "originMessageId",
-        "createdAt",
-        "decidedBy",
-        "decidedByName",
-        "decidedAt",
-        "results",
-        "canDecide"
+        "content",
+        "confidence"
       ],
-      "additionalProperties": true
+      "additionalProperties": false
     },
-    "ProposalResponse": {
+    "ProjectProfilePayload": {
       "type": "object",
       "properties": {
-        "proposal": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "rationale": {
+          "anyOf": [
+            {
+              "type": "string",
+              "maxLength": 600
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "patch": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "op": {
+                "type": "string",
+                "enum": [
+                  "add",
+                  "replace",
+                  "remove"
+                ]
+              },
+              "path": {
+                "type": "string"
+              },
+              "value": {}
+            },
+            "required": [
+              "op",
+              "path"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 20
+        }
+      },
+      "required": [
+        "title",
+        "patch"
+      ],
+      "additionalProperties": false
+    },
+    "ApplyProposalRequest": {
+      "type": "object",
+      "properties": {
+        "memoryScope": {
+          "const": "project"
+        }
+      },
+      "additionalProperties": false
+    },
+    "ProposedChangeView": {
+      "oneOf": [
+        {
           "type": "object",
           "properties": {
             "id": {
@@ -618,11 +607,126 @@
             "projectId": {
               "type": "string"
             },
-            "kind": {
+            "status": {
               "type": "string",
               "enum": [
-                "file_operation"
+                "proposed",
+                "applied",
+                "partially_applied",
+                "failed",
+                "dismissed"
               ]
+            },
+            "proposedByKind": {
+              "type": "string",
+              "enum": [
+                "piloti",
+                "person"
+              ]
+            },
+            "onBehalfOf": {
+              "type": "string"
+            },
+            "onBehalfOfName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originConversationId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originMessageId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "decidedBy": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedByName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedAt": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "results": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "itemId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "ok"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "canDecide": {
+              "type": "boolean"
+            },
+            "kind": {
+              "const": "file_operation"
             },
             "payload": {
               "type": "object",
@@ -758,6 +862,37 @@
                 "operations"
               ],
               "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "projectId",
+            "status",
+            "proposedByKind",
+            "onBehalfOf",
+            "onBehalfOfName",
+            "originConversationId",
+            "originMessageId",
+            "createdAt",
+            "decidedBy",
+            "decidedByName",
+            "decidedAt",
+            "results",
+            "canDecide",
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "projectId": {
+              "type": "string"
             },
             "status": {
               "type": "string",
@@ -857,6 +992,9 @@
                       },
                       "reason": {
                         "type": "string"
+                      },
+                      "itemId": {
+                        "type": "string"
                       }
                     },
                     "required": [
@@ -873,13 +1011,67 @@
             },
             "canDecide": {
               "type": "boolean"
+            },
+            "kind": {
+              "const": "memory"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "type": "string",
+                  "enum": [
+                    "project",
+                    "organization"
+                  ]
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "decision",
+                    "constraint",
+                    "open_question",
+                    "derived_fact",
+                    "preference"
+                  ]
+                },
+                "content": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 500
+                },
+                "confidence": {
+                  "type": "string",
+                  "enum": [
+                    "low",
+                    "medium",
+                    "high"
+                  ]
+                },
+                "supersedes": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "scope",
+                "kind",
+                "content",
+                "confidence"
+              ],
+              "additionalProperties": false
             }
           },
           "required": [
             "id",
             "projectId",
-            "kind",
-            "payload",
             "status",
             "proposedByKind",
             "onBehalfOf",
@@ -891,9 +1083,926 @@
             "decidedByName",
             "decidedAt",
             "results",
-            "canDecide"
+            "canDecide",
+            "kind",
+            "payload"
           ],
           "additionalProperties": true
+        },
+        {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "projectId": {
+              "type": "string"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "applied",
+                "partially_applied",
+                "failed",
+                "dismissed"
+              ]
+            },
+            "proposedByKind": {
+              "type": "string",
+              "enum": [
+                "piloti",
+                "person"
+              ]
+            },
+            "onBehalfOf": {
+              "type": "string"
+            },
+            "onBehalfOfName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originConversationId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "originMessageId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "createdAt": {
+              "type": "string"
+            },
+            "decidedBy": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedByName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "decidedAt": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "results": {
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "label": {
+                        "type": "string"
+                      },
+                      "ok": {
+                        "type": "boolean"
+                      },
+                      "reason": {
+                        "type": "string"
+                      },
+                      "itemId": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "label",
+                      "ok"
+                    ],
+                    "additionalProperties": true
+                  }
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "canDecide": {
+              "type": "boolean"
+            },
+            "kind": {
+              "const": "project_profile"
+            },
+            "payload": {
+              "type": "object",
+              "properties": {
+                "title": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "rationale": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 600
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "patch": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "op": {
+                        "type": "string",
+                        "enum": [
+                          "add",
+                          "replace",
+                          "remove"
+                        ]
+                      },
+                      "path": {
+                        "type": "string"
+                      },
+                      "value": {}
+                    },
+                    "required": [
+                      "op",
+                      "path"
+                    ],
+                    "additionalProperties": true
+                  },
+                  "maxItems": 20
+                }
+              },
+              "required": [
+                "title",
+                "patch"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "required": [
+            "id",
+            "projectId",
+            "status",
+            "proposedByKind",
+            "onBehalfOf",
+            "onBehalfOfName",
+            "originConversationId",
+            "originMessageId",
+            "createdAt",
+            "decidedBy",
+            "decidedByName",
+            "decidedAt",
+            "results",
+            "canDecide",
+            "kind",
+            "payload"
+          ],
+          "additionalProperties": true
+        }
+      ],
+      "discriminator": {
+        "propertyName": "kind"
+      }
+    },
+    "ProposalResponse": {
+      "type": "object",
+      "properties": {
+        "proposal": {
+          "oneOf": [
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "proposed",
+                    "applied",
+                    "partially_applied",
+                    "failed",
+                    "dismissed"
+                  ]
+                },
+                "proposedByKind": {
+                  "type": "string",
+                  "enum": [
+                    "piloti",
+                    "person"
+                  ]
+                },
+                "onBehalfOf": {
+                  "type": "string"
+                },
+                "onBehalfOfName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originConversationId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originMessageId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "decidedBy": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedByName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "results": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "itemId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "ok"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "canDecide": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "file_operation"
+                },
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "operation": {
+                      "type": "string",
+                      "enum": [
+                        "move",
+                        "rename",
+                        "create_folder",
+                        "assign"
+                      ]
+                    },
+                    "operations": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "document": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "source": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "projekt",
+                                  "buero"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "current": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 512
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "target_folder": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "new_display_name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 512
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "folder_name": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "parent_folder": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "maxLength": 1024
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "member": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 256
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "additionalProperties": false
+                      },
+                      "maxItems": 8
+                    },
+                    "note": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "operation",
+                    "operations"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "projectId",
+                "status",
+                "proposedByKind",
+                "onBehalfOf",
+                "onBehalfOfName",
+                "originConversationId",
+                "originMessageId",
+                "createdAt",
+                "decidedBy",
+                "decidedByName",
+                "decidedAt",
+                "results",
+                "canDecide",
+                "kind",
+                "payload"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "proposed",
+                    "applied",
+                    "partially_applied",
+                    "failed",
+                    "dismissed"
+                  ]
+                },
+                "proposedByKind": {
+                  "type": "string",
+                  "enum": [
+                    "piloti",
+                    "person"
+                  ]
+                },
+                "onBehalfOf": {
+                  "type": "string"
+                },
+                "onBehalfOfName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originConversationId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originMessageId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "decidedBy": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedByName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "results": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "itemId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "ok"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "canDecide": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "memory"
+                },
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "scope": {
+                      "type": "string",
+                      "enum": [
+                        "project",
+                        "organization"
+                      ]
+                    },
+                    "kind": {
+                      "type": "string",
+                      "enum": [
+                        "decision",
+                        "constraint",
+                        "open_question",
+                        "derived_fact",
+                        "preference"
+                      ]
+                    },
+                    "content": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 500
+                    },
+                    "confidence": {
+                      "type": "string",
+                      "enum": [
+                        "low",
+                        "medium",
+                        "high"
+                      ]
+                    },
+                    "supersedes": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 500
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "scope",
+                    "kind",
+                    "content",
+                    "confidence"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "projectId",
+                "status",
+                "proposedByKind",
+                "onBehalfOf",
+                "onBehalfOfName",
+                "originConversationId",
+                "originMessageId",
+                "createdAt",
+                "decidedBy",
+                "decidedByName",
+                "decidedAt",
+                "results",
+                "canDecide",
+                "kind",
+                "payload"
+              ],
+              "additionalProperties": true
+            },
+            {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid"
+                },
+                "projectId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "proposed",
+                    "applied",
+                    "partially_applied",
+                    "failed",
+                    "dismissed"
+                  ]
+                },
+                "proposedByKind": {
+                  "type": "string",
+                  "enum": [
+                    "piloti",
+                    "person"
+                  ]
+                },
+                "onBehalfOf": {
+                  "type": "string"
+                },
+                "onBehalfOfName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originConversationId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "originMessageId": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "decidedBy": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedByName": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "decidedAt": {
+                  "anyOf": [
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "results": {
+                  "anyOf": [
+                    {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "label": {
+                            "type": "string"
+                          },
+                          "ok": {
+                            "type": "boolean"
+                          },
+                          "reason": {
+                            "type": "string"
+                          },
+                          "itemId": {
+                            "type": "string"
+                          }
+                        },
+                        "required": [
+                          "label",
+                          "ok"
+                        ],
+                        "additionalProperties": true
+                      }
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "canDecide": {
+                  "type": "boolean"
+                },
+                "kind": {
+                  "const": "project_profile"
+                },
+                "payload": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    },
+                    "rationale": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "maxLength": 600
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    },
+                    "patch": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "op": {
+                            "type": "string",
+                            "enum": [
+                              "add",
+                              "replace",
+                              "remove"
+                            ]
+                          },
+                          "path": {
+                            "type": "string"
+                          },
+                          "value": {}
+                        },
+                        "required": [
+                          "op",
+                          "path"
+                        ],
+                        "additionalProperties": true
+                      },
+                      "maxItems": 20
+                    }
+                  },
+                  "required": [
+                    "title",
+                    "patch"
+                  ],
+                  "additionalProperties": false
+                }
+              },
+              "required": [
+                "id",
+                "projectId",
+                "status",
+                "proposedByKind",
+                "onBehalfOf",
+                "onBehalfOfName",
+                "originConversationId",
+                "originMessageId",
+                "createdAt",
+                "decidedBy",
+                "decidedByName",
+                "decidedAt",
+                "results",
+                "canDecide",
+                "kind",
+                "payload"
+              ],
+              "additionalProperties": true
+            }
+          ],
+          "discriminator": {
+            "propertyName": "kind"
+          }
         }
       },
       "required": [

@@ -22,7 +22,8 @@
  *     refuses one on an open note, where it would tell any member the chat
  *     could list a restricted folder;
  *   - the card decisions of a conversation that drew on a restricted folder stay
- *     out of the project-wide PROPOSAL_DECISIONS block.
+ *     out of the project-wide PROPOSAL_DECISIONS block, and so do the decided
+ *     `proposed_changes` made in one (or in none, or in a deleted one).
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) builds that database and runs
  * this file with the other suites.
@@ -61,6 +62,7 @@ describe.skipIf(!url)('restricted project memory against live Postgres', () => {
   let memory: typeof import('./memory-service')
   let folderAccess: typeof import('@/lib/authz/folder-access')
   let conversationsRepo: typeof import('@/lib/conversations/repository')
+  let proposalRows: typeof import('./proposal-decision-rows')
 
   const inTenant = <T>(run: () => Promise<T>): Promise<T> =>
     withTenant({ organizationId: ORG, userId: USER }, run)
@@ -154,6 +156,7 @@ describe.skipIf(!url)('restricted project memory against live Postgres', () => {
     memory = await import('./memory-service')
     folderAccess = await import('@/lib/authz/folder-access')
     conversationsRepo = await import('@/lib/conversations/repository')
+    proposalRows = await import('./proposal-decision-rows')
   })
 
   afterEach(() => {
@@ -164,6 +167,7 @@ describe.skipIf(!url)('restricted project memory against live Postgres', () => {
   afterAll(async () => {
     if (!db) return
     await withPlatformAccess('test teardown', async () => {
+      await db.execute(sql`delete from proposed_changes where organization_id = ${ORG}`)
       await db.execute(sql`delete from project_memory where organization_id = ${ORG}`)
       await db.execute(sql`delete from messages where organization_id = ${ORG}`)
       await db.execute(sql`delete from conversation_restricted_folders where organization_id = ${ORG}`)
@@ -516,6 +520,100 @@ describe.skipIf(!url)('restricted project memory against live Postgres', () => {
       const text = JSON.stringify(rows.map((row) => row.metadata))
       expect(text).toContain('Offene Entscheidung')
       expect(text).not.toContain('Honorar')
+    })
+
+    it('leaves out the decided proposals of a restricted, cross-project, deleted or origin-less conversation', async () => {
+      const { projectId, restricted } = await seedProject('proposal_rows')
+      const other = await seedProject('proposal_rows_source')
+      const conversationIds = {
+        open: `rows_open_${ORG}`,
+        restricted: `rows_restricted_${ORG}`,
+        crossProject: `rows_cross_${ORG}`,
+        closedSource: `rows_closed_${ORG}`,
+        deleted: `rows_deleted_${ORG}`,
+      }
+      await inTenant(async () => {
+        for (const id of Object.values(conversationIds)) {
+          await db.execute(sql`
+            insert into conversations (id, organization_id, created_by, project_id)
+            values (${id}, ${ORG}, ${USER}, ${projectId}::uuid)`)
+        }
+        await db.execute(sql`
+          insert into conversation_restricted_folders (organization_id, conversation_id, folder_id)
+          values (${ORG}, ${conversationIds.restricted}, ${restricted[0]}::uuid)`)
+        // Drew on another project that is still restricting its readers ...
+        await db.execute(sql`
+          insert into conversation_source_projects (organization_id, conversation_id, project_id)
+          values (${ORG}, ${conversationIds.crossProject}, ${other.projectId}::uuid)`)
+        await db.execute(sql`update conversations set deleted_at = now() where id = ${conversationIds.deleted}`)
+      })
+
+      const decide = (origin: string | null, content: string, status = 'applied', decidedAt = '2026-10-02T10:00:00Z') =>
+        inTenant(() =>
+          db.execute(sql`
+            insert into proposed_changes
+              (organization_id, project_id, kind, payload, status, proposed_by_kind, on_behalf_of,
+               origin_conversation_id, decided_by, decided_at, results)
+            values (${ORG}, ${projectId}::uuid, 'memory',
+                    ${JSON.stringify({ scope: 'project', kind: 'decision', content, confidence: 'high' })}::jsonb,
+                    ${status}, 'piloti', ${USER}, ${origin}, ${USER}, ${decidedAt}::timestamptz,
+                    ${status === 'dismissed' ? null : '[]'}::jsonb)`)
+        )
+      // Dismissed carries no results (the CHECK); every other decided status does.
+      await decide(conversationIds.open, 'Offene Entscheidung')
+      await decide(conversationIds.restricted, 'Honorar 184.000 Euro')
+      await decide(conversationIds.crossProject, 'Aus dem anderen Projekt', 'applied', '2026-10-01T10:00:00Z')
+      await decide(conversationIds.deleted, 'Aus gelöschtem Gespräch')
+      await decide(null, 'Ohne Gespräch')
+      // Not a decision the block states: still open, or nothing went through.
+      await inTenant(() =>
+        db.execute(sql`
+          insert into proposed_changes (organization_id, project_id, kind, payload, status, proposed_by_kind, on_behalf_of, origin_conversation_id)
+          values (${ORG}, ${projectId}::uuid, 'memory', '{"content":"Noch offen"}'::jsonb, 'proposed', 'piloti', ${USER}, ${conversationIds.open})`)
+      )
+      await decide(conversationIds.open, 'Fehlgeschlagen', 'failed', '2026-10-03T10:00:00Z')
+      await decide(conversationIds.open, 'Abgelehnt', 'dismissed', '2026-10-04T10:00:00Z')
+      // Another project's decided proposal in a conversation of this one.
+      await inTenant(() =>
+        db.execute(sql`
+          insert into proposed_changes
+            (organization_id, project_id, kind, payload, status, proposed_by_kind, on_behalf_of,
+             origin_conversation_id, decided_by, decided_at, results)
+          values (${ORG}, ${other.projectId}::uuid, 'memory', '{"content":"Anderes Projekt"}'::jsonb, 'applied', 'piloti', ${USER},
+                  ${conversationIds.open}, ${USER}, now(), '[]'::jsonb)`)
+      )
+
+      const read = (limit = 40) =>
+        inTenant(() => proposalRows.listRecentDecidedProposals(projectId, ORG, limit))
+      const rows = await read()
+      // Newest decision first; only the open conversation's decided ones.
+      expect(rows.map((row) => [row.status, (row.payload as { content: string }).content])).toEqual([
+        ['dismissed', 'Abgelehnt'],
+        ['applied', 'Offene Entscheidung'],
+      ])
+      expect(rows[0].decidedAt).toBeInstanceOf(Date)
+      expect(await read(1)).toHaveLength(1)
+
+      // A source project closed by now is read by the whole office: its conversation is open again.
+      await inTenant(() =>
+        db.execute(sql`
+          insert into conversation_source_projects (organization_id, conversation_id, project_id)
+          values (${ORG}, ${conversationIds.closedSource}, ${other.projectId}::uuid)`)
+      )
+      await decide(conversationIds.closedSource, 'Aus abgeschlossenem Projekt', 'applied', '2026-10-05T10:00:00Z')
+      await inTenant(() =>
+        db.execute(sql`
+          update projects set status = 'closed', closed_at = now(), closed_by = ${USER}, closed_outcome = 'completed',
+            ended_on = coalesce(ended_on, greatest(date_trunc('month', now())::date, started_on))
+          where id = ${other.projectId}::uuid`)
+      )
+      const afterClose = await read()
+      expect(afterClose.map((row) => (row.payload as { content: string }).content)).toEqual([
+        'Aus abgeschlossenem Projekt',
+        'Abgelehnt',
+        'Offene Entscheidung',
+        'Aus dem anderen Projekt',
+      ])
     })
   })
 })

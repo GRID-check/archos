@@ -45,10 +45,12 @@ from aiq_agent.cards.catalog import render_card_doctrine
 from aiq_agent.cards.catalog import render_card_index
 from aiq_agent.cards.catalog import retired_refusal
 from aiq_agent.cards.catalog import shape_hint_for
+from aiq_agent.cards.models import SERVER_FILLED_CARD_FIELDS
 from aiq_agent.cards.models import SURFACE_MAX_CHILDREN
 from aiq_agent.cards.models import SURFACE_MAX_LEAVES
 from aiq_agent.cards.models import SURFACE_MAX_TABS
 from aiq_agent.cards.models import SURFACE_TEXT_MAX
+from aiq_agent.cards.registry import CardRegistry
 from aiq_agent.common.tool_errors import render_error_detail
 
 logger = logging.getLogger(__name__)
@@ -252,7 +254,40 @@ def validate_model_card(payload: object) -> tuple[dict[str, Any] | None, CardRef
         logger.warning("card rejected: a '%s' card failed validation: %s", card_type, detail)
         return None, CardRefusal(REFUSED_SHAPE, card_type, detail=detail, hint=_repair_hint(payload, card_type))
 
+    # What only the server fills is never the model's: an id it wrote would point
+    # a person's Accept at a proposal this turn did not make.
+    for field in SERVER_FILLED_CARD_FIELDS:
+        validated.pop(field, None)
     return validated, None
+
+
+async def register_envelope_card(registry: CardRegistry, card: dict[str, Any]) -> None:
+    """Put one validated envelope card in the turn's registry: the point where a model's card becomes final.
+
+    A ``project_profile_patch`` is a change to the project's facts that a person
+    applies, so it leaves here as a server proposal (kind ``project_profile``,
+    ADR-0105) and the card carries its ``proposal_id``. The model composed the
+    card and no tool ran, so this is the one place the turn can create it: the
+    answer's cards are final and each has its position in the registry, which is
+    the proposal's ``originCardIndex`` (with the answer's id it makes the create
+    idempotent). A turn that may not compose the card never gets here: the
+    confined-turn refusal in :func:`validate_model_card` comes first. When the
+    proposal cannot be created (an older BFF, no envelope, an unreachable
+    route) the card is registered without an id, and accepting it applies the
+    patch from the browser as before.
+
+    The proposal records the title, the rationale and the patch. ``preview``,
+    which the model may still write, is neither rendered nor recorded.
+    """
+    from aiq_agent.tools.proposals_client import add_card
+
+    if card.get("type") != "project_profile_patch":
+        registry.add(card)
+        return
+    payload: dict[str, Any] = {"title": card["title"], "patch": card["patch"]}
+    if card.get("rationale"):
+        payload["rationale"] = card["rationale"]
+    await add_card(registry, card, kind="project_profile", payload=payload)
 
 
 def _repair_hint(payload: dict[str, Any], card_type: str) -> str | None:

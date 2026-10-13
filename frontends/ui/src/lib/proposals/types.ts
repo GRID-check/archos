@@ -12,8 +12,16 @@
  */
 
 import { z } from 'zod'
+import { ProjectProfilePatchOperationSchema } from '@/lib/project-profile/types'
+import { PROJECT_MEMORY_CONFIDENCES, PROJECT_MEMORY_KINDS } from '@/lib/projects/memory-vocabulary'
 
-export const PROPOSED_CHANGE_KINDS = ['file_operation'] as const
+/**
+ * `file_operation`: move, rename, create a folder, assign (0137).
+ * `memory`: a note for the project's or the office's memory (0140).
+ * `project_profile`: a change to the project's facts, goals, unknowns or
+ * assumptions, as a JSON patch on the profile (0140).
+ */
+export const PROPOSED_CHANGE_KINDS = ['file_operation', 'memory', 'project_profile'] as const
 export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
 
 /**
@@ -60,20 +68,59 @@ export const fileOperationPayloadSchema = z
   .strict()
 export type FileOperationPayload = z.infer<typeof fileOperationPayloadSchema>
 
+/** Where a memory note lives: the project's memory, or the whole office's. */
+export const MEMORY_SCOPES = ['project', 'organization'] as const
+export type MemoryScope = (typeof MEMORY_SCOPES)[number]
+
+/**
+ * A note Piloti proposes to remember (`project_memory_remember`, when it may
+ * not write it itself). `supersedes` quotes the earlier note it corrects,
+ * verbatim, so accepting the correction retires that note
+ * (`createProjectMemoryItem`'s `supersedesContent`).
+ */
+export const memoryPayloadSchema = z
+  .object({
+    scope: z.enum(MEMORY_SCOPES),
+    kind: z.enum(PROJECT_MEMORY_KINDS),
+    content: text(500),
+    confidence: z.enum(PROJECT_MEMORY_CONFIDENCES),
+    supersedes: z.string().trim().max(500).nullish(),
+  })
+  .strict()
+export type MemoryPayload = z.infer<typeof memoryPayloadSchema>
+
+/** Most operations one profile proposal carries. The card draws each one, before and after. */
+export const MAX_PROFILE_PATCH_OPERATIONS = 20
+
+/**
+ * A change to the project's facts (`project_profile_patch`): the patch is what
+ * is applied and what the record says was proposed; the title and rationale
+ * are what the reader is told. No preview: the reader's view is derived from
+ * the patch against the profile as it is when they look.
+ */
+export const projectProfilePayloadSchema = z
+  .object({
+    title: text(200),
+    rationale: z.string().trim().max(600).nullish(),
+    patch: z.array(ProjectProfilePatchOperationSchema).min(1).max(MAX_PROFILE_PATCH_OPERATIONS),
+  })
+  .strict()
+export type ProjectProfilePayload = z.infer<typeof projectProfilePayloadSchema>
+
 /** What applying one item did, in words a person reads in the card. */
 export const proposedChangeResultSchema = z.object({
   label: z.string(),
   ok: z.boolean(),
   reason: z.string().optional(),
+  /** What the apply created, when it created something addressable (a memory note's id). */
+  itemId: z.string().optional(),
 })
 export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 
-/** A proposed change as a person's client reads it. */
-export const proposedChangeViewSchema = z.object({
+/** The fields every proposed change has, whatever its kind. */
+const proposedChangeBaseSchema = z.object({
   id: z.string().uuid(),
   projectId: z.string(),
-  kind: z.enum(PROPOSED_CHANGE_KINDS),
-  payload: fileOperationPayloadSchema,
   status: z.enum(PROPOSED_CHANGE_STATUSES),
   /** Always Piloti today; the column exists so a person's proposal needs no migration. */
   proposedByKind: z.enum(['piloti', 'person']),
@@ -87,9 +134,21 @@ export const proposedChangeViewSchema = z.object({
   decidedByName: z.string().nullable(),
   decidedAt: z.string().nullable(),
   results: z.array(proposedChangeResultSchema).nullable(),
-  /** Whether the reader may apply or dismiss it now (status `proposed` and write access to the project). */
+  /**
+   * Whether the reader may apply or dismiss it now: status `proposed`, and the
+   * right the KIND needs (`project:documents:write` for a file operation,
+   * `project:memory:write` for a memory note or a profile change; `project:edit`
+   * covers all three).
+   */
   canDecide: z.boolean(),
 })
+
+/** A proposed change as a person's client reads it, its payload typed by its kind. */
+export const proposedChangeViewSchema = z.discriminatedUnion('kind', [
+  proposedChangeBaseSchema.extend({ kind: z.literal('file_operation'), payload: fileOperationPayloadSchema }),
+  proposedChangeBaseSchema.extend({ kind: z.literal('memory'), payload: memoryPayloadSchema }),
+  proposedChangeBaseSchema.extend({ kind: z.literal('project_profile'), payload: projectProfilePayloadSchema }),
+])
 export type ProposedChangeView = z.infer<typeof proposedChangeViewSchema>
 
 /**
@@ -108,14 +167,21 @@ export type ProposalResponse = z.infer<typeof proposalResponseSchema>
  * echoed. The project is the turn's, never named in the request. Returns the
  * id the card carries.
  */
-export const internalProposalRequestSchema = z
-  .object({
-    op: z.literal('create'),
-    kind: z.literal('file_operation'),
-    payload: fileOperationPayloadSchema,
-    answerMessageId: z.string().uuid().optional(),
-  })
-  .strict()
+const internalCreateBase = {
+  op: z.literal('create'),
+  answerMessageId: z.string().uuid().optional(),
+  /**
+   * Which card of that answer this is. With `answerMessageId` it makes the
+   * create idempotent: the same card twice returns the first proposal (0140).
+   */
+  originCardIndex: z.number().int().min(0).optional(),
+}
+
+export const internalProposalRequestSchema = z.discriminatedUnion('kind', [
+  z.object({ ...internalCreateBase, kind: z.literal('file_operation'), payload: fileOperationPayloadSchema }).strict(),
+  z.object({ ...internalCreateBase, kind: z.literal('memory'), payload: memoryPayloadSchema }).strict(),
+  z.object({ ...internalCreateBase, kind: z.literal('project_profile'), payload: projectProfilePayloadSchema }).strict(),
+])
 export type InternalProposalRequest = z.input<typeof internalProposalRequestSchema>
 
 export const internalProposalResponseSchema = z.object({
@@ -123,3 +189,14 @@ export const internalProposalResponseSchema = z.object({
   status: z.enum(PROPOSED_CHANGE_STATUSES),
 })
 export type InternalProposalResponse = z.infer<typeof internalProposalResponseSchema>
+
+/**
+ * `POST /api/proposals/[id]/apply` takes an optional body. For a memory note
+ * the deciding person may file it in the project's memory instead of the
+ * office's (never the other way: a project note does not become the office's
+ * by a click on a proposal that did not ask for it). Ignored for other kinds.
+ */
+export const applyProposalRequestSchema = z
+  .object({ memoryScope: z.literal('project').optional() })
+  .strict()
+export type ApplyProposalRequest = z.infer<typeof applyProposalRequestSchema>
