@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import {
   FAKE_FRAME_WIDTH,
@@ -49,6 +49,7 @@ beforeEach(() => {
   state.fail = false
   state.destroyed = 0
   state.pages = []
+  state.password = undefined
   restoreObservers.current = installLayoutObservers({ frameWidth: FAKE_FRAME_WIDTH })
 })
 
@@ -87,19 +88,20 @@ describe('PdfDocumentView', () => {
     expect(capturePosthog).toHaveBeenCalledWith('document_opened', { kind: 'pdf', library: 'pdfjs' })
   })
 
-  it('reports the browser fallback as its own renderer', async () => {
+  it('reports a hand-over to the browser\'s viewer as its own renderer', async () => {
     state.fail = true
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
-    await waitFor(() =>
-      expect(capturePosthog).toHaveBeenCalledWith('document_opened', { kind: 'pdf', library: 'browser' })
-    )
+    fireEvent.click(await screen.findByRole('link', { name: 'Open in browser' }))
+    expect(capturePosthog).toHaveBeenCalledWith('document_opened', { kind: 'pdf', library: 'browser' })
   })
 
   it('renders one frame per page of the document', async () => {
     state.pages = [{ items: [] }, { items: [] }, { items: [] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
     await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(3))
-    expect(screen.getByText('Page 1 of 3')).toBeTruthy()
+    // Each page is a named stop for assistive technology, not an anonymous box.
+    expect(screen.getByRole('group', { name: 'Page 3' })).toBeTruthy()
+    expect(await screen.findByText('Page 1 of 3')).toBeTruthy()
   })
 
   it('marks the cited passage on the cited page, in page coordinates', async () => {
@@ -210,25 +212,55 @@ describe('PdfDocumentView', () => {
       />,
     )
     await screen.findByTestId('passage-mark')
-    expect(screen.getByText('Go to passage')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Go to passage' })).toBeTruthy()
   })
 
-  it('falls back to the browser viewer, at the right page, when pdf.js cannot start', async () => {
+  /**
+   * A frame of the browser's own viewer used to stand in for a failed load,
+   * which on Android Chrome (no inline PDF renderer) is a blank box. The
+   * failure is said on the stage instead, with a retry and the browser's viewer
+   * as an explicit way out — still at the cited page.
+   */
+  it('says it could not open the document, offers the browser at the right page, and retries', async () => {
     state.fail = true
-    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" page={7} highlight="egal" />)
-    const frame = await screen.findByTitle('doc.pdf')
-    expect(frame.tagName).toBe('IFRAME')
-    expect(frame.getAttribute('src')).toBe('/api/doc.pdf#page=7')
-    // Something WAS lost here, so say so.
-    expect(screen.getByText(/cannot be marked/i)).toBeTruthy()
+    state.pages = [{ items: [] }]
+    const { container } = render(
+      <PdfDocumentView src="/api/doc.pdf" title="doc.pdf" page={7} highlight="egal" />,
+    )
+    expect(await screen.findByText('This document could not be opened here')).toBeTruthy()
+    expect(container.querySelector('iframe')).toBeNull()
+    expect(screen.getByRole('link', { name: 'Open in browser' }).getAttribute('href')).toBe(
+      '/api/doc.pdf#page=7',
+    )
+
+    state.fail = false
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
   })
 
-  it('says nothing about a lost highlight to a reader who asked for none', async () => {
+  it('leaves the failure to a host that owns one', async () => {
     state.fail = true
-    // The Files pane opens documents this way: no citation, no passage.
+    const onLoadError = vi.fn()
+    const { container } = render(
+      <PdfDocumentView src="/api/doc.pdf" title="doc.pdf" onLoadError={onLoadError} />,
+    )
+    await waitFor(() => expect(onLoadError).toHaveBeenCalledTimes(1))
+    expect(container.firstChild).toBeNull()
+  })
+
+  it('asks for the password of an encrypted document, and says when it is wrong', async () => {
+    state.password = 'geheim'
+    state.pages = [{ items: [] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
-    await screen.findByTitle('doc.pdf')
-    expect(screen.queryByText(/cannot be marked/i)).toBeNull()
+
+    const field = await screen.findByLabelText('Password')
+    fireEvent.change(field, { target: { value: 'falsch' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open document' }))
+    expect(await screen.findByRole('alert')).toHaveTextContent('That password is not correct.')
+
+    fireEvent.change(screen.getByLabelText('Password'), { target: { value: 'geheim' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Open document' }))
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
   })
 
   /**
@@ -264,7 +296,7 @@ describe('PdfDocumentView', () => {
 
     // The spy is wired correctly: asking to go back DOES scroll. Without this,
     // "not called" would pass just as well against a broken assertion.
-    fireEvent.click(screen.getByText('Go to passage'))
+    fireEvent.click(screen.getByRole('button', { name: 'Go to passage' }))
     expect(scrollTo).toHaveBeenCalled()
   })
 
@@ -496,7 +528,7 @@ describe('PdfDocumentView', () => {
     expect(mark.style.getPropertyValue('--passage-tint')).toBe('var(--source-project)')
     expect(screen.getByText('Grundriss EG')).toBeTruthy()
     // The same way back a located passage gets.
-    expect(screen.getByText('Go to passage')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Go to passage' })).toBeTruthy()
   })
 
   it('draws no region without a page to draw it on', async () => {
@@ -514,5 +546,168 @@ describe('PdfDocumentView', () => {
     await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
     unmount()
     await waitFor(() => expect(state.destroyed).toBe(1))
+  })
+
+  describe('moving through the document', () => {
+    const threePages = (): void => {
+      state.pages = [{ items: [] }, { items: [] }, { items: [] }]
+    }
+    const pageField = (): HTMLInputElement => screen.getByTestId('pdf-page-input')
+
+    it('goes to a page typed into the page field', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+
+      fireEvent.change(pageField(), { target: { value: '3' } })
+      fireEvent.keyDown(pageField(), { key: 'Enter' })
+
+      await waitFor(() => expect(pageField().value).toBe('3'))
+      expect(await screen.findByText('Page 3 of 3')).toBeTruthy()
+    })
+
+    it('holds a page past the end to the last page', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      fireEvent.change(pageField(), { target: { value: '99' } })
+      fireEvent.keyDown(pageField(), { key: 'Enter' })
+      await waitFor(() => expect(pageField().value).toBe('3'))
+    })
+
+    it('turns pages with the arrows either side of the field', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      expect(screen.getByRole('button', { name: 'Previous page' })).toBeDisabled()
+      fireEvent.click(screen.getByRole('button', { name: 'Next page' }))
+      await waitFor(() => expect(pageField().value).toBe('2'))
+    })
+
+    it('answers PageDown, End and Home while the reader is in the document', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      const frame = screen.getByTestId('pdf-scroll')
+
+      fireEvent.keyDown(frame, { key: 'PageDown' })
+      await waitFor(() => expect(pageField().value).toBe('2'))
+      fireEvent.keyDown(frame, { key: 'End' })
+      await waitFor(() => expect(pageField().value).toBe('3'))
+      fireEvent.keyDown(frame, { key: 'Home' })
+      await waitFor(() => expect(pageField().value).toBe('1'))
+    })
+
+    it('leaves the keys alone outside the viewer', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      fireEvent.keyDown(document.body, { key: 'End' })
+      expect(pageField().value).toBe('1')
+    })
+
+    it('zooms with + and -, and fits again with Cmd+0', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(pageField().value).toBe('1'))
+      const frame = screen.getByTestId('pdf-scroll')
+
+      fireEvent.keyDown(frame, { key: '+' })
+      expect(await screen.findByText('125%')).toBeTruthy()
+      fireEvent.keyDown(frame, { key: '+' })
+      expect(await screen.findByText('150%')).toBeTruthy()
+      fireEvent.keyDown(frame, { key: '0', metaKey: true })
+      expect(await screen.findByText('100%')).toBeTruthy()
+      fireEvent.keyDown(frame, { key: '-' })
+      expect(await screen.findByText('75%')).toBeTruthy()
+    })
+
+    it('fits the whole page on request, and says it is doing so', async () => {
+      threePages()
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      const toggle = await screen.findByRole('button', { name: 'Fit whole page' })
+      expect(toggle).toHaveAttribute('aria-pressed', 'false')
+      fireEvent.click(toggle)
+      expect(toggle).toHaveAttribute('aria-pressed', 'true')
+    })
+  })
+
+  describe('finding words in the document', () => {
+    beforeEach(() => {
+      state.pages = [
+        { items: [run('Zwei Fluchtwege je Nutzungseinheit', 700, 220)] },
+        { items: [run('Brandabschnitte und Trennwände', 700, 200)] },
+        { items: [run('Der zweite FLUCHTWEG führt über das Fenster', 700, 260)] },
+      ]
+    })
+
+    it('opens on Cmd+F inside the viewer, counts every hit and walks them', async () => {
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(3))
+
+      fireEvent.keyDown(screen.getByTestId('pdf-scroll'), { key: 'f', metaKey: true })
+      const field = await screen.findByRole('searchbox', { name: 'Search term' })
+      fireEvent.change(field, { target: { value: 'fluchtweg' } })
+
+      // Case does not matter: the PDF's spelling is not the reader's.
+      await waitFor(() => expect(screen.getByTestId('pdf-search-count')).toHaveTextContent('1 of 2'))
+      expect(screen.getAllByTestId('search-mark')).toHaveLength(2)
+      expect(document.querySelectorAll('[data-testid="search-mark"][data-active]')).toHaveLength(1)
+
+      fireEvent.click(screen.getByRole('button', { name: 'Next match' }))
+      expect(screen.getByTestId('pdf-search-count')).toHaveTextContent('2 of 2')
+      fireEvent.keyDown(field, { key: 'Enter' })
+      expect(screen.getByTestId('pdf-search-count')).toHaveTextContent('1 of 2')
+
+      fireEvent.keyDown(field, { key: 'Escape' })
+      await waitFor(() => expect(screen.queryByTestId('pdf-search-bar')).toBeNull())
+      expect(screen.queryAllByTestId('search-mark')).toHaveLength(0)
+    })
+
+    it('says so when nothing matches', async () => {
+      render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Find in document' }))
+      fireEvent.change(screen.getByRole('searchbox', { name: 'Search term' }), {
+        target: { value: 'Stellplatz' },
+      })
+      await waitFor(() => expect(screen.getByTestId('pdf-search-count')).toHaveTextContent('No matches'))
+    })
+  })
+
+  it('names every control it draws', async () => {
+    state.pages = [{ items: [] }, { items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(2))
+    const toolbar = screen.getByRole('group', { name: 'Document controls' })
+    for (const name of [
+      'Hide page overview',
+      'Previous page',
+      'Next page',
+      'Zoom out',
+      'Zoom in',
+      'Fit whole page',
+      'Find in document',
+    ]) {
+      expect(within(toolbar).getByRole('button', { name })).toBeTruthy()
+    }
+    expect(within(toolbar).getByRole('textbox', { name: 'Go to page, of 2' })).toBeTruthy()
+    // No separator role in the pill: a split's resize handle is the separator
+    // on the screens this viewer is mounted in.
+    expect(within(toolbar).queryByRole('separator')).toBeNull()
+  })
+
+  it('lists the pages in a rail that marks the one being read', async () => {
+    state.pages = [{ items: [] }, { items: [] }, { items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    const rail = await screen.findByRole('navigation', { name: 'Pages' })
+    const thumbs = within(rail).getAllByRole('button')
+    expect(thumbs).toHaveLength(3)
+    expect(thumbs[0]).toHaveAttribute('aria-current', 'page')
+
+    fireEvent.click(within(rail).getByRole('button', { name: 'Page 3' }))
+    await waitFor(() => expect(within(rail).getByRole('button', { name: 'Page 3' })).toHaveAttribute('aria-current', 'page'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Hide page overview' }))
+    expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
   })
 })

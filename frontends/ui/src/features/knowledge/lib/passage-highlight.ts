@@ -690,3 +690,30 @@ export function passageBounds(rects: HighlightRect[]): HighlightRect | null {
   const bottom = Math.max(...rects.map((rect) => rect.y + rect.height))
   return { x: left, y: top, width: right - left, height: bottom - top }
 }
+
+/** Shortest query the in-document search runs; one character matches everything. */
+export const MIN_SEARCH_QUERY = 2
+
+/**
+ * Every place `query` occurs on a page, as the rectangles to light up — the
+ * reader's own search, as opposed to `findPassage`'s one citation.
+ *
+ * The same index and the same folding, so a search for „Fluchtweg" finds the
+ * „Flucht-\nweg" the PDF wrapped, whatever its case or accents: the reader
+ * types the word, not the PDF's spelling of it. Only exact
+ * occurrences: fuzzy matching is right for a citation somebody else extracted
+ * and wrong for a word the reader just typed. Capped, because a page full of
+ * „die" is not a list of results anyone reads.
+ */
+export function findOccurrences(index: PassageIndex, query: string, limit = 500): HighlightRect[][] {
+  const needle = normalizePassage(query)
+  if (needle.length < MIN_SEARCH_QUERY || !index.haystack.length) return []
+  const found: HighlightRect[][] = []
+  let from = index.haystack.indexOf(needle)
+  while (from !== -1 && found.length < limit) {
+    const rects = rangeToRects(index, { start: from, end: from + needle.length })
+    if (rects.length) found.push(rects)
+    from = index.haystack.indexOf(needle, from + needle.length)
+  }
+  return found
+}

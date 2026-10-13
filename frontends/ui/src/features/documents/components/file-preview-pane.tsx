@@ -545,9 +545,8 @@ export function FilePreviewPane({
    * stage with their controls floating over them, rather than a bordered
    * scroller boxed inside a padded box.
    */
-  const wellHostsViewer =
-    peeking &&
-    (isModel || (canPreview && Boolean(previewUrl) && shownType === 'application/pdf'))
+  const pdfInWell = canPreview && Boolean(previewUrl) && shownType === 'application/pdf'
+  const wellHostsViewer = peeking && (isModel || pdfInWell)
 
   useEffect(() => {
     loadPreview()
@@ -919,7 +918,10 @@ export function FilePreviewPane({
             data-testid="file-preview-well"
             className={cn(
               'flex min-w-0 justify-center',
-              !peeking && 'from-muted/25 to-muted/60 bg-gradient-to-b',
+              // A PDF brings its own stage (the viewer's), so the well under it
+              // is no ground of its own: the document looks the same here as in
+              // every other place a PDF opens.
+              !peeking && !pdfInWell && 'from-muted/25 to-muted/60 bg-gradient-to-b',
               wellHostsViewer
                 ? 'h-full min-h-0 flex-1 overflow-hidden'
                 : peeking
@@ -947,7 +949,9 @@ export function FilePreviewPane({
                   // top-aligned the moment the document outgrows the well — short
                   // docs sit centred, tall ones scroll from the top.
                   'scroll-fade-bottom h-full min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 [&>*]:my-auto'
-                  : '@2xl:h-auto @2xl:min-h-0 @2xl:flex-1 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:p-7 h-[50dvh] min-h-[50dvh] shrink-0 overflow-hidden p-5'
+                  : pdfInWell
+                    ? '@2xl:h-auto @2xl:min-h-0 @2xl:flex-1 @2xl:p-4 h-[50dvh] min-h-[50dvh] shrink-0 overflow-hidden p-3'
+                    : '@2xl:h-auto @2xl:min-h-0 @2xl:flex-1 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:p-7 h-[50dvh] min-h-[50dvh] shrink-0 overflow-hidden p-5'
             )}
           >
             {isModel ? (
@@ -993,7 +997,7 @@ export function FilePreviewPane({
                     src={documentFileUrl(file.id)}
                     title={actions.name}
                     onLoadError={handlePdfFailed}
-                    chrome={peeking ? 'floating' : 'inline'}
+                    ground={peeking ? 'host' : 'stage'}
                     className="size-full"
                   />
                 ) : (

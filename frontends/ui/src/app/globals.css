@@ -942,6 +942,38 @@ body {
   --passage-peak: 70%;
 }
 
+/* The reader's own search hits. Ink, not a provenance colour: a hit is where
+   a word the reader typed occurs, which is a fact about the reader's question
+   and not about any source. A FIXED ink rather than `--foreground`, because the
+   mark composites against the page, which is paper in both themes — the
+   theme's foreground is paper-white in dark mode and would vanish on it (see
+   the passage strengths above). Every hit carries a light wash; the one on
+   screen a stronger one and an outline, so "3 of 12" has a place to point. */
+:root {
+  --paper-ink: oklch(0.244 0.006 271.2);
+}
+
+.pdf-search-hit {
+  background-color: color-mix(in oklch, var(--paper-ink) 14%, transparent);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+
+.pdf-search-hit--active {
+  background-color: color-mix(in oklch, var(--paper-ink) 26%, transparent);
+  outline: 1.5px solid color-mix(in oklch, var(--paper-ink) 70%, transparent);
+  outline-offset: 1px;
+}
+
+@media (prefers-contrast: more) {
+  .pdf-search-hit {
+    background-color: color-mix(in oklch, var(--paper-ink) 24%, transparent);
+  }
+  .pdf-search-hit--active {
+    outline-color: var(--paper-ink);
+  }
+}
+
 /* =============================================================================
    PDF text layer — the page's own words, over the picture of them
 

@@ -29,6 +29,12 @@ export interface FakePdfState {
   pages: Array<{ items: FakeTextItem[] }>
   /** Incremented when the loading task is destroyed. */
   destroyed: number
+  /**
+   * When set, the document is encrypted with this password: opening it without
+   * one rejects the way pdf.js does (`PasswordException`, code 1), and with a
+   * wrong one as code 2.
+   */
+  password?: string
 }
 
 /** Page geometry the fake reports. A4-ish, and round enough to assert on. */
@@ -81,8 +87,15 @@ export const fakePdfjsRuntime = (state: FakePdfState) => ({
   loadPdfjs: async () => {
     if (state.fail) throw new Error('worker unavailable')
     return {
-      getDocument: () => ({
-        promise: Promise.resolve({
+      getDocument: (parameters: { password?: string }) => ({
+        promise: (state.password && parameters.password !== state.password
+          ? Promise.reject(
+              Object.assign(new Error('No password given'), {
+                name: 'PasswordException',
+                code: parameters.password ? 2 : 1,
+              }),
+            )
+          : Promise.resolve({
           numPages: state.pages.length,
           getPage: (number: number) =>
             Promise.resolve({
@@ -99,7 +112,7 @@ export const fakePdfjsRuntime = (state: FakePdfState) => ({
               // since neither touches a real stream.
               textItems: state.pages[number - 1]?.items ?? [],
             }),
-        }),
+          })),
         destroy: () => {
           state.destroyed += 1
           return Promise.resolve()
