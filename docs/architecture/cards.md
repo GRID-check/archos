@@ -781,7 +781,13 @@ compare-and-swap), and it writes NOTHING to `cardInteractions`; an answer older
 than the change record still shows the decision it stored, read-only. The
 ratchet is `live card wiring` in `card-interactivity.spec.tsx`: every live type
 needs a case, every case presses each control, asserts the object was written,
-and fails if the store was. Python's `INTERACTIVE_CARD_TYPES` keeps a live card
+and fails if the store was. The three proposal cards are in the same position
+when they carry a `proposal_id` (ADR-0105): the server's `proposed_changes` row
+records who decided and when, `ProposalReceipt` writes nothing to
+`cardInteractions`, and only a memory or profile card without an id keeps the
+browser path. They stay classified `interactive` because a card without an id still decides
+in the browser; the file card, which has no browser path left, is the one with no
+settle case (`DECIDED_ON_THE_SERVER` in the spec). Python's `INTERACTIVE_CARD_TYPES` keeps a live card
 (it still asks the user); the parity test reads `'live'` as interactive.
 
 `diagram` was briefly a third and was never made one; the card has since been
@@ -924,8 +930,9 @@ of them is already wrong. See
 [ADR-0012](../adr/0012-cards-as-rich-ui-layer.md).
 
 Two details that belong with the catalog rather than with a row in it.
-`project_profile_patch`'s Accept applies the patch through
-`POST /api/projects/{id}/profile/patches`, which wraps bare values with
+`project_profile_patch`'s Accept applies the patch (the server does, as a
+proposal, or the browser for a card without a `proposal_id`) through the profile
+patch service behind `POST /api/projects/{id}/profile/patches`, which wraps bare values with
 `user_confirmed` provenance and retires the unknowns the patch answered — the
 model supplies the plain value and nothing about how it is recorded. And a
 system card's entry is a statement about who emits it, not about who may see it:
