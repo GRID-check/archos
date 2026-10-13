@@ -178,11 +178,10 @@ greeting is not; switched-off decisions warm nothing).
 | Start the requery writer beside the verdicts, discard it when they say "sufficient" | ~0.6 s on the ~30% of turns that requery | one small-model call on the other ~70% |
 | ~~Drop the round-0 requery and let the agent search again in its own round~~ | measured: **+3.4 s** per turn where it applied | rejected, §3.5 |
 | Warm the adapter at worker boot | 0.9-1.5 s on a process's first turn only | none; matters only with frequent restarts |
-| ~~Embed the family branch's per-document lookups without a query~~ | landed under `AIQ_VECTOR_BACKEND=qdrant`, see below | Chroma keeps the embedded probe |
+| ~~Embed the family branch's per-document lookups without a query~~ | landed with Qdrant, see below | none |
 
 **Structural reads on Qdrant (2026-10-13).** `read_passage` and the family
-overview read by filter (`BaseRetriever.fetch`, `qdrant/reads.py`) under
-`AIQ_VECTOR_BACKEND=qdrant`. The probe they embedded was the locus label
+overview read by filter (`BaseRetriever.fetch`, `qdrant/reads.py`). The probe they embedded was the locus label
 („file, Pkt. 3.5.2"), a new string for every Punkt or page, so the embedding
 LRU only saved a repeat of the same read and every new locus paid a full
 embedding. Measured locally against a single-node Qdrant 1.19.2 with a seeded

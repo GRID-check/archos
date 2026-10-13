@@ -790,14 +790,13 @@ rest stands.
   old class until it is re-ingested or re-copied; a `doc_class=` search can
   miss it meanwhile, and the post-filter keeps a wrong class from being shown.
 * **A write is acknowledged by one replica.** The other holds it once Qdrant
-  has re-synced it; a peer lost for good inside that window loses the write
-  in Qdrant, and Chroma plus `backfill_qdrant.py` restore it while Chroma is
-  still written. After the slice that removes Chroma this needs another net
-  (write consistency 2 with a retried queue, or snapshots).
-* **A Qdrant delete that succeeds before a Chroma delete fails** leaves the
-  chunk in Chroma and not in Qdrant: invisible to search, as the caller
-  asked, and the caller's retry finishes it. A backfill run before that
-  retry copies the chunk back from Chroma.
+  has re-synced it; a peer lost for good inside that window loses the write.
+  Chroma is gone, so the net is the daily snapshot
+  ([runbook](../deployment/qdrant-runbook.md#restore-from-snapshots)) plus
+  the source bytes, which stay in SeaweedFS: a file written after the last
+  snapshot is re-ingested from them. Nothing finds such a file on its own
+  yet; that sweep is listed under Next (§12). Write consistency 2 was
+  measured and rejected (§12): one peer down failed most writes outright.
 * **A located passage scores 1.00.** On Chroma its `Relevance Score:` is the
   cosine to the probe label, which measured nothing; a structural fetch has no
   query, so every chunk it returns matches, as `find_text`'s do.
@@ -874,3 +873,7 @@ rest stands.
    document version id reaches the ingest job: today a point id is the
    chunker's random node id, which keeps retire-after-insert simple and the
    migrated ids valid.
+4. A sweep for documents the vector store lost: a `documents` row whose
+   collection holds no point for it after a peer was lost inside the
+   re-sync window or restored from an older snapshot. `reconcile-vectors`
+   finds the opposite case (points with no row) today.

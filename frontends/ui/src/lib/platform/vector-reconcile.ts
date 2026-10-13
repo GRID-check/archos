@@ -1,7 +1,7 @@
 /**
  * Platform maintenance: reconcile orphaned vectors (ADR-0016).
  *
- * Deleting a document is a two-step cleanup — drop the Chroma chunks, then the
+ * Deleting a document is a two-step cleanup — drop the vector-store chunks, then the
  * Postgres row. When the chunk delete was skipped or missed (historically: a
  * filename that was persisted percent-encoded at ingest time never matched the
  * raw name sent at delete time), the row went away but the vectors stayed. Such

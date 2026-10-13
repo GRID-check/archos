@@ -109,8 +109,7 @@ def _idf_weights(documents: list[set[str]]) -> dict[str, float]:
     Computed from the office's own passages, so „wie", „der" and „bei" weigh
     little and „Fluchttreppe" much without a list of words that decides which
     is which. Production's lexical channel prices words the same way
-    (``chunk_text_store``: ``ts_rank_cd`` over a German tsvector on Postgres,
-    summed inverse document frequency on SQLite). Raw overlap let a passage that shared three function words with
+    (Qdrant's server-side BM25, IDF per scope). Raw overlap let a passage that shared three function words with
     the question outrank the one that held its only content word.
     """
     counts = Counter(token for tokens in documents for token in tokens)
