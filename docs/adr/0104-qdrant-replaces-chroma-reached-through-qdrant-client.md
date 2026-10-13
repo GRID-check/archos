@@ -6,11 +6,11 @@ consulted:
 informed:
 ---
 
-# Qdrant replaces Chroma as the vector store, reached through qdrant-client
+# Qdrant replaces Chroma as the vector store, reached through qdrant-client, in one change
 
 ## Context and Problem Statement
 
-Every chunk lives in one Chroma server (`chromadb/chroma:1.5.9`, one replica,
+Until this change every chunk lived in one Chroma server (`chromadb/chroma:1.5.9`, one replica,
 a 20Gi PVC, `deploy/pulumi/src/data/chroma.ts`). Open-source Chroma is single
 node, so that pod is a retrieval and ingest outage whenever it moves. On
 2026-10-12 one dead Chroma pod drained the API's thread pool, because the
@@ -48,6 +48,13 @@ one."
 * Milvus.
 * Keep Chroma (do nothing).
 
+And, for the move itself:
+
+* Replace Chroma in one change, with no period in which both stores are written.
+* Move in steps behind a flag (`AIQ_VECTOR_BACKEND`: `chroma`, then `dual`,
+  then `qdrant`), Chroma staying the write-side record until a last step
+  removes it.
+
 ## Decision Outcome
 
 Chosen option: "Qdrant, reached through `qdrant-client` directly". It is an
@@ -56,17 +63,51 @@ hybrid, fusion, boosting and grouping work we currently do by hand, including
 German BM25 server-side in the open-source build. The direct client is the only
 way to reach those features (the LlamaIndex store uses none of them).
 
+The move is one change, with no dual period. Ingestion embeds a file's chunks
+and writes them to Qdrant (`knowledge_layer/qdrant/writes.py`); every read,
+listing, count and delete goes to Qdrant. Chroma, its client, the
+`AIQ_VECTOR_BACKEND` flag, the Chroma-to-Qdrant mirror and the Postgres
+`chunk_text` mirror are deleted, and the existing data moves once, offline,
+with the export/import tool the runbook describes
+([`qdrant-runbook.md`](../deployment/qdrant-runbook.md)). The flagged path was
+built first (slice 1, design doc §12) and showed the cost of two stores:
+deletes that had to be ordered across them, a mirror whose failures needed a
+policy per mode, a backfill to heal it, and every registry read still tied to
+Chroma. The gates that decided the move were measured on that build
+([`qdrant-gates-2026-10.md`](../architecture/qdrant-gates-2026-10.md)); they
+need no second store to stay true.
+
 ### Consequences
 
 * Good, because:
   * Replicas survive a node loss; retrieval stops depending on one pod.
   * Hybrid search, RRF, score boosting and `group_by` run in one server call.
-    The `$contains` channel, `exp(-d)` recovery and per-collection fan-out are
-    deleted.
+    The `$contains` channel, `exp(-d)` recovery, the German FTS mirror and
+    per-collection fan-out are deleted.
+  * One store means one delete: it took what it names or it raised, and the
+    caller's retry starts over. The ordered two-store delete and its failure
+    policies are gone.
   * The migration copies the stored vectors and text; nothing is re-embedded.
-  * `qdrant-client` has native timeouts; the private reach-in goes away.
-* Neutral, because LlamaIndex stays for loaders and chunking, and the
+    Point ids stay the chunk ids, so citations and `already_read` digests
+    survive it.
+  * `qdrant-client` has native timeouts; the private reach-in goes away, and
+    `chromadb` with its transitive tree (onnxruntime, kubernetes,
+    huggingface-hub, tokenizers) leaves the image.
+* Neutral, because LlamaIndex stays for loaders and chunking (a
+  `SentenceSplitter` per job, no `VectorStoreIndex`), and the
   `BaseRetriever`/`BaseIngestor` seam stays.
+* Neutral, because a collection is now a scope on the points (ADR-0105): every
+  name is a collection, an empty one has no chunks, and creating one stores
+  nothing. A collection's `updated_at` is the newest `indexed_at` its points
+  carry; points copied without one never expire through the 24-hour reaper of
+  conversation uploads until they are re-ingested or the import stamps it.
+* Bad, because there is no rollback to Chroma after the cut-over short of
+  restoring the old deployment and its volume. The migration is rehearsed on a
+  copy first, and the Qdrant snapshots are the net afterwards.
+* Bad, because a write is acknowledged by one replica (consistency 1, design
+  doc §12), and until Qdrant has re-synced the other, a peer lost for good
+  inside that window loses it. Chroma no longer stands behind it; the
+  snapshots do, and a re-ingest of the affected files repairs the rest.
 * Bad, because open-source Qdrant has no resharding, auto-rebalancing or
   automatic re-replication. Shard counts are fixed at creation, and node changes
   are manual API calls we must script and drill.
@@ -79,20 +120,21 @@ way to reach those features (the LlamaIndex store uses none of them).
 
 ### Confirmation
 
-Before `vectorBackend=qdrant` in any environment: the spike gates G1–G6 in the
-design doc §10 pass, with the answer-suite reports attached to the PR that
-flips the flag. Nothing enforces this yet; review is the only gate.
-
-After acceptance:
 * `sources/knowledge_layer/tests/test_qdrant_import_boundary.py` allows
-  `qdrant_client` only under `knowledge_layer/qdrant/`. Extending it to forbid
-  `chromadb` everywhere is part of step 5 of the rollout, which removes Chroma.
-* The Qdrant tests run against `qdrant/qdrant:v1.19.2` as a CI service
-  container and fail, rather than skip, when it is missing on CI.
-* While Chroma is still written, `test_qdrant_adapter_deletes.py` drives every
-  adapter delete against an embedded Chroma and a real Qdrant with a Qdrant
-  failure injected: under `qdrant` no chunk deleted from Chroma still answers
-  from Qdrant, and under `dual` the Chroma-side cleanup always runs.
+  `qdrant_client` only under `knowledge_layer/qdrant/`, and `chromadb` (or
+  LlamaIndex's Chroma store) nowhere but the one-off migration tool under
+  `deploy/migration/`. A second store creeping back in fails the build.
+* Every test that needs a store runs against a real `qdrant/qdrant:v1.19.2`
+  (the CI backend job sets `AIQ_QDRANT_TEST_URL` for every step) through one
+  fixture, `sources/knowledge_layer/tests/qdrant_testing.py`, and fails, rather
+  than skips, when the server is missing on CI.
+* `test_qdrant_adapter_deletes.py` drives every adapter delete against the
+  real store with a failure injected: nothing is deleted or recorded as
+  deleted when Qdrant refuses, and a retry finishes the job.
+* The cut-over in each environment follows the runbook's migration procedure
+  and its verification (id sets compared, collection by collection); the
+  answer suite runs on the migrated stack before it serves users. Review is
+  the gate for that.
 * `task be:eval:answer-suite` runs before and after every retrieval change, as
   AGENTS.md already requires.
 

@@ -1,13 +1,15 @@
 # Retrieval on Qdrant, from first principles
 
-Status: **accepted 2026-10-13; slice 1 built, behind `AIQ_VECTOR_BACKEND`
-(default `chroma`).** The two decisions it rests on are
+Status: **accepted 2026-10-13; built. Qdrant is the only vector store:
+Chroma, its mirror and the `AIQ_VECTOR_BACKEND` flag are gone (slice 3, §12).**
+The two decisions it rests on are
 [ADR-0104](../adr/0104-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
 [ADR-0105](../adr/0105-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
 (scope as a filter, not a collection). What is built, and where it departs
-from the target below, is §12. The gates in §10 are what the flag flip to
-`qdrant` waits on in each environment.
+from the target below, is §12. The gates in §10 decided the move
+([results](qdrant-gates-2026-10.md)); §2 describes the Chroma-era system the
+design started from.
 
 This is not a port. A port would copy today's collection-per-scope layout into
 Qdrant and keep every workaround that layout made necessary. Instead, this doc
@@ -41,9 +43,10 @@ enforced them, through collection names:
 3. **Fassung truth.** A document that a person marked as superseded drops out
    of answers unless someone asks for it (ADR-0099).
 
-## 2. What we have today, sorted
+## 2. What we had, sorted
 
-These are the full findings of the 2026-10-13 audit, condensed. Paths are
+These are the full findings of the 2026-10-13 audit of the Chroma-era layer,
+condensed; the line numbers are that code's. Paths are
 relative to `sources/knowledge_layer/src/` unless they are absolute.
 
 **Domain needs we keep**, whatever store sits underneath:
@@ -611,23 +614,40 @@ record is enriched with what the collection name only implied, read from
 It makes no re-parse, no VLM call and no embedding call. The lexical sparse
 vector is computed by Qdrant from `text` at upsert.
 
-Rollout, each step behind a flag:
-
-1. **Infrastructure.** StatefulSet, secrets, snapshots, metrics.
-2. **Write path.** The scope compiler, the client, and ingest dual-writing
-   Chroma and Qdrant.
-3. **Backfill** of existing data, with counts per old collection and sampled
-   text and metadata compared.
-4. **Read switch** per pipeline: shadow-compare first, then the answer suite
-   before and after, then cut over.
-5. **Removal:** Chroma, the `$contains` channel, the mirror (if Q3 says so), the
-   post-filters, the TTL reaper, `_bound_chroma_http`, `exp(-d)` recovery and
-   the placement re-ingest. Chroma stays read-only for one week before deletion.
-
-The cross-project BFF loop is rewritten on the new `cross_project` pipeline in
-step 4. Its API to the agent tool (`project_lookup`) does not change.
+The rollout first planned five steps behind a flag (infrastructure, a
+dual-writing ingest, a backfill, a read switch, then removal). Slice 1 built
+the first four; slice 3 collapsed the rest into one change: Chroma, the flag
+and the dual period are gone, and existing data moves once, offline, with the
+export/import tool in [the runbook](../deployment/qdrant-runbook.md) (§12
+"Slice 3").
 
 ## 12. Build status
+
+### Slice 3: Qdrant is the only store (2026-10-13)
+
+The flagged dual period of slice 1 (below) is gone, with no step between: one
+change took Chroma out. What was built:
+
+| Part | Where |
+|---|---|
+| Ingestion writes Qdrant directly: a `SentenceSplitter` per job (the job's chunk size and overlap, no process-wide `Settings`), the ingestor's own embedder over each chunk's EMBED rendering, then `write_chunks`, which enriches every point (office, project, BFF document, folder, project facts, `indexed_at`) and adds the facts the metadata store holds. A failed write fails the file. Point ids stay `point_id(chunk_id)`, the chunker's node ids, so migrated points and fresh ingests agree and citations survive the move | `llamaindex/adapter.py` — `_embedded_records`, `_ingest_job`; `qdrant/writes.py` |
+| Re-ingest keeps retire-after-insert: the previous version's chunk ids are read from Qdrant (a `file_name` filter over its spellings) before the write and deleted by id after it; a failed or deleted-while-indexing attempt deletes exactly the ids it sent (fresh node ids, so never the previous version's) | `adapter.py` — `_find_previous_versions`, `_retire_previous_version`, `_retire_held_predecessor`, `_discard_partial_version` |
+| Every delete is one store's: `delete_file` reads the ids under every accepted spelling and deletes those, `delete_collection` deletes by scope; nothing is deleted or recorded as deleted when Qdrant refuses. Deletes go in bounded requests | `adapter.py`; `store.delete_chunks` (`DELETE_BATCH`) |
+| Registry reads from Qdrant: a file listing is one payload-limited scroll (no text); a collection's chunks and files are an exact count and a facet; `list_collections` is one facet per physical collection; a text sample is a structural fetch; visual details and `collection_pages.read_pages` scroll by filter. `get_collection` never answers "missing": a collection is a scope, and an empty one has no chunks (ADR-0105) | `adapter.py` — `_indexed_files`, `_collection_info`, `list_collections`; `collection_pages.py` |
+| A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
+| A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
+| Deleted: Chroma's client and collections, `AIQ_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), the parity harness (`be:eval:qdrant-parity`, which compared the two paths), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
+| One test fixture for every store test: unique aliases per test, the process-wide store pointed at them, both deleted after; skips locally without `AIQ_QDRANT_TEST_URL`, fails on CI | `sources/knowledge_layer/tests/qdrant_testing.py` |
+| The import boundary forbids `chromadb` everywhere but the migration tool | `test_qdrant_import_boundary.py` |
+
+**Why the file listing reads Qdrant, not `document_metadata`.** Postgres is
+the authority for what people set on a document, and the routes merge its
+rows into every listing. What a listing states besides (which files are
+indexed, how many chunks, which pages and content types) is a fact about the
+index, and the two consumers that exist to catch drift between the rows and
+the index (`reconcile-summaries`, `reconcile_collection_summaries`) compare
+exactly the two: a listing read from the rows would compare Postgres with
+itself.
 
 ### Built in slice 1
 
@@ -637,9 +657,9 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Every read filter from one function, refusing an empty scope | `qdrant/scope.py` |
 | Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
 | Retrieval, exact search (`find_text`) and the health check reading Qdrant under `AIQ_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
-| Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded | `qdrant/mirror.py`, wired beside each Postgres text-mirror call in the adapter |
+| Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded. Removed in slice 3 | `qdrant/mirror.py` (deleted) |
 | Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
-| Backfill with `--prune`, `--verify`, `--facts-only`, `--dry-run` | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` |
+| Backfill with `--prune`, `--verify`, `--facts-only`, `--dry-run`. Removed in slice 3; the migration tool replaces it | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` (deleted) |
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; the only path, a failure an upstream error | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPage` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
@@ -675,7 +695,12 @@ index changes went in place.
 | A list-valued equality filter (`{"project_facts.nutzungen": ["wohnen"]}`) was coerced whole into the string `"['wohnen']"` on a keyword field and matched nothing | A list is any of its values, on every field type | `scope._match` |
 | Compose's `qdrant` service had neither the metrics port nor the write quotas of the Pulumi peers | Both set, the quotas from `QDRANT_QUOTA_MEMORY_PERCENT` / `QDRANT_QUOTA_DISK_PERCENT` (90 / 85) | `deploy/compose/docker-compose.yaml` |
 
-### Where slice 1 departs from the target, and why
+### Where slice 1 departed from the target, and why
+
+Kept as the record of that build. Slice 3 settled the items that named
+Chroma: the write record, the registry reads, the mirror's failure policy, the
+`chunk_text` mirror and the health check that asked both stores are gone; the
+rest stands.
 
 * **Scopes are still logical collection names.** `scope` is the old
   collection name (`proj_…`, `<proj>_r…`, `s_…`), so the BFF contract, the
@@ -780,22 +805,15 @@ index changes went in place.
 
 ### Next
 
-1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
-   `scripts/backfill_qdrant.py --prune --verify` until every collection is in
-   step, run the gates in §10, then `vectorBackend=qdrant`.
-   - Before the first flip, settle the open items in
-     [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
-     TurboQuant oversampling (the exact-id file the Qdrant pool misses) and G1
-     on a deployed stack. Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
-     both paths after the `paragraph_refs` channel
-     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
+1. Each environment: migrate with the export/import tool and verify per
+   collection, as [the runbook](../deployment/qdrant-runbook.md) says, then run
+   the answer suite on the migrated stack. Settle the open items in
+   [the gate report](qdrant-gates-2026-10.md#open-before-the-flip) on a
+   deployed stack: TurboQuant oversampling and G1.
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
    `folder_ancestors`, and the envelope saying `project_status = closed`
-   instead of listing ids for wide chats (the facts are on the points for it
-   now). Fact filters in the agent's cross-project contract are built (§7 "Fact
-   filters in the agent's contract"), judged on Postgres; moving them into the
-   query as `filters.project_facts` waits for that envelope, and for a mirror
-   whose freshness is checked rather than assumed.
-3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads
-   from Postgres and Qdrant, Chroma, the `$contains` channel and the text
-   mirror removed.
+   instead of listing ids for wide chats (the facts are on the points for it now).
+3. Deterministic `UUIDv5(document_version_id, ordinal)` point ids, once a
+   document version id reaches the ingest job: today a point id is the
+   chunker's random node id, which keeps retire-after-insert simple and the
+   migrated ids valid.
