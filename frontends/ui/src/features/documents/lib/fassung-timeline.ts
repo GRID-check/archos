@@ -130,10 +130,11 @@ const REFUSAL_MILESTONES = [
 
 /**
  * A version that arrived as a person's upload and never went through a review:
- * born `published` (ADR-0054), so the row carries `approvedBy`/`publishedBy` =
- * the uploader to satisfy the CHECK, and was never submitted. Those columns are
- * not acts anybody took. Saying „Freigegeben" or „Veröffentlicht" about it
- * would invent an approval flow the document never had.
+ * born `published` (ADR-0054) and never submitted. Rows written before
+ * migration 0137 carried the uploader as approver to satisfy the CHECK; those
+ * columns are not acts anybody took either. Saying „Freigegeben" or
+ * „Veröffentlicht" about it would invent an approval flow the document never
+ * had.
  */
 export function bornPublished(version: Pick<DocumentVersionView, 'state' | 'submittedBy'>): boolean {
   return (version.state === 'published' || version.state === 'superseded') && version.submittedBy === null
@@ -151,6 +152,14 @@ export function versionActs(version: DocumentVersionView): VersionAct[] {
     const when = version[at]
     return typeof actor === 'string' && typeof when === 'string' ? [{ key, actor, when }] : []
   })
+  // „Freigeben" publishes in the same step (ADR-0104 rule 5): one act, said
+  // once, as the approval it was. A version approved and published apart, before
+  // that, keeps both.
+  const approved = acts.find((act) => act.key === 'approved')
+  const published = acts.find((act) => act.key === 'published')
+  if (approved && published && approved.actor === published.actor && approved.when === published.when) {
+    acts.splice(acts.indexOf(published), 1)
+  }
   const refusal = REFUSAL_MILESTONES.find((row) => row.state === version.state)
   if (refusal && version.reviewedBy && version.reviewedAt) {
     acts.push({ key: refusal.key, actor: version.reviewedBy, when: version.reviewedAt })

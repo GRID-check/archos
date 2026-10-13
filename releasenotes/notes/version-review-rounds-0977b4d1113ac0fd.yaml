@@ -1,0 +1,6 @@
+---
+operators:
+  - >
+    Migration 0136 adds the table document_version_reviews and backfills one
+    review round for every document version that was ever submitted for review.
+    Nothing reads it yet; the down migration drops it without loss.

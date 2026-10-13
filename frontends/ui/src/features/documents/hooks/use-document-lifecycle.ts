@@ -79,7 +79,8 @@ const OPTIMISTIC_STATE: Record<
   DocumentVersionView['state']
 > = {
   submit: 'in_review',
-  approve: 'approved',
+  // „Freigeben" publishes in the same step (ADR-0104 rule 5).
+  approve: 'published',
   request_changes: 'changes_requested',
   reject: 'rejected',
   publish: 'published',

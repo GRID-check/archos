@@ -167,6 +167,20 @@ describe('buildFassungTimeline', () => {
 })
 
 describe('versionActs / latestAct', () => {
+  it('says a one-step approval once, as the approval it was', () => {
+    const at = '2026-09-03T10:00:00.000Z'
+    const approved = version(2, 'published', {
+      submittedBy: 'user_author',
+      submittedAt: '2026-09-02T10:00:00.000Z',
+      approvedBy: 'user_markus',
+      approvedAt: at,
+      publishedBy: 'user_markus',
+      publishedAt: at,
+    })
+    expect(versionActs(approved).map((act) => act.key)).toEqual(['submitted', 'approved'])
+    expect(latestAct(approved)).toMatchObject({ key: 'approved', actor: 'user_markus' })
+  })
+
   const stamped = {
     submittedBy: 'user_a',
     submittedAt: '2026-09-02T09:00:00Z',
