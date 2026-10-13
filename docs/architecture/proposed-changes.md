@@ -172,6 +172,7 @@ who misses it finds the decision on reload, or on the 409 of their click.
 
 ## What is not done yet
 
-- Only `file_operation` exists. `memory_proposal` and `project_profile_patch`
-  still decide through `cardInteractions` (ADR-0105, „Neutral“).
-- No route lists a project's open proposals; the card reads its own by id.
+- A proposal is decided on its card and nowhere else. „Was Piloti tut“
+  ([`piloti-activity.md`](piloti-activity.md)) lists a project's open
+  proposals of all three kinds, for the reader, and links to that card; it
+  decides nothing.
