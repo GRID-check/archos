@@ -2,7 +2,13 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
-import { FAKE_FRAME_WIDTH, fakePdfjsRuntime, fakeTextRun, type FakePdfState } from '@/test-utils/pdfjs-fake'
+import {
+  FAKE_FRAME_WIDTH,
+  fakePdfjsRuntime,
+  fakeTextRun,
+  selectRenderedText,
+  type FakePdfState,
+} from '@/test-utils/pdfjs-fake'
 import { FilePreviewPane } from './file-preview-pane'
 import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
 
@@ -340,11 +346,7 @@ describe('FilePreviewPane', () => {
           : ({ ok: true, status: 200, json: async () => ({ url: 'https://example.test/plan.pdf' }) } as Response)
       )
       render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
-      const layer = await screen.findByTestId('pdf-text-layer')
-      const range = document.createRange()
-      range.selectNodeContents(layer)
-      document.getSelection()!.removeAllRanges()
-      document.getSelection()!.addRange(range)
+      await selectRenderedText('Die Fluchttreppe wird als Außentreppe ausgeführt')
       fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
       fireEvent.click(await screen.findByTestId('pdf-find-similar'))
 
@@ -361,11 +363,7 @@ describe('FilePreviewPane', () => {
       pdf.pages = [{ items: [fakeTextRun('Die Fluchttreppe wird als Außentreppe ausgeführt', 700, 300)] }]
       presigned()
       render(<FilePreviewPane file={{ ...mockFile, status: 'processing' }} projectId="proj-1" />)
-      const layer = await screen.findByTestId('pdf-text-layer')
-      const range = document.createRange()
-      range.selectNodeContents(layer)
-      document.getSelection()!.removeAllRanges()
-      document.getSelection()!.addRange(range)
+      await selectRenderedText('Die Fluchttreppe wird als Außentreppe ausgeführt')
       fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
       expect(screen.queryByTestId('pdf-find-similar')).toBeNull()
     })

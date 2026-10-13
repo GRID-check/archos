@@ -5,6 +5,7 @@ import {
   FAKE_FRAME_WIDTH,
   fakePdfjsRuntime,
   fakeTextRun as run,
+  selectRenderedText,
   type FakePdfState,
 } from '@/test-utils/pdfjs-fake'
 import { PdfDocumentView } from './pdf-document-view'
@@ -28,21 +29,6 @@ vi.mock('../lib/pdfjs-runtime', () => fakePdfjsRuntime(state))
  */
 
 const restoreObservers = { current: () => {} }
-
-/**
- * Select everything inside a node, the way a drag across it would.
- *
- * happy-dom has a Selection but no layout, so `getBoundingClientRect` on the
- * range is all zeros — which is exactly what the component treats as "at the
- * top-left of the page stack", and is not what any assertion here is about.
- */
-const selectWithin = (node: Element): void => {
-  const range = document.createRange()
-  range.selectNodeContents(node)
-  const selection = document.getSelection()!
-  selection.removeAllRanges()
-  selection.addRange(range)
-}
 
 beforeEach(() => {
   vi.mocked(capturePosthog).mockClear()
@@ -321,8 +307,7 @@ describe('PdfDocumentView', () => {
     state.pages = [{ items: [run('Die Frist betraegt vier Wochen', 700, 180)] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
 
-    const layer = await screen.findByTestId('pdf-text-layer')
-    expect(layer.textContent).toContain('Die Frist betraegt vier Wochen')
+    await selectRenderedText('Die Frist betraegt vier Wochen')
   })
 
   it('re-scales the text layer with the zoom instead of rebuilding it', async () => {
@@ -493,8 +478,7 @@ describe('PdfDocumentView', () => {
         quoteFormat={({ text, page }) => `„${text}“ — doc.pdf, S. ${page}`}
       />,
     )
-    const layer = (await screen.findAllByTestId('pdf-text-layer'))[1]!
-    selectWithin(layer)
+    await selectRenderedText('Die Frist betraegt vier Wochen')
 
     fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
     fireEvent.click(await screen.findByText('Copy as citation'))
@@ -512,8 +496,7 @@ describe('PdfDocumentView', () => {
     // browser's own — but there is no citation to build, so no offer is made.
     state.pages = [{ items: [run('Die Frist betraegt vier Wochen', 700, 180)] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
-    const layer = await screen.findByTestId('pdf-text-layer')
-    selectWithin(layer)
+    await selectRenderedText('Die Frist betraegt vier Wochen')
 
     fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
     expect(screen.queryByTestId('pdf-quote-bar')).toBeNull()
@@ -529,8 +512,7 @@ describe('PdfDocumentView', () => {
     state.pages = [{ items: [] }, { items: [run('Die Frist betraegt vier Wochen', 700, 180)] }]
 
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" onFindSimilar={onFindSimilar} />)
-    const layer = (await screen.findAllByTestId('pdf-text-layer'))[1]!
-    selectWithin(layer)
+    await selectRenderedText('Die Frist betraegt vier Wochen')
     fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
     fireEvent.click(await screen.findByTestId('pdf-find-similar'))
 
@@ -542,7 +524,7 @@ describe('PdfDocumentView', () => {
   it('does not offer similar passages for a few words, which say too little to find another like them', async () => {
     state.pages = [{ items: [run('Frist', 700, 40)] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" onFindSimilar={vi.fn()} quoteFormat={(q) => q.text} />)
-    selectWithin(await screen.findByTestId('pdf-text-layer'))
+    await selectRenderedText('Frist')
     fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
 
     expect(await screen.findByText('Copy as citation')).toBeTruthy()
