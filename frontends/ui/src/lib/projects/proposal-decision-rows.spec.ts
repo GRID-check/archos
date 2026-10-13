@@ -9,7 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
-vi.mock('@/lib/conversations/repository', () => ({ conversationOpenToProjectReaders: {} }))
+vi.mock('@/lib/conversations/repository', () => ({ conversationOpenToProjectReaders: () => ({}) }))
 
 import type { DbExecutor } from '@/lib/db/executor'
 import { listRecentDecidedProposals } from './proposal-decision-rows'

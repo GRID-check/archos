@@ -193,6 +193,12 @@ export const annotationReplyViewSchema = z.object({
   createdAt: z.string(),
   /** It addressed Piloti (the @Piloti chip). Absent from a server that predates wakes. */
   addressesPiloti: z.boolean().default(false),
+  /**
+   * What woke the turn that wrote this Piloti reply, or null for a reply nobody's
+   * event woke (a person's, or Piloti asked in the canvas). Derived on read
+   * (`./wake-attribution.ts`); absent from a server that predates it.
+   */
+  wokenBy: z.enum(PILOTI_WAKE_TRIGGERS).nullable().optional(),
 })
 export type AnnotationReplyView = z.infer<typeof annotationReplyViewSchema>
 

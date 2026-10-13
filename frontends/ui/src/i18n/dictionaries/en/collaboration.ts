@@ -512,10 +512,10 @@ export const collaboration = {
         bodyNoSubject: 'The answer is in the annotation’s thread.',
       },
       pilotiWorkFailed: {
-        title: 'Piloti could not work an annotation',
-        titleRelated: 'Piloti could not work annotation {related}',
-        body: 'Open the annotation in {subject}: you can take it over yourself or delegate it to Piloti again.',
-        bodyNoSubject: 'Open the annotation: you can take it over yourself or delegate it to Piloti again.',
+        title: 'Piloti could not finish an annotation',
+        titleRelated: 'Piloti could not finish annotation {related}',
+        body: 'Open the annotation in {subject}: you can take it over yourself or ask Piloti again.',
+        bodyNoSubject: 'Open the annotation: you can take it over yourself or ask Piloti again.',
       },
       // Piloti asked a question and waits for a person. The question is the
       // excerpt below.

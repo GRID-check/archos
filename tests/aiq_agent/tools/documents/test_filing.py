@@ -45,6 +45,16 @@ from .conftest import _write
 from .conftest import envelope
 
 
+def _conflict(monkeypatch, calls: list) -> None:  # noqa: ANN001
+    """The BFF refusing the operation on the version's LIVE state (409)."""
+
+    def _refuse(payload, signed):  # noqa: ANN001
+        calls.append((payload, signed))
+        raise filing.FilingError("the document API refused the call (409)", status=409, code="CONFLICT")
+
+    monkeypatch.setattr(filing_tools, "post_document_version", _refuse)
+
+
 class TestFilingANewDraft:
     """The first ``file_draft`` for a path: one ``create``, and what it leaves behind."""
 
@@ -214,14 +224,40 @@ class TestFilingTheSameDraftTwice:
         assert [payload["op"] for payload, _ in calls] == ["create"]
         assert FILED_DOCUMENT_KEY not in _stored(_one_store)
 
-    async def test_a_draft_already_in_review_is_not_replaced(self, _one_store, monkeypatch, calls) -> None:
+    async def test_a_draft_still_in_review_is_refused_by_the_bff(self, _one_store, monkeypatch, calls) -> None:
+        """The tool asks; the lifecycle API holds the live state and refuses."""
         await _write(_one_store)
         await _file(monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls)
 
         calls.clear()
-        message = await _file(monkeypatch, [], calls)
+        _conflict(monkeypatch, calls)
+        message = await filing_tools.run_file_draft(DRAFT)
         assert "zur Freigabe" in message
-        assert calls == []
+        assert [payload["op"] for payload, _ in calls] == ["update"]
+        assert _stored(_one_store)[FILED_STATE_KEY] == "in_review"
+
+    async def test_a_revision_after_changes_were_requested_is_filed(self, _one_store, monkeypatch, calls) -> None:
+        """The remembered state says ``in_review``; a reviewer has since sent it back.
+
+        „Änderungen anfordern" never reaches the working directory, so refusing
+        on the remembered state refused exactly the revision the reviewer asked
+        for. The update goes to the BFF, which knows the version is open again.
+        """
+        await _write(_one_store)
+        await _file(monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls)
+        await _edit(_one_store, "42 m", "38 m")
+
+        calls.clear()
+        message = await _file(
+            monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "draft", "h2")}], calls
+        )
+
+        payload, _ = calls[0]
+        assert payload["op"] == "update"
+        assert payload["ifMatch"] == "h1"
+        assert "38 m" in payload["content"]
+        assert "Fehler" not in message
+        assert _stored(_one_store)[FILED_STATE_KEY] == "draft"
 
 
 class TestSubmitting:
@@ -337,9 +373,24 @@ class TestSubmitting:
         await _submit(monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls)
 
         calls.clear()
-        message = await _submit(monkeypatch, [], calls)
+        _conflict(monkeypatch, calls)
+        message = await filing_tools.run_file_draft(DRAFT, submit=True)
         assert "bereits eingereicht" in message
-        assert calls == []
+        assert [payload["op"] for payload, _ in calls] == ["submit"]
+
+    async def test_a_version_sent_back_unedited_can_be_submitted_again(self, _one_store, monkeypatch, calls) -> None:
+        """Remembered ``in_review``, live ``changes_requested``: the submit goes through."""
+        await _write(_one_store)
+        await _file(monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "draft", "h1")}], calls)
+        calls.clear()
+        await _submit(monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls)
+
+        calls.clear()
+        message = await _submit(
+            monkeypatch, [{"documentId": "doc-1", "version": _version("ver-1", "in_review", "h1")}], calls
+        )
+        assert [payload["op"] for payload, _ in calls] == ["submit"]
+        assert "Fehler" not in message
 
 
 class TestRefusals:
@@ -577,9 +628,11 @@ class TestFilingAndSubmittingInOneCall:
         await _edit(_one_store, "42 m", "38 m")
 
         calls.clear()
-        message = await _submit(monkeypatch, [], calls)
-        assert "kann nicht mehr geändert werden" in message
-        assert calls == []
+        _conflict(monkeypatch, calls)
+        message = await filing_tools.run_file_draft(DRAFT, submit=True)
+        assert "nicht ersetzen" in message
+        # The update was refused, so no submit followed it.
+        assert [payload["op"] for payload, _ in calls] == ["update"]
 
     async def test_a_failed_submit_after_filing_says_the_filing_stands(
         self, _one_store, monkeypatch, calls, registry

@@ -1,5 +1,5 @@
 /**
- * Every live channel kind there is (ADR-0104). Explicit on purpose: a channel
+ * Every live channel kind there is (ADR-0110). Explicit on purpose: a channel
  * is an authorization decision, and a list in one file is where review sees a
  * new one arrive. Add a kind with `defineChannel` and list it here.
  */

@@ -4,13 +4,38 @@
 import { describe, expect, it } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
 import {
+  ACTING_CARD_TYPES,
+  CARD_INTERACTIVITY,
   cardKey,
   cardKeyOfDecisionKey,
+  INTERACTIVE_CARD_TYPES,
   isCardDecision,
+  isInteractiveCardType,
+  isLiveCardType,
   itemDecisionKey,
+  LIVE_CARD_TYPES,
   reconcileCardInteractions,
   sanitizeCardInteractions,
 } from './card-decision'
+
+describe('card classification', () => {
+  it('classifies the canvas card as live: its objects are the record, not the message', () => {
+    expect(CARD_INTERACTIVITY.canvas_activity).toBe('live')
+    expect(isLiveCardType('canvas_activity')).toBe(true)
+    // A live card is not a pending decision: nothing on the message waits for an answer.
+    expect(isInteractiveCardType('canvas_activity')).toBe(false)
+    expect(INTERACTIVE_CARD_TYPES).not.toContain('canvas_activity')
+    expect(LIVE_CARD_TYPES).toEqual(['canvas_activity'])
+  })
+
+  it('keeps the three classes apart, and counts both acting classes as acting', () => {
+    for (const type of LIVE_CARD_TYPES) expect(INTERACTIVE_CARD_TYPES).not.toContain(type)
+    expect(new Set(ACTING_CARD_TYPES)).toEqual(new Set([...INTERACTIVE_CARD_TYPES, ...LIVE_CARD_TYPES]))
+    expect(ACTING_CARD_TYPES).toHaveLength(INTERACTIVE_CARD_TYPES.length + LIVE_CARD_TYPES.length)
+    expect(isLiveCardType('calculation')).toBe(false)
+    expect(isInteractiveCardType('memory_proposal')).toBe(true)
+  })
+})
 
 describe('cardKey', () => {
   it('identifies a card by its type and position in the message', () => {

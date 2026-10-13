@@ -196,7 +196,7 @@ export const files = {
           this: 'Piloti answers from this revision.',
           older: 'Piloti still answers from revision {number}.',
           newer: 'Piloti answers from the newer revision {number}; this one stays readable, also for comparing.',
-          notYet: 'Piloti answers from it only once it is published.',
+          notYet: 'Piloti answers from it only once it is approved.',
           never: 'Piloti does not answer from it.',
         },
         /** {name} arrives with the date: “Anna Berger · 14 Aug 2026”, kept on one line. */
@@ -206,7 +206,7 @@ export const files = {
         bySomeone: 'a team member',
         rowMenu: 'More actions for revision {number}',
         approveExplain:
-          'Approving means the office stands behind the content. It can then be published; only then does Piloti answer from it.',
+          'Approving means the office stands behind the content. From then on, Piloti answers from this revision.',
         changedSince: 'Changed since revision {number}:',
         archive: 'Retire this file …',
       },
@@ -1261,13 +1261,13 @@ export const files = {
      */
     meaning: {
       draftLive: 'A draft of a new revision. Piloti keeps answering from the published revision.',
-      draftAlone: 'A draft. Piloti answers from it only once it is approved and published.',
+      draftAlone: 'A draft. Piloti answers from it only once it is approved.',
       inReviewLive: 'Waiting for approval. Piloti answers from the published revision.',
       inReviewAlone: 'Waiting for approval. Until then Piloti does not answer from it.',
       changesRequestedLive:
-        'Changes requested. Piloti answers from the published revision until the reworked one is published.',
+        'Changes requested. Piloti answers from the published revision until the reworked one is approved.',
       changesRequestedAlone:
-        'Changes requested. Piloti answers from the reworked revision only once it is published.',
+        'Changes requested. Piloti answers from the reworked revision only once it is approved.',
       approvedLive:
         'Approved, waiting to be published. Until then Piloti answers from the published revision.',
       approvedAlone: 'Approved, waiting to be published. Only then does Piloti answer from it.',
@@ -1479,6 +1479,18 @@ export const files = {
     },
     peerPoint: 'is placing an annotation',
     peerRegion: 'is marking a region',
+    // Piloti says on the document whom it writes for (ADR-0105; EU AI Act Art. 50).
+    attribution: {
+      pilotiFor: 'Piloti · for {name}',
+      proposalFor: 'Proposal by Piloti · for {name}',
+      woken: {
+        thread_mention: 'Woken by a mention',
+        thread_reply: 'Woken by a reply',
+        assigned: 'Woken by the delegation',
+      },
+      wokenTitle: 'Woken by {name} in annotation {number}',
+      wokenTitleNameless: 'Woken in annotation {number}',
+    },
     pinLabel: 'Annotation {number}: {kind}',
     page: 'Page {page}',
     draftPlaceholder: 'What is here? Enter places it',
@@ -1533,6 +1545,76 @@ export const files = {
       openBody: 'Every annotation is resolved or dismissed.',
       closedTitle: 'Nothing done yet',
       closedBody: 'What is resolved or dismissed collects here.',
+    },
+    // The review's annotations as minutes, for a site meeting or to send to
+    // the client: the menu in the review, and the words in the file itself.
+    export: {
+      button: 'Export minutes',
+      scopeLabel: 'Which annotations',
+      scopes: {
+        open: 'Open ones',
+        all: 'All, resolved ones too',
+      },
+      fassungLabel: 'Revision',
+      fassungen: {
+        current: 'Current revision',
+        all: 'All revisions',
+      },
+      includeProposals: 'Add Piloti’s proposals',
+      formatLabel: 'Download as',
+      formats: {
+        pdf: 'PDF',
+        docx: 'Word (.docx)',
+        md: 'Markdown',
+      },
+      failed: 'The minutes could not be exported.',
+      tooLongForPdf: 'Too long for a PDF. Export them as Word or Markdown.',
+      document: {
+        title: 'Annotations – {name}',
+        fileName: 'Annotations – {name}',
+        fileNameFassung: 'Annotations – {name} – Revision {number}',
+        fileNameAll: 'Annotations – {name} – all revisions',
+        document: 'Document',
+        fassung: 'Revision',
+        fassungOf: 'Revision {number} of {total} · as of {date}',
+        project: 'Project',
+        scope: 'Contents',
+        scopes: {
+          open: 'Open annotations',
+          all: 'All annotations, resolved and dismissed ones too',
+        },
+        fassungen: {
+          current: 'current revision',
+          all: 'all revisions',
+        },
+        withProposals: 'with Piloti’s proposals',
+        exportedAt: 'Exported on',
+        exportedBy: 'Exported by',
+        marks: 'Annotations',
+        none: 'No annotations in this selection.',
+        entry: 'No. {number} · Page {page} · {kind} · {status}',
+        status: {
+          open: 'open',
+          resolved: 'resolved',
+          dismissed: 'dismissed',
+          proposed: 'proposal',
+        },
+        setBy: 'Set by {name} · {date}',
+        pilotiSetFor: 'Set by Piloti · for {name} · {date}',
+        pilotiSet: 'Set by Piloti · {date}',
+        proposalFor: 'Proposed by Piloti · for {name} · {date}',
+        proposal: 'Proposed by Piloti · {date}',
+        closedResolved: 'Resolved by {name} · {date}',
+        closedDismissed: 'Dismissed by {name} · {date}',
+        delegated: 'Piloti is working on it · for {name}',
+        basis: 'Basis',
+        assignee: 'Responsible',
+        due: 'Due',
+        thread: 'Thread',
+        proposals: 'Proposals by Piloti, not reviewed',
+        proposalsNote:
+          'Piloti proposed these places and nobody in the office has taken them over. They are not the office’s annotations.',
+      },
     },
   },
 }

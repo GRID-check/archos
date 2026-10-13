@@ -1,5 +1,5 @@
 /**
- * The process's one way onto Dragonfly pub/sub for live channels (ADR-0104).
+ * The process's one way onto Dragonfly pub/sub for live channels (ADR-0110).
  *
  * `publish(topic, payload)` reaches every listener of the topic on every
  * replica; `subscribe(topic, listener)` returns its release. Behind that:
@@ -9,7 +9,7 @@
  *   arrives and UNSUBSCRIBEd when its last one leaves, so a hundred viewers of
  *   one document on this replica are one subscription, and a thousand open
  *   streams are still one connection. (`lib/events/bus.ts` opens a connection
- *   per subscription; ADR-0104 moves it here next.)
+ *   per subscription; ADR-0110 moves it here next.)
  * - **In-process loopback, always.** A publish is delivered to this process's
  *   listeners directly, which is all a single replica (development, one pod)
  *   needs, and goes to Dragonfly for the others. A remote message carries the

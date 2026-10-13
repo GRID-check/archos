@@ -195,7 +195,7 @@ export const files: typeof en.files = {
           this: 'Piloti antwortet aus dieser Fassung.',
           older: 'Piloti antwortet weiter aus Fassung {number}.',
           newer: 'Piloti antwortet aus der neueren Fassung {number}; diese bleibt lesbar, auch für Vergleiche.',
-          notYet: 'Piloti antwortet erst daraus, wenn sie veröffentlicht ist.',
+          notYet: 'Piloti antwortet erst daraus, wenn sie freigegeben ist.',
           never: 'Piloti antwortet nicht daraus.',
         },
         // {name} kommt mit dem Datum: „Anna Berger · 14.08.2026“, untrennbar.
@@ -205,7 +205,7 @@ export const files: typeof en.files = {
         bySomeone: 'einem Teammitglied',
         rowMenu: 'Weitere Aktionen zu Fassung {number}',
         approveExplain:
-          'Freigeben heißt: Das Büro steht für den Inhalt ein. Danach kann sie veröffentlicht werden; erst dann antwortet Piloti daraus.',
+          'Freigeben heißt: Das Büro steht für den Inhalt ein. Ab dann antwortet Piloti aus dieser Fassung.',
         changedSince: 'Geändert gegenüber Fassung {number}:',
         archive: 'Datei stilllegen …',
       },
@@ -1215,13 +1215,13 @@ export const files: typeof en.files = {
     // keine hinter der neuesten, kann der Satz nicht auf sie verweisen („Alone“).
     meaning: {
       draftLive: 'Entwurf einer neuen Fassung. Piloti antwortet weiter aus der veröffentlichten Fassung.',
-      draftAlone: 'Entwurf. Piloti antwortet erst daraus, wenn sie freigegeben und veröffentlicht ist.',
+      draftAlone: 'Entwurf. Piloti antwortet erst daraus, wenn sie freigegeben ist.',
       inReviewLive: 'Wartet auf Freigabe. Piloti antwortet aus der veröffentlichten Fassung.',
       inReviewAlone: 'Wartet auf Freigabe. Bis dahin antwortet Piloti nicht daraus.',
       changesRequestedLive:
-        'Änderungen angefordert. Piloti antwortet aus der veröffentlichten Fassung, bis die überarbeitete veröffentlicht ist.',
+        'Änderungen angefordert. Piloti antwortet aus der veröffentlichten Fassung, bis die überarbeitete freigegeben ist.',
       changesRequestedAlone:
-        'Änderungen angefordert. Piloti antwortet erst aus der überarbeiteten Fassung, wenn sie veröffentlicht ist.',
+        'Änderungen angefordert. Piloti antwortet erst aus der überarbeiteten Fassung, wenn sie freigegeben ist.',
       approvedLive:
         'Freigegeben, wartet auf Veröffentlichung. Bis dahin antwortet Piloti aus der veröffentlichten Fassung.',
       approvedAlone: 'Freigegeben, wartet auf Veröffentlichung. Erst danach antwortet Piloti daraus.',
@@ -1428,6 +1428,18 @@ export const files: typeof en.files = {
     },
     peerPoint: 'setzt eine Anmerkung',
     peerRegion: 'markiert einen Bereich',
+    // Piloti nennt auf dem Dokument, für wen es schreibt (ADR-0105; EU AI Act Art. 50).
+    attribution: {
+      pilotiFor: 'Piloti · für {name}',
+      proposalFor: 'Vorschlag von Piloti · für {name}',
+      woken: {
+        thread_mention: 'Geweckt durch eine Erwähnung',
+        thread_reply: 'Geweckt durch eine Antwort',
+        assigned: 'Geweckt durch die Delegation',
+      },
+      wokenTitle: 'Geweckt durch {name} in Anmerkung {number}',
+      wokenTitleNameless: 'Geweckt in Anmerkung {number}',
+    },
     pinLabel: 'Anmerkung {number}: {kind}',
     page: 'Seite {page}',
     draftPlaceholder: 'Was ist hier? Enter setzt die Anmerkung',
@@ -1482,6 +1494,76 @@ export const files: typeof en.files = {
       openBody: 'Alle Anmerkungen sind erledigt oder verworfen.',
       closedTitle: 'Noch nichts erledigt',
       closedBody: 'Was erledigt oder verworfen ist, sammelt sich hier.',
+    },
+    // Die Anmerkungen als Protokoll, für den Jour fixe oder an Bauherrschaft und
+    // Fachplanung: das Menü in der Prüfansicht und die Wörter in der Datei selbst.
+    export: {
+      button: 'Protokoll exportieren',
+      scopeLabel: 'Welche Anmerkungen',
+      scopes: {
+        open: 'Nur offene',
+        all: 'Alle, auch erledigte',
+      },
+      fassungLabel: 'Fassung',
+      fassungen: {
+        current: 'Aktuelle Fassung',
+        all: 'Alle Fassungen',
+      },
+      includeProposals: 'Vorschläge von Piloti anhängen',
+      formatLabel: 'Herunterladen als',
+      formats: {
+        pdf: 'PDF',
+        docx: 'Word (.docx)',
+        md: 'Markdown',
+      },
+      failed: 'Das Protokoll konnte nicht exportiert werden.',
+      tooLongForPdf: 'Zu umfangreich für ein PDF. Bitte als Word oder Markdown exportieren.',
+      document: {
+        title: 'Anmerkungen – {name}',
+        fileName: 'Anmerkungen – {name}',
+        fileNameFassung: 'Anmerkungen – {name} – Fassung {number}',
+        fileNameAll: 'Anmerkungen – {name} – alle Fassungen',
+        document: 'Dokument',
+        fassung: 'Fassung',
+        fassungOf: 'Fassung {number} von {total} · Stand vom {date}',
+        project: 'Projekt',
+        scope: 'Umfang',
+        scopes: {
+          open: 'Offene Anmerkungen',
+          all: 'Alle Anmerkungen, auch erledigte und verworfene',
+        },
+        fassungen: {
+          current: 'aktuelle Fassung',
+          all: 'alle Fassungen',
+        },
+        withProposals: 'mit Vorschlägen von Piloti',
+        exportedAt: 'Exportiert am',
+        exportedBy: 'Exportiert von',
+        marks: 'Anmerkungen',
+        none: 'Keine Anmerkungen in dieser Auswahl.',
+        entry: 'Nr. {number} · Seite {page} · {kind} · {status}',
+        status: {
+          open: 'offen',
+          resolved: 'erledigt',
+          dismissed: 'verworfen',
+          proposed: 'Vorschlag',
+        },
+        setBy: 'Gesetzt von {name} · {date}',
+        pilotiSetFor: 'von Piloti gesetzt · für {name} · {date}',
+        pilotiSet: 'von Piloti gesetzt · {date}',
+        proposalFor: 'Vorschlag von Piloti · für {name} · {date}',
+        proposal: 'Vorschlag von Piloti · {date}',
+        closedResolved: 'Erledigt von {name} · {date}',
+        closedDismissed: 'Verworfen von {name} · {date}',
+        delegated: 'Piloti arbeitet daran · für {name}',
+        basis: 'Grundlage',
+        assignee: 'Zuständig',
+        due: 'Termin',
+        thread: 'Verlauf',
+        proposals: 'Vorschläge von Piloti, nicht geprüft',
+        proposalsNote:
+          'Diese Stellen hat Piloti vorgeschlagen, und niemand im Büro hat sie übernommen. Sie sind keine Anmerkungen des Büros.',
+      },
     },
   },
 }

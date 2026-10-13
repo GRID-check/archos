@@ -26,6 +26,10 @@ Piloti's reply in the mark's thread, in the same request; a deletion is
 allowed for exactly the marks the asker set. Findings Piloti makes on its own
 initiative stay proposals; the tool descriptions say which is which.
 
+Only where the office allows it: with the organization switch ``piloti-acts``
+off (the default) the BFF refuses ``create``, ``update`` and ``delete``, and
+Piloti proposes the mark or leaves the change to the person (``calls.py``).
+
 A reply lands at once, marked as Piloti's: it changes no state. All of these
 are read by everyone who opens the document, so all pass the restricted-folder
 rule first (``policy.py``).

@@ -18,6 +18,12 @@
  * it, a change posts Piloti's note in the thread, a stale `expectedStatus` is
  * a 409 with no note, and nothing the asker could not do goes through. Every
  * row the fake holds is checked against the CHECKs of migration 0138.
+ *
+ * Parity is the organization's choice (`piloti-acts`, an entitlement, off by
+ * default): with it off, `create`, `update` and `delete` are refused with
+ * `piloti-acts-off` before anything is read or written, and proposals,
+ * replies, reads and the room run as ever. The flag is read the real way, off
+ * the pinned session's flags in a deployment that signs people in.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -101,7 +107,8 @@ import { POST } from './route'
 const SECRET = 'test-internal-token-annotations'
 const DOC_ID = '11111111-1111-4111-8111-111111111111'
 const OTHER_DOC = '22222222-2222-4222-8222-222222222222'
-const SESSION = { userId: 'user_1', organizationId: 'org_1' } as Partial<AuthorizedSession> as AuthorizedSession
+/** The asker's pinned session; its flags are WorkOS's answer for the organization. */
+const SESSION = { userId: 'user_1', organizationId: 'org_1', featureFlags: ['piloti-acts'] } as Partial<AuthorizedSession> as AuthorizedSession
 const CONTEXT = {
   organizationId: 'org_1',
   userId: 'user_1',
@@ -135,6 +142,9 @@ const PROPOSAL = {
 beforeEach(() => {
   vi.clearAllMocks()
   process.env.GRID_INTERNAL_API_TOKEN = SECRET
+  // Flags come from WorkOS (the session's claim), as wherever people sign in.
+  vi.stubEnv('REQUIRE_AUTH', 'true')
+  SESSION.featureFlags = ['piloti-acts']
   vi.mocked(requireVerifiedContext).mockReturnValue(CONTEXT)
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(findConversationInOrg).mockResolvedValue({
@@ -158,6 +168,7 @@ beforeEach(() => {
 
 afterEach(() => {
   delete process.env.GRID_INTERNAL_API_TOKEN
+  vi.unstubAllEnvs()
 })
 
 describe('POST /api/internal/document-annotations', () => {
@@ -877,5 +888,90 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     expect(stored().status).toBe('resolved')
     expect(error).toHaveBeenCalled()
     error.mockRestore()
+  })
+})
+
+// ---------------------------------------------------------------------------
+// `piloti-acts` off: the office has Piloti propose only.
+// ---------------------------------------------------------------------------
+
+describe('POST /api/internal/document-annotations — an office that has Piloti propose only', () => {
+  beforeEach(() => {
+    marks = new Map([[MARK_ID, record({ createdBy: 'user_1' })]])
+    fakeRepository()
+    vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
+    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    SESSION.featureFlags = []
+  })
+
+  const refusal = { code: 'PILOTI_ACTS_OFF', details: { reason: 'piloti-acts-off' } }
+
+  it('refuses to set a mark open for the asker, typed, and writes nothing', async () => {
+    const response = await post({ op: 'create', answerMessageId: ANSWER, marks: [PROPOSAL] })
+
+    expect(response.status).toBe(403)
+    await expect(response.json()).resolves.toMatchObject({ ...refusal, details: { ...refusal.details, op: 'create' } })
+    expect(insertDocumentAnnotations).not.toHaveBeenCalled()
+    expect(insertPilotiChanges).not.toHaveBeenCalled()
+    expect(onPilotiWrote).not.toHaveBeenCalled()
+  })
+
+  it('still proposes: the mark the person asked for is born a proposal', async () => {
+    const response = await post({ op: 'propose', proposals: [PROPOSAL] })
+
+    expect(response.status).toBe(200)
+    expect(proposeAnnotations).toHaveBeenCalledWith(SESSION, DOC_ID, [PROPOSAL])
+  })
+
+  it('refuses a change and a deletion the asker could make themselves, and posts no note', async () => {
+    const update = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+    const remove = await post({ op: 'delete', annotationId: MARK_ID })
+
+    expect(update.status).toBe(403)
+    await expect(update.json()).resolves.toMatchObject({ ...refusal, details: { ...refusal.details, op: 'update' } })
+    expect(remove.status).toBe(403)
+    await expect(remove.json()).resolves.toMatchObject({ ...refusal, details: { ...refusal.details, op: 'delete' } })
+    expect(findDocumentAnnotation).not.toHaveBeenCalled()
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+    expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+    expect(stored()).toMatchObject({ status: 'open' })
+  })
+
+  it('still answers in a thread, reads, and works the room', async () => {
+    vi.mocked(replyToAnnotation).mockResolvedValue({
+      annotation: { ...record(), replies: [{ id: 'reply_1', body: 'Steht im Schnitt B-B.' }] } as never,
+      replyId: 'reply_1',
+      wake: 'none',
+    })
+    vi.mocked(roomSnapshot).mockResolvedValue([])
+
+    for (const body of [
+      { op: 'reply', annotationId: MARK_ID, body: 'Steht im Schnitt B-B.' },
+      { op: 'list' },
+      { op: 'room' },
+      { op: 'point', page: 1, x: 0.4, y: 0.5 },
+      { op: 'highlight', page: 1, x: 0.1, y: 0.1, w: 0.2, h: 0.2, label: 'Hier' },
+      { op: 'leave' },
+    ]) {
+      expect((await post(body)).status).toBe(200)
+    }
+    expect(replyToAnnotation).toHaveBeenCalledTimes(1)
+  })
+
+  it('fails closed on a token without the flags claim', async () => {
+    SESSION.featureFlags = null
+
+    expect((await post({ op: 'create', marks: [PROPOSAL] })).status).toBe(403)
+    expect(insertDocumentAnnotations).not.toHaveBeenCalled()
+  })
+
+  it('acts again once the organization switches it on', async () => {
+    SESSION.featureFlags = ['piloti-acts']
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    expect(response.status).toBe(200)
+    expect(stored()).toMatchObject({ status: 'resolved', closedBy: 'user_1' })
   })
 })

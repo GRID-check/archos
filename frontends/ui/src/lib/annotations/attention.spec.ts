@@ -92,11 +92,21 @@ describe('onWakeEnded', () => {
     expect(emitted()).toMatchObject({ type: 'piloti.work_done', recipientUserId: 'user_me' })
   })
 
-  it.each(['thread_mention', 'thread_reply'] as const)('stays quiet when a %s did not get an answer', async (trigger) => {
-    await onWakeEnded({ ...wake, trigger, outcome: 'failed' })
+  it.each(['thread_mention', 'thread_reply'] as const)(
+    'tells who asked (%s) when Piloti could not answer',
+    async (trigger) => {
+      await onWakeEnded({ ...wake, trigger, outcome: 'failed' })
 
-    expect(emitInboxItems).not.toHaveBeenCalled()
-  })
+      expect(emitted()).toMatchObject({
+        type: 'piloti.work_failed',
+        recipientUserId: 'user_me',
+        anchorId: 'ann_1',
+        actorUserId: null,
+        groupKey: 'piloti.work_failed:document:doc_1:ann_1',
+        payload: { subject: 'Grundriss EG.pdf', related: '4' },
+      })
+    },
+  )
 
   it.each(['assigned', 'thread_mention', 'thread_reply'] as const)(
     'stays quiet when the person stopped it (%s)',

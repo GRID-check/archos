@@ -10,6 +10,7 @@ import { formatDayRange, localCalendarDay } from '@/lib/format'
 import { isLive, isOverdue, type AnnotationView } from '@/lib/annotations/types'
 import { cn } from '@/lib/utils'
 import type { DocumentReview, ReviewFilter } from '../../hooks/use-document-review'
+import { usePilotiByline } from './piloti-attribution'
 import { markInk } from './review-page-layer'
 
 /**
@@ -27,11 +28,14 @@ function Row({
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
+  const byline = usePilotiByline()
   const selected = annotation.id === review.selectedId
   const overdue = isOverdue(annotation, localCalendarDay())
   const meta = [
     t(`annotations.kinds.${annotation.kind}`),
-    annotation.authorKind === 'piloti' ? 'Piloti' : (annotation.createdByName ?? t('review.someone')),
+    annotation.authorKind === 'piloti'
+      ? byline(annotation.createdByName)
+      : (annotation.createdByName ?? t('review.someone')),
     annotation.assigneeName && `→ ${annotation.assigneeName}`,
   ].filter(Boolean)
   return (

@@ -145,7 +145,7 @@ route sends rather than its service, is sent for an assign too.
 
 ## Live
 
-A proposal is a live channel, `proposal:<id>` (ADR-0104). Being in the channel
+A proposal is a live channel, `proposal:<id>` (ADR-0110). Being in the channel
 is reading the proposal, by the rule of `GET /api/proposals/[id]`: `project:view`
 on its project and `viewer` on the conversation it was made in. A reader whose
 access is withdrawn is dropped at the next re-check, every 30 seconds. Nobody

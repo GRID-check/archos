@@ -35,7 +35,7 @@ export const documentRoomChannel = (documentId: string) => `doc:${documentId}`
 /**
  * The production transport: the document's `doc:<id>` channel on the tab's one
  * `GET /api/realtime` stream, and `POST /api/realtime/send` up
- * (`features/realtime`, ADR-0104). Kept under its old name for the callers
+ * (`features/realtime`, ADR-0110). Kept under its old name for the callers
  * that name it.
  */
 export function sseRoomTransport(documentId: string): RoomTransport {

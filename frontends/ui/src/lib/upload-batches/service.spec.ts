@@ -196,8 +196,8 @@ describe('sealJobUploadBatch', () => {
   it('seals a job\'s open batch announcing the documents that carry it, then settles it', async () => {
     vi.mocked(findUploadBatch).mockResolvedValue(batch({ expectedCount: 0 }))
     vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([
-      { batchId: BATCH_ID, status: 'pending', count: 3 },
-      { batchId: BATCH_ID, status: 'completed', count: 4 },
+      { batchId: BATCH_ID, status: 'pending' as const, count: 3 },
+      { batchId: BATCH_ID, status: 'completed' as const, count: 4 },
     ])
     vi.mocked(sealUploadBatch).mockResolvedValue(true)
 
@@ -228,16 +228,16 @@ describe('getUploadSummary', () => {
   it('reads every document through reconciliation and says what each became, where, and why', async () => {
     vi.mocked(findUploadBatch).mockResolvedValue(batch({ sealedAt: new Date(), completedAt: new Date() }))
     vi.mocked(listBatchDocuments).mockResolvedValue([
-      makeDocument({ id: 'a', filename: 'EG.pdf', status: 'completed', folderId: 'f1', screeningOutcome: 'clean' }),
+      makeDocument({ id: 'a', filename: 'EG.pdf', status: 'completed' as const, folderId: 'f1', screeningOutcome: 'clean' }),
       makeDocument({
         id: 'b',
         filename: 'Lohn.pdf',
-        status: 'quarantined',
+        status: 'quarantined' as const,
         screeningOutcome: 'quarantined',
         errorMessage: 'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":1}],"checked":"full"}',
       }),
-      makeDocument({ id: 'c', filename: 'Scan.pdf', status: 'pending' }),
-      makeDocument({ id: 'd', filename: 'Kaputt.pdf', status: 'failed', errorMessage: 'pdf_pages_unreadable: 3 of 3 pages' }),
+      makeDocument({ id: 'c', filename: 'Scan.pdf', status: 'pending' as const }),
+      makeDocument({ id: 'd', filename: 'Kaputt.pdf', status: 'failed' as const, errorMessage: 'pdf_pages_unreadable: 3 of 3 pages' }),
     ])
     vi.mocked(reconcileDocumentStatuses).mockImplementation(async (rows) =>
       rows.map((row) => (row.id === 'a' ? { ...row, summary: 'Grundriss EG', tags: ['Plan'] } : row))
@@ -260,12 +260,15 @@ describe('getUploadSummary', () => {
     expect(summary.documents[3]?.errorMessage).toContain('pdf_pages_unreadable')
   })
 
-  it('counts a status nobody declared as being read, as the folder brief does, never as stored', async () => {
+  // The column holds seven values since 0135, so "a status nobody declared"
+  // can no longer reach this summary; both in-flight values count as being
+  // read, as the folder brief counts them, and `stored` never does.
+  it('counts a row being read as being read, as the folder brief does, never as stored', async () => {
     vi.mocked(findUploadBatch).mockResolvedValue(batch({ sealedAt: new Date() }))
     vi.mocked(listBatchDocuments).mockResolvedValue([
-      makeDocument({ id: 'x', filename: 'Neu.pdf', status: 'quasi-ready' }),
-      makeDocument({ id: 'u', filename: 'Halb.pdf', status: 'uploading' }),
-      makeDocument({ id: 's', filename: 'Bericht.pdf', status: 'stored' }),
+      makeDocument({ id: 'x', filename: 'Neu.pdf', status: 'pending' as const }),
+      makeDocument({ id: 'u', filename: 'Halb.pdf', status: 'processing' as const }),
+      makeDocument({ id: 's', filename: 'Bericht.pdf', status: 'stored' as const }),
     ])
     vi.mocked(reconcileDocumentStatuses).mockImplementation(async (rows) => rows)
 
@@ -383,8 +386,8 @@ describe('listProjectUploadHistory', () => {
   it('needs project:view and tallies each upload by outcome', async () => {
     vi.mocked(listProjectUploadBatchPage).mockResolvedValue({ batches: [batch({ completedAt: new Date() })], nextCursor: null })
     vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([
-      { batchId: BATCH_ID, status: 'completed', count: 2 },
-      { batchId: BATCH_ID, status: 'quarantined', count: 1 },
+      { batchId: BATCH_ID, status: 'completed' as const, count: 2 },
+      { batchId: BATCH_ID, status: 'quarantined' as const, count: 1 },
     ])
     vi.mocked(loadOrganizationDirectory).mockResolvedValue(
       new Map([['uploader', { userId: 'uploader', email: null, name: 'Uta Upload', profilePictureUrl: null }]])
@@ -409,7 +412,7 @@ describe('listProjectUploadHistory', () => {
     })
     // The repository counts only what the reader may see: 12 of BATCH_ID's 14
     // and all 12 of OTHER's went where the reader cannot look.
-    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed', count: 2 }])
+    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed' as const, count: 2 }])
 
     const { uploads: entries } = await listProjectUploadHistory(session, 'proj-1')
 
@@ -446,8 +449,8 @@ describe('listProjectUploadHistory', () => {
       nextCursor: null,
     })
     vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([
-      { batchId: BATCH_ID, status: 'completed', count: 2 },
-      { batchId: BATCH_ID, status: 'quarantined', count: 1 },
+      { batchId: BATCH_ID, status: 'completed' as const, count: 2 },
+      { batchId: BATCH_ID, status: 'quarantined' as const, count: 1 },
     ])
 
     const {
@@ -484,7 +487,7 @@ describe('listProjectUploadHistory', () => {
       nextCursor: null,
     })
     // Four landed in f-open; the two in the bin are not tallied, as the listing leaves them out.
-    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed', count: 4 }])
+    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed' as const, count: 4 }])
 
     const {
       uploads: [entry],
@@ -503,7 +506,7 @@ describe('listProjectUploadHistory', () => {
       batches: [batch({ expectedCount: 9, unchangedCount: 3, failedCount: 1 })],
       nextCursor: null,
     })
-    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed', count: 4 }])
+    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed' as const, count: 4 }])
 
     const {
       uploads: [entry],
@@ -525,7 +528,7 @@ describe('listProjectUploadHistory', () => {
       nextCursor: null,
     })
     // The purge erased the folder's documents before it marked the folder.
-    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed', count: 4 }])
+    vi.mocked(countBatchDocumentsByStatus).mockResolvedValue([{ batchId: BATCH_ID, status: 'completed' as const, count: 4 }])
 
     const { uploads: entries } = await listProjectUploadHistory(session, 'proj-1')
 

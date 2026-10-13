@@ -1,6 +1,6 @@
 /**
  * Who is in a channel right now, kept on the server so it can be read without
- * being in the channel (ADR-0104): the snapshot Piloti reads when it is asked
+ * being in the channel (ADR-0110): the snapshot Piloti reads when it is asked
  * about what a person is looking at.
  *
  * The browsers' roster is gossip and stays so; this is a side record of the

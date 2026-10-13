@@ -13,7 +13,7 @@
  * 4. **Nothing lands in `cardInteractions`.** A decision recorded on the
  *    message would be a second truth beside the object.
  * 5. **A colleague's decision shows without a reload.** While the proposal is
- *    open the card listens on `proposal:<id>` (ADR-0104); a hint, or the
+ *    open the card listens on `proposal:<id>` (ADR-0110); a hint, or the
  *    channel coming up, re-reads the object. A decided card listens to nothing.
  *
  * Rendered without an `I18nProvider`, so the dictionary falls back to `en`.

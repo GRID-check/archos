@@ -1,5 +1,5 @@
 /**
- * The document room as a live channel: `doc:<documentId>` (ADR-0104; the
+ * The document room as a live channel: `doc:<documentId>` (ADR-0110; the
  * vocabulary is `lib/annotations/room-types.ts`).
  *
  * Being in the room is reading the document: `getAccessibleDocument(read)`,

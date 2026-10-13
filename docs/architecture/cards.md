@@ -774,6 +774,16 @@ to authorize a write (`propose, never auto-apply` —
 `project-memory-design.md` §11.7), and `document_draft` submits one for
 approval, which makes the user's click the only place that outcome exists.
 
+**A third class, `'live'`** (ADR-0109): a card whose state is server objects,
+not the message. `canvas_activity` is one: it reads the marks and the turn's
+change record, every control is a write to the mark (`expectedStatus` as the
+compare-and-swap), and it writes NOTHING to `cardInteractions`; an answer older
+than the change record still shows the decision it stored, read-only. The
+ratchet is `live card wiring` in `card-interactivity.spec.tsx`: every live type
+needs a case, every case presses each control, asserts the object was written,
+and fails if the store was. Python's `INTERACTIVE_CARD_TYPES` keeps a live card
+(it still asks the user); the parity test reads `'live'` as interactive.
+
 `diagram` was briefly a third and was never made one; the card has since been
 retired for a ```` ```mermaid ```` fence (see
 [Markdown carries the rest](#markdown-carries-the-rest)). A `CONSENT_CARD_TYPES` was split out of `INTERACTIVE_CARD_TYPES` at the

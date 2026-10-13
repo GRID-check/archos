@@ -26,7 +26,7 @@ vi.mock('@/features/realtime/use-channel', async (importOriginal) => ({
 const list = vi.mocked(listAnnotations)
 
 /** The fields of a mark the card reads; the rest of a view does not reach it. */
-const mark = (id: string, status: AnnotationView['status']) =>
+const mark = (id: string, status: AnnotationView['status'], replies: Array<Partial<AnnotationView['replies'][number]>> = []) =>
   ({
     id,
     status,
@@ -37,6 +37,7 @@ const mark = (id: string, status: AnnotationView['status']) =>
     dueOn: null,
     kind: 'defect',
     body: 'x',
+    replies,
   }) as unknown as AnnotationView
 
 const answer = (...annotations: AnnotationView[]) =>
@@ -101,6 +102,56 @@ describe('useLiveMarks', () => {
 
     await waitFor(() => expect(result.current.lookup('ann_7')).toMatchObject({ status: 'resolved' }))
     expect(list).toHaveBeenCalledTimes(2)
+  })
+
+  it('carries the thread at a glance: the reply count and the newest reply, with a person’s name', async () => {
+    scriptedChannels()
+    list.mockResolvedValue(
+      answer(
+        mark('ann_7', 'proposed', [
+          { authorKind: 'person', createdByName: 'Anna Berger', body: 'Welche Breite?', createdAt: '2026-10-13T08:00:00.000Z' },
+          { authorKind: 'piloti', createdByName: 'Miriam', body: 'Die Breite…', createdAt: '2026-10-13T09:00:00.000Z' },
+        ]),
+        mark('ann_8', 'proposed')
+      )
+    )
+    const { result } = renderHook(() => useLiveMarks('doc_1', ON_SCREEN))
+
+    await waitFor(() => expect(result.current.lookup('ann_7')).toBeDefined())
+    // Piloti's reply carries no name of its own: the person it spoke for is not its author.
+    expect(result.current.lookup('ann_7')).toMatchObject({
+      replyCount: 2,
+      lastReply: { authorKind: 'piloti', authorName: null, body: 'Die Breite…' },
+    })
+    expect(result.current.lookup('ann_8')).toMatchObject({ replyCount: 0, lastReply: null })
+  })
+
+  it('takes the newest reply by its time, whatever the order of the list', async () => {
+    scriptedChannels()
+    list.mockResolvedValue(
+      answer(
+        mark('ann_7', 'open', [
+          { authorKind: 'person', createdByName: 'Ben', body: 'später', createdAt: '2026-10-13T09:00:00.000Z' },
+          { authorKind: 'person', createdByName: 'Anna', body: 'früher', createdAt: '2026-10-13T08:00:00.000Z' },
+        ])
+      )
+    )
+    const { result } = renderHook(() => useLiveMarks('doc_1', ON_SCREEN))
+
+    await waitFor(() => expect(result.current.lookup('ann_7')).toMatchObject({ lastReply: { authorName: 'Ben' } }))
+  })
+
+  it('moves the glance with the thread when a reply lands on the canvas', async () => {
+    const channels = scriptedChannels()
+    const { result } = renderHook(() => useLiveMarks('doc_1', ON_SCREEN))
+    await waitFor(() => expect(result.current.lookup('ann_7')).toMatchObject({ replyCount: 0 }))
+
+    list.mockResolvedValue(
+      answer(mark('ann_7', 'proposed', [{ authorKind: 'person', createdByName: 'Anna', body: 'Hallo', createdAt: '2026-10-13T08:00:00.000Z' }]))
+    )
+    channels.hint('doc:doc_1')
+
+    await waitFor(() => expect(result.current.lookup('ann_7')).toMatchObject({ replyCount: 1, lastReply: { body: 'Hallo' } }))
   })
 
   it('stamps the marks a burst of hints named, so a card refetches what the server records on them', async () => {

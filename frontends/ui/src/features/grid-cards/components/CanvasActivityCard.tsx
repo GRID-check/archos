@@ -12,13 +12,26 @@
  * System-emitted (`src/aiq_agent/tools/canvas/cards.py`): every id on it is one
  * the annotations service returned, and the model cannot author one.
  *
- * ## One decision per mark
+ * ## A window onto the marks, not a record of answers
  *
  * A proposed mark is Piloti's until a person takes it over (a CHECK on
  * the canvas tools hold that). Each row asks on its own, „Übernehmen"
- * or „Verwerfen", through the same typed client the canvas uses, and stores
- * the reader's answer on the message under `itemDecisionKey` (ADR-0030), so a
- * reload shows it answered and offers nothing again.
+ * or „Verwerfen", through the same typed client the canvas uses. The answer is
+ * a write to the MARK: the mark is the record (ADR-0105), so a reload, a
+ * colleague's window and the canvas all read the same state, and nothing is
+ * written to `ChatMessage.cardInteractions` (the card is `live` in
+ * `CARD_INTERACTIVITY`, and `card-interactivity.spec.tsx` holds it to that).
+ * A message stored before that kept the answer under `itemDecisionKey`; those
+ * answers still draw, read-only, until the live list says otherwise.
+ *
+ * With several proposals on the card, „Alle übernehmen" and „Übrige
+ * verwerfen" run the same per-mark write on each mark still proposed, with
+ * `expectedStatus: 'proposed'`. A mark somebody decided meanwhile answers 409
+ * and is skipped, and its row says who got there first. Discarding in bulk asks
+ * first: it is not undone from here.
+ *
+ * Every row also shows its mark's thread at a glance: the reply count and the
+ * newest reply's author and first words, read with the marks.
  *
  * The canvas is live and the message is not. So the card reads the marks once
  * it is seen and lets that list win: a mark a colleague took over on the
@@ -28,10 +41,9 @@
  * and a small dot beside Piloti's glyph says so. A move somebody beat the
  * reader to answers 409, and the row re-reads and shows what happened instead.
  *
- * Taking over is read-then-write. The API lets a discarded mark be opened
- * again (`dismissed → open` is the way back for a person who discarded one by
- * mistake), so a 409 cannot stop this card from reopening a mark a colleague
- * just discarded; the read right before the write is what does.
+ * Taking over is guarded by `expectedStatus: 'proposed'`: the API lets a
+ * discarded mark be opened again, so only the status guard stops this card from
+ * reopening a mark a colleague just discarded.
  *
  * ## What the person asked for
  *
@@ -65,6 +77,7 @@ import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Check, MapPin, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { useInView } from '@/hooks/use-in-view'
@@ -75,17 +88,19 @@ import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { AnnotationRequestError, updateAnnotation } from '@/lib/annotations/client'
 import { ChangeRequestError, undoChange } from '@/lib/changes/client'
 import type { PilotiChangeView } from '@/lib/changes/types'
+import { PRODUCT_NAME } from '@/lib/brand'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/features/chat/store'
 import { openReviewAt } from '@/features/documents/lib/open-review'
-import { isCardDecision, itemDecisionKey } from '../card-decision'
-import { selectCardConversationId, selectCardDecision, useCardDecision } from '../hooks/use-card-decision'
+import { isCardDecision, itemDecisionKey, type CardDecision } from '../card-decision'
+import { selectCardConversationId, selectCardDecision } from '../hooks/use-card-decision'
 import { useFirstPageThumbnail, useLiveMarks, type LiveMarks } from '../hooks/use-canvas-document'
 import { useTurnChanges, type TurnChanges } from '../hooks/use-turn-changes'
 import {
   activityCounts,
   annotationIdOf,
   createdState,
+  firstWords,
   isProposed,
   isSet,
   markState,
@@ -99,6 +114,7 @@ import {
   type CanvasFieldChange,
   type CanvasRepliedItem,
   type CanvasSetItem,
+  type LiveMark,
   type MarkState,
 } from '../lib/canvas-activity'
 import { matchChanges, standsAsChanged } from '../lib/canvas-changes'
@@ -115,13 +131,61 @@ const DEFAULT_PAGE_ASPECT = Math.SQRT2
 export interface CanvasActivityCardProps {
   document: CanvasActivityDocument
   items: readonly CanvasActivityItem[]
-  /** Message this card belongs to — keys each mark's persisted decision. */
+  /**
+   * Message this card belongs to: the turn whose changes it reads, and where an
+   * answer stored before the card went live is looked up.
+   */
   messageId?: string
   /** Stable identity of this card within that message (`cardKey`). */
   cardKey: string
-  /** Whether this surface requires the answers to be persisted. */
+  /**
+   * Whether this surface is read-only (somebody else's answer, a job's
+   * output): with no message to own the card it offers no answer at all. The
+   * answer no longer needs a place to be kept, but a reader looking at another
+   * person's turn is not the one being asked.
+   */
   decisionsMustPersist?: boolean
 }
+
+/** What one write to a mark came to. */
+type AnswerOutcome = 'done' | 'moved' | 'gone' | 'forbidden' | 'failed'
+
+/**
+ * Take a proposed mark over (`open`) or discard it (`dismissed`): the one write
+ * every answer on this card is, per mark or in a batch. `expectedStatus` makes
+ * it a compare-and-swap, so a colleague who got there first is a `moved`
+ * (409), never an overwrite, and the caller reads the list again to say what
+ * happened. The mark is the record: nothing is stored on the message.
+ */
+async function answerMark(
+  documentId: string,
+  annotationId: string,
+  status: 'open' | 'dismissed',
+  live: LiveMarks
+): Promise<AnswerOutcome> {
+  try {
+    live.adopt(await updateAnnotation(documentId, annotationId, { status, expectedStatus: 'proposed' }))
+    return 'done'
+  } catch (failure) {
+    if (!(failure instanceof AnnotationRequestError)) return 'failed'
+    if (failure.status === 409) return 'moved'
+    if (failure.status === 403) return 'forbidden'
+    if (failure.status === 404) {
+      live.forget(annotationId)
+      return 'gone'
+    }
+    return 'failed'
+  }
+}
+
+/** Who moved a mark on, as the live list names them. */
+const decidedBy = (mark: LiveMark | 'gone' | undefined): string | null => {
+  if (!mark || mark === 'gone') return null
+  return mark.status === 'open' ? mark.acceptedByName : mark.closedByName
+}
+
+/** An answer a message stored before the card went live, or null. Read-only. */
+const storedDecision = (value: string | undefined): CardDecision | null => (isCardDecision(value) ? value : null)
 
 /** How the reader steps into the Prüfansicht: one function, so every button goes the same way. */
 type ShowInDocument = (annotationId: string) => void
@@ -178,7 +242,7 @@ export function CanvasActivityCard({
   // one is answered and something was kept (or Piloti did what it was asked),
   // quiet when the card holds only proposals and every one was discarded.
   const proposedStates = proposedItems.map((item, index) =>
-    markState(isCardDecision(storedAnswers[index]) ? storedAnswers[index] : null, live.lookup(item.annotation_id))
+    markState(storedDecision(storedAnswers[index]), live.lookup(item.annotation_id))
   )
   const tone =
     proposedStates.some((state) => state === 'proposed')
@@ -188,6 +252,54 @@ export function CanvasActivityCard({
         : 'accepted'
 
   const firstId = items.map(annotationIdOf).find((id) => id !== null) ?? null
+
+  // The reader is asked unless the surface is read-only and nothing owns the card.
+  const mayAct = !decisionsMustPersist || Boolean(messageId)
+
+  // The marks a batch acts on: proposed now, and the reader may answer them.
+  // Only marks the list has said something about (a blind batch would write to
+  // marks nobody has seen).
+  const pendingIds = proposedItems
+    .filter((item, index) => {
+      const current = live.lookup(item.annotation_id)
+      return (
+        current !== undefined &&
+        current !== 'gone' &&
+        current.canEdit &&
+        markState(storedDecision(storedAnswers[index]), current) === 'proposed'
+      )
+    })
+    .map((item) => item.annotation_id)
+  const [batch, setBatch] = useState<'open' | 'dismissed' | null>(null)
+  const [confirmDiscard, setConfirmDiscard] = useState<{ open: boolean; count: number }>({ open: false, count: 0 })
+  const [batchError, setBatchError] = useState<string | null>(null)
+  // Marks a batch found already decided, and by whom (null: nobody named).
+  const [skipped, setSkipped] = useState<ReadonlyMap<string, string | null>>(new Map())
+  const showBatch = mayAct && (pendingIds.length >= 2 || batch !== null)
+
+  const runBatch = async (status: 'open' | 'dismissed') => {
+    if (batch) return
+    setBatch(status)
+    setBatchError(null)
+    setSkipped(new Map())
+    const moved: string[] = []
+    let failed = 0
+    try {
+      for (const id of pendingIds) {
+        const outcome = await answerMark(document.id, id, status, live)
+        if (outcome === 'moved') moved.push(id)
+        else if (outcome === 'forbidden' || outcome === 'failed') failed += 1
+      }
+      if (moved.length > 0) {
+        // Read once for all of them: who got there first is on the list.
+        const lookup = await live.refresh()
+        setSkipped(new Map(moved.map((id) => [id, lookup ? decidedBy(lookup(id)) : null])))
+      }
+      if (failed > 0) setBatchError(t('cards.canvasActivity.batch.failed', { count: failed }))
+    } finally {
+      setBatch(null)
+    }
+  }
 
   return (
     <ProposalShell tone={tone}>
@@ -224,6 +336,54 @@ export function CanvasActivityCard({
           )}
         </div>
 
+        {showBatch && (
+          <div className="flex flex-wrap items-center gap-2" data-testid="canvas-activity-batch">
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => void runBatch('open')}
+              aria-disabled={batch !== null || undefined}
+              aria-busy={batch === 'open' || undefined}
+              className="aria-disabled:cursor-default"
+            >
+              <StackedLabel
+                busy={batch === 'open'}
+                idle={t('cards.canvasActivity.batch.acceptAll')}
+                working={t('cards.canvasActivity.batch.accepting')}
+              />
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => batch === null && setConfirmDiscard({ open: true, count: pendingIds.length })}
+              aria-disabled={batch !== null || undefined}
+              aria-busy={batch === 'dismissed' || undefined}
+              className="aria-disabled:cursor-default aria-disabled:opacity-50"
+            >
+              <StackedLabel
+                busy={batch === 'dismissed'}
+                idle={t('cards.canvasActivity.batch.rejectRest')}
+                working={t('cards.canvasActivity.batch.rejecting')}
+              />
+            </Button>
+          </div>
+        )}
+        {batchError && (
+          <p className="card-caption text-destructive" role="alert">
+            {batchError}
+          </p>
+        )}
+        <ConfirmDialog
+          open={confirmDiscard.open}
+          onOpenChange={(open) => setConfirmDiscard((previous) => ({ ...previous, open }))}
+          title={t('cards.canvasActivity.batch.confirmTitle', { count: confirmDiscard.count })}
+          description={t('cards.canvasActivity.batch.confirmBody')}
+          confirmLabel={t('cards.canvasActivity.batch.confirm')}
+          cancelLabel={t('cards.canvasActivity.batch.cancel')}
+          onConfirm={() => runBatch('dismissed')}
+        />
+
         <ul className="flex flex-col gap-3">
           {items.map((item, index) => {
             if (isSet(item)) {
@@ -237,7 +397,8 @@ export function CanvasActivityCard({
                   changes={changes}
                   messageId={messageId}
                   cardKey={cardKey}
-                  decisionsMustPersist={decisionsMustPersist}
+                  mayAct={mayAct}
+                  skippedBy={skipped.get(item.annotation_id)}
                   thumbnail={item.page === 1 ? thumbnail : null}
                   aspect={aspect}
                   onAspect={setAspect}
@@ -257,7 +418,7 @@ export function CanvasActivityCard({
                   changes={changes}
                   messageId={messageId}
                   cardKey={cardKey}
-                  decisionsMustPersist={decisionsMustPersist}
+                  mayAct={mayAct}
                   onShow={openAt}
                 />
               )
@@ -519,7 +680,8 @@ function SetRow({
   changes,
   messageId,
   cardKey,
-  decisionsMustPersist,
+  mayAct,
+  skippedBy,
   thumbnail,
   aspect,
   onAspect,
@@ -533,16 +695,20 @@ function SetRow({
   changes: TurnChanges
   messageId?: string
   cardKey: string
-  decisionsMustPersist?: boolean
+  /** Whether the reader is asked at all on this surface. */
+  mayAct: boolean
+  /** A batch found this mark already decided: undefined when it did not, the person's name or null when it did. */
+  skippedBy?: string | null
   thumbnail: string | null
   aspect: number
   onAspect: (aspect: number) => void
   onShow: ShowInDocument
 }): JSX.Element {
   const t = useTranslations('chat')
-  const { decision, decide, canDecide } = useCardDecision(messageId, itemDecisionKey(cardKey, item.annotation_id), {
-    mustPersist: decisionsMustPersist,
-  })
+  // An answer stored on the message before the card went live: read, never written.
+  const decision = useChatStore((state) =>
+    selectCardDecision(state, messageId, itemDecisionKey(cardKey, item.annotation_id))
+  )
   const [busy, setBusy] = useState<'open' | 'dismissed' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const serverUndo = useServerUndo(change, live, changes)
@@ -550,7 +716,7 @@ function SetRow({
   const proposal = isProposed(item)
   const undone = change?.undoneAt != null
   const state = undone ? 'gone' : proposal ? markState(decision, current) : createdState(current)
-  const mayAnswer = state === 'proposed' && canDecide && (current === undefined || current === 'gone' || current.canEdit)
+  const mayAnswer = state === 'proposed' && mayAct && (current === undefined || current === 'gone' || current.canEdit)
   // A proposal is answered with the two buttons; taking back a mark set on
   // request is the record's undo, offered while the record says it may be.
   const mayUndo = !proposal && change?.canUndo === true && !undone
@@ -562,23 +728,13 @@ function SetRow({
     setBusy(status)
     setError(null)
     try {
-      // The card is a copy: it answers only the proposal it shows. If a
-      // colleague answered it on the canvas meanwhile, the server says 409.
-      const updated = await updateAnnotation(documentId, item.annotation_id, { status, expectedStatus: 'proposed' })
-      live.adopt(updated)
-      decide(status === 'open' ? 'accepted' : 'rejected')
-    } catch (failure) {
-      if (failure instanceof AnnotationRequestError && failure.status === 409) {
-        // A colleague moved it first. Not the reader's decision, so nothing is
-        // recorded: the row shows the state the canvas has now.
-        await live.refresh()
-      } else if (failure instanceof AnnotationRequestError && failure.status === 404) {
-        live.forget(item.annotation_id)
-      } else if (failure instanceof AnnotationRequestError && failure.status === 403) {
-        setError(t('cards.canvasActivity.forbidden'))
-      } else {
-        setError(t('cards.canvasActivity.error'))
-      }
+      // The write to the mark is the record. If a colleague answered it on the
+      // canvas meanwhile, the server says 409 and the row shows the state the
+      // canvas has now.
+      const outcome = await answerMark(documentId, item.annotation_id, status, live)
+      if (outcome === 'moved') await live.refresh()
+      else if (outcome === 'forbidden') setError(t('cards.canvasActivity.forbidden'))
+      else if (outcome === 'failed') setError(t('cards.canvasActivity.error'))
     } finally {
       setBusy(null)
     }
@@ -598,6 +754,7 @@ function SetRow({
           <span aria-hidden>·</span>
           <span>{t('cards.canvasActivity.page', { page: item.page })}</span>
           <ForPerson change={change} />
+          <SkippedNote by={skippedBy} />
           {undone ? (
             <UndoneLabel who={change?.undoneByName ?? null} />
           ) : (
@@ -607,6 +764,7 @@ function SetRow({
         <p className="card-body text-foreground line-clamp-2" title={item.body}>
           {item.body}
         </p>
+        <ThreadGlance mark={current} />
         {error && (
           <p className="card-caption text-destructive" role="alert">
             {error}
@@ -660,6 +818,41 @@ function SetRow({
         </div>
       </div>
     </li>
+  )
+}
+
+/**
+ * The mark's thread at a glance: „2 Antworten · zuletzt Piloti: „Die Breite…““.
+ * Read from the live list, so it moves when someone answers on the canvas.
+ */
+function ThreadGlance({ mark }: { mark: LiveMark | 'gone' | undefined }): JSX.Element | null {
+  const t = useTranslations('chat')
+  if (!mark || mark === 'gone' || mark.replyCount === 0) return null
+  const last = mark.lastReply
+  const name = last
+    ? last.authorKind === 'piloti'
+      ? PRODUCT_NAME
+      : (last.authorName ?? t('cards.canvasActivity.thread.someone'))
+    : null
+  return (
+    <p className="card-caption text-muted-foreground line-clamp-1" data-testid="canvas-activity-thread">
+      {t('cards.canvasActivity.thread.count', { count: mark.replyCount })}
+      {last && name && ` · ${t('cards.canvasActivity.thread.last', { name, excerpt: firstWords(last.body) })}`}
+    </p>
+  )
+}
+
+/** „bereits erledigt von Anna": a batch found this mark decided before it got there. */
+function SkippedNote({ by }: { by: string | null | undefined }): JSX.Element | null {
+  const t = useTranslations('chat')
+  if (by === undefined) return null
+  return (
+    <>
+      <span aria-hidden>·</span>
+      <span data-testid="canvas-activity-skipped">
+        {by ? t('cards.canvasActivity.batch.alreadyBy', { name: by }) : t('cards.canvasActivity.batch.already')}
+      </span>
+    </>
   )
 }
 
@@ -730,7 +923,7 @@ function ChangedRow({
   changes,
   messageId,
   cardKey,
-  decisionsMustPersist,
+  mayAct,
   onShow,
 }: {
   documentId: string
@@ -741,22 +934,25 @@ function ChangedRow({
   changes: TurnChanges
   messageId?: string
   cardKey: string
-  decisionsMustPersist?: boolean
+  /** Whether the reader is asked at all on this surface. */
+  mayAct: boolean
   onShow: ShowInDocument
 }): JSX.Element {
   const t = useTranslations('chat')
   const { locale } = useLocale()
-  const { decision, decide, canDecide } = useCardDecision(
-    messageId,
-    itemDecisionKey(cardKey, `${item.annotation_id}@${index}`),
-    { mustPersist: decisionsMustPersist }
+  // An undo stored on the message before the card went live: read, never written.
+  const stored = useChatStore((state) =>
+    selectCardDecision(state, messageId, itemDecisionKey(cardKey, `${item.annotation_id}@${index}`))
   )
+  // This mount's own replay (a change without a record): the mark moved back,
+  // which is what a reload reads; nothing is kept on the message.
+  const [replayed, setReplayed] = useState(false)
   const [replayBusy, setReplayBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const serverUndo = useServerUndo(change, live, changes)
   const current = live.lookup(item.annotation_id)
   const inverse = undoRequest(item)
-  const undone = change ? change.undoneAt !== null : decision === 'rejected'
+  const undone = change ? change.undoneAt !== null : stored === 'rejected' || replayed
   // Moved on since Piloti's change (by a colleague, or by the reader on the
   // canvas): the row says where the mark stands and offers no undo.
   const moved =
@@ -766,7 +962,7 @@ function ChangedRow({
     (change ? !change.canUndo && !standsAsChanged(change, current) : !stillAsLeft(item, current))
   const mayUndo = change
     ? change.canUndo && !undone && current !== 'gone'
-    : inverse !== null && canDecide && !undone && !moved && current !== 'gone' && (current === undefined || current.canEdit)
+    : inverse !== null && mayAct && !undone && !moved && current !== 'gone' && (current === undefined || current.canEdit)
   const busy = change ? serverUndo.busy : replayBusy
 
   const replayUndo = async () => {
@@ -780,7 +976,7 @@ function ChangedRow({
       if (now === 'gone' || (now && !stillAsLeft(item, now))) return
       const updated = await updateAnnotation(documentId, item.annotation_id, inverse)
       live.adopt(updated)
-      decide('rejected')
+      setReplayed(true)
     } catch (failure) {
       if (failure instanceof AnnotationRequestError && failure.status === 409) {
         await live.refresh()
@@ -821,6 +1017,7 @@ function ChangedRow({
         <p className="card-body text-foreground line-clamp-2" title={item.note}>
           „{item.note}“
         </p>
+        <ThreadGlance mark={current} />
         {error && (
           <p className="card-caption text-destructive" role="alert">
             {error}
@@ -929,6 +1126,7 @@ function RepliedRow({
         >
           „{item.excerpt}“
         </p>
+        <ThreadGlance mark={live.lookup(item.annotation_id)} />
         <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {change?.canUndo && !undone && (

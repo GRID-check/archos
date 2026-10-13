@@ -38,7 +38,7 @@ be a participant there, not a respondent beside it.
   visible label close to a legal floor.
 * Undo, because an agent acting on shared objects in an office of six to
   thirty people must be easy to take back.
-* Reuse: the internal routes, the live channels (ADR-0104), the existing
+* Reuse: the internal routes, the live channels (ADR-0110), the existing
   annotation CHECKs.
 
 ## Considered Options
@@ -83,6 +83,10 @@ Its own findings, made without being asked for each one, arrive as proposals.
 * Assigning work to Piloti keeps a person as the assignee; Piloti is a
   delegate on the mark (the pattern Linear ships: work is assigned to people
   and delegated to agents).
+* Acting is behind the organization switch `piloti-acts`, a WorkOS
+  entitlement off by default: an office starts with Piloti proposing only and
+  turns acting on when it trusts it. Off, the BFF refuses `create`, `update`
+  and `delete` (`piloti-acts-off`) and Piloti proposes instead.
 
 ### What is not done
 

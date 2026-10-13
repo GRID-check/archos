@@ -80,6 +80,7 @@ import { onMarkSettledByPerson } from './attention'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
+import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
 import { readTakeBack, settleTakenBack, type EndedDelegation, type TakeBack } from './take-back'
 import {
   annotationBox,
@@ -153,7 +154,11 @@ async function directoryNames(organizationId: string): Promise<Names> {
 
 const nameOf = (names: Names, userId: string | null) => (userId ? (names.get(userId)?.name ?? null) : null)
 
-function toReplyView(reply: DocumentAnnotationReplyRow, names: Names): AnnotationReplyView {
+function toReplyView(
+  reply: DocumentAnnotationReplyRow,
+  names: Names,
+  wakes: readonly WakeSpan[]
+): AnnotationReplyView {
   return {
     id: reply.id,
     annotationId: reply.annotationId,
@@ -163,6 +168,7 @@ function toReplyView(reply: DocumentAnnotationReplyRow, names: Names): Annotatio
     createdByName: nameOf(names, reply.createdBy),
     createdAt: reply.createdAt.toISOString(),
     addressesPiloti: reply.addressesAgent,
+    wokenBy: wakeOfReply(reply, wakes),
   }
 }
 
@@ -171,7 +177,8 @@ function toView(
   doc: Document,
   session: AuthorizedSession,
   writable: boolean,
-  names: Names
+  names: Names,
+  wakes: readonly WakeSpan[] = []
 ): AnnotationView {
   return {
     id: record.id,
@@ -207,7 +214,7 @@ function toView(
     delegatedBy: record.delegatedBy,
     delegatedByName: nameOf(names, record.delegatedBy),
     delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
-    replies: record.replies.map((reply) => toReplyView(reply, names)),
+    replies: record.replies.map((reply) => toReplyView(reply, names, wakes)),
     canEdit: writable,
     canDelete: writable && mayDeleteMark(record, session.userId),
   }
@@ -302,7 +309,11 @@ async function requireWritableDocument(session: AuthorizedSession, documentId: s
 async function viewOf(session: AuthorizedSession, doc: Document, annotationId: string): Promise<AnnotationView> {
   const record = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!record) throw new NotFoundError()
-  return toView(record, doc, session, true, await directoryNames(session.organizationId))
+  const [names, wakes] = await Promise.all([
+    directoryNames(session.organizationId),
+    wakeSpansFor(session.organizationId, doc.id, [record]),
+  ])
+  return toView(record, doc, session, true, names, wakes)
 }
 
 const limitReached = (error: unknown): never => {
@@ -347,7 +358,8 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
     mayWrite(session, doc.id),
     directoryNames(session.organizationId),
   ])
-  const annotations = records.map((record) => toView(record, doc, session, writable, names)).sort(compareAnnotations)
+  const wakes = await wakeSpansFor(session.organizationId, doc.id, records)
+  const annotations = records.map((record) => toView(record, doc, session, writable, names, wakes)).sort(compareAnnotations)
   return { annotations, canAnnotate: writable, pilotiWakes: wakesEnabled(session) }
 }
 
@@ -682,8 +694,12 @@ export async function readAnnotation(
   const doc = await getAccessibleDocument(session, documentId, 'read')
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
-  const [writable, names] = await Promise.all([mayWrite(session, doc.id), directoryNames(session.organizationId)])
-  return toView(record, doc, session, writable, names)
+  const [writable, names, wakes] = await Promise.all([
+    mayWrite(session, doc.id),
+    directoryNames(session.organizationId),
+    wakeSpansFor(session.organizationId, doc.id, [record]),
+  ])
+  return toView(record, doc, session, writable, names, wakes)
 }
 
 /** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */

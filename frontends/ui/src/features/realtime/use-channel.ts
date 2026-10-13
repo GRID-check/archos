@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * One live channel in a component (ADR-0104): its status, who the server takes
+ * One live channel in a component (ADR-0110): its status, who the server takes
  * this tab to be, the gossip roster when the channel has presence, and a
  * throttled `send`.
  *

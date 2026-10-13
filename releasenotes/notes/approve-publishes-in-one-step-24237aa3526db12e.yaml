@@ -1,0 +1,14 @@
+---
+improvements:
+  - >
+    Approving a revision now also makes it the one Piloti answers from. There is
+    no separate publish step any more: an approved document is ready to use.
+  - >
+    A file you upload no longer shows you as having approved it. Nobody reviewed
+    it, and the history now says so.
+operators:
+  - >
+    Migration 0137 adds an origin to every document version, clears the
+    uploader written as approver on uploaded versions, and lets an uploaded
+    version be published without an approver. Its down migration restores the
+    uploader as approver; roll the frontend back first.

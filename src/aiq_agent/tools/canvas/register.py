@@ -40,6 +40,11 @@ open, resolve, reopen, dismiss, take over, assign, date, reword, delete one
 the person set. Each change posts the model's ``note`` as Piloti's reply in the
 mark's thread, and the card lists it with an undo. Findings of its own stay
 proposals.
+
+Parity is the office's choice: with the organization switch ``piloti-acts``
+off (the default), the BFF refuses ``create``, ``update`` and ``delete`` with
+``piloti-acts-off``, and the result tells the model to propose the mark, or
+that the person makes the change themselves (``calls.refusal_for``).
 """
 
 from __future__ import annotations
@@ -133,9 +138,10 @@ DESCRIPTIONS = {
     "mark": (
         "Setzt `proposals` als VORSCHLÄGE von Piloti; nichts davon gilt, bis eine Person den Vorschlag im Dokument "
         "übernimmt oder verwirft. Sag nie, ein Mangel sei eingetragen. `open=true` nur, wenn die Person genau diese "
-        "Anmerkung zu setzen verlangt (dann gleich offen, in ihrem Namen); eigene Befunde, auch einer erbetenen "
-        "Durchsicht, bleiben Vorschläge. Vorher mit `look` die Seite ansehen und "
-        "die Stelle dort abschätzen. Je Vorschlag: `page` (ab 1); `shape` `region` (bevorzugt: ein enger Rahmen "
+        "Anmerkung zu setzen verlangt (dann gleich offen, in ihrem Namen; lässt das Büro Piloti nur vorschlagen, wird "
+        "das abgelehnt, dann ohne `open`); eigene Befunde, auch einer erbetenen Durchsicht, bleiben Vorschläge. "
+        "Vorher mit `look` die Seite ansehen und die Stelle dort abschätzen. Je Vorschlag: `page` (ab 1); `shape` "
+        "`region` (bevorzugt: ein enger Rahmen "
         "um das Bauteil) oder `point`; `x`/`y` die linke obere Ecke, bei `region` dazu `w`/`h` (x+w und y+h "
         "höchstens 1); `kind` `hint`, `question` oder `defect`; `body` im Deutsch des Büros, konkret und kurz "
         "(höchstens 2000 Zeichen); `basis` mit der Fundstelle, wenn der Befund auf einer Norm beruht. Höchstens "
@@ -148,11 +154,13 @@ DESCRIPTIONS = {
         "`resolved` oder `dismissed` (Vorschlag verwerfen); `assignee` (Name); `due_on` (JJJJ-MM-TT); `kind`; "
         "`body`; `-` leert `assignee`/`due_on`. `note` (Pflicht): ein Satz, was du getan hast, z. B. „Erledigt: "
         "Lichte Breite im Schnitt B-B mit 1,25 m kotiert.“; steht als Antwort von Piloti im Verlauf. Nenne in "
-        f"der Antwort die Nummer. {_DOCUMENT}"
+        "der Antwort die Nummer. Lässt das Büro Piloti nur vorschlagen, wird es abgelehnt: dann ändert die Person es "
+        f"selbst. {_DOCUMENT}"
     ),
     "delete": (
         "Löscht die Anmerkung `annotation` (Nummer oder id) samt Verlauf, endgültig. Nur auf ausdrückliche Bitte, "
-        f"und nur Anmerkungen, die die Person selbst gesetzt hat. {_DOCUMENT}"
+        "und nur Anmerkungen, die die Person selbst gesetzt hat; lässt das Büro Piloti nur vorschlagen, löscht sie "
+        f"selbst. {_DOCUMENT}"
     ),
     "reply": (
         "Schreibt `body` als Antwort von Piloti in den Verlauf der Anmerkung `annotation` (ihre id oder Nummer). "

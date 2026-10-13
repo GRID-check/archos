@@ -620,6 +620,7 @@ describe('ArchivWorkspace — a file the Archiv already holds', () => {
               displayName: null,
               fileSize: 2048,
               contentHash: null,
+              status: 'completed',
               folderId: null,
               authoredBy: 'user',
               lifecycle: doc.lifecycle ?? 'active',

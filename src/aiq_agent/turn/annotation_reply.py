@@ -52,6 +52,8 @@ from typing import Any
 
 from aiq_agent.common.wire_v2 import RunFinishedBody
 from aiq_agent.common.wire_v2 import UserMessage
+from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import thread_reply_scores
 from aiq_agent.observability.langfuse_trace_attributes import record_trace_metadata
 from aiq_agent.tools.canvas.client import CanvasRequestError
 from aiq_agent.tools.canvas.client import post_canvas
@@ -130,7 +132,9 @@ def settle_thread_reply() -> None:
 
     Called at the end of the turn's workflow, where the restricted-use state the
     policy reads is still bound, and inside its trace: whether the model
-    answered in the thread itself goes on the trace (:data:`THREAD_REPLY_METADATA_KEY`),
+    answered in the thread itself goes on the trace (:data:`THREAD_REPLY_METADATA_KEY`)
+    and as the ``thread-answered-in-place`` score (``replied`` true, ``skipped``
+    false, ``skipped_withheld`` none: that turn could not have posted),
     because a fallback that hides how often the prompt is ignored would remove
     the signal pointing at the cause. A failure to read the verdict is a refusal.
     """
@@ -145,6 +149,7 @@ def settle_thread_reply() -> None:
     record.settled = True
     verdict = "replied" if record.answered else "skipped" if record.refusal is None else "skipped_withheld"
     record_trace_metadata(**{THREAD_REPLY_METADATA_KEY: verdict})
+    emit_scores(thread_reply_scores(verdict), writer="thread-reply")
 
 
 _CARD_REF = re.compile(r"\[\[(?:card:\d+|callout)\]\]")

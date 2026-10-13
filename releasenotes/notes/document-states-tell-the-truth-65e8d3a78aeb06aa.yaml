@@ -1,0 +1,16 @@
+---
+fixes:
+  - >
+    Uploading a file again now retries it when Piloti could not read it the
+    first time, instead of skipping it as unchanged.
+  - >
+    When you ask for changes to a document Piloti wrote, Piloti can now revise
+    it and submit it again instead of saying it is still under review.
+  - >
+    An archived document no longer shows as citable, and uploading a new
+    version of it no longer puts it back into Piloti's answers while it stays
+    archived.
+  - >
+    A report Piloti wrote that a colleague approved and published is now shown
+    as part of the knowledge base, and Piloti can be asked about it like any
+    other document.

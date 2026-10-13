@@ -602,6 +602,21 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { olderDocumentId: 'string', linked: 'boolean', collectionName: 'string' },
   },
+  // A person exported a document's Anmerkungen as a Protokoll file
+  // (`lib/annotations/export.ts`): office review content leaving the product.
+  // What was asked for and how many marks it carried, never a name or a word
+  // of the marks, so it needs no `filedIn`.
+  'document.annotations.exported': {
+    targets: [{ type: 'document' }],
+    metadata: {
+      format: 'string',
+      scope: 'string',
+      fassung: 'string',
+      includeProposals: 'boolean',
+      markCount: 'number',
+      proposalCount: 'number',
+    },
+  },
   'archiv.document.uploaded': {
     targets: [{ type: 'document' }],
     metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },

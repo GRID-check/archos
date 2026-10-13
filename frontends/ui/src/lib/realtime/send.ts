@@ -1,5 +1,5 @@
 /**
- * Saying something in a live channel (ADR-0104): `POST /api/realtime/send`.
+ * Saying something in a live channel (ADR-0110): `POST /api/realtime/send`.
  *
  * In order, so a refusal costs as little as possible and a sender can never
  * speak as somebody else:

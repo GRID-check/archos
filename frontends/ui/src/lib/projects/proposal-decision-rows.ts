@@ -80,7 +80,7 @@ export async function listRecentDecidedProposals(
         // it counts, so a status added later is not read as a decision unasked.
         inArray(proposedChanges.status, [...DECIDED_PROPOSAL_STATUSES]),
         isNull(conversations.deletedAt),
-        conversationOpenToProjectReaders,
+        conversationOpenToProjectReaders(),
       ),
     )
     .orderBy(desc(proposedChanges.decidedAt), desc(proposedChanges.id))

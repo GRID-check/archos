@@ -303,6 +303,30 @@ describe('buildFolderUploadPlan — the documents that only have to move', () =>
     expect(result.counts.uploading).toBe(0)
   })
 
+  /*
+   * Re-uploading a file whose reading failed, or that was never read, is how a
+   * person retries it, and the server accepts it (`placeUpload`). A plan that
+   * called those bytes "unchanged" made the retry impossible from the upload
+   * dialog. A copy being read or held stays "unchanged": sending it again would
+   * read it twice, or be refused as the replacement of a held file.
+   */
+  it.each([
+    ['failed', 'update'],
+    ['error', 'update'],
+    ['uploaded', 'update'],
+    ['completed', 'unchanged'],
+    ['pending', 'unchanged'],
+    ['quarantined', 'unchanged'],
+  ])('plans identical bytes over a %s copy as %s', (status, action) => {
+    const files = [pathed('EG.pdf')]
+    const result = plan({
+      files,
+      documents: [doc({ id: 'd1', filename: 'EG.pdf', status, contentHash: 'sha256:aa' })],
+      digests: new Map([[files[0], 'sha256:aa']]),
+    })
+    expect(result.files[0].action).toBe(action)
+  })
+
   it('leaves an unchanged document that is already in the right folder alone', () => {
     const files = [pathed('Statik/EG.pdf')]
     const result = plan({
@@ -528,6 +552,7 @@ describe('buildFolderUploadPlan — an archived match', () => {
           displayName: null,
           fileSize: 10,
           contentHash: null,
+          status: 'completed',
           folderId: null,
           authoredBy: 'user',
           lifecycle: 'active',

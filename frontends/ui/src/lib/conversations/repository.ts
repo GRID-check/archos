@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { stripJsonNullBytes } from '@/lib/text/jsonb'
@@ -572,9 +572,10 @@ export async function deleteConversationInOrg(conversationId: string, organizati
  * One definition for every block built from a conversation's own words
  * (PROPOSAL_DECISIONS reads messages here and `proposed_changes` rows in
  * `lib/projects/proposal-decision-rows.ts`), so the two paths cannot disagree
- * about which conversation is private.
+ * about which conversation is private. A function, not a constant: a module
+ * that only imports this file must not touch the schema while it loads.
  */
-export const conversationOpenToProjectReaders = sql`(
+export const conversationOpenToProjectReaders = (): SQL => sql`(
   not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})
   and not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))
 )`
@@ -626,7 +627,7 @@ export async function listRecentMessagesWithCardDecisions(
         // project still restricting its readers (ADR-0094) keeps its proposals
         // to the block: it is read into every member's digest, and a card's
         // words can carry what those documents said.
-        conversationOpenToProjectReaders,
+        conversationOpenToProjectReaders(),
       ),
     )
     .orderBy(desc(messages.createdAt), desc(messages.id))

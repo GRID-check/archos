@@ -4,6 +4,15 @@
  * mark, change one, delete one they set, answer in a thread
  * (`POST /api/internal/document-annotations`).
  *
+ * ## Whether Piloti acts, or only proposes
+ *
+ * The ops that APPLY a change for the asker (`create`, `update`, `delete`)
+ * run only for an organization with `piloti-acts` on (an entitlement, off by
+ * default: an office starts with Piloti proposing and turns acting on when it
+ * trusts it). Off, they are refused with `piloti-acts-off` before anything is
+ * read or written, and the tool tells the model to propose instead. Reads, the
+ * room, pointing, highlighting, replies and proposals never ask.
+ *
  * ## Which document
  *
  * By default the CONVERSATION's subject, resolved here from the conversation
@@ -33,8 +42,9 @@
  */
 
 import 'server-only'
-import { BadRequestError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import { ApiError, BadRequestError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { isPilotiActsEnabled } from '@/lib/authz/feature-flags'
 import { recordPilotiChanges, type AppliedChange, type ChangeOrigin } from '@/lib/changes/service'
 import { fieldsOf, markState, replyState } from '@/lib/changes/state'
 import { findConversationInOrg } from '@/lib/conversations/repository'
@@ -64,6 +74,29 @@ export class NoDocumentSubjectError extends UnprocessableError {
     super('This conversation is not about a document. Open the document and ask Piloti from there.', {
       reason: 'no-document-subject',
     })
+  }
+}
+
+/** The machine-readable reason of {@link PilotiActsOffError}: the tool keys its sentence on it. */
+export const PILOTI_ACTS_OFF = 'piloti-acts-off'
+
+/** The ops that apply a change in the asker's name, and so wait for `piloti-acts`. */
+const ACTING_OPS: ReadonlySet<InternalAnnotationRequest['op']> = new Set(['create', 'update', 'delete'])
+
+/**
+ * 403: the organization has Piloti propose only (`piloti-acts` off). Its own
+ * code, so the tool can tell it from a missing permission: the person may well
+ * make the change themselves, Piloti may not make it for them.
+ */
+export class PilotiActsOffError extends ApiError {
+  constructor(op: InternalAnnotationRequest['op']) {
+    super(
+      403,
+      'PILOTI_ACTS_OFF',
+      'This organization has Piloti propose only: it does not set, change or delete Anmerkungen for a person. ' +
+        'Propose the mark instead, or tell the person to make the change themselves.',
+      { reason: PILOTI_ACTS_OFF, op }
+    )
   }
 }
 
@@ -294,6 +327,7 @@ export async function runAgentAnnotationRequest(
   request: InternalAnnotationRequest,
   agent: AgentInRoom
 ) {
+  if (ACTING_OPS.has(request.op) && !isPilotiActsEnabled(session)) throw new PilotiActsOffError(request.op)
   const documentId = document.id
   const turn: Turn = {
     document,
