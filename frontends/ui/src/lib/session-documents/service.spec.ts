@@ -153,7 +153,7 @@ const existing = makeLiveDocumentMatch({
   fileSize: 900,
   contentHash: null,
   folderId: null,
-  status: 'ready',
+  status: 'completed',
 })
 
 beforeEach(() => {

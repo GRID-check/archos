@@ -118,7 +118,7 @@ export async function repointPlacementRow(
   const db = getDb()
   const handOff = options.reingest
     ? {
-        status: 'processing',
+        status: 'processing' as const,
         errorMessage: null,
         metadata: sql`(coalesce(${documents.metadata}, '{}'::jsonb) - 'ingestJobId' - 'bffJobId') || jsonb_build_object(${PLACEMENT_REINGEST_MARKER}::text, true)`,
       }

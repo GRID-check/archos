@@ -25,7 +25,7 @@ import {
   type DocumentListCursor,
 } from './list-cursor'
 import type { DocumentLevelQuery } from './list-query'
-import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily } from './document-status'
+import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily, type DocumentStatus } from './document-status'
 import {
   SHELF_SUMMARY_FAILED_LIMIT,
   SHELF_SUMMARY_FOLDER_LIMIT,
@@ -1013,7 +1013,7 @@ export async function listDocumentIdsForProject(
 }
 
 /** The statuses a read ended in failure at — the `failed` family of `DOCUMENT_STATUS_FACTS`. */
-const READ_FAILED_STATUSES = ['failed', 'error'] as const
+const READ_FAILED_STATUSES = ['failed'] as const
 
 /**
  * The project's active documents whose read FAILED and that a model may name:
@@ -1974,7 +1974,7 @@ export async function setDocumentReconciledStatus(
   documentId: string,
   organizationId: string,
   resolution: {
-    status: string
+    status: DocumentStatus
     errorMessage: string | null
     screeningOutcome?: DocumentScreeningOutcome
     failure?: IngestFailureFacts
@@ -2011,7 +2011,8 @@ export async function setDocumentReconciledStatus(
           and(
             eq(documents.id, documentId),
             eq(documents.organizationId, organizationId),
-            eq(documents.status, from.status),
+            // The status the read saw, compared as text: a guard, never a write.
+            sql`${documents.status} = ${from.status}`,
             sameDispatch(from.jobId),
           ),
         )
@@ -2162,7 +2163,7 @@ export async function listQuarantinedDocuments(
  * not skipped later: the walk never pays a request for a file that would fail
  * the same way, and the audit's counts say what was actually sent back.
  */
-export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'error', 'uploaded'] as const
+export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'uploaded'] as const
 
 /**
  * `canRetry` (`./retry-policy`) in SQL, for the queries that choose what a bulk
