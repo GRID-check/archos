@@ -112,7 +112,7 @@ A write sends an `annotations.changed` hint. A hint is a nudge to re-read, never
 the state itself, so a dropped hint costs a few seconds, not a wrong list. The
 tab that wrote ignores its own hint.
 
-The transport is the shared realtime channel layer; see ADR 0104 for why it is
+The transport is the shared realtime channel layer; see ADR 0110 for why it is
 our own thin layer over Dragonfly rather than a library.
 
 ## Piloti on the canvas

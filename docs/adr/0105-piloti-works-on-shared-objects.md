@@ -38,7 +38,7 @@ be a participant there, not a respondent beside it.
   visible label close to a legal floor.
 * Undo, because an agent acting on shared objects in an office of six to
   thirty people must be easy to take back.
-* Reuse: the internal routes, the live channels (ADR-0104), the existing
+* Reuse: the internal routes, the live channels (ADR-0110), the existing
   annotation CHECKs.
 
 ## Considered Options

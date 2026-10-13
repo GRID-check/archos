@@ -26,7 +26,7 @@ answer without speaking unbidden (ADR-0036) and without turns that never end?
 * It must not leak a conversation the acting person cannot read, and must not
   cancel anybody's running turn.
 * Durable: a wake survives a restart. The live channels are lossy hints
-  (ADR-0104) and cannot carry one.
+  (ADR-0110) and cannot carry one.
 * No Piloti-wakes-Piloti; bounded cost.
 
 ## Considered Options

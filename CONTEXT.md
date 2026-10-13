@@ -133,8 +133,8 @@ turn has ended, whatever its outcome; taking it back stops Piloti. An answer in
 the thread that names Piloti (@Piloti), or answers Piloti's own open Rückfrage,
 *weckt* Piloti: it answers there even when nobody has the chat open (ADR-0106).
 Each change Piloti makes to a mark is recorded with its turn and can be undone
-while nobody has changed it since; a reply in a thread, and a mark set open for
-you, cannot be taken back.
+while nobody has changed it since, including a mark it set for you and a reply
+it wrote for you, as long as nobody else has answered in that thread.
 _Avoid_: ticket, issue, Mangel for every mark (a Mangel is one *Art*); comment,
 for the mark itself rather than an answer in its thread; „Piloti zuweisen“:
 work is assigned to people and delegated to Piloti.
