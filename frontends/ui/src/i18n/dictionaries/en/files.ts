@@ -121,13 +121,11 @@ export const files = {
     textTruncated:
       'Only the beginning of this file is shown. Download it to read the whole thing.',
     status: 'Status',
-    // Heading for the rail's fact list (what the FILE is), distinct from
-    // "Detailed information" below it (what the VLM saw on each page).
+    // Heading for the rail's one remaining file fact (where it came from),
+    // distinct from "On the pages" (what the VLM saw on each page).
     properties: 'Properties',
     summaryMore: 'Show full summary',
     summaryLess: 'Show less',
-    type: 'Type',
-    size: 'Size',
     originPath: 'Came from',
     originPathCopied: 'Path copied',
     originPathCopyFailed: "Path couldn't be copied",
@@ -216,8 +214,6 @@ export const files = {
     indexed: {
       title: 'Read by Piloti',
       documentType: 'Document type',
-      project: 'Project',
-      updated: 'Updated',
       pending: 'Piloti is still reading this document – its summary and properties appear here once it is done.',
     },
     contentTypeNames: {
@@ -228,12 +224,34 @@ export const files = {
       drawing: 'Drawings',
     },
     visualDetails: {
-      title: 'Detailed information',
+      title: 'On the pages',
       loading: 'Loading descriptions…',
-      empty: 'No visual descriptions available.',
       failed: 'The descriptions could not be loaded.',
       page: 'Page {page}',
       scale: 'Scale {scale}',
+      pageShort: 'p. {page}',
+      showPage: 'Show page {page} in the document',
+      showAll: 'Show all {count}',
+      showFewer: 'Show fewer',
+      // The drawing types the vision pass names. A type not listed here is
+      // humanized from its key, like the structured vocabulary below.
+      segmentTypes: {
+        floor_plan: 'Floor plan',
+        section: 'Section',
+        elevation: 'Elevation',
+        detail: 'Construction detail',
+        site_plan: 'Site plan',
+        perspective: 'Perspective',
+        axonometric: 'Axonometric',
+        drawing: 'Technical drawing',
+        map: 'Map',
+        photo: 'Photo or rendering',
+        diagram: 'Diagram',
+        table: 'Table',
+        legend: 'Legend',
+        screenshot: 'Screenshot',
+        other: 'Other',
+      },
       structured: {
         toggle: 'Structured data',
         composition: 'Build-up {component}',
@@ -285,8 +303,7 @@ export const files = {
         },
       },
     },
-    unknownType: 'Unknown',
-    // The Type row names the format, never the MIME type (that is the tooltip).
+    // The facts line under the name names the format, never the MIME type (that is the tooltip).
     formats: {
       pdf: 'PDF',
       word: 'Word document',
@@ -1329,8 +1346,9 @@ export const files = {
       'Another filter brings back every file in this folder.',
     responsible: 'Responsible',
     // One word for one gesture, on all three surfaces: the file pane, the report
-    // card and the inbox row.
-    discuss: 'Discuss',
+    // card and the inbox row. It names Piloti: „Discuss" alone did not say with
+    // whom, and beside „Ask a colleague" it read as a meeting with the team.
+    discuss: 'Discuss with Piloti',
     askColleague: 'Ask a colleague',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',

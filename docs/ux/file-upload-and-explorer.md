@@ -231,14 +231,42 @@ Beyond Nielsen:
 
 Same lens, applied to the surface that opens when a document is clicked:
 
-- **The AI summary is promoted.** It is the answer to "does the agent actually
-  understand this file" and it used to be one more 12.5px paragraph read at the
-  same weight as the MIME type. It now sits on its own raised card under its own
-  section label.
-- **One fact list, not two.** Type and size used to sit in a separate block
-  *below the tags*, divorced from the page count they belong with, purely because
-  one group was behind a feature flag and the other was not. The flag now gates
-  **rows**, which is what it was always about.
+**Preview:** `/dev/file-preview` (`?variant=review` for the approval state,
+`?variant=pdf` for the page jump); `/dev/file-ask-split/chat?variant=pdf` for the
+chat peek's Details tab, which draws the same rail.
+
+**The rail is an inspector.** Inset grouped lists on the sunken rail, the shape
+of a macOS „Informationen" panel: a quiet label directly above each group, one
+white group per question, and one row anatomy (glyph, label, value) with
+hairlines inset past the glyph. The atoms are `components/ui/inspector-group.tsx`
+(`InspectorSection`, `InspectorGroup`, `InspectorRow`); the row owns the type of
+both columns, which is what puts label and value on one baseline. Top to bottom:
+
+- **Who and what next.** A contact row (face, name, „Verantwortlich" under it,
+  „Bearbeiten"), then „Mit Piloti besprechen" with Piloti's glyph, then
+  „Kollegin fragen". The primary button names Piloti because „Besprechen" alone
+  did not say with whom, and beside „Kollegin fragen" it read as a team meeting.
+- **Von Piloti gelesen.** The summary, how much was read and what Piloti took
+  the file to be, in ONE group: they are one answer to "does the agent actually
+  understand this file". The type chip is the ink tint, a discipline an ink
+  outline, a topic a muted outline; the quiet fill `secondary` vanished on the
+  rail (#f2f2f0 on #f1f1ef).
+- **Fassungen und Freigabe.** One group divided by what each part asks: the
+  standing, the decision, Piloti's suggestion, the timeline, the archive door.
+  Attention is the group's stronger edge and the decision's primary button; the
+  section used to widen into a card only while something was asked.
+- **Auf den Seiten.** What Piloti saw on each page: page, drawing type (translated,
+  or humanized from the key, never `floor_plan`), scale, the description, and the
+  structured data behind it. Loaded with the document, four entries then „Alle N
+  zeigen", and each entry turns the inline PDF to its page. It was a collapsed
+  „Detaillierte Informationen" disclosure at the foot of the rail, under rows
+  nobody came for.
+- **Eigenschaften**, only when there is an origin path to copy.
+
+**No Project, Type, Size or Updated row.** The project is the one the reader is
+standing in; format, page count and size are the facts line under the name
+(„PDF · 24 Seiten · 4,8 MB", `hooks/use-file-facts.ts`, the line the chat peek
+already carried), with the MIME type in its tooltip; the date is on the Fassung.
 - **The document sits on something.** A soft vertical ground with the page raised
   on a real shadow, instead of a flat grey box — which is what a drawing on a
   desk looks like, and the reason this column exists rather than a download link.

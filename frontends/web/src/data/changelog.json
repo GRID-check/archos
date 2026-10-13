@@ -52,6 +52,14 @@
           "key": "improvements",
           "notes": [
             {
+              "en": "An open document now shows what Piloti saw on each page, with the drawing type and scale, right under its summary, and a click on an entry turns the document to that page. Format, page count and size sit under the name, so the side panel keeps only what Piloti read, the Fassungen and the pages.",
+              "de": "Ein geöffnetes Dokument zeigt jetzt direkt unter seiner Zusammenfassung, was Piloti auf jeder Seite erkannt hat, einschließlich Zeichnungstyp und Maßstab; ein Klick auf einen Eintrag springt zu dieser Seite. Format, Seitenzahl und Größe stehen unter dem Namen, sodass die Seitenleiste nur noch das enthält, was Piloti ausgelesen hat, die Fassungen und die Seiten."
+            },
+            {
+              "en": "The button that starts a conversation about a document now reads „Mit Piloti besprechen“, so it is clear it opens a chat with Piloti and not with a colleague.",
+              "de": "Der Button für ein Gespräch über ein Dokument heißt jetzt „Mit Piloti besprechen“ und macht damit klar, dass sich ein Chat mit Piloti und nicht mit einer Kollegin oder einem Kollegen öffnet."
+            },
+            {
               "en": "Large folders in a project's files and in the Archiv now open and scroll faster: the first documents appear right away while the rest load behind them, and previews load as you scroll to them.",
               "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
             },
@@ -92,6 +100,10 @@
         {
           "key": "fixes",
           "notes": [
+            {
+              "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
+              "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
+            },
             {
               "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
               "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."

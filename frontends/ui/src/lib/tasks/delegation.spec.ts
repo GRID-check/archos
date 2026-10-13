@@ -276,7 +276,7 @@ describe('delegateTask', () => {
       expect(submitAgentRun).not.toHaveBeenCalled()
       expect(run?.status).toBe('failed')
       expect(run?.error).toContain('zu lang')
-      expect(run?.error).toContain('Besprechen')
+      expect(run?.error).toContain('Mit Piloti besprechen')
       // Nothing of the document is stored on a plan no run will read.
       expect(insertedDefinition.plan.prompt).not.toContain('Absatz.')
     })
