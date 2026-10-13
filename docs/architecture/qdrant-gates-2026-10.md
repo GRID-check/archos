@@ -1,16 +1,21 @@
 # Qdrant migration gates, measured (2026-10-13)
 
-The flag flip to `AIQ_VECTOR_BACKEND=qdrant` waits on the gates in
-[`qdrant-retrieval-design.md` §10](qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built).
-This page records the first run of the instrument built for them,
+The move to Qdrant waited on the gates in
+[`qdrant-retrieval-design.md` §10](qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built);
+it was then made in one change, with no flag and no dual period (ADR-0104).
+The `AIQ_VECTOR_BACKEND` and `AIQ_CHROMA_*` settings below describe how each
+path was measured at the time; none of them exists any more. This page records the first run of the instrument built for them,
 `task be:eval:qdrant-parity`, what it found, the two defects it found and fixed
-in the Qdrant path, and what is still not measured.
+in the Qdrant path, the answer suite run for G1, and what is still not
+measured.
 
 **Verdict for the flip:** G1b and G2 pass on this corpus. G6 does not pass at
 its own 1-point bound, which keeps `dense` at 3072-d. The one ranked-retrieval
 regression this run found (`§` lookups, below) is closed on the merged code by
 the `paragraph_refs` channel ([re-run](#re-run-on-the-merged-code)). G1 (the
-answer suite), G3, G4 and G5 are not measured here.
+answer suite) passes: through the real agent, Qdrant held every expectation
+the pre-migration baseline held, at the same seconds and reasoning tokens
+([G1](#g1-answer-quality-pass)). G3, G4 and G5 are not measured here.
 
 ## What was measured, and how
 
@@ -215,7 +220,7 @@ change made). The exact-cosine rows do not move.
 
 | gate | state |
 |---|---|
-| G1 answer quality | **Not measured.** It needs `task be:eval:answer-suite` against a running stack with Qdrant backfilled, both backends, and model keys. The hybrid tables above are retrieval only; the reranker and the answer are downstream. |
+| G1 answer quality | **Pass**, measured by the answer suite through the real agent, below: [G1](#g1-answer-quality-pass). |
 | G3 isolation | Covered by the knowledge-layer property test (`test_isolation_property_random_scope_sets` in `sources/knowledge_layer/tests/test_qdrant_store.py`). This harness does not re-run it. |
 | G4 operations | Ops drills: snapshot and restore to SeaweedFS, a pod killed mid-ingest, node replacement. Not measured. |
 | G5 memory | Pod metrics during a production-size backfill. Not measured. |
@@ -284,8 +289,9 @@ between 62 and 89 ms across the same runs.
    at oversampling 1 to 3 improves nothing and does not recover
    `ex-filename-rl5`; BM25 fed the pieces of the file name did that
    ([ranking sweep](#ranking-sweep-2026-10-13)).
-4. **G1** on a deployed stack, with the per-expectation diff reviewed; **G4**
-   and **G5** as ops drills.
+4. ~~**G1**~~: measured, pass ([G1](#g1-answer-quality-pass)), on the code
+   before the ranking change; its Qdrant side is re-run on the merged code.
+   **G4** and **G5** remain, as ops drills.
 5. ~~Cross-project grouped search sends unpriced BM25 and no exact terms~~:
    closed. `search_grouped` takes its lexical inputs from the same
    `_qdrant_lexical_inputs` as a single-collection search: BM25 terms priced
@@ -514,6 +520,211 @@ fully, as the dense-weight rows show.
 
 Re-running the sweep with these rows: `uv pip install split-words==0.1.3` into
 the venv first; without it the decompounding rows are skipped with a warning.
+
+## G1 answer quality: pass
+
+The answer suite (`task be:eval:answer-suite`) through the real agent, on one
+commit and one ingested corpus, with the pre-migration Chroma path as the
+baseline and the Qdrant path as the change. Measured 2026-10-13 on commit
+`7970366f5`. G1 had been listed as needing a deployed stack; the suite runs
+in-process, and `--corpus data/oib` (added for this run) lets `--ingest` read
+the PDFs from a directory instead of the object store.
+
+### What was run
+
+- **Corpus.** The 39 OIB 2023 PDFs, ingested once by the production pipeline
+  under `AIQ_VECTOR_BACKEND=dual` (about ten minutes on 4 CPUs): 2,938 chunks
+  in Chroma, mirrored into Qdrant 1.19.2 with the same ids, text and vectors.
+  `scripts/backfill_qdrant.py --dry-run --verify` found the id sets equal
+  (missing 0, extra 0). Both paths read the same chunks and the same document
+  inventory.
+- **Questions.** `--all`: the 29 questions of the loop eval's set that have a
+  family, two runs each, so 58 turns per pass; the 2 that need a project are
+  skipped. The six `suite: core` questions are a subset and are quoted apart.
+  Six of the 29 are Bauordnung questions the OIB-only corpus cannot answer;
+  they exercise a search that finds nothing, and the live RIS lookup.
+- **Passes.** Four, run one after another so neither path competed with the
+  other for the provider:
+
+  | Pass | Read path | Chroma reached as |
+  |---|---|---|
+  | Chroma A | pre-migration baseline | embedded (`AIQ_CHROMA_DIR`), as the suite opens it by default |
+  | Chroma B | pre-migration baseline | the Chroma 1.5.9 server, as production runs it (`AIQ_CHROMA_URL`) |
+  | Qdrant A | `AIQ_VECTOR_BACKEND=qdrant` | embedded, as the write record only |
+  | Qdrant B | `AIQ_VECTOR_BACKEND=qdrant` | the server, as the write record only |
+
+  Chroma B is the baseline the comparisons below use. Chroma A hit a fault of
+  the harness (under Defects) and is kept as a second sample of the
+  baseline's noise.
+- **Models.** The boot defaults in `configs/config_oib_openrouter.yml`, with
+  no admin overrides. A turn cost about two US cents and a pass about $1.05;
+  the ingest, four passes and one pass abandoned after nine turns came to
+  $4.75.
+- **Knowledge database.** SQLite, as the suite's own setup uses. On the
+  baseline that makes the German lexical channel the SQLite fallback
+  analyser, not production's Postgres `german` FTS. G1b above measured the
+  SQLite analyser above Postgres on the golden set, so if anything this
+  flatters the baseline.
+
+### Results
+
+Every turn of every pass finished; none errored.
+
+| Pass | Checks held | envelope | kind | family cited | mentions | not | shape |
+|---|---|---|---|---|---|---|---|
+| Chroma A | 170/192 | 54/58 | 42/58 | 46/46 | 17/18 | 8/8 | 3/4 |
+| **Chroma B** | **180/192** | 57/58 | 47/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+| **Qdrant A** | **180/192** | 57/58 | 47/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+| **Qdrant B** | **180/192** | 57/58 | 47/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+
+On the core subset (12 turns a pass): Chroma B 54/56, Chroma A 52/56,
+Qdrant A 54/56, Qdrant B 55/56.
+
+| Pass | Wall s, median | Wall s, p90 | First text s, median | Research calls, mean | Tool calls, mean | Reasoning tokens, median | Reasoning tokens, p90 | Largest call, median |
+|---|---|---|---|---|---|---|---|---|
+| Chroma A | 29.4 | 54.8 | 25.6 | 2.53 | 2.64 | 1,342 | 2,552 | 1,034 |
+| **Chroma B** | 30.1 | 65.0 | 26.5 | 2.41 | 2.50 | 1,132 | 2,580 | 1,002 |
+| **Qdrant A** | 32.9 | 56.0 | 28.7 | 2.31 | 2.36 | 1,390 | 2,659 | 1,176 |
+| **Qdrant B** | 30.8 | 52.6 | 26.1 | 2.31 | 2.17 | 1,114 | 2,316 | 894 |
+
+Read question by question, the seconds do not move. Per question, the median
+of the four Qdrant runs minus the median of Chroma B's two:
+
+- **Wall seconds.** Median delta −0.3 s, mean −1.2 s; Qdrant slower on 13 of
+  29 questions, range −18 to +8 s. The baseline against itself (Chroma A
+  minus Chroma B): median −1.8 s, range −19 to +11 s.
+- **Reasoning tokens.** Median delta −22, mean −56; higher on 12 of 29. The
+  baseline against itself: +112.
+
+The pass medians spread as widely within one path as between the two: wall
+29.4–30.1 s on Chroma and 30.8–32.9 s on Qdrant, reasoning 1,132–1,342 and
+1,114–1,390. Qdrant turns made slightly fewer research calls (2.31 a turn
+against 2.41–2.53).
+
+Pipeline signals over 116 turns a path (A and B together), Chroma against
+Qdrant: unverified quote 6 and 9, salvaged envelope 3 and 4, prose outside
+the envelope 1 and 2, summary gated 1 and 0, escalation to deep research 0
+and 2.
+
+### Every check that changed, and why
+
+No content expectation (`mentions`, `not`, `shape`, `family_cited`) held on
+the baseline and failed on Qdrant. These are the checks that differ between
+passes:
+
+| Question | Check | Chroma A | Chroma B | Qdrant A | Qdrant B | Cause |
+|---|---|---|---|---|---|---|
+| fluchtweg-varianten | `mentions:REI 60`, `shape:tabs\|table`, `envelope` | 1/2 | 2/2 | 2/2 | 2/2 | Model variance. Chroma A's second run wrote bare prose around a `[[card:1]]` reference with no envelope, so the variant tabs and their REI 60 were lost. Its searches had found the table (Tabelle 3, p. 30) |
+| was-weisst-du-ueber-oib-2 | `envelope` | 2/2 | 2/2 | 1/2 | 2/2 | Model variance: bare prose with no envelope, holding every value the question expects |
+| barrierefrei-wohngebaeude, einreichung-wien-unterlagen, tragwerk-einwirkungen, treppenhaus-gk4-tabelle, was-regelt-oib-4 | `envelope` | | | | | Model variance: one run on one pass without an envelope, on both paths (4 such turns on Chroma and 2 on Qdrant, of 116 each) |
+| stellplatz-tirol | `kind` | 1/2 | 2/2 | 0/2 | 1/2 | Model variance on a question the corpus cannot answer. Both paths' first search returned the same OIB passages with the same verdict (`Abdeckung: unzureichend`, top probability 0.07–0.09). The answer came from live RIS lookups, and both Qdrant A runs handed the question to deep research instead; no Qdrant B run did |
+| abstand-nachbargrenze-brandwand, tiefgarage-entrauchung, barrierefrei-wohngebaeude, mensa-schule-pflicht, rauchwarnmelder-wohnung, feuerwiderstand-gk5 | `kind` | | | | | Model variance: the turn picked `ruling` or `walkthrough` differently from run to run, on both paths. `abstand-nachbargrenze-brandwand` went 0/2, 2/2, 1/2, 2/2 over the four passes |
+
+### What retrieval changed
+
+The first search of every turn is the question verbatim, so its result list
+is the retrieval difference with the model's own choices taken out (the
+reranker and the requery judge are model calls, so it is not fully
+deterministic). Overlap of the (file, page) sets, runs paired, mean over the
+29 questions:
+
+| Pair | Jaccard | Same first hit |
+|---|---|---|
+| Chroma A, Chroma B | 0.83 | 0.86 |
+| Qdrant A, Qdrant B | 0.85 | 0.88 |
+| Chroma B, Qdrant A | 0.69 | 0.81 |
+| Chroma B, Qdrant B | 0.68 | 0.83 |
+
+Qdrant retrieves differently, by about 15 points of overlap beyond the
+run-to-run noise, and the answers do not show it:
+
+- **Mostly the tail.** In `treppenbreite-wohnbau` the first eight of 16
+  results agree; ranks 9–16 differ.
+- **A more specific first hit.** Where the first hit differs consistently,
+  Qdrant's is the more specific passage. `hochhaus-ab-22m` opens with
+  OIB-RL 2.3 p. 1 (the Richtlinie for Hochhäuser) in all four Qdrant runs;
+  Chroma opens with an Erläuterung to RL 2.2 or with RL 2.3 p. 11.
+  `betriebsbau-brandschutz` puts RL 2.1 p. 11 ahead of p. 9.
+- **One distractor.** For `mensa-schule-pflicht` („Muss ich in einer Schule
+  eine Mensa haben?“) Qdrant puts OIB-RL 5 passages (Schallschutz in schools)
+  into the first eight in all four runs, first in one; Chroma does not. The
+  question's own expectation is that the answer names neither, and it held in
+  every run. It is a ranking difference for the tuning work, not a regression.
+- **No empty search on Qdrant** except one a model asked for:
+  `doc_class="oib_richtlinie"` with `title_contains="Begriffsbestimmungen"`,
+  which matches nothing on either path (that document is `oib_begriffe`).
+- **Session shelf.** RIS documents a turn fetched were ingested into its
+  session shelf and found by its next Qdrant search, so the mirror covers
+  session scopes too.
+
+### Defects
+
+None found in the Qdrant path.
+
+One in the harness, on the baseline only: **embedded Chroma races its own
+client creation.** When a turn's parallel round-0 searches open the
+retriever's Chroma client at once, `chromadb.PersistentClient` on one path
+fails in some of them (`KeyError: '<path>'` in
+`SharedSystemClient._create_system_if_not_exists`, then `'RustBindingsAPI'
+object has no attribute 'bindings'`), and the knowledge layer skips that
+search (`Knowledge layer failed, skipping`). It hit 8 of Chroma A's 58 turns,
+and 2 of the first 8 turns of a repeat pass, which was abandoned for it.
+Production reaches Chroma over HTTP and never takes this path; with
+`AIQ_CHROMA_URL` (Chroma B) it did not occur. It is not fixed, since the
+Chroma read path is being removed, and it is why Chroma A is not the
+baseline.
+
+### What it means for the flip
+
+G1 passes on this corpus. Through the whole agent, with the reranker, the
+requery judge and the answer pipeline downstream of retrieval, the Qdrant path
+held every check the pre-migration baseline held (180 of 192 on each of its
+two passes, the baseline's 180), at the same seconds and reasoning tokens per
+question. Retrieval does differ, measurably, and on this corpus the
+difference never reached an answer's checked content.
+
+The limits of that statement:
+
+- One corpus of 39 PDFs in one scope, so cross-project grouped search is not
+  exercised (open item 5).
+- Content expectations exist for 6 of the 29 questions, 30 checks a pass.
+- `kind` and `envelope` are model behaviour that moves 5 to 10 checks between
+  passes of the same path.
+
+### Re-running the Qdrant side
+
+The state of this run is kept: Qdrant storage at `/tmp/claude-0/qd/g1`; the
+Chroma directory, SQLite database and corpus cache under
+`/tmp/claude-0/g1/state`; the results under `/tmp/claude-0/g1/`, with
+`chroma-srv/results.json` as the baseline. Qdrant is the only store now, so
+the stored points are read as they are, with no flag and no Chroma directory;
+start the Qdrant server on that storage:
+
+```bash
+QDRANT__STORAGE__STORAGE_PATH=/tmp/claude-0/qd/g1 QDRANT__STORAGE__SNAPSHOTS_PATH=/tmp/claude-0/qd/g1-snap \
+  QDRANT__SERVICE__HTTP_PORT=6450 QDRANT__SERVICE__GRPC_PORT=6451 QDRANT__TELEMETRY_DISABLED=true /tmp/claude-0/qd/qdrant
+AIQ_QDRANT_URL=http://localhost:6450 \
+  AIQ_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state/summaries.db \
+  GRID_BASE_CORPUS_CACHE_DIR=/tmp/claude-0/g1/state/base-corpus \
+  task be:eval:answer-suite -- --all --runs 2 --out /tmp/claude-0/g1/qdrant-c \
+    --baseline /tmp/claude-0/g1/chroma-srv/results.json
+```
+
+To measure ingestion too (it writes Qdrant directly now), ingest afresh, into
+an empty Qdrant storage path (`/tmp/claude-0/qd/g1-q`) and an empty state
+directory:
+
+```bash
+AIQ_QDRANT_URL=http://localhost:6450 \
+  AIQ_SUMMARY_DB=sqlite+aiosqlite:////tmp/claude-0/g1/state-q/summaries.db \
+  GRID_BASE_CORPUS_CACHE_DIR=/tmp/claude-0/g1/state-q/base-corpus \
+  task be:eval:answer-suite -- --ingest --corpus data/oib --all --runs 2 \
+    --out /tmp/claude-0/g1/qdrant-after --baseline /tmp/claude-0/g1/chroma-srv/results.json
+```
+
+`--baseline` adds the medians' deltas to the report. The per-check diff above
+was read by hand from both `results.json` files and the recordings beside
+them.
 
 ## Re-running
 

@@ -26,7 +26,8 @@ Per run it records what the provider billed and what the reader got:
 No backend, no BFF: a question about an office's own files needs a project and
 is skipped, and says so. Needs OPENROUTER_API_KEY and the corpus ingested into
 the Qdrant at AIQ_QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
-AIQ_SUMMARY_DB and the object store, and claims and runs them in this process). Every run costs model calls.
+AIQ_SUMMARY_DB and the object store, and claims and runs them in this process; with `--corpus data/oib`
+the corpus is that directory's PDFs and needs no BFF or object store). Every run costs model calls.
 
 `--set precedent` runs the precedent eval instead
 (`tests/fixtures/precedent/precedent_questions.yaml`): each turn is asked in
@@ -38,6 +39,7 @@ comparable exists, and flagged an older edition
 (docs/roadmap/office-experience.md, step A).
 
     python scripts/turn_census/suite.py                        # the core set, 2 runs each
+    python scripts/turn_census/suite.py --ingest --corpus data/oib   # ingest data/oib first, no stack needed
     python scripts/turn_census/suite.py --all --runs 3 --out /tmp/suite/after
     python scripts/turn_census/suite.py --baseline /tmp/suite/before/results.json
     python scripts/turn_census/suite.py --report /tmp/suite/after/results.json
@@ -733,6 +735,49 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
     return f"the corpus was not ingested within {timeout_seconds:.0f} s"
 
 
+def use_local_corpus(directory: Path) -> int:
+    """``--corpus``: make the PDFs in ``directory`` the base corpus, with no BFF and no object store; how many.
+
+    The base corpus is a table row plus an object in SeaweedFS, written through
+    the BFF (``corpus_store``), so ``--ingest`` alone needs a running stack. This
+    makes ``directory`` the bucket for this process, through the same four seams
+    the corpus tests replace, and stores each PDF with ``corpus_store.put``: the
+    table, the cache and the ingest job are the real ones, and the worker reads
+    the bytes from the directory. Unchanged bytes keep their ingested hash, so a
+    second run ingests nothing again.
+    """
+    import hashlib
+    import shutil
+
+    from aiq_agent import corpus_store
+
+    prefix = "base-corpus/"
+
+    def request_upload_url(name: str) -> tuple[str, str]:
+        return name, prefix + name
+
+    def put_object(name: str, data: bytes) -> None:
+        stored = directory / name
+        if hashlib.sha256(stored.read_bytes()).hexdigest() != hashlib.sha256(data).hexdigest():
+            raise corpus_store.CorpusStoreError(f"{name} in {directory} is not the file being stored")
+
+    def delete_object(name: str) -> None:
+        raise corpus_store.CorpusStoreError(f"--corpus never deletes from {directory}")
+
+    def download_object(storage_key: str, out) -> None:
+        with (directory / storage_key.removeprefix(prefix)).open("rb") as source:
+            shutil.copyfileobj(source, out)
+
+    corpus_store._request_upload_url = request_upload_url
+    corpus_store._put_object = put_object
+    corpus_store._delete_object = delete_object
+    corpus_store._download_object = download_object
+    pdfs = sorted(path for path in directory.glob("*.pdf") if corpus_store.is_valid_name(path.name))
+    for pdf in pdfs:
+        corpus_store.put(pdf.name, pdf.read_bytes())
+    return len(pdfs)
+
+
 def _corpus_ready() -> bool:
     """Whether the OIB collection holds chunks in the Qdrant at ``AIQ_QDRANT_URL``.
 
@@ -953,7 +998,7 @@ def _rerender(report: Path, baseline: dict | None) -> int:
     return 0
 
 
-def _preflight(out: Path, ingest: bool) -> int:
+def _preflight(out: Path, ingest: bool, corpus: Path | None = None) -> int:
     """0 when the runs would measure what the report will say they measured, else 2 and why."""
     if not ensure_key():
         print("OPENROUTER_API_KEY is not set; the suite needs the real models.", file=sys.stderr)
@@ -969,6 +1014,8 @@ def _preflight(out: Path, ingest: bool) -> int:
         )
         return 2
     if ingest:
+        if corpus is not None:
+            print(f"the corpus is {use_local_corpus(corpus)} PDF(s) from {corpus}")
         problem = _ingest_corpus()
         if problem:
             print(problem, file=sys.stderr)
@@ -1045,6 +1092,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--baseline", type=Path, help="an earlier results.json to compare medians against")
     parser.add_argument("--report", type=Path, help="re-render a results.json; no model calls")
     parser.add_argument("--ingest", action="store_true", help="sync the OIB corpus into Qdrant first")
+    parser.add_argument(
+        "--corpus",
+        type=Path,
+        help="with --ingest: the base corpus is this directory's PDFs (e.g. data/oib), not the object store",
+    )
     parser.add_argument("--override", nargs=2, action="append", metavar=("KEY", "VALUE"))
     parser.add_argument(
         "--set",
@@ -1053,6 +1105,8 @@ def main(argv: list[str] | None = None) -> int:
         help="loop: the norm questions; precedent: questions in a fixture office's project (fixture_bff.py)",
     )
     args = parser.parse_args(argv)
+    if args.corpus is not None and not args.ingest:
+        parser.error("--corpus is what --ingest reads; give both")
     baseline = json.loads(args.baseline.read_text()) if args.baseline else None
     if args.report:
         return _rerender(args.report, baseline)
@@ -1064,7 +1118,7 @@ def main(argv: list[str] | None = None) -> int:
         selected = select_questions(args.only, args.all)
     if selected is None:
         return 2
-    if failed := _preflight(args.out, args.ingest):
+    if failed := _preflight(args.out, args.ingest, args.corpus.resolve() if args.corpus else None):
         return failed
     questions, skipped = selected
     families = corpus_families()

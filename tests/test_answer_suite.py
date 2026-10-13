@@ -724,3 +724,45 @@ def test_the_turn_decisions_precedent_is_read_off_its_log_line():
     assert suite.precedent_of(line) == 0.83
     assert suite.precedent_of(line.replace("precedent=0.83", "precedent=None")) is None
     assert suite.precedent_of("") is None
+
+
+def test_a_local_corpus_directory_is_ingested_without_a_bff_or_an_object_store(monkeypatch, tmp_path):
+    # `--ingest` read the corpus from SeaweedFS through the BFF, so the suite
+    # could not run without a deployed stack (gate G1 waited on one for that).
+    from aiq_agent import corpus_store
+    from aiq_agent import oib_sync
+    from aiq_api.jobs import ingest_dispatch
+    from tests.corpus_job_fakes import FakeIngestor
+    from tests.corpus_job_fakes import run_worker
+    from tests.object_corpus_fakes import install
+
+    seams = ("_request_upload_url", "_put_object", "_delete_object", "_download_object")
+    real = {seam: getattr(corpus_store, seam) for seam in seams}
+    install(monkeypatch, tmp_path)
+    for seam in seams:
+        # The real BFF and bucket again, with no BFF configured: only --corpus can store anything.
+        monkeypatch.setattr(corpus_store, seam, real[seam])
+    monkeypatch.delenv("FRONTEND_INTERNAL_URL", raising=False)
+    corpus = tmp_path / "oib"
+    corpus.mkdir()
+    (corpus / "oib-rl_2_ausgabe_mai_2023.pdf").write_bytes(b"%PDF-1.4 rl2")
+    (corpus / "README.md").write_text("not a PDF")
+    ingestor = FakeIngestor()
+    monkeypatch.setattr(oib_sync, "_get_oib_ingestor", lambda: ingestor)
+    downloaded: list[bytes] = []
+    monkeypatch.setattr(ingest_dispatch, "attach", lambda _ingestor: run_worker(downloaded=downloaded) or True)
+
+    assert suite.use_local_corpus(corpus) == 1
+    assert suite._ingest_corpus(poll_seconds=0) is None
+
+    row = corpus_store.get_file("oib-rl_2_ausgabe_mai_2023.pdf")
+    assert row is not None and not row.needs_ingestion(oib_sync.CHUNK_FORMAT_VERSION)
+    assert downloaded == [b"%PDF-1.4 rl2"]
+    # A second run stores the same bytes again and leaves them ingested.
+    assert suite.use_local_corpus(corpus) == 1
+    assert not corpus_store.get_file("oib-rl_2_ausgabe_mai_2023.pdf").needs_ingestion(oib_sync.CHUNK_FORMAT_VERSION)
+
+
+def test_corpus_without_ingest_is_refused():
+    with pytest.raises(SystemExit):
+        suite.main(["--corpus", "data/oib"])
