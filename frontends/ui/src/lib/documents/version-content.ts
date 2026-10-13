@@ -57,7 +57,7 @@ import {
   type GeneratedRendering,
 } from './generated'
 import type { DocumentVersionState } from './lifecycle-types'
-import { findDocumentInOrg } from './repository'
+import { findDocumentInOrg, markDocumentNotIndexed } from './repository'
 import { hasPassedScreening, SCREENED_ONLY, versionBytesPassedScreening } from '@/lib/documents/document-reader'
 import { maySeeHeld } from '@/lib/upload-screening/quarantine-reviewers'
 import {
@@ -724,6 +724,9 @@ export async function archiveDocument(
   const chunksPurged = purgeRef
     ? await purgeIngestedChunks(getBackendUrl(), purgeRef, BACKEND_PURGE_TIMEOUT_MS)
     : null
+  // The chunks are gone, so the row must stop saying it was read: a `completed`
+  // status left behind showed the archived document as „Zitierbar“.
+  await markDocumentNotIndexed(documentId, session.organizationId)
   await recordAuditEvent({
     organizationId: session.organizationId,
     actor: { userId: session.userId, email: session.email },

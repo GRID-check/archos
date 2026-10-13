@@ -166,6 +166,7 @@ Consequences, where a reader looks for them.
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 | [0102](0102-file-workspaces-load-a-folder-level-by-pages.md) | File workspaces load a folder level by pages | Proposed |
 | [0103](0103-bun-is-the-javascript-toolchain-node-the-runtime.md) | Bun is the JavaScript toolchain, Node the runtime | Proposed |
+| [0104](0104-a-document-is-a-timeline-of-fassungen-and-approval-is-separate.md) | A document is a timeline of Fassungen, and approval is a separate round | Accepted |
 | [0105](0105-piloti-works-on-shared-objects.md) | Piloti works on shared objects, as the person it acts for | Accepted |
 | [0106](0106-events-on-pilotis-work-wake-a-turn.md) | Events on Piloti's work wake a turn, run as the person who acted | Accepted |
 | [0107](0107-a-running-turn-is-steered-at-its-next-tool-step.md) | A running turn is steered at its next tool step | Accepted |

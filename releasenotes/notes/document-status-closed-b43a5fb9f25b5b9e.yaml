@@ -1,0 +1,8 @@
+---
+operators:
+  - >
+    Migration 0135 rewrites legacy values in documents.status (ready, ingested,
+    success, processed become completed; error becomes failed) and adds the
+    CHECK documents_status_known. It runs before the new build serves; the
+    previous build writes only allowed values, so a rollback needs only the
+    down migration.

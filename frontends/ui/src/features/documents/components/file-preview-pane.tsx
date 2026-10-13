@@ -256,9 +256,11 @@ export function FilePreviewPane({
    * was deliberately never dispatched to `/v1/ingest`, so it is not Projektwissen
    * and cannot be cited as such — and it can still be read and discussed. Only
    * the never-indexed case has anything to say; a citable document's button
-   * needs no explaining.
+   * needs no explaining. The words name Piloti as the author, so a person's
+   * upload that is not in the index (archived, or never dispatched) gets none.
    */
-  const discussHint = isNeverIndexed(file) ? t('authorship.notInKnowledge') : undefined
+  const discussHint =
+    file.authoredBy && file.authoredBy !== 'user' && isNeverIndexed(file) ? t('authorship.notInKnowledge') : undefined
   /**
    * Review controls are for a project document and a surface that resolved this
    * reader's lifecycle permissions — the Archiv and the chat peek pass neither,

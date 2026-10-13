@@ -40,7 +40,7 @@ import { assertWithinStorageQuota } from '@/lib/storage/service'
 import { admitOrDiscard, admitReplacementOrDiscard } from '@/lib/storage/admission'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { contentDigest } from './content-digest'
-import { documentStatusFacts } from './document-status'
+import { documentReadFamily } from './document-status'
 import { nextVersionNumber, recordUploadedVersionOrDiscard } from './lifecycle'
 import { resolveFassungOf, type FassungOfIgnoredReason } from './fassung-upload'
 import { documentNameKey } from './name-match'
@@ -269,7 +269,7 @@ function placeUpload(session: AuthorizedSession, input: PlaceUploadInput): Promi
     if (
       superseded &&
       superseded.contentHash === contentHash &&
-      documentStatusFacts(superseded.status)?.variant === 'success' &&
+      documentReadFamily(superseded.status) === 'readable' &&
       (superseded.folderId ?? null) === (folderId ?? null)
     ) {
       return { unchanged: true, documentId }

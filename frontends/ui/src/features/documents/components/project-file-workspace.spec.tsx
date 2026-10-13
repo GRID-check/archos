@@ -152,6 +152,7 @@ beforeEach(() => {
           displayName: doc.displayName ?? null,
           fileSize: doc.fileSize,
           contentHash: doc.contentHash ?? null,
+          status: doc.status ?? 'completed',
           folderId: doc.folderId ?? null,
           authoredBy: doc.authoredBy ?? 'user',
           lifecycle: doc.lifecycle ?? 'active',

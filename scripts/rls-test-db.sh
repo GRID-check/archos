@@ -1441,17 +1441,65 @@ check_in grid_pshape "SELECT count(*) FROM projects WHERE organization_id = 'org
 echo "==> 0133 project profile shape and down migration verified"
 
 # ---------------------------------------------------------------------------
+# Migration 0137: a version knows how it began, and an upload carries no
+# approval nobody gave (ADR-0104 rules 5 and 6), and its DOWN.
+#
+# On a database of its own, migrated to 0136. A version never submitted that is
+# or was the published one is an upload and loses its stand-in approver; one
+# that went through review keeps the reviewer's. Afterwards a published draft
+# without an approver and an unknown origin are refused, and an upload is
+# published with none. The down restores the stand-in approvals.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0137 version origin backfill and its down migration on grid_vorigin"
+migrate_until grid_vorigin 0136_document_version_reviews
+sql_in grid_vorigin <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000137', 'org_0137', 'Herkunft 0137', 'user_1', 'proj_0137');
+INSERT INTO documents (id, organization_id, created_by, filename, storage_key, collection_name, status, scope, project_id) VALUES
+  ('d1d1d1d1-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'a.pdf', 'k/0137/a2', 'proj_0137', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000137'),
+  ('d2d2d2d2-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'piloti/b.md', 'k/0137/b1', 'proj_0137', 'completed', 'project', 'aaaaaaaa-0000-4000-8000-000000000137'),
+  ('d3d3d3d3-0000-4000-8000-000000000137', 'org_0137', 'user_1', 'piloti/c.md', 'k/0137/c1', 'proj_0137', 'stored', 'project', 'aaaaaaaa-0000-4000-8000-000000000137');
+INSERT INTO document_versions (organization_id, document_id, project_id, version_number, state, storage_key, created_by,
+                               submitted_by, submitted_at, approved_by, approved_at) VALUES
+  -- a re-uploaded file: both versions carry the uploader as stand-in approver
+  ('org_0137', 'd1d1d1d1-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'superseded', 'k/0137/a1', 'user_1', NULL, NULL, 'user_1', now()),
+  ('org_0137', 'd1d1d1d1-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 2, 'published',  'k/0137/a2', 'user_1', NULL, NULL, 'user_1', now()),
+  -- a Piloti document a reviewer approved
+  ('org_0137', 'd2d2d2d2-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'published',  'k/0137/b1', 'user_1', 'user_1', now(), 'user_2', now()),
+  -- a draft
+  ('org_0137', 'd3d3d3d3-0000-4000-8000-000000000137', 'aaaaaaaa-0000-4000-8000-000000000137', 1, 'draft',      'k/0137/c1', 'user_1', NULL, NULL, NULL, NULL);
+SQL
+V137="SELECT string_agg(d.filename || ':' || v.version_number || '=' || v.origin || '/' || coalesce(v.approved_by, '-'), ',' ORDER BY d.filename, v.version_number) FROM document_versions v JOIN documents d ON d.id = v.document_id WHERE v.organization_id = 'org_0137'"
+apply_in grid_vorigin 0137_document_version_origin.sql
+check_in grid_vorigin "$V137" "a.pdf:1=upload/-,a.pdf:2=upload/-,piloti/b.md:1=draft/user_2,piloti/c.md:1=draft/-" \
+  "the backfill calls a never-submitted published version an upload and drops its stand-in approver, and keeps a reviewer's"
+refused_in grid_vorigin "UPDATE document_versions SET state = 'published' WHERE document_id = 'd3d3d3d3-0000-4000-8000-000000000137'" \
+  "document_versions_published_is_approved" "a draft was published without an approver"
+refused_in grid_vorigin "UPDATE document_versions SET origin = 'import' WHERE document_id = 'd3d3d3d3-0000-4000-8000-000000000137'" \
+  "document_versions_origin_known" "an unknown origin was accepted"
+check_in grid_vorigin "SELECT column_default FROM information_schema.columns WHERE table_name = 'document_versions' AND column_name = 'origin'" \
+  "'draft'::text" "a writer that names no origin gets the one that demands an approver"
+apply_in grid_vorigin 0137_document_version_origin.down.sql
+check_in grid_vorigin "SELECT count(*) FROM information_schema.columns WHERE table_name = 'document_versions' AND column_name = 'origin'" "0" "down dropped the column"
+check_in grid_vorigin "SELECT count(*) FROM document_versions WHERE organization_id = 'org_0137' AND approved_by = created_by AND submitted_by IS NULL" "2" \
+  "down restored the stand-in approvals the old CHECK demands"
+apply_in grid_vorigin 0137_document_version_origin.sql
+apply_in grid_vorigin 0137_document_version_origin.sql
+check_in grid_vorigin "$V137" "a.pdf:1=upload/-,a.pdf:2=upload/-,piloti/b.md:1=draft/user_2,piloti/c.md:1=draft/-" "0137 re-applies, twice, to the same origins"
+echo "==> 0137 version origin backfill and down migration verified"
+
+# ---------------------------------------------------------------------------
 # Migration 0138: document_annotations and their replies, the CHECKs, and the
 # DOWN.
 #
-# On a database of its own, migrated to 0134. A point is a share of the page
+# On a database of its own, migrated to 0137. A point is a share of the page
 # and a region stays on it; only Piloti proposes, and only a person takes a
 # proposal over; a closing is by somebody at some time; a number is unique per
 # document; a discarded version leaves the mark standing; a thread goes with
 # its mark.
 # ---------------------------------------------------------------------------
 echo "==> verifying the 0138 Anmerkungen tables and their down migration on grid_annot"
-migrate_until grid_annot 0134_document_ingest_failure_facts
+migrate_until grid_annot 0137_document_version_origin
 apply_in grid_annot 0138_document_annotations.sql
 check_in grid_annot "SELECT string_agg(relrowsecurity::text, ',' ORDER BY relname) FROM pg_class WHERE relname IN ('document_annotations', 'document_annotation_replies')" "true,true" "0138 brings both tables up under row-level security"
 sql_in grid_annot <<'SQL'
