@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * „Ähnliche Stellen" as state a viewer holds: which passage is being searched
+ * „Im Büro behandelt" as state a viewer holds: which passage is being searched
  * from, which similar passage is open on the stage, and the search itself.
  *
  * Two hooks, because two different things own them. The search

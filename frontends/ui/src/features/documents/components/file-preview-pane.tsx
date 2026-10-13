@@ -682,7 +682,7 @@ export function FilePreviewPane({
   // now, on the card where the failure is actually read.
   const handleReingest = useCallback(() => void actions.reingest(), [actions])
 
-  // „Ähnliche Stellen" for a passage the reader selects: only in a document
+  // „Im Büro behandelt" for a passage the reader selects: only in a document
   // Piloti has read (an unread one has no passages to compare), opened large
   // with the rail of similar passages beside it.
   const [similarAsk, setSimilarAsk] = useState<SimilarPassagesRequest | null>(null)

@@ -1,4 +1,4 @@
-"""Request and response of ``POST /v1/collections/similar`` (similar passages, „Ähnliche Stellen“)."""
+"""Request and response of ``POST /v1/collections/similar`` (similar passages, „Im Büro behandelt“)."""
 
 from __future__ import annotations
 

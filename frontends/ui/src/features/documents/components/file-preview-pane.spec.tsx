@@ -334,7 +334,7 @@ describe('FilePreviewPane', () => {
     })
 
     /**
-     * „Ähnliche Stellen" from Files: a passage selected in the inline viewer
+     * „Im Büro behandelt" from Files: a passage selected in the inline viewer
      * opens the large viewer with the rail, asking about this document as
      * SELECTED text (embedded once, never matched to a chunk), in its project.
      */
@@ -350,7 +350,7 @@ describe('FilePreviewPane', () => {
       fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
       fireEvent.click(await screen.findByTestId('pdf-find-similar'))
 
-      expect(await screen.findByText('No similar passages found')).toBeInTheDocument()
+      expect(await screen.findByText('Not handled in your office yet')).toBeInTheDocument()
       const call = fetchMock.mock.calls.find(([input]) => String(input) === '/api/passages/similar')
       expect(JSON.parse(String(call?.[1]?.body))).toEqual({
         document: { kind: 'stored', documentId: 'doc-1' },

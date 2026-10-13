@@ -1,27 +1,29 @@
 'use client'
 
 /**
- * „Ähnliche Stellen": where the office has written something like the passage
- * the reader is looking at, as a rail beside the document.
+ * „Im Büro behandelt": has the office dealt with the passage the reader is
+ * looking at, and where. A rail beside the document.
  *
- * Grouped project → document → passage, the reader's own project first, then
- * the other projects and the Büroablage by their best passage. A passage opens
- * its document on the stage, at the passage, marked; the rail stays, so the
- * reader walks the list against the source and comes back to it.
+ * The answer comes first („In 3 Projekten und der Büroablage gefunden"), then
+ * the places: the reader's own project, the other projects by their best
+ * passage, the Büroablage last, since it holds the office's general material
+ * rather than a project's decision. Each passage is a quotation with the
+ * document, Fassung and page it is written on; the order is the relevance, so
+ * no score is shown. A passage opens its document on the stage, at the
+ * passage, marked; the rail stays, so the reader walks the list against the
+ * source and comes back to it.
  *
  * The rail is a second pane read AGAINST the document (the design language's
  * "no overlay" row), never a drawer over it.
  */
 
 import type { FC, KeyboardEvent } from 'react'
-import { AlertTriangle, ArrowLeft, Building2, SearchX, X } from 'lucide-react'
+import { AlertTriangle, Archive, ArrowLeft, SearchX, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
-import { ProjectClosedChip } from '@/components/projects/project-status'
-import { SemanticMatch } from '@/features/documents/components/semantic-match'
-import { SourceSignalChip } from '@/features/layout/components/SourceSignalChip'
+import { ProjectInitialsTile } from '@/components/projects/project-atoms'
 import { useTranslations } from '@/i18n'
 import type {
   SimilarDocument,
@@ -37,12 +39,11 @@ import {
   type SimilarPassagesLoader,
 } from '../lib/use-similar-passages'
 import {
-  SimilarDocumentLine,
   SimilarGroupHeading,
+  SimilarGroupNote,
   SimilarList,
   SimilarPassageButton,
   SimilarRail,
-  SimilarTag,
 } from './similar-passage-atoms'
 
 export interface SimilarPassagesPanelProps {
@@ -73,23 +74,49 @@ const walkPassages = (event: KeyboardEvent<HTMLElement>): void => {
   buttons[Math.min(buttons.length - 1, Math.max(0, index + (event.key === 'ArrowDown' ? 1 : -1)))]?.focus()
 }
 
+/** The places in the order the reader asks about them: this project, the other projects, the Büroablage. */
+const PLACE_ORDER: Record<SimilarGroup['kind'], number> = { current: 0, project: 1, archiv: 2 }
+const inPlaceOrder = (groups: SimilarGroup[]): SimilarGroup[] =>
+  [...groups].sort((a, b) => PLACE_ORDER[a.kind] - PLACE_ORDER[b.kind])
+
+const TILE = 'size-8 text-[11px]'
+
 const GroupHead: FC<{ group: SimilarGroup }> = ({ group }) => {
   const t = useTranslations('knowledge')
-  if (group.kind === 'archiv') {
+  if (group.kind === 'archiv' || !group.project) {
     return (
-      <SimilarGroupHeading>
-        <SourceSignalChip signal="office">{t('similar.groupArchiv')}</SourceSignalChip>
-      </SimilarGroupHeading>
+      <SimilarGroupHeading
+        tile={
+          <span aria-hidden className={`grid shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground ${TILE}`}>
+            <Archive className="size-4" />
+          </span>
+        }
+        name={t('similar.groupArchiv')}
+      />
     )
   }
   return (
-    <SimilarGroupHeading>
-      <SourceSignalChip signal="project" title={group.project?.name}>
-        {group.kind === 'current' ? t('similar.groupCurrent') : group.project?.name}
-      </SourceSignalChip>
-      {group.project?.status === 'closed' && <ProjectClosedChip />}
-    </SimilarGroupHeading>
+    <SimilarGroupHeading
+      tile={<ProjectInitialsTile project={group.project} className={TILE} />}
+      name={group.project.name}
+      meta={
+        group.kind === 'current' ? (
+          <SimilarGroupNote>{t('similar.groupCurrent')}</SimilarGroupNote>
+        ) : group.project.status === 'closed' ? (
+          // A word, not the chip: the chip's width cut the project's name, and the name is what the reader scans.
+          <SimilarGroupNote>{t('similar.groupClosed')}</SimilarGroupNote>
+        ) : undefined
+      }
+    />
   )
+}
+
+/** The answer in one line: in how many projects, and whether the Büroablage holds it too. */
+const headlineOf = (groups: SimilarGroup[], t: ReturnType<typeof useTranslations>): string => {
+  const projects = groups.filter((group) => group.kind !== 'archiv').length
+  const archiv = groups.some((group) => group.kind === 'archiv')
+  if (projects === 0) return t('similar.foundOnlyArchiv')
+  return archiv ? t('similar.foundWithArchiv', { count: projects }) : t('similar.found', { count: projects })
 }
 
 const Results: FC<{
@@ -116,63 +143,57 @@ const Results: FC<{
       />
     )
   }
+  const groups = inPlaceOrder(response.groups.filter((group) => group.documents.length > 0))
   return (
     <SimilarList>
-      {response.groups.map((group) => (
+      {groups.map((group) => (
         <section key={group.project?.id ?? 'archiv'} className="flex flex-col gap-2" data-similar-group={group.kind}>
           <GroupHead group={group} />
-          {group.documents.map((document) => {
-            const rank = documents.indexOf(document)
-            return (
-              <div key={document.documentId} className="flex flex-col gap-1">
-                <SimilarDocumentLine
-                  name={nameOf(document)}
-                  meta={
-                    <>
-                      {document.stand && (
-                        <SimilarTag>
-                          {document.stand.kind === 'index'
-                            ? document.stand.text
-                            : t('similar.standDate', { date: document.stand.text })}
-                        </SimilarTag>
-                      )}
-                      {document.superseded && <SimilarTag>{t('similar.superseded')}</SimilarTag>}
-                    </>
-                  }
-                />
-                {document.passages.map((passage, index) => {
-                  const key = passageKey(document, index)
-                  return (
-                    <SimilarPassageButton
-                      key={key}
-                      current={opened?.key === key}
-                      aria-label={
-                        passage.page === null
-                          ? t('similar.openPassageNoPage', { document: nameOf(document) })
-                          : t('similar.openPassage', { document: nameOf(document), page: passage.page })
-                      }
-                      onClick={() =>
-                        onOpen({
-                          key,
-                          documentId: document.documentId,
-                          filename: document.filename,
-                          title: nameOf(document),
-                          contentType: document.contentType,
-                          page: passage.page,
-                          snippet: passage.snippet,
-                          groupKind: group.kind,
-                          groupLabel: groupLabelOf(group),
-                          rank,
-                        })
-                      }
-                    >
-                      <SemanticMatch snippet={passage.snippet} page={passage.page} score={passage.score} />
-                    </SimilarPassageButton>
-                  )
-                })}
-              </div>
-            )
-          })}
+          <div className="flex flex-col gap-1.5">
+            {group.documents.flatMap((document) => {
+              const rank = documents.indexOf(document)
+              const fassung = document.stand
+                ? document.stand.kind === 'index'
+                  ? document.stand.text
+                  : t('similar.standDate', { date: document.stand.text })
+                : null
+              return document.passages.map((passage, index) => {
+                const key = passageKey(document, index)
+                const where = [nameOf(document), fassung, document.superseded ? t('similar.superseded') : null].filter(
+                  Boolean
+                )
+                return (
+                  <SimilarPassageButton
+                    key={key}
+                    current={opened?.key === key}
+                    quote={passage.snippet}
+                    source={<span title={where.join(' · ')}>{where.join(' · ')}</span>}
+                    page={passage.page === null ? null : t('similar.page', { page: passage.page })}
+                    openLabel={t('similar.open')}
+                    aria-label={
+                      passage.page === null
+                        ? t('similar.openPassageNoPage', { document: nameOf(document) })
+                        : t('similar.openPassage', { document: nameOf(document), page: passage.page })
+                    }
+                    onClick={() =>
+                      onOpen({
+                        key,
+                        documentId: document.documentId,
+                        filename: document.filename,
+                        title: nameOf(document),
+                        contentType: document.contentType,
+                        page: passage.page,
+                        snippet: passage.snippet,
+                        groupKind: group.kind,
+                        groupLabel: groupLabelOf(group),
+                        rank,
+                      })
+                    }
+                  />
+                )
+              })
+            })}
+          </div>
         </section>
       ))}
     </SimilarList>
@@ -192,36 +213,33 @@ export const SimilarPassagesPanel: FC<SimilarPassagesPanelProps> = ({
 
   return (
     <SimilarRail label={t('similar.title')}>
-      <div className="flex shrink-0 items-center gap-1.5">
-        <SectionLabel as="h2">{t('similar.title')}</SectionLabel>
-        <span className="flex-1" />
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon"
-          className="size-7 pointer-coarse:size-11"
-          onClick={onClose}
-          aria-label={t('similar.close')}
-        >
-          <X aria-hidden />
-        </Button>
-      </div>
-      <div className="shrink-0 rounded-lg border border-border bg-card px-2.5 py-2">
-        <SectionLabel as="p">{t('similar.source')}</SectionLabel>
-        <p className="mt-1 line-clamp-3 text-xs leading-snug text-foreground/80" data-testid="similar-source">
-          {request.passage.text}
-        </p>
+      <div className="flex shrink-0 flex-col gap-1">
+        <div className="flex items-center gap-1.5">
+          <SectionLabel as="h2">{t('similar.title')}</SectionLabel>
+          <span className="flex-1" />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="size-7 pointer-coarse:size-11"
+            onClick={onClose}
+            aria-label={t('similar.close')}
+          >
+            <X aria-hidden />
+          </Button>
+        </div>
+        {state.status === 'ready' && similarDocumentsOf(state.response).length > 0 && (
+          <p className="text-sm font-medium text-foreground" data-testid="similar-headline">
+            {headlineOf(state.response.groups, t)}
+          </p>
+        )}
         {opened && (
-          <Button type="button" variant="ghost" size="sm" className="-ml-2 mt-1 h-7" onClick={onBackToSource}>
+          <Button type="button" variant="ghost" size="sm" className="-ml-2 h-7 self-start" onClick={onBackToSource}>
             <ArrowLeft aria-hidden />
             {t('similar.backToSource')}
           </Button>
         )}
       </div>
-      <p className="shrink-0 text-xs text-muted-foreground">
-        <Building2 aria-hidden className="mr-1 inline size-3 -translate-y-px" />
-        {t('similar.scope')}
-      </p>
       <div
         className="flex min-h-0 flex-1 flex-col"
         onKeyDown={walkPassages}

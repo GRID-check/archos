@@ -690,7 +690,7 @@ def test_clearing_many_dokumentarten_restores_them_in_one_batch(retriever, metad
 
 
 def test_embed_query_initializes_without_reaching_any_store(monkeypatch):
-    """„Ähnliche Stellen“ embeds the selected sentence first: that needs the embedder, never a vector store."""
+    """„Im Büro behandelt“ embeds the selected sentence first: that needs the embedder, never a vector store."""
 
     class Embedder:
         def get_query_embedding(self, text: str) -> list[float]:

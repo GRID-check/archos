@@ -1,5 +1,5 @@
 /**
- * „Ähnliche Stellen": the passages like one the reader is looking at, across
+ * „Im Büro behandelt": the passages like one the reader is looking at, across
  * what they may read. Thin handler; who may see what is decided in
  * `@/lib/similar-passages/service`.
  */

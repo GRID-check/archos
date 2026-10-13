@@ -1,5 +1,5 @@
 /**
- * The contract of „Ähnliche Stellen" (`POST /api/passages/similar`): the
+ * The contract of „Im Büro behandelt" (`POST /api/passages/similar`): the
  * passage a person is reading, and the passages like it across what they may
  * read, grouped project → document → passage.
  *

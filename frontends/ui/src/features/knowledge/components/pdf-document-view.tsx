@@ -124,7 +124,7 @@ export interface PdfDocumentViewProps {
    */
   quoteFormat?: (quote: { text: string; page: number }) => string
   /**
-   * Look for passages like the one the READER selected („Ähnliche Stellen"):
+   * Look for passages like the one the READER selected („Im Büro behandelt"):
    * the selection's words and the page they are on. Left unset, the offer is
    * not made. Like `quoteFormat` a callback, not a component: who may be
    * searched and where the answer is shown belong to whoever opened the viewer.

@@ -503,7 +503,7 @@ describe('PdfDocumentView', () => {
   })
 
   /**
-   * „Ähnliche Stellen" on a selection: the words and the page go to whoever
+   * „Im Büro behandelt" on a selection: the words and the page go to whoever
    * opened the viewer, which decides who may be searched. The Files pane cites
    * nothing, so it gets this offer alone, without the copy beside it.
    */
@@ -517,7 +517,7 @@ describe('PdfDocumentView', () => {
     fireEvent.click(await screen.findByTestId('pdf-find-similar'))
 
     expect(onFindSimilar).toHaveBeenCalledWith({ text: 'Die Frist betraegt vier Wochen', page: 2 })
-    expect(screen.getByRole('button', { name: /Similar passages/ })).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Check your projects/ })).toBeTruthy()
     expect(screen.queryByText('Copy as citation')).toBeNull()
   })
 

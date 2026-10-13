@@ -1,5 +1,5 @@
 /**
- * „Ähnliche Stellen": the passages like the one a person is reading, from
+ * „Im Büro behandelt": the passages like the one a person is reading, from
  * everything that person may read — this project's other documents, the
  * office's other projects (closed ones included), the Büroablage.
  *

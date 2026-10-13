@@ -1,5 +1,5 @@
 /**
- * The typed client of „Ähnliche Stellen" (ADR-0055): the one place the path,
+ * The typed client of „Im Büro behandelt" (ADR-0055): the one place the path,
  * the verb and the response parsing live. The panel calls it; the route spec
  * drives the real handler through it.
  *

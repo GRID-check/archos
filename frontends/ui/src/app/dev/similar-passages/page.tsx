@@ -1,8 +1,8 @@
 'use client'
 
 /**
- * Dev preview for „Ähnliche Stellen": where the office has written something
- * like the passage the reader is looking at.
+ * Dev preview for „Im Büro behandelt": has the office dealt with the passage
+ * the reader is looking at, and where.
  *
  * The REAL components (the citation viewer, the rail, the Files dialog) over
  * fixture data: the search answer comes from a fixture loader instead of
@@ -10,17 +10,22 @@
  * browser, so the viewer finds and marks the passage on it exactly as it would
  * on a stored document.
  *
- *   (default)  a citation's Fundstelle, with „Ähnliche Stellen" pressed: the
- *              rail beside the document, grouped project → document → passage,
- *              the reader's project first, a closed project and the Büroablage.
+ *   (default)  a citation's Fundstelle, with „Im Büro nachsehen" pressed: the
+ *              rail beside the document, the answer first, then each project's
+ *              passages as quotations, the reader's project first, a closed
+ *              project, the Büroablage last.
  *   `opened`   a similar passage opened from the rail: its document on the
  *              stage at the passage, marked, the rail kept beside it.
  *   `select`   a passage the reader selected, with both offers on it: copy as
- *              a citation, and „Ähnliche Stellen".
+ *              a citation, and „Im Büro nachsehen".
  *   `files`    the Files preview's way in: a selection in a stored document,
  *              opened large with the rail.
  *   `states`   the rail's own states side by side: searching, nothing found, a
  *              failed search, and a document still being screened.
+ *
+ * Pinned to German (`I18nProvider initialLocale="de" fixedLocale`), as the
+ * share-dialog preview is: German is the product's primary language, and the
+ * capture must carry the copy most users see.
  *
  * Not linked from anywhere; the `/dev` layout 404s it outside development.
  */
@@ -35,6 +40,7 @@ import { SimilarPassagesPanel } from '@/features/similar-passages/components/sim
 import type { SimilarPassagesLoader } from '@/features/similar-passages/lib/use-similar-passages'
 import { SimilarPassagesError } from '@/lib/similar-passages/client'
 import type { SimilarPassagesRequest, SimilarPassagesResponse } from '@/lib/similar-passages/types'
+import { I18nProvider } from '@/i18n'
 import { buildPdf, type PdfLine } from '../_fixtures/sample-pdf'
 
 const FILE_NAME = 'oib-richtlinie-4_2023.pdf'
@@ -350,6 +356,14 @@ const StatesPreview: FC = () => {
 }
 
 export default function SimilarPassagesPreviewPage() {
+  return (
+    <I18nProvider initialLocale="de" fixedLocale>
+      <Preview />
+    </I18nProvider>
+  )
+}
+
+function Preview() {
   const variant = useSearchParams()?.get('variant')
   const urls = useBlobUrls()
   if (variant === 'states') {

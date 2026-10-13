@@ -1,7 +1,7 @@
 'use client'
 
 /**
- * The viewer around „Ähnliche Stellen": the document on the stage, the rail
+ * The viewer around „Im Büro behandelt": the document on the stage, the rail
  * of similar passages beside it.
  *
  * - {@link openedPassageView}: what the stage shows while a similar passage

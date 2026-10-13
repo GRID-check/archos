@@ -74,7 +74,7 @@ and score, with each pick's `solved` and the pool's `solved_any` and
 when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`,
 `audience_changed`, `invalid`, `unreachable` or `invalid_arguments`.
 
-Each „Ähnliche Stellen“ search (`POST /v1/collections/similar`) is a root
+Each „Im Büro behandelt“ search (`POST /v1/collections/similar`) is a root
 trace `similar-passages` holding one `retrieve.similar_passages` retriever
 observation (`direct_trace.observed_retrieval`, since the route runs outside
 NAT): its input the source's collection, file, page and kind, whether it named

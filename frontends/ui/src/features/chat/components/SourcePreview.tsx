@@ -860,7 +860,7 @@ export const CitationDocumentDialog: FC<{
   open: boolean
   onOpenChange: (open: boolean) => void
   /**
-   * How „Ähnliche Stellen" asks and where an opened passage's bytes stream
+   * How „Im Büro behandelt" asks and where an opened passage's bytes stream
    * from: the real client and the same-origin stream, unless the preview route
    * passes fixtures.
    */
@@ -907,7 +907,7 @@ export const CitationDocumentDialog: FC<{
   )
   const downloadBusy = useDelayedFlag(isDownloading)
 
-  // „Ähnliche Stellen": the rail replaces the Fundstellen while it is open, and
+  // „Im Büro behandelt": the rail replaces the Fundstellen while it is open, and
   // a similar passage the reader opens takes the stage until they go back.
   const similar = useSimilarPassagesViewer()
   const sourceDocument: SimilarSourceDocument =
@@ -1005,7 +1005,7 @@ export const CitationDocumentDialog: FC<{
                 className={COPY_ACTION_CLASSES}
               >
                 <TextSearch aria-hidden="true" className="size-3" />
-                {tKnowledge('similar.title')}
+                {tKnowledge('similar.action')}
               </button>
             )}
             {rendition && (

@@ -75,7 +75,7 @@ export interface PdfViewerDialogProps {
    */
   quoteFormat?: (quote: { text: string; page: number }) => string
   /**
-   * Look for passages like the one the reader selects („Ähnliche Stellen"),
+   * Look for passages like the one the reader selects („Im Büro behandelt"),
    * passed straight through to the document view like `quoteFormat`. Unset,
    * no such offer is made.
    */

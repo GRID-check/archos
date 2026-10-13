@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * „Ähnliche Stellen" against a REAL Postgres, through the restricted runtime role:
+ * „Im Büro behandelt" against a REAL Postgres, through the restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
  *     npx vitest run src/lib/similar-passages/service.integration.spec.ts

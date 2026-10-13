@@ -1,6 +1,6 @@
 """``POST /v1/collections/similar`` end to end on a real Qdrant: the route, the retriever's embedder, the store.
 
-What a person sees under „Ähnliche Stellen“ is decided here: which
+What a person sees under „Im Büro behandelt“ is decided here: which
 collections may be searched and read (the signed scope), that the source
 document never comes back, that a superseded Fassung stays out, that passages
 are grouped by document in ranking order, and that a stored passage costs no

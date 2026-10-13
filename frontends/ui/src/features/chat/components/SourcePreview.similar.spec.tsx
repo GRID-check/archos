@@ -1,5 +1,5 @@
 /**
- * „Ähnliche Stellen" from a citation: the join between the citation viewer,
+ * „Im Büro behandelt" from a citation: the join between the citation viewer,
  * the rail and the stage. The viewer is a recorder (its drawing is
  * `pdf-document-view.spec.tsx`'s business); what is pinned is what the dialog
  * asks for and what it hands the viewer:
@@ -123,7 +123,7 @@ beforeEach(() => {
 describe('CitationDocumentDialog and similar passages', () => {
   test('asks about the cited Fundstelle as cited text, from the cited document and the chat’s project', async () => {
     openCitation()
-    fireEvent.click(screen.getByRole('button', { name: 'Find passages similar to this one' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check where your office has dealt with this passage' }))
 
     expect(await screen.findByRole('button', { name: 'Open Bescheid.pdf, page 3' })).toBeTruthy()
     expect(asked).toEqual([
@@ -144,7 +144,7 @@ describe('CitationDocumentDialog and similar passages', () => {
 
   test('opens a similar passage on the same stage, marked, and goes back to the citation', async () => {
     openCitation()
-    fireEvent.click(screen.getByRole('button', { name: 'Find passages similar to this one' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check where your office has dealt with this passage' }))
     fireEvent.click(await screen.findByRole('button', { name: 'Open Bescheid.pdf, page 3' }))
 
     expect(seen.props).toMatchObject({
@@ -156,20 +156,20 @@ describe('CitationDocumentDialog and similar passages', () => {
       quoteFormat: undefined,
       onFindSimilar: undefined,
     })
-    expect(screen.queryByRole('button', { name: 'Find passages similar to this one' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Check where your office has dealt with this passage' })).toBeNull()
     // One dialog throughout: swapping it would remount the rail and search again.
     expect(seen.mounts).toBe(1)
     expect(asked).toHaveLength(1)
 
-    fireEvent.click(screen.getByRole('button', { name: 'Back to the starting passage' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the passage' }))
     expect(seen.props).toMatchObject({ src: '/oib.pdf', page: 2, highlight: CITED })
   })
 
   test('closing the rail brings back the Fundstellen', async () => {
     openCitation()
-    fireEvent.click(screen.getByRole('button', { name: 'Find passages similar to this one' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Check where your office has dealt with this passage' }))
     await screen.findByRole('button', { name: 'Open Bescheid.pdf, page 3' })
-    fireEvent.click(screen.getByRole('button', { name: 'Close similar passages' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Close “Handled in your office”' }))
     expect(screen.queryByTestId('similar-passages')).toBeNull()
     expect(screen.getByRole('navigation')).toBeTruthy()
   })

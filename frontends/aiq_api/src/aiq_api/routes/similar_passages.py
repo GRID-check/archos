@@ -1,4 +1,4 @@
-"""Similar passages („Ähnliche Stellen“): where else the office wrote something like this passage.
+"""Similar passages („Im Büro behandelt“): where else the office wrote something like this passage.
 
 The person reading a passage in the document viewer asks for its neighbours
 across the collections the BFF authorized: the project's other documents,
