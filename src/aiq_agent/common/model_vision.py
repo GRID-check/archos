@@ -55,7 +55,7 @@ _lock = threading.Lock()
 #: keyed by model id, holds no tenant data (``src/aiq_agent/AGENTS.md``).
 _catalog: dict[str, bool] = {}
 _catalog_read_at = 0.0
-_catalog_failed_at = 0.0
+_catalog_failed_at: float | None = None
 
 _turn_model: contextvars.ContextVar[str | None] = contextvars.ContextVar("grid_turn_chat_model", default=None)
 
@@ -120,7 +120,9 @@ def _refreshed_catalog() -> dict[str, bool]:
     now = time.monotonic()
     with _lock:
         fresh = _catalog and now - _catalog_read_at < _CATALOG_TTL_SECONDS
-        backing_off = now - _catalog_failed_at < _FAILURE_TTL_SECONDS
+        # None: never failed. Zero would read as "failed at boot" on a host
+        # whose monotonic clock is younger than the back-off (a fresh pod).
+        backing_off = _catalog_failed_at is not None and now - _catalog_failed_at < _FAILURE_TTL_SECONDS
         if fresh or backing_off:
             return _catalog
         fetched = _fetch_catalog()
@@ -149,4 +151,4 @@ def reset_catalog_cache() -> None:
     """Forget the catalog. Test-only."""
     global _catalog, _catalog_read_at, _catalog_failed_at
     with _lock:
-        _catalog, _catalog_read_at, _catalog_failed_at = {}, 0.0, 0.0
+        _catalog, _catalog_read_at, _catalog_failed_at = {}, 0.0, None

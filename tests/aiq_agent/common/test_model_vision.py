@@ -79,3 +79,20 @@ def test_the_bound_model_is_the_one_asked_about(monkeypatch):
 )
 def test_the_model_name_is_read_off_a_chat_model(llm, expected):
     assert model_vision.model_name_of(llm) == expected
+
+
+def test_a_freshly_booted_host_reads_the_catalog(monkeypatch):
+    # A pod (or CI runner) younger than the failure back-off: its monotonic
+    # clock is below five minutes. "Never failed" must not read as "failed at
+    # boot", or the catalog is never read in a new pod's first minutes.
+    reads: list[int] = []
+
+    def catalog():
+        reads.append(1)
+        return {"text/only": False}
+
+    monkeypatch.setattr(model_vision, "_fetch_catalog", catalog)
+    monkeypatch.setattr(model_vision.time, "monotonic", lambda: 12.0)
+
+    assert model_vision.model_accepts_images("text/only") is False
+    assert reads == [1]
