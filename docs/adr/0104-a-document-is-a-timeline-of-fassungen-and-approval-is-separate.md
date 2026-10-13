@@ -137,9 +137,11 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
 
 A compare is a workspace primitive with one implementation (ADR-0055). It lives
 in the knowledge layer as a pure module, `fassung_diff`, over facts already
-stored, and has two clients: a route the BFF calls for the UI, and the agent
-tool `compare_fassungen`, which calls the module in-process the way `list_files`
-reads `browse`.
+stored, and has two clients: the agent, through `list_files(fassungen_of=…,
+compare_to=…)`, which calls the module in-process the way the chain itself is
+read (a mode of the browser rather than a tool of its own, because every bound
+tool's schema rides on every turn, the reason ADR-0099 gave), and a route the
+BFF calls for the UI.
 
 It answers in rising cost, and stops where the caller asks it to:
 
@@ -249,8 +251,8 @@ Slices, each shippable on its own:
 1. Fix what the fused model broke (an agent revision refused on a cached state,
    an archived document shown as citable, a failed file never retried, a
    published Piloti report shown as unindexed).
-2. `compare_fassungen` over the layers above, for Fassungen under different
-   names.
+2. The compare over the layers above (`list_files(compare_to=…)`), for
+   Fassungen under different names.
 3. The closed reading status with its CHECK.
 4. `fassungen` and `fassung_reviews` from `document_versions`; the item drops its
    mirrored byte columns; the synthetic approval on uploads goes.
