@@ -102,6 +102,12 @@ vi.mock('@/features/chat', () => {
   return { useChatStore }
 })
 
+const mockRequestReingest = vi.fn()
+vi.mock('../lib/reingest-request', () => ({
+  requestReingest: (documentId: string) => mockRequestReingest(documentId),
+}))
+vi.mock('sonner', () => ({ toast: { info: vi.fn(), error: vi.fn(), success: vi.fn() } }))
+
 vi.mock('../orchestrator', () => ({
   UploadOrchestrator: mockOrchestratorFns,
 }))
@@ -367,6 +373,50 @@ describe('useFileUpload', () => {
 
       expect(mockDocumentsStoreState.removeTrackedFile).toHaveBeenCalledWith('file-1')
       expect(mockClient.deleteFiles).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('retryFile on a file the server could not read', () => {
+    const readFailure = {
+      id: 'file-1',
+      fileName: 'plan.pdf',
+      collectionName: 'proj-1',
+      fileSize: 1000,
+      status: 'failed',
+      serverFileId: 'doc-1',
+      errorMessage: 'empty_document: nothing to read',
+      file: new File(['x'], 'plan.pdf'),
+    }
+
+    test('reads it again instead of sending the bytes again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'started', status: 'pending' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockRequestReingest).toHaveBeenCalledWith('doc-1')
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
+        'file-1',
+        expect.objectContaining({ status: 'ingesting', errorMessage: null })
+      )
+      expect(mockOrchestratorFns.watchDocuments).toHaveBeenCalledWith(['file-1'])
+    })
+
+    test('takes the retry away when the server says the same bytes would fail again', async () => {
+      mockDocumentsStoreState.trackedFiles = [readFailure] as unknown[]
+      mockRequestReingest.mockResolvedValueOnce({ kind: 'unchanged' })
+      const { result } = renderHook(() => useFileUpload({ collectionName: 'proj-1', projectId: 'p1' }))
+
+      await act(async () => {
+        await result.current.retryFile('file-1')
+      })
+
+      expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith('file-1', { retryable: false })
+      expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
     })
   })
 
@@ -906,6 +956,58 @@ describe('useFileUpload — durable document uploads', () => {
       'mock-uuid',
       expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.projectClosed })
     )
+  })
+
+  test('a file refused because it would replace a quarantined one is not offered again (ADR-0086)', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(
+        409,
+        JSON.stringify({
+          error: '"plan-0.pdf" is waiting in quarantine.',
+          code: 'CONFLICT',
+          details: { reason: 'quarantined' },
+        })
+      )
+      await pending
+    })
+
+    // The row says why in the reader's language, and is marked as one a retry cannot fix.
+    const message = en.files.errors.quarantinedReplace.replace('{name}', 'plan-0.pdf')
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: message, retryable: false })
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(message)
+
+    // „Alle wiederholen“ calls retryFile for it: it sends nothing and keeps the row.
+    vi.mocked(mockDocumentsStoreState.removeTrackedFile).mockClear()
+    const { result: again } = renderUpload()
+    await act(async () => {
+      await again.current.retryFile('mock-uuid')
+    })
+    expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+    expect(xhr.requests).toHaveLength(1)
+  })
+
+  test('any other conflict stays retryable', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(409, JSON.stringify({ error: 'A document named "plan-0.pdf" already exists here.' }))
+      await pending
+    })
+
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed' })
+    expect(trackedById('mock-uuid')).not.toHaveProperty('retryable')
   })
 
   test('a rate-limited file waits out Retry-After and goes again instead of failing', async () => {

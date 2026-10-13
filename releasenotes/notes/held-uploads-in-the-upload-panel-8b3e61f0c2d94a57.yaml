@@ -1,0 +1,7 @@
+---
+fixes:
+  - >
+    The upload panel and the chat now show a file the content check held back
+    as held for review, with what was found, instead of as failed, and no
+    longer offer to retry it. A file that was kept but not read is shown as
+    filed rather than citable.

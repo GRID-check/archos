@@ -29,6 +29,11 @@ export const files: typeof en.files = {
       mixed: '{ready} hinzugefügt · {failed} fehlgeschlagen',
       failedOne: '1 Dokument konnte nicht hinzugefügt werden',
       failedOther: '{count} Dokumente konnten nicht hinzugefügt werden',
+      // Von der Inhaltsprüfung zurückgehalten (ADR-0086): kein Fehler, nichts zu
+      // wiederholen. Nie „freigeben“, das Wort gehört der Freigabe einer Fassung.
+      heldOne: '1 Dokument zurückgehalten',
+      heldOther: '{count} Dokumente zurückgehalten',
+      mixedHeld: '{ready} hinzugefügt · {held} zurückgehalten',
       canceled: 'Upload abgebrochen',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files: typeof en.files = {
       processing: 'Wird gelesen',
       ready: 'Zitierbar',
       unchanged: 'Unverändert – bereits vorhanden',
+      // Die Inhaltsprüfung hat angeschlagen; darunter steht, was sie gefunden hat.
+      held: 'Zurückgehalten',
+      // Gespeichert, aber nicht gelesen: kein Erfolg, kein Fehler (wie `status.stored`).
+      stored: 'Abgelegt',
       canceled: 'Abgebrochen',
       failed: 'Fehlgeschlagen',
     },
@@ -72,7 +81,7 @@ export const files: typeof en.files = {
     stored: 'Abgelegt',
     // Die Inhaltsprüfung (ADR-0086) hat angeschlagen: Die Datei liegt im
     // Projekt, kein Modell hat sie gesehen, und jemand muss entscheiden.
-    quarantined: 'In Quarantäne',
+    quarantined: 'Zurückgehalten',
     unknown: 'Unbekannt',
     // Nur die eigenen Uploads des Büros: Innerhalb eines Büros wird der Reihe
     // nach gelesen, zwischen Büros fair abgewechselt (ADR-0076).
@@ -314,9 +323,12 @@ export const files: typeof en.files = {
     downloadFailed: 'Der Download konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
     ingestionFailed: 'Lesen fehlgeschlagen',
     heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
+    heldDecided: 'Über diese Datei hat schon jemand entschieden.',
     ingestionFailedPreviousVersionKept:
       'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
+    retryWouldFailAgain:
+      'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     retryingIngestion: 'Wird erneut gestartet…',
     retryIngestionError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
@@ -377,6 +389,7 @@ export const files: typeof en.files = {
     findingsLabel: 'Fundstellen der Inhaltsprüfung',
     findingPage: 'S. {page}',
     showFinding: 'Fundstelle auf Seite {page} zeigen',
+    morePages: 'Auch auf weiteren Seiten gefunden',
   },
   browser: {
     folderEmptyTitle: 'Dieser Ordner ist leer',
@@ -584,6 +597,8 @@ export const files: typeof en.files = {
     reingesting: 'Wird erneut gestartet …',
     reingestRunning: 'Wird bereits gelesen',
     reingestAlreadyDone: 'Ist bereits fertig',
+    reingestWouldFailAgain:
+      'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
       'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
@@ -863,6 +878,8 @@ export const files: typeof en.files = {
       '{failed} von {total} Dokumenten konnten nicht hochgeladen werden. Erster Grund: {reason}',
     uploadingSkipped:
       'Es werden {uploading} {fileLabel} hochgeladen, {skipped} übersprungen ({summary})',
+    quarantinedReplace:
+      '„{name}“ ersetzt eine Datei, die in der Quarantäne wartet. Löschen Sie diese Datei oder lassen Sie sie zu, dann laden Sie die neue hoch.',
     cannotRetryServerFile:
       'Vom Server geladene Dateien können nicht erneut versucht werden. Bitte laden Sie die Datei erneut hoch.',
     imageVlmUnavailable:

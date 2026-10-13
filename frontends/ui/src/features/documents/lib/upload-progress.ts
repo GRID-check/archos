@@ -7,7 +7,11 @@
  *   queued      → waiting for a slot                     (no number exists)
  *   uploading   → bytes are leaving the machine          (a real percentage)
  *   processing  → the backend is reading and indexing it (no number exists)
- *   ready / failed / canceled                            (terminal)
+ *   ready / held / stored / failed / canceled            (terminal)
+ *
+ * `held` is a file the content check held back (ADR-0086) and `stored` one
+ * whose bytes were kept and never read: both are at rest, neither is citable,
+ * and neither is a failure.
  *
  * The old bar drew one determinate track across all four, so it had to invent a
  * value for three of them — it sat at 15% through the entire upload and then at
@@ -25,7 +29,7 @@
 import type { TrackedFile } from '../types'
 
 /** What the user is waiting for, in the order they experience it. */
-export type UploadPhase = 'queued' | 'uploading' | 'processing' | 'ready' | 'failed' | 'canceled'
+export type UploadPhase = 'queued' | 'uploading' | 'processing' | 'ready' | 'held' | 'stored' | 'failed' | 'canceled'
 
 /** The stage the batch as a whole is in — what the tray header speaks about. */
 export type TransferStage = 'transferring' | 'processing' | 'settled'
@@ -55,11 +59,15 @@ export function uploadPhase(file: ProgressFile): UploadPhase {
       return 'canceled'
     case 'success':
       return 'ready'
+    case 'held':
+      return 'held'
+    case 'stored':
+      return 'stored'
     case 'uploading':
       return file.uploadStartedAt ? 'uploading' : 'queued'
-    default:
-      // 'ingesting' and the client-only 'deleting' are both "the server is
-      // doing something we cannot see inside".
+    case 'ingesting':
+    case 'deleting':
+      // Both are "the server is doing something we cannot see inside".
       return 'processing'
   }
 }
@@ -76,7 +84,7 @@ export function isDeterminate(phase: UploadPhase): boolean {
 
 /** Terminal phases — nothing further will happen without the user acting. */
 export function isTerminal(phase: UploadPhase): boolean {
-  return phase === 'ready' || phase === 'failed' || phase === 'canceled'
+  return phase === 'ready' || phase === 'held' || phase === 'stored' || phase === 'failed' || phase === 'canceled'
 }
 
 /**
@@ -95,7 +103,8 @@ export function uploadedBytes(file: ProgressFile): number {
   // Past the upload, every byte is there by definition — the backend has the
   // file. Counting `bytesUploaded` would under-report a file restored from the
   // server (which never had progress events at all) and stall the batch bar.
-  if (phase === 'processing' || phase === 'ready') return file.fileSize
+  // A held or stored file is on the server too: the server holds or keeps it.
+  if (phase === 'processing' || phase === 'ready' || phase === 'held' || phase === 'stored') return file.fileSize
   // A failure keeps whatever it managed to send: a file that failed during
   // INGESTION uploaded completely, and zeroing it would run the batch bar
   // backwards at the exact moment the user is being told something went wrong.
@@ -108,6 +117,10 @@ export interface TransferSummary {
   uploading: number
   processing: number
   ready: number
+  /** Held back by the content check (ADR-0086): waiting on a reviewer, never retried. */
+  held: number
+  /** Stored and not read: at rest, not citable, not failed. */
+  stored: number
   failed: number
   canceled: number
   /** Payload bytes across every file still counted in the batch. */
@@ -120,7 +133,7 @@ export interface TransferSummary {
   /** How many files have reached a terminal phase. */
   settled: number
   stage: TransferStage
-  /** Nothing is in flight: every file is ready, failed or canceled. */
+  /** Nothing is in flight: every file is ready, held, stored, failed or canceled. */
   isSettled: boolean
 }
 
@@ -138,6 +151,8 @@ export function summarizeTransfer(files: readonly ProgressFile[]): TransferSumma
     uploading: 0,
     processing: 0,
     ready: 0,
+    held: 0,
+    stored: 0,
     failed: 0,
     canceled: 0,
     totalBytes: 0,

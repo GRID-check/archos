@@ -163,6 +163,10 @@ export const research = {
     statusIngesting: 'Reading',
     statusAvailable: 'Available',
     statusError: 'Error',
+    // Held back by the content check (ADR-0086); never "released", that word is for a revision.
+    statusHeld: 'Held back',
+    // Kept, never read: Piloti cannot answer from it, nothing failed.
+    statusStored: 'Filed',
     statusDeleting: 'Deleting...',
     expiryPending: 'Deletion Pending - Reupload',
     expiresIn: 'Expires in {minutes} min',

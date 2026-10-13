@@ -16,11 +16,32 @@ import type { NameMatch } from './name-screen'
 
 export const QUARANTINED_PREFIX = 'quarantined:'
 
+/**
+ * `details.reason` of the 409 a re-upload onto a quarantined file answers
+ * (`assertMayReplaceHeld`, `./quarantine-reviewers`). Here, beside the verdict,
+ * because the browser reads it too: the upload row it refuses is not retried,
+ * since a retry meets the same 409 until somebody deletes or releases the file.
+ */
+export const QUARANTINED_REPLACE_REASON = 'quarantined'
+
+/** The error envelope of that 409 (`{ error, code, details: { reason } }`). */
+export function isQuarantinedReplaceBody(body: unknown): boolean {
+  if (!body || typeof body !== 'object') return false
+  const details = (body as { details?: unknown }).details
+  return !!details && typeof details === 'object' && (details as { reason?: unknown }).reason === QUARANTINED_REPLACE_REASON
+}
+
 const reasonSchema = z.object({
   kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']),
   term: z.string().optional(),
   count: z.number().int().nonnegative().optional(),
   pages: z.array(z.number().int()).optional(),
+  /**
+   * `pages` is not every page the reason was found on: the job lists up to 50
+   * and cuts the widest reasons first to keep the stored verdict whole
+   * (`screening.py`, `quarantine_error`). Absent on a verdict that lists all.
+   */
+  pages_truncated: z.boolean().optional(),
   sample: z.string().optional(),
 })
 
@@ -68,12 +89,19 @@ export function quarantineReasonHead(reason: QuarantineReason, t: Translator): s
   return head.trim()
 }
 
-/** One reason, as a short phrase in the reader's language: `„Lohnzettel“ im Text · Seite 2`. */
+/** Said after the last listed page of a reason whose list is cut (`pages_truncated`). */
+export const MORE_PAGES_MARK = '…'
+
+/**
+ * One reason, as a short phrase in the reader's language: `„Lohnzettel“ im Text · Seite 2`,
+ * and `· Seiten 1, 2, …` when the job listed only some of its pages.
+ */
 export function describeQuarantineReason(reason: QuarantineReason, t: Translator): string {
   const head = quarantineReasonHead(reason, t)
   const pages = reason.pages ?? []
   if (pages.length === 0) return head
-  return `${head} · ${t('screening.reasonPages', { count: pages.length, pages: pages.join(', ') })}`
+  const listed = reason.pages_truncated ? [...pages, MORE_PAGES_MARK] : pages
+  return `${head} · ${t('screening.reasonPages', { count: pages.length, pages: listed.join(', ') })}`
 }
 
 /**

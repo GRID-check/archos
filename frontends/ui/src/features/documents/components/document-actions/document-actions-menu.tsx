@@ -22,6 +22,7 @@ import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { DeleteDocumentDialog } from './delete-document-dialog'
 import { RenameDocumentDialog } from './rename-document-dialog'
 import {
   documentActionEntries,
@@ -170,18 +171,11 @@ export function useDocumentActionMenu({
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'delete') && (
-        <ConfirmDialog
+        <DeleteDocumentDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title={t('delete.title', { name: documentActions.name })}
-          description={t('delete.confirm')}
-          confirmLabel={documentActions.isDeleting ? t('delete.deleting') : t('delete.confirmAction')}
-          cancelLabel={t('delete.cancel')}
-          pending={documentActions.isDeleting}
-          confirmTestId="document-delete-confirm"
-          onConfirm={async () => {
-            if (await documentActions.remove()) setDeleteOpen(false)
-          }}
+          scope={scope}
+          actions={documentActions}
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'reingest') && (

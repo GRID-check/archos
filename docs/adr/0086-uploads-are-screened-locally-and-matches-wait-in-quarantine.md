@@ -156,7 +156,7 @@ German, and explains each verdict.
   `POST /api/documents/{id}/quarantine/request-release`); they get a
   `document.release_requested` inbox row naming the file. The queue links each
   project and Büroablage file to where it is filed, so a reviewer looks before
-  deciding.
+  deciding, and since 2026-10-13 decides there too (see the amendment below).
 - **What is not screened.** Files with no local text (images, scanned pages,
   plans without a text layer) pass on the name gate alone, and the upload
   summary says the content was not checked. The product owner chose this over
@@ -567,6 +567,29 @@ window in which a file nobody had screened was everybody's.
   have to choose between it and the last screened version's.
 * Bad, because a held image is previewed unoptimized, full size, through the
   presigned URL: the optimizer's route serves screened files only.
+
+## Amendment (2026-10-13): review from the preview, at every finding
+
+Two changes to where and how a reviewer decides.
+
+- **The decision is in the preview too.** The held block of the Files and
+  Büroablage preview offers „Zulassen" and „Löschen" to a reviewer, under the
+  findings and beside the document opened at the first one; the Quarantäne list
+  keeps both. Which controls show is the server's answer,
+  `GET /api/documents/{id}/quarantine` (`quarantineReviewAccess`): a reviewer
+  (`mayReviewQuarantine`) who may also write the document's folder, as release
+  requires, decides; the uploader who may not decide gets „Prüfung anfragen";
+  anyone else gets neither. The two actions still check for themselves. The
+  queue and the preview render the findings through one component
+  (`QuarantineFindings`), so both say the same thing.
+- **Every page, up to fifty.** A reason listed at most ten pages, so a finding
+  on page twelve could not be opened. The job now lists up to 50 pages per
+  reason (`MAX_REASON_PAGES`). When the stored verdict would outgrow its 2000
+  characters, `quarantine_error` cuts the last page of the reason listing the
+  most, one at a time, so every reason keeps at least its first page, and drops
+  reasons from the end only after that. A reason whose list is cut, by the cap
+  or the budget, carries `pages_truncated: true`, and the UI ends its pages with
+  „…".
 
 ## More Information
 

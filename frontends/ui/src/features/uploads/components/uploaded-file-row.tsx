@@ -15,19 +15,16 @@
  * queue and the Files preview.
  */
 
-import { useState, type JSX } from 'react'
+import type { JSX } from 'react'
 import Link from 'next/link'
-import { ShieldQuestion } from 'lucide-react'
-import { toast } from 'sonner'
 
 import type { UploadSummary, UploadSummaryDocument } from '@/adapters/api/upload-batches-client'
-import { requestQuarantineRelease } from '@/adapters/api/upload-screening-client'
-import { Button } from '@/components/ui/button'
 import { Chip } from '@/components/ui/chip'
 import { ClampedText } from '@/components/ui/clamped-text'
 import { Item, ItemContent, ItemDescription, ItemMedia } from '@/components/ui/item'
 import { DocumentStatusBadge, fileTypeIcon } from '@/features/documents/components/document-status'
 import { IngestFailureNotice } from '@/features/documents/components/ingest-failure-notice'
+import { RequestReviewButton } from '@/features/documents/components/request-review-button'
 import { useTranslations } from '@/i18n'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { describeQuarantineReason } from '@/lib/upload-screening/quarantine'
@@ -38,41 +35,13 @@ import { FacetChip, useTallyLabel } from './upload-atoms'
 const SUMMARY_LINES = 2
 
 /**
- * „Prüfung anfragen" (ADR-0086): the uploader asks the people who may review
- * and allow a file held back by the content check to look at it. Only the uploader opens an upload summary,
- * so whoever sees the button may press it. Once sent, it says so and rests: a
- * second press would only fold into the same inbox row.
+ * „Prüfung anfragen" (ADR-0086), the button the Files preview shows too. Only
+ * the uploader opens an upload summary, so whoever sees it may press it.
  */
 function RequestReleaseButton({ documentId, name }: { documentId: string; name: string }): JSX.Element {
-  const t = useTranslations('uploadBatches')
-  const [state, setState] = useState<'idle' | 'sending' | 'sent'>('idle')
-
-  const ask = async (): Promise<void> => {
-    setState('sending')
-    try {
-      const { notified } = await requestQuarantineRelease(documentId)
-      setState('sent')
-      if (notified > 0) toast.success(t('summary.files.releaseRequestedToast', { name }))
-      else toast.info(t('summary.files.releaseRequestNobody', { name }))
-    } catch {
-      setState('idle')
-      toast.error(t('summary.files.releaseRequestError'))
-    }
-  }
-
   return (
     <div>
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={state !== 'idle'}
-        loading={state === 'sending'}
-        onClick={() => void ask()}
-        data-testid={`upload-file-request-release-${documentId}`}
-      >
-        <ShieldQuestion className="size-4" aria-hidden />
-        {state === 'sent' ? t('summary.files.releaseRequested') : t('summary.files.requestRelease')}
-      </Button>
+      <RequestReviewButton documentId={documentId} name={name} testId={`upload-file-request-release-${documentId}`} />
     </div>
   )
 }

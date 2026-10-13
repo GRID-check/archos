@@ -69,10 +69,10 @@ import { getByPath } from '@/i18n/translate'
 import {
   DOCUMENT_STATUS_FACTS,
   IN_FLIGHT_DOCUMENT_STATUSES,
-  KNOWN_DOCUMENT_STATUSES,
   documentStatusFacts,
   isKnownDocumentStatus,
 } from './document-status'
+import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surface-state'
 
 /**
  * The modules that WRITE `documents.status` — the documents domain and the two
@@ -166,6 +166,11 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   // The wire projection: the row's own status copied into the JSON the browser
   // reads. It writes a response body, never the column.
   'src/lib/documents/list-projection.ts: row.status': 'a row being serialized, not a write',
+  // The retry rule's refusal (migration 0134): the failed row's status echoed
+  // in the 409 payload, returned to the caller. Nothing is written.
+  'src/lib/documents/service.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
+  // The shelf listing handing a row to the retry rule (`canRetryRow`), a read.
+  'src/lib/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
   // Shorthand `{ status }` in a service's RETURN value — the dispatcher's job
   // status on its way back to the caller. Shorthand is worth listing separately
   // from the rest: the name is all there is, so even the expression a reader
@@ -484,7 +489,7 @@ describe('uploaded is terminal and neutral', () => {
     // for documents no retrieval path could cite.
     expect(DOCUMENT_STATUS_FACTS.uploaded.variant).toBe('secondary')
     expect(DOCUMENT_STATUS_FACTS.uploaded.phase).toBe('terminal')
-    expect(DOCUMENT_STATUS_FACTS.uploaded.labelKey).toBe('status.stored')
+    expect(surfaceStateOf('uploaded')).toBe('stored')
     expect(IN_FLIGHT_DOCUMENT_STATUSES.has('uploaded')).toBe(false)
   })
 })
@@ -506,12 +511,12 @@ describe('the declaration answers about values, not about prototypes', () => {
   })
 })
 
-describe('every declared status has a label in both locales', () => {
-  // `documentStatusLabel` calls `t(facts.labelKey)` with a value from the data
-  // above, so the key never appears as a literal in a component and the
-  // key-coverage scanner cannot see it. This is that check, for this table.
-  it.each(KNOWN_DOCUMENT_STATUSES)('%s', (status) => {
-    const key = DOCUMENT_STATUS_FACTS[status].labelKey
+describe('every surface state has a label in both locales', () => {
+  // `surfaceStateLabel` builds the key from the state, so the key never
+  // appears as a literal in a component and the key-coverage scanner cannot
+  // see it. This is that check, for every state a declared status reaches.
+  it.each(SURFACE_STATES)('%s', (state) => {
+    const key = SURFACE_STATE_LABEL_KEYS[state]
     expect(typeof getByPath(en.files, key), `en.files.${key}`).toBe('string')
     expect(typeof getByPath(de.files, key), `de.files.${key}`).toBe('string')
   })

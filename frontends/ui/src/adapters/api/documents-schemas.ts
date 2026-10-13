@@ -14,6 +14,17 @@ import { z } from 'zod'
 /** File processing status */
 export const DocumentFileStatusSchema = z.enum(['uploading', 'ingesting', 'success', 'failed'])
 
+/**
+ * A listed file's status: the backend's file vocabulary, plus the two states a
+ * document can rest in that it has no word for. `stored`: the bytes are kept and
+ * nothing read them. `held`: the content check stopped it (ADR-0086). The chat's
+ * first-party listing says both (`sessionDocumentToFileInfo`), so a re-list
+ * keeps them instead of turning a never-read attachment into an available one;
+ * the proxy's listing never does. Neither is `success`, which is what counts
+ * as an available source.
+ */
+export const ListedFileStatusSchema = z.enum([...DocumentFileStatusSchema.options, 'stored', 'held'])
+
 /** Ingestion job state */
 export const JobStateSchema = z.enum(['pending', 'processing', 'completed', 'failed'])
 
@@ -42,7 +53,7 @@ export const FileInfoSchema = z.object({
   file_id: z.string(),
   file_name: z.string(),
   collection_name: z.string(),
-  status: DocumentFileStatusSchema,
+  status: ListedFileStatusSchema,
   file_size: z.number().nullable().optional(),
   chunk_count: z.number(),
   uploaded_at: z.string().nullable().optional(),
@@ -99,6 +110,7 @@ export const IngestionJobStatusSchema = z.object({
 // ============================================================================
 
 export type DocumentFileStatus = z.infer<typeof DocumentFileStatusSchema>
+export type ListedFileStatus = z.infer<typeof ListedFileStatusSchema>
 export type JobState = z.infer<typeof JobStateSchema>
 export type CollectionInfo = z.infer<typeof CollectionInfoSchema>
 export type FileInfo = z.infer<typeof FileInfoSchema>

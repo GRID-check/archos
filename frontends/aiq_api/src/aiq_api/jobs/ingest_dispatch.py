@@ -43,7 +43,9 @@ from aiq_agent.knowledge import ingest_queue
 from aiq_agent.knowledge import ingest_status_store
 from aiq_agent.knowledge.base import BaseIngestor
 from aiq_agent.knowledge.base import PreparedIngestJob
+from aiq_agent.knowledge.ingest_failures import classify_failure
 from aiq_agent.knowledge.ingest_scheduler import per_org_cap_from_env
+from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 
@@ -488,11 +490,34 @@ class QueueSource:
         ingest_queue.mark_dead(job_id, f"unreadable_payload: {reason}")
         status = ingest_status_store.get(job_id)
         if status is not None and status.status in (JobState.PENDING, JobState.PROCESSING):
-            failed = ingest_status_store.interrupted(status)
-            failed.error_message = (
-                "unreadable_job: the queued ingestion job could not be read; retry to index this file"
-            )
-            ingest_status_store.put(failed)
+            ingest_status_store.put(unreadable_job_failure(status))
+
+
+#: Why a job whose queued payload could not be read ended. A machine prefix the
+#: UI maps to its own sentence (`ingest-failure.ts`): reading never started.
+UNREADABLE_JOB_MESSAGE = "unreadable_job: the queued ingestion job could not be read; retry to index this file"
+
+
+def unreadable_job_failure(status: IngestionJobStatus) -> IngestionJobStatus:
+    """``status`` failed because its payload could not be read: the job and every file it left unfinished.
+
+    ``interrupted`` settles the unfinished files, but with its own reason, the
+    restart. The BFF reads a single-file job's reason off the file before the
+    job, so the files must carry this reason too, or the reader is told the
+    service restarted when it did not.
+    """
+    failed = ingest_status_store.interrupted(status)
+    failed.error_message = UNREADABLE_JOB_MESSAGE
+    verdict = classify_failure(UNREADABLE_JOB_MESSAGE)
+    failed.metadata = {**failed.metadata, "failure_reason": "unreadable_job", "retryable": verdict.retryable}
+    # By position: `interrupted` copies the details in order, and a file id may be empty.
+    for before, detail in zip(status.file_details, failed.file_details, strict=True):
+        if before.status in (FileStatus.SUCCESS, FileStatus.FAILED):
+            continue
+        detail.error_message = UNREADABLE_JOB_MESSAGE
+        detail.failure_category = verdict.category
+        detail.retryable = verdict.retryable
+    return failed
 
 
 #: Dead rows are looked for this often per process, not on every poll.

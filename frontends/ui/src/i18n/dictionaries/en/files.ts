@@ -27,6 +27,11 @@ export const files = {
       mixed: '{ready} added · {failed} failed',
       failedOne: '1 document could not be added',
       failedOther: '{count} documents could not be added',
+      // Held back by the content check (ADR-0086): not a failure, nothing to
+      // retry. Never "release", which collides with approving a revision.
+      heldOne: '1 document held back',
+      heldOther: '{count} documents held back',
+      mixedHeld: '{ready} added · {held} held back',
       canceled: 'Upload canceled',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files = {
       processing: 'Reading',
       ready: 'Citable',
       unchanged: 'Unchanged – already here',
+      // The content check matched; what it found is listed beneath the row.
+      held: 'Held back',
+      // Kept, never read: neither a success nor a failure (as `status.stored`).
+      stored: 'Filed',
       canceled: 'Canceled',
       failed: 'Failed',
     },
@@ -72,7 +81,7 @@ export const files = {
     stored: 'Filed',
     // The content check (ADR-0086) matched: the file is in the project, no
     // model has seen it, and someone has to decide.
-    quarantined: 'Quarantined',
+    quarantined: 'Held back',
     unknown: 'Unknown',
     // Only the office's own uploads: inside one office the queue reads in
     // order, across offices it takes turns (ADR-0076).
@@ -318,9 +327,11 @@ export const files = {
     downloadFailed: "The download couldn't be started. Please try again.",
     ingestionFailed: 'Reading failed',
     heldTitle: 'Held back by the content check',
+    heldDecided: 'Someone has already decided about this file.',
     ingestionFailedPreviousVersionKept:
       'Search and Piloti still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
+    retryWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     retryingIngestion: 'Retrying…',
     retryIngestionError: "Reading couldn't be restarted. Please try again.",
     dialogLabel: 'File preview: {name}',
@@ -396,6 +407,7 @@ export const files = {
     findingsLabel: 'Where the content check found it',
     findingPage: 'p. {page}',
     showFinding: 'Show the finding on page {page}',
+    morePages: 'Found on further pages too',
   },
   browser: {
     folderEmptyTitle: 'This folder is empty',
@@ -606,6 +618,7 @@ export const files = {
     reingesting: 'Retrying…',
     reingestRunning: 'Already being read',
     reingestAlreadyDone: 'Already finished',
+    reingestWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     reingestConfirmTitle: 'Read “{name}” again?',
     reingestConfirmDescription:
       'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
@@ -900,6 +913,8 @@ export const files = {
     someUploadsFailed:
       '{failed} of {total} documents could not be uploaded. First reason: {reason}',
     uploadingSkipped: 'Uploading {uploading} {fileLabel}, skipped {skipped} ({summary})',
+    quarantinedReplace:
+      '“{name}” would replace a file waiting in quarantine. Delete that file or have it allowed through, then upload the new one.',
     cannotRetryServerFile: 'Cannot retry server-loaded files. Please upload the file again.',
     imageVlmUnavailable:
       'Images cannot be uploaded here: this deployment has no image recognition set up.',

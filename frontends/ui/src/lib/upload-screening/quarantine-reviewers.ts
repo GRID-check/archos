@@ -30,6 +30,7 @@ import {
   type ScreeningFacts,
   type ShelfReader,
 } from '@/lib/documents/document-reader'
+import { QUARANTINED_REPLACE_REASON } from './quarantine'
 
 type ReviewedDocument = Pick<Document, 'scope' | 'projectId' | 'folderId'>
 
@@ -75,9 +76,6 @@ export async function shelfReaderFor(
 ): Promise<ShelfReader> {
   return (await mayReviewQuarantine(session, { ...place, folderId: null })) ? REVIEWER_READER : memberReader(session.userId)
 }
-
-/** `details.reason` of the 409 a re-upload onto one's own quarantined file answers. */
-export const QUARANTINED_REPLACE_REASON = 'quarantined'
 
 /** The row a re-upload would replace, as `findLiveDocumentByFilename` reads it. */
 type SupersededDocument = ReviewedDocument & ScreeningFacts & Pick<Document, 'createdBy'>
