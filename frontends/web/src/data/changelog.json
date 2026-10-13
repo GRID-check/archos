@@ -67,6 +67,10 @@
               "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
             },
             {
+              "en": "Scheduled and delegated work now acts with the rights of the person who commissioned it, so Piloti can file drafts and propose changes to files while the work runs. If that person leaves the office or loses access to the project, their running work stops acting for them.",
+              "de": "Geplante und delegierte Aufgaben werden nun mit den Berechtigungen der Person ausgeführt, die sie beauftragt hat. So kann Piloti während der Ausführung Entwürfe ablegen und Änderungen an Dateien vorschlagen. Verlässt diese Person das Büro oder verliert sie den Zugriff auf das Projekt, werden laufende Aufgaben nicht mehr in ihrem Namen ausgeführt."
+            },
+            {
               "en": "The chat card shows each annotation as it stands now, and each change Piloti made to one, including an annotation it set for you and a reply it wrote for you, can be undone from there while nobody has changed it or answered in its thread since.",
               "de": "Die Chat-Karte zeigt jede Anmerkung in ihrem aktuellen Stand und alle Änderungen, die Piloti daran vorgenommen hat. Auch eine von Piloti für Sie gesetzte Anmerkung und eine für Sie verfasste Antwort können Sie dort rückgängig machen, solange niemand die Anmerkung geändert oder in ihrem Thread geantwortet hat."
             },

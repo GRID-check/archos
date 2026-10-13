@@ -2104,6 +2104,10 @@
     "de": "Karten von Zeitplänen zeigen jetzt den Auftrag mit eigenen Worten statt des verwendeten Skills, und Sie können einen Zeitplan wieder löschen."
   },
   {
+    "en": "Scheduled and delegated work now acts with the rights of the person who commissioned it, so Piloti can file drafts and propose changes to files while the work runs. If that person leaves the office or loses access to the project, their running work stops acting for them.",
+    "de": "Geplante und delegierte Aufgaben werden nun mit den Berechtigungen der Person ausgeführt, die sie beauftragt hat. So kann Piloti während der Ausführung Entwürfe ablegen und Änderungen an Dateien vorschlagen. Verlässt diese Person das Büro oder verliert sie den Zugriff auf das Projekt, werden laufende Aufgaben nicht mehr in ihrem Namen ausgeführt."
+  },
+  {
     "en": "Scheduled research reports are filed into the project again in offices where this feature is enabled for them; they had been held back.",
     "de": "Geplante Recherche-Berichte werden in Büros, für die diese Funktion aktiviert ist, wieder im Projekt abgelegt; sie waren zurückgehalten worden."
   },
