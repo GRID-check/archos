@@ -253,7 +253,10 @@ Slices, each shippable on its own:
    published Piloti report shown as unindexed).
 2. The compare over the layers above (`list_files(compare_to=…)`), for
    Fassungen under different names.
-3. The closed reading status with its CHECK.
+3. The closed reading status with its CHECK, over today's seven spellings on
+   `documents.status` (`uploaded`, `pending`, `processing`, `completed`,
+   `failed`, `quarantined`, `stored`). The names in rule 8 arrive with slice 4,
+   when the status moves onto the Fassung, so the column is renamed once.
 4. `fassungen` and `fassung_reviews` from `document_versions`; the item drops its
    mirrored byte columns; the synthetic approval on uploads goes.
 5. The index keyed by Fassung; the backfill; search filters to current.
