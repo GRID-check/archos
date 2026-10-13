@@ -93,12 +93,16 @@ def test_copy_carries_every_point_into_another_shard_count(store):
 
 def test_switch_serves_the_new_collection_and_switching_back_is_the_rollback(store):
     records = _records(12)
+    # One word only the target holds: every other text is the same three words,
+    # a BM25 tie whose order follows the shard layout, so a shared term let a
+    # dense runner-up win the fusion on the 2-shard copy.
+    records[0].text = "Sprinkleranlage Treppenhaus Abschnitt 0"
     store.upsert("proj_rebuild", records)
     alias = schema.ALIASES[schema.Physical.OFFICE]
     rebuild.copy_collection(store.client, schema.Physical.OFFICE, alias + "_v2", shards=2)
 
     previous = rebuild.switch_alias(store.client, schema.Physical.OFFICE, alias + "_v2")
-    hits = hybrid_search(store, ["proj_rebuild"], vector=records[0].embedding, lexical_text="Treppenhaus", limit=3)
+    hits = hybrid_search(store, ["proj_rebuild"], vector=records[0].embedding, lexical_text="Sprinkleranlage", limit=3)
 
     assert previous == alias + schema.FIRST_VERSION
     assert rebuild.current_collection(store.client, schema.Physical.OFFICE) == alias + "_v2"
