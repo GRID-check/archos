@@ -315,7 +315,7 @@ directory and cannot file; the tool says so.
   `revision`. The two engines exist; their Markdown output files as a draft
   version through §2 instead of a transient panel. A scheduled deep-research
   report files the same way, so one producer serves both.
-- **Talk to a document.** "Besprechen" on a document, on the report card and
+- **Talk to a document.** „Mit Piloti besprechen" on a document, on the report card and
   in the inbox item opens a conversation with `subject_resource = document`
   (already supported). For a published version the turn retrieves its
   chunks. For a draft or in-review version, which has no chunks, the turn

@@ -13,7 +13,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, typ
 import { usePathname } from 'next/navigation'
 import { usePanelRef } from 'react-resizable-panels'
 import { AlertCircle, Download, FileText, Maximize2, PanelRight, X } from 'lucide-react'
-import { useLocale, useTranslations } from '@/i18n'
+import { useTranslations } from '@/i18n'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { cn } from '@/lib/utils'
@@ -21,8 +21,7 @@ import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { Spinner } from '@/components/ui/spinner'
 import { ButtonGroup } from '@/components/ui/button-group'
 import { ToolbarIconButton } from '@/components/ui/floating-toolbar'
-import { formatBytes } from '@/lib/format'
-import { fileFormatMessage } from '../document-kind'
+import { useFileFacts } from '../hooks/use-file-facts'
 import { FileExtChip } from './file-ext-chip'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useSettlingRefresh } from '../hooks/use-settling-refresh'
@@ -675,27 +674,6 @@ function dismissPeek(hide: () => void): void {
   requestAnimationFrame(() => {
     document.querySelector<HTMLElement>('[data-testid="composer-show-file"]')?.focus()
   })
-}
-
-/**
- * What the file IS, in one quiet line under its name: "PDF · 12 Seiten ·
- * 2,4 MB". The name alone left the reader to infer the format from a suffix
- * the truncation had usually eaten, and the length of the document — the first
- * thing anyone wants to know before asking about it — appeared nowhere in the
- * peek. A page count is left out for images and models, where it means nothing.
- */
-function useFileFacts(file: FileItem): string {
-  const t = useTranslations('files')
-  const { locale } = useLocale()
-  const format = fileFormatMessage(file)
-  const paged = format?.key !== 'image' && format?.key !== 'ifc'
-  const facts: string[] = []
-  if (format) facts.push(t(`preview.formats.${format.key}`, format.values))
-  if (paged && file.pageCount && file.pageCount > 0) {
-    facts.push(t('preview.pageCount', { count: file.pageCount }))
-  }
-  if (file.fileSize && file.fileSize > 0) facts.push(formatBytes(file.fileSize, locale))
-  return facts.join(' · ')
 }
 
 /**

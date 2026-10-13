@@ -113,8 +113,6 @@ export const files: typeof en.files = {
     properties: 'Eigenschaften',
     summaryMore: 'Vollständige Zusammenfassung',
     summaryLess: 'Weniger anzeigen',
-    type: 'Typ',
-    size: 'Größe',
     originPath: 'Herkunft',
     originPathCopied: 'Pfad kopiert',
     originPathCopyFailed: 'Pfad konnte nicht kopiert werden',
@@ -206,8 +204,6 @@ export const files: typeof en.files = {
     indexed: {
       title: 'Von Piloti gelesen',
       documentType: 'Dokumenttyp',
-      project: 'Projekt',
-      updated: 'Aktualisiert',
       pending: 'Piloti liest das Dokument noch – Zusammenfassung und Merkmale erscheinen hier, sobald es fertig ist.',
     },
     contentTypeNames: {
@@ -218,12 +214,34 @@ export const files: typeof en.files = {
       drawing: 'Zeichnungen',
     },
     visualDetails: {
-      title: 'Detaillierte Informationen',
+      title: 'Auf den Seiten',
       loading: 'Beschreibungen werden geladen …',
-      empty: 'Keine visuellen Beschreibungen verfügbar.',
       failed: 'Die Beschreibungen konnten nicht geladen werden.',
       page: 'Seite {page}',
       scale: 'Maßstab {scale}',
+      pageShort: 'S. {page}',
+      showPage: 'Seite {page} im Dokument zeigen',
+      showAll: 'Alle {count} zeigen',
+      showFewer: 'Weniger zeigen',
+      // The drawing types the vision pass names. A type not listed here is
+      // humanized from its key, like the structured vocabulary below.
+      segmentTypes: {
+        floor_plan: 'Grundriss',
+        section: 'Schnitt',
+        elevation: 'Ansicht',
+        detail: 'Detail',
+        site_plan: 'Lageplan',
+        perspective: 'Perspektive',
+        axonometric: 'Axonometrie',
+        drawing: 'Technische Zeichnung',
+        map: 'Karte',
+        photo: 'Foto oder Rendering',
+        diagram: 'Diagramm',
+        table: 'Tabelle',
+        legend: 'Legende',
+        screenshot: 'Bildschirmfoto',
+        other: 'Sonstiges',
+      },
       structured: {
         toggle: 'Strukturierte Daten',
         composition: 'Bauteilaufbau {component}',
@@ -272,7 +290,6 @@ export const files: typeof en.files = {
         },
       },
     },
-    unknownType: 'Unbekannt',
     // Die Typ-Zeile nennt das Format, nie den MIME-Typ (der steht im Tooltip).
     formats: {
       pdf: 'PDF',
@@ -1261,7 +1278,9 @@ export const files: typeof en.files = {
     // und Posteingang. Vorher hieß derselbe Knopf „Piloti dazu fragen“ und war
     // ausgerechnet bei Entwürfen ausgegraut — genau den Dokumenten, über die man
     // sprechen will. Piloti kann jetzt auch eine unveröffentlichte Fassung lesen.
-    discuss: 'Besprechen',
+    // „Besprechen“ allein sagte nicht, MIT WEM: neben „Kollegin fragen“ las es
+    // sich wie eine Besprechung im Team. Der Name steht deshalb im Knopf.
+    discuss: 'Mit Piloti besprechen',
     askColleague: 'Kollegin fragen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',
