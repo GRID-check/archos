@@ -307,7 +307,7 @@ then the rest of the last one's tie group. A point written before the field
 existed has no value and `order_by` would skip it, so a set holding one (or a
 collection without the index) is ordered client-side from `page_label`, which
 the field is derived from. `ensure_collection` adds the missing index on the
-next write; the backfill rewrites the payloads.
+next write; the import from Chroma rewrites the payloads of the points it carries.
 
 **Listing and facets.** `facet(key: doc_class | project_id | tags, filter:
 scope)` returns the counts. The file list itself stays a Postgres read, because
@@ -571,20 +571,32 @@ Open questions the spike answers:
 
 ## 11. Migration: copy, don't re-index
 
-Chroma holds the ids, the 3072-d embeddings, the chunk text and the metadata.
-The backfill pages through each collection, as
-`scripts/backfill_chunk_text.py` already does, and inserts what Qdrant lacks
-(insert-only, so a point ingestion wrote keeps its ids; §12). Each
-record is enriched with what the collection name only implied, read from
-`grid_app`:
+Chroma holds the ids, the 3072-d embeddings, the chunk text and the metadata,
+so the move copies them and re-parses, describes and embeds nothing; Qdrant
+computes the lexical sparse vector from `text` at upsert. The copy is two
+programs that share a file format and nothing else, so no Chroma code stays
+in the product (ADR-0104):
 
-- collection → `office_id`, `project_id`, `folder_id`, `restriction_id`,
-  `conversation_id`
-- `file_name` → `document_id`, `document_version_id`
-- the current tags, `doc_class`, `superseded`, and project status and facts
+- **The exporter**, `deploy/migration/chroma_export.py`, runs beside Chroma in
+  a throwaway Python container with `chromadb` pinned to the server's version
+  (the `chromadb/chroma` image has no Python). It reads every collection in
+  pages, from a copy of the persist directory or from the running server, and
+  writes `piloti-vectors/1`: a manifest (count, dimension, the collection's
+  metadata with its embedder fingerprint, an order-independent digest of the
+  ids) and gzipped JSON-lines batches of id, float32 vector, text and metadata.
+- **The importer**, `qdrant/import_vectors.py` and `scripts/import_vectors.py`,
+  reads that format into Qdrant through `QdrantStore.upsert(insert_only=True)`,
+  so a re-run inserts only what is missing and a point ingestion already wrote
+  keeps its ids (§12). It refuses a collection whose fingerprint differs from
+  the Qdrant collection's before writing anything, merges the person-set facts
+  from `grid_app`, compares the id sets (`--verify`), and deletes what the
+  export lacks (`--prune`).
 
-It makes no re-parse, no VLM call and no embedding call. The lexical sparse
-vector is computed by Qdrant from `text` at upsert.
+What the export cannot carry stays as it was for the backfill before it: each
+point gets the ids its collection name implies (the Büroablage's office), and
+the BFF's facts sync fills the project facts. The format and both commands:
+[`deploy/migration/README.md`](../../deploy/migration/README.md); the
+procedure: [runbook, Migrating from Chroma](../deployment/qdrant-runbook.md#migrating-from-chroma).
 
 Rollout, each step behind a flag:
 
@@ -614,7 +626,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Retrieval, exact search (`find_text`) and the health check reading Qdrant under `AIQ_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
 | Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded | `qdrant/mirror.py`, wired beside each Postgres text-mirror call in the adapter |
 | Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
-| Backfill with `--prune`, `--verify`, `--facts-only`, `--dry-run` | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` |
+| The move off Chroma: an exporter in its own environment writing the neutral format `piloti-vectors/1`, and an importer with `--prune`, `--verify`, `--verify-only`, `--dry-run` (it replaced the backfill that read Chroma directly) | `deploy/migration/chroma_export.py`; `qdrant/import_vectors.py`, `scripts/import_vectors.py` |
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
@@ -639,7 +651,7 @@ index changes went in place.
 | The `text` index used the `multilingual` tokenizer, which drops digits: phrase counts for "5.1.1", "43", "§ 3" were 0, "Abs. 2" ignored its number, and `selective_terms` dropped every numeric exact term the Chroma `$contains` channel served | `word` tokenizer (`schema.TEXT_INDEX`), verified on 1.19.2: "5.1.1", "43", "OIB-Richtlinie 2", "Abs. 2" match exactly, and "Größe", "GRÖSSE", "grosse" stay one token. `§` references go through the `paragraph_refs` keyword field (`search.exact_term`), since every tokenizer drops the `§`. `ensure_payload_indexes` logs an ERROR when an existing text index was built otherwise, naming the rebuild path (new `_vN`, copy, alias switch) | `qdrant/schema.py`, `search.py`, `payload.paragraph_refs` |
 | Under `qdrant`, a delete took Chroma first; a Qdrant failure then left deleted, retired or quarantined (ADR-0086) chunks answering every search, and its raise skipped the Chroma-side cleanup | `mirror.ordered_delete`: under `qdrant`, Qdrant first, and a failure deletes nothing anywhere (the caller's retry starts over); under `dual`, Chroma first and the mirror best effort; the metadata row, the lexical mirror and the version bump always run after it. A retried `delete_file` that finds no Chroma chunks deletes Qdrant's by every stored spelling (`tmp…_`, percent-encoded) the adapter's own rule accepts | `adapter.py` (`delete_file`, `_retire_previous_version`, `_retire_held_predecessor`, `_discard_partial_version`, `delete_collection`), `mirror.py` |
 | `write_consistency_factor` equalled RF, so one peer down failed writes to most shards | Consistency 1, and transient write failures retried in the store (§9) | `schema.WRITE_CONSISTENCY_FACTOR`, `store.with_retry` |
-| The backfill pruned a file ingested between its two reads, stripped `office_id`/`project_id`/`grid_document_id` from points ingestion wrote, never visited a scope Chroma had dropped, and `--verify` compared counts only | Prune reads Qdrant's ids before Chroma's; the copy is insert-only (Qdrant 1.17 `update_mode`) and merges only the chunk's own fields onto existing points, then merges the facts; scopes are enumerated from Qdrant too (facet on `scope`) and `--prune` deletes those Chroma lacks; `--verify` compares the id sets (whole up to 200k chunks, sampled both ways above) | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` |
+| The backfill pruned a file ingested between its two reads, stripped `office_id`/`project_id`/`grid_document_id` from points ingestion wrote, never visited a scope Chroma had dropped, and `--verify` compared counts only | Prune reads Qdrant's ids before Chroma's; the copy is insert-only (Qdrant 1.17 `update_mode`) and merges only the chunk's own fields onto existing points, then merges the facts; scopes are enumerated from Qdrant too (facet on `scope`) and `--prune` deletes those Chroma lacks; `--verify` compares the id sets (whole up to 200k chunks, sampled both ways above) | Then `qdrant/backfill.py`; now `qdrant/import_vectors.py` and `scripts/import_vectors.py`, which keep every fix but the read order: an export does not change under the importer |
 | A writer dying between `create_collection` and the alias wedged every later writer on the conflict, and the loser of a create race raised | A conflict finishes the collection: indexes added, alias made if missing; two writers finishing it at once agree | `schema._create_or_adopt` |
 | `find_text` scrolled the whole scope (20k chunks: about 79 requests, 29 MB) | Narrowed on the server by the words every match of the pattern must hold as whole tokens; the regex still decides. A pattern without such a word (one word over three characters, which matches inside longer words) reads the whole scope as before | `retrieval.literal_tokens`, `find_text` |
 | `coerce_field("superseded", "false")` was True; a one-file fact refresh loaded every document of the scope; a folder rename sent one request per file; a cleared Dokumentart stayed on the points | String booleans read for what they say; `get_documents(collection, names)` reads only the named rows; payload updates go in batches of 128, a folder move copies only the folder of the moved files; clearing a stored class puts back the chunk's own (`chunk_doc_class`, written at ingest), which is also what a hit's metadata now carries, as on Chroma | `payload.py`, `mirror.refresh_facts`, `store.set_file_payloads`, `DocumentMetadataStore.get_many` |
@@ -652,7 +664,7 @@ index changes went in place.
   collection name (`proj_…`, `<proj>_r…`, `s_…`), so the BFF contract, the
   signed envelope and restricted-folder placement (ADR-0087) are unchanged.
   `office_id`, `project_id` and `grid_document_id` are on every point written
-  through ingestion, but the backfill only knows the ones a collection name
+  through ingestion, but the import from Chroma only knows the ones a collection name
   carries (the Büroablage's office). Moving the envelope to ids, and
   restriction to a `restriction_id` field, is slice 2.
 * **Chroma stays the write-side record.** Its ids decide version retirement
@@ -684,7 +696,7 @@ index changes went in place.
   crosses the `/` boundary (`Brandschutz` matches `Brandschutzkonzepte`), so
   it would need a folded copy of the path and two conditions. Points written
   before the field existed carry no ancestors, and a folder search misses them
-  until `scripts/backfill_qdrant.py --facts-only` has run.
+  until the import from Chroma (`scripts/import_vectors.py`, which merges every file's facts) has run.
 * **A cleared Dokumentart is mirrored only on points that kept the chunk's
   own.** Points carry `chunk_doc_class`, the class ingestion stamped on the
   chunk, and clearing the stored class puts it back (or removes the field
@@ -751,9 +763,10 @@ index changes went in place.
 
 ### Next
 
-1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
-   `scripts/backfill_qdrant.py --prune --verify` until every collection is in
-   step, run the gates in §10, then `vectorBackend=qdrant`.
+1. Each environment: `qdrantEnabled`, deploy, export from Chroma and import
+   until `--verify` reports every collection in step
+   ([runbook, Migrating from Chroma](../deployment/qdrant-runbook.md#migrating-from-chroma)),
+   then run the gates in §10.
    - Before the first flip, settle the open items in
      [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
      TurboQuant oversampling (the exact-id file the Qdrant pool misses) and G1

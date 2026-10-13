@@ -30,6 +30,7 @@ Reach for the narrow task rather than the whole gate:
 | UI lint (oxlint; why not ESLint or Biome: [lint-evaluation.md](lint-evaluation.md)) | `task fe:lint` |
 | Backend lint | `task be:lint` |
 | Backend tests | `task be:test`, or `task be:test:api` for the plugin suite |
+| The Chroma exporter and the move off Chroma (`deploy/migration/`, `qdrant/import_vectors.py`) | `task be:test:migration`, in its own `chromadb` environment; nothing else imports `chromadb` ([`deploy/migration/README.md`](../../deploy/migration/README.md#tests)) |
 | Pulumi and the policy pack | `task infra:types` |
 | Astro landing site | `task web:verify` |
 

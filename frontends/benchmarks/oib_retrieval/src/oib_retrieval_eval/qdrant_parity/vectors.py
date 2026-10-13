@@ -4,7 +4,8 @@ ONE SET OF VECTORS
 ------------------
 A store comparison that embeds twice compares two embedding runs as much as two
 stores. So every text is embedded once, cached on disk keyed by model and text, and
-the same float32 array is written into Chroma and (through the backfill) into Qdrant.
+the same float32 array is written into Chroma and (through the migration's export and
+import) into Qdrant.
 
 PRODUCTION'S EMBEDDER, THROUGH PRODUCTION'S SEAM
 ------------------------------------------------

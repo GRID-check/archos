@@ -222,9 +222,10 @@ in 28 s; counts per scope and a sampled point's text identical to before.**
    ```
 
 5. Repair what the snapshot predates: writes after the snapshot are not in
-   it. Chroma is still the write-side record, so
-   `kubectl -n grid exec deploy/aiq-api -- python scripts/backfill_qdrant.py --prune --verify`
-   puts back what is missing and removes what Chroma no longer has.
+   it, and with Chroma gone no other store holds them. Documents ingested,
+   deleted or re-tagged since the snapshot must be ingested, deleted or
+   re-tagged again; their files are still in the object store. Taking a manual
+   snapshot before a risky step keeps that window short.
 
 ### Restore after losing every peer
 
@@ -239,7 +240,8 @@ restored in 12.5 s and `piloti_corpus_v1` in 7.1 s by recovering old peer
 2. For each collection, recover each old peer's latest snapshot on a
    different new peer, exactly as above. Any old snapshot may go to any new
    peer; what matters is that every old peer's snapshot is recovered once.
-3. Restore the aliases, trim replicas above RF 2, run the backfill.
+3. Restore the aliases, trim replicas above RF 2, and repair what the
+   snapshot predates (step 5 above).
 
 In the drill one shard ended with both replicas `Dead`: the host disk filled
 while the recover's transfers ran. That is the next section.
@@ -329,8 +331,9 @@ q -X POST -d '{"drop_replica":{"shard_id":3,"peer_id":<stale>}}' "$P0/collection
 ```
 
 This can leave the returning peer with fewer shards than the others;
-[move some back](#add-a-node-and-move-shards). Then run
-`backfill_qdrant.py --prune --verify` for anything that failed on every replica.
+[move some back](#add-a-node-and-move-shards). A write to the shard failed
+while every replica was down, and its file failed where a person sees it:
+retry those files.
 
 ### Peer and volume lost
 
@@ -415,20 +418,19 @@ for), copies every point with both stored vectors and its payload, and moves
 the alias in one atomic request; the old collection stays, and switching back
 is the rollback. It reads `AIQ_QDRANT_URL` and `AIQ_QDRANT_API_KEY`, which
 every backend pod has. **Drilled: `piloti_office_v1` (6 shards) → `_v2` with 3
-shards, RF 2 kept, 1,500 points in 8 s; switch, `backfill_qdrant.py --prune
---verify` in step, rollback, each instant.**
+shards, RF 2 kept, 1,500 points in 8 s; switch and rollback, each instant.**
 
 ```bash
 kubectl -n grid create job --from=cronjob/qdrant-snapshot qdrant-snapshot-pre-rebuild-$(date +%s)
 kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py office --copy-to piloti_office_v2 --shards 12
 kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py office --switch-to piloti_office_v2
-kubectl -n grid exec deploy/aiq-api -- python scripts/backfill_qdrant.py --prune --verify
 # Rollback, any time while _v1 exists:
 kubectl -n grid exec deploy/aiq-api -- python scripts/qdrant_rebuild.py office --switch-to piloti_office_v1
 ```
 
-Writes during the copy land in the old collection only; the backfill after
-the switch is what carries them over (Chroma is the write-side record). Drop
+Writes during the copy land in the old collection only, and with Chroma gone
+nothing carries them over after the switch: stop ingestion for the copy, and
+repeat any delete or fact change made while it ran. Drop
 the old collection once you are sure: `q -X DELETE $P0/collections/piloti_office_v1`.
 A copy of a large collection runs for a while: run it in a pod that survives
 your terminal (`kubectl exec` dies with it).
@@ -554,6 +556,93 @@ breaks the roll: a restarted peer sends NEW, but refuses OLD from the peers
 not yet restarted. The snapshot CronJob reads the key from the Secret at each
 run; the collector holds no key. The read-only key rotates in one deploy
 (`qdrantReadOnlyApiKey`): nothing in the backend uses it yet.
+
+## Migrating from Chroma
+
+A deployment whose vectors are still in Chroma moves them once, with the
+release that removed Chroma: export beside Chroma, import into Qdrant, no
+re-embedding. The exporter (`deploy/migration/chroma_export.py`) is the only
+Chroma code left and runs in a throwaway Python container; the importer
+(`scripts/import_vectors.py`) runs in the backend image and knows only the
+neutral file format between them. The format, every flag and why each step
+is shaped as it is: [`deploy/migration/README.md`](../../deploy/migration/README.md).
+Kubernetes runs the same two commands as Jobs, in the same order.
+
+**Drilled** (2026-10-13, Docker, no Compose stack): 2,800 chunks of 256
+dimensions written into a real `chromadb/chroma:1.5.9` server; exported from
+its stopped volume mounted read-only (persist mode) and from the running
+server (HTTP mode), each in under a second once `uv` had installed
+`chromadb`; imported with `--verify` into Qdrant 1.19.2, every collection in
+step, exit 0; the HTTP-mode export imported over it with `--prune --verify`
+in 6 s, nothing pruned, exit 0. The Compose commands below (`stop`, `run`)
+are **undrilled** as a sequence.
+
+From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-compose.yaml"`:
+
+1. **Stop every writer**, on the release that still runs Chroma. Stopping the
+   whole stack is the simple way to be sure nothing uploads, deletes or
+   re-tags while the export reads:
+
+   ```bash
+   $DC stop
+   ```
+
+2. **Export** from the Chroma volume. It is mounted read-only and copied
+   before Chroma opens it, so the export needs free space about the size of
+   the volume, beside `vector-export/`:
+
+   ```bash
+   docker volume ls --format '{{.Name}}' | grep chroma_data        # e.g. compose_chroma_data
+   docker run --rm \
+     -v compose_chroma_data:/chroma:ro \
+     -v "$PWD/../migration:/migration:ro" \
+     -v "$PWD/vector-export:/exchange" \
+     ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim \
+     uv run --script /migration/chroma_export.py --persist-dir /chroma --out /exchange/export
+   ```
+
+   It ends with `Done: N collection(s), M chunk(s)`, and
+   `vector-export/export/manifest.json` exists. Exit 1 means a collection
+   failed or changed while it was read; find the writer and run it again.
+
+3. **Upgrade** to the release with Qdrant (pull or check it out) and start
+   only what the import needs: `$DC run` starts `aiq-api`'s dependencies
+   (Qdrant, the databases), not the app tiers.
+
+4. **Import**, first as a dry run that reads and checks every batch, then for
+   real:
+
+   ```bash
+   $DC run --rm -v "$PWD/vector-export:/exchange:ro" aiq-api \
+     python scripts/import_vectors.py --in /exchange/export --dry-run
+   $DC run --rm -v "$PWD/vector-export:/exchange:ro" aiq-api \
+     python scripts/import_vectors.py --in /exchange/export --verify
+   ```
+
+   Exit 0 is every collection in step. 1 is a collection that failed or
+   differs: run it again, it inserts only what is missing. 2 is Qdrant
+   unreachable, an incomplete export (no manifest, a batch missing or not
+   matching the manifest's digest), or vectors from another embedder than
+   the Qdrant collection holds (`[refused]` names it; nothing was written).
+   If Qdrant already held points before this (a `dual` run of an earlier
+   release), add `--prune` once: it deletes what the export does not hold,
+   so never run it after uploads have restarted.
+
+5. **Start the stack**: `$DC up -d`. Answer a question that cites a project
+   document and one that cites the corpus before telling anyone it is done.
+
+**Rollback**: the Chroma volume was only ever read. Start the previous release
+again; the export and the Qdrant points can stay or go. Remove the volume
+(`docker volume rm compose_chroma_data`) only once the new release has served
+for a while.
+
+**Local development** without Compose (an embedded Chroma directory, by
+default `/tmp/chroma_data`):
+
+```bash
+uv run --script deploy/migration/chroma_export.py --persist-dir /tmp/chroma_data --out vector-export/export
+AIQ_QDRANT_URL=http://localhost:6333 .venv/bin/python scripts/import_vectors.py --in vector-export/export --verify
+```
 
 ## Flip the vector backend
 
