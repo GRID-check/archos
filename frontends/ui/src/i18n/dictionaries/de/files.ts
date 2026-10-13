@@ -29,6 +29,11 @@ export const files: typeof en.files = {
       mixed: '{ready} hinzugefügt · {failed} fehlgeschlagen',
       failedOne: '1 Dokument konnte nicht hinzugefügt werden',
       failedOther: '{count} Dokumente konnten nicht hinzugefügt werden',
+      // Von der Inhaltsprüfung zurückgehalten (ADR-0086): kein Fehler, nichts zu
+      // wiederholen. Nie „freigeben“, das Wort gehört der Freigabe einer Fassung.
+      heldOne: '1 Dokument zurückgehalten',
+      heldOther: '{count} Dokumente zurückgehalten',
+      mixedHeld: '{ready} hinzugefügt · {held} zurückgehalten',
       canceled: 'Upload abgebrochen',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files: typeof en.files = {
       processing: 'Wird gelesen',
       ready: 'Zitierbar',
       unchanged: 'Unverändert – bereits vorhanden',
+      // Die Inhaltsprüfung hat angeschlagen; darunter steht, was sie gefunden hat.
+      held: 'Zurückgehalten',
+      // Gespeichert, aber nicht gelesen: kein Erfolg, kein Fehler (wie `status.stored`).
+      stored: 'Abgelegt',
       canceled: 'Abgebrochen',
       failed: 'Fehlgeschlagen',
     },
@@ -297,6 +306,7 @@ export const files: typeof en.files = {
     downloadFailed: 'Der Download konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
     ingestionFailed: 'Lesen fehlgeschlagen',
     heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
+    heldDecided: 'Über diese Datei hat schon jemand entschieden.',
     ingestionFailedPreviousVersionKept:
       'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
@@ -360,6 +370,7 @@ export const files: typeof en.files = {
     findingsLabel: 'Fundstellen der Inhaltsprüfung',
     findingPage: 'S. {page}',
     showFinding: 'Fundstelle auf Seite {page} zeigen',
+    morePages: 'Auch auf weiteren Seiten gefunden',
   },
   browser: {
     folderEmptyTitle: 'Dieser Ordner ist leer',

@@ -83,6 +83,23 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
     'uploadBatches.summary.counts.unchanged',
   ],
 
+  /**
+   * The content check held an upload back (ADR-0086, CONTEXT.md
+   * „Zurückgehalten“): the live upload row and the chat's attachment card. The
+   * tray once said „Fehlgeschlagen“ for it and offered to retry it.
+   */
+  'upload: held back by the content check': ['files.uploads.row.held', 'research.fileSourceCard.statusHeld'],
+
+  /**
+   * The bytes are kept and nothing was read: the document's badge, the live
+   * upload row and the chat's attachment card. The tray once said „Zitierbar“.
+   */
+  'document: stored, not read': [
+    'files.status.stored',
+    'files.uploads.row.stored',
+    'research.fileSourceCard.statusStored',
+  ],
+
   /** A document's processing broke. */
   'document: processing failed': [
     'files.uploads.row.failed',

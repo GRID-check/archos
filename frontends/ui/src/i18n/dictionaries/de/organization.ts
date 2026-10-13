@@ -690,7 +690,6 @@ export const organization: typeof en.organization = {
     whereProjectUnknown: 'Ein Projekt',
     whereArchiv: 'Büroablage',
     whereSession: 'Chat-Anhang',
-    reasonsLabel: 'Gründe',
     noReason: 'Grund nicht lesbar',
     unscreened:
       'Nicht geprüft: Die Datei ließ sich nicht zu Ende lesen. Sie bleibt zurückgehalten, bis jemand sie prüft.',

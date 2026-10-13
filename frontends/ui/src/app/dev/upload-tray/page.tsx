@@ -12,6 +12,7 @@
  *   2. the backend is reading and no position exists  → sweep, elapsed, no %
  *   3. it is finished                                 → a mark, no track
  *   4. something failed                               → the reason and a retry
+ *   5. something was held back                        → what was found, no retry
  *
  * Backend-free: every fixture is a plain `TrackedFile`. Not linked from
  * anywhere and 404s outside development.
@@ -79,6 +80,24 @@ const PARTIAL: TrackedFile[] = [
     errorMessage: 'File exceeds the 100 MB upload limit',
   }),
   file({ id: 'x3', fileName: 'Fluchtwegplan_EG-2OG.pdf', fileSize: 1.2 * MB, status: 'canceled' }),
+]
+
+/**
+ * Settled with a file the content check held back (ADR-0086), and one stored
+ * and not read. Neither is a failure: no retry, no red, and the batch stays.
+ */
+const HELD: TrackedFile[] = [
+  file({ id: 'h1', fileName: 'Brandschutzkonzept_Wohnbau-Nord.pdf', fileSize: 4.8 * MB, status: 'success' }),
+  file({
+    id: 'h2',
+    fileName: 'Honorarvereinbarung_Wohnbau-Nord.pdf',
+    fileSize: 0.4 * MB,
+    status: 'held',
+    serverFileId: 'doc-h2',
+    errorMessage:
+      'quarantined:{"reasons":[{"kind":"term","term":"Honorarvereinbarung","pages":[1,3]},{"kind":"iban","sample":"AT61 •••• 1234","pages":[3]}],"checked":"full"}',
+  }),
+  file({ id: 'h3', fileName: 'Lageplan_Bestand.pdf', fileSize: 1.1 * MB, status: 'stored', serverFileId: 'doc-h3' }),
 ]
 
 const doc = (
@@ -193,6 +212,13 @@ export default function UploadTrayDevPage() {
         note="Never auto-retires. The server's own reason sits on the row that owns it, with retry beside it."
       >
         <UploadTray files={PARTIAL} onRetry={noop} onDismiss={noop} />
+      </Stage>
+
+      <Stage
+        title="5 · Held back"
+        note="The content check held one file back: warning, not red, what it found beneath the row, no retry. The batch stays until it is read."
+      >
+        <UploadTray files={HELD} onRetry={noop} onDismiss={noop} />
       </Stage>
 
       <Stage

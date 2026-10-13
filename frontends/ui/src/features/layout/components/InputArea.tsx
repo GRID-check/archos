@@ -37,6 +37,7 @@ import {
   Loader2,
   Paperclip,
   RotateCw,
+  ShieldAlert,
   Square,
   X,
   XCircle,
@@ -262,7 +263,9 @@ const FIELD_SIZING_CONTENT =
 /**
  * Inline removable file chip shown above the composer textarea. Live status:
  * spinner while uploading/ingesting, green check on success, red on failure
- * (failed chips also offer a retry). The ✕ deletes the file.
+ * (failed chips also offer a retry), a warning shield on a file the content
+ * check held back (its title says why; never a retry), a muted file glyph on
+ * one stored and not read. The ✕ deletes the file.
  *
  * A successful chip's icon+name form a button that opens the shared read-only
  * FilePreviewDialog — the primary way back to an attached file, and on mobile
@@ -287,17 +290,39 @@ const FileChip: FC<{
   const t = useTranslations('research')
   const isPending = file.status === 'uploading' || file.status === 'ingesting'
   const isFailed = file.status === 'failed'
+  // Held back by the content check (ADR-0086): a reason, not a failure, and
+  // never retried — the server refuses a re-upload onto a held file.
+  const isHeld = file.status === 'held'
+  // Kept and never read: the chat cannot answer from it, so no green check.
+  const isStored = file.status === 'stored'
   const isSuccess = file.status === 'success'
-  const ingestFailure = useIngestFailureText(isFailed && failedWhileReading(file) ? file.errorMessage : null)
+  const ingestFailure = useIngestFailureText(
+    (isFailed && failedWhileReading(file)) || isHeld ? file.errorMessage : null
+  )
   // Uploading and reading are both pending, but only one of them is an upload.
   const statusTitle = isPending
     ? t(file.status === 'ingesting' ? 'fileSourceCard.statusIngesting' : 'inputArea.fileUploadingStatus')
-    : isFailed
-      ? (ingestFailure?.sentence ?? (file.errorMessage || t('inputArea.fileFailedStatus')))
-      : t('inputArea.fileReadyStatus')
+    : isHeld
+      ? (ingestFailure?.sentence ?? t('fileSourceCard.statusHeld'))
+      : isStored
+        ? t('fileSourceCard.statusStored')
+        : isFailed
+          ? (ingestFailure?.sentence ?? (file.errorMessage || t('inputArea.fileFailedStatus')))
+          : t('inputArea.fileReadyStatus')
 
   const statusIcon = isPending ? (
     <Spinner size="xs" className="text-muted-foreground" />
+  ) : isHeld ? (
+    // A shape of its own, in the warning colour: nothing failed.
+    <>
+      <ShieldAlert className="text-warning size-3 shrink-0" aria-hidden="true" />
+      <span className="sr-only">{t('fileSourceCard.statusHeld')}</span>
+    </>
+  ) : isStored ? (
+    <>
+      <FileText className="text-muted-foreground size-3 shrink-0" aria-hidden="true" />
+      <span className="sr-only">{t('fileSourceCard.statusStored')}</span>
+    </>
   ) : isFailed ? (
     // A distinct glyph (not a bare red dot) so the failure carries a shape, not
     // color alone — plus an sr-only label so it isn't inferred only from color.

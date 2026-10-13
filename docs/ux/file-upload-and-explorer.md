@@ -45,7 +45,32 @@ The phase model:
 | `queued` | a free upload slot | no — elapsed only |
 | `uploading` | bytes leaving the machine | **yes** — real byte percentage |
 | `processing` | the backend reading and indexing | no — sweep + elapsed |
-| `ready` / `failed` / `canceled` | nothing | terminal |
+| `ready` / `held` / `stored` / `failed` / `canceled` | nothing | terminal |
+
+Two terminal phases are neither a success nor a failure:
+
+- **`held`**, „Zurückgehalten“ (“Held back”), in the warning colour: the content
+  check held the file back (ADR-0086). The row lists what was found
+  (`QuarantineFindings`, without page buttons, because the tray cannot show
+  the document). It can be dismissed and is **never** retried, not by the row
+  and not by „Fehlgeschlagene wiederholen“: a re-upload onto a held file is
+  refused (409), and nothing went wrong to repeat. A batch with a held file in
+  it does not retire itself, the header says „1 Dokument zurückgehalten“ or
+  „2 hinzugefügt · 1 zurückgehalten“, and its glyph is a warning shield unless
+  something also failed.
+- **`stored`**, „Abgelegt“ (“Filed”), muted: the bytes are kept and nothing
+  read them (the document's `uploaded` / `stored` status). Not „Zitierbar“,
+  because Piloti cannot cite it. The header counts it as added.
+
+Every path that settles a row agrees on these. The ingest job poll reads a
+`failed` file whose error starts `quarantined:` as held
+(`trackedStatusOfJobFile` in `features/documents/utils.ts`); a status read maps
+by the status's read family (`trackedPatchFromStatus`), so a `quarantined`
+document is held and an `uploaded` one stored; the upload response's
+`uploaded` is stored unless the answer is *unchanged*. The chat says the same:
+the attachment card and the composer chip show a held file with a warning
+shield and the quarantine sentence and offer no retry, and a stored one as
+„Abgelegt“, because the chat cannot answer from a file nobody read.
 
 `queued` and `uploading` are told apart by `uploadStartedAt`, not by the byte
 count: with a bounded number of slots most of a large batch is genuinely
@@ -94,7 +119,7 @@ decorated afterwards. Where each one landed:
    tells a planner whether Piloti can use the file in an answer, which is what they check first. Sizes, speeds and
    durations are formatted in the app's locale, not the runtime's.
 3. **User control and freedom.** Cancel one file, cancel the batch, retry one,
-   retry all failed, dismiss. Before this change there was **no way to cancel an
+   retry all failed, dismiss. A held file is dismissed, never retried. Before this change there was **no way to cancel an
    upload at all** — a 150 MB model uploaded by mistake had to be waited out.
 4. **Consistency and standards.** The same extension chip identifies a document
    in the tray, in the explorer list and in the preview header. Status wording
