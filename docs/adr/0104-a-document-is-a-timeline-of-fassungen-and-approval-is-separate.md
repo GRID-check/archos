@@ -81,13 +81,17 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
 
 | Noun | Table | Holds | Does not hold |
 |---|---|---|---|
-| **Dokument** | `documents` | identity, name, folder, Dokumentart, roles, shares, assignments; `current_fassung_id`; `archived_at` | bytes, reading status, screening |
-| **Fassung** | `fassungen` (evolved from `document_versions`) | one immutable set of bytes; `seq` within the document; the file name it arrived under; Stand (Index or date); origin (`upload`, `piloti`); reading status; screening verdict | approval |
-| **Freigabe** | `fassung_reviews` | one review round on one Fassung: who asked, whom, outcome (`requested`, `approved`, `changes_requested`, `rejected`), comment | the history |
+| **Dokument** | `documents` | identity, name, folder, Dokumentart, roles, shares, assignments; `current_version_id`; `archived_at` | bytes, reading status, screening |
+| **Fassung** | `document_versions` (kept, extended) | one immutable set of bytes; `seq` within the document; the file name it arrived under; Stand (Index or date); origin (`upload`, `piloti`); reading status; screening verdict | approval |
+| **Freigabe** | `document_version_reviews` | one review round on one Fassung: who asked, whom, outcome (`requested`, `approved`, `changes_requested`, `rejected`), comment | the history |
+
+Names in code are English (repository rule), so the tables keep the names
+`document_versions` and `document_version_reviews`; „Fassung“ and „Freigabe“
+are the words a reader sees.
 
 ### The rules
 
-1. **Current is a pointer, not a state.** `documents.current_fassung_id` names
+1. **Current is a pointer, not a state.** `documents.current_version_id` names
    the Fassung Piloti answers from. Older and newer are read from `seq` against
    it. There is no `superseded` state and no `superseded_by` link.
 2. **Every Fassung that is read stays in the index, keyed by its id.** Being
@@ -95,7 +99,7 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
    arrives; a `piloti` Fassung only once a person approved it (rule 4); a
    Fassung kept out on purpose stays `not_read` (rule 8). Once read, its
    chunks stay, whether or not it is current. Chunks and the
-   knowledge layer's metadata row carry `fassung_id` and `document_id`. Search
+   knowledge layer's metadata row carry `version_id` and `document_id`. Search
    filters to current Fassungen by default; naming a file or a Fassung reads an
    older one, as `read_passage` already allows. Making a Fassung current flips
    that filter, so nothing is purged or read again, and switching back is
@@ -127,9 +131,9 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
    reader who may open A. B's shares and assignments move to A. Nothing is read
    again, because chunks belong to the Fassung.
 
-   The attach writes one `fassung_attachments` row that keeps what the inverse
+   The attach writes one `document_attachments` row that keeps what the inverse
    needs: B, the Fassungen moved with their `seq` on B, B's and A's
-   `current_fassung_id` before the attach, and the shares and assignments moved
+   `current_version_id` before the attach, and the shares and assignments moved
    from B. Detaching applies that row backwards in one transaction: the
    Fassungen return to B with their old `seq`, both pointers are restored (A's
    to its own current Fassung if the one it held came from B), the moved shares
@@ -272,7 +276,8 @@ Slices, each shippable on its own:
    `documents.status` (`uploaded`, `pending`, `processing`, `completed`,
    `failed`, `quarantined`, `stored`). The names in rule 8 arrive with slice 4,
    when the status moves onto the Fassung, so the column is renamed once.
-4. `fassungen` and `fassung_reviews` from `document_versions`; the item drops its
+4. `document_versions` gains the bytes' reading status and screening, and
+   `document_version_reviews` takes the review rounds; the item drops its
    mirrored byte columns; the synthetic approval on uploads goes.
 5. The index keyed by Fassung; the backfill; search filters to current.
 6. Attach instead of link; `superseded_by` and `document_fassung_retained` go.
