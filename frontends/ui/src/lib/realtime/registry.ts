@@ -7,10 +7,12 @@
 import 'server-only'
 import type { AnyChannel } from './channel'
 import { documentChannel } from './document-channel'
+import { proposalChannel } from './proposal-channel'
 import { channelKind } from './types'
 
 export const CHANNELS: Readonly<Record<string, AnyChannel>> = {
   [documentChannel.kind]: documentChannel as AnyChannel,
+  [proposalChannel.kind]: proposalChannel as AnyChannel,
 }
 
 export interface ResolvedChannel {

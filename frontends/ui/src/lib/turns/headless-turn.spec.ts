@@ -12,7 +12,7 @@ import { describe, expect, it, vi } from 'vitest'
 import type { TurnSocket, TurnSocketOptions, TurnSocketStatus } from '@/adapters/api/turn-socket'
 import type { ClientMessage } from '@/adapters/api/wire-v2'
 import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
-import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from './headless-turn'
+import { cancelHeadlessTurn, chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from './headless-turn'
 
 const MESSAGE: HeadlessUserMessage = {
   type: 'user_message',
@@ -126,6 +126,89 @@ describe('runHeadlessTurn', () => {
     }
 
     await expect(run(server)).resolves.toEqual({ kind: 'unavailable', reason: 'socket failed' })
+  })
+})
+
+const cancel = (server: ReturnType<typeof fakeServer>, extra: { graceMs?: number } = {}) =>
+  cancelHeadlessTurn({
+    url: 'ws://aiq-agent:8000/websocket',
+    conversationId: 's_thread',
+    turnId: 'turn-1',
+    headers: { 'x-aiq-mode': 'headless' },
+    createSocket: server.createSocket,
+    graceMs: extra.graceMs ?? 5,
+  })
+
+describe('cancelHeadlessTurn', () => {
+  it('sends one cancel_turn for the turn in its conversation, and reports the stop sent when nothing refuses it', async () => {
+    const server = fakeServer([])
+    const outcome = cancel(server)
+
+    await vi.waitFor(() => expect(server.sent).toHaveLength(1))
+    expect(server.sent[0]).toEqual({ type: 'cancel_turn', conversation_id: 's_thread', turn_id: 'turn-1' })
+    expect(server.options()?.openTurns()).toEqual([])
+    await expect(outcome).resolves.toEqual({ kind: 'sent' })
+    expect(server.closed()).toBe(true)
+  })
+
+  it('reads a turn that is not running as good news, and any other refusal as one', async () => {
+    for (const [code, expected] of [
+      ['turn_not_found', { kind: 'not_running' }],
+      ['not_asker', { kind: 'rejected', code: 'not_asker', message: 'nope' }],
+    ] as const) {
+      const server = fakeServer([])
+      const outcome = cancel(server, { graceMs: 1_000 })
+      await vi.waitFor(() => expect(server.sent).toHaveLength(1))
+
+      server.frame(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'cancel_turn', code, message: 'nope' } })
+
+      await expect(outcome).resolves.toEqual(expected)
+    }
+  })
+
+  it('ignores a refusal of something else, and another turn’s frames', async () => {
+    const server = fakeServer([])
+    const outcome = cancel(server)
+    await vi.waitFor(() => expect(server.sent).toHaveLength(1))
+
+    server.frame(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'steer', code: 'turn_not_found', message: null } })
+    server.options()?.onEvent(
+      eventOf(frameOf(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'cancel_turn', code: 'not_asker', message: null } }, 'turn-2'))
+    )
+
+    await expect(outcome).resolves.toEqual({ kind: 'sent' })
+  })
+
+  it('reports the stop sent as soon as the turn ends on the socket', async () => {
+    const server = fakeServer([])
+    const outcome = cancel(server, { graceMs: 60_000 })
+    await vi.waitFor(() => expect(server.sent).toHaveLength(1))
+
+    server.frame(3, { type: 'RUN_FINISHED', outcome: 'cancelled', result: { message_id: 'answer-1', text: '' } })
+
+    await expect(outcome).resolves.toEqual({ kind: 'sent' })
+  })
+
+  it('reports a socket that never reached a server, or would not take the stop, as unavailable', async () => {
+    const failed = fakeServer([])
+    failed.createSocket = (given) => {
+      queueMicrotask(() => given.onStatus?.('failed'))
+      return { connect: async () => {}, send: () => false, accepts: () => false, reconnect: () => {}, close: () => {} }
+    }
+    await expect(cancel(failed)).resolves.toEqual({ kind: 'unavailable', reason: 'socket failed' })
+
+    const refusing = fakeServer([])
+    refusing.createSocket = (given) => ({
+      connect: async () => given.onStatus?.('open'),
+      send: () => false,
+      accepts: () => false,
+      reconnect: () => {},
+      close: () => {},
+    })
+    await expect(cancel(refusing)).resolves.toEqual({
+      kind: 'unavailable',
+      reason: 'the socket would not take the stop',
+    })
   })
 })
 

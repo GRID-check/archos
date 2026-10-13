@@ -103,6 +103,34 @@ describe('useLiveMarks', () => {
     expect(list).toHaveBeenCalledTimes(2)
   })
 
+  it('stamps the marks a burst of hints named, so a card refetches what the server records on them', async () => {
+    const channels = scriptedChannels()
+    const watching = renderHook(() => useLiveMarks('doc_1', { ...ON_SCREEN, watch: ['ann_7'] }))
+    const other = renderHook(() => useLiveMarks('doc_1', { ...ON_SCREEN, watch: ['ann_9'] }))
+    await waitFor(() => expect(watching.result.current.lookup('ann_7')).toBeDefined())
+    expect(watching.result.current.touched).toBe(0)
+
+    channels.hint('doc:doc_1')
+    channels.hint('doc:doc_1')
+    await waitFor(() => expect(watching.result.current.touched).toBe(1))
+    // A burst is one stamp, and a card watching other marks is not moved by it.
+    expect(other.result.current.touched).toBe(0)
+  })
+
+  it('stamps every mark when the channel comes back, because nothing is replayed', async () => {
+    scriptedChannels()
+    const { result, rerender } = renderHook(
+      (props: { onScreen: boolean }) => useLiveMarks('doc_1', { seen: true, onScreen: props.onScreen, watch: ['ann_9'] }),
+      { initialProps: { onScreen: true } }
+    )
+    await waitFor(() => expect(result.current.connected).toBe(true))
+    expect(result.current.touched).toBe(0)
+
+    rerender({ onScreen: false })
+    rerender({ onScreen: true })
+    await waitFor(() => expect(result.current.touched).toBeGreaterThan(0))
+  })
+
   it('lets a fresh list supersede what a write returned', async () => {
     const channels = scriptedChannels()
     const { result } = renderHook(() => useLiveMarks('doc_1', ON_SCREEN))

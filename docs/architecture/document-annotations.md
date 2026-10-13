@@ -39,7 +39,11 @@ Piloti“):
 |---|---|---|
 | `document_annotation_replies.addresses_agent` | the reply addresses Piloti: the composer's @Piloti chip, never read from the text | default false |
 | `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
-| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to (`queued`, `started`, `suppressed`, `refused`, `failed`) | a reason exactly when it started no turn; `settled_at` exactly when it left `queued`; RLS on the org and the mark's org |
+| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0138_wake_ends.sql`); RLS on the org and the mark's org |
+
+Migration `0139_piloti_changes.sql` adds the change record: every change Piloti
+applied to a mark or a thread, with the turn that made it. The chat card reads
+it, and undo runs from it (below, „In the chat“).
 
 Numbers are allocated under an advisory lock per document, so two people
 setting a mark at the same moment never share a number. Status moves are
@@ -234,7 +238,7 @@ The `user_message` carries `trigger`, `if_idle`, the mark's region with its
 [`websocket-protocol.md`](../api/websocket-protocol.md#a-turn-an-event-woke-trigger--if_idle).
 
 **What the socket answers.** `RUN_STARTED`: the job records `started` and
-detaches, the turn persists itself. `busy` (another turn of that thread runs):
+detaches, the turn persists itself, and reports how it ended (below). `busy` (another turn of that thread runs):
 the job waits without spending an attempt (`notBefore`, 15 s doubling to
 5 min, twelve times) and asks again under the same id. `duplicate_turn`: done.
 A refusal (admission, the budget): recorded as `refused`. A wrong envelope is
@@ -256,16 +260,89 @@ the browser runs nothing: the thread shows „Piloti antwortet …“ until Pilo
 reply arrives through the room, or after two minutes a quiet „Piloti antwortet
 später“.
 
+### How a woken turn ends
+
+A woken turn has an end (ADR-0106, amended by ADR-0109). When the turn's
+terminal is written, the chat socket posts its outcome once to
+`POST /api/internal/turns/outcome`
+(`frontends/ui/src/app/api/internal/turns/outcome/route.ts`). The BFF maps it to
+the wake's final word (`wakeEndOf` in `frontends/ui/src/lib/turns/outcome.ts`):
+
+- `answered` and `handed_off`: the wake is `answered`.
+- `stopped` (the turn was cancelled): the wake is `stopped`.
+- `refused` and `failed`, and a `RUN_ERROR` (it persists nothing): the wake is
+  `failed`, with the reason.
+
+The wake records `ended_at` when it reaches that word. A delegation is handed
+back when its own turn ends, whatever the end was, and only while the mark is
+still delegated by that delegation (`handBackDelegation`, a compare-and-swap on
+`delegated_at`). A person who took the mark back and delegated it again in
+between keeps the second delegation. A reply of Piloti's never hands a mark
+back.
+
+The outcome is idempotent. A turn that is not a wake (a browser's), a
+conversation that is not the wake's thread, and a wake that already ended
+settle nothing, and the response says so. A wake still `queued` does end: a
+turn that errors at once can report before the job has marked it started.
+
+### Taking a delegation back stops its turn
+
+Taking a mark back from Piloti, or resolving, dismissing or deleting the mark,
+is a person's change, and it ends what the delegation started
+(`frontends/ui/src/lib/annotations/take-back.ts`, in the change's own
+transaction):
+
+- A wake still `queued` is settled `suppressed`, with the reason `taken back`,
+  after the commit, so its job never starts a turn. The job checks again before
+  it runs, and a delegation taken back or delegated anew since it was queued runs
+  no turn.
+- A wake that started gets a `piloti_wake_stop` job, queued in the same
+  transaction, so a crash after the commit loses no stop. The job
+  (`frontends/ui/src/lib/annotations/wake-stop-job.ts`) cancels the turn on the
+  chat socket, as the person in the thread. The turn ends `cancelled` and
+  reports `stopped` itself, so the job never writes the wake. A turn that is no
+  longer running is a stop already done.
+- Piloti's own change in the asker's name stops nothing. When the delegation's
+  own turn closes the mark, that turn is finishing, not being taken back.
+
+### The thread always hears back
+
+A turn asked from a thread, whose model did not call `canvas__reply`, posts its
+answer into that thread at the end, when the turn ended `answered`
+(`src/aiq_agent/turn/annotation_reply.py`, posted by `post_fallback_reply` in
+`frontends/aiq_api/src/aiq_api/chat_socket.py`). It does so only when nothing
+Piloti did in that thread already spoke there, and only where everyone who
+opens the document reads. The reply goes through the route the tool uses, as
+the person who asked.
+
+### What the person hears
+
+The inbox hears through `frontends/ui/src/lib/annotations/attention.ts` (ADR-0035).
+An item about a mark opens the Prüfansicht at that mark (`markId` in
+`frontends/ui/src/lib/sharing/registry.ts`):
+
+| Item | When | For | Actionable |
+|---|---|---|---|
+| `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
+| `piloti.work_failed` | a delegation's turn ended `failed` | who delegated | no |
+| `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
+
+A stop makes no item, because the person stopped it. A failed mention makes
+none: only a delegation reports a failure. A `piloti.asks_you` is resolved when
+the person answers it in the thread, and for everyone when the mark is
+resolved, dismissed or deleted.
+
 ### Piloti as the delegate
 
 Work is assigned to people and delegated to agents (ADR-0105, the pattern
 Linear ships). „An Piloti delegieren“ in the thread's menu (offered while the
 switch is on, on an open mark) sets `delegated_by` and `delegated_at` and wakes
 Piloti; the mark keeps its assignee, and the thread shows „Piloti arbeitet
-daran · für Miriam“. „Von Piloti zurücknehmen“ clears it without a wake. Piloti
-hands the mark back by replying (its reply clears the delegation in the same
-statement), and resolves it only when the person who delegated asked for that;
-closing the mark ends the delegation. Piloti cannot delegate to itself.
+daran · für Miriam“. „Von Piloti zurücknehmen“ clears it without a wake, and stops the turn that
+works it (below). Piloti hands the mark back when the turn the delegation woke
+ends, never by a reply of its own, and resolves it only when the person who
+delegated asked for that; closing the mark ends the delegation. Piloti cannot
+delegate to itself.
 
 The trace carries `turn_surface` and `focus_region_viewed`
 ([`docs/observability/langfuse.md`](../observability/langfuse.md)).
@@ -276,7 +353,11 @@ Whatever Piloti did on a document in a turn comes back as one
 `canvas_activity` card ([cards.md](cards.md#current-card-types)): marks
 proposed (`proposed`) or set on request (`created`), changes (`changed`, each
 field before and after, and the note), deletions (`deleted`) and replies. It
-is the way from the chat onto the canvas and back:
+is the way from the chat onto the canvas and back. The card is a window onto
+the change record (`piloti_changes`), not a copy of it: its turn's rows are read
+when the card is first seen, and again whenever one of its marks changes, so
+every reader sees the same state. The card's own copy is only the fallback for
+an answer older than the record. Its actions:
 
 1. Each proposed mark carries „Übernehmen" and „Verwerfen". The answer goes
    through the same typed client the canvas uses, and is stored on the message
@@ -294,13 +375,33 @@ is the way from the chat onto the canvas and back:
    taken the link. Off the chat the card goes to Dateien with all three
    params.
 
-3. A change carries „Rückgängig". It PATCHes the inverse through the
-   reader's own client with `expectedStatus` = the status Piloti left, after
-   reading the mark again, so it never undoes a colleague's later move: a mark
-   that moved on shows where it stands instead. Taking a proposal over and
-   dismissing one have no way back through a person's PATCH, so they offer no
-   undo. The undo is stored per row through `useCardDecision`. A deleted mark
-   is gone with its thread; its row only says so.
+3. A change carries „Rückgängig“ while the record says it can be undone. The
+   card reads its turn's rows from `GET /api/conversations/[id]/messages/[messageId]/changes`,
+   and the button calls `POST /api/piloti-changes/[id]/undo`. The undo is a
+   compare-and-swap run as the person who clicks, through the annotations
+   service's own rules (`frontends/ui/src/lib/changes/service.ts`, the inverse
+   in `frontends/ui/src/lib/changes/undo.ts`). It runs only while the mark is
+   still as Piloti left it, so a colleague's later move is never undone: the
+   answer is `409 moved-on`, and the card says where the mark stands. Undoing a
+   change that is already undone answers `409 already-undone` and shows who did
+   it. A mark Piloti set open for the asker is taken back by deleting it, which
+   the person it was set for may do like their own mark (`mayDeleteMark`), but
+   only while nobody but Piloti has written in its thread: deleting the mark
+   would delete a colleague's answer with it. A reply Piloti posted for a person
+   is deleted the same way, while its text is still what Piloti wrote
+   (`deleteReply`). Undoing a mark Piloti proposed dismisses it, and that is
+   scored once, as the dismissal. Taking a proposal over or dismissing one has
+   no way back, as before.
+   A deleted mark is set again from what the change recorded, and resolved again
+   if it was; it comes back with a new number and without its thread. An answer
+   older than the record keeps its own copy of the
+   changes, and undo there still replays that copy after reading the mark again.
+
+   Each decision on Piloti's work also posts one `piloti-decision` score on the
+   trace of the turn that produced it (`frontends/ui/src/lib/langfuse/decision-score.ts`;
+   the catalogue is in [`langfuse.md`](../observability/langfuse.md)): a proposed
+   mark taken over (`accepted`) or dismissed (`dismissed`), and an applied change
+   undone (`undone`). The score says what was decided, never by whom.
 
 ## Known debts
 
@@ -310,3 +411,4 @@ is the way from the chat onto the canvas and back:
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.
 - The Python side posts to internal routes through several near-identical helpers.
 - A change Piloti makes and its note are two writes in one request, not one transaction (`updateAnnotationForAsker`). Every refusal the service can foresee (rights, a stale status, a full thread) comes before the change; a database failure between the two writes would still leave the change without its note.
+- The change record is a third write, after the annotations service has committed the change and its note (`recordPilotiChanges`, `frontends/ui/src/lib/changes/service.ts`). The service offers no hook into its transaction, and a failed record is logged, not thrown: the change then lands without a row, so the card cannot undo it from the record.

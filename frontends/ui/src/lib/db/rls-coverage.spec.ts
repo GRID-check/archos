@@ -150,6 +150,9 @@ const BOUNDARY_MIGRATIONS = [
   // Adds proposed_changes — a workspace change Piloti proposes and a person
   // applies (ADR-0105). Keyed by its organization AND the project's.
   '0137_proposed_changes.sql',
+  // Adds piloti_changes — every change Piloti applied, with the turn that made
+  // it (ADR-0109). Keyed by its organization AND its document's.
+  '0139_piloti_changes.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

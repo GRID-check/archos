@@ -9,6 +9,12 @@ out (``agents/piloti/conversation_register.py``). That call is presence, not
 content: it writes nothing a person reads, which is why the harness may make it
 on the model's behalf.
 
+``leave_canvas`` is also the canvas's one call at the end of the turn in the
+turn's own context, so it settles whether a thread question's answer may still
+be posted into the thread when the model did not reply there
+(:func:`aiq_agent.turn.annotation_reply.settle_thread_reply`): that verdict
+reads the turn's restricted-use state, which only this context still holds.
+
 Per-turn state in the ``ContextVar`` pattern (``src/aiq_agent/AGENTS.md``): a
 mutable record bound before the graph runs, so the tool calls, which run in
 copies of the turn's context, write into the one object the harness reads.
@@ -24,6 +30,7 @@ from dataclasses import field
 
 from aiq_agent import project_context
 from aiq_agent.observability.retrieval_trace import emit_step_span
+from aiq_agent.turn.annotation_reply import settle_thread_reply
 
 from ..documents.filing import SignedEnvelope
 from .client import LEAVE_TIMEOUT_SECONDS
@@ -70,7 +77,12 @@ def _envelope() -> SignedEnvelope | None:
 
 
 async def leave_canvas(presence: CanvasPresence | None) -> None:
-    """Take Piloti's cursor and highlights off every document this turn appeared on. Never raises."""
+    """Take Piloti's cursor and highlights off every document this turn appeared on. Never raises.
+
+    First settles the thread reply's verdict, on every turn: it costs nothing
+    and needs no presence.
+    """
+    settle_thread_reply()
     if presence is None or not presence.documents:
         return
     envelope = _envelope()

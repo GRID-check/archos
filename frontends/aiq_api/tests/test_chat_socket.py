@@ -19,12 +19,16 @@ import uuid
 from collections.abc import AsyncIterator
 from collections.abc import Callable
 from contextlib import asynccontextmanager
+from pathlib import Path
 from types import SimpleNamespace
 from typing import Any
 from unittest.mock import AsyncMock
 
+import httpx
 import pytest
 import pytest_asyncio
+from jsonschema import Draft202012Validator
+from jsonschema import FormatChecker
 from langgraph.checkpoint.base import empty_checkpoint
 from langgraph.checkpoint.memory import InMemorySaver
 from starlette.datastructures import QueryParams
@@ -54,6 +58,9 @@ from aiq_agent.common.write_fence import TurnFenced
 from aiq_agent.common.write_fence import current_write_fence
 from aiq_agent.observability.langfuse_trace_attributes import IDENTITY_ATTRIBUTES_ENV
 from aiq_agent.observability.langfuse_trace_attributes import snapshot_contributions
+from aiq_agent.turn import annotation_reply
+from aiq_agent.turn.annotation_reply import note_thread_post
+from aiq_agent.turn.annotation_reply import settle_thread_reply
 from aiq_agent.turn.response import answer_message_id
 from aiq_api import chat_socket
 from aiq_api import internal_api as chat_socket_internal
@@ -2687,3 +2694,324 @@ async def test_a_headless_socket_s_caller_skips_the_clarifier_and_says_it_is_hea
     assert code is None
     assert caller["skip_clarifier"] is True
     assert caller["headless"] is True
+
+
+# ---------------------------------------------------------------------------
+# After the terminal: the outcome a headless caller waits for (ADR-0106, ADR-0109)
+# ---------------------------------------------------------------------------
+
+OUTCOME_SCHEMA = (
+    Path(__file__).resolve().parents[3] / "frontends" / "ui" / "tests" / "fixtures" / "turn-outcome.schema.json"
+)
+HEADLESS = [(b"x-aiq-mode", b"headless")]
+WAKE = "aaaaaaaa-0000-4000-8000-000000000001"
+WAKE_2 = "aaaaaaaa-0000-4000-8000-000000000002"
+WAKE_3 = "aaaaaaaa-0000-4000-8000-000000000003"
+
+
+class _Bff(SimpleNamespace):
+    """The BFF's outcome route: every body it took, how many answer rows were written by then, and its answer."""
+
+
+@pytest.fixture
+def bff(monkeypatch, persisted) -> _Bff:
+    seen = _Bff(outcomes=[], rows_before=[], attempts=0, answer=(200, {"settled": True}))
+    real_client = httpx.AsyncClient
+
+    def reply(request: httpx.Request) -> httpx.Response:
+        if request.url.path != "/api/internal/turns/outcome":
+            return httpx.Response(404, json={})
+        seen.attempts += 1
+        assert request.headers["x-grid-internal-token"] == _SECRET
+        if isinstance(seen.answer, Exception):
+            raise seen.answer
+        seen.outcomes.append(json.loads(request.content))
+        seen.rows_before.append(len(persisted))
+        status, body = seen.answer
+        return httpx.Response(status, json=body)
+
+    def client(*args: Any, **kwargs: Any) -> httpx.AsyncClient:
+        return real_client(*args, transport=httpx.MockTransport(reply), **kwargs)
+
+    monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://frontend:3000")
+    monkeypatch.setattr(chat_socket_internal.httpx, "AsyncClient", client)
+    return seen
+
+
+@pytest.fixture(scope="module")
+def outcome_contract() -> dict[str, Draft202012Validator]:
+    schema = json.loads(OUTCOME_SCHEMA.read_text(encoding="utf-8"))
+    return {
+        name: Draft202012Validator({**schema["$defs"][name], "$defs": schema["$defs"]}, format_checker=FormatChecker())
+        for name in ("TurnOutcomeRequest", "TurnOutcomeResponse")
+    }
+
+
+async def _settle_background() -> None:
+    """Let every write after a terminal land: the row, the thread's answer, the outcome."""
+    await asyncio.gather(*chat_socket._PERSIST_TASKS, return_exceptions=True)
+
+
+async def test_a_headless_turn_reports_its_outcome_once_after_its_row_is_written(harness, bff, outcome_contract):
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, "outcome": "answered"}]
+    assert bff.rows_before == [1]  # the answer row went first
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+    outcome_contract["TurnOutcomeResponse"].validate(bff.answer[1])
+
+
+@pytest.mark.parametrize(
+    ("outcome", "text", "expected"),
+    [
+        (
+            "refused",
+            "Das Monatsbudget ist aufgebraucht.",
+            {"outcome": "refused", "reason": "Das Monatsbudget ist aufgebraucht."},
+        ),
+        ("handed_off", "", {"outcome": "handed_off"}),
+    ],
+)
+async def test_every_finished_terminal_is_reported_in_the_bff_s_words(
+    harness, bff, outcome_contract, outcome, text, expected
+):
+    async def ending(request, ask):
+        yield _finished(request, text=text, outcome=outcome)
+
+    sock = harness(ending).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, **expected}]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_stopped_headless_turn_reports_stopped(harness, bff, outcome_contract):
+    gate = Gate()
+    sock = harness(gate.turn).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: gate.calls)
+    sock.client(type="cancel_turn", turn_id=WAKE)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert sock.events(WAKE)[-1]["outcome"] == "cancelled"
+    assert bff.outcomes == [{"conversationId": CONV, "turnId": WAKE, "outcome": "stopped"}]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_failed_headless_turn_reports_failed_with_the_reader_s_words_never_the_trace(
+    harness, bff, outcome_contract, persisted
+):
+    async def failing(request, ask):
+        yield TextMessageStartBody(message_id="m")
+        raise RuntimeError('Traceback: File "/srv/secret.py", line 7, KeyError: org_42')
+
+    sock = harness(failing).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    [report] = bff.outcomes
+    assert (report["outcome"], report["turnId"]) == ("failed", WAKE)
+    assert report["reason"] == sock.events(WAKE)[-1]["message"]
+    assert "secret" not in report["reason"] and "Traceback" not in report["reason"]
+    assert persisted == []
+    outcome_contract["TurnOutcomeRequest"].validate(report)
+
+
+async def test_a_headless_turn_with_no_result_reports_failed_once(harness, bff, outcome_contract):
+    async def silent(request, ask):
+        yield TextMessageStartBody(message_id="m")
+
+    sock = harness(silent).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert [report["outcome"] for report in bff.outcomes] == ["failed"]
+    assert [event["type"] for event in sock.events(WAKE)].count("RUN_ERROR") == 1
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_headless_question_the_fence_refuses_still_reports(harness, bff, monkeypatch, outcome_contract):
+    owner, _, shared = _replicas()
+    monkeypatch.setenv("GRID_CHAT_AFFINITY", "0")
+    _bus_down(monkeypatch, shared, "set_nx", "get", "publish", "xadd")
+    sock = harness(answering, owner).connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert [(report["outcome"], report["turnId"]) for report in bff.outcomes] == [("refused", WAKE)]
+    outcome_contract["TurnOutcomeRequest"].validate(bff.outcomes[0])
+
+
+async def test_a_browser_turn_reports_nothing(harness, bff, persisted):
+    sock = harness().connect()
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert bff.outcomes == [] and bff.attempts == 0
+
+
+@pytest.mark.parametrize("answer", [httpx.ConnectError("refused"), (500, {"error": "down"})])
+async def test_a_failing_bff_neither_breaks_nor_holds_the_turn(harness, bff, persisted, answer):
+    bff.answer = answer
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id=WAKE, text="?")
+    await until(lambda: _last(sock, WAKE) == "RUN_FINISHED")
+    await _settle_background()
+
+    assert sock.events(WAKE)[-1]["outcome"] == "answered"
+    assert persisted and persisted[0]["text"] == "Antwort [1]."
+    assert bff.attempts == 3  # retried briefly, then given up on and logged
+
+    sock.client(type="user_message", message_id=WAKE_2, text="??")  # the socket serves on
+    await until(lambda: _last(sock, WAKE_2) == "RUN_FINISHED")
+
+
+async def test_a_headless_turn_whose_id_no_wake_mints_reports_nothing(harness, bff, persisted):
+    sock = harness().connect(headers=HEADLESS)
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert bff.attempts == 0
+
+
+# ---------------------------------------------------------------------------
+# After the terminal: a thread question answered in its thread
+# ---------------------------------------------------------------------------
+
+MARK = "33333333-0000-4000-8000-000000000003"
+MARKED_DOCUMENT = "11111111-0000-4000-8000-000000000001"
+THREAD = {
+    "focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2, "annotation_id": MARK},
+    "reply_in_thread": True,
+    "focus_document_id": MARKED_DOCUMENT,
+}
+SIGNED = _envelope({"conversationId": CONV, "userId": "user_asker", "organizationId": "org-1"})
+
+
+@pytest.fixture
+def thread_posts(monkeypatch) -> list[tuple[dict, Any]]:
+    """Every reply the fallback sent to the canvas route, with the envelope it echoed."""
+    made: list[tuple[dict, Any]] = []
+
+    def post(payload: dict, envelope: Any, **_: Any) -> dict:
+        made.append((payload, envelope))
+        return {"documentId": MARKED_DOCUMENT, "documentName": "Grundriss.pdf", "annotationId": MARK, "number": 4}
+
+    monkeypatch.setattr(annotation_reply, "post_canvas", post)
+    return made
+
+
+def _thread_turn(*, replied: bool = False, text: str = "Die Tür ist zu schmal [1].", fail: bool = False):
+    """A thread turn's workflow: maybe the model replied, then the canvas's end-of-turn call settles the record."""
+
+    async def turn(request, ask):
+        if replied:
+            note_thread_post(MARK)
+        settle_thread_reply()  # what `leave_canvas` does in the real workflow's `finally`
+        if fail:
+            raise RuntimeError("model gone")
+        yield _finished(request, text=text)
+
+    return turn
+
+
+async def test_a_thread_question_the_model_left_unanswered_is_answered_in_the_thread(
+    harness, thread_posts, bff, persisted
+):
+    sock = harness(_thread_turn()).connect(headers=[*SIGNED, *HEADLESS])
+    sock.client(type="user_message", message_id=WAKE, text="@Piloti reicht die Tür?", **THREAD)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    [(payload, envelope)] = thread_posts
+    assert payload == {
+        "op": "reply",
+        "annotationId": MARK,
+        "body": "Die Tür ist zu schmal.",
+        "answerMessageId": answer_message_id(CONV, WAKE),
+        "documentId": MARKED_DOCUMENT,
+    }
+    # Echo, never sign: the envelope's bytes exactly as the socket received them.
+    assert (envelope.header, envelope.signature) == (SIGNED[0][1].decode(), SIGNED[1][1].decode())
+    assert [report["outcome"] for report in bff.outcomes] == ["answered"]
+
+
+async def test_a_thread_the_model_replied_in_gets_nothing_more(harness, thread_posts, persisted):
+    sock = harness(_thread_turn(replied=True)).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert thread_posts == []
+
+
+async def test_a_question_asked_outside_a_thread_posts_into_none(harness, thread_posts, persisted):
+    sock = harness(_thread_turn()).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", focus_region=THREAD["focus_region"])
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert thread_posts == []
+
+
+async def test_a_failed_thread_turn_posts_nothing(harness, thread_posts, bff):
+    sock = harness(_thread_turn(fail=True)).connect(headers=[*SIGNED, *HEADLESS])
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: bff.outcomes)
+    await _settle_background()
+
+    assert thread_posts == []
+    assert [report["outcome"] for report in bff.outcomes] == ["failed"]
+
+
+async def test_a_stopped_thread_turn_posts_nothing(harness, thread_posts, persisted):
+    release = asyncio.Event()
+
+    async def waiting(request, ask):
+        settle_thread_reply()
+        yield TextMessageStartBody(message_id="m")
+        yield TextMessageContentBody(message_id="m", delta="Die Tür ")
+        await release.wait()
+        yield _finished(request, text="Die Tür ist zu schmal.")
+
+    sock = harness(waiting).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: len(sock.events(WAKE)) >= 3)
+    sock.client(type="cancel_turn", turn_id=WAKE)
+    await until(lambda: persisted)
+    await _settle_background()
+
+    assert persisted[0]["metadata"]["stopped"] is True
+    assert thread_posts == []
+
+
+async def test_one_turn_s_reply_is_not_the_next_turn_s(harness, thread_posts, persisted):
+    turns = iter([_thread_turn(replied=True), _thread_turn(text="Zweite Antwort."), _thread_turn(text="Dritte.")])
+
+    async def next_turn(request, ask):
+        async for body in next(turns)(request, ask):
+            yield body
+
+    sock = harness(next_turn).connect(headers=SIGNED)
+    sock.client(type="user_message", message_id=WAKE, text="?", **THREAD)
+    await until(lambda: len(persisted) == 1)
+    sock.client(type="user_message", message_id=WAKE_2, text="??", **THREAD)
+    await until(lambda: len(persisted) == 2)
+    sock.client(type="user_message", message_id=WAKE_3, text="???")
+    await until(lambda: len(persisted) == 3)
+    await _settle_background()
+
+    assert [(payload["body"], payload["answerMessageId"]) for payload, _ in thread_posts] == [
+        ("Zweite Antwort.", answer_message_id(CONV, WAKE_2))
+    ]

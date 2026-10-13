@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid turn outcome wire contract",
+  "description": "Generated from frontends/ui/src/lib/turns/outcome-types.ts. Do not edit by hand: outcome-schema.spec.ts rewrites this file and fails when it is stale.",
+  "$defs": {
+    "TurnOutcomeRequest": {
+      "type": "object",
+      "properties": {
+        "conversationId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "turnId": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "outcome": {
+          "type": "string",
+          "enum": [
+            "answered",
+            "refused",
+            "handed_off",
+            "stopped",
+            "failed"
+          ]
+        },
+        "reason": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        }
+      },
+      "required": [
+        "conversationId",
+        "turnId",
+        "outcome"
+      ],
+      "additionalProperties": false
+    },
+    "TurnOutcomeResponse": {
+      "type": "object",
+      "properties": {
+        "settled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "settled"
+      ],
+      "additionalProperties": false
+    }
+  }
+}

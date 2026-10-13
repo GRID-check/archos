@@ -12,7 +12,8 @@
  * set on decides whether it is drawn, a region stays on its page, a proposal
  * becomes the office's only by a person, a status move carries its
  * bookkeeping and loses to a colleague's earlier move, only the person who set
- * a mark deletes it, and every write tells the room.
+ * a mark (or Piloti, for the person it set it for) deletes it, the person a
+ * reply was posted for deletes that, and every write tells the room.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -40,6 +41,7 @@ vi.mock('@/lib/annotations/repository', () => ({
   insertDocumentAnnotations: vi.fn(),
   updateDocumentAnnotation: vi.fn(),
   deleteDocumentAnnotation: vi.fn(),
+  deleteAnnotationReply: vi.fn(),
   insertAnnotationReply: vi.fn(),
 }))
 
@@ -52,8 +54,10 @@ import {
   replyToAnnotation,
   updateAnnotation,
 } from '@/lib/annotations/client'
+import { deleteReply } from '@/lib/annotations/service'
 import {
   AnnotationLimitReachedError,
+  deleteAnnotationReply,
   deleteDocumentAnnotation,
   findDocumentAnnotation,
   insertAnnotationReply,
@@ -170,6 +174,7 @@ beforeEach(() => {
   vi.mocked(insertDocumentAnnotations).mockResolvedValue([RECORD])
   vi.mocked(updateDocumentAnnotation).mockResolvedValue(RECORD)
   vi.mocked(deleteDocumentAnnotation).mockResolvedValue(true)
+  vi.mocked(deleteAnnotationReply).mockResolvedValue(true)
   vi.mocked(insertAnnotationReply).mockResolvedValue({
     id: 'rep_1',
     organizationId: 'org_1',
@@ -396,7 +401,7 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
 describe('DELETE /api/documents/[id]/annotations/[annotationId]', () => {
   it('deletes one the caller set, and tells the room', async () => {
     await expect(deleteAnnotation('doc_1', 'ann_1', { run })).resolves.toBeUndefined()
-    expect(deleteDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_1', 'ann_1')
+    expect(deleteDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_1', 'ann_1', undefined)
     expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'deleted' }))
   })
 
@@ -408,6 +413,110 @@ describe('DELETE /api/documents/[id]/annotations/[annotationId]', () => {
       expect(error).toMatchObject({ status: 403 })
     }
     expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+  })
+
+  describe("a mark Piloti set (author 'piloti')", () => {
+    // Piloti works in the asker's session, so `created_by` is the asker; `accepted_by` is the asker when the mark was
+    // born open at their request.
+    const SET_FOR_ASKER: AnnotationRecord = { ...RECORD, id: 'ann_s', authorKind: 'piloti', createdBy: 'user_1', acceptedBy: 'user_1' }
+
+    it('is deleted by the person it was set for, like their own, and shown to them as deletable', async () => {
+      vi.mocked(findDocumentAnnotation).mockResolvedValue(SET_FOR_ASKER)
+      vi.mocked(listDocumentAnnotations).mockResolvedValue([SET_FOR_ASKER])
+      expect((await listAnnotations('doc_1', run)).annotations[0]).toMatchObject({ canDelete: true })
+
+      await expect(deleteAnnotation('doc_1', 'ann_s', { run })).resolves.toBeUndefined()
+      expect(deleteDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_1', 'ann_s', undefined)
+      expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'deleted' }))
+    })
+
+    it('is refused to another member, to whoever took a proposal over that was not theirs, and for an untaken proposal', async () => {
+      const others: AnnotationRecord[] = [
+        // Set for user_2; user_1 is only a colleague.
+        { ...SET_FOR_ASKER, createdBy: 'user_2', acceptedBy: 'user_2' },
+        // Proposed in user_2's turn, taken over by user_1: two people behind it, so it is resolved, never deleted.
+        { ...SET_FOR_ASKER, createdBy: 'user_2', acceptedBy: 'user_1' },
+        // Proposed in user_1's turn and taken over by user_2.
+        { ...SET_FOR_ASKER, createdBy: 'user_1', acceptedBy: 'user_2' },
+        { ...PROPOSAL, createdBy: 'user_1' },
+      ]
+      for (const record of others) {
+        vi.mocked(findDocumentAnnotation).mockResolvedValue(record)
+        await expect(deleteAnnotation('doc_1', record.id, { run })).rejects.toMatchObject({ status: 403 })
+        vi.mocked(listDocumentAnnotations).mockResolvedValue([record])
+        expect((await listAnnotations('doc_1', run)).annotations[0]).toMatchObject({ canDelete: false })
+      }
+      expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+    })
+  })
+})
+
+describe('deleteReply (the service; undo is its caller)', () => {
+  const session = {
+    userId: 'user_1',
+    organizationId: 'org_1',
+    email: 'a@grid.test',
+    name: 'Anna Berger',
+    role: 'member',
+    permissions: [],
+  } as unknown as Parameters<typeof deleteReply>[0]
+  const reply = (patch: Partial<AnnotationRecord['replies'][number]> = {}): AnnotationRecord['replies'][number] => ({
+    id: 'rep_1',
+    organizationId: 'org_1',
+    annotationId: 'ann_1',
+    authorKind: 'piloti',
+    body: 'Auf Mittwoch gesetzt.',
+    createdBy: 'user_1',
+    createdAt: new Date('2026-10-01T08:00:00Z'),
+    addressesAgent: false,
+    ...patch,
+  })
+  const withReplies = (...replies: AnnotationRecord['replies']) =>
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...RECORD, replies })
+
+  it("deletes the person's own reply and Piloti's reply posted for them, and tells the room", async () => {
+    for (const authorKind of ['piloti', 'person'] as const) {
+      vi.mocked(publishToDocumentRoom).mockClear()
+      withReplies(reply({ authorKind }))
+
+      await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_1')).resolves.toBeNull()
+      expect(deleteAnnotationReply).toHaveBeenLastCalledWith('org_1', 'ann_1', 'rep_1', undefined)
+      expect(publishToDocumentRoom).toHaveBeenCalledWith(
+        'doc_1',
+        expect.objectContaining({ kind: 'annotations.changed', annotationIds: ['ann_1'], change: 'updated' })
+      )
+    }
+  })
+
+  it('refuses a reply posted for somebody else, a reader who may not write, and a reply that is not there', async () => {
+    withReplies(reply({ createdBy: 'user_2' }), reply({ id: 'rep_2', authorKind: 'person', createdBy: 'user_2' }))
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_1')).rejects.toMatchObject({ status: 403 })
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_2')).rejects.toMatchObject({ status: 403 })
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_9')).rejects.toMatchObject({ status: 404 })
+
+    withReplies(reply())
+    writable = false
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_1')).rejects.toMatchObject({ status: 403 })
+
+    expect(deleteAnnotationReply).not.toHaveBeenCalled()
+    expect(publishToDocumentRoom).not.toHaveBeenCalled()
+  })
+
+  it('compares the body when asked: a reply that says something else stays, with a 409', async () => {
+    withReplies(reply({ body: 'Geändert.' }))
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_1', { expectedBody: 'Auf Mittwoch gesetzt.' })).rejects.toMatchObject({
+      status: 409,
+    })
+    expect(deleteAnnotationReply).not.toHaveBeenCalled()
+
+    // It changed between the read and the delete: the repository's compare finds no row.
+    withReplies(reply())
+    vi.mocked(deleteAnnotationReply).mockResolvedValueOnce(false)
+    await expect(deleteReply(session, 'doc_1', 'ann_1', 'rep_1', { expectedBody: 'Auf Mittwoch gesetzt.' })).rejects.toMatchObject({
+      status: 409,
+    })
+    expect(deleteAnnotationReply).toHaveBeenCalledWith('org_1', 'ann_1', 'rep_1', 'Auf Mittwoch gesetzt.')
+    expect(publishToDocumentRoom).not.toHaveBeenCalled()
   })
 })
 
@@ -423,7 +532,6 @@ describe('POST /api/documents/[id]/annotations/[annotationId]/replies', () => {
         body: 'Ist im Index D drin.',
         createdBy: 'user_1',
         addressesAgent: false,
-        handBack: false,
       },
       // A reply on a person's mark that does not address Piloti wakes nothing.
       undefined

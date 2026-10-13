@@ -47,6 +47,12 @@ vi.mock('@/lib/assignments/service', () => ({
   listAssignmentCandidates: vi.fn(),
   addResourceAssignment: vi.fn(),
 }))
+vi.mock('@/lib/proposals/live', () => ({ publishProposalDecided: vi.fn(async () => undefined) }))
+vi.mock('@/lib/proposals/attention', () => ({
+  onProposalCreated: vi.fn(async () => undefined),
+  onProposalDecided: vi.fn(async () => undefined),
+}))
+vi.mock('@/lib/langfuse/decision-score', () => ({ recordDecisionScore: vi.fn(async () => undefined) }))
 vi.mock('@/lib/proposals/repository', () => ({
   insertProposedChange: vi.fn(),
   findProposedChange: vi.fn(),
@@ -67,13 +73,18 @@ import { renameDocument, resolveProjectDocumentsByName } from '@/lib/documents/s
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { createProjectFolder, listProjectFolders, type ProjectFolderRow } from '@/lib/projects/folder-service'
 import { applyProposal, dismissProposal, getProposal, ProposalRequestError } from '@/lib/proposals/client'
+import { recordDecisionScore } from '@/lib/langfuse/decision-score'
+import { onProposalCreated, onProposalDecided } from '@/lib/proposals/attention'
+import { publishProposalDecided } from '@/lib/proposals/live'
 import {
   claimProposedChange,
   dismissProposedChange,
   findProposedChange,
+  insertProposedChange,
   releaseProposedChange,
   settleProposedChange,
 } from '@/lib/proposals/repository'
+import { createProposal } from '@/lib/proposals/service'
 import type { FileOperationPayload } from '@/lib/proposals/types'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
@@ -513,5 +524,134 @@ describe('POST /api/proposals/[id]/dismiss', () => {
     readOnly()
     await expect(dismissProposal(ID, run)).rejects.toMatchObject({ status: 403 })
     expect(dismissProposedChange).not.toHaveBeenCalled()
+  })
+})
+
+/** The side effects run unawaited after the commit; let them settle. */
+const afterCommit = () => vi.waitFor(() => expect(publishProposalDecided).toHaveBeenCalled())
+
+describe('what follows a decision (live card, inbox, Langfuse)', () => {
+  const ORIGIN = { conversationId: CONVERSATION, messageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d' }
+
+  it('tells the live channel, the inbox and Langfuse when it is applied', async () => {
+    await applyProposal(ID, run)
+    await afterCommit()
+
+    expect(publishProposalDecided).toHaveBeenCalledWith(ID, 'applied')
+    expect(onProposalDecided).toHaveBeenCalledWith({ organizationId: 'org_1', proposalId: ID })
+    expect(recordDecisionScore).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      subject: 'proposal',
+      subjectId: ID,
+      decision: 'accepted',
+      decidedBy: 'user_1',
+      origin: ORIGIN,
+    })
+  })
+
+  it('counts a partly applied proposal as accepted', async () => {
+    vi.mocked(resolveProjectDocumentsByName).mockImplementation(async (_s, _p, names) =>
+      names.includes('Schnitt A-A.pdf') ? [listed('doc_aa', 'Schnitt A-A.pdf')] : []
+    )
+    await applyProposal(ID, run)
+    await afterCommit()
+
+    expect(publishProposalDecided).toHaveBeenCalledWith(ID, 'partially_applied')
+    expect(recordDecisionScore).toHaveBeenCalledWith(expect.objectContaining({ decision: 'accepted' }))
+  })
+
+  it('announces a failed apply, but scores nothing: nothing was taken', async () => {
+    vi.mocked(resolveProjectDocumentsByName).mockResolvedValue([])
+    await applyProposal(ID, run)
+    await afterCommit()
+
+    expect(publishProposalDecided).toHaveBeenCalledWith(ID, 'failed')
+    expect(onProposalDecided).toHaveBeenCalledTimes(1)
+    expect(recordDecisionScore).not.toHaveBeenCalled()
+  })
+
+  it('scores a dismissal as dismissed', async () => {
+    await dismissProposal(ID, run)
+    await afterCommit()
+
+    expect(publishProposalDecided).toHaveBeenCalledWith(ID, 'dismissed')
+    expect(onProposalDecided).toHaveBeenCalledTimes(1)
+    expect(recordDecisionScore).toHaveBeenCalledWith(expect.objectContaining({ decision: 'dismissed', origin: ORIGIN }))
+  })
+
+  it('leaves the turn to be looked up when the proposal names none', async () => {
+    store.set(ID, row({ originConversationId: null, originMessageId: null }))
+    await dismissProposal(ID, run)
+    await afterCommit()
+
+    expect(recordDecisionScore).toHaveBeenCalledWith(expect.objectContaining({ origin: null }))
+  })
+
+  it('says nothing for a decision that did not happen', async () => {
+    readOnly()
+    await expect(dismissProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    store.set(ID, row({ applyingBy: 'user_2', applyingSince: new Date() }))
+    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 409 })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+
+    expect(publishProposalDecided).not.toHaveBeenCalled()
+    expect(onProposalDecided).not.toHaveBeenCalled()
+    expect(recordDecisionScore).not.toHaveBeenCalled()
+  })
+
+  it('does not let a failing side effect fail the decision', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(publishProposalDecided).mockRejectedValueOnce(new Error('hub down'))
+    vi.mocked(onProposalDecided).mockRejectedValueOnce(new Error('inbox down'))
+    vi.mocked(recordDecisionScore).mockRejectedValueOnce(new Error('langfuse down'))
+
+    const { proposal } = await applyProposal(ID, run)
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(3))
+
+    expect(proposal.status).toBe('applied')
+    warn.mockRestore()
+  })
+})
+
+describe('createProposal — the inbox is told', () => {
+  it('tells the attention slice, with a line naming the files', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValue(row())
+
+    await createProposal(SESSION as never, {
+      projectId: PROJECT,
+      kind: 'file_operation',
+      payload: { operation: 'move', operations: [...MOVE.operations, { document: 'Lageplan.pdf', source: 'projekt', target_folder: 'Einreichung' }] },
+      conversationId: null,
+      answerMessageId: null,
+    })
+    await vi.waitFor(() => expect(onProposalCreated).toHaveBeenCalled())
+
+    expect(onProposalCreated).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      projectId: PROJECT,
+      proposalId: ID,
+      originConversationId: CONVERSATION,
+      onBehalfOf: 'user_2',
+      summary: 'Grundriss EG.pdf, Schnitt A-A.pdf +1',
+    })
+  })
+
+  it('does not fail the proposal when the inbox write fails', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(insertProposedChange).mockResolvedValue(row())
+    vi.mocked(onProposalCreated).mockRejectedValueOnce(new Error('inbox down'))
+
+    await expect(
+      createProposal(SESSION as never, {
+        projectId: PROJECT,
+        kind: 'file_operation',
+        payload: MOVE,
+        conversationId: null,
+        answerMessageId: null,
+      })
+    ).resolves.toMatchObject({ id: ID })
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+    warn.mockRestore()
   })
 })

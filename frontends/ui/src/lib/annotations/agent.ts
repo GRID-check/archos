@@ -35,6 +35,8 @@
 import 'server-only'
 import { BadRequestError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
+import { recordPilotiChanges, type AppliedChange, type ChangeOrigin } from '@/lib/changes/service'
+import { fieldsOf, markState, replyState } from '@/lib/changes/state'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
 import { findDocumentInOrg } from '@/lib/documents/repository'
@@ -42,6 +44,7 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { admitSubjectRead } from '@/lib/documents/version-content'
 import { type AgentRoomOp, pilotiPeer, publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
+import { onPilotiWrote } from './attention'
 import {
   deleteAnnotation,
   listAnnotationsForAgent,
@@ -64,10 +67,11 @@ export class NoDocumentSubjectError extends UnprocessableError {
   }
 }
 
-/** The document a turn acts on: its id and the name a person knows it by. */
+/** The document a turn acts on: its id, the name a person knows it by, and its project (null on the Büroablage). */
 export interface AgentDocument {
   id: string
   name: string
+  projectId: string | null
 }
 
 /**
@@ -94,7 +98,7 @@ export async function resolveAgentDocument(
     askerUserId: context.userId,
     answerMessageId,
   })
-  return { id: document.id, name: document.filename }
+  return { id: document.id, name: document.filename, projectId: document.projectId ?? null }
 }
 
 /** Who the turn acts for in a room: the conversation, on behalf of the asker. */
@@ -168,9 +172,58 @@ const movedFields = (view: AnnotationView, changed: readonly ChangeableField[]):
   ...(changed.includes('body') && { body: view.body }),
 })
 
+// ---------------------------------------------------------------------------
+// What a write leaves behind: one change record per change it applied
+// (`lib/changes`, ADR-0109), and the attention it asks of people
+// (`./attention`). Both after the write committed, both best-effort.
+// ---------------------------------------------------------------------------
+
+/** The turn a write belongs to. */
+interface Turn {
+  origin: ChangeOrigin
+  document: AgentDocument
+}
+
+/** Tell whoever the mark concerns that Piloti wrote on it; never fails the write. */
+async function tellAttention(
+  turn: Turn,
+  mark: Pick<AnnotationView, 'id' | 'number' | 'assigneeUserId'>,
+  what: 'mark' | 'question' | 'reply',
+  replyId: string | null
+): Promise<void> {
+  await onPilotiWrote({
+    organizationId: turn.origin.organizationId,
+    documentId: turn.document.id,
+    annotationId: mark.id,
+    annotationNumber: mark.number,
+    projectId: turn.document.projectId,
+    onBehalfOf: turn.origin.onBehalfOf,
+    assigneeUserId: mark.assigneeUserId,
+    what,
+    replyId,
+  }).catch((error: unknown) => console.warn('[annotations] attention for a write of Piloti failed', mark.id, error))
+}
+
+const markChange = (mark: AnnotationView, change: Pick<AppliedChange, 'op' | 'before' | 'after'>): AppliedChange => ({
+  objectKind: 'annotation',
+  objectId: mark.id,
+  annotationId: mark.id,
+  ...change,
+})
+
+/** Marks Piloti set, proposed or open: a `create` each, and each one's attention. */
+async function afterSet(turn: Turn, marks: readonly AnnotationView[]): Promise<void> {
+  await recordPilotiChanges(
+    turn.origin,
+    marks.map((mark) => markChange(mark, { op: 'create', before: null, after: markState(mark) }))
+  )
+  for (const mark of marks) await tellAttention(turn, mark, mark.kind === 'question' ? 'question' : 'mark', null)
+}
+
 type UpdateRequest = Extract<InternalAnnotationRequest, { op: 'update' }>
 
-async function update(session: AuthorizedSession, document: AgentDocument, request: UpdateRequest) {
+async function update(session: AuthorizedSession, turn: Turn, request: UpdateRequest) {
+  const { document } = turn
   const { annotationId, note, expectedStatus, status, assignee, dueOn, kind, body } = request
   if ([status, assignee, dueOn, kind, body].every((value) => value === undefined)) {
     throw new BadRequestError('Name at least one change: status, assignee, dueOn, kind or body.')
@@ -182,6 +235,11 @@ async function update(session: AuthorizedSession, document: AgentDocument, reque
     { status, assignee, dueOn, kind, body, expectedStatus },
     note
   )
+  if (changed.length > 0) {
+    await recordPilotiChanges(turn.origin, [
+      markChange(after, { op: 'update', before: fieldsOf(before, changed), after: fieldsOf(after, changed) }),
+    ])
+  }
   return {
     documentId: document.id,
     documentName: document.name,
@@ -194,6 +252,41 @@ async function update(session: AuthorizedSession, document: AgentDocument, reque
   }
 }
 
+async function remove(session: AuthorizedSession, turn: Turn, annotationId: string) {
+  const { document } = turn
+  // Read first, for the number and the text the card names, and for the
+  // record's `before`: once deleted, the mark and its thread are gone. The
+  // delete applies the asker's rule.
+  const mark = await readAnnotation(session, document.id, annotationId)
+  await deleteAnnotation(session, document.id, annotationId, PILOTI)
+  await recordPilotiChanges(turn.origin, [markChange(mark, { op: 'delete', before: markState(mark), after: null })])
+  return { documentId: document.id, documentName: document.name, annotationId: mark.id, number: mark.number, body: mark.body }
+}
+
+async function reply(session: AuthorizedSession, turn: Turn, annotationId: string, body: string) {
+  const { document } = turn
+  const { annotation, replyId } = await replyToAnnotation(session, document.id, annotationId, { body }, PILOTI)
+  const stored = annotation.replies.find((entry) => entry.id === replyId)
+  await recordPilotiChanges(turn.origin, [
+    {
+      objectKind: 'annotation_reply',
+      objectId: replyId,
+      annotationId: annotation.id,
+      op: 'create',
+      before: null,
+      after: replyState(stored?.body ?? body.trim()),
+    },
+  ])
+  await tellAttention(turn, annotation, 'reply', replyId)
+  return {
+    documentId: document.id,
+    documentName: document.name,
+    annotationId: annotation.id,
+    number: annotation.number,
+    replies: annotation.replies.length,
+  }
+}
+
 /** Run one of Piloti's operations on the document, as the asker. */
 export async function runAgentAnnotationRequest(
   session: AuthorizedSession,
@@ -202,6 +295,16 @@ export async function runAgentAnnotationRequest(
   agent: AgentInRoom
 ) {
   const documentId = document.id
+  const turn: Turn = {
+    document,
+    origin: {
+      organizationId: agent.organizationId,
+      documentId,
+      conversationId: agent.conversationId,
+      answerMessageId: request.answerMessageId ?? null,
+      onBehalfOf: agent.onBehalfOf,
+    },
+  }
   switch (request.op) {
     case 'room':
       return readRoom(session, document, agent)
@@ -233,36 +336,19 @@ export async function runAgentAnnotationRequest(
       return { ...(await listAnnotationsForAgent(session, documentId)), documentName: document.name }
     case 'propose': {
       const { annotations } = await proposeAnnotations(session, documentId, request.proposals)
+      await afterSet(turn, annotations)
       return { documentId, documentName: document.name, proposed: annotations.map(setMark) }
     }
     case 'create': {
       const { annotations } = await setAnnotationsForAsker(session, documentId, request.marks)
+      await afterSet(turn, annotations)
       return { documentId, documentName: document.name, created: annotations.map(setMark) }
     }
     case 'update':
-      return update(session, document, request)
-    case 'delete': {
-      // Read first, for the number and the text the card names: once deleted,
-      // the mark and its thread are gone. The delete applies the asker's rule.
-      const mark = await readAnnotation(session, documentId, request.annotationId)
-      await deleteAnnotation(session, documentId, request.annotationId, PILOTI)
-      return {
-        documentId,
-        documentName: document.name,
-        annotationId: mark.id,
-        number: mark.number,
-        body: mark.body,
-      }
-    }
-    case 'reply': {
-      const { annotation } = await replyToAnnotation(session, documentId, request.annotationId, { body: request.body }, PILOTI)
-      return {
-        documentId,
-        documentName: document.name,
-        annotationId: annotation.id,
-        number: annotation.number,
-        replies: annotation.replies.length,
-      }
-    }
+      return update(session, turn, request)
+    case 'delete':
+      return remove(session, turn, request.annotationId)
+    case 'reply':
+      return reply(session, turn, request.annotationId, request.body)
   }
 }

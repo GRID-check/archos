@@ -33,6 +33,7 @@ import { runPlacementReingestSlice } from '@/lib/projects/collection-placement'
 import { runMailImportSlice } from '@/lib/mail-import/job'
 import { runReportFilingJob } from '@/lib/tasks/service'
 import { runPilotiWake } from '@/lib/annotations/wake-job'
+import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { isLastAttempt } from './attempts'
 import {
   bimExtractPayloadSchema,
@@ -40,6 +41,7 @@ import {
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
   pilotiWakePayloadSchema,
+  pilotiWakeStopPayloadSchema,
   placementReingestPayloadSchema,
   purgeBinnedChunksPayloadSchema,
   reindexProjectPayloadSchema,
@@ -151,4 +153,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   file_research_report: systemHandler(fileResearchReportPayloadSchema, runReportFilingJob),
   mail_import: mailImportHandler,
   piloti_wake: pilotiWakeHandler,
+  piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
 }

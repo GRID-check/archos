@@ -83,6 +83,14 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         categories=("inaccurate", "wrong_source", "too_slow", "other"),
     ),
     ScoreDefinition(
+        "piloti-decision",
+        "CATEGORICAL",
+        "A person's decision on something Piloti produced in this turn: a proposal or a proposed mark taken "
+        "over (accepted) or dismissed, an applied change undone. Metadata names the subject and its id.",
+        writer="bff",
+        categories=("accepted", "dismissed", "undone"),
+    ),
+    ScoreDefinition(
         "citation-health",
         "BOOLEAN",
         "True when citation verification found nothing to remove, patch or flag on this turn.",

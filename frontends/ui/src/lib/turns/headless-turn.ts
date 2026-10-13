@@ -171,3 +171,102 @@ export function runHeadlessTurn(request: HeadlessTurnRequest): Promise<HeadlessT
     void socket.connect()
   })
 }
+
+/** What became of a stop. */
+export type HeadlessCancelOutcome =
+  /** The server took the stop and refused nothing: the turn ends itself (`cancelled`) and reports it. */
+  | { kind: 'sent' }
+  /** No turn runs under that id here (it ended, or never ran): nothing to stop. */
+  | { kind: 'not_running' }
+  /** The server refused the stop (`auth_expired`, `conversation_mismatch`, `not_asker`, ...). */
+  | { kind: 'rejected'; code: string; message: string | null }
+  /** No server took it: none answered, or none spoke this wire. */
+  | { kind: 'unavailable'; reason: string }
+
+export interface HeadlessCancelRequest {
+  /** The backend's chat socket, as for {@link HeadlessTurnRequest}. */
+  url: string
+  conversationId: string
+  /** The turn to stop: for a wake, the wake id. */
+  turnId: string
+  /** The upgrade's headers, built by the caller: the signed envelope (naming the conversation) and `x-aiq-mode`. */
+  headers: Record<string, string>
+  /** How long after sending a refusal is waited for. */
+  graceMs?: number
+  /** The whole attempt, connect included. */
+  timeoutMs?: number
+  createSocket?: (options: TurnSocketOptions) => TurnSocket
+  createWebSocket?: (url: string, headers: Record<string, string>) => WebSocketLike
+}
+
+const DEFAULT_CANCEL_GRACE_MS = 2_000
+const DEFAULT_CANCEL_TIMEOUT_MS = 20_000
+
+/**
+ * Stop a running turn with nobody's browser open: open the chat socket as an
+ * internal caller (which may stop any turn, `may_act_for`), send one
+ * `cancel_turn`, and wait a moment for a refusal. A stop is accepted without
+ * an answer, so silence after the grace is `sent`; `turn_not_found` is the one
+ * refusal that is good news. Never throws.
+ */
+export function cancelHeadlessTurn(request: HeadlessCancelRequest): Promise<HeadlessCancelOutcome> {
+  const graceMs = request.graceMs ?? DEFAULT_CANCEL_GRACE_MS
+  return new Promise((resolve) => {
+    let settled = false
+    let sent = false
+    let socket: TurnSocket | null = null
+    let grace: ReturnType<typeof setTimeout> | null = null
+
+    const finish = (outcome: HeadlessCancelOutcome): void => {
+      if (settled) return
+      settled = true
+      clearTimeout(deadline)
+      if (grace) clearTimeout(grace)
+      socket?.close()
+      resolve(outcome)
+    }
+
+    const deadline = setTimeout(
+      () => finish({ kind: 'unavailable', reason: 'no answer in time' }),
+      request.timeoutMs ?? DEFAULT_CANCEL_TIMEOUT_MS
+    )
+
+    socket = (request.createSocket ?? createTurnSocket)({
+      conversationId: request.conversationId,
+      url: request.url,
+      openTurns: () => [],
+      ladder: { baseMs: 500, maxMs: 2_000, budget: 3 },
+      createWebSocket: (url) => (request.createWebSocket ?? nodeWebSocket)(url, request.headers),
+      onStatus: (status) => {
+        if (status === 'failed' || status === 'incompatible' || status === 'outdated') {
+          finish({ kind: 'unavailable', reason: `socket ${status}` })
+          return
+        }
+        if (status !== 'open' || sent || !socket) return
+        sent = true
+        const accepted = socket.send({
+          type: 'cancel_turn',
+          conversation_id: request.conversationId,
+          turn_id: request.turnId,
+        })
+        if (!accepted) return finish({ kind: 'unavailable', reason: 'the socket would not take the stop' })
+        // The server answers a refusal at once; no answer is the stop taken.
+        grace = setTimeout(() => finish({ kind: 'sent' }), graceMs)
+      },
+      onEvent: (event) => {
+        if (event.turn_id !== request.turnId) return
+        if (event.type === 'CUSTOM' && event.name === 'rejected' && event.value.of === 'cancel_turn') {
+          const { code } = event.value
+          return finish(
+            code === 'turn_not_found'
+              ? { kind: 'not_running' }
+              : { kind: 'rejected', code, message: event.value.message ?? null }
+          )
+        }
+        // The turn itself ended on this socket: the stop landed.
+        if (event.type === 'RUN_FINISHED') finish({ kind: 'sent' })
+      },
+    })
+    void socket.connect()
+  })
+}

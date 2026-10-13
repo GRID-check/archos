@@ -244,3 +244,21 @@ Rules that kept the parallel slices from colliding:
   [`gotchas.md`](gotchas.md)).
 * **Integrate as each slice reports**, with the checks run on the combined tree,
   rather than waiting for all of them.
+
+## Ask which object already owns the work before giving it a record
+
+Before adding a table, a status or a list for "work somebody handed over", find
+the object the work is ABOUT and read its lifecycle. When it already has a
+responsible person, a status and a place to discuss it, the work belongs there,
+and what is missing is at most a record of the agent's activity on it, not a
+second work item that has to be kept in step with the first forever.
+
+The case: asked whether event-woken turns rebuilt tasks, the first answer was
+"make a mark delegated to Piloti a task run". It would have given one piece of
+work two records (the mark's offen → erledigt and the task's queued → accepted),
+two lists, and no delegation on the Büroablage, whose documents have no
+project. The mark already had the person, the status and the thread; the wake
+only lacked an end. Twenty minutes of design went into the wrong record before
+the question was asked. The decision, and the shape that answered it (Linear's:
+work is delegated to an agent, the agent's activity is a session on the issue),
+is in ADR-0106.

@@ -39,15 +39,28 @@
  * in their name, and the card says so in their terms. A mark set on request
  * reads like a person's open mark. A change reads „#4 erledigt", „#4 Anna
  * zugewiesen", with the note Piloti left in the thread under it, and
- * „Rückgängig" PATCHes the inverse through the reader's own client. The undo
- * is read-then-write too, and names the status Piloti left as
- * `expectedStatus`, so it never undoes a colleague's later move: a mark that
- * no longer stands as Piloti left it shows where it stands instead. Taking a
- * proposal over and dismissing one have no way back, so they offer no undo.
- * A deleted mark is gone with its thread, and the row only says so.
+ * „Rückgängig" goes to the server's change record (below). Taking a proposal
+ * over and dismissing one have no way back, so they offer no undo.
+ * A deleted mark is gone with its thread; the row says so, and offers the way
+ * back only where the record does.
+ *
+ * ## The server's record wins (ADR-0109)
+ *
+ * Every change Piloti applied is a `piloti_changes` row with the turn that made
+ * it. The card reads the rows of its own answer once it is seen, and again
+ * whenever the document's live store says one of the card's marks moved. A row
+ * with a change draws from it: who the turn acted for („für Miriam"), whether
+ * somebody undid it („Rückgängig gemacht · Anna"), and whether the reader may
+ * undo it now (`canUndo`). The undo is the server's compare-and-swap, run as
+ * the reader: `moved-on` says calmly that somebody changed it since,
+ * `already-undone` re-reads and shows who did.
+ *
+ * The card's own `items` stay the fallback for a row without a change: an
+ * answer older than the record, or a request that failed. Only those rows
+ * keep the browser-side replay of the card's copy (see `ChangedRow`).
  */
 
-import { useCallback, useState, type JSX } from 'react'
+import { useCallback, useMemo, useState, type JSX } from 'react'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import { Check, MapPin, Undo2, X } from 'lucide-react'
@@ -60,12 +73,15 @@ import { useLocale, useTranslations } from '@/i18n'
 import { formatDayRange } from '@/lib/format'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { AnnotationRequestError, updateAnnotation } from '@/lib/annotations/client'
+import { ChangeRequestError, undoChange } from '@/lib/changes/client'
+import type { PilotiChangeView } from '@/lib/changes/types'
 import { cn } from '@/lib/utils'
 import { useChatStore } from '@/features/chat/store'
 import { openReviewAt } from '@/features/documents/lib/open-review'
 import { isCardDecision, itemDecisionKey } from '../card-decision'
-import { selectCardDecision, useCardDecision } from '../hooks/use-card-decision'
+import { selectCardConversationId, selectCardDecision, useCardDecision } from '../hooks/use-card-decision'
 import { useFirstPageThumbnail, useLiveMarks, type LiveMarks } from '../hooks/use-canvas-document'
+import { useTurnChanges, type TurnChanges } from '../hooks/use-turn-changes'
 import {
   activityCounts,
   annotationIdOf,
@@ -85,6 +101,7 @@ import {
   type CanvasSetItem,
   type MarkState,
 } from '../lib/canvas-activity'
+import { matchChanges, standsAsChanged } from '../lib/canvas-changes'
 import { ProposalShell } from './ProposalShell'
 import { StackedLabel } from './StackedLabel'
 
@@ -131,7 +148,13 @@ export function CanvasActivityCard({
   const counts = activityCounts(items)
   const setCount = counts.proposed + counts.created
   const hasMarks = setCount + counts.changed > 0
-  const live = useLiveMarks(document.id, { seen: seen && hasMarks, onScreen: onScreen && hasMarks })
+  const markIds = useMemo(() => items.map(annotationIdOf).filter((id): id is string => id !== null), [items])
+  const live = useLiveMarks(document.id, { seen: seen && hasMarks, onScreen: onScreen && hasMarks, watch: markIds })
+  // What the server records for this answer's turn, read once seen and again
+  // when the live store says one of this card's marks moved.
+  const conversationId = useChatStore((state) => selectCardConversationId(state, messageId))
+  const changes = useTurnChanges(conversationId, messageId, { enabled: seen, token: live.touched })
+  const changeOf = useMemo(() => matchChanges(items, changes.changes), [items, changes.changes])
   const thumbnail = useFirstPageThumbnail(document.id, seen && setCount > 0)
   const [aspect, setAspect] = useState(DEFAULT_PAGE_ASPECT)
   const show = useShowInDocument(document.id)
@@ -210,6 +233,8 @@ export function CanvasActivityCard({
                   documentId={document.id}
                   item={item}
                   live={live}
+                  change={changeOf.get(index)}
+                  changes={changes}
                   messageId={messageId}
                   cardKey={cardKey}
                   decisionsMustPersist={decisionsMustPersist}
@@ -228,6 +253,8 @@ export function CanvasActivityCard({
                   item={item}
                   index={index}
                   live={live}
+                  change={changeOf.get(index)}
+                  changes={changes}
                   messageId={messageId}
                   cardKey={cardKey}
                   decisionsMustPersist={decisionsMustPersist}
@@ -235,8 +262,27 @@ export function CanvasActivityCard({
                 />
               )
             }
-            if (item.action === 'deleted') return <DeletedRow key={`d-${item.number}-${index}`} item={item} />
-            return <RepliedRow key={`r-${item.annotation_id}-${item.number}`} item={item} onShow={openAt} />
+            if (item.action === 'deleted') {
+              return (
+                <DeletedRow
+                  key={`d-${item.number}-${index}`}
+                  item={item}
+                  live={live}
+                  change={changeOf.get(index)}
+                  changes={changes}
+                />
+              )
+            }
+            return (
+              <RepliedRow
+                key={`r-${item.annotation_id}-${item.number}`}
+                item={item}
+                live={live}
+                change={changeOf.get(index)}
+                changes={changes}
+                onShow={openAt}
+              />
+            )
           })}
         </ul>
 
@@ -290,6 +336,111 @@ function useShowInDocument(documentId: string): (annotationId: string) => Promis
     )
     return result !== 'unavailable'
   }
+}
+
+/**
+ * Undo one change through the server's record, as the signed-in reader.
+ *
+ * The server compares the object with the `after` it recorded and refuses
+ * what a colleague moved since: `moved-on` is a plain fact, said calmly and
+ * never in error red; `already-undone` re-reads and the row shows who did it.
+ */
+function useServerUndo(change: PilotiChangeView | undefined, live: LiveMarks, changes: TurnChanges) {
+  const t = useTranslations('chat')
+  const [busy, setBusy] = useState(false)
+  const [notice, setNotice] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  const undo = async () => {
+    if (!change || busy) return
+    setBusy(true)
+    setNotice(null)
+    setError(null)
+    try {
+      const done = await undoChange(change.id)
+      changes.adopt(done.change)
+      // The mark moved back: the canvas's list is read again, not guessed.
+      await live.refresh()
+    } catch (failure) {
+      if (failure instanceof ChangeRequestError && failure.status === 409 && failure.code === 'already-undone') {
+        const fresh = await changes.refetch()
+        if (!fresh?.some((row) => row.id === change.id && row.undoneAt !== null)) {
+          setNotice(t('cards.canvasActivity.alreadyUndone'))
+        }
+      } else if (failure instanceof ChangeRequestError && failure.status === 409) {
+        setNotice(t('cards.canvasActivity.movedOn'))
+        await Promise.all([changes.refetch(), live.refresh()])
+      } else if (failure instanceof ChangeRequestError && failure.status === 403) {
+        setError(t('cards.canvasActivity.forbidden'))
+      } else {
+        setError(t('cards.canvasActivity.error'))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return { undo, busy, notice, error }
+}
+
+/** „für Miriam": whom the turn acted for, in the meta line. */
+function ForPerson({ change }: { change: PilotiChangeView | undefined }): JSX.Element | null {
+  const t = useTranslations('chat')
+  if (!change?.onBehalfOfName) return null
+  return (
+    <>
+      <span aria-hidden>·</span>
+      <span data-testid="canvas-activity-for">{t('cards.canvasActivity.forPerson', { name: change.onBehalfOfName })}</span>
+    </>
+  )
+}
+
+/** „Rückgängig gemacht · Anna": somebody took the change back. */
+function UndoneLabel({ who }: { who: string | null }): JSX.Element {
+  const t = useTranslations('chat')
+  return (
+    <span className="text-muted-foreground ml-auto inline-flex items-center gap-1" data-testid="canvas-activity-state">
+      <Undo2 aria-hidden className="size-3" />
+      {t('cards.canvasActivity.undone')}
+      {who && <span>· {who}</span>}
+    </span>
+  )
+}
+
+function UndoButton({ number, busy, onClick }: { number: number; busy: boolean; onClick: () => void }): JSX.Element {
+  const t = useTranslations('chat')
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="sm"
+      onClick={onClick}
+      aria-label={t('cards.canvasActivity.undoLabel', { number })}
+      aria-disabled={busy || undefined}
+      aria-busy={busy || undefined}
+      className="aria-disabled:cursor-default"
+    >
+      <StackedLabel busy={busy} idle={t('cards.canvasActivity.undo')} working={t('cards.canvasActivity.undoing')} />
+    </Button>
+  )
+}
+
+/** What an undo said: a calm fact (somebody moved it on) or an error, under the row. */
+function UndoMessages({ notice, error }: { notice: string | null; error: string | null }): JSX.Element {
+  return (
+    <>
+      {notice && (
+        <p className="card-caption text-muted-foreground" role="status" data-testid="canvas-activity-notice">
+          {notice}
+        </p>
+      )}
+      {error && (
+        <p className="card-caption text-destructive" role="alert">
+          {error}
+        </p>
+      )}
+    </>
+  )
 }
 
 /**
@@ -364,6 +515,8 @@ function SetRow({
   documentId,
   item,
   live,
+  change,
+  changes,
   messageId,
   cardKey,
   decisionsMustPersist,
@@ -375,6 +528,9 @@ function SetRow({
   documentId: string
   item: CanvasSetItem
   live: LiveMarks
+  /** The server's record of this mark being set, when it has one. */
+  change: PilotiChangeView | undefined
+  changes: TurnChanges
   messageId?: string
   cardKey: string
   decisionsMustPersist?: boolean
@@ -389,10 +545,15 @@ function SetRow({
   })
   const [busy, setBusy] = useState<'open' | 'dismissed' | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const serverUndo = useServerUndo(change, live, changes)
   const current = live.lookup(item.annotation_id)
   const proposal = isProposed(item)
-  const state = proposal ? markState(decision, current) : createdState(current)
+  const undone = change?.undoneAt != null
+  const state = undone ? 'gone' : proposal ? markState(decision, current) : createdState(current)
   const mayAnswer = state === 'proposed' && canDecide && (current === undefined || current === 'gone' || current.canEdit)
+  // A proposal is answered with the two buttons; taking back a mark set on
+  // request is the record's undo, offered while the record says it may be.
+  const mayUndo = !proposal && change?.canUndo === true && !undone
   // A mark set at the person's request is open from birth: its label shows only once it moved on.
   const showState = proposal ? state !== 'proposed' : state !== 'open'
 
@@ -436,7 +597,12 @@ function SetRow({
           <span>{kind}</span>
           <span aria-hidden>·</span>
           <span>{t('cards.canvasActivity.page', { page: item.page })}</span>
-          {showState && <MarkStateLabel state={state} who={decision ? null : who} />}
+          <ForPerson change={change} />
+          {undone ? (
+            <UndoneLabel who={change?.undoneByName ?? null} />
+          ) : (
+            showState && <MarkStateLabel state={state} who={decision ? null : who} />
+          )}
         </p>
         <p className="card-body text-foreground line-clamp-2" title={item.body}>
           {item.body}
@@ -446,6 +612,7 @@ function SetRow({
             {error}
           </p>
         )}
+        <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {mayAnswer && (
             <>
@@ -478,6 +645,7 @@ function SetRow({
               </Button>
             </>
           )}
+          {mayUndo && <UndoButton number={item.number} busy={serverUndo.busy} onClick={() => void serverUndo.undo()} />}
           {state !== 'gone' && (
             <Button
               type="button"
@@ -541,15 +709,25 @@ function changePhrase(t: Translate, locale: string, change: CanvasFieldChange): 
 
 /**
  * One change Piloti made to a mark for the person, the note it left in the
- * thread, and the way back. The undo is the inverse PATCH through the reader's
- * own client, read-then-write and guarded by the status Piloti left, so it
- * never undoes what a colleague did since; the decision is stored per row.
+ * thread, and the way back.
+ *
+ * With the server's record of the change (`change`) the row is a window onto
+ * it: undone or not, by whom, and whether undo is offered all come from the
+ * record, and the undo is the server's compare-and-swap (`useServerUndo`).
+ *
+ * Without one (an answer older than the record, or a request that failed) the
+ * card's own copy still stands. Only then does the browser-side replay remain:
+ * the inverse PATCH through the reader's own client, read-then-write and
+ * guarded by the status Piloti left, with the decision stored per row. It goes
+ * when the record covers every answer that can still be on screen.
  */
 function ChangedRow({
   documentId,
   item,
   index,
   live,
+  change,
+  changes,
   messageId,
   cardKey,
   decisionsMustPersist,
@@ -559,6 +737,8 @@ function ChangedRow({
   item: CanvasChangedItem
   index: number
   live: LiveMarks
+  change: PilotiChangeView | undefined
+  changes: TurnChanges
   messageId?: string
   cardKey: string
   decisionsMustPersist?: boolean
@@ -571,20 +751,27 @@ function ChangedRow({
     itemDecisionKey(cardKey, `${item.annotation_id}@${index}`),
     { mustPersist: decisionsMustPersist }
   )
-  const [busy, setBusy] = useState(false)
+  const [replayBusy, setReplayBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const serverUndo = useServerUndo(change, live, changes)
   const current = live.lookup(item.annotation_id)
   const inverse = undoRequest(item)
-  const undone = decision === 'rejected'
+  const undone = change ? change.undoneAt !== null : decision === 'rejected'
   // Moved on since Piloti's change (by a colleague, or by the reader on the
   // canvas): the row says where the mark stands and offers no undo.
-  const moved = !undone && current !== undefined && current !== 'gone' && !stillAsLeft(item, current)
-  const mayUndo =
-    inverse !== null && canDecide && !undone && !moved && current !== 'gone' && (current === undefined || current.canEdit)
+  const moved =
+    !undone &&
+    current !== undefined &&
+    current !== 'gone' &&
+    (change ? !change.canUndo && !standsAsChanged(change, current) : !stillAsLeft(item, current))
+  const mayUndo = change
+    ? change.canUndo && !undone && current !== 'gone'
+    : inverse !== null && canDecide && !undone && !moved && current !== 'gone' && (current === undefined || current.canEdit)
+  const busy = change ? serverUndo.busy : replayBusy
 
-  const undo = async () => {
-    if (busy || inverse === null) return
-    setBusy(true)
+  const replayUndo = async () => {
+    if (replayBusy || inverse === null) return
+    setReplayBusy(true)
     setError(null)
     try {
       // Read first: the status guard alone would let an undo overwrite a
@@ -605,11 +792,11 @@ function ChangedRow({
         setError(t('cards.canvasActivity.error'))
       }
     } finally {
-      setBusy(false)
+      setReplayBusy(false)
     }
   }
 
-  const phrases = item.changes.map((change) => changePhrase(t, locale, change)).join(' · ')
+  const phrases = item.changes.map((entry) => changePhrase(t, locale, entry)).join(' · ')
   const state: MarkState | null = current === 'gone' ? 'gone' : moved && current ? current.status : null
 
   return (
@@ -621,12 +808,8 @@ function ChangedRow({
         <p className="card-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5">
           <span className="text-foreground font-mono">#{item.number}</span>
           <span className="text-foreground">{phrases}</span>
-          {undone && (
-            <span className="text-muted-foreground ml-auto inline-flex items-center gap-1" data-testid="canvas-activity-state">
-              <Undo2 aria-hidden className="size-3" />
-              {t('cards.canvasActivity.undone')}
-            </span>
-          )}
+          <ForPerson change={change} />
+          {undone && <UndoneLabel who={change?.undoneByName ?? null} />}
           {!undone && state && (
             <span className="text-muted-foreground ml-auto" data-testid="canvas-activity-state">
               {state === 'gone'
@@ -643,20 +826,14 @@ function ChangedRow({
             {error}
           </p>
         )}
+        <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
         <div className="flex flex-wrap items-center gap-2 pt-1">
           {mayUndo && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => void undo()}
-              aria-label={t('cards.canvasActivity.undoLabel', { number: item.number })}
-              aria-disabled={busy || undefined}
-              aria-busy={busy || undefined}
-              className="aria-disabled:cursor-default"
-            >
-              <StackedLabel busy={busy} idle={t('cards.canvasActivity.undo')} working={t('cards.canvasActivity.undoing')} />
-            </Button>
+            <UndoButton
+              number={item.number}
+              busy={busy}
+              onClick={() => void (change ? serverUndo.undo() : replayUndo())}
+            />
           )}
           {current !== 'gone' && (
             <Button
@@ -675,40 +852,88 @@ function ChangedRow({
   )
 }
 
-/** A mark Piloti deleted for the person who set it: gone with its thread, so nothing to open or undo. */
-function DeletedRow({ item }: { item: CanvasDeletedItem }): JSX.Element {
+/**
+ * A mark Piloti deleted for the person who set it: gone with its thread, so
+ * nothing to open. The record may still offer to bring it back.
+ */
+function DeletedRow({
+  item,
+  live,
+  change,
+  changes,
+}: {
+  item: CanvasDeletedItem
+  live: LiveMarks
+  change: PilotiChangeView | undefined
+  changes: TurnChanges
+}): JSX.Element {
   const t = useTranslations('chat')
+  const serverUndo = useServerUndo(change, live, changes)
+  const undone = change?.undoneAt != null
   return (
-    <li className="flex gap-3" data-testid="canvas-activity-deleted">
+    <li className="flex gap-3" data-testid="canvas-activity-deleted" data-undone={undone || undefined}>
       <span className="flex w-20 shrink-0 justify-center pt-1" aria-hidden>
-        <CommentPin as="span" number={item.number} done />
+        <CommentPin as="span" number={item.number} done={!undone} />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="card-meta text-muted-foreground">{t('cards.canvasActivity.deleted', { number: item.number })}</p>
-        <p className="card-body text-muted-foreground line-clamp-2 line-through" title={item.body}>
+        <p className="card-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5">
+          <span>{t('cards.canvasActivity.deleted', { number: item.number })}</span>
+          <ForPerson change={change} />
+          {undone && <UndoneLabel who={change?.undoneByName ?? null} />}
+        </p>
+        <p className={cn('card-body line-clamp-2', undone ? 'text-foreground' : 'text-muted-foreground line-through')} title={item.body}>
           {item.body}
         </p>
+        <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
+        {change?.canUndo && !undone && (
+          <div className="pt-1">
+            <UndoButton number={item.number} busy={serverUndo.busy} onClick={() => void serverUndo.undo()} />
+          </div>
+        )}
       </div>
     </li>
   )
 }
 
 /** One answer Piloti posted into a mark's thread. */
-function RepliedRow({ item, onShow }: { item: CanvasRepliedItem; onShow: ShowInDocument }): JSX.Element {
+function RepliedRow({
+  item,
+  live,
+  change,
+  changes,
+  onShow,
+}: {
+  item: CanvasRepliedItem
+  live: LiveMarks
+  change: PilotiChangeView | undefined
+  changes: TurnChanges
+  onShow: ShowInDocument
+}): JSX.Element {
   const t = useTranslations('chat')
+  const serverUndo = useServerUndo(change, live, changes)
+  const undone = change?.undoneAt != null
   return (
-    <li className="flex gap-3" data-testid="canvas-activity-replied">
+    <li className="flex gap-3" data-testid="canvas-activity-replied" data-undone={undone || undefined}>
       <span className="flex w-20 shrink-0 justify-center pt-1" aria-hidden>
         <CommentPin as="span" number={item.number} />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <p className="card-meta text-muted-foreground">
-          {t('cards.canvasActivity.repliedIn', { number: item.number })}
+        <p className="card-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5">
+          <span>{t('cards.canvasActivity.repliedIn', { number: item.number })}</span>
+          <ForPerson change={change} />
+          {undone && <UndoneLabel who={change?.undoneByName ?? null} />}
         </p>
-        <p className="card-body text-foreground line-clamp-2" title={item.excerpt}>
+        <p
+          className={cn('card-body line-clamp-2', undone ? 'text-muted-foreground line-through' : 'text-foreground')}
+          title={item.excerpt}
+        >
           „{item.excerpt}“
         </p>
-        <div className="pt-1">
+        <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {change?.canUndo && !undone && (
+            <UndoButton number={item.number} busy={serverUndo.busy} onClick={() => void serverUndo.undo()} />
+          )}
           <Button
             type="button"
             variant="ghost"

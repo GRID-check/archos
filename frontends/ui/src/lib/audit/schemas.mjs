@@ -686,12 +686,13 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'conversation' }],
     metadata: { previousRole: 'string', via: 'string' },
   },
-  // A wake of Piloti that started no turn (ADR-0106): a cap held it, the
-  // organization's switch was off by the time it ran, the person lost the
-  // right to write the document, their budget refused it, or no server took
-  // it. It made no model call, so it has no Langfuse trace; this and its
-  // `piloti_wakes` row are its record. The actor is the person whose act
-  // would have woken Piloti.
+  // A wake of Piloti that came to nothing (ADR-0106): one that started no turn
+  // (a cap held it, the organization's switch was off by the time it ran, the
+  // person lost the right to write the document, their budget refused it, or
+  // no server took it: `stage` enqueue or claim, no model call, no Langfuse
+  // trace), or one whose turn ran and failed (`stage: 'turn'`, migration
+  // 0138). This and its `piloti_wakes` row are its record. The actor is the
+  // person whose act woke, or would have woken, Piloti.
   'piloti.wake.suppressed': {
     targets: [{ type: 'document_annotation' }],
     metadata: { documentId: 'string', trigger: 'string', status: 'string', reason: 'string', stage: 'string' },

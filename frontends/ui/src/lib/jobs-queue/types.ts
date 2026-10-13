@@ -28,6 +28,10 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `piloti_wake` is one step that runs AS the person whose act woke Piloti
  * (ADR-0106): it opens a turn on the chat socket under their pinned session,
  * and waits (`notBefore`) while another turn of their thread runs.
+ * `piloti_wake_stop` is the stop of a wake's running turn, queued in the
+ * transaction in which a person takes the mark back; it runs as the system:
+ * the take-back was authorized when it was made, and a stop must still land
+ * when the person who woke Piloti has left or their budget is spent.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -44,6 +48,7 @@ export const BFF_JOB_KINDS = [
   'file_research_report',
   'mail_import',
   'piloti_wake',
+  'piloti_wake_stop',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -308,6 +313,23 @@ export const pilotiWakePayloadSchema = z.object({
   waits: z.number().int().nonnegative(),
 })
 export type PilotiWakePayload = z.infer<typeof pilotiWakePayloadSchema>
+
+/**
+ * `piloti_wake_stop`: stop the turn a wake started, because the person took the
+ * mark back (ADR-0106). Queued in the take-back's own transaction, so a crash
+ * between the commit and the send loses nothing. Ids only: the conversation is
+ * derived from the document and the person whose act woke Piloti, the turn id
+ * is the wake id. It carries the actor because the wake row is gone with a
+ * deleted mark.
+ */
+export const pilotiWakeStopPayloadSchema = z.object({
+  wakeId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  annotationId: z.string().uuid(),
+  /** The person the woken turn runs as: whose thread about the document it is in. */
+  actorUserId: z.string().min(1),
+})
+export type PilotiWakeStopPayload = z.infer<typeof pilotiWakeStopPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

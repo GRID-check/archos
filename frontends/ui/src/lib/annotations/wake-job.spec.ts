@@ -45,7 +45,7 @@ import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { MAX_WAKE_WAITS, runPilotiWake, waitAfter, WAKE_REQUIRES } from './wake-job'
 import { countWakes, findWake, settleWake } from './wake-repository'
-import { documentThreadConversationId, wakeTurnId } from './wake-ids'
+import { delegationEventId, documentThreadConversationId, wakeTurnId } from './wake-ids'
 
 const SECRET = 'wake-secret'
 const DOC_ID = '11111111-1111-4111-8111-111111111111'
@@ -191,12 +191,29 @@ describe('a wake that runs', () => {
   })
 
   it('asks a delegated mark with what the mark says', async () => {
-    await runPilotiWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId: 'delegation-1' }, NOT_LAST)
+    const delegatedAt = new Date('2026-10-13T09:59:00Z')
+    const eventId = delegationEventId(MARK_ID, delegatedAt)
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_1', delegatedAt })
+    await runPilotiWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId }, NOT_LAST)
 
     expect(sentRequest().message).toMatchObject({
       text: 'Türbreite prüfen',
-      trigger: { kind: 'assigned', event_id: 'delegation-1', annotation_id: MARK_ID },
+      trigger: { kind: 'assigned', event_id: eventId, annotation_id: MARK_ID },
     })
+  })
+
+  it('runs no turn for a delegation taken back (or delegated anew) since it was queued', async () => {
+    const queuedFor = delegationEventId(MARK_ID, new Date('2026-10-13T09:59:00Z'))
+    for (const now of [
+      { delegatedBy: null, delegatedAt: null },
+      { delegatedBy: 'user_2', delegatedAt: new Date('2026-10-13T10:05:00Z') },
+    ]) {
+      vi.mocked(runHeadlessTurn).mockClear()
+      vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, ...now })
+      await runPilotiWake('org_1', { ...PAYLOAD, trigger: 'assigned', eventId: queuedFor }, NOT_LAST)
+      expect(runHeadlessTurn).not.toHaveBeenCalled()
+      expect(settleWake).toHaveBeenLastCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'taken back' })
+    }
   })
 })
 

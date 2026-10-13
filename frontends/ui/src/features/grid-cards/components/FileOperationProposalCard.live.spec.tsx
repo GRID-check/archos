@@ -12,6 +12,9 @@
  *    shows their decision instead of an error.
  * 4. **Nothing lands in `cardInteractions`.** A decision recorded on the
  *    message would be a second truth beside the object.
+ * 5. **A colleague's decision shows without a reload.** While the proposal is
+ *    open the card listens on `proposal:<id>` (ADR-0104); a hint, or the
+ *    channel coming up, re-reads the object. A decided card listens to nothing.
  *
  * Rendered without an `I18nProvider`, so the dictionary falls back to `en`.
  */
@@ -20,6 +23,7 @@ import userEvent from '@testing-library/user-event'
 import { http, HttpResponse } from 'msw'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { server } from '@/mocks/server'
+import { __resetRealtimeConnection } from '@/features/realtime/connection'
 import { onDocumentsChanged } from '@/lib/documents/document-changes'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
@@ -95,7 +99,46 @@ beforeEach(() => {
 
 afterEach(() => {
   server.events.removeAllListeners()
+  __resetRealtimeConnection()
+  vi.unstubAllGlobals()
+  FakeEventSource.instances = []
 })
+
+/** The tab's one live stream, scripted: the specs open it and say what the server says. */
+class FakeEventSource {
+  static instances: FakeEventSource[] = []
+  onopen: ((event: Event) => void) | null = null
+  onerror: ((event: Event) => void) | null = null
+  onmessage: ((event: MessageEvent<string>) => void) | null = null
+  closed = false
+  constructor(readonly url: string) {
+    FakeEventSource.instances.push(this)
+  }
+  close() {
+    this.closed = true
+  }
+  open() {
+    this.onopen?.(new Event('open'))
+  }
+  say(frame: unknown) {
+    this.onmessage?.({ data: JSON.stringify(frame) } as MessageEvent<string>)
+  }
+}
+
+const CHANNEL = `proposal:${PROPOSAL_ID}`
+const hint = (status: string, proposalId = PROPOSAL_ID) => ({
+  kind: 'event',
+  ch: CHANNEL,
+  event: { kind: 'proposal.decided', proposalId, status },
+})
+
+/** The stream the card opens for its channel, once the connection's debounce has passed. */
+const openStream = async (): Promise<FakeEventSource> => {
+  await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1))
+  const stream = FakeEventSource.instances[0]
+  stream.open()
+  return stream
+}
 
 describe('FileOperationProposalCard with a proposal_id — what it shows', () => {
   it('reads the proposal and offers the decision the server allows', async () => {
@@ -272,5 +315,133 @@ describe('FileOperationProposalCard with a proposal_id — deciding', () => {
     expect(await screen.findByText('Could not be applied.')).toBeInTheDocument()
     await waitFor(() => expect(screen.getByRole('button', { name: 'Apply' })).not.toHaveAttribute('aria-disabled'))
     expect(setCardDecision).not.toHaveBeenCalled()
+  })
+})
+
+describe('FileOperationProposalCard with a proposal_id — live', () => {
+  const decidedByAnna = (patch: Partial<ProposedChangeView>) =>
+    proposal({
+      decidedBy: 'user_anna',
+      decidedByName: 'Anna Berger',
+      decidedAt: '2026-10-13T09:29:00.000Z',
+      canDecide: false,
+      ...patch,
+    })
+
+  it("shows a colleague's apply when the channel says so, without a click or a reload", async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    let current = proposal()
+    server.events.on('request:start', record)
+    server.use(http.get(`/api/proposals/${PROPOSAL_ID}`, () => HttpResponse.json({ proposal: current })))
+    const changed = vi.fn()
+    const unsubscribe = onDocumentsChanged(changed)
+    render(card)
+
+    expect(await screen.findByRole('button', { name: 'Apply' })).toBeInTheDocument()
+    const stream = await openStream()
+    expect(stream.url).toContain(`ch=${encodeURIComponent(CHANNEL)}`)
+    // The channel coming up reads once more: a decision between the first read and the subscription.
+    await waitFor(() => expect(requests.filter((line) => line.startsWith('GET'))).toHaveLength(2))
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+
+    current = decidedByAnna({
+      status: 'applied',
+      results: [
+        { label: 'Grundriss EG.pdf', ok: true },
+        { label: 'Grundriss OG.pdf', ok: true },
+      ],
+    })
+    stream.say(hint('applied'))
+
+    expect(await screen.findByText('2 files moved.')).toBeInTheDocument()
+    expect(screen.getByTestId('file-operation-decided-by')).toHaveTextContent(/^Applied by Anna Berger · /)
+    expect(screen.queryByRole('button', { name: 'Apply' })).toBeNull()
+    expect(screen.queryByTestId('file-operation-overtaken')).toBeNull()
+    expect(requests.filter((line) => line.startsWith('GET'))).toHaveLength(3)
+    // A colleague's apply changed files too: the Files list is told, once.
+    expect(changed).toHaveBeenCalledTimes(1)
+    expect(requests.some((line) => line.startsWith('POST'))).toBe(false)
+    unsubscribe()
+  })
+
+  it("shows a colleague's discard the same way", async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    let current = proposal()
+    server.events.on('request:start', record)
+    server.use(http.get(`/api/proposals/${PROPOSAL_ID}`, () => HttpResponse.json({ proposal: current })))
+    render(card)
+
+    await screen.findByRole('button', { name: 'Discard' })
+    const stream = await openStream()
+    await waitFor(() => expect(requests).toHaveLength(2))
+    current = decidedByAnna({ status: 'dismissed' })
+    stream.say(hint('dismissed'))
+
+    expect(await screen.findByText('Discarded. Nothing was changed.')).toBeInTheDocument()
+    expect(screen.getByTestId('file-operation-decided-by')).toHaveTextContent(/^Discarded by Anna Berger · /)
+  })
+
+  it('reads again when the stream comes back, because a decision may have fallen in the gap', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    let current = proposal()
+    server.events.on('request:start', record)
+    server.use(http.get(`/api/proposals/${PROPOSAL_ID}`, () => HttpResponse.json({ proposal: current })))
+    render(card)
+
+    await screen.findByRole('button', { name: 'Apply' })
+    const stream = await openStream()
+    await waitFor(() => expect(requests).toHaveLength(2))
+    stream.onerror?.(new Event('error'))
+    current = decidedByAnna({ status: 'dismissed' })
+    // The ladder reopens the stream; a new source announces itself live.
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(2), { timeout: 4000 })
+    FakeEventSource.instances[1].open()
+
+    expect(await screen.findByText('Discarded. Nothing was changed.')).toBeInTheDocument()
+  })
+
+  it('ignores a hint about another proposal, and one that is not a decision', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    serve(proposal())
+    render(card)
+
+    await screen.findByRole('button', { name: 'Apply' })
+    const stream = await openStream()
+    await waitFor(() => expect(requests).toHaveLength(2))
+    stream.say(hint('applied', '00000000-0000-4000-8000-0000000000b2'))
+    stream.say(hint('proposed'))
+    await new Promise((resolve) => setTimeout(resolve, 50))
+
+    expect(requests).toHaveLength(2)
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+  })
+
+  it('does not listen once the proposal is decided', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    serve(decidedByAnna({ status: 'applied', results: [{ label: 'Grundriss EG.pdf', ok: true }] }))
+    render(card)
+
+    expect(await screen.findByTestId('file-operation-decided-by')).toBeInTheDocument()
+    // Longer than the connection's debounce: a channel that was wanted would have opened by now.
+    await new Promise((resolve) => setTimeout(resolve, 400))
+
+    expect(FakeEventSource.instances).toHaveLength(0)
+    expect(requests).toEqual([`GET /api/proposals/${PROPOSAL_ID}`])
+  })
+
+  it('stays as it was when the re-read fails', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource)
+    serve(proposal())
+    render(card)
+
+    await screen.findByRole('button', { name: 'Apply' })
+    const stream = await openStream()
+    await waitFor(() => expect(requests).toHaveLength(2))
+    server.use(http.get(`/api/proposals/${PROPOSAL_ID}`, () => HttpResponse.json({ error: 'boom' }, { status: 500 })))
+    stream.say(hint('applied'))
+    await waitFor(() => expect(requests).toHaveLength(3))
+
+    expect(screen.getByRole('button', { name: 'Apply' })).toBeInTheDocument()
+    expect(screen.queryByTestId('file-operation-unavailable')).toBeNull()
   })
 })

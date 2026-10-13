@@ -168,6 +168,17 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     'The threads of Anmerkungen just read from a document the service read first.',
   'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':
     "The thread's count under the insert's lock, for an Anmerkung of a document the service read for writing.",
+
+  // --- Piloti's change record: read through the Anmerkungen's own read gate -----
+  // A person's view of the record goes through `listAnnotations` (`getAccessibleDocument`, 'read') per document
+  // (`lib/changes/service.ts#readDocumentMarks`), and a document that gate refuses leaves its rows out. The two
+  // reads below only fetch rows by turn or by id; nothing they return leaves the service before that gate ran.
+  'lib/changes/repository.ts#listTurnChangeRows|pilotiChanges':
+    "The rows of one turn's answer, which `listTurnChanges` then narrows by `viewsFor`: a row whose document `listAnnotations` refuses is dropped.",
+  'lib/changes/repository.ts#findPilotiChange|pilotiChanges':
+    "One row by id for `undoChange`, which reads its document through `listAnnotations` (`loadReadable`) before it plans or runs anything; a document the reader may not see is a 404.",
+  'lib/langfuse/decision-score.ts#changeOriginMessage|pilotiChanges':
+    "The answer message id of the turn that made a change, handed to Langfuse to find the trace. An id for a score, never a row for a person; the decision it scores was authorized by the caller.",
 }
 
 /**
@@ -290,6 +301,8 @@ const GUARDED_TABLES: Record<string, string> = {
   // Where a person marked a page (migration 0135): a document fact, keyed by the document.
   documentAnnotations: 'document_annotations',
   documentAnnotationReplies: 'document_annotation_replies',
+  // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0139, ADR-0109): a document fact.
+  pilotiChanges: 'piloti_changes',
 }
 
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */
@@ -655,6 +668,7 @@ describe('every read of documents states its reader (ADR-0086)', () => {
         'resourceAssignments',
         'permitRequirements',
         'documentAnnotations',
+        'pilotiChanges',
       ])
     )
     expect(DOCUMENT_RELATIONS).toEqual(new Set(['documents', 'document']))

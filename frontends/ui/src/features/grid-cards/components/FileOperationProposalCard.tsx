@@ -50,7 +50,7 @@
  * ({@link BrowserAppliedCard}).
  */
 
-import { useEffect, useRef, useState, type ComponentProps } from 'react'
+import { useCallback, useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Check, FolderTree, X } from 'lucide-react'
 import { motion, motionDeliberate, useIconSwapTransition } from '@/components/motion'
 import { Button } from '@/components/ui/button'
@@ -58,8 +58,10 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime } from '@/lib/format'
 import { applyProposal, dismissProposal, getProposal } from '@/lib/proposals/client'
+import { proposalChannelKey, proposalEventSchema, type ProposalEvent } from '@/lib/proposals/live-events'
 import type { ProposedChangeStatus, ProposedChangeView } from '@/lib/proposals/types'
 import { useChatStore } from '@/features/chat/store'
+import { useChannel } from '@/features/realtime/use-channel'
 import { useCardDecision } from '../hooks/use-card-decision'
 import {
   applyFileOperations,
@@ -274,6 +276,40 @@ function ServerProposalCard({
     setProposal(next)
     notifyIfAnyApplied(next.results)
   }
+
+  // A colleague's decision, live. Once the first read shows the proposal open,
+  // the card listens on `proposal:<id>` (a decided card listens to nothing). A
+  // hint re-reads the object, and so does the channel coming up, which closes
+  // the gap between that first read and the subscription; the object stays the
+  // truth and the hint is never trusted as data. Nothing is applied while this
+  // tab is deciding itself: its own response settles it, and a second settle
+  // would tell the Files list twice.
+  const open = proposal?.status === 'proposed'
+  const live = useRef({ open, busy })
+  live.current = { open, busy }
+  const settleRef = useRef(settle)
+  settleRef.current = settle
+  const reread = useCallback(() => {
+    void getProposal(proposalId).then(
+      (response) => {
+        if (!live.current.open || live.current.busy) return
+        if (response.proposal.status !== 'proposed') settleRef.current(response.proposal)
+      },
+      () => undefined
+    )
+  }, [proposalId])
+  const channel = useChannel<ProposalEvent>(proposalChannelKey(proposalId), {
+    enabled: open,
+    parse: (event) => {
+      const parsed = proposalEventSchema.safeParse(event)
+      return parsed.success && parsed.data.proposalId === proposalId ? parsed.data : null
+    },
+    onEvent: reread,
+  })
+  const channelStatus = channel.status
+  useEffect(() => {
+    if (channelStatus === 'live') reread()
+  }, [channelStatus, reread])
 
   const decide = async (action: 'apply' | 'dismiss'): Promise<void> => {
     if (busy) return

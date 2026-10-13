@@ -27,6 +27,15 @@
  * budget still reads on sight and shows no live indicator; it is promoted, and
  * reads again, when a channel frees up.
  *
+ * ## Which marks a hint touched
+ *
+ * The same hints tell a card that the server's change record of its marks may
+ * have moved too (a colleague undid Piloti's change, ADR-0109): the record
+ * stamps every mark a burst of hints named, and `touched` reports the newest
+ * stamp among the marks a card watches. It is a number the card refetches on,
+ * not data. A rejoin after the card was away, or after a drop, stamps every
+ * mark, because nothing is replayed.
+ *
  * Both reads fail soft: a card that cannot read the live list falls back to
  * the decision its message stored, and one with no thumbnail draws a plain
  * page.
@@ -73,6 +82,11 @@ export interface LiveMarks {
   forget: (annotationId: string) => void
   /** Whether the document's live channel is open for this card now: changes on the canvas reach it. */
   connected: boolean
+  /**
+   * A stamp that moves whenever a hint named one of the watched marks (or the
+   * channel came back): the card refetches what the server records on it.
+   */
+  touched: number
 }
 
 type MarkMap = ReadonlyMap<string, LiveMark | 'gone'>
@@ -103,6 +117,15 @@ interface DocumentMarks {
   leave: (() => void) | null
   status: ChannelStatus | 'off'
   debounce: ReturnType<typeof setTimeout> | null
+  /** The marks named by hints since the last read was queued. */
+  pending: Set<string>
+  /** The stamp of the newest burst that named each mark. */
+  touched: Map<string, number>
+  /** The stamp of the newest event that may have touched any mark (a rejoin). */
+  touchedAll: number
+  touchCount: number
+  /** Whether the channel was joined before, so a later join is a rejoin. */
+  joinedBefore: boolean
 }
 
 const documents = new Map<string, DocumentMarks>()
@@ -123,6 +146,11 @@ function recordOf(documentId: string): DocumentMarks {
       leave: null,
       status: 'off',
       debounce: null,
+      pending: new Set(),
+      touched: new Map(),
+      touchedAll: 0,
+      touchCount: 0,
+      joinedBefore: false,
     }
     documents.set(documentId, record)
   }
@@ -185,22 +213,33 @@ function setStatus(record: DocumentMarks, status: DocumentMarks['status']): void
   notify(record)
 }
 
-function onChanged(documentId: string, record: DocumentMarks): void {
+function onChanged(documentId: string, record: DocumentMarks, annotationIds: readonly string[]): void {
+  for (const id of annotationIds) record.pending.add(id)
   if (record.debounce) clearTimeout(record.debounce)
   record.debounce = setTimeout(() => {
     record.debounce = null
+    const stamp = ++record.touchCount
+    for (const id of record.pending) record.touched.set(id, stamp)
+    record.pending.clear()
+    notify(record)
     void readMarks(documentId, { fresh: true })
   }, CHANGE_DEBOUNCE_MS)
 }
 
 function join(documentId: string, record: DocumentMarks): void {
   if (record.leave) return
+  // Away and back: nothing was replayed, so any mark may have moved.
+  if (record.joinedBefore) record.touchedAll = ++record.touchCount
+  record.joinedBefore = true
   setStatus(record, 'connecting')
   const link = realtimeLink(documentRoomChannel(documentId))
   record.leave = link.connect({
     onOpen: () => {
       // Back from a drop: nothing is replayed, so whatever changed meanwhile is read.
-      if (record.status === 'offline') void readMarks(documentId, { fresh: false })
+      if (record.status === 'offline') {
+        record.touchedAll = ++record.touchCount
+        void readMarks(documentId, { fresh: false })
+      }
       setStatus(record, 'live')
     },
     onDrop: () => setStatus(record, 'offline'),
@@ -208,7 +247,9 @@ function join(documentId: string, record: DocumentMarks): void {
       if (frame.kind === 'revoked') return setStatus(record, 'offline')
       if (frame.kind === 'welcome') return setStatus(record, 'live')
       const parsed = roomEventSchema.safeParse(frame.event)
-      if (parsed.success && parsed.data.kind === 'annotations.changed') onChanged(documentId, record)
+      if (parsed.success && parsed.data.kind === 'annotations.changed') {
+        onChanged(documentId, record, parsed.data.annotationIds)
+      }
     },
   })
   // Whatever changed while nobody listened (off screen, past the budget) is read now.
@@ -264,6 +305,13 @@ function subscribeTo(documentId: string, render: () => void): () => void {
 const currentList = (documentId: string): MarkMap | null => documents.get(documentId)?.list ?? null
 const isConnected = (documentId: string): boolean => documents.get(documentId)?.status === 'live'
 
+/** The newest stamp among the given marks (and the rejoin stamp), 0 when none was touched. */
+function touchedStamp(documentId: string, annotationIds: readonly string[]): number {
+  const record = documents.get(documentId)
+  if (!record) return 0
+  return annotationIds.reduce((newest, id) => Math.max(newest, record.touched.get(id) ?? 0), record.touchedAll)
+}
+
 /** Test seam: drop every document's record and channel. */
 export function __resetCanvasDocuments(): void {
   for (const record of documents.values()) part(record)
@@ -280,12 +328,16 @@ interface Writes {
 }
 
 const NO_WRITES: Writes = { base: null, marks: new Map() }
+const NO_MARKS: readonly string[] = []
 
 /**
  * The document's marks as the canvas has them: read once `seen` turns true,
  * and kept current while `onScreen` holds.
  */
-export function useLiveMarks(documentId: string, { seen, onScreen }: { seen: boolean; onScreen: boolean }): LiveMarks {
+export function useLiveMarks(
+  documentId: string,
+  { seen, onScreen, watch = NO_MARKS }: { seen: boolean; onScreen: boolean; watch?: readonly string[] }
+): LiveMarks {
   const subscribe = useCallback((render: () => void) => subscribeTo(documentId, render), [documentId])
   const list = useSyncExternalStore(
     subscribe,
@@ -296,6 +348,11 @@ export function useLiveMarks(documentId: string, { seen, onScreen }: { seen: boo
     subscribe,
     () => isConnected(documentId),
     () => false
+  )
+  const touched = useSyncExternalStore(
+    subscribe,
+    () => touchedStamp(documentId, watch),
+    () => 0
   )
   // What this card's writes returned, over the list they were made on. Kept
   // apart from the shared list so a write made before any read landed tells
@@ -334,7 +391,7 @@ export function useLiveMarks(documentId: string, { seen, onScreen }: { seen: boo
     [list, since]
   )
 
-  return { lookup, refresh, adopt, forget, connected }
+  return { lookup, refresh, adopt, forget, connected, touched }
 }
 
 /**

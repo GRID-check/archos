@@ -12,6 +12,11 @@
  *   project's documents (`project:documents:write`, or the older
  *   `project:edit`); a reader without it gets a 403. A closed project is
  *   read-only and refuses with its own 403.
+ * - **After a decision** (committed, never awaited, never failing it) three
+ *   things follow: the live channel `proposal:<id>` hears of it, so every open
+ *   card re-reads (`lib/realtime/proposal-channel.ts`); the inbox is told
+ *   nothing waits any more (`./attention`); and the decision is a score on the
+ *   trace of the turn that proposed it (`lib/langfuse/decision-score.ts`).
  * - **Applying** runs each item through the document, folder and assignment
  *   services in the DECIDING person's session (`./executors`), so every check
  *   they make by hand is made again. It is a compare-and-swap on `proposed`:
@@ -27,7 +32,10 @@ import { requireProjectAccess } from '@/lib/authz/projects'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
-import { applyFileOperations, REQUIRED_FIELDS } from './executors'
+import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
+import { onProposalCreated, onProposalDecided } from './attention'
+import { applyFileOperations, operationLabel, REQUIRED_FIELDS } from './executors'
+import { publishProposalDecided } from './live'
 import {
   claimProposedChange,
   dismissProposedChange,
@@ -96,7 +104,7 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
     const conversation = await findConversationInOrg(input.conversationId, session.organizationId)
     if (!conversation) throw new NotFoundError('Conversation not found')
   }
-  return insertProposedChange({
+  const row = await insertProposedChange({
     organizationId: session.organizationId,
     projectId: input.projectId,
     kind: input.kind,
@@ -106,10 +114,68 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
     originConversationId: input.conversationId,
     originMessageId: input.answerMessageId,
   })
+  bestEffort('attention (created)', () =>
+    onProposalCreated({
+      organizationId: row.organizationId,
+      projectId: row.projectId,
+      proposalId: row.id,
+      originConversationId: row.originConversationId,
+      onBehalfOf: row.onBehalfOf,
+      summary: summaryOf(payload),
+    })
+  )
+  return row
+}
+
+/** Run a side effect of a write that has committed, and never let it reach the write: a failure is logged. */
+function bestEffort(what: string, run: () => Promise<unknown>): void {
+  void Promise.resolve()
+    .then(run)
+    .catch((error: unknown) => {
+      console.warn(`[proposals] ${what} failed (non-fatal):`, error)
+    })
+}
+
+/** How many names the inbox row lists before it counts the rest. */
+const SUMMARY_NAMES = 2
+
+/** One line naming what a proposal touches: the first names, then how many more. No verb, so it needs no language. */
+function summaryOf(payload: FileOperationPayload): string {
+  const names = payload.operations.map((item) => operationLabel(payload.operation, item)).filter(Boolean)
+  const shown = names.slice(0, SUMMARY_NAMES).join(', ')
+  return names.length > SUMMARY_NAMES ? `${shown} +${names.length - SUMMARY_NAMES}` : shown
+}
+
+/**
+ * What follows a committed decision. A fully or partly applied proposal is
+ * `accepted` and a dismissed one `dismissed`; one where nothing went through
+ * (`failed`) was neither taken nor refused, so it is not scored.
+ */
+function afterDecision(session: AuthorizedSession, row: ProposedChangeRow): void {
+  const status = row.status
+  if (status === 'proposed') return
+  bestEffort('live publish', () => publishProposalDecided(row.id, status))
+  bestEffort('attention (decided)', () => onProposalDecided({ organizationId: row.organizationId, proposalId: row.id }))
+  const decision: Decision | null =
+    status === 'dismissed' ? 'dismissed' : status === 'failed' ? null : 'accepted'
+  if (!decision) return
+  bestEffort('decision score', () =>
+    recordDecisionScore({
+      organizationId: row.organizationId,
+      subject: 'proposal',
+      subjectId: row.id,
+      decision,
+      decidedBy: session.userId,
+      origin:
+        row.originConversationId && row.originMessageId
+          ? { conversationId: row.originConversationId, messageId: row.originMessageId }
+          : null,
+    })
+  )
 }
 
 /** The proposal, if `session` may read it; a 404 for "missing" and "not yours" alike. */
-async function loadReadable(session: AuthorizedSession, id: string): Promise<ProposedChangeRow> {
+export async function requireReadableProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeRow> {
   const row = await findProposedChange(session.organizationId, id)
   if (!row) throw new NotFoundError()
   await requireProjectAccess(session, row.projectId, 'project:view')
@@ -174,7 +240,7 @@ async function toView(session: AuthorizedSession, row: ProposedChangeRow): Promi
 }
 
 export async function getProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeView> {
-  return toView(session, await loadReadable(session, id))
+  return toView(session, await requireReadableProposal(session, id))
 }
 
 const outcomeOf = (results: readonly ProposedChangeResult[]) => {
@@ -193,7 +259,7 @@ export async function applyProposal(
   id: string,
   request: Request
 ): Promise<ProposedChangeView> {
-  const row = await loadReadable(session, id)
+  const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
   await requireDecider(session, row.projectId)
   const claim = await claimProposedChange(session.organizationId, id, session.userId, staleBefore())
@@ -217,12 +283,13 @@ export async function applyProposal(
   // Only reachable when this apply outlived its claim and somebody else decided
   // in the meantime: the items ran, and the record belongs to the other decision.
   if (!settled) throw new ConflictError('This proposal was decided while it was being applied', { reason: 'proposal-decided' })
+  afterDecision(session, settled)
   return toView(session, settled)
 }
 
 /** Dismiss the proposal as `session`'s person. 409 when it is no longer `proposed` or is being applied. */
 export async function dismissProposal(session: AuthorizedSession, id: string): Promise<ProposedChangeView> {
-  const row = await loadReadable(session, id)
+  const row = await requireReadableProposal(session, id)
   if (row.status !== 'proposed') throw alreadyDecided(row)
   await requireDecider(session, row.projectId)
   const dismissed = await dismissProposedChange(session.organizationId, id, session.userId, staleBefore())
@@ -230,5 +297,6 @@ export async function dismissProposal(session: AuthorizedSession, id: string): P
     const now = await findProposedChange(session.organizationId, id)
     throw now && now.status === 'proposed' ? beingApplied() : alreadyDecided(now ?? row)
   }
+  afterDecision(session, dismissed)
   return toView(session, dismissed)
 }

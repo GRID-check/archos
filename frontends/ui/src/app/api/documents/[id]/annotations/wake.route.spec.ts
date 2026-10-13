@@ -17,6 +17,8 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
+const TX_DB = vi.hoisted(() => ({ handle: 'the tenant-scoped db' }))
+
 const session = {
   userId: 'user_1',
   organizationId: 'org_1',
@@ -34,7 +36,20 @@ vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn().m
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
-vi.mock('@/lib/annotations/wake-repository', () => ({ countWakes: vi.fn(), insertWake: vi.fn() }))
+vi.mock('@/lib/annotations/wake-repository', () => ({
+  countWakes: vi.fn(),
+  insertWake: vi.fn(),
+  findLiveDelegationWake: vi.fn(),
+  settleWake: vi.fn(),
+}))
+// Only the write after the commit (`settleTakenBack`) opens a handle of its own.
+vi.mock('@/lib/db', async (importOriginal) => ({ ...(await importOriginal<typeof import('@/lib/db')>()), getDb: () => TX_DB }))
+vi.mock('@/lib/db/tenant-context', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/tenant-context')>()),
+  withTenant: (_context: unknown, run: () => unknown) => run(),
+}))
+vi.mock('@/lib/annotations/attention', () => ({ onMarkSettledByPerson: vi.fn() }))
+vi.mock('@/lib/langfuse/decision-score', () => ({ recordDecisionScore: vi.fn() }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -47,24 +62,35 @@ vi.mock('@/lib/annotations/repository', () => ({
 }))
 
 import { ForbiddenError } from '@/lib/api/errors'
-import { listAnnotations, replyToAnnotation, updateAnnotationWithWake } from '@/lib/annotations/client'
+import type { AuthorizedSession } from '@/lib/auth/types'
+import { onMarkSettledByPerson } from '@/lib/annotations/attention'
 import {
+  deleteAnnotation,
+  listAnnotations,
+  replyToAnnotation,
+  updateAnnotation,
+  updateAnnotationWithWake,
+} from '@/lib/annotations/client'
+import {
+  deleteDocumentAnnotation,
   findDocumentAnnotation,
   insertAnnotationReply,
   listDocumentAnnotations,
   updateDocumentAnnotation,
   type AnnotationRecord,
 } from '@/lib/annotations/repository'
-import { countWakes, insertWake } from '@/lib/annotations/wake-repository'
+import { PILOTI, replyToAnnotation as replyAs, updateAnnotation as updateAs } from '@/lib/annotations/service'
+import { countWakes, findLiveDelegationWake, insertWake, settleWake } from '@/lib/annotations/wake-repository'
 import { delegationEventId, wakeTurnId } from '@/lib/annotations/wake-ids'
 import { recordAuditEvent } from '@/lib/audit/service'
 import type { DbTransaction } from '@/lib/db/executor'
-import type { Document, DocumentAnnotationReplyRow } from '@/lib/db/schema'
+import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
+import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 
 import { GET as list } from './route'
-import { PATCH as patch } from './[annotationId]/route'
+import { DELETE as remove, PATCH as patch } from './[annotationId]/route'
 import { POST as reply } from './[annotationId]/replies/route'
 
 type Handler = (request: Request, context?: { params?: Promise<Record<string, string>> }) => Promise<Response>
@@ -72,6 +98,7 @@ type Handler = (request: Request, context?: { params?: Promise<Record<string, st
 const ROUTES: Array<{ pattern: RegExp; method: string; handler: Handler; params: string[] }> = [
   { pattern: /^\/api\/documents\/([^/]+)\/annotations$/, method: 'GET', handler: list, params: ['id'] },
   { pattern: /^\/api\/documents\/([^/]+)\/annotations\/([^/]+)$/, method: 'PATCH', handler: patch, params: ['id', 'annotationId'] },
+  { pattern: /^\/api\/documents\/([^/]+)\/annotations\/([^/]+)$/, method: 'DELETE', handler: remove, params: ['id', 'annotationId'] },
   {
     pattern: /^\/api\/documents\/([^/]+)\/annotations\/([^/]+)\/replies$/,
     method: 'POST',
@@ -146,16 +173,21 @@ beforeEach(() => {
   vi.mocked(countWakes).mockResolvedValue(0)
   vi.mocked(insertWake).mockResolvedValue(true)
   vi.mocked(enqueueJob).mockResolvedValue({ jobId: 'job' })
+  vi.mocked(findLiveDelegationWake).mockResolvedValue(null)
+  vi.mocked(settleWake).mockResolvedValue(true)
   vi.mocked(insertAnnotationReply).mockImplementation(async (input, afterInsert) => {
-    const { handBack: _handBack, ...values } = input
     const row: DocumentAnnotationReplyRow = {
       id: REPLY_ID,
       createdAt: new Date(),
-      ...values,
-      addressesAgent: values.addressesAgent ?? false,
+      ...input,
+      addressesAgent: input.addressesAgent ?? false,
     }
     await afterInsert?.(TX, row)
     return row
+  })
+  vi.mocked(deleteDocumentAnnotation).mockImplementation(async (_org, _doc, _id, beforeDelete) => {
+    await beforeDelete?.(TX)
+    return true
   })
   vi.mocked(updateDocumentAnnotation).mockImplementation(async (_org, _doc, _id, _expected, changes, afterUpdate) => {
     const { transition, delegation, ...fields } = changes
@@ -321,5 +353,257 @@ describe('a delegation to Piloti', () => {
     await updateAnnotationWithWake(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
 
     expect(vi.mocked(updateDocumentAnnotation).mock.calls[0][4].delegation).toEqual({ delegatedBy: null, delegatedAt: null })
+  })
+})
+
+/** The wake of the mark's current delegation, as `findLiveDelegationWake` answers it. */
+const liveWake = (status: 'queued' | 'started', actorUserId = 'user_1'): PilotiWakeRow => ({
+  id: WAKE_ID,
+  organizationId: 'org_1',
+  documentId: DOC_ID,
+  annotationId: MARK_ID,
+  triggerKind: 'assigned',
+  eventId: delegationEventId(MARK_ID, DELEGATED_AT),
+  actorUserId,
+  status,
+  reason: null,
+  createdAt: DELEGATED_AT,
+  settledAt: status === 'queued' ? null : DELEGATED_AT,
+  endedAt: null,
+})
+
+const WAKE_ID = '44444444-4444-4444-8444-444444444444'
+const DELEGATED_AT = new Date('2026-10-13T09:00:00Z')
+const DELEGATED: AnnotationRecord = { ...MARK, delegatedBy: 'user_1', delegatedAt: DELEGATED_AT }
+
+/** The stop jobs the take-back queued, with the executor each went into. */
+const stopJobs = () =>
+  vi.mocked(enqueueJob).mock.calls.filter(([job]) => job.kind === 'piloti_wake_stop')
+
+describe('a reply of Piloti’s on a delegated mark', () => {
+  it('leaves the delegation alone: only the delegation’s own turn ending hands the mark back', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(DELEGATED)
+
+    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, PILOTI)
+
+    const [input] = vi.mocked(insertAnnotationReply).mock.calls[0]
+    expect(input).not.toHaveProperty('handBack')
+    expect(input).toMatchObject({ authorKind: 'piloti', annotationId: MARK_ID })
+    expect(enqueueJob).not.toHaveBeenCalled()
+  })
+})
+
+describe('taking a mark back from Piloti', () => {
+  const takeBackBy = {
+    'clearing the delegation': () => updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run }),
+    'resolving the mark': () => updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run }),
+  }
+
+  beforeEach(() => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(DELEGATED)
+  })
+
+  for (const [how, takeBack] of Object.entries(takeBackBy)) {
+    describe(how, () => {
+      it('looks for the live wake of that delegation in the change’s own transaction', async () => {
+        await takeBack()
+
+        expect(findLiveDelegationWake).toHaveBeenCalledTimes(1)
+        expect(findLiveDelegationWake).toHaveBeenCalledWith(TX, 'org_1', MARK_ID, delegationEventId(MARK_ID, DELEGATED_AT))
+      })
+
+      it('settles a queued wake `suppressed` (taken back), so its job never starts a turn, and stops nothing', async () => {
+        vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
+
+        await takeBack()
+
+        expect(settleWake).toHaveBeenCalledTimes(1)
+        expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'taken back' })
+        expect(stopJobs()).toHaveLength(0)
+      })
+
+      it('enqueues exactly one stop job, in the change’s transaction, for a wake whose turn runs', async () => {
+        vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started', 'user_3'))
+
+        await takeBack()
+
+        expect(stopJobs()).toHaveLength(1)
+        const [job, executor] = stopJobs()[0]
+        expect(executor).toBe(TX)
+        expect(job).toMatchObject({
+          kind: 'piloti_wake_stop',
+          organizationId: 'org_1',
+          payload: { wakeId: WAKE_ID, documentId: DOC_ID, annotationId: MARK_ID, actorUserId: 'user_3' },
+        })
+        // The turn ends `stopped` and says so itself: the wake is not ended from here.
+        expect(settleWake).not.toHaveBeenCalled()
+      })
+
+      it('does nothing about a wake when there is none', async () => {
+        await takeBack()
+
+        expect(settleWake).not.toHaveBeenCalled()
+        expect(enqueueJob).not.toHaveBeenCalled()
+      })
+    })
+  }
+
+  it('stops the turn of a wake that started between the read and the settle', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValueOnce(liveWake('queued')).mockResolvedValueOnce(liveWake('started'))
+    vi.mocked(settleWake).mockResolvedValue(false)
+
+    await updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run })
+
+    expect(stopJobs()).toHaveLength(1)
+    expect(stopJobs()[0][1]).toBe(TX_DB)
+  })
+
+  it('does not touch a wake when the mark was not delegated', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
+
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
+
+    expect(findLiveDelegationWake).not.toHaveBeenCalled()
+  })
+
+  it('stops the turn when the person deletes the mark, before its wakes go with it', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...DELEGATED, createdBy: 'user_1' })
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
+
+    await deleteAnnotation(DOC_ID, MARK_ID, { run })
+
+    expect(findLiveDelegationWake).toHaveBeenCalledWith(TX, 'org_1', MARK_ID, delegationEventId(MARK_ID, DELEGATED_AT))
+    expect(stopJobs()).toHaveLength(1)
+    expect(stopJobs()[0][1]).toBe(TX)
+    expect(settleWake).not.toHaveBeenCalled()
+  })
+
+  it('deletes an undelegated mark with no hook in the transaction', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, createdBy: 'user_1' })
+
+    await deleteAnnotation(DOC_ID, MARK_ID, { run })
+
+    expect(vi.mocked(deleteDocumentAnnotation).mock.calls[0][3]).toBeUndefined()
+  })
+
+  it('never stops the turn when Piloti closes the mark in the asker’s name, which is usually that turn finishing', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
+
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+
+    expect(vi.mocked(updateDocumentAnnotation).mock.calls[0][4].delegation).toEqual({ delegatedBy: null, delegatedAt: null })
+    expect(stopJobs()).toHaveLength(0)
+  })
+
+  it('still keeps a queued wake from starting when Piloti closes the mark', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
+
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+
+    expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'suppressed', reason: 'taken back' })
+  })
+})
+
+describe('what a person’s decision leaves behind', () => {
+  const PROPOSAL: AnnotationRecord = { ...MARK, authorKind: 'piloti', kind: 'question', status: 'proposed', createdBy: 'user_1' }
+
+  it('says the mark is settled once when a person answers in its thread', async () => {
+    await replyToAnnotation(DOC_ID, MARK_ID, { body: 'Erledigt ich.' }, { run })
+
+    expect(onMarkSettledByPerson).toHaveBeenCalledTimes(1)
+    expect(onMarkSettledByPerson).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      annotationId: MARK_ID,
+      userId: 'user_1',
+      closed: false,
+    })
+  })
+
+  it('says it once, closed, when a person resolves, dismisses or deletes the mark', async () => {
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
+    expect(onMarkSettledByPerson).toHaveBeenCalledTimes(1)
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, status: 'resolved' })
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'open' }, { run })
+    expect(onMarkSettledByPerson).toHaveBeenCalledTimes(1)
+
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(MARK)
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'dismissed' }, { run })
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, createdBy: 'user_1' })
+    await deleteAnnotation(DOC_ID, MARK_ID, { run })
+
+    expect(onMarkSettledByPerson).toHaveBeenCalledTimes(3)
+    expect(vi.mocked(onMarkSettledByPerson).mock.calls.every(([call]) => call.closed)).toBe(true)
+  })
+
+  it('does not call it for a reply of Piloti’s, or for a move that settles nothing (a rewording)', async () => {
+    await replyAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { body: 'Erledigt.' }, PILOTI)
+    await updateAnnotation(DOC_ID, MARK_ID, { body: 'Neu gefasst' }, { run })
+
+    expect(onMarkSettledByPerson).not.toHaveBeenCalled()
+  })
+
+  it('scores a proposal once as accepted when a person takes it over, and does not call it settled', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'open' }, { run })
+
+    expect(recordDecisionScore).toHaveBeenCalledTimes(1)
+    expect(recordDecisionScore).toHaveBeenCalledWith({
+      subject: 'annotation',
+      subjectId: MARK_ID,
+      decision: 'accepted',
+      decidedBy: 'user_1',
+      organizationId: 'org_1',
+    })
+    expect(onMarkSettledByPerson).not.toHaveBeenCalled()
+  })
+
+  it('scores a proposal once as dismissed when a person dismisses it', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'dismissed' }, { run })
+
+    expect(recordDecisionScore).toHaveBeenCalledTimes(1)
+    expect(recordDecisionScore).toHaveBeenCalledWith(expect.objectContaining({ decision: 'dismissed', subjectId: MARK_ID }))
+  })
+
+  it('scores no decision on a person’s own mark, a rewording of a proposal, or a move Piloti makes for the asker', async () => {
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+    await updateAnnotation(DOC_ID, MARK_ID, { body: 'Neu gefasst' }, { run })
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'open' }, PILOTI)
+
+    expect(recordDecisionScore).not.toHaveBeenCalled()
+  })
+
+  it('never breaks the write when either call throws or rejects', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(onMarkSettledByPerson).mockImplementationOnce(() => {
+      throw new Error('the inbox is down')
+    })
+    vi.mocked(recordDecisionScore).mockRejectedValueOnce(new Error('Langfuse is down'))
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+
+    await expect(updateAnnotation(DOC_ID, MARK_ID, { status: 'dismissed' }, { run })).resolves.toMatchObject({ id: MARK_ID })
+    expect(onMarkSettledByPerson).toHaveBeenCalledTimes(1)
+    expect(recordDecisionScore).toHaveBeenCalledTimes(1)
+
+    vi.mocked(onMarkSettledByPerson).mockRejectedValueOnce(new Error('the inbox is down'))
+    await expect(replyToAnnotation(DOC_ID, MARK_ID, { body: 'Noch eine.' }, { run })).resolves.toMatchObject({
+      replyId: REPLY_ID,
+    })
+    await vi.waitFor(() => expect(warn).toHaveBeenCalledTimes(3))
+    warn.mockRestore()
+  })
+
+  it('does not mark anything settled, or score anything, when the write itself is refused', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+    vi.mocked(updateDocumentAnnotation).mockResolvedValue(null)
+
+    await expect(updateAnnotation(DOC_ID, MARK_ID, { status: 'open' }, { run })).rejects.toMatchObject({ status: 409 })
+
+    expect(recordDecisionScore).not.toHaveBeenCalled()
+    expect(onMarkSettledByPerson).not.toHaveBeenCalled()
   })
 })

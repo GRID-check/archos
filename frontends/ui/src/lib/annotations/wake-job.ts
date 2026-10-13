@@ -44,6 +44,7 @@ import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
+import { delegationEventId } from './wake-ids'
 import { findWake, settleWake } from './wake-repository'
 
 /** The hello entries a server must name before a wake is sent: without `if_idle` it would supersede. */
@@ -187,6 +188,15 @@ export async function runPilotiWake(
   if (!doc) return end('suppressed', 'the person may no longer write the document')
   const mark = await findDocumentAnnotation(organizationId, doc.id, payload.annotationId)
   if (!mark) return end('suppressed', 'the mark is gone')
+  // A delegation taken back (or re-delegated) since this wake was queued must
+  // not still run: the take-back suppresses the queued wake after its commit,
+  // and a crash in between would otherwise leave it to run anyway.
+  if (
+    payload.trigger === 'assigned' &&
+    (!mark.delegatedAt || delegationEventId(mark.id, mark.delegatedAt) !== payload.eventId)
+  ) {
+    return end('suppressed', 'taken back')
+  }
   const cap = await capReached(getDb(), { organizationId, annotationId: mark.id, actor: payload.actor }, new Date(), undefined, {
     createdAt: wake.createdAt,
     id: wake.id,

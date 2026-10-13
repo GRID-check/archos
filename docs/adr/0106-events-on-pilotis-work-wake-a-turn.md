@@ -61,6 +61,25 @@ Chosen option: 2.
   can wake it on that mark; one wake per event (idempotent turn id); caps per
   mark and per person; the person's usage budget; an organization switch, off
   by default.
+* **The mark is the work item; the wake is Piloti's turn on it.** Delegating a
+  mark to Piloti does not create a task: the mark already carries the
+  responsible person, the status, the date and the thread, and a second record
+  of the same work would have to be kept in step with it forever (the Linear
+  shape: work is delegated to an agent, the agent's activity is a session on
+  the issue). Tasks (ADR-0051) stay the record for work no object holds.
+* **Every woken turn has an end.** The chat socket posts each headless turn's
+  outcome to `POST /api/internal/turns/outcome` (`answered`, `refused`,
+  `handed_off`, `stopped`, `failed`, the last also for `RUN_ERROR`, which
+  persists nothing), and the wake records it (`answered | stopped | failed`,
+  `ended_at`, migration 0138). A delegation is handed back when ITS turn ends,
+  never by any Piloti reply; taking the mark back, resolving, dismissing or
+  deleting it stops that turn (`cancel_turn`, sent as an internal caller).
+* **The thread always hears back.** A turn asked to answer in a thread whose
+  model did not call `canvas__reply` posts its answer there at the end
+  (`aiq_agent.turn.annotation_reply`).
+* **The person hears back too**: the inbox says when delegated work is done or
+  failed, when Piloti answered a mention, and when Piloti asks them something
+  on a mark (ADR-0035).
 
 
 ### Consequences
@@ -79,6 +98,11 @@ Chosen option: 2.
   the waker cannot edit the mark; `if_idle` never supersedes a running turn;
   `ask_user` refuses on a headless turn.
 * Langfuse: `turn_trigger`, `trigger_event_id`, tag `trigger:<kind>`.
+* `lib/turns/outcome.spec.ts`: each outcome ends its wake once; a delegation is
+  handed back only by its own turn. Annotation service specs: a Piloti reply no
+  longer hands a mark back; taking it back suppresses a queued wake and stops a
+  started one. Chat socket tests: the outcome is posted once per headless turn,
+  `RUN_ERROR` included, and never for a browser's turn.
 
 ## Pros and Cons of the Options
 

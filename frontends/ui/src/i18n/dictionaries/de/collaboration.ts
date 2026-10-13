@@ -339,6 +339,35 @@ export const collaboration: typeof en.collaboration = {
         titleNoActor: 'Neue Fassung von „{subject}“',
         bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
       },
+      // Piloti hat eine Anmerkung bearbeitet, die Sie delegiert oder bei der Sie es
+      // angesprochen haben (ADR-0106). {related} ist die laufende Nummer der
+      // Anmerkung, {subject} das Dokument. Kein {actor}: das war Piloti.
+      pilotiWorkDone: {
+        title: 'Piloti ist mit einer Anmerkung fertig',
+        titleRelated: 'Piloti ist mit Anmerkung {related} fertig',
+        body: 'Die Antwort steht im Verlauf der Anmerkung in {subject}.',
+        bodyNoSubject: 'Die Antwort steht im Verlauf der Anmerkung.',
+      },
+      pilotiWorkFailed: {
+        title: 'Piloti konnte eine Anmerkung nicht bearbeiten',
+        titleRelated: 'Piloti konnte Anmerkung {related} nicht bearbeiten',
+        body: 'Öffnen Sie die Anmerkung in {subject}: Sie können sie selbst übernehmen oder erneut an Piloti delegieren.',
+        bodyNoSubject: 'Öffnen Sie die Anmerkung: Sie können sie selbst übernehmen oder erneut an Piloti delegieren.',
+      },
+      // Piloti hat eine Rückfrage gestellt und wartet auf eine Person. Die Frage
+      // steht als Auszug darunter.
+      pilotiAsksYou: {
+        title: 'Piloti hat eine Rückfrage zu einer Anmerkung',
+        titleRelated: 'Piloti hat eine Rückfrage zu Anmerkung {related}',
+        body: 'In {subject}. Antworten Sie im Verlauf der Anmerkung.',
+        bodyNoSubject: 'Antworten Sie im Verlauf der Anmerkung.',
+      },
+      // Ein Vorschlag, den der Server hält (ADR-0105). Was er ändert, steht als
+      // Auszug darunter.
+      pilotiProposalWaiting: {
+        title: 'Piloti hat einen Vorschlag für Sie',
+        body: 'Übernehmen oder verwerfen Sie ihn.',
+      },
       unknown: {
         title: 'Es gab Aktivität',
         body: 'in {subject}',

@@ -7,7 +7,9 @@
  * resolves and answers them (`getAccessibleDocument`, so a closed project, a
  * read-only folder and a held upload refuse exactly as they refuse a rename).
  * Deleting one is for the person who set it: a mark somebody else is working
- * from does not vanish under them, it is resolved.
+ * from does not vanish under them, it is resolved. A mark Piloti set for its
+ * asker counts as theirs ({@link mayDeleteMark}), and a reply is deleted by
+ * the person it was posted for ({@link deleteReply}).
  *
  * Piloti works through the same functions with the asker's pinned session
  * (`/api/internal/document-annotations`), so it may do exactly what the asker
@@ -23,6 +25,18 @@
  * making Piloti the delegate on a mark wake Piloti (ADR-0106, `./wake.ts`):
  * the wake is enqueued in the write's own transaction, and the response says
  * whether the server will answer (`wake`), so the browser never asks twice.
+ *
+ * Taking a mark back from Piloti (clearing the delegation, or resolving,
+ * dismissing or deleting the mark) ends what the delegation started
+ * (`./take-back.ts`): a wake still queued never starts, and a turn that runs
+ * is stopped by a job queued in the take-back's own transaction. Only the
+ * delegation's own turn ending hands a mark back, never a reply of Piloti's
+ * (`lib/turns/outcome.ts`).
+ *
+ * A person's decisions leave two traces after the write committed, both
+ * best-effort: what Piloti asked on a mark is no longer waiting on them
+ * (`./attention.ts`), and taking over or dismissing a mark Piloti proposed is
+ * a score on the turn that proposed it (`lib/langfuse/decision-score.ts`).
  *
  * Every write tells the document's room (the `doc:<id>` live channel,
  * `lib/realtime/document-channel.ts`), so everyone looking at the document
@@ -48,6 +62,7 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import {
   AnnotationLimitReachedError,
+  deleteAnnotationReply,
   deleteDocumentAnnotation,
   findDocumentAnnotation,
   insertAnnotationReply,
@@ -59,10 +74,13 @@ import {
   type AnnotationRecord,
   type NewAnnotationValues,
 } from './repository'
+import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
+import { onMarkSettledByPerson } from './attention'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
+import { readTakeBack, settleTakenBack, type EndedDelegation, type TakeBack } from './take-back'
 import {
   annotationBox,
   annotationProposalSchema,
@@ -95,6 +113,18 @@ export interface AnnotationActor {
 
 const PERSON: AnnotationActor = { kind: 'person' }
 export const PILOTI: AnnotationActor = { kind: 'piloti' }
+
+/**
+ * Whether this person may delete the mark: one they set themselves, or one
+ * Piloti set for them. Piloti's mark carries the asker as `created_by` (the
+ * session it works in), and `accepted_by` is the asker too when they asked for
+ * exactly this mark (born open) or took their own proposal over. A mark
+ * Piloti proposed and somebody ELSE took over has two people behind it, so
+ * neither deletes it; it is resolved or dismissed. A proposal nobody took
+ * over has no `accepted_by`, so it is dismissed, never deleted.
+ */
+const mayDeleteMark = (record: Pick<AnnotationRecord, 'authorKind' | 'createdBy' | 'acceptedBy'>, userId: string) =>
+  record.createdBy === userId && (record.authorKind === 'person' || record.acceptedBy === userId)
 
 /** Whether the document sits on a shelf that carries Anmerkungen. */
 const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
@@ -179,7 +209,7 @@ function toView(
     delegatedAt: record.delegatedAt ? record.delegatedAt.toISOString() : null,
     replies: record.replies.map((reply) => toReplyView(reply, names)),
     canEdit: writable,
-    canDelete: writable && record.authorKind === 'person' && record.createdBy === session.userId,
+    canDelete: writable && mayDeleteMark(record, session.userId),
   }
 }
 
@@ -423,6 +453,58 @@ export function transition(
   throw new ConflictError(`An Anmerkung cannot go from ${from} to ${to}.`)
 }
 
+/** Run work that must never fail the write behind it: a throw or a rejection is a warning. */
+function bestEffort(label: string, work: () => Promise<unknown>): void {
+  const warn = (error: unknown) => console.warn(`[annotations] ${label} failed:`, error)
+  try {
+    void Promise.resolve(work()).catch(warn)
+  } catch (error) {
+    warn(error)
+  }
+}
+
+/** A person answered in a mark's thread, or closed the mark: what Piloti asked there no longer waits on them. */
+function traceSettled(session: AuthorizedSession, annotationId: string, closed: boolean): void {
+  bestEffort('mark the mark settled', () =>
+    onMarkSettledByPerson({ organizationId: session.organizationId, annotationId, userId: session.userId, closed })
+  )
+}
+
+/**
+ * What a person's move of status leaves behind, once it committed: a closed
+ * mark settles what Piloti asked on it, and taking over or dismissing a mark
+ * Piloti proposed is a score on the turn that proposed it.
+ */
+function traceMove(
+  session: AuthorizedSession,
+  annotationId: string,
+  existing: Pick<AnnotationRecord, 'authorKind' | 'status'>,
+  to: 'open' | 'resolved' | 'dismissed' | undefined
+): void {
+  if (to === 'resolved' || to === 'dismissed') traceSettled(session, annotationId, true)
+  const proposal = existing.authorKind === 'piloti' && existing.status === 'proposed'
+  if (!proposal || (to !== 'open' && to !== 'dismissed')) return
+  bestEffort('score the decision', () =>
+    recordDecisionScore({
+      subject: 'annotation',
+      subjectId: annotationId,
+      decision: to === 'open' ? 'accepted' : 'dismissed',
+      decidedBy: session.userId,
+      organizationId: session.organizationId,
+    })
+  )
+}
+
+/** The delegation a mark carries, with where it lives; none when the mark is not delegated. */
+const delegationOfMark = (
+  session: AuthorizedSession,
+  documentId: string,
+  mark: Pick<AnnotationRecord, 'id' | 'delegatedAt'>
+): EndedDelegation | null =>
+  mark.delegatedAt
+    ? { organizationId: session.organizationId, documentId, annotationId: mark.id, delegatedAt: mark.delegatedAt }
+    : null
+
 const conflict = () => new ConflictError('Somebody changed this Anmerkung a moment ago. Look again.')
 
 /**
@@ -492,16 +574,22 @@ export async function updateAnnotation(
   if (Object.keys(changes).length === 0) return { annotation: await viewOf(session, doc, annotationId) }
 
   const delegating = delegation?.delegatedBy ? delegation.delegatedAt : null
+  // A change that clears the delegation ends it; delegating an already delegated mark changes nothing.
+  const ended = delegation && delegation.delegatedBy === null ? delegationOfMark(session, doc.id, existing) : null
+  // Piloti closing a mark in the asker's name is usually the delegation's own turn finishing: it is not stopped.
+  const stopTurn = actor.kind === 'person'
   // Set in the write's transaction; a holder, because a closure's assignment is not narrowed.
-  const enqueued: { wake: EnqueuedWake | null } = { wake: null }
+  const enqueued: { wake: EnqueuedWake | null; takeBack: TakeBack | null } = { wake: null, takeBack: null }
   const updated = await updateDocumentAnnotation(
     session.organizationId,
     doc.id,
     annotationId,
     existing.status,
     changes,
-    delegating
+    delegating || ended
       ? async (tx) => {
+          if (ended) enqueued.takeBack = await readTakeBack(tx, ended, { stopTurn })
+          if (!delegating) return
           enqueued.wake = await enqueueWake(tx, {
             organizationId: session.organizationId,
             documentId: doc.id,
@@ -517,6 +605,14 @@ export async function updateAnnotation(
   if (!updated) throw conflict()
   announce(session, doc.id, [annotationId], 'updated', actor)
   auditHeldWake(session, doc.id, annotationId, 'assigned', enqueued.wake)
+  if (ended && enqueued.takeBack) {
+    const { takeBack } = enqueued
+    // The queued wake is the one thing a crash here can leave behind; its job would run a turn nobody wants.
+    await settleTakenBack(ended, takeBack, { stopTurn }).catch((error: unknown) =>
+      console.warn('[annotations] could not keep a taken-back wake from starting:', error)
+    )
+  }
+  if (actor.kind === 'person' && moves) traceMove(session, annotationId, existing, parsed.status)
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
 }
@@ -542,7 +638,10 @@ function auditHeldWake(
   })
 }
 
-/** Delete one Anmerkung the session set itself. Piloti's proposals are dismissed, never deleted. */
+/**
+ * Delete one Anmerkung the session set itself, or Piloti set for it
+ * ({@link mayDeleteMark}). Piloti's proposals are dismissed, never deleted.
+ */
 export async function deleteAnnotation(
   session: AuthorizedSession,
   documentId: string,
@@ -552,11 +651,25 @@ export async function deleteAnnotation(
   const doc = await requireWritableDocument(session, documentId)
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!existing) throw new NotFoundError()
-  if (existing.authorKind !== 'person' || existing.createdBy !== session.userId) {
+  if (!mayDeleteMark(existing, session.userId)) {
     throw new ForbiddenError('Only the person who set an Anmerkung can delete it. Resolve or dismiss it instead.')
   }
-  await deleteDocumentAnnotation(session.organizationId, doc.id, annotationId)
+  const ended = delegationOfMark(session, doc.id, existing)
+  const stopTurn = actor.kind === 'person'
+  await deleteDocumentAnnotation(
+    session.organizationId,
+    doc.id,
+    annotationId,
+    // The mark takes its wakes with it: the running turn is read, and its stop queued, before they go.
+    // A wake still queued needs nothing: its job finds the mark gone.
+    ended
+      ? async (tx) => {
+          await readTakeBack(tx, ended, { stopTurn })
+        }
+      : undefined
+  )
   announce(session, doc.id, [annotationId], 'deleted', actor)
+  if (actor.kind === 'person') traceSettled(session, annotationId, true)
   return null
 }
 
@@ -650,7 +763,7 @@ export async function updateAnnotationForAsker(
  * enqueued in the reply's transaction (`wake: 'queued'`, or `'suppressed'`
  * when a cap holds it); with it off, the response says `'off'` and the
  * browser asks Piloti itself, as before. Piloti's reply never wakes it, and
- * on a mark it was delegated it hands the mark back.
+ * never hands a delegated mark back: only the delegation's own turn ending does.
  */
 export async function replyToAnnotation(
   session: AuthorizedSession,
@@ -675,7 +788,6 @@ export async function replyToAnnotation(
       body,
       createdBy: session.userId,
       addressesAgent: addresses,
-      handBack: actor.kind === 'piloti' && Boolean(existing.delegatedBy),
     },
     enabled && trigger
       ? async (tx, row) => {
@@ -697,8 +809,38 @@ export async function replyToAnnotation(
   })
   announce(session, doc.id, [annotationId], 'replied', actor)
   if (trigger) auditHeldWake(session, doc.id, annotationId, trigger, enqueued.wake)
+  if (actor.kind === 'person') traceSettled(session, annotationId, false)
   const outcome: WakeOutcome = trigger === null ? 'none' : enabled ? wakeOutcomeOf(enqueued.wake) : 'off'
   return { annotation: await viewOf(session, doc, annotationId), replyId: reply.id, wake: outcome }
+}
+
+/**
+ * Delete one reply from a thread: the person it was posted for may, whether
+ * they wrote it or Piloti did in their name (`created_by` is the session the
+ * reply was posted in, for both). Nobody else's thread entry vanishes under
+ * them. `expectedBody` is a compare-and-swap for undo: a reply that says
+ * something else now is a 409, never deleted. Tells the room, which re-reads.
+ */
+export async function deleteReply(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  replyId: string,
+  options: { expectedBody?: string; actor?: AnnotationActor } = {}
+): Promise<null> {
+  const actor = options.actor ?? PERSON
+  const doc = await requireWritableDocument(session, documentId)
+  const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
+  const reply = existing?.replies.find((candidate) => candidate.id === replyId)
+  if (!existing || !reply) throw new NotFoundError()
+  if (reply.createdBy !== session.userId) {
+    throw new ForbiddenError('Only the person an answer was written for can delete it.')
+  }
+  if (options.expectedBody !== undefined && options.expectedBody !== reply.body) throw conflict()
+  const gone = await deleteAnnotationReply(session.organizationId, annotationId, replyId, options.expectedBody)
+  if (!gone) throw conflict()
+  announce(session, doc.id, [annotationId], 'updated', actor)
+  return null
 }
 
 /** The Anmerkungen as Piloti reads them: place as a box, without a reader's controls. */

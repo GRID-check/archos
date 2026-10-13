@@ -202,6 +202,8 @@ export const pilotiWakes = pgTable(
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     settledAt: timestamp('settled_at', { withTimezone: true }),
+    /** When it reached its final word: the turn's end, or the settle of one that never started (0138). */
+    endedAt: timestamp('ended_at', { withTimezone: true }),
   },
   (table) => ({
     annotationFk: foreignKey({
@@ -224,6 +226,10 @@ export const pilotiWakes = pgTable(
     settledWhenNotQueued: check(
       'piloti_wakes_settled_when_not_queued',
       sql`(${table.status} = 'queued') = (${table.settledAt} IS NULL)`
+    ),
+    endedWhenFinal: check(
+      'piloti_wakes_ended_when_final',
+      sql`(${table.status} IN ('queued', 'started')) = (${table.endedAt} IS NULL)`
     ),
   })
 )

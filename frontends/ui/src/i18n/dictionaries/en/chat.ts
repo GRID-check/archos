@@ -655,6 +655,10 @@ export const chat = {
       undone: 'Undone',
       movedSince: 'Changed since, now {state}',
       deleted: 'Annotation #{number} deleted',
+      // Who the turn acted for, and why an undo did not happen (ADR-0109).
+      forPerson: 'for {name}',
+      movedOn: 'Someone changed this in the meantime, so it stays as it is.',
+      alreadyUndone: 'Already undone.',
     },
     verdictHeader: {
       confidenceHigh: 'high confidence',

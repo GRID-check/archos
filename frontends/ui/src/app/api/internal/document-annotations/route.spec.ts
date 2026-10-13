@@ -61,6 +61,13 @@ vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
   withTenant: (_scope: unknown, run: () => unknown) => run(),
 }))
+// The change record (ADR-0109) and the attention a write asks for, at their seams.
+vi.mock('@/lib/changes/repository', () => ({ insertPilotiChanges: vi.fn(async () => []) }))
+vi.mock('@/lib/annotations/attention', () => ({
+  onPilotiWrote: vi.fn(async () => undefined),
+  onMarkSettledByPerson: vi.fn(async () => undefined),
+  onWakeEnded: vi.fn(async () => undefined),
+}))
 
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
 import { listAnnotationsForAgent, proposeAnnotations, replyToAnnotation } from '@/lib/annotations/service'
@@ -87,6 +94,8 @@ import {
 import { canUserAccessProject } from '@/lib/authz/project-membership'
 import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { onPilotiWrote } from '@/lib/annotations/attention'
+import { insertPilotiChanges } from '@/lib/changes/repository'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-annotations'
@@ -133,7 +142,12 @@ beforeEach(() => {
     subjectResourceId: DOC_ID,
   } as Partial<Conversation> as Conversation)
   vi.mocked(findDocumentInOrg).mockImplementation(async (id) =>
-    ({ id, filename: id === DOC_ID ? 'Grundriss EG.pdf' : 'Schnitt A-A.pdf', collectionName: 'proj_1_docs' }) as Partial<Document> as Document
+    ({
+      id,
+      filename: id === DOC_ID ? 'Grundriss EG.pdf' : 'Schnitt A-A.pdf',
+      collectionName: 'proj_1_docs',
+      projectId: 'proj_1',
+    }) as Partial<Document> as Document
   )
   vi.mocked(admitSubjectRead).mockResolvedValue(false)
   vi.mocked(listAnnotationsForAgent).mockResolvedValue({ documentId: DOC_ID, annotations: [] })
@@ -465,12 +479,11 @@ function fakeRepository() {
   )
   vi.mocked(insertAnnotationReply).mockImplementation(async (input) => {
     const current = marks.get(input.annotationId)
-    const { handBack: _handBack, ...values } = input
     const reply: DocumentAnnotationReplyRow = {
       id: `reply_${current?.replies.length ?? 0}`,
       createdAt: NOW,
-      ...values,
-      addressesAgent: values.addressesAgent ?? false,
+      ...input,
+      addressesAgent: input.addressesAgent ?? false,
     }
     if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
     return reply
@@ -533,7 +546,6 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
         body: NOTE,
         createdBy: 'user_1',
         addressesAgent: false,
-        handBack: false,
       },
       // Piloti's own reply never wakes Piloti.
       undefined
@@ -619,13 +631,19 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     expect(stored().status).toBe('open')
   })
 
-  it("refuses to delete a mark somebody else set, or one Piloti set, as it would refuse the asker", async () => {
+  it("refuses to delete a mark somebody else set, or a proposal nobody took over, as it would refuse the asker", async () => {
     expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(403)
 
-    marks.set(MARK_ID, record({ authorKind: 'piloti', status: 'open', createdBy: 'user_1', acceptedBy: 'user_1', acceptedAt: NOW }))
+    // A proposal is dismissed, never deleted: it has no person behind it yet.
+    marks.set(MARK_ID, record({ authorKind: 'piloti', status: 'proposed', createdBy: 'user_1' }))
     expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(403)
 
     expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+  })
+
+  it('deletes a mark Piloti set open for the asker, as the asker may (parity, `mayDeleteMark`)', async () => {
+    marks.set(MARK_ID, record({ authorKind: 'piloti', status: 'open', createdBy: 'user_1', acceptedBy: 'user_1', acceptedAt: NOW }))
+    expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(200)
   })
 
   it('deletes a mark the asker set, and says which it was', async () => {
@@ -648,5 +666,216 @@ describe('POST /api/internal/document-annotations — what the asker asks for', 
     marks.clear()
     expect((await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })).status).toBe(404)
     expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(404)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// The change record (ADR-0109): every change Piloti applies is a row with the
+// turn that made it, written after the service committed it.
+// ---------------------------------------------------------------------------
+
+const ANSWER = '66666666-6666-4666-8666-666666666666'
+/** The turn's half of every row. */
+const TURN = {
+  organizationId: 'org_1',
+  documentId: DOC_ID,
+  originConversationId: 'conv_1',
+  originMessageId: ANSWER,
+  onBehalfOf: 'user_1',
+}
+const recorded = () => vi.mocked(insertPilotiChanges).mock.calls.flatMap(([, rows]) => rows)
+
+describe('POST /api/internal/document-annotations — what a turn changed is recorded with the turn', () => {
+  beforeEach(() => {
+    marks = new Map([[MARK_ID, record()]])
+    fakeRepository()
+    vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
+    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(
+      new Map([['user_anna', { userId: 'user_anna', email: 'anna@buero.at', name: 'Anna Berger', profilePictureUrl: null }]])
+    )
+  })
+
+  it('records a mark Piloti set as a create, with its whole state, and tells attention it was a question', async () => {
+    const response = await post({ op: 'create', answerMessageId: ANSWER, marks: [{ ...PROPOSAL, kind: 'question' }] })
+
+    expect(response.status).toBe(200)
+    const { created } = await response.json()
+    expect(recorded()).toEqual([
+      {
+        ...TURN,
+        annotationId: created[0].id,
+        objectKind: 'annotation',
+        objectId: created[0].id,
+        op: 'create',
+        before: null,
+        after: {
+          status: 'open',
+          kind: 'question',
+          body: PROPOSAL.body,
+          basis: PROPOSAL.basis,
+          assigneeUserId: null,
+          dueOn: null,
+          page: 1,
+          shape: 'region',
+          x: 0.1,
+          y: 0.2,
+          w: 0.3,
+          h: 0.1,
+        },
+      },
+    ])
+    expect(vi.mocked(insertPilotiChanges).mock.calls[0][0]).toBe('org_1')
+    expect(onPilotiWrote).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      documentId: DOC_ID,
+      annotationId: created[0].id,
+      annotationNumber: 10,
+      projectId: 'proj_1',
+      onBehalfOf: 'user_1',
+      assigneeUserId: null,
+      what: 'question',
+      replyId: null,
+    })
+  })
+
+  it('records each proposal Piloti made as a create, and tells attention of a mark', async () => {
+    vi.mocked(proposeAnnotations).mockResolvedValue({
+      annotations: [{ ...record({ id: 'ann_1', status: 'proposed', authorKind: 'piloti' }) }] as never,
+    })
+
+    await post({ op: 'propose', answerMessageId: ANSWER, proposals: [PROPOSAL] })
+
+    expect(recorded()).toEqual([
+      expect.objectContaining({ op: 'create', annotationId: 'ann_1', after: expect.objectContaining({ status: 'proposed' }) }),
+    ])
+    expect(onPilotiWrote).toHaveBeenCalledWith(expect.objectContaining({ annotationId: 'ann_1', what: 'mark' }))
+  })
+
+  it('records a change with only the fields that moved, as they were and as Piloti left them', async () => {
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', assignee: 'Anna Berger', note: NOTE })
+
+    expect(recorded()).toEqual([
+      {
+        ...TURN,
+        annotationId: MARK_ID,
+        objectKind: 'annotation',
+        objectId: MARK_ID,
+        op: 'update',
+        before: { status: 'open', assigneeUserId: null },
+        after: { status: 'resolved', assigneeUserId: 'user_anna' },
+      },
+    ])
+    // The note is part of the change, not a reply of its own.
+    expect(onPilotiWrote).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for a change that moved nothing, or one refused as stale', async () => {
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, kind: 'defect', note: NOTE })
+    marks.set(MARK_ID, record({ status: 'resolved', closedBy: 'user_2', closedAt: NOW }))
+    const stale = await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'open', expectedStatus: 'open', note: NOTE })
+
+    expect(stale.status).toBe(409)
+    expect(insertPilotiChanges).not.toHaveBeenCalled()
+  })
+
+  it('records a delete with everything setting the mark again takes', async () => {
+    marks.set(MARK_ID, record({ createdBy: 'user_1', dueOn: '2026-10-20' }))
+
+    await post({ op: 'delete', answerMessageId: ANSWER, annotationId: MARK_ID })
+
+    expect(recorded()).toEqual([
+      {
+        ...TURN,
+        annotationId: MARK_ID,
+        objectKind: 'annotation',
+        objectId: MARK_ID,
+        op: 'delete',
+        before: {
+          status: 'open',
+          kind: 'defect',
+          body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+          basis: null,
+          assigneeUserId: null,
+          dueOn: '2026-10-20',
+          page: 1,
+          shape: 'point',
+          x: 0.4,
+          y: 0.5,
+          w: null,
+          h: null,
+        },
+        after: null,
+      },
+    ])
+  })
+
+  it('records a reply as the create of a reply, by its id, and tells attention', async () => {
+    const replyId = '77777777-7777-4777-8777-777777777777'
+    vi.mocked(replyToAnnotation).mockResolvedValue({
+      annotation: {
+        ...record(),
+        replies: [{ id: replyId, body: 'Die Breite ist im Schnitt B-B kotiert.' }],
+        assigneeUserId: 'user_anna',
+      } as never,
+      replyId,
+      wake: 'none',
+    })
+
+    await post({ op: 'reply', answerMessageId: ANSWER, annotationId: MARK_ID, body: 'Die Breite ist im Schnitt B-B kotiert.' })
+
+    expect(recorded()).toEqual([
+      {
+        ...TURN,
+        annotationId: MARK_ID,
+        objectKind: 'annotation_reply',
+        objectId: replyId,
+        op: 'create',
+        before: null,
+        after: { body: 'Die Breite ist im Schnitt B-B kotiert.' },
+      },
+    ])
+    expect(onPilotiWrote).toHaveBeenCalledWith(
+      expect.objectContaining({ annotationId: MARK_ID, annotationNumber: 4, assigneeUserId: 'user_anna', what: 'reply', replyId })
+    )
+  })
+
+  it('records nothing for a turn without an answer id (an older agent), and still applies the change', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+    await post({ op: 'create', marks: [PROPOSAL] })
+
+    expect(response.status).toBe(200)
+    expect(stored().status).toBe('resolved')
+    expect(insertPilotiChanges).not.toHaveBeenCalled()
+    warn.mockRestore()
+  })
+
+  it('records no read, no presence, no pointer and no highlight', async () => {
+    vi.mocked(roomSnapshot).mockResolvedValue([])
+    for (const body of [
+      { op: 'list' },
+      { op: 'room' },
+      { op: 'point', page: 1, x: 0.4, y: 0.5 },
+      { op: 'highlight', page: 1, x: 0.1, y: 0.1, w: 0.2, h: 0.2, label: 'Hier' },
+      { op: 'leave' },
+    ]) {
+      expect((await post({ ...body, answerMessageId: ANSWER })).status).toBe(200)
+    }
+    expect(insertPilotiChanges).not.toHaveBeenCalled()
+    expect(onPilotiWrote).not.toHaveBeenCalled()
+  })
+
+  it('does not fail a change that landed when its record cannot be written', async () => {
+    vi.mocked(insertPilotiChanges).mockRejectedValueOnce(new Error('connection reset'))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+
+    const response = await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    expect(response.status).toBe(200)
+    expect(stored().status).toBe('resolved')
+    expect(error).toHaveBeenCalled()
+    error.mockRestore()
   })
 })

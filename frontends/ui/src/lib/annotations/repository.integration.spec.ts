@@ -18,12 +18,15 @@
  *   - a status move is compare-and-swap: the second of two moves from the same
  *     state finds nothing to move;
  *   - a thread comes back in order and goes with its mark;
+ *   - one reply is deleted alone, and only while it still says what the caller
+ *     read (undo's compare-and-swap); another mark's reply with the same id is
+ *     not touched;
  *   - another organization reads none of them and cannot plant one on this
  *     organization's document;
  *   - a wake of Piloti (migration 0136, ADR-0106) is recorded and queued in
  *     the reply's transaction, and a reply that rolls back leaves neither; the
  *     caps count the recorded wakes; a delegation is both columns or neither,
- *     only on an open mark, and Piloti's reply hands the mark back.
+ *     only on an open mark, and Piloti's reply leaves it alone.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -53,6 +56,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
   let repo: typeof import('./repository')
   let wake: typeof import('./wake')
   let wakeIds: typeof import('./wake-ids')
+  let takeBack: typeof import('./take-back')
   const ids = { project: '', document: '', second: '', v1: '', v2: '' }
 
   const inOrg = <T>(organizationId: string, run: () => PromiseLike<T>) =>
@@ -134,6 +138,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     repo = await import('./repository')
     wake = await import('./wake')
     wakeIds = await import('./wake-ids')
+    takeBack = await import('./take-back')
     ids.project = await project(ORG, 'Wohnbau')
     await project(OTHER_ORG, 'Fremd')
     ids.document = await document(ids.project, 'EG_Grundriss.pdf')
@@ -269,6 +274,34 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     expect(Number(Array.from(left)[0]?.n)).toBe(0)
   })
 
+  it('deletes one reply alone, and only while its body is what the caller read', async () => {
+    const [row] = await insert(ids.document)
+    const [other] = await insert(ids.document)
+    const post = (annotationId: string, body: string) =>
+      inOrg(ORG, () =>
+        repo.insertAnnotationReply({ organizationId: ORG, annotationId, authorKind: 'piloti', body, createdBy: USER })
+      )
+    const keep = await post(row.id, 'Bleibt')
+    const gone = await post(row.id, 'Geht')
+    const elsewhere = await post(other.id, 'Anderswo')
+    const bodies = async (annotationId: string) =>
+      (await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, annotationId)))?.replies.map((reply) => reply.body)
+
+    // The body moved since the caller read it: nothing goes.
+    expect(await inOrg(ORG, () => repo.deleteAnnotationReply(ORG, row.id, gone.id, 'Anders'))).toBe(false)
+    // The reply of another mark is not this mark's.
+    expect(await inOrg(ORG, () => repo.deleteAnnotationReply(ORG, row.id, elsewhere.id))).toBe(false)
+    // Another organization finds nothing.
+    expect(await inOrg(OTHER_ORG, () => repo.deleteAnnotationReply(OTHER_ORG, row.id, gone.id))).toBe(false)
+    expect(await bodies(row.id)).toEqual(['Bleibt', 'Geht'])
+
+    expect(await inOrg(ORG, () => repo.deleteAnnotationReply(ORG, row.id, gone.id, 'Geht'))).toBe(true)
+    expect(await inOrg(ORG, () => repo.deleteAnnotationReply(ORG, row.id, gone.id))).toBe(false)
+    expect(await bodies(row.id)).toEqual(['Bleibt'])
+    expect(await bodies(other.id)).toEqual(['Anderswo'])
+    expect(keep.id).not.toBe(gone.id)
+  })
+
   it('shows another organization none of them, and refuses one planted on this document', async () => {
     expect(await inOrg(OTHER_ORG, () => repo.listDocumentAnnotations(OTHER_ORG, ids.document))).toEqual([])
     const leaked = await inOrg(OTHER_ORG, () =>
@@ -362,7 +395,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       ).rejects.toThrow()
     })
 
-    it('keeps a delegation whole, on an open mark only, and lets Piloti’s reply hand it back', async () => {
+    it('keeps a delegation whole, on an open mark only, and a reply of Piloti’s does not hand it back', async () => {
       const [row] = await insert(ids.document)
       const delegated = await inOrg(ORG, () =>
         repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', {
@@ -386,11 +419,50 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
           authorKind: 'piloti',
           body: 'Erledigt.',
           createdBy: USER,
-          handBack: true,
         })
       )
       const after = await inOrg(ORG, () => repo.findDocumentAnnotation(ORG, ids.document, row.id))
-      expect(after).toMatchObject({ delegatedBy: null, delegatedAt: null })
+      expect(after).toMatchObject({ delegatedBy: USER, delegatedAt: expect.any(Date) })
+    })
+
+    it('queues the stop of a started delegation wake in the delete’s transaction, before the wake goes with its mark', async () => {
+      const [row] = await insert(ids.document)
+      const delegatedAt = new Date()
+      await inOrg(ORG, () =>
+        repo.updateDocumentAnnotation(
+          ORG,
+          ids.document,
+          row.id,
+          'open',
+          { delegation: { delegatedBy: USER, delegatedAt } },
+          async (tx) => {
+            await wake.enqueueWake(tx, {
+              ...event(row.id, wakeIds.delegationEventId(row.id, delegatedAt)),
+              trigger: 'assigned',
+            })
+          }
+        )
+      )
+      await inOrg(ORG, () =>
+        db.execute(sql`update piloti_wakes set status = 'started', settled_at = now() where annotation_id = ${row.id}::uuid`)
+      )
+
+      await inOrg(ORG, () =>
+        repo.deleteDocumentAnnotation(ORG, ids.document, row.id, async (tx) => {
+          await takeBack.readTakeBack(
+            tx,
+            { organizationId: ORG, documentId: ids.document, annotationId: row.id, delegatedAt },
+            { stopTurn: true }
+          )
+        })
+      )
+
+      expect(await count(sql`select count(*)::int as n from piloti_wakes where annotation_id = ${row.id}::uuid`)).toBe(0)
+      expect(
+        await count(
+          sql`select count(*)::int as n from bff_job_queue where kind = 'piloti_wake_stop' and payload->>'annotationId' = ${row.id}`
+        )
+      ).toBe(1)
     })
 
     it('shows another organization none of the wakes', async () => {

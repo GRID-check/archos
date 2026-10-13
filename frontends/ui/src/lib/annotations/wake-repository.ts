@@ -7,12 +7,12 @@
  */
 
 import 'server-only'
-import { and, eq, gte, lt, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import { pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema'
+import { documentAnnotations, pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { PilotiWakeStatus, PilotiWakeTrigger } from './types'
+import type { PilotiWakeTrigger } from './types'
 
 export interface NewWake {
   id: string
@@ -33,12 +33,16 @@ export interface NewWake {
  */
 export async function insertWake(executor: DbExecutor, wake: NewWake): Promise<boolean> {
   const settled = wake.status === 'suppressed'
+  // A wake held at enqueue never starts, so it is ended as it is recorded
+  // (`piloti_wakes_ended_when_final`, 0138).
+  const now = new Date()
   const rows = await executor
     .insert(pilotiWakes)
     .values({
       ...wake,
       reason: settled ? (wake.reason ?? 'suppressed') : null,
-      settledAt: settled ? new Date() : null,
+      settledAt: settled ? now : null,
+      endedAt: settled ? now : null,
     })
     .onConflictDoNothing()
     .returning({ id: pilotiWakes.id })
@@ -99,20 +103,32 @@ export async function findWake(organizationId: string, id: string): Promise<Pilo
 export async function settleWake(
   organizationId: string,
   id: string,
-  outcome: { status: 'started' } | { status: Exclude<PilotiWakeStatus, 'queued' | 'started'>; reason: string }
+  outcome: { status: 'started' } | { status: 'suppressed' | 'refused' | 'failed'; reason: string }
 ): Promise<boolean> {
   const db = getDb()
   const reason = 'reason' in outcome ? outcome.reason.slice(0, 500) : null
+  const now = new Date()
   const rows = await withTenant({ organizationId }, () =>
     db
       .update(pilotiWakes)
-      .set({ status: outcome.status, reason, settledAt: new Date() })
+      .set({ status: outcome.status, reason, settledAt: now, endedAt: outcome.status === 'started' ? null : now })
       .where(
         and(eq(pilotiWakes.organizationId, organizationId), eq(pilotiWakes.id, id), eq(pilotiWakes.status, 'queued'))
       )
       .returning({ id: pilotiWakes.id })
   )
   return rows.length > 0
+}
+
+/**
+ * A wake by its id alone, for the one caller that has no organization yet: the
+ * turn's outcome names the turn (the wake's id), and the wake names the
+ * organization. Run it under platform access, then do the rest as that tenant.
+ */
+export async function findWakeById(id: string): Promise<PilotiWakeRow | null> {
+  const db = getDb()
+  const [row] = await db.select().from(pilotiWakes).where(eq(pilotiWakes.id, id)).limit(1)
+  return row ?? null
 }
 
 /** The count, read under the tenant scope, for the claim's second look at the caps. */
@@ -122,4 +138,93 @@ export async function countWakesInTenant(
 ): Promise<number> {
   const db = getDb()
   return withTenant({ organizationId }, () => countWakes(db, { ...query, organizationId }))
+}
+
+/** How a started wake's turn ended (0138). `failed` carries a user-safe reason. */
+export type WakeEnd = { status: 'answered' | 'stopped' } | { status: 'failed'; reason: string }
+
+/**
+ * Record how a wake's turn ended. From `started`, and also from `queued`: a
+ * turn that errors at once can report its end before the job has marked the
+ * wake started (the job settles only once the socket acknowledged the turn),
+ * and that end must not be lost; the job's later `settleWake(started)` then
+ * finds nothing queued and changes nothing. The turn's own outcome, a person's
+ * stop and the job's give-up cannot overwrite each other: the first final word
+ * stands. The row as ended, or null when it had already ended or is unknown.
+ */
+export async function endWake(
+  executor: DbExecutor,
+  organizationId: string,
+  id: string,
+  end: WakeEnd
+): Promise<PilotiWakeRow | null> {
+  const reason = end.status === 'failed' ? end.reason.slice(0, 500) : null
+  const [row] = await executor
+    .update(pilotiWakes)
+    .set({ status: end.status, reason, endedAt: new Date(), settledAt: sql`COALESCE(${pilotiWakes.settledAt}, now())` })
+    .where(
+      and(
+        eq(pilotiWakes.organizationId, organizationId),
+        eq(pilotiWakes.id, id),
+        inArray(pilotiWakes.status, ['queued', 'started'])
+      )
+    )
+    .returning()
+  return row ?? null
+}
+
+/**
+ * The wake of a mark's CURRENT delegation that has not ended yet (`queued` or
+ * `started`), newest first, or null. `eventId` is the delegation's event id
+ * (`delegationEventId(annotationId, delegatedAt)`), so a wake of an earlier
+ * delegation of the same mark is never mistaken for this one.
+ */
+export async function findLiveDelegationWake(
+  executor: DbExecutor,
+  organizationId: string,
+  annotationId: string,
+  eventId: string
+): Promise<PilotiWakeRow | null> {
+  const [row] = await executor
+    .select()
+    .from(pilotiWakes)
+    .where(
+      and(
+        eq(pilotiWakes.organizationId, organizationId),
+        eq(pilotiWakes.annotationId, annotationId),
+        eq(pilotiWakes.triggerKind, 'assigned'),
+        eq(pilotiWakes.eventId, eventId),
+        inArray(pilotiWakes.status, ['queued', 'started'])
+      )
+    )
+    .orderBy(desc(pilotiWakes.createdAt))
+    .limit(1)
+  return row ?? null
+}
+
+/**
+ * Hand a mark back from the delegation that just ended: clear `delegated_by`
+ * and `delegated_at` only while the mark is still delegated at `delegatedAt`.
+ * A compare-and-swap on that timestamp, so a delegation made in between (the
+ * person took it back and delegated again) is never cleared by the end of an
+ * earlier one. True when this call cleared it.
+ */
+export async function handBackDelegation(
+  executor: DbExecutor,
+  organizationId: string,
+  annotationId: string,
+  delegatedAt: Date
+): Promise<boolean> {
+  const rows = await executor
+    .update(documentAnnotations)
+    .set({ delegatedBy: null, delegatedAt: null, updatedAt: new Date() })
+    .where(
+      and(
+        eq(documentAnnotations.organizationId, organizationId),
+        eq(documentAnnotations.id, annotationId),
+        eq(documentAnnotations.delegatedAt, delegatedAt)
+      )
+    )
+    .returning({ id: documentAnnotations.id })
+  return rows.length > 0
 }

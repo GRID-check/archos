@@ -52,6 +52,14 @@ going to the conversation's stream (``conversation_bus``), a reconnect reads
 them back with ``attach``, and the finished answer is persisted server-side with
 a deterministic id, so the browser's own write of it is a no-op.
 
+What follows a terminal goes out off the turn's path, in order, once
+(:func:`_after_terminal`): the answer row; the answer into an Anmerkung's thread
+when the turn was asked there and the model did not reply in it
+(``aiq_agent.turn.annotation_reply``); and, for a turn a headless caller (the
+BFF's wake job, ``X-AIQ-Mode: headless``) started, how it ended
+(``POST /api/internal/turns/outcome``), because that caller has let go of the
+socket by then.
+
 Every turn ends, because the heartbeat keeps the reader waiting for as long as
 it runs: exactly one terminal is guaranteed by ``run_turn``'s ``finally``, a
 deadline on the turn's own clock (:class:`TurnDeadline`) ends a turn that
@@ -64,6 +72,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 import time
 from collections import deque
 from collections.abc import AsyncIterator
@@ -146,8 +155,13 @@ from aiq_agent.observability.turn_trace import trace_id_hex
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_HEADER
 from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import GridRequestContext
+from aiq_agent.tools.documents.filing import SignedEnvelope
 from aiq_agent.turn.admission import TurnRefusal
 from aiq_agent.turn.admission import refused
+from aiq_agent.turn.annotation_reply import ThreadReply
+from aiq_agent.turn.annotation_reply import bind_thread_reply
+from aiq_agent.turn.annotation_reply import post_fallback_reply
+from aiq_agent.turn.annotation_reply import reset_thread_reply
 from aiq_agent.turn.payload import thread_reply_requested
 from aiq_agent.turn.payload import turn_surface
 from aiq_agent.turn.response import answer_message_id
@@ -173,6 +187,7 @@ from aiq_api.conversation_bus import running_ttl
 from aiq_api.internal_api import ChatScreening
 from aiq_api.internal_api import chat_screening_for
 from aiq_api.internal_api import post_internal_conversation_message
+from aiq_api.internal_api import post_internal_turn_outcome
 from aiq_api.startup_banner import deployed_sha
 from aiq_api.turn_fence import TurnFence
 from aiq_api.turn_fence import validate_running_ttl
@@ -467,8 +482,9 @@ def _org_id_from_scope(scope: Mapping[str, Any]) -> str | None:
 #: stored unkeyed, and a queue notice or a run hand-off is not an answer.
 _NOT_METADATA = {"message_id", "text", "cards", "job_admission_rejected", "retry_after_seconds", "run"}
 
-#: Background persists still in flight (the loop holds only weak references).
-_PERSIST_TASKS: set[asyncio.Task[bool]] = set()
+#: Background writes after a terminal still in flight: the answer row and what
+#: follows it (:func:`_after_terminal`). The loop holds only weak references.
+_PERSIST_TASKS: set[asyncio.Task[Any]] = set()
 
 
 def turn_row_metadata(finished: RunFinishedBody) -> dict[str, Any] | None:
@@ -526,17 +542,95 @@ async def persist_turn_result(
     )
 
 
+def _in_background(work: Awaitable[Any]) -> asyncio.Task[Any]:
+    task = asyncio.ensure_future(work)
+    _PERSIST_TASKS.add(task)
+    task.add_done_callback(_PERSIST_TASKS.discard)
+    return task
+
+
 def _persist_in_background(
     conversation_id: str, organization_id: str | None, finished: RunFinishedBody, guard: WriteFence | None = None
-) -> None:
+) -> asyncio.Task[Any]:
     """Persist off the frame's path: the stage events behind it must not wait on the BFF."""
-    task = asyncio.create_task(
+    return _in_background(
         persist_turn_result(
             conversation_id=conversation_id, organization_id=organization_id, finished=finished, guard=guard
         )
     )
-    _PERSIST_TASKS.add(task)
-    task.add_done_callback(_PERSIST_TASKS.discard)
+
+
+# ---------------------------------------------------------------------------
+# After the terminal: the thread's answer, and the outcome a headless caller waits for
+# ---------------------------------------------------------------------------
+
+#: The wire's terminal as the BFF names it (``TURN_OUTCOMES`` in
+#: ``frontends/ui/src/lib/turns/outcome-types.ts``); every ``RUN_ERROR`` is ``failed``.
+OUTCOME_OF_TERMINAL = {"answered": "answered", "refused": "refused", "handed_off": "handed_off", "cancelled": "stopped"}
+
+#: ``reason``'s bound in that contract.
+OUTCOME_REASON_CHARS = 500
+
+#: The turn ids a wake mints (``crypto.randomUUID``) and the contract's ``turnId`` accepts.
+_TURN_ID = re.compile(r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$")
+
+
+def _outcome_reason(text: str) -> str | None:
+    flat = " ".join((text or "").split())
+    if not flat:
+        return None
+    return flat if len(flat) <= OUTCOME_REASON_CHARS else flat[: OUTCOME_REASON_CHARS - 1].rstrip() + "…"
+
+
+def turn_outcome_report(
+    conversation_id: str, turn_id: str, terminal: RunFinishedBody | RunErrorBody
+) -> dict[str, Any] | None:
+    """The arguments of the outcome notice for ``terminal``, or None for a turn id no wake mints. Pure.
+
+    ``reason`` is what the reader was shown, never ``RUN_ERROR.details`` (which
+    can carry an exception's text): the refusal's own words for ``refused``,
+    the error's message for ``failed``, nothing for the rest.
+    """
+    if not _TURN_ID.match(turn_id):
+        return None
+    if isinstance(terminal, RunErrorBody):
+        outcome, reason = "failed", _outcome_reason(terminal.message) or "failed"
+    else:
+        outcome = OUTCOME_OF_TERMINAL[terminal.outcome]
+        reason = _outcome_reason(terminal.result.text) if outcome == "refused" else None
+    return {"conversation_id": conversation_id, "turn_id": turn_id, "outcome": outcome, "reason": reason}
+
+
+async def _report_outcome(turn: RunningTurn, terminal: RunFinishedBody | RunErrorBody) -> None:
+    report = turn_outcome_report(turn.wire.conversation_id, turn.wire.turn_id, terminal)
+    if report is None:
+        logger.info("Headless turn %s has an id no wake mints: its outcome is not reported", turn.wire.turn_id)
+        return
+    await post_internal_turn_outcome(**report)
+
+
+async def _after_terminal(turn: RunningTurn) -> None:
+    """What follows a terminal, in order: the row, the thread's answer, the headless caller's outcome. Never raises.
+
+    A fenced turn (it lost its conversation, ADR-0080) persists nothing and
+    ends ``cancelled``, so it posts no thread answer; a headless one still
+    reports ``stopped``: the notice closes the wake's own record, keyed by this
+    turn's id, and touches nothing the newer turn owns.
+    """
+    terminal = turn.wire.terminal
+    if terminal is None:
+        return
+    try:
+        if turn.persisting is not None:
+            await asyncio.wait({turn.persisting})
+        if isinstance(terminal, RunFinishedBody):
+            await post_fallback_reply(
+                turn.thread_reply, terminal, answer_message_id=turn.message_id, envelope=turn.envelope
+            )
+        if turn.headless:
+            await _report_outcome(turn, terminal)
+    except Exception:  # noqa: BLE001 - the answer is out; what follows it is best effort
+        logger.warning("What follows the terminal of turn %s failed", turn.wire.turn_id, exc_info=True)
 
 
 # ---------------------------------------------------------------------------
@@ -574,6 +668,8 @@ class TurnWire:
         self._guard = guard
         self.seq = 0
         self.finished = False
+        #: The one terminal this sequencer stamped, once it has.
+        self.terminal: RunFinishedBody | RunErrorBody | None = None
         self._publish = publish
         self._lock = asyncio.Lock()
         self._held_stages: list[StageBody] = []
@@ -605,6 +701,7 @@ class TurnWire:
             delivered = await self._stamp_and_publish(body)
             if isinstance(body, RunFinishedBody | RunErrorBody):
                 self.finished = True
+                self.terminal = body
                 for stage in self._held_stages:
                     await self._stamp_and_publish(stage)
                 self._held_stages.clear()
@@ -723,6 +820,16 @@ class RunningTurn:
     #: The notes the asker typed while the turn runs (``common.steering``),
     #: bound into the workflow's context by :func:`_drive`.
     inbox: SteerInbox = field(default_factory=SteerInbox)
+    #: A headless caller started it (``X-AIQ-Mode: headless``): it is told the outcome (:func:`_after_terminal`).
+    headless: bool = False
+    #: The thread the question asks its answer in, or None (``aiq_agent.turn.annotation_reply``),
+    #: bound into the workflow's context by :func:`_drive` so the canvas tools mark it.
+    thread_reply: ThreadReply | None = None
+    #: The socket's signed envelope as received, echoed by the thread's answer (echo, never sign).
+    envelope: SignedEnvelope | None = None
+    #: The answer row's write, which what follows the terminal waits for.
+    persisting: asyncio.Task[Any] | None = None
+    _followed: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
         # Folded as stamped, not as yielded: a body the wire drops (a fenced
@@ -747,7 +854,14 @@ class RunningTurn:
             logger.warning("Turn %s already ended; a second terminal is dropped", self.wire.turn_id)
             return
         await self.wire.send(finished)
-        _persist_in_background(self.wire.conversation_id, self.organization_id, finished, self.guard)
+        self.persisting = _persist_in_background(self.wire.conversation_id, self.organization_id, finished, self.guard)
+
+    def after_terminal(self) -> None:
+        """Start what follows the terminal (:func:`_after_terminal`), once, and only once there is one."""
+        if self._followed or self.wire.terminal is None:
+            return
+        self._followed = True
+        _in_background(_after_terminal(self))
 
     async def ask(self, prompt: InteractionPrompt) -> HumanResponse:
         """NAT's ``user_input_callback``: put the prompt to the asker and wait for their answer."""
@@ -1441,6 +1555,9 @@ async def _drive(
     # The asker's notes while it runs (`common.steering`): bound here, the
     # context the workflow's tasks copy, so the graph reads the one inbox.
     steering = bind_steer_inbox(turn.inbox)
+    # The thread the question was asked in (`turn.annotation_reply`): bound here
+    # for the same reason, so the canvas tools mark the one record the socket reads.
+    thread = bind_thread_reply(turn.thread_reply)
     try:
         with pinned_trace(trace_id_for_message(turn.message_id)), user_context(caller), request_trace_tag_context(tags):
             async with session_manager.session(
@@ -1458,6 +1575,7 @@ async def _drive(
         record_turn_error(_error_for(exc).code, str(exc))
         raise
     finally:
+        reset_thread_reply(thread)
         unbind_steer_inbox(steering)
         end_trace_contributions(contributions)
         end_turn_outcome(outcome)
@@ -1512,6 +1630,7 @@ async def run_turn(turn: RunningTurn, request: UserMessage, *, registry: ChatReg
                 with contextlib.suppress(asyncio.CancelledError):
                     await background
         await _ensure_terminal(turn)
+        turn.after_terminal()
         registry.finish_turn(turn)
         if turn.guard is not None:
             turn.guard.release()  # it ended on its own: the stage frames and the persist behind it are not fenced
@@ -1575,6 +1694,12 @@ class ChatSocket:
         #: restricted folders a turn may draw on is asked per TURN by the agent
         #: (``aiq_agent.knowledge.restricted_use``), never fixed per socket.
         self.signed_org_id = envelope.organization_id if envelope is not None else None
+        #: The envelope's bytes as received, for a write that acts as the asker (echo, never sign).
+        self.signed = (
+            SignedEnvelope(header=envelope.envelope_header, signature=envelope.envelope_signature)
+            if envelope is not None and envelope.envelope_header and envelope.envelope_signature
+            else None
+        )
         #: The office's chat screening, once the BFF has answered for it; kept for
         #: the socket's life. A fail-closed fallback is not kept (``_screening_rules``).
         self.screening: ChatScreening | None = None
@@ -1712,6 +1837,9 @@ class ChatSocket:
             holds_marker=fence.held,
             guard=fence.guard,
             reasoning_effort=message.reasoning_effort,
+            headless=bool(self.caller.get("headless")),
+            thread_reply=ThreadReply.requested_by(message),
+            envelope=self.signed,
         )
         await wire.send(RunStartedBody(message_id=turn.message_id))
         if fence.refusal is not None:
@@ -1741,6 +1869,7 @@ class ChatSocket:
         """End a question that may not run with a refused terminal, as admission does, and keep its sequencer."""
         refusal = TurnRefusal(text, retry_after_seconds=REFUSAL_RETRY_AFTER_SECONDS)
         await turn.finish(refused(refusal, message_id=turn.message_id))
+        turn.after_terminal()
         self.registry.finish_turn(turn)
 
     async def _screening_rules(self) -> ScreeningRules | None:

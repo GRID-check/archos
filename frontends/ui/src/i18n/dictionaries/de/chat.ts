@@ -657,6 +657,10 @@ export const chat: typeof en.chat = {
       undone: 'Rückgängig gemacht',
       movedSince: 'Seitdem geändert, jetzt {state}',
       deleted: 'Anmerkung #{number} gelöscht',
+      // Who the turn acted for, and why an undo did not happen (ADR-0109).
+      forPerson: 'für {name}',
+      movedOn: 'Jemand hat das inzwischen geändert, daher bleibt es, wie es ist.',
+      alreadyUndone: 'Das wurde bereits rückgängig gemacht.',
     },
     verdictHeader: {
       confidenceHigh: 'hohe Sicherheit',

@@ -17,9 +17,11 @@ Every tool takes an optional ``document`` (a file name from the inventory, or
 an id) and otherwise acts on the document open on the canvas, then on the
 conversation's subject (``target.py``). The BFF checks the document against the
 asker's own access and the turn's signed scope, and acts as the person the
-signed envelope names (echo, never sign: ``tools/AGENTS.md``). Nothing posts on
-the model's behalf: a thread question is answered when the model calls
-``reply``, which the prompt asks it to do.
+signed envelope names (echo, never sign: ``tools/AGENTS.md``). A thread question
+is answered when the model calls ``reply``, which the prompt asks it to do; when
+it does not, the turn's answer goes into the thread once the turn has ended
+(``aiq_agent.turn.annotation_reply``), so ``reply``, ``update`` with its note and
+``delete`` each note the mark they spoke in.
 
 ## What everyone sees
 
@@ -47,6 +49,7 @@ from typing import Any
 
 from pydantic import Field
 
+from aiq_agent.turn.annotation_reply import note_thread_post
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionGroup
 from nat.plugin_api import FunctionGroupBaseConfig
@@ -319,6 +322,7 @@ async def run_update(
         result = await call({"op": "update", "annotationId": annotation_id, **change, **guard}, target, signed)
         if result.get("noted"):
             record_canvas_activity(document_of(result, target), [changed_item(result, change["note"])])
+            note_thread_post(annotation_id)  # the note is Piloti's reply in that thread
         observe("update", {"fields": sorted(set(change) - {"note"})}, marks_observation("update", result))
         return render_updated(result)
 
@@ -334,6 +338,7 @@ async def run_delete(annotation: str, document: str = "") -> str:
         annotation_id, _ = await _annotation_ref(annotation, target, signed, "delete")
         result = await call({"op": "delete", "annotationId": annotation_id}, target, signed)
         record_canvas_activity(document_of(result, target), [deleted_item(result)])
+        note_thread_post(annotation_id)  # no thread is left to answer in
         observe("delete", {"step": "delete"}, marks_observation("delete", result))
         return render_deleted(result)
 
@@ -350,6 +355,7 @@ async def run_reply(annotation: str, body: str, document: str = "") -> str:
         annotation_id, _ = await _annotation_ref(annotation, target, signed, "reply")
         result = await call({"op": "reply", "annotationId": annotation_id, "body": text}, target, signed)
         record_canvas_activity(document_of(result, target), [replied_item(result, text)])
+        note_thread_post(annotation_id)
         observe("reply", {"step": "reply"}, marks_observation("reply", result))
         return render_replied(result)
 

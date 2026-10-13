@@ -275,24 +275,33 @@ export async function updateDocumentAnnotation(
   )
 }
 
-/** Delete one Anmerkung and its thread; whether a row went. Its number is not reused while a higher one exists. */
+/**
+ * Delete one Anmerkung and its thread; whether a row went. Its number is not
+ * reused while a higher one exists. `beforeDelete` runs in the delete's
+ * transaction, before the row and its wakes go: the one moment the wake of a
+ * delegation can still be read.
+ */
 export async function deleteDocumentAnnotation(
   organizationId: string,
   documentId: string,
-  annotationId: string
+  annotationId: string,
+  beforeDelete?: (tx: DbTransaction) => Promise<void>
 ): Promise<boolean> {
   const db = getDb()
   const rows = await withTenant({ organizationId }, () =>
-    db
-      .delete(documentAnnotations)
-      .where(
-        and(
-          eq(documentAnnotations.organizationId, organizationId),
-          eq(documentAnnotations.documentId, documentId),
-          eq(documentAnnotations.id, annotationId)
+    db.transaction(async (tx) => {
+      await beforeDelete?.(tx)
+      return tx
+        .delete(documentAnnotations)
+        .where(
+          and(
+            eq(documentAnnotations.organizationId, organizationId),
+            eq(documentAnnotations.documentId, documentId),
+            eq(documentAnnotations.id, annotationId)
+          )
         )
-      )
-      .returning({ id: documentAnnotations.id })
+        .returning({ id: documentAnnotations.id })
+    })
   )
   return rows.length > 0
 }
@@ -304,10 +313,10 @@ export class ReplyLimitReachedError extends Error {}
  * Append one reply to an Anmerkung the service read for writing, and touch the
  * mark's `updated_at`, so „zuletzt aktiv" moves with its thread.
  *
- * `handBack` clears the mark's delegation in the same statement: Piloti's
- * reply on a mark it was delegated is how it hands the mark back (ADR-0105).
- * `afterInsert` runs in the same transaction, so a wake the reply is the event
- * of exists exactly when the reply does.
+ * A reply never touches the mark's delegation: Piloti hands a mark back when
+ * the turn the delegation woke ends (`lib/turns/outcome.ts`), not when it
+ * writes in the thread. `afterInsert` runs in the same transaction, so a wake
+ * the reply is the event of exists exactly when the reply does.
  */
 export async function insertAnnotationReply(
   input: {
@@ -317,11 +326,9 @@ export async function insertAnnotationReply(
     body: string
     createdBy: string
     addressesAgent?: boolean
-    handBack?: boolean
   },
   afterInsert?: InTransaction<DocumentAnnotationReplyRow>
 ): Promise<DocumentAnnotationReplyRow> {
-  const { handBack, ...values } = input
   const db = getDb()
   return withTenant({ organizationId: input.organizationId }, () =>
     db.transaction(async (tx) => {
@@ -338,10 +345,10 @@ export async function insertAnnotationReply(
           )
         )
       if (Number(current?.count ?? 0) >= MAX_REPLIES_PER_ANNOTATION) throw new ReplyLimitReachedError()
-      const [reply] = await tx.insert(documentAnnotationReplies).values(values).returning()
+      const [reply] = await tx.insert(documentAnnotationReplies).values(input).returning()
       await tx
         .update(documentAnnotations)
-        .set({ updatedAt: new Date(), ...(handBack ? { delegatedBy: null, delegatedAt: null } : {}) })
+        .set({ updatedAt: new Date() })
         .where(
           and(
             eq(documentAnnotations.organizationId, input.organizationId),
@@ -352,4 +359,33 @@ export async function insertAnnotationReply(
       return reply
     })
   )
+}
+
+/**
+ * Delete one reply of an Anmerkung; whether a row went. With `expectedBody` the
+ * delete is a compare-and-swap on what the reply says, so a reply changed
+ * since the caller read it stays. The service read the Anmerkung's document
+ * first.
+ */
+export async function deleteAnnotationReply(
+  organizationId: string,
+  annotationId: string,
+  replyId: string,
+  expectedBody?: string
+): Promise<boolean> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .delete(documentAnnotationReplies)
+      .where(
+        and(
+          eq(documentAnnotationReplies.organizationId, organizationId),
+          eq(documentAnnotationReplies.annotationId, annotationId),
+          eq(documentAnnotationReplies.id, replyId),
+          ...(expectedBody === undefined ? [] : [eq(documentAnnotationReplies.body, expectedBody)])
+        )
+      )
+      .returning({ id: documentAnnotationReplies.id })
+  )
+  return rows.length > 0
 }
