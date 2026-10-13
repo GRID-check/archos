@@ -13,7 +13,8 @@ Everything here builds the production objects rather than lookalikes:
 * **Qdrant**: the production collection shape (``qdrant/schema.py``: dense + server
   BM25 with ``BM25_OPTIONS``, TurboQuant 4-bit, strict mode, payload indexes),
   under uniquely named aliases so a shared server is never touched outside them,
-  filled by ``qdrant/backfill.py`` ``backfill_scope``, the migration's own copy.
+  filled by the migration's own copy: ``deploy/migration/chroma_export.py`` into the
+  neutral format, ``qdrant/import_vectors.py`` from it.
 * **The retriever**: ``LlamaIndexRetriever`` with its query-embedding cache
   pre-filled, so ``_retrieve_sync`` runs the store path with no embedding call in
   it, and ``AIQ_VECTOR_BACKEND`` picks the store per call, as it does in
@@ -211,28 +212,45 @@ def isolated_qdrant(url: str, api_key: str | None = None) -> Iterator[str]:
         reset_store()
 
 
+def _chroma_exporter():
+    """``deploy/migration/chroma_export.py``, loaded by path: it is a script, not a package."""
+    import importlib.util
+
+    path = Path(__file__).resolve().parents[6] / "deploy" / "migration" / "chroma_export.py"
+    spec = importlib.util.spec_from_file_location("chroma_export", path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
 def fill_qdrant(chroma_collection: Any, fingerprint: dict[str, str]) -> tuple[int, int]:
-    """Copy the Chroma collection into Qdrant with the migration's backfill; ``(chroma, qdrant)`` counts."""
-    from knowledge_layer.qdrant import backfill
-    from knowledge_layer.qdrant import mirror
+    """Copy the Chroma collection into Qdrant the way the migration does; ``(chroma, qdrant)`` counts.
+
+    The exporter writes it in the neutral format and the importer loads that,
+    so what is measured is the copy production gets.
+    """
+    from knowledge_layer.qdrant import import_vectors
     from knowledge_layer.qdrant.store import get_store
 
+    exporter = _chroma_exporter()
     store = get_store(fingerprint)
-    # No metadata store holds person-set facts for a benchmark corpus; the
-    # backfill's lookup of them is replaced by "none", which is what it finds.
-    original = mirror.facts_by_file
-    mirror.facts_by_file = lambda scope, file_names=None: {}
-    try:
-        report = backfill.backfill_scope(chroma_collection, SCOPE, store)
-    finally:
-        mirror.facts_by_file = original
-    if report.errors:
-        raise RuntimeError(f"backfill errors: {report.errors}")
-    verification = backfill.verify_scope(chroma_collection, SCOPE, store)
+    with tempfile.TemporaryDirectory(prefix="parity-export-") as tmp:
+        root = Path(tmp)
+        entry = exporter.export_collection(chroma_collection, root / "collections" / SCOPE, exporter.DEFAULT_BATCH)
+        exporter.write_manifest(root, {SCOPE: entry}, {"mode": "persist", "location": "parity"})
+        # No metadata store holds person-set facts for a benchmark corpus; the
+        # importer's lookup of them is replaced by "none", which is what it finds.
+        original = import_vectors.facts_by_file
+        import_vectors.facts_by_file = lambda scope: {}
+        try:
+            _report, ids = import_vectors.import_scope(import_vectors.Export.open(root), SCOPE, store)
+        finally:
+            import_vectors.facts_by_file = original
+    verification = import_vectors.verify_scope(ids, SCOPE, store)
     # The id sets, not only the counts: equal counts can hide a swap.
     if verification.missing or verification.extra:
-        raise RuntimeError(f"stores differ after the backfill: {verification}")
-    return verification.chroma_count, verification.qdrant_count
+        raise RuntimeError(f"stores differ after the import: {verification}")
+    return verification.export_count, verification.qdrant_count
 
 
 def wait_until_indexed(timeout_s: float = 600.0) -> dict[str, Any]:

@@ -229,8 +229,8 @@ The measurement the `AIQ_VECTOR_BACKEND=qdrant` flip waits on
 ([design doc §10](../../../docs/architecture/qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built)).
 Unlike everything above, it runs the stores, not models of them: the Punkt-arm corpus
 is embedded once with the production embedder (through `make_embed_model`, cached),
-written into embedded Chroma through LlamaIndex, copied into Qdrant by
-`qdrant/backfill.py`, and read through `LlamaIndexRetriever._retrieve_sync` under each
+written into embedded Chroma through LlamaIndex, copied into Qdrant by the migration's
+exporter and importer (`deploy/migration/chroma_export.py`, `qdrant/import_vectors.py`), and read through `LlamaIndexRetriever._retrieve_sync` under each
 backend, with the query vectors pre-cached so no embedding sits inside a timed call.
 
 | Section | Compares | Gate |
