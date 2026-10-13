@@ -41,6 +41,20 @@ REPLIED = {
     "excerpt": "Ist im Index C korrigiert.",
 }
 
+CREATED = {**PROPOSED, "action": "created", "number": 7}
+CHANGED = {
+    "action": "changed",
+    "annotation_id": "33333333-0000-4000-8000-000000000003",
+    "number": 4,
+    "status": "resolved",
+    "changes": [
+        {"field": "status", "before": "open", "after": "resolved"},
+        {"field": "assignee", "after": "user_anna", "after_label": "Anna Berger"},
+    ],
+    "note": "Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.",
+}
+DELETED = {"action": "deleted", "number": 9, "body": "Doppelt gesetzt."}
+
 
 def _card(*items: dict) -> dict:
     return {"type": "canvas_activity", "document": DOCUMENT, "items": list(items)}
@@ -61,6 +75,14 @@ class TestTheShape:
         assert [item["action"] for item in card["items"]] == ["proposed", "proposed", "replied"]
         assert "w" not in card["items"][1]
 
+    def test_what_the_person_asked_for_validates_and_an_empty_field_stays_absent(self) -> None:
+        card = grid_card_adapter.validate_python(_card(CREATED, CHANGED, DELETED)).model_dump(exclude_none=True)
+
+        assert [item["action"] for item in card["items"]] == ["created", "changed", "deleted"]
+        # An assignee nobody had before is absent, not null: the card is dumped without Nones.
+        assigned = {"field": "assignee", "after": "user_anna", "after_label": "Anna Berger"}
+        assert card["items"][1]["changes"][1] == assigned
+
     def test_it_is_a_system_card_the_model_cannot_author_and_an_interactive_one(self) -> None:
         assert "canvas_activity" in SYSTEM_CARD_TYPES
         assert "canvas_activity" in INTERACTIVE_CARD_TYPES
@@ -74,7 +96,12 @@ class TestTheShape:
             ({"items": [{**PROPOSED, "x": 1.5}]}, "x"),
             ({"items": [{**PROPOSED, "page": 0}]}, "page"),
             ({"items": [{**PROPOSED, "kind": "remark"}]}, "kind"),
-            ({"items": [{**PROPOSED, "action": "deleted"}]}, "action"),
+            ({"items": [{**PROPOSED, "action": "erased"}]}, "action"),
+            ({"items": [{**CHANGED, "changes": []}]}, "changes"),
+            ({"items": [{**CHANGED, "changes": [{"field": "position"}]}]}, "field"),
+            ({"items": [{**CHANGED, "status": "archived"}]}, "status"),
+            ({"items": [{**CHANGED, "note": ""}]}, "note"),
+            ({"items": [{**DELETED, "body": ""}]}, "body"),
             ({"items": [{**REPLIED, "excerpt": ""}]}, "excerpt"),
             ({"items": [PROPOSED] * (MAX_CANVAS_ACTIVITY_ITEMS + 1)}, "items"),
         ],

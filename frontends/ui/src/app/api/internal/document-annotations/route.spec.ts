@@ -9,8 +9,15 @@
  * turn's envelope signs (anything else is an unknown document); with neither,
  * a typed 422 the tool relays; a held upload reaches no model; a subject in a
  * restricted folder is admitted against the conversation first; and what
- * Piloti sets is born a proposal, on behalf of the asker, under the asker's
- * own access rules.
+ * Piloti finds on its own is born a proposal, on behalf of the asker, under the
+ * asker's own access rules.
+ *
+ * And parity: what the asker asks for, Piloti does as the asker could, through
+ * the REAL service (`set`, `update`, `delete` run `lib/annotations/service.ts`
+ * over a fake repository): a mark asked for is born open with the asker behind
+ * it, a change posts Piloti's note in the thread, a stale `expectedStatus` is
+ * a 409 with no note, and nothing the asker could not do goes through. Every
+ * row the fake holds is checked against the CHECKs of migration 0135.
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -27,14 +34,29 @@ vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({
   pilotiPeer: (conversationId: string, userId: string) => ({ peerId: `piloti-${conversationId}`, userId }),
   publishAsAgent: vi.fn(),
+  publishToDocumentRoom: vi.fn(async () => undefined),
   roomSnapshot: vi.fn(),
 }))
-vi.mock('@/lib/annotations/service', () => ({
-  PILOTI: { kind: 'piloti' },
+// The read, propose and reply paths are pinned at the agent seam; the parity
+// paths (`create`, `update`, `delete`) run the real service, whose own calls
+// stay real inside it.
+vi.mock('@/lib/annotations/service', async (original) => ({
+  ...(await original<typeof import('@/lib/annotations/service')>()),
   listAnnotationsForAgent: vi.fn(),
   proposeAnnotations: vi.fn(),
   replyToAnnotation: vi.fn(),
 }))
+vi.mock('@/lib/annotations/repository', async (original) => ({
+  ...(await original<typeof import('@/lib/annotations/repository')>()),
+  findDocumentAnnotation: vi.fn(),
+  listDocumentAnnotations: vi.fn(),
+  insertDocumentAnnotations: vi.fn(),
+  updateDocumentAnnotation: vi.fn(),
+  deleteDocumentAnnotation: vi.fn(),
+  insertAnnotationReply: vi.fn(),
+}))
+vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
+vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
   withTenant: (_scope: unknown, run: () => unknown) => run(),
@@ -50,7 +72,21 @@ import { getAccessibleDocument } from '@/lib/documents/access'
 import { admitSubjectRead } from '@/lib/documents/version-content'
 import { publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
-import { NotFoundError } from '@/lib/api/errors'
+import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
+import {
+  deleteDocumentAnnotation,
+  findDocumentAnnotation,
+  insertAnnotationReply,
+  insertDocumentAnnotations,
+  listDocumentAnnotations,
+  updateDocumentAnnotation,
+  type AnnotationChanges,
+  type AnnotationRecord,
+  type NewAnnotationsInput,
+} from '@/lib/annotations/repository'
+import { canUserAccessProject } from '@/lib/authz/project-membership'
+import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db/schema'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-annotations'
@@ -324,5 +360,273 @@ describe('POST /api/internal/document-annotations', () => {
       expect((await post({ op: 'point', page: 1, x: 1.4, y: 0.5 })).status).toBe(400)
       expect(publishAsAgent).not.toHaveBeenCalled()
     })
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Parity: what the asker asks for, Piloti does as the asker could.
+// ---------------------------------------------------------------------------
+
+const MARK_ID = '44444444-4444-4444-8444-444444444444'
+const NOW = new Date('2026-10-13T08:00:00.000Z')
+const DOC_ROW = { id: DOC_ID, scope: 'project', projectId: 'proj_1', publishedVersionId: null } as Partial<Document> as Document
+const NOTE = 'Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.'
+
+/** The fake repository's rows, by id. */
+let marks: Map<string, AnnotationRecord>
+
+const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
+  id: MARK_ID,
+  organizationId: 'org_1',
+  documentId: DOC_ID,
+  versionId: null,
+  number: 4,
+  page: 1,
+  shape: 'point',
+  x: 0.4,
+  y: 0.5,
+  w: null,
+  h: null,
+  kind: 'defect',
+  body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+  basis: null,
+  authorKind: 'person',
+  status: 'open',
+  assigneeUserId: null,
+  dueOn: null,
+  createdBy: 'user_2',
+  createdAt: NOW,
+  updatedAt: NOW,
+  acceptedBy: null,
+  acceptedAt: null,
+  closedBy: null,
+  closedAt: null,
+  fassungNumber: null,
+  replies: [],
+  ...patch,
+})
+
+/**
+ * The CHECKs of migration 0135 that an author or a status move touches, as
+ * predicates over a row: what the database would refuse.
+ */
+function violatedChecks(row: DocumentAnnotationRow): string[] {
+  const broken: string[] = []
+  if (row.status === 'proposed' && row.authorKind !== 'piloti') broken.push('only_piloti_proposes')
+  if ((row.acceptedBy === null) !== (row.acceptedAt === null)) broken.push('acceptance_complete')
+  if (row.authorKind !== 'person' && !['proposed', 'dismissed'].includes(row.status) && row.acceptedBy === null) {
+    broken.push('piloti_needs_a_person')
+  }
+  const closed = row.status === 'resolved' || row.status === 'dismissed'
+  if (closed !== (row.closedBy !== null) || (row.closedBy === null) !== (row.closedAt === null)) {
+    broken.push('closing_complete')
+  }
+  return broken
+}
+
+/** A repository over {@link marks}: compare-and-swap on status, as the SQL is. */
+function fakeRepository() {
+  vi.mocked(findDocumentAnnotation).mockImplementation(async (_org, _doc, id) => marks.get(id) ?? null)
+  vi.mocked(listDocumentAnnotations).mockImplementation(async () => [...marks.values()])
+  vi.mocked(insertDocumentAnnotations).mockImplementation(async (input: NewAnnotationsInput) =>
+    input.marks.map((mark, index) => {
+      const acceptedBy = input.authorKind === 'piloti' ? (input.acceptedBy ?? null) : null
+      const row = record({
+        ...mark,
+        id: `55555555-5555-4555-8555-55555555555${index}`,
+        number: 10 + index,
+        authorKind: input.authorKind,
+        createdBy: input.createdBy,
+        status: input.authorKind === 'piloti' && !acceptedBy ? 'proposed' : 'open',
+        acceptedBy,
+        acceptedAt: acceptedBy ? NOW : null,
+      })
+      marks.set(row.id, row)
+      return row
+    })
+  )
+  vi.mocked(updateDocumentAnnotation).mockImplementation(
+    async (_org, _doc, id, expected, changes: AnnotationChanges) => {
+      const current = marks.get(id)
+      if (!current || current.status !== expected) return null
+      const { transition, ...fields } = changes
+      const next = { ...current, ...fields, ...(transition ?? {}), updatedAt: NOW }
+      marks.set(id, next)
+      return next
+    }
+  )
+  vi.mocked(insertAnnotationReply).mockImplementation(async (input) => {
+    const current = marks.get(input.annotationId)
+    const reply: DocumentAnnotationReplyRow = { id: `reply_${current?.replies.length ?? 0}`, createdAt: NOW, ...input }
+    if (current) marks.set(input.annotationId, { ...current, replies: [...current.replies, reply] })
+    return reply
+  })
+  vi.mocked(deleteDocumentAnnotation).mockImplementation(async (_org, _doc, id) => marks.delete(id))
+}
+
+const stored = () => marks.get(MARK_ID) ?? record({ body: 'gone' })
+
+describe('POST /api/internal/document-annotations — what the asker asks for', () => {
+  beforeEach(() => {
+    marks = new Map([[MARK_ID, record()]])
+    fakeRepository()
+    vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
+    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(
+      new Map([
+        ['user_1', { userId: 'user_1', email: 'martin@buero.at', name: 'Martin Huber', profilePictureUrl: null }],
+        ['user_anna', { userId: 'user_anna', email: 'anna@buero.at', name: 'Anna Berger', profilePictureUrl: null }],
+        ['user_ann', { userId: 'user_ann', email: 'ann@buero.at', name: 'Anna Kurz', profilePictureUrl: null }],
+      ])
+    )
+  })
+
+  it('sets a mark the asker asked for born open, with the asker behind it', async () => {
+    const response = await post({ op: 'create', marks: [PROPOSAL] })
+
+    expect(response.status).toBe(200)
+    expect(insertDocumentAnnotations).toHaveBeenCalledWith(
+      expect.objectContaining({ authorKind: 'piloti', createdBy: 'user_1', acceptedBy: 'user_1' })
+    )
+    const body = await response.json()
+    expect(body).toMatchObject({ documentId: DOC_ID, created: [{ number: 10, kind: 'defect', body: PROPOSAL.body }] })
+    const born = marks.get(body.created[0].id)
+    expect(born).toMatchObject({ status: 'open', authorKind: 'piloti', acceptedBy: 'user_1' })
+    expect(violatedChecks(born ?? record())).toEqual([])
+  })
+
+  it('resolves for the asker, in their name, and says so in the thread as Piloti', async () => {
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      documentId: DOC_ID,
+      documentName: 'Grundriss EG.pdf',
+      annotationId: MARK_ID,
+      number: 4,
+      status: 'resolved',
+      before: { status: 'open' },
+      after: { status: 'resolved' },
+      noted: true,
+    })
+    expect(stored()).toMatchObject({ status: 'resolved', closedBy: 'user_1' })
+    expect(violatedChecks(stored())).toEqual([])
+    expect(insertAnnotationReply).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      annotationId: MARK_ID,
+      authorKind: 'piloti',
+      body: NOTE,
+      createdBy: 'user_1',
+    })
+    expect(vi.mocked(updateDocumentAnnotation).mock.calls[0][3]).toBe('open')
+  })
+
+  it('takes a proposal over for the asker: the asker is the one who accepted it', async () => {
+    marks.set(MARK_ID, record({ authorKind: 'piloti', status: 'proposed', createdBy: 'user_1' }))
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'open', note: 'Übernommen.' })
+
+    expect(response.status).toBe(200)
+    expect(stored()).toMatchObject({ status: 'open', acceptedBy: 'user_1' })
+    expect(violatedChecks(stored())).toEqual([])
+  })
+
+  it('assigns by the name the asker used, and reports who before and after', async () => {
+    const response = await post({ op: 'update', annotationId: MARK_ID, assignee: 'Anna Berger', dueOn: '2026-10-20', note: 'Anna übernimmt.' })
+
+    await expect(response.json()).resolves.toMatchObject({
+      before: { assigneeUserId: null, assigneeName: null, dueOn: null },
+      after: { assigneeUserId: 'user_anna', assigneeName: 'Anna Berger', dueOn: '2026-10-20' },
+      noted: true,
+    })
+    expect(canUserAccessProject).toHaveBeenCalledWith(SESSION, 'proj_1', 'user_anna')
+  })
+
+  it('asks back when a name means two people, and changes nothing', async () => {
+    const response = await post({ op: 'update', annotationId: MARK_ID, assignee: 'Anna', note: 'Anna übernimmt.' })
+
+    expect(response.status).toBe(422)
+    await expect(response.json()).resolves.toMatchObject({ details: { reason: 'assignee-ambiguous' } })
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+  })
+
+  it('refuses a stale expectedStatus with a 409 and posts no note', async () => {
+    marks.set(MARK_ID, record({ status: 'resolved', closedBy: 'user_2', closedAt: NOW }))
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'open', expectedStatus: 'open', note: NOTE })
+
+    expect(response.status).toBe(409)
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+  })
+
+  it("does not overwrite a colleague's move between its read and its write: 409, no note", async () => {
+    vi.mocked(updateDocumentAnnotation).mockResolvedValueOnce(null)
+
+    const response = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    expect(response.status).toBe(409)
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+  })
+
+  it('posts no note for a change that moved nothing', async () => {
+    const response = await post({ op: 'update', annotationId: MARK_ID, kind: 'defect', note: NOTE })
+
+    await expect(response.json()).resolves.toMatchObject({ before: {}, after: {}, noted: false })
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+  })
+
+  it('refuses an update that names no change', async () => {
+    expect((await post({ op: 'update', annotationId: MARK_ID, note: NOTE })).status).toBe(400)
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+  })
+
+  it('cannot do what the asker cannot: a reader changes nothing and no note goes out', async () => {
+    vi.mocked(getAccessibleDocument).mockImplementation(async (_session, _id, mode) => {
+      if (mode === 'write') throw new ForbiddenError('read only')
+      return DOC_ROW
+    })
+
+    const update = await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })
+    const create = await post({ op: 'create', marks: [PROPOSAL] })
+
+    expect(update.status).toBe(403)
+    expect(create.status).toBe(403)
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+    expect(insertDocumentAnnotations).not.toHaveBeenCalled()
+    expect(insertAnnotationReply).not.toHaveBeenCalled()
+    expect(stored().status).toBe('open')
+  })
+
+  it("refuses to delete a mark somebody else set, or one Piloti set, as it would refuse the asker", async () => {
+    expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(403)
+
+    marks.set(MARK_ID, record({ authorKind: 'piloti', status: 'open', createdBy: 'user_1', acceptedBy: 'user_1', acceptedAt: NOW }))
+    expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(403)
+
+    expect(deleteDocumentAnnotation).not.toHaveBeenCalled()
+  })
+
+  it('deletes a mark the asker set, and says which it was', async () => {
+    marks.set(MARK_ID, record({ createdBy: 'user_1' }))
+
+    const response = await post({ op: 'delete', annotationId: MARK_ID })
+
+    expect(response.status).toBe(200)
+    await expect(response.json()).resolves.toEqual({
+      documentId: DOC_ID,
+      documentName: 'Grundriss EG.pdf',
+      annotationId: MARK_ID,
+      number: 4,
+      body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+    })
+    expect(marks.has(MARK_ID)).toBe(false)
+  })
+
+  it('finds no mark that is not on the document', async () => {
+    marks.clear()
+    expect((await post({ op: 'update', annotationId: MARK_ID, status: 'resolved', note: NOTE })).status).toBe(404)
+    expect((await post({ op: 'delete', annotationId: MARK_ID })).status).toBe(404)
   })
 })

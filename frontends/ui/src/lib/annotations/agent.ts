@@ -1,6 +1,8 @@
 /**
  * Piloti's hands on a document's Anmerkungen: read them, propose findings,
- * answer in a thread (`POST /api/internal/document-annotations`).
+ * and, when the asker asks, everything the asker may do themselves: set a
+ * mark, change one, delete one they set, answer in a thread
+ * (`POST /api/internal/document-annotations`).
  *
  * ## Which document
  *
@@ -31,7 +33,7 @@
  */
 
 import 'server-only'
-import { NotFoundError, UnprocessableError } from '@/lib/api/errors'
+import { BadRequestError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { findConversationInOrg } from '@/lib/conversations/repository'
 import { SCREENED_ONLY } from '@/lib/documents/document-reader'
@@ -41,12 +43,17 @@ import { admitSubjectRead } from '@/lib/documents/version-content'
 import { type AgentRoomOp, pilotiPeer, publishAsAgent, roomSnapshot } from '@/lib/realtime/document-channel'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
+  deleteAnnotation,
   listAnnotationsForAgent,
   PILOTI,
   proposeAnnotations,
+  readAnnotation,
   replyToAnnotation,
+  setAnnotationsForAsker,
+  updateAnnotationForAsker,
+  type ChangeableField,
 } from './service'
-import type { InternalAnnotationRequest } from './types'
+import type { AnnotationView, InternalAnnotationRequest, InternalMarkFields } from './types'
 
 /** Thrown when the conversation is not about a document: the tool relays it as „open a chat on the document". */
 export class NoDocumentSubjectError extends UnprocessableError {
@@ -138,6 +145,55 @@ async function gesture(session: AuthorizedSession, document: AgentDocument, agen
   return { documentId: document.id, documentName: document.name, ok: true as const }
 }
 
+/** A mark Piloti set, as the activity card draws it. */
+const setMark = (annotation: AnnotationView) => ({
+  id: annotation.id,
+  number: annotation.number,
+  page: annotation.page,
+  shape: annotation.shape,
+  x: annotation.x,
+  y: annotation.y,
+  w: annotation.w,
+  h: annotation.h,
+  kind: annotation.kind,
+  body: annotation.body,
+})
+
+/** The fields a change moved, as they stood in one read: the card's before and after, and its undo. */
+const movedFields = (view: AnnotationView, changed: readonly ChangeableField[]): InternalMarkFields => ({
+  ...(changed.includes('status') && { status: view.status }),
+  ...(changed.includes('assigneeUserId') && { assigneeUserId: view.assigneeUserId, assigneeName: view.assigneeName }),
+  ...(changed.includes('dueOn') && { dueOn: view.dueOn }),
+  ...(changed.includes('kind') && { kind: view.kind }),
+  ...(changed.includes('body') && { body: view.body }),
+})
+
+type UpdateRequest = Extract<InternalAnnotationRequest, { op: 'update' }>
+
+async function update(session: AuthorizedSession, document: AgentDocument, request: UpdateRequest) {
+  const { annotationId, note, expectedStatus, status, assignee, dueOn, kind, body } = request
+  if ([status, assignee, dueOn, kind, body].every((value) => value === undefined)) {
+    throw new BadRequestError('Name at least one change: status, assignee, dueOn, kind or body.')
+  }
+  const { before, after, changed } = await updateAnnotationForAsker(
+    session,
+    document.id,
+    annotationId,
+    { status, assignee, dueOn, kind, body, expectedStatus },
+    note
+  )
+  return {
+    documentId: document.id,
+    documentName: document.name,
+    annotationId: after.id,
+    number: after.number,
+    status: after.status,
+    before: movedFields(before, changed),
+    after: movedFields(after, changed),
+    noted: changed.length > 0,
+  }
+}
+
 /** Run one of Piloti's operations on the document, as the asker. */
 export async function runAgentAnnotationRequest(
   session: AuthorizedSession,
@@ -177,21 +233,25 @@ export async function runAgentAnnotationRequest(
       return { ...(await listAnnotationsForAgent(session, documentId)), documentName: document.name }
     case 'propose': {
       const { annotations } = await proposeAnnotations(session, documentId, request.proposals)
+      return { documentId, documentName: document.name, proposed: annotations.map(setMark) }
+    }
+    case 'create': {
+      const { annotations } = await setAnnotationsForAsker(session, documentId, request.marks)
+      return { documentId, documentName: document.name, created: annotations.map(setMark) }
+    }
+    case 'update':
+      return update(session, document, request)
+    case 'delete': {
+      // Read first, for the number and the text the card names: once deleted,
+      // the mark and its thread are gone. The delete applies the asker's rule.
+      const mark = await readAnnotation(session, documentId, request.annotationId)
+      await deleteAnnotation(session, documentId, request.annotationId, PILOTI)
       return {
         documentId,
         documentName: document.name,
-        proposed: annotations.map((annotation) => ({
-          id: annotation.id,
-          number: annotation.number,
-          page: annotation.page,
-          shape: annotation.shape,
-          x: annotation.x,
-          y: annotation.y,
-          w: annotation.w,
-          h: annotation.h,
-          kind: annotation.kind,
-          body: annotation.body,
-        })),
+        annotationId: mark.id,
+        number: mark.number,
+        body: mark.body,
       }
     }
     case 'reply': {

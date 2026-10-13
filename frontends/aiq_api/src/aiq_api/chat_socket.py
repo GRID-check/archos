@@ -27,17 +27,25 @@ What a socket holds, in order of the checks on every client message:
 * **Which conversation.** Only the one the BFF signed into the context envelope
   (:func:`handshake_conversation_binding`). Every per-conversation key follows a
   message's ``conversation_id``, so a message naming another is refused.
-* **Whose turn.** Stop and a HITL answer are the asker's (:func:`may_act_for`).
-  In a shared conversation (ADR-0032) a colleague is a different subject.
+* **Whose turn.** Stop, a HITL answer and a steering note are the asker's
+  (:func:`may_act_for`). In a shared conversation (ADR-0032) a colleague is a
+  different subject.
 * **What may reach the model.** The text of a question (and the focus file's
-  name it carries), of a colleague's ``context_only`` line and of a typed HITL
-  answer is masked against the office's „Sensible Daten" policy (ADR-0086)
+  name it carries), of a colleague's ``context_only`` line, of a steering note
+  and of a typed HITL answer is masked against the office's „Sensible Daten" policy (ADR-0086)
   before the agent, its history or a relay replica sees it
   (:meth:`ChatSocket._masked`). The composer masks first and asks the person;
   this is the backstop for a client that did not, and it masks rather than
   refuses. The policy is read once per socket from the BFF
   (``chat_screening_for``), so a change applies from the next connection, and
   every detector applies whenever it cannot be read.
+
+A ``steer`` is not a turn. It never claims, holds or supersedes the
+conversation: it goes into the running turn's inbox
+(``aiq_agent.common.steering``), which the graph reads at its next tool-round
+boundary. A ``user_message`` that says ``if_idle`` (a turn an event woke, sent
+by the BFF's wake job) never supersedes either: a conversation with a running
+turn refuses it as ``busy``, and the sender retries.
 
 A turn outlives its socket: a dropped socket does not cancel it, its frames keep
 going to the conversation's stream (``conversation_bus``), a reconnect reads
@@ -76,6 +84,10 @@ from aiq_agent.common.content_screen import findings_summary
 from aiq_agent.common.content_screen import mask_text
 from aiq_agent.common.human_prompt import human_response
 from aiq_agent.common.human_prompt import interaction_request
+from aiq_agent.common.steering import SteerInbox
+from aiq_agent.common.steering import SteerNote
+from aiq_agent.common.steering import bind_steer_inbox
+from aiq_agent.common.steering import unbind_steer_inbox
 from aiq_agent.common.wire_v2 import ACCEPTED_CLIENT_FIELDS
 from aiq_agent.common.wire_v2 import CLIENT_MESSAGE
 from aiq_agent.common.wire_v2 import CLOSE_CLIENT_OUTDATED
@@ -99,6 +111,9 @@ from aiq_agent.common.wire_v2 import RunStartedBody
 from aiq_agent.common.wire_v2 import ShownAnswer
 from aiq_agent.common.wire_v2 import StageBody
 from aiq_agent.common.wire_v2 import StageValue
+from aiq_agent.common.wire_v2 import Steer
+from aiq_agent.common.wire_v2 import SteerReceivedBody
+from aiq_agent.common.wire_v2 import SteerReceivedValue
 from aiq_agent.common.wire_v2 import TextAnswer
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.common.wire_v2 import UserMessage
@@ -113,11 +128,13 @@ from aiq_agent.conversation_context import ContextOnlyMessage
 from aiq_agent.conversation_context import append_conversation_context
 from aiq_agent.conversation_context import format_context_turn
 from aiq_agent.observability.langfuse_scores import emit_scores
+from aiq_agent.observability.langfuse_scores import steer_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
 from aiq_agent.observability.langfuse_trace_attributes import record_turn_surface
+from aiq_agent.observability.langfuse_trace_attributes import record_turn_trigger
 from aiq_agent.observability.turn_outcome import begin_turn_outcome
 from aiq_agent.observability.turn_outcome import end_turn_outcome
 from aiq_agent.observability.turn_outcome import record_turn_error
@@ -144,6 +161,7 @@ from aiq_api.auth.request_trace import request_trace_tag_context
 from aiq_api.conversation_bus import CANCEL
 from aiq_api.conversation_bus import FRAME
 from aiq_api.conversation_bus import HITL_ANSWER
+from aiq_api.conversation_bus import STEER
 from aiq_api.conversation_bus import SUPERSEDE
 from aiq_api.conversation_bus import BusUnavailable
 from aiq_api.conversation_bus import ConversationBus
@@ -241,6 +259,9 @@ FENCE_UNAVAILABLE_REFUSAL = (
     "The assistant cannot start a new answer right now. Please send your message again in a moment."
 )
 REFUSAL_RETRY_AFTER_SECONDS = 5
+
+#: What an ``if_idle`` question is told when the conversation runs another turn.
+BUSY_REFUSAL = "The conversation is running another turn; ask again once it has finished."
 
 
 def chat_affinity_enabled() -> bool:
@@ -699,6 +720,9 @@ class RunningTurn:
     #: is gone by then, and a stated level is the one the answering call runs at
     #: (``request_llm_context.with_turn_effort``). None when none was stated.
     reasoning_effort: str | None = None
+    #: The notes the asker typed while the turn runs (``common.steering``),
+    #: bound into the workflow's context by :func:`_drive`.
+    inbox: SteerInbox = field(default_factory=SteerInbox)
 
     def __post_init__(self) -> None:
         # Folded as stamped, not as yielded: a body the wire drops (a fenced
@@ -767,6 +791,25 @@ class RunningTurn:
         except ValueError:
             return "invalid_message"
         pending.answer.set_result(response)
+        return None
+
+    async def steer(self, message: Steer, *, subject: str | None, internal: bool, author: str | None) -> str | None:
+        """Put the asker's note into the turn's inbox. The refusal code, or None when it was taken.
+
+        Authorised as a Stop is: a note redirects the asker's turn. A resent
+        ``steer_id`` is taken once and acknowledged once; ``steer_received``
+        goes on the turn's own ``seq``, so every reader and a replay see it.
+        """
+        if not may_act_for(self.asker_subject, subject, internal=internal):
+            return "not_asker"
+        if self.wire.finished:
+            return "turn_not_found"
+        note = SteerNote(steer_id=message.steer_id, text=message.text, author=author, focus_region=message.focus_region)
+        offered = self.inbox.offer(note)
+        if offered == "limit":
+            return "steer_limit"
+        if offered == "received":
+            await self.wire.send(SteerReceivedBody(value=SteerReceivedValue(steer_id=note.steer_id, text=note.text)))
         return None
 
     def cancel(self, *, subject: str | None, internal: bool, shown: ShownAnswer | None = None) -> str | None:
@@ -951,6 +994,59 @@ class ChatRegistry:
         except BusUnavailable:
             logger.warning("Turn %s runs unclaimed: the bus is down", turn_id)
             return True
+
+    def _running_elsewhere_than(self, conversation_id: str, turn_id: str) -> bool:
+        """Whether this process runs another turn of the conversation, still alive."""
+        turn = self._turns.get(conversation_id)
+        return (
+            turn is not None
+            and turn.wire.turn_id != turn_id
+            and not turn.wire.finished
+            and (turn.task is None or not turn.task.done())
+        )
+
+    async def busy(self, conversation_id: str, turn_id: str) -> bool:
+        """Whether another turn of the conversation runs, here or on any replica (an ``if_idle`` question waits).
+
+        Read before the claim, so a refused question can be sent again under
+        the same id. With the bus down, affinity on means this replica is the
+        only one, and off means nobody can say: busy, and the sender retries.
+        """
+        if self._running_elsewhere_than(conversation_id, turn_id):
+            return True
+        if not is_multi_replica_bus():
+            return False
+        try:
+            holder = await self.bus().running_holder(conversation_id)
+        except BusUnavailable:
+            return not chat_affinity_enabled()
+        return holder is not None and holder.turn_id != turn_id
+
+    async def hold_if_idle(self, conversation_id: str, turn_id: str) -> Fence | None:
+        """Take the conversation's running marker without superseding anyone; None when another turn holds it.
+
+        The ``if_idle`` twin of :meth:`hold_conversation`: one ``SET NX``, no
+        waiting and no stop sent, so a question typed a moment before is never
+        cancelled by a turn an event woke.
+        """
+        if self._running_elsewhere_than(conversation_id, turn_id):
+            return None
+        if not is_multi_replica_bus():
+            return Fence()
+        try:
+            asked_at = time.monotonic()
+            if await self.bus().acquire_running(conversation_id, turn_id):
+                return Fence(held=True, guard=self._guard_for(conversation_id, turn_id, asked_at))
+            holder = await self.bus().running_holder(conversation_id)
+        except BusUnavailable:
+            fence = self._fence_without_bus(conversation_id)
+            return None if fence.refusal is not None else fence
+        return Fence() if holder is not None and holder.turn_id == turn_id else None
+
+    async def release_claim(self, conversation_id: str, turn_id: str) -> None:
+        """Give a claimed turn id back: an ``if_idle`` question refused after its claim may be sent again."""
+        with contextlib.suppress(BusUnavailable):
+            await self.bus().release_turn(conversation_id, turn_id)
 
     async def supersede_elsewhere(self, conversation_id: str, newer_turn_id: str) -> None:
         """Ask the replica running a stale turn of the conversation to stop it, as :meth:`start_turn` does here.
@@ -1139,15 +1235,35 @@ class ChatRegistry:
         return await wire.send(StageBody(value=value))
 
     async def _owner_input(self, conversation_id: str) -> None:
-        """While a turn runs here, take the answers and Stops a relay replica received for it."""
+        """While a turn runs here, take the answers, Stops and notes a relay replica received for it."""
         async for envelope in self.bus().subscribe_input(conversation_id):
-            self._take_input(conversation_id, envelope)
+            if envelope.type == STEER:
+                await self.relayed_steer(envelope.payload)
+            else:
+                self._take_input(conversation_id, envelope)
 
     def _take_input(self, conversation_id: str, envelope: Envelope) -> None:
         if envelope.type in {HITL_ANSWER, CANCEL}:
             self.relayed(envelope.payload)
         elif envelope.type == SUPERSEDE and envelope.origin != self.bus().replica_id:
             self._supersede_local(conversation_id, str((envelope.payload or {}).get("turn_id")))
+
+    async def relayed_steer(self, payload: dict[str, Any]) -> None:
+        """A note a relay received for a turn running here, authorised here. The relay already masked it."""
+        try:
+            message = CLIENT_MESSAGE.validate_python(payload["message"])
+        except (ValidationError, KeyError):
+            logger.warning("Dropping a malformed relayed steer", exc_info=True)
+            return
+        turn = self.running(message.conversation_id, getattr(message, "turn_id", None))
+        if turn is None or not isinstance(message, Steer):
+            return
+        author = payload.get("author") if isinstance(payload.get("author"), str) else None
+        refusal = await turn.steer(
+            message, subject=payload.get("subject"), internal=bool(payload.get("internal")), author=author
+        )
+        if refusal is not None:
+            logger.warning("Refused a relayed steer for turn %s: %s", message.turn_id, refusal)
 
     def relayed(self, payload: dict[str, Any]) -> None:
         """A relay's message for a turn running here, authorised here: the relay does not know the asker."""
@@ -1286,6 +1402,8 @@ async def _relay_workflow(turn: RunningTurn, request: UserMessage, session: Any)
                 record_turn_finished(body)
                 if body.outcome == "answered":
                     emit_scores(turn_outcome_scores(body.result), writer="chat")
+                if turn.inbox.received:
+                    emit_scores(steer_scores(turn.inbox), writer="chat")
             elif isinstance(body, RunErrorBody):
                 record_turn_error(body.code, body.details or body.message)
             await turn.publish(body)
@@ -1318,6 +1436,11 @@ async def _drive(
     # Where the question was asked: the chat, a box on the review canvas, or an
     # Anmerkung's thread (`turn_surface`), for every span of the turn.
     record_turn_surface(turn_surface(request.focus_region, reply_in_thread=thread_reply_requested(request)))
+    # The event that woke the turn, when nobody typed it (the BFF's wake job).
+    record_turn_trigger(request.trigger)
+    # The asker's notes while it runs (`common.steering`): bound here, the
+    # context the workflow's tasks copy, so the graph reads the one inbox.
+    steering = bind_steer_inbox(turn.inbox)
     try:
         with pinned_trace(trace_id_for_message(turn.message_id)), user_context(caller), request_trace_tag_context(tags):
             async with session_manager.session(
@@ -1335,6 +1458,7 @@ async def _drive(
         record_turn_error(_error_for(exc).code, str(exc))
         raise
     finally:
+        unbind_steer_inbox(steering)
         end_trace_contributions(contributions)
         end_turn_outcome(outcome)
 
@@ -1426,18 +1550,18 @@ async def _ensure_terminal(turn: RunningTurn) -> None:
 # ---------------------------------------------------------------------------
 
 
-def _relayable(message: InteractionResponse | CancelTurn) -> dict[str, Any]:
+def _relayable(message: InteractionResponse | CancelTurn | Steer) -> dict[str, Any]:
     """The message as every replica still running can parse it: without the fields only newer ones read."""
     return message.model_dump(mode="json", exclude={"shown"} if isinstance(message, CancelTurn) else None)
 
 
 def _client_type(raw: object) -> str | None:
     kind = raw.get("type") if isinstance(raw, dict) else None
-    return kind if kind in {"user_message", "interaction_response", "cancel_turn", "attach"} else None
+    return kind if kind in {"user_message", "interaction_response", "cancel_turn", "attach", "steer"} else None
 
 
 class ChatSocket:
-    """One connection: authenticated, bound to one conversation, serving the four client messages."""
+    """One connection: authenticated, bound to one conversation, serving the five client messages."""
 
     def __init__(self, socket: WebSocket, session_manager: SessionManager, registry: ChatRegistry) -> None:
         self.socket = socket
@@ -1522,6 +1646,7 @@ class ChatSocket:
             InteractionResponse: self.on_interaction_response,
             CancelTurn: self.on_cancel,
             Attach: self.on_attach,
+            Steer: self.on_steer,
         }
         await handlers[type(message)](message)
 
@@ -1563,12 +1688,21 @@ class ChatSocket:
             await self._ingest(message)
             return
         conversation_id = message.conversation_id
+        if message.if_idle and await self.registry.busy(conversation_id, message.message_id):
+            # Before the claim, so the sender's retry under the same id is not a duplicate.
+            await self._reject(message.model_dump(), "user_message", "busy", BUSY_REFUSAL)
+            return
         if not await self.registry.claim_turn(conversation_id, message.message_id):
             # Running or ran, here or on another replica: the client attaches instead.
             await self._reject(message.model_dump(), "user_message", "duplicate_turn")
             return
         # Claimed first, so a duplicate never asks the running turn to stop.
-        fence = await self.registry.hold_conversation(conversation_id, message.message_id)
+        fence = await self._hold(message)
+        if fence is None:
+            # An `if_idle` question that lost the race to a turn started since the check.
+            await self.registry.release_claim(conversation_id, message.message_id)
+            await self._reject(message.model_dump(), "user_message", "busy", BUSY_REFUSAL)
+            return
         self.registry.set_socket(conversation_id, self.socket)
         wire = TurnWire(conversation_id, message.message_id, self.registry.publish, fence.guard)
         turn = RunningTurn(
@@ -1597,6 +1731,12 @@ class ChatSocket:
         turn.task.add_done_callback(_log_unexpected_end)
         self.registry.start_turn(turn)
 
+    async def _hold(self, message: UserMessage) -> Fence | None:
+        """The conversation's marker for this question: superseding the running turn, or with ``if_idle`` never."""
+        if message.if_idle:
+            return await self.registry.hold_if_idle(message.conversation_id, message.message_id)
+        return await self.registry.hold_conversation(message.conversation_id, message.message_id)
+
     async def _refuse(self, turn: RunningTurn, text: str) -> None:
         """End a question that may not run with a refused terminal, as admission does, and keep its sequencer."""
         refusal = TurnRefusal(text, retry_after_seconds=REFUSAL_RETRY_AFTER_SECONDS)
@@ -1612,7 +1752,7 @@ class ChatSocket:
             self.screening = screening
         return screening.rules
 
-    async def _masked(self, text: str, message: UserMessage | InteractionResponse) -> str:
+    async def _masked(self, text: str, message: UserMessage | InteractionResponse | Steer) -> str:
         """A message's free text, masked (ADR-0086). Never refuses: a match is replaced, the turn runs.
 
         Called before anything reads the text: the agent, its history
@@ -1656,12 +1796,30 @@ class ChatSocket:
                 message.model_dump(), "cancel_turn", refusal, "Only the person who asked can stop this turn."
             )
 
+    async def on_steer(self, message: Steer) -> None:
+        """A note for the running turn. Never a turn: nothing is claimed, held or superseded."""
+        text = await self._masked(message.text, message)
+        if text != message.text:
+            message = message.model_copy(update={"text": text})
+        turn = self.registry.running(message.conversation_id, message.turn_id)
+        if turn is None:
+            await self._to_owner(STEER, message)
+            return
+        refusal = await turn.steer(
+            message, subject=self.subject, internal=self.internal, author=verified_display_name(self.caller)
+        )
+        if refusal is not None:
+            # Refused before the outlet moves: a colleague's note must not take the asker's stream.
+            await self._reject(message.model_dump(), "steer", refusal)
+            return
+        self.registry.set_socket(message.conversation_id, self.socket)
+
     async def on_attach(self, message: Attach) -> None:
         known = await self.registry.attach(message.conversation_id, self.socket, message.turn_id, message.after_seq)
         if not known:
             await self._reject(message.model_dump(), "attach", "turn_not_found")
 
-    async def _to_owner(self, input_type: str, message: InteractionResponse | CancelTurn) -> None:
+    async def _to_owner(self, input_type: str, message: InteractionResponse | CancelTurn | Steer) -> None:
         """A message for a turn this replica is not running: the owner authorises it, or nobody runs it.
 
         When the bus cannot carry it, the turn is as good as not found from
@@ -1674,6 +1832,8 @@ class ChatSocket:
             await self._reject(message.model_dump(), of, "turn_not_found")
             return
         payload = {"message": _relayable(message), "subject": self.subject, "internal": self.internal}
+        if isinstance(message, Steer):
+            payload["author"] = verified_display_name(self.caller)
         if isinstance(message, CancelTurn) and message.shown is not None:
             # Beside the message, not in it: the owner may be a pod one release
             # older, whose strict ``CancelTurn`` would refuse the field and drop

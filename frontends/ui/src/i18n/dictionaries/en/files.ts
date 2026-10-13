@@ -1451,6 +1451,14 @@ export const files = {
         question: 'Draft a precise query to the consultants about this detail.',
       },
       busy: 'Piloti is still answering the previous question.',
+      // While Piloti works, what the person adds goes into the running answer
+      // instead of becoming a new question: Piloti reads it before its next step.
+      busySteer: 'Piloti is still working: your question goes into the running answer as a note.',
+      steerPlaceholder: 'Steer Piloti …',
+      steerSend: 'Add',
+      steerNotes: 'Your notes',
+      steerWaiting: 'being taken into account',
+      steerApplied: 'applied in round {round}',
       thinking: 'Looking at the detail …',
       thinkingDocument: 'Going through the document …',
       needsInput: 'Piloti has a question for you. You can answer it in the chat.',

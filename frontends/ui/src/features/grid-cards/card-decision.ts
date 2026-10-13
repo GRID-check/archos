@@ -67,7 +67,9 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // a status move through the annotations API, recorded per mark under
   // `itemDecisionKey`: taking a mark over twice is harmless, but a card that
   // forgot it had discarded one would offer to take it over, and the API lets
-  // a discarded mark be opened again.
+  // a discarded mark be opened again. A change Piloti made at the person's
+  // request carries an undo, recorded per row the same way: undoing twice
+  // would undo whatever happened to the mark since.
   canvas_activity: 'interactive',
 
   // The Rechenweg computes its own result from the operands it was given and
@@ -155,6 +157,7 @@ export const CARD_DECISIONS = [
   /**
    * project_profile_patch / file_operation_proposal: the user declined.
    * canvas_activity (per mark): the reader discarded Piloti's mark.
+   * canvas_activity (per change): the reader undid a change Piloti made for them.
    */
   'rejected',
   /** memory_proposal: written org-wide. */

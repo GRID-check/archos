@@ -59,6 +59,30 @@ export const registerCanvasChatSender = (next: CanvasChatSender): (() => void) =
 /** The chat's sender, while a chat composer is mounted. */
 export const canvasChatSender = (): CanvasChatSender | null => sender
 
+/** A note for the chat's running turn: its text and, when one was drawn meanwhile, the box. */
+export interface CanvasChatSteer {
+  text: string
+  focusRegion?: CanvasFocusRegion | null
+  /** The turn never read it: what to ask instead once it has ended. */
+  onLeftover?: (text: string) => void
+}
+
+/** Steer the chat's running turn; false when there is none or its server reads no notes. */
+export type CanvasChatSteerer = (request: CanvasChatSteer) => boolean
+
+let steerer: CanvasChatSteerer | null = null
+
+/** The chat's driver offers its `steer`. Returns the withdrawal, which leaves a later registration alone. */
+export const registerCanvasChatSteerer = (next: CanvasChatSteerer): (() => void) => {
+  steerer = next
+  return () => {
+    if (steerer === next) steerer = null
+  }
+}
+
+/** The chat's steerer, while a chat composer is mounted. */
+export const canvasChatSteerer = (): CanvasChatSteerer | null => steerer
+
 /**
  * The region as the server accepts it: on its page, with `x + w` and `y + h`
  * at most 1. Rounding a dragged box to four decimals can overshoot the edge

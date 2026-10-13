@@ -54,6 +54,8 @@ Trace metadata on the root:
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
 | `turn_surface` | where the question was asked: `chat`, `review_canvas` (a box drawn on a document, `user_message.focus_region`) or `annotation_thread` (asked in an Anmerkung's thread, `reply_in_thread` with the mark's id). Recorded by the socket for every turn (`record_turn_surface`); both canvas values also carry the tag `surface:review-canvas` |
+| `turn_trigger`, `trigger_event_id` | on a turn an event woke, not typed (`user_message.trigger`, the BFF's wake job; ADR-0105 draft): the kind (`thread_mention`, `thread_reply`, `assigned`) and the id of the reply or assignment that woke it. Recorded by the socket (`record_turn_trigger`) with the tag `trigger:<kind>`; absent on a typed turn |
+| `steer_count` | on a turn the asker steered: how many of their notes (`steer`, typed while the turn ran) it has read so far, recorded by the agent node each time it reads one (`agent._announce_steer`). With the tag `steered` |
 | `focus_region_viewed` | on a turn with a box only: whether a region view (`canvas__look` or `view_knowledge_image` with `region`) ran, read off the turn's image budget (`conversation_register._finished`). `false` is a turn that answered about a drawing it never looked at |
 
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
@@ -61,7 +63,9 @@ Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 `research-truncated`, `handed-off`, `error:<code>`, `feature:ifc`,
 `feature:cross-project` (a `project_lookup` ran), `feature:canvas` (a canvas
 tool ran), `surface:review-canvas` (the question was asked from a document's
-review canvas or one of its threads), `reference-prefetch`,
+review canvas or one of its threads), `steered` (the asker typed a note the
+turn read mid-run), `trigger:<kind>` (an event woke the turn),
+`reference-prefetch`,
 `cited-precedent`,
 `feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
 identity attributes on. Tags are labels, never ids or text, with the one
@@ -80,20 +84,33 @@ when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`
 
 Each canvas tool (the `canvas` function group, `tools/canvas/`) is a tool
 observation of its own (`canvas__look`, `canvas__room`, `canvas__point`,
-`canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__reply`), and
-under it a `canvas.<tool>` step (`calls.observe`): its input the page, whether a
-region was asked, how many proposals were sent; its output counts and numbers,
-never the text of a mark, a reply or a label, nor a person's name: the document
-id, and `annotations`, `live` and `by_kind` for `marks`, `proposed` and `pages`
-for `mark`, the mark's `number` and its `replies` for `reply`, `peers`,
+`canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__update`,
+`canvas__delete`, `canvas__reply`), and under it a `canvas.<tool>` step
+(`calls.observe`): its input the page, whether a region was asked, how many
+marks were sent and whether `open`, which fields an `update` changes; its
+output counts and numbers, never the text of a mark, a reply, a note or a
+label, nor a person's name: the document id, and `annotations`, `live` and
+`by_kind` for `marks`, `proposed` (or `created`) and `pages` for `mark`, the
+mark's `number`, the changed `fields`, its `status` and whether the note was
+posted (`noted`) for `update`, `number` and `deleted` for `delete`, the mark's
+`number` and its `replies` for `reply`, `peers`,
 `drafts` and `selected` for `room`, `viewed` for `look`, `ok` for a gesture. A
 refusal is `{"refused": <code>}`: `no_envelope`, `unresolved_document`,
 `no_document_subject`, `forbidden`, `not_found`, `conflict`, `invalid`,
-`unreachable`, `invalid_arguments`, or `restricted` (a write everyone who opens
+`assignee_unclear`, `unreachable`, `invalid_arguments`, or `restricted` (a write everyone who opens
 the document would see, refused because the conversation drew on a restricted
 folder or another project: `tools/canvas/policy.py`). The harness's one call,
 taking Piloti's cursor off a document when the turn ends, is a `canvas.leave`
 step.
+
+Each steering note the turn reads (`common/steering.py`) is a `turn.steer`
+step under the decision that read it: its input the `round` it was read in,
+its length in `chars`, how long it `waited_ms` in the inbox and whether it
+carried a `region`; its output `applied` and the index `at` it was spliced
+into the request. Never the note's words: those are in the generation's input,
+masked like the question. A write the model chose before the note arrived and
+the turn held back is the technical step `status:steered:<round>` beside
+`repeat`, `refused` and `width`.
 
 ### The decision model
 
@@ -131,6 +148,7 @@ a name is written but not declared, or declared but not listed here.
 | `quotes-patched` | numeric | agent | misremembered quotes the repair corrected (ADR-0067) |
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
+| `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |
 | `review-sources` | categorical | reviewer, in the queue | `right_sources`, `missing_sources`, `wrong_sources` |
 | `judge-answers-question` | numeric 0–1 | LLM judge | how directly the answer addresses the question |

@@ -30,6 +30,7 @@ function scriptedSocket() {
       sent.push(message)
       return true
     },
+    accepts: (entry) => open && entry === 'steer',
     reconnect: vi.fn(() => options?.onStatus?.('open')),
     close: vi.fn(() => {
       open = false
@@ -242,4 +243,56 @@ describe('the canvas turn client', () => {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+})
+
+describe('a note for the turn Piloti is working on', () => {
+  const started = () => ({ type: 'RUN_STARTED', message_id: 'answer-1' })
+  const finishedBody = { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'answer-1', text: 'Die Treppe.' } }
+
+  it('goes to the running turn with the box drawn meanwhile, and asks nothing new when the turn read it', async () => {
+    vi.useFakeTimers()
+    const { client, socket, last } = setup()
+    await client.ask({ text: 'Markier die Tür.' }, 'turn-1')
+    socket.deliver(1, started())
+    const leftover = vi.fn()
+
+    expect(client.steer('nicht die Tür, die Treppe', { region: REGION, onLeftover: leftover })).toBe(true)
+    const note = socket.sent.find((message) => message.type === 'steer') as Record<string, unknown>
+    expect(note).toMatchObject({ turn_id: 'turn-1', text: 'nicht die Tür, die Treppe', focus_region: REGION })
+
+    socket.deliver(2, { type: 'CUSTOM', name: 'steer_received', value: { steer_id: note.steer_id, text: 'nicht die Tür, die Treppe' } })
+    socket.deliver(3, { type: 'CUSTOM', name: 'steer_applied', value: { steer_id: note.steer_id, round: 2 } })
+    socket.deliver(4, finishedBody)
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(last()?.steers?.[String(note.steer_id)]).toEqual({ text: 'nicht die Tür, die Treppe', round: 2 })
+    expect(leftover).not.toHaveBeenCalled()
+  })
+
+  it('hands a note the turn never read back once it has ended, refused or not', async () => {
+    vi.useFakeTimers()
+    const { client, socket, last } = setup()
+    await client.ask({ text: 'Markier die Tür.' }, 'turn-1')
+    socket.deliver(1, started())
+    const leftover = vi.fn()
+    client.steer('und das Podest?', { onLeftover: leftover })
+
+    socket.deliver(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'steer', code: 'steer_limit' } })
+    expect(last()?.phase).toBe('running')
+    socket.deliver(2, finishedBody)
+    await vi.advanceTimersByTimeAsync(1)
+
+    expect(leftover).toHaveBeenCalledWith('und das Podest?')
+  })
+
+  it('takes no note when nothing runs, or when the server reads none', async () => {
+    const { client, socket } = setup()
+    expect(client.steer('die Treppe')).toBe(false)
+
+    await client.ask({ text: 'Markier die Tür.' }, 'turn-1')
+    socket.deliver(1, started())
+    vi.spyOn(socket.socket, 'accepts').mockReturnValue(false)
+    expect(client.steer('die Treppe')).toBe(false)
+    expect(socket.sent.filter((message) => message.type === 'steer')).toEqual([])
+  })
 })

@@ -10,9 +10,14 @@
  * from does not vanish under them, it is resolved.
  *
  * Piloti works through the same functions with the asker's pinned session
- * (`/api/internal/document-annotations`): its marks are born proposals, and
- * only a person takes one over or dismisses it. The CHECKs in 0135 hold that
- * too, so the rule does not depend on this file.
+ * (`/api/internal/document-annotations`), so it may do exactly what the asker
+ * may, and nothing more. Its own findings are born proposals a person takes
+ * over or dismisses. A mark the asker asked for is born open, taken over by
+ * the asker in the same move (`accepted_by`); a change the asker asked for runs
+ * through `updateAnnotation` like a person's PATCH, and Piloti says what it did
+ * in the mark's thread (`updateAnnotationForAsker`). The CHECKs in 0135 hold
+ * that Piloti's mark is open only with a person behind it, so the rule does
+ * not depend on this file.
  *
  * Every write tells the document's room (the `doc:<id>` live channel,
  * `lib/realtime/document-channel.ts`), so everyone looking at the document
@@ -165,19 +170,63 @@ function toView(
   }
 }
 
+/** Whether this person could open the document, which is what being assigned to it needs. */
+async function isAssignable(session: AuthorizedSession, doc: Document, userId: string): Promise<boolean> {
+  if (doc.scope === 'project' && doc.projectId) return canUserAccessProject(session, doc.projectId, userId)
+  if (doc.scope === 'archiv') return (await loadOrganizationDirectory(session.organizationId)).has(userId)
+  return false
+}
+
 /**
  * Refuse an assignee who could not open the document: assigning is not access
  * (ADR-0059), so a person outside the project would be on the hook for a sheet
  * they cannot see.
  */
 async function requireAssignable(session: AuthorizedSession, doc: Document, userId: string): Promise<void> {
-  if (doc.scope === 'project' && doc.projectId) {
-    if (await canUserAccessProject(session, doc.projectId, userId)) return
-  } else if (doc.scope === 'archiv') {
-    const directory = await loadOrganizationDirectory(session.organizationId)
-    if (directory.has(userId)) return
-  }
+  if (await isAssignable(session, doc, userId)) return
   throw new UnprocessableError('The assignee cannot open this document.', { field: 'assigneeUserId' })
+}
+
+/** How many name matches an assignee lookup checks for access before it asks instead. */
+const MAX_ASSIGNEE_CANDIDATES = 10
+
+const nameKey = (value: string | null | undefined) =>
+  (value ?? '').normalize('NFC').trim().replace(/\s+/g, ' ').toLocaleLowerCase('de')
+
+/**
+ * The one member a name or an e-mail address means, among those who can open
+ * the document. Piloti has no roster and never sees a user id, so it passes
+ * the person as the asker said it („Anna"): an exact name or address first,
+ * then a first name or the start of a name. None, or more than one, is a 422
+ * naming the candidates, which the tool turns into a question.
+ */
+export async function resolveAssignee(session: AuthorizedSession, doc: Document, query: string): Promise<string> {
+  const key = nameKey(query)
+  const people = [...(await loadOrganizationDirectory(session.organizationId)).values()]
+  const exact = people.filter(
+    (person) => person.userId === query.trim() || nameKey(person.name) === key || nameKey(person.email) === key
+  )
+  const loose = people.filter((person) => {
+    const name = nameKey(person.name)
+    return name.startsWith(key) || name.split(' ').includes(key)
+  })
+  const candidates = (exact.length > 0 ? exact : loose).slice(0, MAX_ASSIGNEE_CANDIDATES)
+  const reachable: typeof candidates = []
+  for (const person of candidates) {
+    if (await isAssignable(session, doc, person.userId)) reachable.push(person)
+  }
+  if (reachable.length === 1) return reachable[0].userId
+  if (reachable.length === 0) {
+    throw new UnprocessableError(`Nobody called „${query.trim()}" can open this document.`, {
+      field: 'assignee',
+      reason: 'assignee-unknown',
+    })
+  }
+  const named = reachable.map((person) => (person.email ? `${person.name} (${person.email})` : person.name))
+  throw new UnprocessableError(`„${query.trim()}" could be ${named.join(', ')}.`, {
+    field: 'assignee',
+    reason: 'assignee-ambiguous',
+  })
 }
 
 /** Tell the room, never failing the write that caused it. */
@@ -290,8 +339,30 @@ export async function proposeAnnotations(
   documentId: string,
   proposals: readonly AnnotationProposal[]
 ): Promise<{ annotations: AnnotationView[] }> {
+  return insertPilotiMarks(session, documentId, proposals, null)
+}
+
+/**
+ * Piloti sets marks the asker asked for („Setz dort eine Anmerkung"). Each is
+ * born `open`, taken over by the asker in the same move, because the person
+ * stood behind it by asking: the asker is `accepted_by` and accountable.
+ */
+export async function setAnnotationsForAsker(
+  session: AuthorizedSession,
+  documentId: string,
+  marks: readonly AnnotationProposal[]
+): Promise<{ annotations: AnnotationView[] }> {
+  return insertPilotiMarks(session, documentId, marks, session.userId)
+}
+
+async function insertPilotiMarks(
+  session: AuthorizedSession,
+  documentId: string,
+  proposals: readonly AnnotationProposal[],
+  acceptedBy: string | null
+): Promise<{ annotations: AnnotationView[] }> {
   if (proposals.length === 0 || proposals.length > MAX_PROPOSALS_PER_CALL) {
-    throw new BadRequestError(`Between 1 and ${MAX_PROPOSALS_PER_CALL} proposals per call.`)
+    throw new BadRequestError(`Between 1 and ${MAX_PROPOSALS_PER_CALL} marks per call.`)
   }
   const parsed = proposals.map((proposal) => annotationProposalSchema.parse(proposal))
   const doc = await requireWritableDocument(session, documentId)
@@ -301,6 +372,7 @@ export async function proposeAnnotations(
     versionId: doc.publishedVersionId ?? null,
     authorKind: 'piloti',
     createdBy: session.userId,
+    acceptedBy,
     marks: parsed.map(toMark),
   }).catch(limitReached)
   const ids = rows.map((row) => row.id)
@@ -338,9 +410,9 @@ export function transition(
   throw new ConflictError(`An Anmerkung cannot go from ${from} to ${to}.`)
 }
 
-/** Change one Anmerkung: take it over, dismiss, resolve or reopen it, reword it, assign it, give it a date. */
 const conflict = () => new ConflictError('Somebody changed this Anmerkung a moment ago. Look again.')
 
+/** Change one Anmerkung: take it over, dismiss, resolve or reopen it, reword it, assign it, give it a date. */
 export async function updateAnnotation(
   session: AuthorizedSession,
   documentId: string,
@@ -390,6 +462,88 @@ export async function deleteAnnotation(
   await deleteDocumentAnnotation(session.organizationId, doc.id, annotationId)
   announce(session, doc.id, [annotationId], 'deleted', actor)
   return null
+}
+
+/** One Anmerkung as this session reads it; 404 when the document or the mark is not there for it. */
+export async function readAnnotation(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string
+): Promise<AnnotationView> {
+  const doc = await getAccessibleDocument(session, documentId, 'read')
+  const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
+  if (!record) throw new NotFoundError()
+  const [writable, names] = await Promise.all([mayWrite(session, doc.id), directoryNames(session.organizationId)])
+  return toView(record, doc, session, writable, names)
+}
+
+/** What Piloti may change on a mark for the asker: what a person's PATCH changes, the assignee by name. */
+export interface AskedChange {
+  status?: 'open' | 'resolved' | 'dismissed'
+  /** A name or an e-mail address as the asker said it ({@link resolveAssignee}); null clears it. */
+  assignee?: string | null
+  dueOn?: string | null
+  kind?: AnnotationView['kind']
+  body?: string
+  expectedStatus?: AnnotationStatus
+}
+
+/** The fields a change can move, compared between two reads of one mark. */
+const CHANGEABLE = ['status', 'assigneeUserId', 'dueOn', 'kind', 'body'] as const
+export type ChangeableField = (typeof CHANGEABLE)[number]
+
+export const changedFields = (before: AnnotationView, after: AnnotationView): ChangeableField[] =>
+  CHANGEABLE.filter((field) => before[field] !== after[field])
+
+/**
+ * Piloti changes a mark because the asker asked it to, and says so in the
+ * mark's thread: the change runs through {@link updateAnnotation} exactly as
+ * the asker's own PATCH would (their rights, the state machine, the 409 on a
+ * stale `expectedStatus`), then `note` is posted as Piloti's reply in the same
+ * request, so the change and its note cannot drift apart. A change that moved
+ * nothing posts nothing.
+ *
+ * The thread's room is checked BEFORE the change, so a full thread refuses the
+ * change rather than landing it without its note. Without an `expectedStatus`
+ * the status read here is the one the write compares against, so a colleague's
+ * move between this read and the write is a 409 rather than overwritten.
+ */
+export async function updateAnnotationForAsker(
+  session: AuthorizedSession,
+  documentId: string,
+  annotationId: string,
+  change: AskedChange,
+  note: string
+): Promise<{ before: AnnotationView; after: AnnotationView; changed: ChangeableField[] }> {
+  const { body: noteBody } = createReplyRequestSchema.parse({ body: note })
+  const doc = await requireWritableDocument(session, documentId)
+  const before = await viewOf(session, doc, annotationId)
+  if (change.expectedStatus && change.expectedStatus !== before.status) throw conflict()
+  if (before.replies.length >= MAX_REPLIES_PER_ANNOTATION) {
+    throw new UnprocessableError(`A thread carries at most ${MAX_REPLIES_PER_ANNOTATION} replies.`)
+  }
+  const assigneeUserId =
+    change.assignee === undefined || change.assignee === null
+      ? change.assignee
+      : await resolveAssignee(session, doc, change.assignee)
+  const { annotation: after } = await updateAnnotation(
+    session,
+    doc.id,
+    annotationId,
+    {
+      ...(change.status !== undefined && { status: change.status }),
+      ...(assigneeUserId !== undefined && { assigneeUserId }),
+      ...(change.dueOn !== undefined && { dueOn: change.dueOn }),
+      ...(change.kind !== undefined && { kind: change.kind }),
+      ...(change.body !== undefined && { body: change.body }),
+      expectedStatus: change.expectedStatus ?? before.status,
+    },
+    PILOTI
+  )
+  const changed = changedFields(before, after)
+  if (changed.length === 0) return { before, after, changed }
+  const { annotation } = await replyToAnnotation(session, doc.id, annotationId, { body: noteBody }, PILOTI)
+  return { before, after: annotation, changed }
 }
 
 /** Answer in an Anmerkung's thread, as a person or as Piloti for one. */

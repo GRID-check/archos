@@ -26,11 +26,13 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import uuid
 from collections.abc import Iterable
 from collections.abc import Mapping
 from collections.abc import Sequence
 from dataclasses import dataclass
+from dataclasses import field
 from dataclasses import replace
 from typing import Any
 from typing import Protocol
@@ -78,14 +80,24 @@ from aiq_agent.common.retrieval_rounds import failed_call_ids
 from aiq_agent.common.retrieval_rounds import ran_signatures
 from aiq_agent.common.retrieval_rounds import repeat_fetches
 from aiq_agent.common.retrieval_rounds import signatures_of
+from aiq_agent.common.steering import HELD_FOR_STEER
+from aiq_agent.common.steering import AppliedSteer
+from aiq_agent.common.steering import SteerInbox
+from aiq_agent.common.steering import SteerNote
+from aiq_agent.common.steering import current_steer_inbox
+from aiq_agent.common.steering import is_write_call
+from aiq_agent.common.steering import render_note
+from aiq_agent.common.steering import with_steering
 from aiq_agent.common.tool_errors import render_tool_error
 from aiq_agent.common.turn_status import begin_lane_capture
+from aiq_agent.common.turn_status import emit
 from aiq_agent.common.turn_status import emit_family_coverage
 from aiq_agent.common.turn_status import emit_input_budget_exhausted
 from aiq_agent.common.turn_status import emit_refused_source
 from aiq_agent.common.turn_status import emit_repeat_fetch
 from aiq_agent.common.turn_status import emit_research_truncated
 from aiq_agent.common.turn_status import emit_retrieval
+from aiq_agent.common.turn_status import emit_steered_writes
 from aiq_agent.common.turn_status import emit_synthesis
 from aiq_agent.common.turn_status import emit_width_cap
 from aiq_agent.common.turn_status import end_lane_capture
@@ -94,11 +106,16 @@ from aiq_agent.common.turn_status import get_lane_captures
 from aiq_agent.common.turn_status import is_retrieval_round
 from aiq_agent.common.turn_status import record_round_announcement
 from aiq_agent.common.turn_status import retrieval_round_scope
+from aiq_agent.common.wire_v2 import SteerAppliedBody
+from aiq_agent.common.wire_v2 import SteerAppliedValue
 from aiq_agent.knowledge.already_read import merge_digest
 from aiq_agent.knowledge.restricted_use import admit_tool_results
 from aiq_agent.knowledge.restricted_use import report_collections_read
+from aiq_agent.observability.langfuse_trace_attributes import add_trace_tag
 from aiq_agent.observability.langfuse_trace_attributes import begin_turn_prompt_link
 from aiq_agent.observability.langfuse_trace_attributes import end_turn_prompt_link
+from aiq_agent.observability.retrieval_trace import emit_step_span
+from aiq_agent.observability.turn_outcome import record_turn_facts
 from aiq_agent.tools.bim.measurement_sources import begin_measurement_capture
 from aiq_agent.tools.bim.measurement_sources import end_measurement_capture
 from aiq_agent.tools.bim.measurement_sources import get_measurement_captures
@@ -214,6 +231,9 @@ CUTOFF_INPUT_TOKENS = "input_tokens"
 #: Where the turn's binding rides on the LangGraph config (``configurable``),
 #: so the compiled graph is shared across turns and never rebuilt.
 _TURN_BINDING_KEY = "piloti_turn"
+
+#: The trace tag every turn a person steered carries (``common/steering.py``).
+STEERED_TAG = "steered"
 
 _SYNTHESIS_ANCHOR = (
     "You have exhausted your research budget. Synthesize the final answer now "
@@ -676,11 +696,25 @@ class _RoundSplit:
     #: The calls past the round's width cap: not refused, just not run THIS
     #: round, and the model is told it may ask again next round.
     over_width: list[Any]
+    #: The WRITE calls held back because a steering note arrived after the
+    #: model chose them (:meth:`held_for_steer`). Decided in the tools node
+    #: only: it is about WHEN the note arrived, which the agent node that
+    #: charged the round could not know. A write is never a fetch, so the
+    #: round's announcement and its stamp are the same with or without it.
+    steered: list[Any] = field(default_factory=list)
 
     @property
     def withheld(self) -> list[Any]:
         """Every call the ``ToolNode`` must not be given."""
-        return [*self.repeats, *(call for call, _ in self.refused), *self.over_width]
+        return [*self.repeats, *(call for call, _ in self.refused), *self.over_width, *self.steered]
+
+    def held_for_steer(self) -> _RoundSplit:
+        """This round with its surviving WRITE calls held back: a note arrived after the model chose them."""
+        steered = [call for call in self.ran if is_write_call(call)]
+        if not steered:
+            return self
+        held = {id(call) for call in steered}
+        return replace(self, ran=[call for call in self.ran if id(call) not in held], steered=steered)
 
     @property
     def attempted(self) -> frozenset[str]:
@@ -700,6 +734,7 @@ class _RoundSplit:
             *(_notice(call, _repeat_answer(call, results, attempted)) for call in self.repeats),
             *(_notice(call, sentence) for call, sentence in self.refused),
             *(_notice(call, _WIDTH_CAP_MESSAGE) for call in self.over_width),
+            *(_notice(call, HELD_FOR_STEER) for call in self.steered),
         ]
 
 
@@ -720,6 +755,69 @@ def _split_round(state: ResearchAgentState, disabled: frozenset[str], max_calls:
         refused=refused,
         over_width=over_width,
     )
+
+
+def _steer_round(state: ResearchAgentState) -> int:
+    """The decision a note taken now is read in, from 1: the rounds spent so far, plus this one."""
+    return state.tool_iterations + 1
+
+
+def _announce_steer(note: SteerNote, applied: AppliedSteer, inbox: SteerInbox) -> None:
+    """Say a note was read: ``steer_applied`` on the wire, a ``turn.steer`` span, the turn's tag and count.
+
+    Counts only on the span: the note's words are in the generation's input,
+    already masked, and nowhere else.
+    """
+    emit(SteerAppliedBody(value=SteerAppliedValue(steer_id=note.steer_id, round=applied.round)))
+    waited_ms = max(0, int((time.monotonic() - note.received_at) * 1000))
+    emit_step_span(
+        "turn.steer",
+        {
+            "round": applied.round,
+            "chars": len(note.text),
+            "waited_ms": waited_ms,
+            "region": note.focus_region is not None,
+        },
+        {"applied": True, "at": applied.at},
+    )
+    add_trace_tag(STEERED_TAG)
+    record_turn_facts(steer_count=len(inbox.applied))
+
+
+def _take_steering(state: ResearchAgentState) -> list[AppliedSteer] | None:
+    """Every note this turn has read, the new ones included; None when nothing arrived since the last decision.
+
+    A note is taken at the top of a model decision and kept with the index of
+    ``state.messages`` it arrived at, so every later request carries it in the
+    same place (:func:`with_steering`). Outside a chat socket no inbox is
+    bound and this is None on every call.
+    """
+    inbox = current_steer_inbox()
+    if inbox is None or not inbox.has_pending():
+        return None
+    round_index = _steer_round(state)
+    at = len(state.messages)
+    taken = inbox.take()
+    new = [
+        AppliedSteer(steer_id=note.steer_id, content=render_note(note, round_index), at=at, round=round_index)
+        for note in taken
+    ]
+    for note, applied in zip(taken, new, strict=True):
+        _announce_steer(note, applied, inbox)
+    logger.info("Steering: %d note(s) read before round %d", len(new), round_index)
+    return [*state.steering, *new]
+
+
+def _hold_writes_for_steer(state: ResearchAgentState, split: _RoundSplit) -> _RoundSplit:
+    """The round as it runs when a note arrived after the model chose it: its writes held back, its reads run."""
+    inbox = current_steer_inbox()
+    if inbox is None or not inbox.has_pending():
+        return split
+    held = split.held_for_steer()
+    if held.steered:
+        emit_steered_writes(round_index=state.retrieval_round, withheld=len(held.steered))
+        logger.info("Steering: %d write call(s) held back for a note that arrived after them", len(held.steered))
+    return held
 
 
 def _turn_index(state: ResearchAgentState) -> int:
@@ -1187,11 +1285,16 @@ class PilotiAgent:
             # and nothing in it depends on the thread it runs on.
             # ``register.py`` moves its blocking reads the same way.
             system_prompt = await asyncio.to_thread(render_system_prompt, self.system_prompt, state, tools_info)
+        # What the person typed since the last decision, read before this one
+        # (``common/steering.py``). Never into ``state.messages``: only into
+        # the request, at the index it arrived at, every round from now on.
+        taken = _take_steering(state)
+        steering = state.steering if taken is None else taken
         cutoff = _turn_cutoff(state, binding)
         if cutoff is not None:
-            return await self._forced_synthesis(state, binding, system_prompt, cutoff=cutoff)
+            return await self._forced_synthesis(state, binding, system_prompt, cutoff=cutoff, steering=steering)
 
-        messages = [SystemMessage(content=system_prompt), *state.messages]
+        messages = with_steering([SystemMessage(content=system_prompt), *state.messages], steering)
         # Every round may be the answer, and only its tokens say so; each
         # streams, and the reader shows nothing from a round that is not an
         # envelope. The deferred binding stays buffered (its fallback would
@@ -1221,6 +1324,8 @@ class PilotiAgent:
         }
         if round_record is not None:
             update["retrieval_rounds"] = [*state.retrieval_rounds, round_record]
+        if taken is not None:
+            update["steering"] = taken
         return update
 
     def _record_cutoff(self, state: ResearchAgentState, binding: TurnBinding, cutoff: str) -> None:
@@ -1274,6 +1379,7 @@ class PilotiAgent:
         system_prompt: str,
         *,
         cutoff: str,
+        steering: Sequence[AppliedSteer] = (),
     ) -> dict[str, Any]:
         """TRUNCATION: the turn ran out of budget mid-investigation.
 
@@ -1292,7 +1398,11 @@ class PilotiAgent:
         if state.tool_iterations > 0:
             emit_synthesis()
         # Anchored at the end to combat "Loss in the Middle".
-        messages = [SystemMessage(content=system_prompt), *state.messages, HumanMessage(content=_SYNTHESIS_ANCHOR)]
+        # The notes keep their places; the anchor stays last.
+        messages = [
+            *with_steering([SystemMessage(content=system_prompt), *state.messages], steering),
+            HumanMessage(content=_SYNTHESIS_ANCHOR),
+        ]
         answering, call_config = streaming_call(binding.llm, live=_live_answer(state))
         response = await ainvoke_with_envelope_json_mode(answering, messages, call_config)
         return {
@@ -1300,6 +1410,7 @@ class PilotiAgent:
             "tool_iterations": state.tool_iterations,
             "cached_system_prompt": system_prompt,
             "research_truncated": True,
+            "steering": list(steering),
         }
 
     async def _tools_node(self, state: ResearchAgentState, config: RunnableConfig) -> dict[str, Any]:
@@ -1337,8 +1448,11 @@ class PilotiAgent:
         """
         binding = self._turn_binding(config)
         split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round)
-        withheld = split.withheld
+        # Derived before the steering hold, from what the agent node charged: a
+        # held write is never a fetch, so the stamp is the same either way.
         executing_round = _executing_retrieval_round(state, split.ran)
+        split = _hold_writes_for_steer(state, split)
+        withheld = split.withheld
         # The model answering this turn rides into its tools beside the round
         # stamp, for the same node-boundary reason: an image view asks whether
         # it can see at all (`common/model_vision.py`).

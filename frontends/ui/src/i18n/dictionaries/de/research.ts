@@ -220,6 +220,12 @@ export const research: typeof en.research = {
     pleaseWait: 'Bitte warten...',
     typeAhead: 'Nächste Frage schon eingeben …',
     typeAheadHint: 'Senden ist möglich, sobald die Antwort fertig ist.',
+    // Während Piloti an der eigenen Frage arbeitet: Enter schickt den Text als
+    // Lenkung in die laufende Antwort, nicht als neue Frage.
+    steer: 'Piloti lenken …',
+    steerHint: 'Enter ergänzt die laufende Antwort; Piloti liest es vor dem nächsten Schritt.',
+    steerChip: 'lenkt',
+    steerSent: 'Ergänzung gesendet',
     messageNotSent: 'Nachricht nicht gesendet',
     messageNotSentDesc:
       'Beim Senden Ihrer Nachricht ist ein Fehler aufgetreten. Bitte versuchen Sie es erneut.',

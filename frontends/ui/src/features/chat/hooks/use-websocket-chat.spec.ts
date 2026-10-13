@@ -7,15 +7,16 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
 import type { TurnSocketOptions, TurnSocketStatus } from '@/adapters/api/turn-socket'
-import { eventOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
+import { eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
 
-const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
+const sockets = vi.hoisted(() => [] as Array<{ options: TurnSocketOptions; sent: unknown[]; open: boolean; offers: Set<string>; connect: ReturnType<typeof vi.fn>; close: ReturnType<typeof vi.fn>; reconnect: ReturnType<typeof vi.fn> }>)
 vi.mock('@/adapters/api/turn-socket', () => ({
   createTurnSocket: (options: TurnSocketOptions) => {
     const socket = {
       options,
       sent: [] as unknown[],
       open: false,
+      offers: new Set<string>(),
       connect: vi.fn(async () => {}),
       close: vi.fn(),
       reconnect: vi.fn(),
@@ -27,9 +28,11 @@ vi.mock('@/adapters/api/turn-socket', () => ({
       reconnect: socket.reconnect,
       send: (message: unknown) => {
         if (!socket.open) return false
+        if ((message as { type?: string }).type === 'steer' && !socket.offers.has('steer')) return false
         socket.sent.push(message)
         return true
       },
+      accepts: (entry: string) => socket.open && socket.offers.has(entry),
     }
   },
 }))
@@ -639,5 +642,105 @@ describe('nothing waits on silence', () => {
     expect(messages().some((message) => message.errorData?.errorCode === 'connection.server_incompatible')).toBe(true)
     expect(messages().some((message) => message.errorData?.errorCode === 'connection.failed')).toBe(false)
     expect(useChatStore.getState().isStreaming).toBe(false)
+  })
+})
+
+
+describe('steering the running turn', () => {
+  const steered = wireEvents('turn-steered.jsonl')
+  const STEERED_CONVERSATION = steered[0]!.conversation_id
+  const TURN = steered[0]!.turn_id
+  const started = steered.filter((event) => event.seq === 1)
+  const custom = (seq: number, name: string, value: Record<string, unknown>) =>
+    eventOf(frameOf(seq, { type: 'CUSTOM', name, value }, TURN)) as WireEvent
+  const finished = (seq: number, outcome = 'answered') =>
+    ({ ...eventOf(frameOf(seq, { type: 'RUN_FINISHED', outcome, result: { message_id: 'a', text: 'Fertig.' } }, TURN)), conversation_id: STEERED_CONVERSATION }) as WireEvent
+  const inConversation = (event: WireEvent) => ({ ...event, conversation_id: STEERED_CONVERSATION }) as WireEvent
+
+  const steering = () => {
+    const hook = openTurn(steered)
+    socket().offers.add('steer')
+    status('open')
+    deliver(started)
+    return hook
+  }
+
+  it('sends a note for the running turn when the server reads notes, and says so', () => {
+    const { result } = steering()
+    expect(result.current.canSteer).toBe(true)
+
+    let taken = false
+    act(() => void (taken = result.current.steer({ text: 'nicht die Tür, die Treppe' })))
+
+    expect(taken).toBe(true)
+    expect(sentOf('steer')).toEqual([
+      expect.objectContaining({ conversation_id: STEERED_CONVERSATION, turn_id: TURN, text: 'nicht die Tür, die Treppe' }),
+    ])
+    expect(sentOf('user_message')).toHaveLength(0)
+  })
+
+  it('offers nothing to a server that reads no notes: the text stays with the reader', () => {
+    const { result } = openTurn(steered)
+    deliver(started)
+
+    expect(result.current.canSteer).toBe(false)
+    let taken = true
+    act(() => void (taken = result.current.steer({ text: 'die Treppe' })))
+    expect(taken).toBe(false)
+    expect(sentOf('steer')).toEqual([])
+  })
+
+  it('asks a note the turn never read as the next question, once the turn has ended', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'und das Podest?' }))
+    const [note] = sentOf('steer')
+    deliver([inConversation(custom(2, 'steer_received', { steer_id: note!.steer_id, text: 'und das Podest?' })), finished(3)])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message').at(-1)).toMatchObject({ text: 'und das Podest?' })
+    vi.useRealTimers()
+  })
+
+  it('asks nothing again for a note the turn read', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    const [note] = sentOf('steer')
+    deliver([
+      inConversation(custom(2, 'steer_received', { steer_id: note!.steer_id, text: 'die Treppe' })),
+      inConversation(custom(3, 'steer_applied', { steer_id: note!.steer_id, round: 2 })),
+      finished(4),
+    ])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message')).toHaveLength(0)
+    const view = useChatStore.getState().turns[TURN]!
+    expect(view.steers?.[String(note!.steer_id)]).toEqual({ text: 'die Treppe', round: 2 })
+    vi.useRealTimers()
+  })
+
+  it('drops an unread note when the asker stopped the turn', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    deliver([finished(2, 'cancelled')])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+
+    expect(sentOf('user_message')).toHaveLength(0)
+    vi.useRealTimers()
+  })
+
+  it('keeps the turn running when the server refuses a note, and asks the note once the turn ends', async () => {
+    vi.useFakeTimers()
+    const { result } = steering()
+    act(() => void result.current.steer({ text: 'die Treppe' }))
+    deliver([inConversation(eventOf({ ...frameOf(0, { type: 'CUSTOM', name: 'rejected', value: { of: 'steer', code: 'steer_limit' } }, TURN) }))])
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+
+    deliver([finished(2)])
+    await act(async () => void (await vi.advanceTimersByTimeAsync(1)))
+    expect(sentOf('user_message').at(-1)).toMatchObject({ text: 'die Treppe' })
+    vi.useRealTimers()
   })
 })

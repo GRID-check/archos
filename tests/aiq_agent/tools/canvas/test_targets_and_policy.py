@@ -13,11 +13,13 @@ from aiq_agent.knowledge.restricted_use import current_restricted_use
 from aiq_agent.tools.canvas import calls as canvas_calls
 from aiq_agent.tools.canvas import target as canvas_target
 from aiq_agent.tools.canvas.policy import withhold_restricted_for_thread
+from aiq_agent.tools.canvas.register import run_delete
 from aiq_agent.tools.canvas.register import run_highlight
 from aiq_agent.tools.canvas.register import run_mark
 from aiq_agent.tools.canvas.register import run_marks
 from aiq_agent.tools.canvas.register import run_point
 from aiq_agent.tools.canvas.register import run_reply
+from aiq_agent.tools.canvas.register import run_update
 
 from .conftest import ANNOTATION
 from .conftest import DOCUMENT
@@ -103,12 +105,15 @@ class TestWhatEveryoneSees:
         ],
         ids=["conversation-recorded-a-restricted-folder", "this-turn-admitted-one"],
     )
-    @pytest.mark.parametrize("tool", ["mark", "reply", "highlight", "labelled point"])
+    @pytest.mark.parametrize("tool", ["mark", "open mark", "update", "delete", "reply", "highlight", "labelled point"])
     async def test_a_confined_conversation_writes_nothing_everyone_reads(self, monkeypatch, calls, use, tool):
         bind_restricted_use(use)
         answering(monkeypatch, calls, PROPOSE_BODY)
         run = {
             "mark": lambda: run_mark([PROPOSAL]),
+            "open mark": lambda: run_mark([PROPOSAL], open=True),
+            "update": lambda: run_update(ANNOTATION, "Erledigt: passt.", status="resolved"),
+            "delete": lambda: run_delete(ANNOTATION),
             "reply": lambda: run_reply(ANNOTATION, "Passt."),
             "highlight": lambda: run_highlight(1, 0.1, 0.1, 0.2, 0.2, "Hier"),
             "labelled point": lambda: run_point(1, 0.1, 0.1, "Hier"),

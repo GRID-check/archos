@@ -129,6 +129,214 @@
           "type": "object",
           "properties": {
             "op": {
+              "const": "create"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "marks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "integer"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "point",
+                      "region"
+                    ]
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "w": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "h": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "hint",
+                      "question",
+                      "defect"
+                    ]
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "basis": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "page",
+                  "shape",
+                  "x",
+                  "y",
+                  "kind",
+                  "body"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "op",
+            "marks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "update"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "annotationId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assignee": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "expectedStatus": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "op",
+            "annotationId",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "delete"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "annotationId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op",
+            "annotationId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
               "const": "reply"
             },
             "answerMessageId": {
@@ -558,6 +766,277 @@
         "documentId",
         "documentName",
         "proposed"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationCreateResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "created": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "point",
+                  "region"
+                ]
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "h": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "hint",
+                  "question",
+                  "defect"
+                ]
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "page",
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h",
+              "kind",
+              "body"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "created"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationUpdateResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotationId": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "open",
+            "resolved",
+            "dismissed"
+          ]
+        },
+        "before": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assigneeUserId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assigneeName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "after": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assigneeUserId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assigneeName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "noted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotationId",
+        "number",
+        "status",
+        "before",
+        "after",
+        "noted"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotationId": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotationId",
+        "number",
+        "body"
       ],
       "additionalProperties": true
     },

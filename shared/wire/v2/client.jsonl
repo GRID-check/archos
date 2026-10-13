@@ -9,3 +9,6 @@
 {"v":2,"type":"cancel_turn","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000300000_9"}
 {"v":2,"type":"cancel_turn","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000300000_9","shown":{"seq":42,"chars":318}}
 {"v":2,"type":"attach","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000000000_3","after_seq":14}
+{"v":2,"type":"steer","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000700000_21","steer_id":"steer_01JA1","text":"nicht die Tür, die Treppe"}
+{"v":2,"type":"steer","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","turn_id":"msg_1759000700000_21","steer_id":"steer_01JA2","text":"die hier","focus_region":{"page":3,"x":0.41,"y":0.22,"w":0.17,"h":0.18}}
+{"v":2,"type":"user_message","conversation_id":"5f5b7a5c-1f0e-4a9d-9c3a-2f2f9a1b7c11","message_id":"8a1f6f0e-6c1b-5d3e-9f2a-0b1c2d3e4f50","text":"@Piloti stimmt das mit der Türbreite?","focus_region":{"page":2,"x":0.5,"y":0.5,"w":0.1,"h":0.1,"annotation_id":"0b0e2a7c-7f3d-4f43-9f2a-1c5d7a3e9b10"},"reply_in_thread":true,"trigger":{"kind":"thread_mention","event_id":"5d2c9e1a-3b4f-4c6d-8e7f-9a0b1c2d3e4f","annotation_id":"0b0e2a7c-7f3d-4f43-9f2a-1c5d7a3e9b10"},"if_idle":true}

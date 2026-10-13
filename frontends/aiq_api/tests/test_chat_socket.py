@@ -2335,3 +2335,355 @@ async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(har
 
     assert sock.events()[-1]["outcome"] == "answered"
     assert "$posthog_session_id" not in seen[0]["metadata"]
+
+
+# ---------------------------------------------------------------------------
+# Steering: a note for the running turn (``steer``), never a turn of its own
+# ---------------------------------------------------------------------------
+
+
+class Steered:
+    """A turn that waits for its asker's notes, takes them as the agent node does, and says it read them."""
+
+    def __init__(self, wanted: int = 1) -> None:
+        self.wanted = wanted
+        self.read: list[str] = []
+        self.release = asyncio.Event()
+        self.torn_down = False
+
+    async def turn(self, request, ask):
+        from aiq_agent.common.steering import current_steer_inbox
+        from aiq_agent.common.wire_v2 import SteerAppliedBody
+        from aiq_agent.common.wire_v2 import SteerAppliedValue
+
+        inbox = current_steer_inbox()
+        try:
+            yield TextMessageStartBody(message_id="m")
+            while len(self.read) < self.wanted and not self.release.is_set():
+                for note in inbox.take():
+                    self.read.append(note.text)
+                    yield SteerAppliedBody(value=SteerAppliedValue(steer_id=note.steer_id, round=2))
+                await asyncio.sleep(0.01)
+            await self.release.wait()
+            yield _finished(request, text="Die Treppe.")
+        finally:
+            self.torn_down = True
+
+
+async def test_a_note_reaches_the_running_turn_and_is_acknowledged_on_its_seq(harness):
+    steered = Steered()
+    h = harness(steered.turn)
+    sock = h.connect()
+    sock.client(type="user_message", message_id="t1", text="Markier die Tür.")
+    await until(lambda: sock.events())
+
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text="nicht die Tür, die Treppe")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    events = sock.events()
+    assert _types(events) == [
+        "RUN_STARTED",
+        "TEXT_MESSAGE_START",
+        "steer_received",
+        "steer_applied",
+        "RUN_FINISHED",
+    ]
+    assert events[2]["value"] == {"steer_id": "s1", "text": "nicht die Tür, die Treppe"}
+    assert events[3]["value"] == {"steer_id": "s1", "round": 2}
+    assert [event["seq"] for event in events] == list(range(1, 6))
+    # Not a turn: nothing was superseded, claimed or opened for it.
+    assert events[-1]["outcome"] == "answered"
+    assert len(h.sessions.opened) == 1
+    assert sock.rejected() == []
+
+
+async def test_a_resent_note_is_taken_once(harness):
+    steered = Steered(wanted=2)
+    sock = harness(steered.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: sock.events())
+
+    for _ in range(2):
+        sock.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: steered.read)
+    await asyncio.sleep(0.05)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert _types(sock.events()).count("steer_received") == 1
+    assert steered.read == ["die Treppe"]
+    assert sock.rejected() == []
+
+
+async def test_a_colleague_cannot_steer_the_asker_s_turn(harness):
+    steered = Steered()
+    h = harness(steered.turn)
+    asker = h.connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: asker.events())
+    colleague = h.connect(token="tok-colleague")
+
+    colleague.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: colleague.rejected())
+    steered.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+    assert colleague.rejected() == [{"of": "steer", "code": "not_asker"}]
+    assert steered.read == []
+
+
+async def test_a_note_for_no_running_turn_is_turn_not_found(harness):
+    sock = harness().connect()
+    sock.client(type="steer", turn_id="gone", steer_id="s1", text="die Treppe")
+    await until(lambda: sock.rejected())
+
+    assert sock.rejected() == [{"of": "steer", "code": "turn_not_found"}]
+
+
+async def test_the_note_past_the_cap_is_refused_and_the_turn_runs_on(harness):
+    from aiq_agent.common.steering import MAX_STEERS_PER_TURN
+
+    gate = Gate()
+    sock = harness(gate.turn).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+
+    for index in range(MAX_STEERS_PER_TURN + 1):
+        sock.client(type="steer", turn_id="t1", steer_id=f"s{index}", text=f"Notiz {index}")
+    await until(lambda: sock.rejected())
+    gate.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert sock.rejected() == [{"of": "steer", "code": "steer_limit"}]
+    assert _types(sock.events()).count("steer_received") == MAX_STEERS_PER_TURN
+    assert sock.events()[-1]["outcome"] == "answered"
+
+
+async def test_a_note_reaches_the_turn_masked(harness, office):
+    steered = Steered()
+    sock = harness(steered.turn).connect(headers=_office_envelope())
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: sock.events())
+
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text=f"Konto ist {_IBAN}")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert steered.read == ["Konto ist [IBAN entfernt]"]
+    received = [event for event in sock.events() if event.get("name") == "steer_received"]
+    assert received[0]["value"]["text"] == "Konto ist [IBAN entfernt]"
+
+
+async def test_a_note_received_by_another_replica_reaches_the_owner_s_turn(harness):
+    owner, relay, _ = _replicas()
+    steered = Steered()
+    asker = harness(steered.turn, owner).connect()
+    asker_elsewhere = harness(steered.turn, relay).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: asker.events())
+    await asyncio.sleep(0.02)  # the owner's input subscription lands
+
+    asker_elsewhere.client(type="steer", turn_id="t1", steer_id="s1", text="die Treppe")
+    await until(lambda: steered.read)
+    steered.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+    assert steered.read == ["die Treppe"]
+    assert "steer_received" in _types(asker.events())
+    assert asker_elsewhere.rejected() == []
+
+
+async def test_the_hello_offers_steering_and_the_wake_fields():
+    assert {"steer", "user_message.trigger", "user_message.if_idle"} <= set(ACCEPTED_CLIENT_FIELDS)
+
+
+async def test_a_note_is_read_by_the_real_graph_in_its_next_round_and_holds_back_a_write(harness, monkeypatch):
+    """End to end: socket → inbox → Piloti's compiled graph → ``steer_applied`` on the asker's socket.
+
+    The model chose to look AND mark the door; the asker typed while it was
+    deciding. The mark is held, the look runs, the next request carries the
+    note, and the reader is told which round read it.
+    """
+    from unittest.mock import MagicMock
+    from unittest.mock import patch
+
+    from langchain_core.messages import AIMessage
+    from langchain_core.messages import HumanMessage
+    from langchain_core.messages import ToolMessage
+    from langchain_core.tools import tool
+
+    from aiq_agent.agents.piloti.agent import PilotiAgent
+    from aiq_agent.agents.piloti.models import ResearchAgentState
+    from aiq_agent.common import LLMProvider
+    from aiq_agent.common.citation_verification import SourceEntry
+    from aiq_agent.common.citation_verification import SourceRegistry
+    from aiq_agent.common.steering import HELD_FOR_STEER
+
+    ran: list[str] = []
+    requests: list[list] = []
+    deciding, steered = asyncio.Event(), asyncio.Event()
+
+    @tool("canvas__look")
+    def look(page: int) -> str:
+        """Look at a page."""
+        ran.append("look")
+        return "Tür links, Treppe rechts"
+
+    @tool("canvas__mark")
+    def mark(target: str) -> str:
+        """Propose an Anmerkung."""
+        ran.append(f"mark:{target}")
+        return "ok"
+
+    replies = [
+        AIMessage(
+            content="",
+            tool_calls=[
+                {"name": "canvas__look", "args": {"page": 1}, "id": "l1"},
+                {"name": "canvas__mark", "args": {"target": "Tür"}, "id": "m1"},
+            ],
+        ),
+        AIMessage(content="", tool_calls=[{"name": "canvas__mark", "args": {"target": "Treppe"}, "id": "m2"}]),
+        AIMessage(content="Die Treppe ist markiert."),
+    ]
+
+    async def respond(messages, *_args, **_kwargs):
+        requests.append(list(messages))
+        if len(requests) == 1:
+            deciding.set()
+            await steered.wait()  # the person types while the model decides
+        return replies[len(requests) - 1]
+
+    llm = MagicMock()
+    llm.bind_tools = MagicMock(return_value=llm)
+    llm.ainvoke = AsyncMock(side_effect=respond)
+    provider = MagicMock(spec=LLMProvider)
+    provider.get = MagicMock(return_value=llm)
+    agent = PilotiAgent(llm_provider=provider, tools=[look, mark], system_prompt="Du bist Piloti.")
+
+    async def graph_turn(request, ask):
+        bodies: asyncio.Queue = asyncio.Queue()
+        monkeypatch.setattr("aiq_agent.common.turn_status.get_stream_writer", lambda: bodies.put_nowait)
+        with (
+            patch.object(SourceRegistry, "all_sources", return_value=[SourceEntry(url="https://example.com")]),
+            patch("aiq_agent.agents.piloti.answer_pipeline.verify_citations") as verify,
+            patch("aiq_agent.agents.piloti.answer_pipeline.sanitize_report") as sanitize,
+        ):
+            verify.side_effect = lambda content, reg, reference_sources=None: MagicMock(
+                verified_report=content, removed_citations=[]
+            )
+            sanitize.side_effect = lambda content: MagicMock(sanitized_report=content)
+            run = asyncio.create_task(agent.run(ResearchAgentState(messages=[HumanMessage(content=request.text)])))
+            while not run.done() or not bodies.empty():
+                try:
+                    yield await asyncio.wait_for(bodies.get(), timeout=0.01)
+                except TimeoutError:
+                    continue
+            result = await run
+        yield _finished(request, text=str(result.messages[-1].content))
+
+    sock = harness(graph_turn).connect()
+    sock.client(type="user_message", message_id="t1", text="Markier die Tür.")
+    await until(deciding.is_set)
+    sock.client(type="steer", turn_id="t1", steer_id="s1", text="nicht die Tür, die Treppe")
+    await until(lambda: "steer_received" in _types(sock.events()))
+    steered.set()
+    await until(lambda: _last(sock) == "RUN_FINISHED", timeout=5.0)
+
+    names = _types(sock.events())
+    assert names.index("steer_received") < names.index("steer_applied") < names.index("RUN_FINISHED")
+    applied = next(event for event in sock.events() if event.get("name") == "steer_applied")
+    assert applied["value"] == {"steer_id": "s1", "round": 2}
+    held = next(event for event in sock.events() if event.get("step", {}).get("id") == "status:steered:0")
+    assert held["step"]["detail"] == {"round": 0, "withheld": 1}
+    assert ran == ["look", "mark:Treppe"]
+    second = requests[1]
+    assert isinstance(second[-1], HumanMessage) and "nicht die Tür, die Treppe" in second[-1].content
+    assert isinstance(second[-2], ToolMessage) and second[-2].content == HELD_FOR_STEER
+    assert sock.events()[-1]["result"]["text"] == "Die Treppe ist markiert."
+
+
+# ---------------------------------------------------------------------------
+# A turn an event woke (ADR-0105 draft §3(b)): if_idle and the trigger
+# ---------------------------------------------------------------------------
+
+
+async def test_an_if_idle_question_never_supersedes_and_may_be_sent_again_later(harness):
+    gate = Gate()
+    h = harness(gate.turn)
+    asker = h.connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    wake = h.connect()
+
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: wake.rejected())
+    assert wake.rejected() == [{"of": "user_message", "code": "busy", "message": chat_socket.BUSY_REFUSAL}]
+    assert not gate.torn_down  # the typed turn runs on
+    assert len(h.sessions.opened) == 1
+
+    gate.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: _last(wake, "w1") == "RUN_FINISHED")
+    assert wake.events("w1")[-1]["outcome"] == "answered"  # the same id ran: the refusal claimed nothing
+
+
+async def test_an_if_idle_question_is_busy_while_another_replica_runs_the_conversation(harness):
+    owner, relay, _ = _replicas()
+    gate = Gate()
+    asker = harness(gate.turn, owner).connect()
+    asker.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: gate.calls)
+    wake = harness(gate.turn, relay).connect()
+
+    wake.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: wake.rejected())
+
+    assert [value["code"] for value in wake.rejected()] == ["busy"]
+    assert not gate.torn_down
+    gate.release.set()
+    await until(lambda: _last(asker) == "RUN_FINISHED")
+
+
+async def test_an_idle_conversation_runs_an_if_idle_question(harness):
+    sock = harness().connect()
+    sock.client(type="user_message", message_id="w1", text="@Piloti?", if_idle=True)
+    await until(lambda: _last(sock, "w1") == "RUN_FINISHED")
+
+    assert sock.events("w1")[-1]["outcome"] == "answered"
+
+
+async def test_the_event_that_woke_a_turn_is_on_its_trace(harness):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    trigger = {"kind": "thread_mention", "event_id": "reply-7", "annotation_id": "a-1"}
+    sock.client(type="user_message", message_id="t1", text="@Piloti?", trigger=trigger)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"]["turn_trigger"] == "thread_mention"
+    assert seen[0]["metadata"]["trigger_event_id"] == "reply-7"
+    assert "trigger:thread_mention" in seen[0]["tags"]
+
+
+async def test_a_typed_turn_names_no_trigger(harness):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?")
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert "turn_trigger" not in seen[0]["metadata"]
+    assert not [tag for tag in seen[0]["tags"] if tag.startswith("trigger:")]
+
+
+async def test_a_headless_socket_s_caller_skips_the_clarifier_and_says_it_is_headless():
+    sock = FakeSocket(headers=[(b"x-aiq-mode", b"headless")])
+
+    caller, code = await authenticate_websocket_connection(sock)
+
+    assert code is None
+    assert caller["skip_clarifier"] is True
+    assert caller["headless"] is True

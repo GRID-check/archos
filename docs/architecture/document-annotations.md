@@ -24,7 +24,8 @@ The domain rules are CHECK constraints, not service code. A tired contributor
 cannot route around them:
 
 - Only Piloti proposes.
-- A mark by Piloti is `open` only once a person has taken it over: `accepted_by` is set.
+- A mark by Piloti is `open` only with a person behind it: `accepted_by` is set,
+  by the person who took it over, or by the person who asked Piloti for it.
 - A closed mark (`resolved`, `dismissed`) says who closed it and when.
 - A box stays on its page.
 
@@ -100,16 +101,69 @@ Piloti reaches marks in two ways.
 
 **By tool.** The `canvas` function group (`src/aiq_agent/tools/canvas/`) calls
 `/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
-(`propose`), `canvas__reply` (`reply`), `canvas__room` (`room`), and the
-gestures `canvas__point` and `canvas__highlight`; `canvas__look` renders the page
-or a box on it through `view_knowledge_image`'s own body. The turn sends
-`leave` when it ends, so Piloti's cursor goes with it.
+(`propose`, or `create` with `open=true`), `canvas__update` (`update`),
+`canvas__delete` (`delete`), `canvas__reply` (`reply`), `canvas__room`
+(`room`), and the gestures `canvas__point` and `canvas__highlight`;
+`canvas__look` renders the page or a box on it through `view_knowledge_image`'s
+own body. The turn sends `leave` when it ends, so Piloti's cursor goes with it.
 
 - A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
 - With no document named and no subject, the tool gets a typed 422 and asks which document is meant.
 - A reply, a proposal, a highlight and a labelled pointer are seen by everyone who opens the document, so a conversation that drew on a restricted folder or another project may write none of them (`tools/canvas/policy.py`).
 - A held upload reaches no model.
 - A subject in a restricted folder is admitted against the conversation first.
+
+### What the person asks for, Piloti does as they could
+
+The product decision: there is no difference between what Piloti does and what
+a person does, with light reporting. When the person ASKS, Piloti may do on a
+document's Anmerkungen everything that person may do, under that person's own
+rights, because every op runs as the asker's pinned session through the same
+service functions the person's own routes use (`lib/annotations/agent.ts`):
+
+| Asked for | Op | Runs | Recorded as |
+|---|---|---|---|
+| Set a mark | `create` | `setAnnotationsForAsker`: born `open`, `author_kind = piloti` | `created_by` and `accepted_by`/`accepted_at` = the asker |
+| Resolve, reopen, dismiss a proposal, take one over, assign, set or clear a date, reword, change the kind | `update` | `updateAnnotationForAsker`, which runs `updateAnnotation` with `actor = PILOTI`, then posts `note` as Piloti's reply | `closed_by` / `accepted_by` = the asker |
+| Delete a mark | `delete` | `deleteAnnotation`, which allows only a mark the asker set themselves | nothing left |
+
+Findings Piloti makes on its own initiative, including a whole-document review
+the person did not itemise, stay proposals (`propose`). The tool descriptions
+say when to use which: `open=true` only when the person asked for exactly that
+mark; `update` only when they asked for that change to that mark; `delete`
+only on explicit request.
+
+The CHECKs of migration 0135 hold on every path, unchanged:
+
+- `only_piloti_proposes`: a born-open mark is not `proposed`; a person's mark never is.
+- `acceptance_complete`: `accepted_by` and `accepted_at` are set together, on birth or by `transition()`.
+- `piloti_needs_a_person`: Piloti's open or resolved mark carries `accepted_by`, the asker, because the person stood behind it by asking.
+- `closing_complete`: closing goes through `transition()`, which sets `closed_by`/`closed_at` to the asker and clears them on reopening.
+
+`frontends/ui/src/app/api/internal/document-annotations/route.spec.ts` runs the
+real service over a fake repository and checks every row it leaves against
+these predicates; `repository.integration.spec.ts` sets a born-open mark in
+real PostgreSQL and finds the CHECK still refusing one with nobody behind it.
+
+**The note.** Every change Piloti makes to an existing mark posts ONE short
+reply in that mark's thread, authored as Piloti, from the `note` the model must
+give („Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.").
+The service posts it in the same request as the change, so the two cannot
+drift apart: a full thread refuses the change before it lands, a stale
+`expectedStatus` is a 409 with no note, and a change that moved nothing posts
+nothing. A mark the tool looked up by its number is changed only if its status
+is still the one read (`expectedStatus`).
+
+**Who is assigned.** The model never sees a user id, so `update` takes the
+`assignee` as the person said it. The BFF resolves it against the
+organization's directory among those who can open the document
+(`resolveAssignee`): an exact name or address, then a first name or the start
+of a name. None or several is a 422 naming the candidates, and the tool turns
+it into a question.
+
+**Who it says did it.** Piloti's presence and replies are labelled Piloti. The
+person shown as `acceptedBy` or `closedBy` is the asker, which is correct: they
+are accountable.
 
 **By a box.** A person draws a box and asks Piloti about it, on the canvas.
 
@@ -129,8 +183,10 @@ The trace carries `turn_surface` and `focus_region_viewed`
 ## In the chat
 
 Whatever Piloti did on a document in a turn comes back as one
-`canvas_activity` card ([cards.md](cards.md#current-card-types)). It is the
-way from the chat onto the canvas and back:
+`canvas_activity` card ([cards.md](cards.md#current-card-types)): marks
+proposed (`proposed`) or set on request (`created`), changes (`changed`, each
+field before and after, and the note), deletions (`deleted`) and replies. It
+is the way from the chat onto the canvas and back:
 
 1. Each proposed mark carries „Übernehmen" and „Verwerfen". The answer goes
    through the same typed client the canvas uses, and is stored on the message
@@ -148,7 +204,16 @@ way from the chat onto the canvas and back:
    taken the link. Off the chat the card goes to Dateien with all three
    params.
 
+3. A change carries „Rückgängig". It PATCHes the inverse through the
+   reader's own client with `expectedStatus` = the status Piloti left, after
+   reading the mark again, so it never undoes a colleague's later move: a mark
+   that moved on shows where it stands instead. Taking a proposal over and
+   dismissing one have no way back through a person's PATCH, so they offer no
+   undo. The undo is stored per row through `useCardDecision`. A deleted mark
+   is gone with its thread; its row only says so.
+
 ## Known debts
 
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.
 - The Python side posts to internal routes through several near-identical helpers.
+- A change Piloti makes and its note are two writes in one request, not one transaction (`updateAnnotationForAsker`). Every refusal the service can foresee (rights, a stale status, a full thread) comes before the change; a database failure between the two writes would still leave the change without its note.

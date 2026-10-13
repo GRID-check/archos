@@ -2,8 +2,9 @@
  * What Piloti did on a document's canvas, as the chat card reads it.
  *
  * The `canvas_activity` card is system-emitted: Piloti's canvas tools (`src/aiq_agent/tools/canvas/`)
- * pushes it after it proposed marks or replied in a thread, and the model
- * cannot author one. Every id on it is one the annotations service returned.
+ * push it after Piloti proposed marks, set, changed or deleted one at the
+ * person's request, or replied in a thread, and the model cannot author one.
+ * Every id on it is one the annotations service returned.
  *
  * ## The local type
  *
@@ -25,7 +26,7 @@
  * say so rather than offer the button again.
  */
 
-import type { AnnotationKind, AnnotationStatus } from '@/lib/annotations/types'
+import type { AnnotationKind, AnnotationStatus, UpdateAnnotationRequest } from '@/lib/annotations/types'
 import type { CardDecision } from '../card-decision'
 
 /** A mark Piloti set on a page, waiting for a person to take it over. */
@@ -44,6 +45,39 @@ export interface CanvasProposedItem {
   body: string
 }
 
+/** A mark Piloti set because the person asked for it: open at once, in the person's name. */
+export interface CanvasCreatedItem extends Omit<CanvasProposedItem, 'action'> {
+  action: 'created'
+}
+
+/** One field a change moved. An absent `before`/`after` is an empty field (no assignee, no date). */
+export interface CanvasFieldChange {
+  field: 'status' | 'assignee' | 'due_on' | 'kind' | 'body'
+  before?: string | null
+  after?: string | null
+  /** The assignee's name, beside their id. */
+  before_label?: string | null
+  after_label?: string | null
+}
+
+/** A change Piloti made to a mark because the person asked, and the note it left in the thread. */
+export interface CanvasChangedItem {
+  action: 'changed'
+  annotation_id: string
+  number: number
+  /** The mark's status after the change: what an undo expects to find. */
+  status: AnnotationStatus
+  changes: CanvasFieldChange[]
+  note: string
+}
+
+/** A mark Piloti deleted because the person who set it asked. Gone with its thread. */
+export interface CanvasDeletedItem {
+  action: 'deleted'
+  number: number
+  body: string
+}
+
 /** An answer Piloti posted into a mark's thread. */
 export interface CanvasRepliedItem {
   action: 'replied'
@@ -52,7 +86,15 @@ export interface CanvasRepliedItem {
   excerpt: string
 }
 
-export type CanvasActivityItem = CanvasProposedItem | CanvasRepliedItem
+export type CanvasActivityItem =
+  | CanvasProposedItem
+  | CanvasCreatedItem
+  | CanvasChangedItem
+  | CanvasDeletedItem
+  | CanvasRepliedItem
+
+/** A mark Piloti put on the page: proposed, or set at the person's request. */
+export type CanvasSetItem = CanvasProposedItem | CanvasCreatedItem
 
 export interface CanvasActivityDocument {
   id: string
@@ -60,6 +102,12 @@ export interface CanvasActivityDocument {
 }
 
 export const isProposed = (item: CanvasActivityItem): item is CanvasProposedItem => item.action === 'proposed'
+export const isSet = (item: CanvasActivityItem): item is CanvasSetItem =>
+  item.action === 'proposed' || item.action === 'created'
+
+/** The mark an item points at on the document; none for a deleted one. */
+export const annotationIdOf = (item: CanvasActivityItem): string | null =>
+  item.action === 'deleted' ? null : item.annotation_id
 
 /** Where one mark stands, as the card shows it. */
 export type MarkState = AnnotationStatus | 'gone'
@@ -73,6 +121,11 @@ export interface LiveMark {
   acceptedByName: string | null
   /** Who closed it (resolved or discarded), when somebody did. */
   closedByName: string | null
+  /** The fields a change can move, to tell whether a change still stands as Piloti left it. */
+  assigneeUserId: string | null
+  dueOn: string | null
+  kind: AnnotationKind
+  body: string
 }
 
 /**
@@ -93,20 +146,86 @@ export function markState(decision: CardDecision | null, live: LiveMark | 'gone'
   return 'proposed'
 }
 
-/** How many of the card's items are proposals and how many are replies, and the one thread replied in. */
+/**
+ * Where a mark Piloti set at the person's request stands: open unless the
+ * canvas says otherwise. There is no answer to give, so no stored decision.
+ */
+export function createdState(live: LiveMark | 'gone' | undefined): MarkState {
+  if (live === 'gone') return 'gone'
+  return live ? live.status : 'open'
+}
+
+/** How many of each act the card holds, and the one thread replied in. Changed marks count once each. */
 export function activityCounts(items: readonly CanvasActivityItem[]): {
   proposed: number
+  created: number
+  changed: number
+  deleted: number
   replied: number
   /** The number of the mark replied to, when every reply went to one thread. */
   repliedNumber: number | null
 } {
   const replies = items.filter((item) => item.action === 'replied')
   const threads = new Set(replies.map((item) => item.number))
+  const changed = new Set(items.filter((item) => item.action === 'changed').map((item) => item.number))
   return {
-    proposed: items.length - replies.length,
+    proposed: items.filter((item) => item.action === 'proposed').length,
+    created: items.filter((item) => item.action === 'created').length,
+    changed: changed.size,
+    deleted: items.filter((item) => item.action === 'deleted').length,
     replied: threads.size,
     repliedNumber: threads.size === 1 ? replies[0].number : null,
   }
+}
+
+const isKind = (value: string | null | undefined): value is AnnotationKind =>
+  value === 'hint' || value === 'question' || value === 'defect'
+
+/** The statuses a person's PATCH can move between in both directions: the only status changes an undo reverses. */
+const isReversible = (value: string | null | undefined): value is 'open' | 'resolved' =>
+  value === 'open' || value === 'resolved'
+
+/**
+ * The PATCH that puts a change back, or null when a person's PATCH cannot.
+ *
+ * Taking a proposal over and dismissing one have no way back to `proposed`,
+ * and `open → dismissed` is not a move, so those changes are not undone here;
+ * resolving and reopening are. `expectedStatus` is the status Piloti left, so
+ * a colleague's move since is a 409 rather than undone.
+ */
+export function undoRequest(item: CanvasChangedItem): UpdateAnnotationRequest | null {
+  const request: UpdateAnnotationRequest = { expectedStatus: item.status }
+  for (const change of item.changes) {
+    const before = change.before ?? null
+    if (change.field === 'status') {
+      if (!isReversible(before) || !isReversible(change.after)) return null
+      request.status = before
+    } else if (change.field === 'assignee') {
+      request.assigneeUserId = before
+    } else if (change.field === 'due_on') {
+      request.dueOn = before
+    } else if (change.field === 'kind') {
+      if (!isKind(before)) return null
+      request.kind = before
+    } else {
+      if (!before) return null
+      request.body = before
+    }
+  }
+  return request
+}
+
+/** Whether the mark still stands as Piloti's change left it: an undo of anything else would undo a colleague. */
+export function stillAsLeft(item: CanvasChangedItem, live: LiveMark): boolean {
+  if (live.status !== item.status) return false
+  return item.changes.every((change) => {
+    const after = change.after ?? null
+    if (change.field === 'status') return true
+    if (change.field === 'assignee') return live.assigneeUserId === after
+    if (change.field === 'due_on') return live.dueOn === after
+    if (change.field === 'kind') return live.kind === after
+    return live.body === after
+  })
 }
 
 /** A box's place on the page, in CSS percent; a point is a place with no size. */

@@ -1120,7 +1120,8 @@ class FileOperationProposalCard(CardModel):
 
 
 # ── Canvas activity (system-emitted) ───────────────────────────────────────
-# What Piloti did on a document in this turn: the marks it proposed and the
+# What Piloti did on a document in this turn: the marks it proposed or set at
+# the person's request, the marks it changed or deleted for them, and the
 # threads it answered (`tools/canvas/`). The chat says it in prose; the card is
 # the proof, built from what the BFF returned (the mark's id and number), so a
 # reader can open the document at exactly that mark. One card per document per
@@ -1129,7 +1130,10 @@ class FileOperationProposalCard(CardModel):
 # is taken over or dismissed on this card or on the document, whichever the
 # person reaches first. Both go through the same annotations API, which changes a
 # mark's status by compare-and-swap, so the second of the two sees a 409 and
-# shows the state the first one left. Its decisions are stored per mark.
+# shows the state the first one left. Its decisions are stored per mark. A
+# change Piloti made carries what each field was before and after, so the
+# person can undo it from the card through the same API, guarded by the status
+# Piloti left (a colleague's later move is a 409, never undone).
 
 #: How many entries one card carries: the `mark` tool proposes at most 20 per call.
 MAX_CANVAS_ACTIVITY_ITEMS = 20
@@ -1145,10 +1149,9 @@ class CanvasDocument(CardModel):
     name: str = Field(min_length=1, description="The file name, as the BFF returned it")
 
 
-class CanvasProposedItem(CardModel):
-    """A mark Piloti proposed: a person takes it over or dismisses it on the document."""
+class _CanvasSetMark(CardModel):
+    """A mark Piloti set on a page: where, what kind, what it says."""
 
-    action: Literal["proposed"] = "proposed"
     annotation_id: str = Field(min_length=1, description="The mark's id")
     number: int = Field(ge=1, description="The mark's number on the document")
     page: int = Field(ge=1, description="The page, from 1")
@@ -1161,6 +1164,49 @@ class CanvasProposedItem(CardModel):
     body: str = Field(min_length=1, max_length=2000, description="What the mark says")
 
 
+class CanvasProposedItem(_CanvasSetMark):
+    """A mark Piloti proposed: a person takes it over or dismisses it on the document."""
+
+    action: Literal["proposed"] = "proposed"
+
+
+class CanvasCreatedItem(_CanvasSetMark):
+    """A mark Piloti set because the person asked for it: open at once, in the person's name."""
+
+    action: Literal["created"] = "created"
+
+
+class CanvasFieldChange(CardModel):
+    """One field a change moved. An absent ``before``/``after`` is an empty field (no assignee, no date)."""
+
+    field: Literal["status", "assignee", "due_on", "kind", "body"]
+    before: str | None = Field(default=None, max_length=2000, description="The value before; absent when empty")
+    after: str | None = Field(default=None, max_length=2000, description="The value after; absent when empty")
+    before_label: str | None = Field(default=None, max_length=200, description="The assignee's name before")
+    after_label: str | None = Field(default=None, max_length=200, description="The assignee's name after")
+
+
+class CanvasChangedItem(CardModel):
+    """A mark Piloti changed because the person asked: what moved, the note it left, and the status it left."""
+
+    action: Literal["changed"] = "changed"
+    annotation_id: str = Field(min_length=1, description="The mark's id")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    status: Literal["proposed", "open", "resolved", "dismissed"] = Field(
+        description="The mark's status after the change: what an undo expects to find"
+    )
+    changes: list[CanvasFieldChange] = Field(min_length=1, max_length=5)
+    note: str = Field(min_length=1, max_length=300, description="The start of Piloti's note in the thread")
+
+
+class CanvasDeletedItem(CardModel):
+    """A mark Piloti deleted because the person who set it asked. Gone with its thread; no undo."""
+
+    action: Literal["deleted"] = "deleted"
+    number: int = Field(ge=1, description="The deleted mark's number")
+    body: str = Field(min_length=1, max_length=2000, description="What the mark said")
+
+
 class CanvasRepliedItem(CardModel):
     """An answer Piloti wrote in a mark's thread."""
 
@@ -1170,14 +1216,17 @@ class CanvasRepliedItem(CardModel):
     excerpt: str = Field(min_length=1, max_length=300, description="The start of the reply")
 
 
-CanvasActivityItem = Annotated[CanvasProposedItem | CanvasRepliedItem, Field(discriminator="action")]
+CanvasActivityItem = Annotated[
+    CanvasProposedItem | CanvasCreatedItem | CanvasChangedItem | CanvasDeletedItem | CanvasRepliedItem,
+    Field(discriminator="action"),
+]
 
 
 class CanvasActivityCard(CardModel):
-    """What Piloti did on one document in this turn: marks proposed, threads answered.
+    """What Piloti did on one document in this turn: marks proposed or set, changed, deleted, threads answered.
 
     A proposed mark is taken over or dismissed from here as well as on the
-    document, through the same annotations API.
+    document, and a change is undone from here, through the same annotations API.
 
     System-emitted by the canvas tools (``src/aiq_agent/tools/canvas/``) after
     the BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).

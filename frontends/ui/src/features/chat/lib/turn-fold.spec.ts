@@ -8,7 +8,7 @@
 import { describe, expect, it } from 'vitest'
 import type { WireEvent } from '@/adapters/api/wire-v2'
 import { WIRE_TURN_FILES, eventOf, frameOf, wireEvents } from '@/test-utils/wire-v2-fixtures'
-import { foldTurnEvent, foldTurnEvents, stopTurnView, type TurnView } from './turn-fold'
+import { foldTurnEvent, foldTurnEvents, isSteerRead, stopTurnView, type TurnView } from './turn-fold'
 
 const fold = (events: readonly WireEvent[]): TurnView => {
   const view = foldTurnEvents(undefined, events)
@@ -399,5 +399,39 @@ describe('stopTurnView', () => {
   it('keeps the cards array when the cut keeps every card', () => {
     const view = fold([card(1, 0, 'k1'), delta(2, 'A [[card:1]] B')])
     expect(stopTurnView(view, 'A [[card:1]] B').view.cards).toBe(view.cards)
+  })
+})
+
+describe('a note the asker typed while the turn ran (steer)', () => {
+  const steered = wireEvents('turn-steered.jsonl')
+  const received = steered.findIndex((event) => event.type === 'CUSTOM' && event.name === 'steer_received')
+
+  it('is kept by its id and drawn as a live row saying it will be taken into account', () => {
+    const view = fold(steered.slice(0, received + 1))
+
+    expect(view.steers).toEqual({ steer_01JA1: { text: 'nicht die Tür, die Treppe' } })
+    expect(view.steps['steer:steer_01JA1']).toMatchObject({
+      kind: 'status',
+      slot: 'steer',
+      isComplete: false,
+      turnEvent: { key: 'status.steer.received', values: { text: 'nicht die Tür, die Treppe' } },
+    })
+    expect(isSteerRead(view, 'steer_01JA1')).toBe(false)
+  })
+
+  it('then says which round read it, in the same row', () => {
+    const view = fold(steered)
+
+    expect(view.steers?.steer_01JA1).toEqual({ text: 'nicht die Tür, die Treppe', round: 2 })
+    expect(view.steps['steer:steer_01JA1']).toMatchObject({
+      isComplete: true,
+      turnEvent: { key: 'status.steer.applied', values: { text: 'nicht die Tür, die Treppe', round: '2' } },
+    })
+    expect(view.stepOrder.filter((id) => id === 'steer:steer_01JA1')).toHaveLength(1)
+    expect(isSteerRead(view, 'steer_01JA1')).toBe(true)
+  })
+
+  it('reads a note the turn never acknowledged as unread', () => {
+    expect(isSteerRead(fold(steered.slice(0, received)), 'steer_01JA1')).toBe(false)
   })
 })

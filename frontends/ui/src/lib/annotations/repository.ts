@@ -145,6 +145,12 @@ export interface NewAnnotationsInput {
   versionId: string | null
   authorKind: AnnotationAuthor
   createdBy: string
+  /**
+   * Piloti only: the person who asked for exactly these marks, so they are born
+   * `open`, taken over by that person in the same move. Absent, Piloti's marks
+   * are born `proposed`.
+   */
+  acceptedBy?: string | null
   marks: readonly NewAnnotationValues[]
 }
 
@@ -155,13 +161,17 @@ export class AnnotationLimitReachedError extends Error {}
  * Insert one or more Anmerkungen in ONE transaction, their numbers allocated
  * as max + 1 under a per-document advisory lock, so two people setting a mark
  * on one sheet at the same moment get 4 and 5 rather than one of them a 23505.
- * A person's mark is born `open`, Piloti's `proposed` (the CHECKs refuse any
- * other birth). The count is checked under the same lock, so the cap holds
- * against a burst of proposals too.
+ * A person's mark is born `open`; Piloti's is born `proposed`, or `open` with
+ * `accepted_by` when the asker asked for it (the CHECK
+ * `…_piloti_needs_a_person` refuses Piloti's open mark without one). The count
+ * is checked under the same lock, so the cap holds against a burst of
+ * proposals too.
  */
 export async function insertDocumentAnnotations(input: NewAnnotationsInput): Promise<DocumentAnnotationRow[]> {
   const db = getDb()
-  const status: AnnotationStatus = input.authorKind === 'piloti' ? 'proposed' : 'open'
+  const acceptedBy = input.authorKind === 'piloti' ? (input.acceptedBy ?? null) : null
+  const status: AnnotationStatus = input.authorKind === 'piloti' && !acceptedBy ? 'proposed' : 'open'
+  const acceptance = acceptedBy ? { acceptedBy, acceptedAt: new Date() } : {}
   return withTenant({ organizationId: input.organizationId }, () =>
     db.transaction(async (tx) => {
       await tx.execute(
@@ -195,6 +205,7 @@ export async function insertDocumentAnnotations(input: NewAnnotationsInput): Pro
             authorKind: input.authorKind,
             createdBy: input.createdBy,
             status,
+            ...acceptance,
             number: first + index,
           }))
         )

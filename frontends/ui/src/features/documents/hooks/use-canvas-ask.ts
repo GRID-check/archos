@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { v4 as uuidv4 } from 'uuid'
-import { canvasChatSender } from '@/features/chat/lib/canvas-bridge'
+import { canvasChatSender, canvasChatSteerer } from '@/features/chat/lib/canvas-bridge'
 import type { TurnView } from '@/features/chat/lib/turn-fold'
 import { useChatStore } from '@/features/chat/store'
 import { runningTurnIn } from '@/features/chat/stores/messages-store'
@@ -166,6 +166,11 @@ const blankAsk = (id: string): CanvasAsk => ({
  * chat, so the canvas and the transcript are one conversation in two views;
  * else one document-subject conversation per document per tab.
  *
+ * While Piloti works, what the person adds is not a second question but a
+ * note for the running turn ({@link steer}): typed into the working card, or
+ * asked about a box drawn meanwhile, which travels with the note. The turn
+ * reads it before its next round; one it never read is asked next.
+ *
  * The asks are this tab's. What Piloti does on the document while it answers
  * (its pointer, what it highlights, its proposals, a reply in a thread) is its
  * own doing, through its tools, and arrives through the room like anybody
@@ -272,6 +277,26 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
 
   const available = enabled && Boolean(projectId)
 
+  /** `ask`, for a note the turn never read: it is asked next, about the same box. */
+  const askRef = useRef<((input: CanvasAskInput) => string) | null>(null)
+
+  /**
+   * A note for the turn Piloti is working on, with the box drawn meanwhile.
+   * False when nothing runs here or its server reads no notes: the caller
+   * then keeps the text (or asks it as a question of its own).
+   */
+  const steer = useCallback((text: string, region: CanvasAskRegion | null = null): boolean => {
+    const note = text.trim()
+    if (!note) return false
+    const onLeftover = (leftover: string) => void askRef.current?.({ text: leftover, region })
+    const running = asksRef.current.find((entry) => entry.status === 'thinking' && entry.turnId)
+    if (running?.backend === 'canvas') return client.current?.steer(note, { region, onLeftover }) ?? false
+    if (!latest.current.chatHosted) return false
+    const chat = useChatStore.getState()
+    if (!runningTurnIn(chat.turns, chat.currentConversation?.id)) return false
+    return canvasChatSteerer()?.({ text: note, focusRegion: region, onLeftover }) ?? false
+  }, [])
+
   /** Show one ask's card (null: none). A card closed while still waiting for its question goes. */
   const open = useCallback(
     (id: string | null) => {
@@ -337,6 +362,19 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
 
   const ask = useCallback(
     (input: CanvasAskInput): string => {
+      // Piloti is already at work: the question becomes a note for that turn,
+      // the box with it, and the card that was waiting for it closes.
+      const working = asksRef.current.find(
+        (entry) => entry.status === 'thinking' && entry.turnId && entry.id !== input.id
+      )
+      const chat = useChatStore.getState()
+      const chatWorking = latest.current.chatHosted && runningTurnIn(chat.turns, chat.currentConversation?.id)
+      if ((working || chatWorking) && !input.replyInThread && steer(input.text, input.region)) {
+        setAsks((current) => current.filter((entry) => !(entry.id === input.id && entry.status === 'composing')))
+        if (working) setOpen(working.id)
+        else if (openRef.current === input.id) setOpen(null)
+        return working?.id ?? input.id ?? ''
+      }
       const id = uuidv4()
       const entry: CanvasAsk = {
         ...blankAsk(id),
@@ -374,8 +412,11 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
         )
       return id
     },
-    [askInChat, clientFor, patch, setAsks, setOpen]
+    [askInChat, clientFor, patch, setAsks, setOpen, steer]
   )
+  useEffect(() => {
+    askRef.current = ask
+  })
 
   /** Close an ask: a running one is stopped first. */
   const dismiss = useCallback(
@@ -420,11 +461,12 @@ export function useCanvasAsk(options: UseCanvasAskOptions) {
       busy: asks.some((entry) => entry.status === 'thinking'),
       compose,
       ask,
+      steer,
       dismiss,
       retry,
       conversationHref,
     }),
-    [available, asks, openId, open, compose, ask, dismiss, retry, conversationHref]
+    [available, asks, openId, open, compose, ask, steer, dismiss, retry, conversationHref]
   )
 }
 

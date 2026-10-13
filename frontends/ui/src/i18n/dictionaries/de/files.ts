@@ -1400,6 +1400,14 @@ export const files: typeof en.files = {
         question: 'Zu diesem Ausschnitt eine präzise Rückfrage an die Fachplanung formulieren.',
       },
       busy: 'Piloti antwortet noch auf die vorige Frage.',
+      // Während Piloti arbeitet, geht, was die Person ergänzt, in die laufende
+      // Antwort statt als neue Frage: Piloti liest es vor dem nächsten Schritt.
+      busySteer: 'Piloti arbeitet noch: Ihre Frage geht als Ergänzung in die laufende Antwort.',
+      steerPlaceholder: 'Piloti lenken …',
+      steerSend: 'Ergänzen',
+      steerNotes: 'Ihre Ergänzungen',
+      steerWaiting: 'wird berücksichtigt',
+      steerApplied: 'übernommen in Runde {round}',
       thinking: 'Sieht sich den Ausschnitt an …',
       thinkingDocument: 'Geht das Dokument durch …',
       needsInput: 'Piloti hat eine Rückfrage an Sie. Sie können sie im Chat beantworten.',

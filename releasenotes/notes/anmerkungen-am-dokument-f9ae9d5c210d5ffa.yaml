@@ -8,3 +8,7 @@ features:
     Draw a box around any detail and ask Piloti about exactly that part of the
     page; the answer appears right beside it and can be kept as an annotation.
     Piloti's own findings arrive as suggestions you take over or dismiss.
+  - >
+    Ask Piloti to set, resolve, reopen, assign, date or delete an annotation
+    and it does so in your name, with your rights, leaving a short note in the
+    annotation's thread; the chat lists each change with a way to undo it.

@@ -30,10 +30,10 @@ describe('document annotations JSON Schema', () => {
     )
   })
 
-  it('describes the request as a closed union over its ops: the Anmerkungen and the room', () => {
+  it('describes the request as a closed union over its ops: the Anmerkungen, what the asker asks for, and the room', () => {
     const request = (documentAnnotationsJsonSchema().$defs as Record<string, { oneOf?: unknown[]; anyOf?: unknown[] }>)
       .InternalAnnotationRequest
     const options = (request.oneOf ?? request.anyOf) as Array<{ properties: { op: { const: string } } }>
-    expect(options.map((option) => option.properties.op.const).sort()).toEqual(['highlight', 'leave', 'list', 'point', 'propose', 'reply', 'room'])
+    expect(options.map((option) => option.properties.op.const).sort()).toEqual(['create', 'delete', 'highlight', 'leave', 'list', 'point', 'propose', 'reply', 'room', 'update'])
   })
 })

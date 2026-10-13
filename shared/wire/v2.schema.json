@@ -411,6 +411,7 @@
           "attach": "#/$defs/Attach",
           "cancel_turn": "#/$defs/CancelTurn",
           "interaction_response": "#/$defs/InteractionResponse",
+          "steer": "#/$defs/Steer",
           "user_message": "#/$defs/UserMessage"
         },
         "propertyName": "type"
@@ -427,6 +428,9 @@
         },
         {
           "$ref": "#/$defs/Attach"
+        },
+        {
+          "$ref": "#/$defs/Steer"
         }
       ]
     },
@@ -1183,7 +1187,7 @@
     },
     "RejectedValue": {
       "additionalProperties": false,
-      "description": "A client message was refused. Out of band: ``seq == 0``, never replayed, never ends a turn.\n\n``of`` is the refused message's ``type``, or ``unknown`` for a frame that is\nnot JSON or names no type this contract has: that is answered too, so a\nclient never waits on silence.",
+      "description": "A client message was refused. Out of band: ``seq == 0``, never replayed, never ends a turn.\n\n``of`` is the refused message's ``type``, or ``unknown`` for a frame that is\nnot JSON or names no type this contract has: that is answered too, so a\nclient never waits on silence.\n\n``busy`` answers only a ``user_message`` that said ``if_idle``: the\nconversation runs another turn, and this one would have superseded it.\n``steer_limit`` answers a ``steer`` past the turn's cap\n(``common.steering.MAX_STEERS_PER_TURN``).",
       "properties": {
         "code": {
           "enum": [
@@ -1193,7 +1197,9 @@
             "not_asker",
             "no_pending_interaction",
             "turn_not_found",
-            "invalid_message"
+            "invalid_message",
+            "busy",
+            "steer_limit"
           ],
           "title": "Code",
           "type": "string"
@@ -1216,6 +1222,7 @@
             "interaction_response",
             "cancel_turn",
             "attach",
+            "steer",
             "unknown"
           ],
           "title": "Of",
@@ -1941,6 +1948,232 @@
         "kind"
       ],
       "title": "StatusStep",
+      "type": "object"
+    },
+    "Steer": {
+      "additionalProperties": false,
+      "description": "A note for the running turn, typed while it works („nicht die Tür, die Treppe“).\n\nNot a turn: it never claims, holds or supersedes the conversation. The turn\nreads it at its next tool-round boundary and the model decides again with\nit; a note the turn never read (it arrived during the final call) is the\nclient's to ask as the next question. Only the asker may steer (v1), as\nonly the asker may stop. Sent only to a server whose hello accepts 'steer'.",
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "focus_region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FocusRegion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A box drawn on the canvas while Piloti works: what the note is about."
+        },
+        "steer_id": {
+          "description": "Idempotency key and ack correlation.",
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Steer Id",
+          "type": "string"
+        },
+        "text": {
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "turn_id": {
+          "description": "The running turn (Codex's expectedTurnId).",
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "steer",
+          "default": "steer",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "conversation_id",
+        "turn_id",
+        "steer_id",
+        "text",
+        "v",
+        "type"
+      ],
+      "title": "Steer",
+      "type": "object"
+    },
+    "SteerApplied": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "name": {
+          "const": "steer_applied",
+          "default": "steer_applied",
+          "title": "Name",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "CUSTOM",
+          "default": "CUSTOM",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        },
+        "value": {
+          "$ref": "#/$defs/SteerAppliedValue"
+        }
+      },
+      "required": [
+        "value",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "name",
+        "v"
+      ],
+      "title": "SteerApplied",
+      "type": "object"
+    },
+    "SteerAppliedValue": {
+      "additionalProperties": false,
+      "description": "The turn read the note: it is in the request of the decision numbered ``round`` (from 1).",
+      "properties": {
+        "round": {
+          "minimum": 1,
+          "title": "Round",
+          "type": "integer"
+        },
+        "steer_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Steer Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "steer_id",
+        "round"
+      ],
+      "title": "SteerAppliedValue",
+      "type": "object"
+    },
+    "SteerReceived": {
+      "additionalProperties": false,
+      "properties": {
+        "conversation_id": {
+          "minLength": 1,
+          "title": "Conversation Id",
+          "type": "string"
+        },
+        "name": {
+          "const": "steer_received",
+          "default": "steer_received",
+          "title": "Name",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 0,
+          "title": "Seq",
+          "type": "integer"
+        },
+        "ts": {
+          "minimum": 0,
+          "title": "Ts",
+          "type": "integer"
+        },
+        "turn_id": {
+          "minLength": 1,
+          "title": "Turn Id",
+          "type": "string"
+        },
+        "type": {
+          "const": "CUSTOM",
+          "default": "CUSTOM",
+          "title": "Type",
+          "type": "string"
+        },
+        "v": {
+          "const": 2,
+          "default": 2,
+          "title": "V",
+          "type": "integer"
+        },
+        "value": {
+          "$ref": "#/$defs/SteerReceivedValue"
+        }
+      },
+      "required": [
+        "value",
+        "conversation_id",
+        "turn_id",
+        "seq",
+        "ts",
+        "type",
+        "name",
+        "v"
+      ],
+      "title": "SteerReceived",
+      "type": "object"
+    },
+    "SteerReceivedValue": {
+      "additionalProperties": false,
+      "description": "A steering note reached the running turn's inbox. ``text`` is the note as the model will read it (masked).",
+      "properties": {
+        "steer_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Steer Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "steer_id",
+        "text"
+      ],
+      "title": "SteerReceivedValue",
       "type": "object"
     },
     "StepFinished": {
@@ -2698,6 +2931,47 @@
       "title": "TurnResult",
       "type": "object"
     },
+    "TurnTrigger": {
+      "additionalProperties": false,
+      "description": "The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).\n\nSet by the BFF's wake job, never by a browser: the person whose act is the\nevent holds the socket (their pinned session), and the turn answers where\nthe event happened. ``event_id`` is the reply (or assignment) id the job was\nenqueued for; ``annotation_id`` the Anmerkung it happened on.",
+      "properties": {
+        "annotation_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Annotation Id"
+        },
+        "event_id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "title": "Event Id",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "thread_mention",
+            "thread_reply",
+            "assigned"
+          ],
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "event_id"
+      ],
+      "title": "TurnTrigger",
+      "type": "object"
+    },
     "UserMessage": {
       "additionalProperties": false,
       "description": "A question (or, with ``context_only``, a colleague's line the agent must see but not answer).\n\n``type`` stays ``user_message``: the gateway's per-socket turn limiter\n(``frontends/ui/src/lib/limits/ws-frames.js``) counts turns by it.",
@@ -2821,6 +3095,19 @@
           "default": null,
           "title": "Focus Version State"
         },
+        "if_idle": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Run only if the conversation has no running turn: a running one is never superseded, and the question is refused with rejected{busy} instead, so the sender can retry later. Sent only to a server whose hello accepts 'user_message.if_idle'.",
+          "title": "If Idle"
+        },
         "message_id": {
           "description": "Becomes the turn_id.",
           "maxLength": 128,
@@ -2897,6 +3184,18 @@
           "title": "Text",
           "type": "string"
         },
+        "trigger": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/TurnTrigger"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The event that woke this turn (a reply or mention in an Anmerkung's thread, an assignment), when it was not typed. Rendered for the model as who woke it and where to answer. Sent only to a server whose hello accepts 'user_message.trigger'."
+        },
         "type": {
           "const": "user_message",
           "default": "user_message",
@@ -2934,7 +3233,9 @@
                 "interaction_resolved": "#/$defs/InteractionResolved",
                 "masthead": "#/$defs/Masthead",
                 "rejected": "#/$defs/Rejected",
-                "stage": "#/$defs/Stage"
+                "stage": "#/$defs/Stage",
+                "steer_applied": "#/$defs/SteerApplied",
+                "steer_received": "#/$defs/SteerReceived"
               },
               "propertyName": "name"
             },
@@ -2965,6 +3266,12 @@
               },
               {
                 "$ref": "#/$defs/Rejected"
+              },
+              {
+                "$ref": "#/$defs/SteerReceived"
+              },
+              {
+                "$ref": "#/$defs/SteerApplied"
               }
             ]
           },
@@ -3019,7 +3326,9 @@
               "interaction_resolved": "#/$defs/InteractionResolved",
               "masthead": "#/$defs/Masthead",
               "rejected": "#/$defs/Rejected",
-              "stage": "#/$defs/Stage"
+              "stage": "#/$defs/Stage",
+              "steer_applied": "#/$defs/SteerApplied",
+              "steer_received": "#/$defs/SteerReceived"
             },
             "propertyName": "name"
           },
@@ -3050,6 +3359,12 @@
             },
             {
               "$ref": "#/$defs/Rejected"
+            },
+            {
+              "$ref": "#/$defs/SteerReceived"
+            },
+            {
+              "$ref": "#/$defs/SteerApplied"
             }
           ]
         }

@@ -5,9 +5,12 @@ Evidence sources are packages under `sources/`; what lives here is the BIM
 surface (`bim/`), the conversation's working directory (`documents/`), the
 write-side workspace verbs (`files/`) and the review canvas (`canvas/`, the
 `canvas` function group: look at a page or a box on it, the room, pointing and
-highlighting, and Anmerkungen whose marks are born proposals a person takes
-over or dismisses; it acts on a document the model names, the one open on the
-canvas, or the conversation's subject, each checked by the BFF from the envelope).
+highlighting, and Anmerkungen: Piloti's own findings are born proposals a
+person takes over or dismisses, and what the person asks for (set a mark,
+change one, delete one they set) Piloti does in their name, under their rights,
+with a note in the mark's thread; it acts on a document the model names, the
+one open on the canvas, or the conversation's subject, each checked by the BFF
+from the envelope).
 
 ## The invariant
 
@@ -131,7 +134,7 @@ its own say-so would let the agent decide access.
 | Add a tool under here | `@register_function` plus its own `nat.plugins` entry point, like every other tool ([`src/aiq_agent/AGENTS.md`](../AGENTS.md)) | NAT never discovers it |
 | Add an operation that WRITES | Make it propose: its branch in `propose_file_change` (`files/register.py`) and its line in `_DESCRIPTION`, emitting a `file_operation_proposal` card and a result saying nothing changed. Then its kind in `FileOperationKind` (`cards/models.py`) and its executor in `grid-cards/lib/file-operations.ts`. The action key and the `TOOL_CONTEXT_REQUIREMENTS` row belong to the tool and are already there; a new write-side TOOL needs both | Nothing local — which is the point. A tool that wrote directly would pass every test and bypass `requireProjectAccess`, the audit trail and the reader's consent in one call |
 | Write a rule about how one of these tools is used | Put it in that tool's DESCRIPTION. The prompt blocks that used to hold these rules (`<entwuerfe>`, `<aufraeumen>`, `<delegieren>`) are gone: every one of them restated a bound tool's contract in prose charged on every call of every turn (ADR-0060 (d) and its amendment). The prompt keeps only what no description can carry: an antecedent that lives in the transcript | Review, and 1,500 tokens per turn. The rule also half-applies: a description reaches the model with the call, a prompt paragraph competes with everything else on the page |
-| Add a canvas tool that WRITES something everyone who opens the document sees | Call `policy.shared_write_refusal()` before the request, as `mark`, `reply`, `highlight` and a labelled `point` do | Nothing local: a thread or a highlight is read by the document's whole audience, and a conversation that drew on a restricted folder would leak it there. `tests/aiq_agent/tools/canvas/test_targets_and_policy.py` covers the four that exist |
+| Add a canvas tool that WRITES something everyone who opens the document sees | Call `policy.shared_write_refusal()` before the request, as `mark`, `update`, `delete`, `reply`, `highlight` and a labelled `point` do | Nothing local: a thread or a highlight is read by the document's whole audience, and a conversation that drew on a restricted folder would leak it there. `tests/aiq_agent/tools/canvas/test_targets_and_policy.py` covers the six that exist |
 | Call the BFF from a tool that acts as a PERSON | Echo `GridRequestContext.envelope_header` / `envelope_signature` unchanged. Never build or sign an envelope here, and never read the acting user off the unsigned `x-grid-user-id` header | Nothing local, and everything downstream: the internal token is the signing secret, so a self-signed envelope is a tool choosing whose permissions it runs under |
 | Delete a conversation's working directory | Go through `DELETE /v1/drafts/{conversation_id}` (`frontends/aiq_api/routes/drafts.py`), which sweeps the store namespace. Nothing else may reach into `("conversation", id, "drafts")` | Nothing local. The drafts outlive the conversation as bytes under a key that names nothing |
 | Change the shape of a lifecycle request or response | Nothing by hand — the contract is `frontends/ui/tests/fixtures/document-lifecycle.schema.json`, generated from the BFF's zod (ADR-0055). There is no Pydantic twin | `tests/aiq_agent/tools/documents/test_wire_contract.py`, which validates the payloads the tool really builds against that file |

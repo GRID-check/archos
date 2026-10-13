@@ -21,6 +21,7 @@ from pydantic import BaseModel
 
 from aiq_agent.common.plan_documents import PlanDocuments
 from aiq_agent.common.wire_v2 import FocusRegion
+from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.knowledge import AvailableDocument
 
 #: Which path a turn took. ``meta`` and ``shallow`` are OBSERVED off the
@@ -101,6 +102,10 @@ class ConversationState(BaseModel):
     # with `canvas__reply` when asked there. Turn-scoped, like the focus above.
     focus_region: FocusRegion | None = None
     reply_in_thread: bool = False
+    # The event that woke this turn when nobody typed it (a reply or mention in
+    # an Anmerkung's thread, an assignment). Turn-scoped like the focus above:
+    # every turn's input states it, None included.
+    trigger: TurnTrigger | None = None
     skip_clarifier: bool = False
     # STICKY, for the life of the conversation: the user rejected a research
     # plan. A rejection is not a cancel — the question is still on the table and

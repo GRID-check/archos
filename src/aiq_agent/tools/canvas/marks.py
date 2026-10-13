@@ -1,4 +1,6 @@
-"""Marks: read them, propose findings, answer in a thread (``marks``, ``mark``, ``reply``).
+"""Marks: read them, propose or set them, change or delete them, answer in a thread.
+
+The tools are ``marks``, ``mark``, ``update``, ``delete`` and ``reply``.
 
 An Anmerkung is a mark a person sets at a place on a page of a document (a
 point or a region), with what is to be done about it (a Hinweis, a Rückfrage or
@@ -13,13 +15,26 @@ only once a person takes one over („übernehmen“) or dismisses it
 result leads with what has NOT happened, the way ``propose_file_change`` does:
 a model told „gesetzt“ writes an answer claiming the defects are recorded.
 
-A reply is the exception and lands at once, marked as Piloti's: it changes no
-state. Both are read by everyone who opens the document, so both pass the
-restricted-folder rule first (``policy.py``).
+## What the person asked for is done in their name
+
+„There should not be any difference between what Piloti does and what a human
+does": when the person ASKS for a mark, a change or a deletion, Piloti does it
+under that person's own rights, through the same service a person's PATCH
+runs. A mark set on request is born open with the asker as ``accepted_by``
+(``mark`` with ``open``); a change (``update``) posts the model's ``note`` as
+Piloti's reply in the mark's thread, in the same request; a deletion is
+allowed for exactly the marks the asker set. Findings Piloti makes on its own
+initiative stay proposals; the tool descriptions say which is which.
+
+A reply lands at once, marked as Piloti's: it changes no state. All of these
+are read by everyone who opens the document, so all pass the restricted-folder
+rule first (``policy.py``).
 """
 
 from __future__ import annotations
 
+import re
+from datetime import date
 from typing import Annotated
 from typing import Any
 from typing import Literal
@@ -252,11 +267,32 @@ def _proposed(body: dict[str, Any]) -> list[dict[str, Any]]:
     return [item for item in body.get("proposed") or [] if isinstance(item, dict)]
 
 
+def _set_marks(body: dict[str, Any], key: str) -> list[dict[str, Any]]:
+    return [item for item in body.get(key) or [] if isinstance(item, dict)]
+
+
+def _on(body: dict[str, Any]) -> str:
+    return f" auf „{body['documentName']}“" if body.get("documentName") else " auf dem Dokument"
+
+
 def render_proposed(body: dict[str, Any]) -> str:
     proposed = _proposed(body)
     where = ", ".join(f"Nr. {item.get('number')} auf S. {item.get('page')}" for item in proposed)
-    on = f" auf „{body['documentName']}“" if body.get("documentName") else " auf dem Dokument"
-    return f"Vorgeschlagen: {len(proposed)} Anmerkung(en){on} ({where}). {_PROPOSED}"
+    return f"Vorgeschlagen: {len(proposed)} Anmerkung(en){_on(body)} ({where}). {_PROPOSED}"
+
+
+def create_payload(proposals: list[Any]) -> dict[str, Any]:
+    """The ``create`` body: the same marks as a proposal, born open in the asker's name."""
+    return {"op": "create", "marks": propose_payload(proposals)["proposals"]}
+
+
+def render_created(body: dict[str, Any]) -> str:
+    created = _set_marks(body, "created")
+    where = ", ".join(f"Nr. {item.get('number')} auf S. {item.get('page')}" for item in created)
+    return (
+        f"Gesetzt: {len(created)} Anmerkung(en){_on(body)} ({where}), offen, im Namen der Person, die dich "
+        "darum gebeten hat."
+    )
 
 
 def _box(item: dict[str, Any]) -> dict[str, Any]:
@@ -268,9 +304,18 @@ def _box(item: dict[str, Any]) -> dict[str, Any]:
 
 def proposed_items(body: dict[str, Any]) -> list[dict[str, Any]]:
     """The activity card's entries for a ``propose`` answer, built from what the BFF returned."""
+    return _set_items(_proposed(body), "proposed")
+
+
+def created_items(body: dict[str, Any]) -> list[dict[str, Any]]:
+    """The activity card's entries for a ``create`` answer: marks set at the person's request."""
+    return _set_items(_set_marks(body, "created"), "created")
+
+
+def _set_items(marks: list[dict[str, Any]], action: str) -> list[dict[str, Any]]:
     return [
         {
-            "action": "proposed",
+            "action": action,
             "annotation_id": item.get("id"),
             "number": item.get("number"),
             "page": item.get("page"),
@@ -278,7 +323,7 @@ def proposed_items(body: dict[str, Any]) -> list[dict[str, Any]]:
             "kind": item.get("kind"),
             "body": item.get("body"),
         }
-        for item in _proposed(body)
+        for item in marks
     ]
 
 
@@ -305,10 +350,15 @@ def annotation_number(annotation: str) -> int | None:
 
 def annotation_by_number(body: dict[str, Any], number: int) -> str:
     """The id of mark ``number`` in a ``list`` answer; a refusal when the document has none."""
+    return annotation_entry(body, number)["id"]
+
+
+def annotation_entry(body: dict[str, Any], number: int) -> dict[str, Any]:
+    """Mark ``number`` as a ``list`` answer carries it (id and status); a refusal when the document has none."""
     match = next((item for item in _annotations(body) if item.get("number") == number), None)
     if match is None or not isinstance(match.get("id"), str):
         raise Refused(ANNOTATION_GONE, "not_found")
-    return match["id"]
+    return match
 
 
 def reply_body(body: str) -> str:
@@ -326,6 +376,157 @@ def render_replied(body: dict[str, Any]) -> str:
 
 
 # ---------------------------------------------------------------------------
+# update, delete: what the person asked for, in their name
+# ---------------------------------------------------------------------------
+
+_STATUSES = {
+    "open": "open",
+    "offen": "open",
+    "übernehmen": "open",
+    "resolved": "resolved",
+    "erledigt": "resolved",
+    "dismissed": "dismissed",
+    "verworfen": "dismissed",
+    "verwerfen": "dismissed",
+}
+_KINDS = {
+    "hint": "hint",
+    "hinweis": "hint",
+    "question": "question",
+    "rückfrage": "question",
+    "defect": "defect",
+    "mangel": "defect",
+}
+#: The value that empties `assignee` or `due_on`.
+CLEAR = "-"
+_DAY = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+
+
+def _choice(value: str, allowed: dict[str, str], name: str) -> str:
+    key = (value or "").strip().lower()
+    if key not in allowed:
+        raise Refused(f"Fehler: `{name}` ist eines von {', '.join(sorted(set(allowed.values())))}.")
+    return allowed[key]
+
+
+def _due_on(value: str) -> str | None:
+    day = value.strip()
+    if day == CLEAR:
+        return None
+    if _DAY.match(day):
+        try:
+            date.fromisoformat(day)
+            return day
+        except ValueError:
+            pass
+    raise Refused(f"Fehler: `due_on` ist ein Tag als JJJJ-MM-TT, oder `{CLEAR}` zum Entfernen.")
+
+
+def update_payload(*, status: str, assignee: str, due_on: str, kind: str, body: str, note: str) -> dict[str, Any]:
+    """The change fields of an ``update`` body, each checked here so the model can fix it before the BFF refuses."""
+    text = (note or "").strip()
+    if not text or len(text) > MAX_BODY:
+        raise Refused(f"Fehler: `update` braucht `note` (1 bis {MAX_BODY} Zeichen): was du getan hast und warum.")
+    payload: dict[str, Any] = {}
+    if status.strip():
+        payload["status"] = _choice(status, _STATUSES, "status")
+    if assignee.strip():
+        payload["assignee"] = None if assignee.strip() == CLEAR else assignee.strip()
+    if due_on.strip():
+        payload["dueOn"] = _due_on(due_on)
+    if kind.strip():
+        payload["kind"] = _choice(kind, _KINDS, "kind")
+    if body.strip():
+        payload["body"] = _text(body)[:MAX_BODY]
+    if not payload:
+        raise Refused(
+            "Fehler: `update` braucht mindestens eine Änderung: `status`, `assignee`, `due_on`, `kind` oder `body`."
+        )
+    return {**payload, "note": text}
+
+
+#: The wire's fields as the card names them, and the one that carries a name beside its value.
+_CHANGE_FIELDS = (
+    ("status", "status", None),
+    ("assigneeUserId", "assignee", "assigneeName"),
+    ("dueOn", "due_on", None),
+    ("kind", "kind", None),
+    ("body", "body", None),
+)
+
+
+def _field_changes(before: dict[str, Any], after: dict[str, Any]) -> list[dict[str, Any]]:
+    changes: list[dict[str, Any]] = []
+    for key, field, label in _CHANGE_FIELDS:
+        if key not in before and key not in after:
+            continue
+        change: dict[str, Any] = {"field": field}
+        for side, values in (("before", before), ("after", after)):
+            if values.get(key) is not None:
+                change[side] = str(values[key])
+            if label and values.get(label):
+                change[f"{side}_label"] = str(values[label])
+        changes.append(change)
+    return changes
+
+
+def changed_item(body: dict[str, Any], note: str) -> dict[str, Any]:
+    """The activity card's entry for an ``update`` answer: what moved, the note, and the status left behind."""
+    before = body.get("before") if isinstance(body.get("before"), dict) else {}
+    after = body.get("after") if isinstance(body.get("after"), dict) else {}
+    return {
+        "action": "changed",
+        "annotation_id": body.get("annotationId"),
+        "number": body.get("number"),
+        "status": body.get("status"),
+        "changes": _field_changes(before, after),
+        "note": excerpt(note),
+    }
+
+
+def _shown(field: str, value: Any, label: Any) -> str:
+    if value is None:
+        return "–"
+    if field == "status":
+        return _STATUS_LABELS.get(str(value), str(value))
+    if field == "kind":
+        return _KIND_LABELS.get(str(value), str(value))
+    if field == "body":
+        return f"„{_clipped(value, 80)}“"
+    return _text(label or value)
+
+
+_FIELD_NAMES = {"status": "Status", "assignee": "Zuständig", "due_on": "Frist", "kind": "Art", "body": "Text"}
+
+
+def render_updated(body: dict[str, Any]) -> str:
+    number = body.get("number")
+    if not body.get("noted"):
+        return f"Nichts geändert: Anmerkung Nr. {number} stand schon so. Es wurde keine Notiz gepostet."
+    moved = "; ".join(
+        f"{_FIELD_NAMES[change['field']]} {_shown(change['field'], change.get('before'), change.get('before_label'))}"
+        f" → {_shown(change['field'], change.get('after'), change.get('after_label'))}"
+        for change in _field_changes(body.get("before") or {}, body.get("after") or {})
+    )
+    return (
+        f"Geändert im Namen der Person: Anmerkung Nr. {number}{_on(body)} ({moved}). Deine `note` steht als Antwort "
+        "von Piloti im Verlauf. Nenne in deiner Antwort die Nummer und was du geändert hast."
+    )
+
+
+def deleted_item(body: dict[str, Any]) -> dict[str, Any]:
+    """The activity card's entry for a ``delete`` answer."""
+    return {"action": "deleted", "number": body.get("number"), "body": _clipped(body.get("body"), MAX_BODY)}
+
+
+def render_deleted(body: dict[str, Any]) -> str:
+    return (
+        f"Gelöscht: Anmerkung Nr. {body.get('number')}{_on(body)} („{_clipped(body.get('body'), 120)}“) mit ihrem "
+        "Verlauf. Das lässt sich nicht rückgängig machen."
+    )
+
+
+# ---------------------------------------------------------------------------
 # Langfuse
 # ---------------------------------------------------------------------------
 
@@ -339,11 +540,23 @@ def marks_observation(operation: str, body: dict[str, Any]) -> dict[str, Any]:
             by_kind[str(item.get("kind"))] = by_kind.get(str(item.get("kind")), 0) + 1
         live = sum(1 for item in items if item.get("status") in _LIVE)
         return {"document": body.get("documentId"), "annotations": len(items), "live": live, "by_kind": by_kind}
-    if operation == "propose":
-        proposed = [item for item in body.get("proposed") or [] if isinstance(item, dict)]
+    if operation in ("propose", "create"):
+        key = "proposed" if operation == "propose" else "created"
+        marks = _set_marks(body, key)
         return {
             "document": body.get("documentId"),
-            "proposed": len(proposed),
-            "pages": sorted({item.get("page") for item in proposed if isinstance(item.get("page"), int)}),
+            key: len(marks),
+            "pages": sorted({item.get("page") for item in marks if isinstance(item.get("page"), int)}),
         }
+    if operation == "update":
+        after = body.get("after") if isinstance(body.get("after"), dict) else {}
+        return {
+            "document": body.get("documentId"),
+            "number": body.get("number"),
+            "fields": sorted(after),
+            "status": body.get("status"),
+            "noted": bool(body.get("noted")),
+        }
+    if operation == "delete":
+        return {"document": body.get("documentId"), "number": body.get("number"), "deleted": True}
     return {"document": body.get("documentId"), "number": body.get("number"), "replies": body.get("replies")}

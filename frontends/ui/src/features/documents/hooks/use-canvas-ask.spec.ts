@@ -10,7 +10,12 @@
 
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { registerCanvasChatSender, type CanvasChatQuestion } from '@/features/chat/lib/canvas-bridge'
+import {
+  registerCanvasChatSender,
+  registerCanvasChatSteerer,
+  type CanvasChatQuestion,
+  type CanvasChatSteer,
+} from '@/features/chat/lib/canvas-bridge'
 import { initialTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
 import { useChatStore } from '@/features/chat/store'
 import type { CanvasQuestion, CanvasTurnClient, CanvasTurnClientOptions } from '../lib/canvas-turn-client'
@@ -20,9 +25,14 @@ const REGION = { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.2 }
 
 /** A client that records its questions; the test plays its turns through `onTurn`. */
 function fakeClients() {
-  const made: Array<{ options: CanvasTurnClientOptions; asked: Array<{ question: CanvasQuestion; turnId: string }> }> = []
+  type Steered = { text: string; region: unknown; onLeftover?: (text: string) => void }
+  const made: Array<{
+    options: CanvasTurnClientOptions
+    asked: Array<{ question: CanvasQuestion; turnId: string }>
+    steered: Steered[]
+  }> = []
   const createClient = (options: CanvasTurnClientOptions): CanvasTurnClient => {
-    const record = { options, asked: [] as Array<{ question: CanvasQuestion; turnId: string }> }
+    const record = { options, asked: [] as Array<{ question: CanvasQuestion; turnId: string }>, steered: [] as Steered[] }
     made.push(record)
     return {
       conversationId: options.conversationId,
@@ -32,6 +42,10 @@ function fakeClients() {
         options.onTurn(initialTurnView(turnId, options.conversationId))
       },
       cancel: vi.fn(),
+      steer: (text, steerOptions) => {
+        record.steered.push({ text, region: steerOptions?.region ?? null, onLeftover: steerOptions?.onLeftover })
+        return true
+      },
       close: vi.fn(),
     }
   }
@@ -173,5 +187,65 @@ describe('askRegionOf', () => {
     expect(askRegionOf({ page: 3, x: 0.1, y: 0.2, w: 0.3, h: 0.4 })).toEqual({ page: 3, x: 0.1, y: 0.2, w: 0.3, h: 0.4 })
     expect(askRegionOf({ page: 1, x: 0.5, y: 0.5, w: null, h: null })).toEqual({ page: 1, x: 0.46, y: 0.46, w: 0.08, h: 0.08 })
     expect(askRegionOf({ page: 1, x: 0.99, y: 0.01 })).toEqual({ page: 1, x: 0.92, y: 0, w: 0.08, h: 0.08 })
+  })
+})
+
+describe('while Piloti works', () => {
+  const BOX = { page: 2, x: 0.4, y: 0.2, w: 0.2, h: 0.2 }
+
+  it('makes a box asked about meanwhile a note for the running turn, not a second question', () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient })
+    let running = ''
+    act(() => void (running = result.current.ask({ text: 'Markier die Tür.', region: REGION })))
+
+    let composing = ''
+    act(() => void (composing = result.current.compose(BOX)))
+    act(() => void result.current.ask({ id: composing, text: 'nicht die Tür, die Treppe', region: BOX }))
+
+    expect(made[0].asked).toHaveLength(1)
+    expect(made[0].steered).toEqual([expect.objectContaining({ text: 'nicht die Tür, die Treppe', region: BOX })])
+    expect(result.current.asks.map((ask) => ask.id)).toEqual([running])
+    expect(result.current.openId).toBe(running)
+  })
+
+  it('asks a note the turn never read next, about the same box', () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient })
+    act(() => void result.current.ask({ text: 'Markier die Tür.', region: REGION }))
+    act(() => void result.current.steer('und das Podest?', BOX))
+
+    const [{ onLeftover }] = made[0].steered
+    act(() => {
+      made[0].options.onTurn(finished(made[0].asked[0].turnId, 'Tür markiert.'))
+      onLeftover?.('und das Podest?')
+    })
+
+    expect(made[0].asked.at(-1)).toMatchObject({ question: { text: 'und das Podest?', region: BOX } })
+  })
+
+  it('over the chat, steers the chat’s running turn through its driver', () => {
+    const { made, createClient } = fakeClients()
+    const notes: CanvasChatSteer[] = []
+    const withdraw = registerCanvasChatSteerer((note) => {
+      notes.push(note)
+      return true
+    })
+    act(() =>
+      useChatStore.setState({
+        currentConversation: { id: 'chat_conv', userId: 'u', title: '', messages: [], createdAt: new Date(), updatedAt: new Date() },
+        turns: { 'msg-9': { ...initialTurnView('msg-9', 'chat_conv') } },
+      })
+    )
+    const { result } = hook({ createClient, chatHosted: true })
+
+    let taken = false
+    act(() => void (taken = result.current.steer('die Treppe', BOX)))
+
+    expect(taken).toBe(true)
+    expect(notes).toEqual([expect.objectContaining({ text: 'die Treppe', focusRegion: BOX })])
+    expect(made).toEqual([])
+    withdraw()
+    act(() => useChatStore.setState({ turns: {}, currentConversation: null }))
   })
 })

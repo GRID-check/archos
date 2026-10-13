@@ -249,6 +249,26 @@ def record_turn_surface(surface: str) -> None:
         add_trace_tag(REVIEW_CANVAS_TAG)
 
 
+#: Trace metadata keys for a turn an event woke (ADR-0105 draft): which kind of
+#: event, and its id (a reply or assignment id, never text). The tag is the
+#: kind, as a label: ``trigger:thread_mention``.
+TURN_TRIGGER_METADATA_KEY = "turn_trigger"
+TRIGGER_EVENT_METADATA_KEY = "trigger_event_id"
+
+
+def record_turn_trigger(trigger: Any) -> None:
+    """Put the event that woke the turn on its trace; a typed turn (``trigger`` None) records nothing.
+
+    ``trigger`` is a ``wire_v2.TurnTrigger``. Labels and an id only, recorded
+    with no identity switch: the id names a row the office already holds, not
+    a person.
+    """
+    if trigger is None:
+        return
+    record_trace_metadata(**{TURN_TRIGGER_METADATA_KEY: trigger.kind, TRIGGER_EVENT_METADATA_KEY: trigger.event_id})
+    add_trace_tag(f"trigger:{trigger.kind}")
+
+
 def add_trace_tag(tag: str) -> None:
     """Tag this turn's traces, e.g. so every turn that read a model is findable.
 

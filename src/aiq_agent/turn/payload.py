@@ -18,6 +18,7 @@ from aiq_agent.common.focus_file import get_focused_shelf
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.common.reasoning_settings import set_turn_reasoning_effort
 from aiq_agent.common.wire_v2 import FocusRegion
+from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.common.wire_v2 import UserMessage
 
 
@@ -103,6 +104,9 @@ class TurnInputs(NamedTuple):
     #: (:mod:`aiq_agent.turn.annotation_reply`). Only ever True with a region
     #: that names its Anmerkung: the wire flag alone has no thread to answer in.
     reply_in_thread: bool = False
+    #: The event that woke this turn when nobody typed it (``wire_v2.TurnTrigger``),
+    #: or None. The prompt says who woke it and to answer where it happened.
+    trigger: TurnTrigger | None = None
 
     @property
     def surface(self) -> TurnSurface:
@@ -141,4 +145,5 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
         subject,
         request.focus_region,
         thread_reply_requested(request),
+        request.trigger,
     )

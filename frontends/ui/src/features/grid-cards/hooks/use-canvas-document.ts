@@ -20,6 +20,10 @@ const liveOf = (annotation: AnnotationView): LiveMark => ({
   canEdit: annotation.canEdit,
   acceptedByName: annotation.acceptedByName,
   closedByName: annotation.closedByName,
+  assigneeUserId: annotation.assigneeUserId,
+  dueOn: annotation.dueOn,
+  kind: annotation.kind,
+  body: annotation.body,
 })
 
 export interface LiveMarks {

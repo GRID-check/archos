@@ -263,7 +263,9 @@ def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
             f"Sieh ihn an, bevor du antwortest: `canvas__look` mit `page={region.page}` und `region={box}`. "
             "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst. Zeig mit "
             "`canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
-            "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast."
+            "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast. Was die Person "
+            "ausdrücklich verlangt, tust du in ihrem Namen: `canvas__mark` mit `open=true`, `canvas__update`, "
+            "`canvas__delete`."
         )
     else:
         target = f'`file_name="{file_name}"`, ' if file_name else ""
@@ -281,6 +283,47 @@ def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
         "Zeigt das Werkzeug kein Bild, etwa weil das Modell dieses Büros keine Bilder liest, sag das offen und "
         "rate nicht, was im Rahmen steht."
     )
+    return "\n".join(lines)
+
+
+#: What woke a turn, in the words the prompt uses (``wire_v2.TurnTrigger.kind``).
+_TRIGGER_EVENTS = {
+    "thread_mention": "hat dich im Verlauf einer Anmerkung erwähnt",
+    "thread_reply": "hat im Verlauf einer Anmerkung geantwortet, die du begonnen hast",
+    "assigned": "hat dir eine Anmerkung zugewiesen",
+}
+
+
+def trigger_block(state: Any, tool_names: Sequence[str]) -> str | None:
+    """The „Geweckt durch“ section: an event woke this turn, nobody is typing. None for a typed turn.
+
+    A fact block, not a policy: who acted (the verified name the turn runs
+    under), what they did, on which Anmerkung, and the outcome to reach, which
+    is an answer where it happened (ADR-0060: the prompt states the outcome).
+    It also says nobody watches the turn live, because ``ask_user`` refuses on
+    such a turn and a question belongs in the thread.
+    """
+    trigger = getattr(state, "trigger", None)
+    if trigger is None:
+        return None
+    user = getattr(state, "user_info", None) or {}
+    who = (user.get("name") or user.get("email") or "Eine Person") if isinstance(user, dict) else "Eine Person"
+    lines = [
+        "## Geweckt durch",
+        f"Niemand hat diese Frage in den Chat getippt: {who} {_TRIGGER_EVENTS[trigger.kind]} "
+        f"(Ereignis `{trigger.event_id}`), und das hat dich geweckt. Niemand sieht dir dabei live zu.",
+    ]
+    if trigger.annotation_id and "canvas__reply" in tool_names:
+        lines.append(
+            f"Antworte dort, wo es passiert ist: im Verlauf der Anmerkung `{trigger.annotation_id}` mit "
+            "`canvas__reply` (`annotation` = diese id), kurz und für sich verständlich. Brauchst du eine Angabe, "
+            "frag dort im Verlauf; warte nicht auf eine Antwort in diesem Zug."
+        )
+    else:
+        lines.append(
+            "Antworte so, dass die Person es dort findet, wo sie gefragt hat. Brauchst du eine Angabe, frag in "
+            "deiner Antwort; warte nicht auf eine Antwort in diesem Zug."
+        )
     return "\n".join(lines)
 
 
@@ -383,6 +426,7 @@ def render_system_prompt(
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),
         focus_region_block=focus_region_block(state, [tool.get("name", "") for tool in tools_info]),
+        trigger_block=trigger_block(state, [tool.get("name", "") for tool in tools_info]),
         oib_applicability=oib_applicability(state.project_context),
         parcel_note=parcel_note(documents),
         # The L1 skills catalog, collated by the register layer; None renders

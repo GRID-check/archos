@@ -580,7 +580,10 @@ export const chat: typeof en.chat = {
         proposed: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}',
         repliedOne: 'Im Thread von #{number} geantwortet',
         repliedMany: 'In {count} Threads geantwortet',
-        both: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}, in {threads, plural, one {einem Thread} other {# Threads}} geantwortet',
+        created: '{count, plural, one {# Anmerkung gesetzt} other {# Anmerkungen gesetzt}}',
+        changed: '{count, plural, one {# Anmerkung geändert} other {# Anmerkungen geändert}}',
+        deleted: '{count, plural, one {# Anmerkung gelöscht} other {# Anmerkungen gelöscht}}',
+        repliedPart: 'in {threads, plural, one {einem Thread} other {# Threads}} geantwortet',
       },
       kinds: {
         hint: 'Hinweis',
@@ -607,6 +610,33 @@ export const chat: typeof en.chat = {
       },
       error: 'Konnte nicht gespeichert werden.',
       forbidden: 'Sie können diese Anmerkung nicht ändern.',
+      // Was Piloti auf Bitte der Person an einer Anmerkung geändert hat, in
+      // ihren Worten: „#4 erledigt“, „#4 Anna zugewiesen“.
+      change: {
+        taken: 'übernommen',
+        reopened: 'wieder geöffnet',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+        assigned: '{name} zugewiesen',
+        someone: 'jemandem',
+        unassigned: 'Zuständigkeit entfernt',
+        due: 'Frist {date}',
+        undue: 'Frist entfernt',
+        kind: 'als {kind} eingestuft',
+        body: 'Text geändert',
+      },
+      status: {
+        proposed: 'Vorschlag',
+        open: 'offen',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+      },
+      undo: 'Rückgängig',
+      undoing: 'Wird rückgängig gemacht …',
+      undoLabel: 'Änderung an Anmerkung {number} rückgängig machen',
+      undone: 'Rückgängig gemacht',
+      movedSince: 'Seitdem geändert, jetzt {state}',
+      deleted: 'Anmerkung #{number} gelöscht',
     },
     verdictHeader: {
       confidenceHigh: 'hohe Sicherheit',
@@ -895,10 +925,14 @@ export const chat: typeof en.chat = {
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
           taskCreated: 'Auftrag wird angelegt …',
-          // Anmerkungen im Dokument dieses Chats. Vorschläge setzt Piloti nur
-          // vor: Erst eine Person übernimmt oder verwirft sie.
+          // Anmerkungen in einem Dokument. Eigene Befunde schlägt Piloti nur
+          // vor: Erst eine Person übernimmt oder verwirft sie. Setzen, ändern
+          // und löschen tut Piloti nur, worum die Person bittet.
           annotationsRead: 'Anmerkungen werden gelesen …',
           annotationsPropose: 'Anmerkungen werden vorgeschlagen …',
+          annotationsSet: 'Anmerkungen werden gesetzt …',
+          annotationsUpdate: 'Anmerkung wird geändert …',
+          annotationsDelete: 'Anmerkung wird gelöscht …',
           annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
@@ -916,6 +950,13 @@ export const chat: typeof en.chat = {
         // kann, bleibt markiert.
         repair: 'Ein Zitat weicht vom Wortlaut der Quelle ab — wird am Original korrigiert …',
         escalation: 'Kurzrecherche reicht nicht — Tiefenrecherche startet',
+        // Eine Ergänzung, die die Person getippt hat, während Piloti
+        // arbeitet. `{text}` sind ihre eigenen Worte; `{round}` die Runde,
+        // in der Piloti sie gelesen hat.
+        steer: {
+          received: 'Ergänzt: „{text}“ — wird berücksichtigt …',
+          applied: 'Ergänzung übernommen in Runde {round}: „{text}“',
+        },
       },
     },
     // Das eine Skill-Ereignis, das Lesende sehen, danach unterschieden, WER

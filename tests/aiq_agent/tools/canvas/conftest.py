@@ -84,6 +84,24 @@ PROPOSE_BODY = {
         }
     ],
 }
+CREATE_BODY = {"documentId": DOCUMENT, "documentName": NAME, "created": PROPOSE_BODY["proposed"]}
+UPDATE_BODY = {
+    "documentId": DOCUMENT,
+    "documentName": NAME,
+    "annotationId": ANNOTATION,
+    "number": 4,
+    "status": "resolved",
+    "before": {"status": "open", "assigneeUserId": None, "assigneeName": None},
+    "after": {"status": "resolved", "assigneeUserId": "user_anna", "assigneeName": "Anna Berger"},
+    "noted": True,
+}
+DELETE_BODY = {
+    "documentId": DOCUMENT,
+    "documentName": NAME,
+    "annotationId": ANNOTATION,
+    "number": 4,
+    "body": "Fluchtweg im 1. OG zu lang.",
+}
 REPLY_BODY = {"documentId": DOCUMENT, "documentName": NAME, "annotationId": ANNOTATION, "number": 4, "replies": 2}
 ROOM_BODY = {
     "documentId": DOCUMENT,

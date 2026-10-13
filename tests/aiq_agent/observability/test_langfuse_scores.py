@@ -169,3 +169,27 @@ class TestOneListOfNames:
     @pytest.mark.parametrize("definition", SCORE_DEFINITIONS, ids=lambda definition: definition.name)
     def test_every_score_is_documented(self, definition):
         assert f"`{definition.name}`" in (REPO / "docs/observability/langfuse.md").read_text()
+
+
+class TestSteerCount:
+    def test_a_steered_turn_scores_its_notes_and_says_how_many_were_read(self):
+        from aiq_agent.common.steering import SteerInbox
+        from aiq_agent.common.steering import SteerNote
+        from aiq_agent.observability.langfuse_scores import steer_scores
+
+        inbox = SteerInbox()
+        inbox.offer(SteerNote(steer_id="a", text="x"))
+        inbox.offer(SteerNote(steer_id="b", text="y"))
+        inbox.take()
+        inbox.offer(SteerNote(steer_id="c", text="z"))
+
+        [score] = steer_scores(inbox)
+
+        assert (score.name, score.value, score.comment) == ("steer-count", 3.0, "applied 2")
+        assert score.data_type == "NUMERIC"
+
+    def test_an_unsteered_turn_writes_no_score(self):
+        from aiq_agent.common.steering import SteerInbox
+        from aiq_agent.observability.langfuse_scores import steer_scores
+
+        assert steer_scores(SteerInbox()) == []

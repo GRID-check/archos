@@ -226,7 +226,11 @@ export function annotationBox(annotation: Pick<AnnotationView, 'x' | 'y' | 'w' |
 // fixture the Python tier validates against.
 // ---------------------------------------------------------------------------
 
-/** One finding Piloti proposes: a place, a kind, what it found, and what it rests on. */
+/**
+ * One mark Piloti sets: a place, a kind, what it says, and what it rests on.
+ * Born a proposal (`propose`), or open when the asker asked for exactly this
+ * mark (`create`).
+ */
 export const annotationProposalSchema = z
   .object({
     ...placeFields,
@@ -238,13 +242,6 @@ export const annotationProposalSchema = z
   .superRefine(checkPlace)
 export type AnnotationProposal = z.input<typeof annotationProposalSchema>
 
-/**
- * What Piloti asks for. No document id: the route acts on the conversation's
- * subject document, resolved from the signed envelope's conversation
- * (`./agent`), never on an id a model typed. `answerMessageId` is the answer
- * the turn writes, marked when reading the subject admits a restricted folder
- * (ADR-0093).
- */
 /** A pointer's label is a few words; a highlight's one line. */
 export const MAX_POINT_LABEL = 80
 export const MAX_HIGHLIGHT_LABEL = 120
@@ -259,6 +256,9 @@ const internalOpBase = {
   documentId: z.string().uuid().optional(),
 }
 
+/** A name or an e-mail address as the asker said it; the BFF resolves it against the organization. */
+export const MAX_ASSIGNEE_QUERY = 200
+
 export const internalAnnotationRequestSchema = z.discriminatedUnion('op', [
   z.object({ op: z.literal('list'), ...internalOpBase }).strict(),
   z
@@ -266,6 +266,43 @@ export const internalAnnotationRequestSchema = z.discriminatedUnion('op', [
       op: z.literal('propose'),
       ...internalOpBase,
       proposals: z.array(annotationProposalSchema).min(1).max(MAX_PROPOSALS_PER_CALL),
+    })
+    .strict(),
+  // A mark the asker asked for: born open, taken over by the asker in the same
+  // move (`accepted_by`), so the CHECK „Piloti's mark is open only with a
+  // person" holds because the person stood behind it by asking.
+  z
+    .object({
+      op: z.literal('create'),
+      ...internalOpBase,
+      marks: z.array(annotationProposalSchema).min(1).max(MAX_PROPOSALS_PER_CALL),
+    })
+    .strict(),
+  // A change the asker asked for, through the same `updateAnnotation` a
+  // person's PATCH runs, then `note` posted as Piloti's reply in the mark's
+  // thread. At least one change (`./agent` refuses an empty one).
+  z
+    .object({
+      op: z.literal('update'),
+      ...internalOpBase,
+      annotationId: z.string().uuid(),
+      status: z.enum(['open', 'resolved', 'dismissed']).optional(),
+      /** Who is to act on it, by name or e-mail as the asker said it; null clears it. */
+      assignee: z.string().trim().min(1).max(MAX_ASSIGNEE_QUERY).nullable().optional(),
+      dueOn: content.dueOn,
+      kind: content.kind.optional(),
+      body: content.body.optional(),
+      expectedStatus: z.enum(ANNOTATION_STATUSES).optional(),
+      /** What Piloti did and why, in one sentence: its reply in the thread. */
+      note: content.body,
+    })
+    .strict(),
+  // Delete a mark, exactly as the asker could: only one they set themselves.
+  z
+    .object({
+      op: z.literal('delete'),
+      ...internalOpBase,
+      annotationId: z.string().uuid(),
     })
     .strict(),
   z
@@ -338,23 +375,62 @@ export const internalAnnotationListResponseSchema = z.object({
   annotations: z.array(internalAnnotationSchema),
 })
 
+/** A mark Piloti set, as the activity card draws it. */
+const internalSetMarkSchema = z.object({
+  id: z.string(),
+  number: z.number().int(),
+  page: z.number().int(),
+  shape: z.enum(ANNOTATION_SHAPES),
+  x: z.number(),
+  y: z.number(),
+  w: z.number().nullable(),
+  h: z.number().nullable(),
+  kind: z.enum(ANNOTATION_KINDS),
+  body: z.string(),
+})
+
 export const internalAnnotationProposeResponseSchema = z.object({
   documentId: z.string(),
   documentName: z.string(),
-  proposed: z.array(
-    z.object({
-      id: z.string(),
-      number: z.number().int(),
-      page: z.number().int(),
-      shape: z.enum(ANNOTATION_SHAPES),
-      x: z.number(),
-      y: z.number(),
-      w: z.number().nullable(),
-      h: z.number().nullable(),
-      kind: z.enum(ANNOTATION_KINDS),
-      body: z.string(),
-    })
-  ),
+  proposed: z.array(internalSetMarkSchema),
+})
+
+export const internalAnnotationCreateResponseSchema = z.object({
+  documentId: z.string(),
+  documentName: z.string(),
+  created: z.array(internalSetMarkSchema),
+})
+
+/** The fields a change moved, each as it stood: absent when the field did not change. */
+const internalMarkFieldsSchema = z.object({
+  status: z.enum(ANNOTATION_STATUSES).optional(),
+  assigneeUserId: z.string().nullable().optional(),
+  assigneeName: z.string().nullable().optional(),
+  dueOn: z.string().nullable().optional(),
+  kind: z.enum(ANNOTATION_KINDS).optional(),
+  body: z.string().optional(),
+})
+export type InternalMarkFields = z.infer<typeof internalMarkFieldsSchema>
+
+export const internalAnnotationUpdateResponseSchema = z.object({
+  documentId: z.string(),
+  documentName: z.string(),
+  annotationId: z.string(),
+  number: z.number().int(),
+  /** The mark's status after the change: what an undo names as `expectedStatus`. */
+  status: z.enum(ANNOTATION_STATUSES),
+  before: internalMarkFieldsSchema,
+  after: internalMarkFieldsSchema,
+  /** Whether the note went into the thread; false when the change changed nothing. */
+  noted: z.boolean(),
+})
+
+export const internalAnnotationDeleteResponseSchema = z.object({
+  documentId: z.string(),
+  documentName: z.string(),
+  annotationId: z.string(),
+  number: z.number().int(),
+  body: z.string(),
 })
 
 export const internalAnnotationReplyResponseSchema = z.object({
@@ -396,6 +472,9 @@ export const ANNOTATION_WIRE_SCHEMAS = {
   InternalAnnotationRequest: internalAnnotationRequestSchema,
   InternalAnnotationListResponse: internalAnnotationListResponseSchema,
   InternalAnnotationProposeResponse: internalAnnotationProposeResponseSchema,
+  InternalAnnotationCreateResponse: internalAnnotationCreateResponseSchema,
+  InternalAnnotationUpdateResponse: internalAnnotationUpdateResponseSchema,
+  InternalAnnotationDeleteResponse: internalAnnotationDeleteResponseSchema,
   InternalAnnotationReplyResponse: internalAnnotationReplyResponseSchema,
   InternalRoomResponse: internalRoomResponseSchema,
   InternalRoomGestureResponse: internalRoomGestureResponseSchema,

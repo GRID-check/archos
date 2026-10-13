@@ -120,10 +120,12 @@ _Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for shar
 A mark someone sets on one page of one Fassung: a point or a drawn box (*Bereich*)
 with what it says, a running number („Nummer 4“, what a Jour fixe and a
 Protokoll name), optionally a person responsible and a date, and a thread of
-answers. It is *offen*, *erledigt* or *verworfen*. Piloti may set one too, but
-its marks are *Vorschläge* until a person takes them over (*übernehmen*); only
-then are they the office's. Marks are set and discussed in the *Prüfansicht*,
-the document opened full screen, together and live.
+answers. It is *offen*, *erledigt* or *verworfen*. Piloti's own findings are
+*Vorschläge* until a person takes them over (*übernehmen*); only then are they
+the office's. A mark the person asked Piloti to set is open at once, in that
+person's name, and when asked Piloti changes or deletes marks as the person
+could, leaving a short note in the mark's thread. Marks are set and discussed
+in the *Prüfansicht*, the document opened full screen, together and live.
 _Avoid_: ticket, issue, Mangel for every mark (a Mangel is one *Art*); comment,
 for the mark itself rather than an answer in its thread.
 

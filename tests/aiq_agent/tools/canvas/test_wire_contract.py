@@ -24,14 +24,18 @@ from jsonschema import FormatChecker
 
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.tools.canvas import presence
+from aiq_agent.tools.canvas.register import run_delete
 from aiq_agent.tools.canvas.register import run_highlight
 from aiq_agent.tools.canvas.register import run_mark
 from aiq_agent.tools.canvas.register import run_marks
 from aiq_agent.tools.canvas.register import run_point
 from aiq_agent.tools.canvas.register import run_reply
 from aiq_agent.tools.canvas.register import run_room
+from aiq_agent.tools.canvas.register import run_update
 
 from .conftest import ANNOTATION
+from .conftest import CREATE_BODY
+from .conftest import DELETE_BODY
 from .conftest import DOCUMENT
 from .conftest import LIST_BODY
 from .conftest import OK_BODY
@@ -39,6 +43,7 @@ from .conftest import PROPOSAL
 from .conftest import PROPOSE_BODY
 from .conftest import REPLY_BODY
 from .conftest import ROOM_BODY
+from .conftest import UPDATE_BODY
 from .conftest import answering
 
 ROOT = Path(__file__).resolve().parents[4]
@@ -47,6 +52,9 @@ ANNOTATION_DEFS = (
     "InternalAnnotationRequest",
     "InternalAnnotationListResponse",
     "InternalAnnotationProposeResponse",
+    "InternalAnnotationCreateResponse",
+    "InternalAnnotationUpdateResponse",
+    "InternalAnnotationDeleteResponse",
     "InternalAnnotationReplyResponse",
     "InternalRoomResponse",
     "InternalRoomGestureResponse",
@@ -74,6 +82,9 @@ def test_the_fixture_is_where_the_contract_lives(annotations: dict[str, Any], na
     [
         ("InternalAnnotationListResponse", LIST_BODY),
         ("InternalAnnotationProposeResponse", PROPOSE_BODY),
+        ("InternalAnnotationCreateResponse", CREATE_BODY),
+        ("InternalAnnotationUpdateResponse", UPDATE_BODY),
+        ("InternalAnnotationDeleteResponse", DELETE_BODY),
         ("InternalAnnotationReplyResponse", REPLY_BODY),
         ("InternalRoomResponse", ROOM_BODY),
         ("InternalRoomGestureResponse", OK_BODY),
@@ -101,6 +112,44 @@ async def test_mark_validates_for_a_region_and_a_point(annotations, monkeypatch,
     _validator(annotations, "InternalAnnotationRequest").validate(payload)
     assert payload["proposals"][0]["w"] == 0.2
     assert "w" not in payload["proposals"][1] and "basis" not in payload["proposals"][1]
+
+
+async def test_an_open_mark_validates(annotations, monkeypatch, calls, registry) -> None:
+    answering(monkeypatch, calls, CREATE_BODY)
+    await run_mark([PROPOSAL], open=True)
+
+    _validator(annotations, "InternalAnnotationRequest").validate(calls[0][0])
+    assert calls[0][0]["op"] == "create" and calls[0][0]["marks"][0]["w"] == 0.2
+
+
+@pytest.mark.parametrize(
+    "change",
+    [
+        {"status": "resolved"},
+        {"assignee": "Anna Berger", "due_on": "2026-10-20"},
+        {"assignee": "-", "due_on": "-"},
+        {"kind": "question", "body": "Ist die Tür EI2 30-C?"},
+    ],
+)
+async def test_update_validates_by_id_and_by_number(annotations, monkeypatch, calls, registry, change) -> None:
+    answering(monkeypatch, calls, LIST_BODY, UPDATE_BODY)
+    await run_update("Nr. 4", "Erledigt: passt.", **change)
+    await run_update(ANNOTATION, "Erledigt: passt.", **change)
+
+    assert [payload["op"] for payload, _ in calls] == ["list", "update", "update"]
+    by_number, by_id = calls[1][0], calls[2][0]
+    for payload in (by_number, by_id):
+        _validator(annotations, "InternalAnnotationRequest").validate(payload)
+    # Looked up by number, the mark is changed only if it still stands as it was read.
+    assert by_number["expectedStatus"] == "open" and "expectedStatus" not in by_id
+
+
+async def test_delete_validates(annotations, monkeypatch, calls, registry) -> None:
+    answering(monkeypatch, calls, DELETE_BODY)
+    await run_delete(ANNOTATION)
+
+    _validator(annotations, "InternalAnnotationRequest").validate(calls[0][0])
+    assert calls[0][0] == {**calls[0][0], "op": "delete", "annotationId": ANNOTATION}
 
 
 async def test_reply_validates(annotations, monkeypatch, calls, registry) -> None:

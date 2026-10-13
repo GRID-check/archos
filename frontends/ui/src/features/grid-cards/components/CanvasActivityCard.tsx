@@ -29,17 +29,31 @@
  * again (`dismissed → open` is the way back for a person who discarded one by
  * mistake), so a 409 cannot stop this card from reopening a mark a colleague
  * just discarded; the read right before the write is what does.
+ *
+ * ## What the person asked for
+ *
+ * When the person asks, Piloti does on a mark what they could do themselves,
+ * in their name, and the card says so in their terms. A mark set on request
+ * reads like a person's open mark. A change reads „#4 erledigt", „#4 Anna
+ * zugewiesen", with the note Piloti left in the thread under it, and
+ * „Rückgängig" PATCHes the inverse through the reader's own client. The undo
+ * is read-then-write too, and names the status Piloti left as
+ * `expectedStatus`, so it never undoes a colleague's later move: a mark that
+ * no longer stands as Piloti left it shows where it stands instead. Taking a
+ * proposal over and dismissing one have no way back, so they offer no undo.
+ * A deleted mark is gone with its thread, and the row only says so.
  */
 
 import { useState, type JSX } from 'react'
 import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
-import { Check, MapPin, X } from 'lucide-react'
+import { Check, MapPin, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { COMMENT_PIN_ON_POINT, CommentPin } from '@/components/ui/comment-pin'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { useSeenOnce } from '@/hooks/use-seen-once'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
+import { formatDayRange } from '@/lib/format'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { AnnotationRequestError, updateAnnotation } from '@/lib/annotations/client'
 import { cn } from '@/lib/utils'
@@ -50,13 +64,21 @@ import { selectCardDecision, useCardDecision } from '../hooks/use-card-decision'
 import { useFirstPageThumbnail, useLiveMarks, type LiveMarks } from '../hooks/use-canvas-document'
 import {
   activityCounts,
+  annotationIdOf,
+  createdState,
   isProposed,
+  isSet,
   markState,
   placeStyle,
+  stillAsLeft,
+  undoRequest,
   type CanvasActivityDocument,
   type CanvasActivityItem,
-  type CanvasProposedItem,
+  type CanvasChangedItem,
+  type CanvasDeletedItem,
+  type CanvasFieldChange,
   type CanvasRepliedItem,
+  type CanvasSetItem,
   type MarkState,
 } from '../lib/canvas-activity'
 import { ProposalShell } from './ProposalShell'
@@ -93,8 +115,9 @@ export function CanvasActivityCard({
   const t = useTranslations('chat')
   const [seenRef, seen] = useSeenOnce<HTMLDivElement>()
   const counts = activityCounts(items)
-  const live = useLiveMarks(document.id, seen && counts.proposed > 0)
-  const thumbnail = useFirstPageThumbnail(document.id, seen && counts.proposed > 0)
+  const setCount = counts.proposed + counts.created
+  const live = useLiveMarks(document.id, seen && setCount + counts.changed > 0)
+  const thumbnail = useFirstPageThumbnail(document.id, seen && setCount > 0)
   const [aspect, setAspect] = useState(DEFAULT_PAGE_ASPECT)
   const show = useShowInDocument(document.id)
   const [showError, setShowError] = useState(false)
@@ -114,19 +137,19 @@ export function CanvasActivityCard({
   }
 
   // The accent: ink while any mark still waits for an answer, green once every
-  // one is answered and something was kept (or Piloti only answered in a
-  // thread), quiet when everything it proposed was discarded.
+  // one is answered and something was kept (or Piloti did what it was asked),
+  // quiet when the card holds only proposals and every one was discarded.
   const proposedStates = proposedItems.map((item, index) =>
     markState(isCardDecision(storedAnswers[index]) ? storedAnswers[index] : null, live.lookup(item.annotation_id))
   )
   const tone =
     proposedStates.some((state) => state === 'proposed')
       ? 'pending'
-      : proposedStates.length > 0 && counts.replied === 0 && proposedStates.every((state) => state === 'dismissed' || state === 'gone')
+      : proposedStates.length === items.length && proposedStates.every((state) => state === 'dismissed' || state === 'gone')
         ? 'dismissed'
         : 'accepted'
 
-  const first = items[0]
+  const firstId = items.map(annotationIdOf).find((id) => id !== null) ?? null
 
   return (
     <ProposalShell tone={tone}>
@@ -140,13 +163,13 @@ export function CanvasActivityCard({
               <span className="break-all">{document.name}</span>
             </span>
           </p>
-          {first && (
+          {firstId && (
             <Button
               type="button"
               variant="ghost"
               size="sm"
               className="ml-auto"
-              onClick={() => openAt(first.annotation_id)}
+              onClick={() => openAt(firstId)}
               data-testid="canvas-activity-show"
             >
               <MapPin aria-hidden className="size-3.5" />
@@ -156,25 +179,42 @@ export function CanvasActivityCard({
         </div>
 
         <ul className="flex flex-col gap-3">
-          {items.map((item) =>
-            isProposed(item) ? (
-              <ProposedRow
-                key={`p-${item.annotation_id}`}
-                documentId={document.id}
-                item={item}
-                live={live}
-                messageId={messageId}
-                cardKey={cardKey}
-                decisionsMustPersist={decisionsMustPersist}
-                thumbnail={item.page === 1 ? thumbnail : null}
-                aspect={aspect}
-                onAspect={setAspect}
-                onShow={openAt}
-              />
-            ) : (
-              <RepliedRow key={`r-${item.annotation_id}-${item.number}`} item={item} onShow={openAt} />
-            )
-          )}
+          {items.map((item, index) => {
+            if (isSet(item)) {
+              return (
+                <SetRow
+                  key={`${item.action}-${item.annotation_id}`}
+                  documentId={document.id}
+                  item={item}
+                  live={live}
+                  messageId={messageId}
+                  cardKey={cardKey}
+                  decisionsMustPersist={decisionsMustPersist}
+                  thumbnail={item.page === 1 ? thumbnail : null}
+                  aspect={aspect}
+                  onAspect={setAspect}
+                  onShow={openAt}
+                />
+              )
+            }
+            if (item.action === 'changed') {
+              return (
+                <ChangedRow
+                  key={`c-${item.annotation_id}-${index}`}
+                  documentId={document.id}
+                  item={item}
+                  index={index}
+                  live={live}
+                  messageId={messageId}
+                  cardKey={cardKey}
+                  decisionsMustPersist={decisionsMustPersist}
+                  onShow={openAt}
+                />
+              )
+            }
+            if (item.action === 'deleted') return <DeletedRow key={`d-${item.number}-${index}`} item={item} />
+            return <RepliedRow key={`r-${item.annotation_id}-${item.number}`} item={item} onShow={openAt} />
+          })}
         </ul>
 
         {showError && (
@@ -189,12 +229,18 @@ export function CanvasActivityCard({
 
 type Translate = ReturnType<typeof useTranslations>
 
-/** „2 Anmerkungen vorgeschlagen", „Im Thread von #4 geantwortet", or both in one line. */
+/**
+ * „2 Anmerkungen vorgeschlagen", „Im Thread von #4 geantwortet", or every act
+ * the card holds in one line: „1 Anmerkung gesetzt, 2 Anmerkungen geändert".
+ */
 function headline(t: Translate, counts: ReturnType<typeof activityCounts>): string {
-  if (counts.proposed > 0 && counts.replied > 0) {
-    return t('cards.canvasActivity.headline.both', { count: counts.proposed, threads: counts.replied })
+  const acts = (['created', 'proposed', 'changed', 'deleted'] as const)
+    .filter((act) => counts[act] > 0)
+    .map((act) => t(`cards.canvasActivity.headline.${act}`, { count: counts[act] }))
+  if (acts.length > 0) {
+    if (counts.replied > 0) acts.push(t('cards.canvasActivity.headline.repliedPart', { threads: counts.replied }))
+    return acts.join(', ')
   }
-  if (counts.proposed > 0) return t('cards.canvasActivity.headline.proposed', { count: counts.proposed })
   if (counts.repliedNumber !== null) {
     return t('cards.canvasActivity.headline.repliedOne', { number: counts.repliedNumber })
   }
@@ -235,7 +281,7 @@ function PageSilhouette({
   aspect,
   onAspect,
 }: {
-  item: CanvasProposedItem
+  item: CanvasSetItem
   state: MarkState
   thumbnail: string | null
   aspect: number
@@ -286,8 +332,12 @@ function PageSilhouette({
   )
 }
 
-/** One mark Piloti proposed: where it is, what it says, and the reader's answer. */
-function ProposedRow({
+/**
+ * One mark Piloti put on the page: where it is and what it says. A proposal
+ * asks for the reader's answer; a mark set at the person's request is open
+ * already, and reads like a person's mark.
+ */
+function SetRow({
   documentId,
   item,
   live,
@@ -300,7 +350,7 @@ function ProposedRow({
   onShow,
 }: {
   documentId: string
-  item: CanvasProposedItem
+  item: CanvasSetItem
   live: LiveMarks
   messageId?: string
   cardKey: string
@@ -317,8 +367,11 @@ function ProposedRow({
   const [busy, setBusy] = useState<'open' | 'dismissed' | null>(null)
   const [error, setError] = useState<string | null>(null)
   const current = live.lookup(item.annotation_id)
-  const state = markState(decision, current)
+  const proposal = isProposed(item)
+  const state = proposal ? markState(decision, current) : createdState(current)
   const mayAnswer = state === 'proposed' && canDecide && (current === undefined || current === 'gone' || current.canEdit)
+  // A mark set at the person's request is open from birth: its label shows only once it moved on.
+  const showState = proposal ? state !== 'proposed' : state !== 'open'
 
   const answer = async (status: 'open' | 'dismissed') => {
     if (busy) return
@@ -351,7 +404,7 @@ function ProposedRow({
   const who = current && current !== 'gone' ? (state === 'open' ? current.acceptedByName : current.closedByName) : null
 
   return (
-    <li className="flex gap-3" data-testid="canvas-activity-proposed" data-state={state}>
+    <li className="flex gap-3" data-testid={`canvas-activity-${item.action}`} data-state={state}>
       <PageSilhouette item={item} state={state} thumbnail={thumbnail} aspect={aspect} onAspect={onAspect} />
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <p className="card-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5">
@@ -360,7 +413,7 @@ function ProposedRow({
           <span>{kind}</span>
           <span aria-hidden>·</span>
           <span>{t('cards.canvasActivity.page', { page: item.page })}</span>
-          {state !== 'proposed' && <MarkStateLabel state={state} who={decision ? null : who} />}
+          {showState && <MarkStateLabel state={state} who={decision ? null : who} />}
         </p>
         <p className="card-body text-foreground line-clamp-2" title={item.body}>
           {item.body}
@@ -433,6 +486,187 @@ function MarkStateLabel({ state, who }: { state: MarkState; who: string | null }
       {t(`cards.canvasActivity.state.${state}`)}
       {who && <span className="text-muted-foreground">· {who}</span>}
     </span>
+  )
+}
+
+/** „erledigt", „Anna zugewiesen", „Frist 20. Okt. 2026": one change, in the reader's words. */
+function changePhrase(t: Translate, locale: string, change: CanvasFieldChange): string {
+  const after = change.after ?? null
+  switch (change.field) {
+    case 'status':
+      if (after === 'open') {
+        return t(change.before === 'proposed' ? 'cards.canvasActivity.change.taken' : 'cards.canvasActivity.change.reopened')
+      }
+      return t(after === 'dismissed' ? 'cards.canvasActivity.change.dismissed' : 'cards.canvasActivity.change.resolved')
+    case 'assignee':
+      if (!after) return t('cards.canvasActivity.change.unassigned')
+      return t('cards.canvasActivity.change.assigned', {
+        name: change.after_label ?? t('cards.canvasActivity.change.someone'),
+      })
+    case 'due_on':
+      return after
+        ? t('cards.canvasActivity.change.due', { date: formatDayRange(after, after, locale) })
+        : t('cards.canvasActivity.change.undue')
+    case 'kind':
+      return t('cards.canvasActivity.change.kind', {
+        kind: after === 'hint' || after === 'question' || after === 'defect' ? t(`cards.canvasActivity.kinds.${after}`) : '',
+      })
+    default:
+      return t('cards.canvasActivity.change.body')
+  }
+}
+
+/**
+ * One change Piloti made to a mark for the person, the note it left in the
+ * thread, and the way back. The undo is the inverse PATCH through the reader's
+ * own client, read-then-write and guarded by the status Piloti left, so it
+ * never undoes what a colleague did since; the decision is stored per row.
+ */
+function ChangedRow({
+  documentId,
+  item,
+  index,
+  live,
+  messageId,
+  cardKey,
+  decisionsMustPersist,
+  onShow,
+}: {
+  documentId: string
+  item: CanvasChangedItem
+  index: number
+  live: LiveMarks
+  messageId?: string
+  cardKey: string
+  decisionsMustPersist?: boolean
+  onShow: ShowInDocument
+}): JSX.Element {
+  const t = useTranslations('chat')
+  const { locale } = useLocale()
+  const { decision, decide, canDecide } = useCardDecision(
+    messageId,
+    itemDecisionKey(cardKey, `${item.annotation_id}@${index}`),
+    { mustPersist: decisionsMustPersist }
+  )
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const current = live.lookup(item.annotation_id)
+  const inverse = undoRequest(item)
+  const undone = decision === 'rejected'
+  // Moved on since Piloti's change (by a colleague, or by the reader on the
+  // canvas): the row says where the mark stands and offers no undo.
+  const moved = !undone && current !== undefined && current !== 'gone' && !stillAsLeft(item, current)
+  const mayUndo =
+    inverse !== null && canDecide && !undone && !moved && current !== 'gone' && (current === undefined || current.canEdit)
+
+  const undo = async () => {
+    if (busy || inverse === null) return
+    setBusy(true)
+    setError(null)
+    try {
+      // Read first: the status guard alone would let an undo overwrite a
+      // colleague's later assignee, date or wording.
+      const now = (await live.refresh())?.(item.annotation_id)
+      if (now === 'gone' || (now && !stillAsLeft(item, now))) return
+      const updated = await updateAnnotation(documentId, item.annotation_id, inverse)
+      live.adopt(updated)
+      decide('rejected')
+    } catch (failure) {
+      if (failure instanceof AnnotationRequestError && failure.status === 409) {
+        await live.refresh()
+      } else if (failure instanceof AnnotationRequestError && failure.status === 404) {
+        live.forget(item.annotation_id)
+      } else if (failure instanceof AnnotationRequestError && failure.status === 403) {
+        setError(t('cards.canvasActivity.forbidden'))
+      } else {
+        setError(t('cards.canvasActivity.error'))
+      }
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  const phrases = item.changes.map((change) => changePhrase(t, locale, change)).join(' · ')
+  const state: MarkState | null = current === 'gone' ? 'gone' : moved && current ? current.status : null
+
+  return (
+    <li className="flex gap-3" data-testid="canvas-activity-changed" data-undone={undone || undefined}>
+      <span className="flex w-20 shrink-0 justify-center pt-1" aria-hidden>
+        <CommentPin as="span" number={item.number} done={undone || current === 'gone'} />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="card-meta text-muted-foreground flex flex-wrap items-center gap-x-1.5">
+          <span className="text-foreground font-mono">#{item.number}</span>
+          <span className="text-foreground">{phrases}</span>
+          {undone && (
+            <span className="text-muted-foreground ml-auto inline-flex items-center gap-1" data-testid="canvas-activity-state">
+              <Undo2 aria-hidden className="size-3" />
+              {t('cards.canvasActivity.undone')}
+            </span>
+          )}
+          {!undone && state && (
+            <span className="text-muted-foreground ml-auto" data-testid="canvas-activity-state">
+              {state === 'gone'
+                ? t('cards.canvasActivity.state.gone')
+                : t('cards.canvasActivity.movedSince', { state: t(`cards.canvasActivity.status.${state}`) })}
+            </span>
+          )}
+        </p>
+        <p className="card-body text-foreground line-clamp-2" title={item.note}>
+          „{item.note}“
+        </p>
+        {error && (
+          <p className="card-caption text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex flex-wrap items-center gap-2 pt-1">
+          {mayUndo && (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => void undo()}
+              aria-label={t('cards.canvasActivity.undoLabel', { number: item.number })}
+              aria-disabled={busy || undefined}
+              aria-busy={busy || undefined}
+              className="aria-disabled:cursor-default"
+            >
+              <StackedLabel busy={busy} idle={t('cards.canvasActivity.undo')} working={t('cards.canvasActivity.undoing')} />
+            </Button>
+          )}
+          {current !== 'gone' && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => onShow(item.annotation_id)}
+              aria-label={t('cards.canvasActivity.showMarkLabel', { number: item.number })}
+            >
+              {t('cards.canvasActivity.show')}
+            </Button>
+          )}
+        </div>
+      </div>
+    </li>
+  )
+}
+
+/** A mark Piloti deleted for the person who set it: gone with its thread, so nothing to open or undo. */
+function DeletedRow({ item }: { item: CanvasDeletedItem }): JSX.Element {
+  const t = useTranslations('chat')
+  return (
+    <li className="flex gap-3" data-testid="canvas-activity-deleted">
+      <span className="flex w-20 shrink-0 justify-center pt-1" aria-hidden>
+        <CommentPin as="span" number={item.number} done />
+      </span>
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <p className="card-meta text-muted-foreground">{t('cards.canvasActivity.deleted', { number: item.number })}</p>
+        <p className="card-body text-muted-foreground line-clamp-2 line-through" title={item.body}>
+          {item.body}
+        </p>
+      </div>
+    </li>
   )
 }
 

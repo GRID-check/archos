@@ -73,6 +73,9 @@ The user has this file open, so every bare reference in their message („dieses
 {% endif %}{% if focus_region_block is defined and focus_region_block %}
 
 {{ focus_region_block }}
+{% endif %}{% if trigger_block is defined and trigger_block %}
+
+{{ trigger_block }}
 {% endif %}
 
 {% if document_inventory %}

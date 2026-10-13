@@ -104,6 +104,7 @@ function scriptedPiloti() {
       sent.push(message)
       return true
     },
+    accepts: (entry) => entry === 'steer',
     reconnect: () => {},
     close: () => {},
   }

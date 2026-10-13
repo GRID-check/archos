@@ -11,7 +11,8 @@
  *   - numbers run per document, and ten writers at once get ten numbers; a
  *     batch of proposals takes consecutive numbers;
  *   - a person's mark is born open and Piloti's proposed, and the database
- *     refuses Piloti's mark as open without a person who took it over;
+ *     refuses Piloti's mark as open without a person who took it over; a
+ *     mark the asker asked Piloti for is born open with the asker behind it;
  *   - the Fassung a mark was set on comes back by number, and a discarded
  *     version leaves the mark standing;
  *   - a status move is compare-and-swap: the second of two moves from the same
@@ -186,6 +187,29 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
       })
     )
     expect(taken).toMatchObject({ status: 'open', acceptedBy: USER })
+  })
+
+  it('sets a mark the asker asked Piloti for open, with the asker behind it, and closes it in their name', async () => {
+    const [row] = await insert(ids.document, [mark()], { authorKind: 'piloti', acceptedBy: USER })
+    expect(row).toMatchObject({ status: 'open', authorKind: 'piloti', createdBy: USER, acceptedBy: USER })
+    expect(row.acceptedAt).toBeInstanceOf(Date)
+
+    const resolved = await inOrg(ORG, () =>
+      repo.updateDocumentAnnotation(ORG, ids.document, row.id, 'open', {
+        transition: { status: 'resolved', closedBy: USER, closedAt: new Date() },
+      })
+    )
+    expect(resolved).toMatchObject({ status: 'resolved', closedBy: USER, acceptedBy: USER })
+
+    // The CHECK is untouched: Piloti's open mark with nobody behind it is still refused.
+    await expect(
+      inOrg(ORG, () =>
+        db.execute(sql`
+          update document_annotations
+          set status = 'open', closed_by = null, closed_at = null, accepted_by = null, accepted_at = null
+          where id = ${row.id}::uuid`)
+      )
+    ).rejects.toThrow()
   })
 
   it('moves a status by compare and swap: the second move from the same state finds nothing', async () => {

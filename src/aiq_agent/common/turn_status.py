@@ -395,12 +395,17 @@ KEY_ACTION_DRAFT_SUBMITTED = "status.action.draftSubmitted"
 #: told that this turn will NOT produce the answer, and something outside the
 #: conversation will.
 KEY_ACTION_TASK_CREATED = "status.action.taskCreated"
-#: Anmerkungen on a document (`tools/canvas`: `marks`, `mark`, `reply`), one key per
-#: tool: reading the marks, proposing findings, answering in a thread are
-#: three different things to the reader, and nothing else on screen says which.
-#: The proposal line carries that nothing is set yet, as the file proposal does.
+#: Anmerkungen on a document (`tools/canvas`: `marks`, `mark`, `update`, `delete`,
+#: `reply`), one key per act: reading the marks, proposing findings, setting a
+#: mark the person asked for, changing one, deleting one, answering in a thread
+#: are different things to the reader, and nothing else on screen says which.
+#: The proposal line carries that nothing is set yet, as the file proposal does;
+#: `mark` with `open` sets, and gets the setting line (:func:`_action_key`).
 KEY_ACTION_ANNOTATIONS_READ = "status.action.annotationsRead"
 KEY_ACTION_ANNOTATIONS_PROPOSE = "status.action.annotationsPropose"
+KEY_ACTION_ANNOTATIONS_SET = "status.action.annotationsSet"
+KEY_ACTION_ANNOTATIONS_UPDATE = "status.action.annotationsUpdate"
+KEY_ACTION_ANNOTATIONS_DELETE = "status.action.annotationsDelete"
 KEY_ACTION_ANNOTATIONS_REPLY = "status.action.annotationsReply"
 
 KEY_CITATIONS = "status.citations"
@@ -444,6 +449,9 @@ ALL_STATUS_KEYS: tuple[str, ...] = (
     "status.action.taskCreated",
     "status.action.annotationsRead",
     "status.action.annotationsPropose",
+    "status.action.annotationsSet",
+    "status.action.annotationsUpdate",
+    "status.action.annotationsDelete",
     "status.action.annotationsReply",
     "status.citations",
     "status.repair",
@@ -600,13 +608,21 @@ _ACTION_KEYS = {
     # :func:`_action_key`. (`submit_draft` was merged into that argument.)
     "file_draft": KEY_ACTION_DRAFT_FILED,
     "create_task": KEY_ACTION_TASK_CREATED,
-    # The canvas group's three Anmerkungen tools (`canvas__marks` …), by
-    # basename. `look`, `room`, `point` and `highlight` get no line: the image,
-    # the room and the gesture show themselves, and a line would only name them.
+    # The canvas group's Anmerkungen tools (`canvas__marks` …), by basename.
+    # `look`, `room`, `point` and `highlight` get no line: the image, the room
+    # and the gesture show themselves, and a line would only name them.
     "marks": KEY_ACTION_ANNOTATIONS_READ,
+    # With `open=true` the line is KEY_ACTION_ANNOTATIONS_SET; see :func:`_action_key`.
     "mark": KEY_ACTION_ANNOTATIONS_PROPOSE,
+    "update": KEY_ACTION_ANNOTATIONS_UPDATE,
+    "delete": KEY_ACTION_ANNOTATIONS_DELETE,
     "reply": KEY_ACTION_ANNOTATIONS_REPLY,
 }
+
+
+def _flag(args: Any, name: str) -> bool:
+    """Whether a boolean argument is on. `str(True)` is "True": a boolean and a model that quoted it read alike."""
+    return isinstance(args, dict) and str(args.get(name)).strip().lower() == "true"
 
 
 def _action_key(base: str, args: Any) -> str | None:
@@ -614,12 +630,13 @@ def _action_key(base: str, args: Any) -> str | None:
 
     One tool, two promises: ``file_draft`` with ``submit`` hands the draft to a
     reviewer, and the filing line would describe only the half of that call
-    which asks nobody for anything.
+    which asks nobody for anything. Likewise ``mark`` with ``open`` sets a mark
+    in the person's name, which the proposal line would understate.
     """
-    if base == "file_draft" and isinstance(args, dict) and str(args.get("submit")).strip().lower() == "true":
-        # `str(True)` is "True": a boolean and a model that quoted it read alike,
-        # the way the tool's own argument parsing reads them.
+    if base == "file_draft" and _flag(args, "submit"):
         return KEY_ACTION_DRAFT_SUBMITTED
+    if base == "mark" and _flag(args, "open"):
+        return KEY_ACTION_ANNOTATIONS_SET
     return _ACTION_KEYS.get(base)
 
 
@@ -1460,6 +1477,26 @@ def emit_width_cap(*, round_index: int, kept: int, withheld: int) -> None:
         withheld: Calls answered with the cap notice instead of being run.
     """
     emit_technical(f"{WIDTH_CAP_SLOT}:{round_index}", round=round_index, kept=kept, withheld=withheld)
+
+
+#: Slot prefix for the writes a steering note held back (``common/steering.py``).
+#: Per round, beside ``repeat``, ``refused`` and ``width``.
+STEERED_SLOT = "steered"
+
+
+def emit_steered_writes(*, round_index: int, withheld: int) -> None:
+    """Record that a round's write calls were held back because a note arrived after the model chose them.
+
+    Technical, like the three guards beside it: the reader sees the note itself
+    applied (``steer_applied``); what an operator counts here is how often a
+    correction caught a write in flight, which nothing else records, because a
+    held call runs nothing.
+
+    Args:
+        round_index: The round whose writes were held.
+        withheld: Calls answered with the hold notice instead of being run.
+    """
+    emit_technical(f"{STEERED_SLOT}:{round_index}", round=round_index, withheld=withheld)
 
 
 def emit_research_truncated(

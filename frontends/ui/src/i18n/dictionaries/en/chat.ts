@@ -578,7 +578,10 @@ export const chat = {
         proposed: '{count, plural, one {# annotation proposed} other {# annotations proposed}}',
         repliedOne: 'Replied in the thread of #{number}',
         repliedMany: 'Replied in {count} threads',
-        both: '{count, plural, one {# annotation proposed} other {# annotations proposed}}, replied in {threads, plural, one {one thread} other {# threads}}',
+        created: '{count, plural, one {# annotation set} other {# annotations set}}',
+        changed: '{count, plural, one {# annotation changed} other {# annotations changed}}',
+        deleted: '{count, plural, one {# annotation deleted} other {# annotations deleted}}',
+        repliedPart: 'replied in {threads, plural, one {one thread} other {# threads}}',
       },
       kinds: {
         hint: 'Note',
@@ -605,6 +608,33 @@ export const chat = {
       },
       error: 'Could not be saved.',
       forbidden: 'You cannot change this annotation.',
+      // What Piloti changed on a mark at the person's request, in their words:
+      // „#4 resolved“, „#4 assigned to Anna“.
+      change: {
+        taken: 'taken over',
+        reopened: 'reopened',
+        resolved: 'resolved',
+        dismissed: 'discarded',
+        assigned: 'assigned to {name}',
+        someone: 'someone',
+        unassigned: 'assignee removed',
+        due: 'due {date}',
+        undue: 'due date removed',
+        kind: 'marked as {kind}',
+        body: 'text reworded',
+      },
+      status: {
+        proposed: 'proposed',
+        open: 'open',
+        resolved: 'resolved',
+        dismissed: 'discarded',
+      },
+      undo: 'Undo',
+      undoing: 'Undoing …',
+      undoLabel: 'Undo the change to annotation {number}',
+      undone: 'Undone',
+      movedSince: 'Changed since, now {state}',
+      deleted: 'Annotation #{number} deleted',
     },
     verdictHeader: {
       confidenceHigh: 'high confidence',
@@ -916,10 +946,14 @@ export const chat = {
           draftFiled: 'Filing the draft in the project …',
           draftSubmitted: 'Sending the draft for approval …',
           taskCreated: 'Creating the task …',
-          // Annotations on this chat's document. Piloti only suggests marks: a
-          // person takes each one over or dismisses it.
+          // Annotations on a document. Piloti only suggests its own findings: a
+          // person takes each one over or dismisses it. It sets, changes and
+          // deletes only what the person asks for.
           annotationsRead: 'Reading the annotations …',
           annotationsPropose: 'Suggesting annotations …',
+          annotationsSet: 'Setting annotations …',
+          annotationsUpdate: 'Changing an annotation …',
+          annotationsDelete: 'Deleting an annotation …',
           annotationsReply: 'Replying to an annotation …',
         },
         // The tools are done, the answer is being written. The same words as
@@ -937,6 +971,12 @@ export const chat = {
         repair:
           'A quotation differs from the source’s wording — correcting it against the original …',
         escalation: 'A quick lookup is not enough — starting deep research',
+        // A note the person typed while Piloti works. `{text}` is their own
+        // words; `{round}` the round in which Piloti read it.
+        steer: {
+          received: 'Added: “{text}” — taking it into account …',
+          applied: 'Note applied in round {round}: “{text}”',
+        },
       },
     },
     // The one skill event a reader sees, keyed on WHO decided. Two sentences

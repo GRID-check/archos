@@ -18,11 +18,15 @@
  *   second miss fails the turn (`agent.no_response`). A refusal, a `RUN_ERROR`
  *   or a socket that gave up fails it too. Nothing waits on silence.
  * - **One turn at a time.** A second question while one runs is refused
- *   (`CanvasTurnError('busy')`); the canvas says so instead of queueing.
+ *   (`CanvasTurnError('busy')`). What the person adds meanwhile is a note
+ *   for the running turn instead (`steer`, when the hello offers it): the
+ *   turn reads it before its next round, and a note it never read is handed
+ *   back (`onLeftover`) once the turn has ended, to be asked next.
  * - **Gaps.** A jump in a turn's `seq` is attached from the last seq folded,
  *   once per gap; a reopened socket attaches the running turn by itself.
  */
 
+import { v4 as uuidv4 } from 'uuid'
 import {
   createTurnSocket,
   type OpenTurn,
@@ -31,7 +35,7 @@ import {
   type TurnSocketStatus,
 } from '@/adapters/api/turn-socket'
 import type { ClientMessage, WireEvent } from '@/adapters/api/wire-v2'
-import { foldTurnEvent, initialTurnView, stopTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
+import { foldTurnEvent, initialTurnView, isSteerRead, stopTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
 import { clampFocusRegion, type CanvasFocusRegion } from '@/features/chat/lib/canvas-bridge'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatEffort } from '@/lib/reasoning-settings/catalog'
@@ -115,6 +119,12 @@ export interface CanvasTurnClient {
   ask: (question: CanvasQuestion, turnId: string) => Promise<void>
   /** Stop a turn: the view keeps what arrived, marked cancelled. */
   cancel: (turnId: string) => void
+  /**
+   * A note for the running turn. False when no turn runs or the server reads
+   * no notes. A note the turn never read reaches `onLeftover` once it has
+   * ended (not after a Stop).
+   */
+  steer: (text: string, options?: { region?: FocusRegion | null; onLeftover?: (text: string) => void }) => boolean
   close: () => void
 }
 
@@ -166,10 +176,25 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
   let socketOpen = false
   let authExpired = 0
   let closed = false
+  /** The notes sent to the running turn, by `steer_id`, until it ends. */
+  const steers = new Map<string, { turnId: string; text: string; onLeftover?: (text: string) => void }>()
+
+  /** The turn ended: a note it never read goes back to the canvas, to be asked next; a Stop drops it. */
+  const settleSteers = (view: TurnView): void => {
+    for (const [steerId, note] of [...steers]) {
+      if (note.turnId !== view.turnId) continue
+      steers.delete(steerId)
+      if (isSteerRead(view, steerId) || view.outcome === 'cancelled' || !note.onLeftover) continue
+      const leftover = note.onLeftover
+      setTimeout(() => leftover(note.text), 0)
+    }
+  }
 
   const publish = (view: TurnView): void => {
+    const previous = views.get(view.turnId)
     views.set(view.turnId, view)
     options.onTurn(view)
+    if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
   }
 
   const forgetPending = (): void => {
@@ -217,6 +242,8 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
 
   const rejected = (event: Extract<WireEvent, { type: 'CUSTOM'; name: 'rejected' }>): void => {
     const { turn_id: turnId, value } = event
+    // A refused note never ends its turn: it stays unread, and is handed back when the turn ends.
+    if (value.of === 'steer') return
     switch (value.code) {
       case 'auth_expired':
         authExpired += 1
@@ -342,6 +369,22 @@ export function createCanvasTurnClient(options: CanvasTurnClientOptions): Canvas
         socket?.send({ type: 'cancel_turn', conversation_id: conversationId, turn_id: turnId, shown: stopped.shown })
       }
       publish(stopped.view)
+    },
+    steer: (text, steerOptions) => {
+      const turnId = running
+      if (!turnId || pending?.message.message_id === turnId || !socket?.accepts('steer')) return false
+      const steerId = uuidv4()
+      const region = steerOptions?.region
+      steers.set(steerId, { turnId, text, onLeftover: steerOptions?.onLeftover })
+      socket.send({
+        type: 'steer',
+        conversation_id: conversationId,
+        turn_id: turnId,
+        steer_id: steerId,
+        text,
+        ...(region ? { focus_region: clampFocusRegion(region) } : {}),
+      })
+      return true
     },
     close: () => {
       closed = true

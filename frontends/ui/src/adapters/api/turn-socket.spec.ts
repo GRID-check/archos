@@ -419,6 +419,58 @@ describe('optional fields, by what the hello accepts', () => {
     })
   })
 
+  describe('a note for the running turn (steer)', () => {
+    const note = { type: 'steer', conversation_id: 'conv_1', turn_id: 't1', steer_id: 's1', text: 'die Treppe' } as const
+
+    it('goes to a server whose hello names it, and the socket says so', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['steer'] } })
+      expect(socket.accepts('steer')).toBe(true)
+      expect(socket.send(note)).toBe(true)
+      expect(latest().sent).toEqual([note])
+    })
+
+    it('is not sent at all to a server that does not name it: the caller keeps it', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      expect(socket.accepts('steer')).toBe(false)
+      expect(socket.send(note)).toBe(false)
+      expect(latest().sent).toEqual([])
+    })
+  })
+
+  describe('the wake fields a job sends (trigger, if_idle)', () => {
+    const woken = {
+      type: 'user_message',
+      conversation_id: 'conv_1',
+      message_id: 'w1',
+      text: '@Piloti?',
+      trigger: { kind: 'thread_mention', event_id: 'r-1', annotation_id: 'a-1' },
+      if_idle: true,
+    } as const
+    const { trigger: _trigger, if_idle: _idle, ...bareQuestion } = woken
+
+    it('go to a server whose hello names them', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['user_message.trigger', 'user_message.if_idle'] } })
+      socket.send(woken)
+      expect(latest().sent).toEqual([woken])
+    })
+
+    it('are left out for an older server', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      socket.send(woken)
+      expect(latest().sent).toEqual([bareQuestion])
+    })
+  })
+
   it('takes a hello naming fields this page has never heard of', async () => {
     const { socket, statuses } = setup()
     await socket.connect()

@@ -8,7 +8,9 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
+from aiq_agent.common.steering import AppliedSteer
 from aiq_agent.common.wire_v2 import FocusRegion
+from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.knowledge import AvailableDocument
 
 from ..markers import CappedReason
@@ -157,6 +159,15 @@ class ResearchAgentState(BaseModel):
     # with `canvas__reply` when asked there. Turn-scoped, like the focus above.
     focus_region: FocusRegion | None = None
     reply_in_thread: bool = False
+    # The event that woke this turn when nobody typed it (a reply or mention in
+    # an Anmerkung's thread, an assignment). Rendered as the „Geweckt durch“
+    # section of the prompt: who woke it, and to answer where it happened.
+    trigger: TurnTrigger | None = None
+    # The notes the person typed while this turn ran (``common/steering.py``),
+    # each rendered once and kept with the index of ``messages`` it arrived at.
+    # NEVER in ``messages``: a HumanMessage there is a turn boundary to
+    # ``answer_pipeline.this_turn``. Spliced into each model request instead.
+    steering: list[AppliedSteer] = []
     source_lookup_attempted: bool = False
     answer_citation_grounded: bool = False
     # Whether every QUOTED span in the final answer was found (fuzzily) in a

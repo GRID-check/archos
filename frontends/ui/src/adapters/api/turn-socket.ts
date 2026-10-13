@@ -18,7 +18,10 @@
  *   `accepts` ({@link forServer}): during a rolling deploy the socket may have
  *   reached a pod one release older, and a Stop it refused would leave the
  *   turn running. The check is made on the socket that sends, so a message
- *   held across a reconnect is shaped for the server it finally reaches.
+ *   held across a reconnect is shaped for the server it finally reaches. A
+ *   whole message type the hello does not name (`steer`) is not sent at all:
+ *   `send` returns false and the caller keeps it (a note becomes the next
+ *   question).
  * - **Drift.** After the hello, a frame this page cannot parse means the
  *   server speaks a newer v2 than this bundle: `outdated`, as for 4426. It is
  *   never dropped and waited past, because a turn whose next `seq` cannot be
@@ -94,8 +97,13 @@ export interface TurnSocketOptions {
 export interface TurnSocket {
   /** Open, or keep open. After the ladder gave up, a new ladder: this is a new request. */
   connect: () => Promise<void>
-  /** False when the socket is not open (no hello yet); nothing is queued. */
+  /**
+   * False when the socket is not open (no hello yet), or when its server does
+   * not read this message type (`forServer` returned null); nothing is queued.
+   */
   send: (message: ClientMessage) => boolean
+  /** Whether the open socket's server named `entry` in its hello (`steer`, `user_message.trigger`). */
+  accepts: (entry: string) => boolean
   /** Drop the current socket, if any, and open a fresh one now, from the first rung. */
   reconnect: () => void
   close: () => void
@@ -117,7 +125,11 @@ export const HELLO_TIMEOUT_MS = 5_000
  * Without the field the server does what it did before it existed: a Stop
  * without `shown` keeps everything streamed so far.
  */
-export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>): ClientMessage => {
+export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>): ClientMessage | null => {
+  // A note for the running turn is a message type of its own, and a server
+  // that does not name it refuses the frame. Not sent: the caller keeps it and
+  // asks it as the next question once the turn has ended.
+  if (message.type === 'steer') return accepts.has('steer') ? message : null
   if (message.type === 'cancel_turn' && message.shown && !accepts.has('cancel_turn.shown')) {
     const { shown: _unread, ...rest } = message
     return rest
@@ -140,6 +152,17 @@ export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>):
   }
   if (shaped.reply_in_thread !== undefined && !accepts.has('user_message.reply_in_thread')) {
     const { reply_in_thread: _unread, ...rest } = shaped
+    shaped = rest
+  }
+  // The two fields a turn an event woke carries (the BFF's wake job). An older
+  // server would run it as a typed question; the job checks `accepts` itself
+  // before it sends one, because without `if_idle` it would supersede.
+  if (shaped.trigger !== undefined && !accepts.has('user_message.trigger')) {
+    const { trigger: _unread, ...rest } = shaped
+    shaped = rest
+  }
+  if (shaped.if_idle !== undefined && !accepts.has('user_message.if_idle')) {
+    const { if_idle: _unread, ...rest } = shaped
     shaped = rest
   }
   return shaped
@@ -253,7 +276,9 @@ export function createTurnSocket(options: TurnSocketOptions): TurnSocket {
 
   const send = (message: ClientMessage): boolean => {
     if (!ready || socket?.readyState !== OPEN) return false
-    socket.send(JSON.stringify(forServer(message, accepts)))
+    const shaped = forServer(message, accepts)
+    if (!shaped) return false
+    socket.send(JSON.stringify(shaped))
     return true
   }
 
@@ -336,6 +361,7 @@ export function createTurnSocket(options: TurnSocketOptions): TurnSocket {
       return open()
     },
     send,
+    accepts: (entry) => ready && accepts.has(entry),
     reconnect: () => {
       stopped = false
       ladder.reset()

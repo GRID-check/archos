@@ -14,6 +14,11 @@
  *    opened again and a 409 would not stop it.
  * 4. **„Im Dokument zeigen" opens the Prüfansicht at that mark** through
  *    `openReviewAt`, the one way into the review.
+ * 5. **What the person asked for reads as done, and can be undone.** A mark set
+ *    on request reads like a person's open mark; a change reads in the
+ *    reader's words with Piloti's note, and „Rückgängig" PATCHes the inverse
+ *    with the status Piloti left as `expectedStatus`, never undoing a
+ *    colleague's later move; a deletion only says so.
  *
  * Rendered without an `I18nProvider`, so the dictionary falls back to `en`.
  */
@@ -80,6 +85,28 @@ const REPLY: CanvasActivityItem = {
   number: 4,
   excerpt: 'Im Türenbuch als EI2 30-C geführt.',
 }
+
+const SET: CanvasActivityItem = { ...(STAIR as Extract<CanvasActivityItem, { action: 'proposed' }>), action: 'created' }
+
+const RESOLVED: CanvasActivityItem = {
+  action: 'changed',
+  annotation_id: 'ann-4',
+  number: 4,
+  status: 'resolved',
+  changes: [{ field: 'status', before: 'open', after: 'resolved' }],
+  note: 'Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.',
+}
+
+const ASSIGNED: CanvasActivityItem = {
+  action: 'changed',
+  annotation_id: 'ann-4',
+  number: 4,
+  status: 'open',
+  changes: [{ field: 'assignee', after: 'user_anna', after_label: 'Anna Berger' }],
+  note: 'Anna übernimmt die Prüfung.',
+}
+
+const DELETED: CanvasActivityItem = { action: 'deleted', number: 9, body: 'Doppelt gesetzt.' }
 
 const view = (id: string, number: number, patch: Partial<AnnotationView> = {}): AnnotationView => ({
   id,
@@ -209,6 +236,13 @@ describe('CanvasActivityCard — what it says', () => {
     expect(screen.getByText('1 annotation proposed, replied in one thread')).toBeInTheDocument()
   })
 
+  it('names every act the card holds in one line', () => {
+    renderCard([SET, RESOLVED, DELETED, REPLY])
+    expect(
+      screen.getByText('1 annotation set, 1 annotation changed, 1 annotation deleted, replied in one thread')
+    ).toBeInTheDocument()
+  })
+
   it('draws a box where the region sits on the page, dashed while proposed', () => {
     renderCard([STAIR])
     const region = screen.getByTestId('canvas-activity-region')
@@ -327,6 +361,112 @@ describe('CanvasActivityCard — the answer per mark', () => {
 
     await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('No longer there'))
     expect(screen.queryByRole('button', { name: 'Show annotation 7 in the document' })).toBeNull()
+  })
+})
+
+describe('CanvasActivityCard — what the person asked for', () => {
+  it('draws a mark set on request like a person’s open mark: solid, no answer to give', async () => {
+    stubRoutes({ list: [[view('ann-7', 7, { status: 'open', acceptedByName: 'Anna' })]] })
+    renderCard([SET])
+
+    expect(screen.getByText('1 annotation set')).toBeInTheDocument()
+    const row = screen.getByTestId('canvas-activity-created')
+    expect(row).toHaveAttribute('data-state', 'open')
+    expect(screen.getByTestId('canvas-activity-region').className).not.toContain('border-dashed')
+    expect(screen.queryByRole('button', { name: /Take over/ })).toBeNull()
+    await waitFor(() => expect(calls.some((call) => call.url.endsWith('/annotations'))).toBe(true))
+    expect(screen.queryByTestId('canvas-activity-state')).toBeNull()
+  })
+
+  it('reads a change in the reader’s words, with Piloti’s note under it', () => {
+    renderCard([RESOLVED, ASSIGNED])
+    expect(screen.getByText('resolved')).toBeInTheDocument()
+    expect(screen.getByText('assigned to Anna Berger')).toBeInTheDocument()
+    expect(screen.getByText('„Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.“')).toBeInTheDocument()
+  })
+
+  it('undoes a change through the reader’s PATCH, guarded by the status Piloti left, and records it per row', async () => {
+    stubRoutes({
+      list: [[view('ann-4', 4, { status: 'resolved', authorKind: 'person', closedBy: 'user_1', closedByName: 'Anna' })]],
+      patch: (id) => ({ status: 200, body: { annotation: view(id, 4, { status: 'open', authorKind: 'person' }) } }),
+    })
+    const user = userEvent.setup()
+    renderCard([RESOLVED])
+
+    await user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 4' }))
+
+    await waitFor(() => expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'canvas_activity-0#ann-4@0', 'rejected'))
+    const patch = calls.find((call) => call.method === 'PATCH')
+    expect(patch?.url).toBe(`/api/documents/${DOC.id}/annotations/ann-4`)
+    expect(patch?.body).toEqual({ status: 'open', expectedStatus: 'resolved' })
+  })
+
+  it('puts an assignee back as it was: none', async () => {
+    stubRoutes({
+      list: [[view('ann-4', 4, { status: 'open', authorKind: 'person', assigneeUserId: 'user_anna' })]],
+      patch: (id) => ({ status: 200, body: { annotation: view(id, 4, { status: 'open', authorKind: 'person' }) } }),
+    })
+    const user = userEvent.setup()
+    renderCard([ASSIGNED])
+
+    await user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 4' }))
+
+    await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
+    expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ assigneeUserId: null, expectedStatus: 'open' })
+  })
+
+  it('never undoes a colleague’s later move: a mark that moved on shows where it stands', async () => {
+    stubRoutes({ list: [[view('ann-4', 4, { status: 'open', authorKind: 'person' })]] })
+    renderCard([RESOLVED])
+
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Changed since, now open'))
+    expect(screen.queryByRole('button', { name: 'Undo the change to annotation 4' })).toBeNull()
+  })
+
+  it('shows the current state on a 409 and records nothing', async () => {
+    stubRoutes({
+      list: [
+        [view('ann-4', 4, { status: 'resolved', authorKind: 'person', closedBy: 'user_1' })],
+        [view('ann-4', 4, { status: 'resolved', authorKind: 'person', closedBy: 'user_1' })],
+        [view('ann-4', 4, { status: 'open', authorKind: 'person' })],
+      ],
+      patch: () => ({ status: 409, body: { error: 'Somebody changed this Anmerkung a moment ago.', code: 'CONFLICT' } }),
+    })
+    const user = userEvent.setup()
+    renderCard([RESOLVED])
+
+    await user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 4' }))
+
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Changed since, now open'))
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('offers no undo where a person’s PATCH has no way back: a proposal Piloti took over', () => {
+    renderCard([
+      { ...RESOLVED, status: 'open', changes: [{ field: 'status', before: 'proposed', after: 'open' }], note: 'Übernommen.' },
+    ])
+    expect(screen.getByText('taken over')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Undo the change to annotation 4' })).toBeNull()
+  })
+
+  it('draws a stored undo as undone and offers it no more', () => {
+    mockCardInteractions = {
+      'canvas_activity-0#ann-4@0': { decision: 'rejected', decidedAt: '2026-10-13T08:00:00.000Z' },
+    }
+    renderCard([RESOLVED])
+
+    expect(screen.getByTestId('canvas-activity-changed')).toHaveAttribute('data-undone', 'true')
+    expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Undone')
+    expect(screen.queryByRole('button', { name: 'Undo the change to annotation 4' })).toBeNull()
+  })
+
+  it('says a deleted mark is deleted, with what it said, and offers nothing', () => {
+    renderCard([DELETED])
+
+    expect(screen.getByText('1 annotation deleted')).toBeInTheDocument()
+    expect(screen.getByText('Annotation #9 deleted')).toBeInTheDocument()
+    expect(screen.getByText('Doppelt gesetzt.')).toBeInTheDocument()
+    expect(screen.queryByRole('button')).toBeNull()
   })
 })
 

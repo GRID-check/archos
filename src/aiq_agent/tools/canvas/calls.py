@@ -51,6 +51,15 @@ ANNOTATION_GONE = (
     "Diese Anmerkung gibt es auf dem Dokument nicht (mehr). Lies mit `marks` nach und nimm ihre id oder Nummer."
 )
 CONFLICT = "Jemand hat die Anmerkungen gerade geändert. Lies sie mit `marks` neu, bevor du weitermachst."
+DELETE_FORBIDDEN = (
+    "Nicht möglich: Löschen kann die Person nur Anmerkungen, die sie selbst gesetzt hat, und nur, wenn sie an "
+    "diesem Dokument etwas ändern darf. Sag es ihr so; erledigen (`update` mit `status` `resolved`) geht, wenn sie "
+    "es möchte."
+)
+ASSIGNEE_UNCLEAR = (
+    "Unklar, wer gemeint ist ({detail}). Frage die Person, wen sie meint, und nimm dann den vollen Namen; nichts "
+    "wurde geändert."
+)
 UNREACHABLE = (
     "Fehler: Das Dokument ist gerade nicht erreichbar. Sage der Person, dass es nicht geklappt hat; nicht in "
     "derselben Antwort erneut versuchen."
@@ -77,14 +86,20 @@ def _with_answer(payload: dict[str, Any]) -> dict[str, Any]:
     return {**payload, "answerMessageId": turn_answer_message_id(conversation_id)}
 
 
+#: The ops that name one mark: a 404 there is the mark, not the document.
+_ON_ONE_MARK = frozenset({"reply", "update", "delete"})
+
+
 def refusal_for(exc: CanvasRequestError, operation: str) -> Refused:
     """A BFF refusal as the sentence the model relays."""
     if exc.reason == "no-document-subject":
         return Refused(NO_DOCUMENT, "no_document_subject")
+    if exc.reason in ("assignee-unknown", "assignee-ambiguous"):
+        return Refused(ASSIGNEE_UNCLEAR.format(detail=exc), "assignee_unclear")
     if exc.status == 403:
-        return Refused(FORBIDDEN, "forbidden")
+        return Refused(DELETE_FORBIDDEN if operation == "delete" else FORBIDDEN, "forbidden")
     if exc.status == 404:
-        return Refused(ANNOTATION_GONE if operation == "reply" else DOCUMENT_GONE, "not_found")
+        return Refused(ANNOTATION_GONE if operation in _ON_ONE_MARK else DOCUMENT_GONE, "not_found")
     if exc.status == 409:
         return Refused(CONFLICT, "conflict")
     if exc.status in (400, 422):

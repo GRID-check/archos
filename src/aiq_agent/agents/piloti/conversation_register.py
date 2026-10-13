@@ -264,6 +264,7 @@ def _turn_state(
         focus_shelf=inputs.focus_shelf,
         focus_region=inputs.focus_region,
         reply_in_thread=inputs.reply_in_thread,
+        trigger=inputs.trigger,
         skip_clarifier=skip_clarifier,
         project_context=context.project_context,
         platform_lessons=context.platform_lessons,

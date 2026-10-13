@@ -130,7 +130,8 @@ aiq_tasks = "aiq_agent.tools.tasks.register"
 aiq_cross_project = "aiq_agent.tools.cross_project.register"
 # The review canvas (`canvas` function group, `tools/canvas`): look at a page or
 # a box on it, see who is in the document, point and highlight, read and propose
-# Anmerkungen, answer in a thread. Its own entry point: it calls its own BFF
+# Anmerkungen, set, change or delete one when the person asks, answer in a
+# thread. Its own entry point: it calls its own BFF
 # route, and a deployment without it keeps every other tool.
 aiq_canvas = "aiq_agent.tools.canvas.register"
 # Grid telemetry `_type`s named in the shipped YAML. They register at import

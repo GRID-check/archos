@@ -48,6 +48,9 @@ const kindFor = (intent: CanvasAskIntent | null) => (intent === 'question' ? 'qu
 /**
  * Piloti's card beside a box on the page: the question being put, Piloti at
  * work on it (its own steps, live), and its answer, with the ways to keep it.
+ * While Piloti works, the card takes a note for the running turn („Piloti
+ * lenken“): it is read before Piloti's next step, and listed under the
+ * question with whether it has been taken up yet.
  * The frame is the thread card's; what Piloti does on the pages meanwhile
  * (its pointer, what it highlights) is drawn by the page layer from the room.
  */
@@ -70,6 +73,7 @@ export function PilotiAnswerCard({
   const working = ask.status === 'thinking'
   const line =
     liveLine(stepsOf(view), tChat) ?? (ask.region ? t('review.piloti.thinking') : t('review.piloti.thinkingDocument'))
+  const notes = Object.entries(view?.steers ?? {})
 
   const send = (question: string, intent: CanvasAskIntent | null = null) =>
     piloti.ask({ id: ask.id, text: question, region: ask.region, annotationId: ask.annotationId, intent })
@@ -156,7 +160,7 @@ export function PilotiAnswerCard({
               </Chip>
             ))}
           </div>
-          {piloti.busy && <p className="text-muted-foreground text-[11px] leading-4">{t('review.piloti.busy')}</p>}
+          {piloti.busy && <p className="text-muted-foreground text-[11px] leading-4">{t('review.piloti.busySteer')}</p>}
         </div>
       ) : (
         <>
@@ -164,6 +168,20 @@ export function PilotiAnswerCard({
             <p className="text-muted-foreground border-l-foreground/20 border-l-2 pl-2 text-xs leading-5 break-words">
               {ask.question}
             </p>
+            {notes.length > 0 && (
+              <ul className="space-y-1" aria-label={t('review.piloti.steerNotes')} data-testid="piloti-card-notes">
+                {notes.map(([steerId, note]) => (
+                  <li key={steerId} className="text-muted-foreground text-xs leading-5 break-words">
+                    <Chip size="sm" variant="outline" className="mr-1.5 align-middle">
+                      {note.round === undefined
+                        ? t('review.piloti.steerWaiting')
+                        : t('review.piloti.steerApplied', { round: note.round })}
+                    </Chip>
+                    {note.text}
+                  </li>
+                ))}
+              </ul>
+            )}
             {working && (
               <div role="status" aria-live="polite" data-testid="piloti-card-thinking">
                 <ShimmerText className="text-xs">{line}</ShimmerText>
@@ -173,6 +191,16 @@ export function PilotiAnswerCard({
               <div data-testid="piloti-card-answer" className="text-[13px]">
                 <MarkdownRenderer content={text} isStreaming={Boolean(view?.streaming)} compact />
               </div>
+            )}
+            {working && (
+              <Composer
+                testId="piloti-steer"
+                placeholder={t('review.piloti.steerPlaceholder')}
+                submitLabel={t('review.piloti.steerSend')}
+                onSubmit={async (note) => {
+                  if (!piloti.steer(note, ask.region)) throw new Error('Piloti takes no note right now')
+                }}
+              />
             )}
             {view?.interaction && (
               <p className="text-muted-foreground text-xs leading-5">{t('review.piloti.needsInput')}</p>
