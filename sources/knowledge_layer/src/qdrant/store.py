@@ -426,7 +426,10 @@ class QdrantStore:
         if self.count(scope) == 0:
             return False
         selector = models.Filter(must=[scope_condition([scope])])
-        self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+        with_retry(
+            f"set payload on {scope}",
+            lambda: self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True),
+        )
         return True
 
     # ------------------------------------------------------------------ plain reads
