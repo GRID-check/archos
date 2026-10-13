@@ -1571,22 +1571,20 @@ class DocumentMetadataStore:
         from sqlalchemy import bindparam
         from sqlalchemy import text
 
-        select = text(
+        select = text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             f"SELECT {_DOCUMENT_COLUMNS} FROM {TABLE_NAME} WHERE collection = :collection AND filename IN :filenames"
         ).bindparams(bindparam("filenames", expanding=True))
-        present = text(
+        present = text(  # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             f"SELECT filename FROM {TABLE_NAME} WHERE collection = :collection AND filename IN :filenames"
         ).bindparams(bindparam("filenames", expanding=True))
         try:
             with self._sync_engine.connect() as conn:
                 documents = [
                     self._row_to_document(row, collection)
-                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     for row in conn.execute(select, {"collection": collection, "filenames": list(filenames)})
                 ]
                 newer = sorted({doc.superseded_by for doc in documents if doc.superseded_by})
                 kept = (
-                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     {row[0] for row in conn.execute(present, {"collection": collection, "filenames": newer})}
                     if newer
                     else set()
