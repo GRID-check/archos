@@ -12,6 +12,12 @@ Why a same-name re-upload is a version:
 A file name with an index says a file has Fassungen. It does not say what kind of
 file it is; only the Dokumentart says that.
 
+> **The model below is being replaced.** [ADR-0104](../adr/0104-a-document-is-a-timeline-of-fassungen-and-approval-is-separate.md)
+> (proposed) makes every Fassung, under any name, a row of one document's
+> timeline, keys the index by Fassung, and takes approval out of the history.
+> This page describes what runs until each of its slices lands, and changes
+> with it.
+
 ## The model
 
 A Fassung is stored in one of two ways, and the reader sees one of them.
