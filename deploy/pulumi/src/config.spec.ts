@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
-import { loadConfig } from "./config";
-import { baseStackConfig, qdrantStackConfig } from "./test-support/stack-config";
+import { RETIRED_VECTOR_KEYS, loadConfig } from "./config";
+import { baseStackConfig } from "./test-support/stack-config";
 
 // `new pulumi.Config()` (config.ts:873) namespaces every key by the PROJECT
 // name, which the runtime reads from the mock context. Without this the keys
@@ -92,29 +92,54 @@ describe("tenant bucket prefix", () => {
   });
 });
 
-describe("the backend's vector store", () => {
-  // The backend keeps no volume (ADR-0082). An embedded store would deploy
-  // cleanly, answer from an empty index after every restart, and look healthy.
-  it("refuses to run without the shared Chroma server", () => {
-    const error = loadWith({ "grid-oib:chromaEnabled": "false" });
-    expect(error?.message).toMatch(/chromaEnabled=false is not supported/);
+describe("the retired Chroma tier and vector switch (ADR-0104)", () => {
+  // Each would read as a setting: `qdrantEnabled: false` as "no Qdrant",
+  // `vectorBackend: chroma` as "reads stay on Chroma". Neither is true, so the
+  // plan names the key instead of deploying past it.
+  it.each([
+    ["chromaEnabled", "true"],
+    ["chromaImage", "chromadb/chroma:1.5.9"],
+    ["chromaStorageSize", "20Gi"],
+    ["qdrantEnabled", "false"],
+    ["vectorBackend", "chroma"],
+  ])("refuses a stack that still sets %s", (key, value) => {
+    const error = loadWith({ [`grid-oib:${key}`]: value });
+    expect(error?.message).toMatch(new RegExp(`grid-oib:${key} is retired: Qdrant is the only vector store`));
+    expect(error?.message).toMatch(/pulumi config rm/);
   });
 
-  it("accepts the shared Chroma server", () => {
-    expect(loadWith({ "grid-oib:chromaEnabled": "true" })).toBeNull();
+  it("names every retired key at once", () => {
+    const all = Object.fromEntries(RETIRED_VECTOR_KEYS.map((k) => [`grid-oib:${k}`, "x"]));
+    expect(loadWith(all)?.message).toMatch(
+      /grid-oib:chromaEnabled, grid-oib:chromaImage, grid-oib:chromaStorageSize, grid-oib:qdrantEnabled, grid-oib:vectorBackend are retired/,
+    );
   });
 });
 
-describe("Qdrant and the vector backend (ADR-0104)", () => {
-  it("leaves an existing stack on Chroma with no Qdrant", () => {
+describe("the Chroma migration Job's knobs", () => {
+  it("is off by default and reads the claim the old StatefulSet left", () => {
     pulumi.runtime.setAllConfig(baseStackConfig());
-    const cfg = loadConfig();
-    expect(cfg.qdrant.enabled).toBe(false);
-    expect(cfg.vectorBackend).toBe("chroma");
+    expect(loadConfig().chromaMigration).toEqual({ enabled: false, claim: "data-chroma-0", scratchSize: "50Gi" });
   });
 
+  it("takes another claim and scratch size from the stack", () => {
+    pulumi.runtime.setAllConfig({
+      ...baseStackConfig(),
+      "grid-oib:chromaMigration": "true",
+      "grid-oib:chromaMigrationClaim": "data-chroma-restored",
+      "grid-oib:chromaMigrationScratchSize": "80Gi",
+    });
+    expect(loadConfig().chromaMigration).toEqual({
+      enabled: true,
+      claim: "data-chroma-restored",
+      scratchSize: "80Gi",
+    });
+  });
+});
+
+describe("Qdrant (ADR-0104)", () => {
   it("defaults the cluster to the design's shape", () => {
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig() });
+    pulumi.runtime.setAllConfig(baseStackConfig());
     const cfg = loadConfig();
     expect(cfg.qdrant).toMatchObject({
       image: "qdrant/qdrant:v1.19.2",
@@ -129,16 +154,16 @@ describe("Qdrant and the vector backend (ADR-0104)", () => {
 
   // Qdrant refuses an unknown variant at start, on every peer at once.
   it("refuses a low-memory mode Qdrant does not know, and accepts the two it does", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantLowMemoryMode": "bogus" });
+    const error = loadWith({ "grid-oib:qdrantLowMemoryMode": "bogus" });
     expect(error?.message).toMatch(/qdrantLowMemoryMode must be one of no_resident, no_populate/);
-    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantLowMemoryMode": "no_populate" })).toBeNull();
+    expect(loadWith({ "grid-oib:qdrantLowMemoryMode": "no_populate" })).toBeNull();
   });
 
   // The rotation key is accepted as a read-write key by every peer.
   it("refuses a rotation key equal to the read-only key", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantAltApiKey": "qd-ro" });
+    const error = loadWith({ "grid-oib:qdrantAltApiKey": "qd-ro" });
     expect(error?.message).toMatch(/qdrantAltApiKey must differ from grid-oib:qdrantReadOnlyApiKey/);
-    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantAltApiKey": "qd-next" })).toBeNull();
+    expect(loadWith({ "grid-oib:qdrantAltApiKey": "qd-next" })).toBeNull();
   });
 
   // 100 is no quota at all, and 0 refuses every write.
@@ -147,53 +172,38 @@ describe("Qdrant and the vector backend (ADR-0104)", () => {
     ["qdrantQuotaDiskPercent", "0"],
     ["qdrantQuotaDiskPercent", "85.5"],
   ])("refuses %s=%s", (key, value) => {
-    const error = loadWith({ ...qdrantStackConfig(), [`grid-oib:${key}`]: value });
+    const error = loadWith({ [`grid-oib:${key}`]: value });
     expect(error?.message).toMatch(new RegExp(`${key} must be a whole percentage between 1 and 99`));
   });
 
-  it.each(["dual", "qdrant"])("accepts vectorBackend=%s with Qdrant deployed", (backend) => {
-    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:vectorBackend": backend })).toBeNull();
-  });
-
-  // The backend would be pointed at a store this stack does not run.
-  it.each(["dual", "qdrant"])("refuses vectorBackend=%s without Qdrant", (backend) => {
-    const error = loadWith({ "grid-oib:vectorBackend": backend });
-    expect(error?.message).toMatch(new RegExp(`vectorBackend=${backend} needs grid-oib:qdrantEnabled=true`));
-  });
-
-  it("refuses a vectorBackend the backend does not know", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:vectorBackend": "pgvector" });
-    expect(error?.message).toMatch(/vectorBackend must be one of chroma, dual, qdrant/);
-  });
-
-  // Open-source Qdrant answers anyone without a key.
-  it("names every missing credential at once", () => {
-    const error = loadWith({ "grid-oib:qdrantEnabled": "true" });
+  // Open-source Qdrant answers anyone without a key, and it is always deployed.
+  it("names every missing credential at once, on any stack", () => {
+    const error = loadWith({}, ["grid-oib:qdrantApiKey", "grid-oib:qdrantReadOnlyApiKey", "grid-oib:qdrantS3SecretKey"]);
     expect(error?.message).toMatch(
-      /grid-oib:qdrantApiKey, grid-oib:qdrantReadOnlyApiKey, grid-oib:qdrantS3SecretKey are required/,
+      /grid-oib:qdrantApiKey, grid-oib:qdrantReadOnlyApiKey, grid-oib:qdrantS3SecretKey are required \(Qdrant is always deployed/,
     );
   });
 
   it("refuses a read-only key equal to the read-write key", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReadOnlyApiKey": "qd-rw" });
+    const error = loadWith({ "grid-oib:qdrantReadOnlyApiKey": "qd-rw" });
     expect(error?.message).toMatch(/qdrantReadOnlyApiKey must differ from grid-oib:qdrantApiKey/);
   });
 
   it("refuses a snapshot S3 secret shared with another identity", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantS3SecretKey": "s3-secret" });
+    const error = loadWith({ "grid-oib:qdrantS3SecretKey": "s3-secret" });
     expect(error?.message).toMatch(/qdrantS3SecretKey must differ from grid-oib:seaweedfsSecretKey/);
   });
 
   // Two voters lose quorum when either fails.
   it("refuses two replicas and accepts one", () => {
-    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "2" })?.message).toMatch(
+    expect(loadWith({ "grid-oib:qdrantReplicas": "2" })?.message).toMatch(
       /qdrantReplicas=2 is refused/,
     );
-    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "1" })).toBeNull();
+    expect(loadWith({ "grid-oib:qdrantReplicas": "1" })).toBeNull();
   });
 
   it("refuses a snapshot schedule that is not 5-field cron", () => {
-    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantSnapshotSchedule": "0 30 1 * * *" });
+    const error = loadWith({ "grid-oib:qdrantSnapshotSchedule": "0 30 1 * * *" });
     expect(error?.message).toMatch(/qdrantSnapshotSchedule must be a 5-field cron/);
   });
 

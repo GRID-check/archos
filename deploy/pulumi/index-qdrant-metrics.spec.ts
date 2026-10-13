@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { load } from "js-yaml";
-import { baseStackConfig, qdrantStackConfig } from "./src/test-support/stack-config";
+import { baseStackConfig } from "./src/test-support/stack-config";
 
 /**
  * Qdrant's metrics, end to end through the manifests: the whole program built
@@ -61,7 +61,7 @@ let collector: CollectorConfig;
 
 describe("Qdrant metrics through the collector", () => {
   beforeAll(async () => {
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig() });
+    pulumi.runtime.setAllConfig(baseStackConfig());
     const stack = (await import("./index")) as Record<string, unknown>;
     await Promise.all(
       Object.values(stack)

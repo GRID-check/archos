@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { baseStackConfig, qdrantStackConfig } from "../test-support/stack-config";
+import { baseStackConfig } from "../test-support/stack-config";
 
 /**
  * The two recovery knobs of `data/qdrant.ts`, set: the second key of a key
@@ -41,7 +41,6 @@ describe("qdrant during a key rotation, loading in low-memory mode", () => {
     const { installQdrant } = await import("./qdrant");
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      ...qdrantStackConfig(),
       "grid-oib:qdrantAltApiKey": "qd-next", // pragma: allowlist secret
       "grid-oib:qdrantLowMemoryMode": "no_populate",
     });

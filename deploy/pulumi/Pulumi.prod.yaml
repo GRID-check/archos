@@ -181,7 +181,7 @@ config:
 
   # `pulumi up`: the CloudNativePG Cluster (the operator owns its PVCs, so
 
-  # deleting the CR destroys every database) and the SeaweedFS / Chroma
+  # deleting the CR destroys every database) and the SeaweedFS / Qdrant
 
   # StatefulSets. Protected resources make Pulumi REFUSE to delete or replace
 
@@ -255,13 +255,15 @@ config:
   grid-oib:seaweedfsStorageSize: 20Gi
   grid-oib:seaweedfsBucket: grid-documents
   grid-oib:seaweedfsAccessKey: grid
-  # ── Shared Chroma vector store (horizontal scaling) ──
+  # ── Vector store ──
 
-  # true = one shared Chroma server all agent replicas/workers use (unpins
+  # Qdrant is always deployed (ADR-0104), three peers by default; its three keys
 
-  # vectors from a single pod). false = embedded per-pod Chroma (single agent).
-  grid-oib:chromaEnabled: "true"
-  grid-oib:chromaStorageSize: 20Gi
+  # come from the ESC environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`,
+
+  # `qdrantS3SecretKey`). The retired Chroma's volume stays as `data-chroma-0`
+
+  # until `chromaMigration` has copied it (docs/deployment/qdrant-runbook.md).
   # ── Agent (backend) — vertical scaling levers ──
 
   grid-oib:backendRequestsCpu: "1"
@@ -273,7 +275,7 @@ config:
   # ── Research execution (ADR-0021) ──
 
   # Dedicated agent-worker replicas execute research jobs, scaling the token-heavy
-  # workload horizontally. Requires chromaEnabled.
+  # workload horizontally.
   # KEDA scales the tier on research_job_queue (ADR-0079); one worker stays warm.
   grid-oib:agentWorkerMinReplicas: "1"
   grid-oib:agentWorkerMaxReplicas: "3"

@@ -224,7 +224,7 @@ export const ROLLOUT = {
 
   /**
    * aiq-agent chat tier (StatefulSet). Boot is heavy — multi-GB image,
-   * Chroma open, optional corpus sync — hence the long grace and the
+   * Qdrant client, optional corpus sync — hence the long grace and the
    * generous startupProbe in backend.ts.
    */
   backend: {
@@ -276,8 +276,8 @@ export const ROLLOUT = {
   },
 
   /**
-   * Single-replica data-plane services (Dragonfly, and the Chroma/SeaweedFS
-   * StatefulSets). Short soak — they either open their port or they don't.
+   * Single-replica data-plane services (Dragonfly, and the SeaweedFS and
+   * ClickHouse StatefulSets). Short soak — they either open their port or they don't.
    */
   dataPlane: {
     minReadySeconds: 10,
@@ -502,8 +502,8 @@ export function recreateRollout(p: RolloutProfile) {
  * `ordinals`, `template`, `updateStrategy`, `persistentVolumeClaimRetentionPolicy`
  * and `minReadySeconds` to be updated on a live StatefulSet; every other field is
  * immutable, so writing `podManagementPolicy` onto an EXISTING StatefulSet makes
- * Pulumi plan a REPLACE — for seaweedfs that is a storage outage and for chroma
- * the vector index, bought for nothing, since `OrderedReady` is already the
+ * Pulumi plan a REPLACE — for seaweedfs that is a storage outage and for
+ * clickhouse the trace store, bought for nothing, since `OrderedReady` is already the
  * default when the field is unset. The policy pack rule
  * `statefulset-no-immutable-field-writes` enforces this.
  */

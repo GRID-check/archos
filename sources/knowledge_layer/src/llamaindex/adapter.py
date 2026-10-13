@@ -39,6 +39,7 @@ import threading
 import time
 import uuid
 from collections.abc import Callable
+from collections.abc import Sequence
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from dataclasses import field
@@ -5642,7 +5643,9 @@ class LlamaIndexRetriever(BaseRetriever):
         from ..qdrant import retrieval as qdrant_retrieval
 
         self._ensure_initialized()
-        lexical_text = self._bm25_text(query) if self.hybrid_search else ""
+        lexical_text, terms = "", []
+        if self.hybrid_search:
+            lexical_text, terms = self._qdrant_lexical_inputs(query, collection_names)
         grouped = qdrant_retrieval.search_grouped(
             collection_names,
             vector=self._embed_query_cached(query),
@@ -5652,6 +5655,7 @@ class LlamaIndexRetriever(BaseRetriever):
             identity=self._identity(),
             filters=filters,
             boost=boost,
+            exact_terms=terms,
         )
         return [(scope, [self._grouped_chunk(hit) for hit in hits]) for scope, hits in grouped]
 
@@ -5663,8 +5667,8 @@ class LlamaIndexRetriever(BaseRetriever):
         chunk.metadata[FUSED_SCORE_KEY] = float(hit.fused)
         return chunk
 
-    def _qdrant_lexical_inputs(self, query: str, collection_name: str) -> tuple[str, list[str]]:
-        """The BM25 query text and the selective exact terms, both priced against the collection.
+    def _qdrant_lexical_inputs(self, query: str, collection_names: str | Sequence[str]) -> tuple[str, list[str]]:
+        """The BM25 query text and the selective exact terms, both priced against the searched collections.
 
         The BM25 terms go through the rule the German mirror has always applied
         (``german_text.select_terms``): a term absent from the collection or on
@@ -5673,24 +5677,28 @@ class LlamaIndexRetriever(BaseRetriever):
         whole Richtlinien for „OIB-RL 2“ on the digit and for a file name on
         „ausgabe mai 2023“, and fusion promoted that over the dense hits:
         exact-id MRR 0.30 against Chroma's 0.53 (``qdrant-gates-2026-10.md``).
+        The candidates leave out what BM25 must not be asked for at any price
+        (``retrieval.bm25_candidates``: umlaut stopwords, file-name pieces).
+
+        Several collections (cross-project grouped search) are priced over their
+        union, the corpus BM25's IDF is computed over.
 
         Fails open to the unpriced inputs: pricing sharpens the channels, it
         never gates a search.
         """
         from aiq_agent.common import german_text
 
+        from ..qdrant import retrieval as qdrant_retrieval
         from .hybrid import extract_exact_terms
         from .hybrid import selective_terms
 
         exact = extract_exact_terms(query) if extract_exact_terms is not None else []
-        candidates = german_text.query_terms(query, extra_terms=self._expansion_terms(query))
+        candidates = qdrant_retrieval.bm25_candidates(query, extra_terms=self._expansion_terms(query))
         try:
-            from ..qdrant import retrieval as qdrant_retrieval
-
             if len(self._qdrant_term_df) >= _EXACT_TERM_DF_CACHE_MAX:
                 self._qdrant_term_df.clear()
             total, frequencies = qdrant_retrieval.term_frequencies(
-                collection_name, [*candidates, *exact], cache=self._qdrant_term_df
+                collection_names, [*candidates, *exact], cache=self._qdrant_term_df
             )
         except Exception as e:  # noqa: BLE001 - same fail-open as the Chroma path's pricing
             logger.warning("Term frequencies unavailable (%s); BM25 and exact terms unpriced", e)
@@ -5714,8 +5722,7 @@ class LlamaIndexRetriever(BaseRetriever):
     def _bm25_text(cls, query: str) -> str:
         """The unpriced BM25 query: the question plus the EN->DE glossary terms the German mirror was given.
 
-        Cross-project grouped search sends this (its scopes are many, and the
-        pricing above counts one); a single-collection search prices it first.
+        What BM25 receives only when pricing fails (``_qdrant_lexical_inputs``).
         """
         return " ".join([query, *cls._expansion_terms(query)])
 

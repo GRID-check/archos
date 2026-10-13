@@ -163,9 +163,8 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
       s3AccessKey: "grid-langfuse",
       s3SecretKey: pulumi.secret("langfuse-secret"), // pragma: allowlist secret
     },
-    // The same holds for the Qdrant snapshot identity (ADR-0104).
+    // The Qdrant snapshot identity (ADR-0104): always declared, Qdrant always runs.
     qdrant: {
-      enabled: false,
       snapshots: {
         s3AccessKey: "grid-qdrant",
         s3SecretKey: pulumi.secret("qdrant-secret"), // pragma: allowlist secret
@@ -730,12 +729,12 @@ describe("s3 identities", () => {
     // deleting objects in buckets that already exist does not — which is why
     // only THIS identity is gated.
     const cfg = await render({});
-    expect(cfg.identities.map((i) => i.name)).toEqual(["grid", "grid-backend-read"]);
+    expect(cfg.identities.map((i) => i.name)).toEqual(["grid", "grid-backend-read", "grid-qdrant"]);
   });
 
   // ADR-0104. A snapshot is every office's chunk text and vectors in one file.
   it("confines the Qdrant identity to the snapshot bucket, and keeps `grid` off it", async () => {
-    const cfg = await render({ qdrant: { enabled: true } }, undefined, ["qdrant-snapshots"]);
+    const cfg = await render({}, undefined, ["qdrant-snapshots"]);
     const qdrant = cfg.identities.find((i) => i.name === "grid-qdrant")!;
     const grid = cfg.identities.find((i) => i.name === "grid")!;
 
@@ -746,11 +745,6 @@ describe("s3 identities", () => {
       "Write:qdrant-snapshots",
     ]);
     expect(grid.actions.join(" ")).not.toContain("qdrant-snapshots");
-  });
-
-  it("declares no Qdrant identity while the tier is off", async () => {
-    const cfg = await render({});
-    expect(cfg.identities.map((i) => i.name)).not.toContain("grid-qdrant");
   });
 });
 

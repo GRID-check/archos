@@ -2560,6 +2560,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                         user_shelves=any(entry.collection != base_collection for entry in target_collections)
                     )
                     search_input["normalized_query"] = _normalized_query_for_span(query)
+                    # How the store reads and fuses its channels (``qdrant/search.py``
+                    # ``RANKING``): traces either side of a ranking change are told apart.
+                    from .qdrant.search import RANKING
+
+                    search_input["ranking"] = RANKING.label()
                     if file_name:
                         search_input["file_name"] = file_name
                     if doc_class:

@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, backendAutoscaled } from "../config";
-import { EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
+import { CHROMA_MIGRATION, EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
@@ -22,10 +22,11 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
 
 /**
  * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`), the
- * snapshot CronJob, and the operator's throwaway `qdrant-ops` pod (the
- * runbook's restore and shard moves, run from inside the namespace): the named
- * callers of Qdrant's client ports in rule 16. A pod that reads or writes
- * vectors and is missing here times out on every call while its plan is green.
+ * snapshot CronJob, the one-shot Chroma migration's importer, and the
+ * operator's throwaway `qdrant-ops` pod (the runbook's restore and shard
+ * moves, run from inside the namespace): the named callers of Qdrant's client
+ * ports in rule 16. A pod that reads or writes vectors and is missing here
+ * times out on every call while its plan is green.
  */
 export const QDRANT_CALLERS = [
   "aiq-agent",
@@ -34,6 +35,7 @@ export const QDRANT_CALLERS = [
   "ingest-worker",
   "legacy-corpus-import",
   QDRANT.snapshotJob,
+  CHROMA_MIGRATION.name,
   QDRANT.opsLabel,
 ] as const;
 
@@ -116,7 +118,7 @@ export function installNetworkPolicies(
           values: [
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
-            ...(cfg.qdrant.enabled ? [QDRANT.name] : []),
+            QDRANT.name,
           ],
         },
       ],
@@ -399,58 +401,53 @@ export function installNetworkPolicies(
   //     17 keeps p2p (and the client ports, which peers forward requests over)
   //     between the peers alone.
   const qdrantPod = { podSelector: { matchLabels: { "app.kubernetes.io/name": QDRANT.name } } };
-  const appToQdrant = cfg.qdrant.enabled
-    ? mk("allow-app-to-qdrant", {
-        ...qdrantPod,
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: QDRANT_CALLERS.map((name) => ({
-              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
-            })),
-            ports: [
-              { protocol: "TCP", port: PORT.qdrantHttp },
-              { protocol: "TCP", port: PORT.qdrantGrpc },
-            ],
-          },
+  const appToQdrant = mk("allow-app-to-qdrant", {
+    ...qdrantPod,
+    policyTypes: ["Ingress"],
+    ingress: [
+      {
+        from: QDRANT_CALLERS.map((name) => ({
+          podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+        })),
+        ports: [
+          { protocol: "TCP", port: PORT.qdrantHttp },
+          { protocol: "TCP", port: PORT.qdrantGrpc },
         ],
-      })
-    : undefined;
-  const qdrantPeers = cfg.qdrant.enabled
-    ? mk("qdrant-peers", {
-        ...qdrantPod,
-        policyTypes: ["Ingress"],
-        ingress: [
-          {
-            from: [qdrantPod],
-            ports: [
-              { protocol: "TCP", port: PORT.qdrantHttp },
-              { protocol: "TCP", port: PORT.qdrantGrpc },
-              { protocol: "TCP", port: PORT.qdrantP2p },
-            ],
-          },
+      },
+    ],
+  });
+  const qdrantPeers = mk("qdrant-peers", {
+    ...qdrantPod,
+    policyTypes: ["Ingress"],
+    ingress: [
+      {
+        from: [qdrantPod],
+        ports: [
+          { protocol: "TCP", port: PORT.qdrantHttp },
+          { protocol: "TCP", port: PORT.qdrantGrpc },
+          { protocol: "TCP", port: PORT.qdrantP2p },
         ],
-      })
-    : undefined;
+      },
+    ],
+  });
 
   // 18. otel-collector → each Qdrant peer's metrics port, which answers without
   //     a key (`PORT.qdrantMetrics`): the collector alone, that port alone. Rule
   //     2 withholds Qdrant, and rules 16-17 grant neither the collector nor this
   //     port, so without it every scrape times out and `up` reads 0 for every
   //     peer, which looks exactly like the cluster being down.
-  const collectorToQdrant =
-    cfg.qdrant.enabled && cfg.observability.enabled
-      ? mk("allow-collector-to-qdrant-metrics", {
-          ...qdrantPod,
-          policyTypes: ["Ingress"],
-          ingress: [
-            {
-              from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
-              ports: [{ protocol: "TCP", port: PORT.qdrantMetrics }],
-            },
-          ],
-        })
-      : undefined;
+  const collectorToQdrant = cfg.observability.enabled
+    ? mk("allow-collector-to-qdrant-metrics", {
+        ...qdrantPod,
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [{ podSelector: { matchLabels: { "app.kubernetes.io/name": "otel-collector" } } }],
+            ports: [{ protocol: "TCP", port: PORT.qdrantMetrics }],
+          },
+        ],
+      })
+    : undefined;
 
   return [
     deny,
@@ -470,8 +467,8 @@ export function installNetworkPolicies(
     ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
-    ...(appToQdrant ? [appToQdrant] : []),
-    ...(qdrantPeers ? [qdrantPeers] : []),
+    appToQdrant,
+    qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),
   ];
 }

@@ -507,6 +507,127 @@ async def test_a_hit_carries_the_chunks_own_dokumentart(retriever, metadata_stor
     assert result.chunks[0].metadata.get("doc_class") == "einreichplan"
 
 
+# ---------------------------------------------------------------- what BM25 may be asked for
+
+
+def test_bm25_candidates_leave_out_the_stopwords_qdrants_folding_lets_through():
+    """Qdrant folds „über“ to ``uber`` before its German stopword list runs, so it
+    ranked every chunk with an „über“ for „was weißt du über die oib 1“."""
+    from knowledge_layer.qdrant.retrieval import bm25_candidates
+
+    assert "über" not in bm25_candidates("was weißt du über die oib 1")
+    assert bm25_candidates("Anforderungen für Fluchtwege während des Brandes") == [
+        "anforderungen",
+        "fluchtwege",
+        "des",
+        "brandes",
+    ]
+
+
+def test_bm25_candidates_leave_out_the_pieces_of_a_file_name():
+    """„oib-rl_5_ausgabe_mai_2023.pdf“ asked BM25 for „ausgabe mai 2023“, every Richtlinie's front matter."""
+    from knowledge_layer.qdrant.retrieval import bm25_candidates
+
+    assert bm25_candidates("oib-rl_5_ausgabe_mai_2023.pdf") == []
+    assert bm25_candidates("Was steht in Brandschutzkonzept_V2.PDF zur Fluchttreppe?") == [
+        "was",
+        "steht",
+        "zur",
+        "fluchttreppe",
+    ]
+    assert "5.1.1" in bm25_candidates("Punkt 5.1.1 der OIB-RL 2"), "a Punkt number is no file name"
+
+
+def test_umlaut_stopwords_never_reach_bm25_whatever_their_frequency(retriever):
+    rows = [_row(f"Abschnitt {i} regelt die Treppe.", "rl.pdf") for i in range(24)]
+    rows += [_row(f"Fluchtwege führen über das Dach {i}.", "rl.pdf") for i in range(4)]
+    _ingest(retriever, "oib_knowledge", rows)
+
+    text, _terms = retriever._qdrant_lexical_inputs("Fluchtwege über das Dach", "oib_knowledge")
+
+    assert "über" not in text.split() and "fluchtwege" in text.split()
+
+
+# ---------------------------------------------------------------- grouped search: BM25 priced over the union
+
+
+def _write(retriever: LlamaIndexRetriever, scope: str, texts: list[str]) -> None:
+    records = [_record(text, f"{scope}_{i}.pdf") for i, text in enumerate(texts)]
+    store_module.get_store(retriever._identity()).upsert(scope, records)
+
+
+@pytest.fixture
+def three_projects(retriever):
+    """Two searched projects (56 chunks together) and one that is not searched.
+
+    „Ausgabe“ is on every searched chunk; „Holzbau“ on half of proj_a (13 of
+    26) but under a quarter of the union (13 of 56); „Fluchttreppe“ only in
+    proj_c, which the search does not reach.
+    """
+    _write(retriever, "proj_a", [f"Ausgabe {i}: Holzbau im Wohnbau" for i in range(13)])
+    _write(retriever, "proj_a", [f"Ausgabe {i}: Fassade aus Glas" for i in range(13, 26)])
+    _write(retriever, "proj_b", [f"Ausgabe {i}: Stahlbeton und Decken" for i in range(30)])
+    _write(retriever, "proj_c", [f"Fluchttreppe Nummer {i}" for i in range(30)])
+    return retriever
+
+
+def test_term_frequencies_count_over_the_union_of_the_searched_scopes(three_projects):
+    from knowledge_layer.qdrant import retrieval
+
+    total, counts = retrieval.term_frequencies(["proj_a", "proj_b"], ["holzbau", "ausgabe", "fluchttreppe"])
+    assert (total, counts) == (56, {"holzbau": 13, "ausgabe": 56, "fluchttreppe": 0})
+    assert retrieval.term_frequencies("proj_a", ["holzbau"]) == (26, {"holzbau": 13})
+
+
+async def test_grouped_search_prices_bm25_over_the_searched_scopes(three_projects, monkeypatch):
+    """Cross-project search sent the raw question to BM25 (qdrant-gates-2026-10.md, "Open, before the flip").
+
+    Priced over the union: the ubiquitous „Ausgabe“ and the unreachable
+    „Fluchttreppe“ drop out, and „Holzbau“, common in one project but selective
+    across both, stays.
+    """
+    from knowledge_layer.qdrant import retrieval
+
+    sent: list[str] = []
+    real = retrieval.search_grouped
+
+    def spy(scopes, **kwargs):
+        sent.append(kwargs["lexical_text"])
+        return real(scopes, **kwargs)
+
+    monkeypatch.setattr(retrieval, "search_grouped", spy)
+    three_projects.hybrid_search = True
+
+    groups = await three_projects.search_grouped("Holzbau Fluchttreppe Ausgabe", ["proj_a", "proj_b"], 5, 2)
+
+    assert sent == ["holzbau"]
+    assert groups and {scope for scope, _ in groups} <= {"proj_a", "proj_b"}
+    assert ("proj_a,proj_b", 56, "holzbau") in three_projects._qdrant_term_df
+
+
+async def test_grouped_search_runs_the_exact_term_channels(three_projects, monkeypatch):
+    """Cross-project „§ 8“ got neither the ``paragraph_refs`` nor the phrase channel:
+    grouped search passed no exact terms. Now the one passage citing it ranks first."""
+    from knowledge_layer.qdrant import retrieval
+
+    _write(three_projects, "proj_b", ["Nach § 8 sind die Decken brandbeständig auszuführen."])
+    sent: list[list[str]] = []
+    real = retrieval.search_grouped
+
+    def spy(scopes, **kwargs):
+        sent.append(list(kwargs["exact_terms"]))
+        return real(scopes, **kwargs)
+
+    monkeypatch.setattr(retrieval, "search_grouped", spy)
+    three_projects.hybrid_search = True
+
+    groups = await three_projects.search_grouped("Was regelt § 8?", ["proj_a", "proj_b"], 5, 2)
+
+    assert sent == [["§ 8"]]
+    scope, hits = groups[0]
+    assert scope == "proj_b" and "§ 8" in hits[0].content
+
+
 # ---------------------------------------------------------------- health
 
 

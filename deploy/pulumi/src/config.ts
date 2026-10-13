@@ -2,6 +2,7 @@ import * as pulumi from "@pulumi/pulumi";
 import { createHmac } from "node:crypto";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
 import {
+  CHROMA_MIGRATION,
   KEDA_SCALER_CONNECTION_LIMIT,
   LANGFUSE,
   QDRANT,
@@ -30,16 +31,27 @@ import {
  */
 export type BarmanEncryption = "AES256" | "aws:kms";
 
-/** The values `vectorBackend` / `AIQ_VECTOR_BACKEND` accept (ADR-0104). */
-export const VECTOR_BACKENDS = ["chroma", "dual", "qdrant"] as const;
-
 /**
  * `storage.low_memory_mode` (Qdrant 1.19): how segments load at start. A
  * recovery knob for a peer that OOMs while loading, never a steady state.
  */
 export const QDRANT_LOW_MEMORY_MODES = ["no_resident", "no_populate"] as const;
 export type QdrantLowMemoryMode = (typeof QDRANT_LOW_MEMORY_MODES)[number];
-export type VectorBackend = (typeof VECTOR_BACKENDS)[number];
+
+/**
+ * Stack keys of the retired Chroma tier and of the Chroma-to-Qdrant switch
+ * (ADR-0104). Qdrant is the only vector store, always deployed, so each of
+ * these either does nothing or asks for a store this program no longer runs;
+ * `loadConfig` refuses a stack that still sets one, rather than leave it to
+ * read as a setting.
+ */
+export const RETIRED_VECTOR_KEYS = [
+  "chromaEnabled",
+  "chromaImage",
+  "chromaStorageSize",
+  "qdrantEnabled",
+  "vectorBackend",
+] as const;
 
 /**
  * Postgres database AND role name for the SeaweedFS filer namespace.
@@ -492,7 +504,7 @@ export interface GridConfig {
   /**
    * Pulumi `protect` on the resources whose loss is not recoverable by
    * re-running `pulumi up`: the CloudNativePG `Cluster` (the operator owns its
-   * PVCs, so deleting the CR destroys the databases) and the SeaweedFS / Chroma
+   * PVCs, so deleting the CR destroys the databases) and the SeaweedFS / Qdrant
    * StatefulSets (their PVCs are pinned `Retain`, but a delete is still a
    * full-outage event for object storage and the vector index).
    *
@@ -515,7 +527,7 @@ export interface GridConfig {
    * in the IPAX Control Center, not here.
    *
    * Every pod template is placed: the stores (Postgres and its PgBouncers,
-   * Chroma, SeaweedFS, ClickHouse, Dragonfly) on data, ingestion (the ingest
+   * Qdrant, SeaweedFS, ClickHouse, Dragonfly) on data, ingestion (the ingest
    * workers, Gotenberg, the corpus import) on batch, everything else, Jobs
    * included, on app. The provider's volumes carry no node affinity, so a store
    * follows its PVC to the new group; a single-replica store is down while it
@@ -552,24 +564,37 @@ export interface GridConfig {
     replicas: number;
   };
 
-  chroma: {
-    image: string;
-    storageSize: string;
+  /**
+   * The one-shot Job that moves the retired Chroma store into Qdrant
+   * (`app/chroma-migration-job.ts`, the Qdrant runbook's "Migrating from
+   * Chroma on Kubernetes"). Remove with the Job once every stack has run it.
+   */
+  chromaMigration: {
+    /**
+     * Run the Job. OFF by default. On for the deploy that removes Chroma or
+     * any after it (the pod waits for the old server to let go of the claim);
+     * it runs once while on, and is switched off before the claim is deleted.
+     */
+    enabled: boolean;
+    /** The claim the Job mounts read-only: the old StatefulSet's `data-chroma-0` unless set. */
+    claim: string;
+    /**
+     * The scratch volume the exporter writes and the importer reads, a
+     * generic ephemeral claim that lives and dies with the pod. It holds the
+     * exporter's copy of the persist dir (Chroma cannot open a read-only one),
+     * so the Chroma volume's used size; the export, about 16 KB per chunk at
+     * 3072 dimensions (12 KB of float32 vector, the text and its metadata);
+     * and about 2 GiB for the `chromadb` environment uv installs.
+     */
+    scratchSize: string;
   };
 
   /**
-   * Self-hosted Qdrant (ADR-0104), deployed BESIDE Chroma until the cutover.
+   * Self-hosted Qdrant (ADR-0104), the only vector store, always deployed.
    * `docs/architecture/qdrant-retrieval-design.md` §9 is the reasoning behind
    * every default here; `data/qdrant.ts` is the manifest.
    */
   qdrant: {
-    /**
-     * Deploy the cluster and hand the backend tiers `AIQ_QDRANT_URL` and
-     * `AIQ_QDRANT_API_KEY`. OFF by default so an existing stack plans no change
-     * until its operator turns it on; `vectorBackend` other than `chroma`
-     * requires it.
-     */
-    enabled: boolean;
     /**
      * Pinned. Self-hosted Qdrant cannot skip a minor on upgrade, and a snapshot
      * restores only into the same or the next minor, so the version moves one
@@ -633,13 +658,6 @@ export interface GridConfig {
       s3SecretKey: pulumi.Output<string>;
     };
   };
-
-  /**
-   * Which store the backend reads and writes (`AIQ_VECTOR_BACKEND`, ADR-0104):
-   * `chroma` (today), `dual` (ingest writes both, reads stay on Chroma), or
-   * `qdrant`. Anything but `chroma` requires `qdrant.enabled`.
-   */
-  vectorBackend: VectorBackend;
 
   seaweedfs: {
     /**
@@ -863,7 +881,7 @@ export interface GridConfig {
     configFile: string;
     /**
      * Chat replica count. The chat/retrieval path is replica-safe via shared
-     * Chroma + Postgres + cache; see the base-corpus-upload caveat in
+     * Qdrant + Postgres + cache; see the base-corpus-upload caveat in
      * docs/deployment/kubernetes.md §6.4.
      */
     replicas: number;
@@ -1495,30 +1513,37 @@ function requireSecretsTogether(
   );
 }
 
-/** `vectorBackend`, refused unless it is one the backend knows. */
-function vectorBackend(value: string | undefined): VectorBackend {
-  const v = (value ?? "chroma").trim();
-  const known = VECTOR_BACKENDS.find((b) => b === v);
-  if (known) return known;
-  throw new Error(`grid-oib:vectorBackend must be one of ${VECTOR_BACKENDS.join(", ")} (got "${value}").`);
+/**
+ * A stack that still sets a key of the retired Chroma tier or of the switch
+ * between the two stores. `qdrantEnabled: false` would read as "no Qdrant"
+ * and `vectorBackend: chroma` as "reads stay on Chroma"; neither is true any
+ * more, so the plan stops and names the keys to remove.
+ */
+function refuseRetiredVectorKeys(cfg: pulumi.Config): void {
+  const set = RETIRED_VECTOR_KEYS.filter((key) => cfg.get(key) !== undefined);
+  if (set.length === 0) return;
+  throw new Error(
+    `${set.map((k) => `grid-oib:${k}`).join(", ")} ${set.length === 1 ? "is" : "are"} retired: Qdrant is ` +
+      "the only vector store and always deployed, and Chroma is gone (ADR-0104). Remove " +
+      `${set.length === 1 ? "it" : "them"} with \`pulumi config rm\`. To move the old Chroma data, see ` +
+      '`chromaMigration` (docs/deployment/qdrant-runbook.md, "Migrating from Chroma on Kubernetes").',
+  );
+}
+
+/** The one-shot Chroma-to-Qdrant Job (`app/chroma-migration-job.ts`). */
+function chromaMigrationConfig(cfg: pulumi.Config): GridConfig["chromaMigration"] {
+  return {
+    enabled: bool(cfg, "chromaMigration", false),
+    claim: cfg.get("chromaMigrationClaim")?.trim() || CHROMA_MIGRATION.retainedClaim,
+    scratchSize: cfg.get("chromaMigrationScratchSize") ?? "50Gi",
+  };
 }
 
 /**
- * The Qdrant tier and the backend selector (ADR-0104), validated together
- * because each refusal below would otherwise deploy cleanly and be wrong.
+ * The Qdrant tier (ADR-0104), validated together because each refusal below
+ * would otherwise deploy cleanly and be wrong.
  */
-function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBackend"> {
-  const enabled = bool(cfg, "qdrantEnabled", false);
-  const backend = vectorBackend(cfg.get("vectorBackend"));
-  // Without the cluster the backend would be told to read or write a store
-  // that does not exist: every retrieval fails, or `dual` ingest errors on its
-  // second write, behind a green `pulumi up`.
-  if (backend !== "chroma" && !enabled) {
-    throw new Error(
-      `grid-oib:vectorBackend=${backend} needs grid-oib:qdrantEnabled=true: the backend would ` +
-        "be pointed at a Qdrant this stack does not deploy. Enable Qdrant first, or set vectorBackend=chroma.",
-    );
-  }
+function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant"> {
   const replicas = positiveInt(cfg, "qdrantReplicas", 3);
   if (replicas === 2) {
     throw new Error(
@@ -1532,7 +1557,7 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBa
   if (schedule.trim().split(/\s+/).length !== 5) {
     throw new Error(`grid-oib:qdrantSnapshotSchedule must be a 5-field cron expression (got "${schedule}").`);
   }
-  if (enabled) assertQdrantSecrets(cfg);
+  assertQdrantSecrets(cfg);
   const quotas = {
     memoryPercent: percent(cfg, "qdrantQuotaMemoryPercent", 90),
     diskPercent: percent(cfg, "qdrantQuotaDiskPercent", 85),
@@ -1546,9 +1571,7 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBa
     );
   }
   return {
-    vectorBackend: backend,
     qdrant: {
-      enabled,
       image: cfg.get("qdrantImage") ?? "qdrant/qdrant:v1.19.2",
       replicas,
       cpu: cfg.get("qdrantCpu") ?? "4",
@@ -1586,7 +1609,7 @@ function assertQdrantSecrets(cfg: pulumi.Config): void {
   requireSecretsTogether(
     cfg,
     ["qdrantApiKey", "qdrantReadOnlyApiKey", "qdrantS3SecretKey"],
-    "when grid-oib:qdrantEnabled is true (open-source Qdrant answers anyone without a key; " +
+    "(Qdrant is always deployed, and open-source Qdrant answers anyone without a key; " +
       "generate each with `openssl rand -base64 32`)",
   );
   const raw = (key: string) => (cfg.get(key) ?? "").trim();
@@ -2121,24 +2144,12 @@ export function loadConfig(): GridConfig {
     );
   }
 
+  refuseRetiredVectorKeys(cfg);
+
   // Fail closed: db-claimed job payloads carry the user's auth token and persist
   // in Postgres (table + WAL + backups + replicas). Refuse to deploy db mode
   // without a KEK to encrypt them at rest, unless plaintext is explicitly opted
   // into for dev. Guards against the silent plaintext-token-at-rest default.
-  // Fail closed: the shared Chroma server is REQUIRED. The backend keeps no
-  // volume (ADR-0082), so an embedded per-pod store would be wiped at every
-  // restart, and every web replica and worker would also open a
-  // store of its own — workers ingest into stores no web replica can read
-  // (retrieval silently empty). The deploy would report success and be
-  // functionally broken.
-  if (!bool(cfg, "chromaEnabled", true)) {
-    throw new Error(
-      "chromaEnabled=false is not supported: the backend keeps no volume, so an embedded vector " +
-        "store would be wiped on every restart, and replicas and workers must share one store. " +
-        "Set grid-oib:chromaEnabled=true.",
-    );
-  }
-
   const jobPayloadKek = cfg.getSecret("jobPayloadKek");
   const allowPlaintextJobPayloads = bool(cfg, "allowPlaintextJobPayloads", false);
   if (jobPayloadKek === undefined && !allowPlaintextJobPayloads) {
@@ -2640,15 +2651,7 @@ export function loadConfig(): GridConfig {
       ),
     },
 
-    chroma: {
-      // Deliberately pinned (NOT latest): the server API/wire protocol is
-      // coupled to the backend's `chromadb` Python client. It MUST match — a 1.x
-      // client against a 0.5.x server fails ingestion with KeyError('_type'),
-      // and 1.x moved the API/probe surface /api/v1 -> /api/v2. The backend
-      // currently ships chromadb 1.5.9; bump this only together with it.
-      image: cfg.get("chromaImage") ?? "chromadb/chroma:1.5.9",
-      storageSize: cfg.get("chromaStorageSize") ?? "20Gi",
-    },
+    chromaMigration: chromaMigrationConfig(cfg),
 
     ...qdrantConfig(cfg),
 

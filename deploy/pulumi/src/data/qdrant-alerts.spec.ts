@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import * as pulumi from "@pulumi/pulumi";
 import { load } from "js-yaml";
-import { baseStackConfig, qdrantStackConfig } from "../test-support/stack-config";
+import { baseStackConfig } from "../test-support/stack-config";
 import { loadConfig } from "../config";
 import { QDRANT_ALERT_THRESHOLDS, qdrantAlertNames, qdrantAlertRules, quantityBytes } from "./qdrant-alerts";
 
@@ -38,7 +38,7 @@ const RUNBOOK = fs.readFileSync(path.join(REPO, "docs/deployment/qdrant-runbook.
 const KUBELET = ["kubelet_volume_stats_used_bytes", "kubelet_volume_stats_capacity_bytes"];
 
 function rulesFor(config: Record<string, string>): Rule[] {
-  pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig(), ...config });
+  pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...config });
   const doc = load(qdrantAlertRules(loadConfig())) as { groups: Array<{ name: string; rules: Rule[] }> };
   expect(doc.groups).toHaveLength(1);
   return doc.groups[0].rules;
@@ -125,7 +125,7 @@ describe("Qdrant alert rules", () => {
   });
 
   it("drop the under-replication rule on a one-peer stack, which has one replica by design", () => {
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "1" });
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), "grid-oib:qdrantReplicas": "1" });
     expect(qdrantAlertNames(loadConfig())).not.toContain("QdrantShardUnderReplicated");
     expect(rules.map((r) => r.alert)).toContain("QdrantShardUnderReplicated");
   });

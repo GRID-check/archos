@@ -1,13 +1,12 @@
 import { describe, it, expect, beforeAll } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { NODE_GROUP_LABEL } from "./src/constants";
-import { baseStackConfig, qdrantStackConfig } from "./src/test-support/stack-config";
+import { baseStackConfig } from "./src/test-support/stack-config";
 import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
- * Qdrant beside Chroma (ADR-0104), with the tier on, three peers, a data group
- * and `vectorBackend: dual`: the whole program built once and every manifest
- * string the design (`qdrant-retrieval-design.md` §9) depends on checked.
+ * Qdrant, the one vector store (ADR-0104), with three peers and a data group:
+ * the whole program built once and every manifest string the design (`qdrant-retrieval-design.md` §9) depends on checked.
  *
  * Each of these is a value that plans clean and fails only on a cluster: a
  * liveness probe on `/readyz` cascades restarts during Raft catch-up, a
@@ -127,8 +126,6 @@ describe("Qdrant, three peers on the data group", () => {
     graph = new DependencyGraph();
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
-      ...qdrantStackConfig(),
-      "grid-oib:vectorBackend": "dual",
       "grid-oib:nodeGroupData": "data",
       "grid-oib:nodeGroupApp": "Node",
       "grid-oib:observabilityEnabled": "false",
@@ -334,7 +331,7 @@ describe("Qdrant, three peers on the data group", () => {
     expect(rules).toContain(`memory_resident_bytes{job=\\"qdrant\\"}) / ${16 * 2 ** 30} > 0.8`);
   });
 
-  it("hands every backend tier the URL, the key and the backend selector", () => {
+  it("hands every backend tier the URL and the key, and no Chroma or backend selector", () => {
     const tiers: Array<["StatefulSet" | "Deployment", string]> = [
       ["StatefulSet", "aiq-agent"],
       ["Deployment", "aiq-api"],
@@ -348,12 +345,12 @@ describe("Qdrant, three peers on the data group", () => {
         name: "grid-secrets",
         key: "AIQ_QDRANT_API_KEY",
       });
-      expect(env.AIQ_VECTOR_BACKEND?.value, name).toBe("dual");
       // The tenant collection spread over the peers, not created on one.
       expect(env.AIQ_QDRANT_SHARD_NUMBER?.value, name).toBe("6");
       expect(env.AIQ_QDRANT_REPLICATION_FACTOR?.value, name).toBe("2");
-      // Chroma stays until the cutover.
-      expect(env.AIQ_CHROMA_URL?.value, name).toBeDefined();
+      // Qdrant is the only store: nothing points a tier at Chroma or picks between the two.
+      const retired = Object.keys(env).filter((k) => k.startsWith("AIQ_CHROMA") || k === "AIQ_VECTOR_BACKEND");
+      expect(retired, name).toEqual([]);
     }
     expect(secretData("grid-secrets").AIQ_QDRANT_API_KEY).toBe("qd-rw");
   });
@@ -371,7 +368,15 @@ describe("Qdrant, three peers on the data group", () => {
     const app = policy("allow-app-to-qdrant").ingress[0];
     const callers = app.from.map((f) => f.podSelector.matchLabels["app.kubernetes.io/name"]);
     expect(callers).toEqual(
-      expect.arrayContaining(["aiq-agent", "aiq-api", "agent-worker", "ingest-worker", "qdrant-snapshot", "qdrant-ops"]),
+      expect.arrayContaining([
+        "aiq-agent",
+        "aiq-api",
+        "agent-worker",
+        "ingest-worker",
+        "qdrant-snapshot",
+        "chroma-migration",
+        "qdrant-ops",
+      ]),
     );
     expect(app.ports.map((p) => p.port)).toEqual([6333, 6334]);
 
