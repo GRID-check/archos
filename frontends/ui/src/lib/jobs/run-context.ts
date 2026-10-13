@@ -119,6 +119,12 @@ async function resolveBudgetSnapshot(
       remainingOrgUsd: status.remainingOrgUsd,
       remainingUserUsd: status.remainingUserUsd,
       remainingProjectUsd: status.remainingProjectUsd,
+      // An organization on its own key counts in tokens (ADR-0053). The agent
+      // reads a signed envelope's budget wholesale, so a run whose envelope
+      // left these out would run with no token limit at all.
+      remainingOrgTokens: status.remainingOrgTokens,
+      remainingUserTokens: status.remainingUserTokens,
+      remainingProjectTokens: status.remainingProjectTokens,
     }
   } catch {
     return null

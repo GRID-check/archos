@@ -125,6 +125,7 @@ import {
   updateJob,
 } from './service'
 import { AGENT_RUN_INPUT_MAX_CHARS } from './types'
+import { getBudgetStatus } from '@/lib/budgets/service'
 import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 
 const emptySkill = {} as SkillSnapshot
@@ -831,6 +832,26 @@ describe('submitAgentRun', () => {
     // (`verifyGridRequestContextEnvelope`), and every person-acting tool with it.
     expect(input.issuedAt).toBeGreaterThanOrEqual(before)
     expect(input.issuedAt).toBeLessThanOrEqual(Date.now())
+  })
+
+  it('carries the token budgets too: an organization on its own key counts in tokens (ADR-0053)', async () => {
+    vi.mocked(getBudgetStatus).mockResolvedValueOnce({
+      remainingOrgUsd: null,
+      remainingUserUsd: null,
+      remainingProjectUsd: null,
+      remainingOrgTokens: 900_000,
+      remainingUserTokens: 40_000,
+      remainingProjectTokens: 120_000,
+    } as Awaited<ReturnType<typeof getBudgetStatus>>)
+    await submitAgentRun(spec)
+
+    // The agent reads a signed envelope's budget wholesale; without these the run has no token limit.
+    const input = vi.mocked(buildGridRequestContextWireHeaders).mock.calls[0][0]
+    expect(input.budget).toMatchObject({
+      remainingOrgTokens: 900_000,
+      remainingUserTokens: 40_000,
+      remainingProjectTokens: 120_000,
+    })
   })
 
   it('never searches a restricted folder: its report is filed for the whole project (ADR-0087)', async () => {
