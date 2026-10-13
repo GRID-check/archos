@@ -570,6 +570,26 @@ export const chat: typeof en.chat = {
         noProject:
           'Diese Unterhaltung gehört zu keinem Projekt, es gibt hier also keine Ablage zu ändern.',
       },
+      // Eine Karte, deren Vorschlag der Server hält (ADR-0105): Stand, Ergebnis
+      // je Zeile und wer entschieden hat, kommen aus diesem Objekt, also sieht
+      // jede Leserin die Entscheidung der Kollegin.
+      live: {
+        partial: '{applied} von {total} übernommen.',
+        failed: 'Nichts konnte übernommen werden. Es wurde nichts geändert.',
+        decidedBy: {
+          applied: 'Übernommen von {name} · {when}',
+          partially_applied: 'Übernommen von {name} · {when}',
+          failed: 'Versucht von {name} · {when}',
+          dismissed: 'Verworfen von {name} · {when}',
+        },
+        // Der Name ist dieser Leserin nicht bekannt.
+        someone: 'einer Kollegin oder einem Kollegen',
+        // Der Klick kam an, nachdem jemand anderes entschieden hatte.
+        overtaken: 'Inzwischen wurde darüber entschieden.',
+        readOnly: 'Sie können diesen Vorschlag lesen, in diesem Projekt aber nicht übernehmen.',
+        loadError: 'Der Stand dieses Vorschlags konnte nicht geladen werden.',
+        dismissError: 'Konnte nicht verworfen werden.',
+      },
     },
     // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
     // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und

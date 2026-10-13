@@ -11,14 +11,17 @@ contract, the resolver and every refusal; what differed was one or two
 arguments. Four names cost the model four choices and ~760 tokens of schema on
 every call for what a person thinks of as one act — "tidy the files" — so the
 operation is an argument now (docs/architecture/agent-tool-surface.md). The
-card's ``operation`` vocabulary is unchanged, so the frontend executor and every
-stored card read exactly as before.
+card's ``operation`` vocabulary is unchanged, so every stored card reads exactly
+as before.
 
 The reason is the invariant in ``src/aiq_agent/tools/AGENTS.md``: the BFF is
 the single writer of ``grid_app`` (ADR-0003), so this tier has no route to a
-document row and must not grow one. Accepting the card runs the change through
-the same endpoints the Files pane uses, in the reader's own session, where
-``requireProjectAccess`` and the audit trail already are. A tool here that
+document row and must not grow one. The proposal is a server object
+(``client.py``, ADR-0105): accepting the card asks the BFF to apply it through
+the same services the Files pane uses, in the accepting person's session, where
+``requireProjectAccess`` and the audit trail already are. Where the BFF cannot
+store it, the card falls back to running the change from the browser, as the
+reader, which is how it worked before (``cards.py``). A tool here that
 wrote directly would bypass all three in one call — and would do it on behalf
 of a user who never saw what was about to happen.
 
@@ -89,7 +92,7 @@ def _document(name: str) -> ResolvedDocument | str:
 # `_PROPOSED`; anything else is a refusal the model can turn into its answer.
 
 
-def _move(document: str, target_folder: str) -> str:
+async def _move(document: str, target_folder: str) -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
@@ -107,7 +110,7 @@ def _move(document: str, target_folder: str) -> str:
         "target_folder": folder,
     }
     title = f"Verschieben nach „{folder}“" if folder else "Auf die oberste Ebene verschieben"
-    if not propose_file_operation(operation="move", title=title, item=item):
+    if not await propose_file_operation(operation="move", title=title, item=item):
         return _NO_CARD
     return f"Vorgeschlagen: `{resolved.file_name}` → {folder or 'oberste Ebene'}. {_PROPOSED}"
 
@@ -119,7 +122,7 @@ def _move(document: str, target_folder: str) -> str:
 MAX_DISPLAY_NAME_CHARS = 255
 
 
-def _rename(document: str, new_name: str) -> str:
+async def _rename(document: str, new_name: str) -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
@@ -137,7 +140,7 @@ def _rename(document: str, new_name: str) -> str:
         "current": resolved.file_name,
         "new_display_name": name,
     }
-    if not propose_file_operation(operation="rename", title="Datei umbenennen", item=item):
+    if not await propose_file_operation(operation="rename", title="Datei umbenennen", item=item):
         return _NO_CARD
     return f"Vorgeschlagen: `{resolved.file_name}` → „{name}“. {_PROPOSED}"
 
@@ -148,7 +151,7 @@ def _rename(document: str, new_name: str) -> str:
 _FOLDER_NAME_MAX = 120
 
 
-def _create_folder(name: str, parent: str) -> str:
+async def _create_folder(name: str, parent: str) -> str:
     folder_name = " ".join((name or "").split())
     if not folder_name:
         return "Fehler: `new_name` ist leer. Nenne den Namen des neuen Ordners."
@@ -168,12 +171,12 @@ def _create_folder(name: str, parent: str) -> str:
         return f"Den Ordner „{full}“ gibt es bereits. Kein Vorschlag nötig; du kannst direkt hineinlegen."
 
     item = {"folder_name": folder_name, "parent_folder": parent_path, "current": full}
-    if not propose_file_operation(operation="create_folder", title="Neuen Ordner anlegen", item=item):
+    if not await propose_file_operation(operation="create_folder", title="Neuen Ordner anlegen", item=item):
         return _NO_CARD
     return f"Vorgeschlagen: neuer Ordner „{full}“. {_PROPOSED}"
 
 
-def _assign(document: str, member: str) -> str:
+async def _assign(document: str, member: str) -> str:
     resolved = _document(document)
     if isinstance(resolved, str):
         return resolved
@@ -182,7 +185,7 @@ def _assign(document: str, member: str) -> str:
         return "Fehler: `member` ist leer. Nenne die Person so, wie die Nutzerin sie genannt hat."
 
     item = {"document": resolved.file_name, "source": resolved.source, "member": person}
-    if not propose_file_operation(operation="assign", title="Datei zuweisen", item=item):
+    if not await propose_file_operation(operation="assign", title="Datei zuweisen", item=item):
         return _NO_CARD
     return f"Vorgeschlagen: `{resolved.file_name}` → {person}. {_PROPOSED}"
 
@@ -205,9 +208,8 @@ _DESCRIPTION = (
     "E-Mail) — hier nicht geprüft, sondern beim Annehmen gegen die Projektmitglieder aufgelöst. Nur "
     "vorschlagen, wenn die Nutzerin die Person selbst genannt hat, und den Namen unverändert übernehmen; "
     "nie eine Person aus dem Zusammenhang erschließen.\n"
-    "`document` ist der Dateiname genau so, wie ihn die Übersicht oder `list_files` zeigt. Mehrere "
-    "Aufrufe derselben Operation in einer Antwort sammeln sich auf EINER Karte: „räum die "
-    "Einreichunterlagen zusammen“ bleibt eine Entscheidung, nicht vier."
+    "`document` ist der Dateiname genau so, wie ihn die Übersicht oder `list_files` zeigt. Ein Aufruf "
+    "schlägt EINE Änderung vor; mehrere Dateien sind mehrere Aufrufe."
 )
 
 _OPERATIONS = ("move", "rename", "create_folder", "assign")
@@ -239,13 +241,13 @@ async def propose_file_change(tool_config: ProposeFileChangeConfig, builder: Bui
             return refused
         op = (operation or "").strip().lower()
         if op == "move":
-            return _move(document, target_folder)
+            return await _move(document, target_folder)
         if op == "rename":
-            return _rename(document, new_name)
+            return await _rename(document, new_name)
         if op == "create_folder":
-            return _create_folder(new_name, target_folder)
+            return await _create_folder(new_name, target_folder)
         if op == "assign":
-            return _assign(document, member)
+            return await _assign(document, member)
         return f"Fehler: `operation` muss eine von {', '.join(_OPERATIONS)} sein."
 
     yield FunctionInfo.from_fn(_propose, description=_DESCRIPTION)

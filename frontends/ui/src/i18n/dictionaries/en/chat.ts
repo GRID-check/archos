@@ -569,6 +569,26 @@ export const chat = {
       unavailable: {
         noProject: 'This chat is not attached to a project, so there is no file store to change.',
       },
+      // A card whose proposal the server holds (ADR-0105): its status, the
+      // result of every row and who decided are read from that object, so a
+      // colleague's decision is what every reader sees.
+      live: {
+        partial: '{applied} of {total} applied.',
+        failed: 'Nothing could be applied. Nothing was changed.',
+        decidedBy: {
+          applied: 'Applied by {name} · {when}',
+          partially_applied: 'Applied by {name} · {when}',
+          failed: 'Tried by {name} · {when}',
+          dismissed: 'Discarded by {name} · {when}',
+        },
+        // The decider's name is not known to this reader.
+        someone: 'a colleague',
+        // The click arrived after somebody else had decided.
+        overtaken: 'This was decided in the meantime.',
+        readOnly: 'You can read this proposal, but not apply it in this project.',
+        loadError: 'The state of this proposal could not be loaded.',
+        dismissError: 'Could not be discarded.',
+      },
     },
     // What Piloti did on a document: marks it set, threads it answered in.
     // One „take over" or „discard" per mark, and the way into the review at

@@ -147,6 +147,9 @@ const BOUNDARY_MIGRATIONS = [
   // The record of each wake of Piloti on an Anmerkung (ADR-0106). Keyed by its
   // organization AND the mark's.
   '0136_piloti_wakes.sql',
+  // Adds proposed_changes — a workspace change Piloti proposes and a person
+  // applies (ADR-0105). Keyed by its organization AND the project's.
+  '0137_proposed_changes.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

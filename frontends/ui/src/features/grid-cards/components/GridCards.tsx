@@ -424,6 +424,7 @@ export const GridCardView: FC<GridCardViewProps> = ({
           operation={card.operation}
           operations={card.operations}
           note={card.note}
+          proposalId={card.proposal_id}
           messageId={messageId}
           cardKey={key}
           decisionsMustPersist={decisionsMustPersist}

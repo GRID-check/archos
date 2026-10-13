@@ -1006,16 +1006,19 @@ class TaskCreatedCard(CardModel):
 # ── File-operation proposal (system-emitted, interactive) ────────────────────
 # ONE card type for four verbs, discriminated by `operation`, because the
 # alternative is four cards that differ in one field and share every line of
-# their chrome, their decision lifecycle and their i18n. The four write-side
-# workspace tools (`tools/files/`) each emit this card and NEVER perform the
+# their chrome, their decision lifecycle and their i18n. The one write-side
+# workspace tool (`tools/files/`) emits this card and NEVER performs the
 # operation: the Python tier holds no path into `grid_app` (ADR-0003), so
-# accepting it is what executes — through the same routes the Files pane uses,
-# in the reader's own session, under `requireProjectAccess`.
+# accepting it is what executes. With `proposal_id` the server applies the
+# stored proposal in the accepting person's session (ADR-0105); without one the
+# browser runs it through the routes the Files pane uses, in the reader's own
+# session. Either way under `requireProjectAccess`.
 #
-# The batch is what makes it one card and not one per file. „Räum die
-# Einreichunterlagen zusammen" is four moves, and four cards asking the same
-# question four times is four decisions for one intention. So `operations`
-# is a list, capped, and every entry shares the card's `operation` kind.
+# The batch is why `operations` is a list, capped, every entry sharing the
+# card's `operation` kind: „Räum die Einreichunterlagen zusammen" is four
+# moves. A stored proposal cannot grow, so today only the browser-executed card
+# batches; a server-backed one carries the call that created it
+# (`tools/files/cards.py` says why).
 
 #: How many operations one card may carry. A tidying turn proposes a handful;
 #: past that the card stops being a decision the reader can actually read
@@ -1078,13 +1081,17 @@ class FileOperationItem(CardModel):
 
 
 class FileOperationProposalCard(CardModel):
-    """A workspace change the agent PROPOSES and the reader executes.
+    """A workspace change the agent PROPOSES and a person applies.
 
-    System-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``),
-    one card per ``operation``. Every operation is a write, none of them writes: the card is the proposal, the
-    reader's Accept runs it through the existing document/folder/assignment
-    routes in their own session, and the tool's own result text says plainly
-    that nothing has changed yet.
+    System-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``).
+    Every operation is a write, none of them writes: the tool's own result text
+    says plainly that nothing has changed yet. With ``proposal_id`` the card
+    shows a proposal stored on the server (ADR-0105), which the server applies
+    in the accepting person's session; it then carries the one operation of
+    the call that created it. Without one (an older BFF, a run with no
+    envelope) the reader's Accept runs the rows through the existing
+    document/folder/assignment routes from the browser, and repeated calls of
+    one ``operation`` extend the card.
     """
 
     type: Literal["file_operation_proposal"] = "file_operation_proposal"
@@ -1096,6 +1103,14 @@ class FileOperationProposalCard(CardModel):
         description="The proposed changes, in the order they will be applied",
     )
     note: str | None = Field(default=None, description="One line of context under the list, when it adds something")
+    proposal_id: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description=(
+            "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser executes "
+            "the rows, as before proposals were server objects"
+        ),
+    )
 
     @model_validator(mode="after")
     def _require_operation_fields(self) -> "FileOperationProposalCard":

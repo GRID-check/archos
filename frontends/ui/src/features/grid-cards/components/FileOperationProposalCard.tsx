@@ -33,18 +33,37 @@
  * never saw which file had moved. The busy button keeps its width (both labels
  * are stacked in one cell) and its focus (`aria-disabled`, never `disabled`:
  * Chrome blurs a focused button the moment it becomes disabled).
+ *
+ * ## Two ways a card is decided
+ *
+ * A card with a `proposal_id` is a receipt of a proposed change the server
+ * holds (ADR-0105, `lib/proposals`). It reads that object when it is shown and
+ * after every decision, draws the object's status and who decided it, and its
+ * buttons ask the server to apply or dismiss it in the deciding person's
+ * session. Nothing runs in the browser and nothing is written to
+ * `cardInteractions`: the object is the truth, so a colleague who decided it
+ * first is what the card shows ({@link ServerProposalCard}).
+ *
+ * A card without one (stored before proposals were objects, or the agent's
+ * fallback when it could not create one) keeps the older contract: Accept runs
+ * the operations from the browser and the decision is kept on the message
+ * ({@link BrowserAppliedCard}).
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ComponentProps } from 'react'
 import { Check, FolderTree, X } from 'lucide-react'
 import { motion, motionDeliberate, useIconSwapTransition } from '@/components/motion'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
-import { useTranslations } from '@/i18n'
+import { useLocale, useTranslations } from '@/i18n'
+import { formatAbsoluteTime } from '@/lib/format'
+import { applyProposal, dismissProposal, getProposal } from '@/lib/proposals/client'
+import type { ProposedChangeStatus, ProposedChangeView } from '@/lib/proposals/types'
 import { useChatStore } from '@/features/chat/store'
 import { useCardDecision } from '../hooks/use-card-decision'
 import {
   applyFileOperations,
+  notifyIfAnyApplied,
   operationLabel,
   type FileOperationItem,
   type FileOperationKind,
@@ -67,6 +86,11 @@ interface FileOperationProposalCardProps {
   cardKey: string
   /** Whether this surface requires the answer to be persisted. */
   decisionsMustPersist?: boolean
+  /**
+   * The proposed change this card is a receipt of, when the server holds one
+   * (ADR-0105). Present: the server decides. Absent: the browser runs it.
+   */
+  proposalId?: string | null
 }
 
 /** The project root has no path to print; it has a name the reader knows. */
@@ -136,6 +160,30 @@ function OperationRow({
   )
 }
 
+/** Every row of the proposal, each with its verdict once there is one. */
+function OperationList({
+  operation,
+  items,
+  results,
+}: {
+  operation: FileOperationKind
+  items: readonly FileOperationItem[]
+  results?: readonly FileOperationResult[] | null
+}) {
+  return (
+    <ul className="flex flex-col gap-1" data-testid="file-operation-rows">
+      {items.map((item, index) => (
+        <OperationRow
+          key={`${operationLabel(operation, item)}-${index}`}
+          operation={operation}
+          item={item}
+          result={results?.[index]}
+        />
+      ))}
+    </ul>
+  )
+}
+
 /**
  * A row's verdict, in a slot that is there before it: the check pops in as an
  * icon swap (scale on the snap spring, opacity on a tween), a failure is a quiet ✗ beside the reason the row prints.
@@ -159,7 +207,201 @@ function RowStatus({ result }: { result?: FileOperationResult }) {
   )
 }
 
-export function FileOperationProposalCard({
+export function FileOperationProposalCard({ proposalId, ...props }: FileOperationProposalCardProps) {
+  return proposalId ? <ServerProposalCard {...props} proposalId={proposalId} /> : <BrowserAppliedCard {...props} />
+}
+
+type ProposalTone = ComponentProps<typeof ProposalShell>['tone']
+
+/**
+ * The shell's accent per server status. A failed proposal changed nothing, so
+ * it does not borrow the green of an applied one; its words carry the failure.
+ */
+const STATUS_TONE: Record<ProposedChangeStatus, ProposalTone> = {
+  proposed: 'pending',
+  applied: 'accepted',
+  partially_applied: 'accepted',
+  failed: 'dismissed',
+  dismissed: 'dismissed',
+}
+
+/** A refusal because the proposal is no longer `proposed`: somebody decided it first. */
+const isConflict = (error: unknown): boolean =>
+  typeof error === 'object' && error !== null && (error as { status?: unknown }).status === 409
+
+/**
+ * A card that is the receipt of a server-held proposed change (ADR-0105).
+ *
+ * The rows come from the object once it has been read (the card's own copy is
+ * what the first paint shows), and so do the results per row, the status and
+ * who decided. `canDecide` is the server's word on whether this reader may
+ * press anything, and a 409 means a colleague was faster: the card reads the
+ * object again and shows their decision instead of an error.
+ */
+function ServerProposalCard({
+  proposalId,
+  title,
+  operation,
+  operations,
+  note,
+}: Omit<FileOperationProposalCardProps, 'proposalId'> & { proposalId: string }) {
+  const t = useTranslations('chat')
+  const { locale } = useLocale()
+  const [proposal, setProposal] = useState<ProposedChangeView | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
+  const [busy, setBusy] = useState<'apply' | 'dismiss' | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [overtaken, setOvertaken] = useState(false)
+
+  useEffect(() => {
+    let current = true
+    getProposal(proposalId).then(
+      (response) => {
+        if (current) setProposal(response.proposal)
+      },
+      () => {
+        if (current) setLoadFailed(true)
+      }
+    )
+    return () => {
+      current = false
+    }
+  }, [proposalId])
+
+  // After a decision, the object as it now stands. A colleague's apply changed
+  // files too, so the Files list is told either way.
+  const settle = (next: ProposedChangeView): void => {
+    setProposal(next)
+    notifyIfAnyApplied(next.results)
+  }
+
+  const decide = async (action: 'apply' | 'dismiss'): Promise<void> => {
+    if (busy) return
+    setError(null)
+    setBusy(action)
+    try {
+      const response = await (action === 'apply' ? applyProposal : dismissProposal)(proposalId)
+      settle(response.proposal)
+    } catch (failure) {
+      if (!isConflict(failure)) {
+        setError(t(action === 'apply' ? 'cards.fileOperationProposal.error' : 'cards.fileOperationProposal.live.dismissError'))
+        return
+      }
+      setOvertaken(true)
+      await getProposal(proposalId).then(
+        (response) => settle(response.proposal),
+        () => setError(t('cards.fileOperationProposal.live.loadError'))
+      )
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const verb = proposal?.payload.operation ?? operation
+  const items: readonly FileOperationItem[] = proposal?.payload.operations ?? operations
+  const status: ProposedChangeStatus = proposal?.status ?? 'proposed'
+  const tone = STATUS_TONE[status]
+
+  if (proposal && status !== 'proposed') {
+    const applied = proposal.results?.filter((result) => result.ok).length ?? 0
+    const summary =
+      status === 'applied'
+        ? t(`cards.fileOperationProposal.applied.${verb}`, { count: items.length })
+        : status === 'partially_applied'
+          ? t('cards.fileOperationProposal.live.partial', { applied, total: items.length })
+          : status === 'failed'
+            ? t('cards.fileOperationProposal.live.failed')
+            : t('cards.fileOperationProposal.dismissed')
+    return (
+      <ProposalShell tone={tone}>
+        <p
+          className={status === 'failed' ? 'text-destructive text-sm' : status === 'dismissed' ? 'text-muted-foreground text-sm' : 'text-foreground text-sm'}
+          data-testid="file-operation-status"
+          data-status={status}
+        >
+          {summary}
+        </p>
+        {status !== 'dismissed' && <OperationList operation={verb} items={items} results={proposal.results} />}
+        {overtaken && (
+          <p className="card-caption text-muted-foreground" data-testid="file-operation-overtaken">
+            {t('cards.fileOperationProposal.live.overtaken')}
+          </p>
+        )}
+        {proposal.decidedAt && (
+          <p className="card-caption text-muted-foreground" data-testid="file-operation-decided-by">
+            {t(`cards.fileOperationProposal.live.decidedBy.${status}`, {
+              name: proposal.decidedByName ?? t('cards.fileOperationProposal.live.someone'),
+              when: formatAbsoluteTime(proposal.decidedAt, locale),
+            })}
+          </p>
+        )}
+      </ProposalShell>
+    )
+  }
+
+  const shownNote = proposal ? proposal.payload.note : note
+  return (
+    <ProposalShell tone={tone}>
+      <SectionLabel icon={FolderTree}>{t(`cards.fileOperationProposal.eyebrow.${verb}`)}</SectionLabel>
+
+      <p className="text-foreground text-sm font-semibold">{title}</p>
+
+      <OperationList operation={verb} items={items} />
+
+      {shownNote && <p className="card-caption text-muted-foreground">{shownNote}</p>}
+
+      {/* Why there is nothing to press, stated where the buttons would be:
+          the object could not be read, or the server says this reader may not
+          decide it (no write access to the project). */}
+      {loadFailed && (
+        <p className="card-caption text-muted-foreground" data-testid="file-operation-unavailable">
+          {t('cards.fileOperationProposal.live.loadError')}
+        </p>
+      )}
+      {proposal && !proposal.canDecide && (
+        <p className="card-caption text-muted-foreground" data-testid="file-operation-unavailable">
+          {t('cards.fileOperationProposal.live.readOnly')}
+        </p>
+      )}
+
+      {error && <p className="text-destructive text-sm">{error}</p>}
+
+      {proposal?.canDecide && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <p className="text-muted-foreground mr-auto text-sm">{t('cards.fileOperationProposal.prompt')}</p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void decide('apply')}
+            aria-disabled={busy !== null || undefined}
+            aria-busy={busy === 'apply' || undefined}
+            className="aria-disabled:cursor-default"
+          >
+            <StackedLabel
+              busy={busy === 'apply'}
+              idle={t('cards.fileOperationProposal.accept')}
+              working={t('cards.fileOperationProposal.applying')}
+            />
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => void decide('dismiss')}
+            aria-disabled={busy !== null || undefined}
+            aria-busy={busy === 'dismiss' || undefined}
+            className="aria-disabled:cursor-default aria-disabled:opacity-50"
+          >
+            {t('cards.fileOperationProposal.reject')}
+          </Button>
+        </div>
+      )}
+    </ProposalShell>
+  )
+}
+
+/** The older contract: Accept runs the operations from the browser and the decision lives on the message. */
+function BrowserAppliedCard({
   title,
   operation,
   operations,
@@ -167,7 +409,7 @@ export function FileOperationProposalCard({
   messageId,
   cardKey,
   decisionsMustPersist,
-}: FileOperationProposalCardProps) {
+}: Omit<FileOperationProposalCardProps, 'proposalId'>) {
   const t = useTranslations('chat')
   const projectId = useChatStore((s) => s.projectId)
   const { decision, decide, canDecide } = useCardDecision(messageId, cardKey, {
@@ -263,16 +505,7 @@ export function FileOperationProposalCard({
 
       <p className="text-foreground text-sm font-semibold">{title}</p>
 
-      <ul className="flex flex-col gap-1" data-testid="file-operation-rows">
-        {operations.map((item, index) => (
-          <OperationRow
-            key={`${operationLabel(operation, item)}-${index}`}
-            operation={operation}
-            item={item}
-            result={results?.[index]}
-          />
-        ))}
-      </ul>
+      <OperationList operation={operation} items={operations} results={results} />
 
       {note && <p className="card-caption text-muted-foreground">{note}</p>}
 

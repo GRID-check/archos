@@ -27,7 +27,7 @@ export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as 
 export type FileOperation = (typeof FILE_OPERATIONS)[number]
 
 /** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/models.py`. */
-export const MAX_FILE_OPERATION_ITEMS = 20
+export const MAX_FILE_OPERATION_ITEMS = 8
 
 const text = (max: number) => z.string().trim().min(1).max(max)
 
