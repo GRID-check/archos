@@ -10,6 +10,14 @@ Failure policy follows what reads the store. Under ``dual`` nothing reads
 Qdrant yet, so a failed mirror is logged and the backfill heals it; under
 ``qdrant`` a chunk missing from Qdrant is a chunk no search finds, so the
 failure propagates and the file fails where a person can see it.
+
+Deletes run in the order that never leaves deleted content readable
+(:func:`ordered_delete`): under ``qdrant`` the store reads come from goes
+first, so a failure there aborts before Chroma loses anything and the whole
+delete can be retried; under ``dual`` Chroma goes first and the mirror is
+best effort. Either way a mirror failure never skips the Chroma-side cleanup
+that follows a Chroma delete (the metadata row, the lexical mirror, the
+collection version): the caller runs that after this returns.
 """
 
 from __future__ import annotations
@@ -26,6 +34,7 @@ from .config import reads_qdrant
 from .config import writes_qdrant
 from .payload import ChunkRecord
 from .payload import document_facts
+from .prefilter import FOLDER_FIELD
 from .store import get_store
 
 logger = logging.getLogger(__name__)
@@ -76,15 +85,20 @@ def records_from_chroma(fetched: Mapping[str, Any]) -> list[ChunkRecord]:
 
 
 def facts_by_file(scope: str, file_names: Iterable[str] | None = None) -> dict[str, dict[str, Any]]:
-    """The person-set facts of each file in ``scope``, from the metadata store (the authority)."""
-    from aiq_agent.knowledge import get_available_documents
+    """The person-set facts of each file in ``scope`` (only of ``file_names`` when given), from the metadata store.
 
-    wanted = set(file_names) if file_names is not None else None
-    return {
-        document.file_name: document_facts(document)
-        for document in get_available_documents(scope)
-        if wanted is None or document.file_name in wanted
-    }
+    Given names, only their rows are read: a change to one file must not load
+    every document of the scope.
+    """
+    if file_names is None:
+        from aiq_agent.knowledge import get_available_documents
+
+        documents = get_available_documents(scope)
+    else:
+        from aiq_agent.knowledge import get_documents
+
+        documents = get_documents(scope, sorted(set(file_names)))
+    return {document.file_name: document_facts(document) for document in documents}
 
 
 def enrichment(scope: str, config: Mapping[str, Any] | None = None) -> dict[str, Any]:
@@ -136,36 +150,85 @@ def mirror_file(
     return _guarded(f"mirror {scope}/{file_name}", work, 0)
 
 
-def delete_chunks(scope: str, chunk_ids: Sequence[str]) -> None:
-    """Delete chunks Chroma just deleted."""
-    if enabled() and chunk_ids:
-        _guarded(f"delete chunks in {scope}", lambda: get_store().delete_chunks(scope, chunk_ids), None)
+def ordered_delete(
+    scope: str,
+    chroma_work: Callable[[], T],
+    *,
+    chunk_ids: Sequence[str] = (),
+    file_name: str | None = None,
+    matches: Callable[[str], bool] | None = None,
+    whole_scope: bool = False,
+) -> T:
+    """Delete from both stores in the order that never leaves deleted content readable.
+
+    What goes from Qdrant: ``chunk_ids``, every chunk of ``file_name`` under
+    each stored spelling ``matches`` accepts, or the whole scope.
+
+    * ``chroma``: only ``chroma_work`` runs.
+    * ``qdrant``: Qdrant first, and a failure (after the store's retries)
+      raises before ``chroma_work`` has run: nothing is deleted anywhere, and
+      the caller's retry starts over. Deleting Chroma first left content
+      retrievable that the caller had been told was gone.
+    * ``dual``: ``chroma_work`` first, then the mirror, whose failure is
+      logged for the backfill and never reaches the caller.
+
+    Returns what ``chroma_work`` returns. The caller's Chroma-side cleanup
+    runs after this, so the mirror cannot skip it.
+    """
+    if not enabled():
+        return chroma_work()
+
+    def qdrant_work() -> None:
+        store = get_store()
+        if whole_scope:
+            store.delete_scope(scope)
+            return
+        ids = [str(chunk_id) for chunk_id in chunk_ids if chunk_id]
+        if ids:
+            store.delete_chunks(scope, ids)
+        if file_name is not None:
+            store.delete_file(scope, file_name, matches)
+
+    if reads_qdrant():
+        qdrant_work()
+        return chroma_work()
+    result = chroma_work()
+    _guarded(f"delete in {scope}", qdrant_work, None)
+    return result
 
 
-def delete_file(scope: str, file_name: str) -> None:
-    """Delete a file's chunks Chroma just deleted."""
-    if enabled():
-        _guarded(f"delete {scope}/{file_name}", lambda: get_store().delete_file(scope, file_name), None)
+#: The facts a folder move changes, and all a re-filed subtree needs mirrored.
+FOLDER_FACTS = frozenset({"folder_path", FOLDER_FIELD})
 
 
-def delete_scope(scope: str) -> None:
-    """Delete a scope Chroma just dropped as a collection."""
-    if enabled():
-        _guarded(f"delete scope {scope}", lambda: get_store().delete_scope(scope), None)
-
-
-def refresh_facts(scope: str, file_names: Iterable[str] | None = None) -> None:
+def refresh_facts(scope: str, file_names: Iterable[str] | None = None, *, fields: Iterable[str] | None = None) -> None:
     """Re-mirror the person-set facts of these files (all of ``scope`` when None) onto their points.
 
     Called after the metadata store changed a fact. Never raises: the store
     has the change, a person's edit must not fail over its mirror, and the
     backfill (``--facts-only``) repairs drift.
+
+    The facts of every file go in bounded batches, not one request per file
+    (a folder rename re-files a whole subtree). A file with no stored
+    Dokumentart gets its own one back (``QdrantStore.restore_chunk_doc_class``),
+    so clearing a person's class is mirrored too. ``fields`` limits the copy
+    to those facts (:data:`FOLDER_FACTS` after a folder move), and the
+    Dokumentart is then put back only when it is one of them.
     """
     if not enabled():
         return
     try:
         store = get_store()
-        for file_name, facts in facts_by_file(scope, file_names).items():
-            store.set_file_payload(scope, file_name, facts)
+        facts = facts_by_file(scope, file_names)
+        wanted = set(fields) if fields is not None else None
+        if wanted is not None:
+            facts = {
+                name: {key: value for key, value in values.items() if key in wanted} for name, values in facts.items()
+            }
+        store.set_file_payloads(scope, facts)
+        restores = wanted is None or "doc_class" in wanted
+        for file_name, values in facts.items():
+            if restores and "doc_class" not in values:
+                store.restore_chunk_doc_class(scope, file_name)
     except Exception:  # noqa: BLE001 - see the docstring
         logger.warning("Qdrant mirror: refreshing facts of %s failed", scope, exc_info=True)

@@ -231,12 +231,12 @@ def test_facets_count_per_value(store):
 def test_strict_mode_refuses_an_unindexed_filter_at_the_server(store):
     from qdrant_client import models
 
-    store.upsert("proj_a", [_record("x", "a.pdf", drawing_type="Grundriss")])
+    store.upsert("proj_a", [_record("x", "a.pdf", description="Grundriss")])
     with pytest.raises(Exception, match="(?i)index"):
         store.client.count(
             store.alias("proj_a"),
             count_filter=models.Filter(
-                must=[models.FieldCondition(key="drawing_type", match=models.MatchValue(value="Grundriss"))]
+                must=[models.FieldCondition(key="description", match=models.MatchValue(value="Grundriss"))]
             ),
         )
 
@@ -281,3 +281,240 @@ def test_no_scope_is_an_empty_answer_not_an_index_error(monkeypatch):
     assert retrieval.search_grouped([], vector=[0.1], lexical_text="x", groups=3, group_size=2, identity={}) == []
     assert grouped_search(object(), [], vector=[0.1], lexical_text="x", group_by="scope", groups=3, group_size=2) == []
     assert hybrid_search(object(), [], vector=[0.1], lexical_text="x", limit=3) == []
+
+
+# ---------------------------------------------------------------- the text index tokenizes digits
+
+
+NUMBERED = [
+    "Gemäß § 3 Abs. 2 sind Fluchtwege vorzusehen.",
+    "Nach §3 gilt dies sinngemäß.",
+    "Punkt 5.1.1 der OIB-Richtlinie 2 regelt Treppen.",
+    "Die Brüstungshöhe beträgt 43 cm über der Größe der Straße.",
+    "Abs. 3 und Seite 3 nennen keinen Paragraphen.",
+    "OIB-Richtlinie 3 ist eine andere.",
+    "Punkt 5.1.10 und § 13 Abs. 2 sind andere Stellen, 143 eine andere Zahl.",
+]
+
+
+def test_phrases_on_numbers_match_exactly_the_chunks_that_contain_them(store):
+    """``multilingual`` dropped digits: "5.1.1" and "43" matched nothing and "Abs. 2" matched every "Abs."."""
+    from knowledge_layer.qdrant.search import exact_term
+
+    store.upsert("proj_a", [_record(text, f"{index}.pdf") for index, text in enumerate(NUMBERED)])
+
+    def files(condition) -> set[str]:
+        return {record.payload["file_name"] for record in store.scroll("proj_a", None, condition)}
+
+    assert files(phrase("5.1.1")) == {"2.pdf"}
+    assert files(phrase("43")) == {"3.pdf"}
+    assert files(phrase("Abs. 2")) == {"0.pdf", "6.pdf"}
+    assert files(phrase("OIB-Richtlinie 2")) == {"2.pdf"}
+    # A § reference is matched on the chunk's own list of the ones it cites:
+    # as a phrase it would be the bare token "3", which "Abs. 3" carries too.
+    assert files(exact_term("§ 3")) == {"0.pdf", "1.pdf"}
+    assert files(exact_term("§ 13")) == {"6.pdf"}
+    assert files(exact_term("OIB-Richtlinie 2")) == {"2.pdf"}
+    # Lowercasing and ASCII folding still hold: one token however it is spelled.
+    for spelling in ("Größe", "GRÖSSE", "grosse", "Straße", "strasse", "brustungshohe"):
+        assert files(phrase(spelling)) == {"3.pdf"}, spelling
+
+
+def test_a_text_index_built_with_another_tokenizer_is_reported_loudly(store, caplog):
+    from qdrant_client import models
+
+    name = schema.ALIASES[schema.Physical.OFFICE] + schema.FIRST_VERSION
+    store.client.create_collection(name, vectors_config={})
+    store.client.create_payload_index(
+        name,
+        schema.TEXT_FIELD,
+        field_schema=models.TextIndexParams(
+            type=models.TextIndexType.TEXT,
+            tokenizer=models.TokenizerType.MULTILINGUAL,
+            lowercase=True,
+            ascii_folding=True,
+            phrase_matching=True,
+        ),
+        wait=True,
+    )
+    with caplog.at_level("ERROR", logger="knowledge_layer.qdrant.schema"):
+        schema.ensure_payload_indexes(store.client, name)
+    [record] = [r for r in caplog.records if "full-text index" in r.getMessage()]
+    assert "multilingual" in record.getMessage() and "switch the alias" in record.getMessage()
+    # The index is left as it is: a rebuild is a new collection, never a silent drop.
+    assert store.client.get_collection(name).payload_schema[schema.TEXT_FIELD].params.tokenizer == "multilingual"
+
+    caplog.clear()
+    store.upsert("oib_knowledge", [_record("x", "a.pdf")])  # a fresh collection behind the other alias
+    with caplog.at_level("ERROR", logger="knowledge_layer.qdrant.schema"):
+        schema.ensure_payload_indexes(store.client, store.alias("oib_knowledge"))
+    assert not caplog.records
+
+
+# ---------------------------------------------------------------- creating the collection
+
+
+def test_a_collection_left_without_its_alias_is_finished_not_wedged(store):
+    """A writer died between create_collection and the alias; every later writer used to fail on the conflict."""
+    from qdrant_client import models
+
+    alias = schema.ALIASES[schema.Physical.OFFICE]
+    store.client.create_collection(
+        alias + schema.FIRST_VERSION,
+        vectors_config={schema.DENSE: models.VectorParams(size=DIM, distance=models.Distance.COSINE)},
+        sparse_vectors_config={schema.LEXICAL: models.SparseVectorParams(modifier=models.Modifier.IDF)},
+        metadata=dict(IDENTITY),
+    )
+
+    assert store.upsert("proj_a", [_record("Fluchtweg", "a.pdf")]) == 1
+
+    assert any(entry.alias_name == alias for entry in store.client.get_aliases().aliases)
+    assert schema.INDEXED_FIELDS <= set(store.client.get_collection(alias).payload_schema)
+    assert store.count("proj_a") == 1
+
+
+def test_concurrent_creators_both_succeed(store, monkeypatch):
+    """The loser of the create race finishes the collection instead of raising while the alias is not there yet."""
+    import threading
+    import time
+
+    real = schema.ensure_payload_indexes
+    created = threading.Event()
+
+    def slow_first(client, collection):
+        if not created.is_set():
+            created.set()
+            time.sleep(1.5)  # the winner is between its create and its alias
+        return real(client, collection)
+
+    monkeypatch.setattr(schema, "ensure_payload_indexes", slow_first)
+    errors: list[BaseException] = []
+
+    def create(wait: bool) -> None:
+        if wait:
+            created.wait(10)
+        try:
+            schema.ensure_collection(store.client, schema.Physical.OFFICE, DIM, IDENTITY)
+        except BaseException as error:  # noqa: BLE001 - collected for the assertion
+            errors.append(error)
+
+    threads = [threading.Thread(target=create, args=(wait,)) for wait in (False, True)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join(30)
+    assert errors == []
+    alias = schema.ALIASES[schema.Physical.OFFICE]
+    aliased = [entry.collection_name for entry in store.client.get_aliases().aliases if entry.alias_name == alias]
+    assert aliased == [alias + schema.FIRST_VERSION]
+
+
+def test_writes_are_acknowledged_by_one_replica(store, monkeypatch):
+    """At RF 2 a write consistency of 2 failed every write to a shard whose second peer was down."""
+    monkeypatch.setenv("AIQ_QDRANT_REPLICATION_FACTOR", "2")
+    store.upsert("proj_a", [_record("x", "a.pdf")])
+    assert store.client.get_collection(store.alias("proj_a")).config.params.replication_factor == 2
+    assert store.client.get_collection(store.alias("proj_a")).config.params.write_consistency_factor == 1
+
+
+# ---------------------------------------------------------------- transient failures are retried, refusals are not
+
+
+def _flaky(store, monkeypatch, errors: list[BaseException]):
+    from knowledge_layer.qdrant import store as store_module
+
+    pauses: list[float] = []
+    monkeypatch.setattr(store_module, "_sleep", pauses.append)
+    real = store.client.upsert
+    calls = {"n": 0}
+
+    def upsert(*args, **kwargs):
+        calls["n"] += 1
+        if errors:
+            raise errors.pop(0)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store.client, "upsert", upsert)
+    return calls, pauses
+
+
+def test_a_transient_write_failure_is_retried_with_backoff(store, monkeypatch):
+    import httpx
+    from qdrant_client.http.exceptions import ResponseHandlingException
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
+    store.upsert("proj_a", [_record("warm", "a.pdf")])  # the collection exists
+    unavailable = UnexpectedResponse(503, "Service Unavailable", b"", httpx.Headers())
+    calls, pauses = _flaky(store, monkeypatch, [ResponseHandlingException(httpx.ConnectError("refused")), unavailable])
+
+    assert store.upsert("proj_a", [_record("x", "b.pdf")]) == 1
+
+    assert calls["n"] == 3 and pauses == [0.2, 0.8]
+    assert store.count("proj_a", {"file_name": "b.pdf"}) == 1
+
+
+def test_a_refusal_is_never_retried_and_an_outage_gives_up(store, monkeypatch):
+    import httpx
+    from qdrant_client.http.exceptions import ResponseHandlingException
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
+    store.upsert("proj_a", [_record("warm", "a.pdf")])
+    real = store.client.upsert
+    calls, pauses = _flaky(store, monkeypatch, [UnexpectedResponse(400, "Bad Request", b"{}", httpx.Headers())])
+    with pytest.raises(UnexpectedResponse):
+        store.upsert("proj_a", [_record("x", "b.pdf")])
+    assert calls["n"] == 1 and pauses == []
+
+    monkeypatch.setattr(store.client, "upsert", real)
+    down = [ResponseHandlingException(httpx.ReadTimeout("slow")) for _ in range(9)]
+    calls, pauses = _flaky(store, monkeypatch, down)
+    with pytest.raises(ResponseHandlingException):
+        store.upsert("proj_a", [_record("y", "c.pdf")])
+    assert calls["n"] == 4 and pauses == [0.2, 0.8, 2.0]
+
+
+# ---------------------------------------------------------------- filters a model may name
+
+
+def test_the_metadata_keys_the_chunkers_write_are_filterable(store):
+    """``knowledge_search`` passes a model's raw ``filters``; under Chroma every one of these applied."""
+    store.upsert(
+        "oib_knowledge",
+        [
+            _record(
+                "Punkt",
+                "rl2.pdf",
+                punkt_path="5 Treppen > 5.1 Allgemein",
+                punkt_parent_id="5",
+                page_end="7",
+                section_part=2,
+                table_part=1,
+                table_index=3,
+            ),
+            _record("Bild", "plan.pdf", image_index=0, drawing_type="Grundriss", drawing_data='{"big": 1}'),
+        ],
+    )
+    for filters in (
+        {"punkt_path": "5 Treppen > 5.1 Allgemein"},
+        {"punkt_parent_id": "5"},
+        {"page_end": 7},
+        {"section_part": "2"},
+        {"table_part": 1},
+        {"table_index": {"$in": [3, 4]}},
+        {"image_index": 0},
+        {"drawing_type": {"$eq": "Grundriss"}},
+    ):
+        assert store.count("oib_knowledge", filters) == 1, filters
+    with pytest.raises(ValueError, match="'drawing_data'.*not an indexed payload field"):
+        store.count("oib_knowledge", {"drawing_data": "x"})
+
+
+def test_a_string_boolean_is_read_for_what_it_says():
+    from knowledge_layer.qdrant.payload import coerce_field
+
+    assert coerce_field("superseded", "false") is False
+    assert coerce_field("superseded", "False") is False
+    assert coerce_field("superseded", "0") is False
+    assert coerce_field("superseded", "true") is True
+    assert coerce_field("superseded", 1) is True
+    assert coerce_field("superseded", "vielleicht") is None

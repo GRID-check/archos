@@ -680,9 +680,14 @@ export const QDRANT = {
    * backend creates it (`AIQ_QDRANT_SHARD_NUMBER`, `AIQ_QDRANT_REPLICATION_FACTOR`).
    * Open-source Qdrant cannot reshard, so 6 fits 1, 2, 3 and 6 nodes. With RF 2
    * a lost peer keeps every shard readable and the 3-peer Raft quorum intact,
-   * but writes to a shard whose second replica is down fail until it returns:
-   * write consistency equals RF, so a write is acknowledged only once both
-   * replicas hold it, and the ingest queue retries rather than losing it.
+   * and writes keep going: the backend creates the collection with write
+   * consistency 1, so a write is acknowledged once ONE replica holds it. The
+   * other replica is durable only after Qdrant re-syncs it from the WAL
+   * (`wal_delta`) when its peer returns; losing the acknowledging peer for
+   * good before that loses the write. Until the move off Chroma is done,
+   * Chroma (still the write-side record) and `scripts/backfill_qdrant.py` are
+   * the safety net behind that window. Transient write failures (connection,
+   * timeout, 5xx) are retried in the backend with backoff, never a 4xx.
    * One peer gets the backend's own default of 1 and 1.
    */
   tenantShards: 6,

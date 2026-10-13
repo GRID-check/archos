@@ -23,6 +23,8 @@ from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module
 
 DIM = 8
+#: The real reader, before ``qdrant_env`` stubs it for the tests that need no metadata store.
+FACTS_BY_FILE = mirror.facts_by_file
 
 
 def _vector(seed: str) -> list[float]:
@@ -165,32 +167,35 @@ def test_mirror_deletes_follow_chroma(retriever):
     rows = [_row("eins", "a.pdf"), _row("zwei", "a.pdf"), _row("drei", "b.pdf")]
     _ingest(retriever, "proj_a", rows)
     store = store_module.get_store()
-    mirror.delete_chunks("proj_a", [rows[0]["id"]])
+    chroma: list[str] = []
+    mirror.ordered_delete("proj_a", lambda: chroma.append("chunks"), chunk_ids=[rows[0]["id"]])
     assert store.count("proj_a") == 2
-    mirror.delete_file("proj_a", "a.pdf")
+    mirror.ordered_delete("proj_a", lambda: chroma.append("file"), file_name="a.pdf")
     assert store.count("proj_a") == 1
-    mirror.delete_scope("proj_a")
+    mirror.ordered_delete("proj_a", lambda: chroma.append("scope"), whole_scope=True)
     assert store.count("proj_a") == 0
+    assert chroma == ["chunks", "file", "scope"]
 
 
-def test_dual_swallows_a_mirror_failure_and_qdrant_raises(qdrant_env, monkeypatch):
+def test_dual_swallows_a_mirror_failure_and_qdrant_raises_before_chroma(qdrant_env, monkeypatch):
     def broken(*args: Any, **kwargs: Any) -> None:
         raise ConnectionError("qdrant down")
 
     monkeypatch.setattr(store_module.QdrantStore, "delete_file", broken)
+    chroma: list[str] = []
     monkeypatch.setenv("AIQ_VECTOR_BACKEND", "dual")
-    mirror.delete_file("proj_a", "a.pdf")
+    assert mirror.ordered_delete("proj_a", lambda: chroma.append("dual") or "done", file_name="a.pdf") == "done"
     monkeypatch.setenv("AIQ_VECTOR_BACKEND", "qdrant")
     with pytest.raises(ConnectionError):
-        mirror.delete_file("proj_a", "a.pdf")
+        mirror.ordered_delete("proj_a", lambda: chroma.append("qdrant"), file_name="a.pdf")
+    assert chroma == ["dual"]
 
 
 def test_chroma_backend_never_touches_qdrant(monkeypatch):
     monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
     monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("Qdrant touched under chroma"))
-    mirror.delete_file("proj_a", "a.pdf")
-    mirror.delete_chunks("proj_a", ["x"])
-    mirror.delete_scope("proj_a")
+    assert mirror.ordered_delete("proj_a", lambda: "chroma", chunk_ids=["x"], file_name="a.pdf") == "chroma"
+    assert mirror.ordered_delete("proj_a", lambda: "chroma", whole_scope=True) == "chroma"
     mirror.refresh_facts("proj_a")
     assert not mirror.enabled()
 
@@ -227,3 +232,266 @@ async def test_search_grouped_needs_qdrant(retriever, monkeypatch):
     monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
     with pytest.raises(NotImplementedError):
         await retriever.search_grouped("x", ["proj_a"], groups=1, group_size=1)
+
+
+# ---------------------------------------------------------------- numeric legal references, end to end
+
+
+NUMBERED = [
+    "Gemäß § 3 Abs. 2 sind Fluchtwege vorzusehen.",
+    "Nach §3 gilt dies sinngemäß.",
+    "Punkt 5.1.1 der OIB-Richtlinie 2 regelt Treppen.",
+    "Die Brüstungshöhe beträgt 43 cm.",
+    "Abs. 3 und Seite 3 nennen keinen Paragraphen.",
+    "OIB-Richtlinie 3 ist eine andere.",
+    "Punkt 5.1.10 und § 13 Abs. 2 sind andere Stellen.",
+]
+
+
+async def test_numeric_legal_references_reach_the_exact_term_channel(retriever):
+    """extract_exact_terms -> term_frequencies -> the phrase prefetch, as ``knowledge_search`` runs it.
+
+    On the ``multilingual`` tokenizer every count here was 0, so
+    ``selective_terms`` dropped the terms and the channel the Chroma path's
+    ``$contains`` served never ran.
+    """
+    from knowledge_layer.qdrant import retrieval as qdrant_retrieval
+
+    _ingest(retriever, "proj_a", [_row(text, f"{index}.pdf") for index, text in enumerate(NUMBERED)])
+
+    _, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    assert terms == ["§ 3"]
+    _, terms = retriever._qdrant_lexical_inputs('Was sagt die OIB-Richtlinie 2 in "5.1.1"? Und "43 cm"?', "proj_a")
+    assert terms == ["OIB-Richtlinie 2", "5.1.1", "43 cm"]
+
+    total, frequencies = qdrant_retrieval.term_frequencies("proj_a", ["§ 3", "5.1.1", "43 cm", "OIB-Richtlinie 2"])
+    assert total == len(NUMBERED)
+    assert frequencies == {"§ 3": 2, "5.1.1": 1, "43 cm": 1, "OIB-Richtlinie 2": 1}
+
+    # The exact channel alone beside the dense one: the two chunks citing § 3
+    # are in both, every other chunk in one, so they lead.
+    hits = qdrant_retrieval.search(
+        "proj_a",
+        vector=_vector("Was regelt § 3?"),
+        lexical_text="",
+        top_k=len(NUMBERED),
+        filters=None,
+        exact_terms=["§ 3"],
+        identity=retriever._identity(),
+    )
+    assert {hit.payload["file_name"] for hit in hits[:2]} == {"0.pdf", "1.pdf"}
+
+
+# ---------------------------------------------------------------- find_text narrows on the server
+
+
+FIND_CORPUS = [
+    "Die Größe der Fläche ist anzugeben.",
+    "Die Grösse der Flaeche ist anzugeben.",
+    "DIE GROESSE DER FLAECHE IST ANZUGEBEN.",
+    "Die Größe der Fläche, geschützt.",
+    "Die Größe-der-Fläche als Begriff.",
+    "Die Größe der Fläche, zerlegt.",
+    "Die Größe der Flächen im Plural.",
+    "Größe und Fläche, ohne der.",
+    "Die Strasse und die Straße und die STRASSE.",
+    "Der Weg, der Steg, das EG und die Regel.",
+    "EG-Richtlinie und eg.",
+    "Hauptfluchtstiegen sind breit.",
+    "Die Fluchtstiege ist beleuchtet.",
+    "Gemäß § 3 Abs. 2 und 3 sowie §3.",
+    "Punkt 5.1.1 und 15.1.10 und 5.1.10.",
+    "OIB-Richtlinie 2 und OIB Richtlinie 2 und OIB-Richtlinie 21.",
+    "T30-2 Tür und T30-2-Tür.",
+    "Abs.2 und 3 ohne Leerzeichen; Abs. 2 und 3 mit.",
+] + [f"Füllkapitel {index} über Beton und Holz." for index in range(40)]
+
+FIND_PHRASES = [
+    ["Größe der Fläche"],
+    ["Grösse der Flaeche"],
+    ["Strasse"],
+    ["Straße", "Weg"],
+    ["EG"],
+    ["weg", "EG"],
+    ["Fluchtstiege"],
+    ["§ 3"],
+    ["5.1.1"],
+    ["OIB-Richtlinie 2"],
+    ["T30-2 Tür"],
+    ["Abs. 2 und 3"],
+    ["Beton und Holz"],
+    ["der"],
+]
+
+
+async def test_find_text_with_the_token_prefilter_returns_exactly_what_the_full_scroll_does(retriever, monkeypatch):
+    from knowledge_layer.browse import phrase_pattern
+    from knowledge_layer.qdrant import retrieval as qdrant_retrieval
+    from knowledge_layer.qdrant import store as store_module
+
+    _ingest(retriever, "proj_a", [_row(text, f"{index:02d}.pdf") for index, text in enumerate(FIND_CORPUS)])
+    scanned = {"n": 0}
+    real_scroll = store_module.QdrantStore.scroll
+
+    def counting(self, *args, **kwargs):
+        for record in real_scroll(self, *args, **kwargs):
+            scanned["n"] += 1
+            yield record
+
+    monkeypatch.setattr(store_module.QdrantStore, "scroll", counting)
+
+    def run(pattern: str) -> tuple[list[str], int]:
+        scanned["n"] = 0
+        hits = qdrant_retrieval.find_text("proj_a", pattern, None, 100)
+        return [hit.chunk_id for hit in hits], scanned["n"]
+
+    narrowed_patterns = 0
+    for phrases in FIND_PHRASES:
+        pattern = phrase_pattern(phrases)
+        narrowed, narrowed_scanned = run(pattern)
+        with monkeypatch.context() as full_scroll:
+            full_scroll.setattr(qdrant_retrieval, "_text_prefilter", lambda scope, pattern: [])
+            full, full_scanned = run(pattern)
+        assert narrowed == full, phrases
+        assert full_scanned == len(FIND_CORPUS)
+        if qdrant_retrieval.literal_tokens(pattern):
+            narrowed_patterns += 1
+            assert narrowed_scanned < full_scanned, phrases
+    # Not vacuous: most of these patterns narrow on the server.
+    assert narrowed_patterns >= 8
+    # And the matches themselves are the ones a reader expects.
+    found, _ = run(phrase_pattern(["Größe der Fläche"]))
+    assert len(found) == 7  # every spelling, the plural included (a substring), not "ohne der"
+
+
+def test_literal_tokens_only_names_words_every_match_holds_whole():
+    from knowledge_layer.browse import phrase_pattern
+    from knowledge_layer.qdrant.retrieval import literal_tokens
+
+    assert literal_tokens(phrase_pattern(["Größe der Fläche"])) == [["der"]]
+    assert literal_tokens(phrase_pattern(["OIB-Richtlinie 2"])) == [["richtlinie"]]
+    assert literal_tokens(phrase_pattern(["weg", "EG"])) == [["weg"], ["eg"]]
+    # A word longer than three characters matches inside longer words: no token.
+    assert literal_tokens(phrase_pattern(["Fluchtstiege"])) is None
+    # One alternative without a safe word leaves no safe condition at all.
+    assert literal_tokens(phrase_pattern(["Straße", "Weg"])) is None
+    assert literal_tokens("(?i)fo+") is None
+
+
+# ---------------------------------------------------------------- facts: per file, batched, cleared
+
+
+@pytest.fixture
+def metadata_store(tmp_path, monkeypatch):
+    """A real SQLite metadata store, with ``facts_by_file`` reading it (the module fixture stubs it out)."""
+    from aiq_agent.knowledge import configure_summary_db
+    from aiq_agent.knowledge import factory
+
+    monkeypatch.setattr(mirror, "facts_by_file", FACTS_BY_FILE)
+    factory._document_metadata_store = None
+    configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
+    yield
+    factory._document_metadata_store = None
+
+
+def test_refreshing_one_file_reads_only_its_row(retriever, metadata_store, monkeypatch):
+    from aiq_agent import knowledge
+    from aiq_agent.knowledge import register_summary
+    from aiq_agent.knowledge import set_document_tags_by_person
+
+    _ingest(retriever, "proj_a", [_row("eins", "a.pdf"), _row("zwei", "b.pdf")])
+    register_summary("proj_a", "a.pdf", "A")
+    register_summary("proj_a", "b.pdf", "B")
+    monkeypatch.setattr(
+        knowledge, "get_available_documents", lambda scope: pytest.fail("a one-file refresh read the whole scope")
+    )
+
+    assert set_document_tags_by_person("proj_a", "a.pdf", ["bescheid"]) is True
+
+    assert store_module.get_store().count("proj_a", {"tags": "bescheid"}) == 1
+
+
+def test_a_folder_rename_mirrors_in_one_batch_not_one_request_per_file(retriever, metadata_store, monkeypatch):
+    from aiq_agent.knowledge import register_summary
+    from aiq_agent.knowledge import rewrite_document_folder_paths
+    from aiq_agent.knowledge import set_document_folder_path
+
+    names = [f"{index}.pdf" for index in range(5)]
+    _ingest(retriever, "proj_a", [_row(f"Text {name}", name) for name in names])
+    for name in names:
+        register_summary("proj_a", name, f"Summary {name}")
+        set_document_folder_path("proj_a", name, "Brandschutz/Fluchtwege")
+    client = store_module.get_store().client
+    calls = {"set_payload": 0, "batch_update_points": 0, "scroll": 0}
+    for method in calls:
+        real = getattr(client, method)
+
+        def counted(*args, _real=real, _method=method, **kwargs):
+            calls[_method] += 1
+            return _real(*args, **kwargs)
+
+        monkeypatch.setattr(client, method, counted)
+
+    assert rewrite_document_folder_paths("proj_a", "Brandschutz", "Feuer") == 5
+
+    assert calls == {"set_payload": 0, "batch_update_points": 1, "scroll": 0}
+    store = store_module.get_store()
+    assert store.count("proj_a", {"folder_ancestors": "feuer/fluchtwege"}) == 5
+    assert store.count("proj_a", {"folder_ancestors": "brandschutz"}) == 0
+
+
+def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_store):
+    from aiq_agent.knowledge import register_summary
+    from aiq_agent.knowledge import set_document_doc_class
+
+    _ingest(retriever, "proj_a", [_row("Plan", "plan.pdf", doc_class="einreichplan"), _row("Brief", "brief.pdf")])
+    register_summary("proj_a", "plan.pdf", "P")
+    register_summary("proj_a", "brief.pdf", "B")
+    store = store_module.get_store()
+    set_document_doc_class("proj_a", "plan.pdf", "bescheid")
+    set_document_doc_class("proj_a", "brief.pdf", "korrespondenz")
+    assert store.count("proj_a", {"doc_class": "bescheid"}) == 1
+    assert store.count("proj_a", {"doc_class": "korrespondenz"}) == 1
+
+    set_document_doc_class("proj_a", "plan.pdf", None)
+    set_document_doc_class("proj_a", "brief.pdf", None)
+
+    # What register._hit_doc_class falls back to once the stored class is gone.
+    assert store.count("proj_a", {"doc_class": "einreichplan"}) == 1
+    assert store.count("proj_a", {"doc_class": "bescheid"}) == 0
+    assert store.count("proj_a", {"doc_class": "korrespondenz"}) == 0
+
+
+async def test_a_hit_carries_the_chunks_own_dokumentart_as_chroma_does(retriever, metadata_store):
+    from aiq_agent.knowledge import register_summary
+    from aiq_agent.knowledge import set_document_doc_class
+
+    _ingest(retriever, "proj_a", [_row("Plan", "plan.pdf", doc_class="einreichplan")])
+    register_summary("proj_a", "plan.pdf", "P")
+    set_document_doc_class("proj_a", "plan.pdf", "bescheid")
+
+    result = await retriever.retrieve("Plan", "proj_a", top_k=1)
+
+    assert result.chunks[0].metadata.get("doc_class") == "einreichplan"
+
+
+# ---------------------------------------------------------------- health
+
+
+async def test_health_needs_chroma_too_under_qdrant(retriever, monkeypatch):
+    """Chroma is still the write record and serves registry reads: a dead one is not healthy."""
+
+    class DeadChroma:
+        def heartbeat(self):
+            raise ConnectionError("chroma down")
+
+    class LiveChroma:
+        def heartbeat(self):
+            return 1
+
+    retriever._chroma_client = DeadChroma()
+    assert await retriever.health_check() is False
+    retriever._chroma_client = LiveChroma()
+    assert await retriever.health_check() is True
+    monkeypatch.setattr(store_module.QdrantStore, "health", lambda self: False)
+    assert await retriever.health_check() is False

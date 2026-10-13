@@ -102,7 +102,7 @@ def shard_number() -> int:
 # @type int
 # @default 1
 # @required false
-# Replicas per shard, set once at creation. 2 on the 3-node cluster; write consistency follows it.
+# Replicas per shard, set once at creation. 2 on the 3-node cluster; writes need only one (consistency 1).
 def replication_factor() -> int:
     """Replicas per shard, fixed at creation; a self-hosted cluster does not re-replicate by itself."""
     return _positive_int("AIQ_QDRANT_REPLICATION_FACTOR", 1)

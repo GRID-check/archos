@@ -2,13 +2,19 @@
 
 Chroma holds each chunk's id, text, metadata and embedding, so this is a paged
 copy: no re-parse, no vision model, no embedding call. Point ids are the chunk
-ids, so a re-run overwrites in place and the copy is safe to repeat.
+ids and the copy is insert-only, so a re-run adds what is missing, leaves what
+ingestion wrote (its office, project and document ids) in place, and is safe
+to repeat.
 
     python scripts/backfill_qdrant.py --dry-run                 # read everything, write nothing
     python scripts/backfill_qdrant.py                           # copy every collection
     python scripts/backfill_qdrant.py --collection oib_knowledge
-    python scripts/backfill_qdrant.py --prune --verify          # also drop stale points, then compare counts
-    python scripts/backfill_qdrant.py --facts-only              # re-copy tags, Dokumentart, Fassung, folder
+    python scripts/backfill_qdrant.py --prune --verify          # also drop stale points and scopes, then compare ids
+    python scripts/backfill_qdrant.py --facts-only              # merge tags, Dokumentart, Fassung, folder
+
+Without ``--collection``, the scopes Qdrant holds and Chroma no longer does (a
+failed delete, a reaped conversation) are found too: ``--prune`` deletes them,
+``--verify`` counts them as out of step.
 
 Run it once ``AIQ_VECTOR_BACKEND=dual`` is live, so writes after the copy land
 in both stores; then ``--prune --verify`` until every collection is in step,
@@ -41,9 +47,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__.split("\n", 1)[0])
     parser.add_argument("--collection", action="append", help="Only this collection (repeatable).")
     parser.add_argument("--dry-run", action="store_true", help="Read and report; write nothing.")
-    parser.add_argument("--prune", action="store_true", help="Delete Qdrant points Chroma no longer holds.")
-    parser.add_argument("--verify", action="store_true", help="Compare chunk counts per collection; exit 1 on a gap.")
-    parser.add_argument("--facts-only", action="store_true", help="Only re-copy person-set facts; no chunks.")
+    parser.add_argument("--prune", action="store_true", help="Delete Qdrant points and scopes Chroma no longer holds.")
+    parser.add_argument("--verify", action="store_true", help="Compare chunk ids per collection; exit 1 on a gap.")
+    parser.add_argument("--facts-only", action="store_true", help="Only merge person-set facts; no chunks.")
     parser.add_argument("--page-size", type=int, default=backfill.DEFAULT_PAGE_SIZE)
     parser.add_argument("--chroma-dir", default=os.environ.get("AIQ_CHROMA_DIR", "/tmp/chroma_data"))
     return parser.parse_args(argv)
@@ -64,8 +70,39 @@ def _run_one(chroma, store: QdrantStore, name: str, args: argparse.Namespace) ->
         if args.prune:
             report.pruned = backfill.prune_scope(handle, name, store, dry_run=args.dry_run)
     if args.verify:
-        report.chroma_count, report.qdrant_count = backfill.verify_scope(handle, name, store)
+        verification = backfill.verify_scope(handle, name, store)
+        report.chroma_count, report.qdrant_count = verification.chroma_count, verification.qdrant_count
+        report.missing, report.extra = verification.missing, verification.extra
     return report
+
+
+def _orphans(store: QdrantStore, scopes: list[str], names: list[str], args: argparse.Namespace) -> list:
+    """A report per scope Qdrant holds and Chroma does not: pruned with ``--prune``, a gap under ``--verify``."""
+    reports = []
+    for scope in backfill.orphan_scopes(store, names, scopes):
+        report = backfill.ScopeReport(scope, chroma_count=0, qdrant_count=store.count(scope))
+        if args.prune:
+            report.pruned = report.qdrant_count
+            if not args.dry_run:
+                store.delete_scope(scope)
+                report.qdrant_count = store.count(scope)
+        reports.append(report)
+    return reports
+
+
+def _log(report: backfill.ScopeReport, gap: bool) -> None:
+    logger.info(
+        "%s %s: read=%d written=%d pruned=%d chroma=%s qdrant=%s missing=%d extra=%d",
+        "[gap]" if gap else "[ok]",
+        report.scope,
+        report.read,
+        report.written,
+        report.pruned,
+        report.chroma_count,
+        report.qdrant_count,
+        report.missing,
+        report.extra,
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -76,10 +113,12 @@ def main(argv: list[str] | None = None) -> int:
         os.environ.get("AIQ_EMBED_BASE_URL", "https://openrouter.ai/api/v1"),
     )
     try:
-        chroma = _make_chroma_client(args.chroma_dir)
-        names = args.collection or _collection_names(chroma)
         client = make_client()
         client.get_aliases()
+        # Qdrant's scopes BEFORE Chroma's collections (``backfill.orphan_scopes``).
+        scopes = [] if args.collection else backfill.qdrant_scopes(QdrantStore(client, configured))
+        chroma = _make_chroma_client(args.chroma_dir)
+        names = args.collection or _collection_names(chroma)
     except Exception as exc:  # noqa: BLE001 - either store unreachable is the same hard stop
         logger.error("Could not reach Chroma or Qdrant: %s", exc)
         return 2
@@ -95,17 +134,24 @@ def main(argv: list[str] | None = None) -> int:
             continue
         gap = args.verify and not report.in_step
         failed += int(gap)
-        logger.info(
-            "%s %s: read=%d written=%d pruned=%d chroma=%s qdrant=%s",
-            "[gap]" if gap else "[ok]",
-            name,
-            report.read,
-            report.written,
-            report.pruned,
-            report.chroma_count,
-            report.qdrant_count,
-        )
-    logger.info("Done: %d collection(s), %d failed or out of step%s", len(names), failed, " (dry run)" * args.dry_run)
+        _log(report, gap)
+    try:
+        orphans = _orphans(QdrantStore(client, configured), scopes, names, args)
+    except Exception as exc:  # noqa: BLE001 - reported like a failed collection
+        failed += 1
+        logger.error("[fail] scopes only Qdrant holds: %s", exc)
+        orphans = []
+    for report in orphans:
+        gap = args.verify and bool(report.qdrant_count)
+        failed += int(gap)
+        _log(report, gap)
+    logger.info(
+        "Done: %d collection(s), %d scope(s) only in Qdrant, %d failed or out of step%s",
+        len(names),
+        len(orphans),
+        failed,
+        " (dry run)" * args.dry_run,
+    )
     return 1 if failed else 0
 
 

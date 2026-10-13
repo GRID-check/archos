@@ -12,19 +12,29 @@ from __future__ import annotations
 
 import logging
 import threading
+import time
+import uuid
+from collections.abc import Callable
+from collections.abc import Iterable
 from collections.abc import Iterator
 from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
+from typing import TypeVar
 
+import httpx
 from qdrant_client import QdrantClient
 from qdrant_client import models
+from qdrant_client.http.exceptions import ResponseHandlingException
+from qdrant_client.http.exceptions import UnexpectedResponse
 
 from .config import REQUEST_TIMEOUT_SECONDS
 from .config import qdrant_api_key
 from .config import qdrant_url
+from .payload import CHUNK_DOC_CLASS_FIELD
 from .payload import ChunkRecord
 from .payload import build_payload
+from .payload import chunk_own_payload
 from .payload import point_id
 from .schema import ALIASES
 from .schema import BM25_MODEL
@@ -32,12 +42,14 @@ from .schema import BM25_OPTIONS
 from .schema import CHUNK_ID_FIELD
 from .schema import DENSE
 from .schema import LEXICAL
+from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 from .schema import Physical
 from .schema import ensure_collection
 from .schema import ensure_payload_indexes
 from .schema import identity_mismatch
 from .schema import physical_for_scope
+from .schema import text_index_drift
 from .scope import scope_condition
 from .scope import scope_filter
 
@@ -48,6 +60,49 @@ logger = logging.getLogger(__name__)
 UPSERT_BATCH = 64
 #: Points per scroll page.
 SCROLL_PAGE = 256
+#: Payload updates per ``batch_update_points`` request.
+PAYLOAD_BATCH = 128
+#: Distinct values one facet request may return: every file of a scope, every
+#: scope of a collection. Above it the caller reads a truncated list, and says so.
+FACET_LIMIT = 100_000
+
+#: The pause before each retry of a write that failed transiently. A peer
+#: that is restarting (a rollout, a drain) answers again within seconds; a
+#: refusal (4xx) is final and is never retried.
+RETRY_BACKOFF_SECONDS = (0.2, 0.8, 2.0)
+
+T = TypeVar("T")
+
+
+def _transient(error: BaseException) -> bool:
+    """True for a failure a retry can cure: no connection, a timeout, a 5xx. Never a 4xx."""
+    if isinstance(error, UnexpectedResponse):
+        return error.status_code is not None and error.status_code >= 500
+    if isinstance(error, ResponseHandlingException):
+        return isinstance(error.source, (httpx.TransportError, ConnectionError, TimeoutError))
+    return isinstance(error, (httpx.TransportError, ConnectionError, TimeoutError))
+
+
+def _sleep(seconds: float) -> None:
+    time.sleep(seconds)
+
+
+def with_retry(label: str, work: Callable[[], T]) -> T:
+    """Run one write, retrying a transient failure after each pause in :data:`RETRY_BACKOFF_SECONDS`.
+
+    Every write this store makes is idempotent (an upsert or set by point id
+    or filter, a delete by filter), so a retry after a timeout whose request
+    did land changes nothing.
+    """
+    for pause in RETRY_BACKOFF_SECONDS:
+        try:
+            return work()
+        except Exception as error:
+            if not _transient(error):
+                raise
+            logger.warning("Qdrant %s failed transiently (%s); retrying in %.1f s", label, error, pause)
+            _sleep(pause)
+    return work()
 
 
 def bm25(text: str) -> models.Document:
@@ -65,6 +120,7 @@ class QdrantStore:
         self._present: set[Physical] = set()
         self._verified: set[Physical] = set()
         self._indexed: set[tuple[Physical, str]] = set()
+        self._sound_text: set[Physical] = set()
         self._ensure_lock = threading.Lock()
 
     @staticmethod
@@ -128,21 +184,54 @@ class QdrantStore:
 
     # ------------------------------------------------------------------ writes
 
-    def upsert(self, scope: str, records: Sequence[ChunkRecord], enrichment: Mapping[str, Any] | None = None) -> int:
-        """Write ``records`` into ``scope``; returns how many points were written.
+    def upsert(
+        self,
+        scope: str,
+        records: Sequence[ChunkRecord],
+        enrichment: Mapping[str, Any] | None = None,
+        *,
+        insert_only: bool = False,
+    ) -> int:
+        """Write ``records`` into ``scope``; returns how many points were sent.
 
         The dense vector is the one already computed for Chroma (no embedding
         call); the lexical vector is computed by Qdrant from the text.
+
+        ``insert_only`` leaves a point that already exists exactly as it is
+        (Qdrant's ``update_mode: insert_only``) and merges only the fields the
+        chunk alone decides onto it (:func:`payload.chunk_own_payload`). It is
+        the backfill's mode: a chunk id names immutable content, and the
+        point ingestion wrote carries ids (office, project, BFF document) the
+        backfill cannot know and must not strip.
         """
         usable = [record for record in records if record.embedding is not None and len(record.embedding)]
         if not usable:
             return 0
         alias = self.ensure(scope, len(usable[0].embedding))
+        mode = models.UpdateMode.INSERT_ONLY if insert_only else None
         for start in range(0, len(usable), UPSERT_BATCH):
             batch = usable[start : start + UPSERT_BATCH]
             points = [self._point(scope, record, enrichment) for record in batch]
-            self.client.upsert(alias, points, wait=True)
+            with_retry(f"upsert into {scope}", lambda: self.client.upsert(alias, points, wait=True, update_mode=mode))
+            if insert_only:
+                self._merge_own_payloads(alias, scope, batch)
         return len(usable)
+
+    def _merge_own_payloads(self, alias: str, scope: str, records: Sequence[ChunkRecord]) -> None:
+        operations = [
+            models.SetPayloadOperation(
+                set_payload=models.SetPayload(
+                    payload=chunk_own_payload(scope, record), points=[point_id(record.chunk_id)]
+                )
+            )
+            for record in records
+        ]
+        self._batch(alias, f"merge payloads in {scope}", operations)
+
+    def _batch(self, alias: str, label: str, operations: Sequence[Any]) -> None:
+        for start in range(0, len(operations), PAYLOAD_BATCH):
+            chunk = list(operations[start : start + PAYLOAD_BATCH])
+            with_retry(label, lambda: self.client.batch_update_points(alias, chunk, wait=True))
 
     @staticmethod
     def _point(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any] | None) -> models.PointStruct:
@@ -157,7 +246,9 @@ class QdrantStore:
         if not self.exists(scope):
             return
         selector = models.FilterSelector(filter=models.Filter(must=[scope_condition([scope]), *conditions]))
-        self.client.delete(self.alias(scope), points_selector=selector, wait=True)
+        with_retry(
+            f"delete in {scope}", lambda: self.client.delete(self.alias(scope), points_selector=selector, wait=True)
+        )
 
     def delete_chunks(self, scope: str, chunk_ids: Sequence[str]) -> None:
         """Delete these chunks of ``scope``."""
@@ -165,25 +256,161 @@ class QdrantStore:
         if ids:
             self._delete(scope, models.FieldCondition(key=CHUNK_ID_FIELD, match=models.MatchAny(any=ids)))
 
-    def delete_file(self, scope: str, file_name: str) -> None:
-        """Delete every chunk of one file in ``scope``."""
-        self._delete(scope, models.FieldCondition(key="file_name", match=models.MatchValue(value=file_name)))
+    def delete_file(self, scope: str, file_name: str, matches: Callable[[str], bool] | None = None) -> None:
+        """Delete every chunk of one file in ``scope``.
+
+        ``matches`` widens "this file" to every stored spelling it accepts
+        (the adapter's rule: a ``tmp…_`` upload prefix, percent-encoding), read
+        from the scope's own ``file_name`` values: what a retried delete needs
+        once Chroma no longer holds the ids that named those spellings.
+        """
+        names = {file_name}
+        if matches is not None:
+            names.update(name for name in self.file_names(scope) if matches(name))
+        self._delete(scope, models.FieldCondition(key="file_name", match=models.MatchAny(any=sorted(names))))
 
     def delete_scope(self, scope: str) -> None:
         """Delete every chunk of ``scope``: what dropping a Chroma collection did."""
         self._delete(scope)
 
-    def set_file_payload(self, scope: str, file_name: str, payload: Mapping[str, Any]) -> None:
-        """Overwrite these payload fields on every chunk of one file (a person changed a fact)."""
-        if not payload or not self.exists(scope):
-            return
-        selector = models.Filter(
+    @staticmethod
+    def _file_filter(scope: str, file_name: str) -> models.Filter:
+        return models.Filter(
             must=[
                 scope_condition([scope]),
                 models.FieldCondition(key="file_name", match=models.MatchValue(value=file_name)),
             ]
         )
-        self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+
+    def set_file_payload(self, scope: str, file_name: str, payload: Mapping[str, Any]) -> None:
+        """Overwrite these payload fields on every chunk of one file (a person changed a fact); others are kept."""
+        self.set_file_payloads(scope, {file_name: payload})
+
+    def set_file_payloads(self, scope: str, payloads: Mapping[str, Mapping[str, Any]]) -> None:
+        """:meth:`set_file_payload` for many files, a bounded batch per request instead of one request each."""
+        payloads = {name: dict(values) for name, values in payloads.items() if values}
+        if not payloads or not self.exists(scope):
+            return
+        operations = [
+            models.SetPayloadOperation(
+                set_payload=models.SetPayload(payload=values, filter=self._file_filter(scope, name))
+            )
+            for name, values in payloads.items()
+        ]
+        self._batch(self.alias(scope), f"set payloads in {scope}", operations)
+
+    def restore_chunk_doc_class(self, scope: str, file_name: str) -> None:
+        """Put a file's own Dokumentart back on its points after a person cleared theirs.
+
+        The stored class beats the chunk's, so the mirror wrote it over the
+        chunk's; with the stored class gone, the chunk's is what a reader
+        falls back to (``register._hit_doc_class``) and what a ``doc_class``
+        pre-filter must match. It is per file (ingestion stamps it per file),
+        so one point says it. A point written before
+        :data:`payload.CHUNK_DOC_CLASS_FIELD` existed cannot say it, and is left.
+        """
+        if not self.exists(scope):
+            return
+        alias = self.alias(scope)
+        page, _next = self.client.scroll(
+            alias,
+            scroll_filter=self._file_filter(scope, file_name),
+            limit=1,
+            with_payload=[CHUNK_DOC_CLASS_FIELD, "doc_class"],
+            with_vectors=False,
+        )
+        payload = dict(page[0].payload or {}) if page else {}
+        if CHUNK_DOC_CLASS_FIELD not in payload:
+            return
+        own = payload[CHUNK_DOC_CLASS_FIELD] or None
+        if own == payload.get("doc_class"):
+            return
+        selector = self._file_filter(scope, file_name)
+        if own:
+            work = lambda: self.client.set_payload(alias, payload={"doc_class": own}, points=selector, wait=True)  # noqa: E731
+        else:
+            work = lambda: self.client.delete_payload(alias, keys=["doc_class"], points=selector, wait=True)  # noqa: E731
+        with_retry(f"restore doc_class in {scope}", work)
+
+    # ------------------------------------------------------------------ inventory
+
+    def _facet(self, alias: str, key: str, facet_filter: models.Filter | None) -> list[str]:
+        response = self.client.facet(alias, key=key, facet_filter=facet_filter, limit=FACET_LIMIT, exact=True)
+        if len(response.hits) >= FACET_LIMIT:
+            logger.warning("Qdrant %s: more than %d values of %s; the list is truncated", alias, FACET_LIMIT, key)
+        return [str(hit.value) for hit in response.hits]
+
+    def file_names(self, scope: str) -> list[str]:
+        """Every ``file_name`` value the points of ``scope`` carry."""
+        if not self.exists(scope):
+            return []
+        return self._facet(self.alias(scope), "file_name", models.Filter(must=[scope_condition([scope])]))
+
+    def scopes(self, physical: Physical) -> list[str]:
+        """Every logical scope with at least one point in ``physical``'s collection."""
+        alias = ALIASES[physical]
+        if not any(entry.alias_name == alias for entry in self.client.get_aliases().aliases):
+            return []
+        return self._facet(alias, SCOPE_FIELD, None)
+
+    def chunk_ids(self, scope: str) -> Iterable[str]:
+        """The chunk id of every point of ``scope``, read by scroll with nothing else in the payload."""
+        if not self.exists(scope):
+            return
+        query_filter = models.Filter(must=[scope_condition([scope])])
+        offset: Any = None
+        while True:
+            page, offset = self.client.scroll(
+                self.alias(scope),
+                scroll_filter=query_filter,
+                limit=SCROLL_PAGE * 8,
+                offset=offset,
+                with_payload=[CHUNK_ID_FIELD],
+                with_vectors=False,
+            )
+            for record in page:
+                yield str((record.payload or {}).get(CHUNK_ID_FIELD) or record.id)
+            if offset is None:
+                return
+
+    def missing_chunk_ids(self, scope: str, chunk_ids: Sequence[str]) -> list[str]:
+        """Those of ``chunk_ids`` with no point in ``scope``."""
+        if not chunk_ids:
+            return []
+        if not self.exists(scope):
+            return list(chunk_ids)
+        by_point = {point_id(chunk_id): chunk_id for chunk_id in chunk_ids}
+        points = list(by_point)
+        present: set[str] = set()
+        for start in range(0, len(points), SCROLL_PAGE * 4):
+            found = self.client.retrieve(
+                self.alias(scope),
+                points[start : start + SCROLL_PAGE * 4],
+                with_payload=[SCOPE_FIELD],
+                with_vectors=False,
+            )
+            present.update(str(record.id) for record in found if (record.payload or {}).get(SCOPE_FIELD) == scope)
+        return [chunk_id for point, chunk_id in by_point.items() if point not in present]
+
+    def sample_chunk_ids(self, scope: str, size: int) -> list[str]:
+        """About ``size`` chunk ids of ``scope``, read from a random place in point-id order (wrapping round)."""
+        if not self.exists(scope) or size <= 0:
+            return []
+        query_filter = models.Filter(must=[scope_condition([scope])])
+        ids: dict[str, None] = {}
+        for offset in (str(uuid.uuid4()), None):
+            page, _next = self.client.scroll(
+                self.alias(scope),
+                scroll_filter=query_filter,
+                limit=size - len(ids),
+                offset=offset,
+                with_payload=[CHUNK_ID_FIELD],
+                with_vectors=False,
+            )
+            ids.update(dict.fromkeys(str((record.payload or {}).get(CHUNK_ID_FIELD) or record.id) for record in page))
+            if len(ids) >= size:
+                break
+        return list(ids)
 
     # ------------------------------------------------------------------ plain reads
 
@@ -195,12 +422,16 @@ class QdrantStore:
         return result.count
 
     def scroll(
-        self, scope: str, filters: dict[str, Any] | None = None, *, limit: int | None = None
+        self,
+        scope: str,
+        filters: dict[str, Any] | None = None,
+        *extra: models.Condition | models.Filter,
+        limit: int | None = None,
     ) -> Iterator[models.Record]:
-        """Every chunk of ``scope`` matching ``filters``, in point-id order, payload only."""
+        """Every chunk of ``scope`` matching ``filters`` and ``extra``, in point-id order, payload only."""
         if not self.exists(scope):
             return
-        query_filter = scope_filter([scope], filters)
+        query_filter = scope_filter([scope], filters, *extra)
         offset: Any = None
         seen = 0
         while True:
@@ -248,6 +479,22 @@ class QdrantStore:
         present = self.client.get_collection(ALIASES[physical]).payload_schema or {}
         self._indexed.update((physical, name) for name in present)
         return field in present
+
+    def text_index_sound(self, scope: str) -> bool:
+        """Whether ``scope``'s full-text index tokenizes as :data:`schema.TEXT_INDEX` does. Only "yes" is remembered.
+
+        A collection built with another tokenizer is reported by
+        ``ensure_payload_indexes``; a reader that narrows by tokens asks this
+        first, because under ``multilingual`` a number is no token at all.
+        """
+        physical = physical_for_scope(scope)
+        if physical in self._sound_text:
+            return True
+        text = (self.client.get_collection(ALIASES[physical]).payload_schema or {}).get(TEXT_FIELD)
+        if text is None or text_index_drift(text.params):
+            return False
+        self._sound_text.add(physical)
+        return True
 
     def health(self) -> bool:
         """True when the cluster answers."""

@@ -2615,6 +2615,23 @@ def _normalized_file_name(name: str | None) -> str:
     return unquote(_TMP_UPLOAD_PREFIX.sub("", name or ""))
 
 
+def _stored_name_matches(requested: str, stored: str) -> bool:
+    """Whether a chunk stored under ``stored`` belongs to the file a delete names ``requested``.
+
+    The stored ``file_name`` can diverge from the requested name in two ways:
+    a temp-upload prefix (Python's tempfile: ``tmp[8 chars]_filename``), and
+    percent-encoding, when the name was derived from a presigned-URL path at
+    ingest time (a space or umlaut stored as ``%20``/``%C3%…``). Decoding the
+    stored side lets a document ingested under an encoded name still be
+    deleted by its real, decoded filename. One rule for Chroma's scan and
+    Qdrant's (``QdrantStore.delete_file``).
+    """
+    from urllib.parse import unquote
+
+    stripped = _TMP_UPLOAD_PREFIX.sub("", stored or "")
+    return requested in (stripped, unquote(stripped))
+
+
 def _stored_spellings(name: str) -> set[str]:
     """The ``file_name`` values a stored version of ``name`` can carry, short of a tmp prefix.
 
@@ -3543,13 +3560,21 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     def delete_collection(self, name: str) -> bool:
         """Delete a ChromaDB collection (thread-safe)."""
         try:
-            with self._lock:
-                client = self._get_chroma_client()
-                client.delete_collection(name=name)
-                # Purge the job tracking for the collection, here and in the
-                # shared store: if a deleted collection name is ever reused,
-                # list_files would resurrect old FAILED entries as phantom files.
-                self._jobs = {jid: job for jid, job in self._jobs.items() if job.collection_name != name}
+
+            def drop_from_chroma() -> None:
+                with self._lock:
+                    client = self._get_chroma_client()
+                    client.delete_collection(name=name)
+                    # Purge the job tracking for the collection, here and in the
+                    # shared store: if a deleted collection name is ever reused,
+                    # list_files would resurrect old FAILED entries as phantom files.
+                    self._jobs = {jid: job for jid, job in self._jobs.items() if job.collection_name != name}
+
+            from ..qdrant import mirror as qdrant_mirror
+
+            # Outside the lock: a Qdrant call (and its retries) never holds up
+            # the ingestor's job table.
+            qdrant_mirror.ordered_delete(name, drop_from_chroma, whole_scope=True)
             ingest_status_store.forget_collection(name)
 
             # Clear summaries from centralized registry
@@ -3560,9 +3585,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
             get_chunk_text_store().delete_collection(name)
-            from ..qdrant import mirror as qdrant_mirror
-
-            qdrant_mirror.delete_scope(name)
             bump_collection_version(name)
 
             logger.info(f"Deleted collection: {name}")
@@ -3837,8 +3859,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         the BFF answers that the document is gone
         (``document_presence``, ``_deleted_while_indexing``).
         """
-        import re
-
         try:
             client = self._get_chroma_client()
 
@@ -3859,25 +3879,14 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 include=["metadatas"],
             )
 
-            if not results["ids"]:
-                # The stored file_name metadata can diverge from the requested
-                # name in two ways, so normalise both before comparing:
-                #   1. a temp-upload prefix — Python's tempfile uses 8 random
-                #      chars: tmp[8chars]_filename;
-                #   2. percent-encoding — when the name was derived from a
-                #      presigned-URL path at ingest time (a space/umlaut was
-                #      stored as %20/%C3%…). URL-decoding both sides lets a
-                #      document ingested under an encoded name still be deleted
-                #      by its real, decoded filename.
-                from urllib.parse import unquote
+            def spelled_as(stored: str) -> bool:
+                return _stored_name_matches(file_name, stored)
 
-                tmp_prefix = re.compile(r"^tmp.{8}_")
+            if not results["ids"]:
                 all_results = collection.get(include=["metadatas"])
                 matching_ids = []
                 for i, meta in enumerate(all_results.get("metadatas", [])):
-                    stored = meta.get("file_name", "") or ""
-                    stripped = tmp_prefix.sub("", stored)
-                    if file_name in (stripped, unquote(stripped)):
+                    if spelled_as(meta.get("file_name", "") or ""):
                         matching_ids.append(all_results["ids"][i])
                 if not matching_ids:
                     # No chunks in ChromaDB. Whatever else the document left
@@ -3891,6 +3900,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     else:
                         logger.warning(f"No chunks found for file_name={file_name}; clearing its summary and text")
 
+                    # A retry after a delete that reached Chroma and not Qdrant:
+                    # no Chroma id names the spellings any more, so Qdrant's
+                    # points go by every stored name the same rule accepts.
+                    from ..qdrant import mirror as qdrant_mirror
+
+                    qdrant_mirror.ordered_delete(collection_name, lambda: None, file_name=file_name, matches=spelled_as)
+
                     from aiq_agent.knowledge import unregister_summary
 
                     unregister_summary(collection_name, file_name, permanent=permanent)
@@ -3898,14 +3914,19 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
                     get_chunk_text_store().delete_by_file(collection_name, file_name)
-                    from ..qdrant import mirror as qdrant_mirror
-
-                    qdrant_mirror.delete_file(collection_name, file_name)
                     # True only when something of the file was actually removed.
                     return forgotten > 0
                 results = {"ids": matching_ids}
 
-            collection.delete(ids=results["ids"])
+            # By the ids Chroma holds, never by name: they include a
+            # tmp-prefixed or percent-encoded spelling the name alone would
+            # miss, and leave alone what an ingest still running under the same
+            # name adds (the docstring above). In the order ``ordered_delete`` keeps.
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.ordered_delete(
+                collection_name, lambda: collection.delete(ids=results["ids"]), chunk_ids=results["ids"]
+            )
             bump_collection_version(collection_name)
             logger.info(f"Deleted {len(results['ids'])} chunks for file {file_name}")
 
@@ -3920,11 +3941,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
             get_chunk_text_store().delete_by_file(collection_name, file_name)
-            # By the ids Chroma just deleted: they include a tmp-prefixed or
-            # percent-encoded spelling the name alone would miss.
-            from ..qdrant import mirror as qdrant_mirror
-
-            qdrant_mirror.delete_chunks(collection_name, results["ids"])
 
             return True
 
@@ -4321,12 +4337,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from aiq_agent.knowledge import unregister_summary
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
-            chroma_collection.delete(ids=previous.chunk_ids)
-            bump_collection_version(collection_name)
-            get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             from ..qdrant import mirror as qdrant_mirror
 
-            qdrant_mirror.delete_chunks(collection_name, previous.chunk_ids)
+            qdrant_mirror.ordered_delete(
+                collection_name,
+                lambda: chroma_collection.delete(ids=previous.chunk_ids),
+                chunk_ids=previous.chunk_ids,
+            )
+            bump_collection_version(collection_name)
+            get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             for stored in previous.stored_names:
                 if stored != file_name:
                     # Permanent: this spelling never returns, and what a person set on
@@ -4374,12 +4393,15 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         try:
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
-            chroma_collection.delete(ids=previous.chunk_ids)
-            bump_collection_version(collection_name)
-            get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             from ..qdrant import mirror as qdrant_mirror
 
-            qdrant_mirror.delete_chunks(collection_name, previous.chunk_ids)
+            qdrant_mirror.ordered_delete(
+                collection_name,
+                lambda: chroma_collection.delete(ids=previous.chunk_ids),
+                chunk_ids=previous.chunk_ids,
+            )
+            bump_collection_version(collection_name)
+            get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
             logger.info(
                 "Took %d chunk(s) of the previous version of a quarantined re-upload out of %s",
                 len(previous.chunk_ids),
@@ -4435,12 +4457,13 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 return
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
-            chroma_collection.delete(ids=inserted)
-            bump_collection_version(collection_name)
-            get_chunk_text_store().delete_chunks(collection_name, inserted)
             from ..qdrant import mirror as qdrant_mirror
 
-            qdrant_mirror.delete_chunks(collection_name, inserted)
+            qdrant_mirror.ordered_delete(
+                collection_name, lambda: chroma_collection.delete(ids=inserted), chunk_ids=inserted
+            )
+            bump_collection_version(collection_name)
+            get_chunk_text_store().delete_chunks(collection_name, inserted)
             logger.warning(
                 "Discarded %d chunk(s) a failed ingest of %s left in %s", len(inserted), file_name, collection_name
             )
@@ -6703,18 +6726,37 @@ class LlamaIndexRetriever(BaseRetriever):
             )
 
     async def health_check(self) -> bool:
-        """Check that the vector store this retriever reads is reachable."""
+        """Check that the vector stores this retriever depends on are reachable.
+
+        Under ``qdrant`` that is both: retrieval reads Qdrant, but Chroma is
+        still the write-side record and serves the registry reads (file
+        listings, text samples, page reads), so a dead Chroma is an outage
+        that a Qdrant-only probe would report as healthy.
+        """
         from ..qdrant.config import reads_qdrant
 
         if reads_qdrant():
             from ..qdrant import retrieval as qdrant_retrieval
 
-            return await asyncio.to_thread(qdrant_retrieval.healthy)
+            if not await asyncio.to_thread(qdrant_retrieval.healthy):
+                return False
+            return await asyncio.to_thread(self._chroma_answers)
         try:
             if self._chroma_client:
                 self._chroma_client.heartbeat()
             return True
         except Exception:
+            return False
+
+    def _chroma_answers(self) -> bool:
+        """Whether Chroma answers a heartbeat; a retriever that only read Qdrant so far opens its client here."""
+        try:
+            if self._chroma_client is None:
+                self._chroma_client = _make_chroma_client(self.persist_dir)
+            self._chroma_client.heartbeat()
+            return True
+        except Exception:  # noqa: BLE001 - a health probe reports, it does not raise
+            logger.warning("Chroma does not answer its heartbeat", exc_info=True)
             return False
 
 

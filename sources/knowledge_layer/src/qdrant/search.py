@@ -23,14 +23,17 @@ comes from one exact dense query over the fused hits' ids, no vectors shipped.
 
 from __future__ import annotations
 
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
 
 from qdrant_client import models
 
+from .payload import paragraph_key
 from .schema import DENSE
 from .schema import LEXICAL
+from .schema import PARAGRAPH_FIELD
 from .schema import TEXT_FIELD
 from .schema import physical_for_scope
 from .scope import scope_condition
@@ -61,6 +64,26 @@ def phrase(term: str) -> models.FieldCondition:
     return models.FieldCondition(key=TEXT_FIELD, match=models.MatchPhrase(phrase=term))
 
 
+#: An exact term that is one ``§`` reference and nothing else, as
+#: ``legal_terms.extract_exact_terms`` emits it (``§ 3``, ``§ 12.1``, ``§ 3a``).
+_PARAGRAPH_TERM = re.compile(r"^§\s*(\S+)$")
+
+
+def exact_term(term: str) -> models.FieldCondition:
+    """Chunks containing the exact term ``term``: what the Chroma path's ``$contains`` pass selected.
+
+    A ``§`` reference matches the chunk's own list of the references it cites
+    (``payload.paragraph_refs``): no tokenizer keeps the ``§``, so as a phrase
+    "§ 3" is the bare token ``3`` and would match every "Abs. 3". Every other
+    term ("OIB-Richtlinie 2", "5.1.1", "§ 3 Abs. 2") is a phrase over the
+    word-tokenized text, digits included.
+    """
+    paragraph = _PARAGRAPH_TERM.match(term.strip())
+    if paragraph:
+        return models.FieldCondition(key=PARAGRAPH_FIELD, match=models.MatchValue(value=paragraph_key(paragraph[1])))
+    return phrase(term)
+
+
 def _alias(store: QdrantStore, scopes: Sequence[str]) -> str:
     physicals = {physical_for_scope(scope) for scope in scopes}
     if len(physicals) != 1:
@@ -83,7 +106,7 @@ def _prefetches(
             models.Prefetch(query=bm25(lexical_text), using=LEXICAL, limit=candidates, filter=query_filter, params=idf)
         )
     for term in exact_terms:
-        restricted = models.Filter(must=[query_filter, phrase(term)])
+        restricted = models.Filter(must=[query_filter, exact_term(term)])
         prefetch.append(models.Prefetch(query=list(vector), using=DENSE, limit=candidates, filter=restricted))
     return prefetch
 
