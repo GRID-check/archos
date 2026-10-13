@@ -24,14 +24,25 @@ import {
   Maximize2,
   RotateCcw,
   ShieldAlert,
+  ShieldOff,
   Sparkles,
+  Trash2,
   X,
   type LucideIcon,
 } from 'lucide-react'
 import { firstFinding, parseQuarantine, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
+import { ApiRequestError } from '@/adapters/api/api-error'
+import {
+  getQuarantineReviewAccess,
+  releaseQuarantinedDocument,
+  type QuarantineReviewAccess,
+} from '@/adapters/api/upload-screening-client'
+import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import { QuarantineFindings } from './quarantine-findings'
+import { RequestReviewButton } from './request-review-button'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { SectionLabel } from '@/components/ui/section-label'
 import type { FassungFacts } from '@/lib/documents/fassung'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
@@ -52,7 +63,13 @@ import { DocumentKindThumbnail } from './document-kind-thumbnail'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
-import { DocumentActionsMenu, useDocumentActions, type DocumentScope } from './document-actions'
+import {
+  DeleteDocumentDialog,
+  DocumentActionsMenu,
+  useDocumentActions,
+  type DocumentActions,
+  type DocumentScope,
+} from './document-actions'
 import {
   DocumentStatusBadge,
   failedWithPreviousVersion,
@@ -612,7 +629,15 @@ export function FilePreviewPane({
    * this pane the same way any other change does: the workspace updates the
    * document it passes in.
    */
-  const actions = useDocumentActions({ document: file, scope, onReingested })
+  const handleDeleted = useCallback(
+    (fileId: string) => {
+      onDeleted?.(fileId)
+      onClose?.()
+    },
+    [onDeleted, onClose]
+  )
+  // `onDeleted` for the held block's „Löschen", which deletes through this hook.
+  const actions = useDocumentActions({ document: file, scope, onReingested, onDeleted: handleDeleted })
 
   // Re-dispatch a failed document to the ingest pipeline. The request itself
   // lives in `useDocumentActions` with rename/delete/download — one document
@@ -771,10 +796,7 @@ export function FilePreviewPane({
             actions={['rename', 'delete']}
             canManage={canManage}
             onRenamed={onRenamed}
-            onDeleted={(fileId) => {
-              onDeleted?.(fileId)
-              onClose?.()
-            }}
+            onDeleted={handleDeleted}
           />
           {canExpandPreview && previewUrl && (
             <Button
@@ -1503,6 +1525,16 @@ export function FilePreviewPane({
                       shownFinding={shownFinding}
                       testId="preview-held-findings"
                     />
+                    {/* The decision, where the reviewer is looking at the
+                        document and the finding, rather than only in the
+                        Quarantäne list. The uploader gets the request instead. */}
+                    <HeldReview
+                      key={file.id}
+                      documentId={file.id}
+                      scope={scope}
+                      actions={actions}
+                      onReleased={(status) => onReingested?.(file.id, status)}
+                    />
                   </div>
                 </div>
               </div>
@@ -1671,6 +1703,106 @@ function PageMock({
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * What this reader can do about a held file, under its findings (ADR-0086).
+ *
+ * A reviewer allows it or deletes it here, looking at the page the check found
+ * it on, with the same question the Quarantäne list asks. The uploader who may
+ * not decide asks those who may. Which of the two is the server's answer
+ * (`GET /api/documents/{id}/quarantine`), never a role read here; until it
+ * lands, and for anyone else, nothing is offered.
+ */
+function HeldReview({
+  documentId,
+  scope,
+  actions,
+  onReleased,
+}: {
+  documentId: string
+  scope: DocumentScope
+  /** The pane's document actions: its name, and the delete the menu uses. */
+  actions: DocumentActions
+  /** The file was allowed and sent to be read, with this status. */
+  onReleased: (status: string) => void
+}): JSX.Element | null {
+  const t = useTranslations('files')
+  const tOrg = useTranslations('organization')
+  const tc = useTranslations('common')
+  const [access, setAccess] = useState<QuarantineReviewAccess | null>(null)
+  const [releaseOpen, setReleaseOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+
+  useEffect(() => {
+    const controller = new AbortController()
+    getQuarantineReviewAccess(documentId, controller.signal)
+      .then(setAccess)
+      .catch(() => {
+        // Not knowing offers nothing: both actions check for themselves anyway.
+        if (!controller.signal.aborted) setAccess({ canReview: false, canAskForReview: false })
+      })
+    return () => controller.abort()
+  }, [documentId])
+
+  const release = async (): Promise<void> => {
+    try {
+      const { status } = await releaseQuarantinedDocument(documentId)
+      notifyDocumentsChanged()
+      toast.success(tOrg('quarantine.released', { name: actions.name }))
+      onReleased(status)
+    } catch (error) {
+      // Someone else allowed or deleted it first: what was on screen was stale.
+      const decided = error instanceof ApiRequestError && (error.status === 409 || error.status === 404)
+      if (decided) notifyDocumentsChanged()
+      toast.error(decided ? t('preview.heldDecided') : tOrg('quarantine.releaseError'))
+    }
+  }
+
+  if (access?.canAskForReview) {
+    return <RequestReviewButton documentId={documentId} name={actions.name} testId="preview-held-request-review" />
+  }
+  if (!access?.canReview) return null
+
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2" data-testid="preview-held-review">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => setReleaseOpen(true)}
+          data-testid="preview-held-release"
+        >
+          {tOrg('quarantine.release')}
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          onClick={() => setDeleteOpen(true)}
+          disabled={actions.isDeleting}
+          data-testid="preview-held-delete"
+        >
+          <Trash2 className="size-4" aria-hidden />
+          {tOrg('quarantine.delete')}
+        </Button>
+      </div>
+      <ConfirmDialog
+        open={releaseOpen}
+        onOpenChange={setReleaseOpen}
+        title={tOrg('quarantine.releaseTitle', { name: actions.name })}
+        description={tOrg('quarantine.releaseDescription')}
+        confirmLabel={tOrg('quarantine.release')}
+        cancelLabel={tc('actions.cancel')}
+        tone="warning"
+        icon={ShieldOff}
+        confirmTestId="preview-held-release-confirm"
+        onConfirm={release}
+      />
+      <DeleteDocumentDialog open={deleteOpen} onOpenChange={setDeleteOpen} scope={scope} actions={actions} />
+    </>
   )
 }
 

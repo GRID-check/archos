@@ -35,6 +35,19 @@ describe('parseQuarantine', () => {
     expect(parseQuarantine(null)).toBeNull()
   })
 
+  it('reads a reason whose page list the job cut', () => {
+    const cut = parseQuarantine(
+      'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":80,"pages":[1,2,3],"pages_truncated":true}]}'
+    )
+    expect(cut?.reasons[0]).toEqual({ kind: 'term', term: 'Lohnzettel', count: 80, pages: [1, 2, 3], pages_truncated: true })
+    // A verdict stored before the field existed lists every page, and still parses.
+    expect(parseQuarantine(stored)?.reasons[0].pages_truncated).toBeUndefined()
+    // A field of the wrong type is a malformed verdict, not a guess.
+    expect(
+      parseQuarantine('quarantined:{"reasons":[{"kind":"term","term":"L","pages":[1],"pages_truncated":"yes"}]}')
+    ).toBeNull()
+  })
+
   it('is classified as a quarantine, not as an unknown failure', () => {
     expect(classifyIngestFailure(stored)?.kind).toBe('quarantined')
   })
@@ -49,6 +62,13 @@ describe('describing a reason', () => {
   it('shows a detector hit only by its masked sample', () => {
     const verdict = parseQuarantine(stored)
     expect(verdict && describeQuarantineReason(verdict.reasons[1], t)).toBe('IBAN AT61 •••• •••• •••• 1234 · Seite 2')
+  })
+
+  it('says there are more pages when the job listed only some', () => {
+    const cut = parseQuarantine(
+      'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","count":80,"pages":[1,3],"pages_truncated":true}]}'
+    )
+    expect(cut && describeQuarantineReason(cut.reasons[0], t)).toBe('„Lohnzettel“ im Text · Seiten 1, 3, …')
   })
 
   it('says the reason without its pages where the pages are buttons', () => {
