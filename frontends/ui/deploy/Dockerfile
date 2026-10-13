@@ -80,7 +80,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-# Bun is the INSTALLER and script runner; Node stays the runtime. Copied from
+# Bun is the toolchain; Node stays the runtime (ADR-0103). Copied from
 # the official image rather than installed, so the layer is deterministic and
 # needs no network step.
 #

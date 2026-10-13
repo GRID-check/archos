@@ -69,8 +69,8 @@ if [ "$(bun --version 2>/dev/null || true)" != "$BUN_VERSION" ]; then
 fi
 
 step "UI dependencies (bun)"
-# Bun is the INSTALLER and script runner only, never the runtime — see
-# `fe:install`. Do not add `--bun`.
+# Bun is the toolchain, never the runtime (ADR-0103) — see `fe:install`.
+# Do not add `--bun`.
 (cd frontends/ui && bun install --frozen-lockfile)
 
 step "web/landing dependencies (npm)"

@@ -1,7 +1,9 @@
 name: Setup Bun
 description: >-
-  Install Bun as the JavaScript INSTALLER and script runner. Node remains the
-  runtime for both the app and the build — see the note below.
+  Install Bun, the JavaScript toolchain: installer, script runner, bundler and
+  type checker (`bun check`, ADR-0103). Node remains the runtime for both the
+  app and the build — see the note below. This default is the repo's one Bun
+  pin; tests/test_bun_version_pin.py holds the images and the session hook to it.
 
 inputs:
   version:

@@ -341,7 +341,7 @@ jobs:
         with:
           persist-credentials: false
       # Node is the RUNTIME (Turbopack's PostCSS step spawns a real `node`);
-      # Bun is only the installer and script runner.
+      # Bun is the toolchain: install, scripts, `bun check` (ADR-0103).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"

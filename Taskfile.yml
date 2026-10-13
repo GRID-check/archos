@@ -211,7 +211,7 @@ tasks:
     desc: Install UI dependencies
     dir: '{{.UI}}'
     cmds:
-      # Bun is the INSTALLER and script runner only — never the runtime. Do not
+      # Bun is the toolchain, never the runtime (ADR-0103). Do not
       # add `--bun`: it exports NODE_OPTIONS=--bun, and Turbopack's PostCSS step
       # spawns a real `node`, which rejects the flag and fails the build.
       - bun install --frozen-lockfile
