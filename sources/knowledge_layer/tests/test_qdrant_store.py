@@ -540,3 +540,19 @@ def test_a_string_boolean_is_read_for_what_it_says():
     assert coerce_field("superseded", "true") is True
     assert coerce_field("superseded", 1) is True
     assert coerce_field("superseded", "vielleicht") is None
+
+
+def test_a_list_value_is_any_of_on_every_field_type(store):
+    """``project_facts.*`` are keyword fields holding lists; a list equality was one string and matched nothing."""
+    from knowledge_layer.qdrant.payload import project_payload
+
+    store.upsert(
+        "proj_a",
+        [_record("x", "a.pdf", section_order=2)],
+        project_payload({"nutzungen": ["wohnen", "buero"], "gebaeudeklasse": [4]}, "active"),
+    )
+    assert store.count("proj_a", {"project_facts.nutzungen": ["buero", "handel"]}) == 1
+    assert store.count("proj_a", {"project_facts.nutzungen": ["handel"]}) == 0
+    assert store.count("proj_a", {"project_facts.gebaeudeklasse": [3, "4"]}) == 1
+    assert store.count("proj_a", {"section_order": ["2"]}) == 1
+    assert store.count("proj_a", {"file_name": ["a.pdf"]}) == 1
