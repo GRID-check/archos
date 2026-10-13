@@ -284,7 +284,7 @@ describe("the program constructs in the split topology", () => {
     expect(withSelector.map((r) => r.name)).toEqual([]);
   });
 
-  it("deploys Qdrant on a stack that sets no Qdrant knob, and no Chroma (ADR-0104)", () => {
+  it("deploys Qdrant on a stack that sets no Qdrant knob, and no Chroma (ADR-0105)", () => {
     // The StatefulSet, its two Services and the claims of every Chroma pod are
     // gone; Qdrant is always there. A resource named for Chroma would be the
     // old server coming back.

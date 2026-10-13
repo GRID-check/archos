@@ -323,7 +323,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
       fileSize,
       contentType: 'application/pdf',
       contentHash: `sha256:${id}`,
-      status: 'uploaded',
+      status: 'uploaded' as const,
     }
   }
 
@@ -574,7 +574,7 @@ describe.skipIf(!url)('document versions under concurrency', () => {
         fileSize,
         contentType: 'application/pdf',
         contentHash: `sha256:${id}`,
-        status: 'uploaded',
+        status: 'uploaded' as const,
       }
     }
 

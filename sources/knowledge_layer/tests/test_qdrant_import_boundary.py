@@ -1,4 +1,4 @@
-"""Only ``knowledge_layer/qdrant/`` talks to Qdrant, and nothing talks to Chroma (ADR-0104, ADR-0105).
+"""Only ``knowledge_layer/qdrant/`` talks to Qdrant, and nothing talks to Chroma (ADR-0105, ADR-0106).
 
 The scope filter is the boundary between offices' documents. It holds by
 construction only while every read goes through ``knowledge_layer.qdrant``,
@@ -35,6 +35,14 @@ CHROMA_IMPORT = re.compile(
     r"|importorskip\(\s*[\"'](chromadb|llama_index\.vector_stores\.chroma)\b",
     re.MULTILINE,
 )
+#: Chroma's client reached without importing it: looked up by name on the
+#: retriever (``getattr(retriever, "_get_chroma_client", None)``) or called by
+#: its collection API. A develop merge brought the first one in after Chroma
+#: was gone; the Fassung compare then read nothing and said the file was not
+#: in the index, with every test green against a faked client.
+CHROMA_CLIENT_USE = re.compile(
+    r"_get_chroma_client|\bchroma_client\b|\.get_collection\(\s*name=|include=\[\s*[\"']documents[\"']"
+)
 
 
 def _offenders() -> list[str]:
@@ -48,7 +56,7 @@ def _offenders() -> list[str]:
     return offenders
 
 
-def _chroma_importers() -> list[str]:
+def _chroma_users(pattern: re.Pattern[str]) -> list[str]:
     offenders: list[str] = []
     for path in REPO.rglob("*.py"):
         relative = path.relative_to(REPO)
@@ -56,9 +64,13 @@ def _chroma_importers() -> list[str]:
             continue
         if path == pathlib.Path(__file__).resolve():  # this file plants the strings it looks for
             continue
-        if CHROMA_IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
+        if pattern.search(path.read_text(encoding="utf-8", errors="ignore")):
             offenders.append(str(relative))
     return offenders
+
+
+def _chroma_importers() -> list[str]:
+    return _chroma_users(CHROMA_IMPORT)
 
 
 def test_only_the_qdrant_package_imports_qdrant_client():
@@ -94,3 +106,17 @@ def test_the_chroma_check_sees_an_offender_in_code_and_tests_alike():
     finally:
         for path in planted:
             path.unlink()
+
+
+def test_nothing_reaches_for_a_chroma_client_by_name():
+    """No code, test fakes included, asks for Chroma's client or calls its collection API."""
+    assert _chroma_users(CHROMA_CLIENT_USE) == []
+
+
+def test_the_client_check_would_see_a_lookup_by_name():
+    planted = REPO / "scripts" / "_planted_chroma_client_check.py"
+    planted.write_text('client_of = getattr(retriever, "_get_chroma_client", None)\n', encoding="utf-8")
+    try:
+        assert "scripts/_planted_chroma_client_check.py" in _chroma_users(CHROMA_CLIENT_USE)
+    finally:
+        planted.unlink()

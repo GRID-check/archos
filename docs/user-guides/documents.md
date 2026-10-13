@@ -228,7 +228,8 @@ document of its own, and a link can be undone later („Verknüpfung lösen“).
   question on its own, „Neue Fassung von „…“?“, with two buttons: „Als neue
   Fassung ablegen“ and „Als eigenes Dokument hochladen“.
 - **Unchanged re-exports** (same name, same content) stay „unverändert, wird
-  übersprungen“ and never get a proposal.
+  übersprungen“ and never get a proposal. The exception is a file Piloti could
+  not read, or never read: uploading the same bytes again retries it.
 
 The tick travels with the upload: Piloti files the link as soon as the new file
 has been read, and says in words what changed. If the older document was deleted
@@ -535,8 +536,9 @@ tables.
 - Files uploaded before this change keep their old index: their text is
   searchable, their pictures are not, and a Word citation opens at page 1.
   Choose „Erneut lesen“ in the file's ⋯ menu to have it read the new way.
-  Uploading the same file again does not: identical bytes are skipped as
-  „Unverändert“. Until the new reading finishes, answers use the old one.
+  Uploading the same file again does not: identical bytes of a file that was
+  read are skipped as „Unverändert“. Until the new reading finishes, answers use
+  the old one.
 - A diagram drawn with Office shapes or SmartArt is not a picture to Piloti.
   Its labels are text and are found; its layout is not described.
 - If the PDF cannot be made, the file shows „Lesen fehlgeschlagen“ with the

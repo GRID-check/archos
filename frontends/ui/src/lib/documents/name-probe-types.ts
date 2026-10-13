@@ -57,6 +57,8 @@ export const documentNameMatchSchema = z.object({
   displayName: z.string().nullable(),
   fileSize: z.number().nullable(),
   contentHash: z.string().nullable(),
+  /** The reading status, so the planner skips identical bytes only when they were read (`documentReadFamily`). */
+  status: z.string(),
   folderId: z.string().nullable(),
   authoredBy: z.enum(DOCUMENT_AUTHORS),
   lifecycle: z.enum(DOCUMENT_LIFECYCLES),

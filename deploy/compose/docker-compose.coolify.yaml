@@ -126,7 +126,7 @@ services:
       - SEAWEED_ACCESS_KEY=${SEAWEED_READONLY_ACCESS_KEY:-grid-backend-read}
       - SEAWEED_SECRET_KEY=${SERVICE_PASSWORD_SEAWEEDREADONLY}
       - SEAWEED_BUCKET=grid-documents
-      # ── Knowledge base (shared Qdrant, ADR-0104) ──
+      # ── Knowledge base (shared Qdrant, ADR-0105) ──
       # Every role (chat, api, agent-worker, ingest-worker) talks to ONE Qdrant
       # over HTTP (the `qdrant` service below), so the vector store is not
       # pinned to a single container's disk: the chat and api roles read what the
@@ -202,7 +202,7 @@ services:
       start_period: 40s
     restart: unless-stopped
 
-  # ── Qdrant (ADR-0104), the single-node mirror of the Kubernetes StatefulSet
+  # ── Qdrant (ADR-0105), the single-node mirror of the Kubernetes StatefulSet
   #    in deploy/pulumi/src/data/qdrant.ts ──
   # ONE vector store that every backend role queries over HTTP. Coolify puts
   # every service of the stack on one managed network, so it carries the key

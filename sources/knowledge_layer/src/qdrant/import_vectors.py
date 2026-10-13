@@ -1,4 +1,4 @@
-"""Load an export in the neutral vector format into Qdrant, without re-embedding (ADR-0104).
+"""Load an export in the neutral vector format into Qdrant, without re-embedding (ADR-0105).
 
 The move off Chroma is two programs that share a file format and nothing else.
 ``deploy/migration/chroma_export.py`` runs beside Chroma, in an environment of

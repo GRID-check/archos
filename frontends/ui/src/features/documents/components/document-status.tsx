@@ -100,52 +100,40 @@ export function failedWithPreviousVersion(file: {
 }
 
 /**
- * The document has come to rest without ever being indexed — today, exactly
- * `stored`: an agent-authored report, deliberately never dispatched to
- * `/v1/ingest`. It is the case where "not citable yet" would be a lie, because
- * there is no "yet", and the Ask affordance has to say so instead of promising
- * a wait that never ends.
+ * This document is not in the knowledge base, and nothing is reading it there.
  *
- * An UNDECLARED status is not this: it also renders neutral, but what it means
- * is unknown, and "we never indexed it" is a claim only a declared value earns.
+ * Asked of the status alone, for a person's upload and Piloti's own document
+ * alike. Authorship used to override it ("nothing this product wrote is
+ * citable"), which was true until ADR-0054 let a person publish Piloti's
+ * document into the index. Since then the override showed a published,
+ * indexed report as „nicht in der Wissensbasis“. What keeps an unapproved
+ * machine document out is the dispatch guard (`dispatchDocument`, which reads
+ * the row and sends only the version a person published) and the database
+ * chain behind it, so `status` can only turn green for one a person approved.
  */
-/**
- * This document is not, and will never become, Projektwissen.
- *
- * Asks BOTH questions, and that is the whole point. Every not-citable
- * affordance used to derive from `status` alone, which was correct only while
- * `stored` implied "written by a machine" — a coincidence, not a rule. The
- * design's own lesson from this feature is that *provenance is the durable
- * fact*: `status` describes where a document is in a pipeline and can move,
- * while `authored_by` is what it IS and cannot.
- *
- * So a machine-authored row is never-indexed whatever its status says, and a
- * human row still answers on status alone, which is what keeps a genuinely
- * pending upload from being labelled as something it is not.
- */
-export function isNeverIndexed(file: {
-  status?: string | null
-  authoredBy?: string | null
-}): boolean {
-  if (file.authoredBy && file.authoredBy !== 'user') return true
+export function isNeverIndexed(file: { status?: string | null }): boolean {
   return isNeverIndexedStatus(file.status)
 }
 
 /**
- * Ask may open this document — the same claim the green badge makes.
- *
- * Machine-authored rows are excluded on authorship rather than on status, for
- * the reason above: nothing this product wrote is citable, and a status that
- * moved must not be able to say otherwise.
+ * Ask may open this document — the same claim the green badge makes, decided
+ * by the same status (see {@link isNeverIndexed} for why authorship no longer
+ * overrides it).
  */
-export function isCitable(file: {
-  status?: string | null
-  authoredBy?: string | null
-}): boolean {
-  if (file.authoredBy && file.authoredBy !== 'user') return false
+export function isCitable(file: { status?: string | null }): boolean {
   return isCitableStatus(file.status)
 }
 
+/**
+ * The document has come to rest outside the index: `stored` (a report Piloti
+ * wrote that nobody published, or an archived document whose chunks were
+ * purged) and `uploaded` (a row nothing was dispatched for). It is the case
+ * where "not citable yet" would be a lie, because there is no "yet", and the
+ * Ask affordance has to say so instead of promising a wait that never ends.
+ *
+ * An UNDECLARED status is not this: it also renders neutral, but what it means
+ * is unknown, and "we never indexed it" is a claim only a declared value earns.
+ */
 export function isNeverIndexedStatus(status: string | null | undefined): boolean {
   const facts = documentStatusFacts(status)
   return facts !== null && facts.variant === 'secondary' && facts.phase === 'terminal'

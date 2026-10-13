@@ -36,3 +36,22 @@ def read_pages(collection: str, file_name: str) -> list[tuple[Any, str]] | None:
         return None
     pages = [(hit.payload.get("page_label"), hit.text) for hit in hits if hit.text]
     return sorted(pages, key=page_sort_key) or None
+
+
+def read_chunks(collection: str, file_name: str) -> list[tuple[str, dict[str, Any]]] | None:
+    """``(chunk text, metadata)`` of one file in reading order; None when the collection or file has none.
+
+    The compare of two Fassungen (``fassung_diff``) needs what ``read_pages``
+    drops: the ``content_type`` that tells printed text from a drawing reading,
+    and the ``drawing_data`` that holds the reading's structure. The same
+    structural fetch, with the chunk's own metadata (``chunk_metadata``: the
+    payload without the fields only the store adds).
+    """
+    try:
+        from knowledge_layer.qdrant import reads
+        from knowledge_layer.qdrant.payload import chunk_metadata
+
+        hits = reads.fetch(collection, {"file_name": file_name}, MAX_CHUNKS)
+    except Exception:  # noqa: BLE001 - an unreadable file is a per-document gap, not a failure
+        return None
+    return [(hit.text, chunk_metadata(hit.payload)) for hit in hits if hit.text] or None

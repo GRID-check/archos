@@ -27,7 +27,7 @@ export function baseStackConfig(): Record<string, string> {
     "grid-oib:openrouterApiKey": "or", // pragma: allowlist secret
     "grid-oib:dragonflyPassword": "df", // pragma: allowlist secret
     "grid-oib:rateLimitStorePassword": "rl", // pragma: allowlist secret
-    // Qdrant is always deployed (ADR-0104) and refuses to plan without its
+    // Qdrant is always deployed (ADR-0105) and refuses to plan without its
     // three keys, each distinct from the others and from every SeaweedFS secret.
     "grid-oib:qdrantApiKey": "qd-rw", // pragma: allowlist secret
     "grid-oib:qdrantReadOnlyApiKey": "qd-ro", // pragma: allowlist secret

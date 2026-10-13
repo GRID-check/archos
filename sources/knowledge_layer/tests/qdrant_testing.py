@@ -1,4 +1,4 @@
-"""One real Qdrant for every test that needs a store (ADR-0104).
+"""One real Qdrant for every test that needs a store (ADR-0105).
 
 What a test of the store or the adapter checks is the server's behaviour as
 the knowledge layer drives it (filters, strict mode, BM25, deletes by filter),

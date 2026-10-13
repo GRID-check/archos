@@ -491,8 +491,8 @@ describe('transitionDocumentVersion — guards', () => {
  */
 describe('transitionDocumentVersion — a held document', () => {
   it.each([
-    ['still being screened', { status: 'processing', screeningOutcome: null }],
-    ['quarantined', { status: 'quarantined', screeningOutcome: 'quarantined' as const }],
+    ['still being screened', { status: 'processing' as const, screeningOutcome: null }],
+    ['quarantined', { status: 'quarantined' as const, screeningOutcome: 'quarantined' as const }],
     ['bytes swapped after its verdict', { contentHash: 'sha256:new', screenedHash: 'sha256:old', screeningOutcome: 'clean' as const }],
   ])('refuses to submit one %s, and tells nobody', async (_label, held) => {
     vi.mocked(getAccessibleDocument).mockResolvedValue({ ...document, ...held })
@@ -1466,7 +1466,7 @@ describe('request_changes and the revision task', () => {
   // project: a held document opens none (ADR-0086).
   it('opens no task for a document whose screening has not passed', async () => {
     vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    const held = { ...document, status: 'quarantined', screeningOutcome: 'quarantined' as const }
+    const held = { ...document, status: 'quarantined' as const, screeningOutcome: 'quarantined' as const }
     vi.mocked(getAccessibleDocument).mockResolvedValue(held)
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ originConversationId: null }))
     vi.mocked(compareAndSwapVersionState).mockResolvedValue({

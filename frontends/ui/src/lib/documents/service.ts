@@ -87,6 +87,7 @@ import {
   deleteProjectDocument,
   documentExistsInCollection,
   findDocumentInOrg,
+  markDocumentNotIndexed,
   findStorageKeyByCollectionAndFilename,
   findStorageKeyByIdAndCollection,
   listDocumentLevelPage,
@@ -755,14 +756,14 @@ export async function fetchSemanticHits(
 
 /**
  * One ranking across many collections, from the backend's grouped search
- * (`POST /v1/collections/search`, ADR-0105): every collection named is ranked
+ * (`POST /v1/collections/search`, ADR-0106): every collection named is ranked
  * in ONE query, and the documents come back in that ranking's order across
  * collections (at most `filesPerCollection` from any one), each hit carrying
  * its position as `rank`. Scores from separate searches are not comparable;
  * this order is. `options` narrow the search and lift similar projects inside
  * the same query.
  *
- * Qdrant is the only store (ADR-0104), so there is nothing to fall back to: a
+ * Qdrant is the only store (ADR-0105), so there is nothing to fall back to: a
  * backend that refuses, cannot be reached or answers something unreadable is
  * an {@link UpstreamError}, never an empty result a caller would read as
  * "nothing found". The envelope is signed for exactly these collections, every
@@ -1175,9 +1176,10 @@ export interface DispatchDocumentResult {
    * `processing` is a detached path: an IFC model ({@link beginModelExtraction})
    * or an office file converting first ({@link beginRenditionIngest}).
    * `quarantined` is a row nothing was dispatched for: it waits on a reviewer
-   * (ADR-0086), and only a release sends it on.
+   * (ADR-0086), and only a release sends it on. `stored` is an archived row,
+   * which is not read while it is archived.
    */
-  status: 'pending' | 'uploaded' | 'failed' | 'processing' | 'quarantined'
+  status: 'pending' | 'uploaded' | 'failed' | 'processing' | 'quarantined' | 'stored'
 }
 
 /**
@@ -1278,6 +1280,14 @@ export async function dispatchDocument(
   // again under whatever the rules had become. Asked of the row here, so the
   // next such caller cannot forget it.
   if (row.status === 'quarantined') return { jobId: null, status: 'quarantined' }
+  // An archived document has left the working set and answers nothing
+  // (`archiveDocument` purged its chunks). A same-name re-upload still versions
+  // it, and sending those bytes to the index would make a document nobody can
+  // see in the listing answer questions again. It is read when it comes back.
+  if (row.lifecycle === 'archived') {
+    await markDocumentNotIndexed(row.id, input.organizationId)
+    return { jobId: null, status: 'stored' }
+  }
 
   if (isIfcFilename(input.filename)) {
     return beginModelExtraction(input)

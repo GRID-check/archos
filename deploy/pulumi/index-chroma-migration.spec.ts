@@ -4,7 +4,7 @@ import { baseStackConfig } from "./src/test-support/stack-config";
 import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
- * The one-shot move of the retired Chroma store into Qdrant (ADR-0104), with
+ * The one-shot move of the retired Chroma store into Qdrant (ADR-0105), with
  * `chromaMigration` on: the whole program built once and the Job held to the
  * contract its two scripts were written against.
  *

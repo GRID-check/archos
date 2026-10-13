@@ -118,7 +118,7 @@ config:
   # exactly this combination on every run, and the warning is correct.
   grid-oib:seaweedfsEncryptVolumeData: "true"
   # ── Vector store ──
-  # Qdrant is always deployed (ADR-0104); its three keys come from the ESC
+  # Qdrant is always deployed (ADR-0105); its three keys come from the ESC
   # environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`, `qdrantS3SecretKey`).
   # A single peer on staging: no cluster mode, and the volume Chroma had.
   grid-oib:qdrantReplicas: "1"

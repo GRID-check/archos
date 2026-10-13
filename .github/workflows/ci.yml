@@ -290,7 +290,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # coverage sticky comment
-    # A real Qdrant for every Python suite (ADR-0104): it is the only vector
+    # A real Qdrant for every Python suite (ADR-0105): it is the only vector
     # store, and the behaviour under test (German BM25, fusion, strict mode,
     # group_by) is the server's, so a mock would only test the mock. Same
     # version as production. Job-wide, so a suite that gains a store test

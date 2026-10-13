@@ -13,7 +13,7 @@ Docker Compose (`deploy/compose/docker-compose.yaml`):
 - **seaweedfs** — object storage, bucket `grid-documents`. Published to the host at
   `localhost:8333`; internal DNS name `seaweedfs:8333`.
 - **aiq-agent** — FastAPI + NeMo Agent Toolkit (NAT)
-  scheduler/worker; every chunk lives in Qdrant (ADR-0104). Runs the LangGraph workflow and the
+  scheduler/worker; every chunk lives in Qdrant (ADR-0105). Runs the LangGraph workflow and the
   async deep-research jobs.
 - **frontend** — Next.js 16 BFF + a Node WebSocket proxy (`frontends/ui/server.js`).
 - **dragonfly** — Redis-protocol shared cache (ADR-0020): read-through caches

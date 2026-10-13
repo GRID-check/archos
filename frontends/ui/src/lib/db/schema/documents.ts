@@ -83,6 +83,7 @@ import {
   type DocumentAuthor,
 } from '@/lib/documents/document-authors'
 import { DOCUMENT_LIFECYCLES, type DocumentLifecycle } from '@/lib/documents/lifecycle-types'
+import { DOCUMENT_STATUSES, type DocumentStatus } from '@/lib/documents/document-status'
 import type { IngestFailureCategory } from '@/lib/documents/retry-policy'
 
 // Re-exported so `@/lib/db/schema` stays the one import site every existing
@@ -320,40 +321,26 @@ export const documents = pgTable('documents', {
    */
   contentHash: text('content_hash'),
   /**
-   * Where ingestion got to: `pending → processing → processed | error`, plus
-   * `stored`, which is none of those (migration 0063).
+   * Where reading stands: one of {@link DOCUMENT_STATUSES} (migration 0135,
+   * CHECK `documents_status_known`). The meanings are in
+   * `@/lib/documents/document-status`, and the migration's header lists them.
    *
-   * `stored` means "the bytes are here and indexing was deliberately skipped" —
-   * an agent-authored document, which is never dispatched to `/v1/ingest`
-   * because a report the agent wrote, embedded into the project corpus, comes
-   * back as retrievable evidence FOR the agent under a *Projektwissen* badge.
-   * The four existing states all describe a job that is running or has finished;
-   * there was no state for a job that was never started, and leaving such a row
-   * at `pending` renders a spinner that never resolves, because nothing will
-   * ever report on a job nobody dispatched.
-   *
-   * It is TERMINAL, and the load-bearing consequence lives in
+   * `stored` means "the bytes are here and nothing reads them": a document
+   * Piloti wrote that nobody published, and an archived document whose chunks
+   * were purged. It is TERMINAL, and the load-bearing consequence lives in
    * `@/lib/documents/reconcile-status`: `stored` must stay out of
    * `IN_FLIGHT_STATUSES`, or every read of the row polls a backend that has
    * never heard of it and then reconciles its status from a collection file
-   * list that holds nothing of ITS — but may well hold that same filename
-   * belonging to a document a person uploaded. `generatedFilename` builds an
-   * agent row's name from a title the model wrote, into the project's own
-   * `collectionName`, so the collision is reachable by the model rather than
-   * merely accidental (`lib/documents/service.ts`'s `joinHitsToFiles` and
-   * `lib/platform/vector-reconcile.ts` both turn on the same fact). The wrong
-   * answer there is not "no answer" — it is another document's.
-   *
-   * Which is why keeping `stored` out of the set is the cheap half of the rule
-   * and not the whole of it: a status value cannot carry an authorship
-   * invariant. The join itself is gated, by `authoredBy`, at its one entry point
+   * list that may hold that same filename belonging to another document. A
+   * status value cannot carry an authorship invariant, so the join itself is
+   * gated, by `authoredBy`, at its one entry point
    * (`@/lib/documents/collection-file-ref`).
    *
-   * Plain `text` with no CHECK, so a new state is a TypeScript change rather
-   * than a migration — the same arrangement `scope` has, and the reason 0063
-   * adds no DDL for this value.
+   * Open `text` until 0135, so a new state was "a TypeScript change rather than
+   * a migration"; that is how the column came to hold three vocabularies. A new
+   * state is now a migration, on purpose (ADR-0104).
    */
-  status: text('status').notNull().default('pending'),
+  status: text('status').$type<DocumentStatus>().notNull().default('uploaded'),
   /**
    * The version whose bytes the storage columns above mirror, or NULL when
    * nothing has been published yet (migration 0082, ADR-0054).
@@ -661,6 +648,11 @@ export const documents = pgTable('documents', {
    * not.
    */
   lifecycleKnown: check('documents_lifecycle_known', sql`${table.lifecycle} IN ('active', 'archived')`),
+  /** Where reading stands (migration 0135, ADR-0104): an eighth value fails its write. */
+  statusKnown: check(
+    'documents_status_known',
+    sql`${table.status} IN (${sql.raw(DOCUMENT_STATUSES.map((status) => `'${status}'`).join(', '))})`
+  ),
   /** The retry rule's vocabulary (migration 0134): a category nothing knows would read as unknown. */
   ingestFailureCategoryKnown: check(
     'documents_ingest_failure_category_check',

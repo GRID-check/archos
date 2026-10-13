@@ -4,7 +4,7 @@ The Docker Compose file is at `deploy/compose/docker-compose.yaml`. It defines
 24 services, several named volumes, and 2 bridge networks. The backend image
 runs as four of them (ADR-0082): the `chat` role (`aiq-agent`), the `api` role
 (`aiq-api`), the research `agent-worker` and the `ingest-worker`, all against the
-shared `qdrant` vector store (ADR-0104). This page describes the core ones; the observability stack
+shared `qdrant` vector store (ADR-0105). This page describes the core ones; the observability stack
 (`dragonfly`, `clickhouse`, the three `langfuse-*` services) and the four
 background workers (`purger`,
 `skill-scheduler`, `bff-jobs`, `housekeeping`) are defined in the compose file
@@ -142,7 +142,7 @@ port. Healthy while `/tmp/ingest-worker.alive` is fresh.
 
 ### qdrant
 
-The shared vector store (ADR-0104), the single-node mirror of the Pulumi
+The shared vector store (ADR-0105), the single-node mirror of the Pulumi
 StatefulSet (`deploy/pulumi/src/data/qdrant.ts`): `qdrant/qdrant:v1.19.2`,
 `QDRANT_IMAGE` overrides. Started by a plain `up`, no profile. The four backend
 services query it over HTTP on the internal network, so it publishes no port

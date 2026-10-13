@@ -1,4 +1,4 @@
-"""Rebuild a Qdrant collection as a new _vN beside the live one, then move its alias (ADR-0104).
+"""Rebuild a Qdrant collection as a new _vN beside the live one, then move its alias (ADR-0105).
 
 Open-source Qdrant cannot reshard, so a new shard count or replication shape is
 a new collection, a copy of the stored vectors (no re-embedding) and one atomic

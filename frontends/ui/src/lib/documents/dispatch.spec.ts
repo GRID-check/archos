@@ -45,6 +45,7 @@ vi.mock('./repository', () => ({
   setDocumentBackgroundJob: vi.fn().mockResolvedValue(undefined),
   markDocumentIngestFailed: vi.fn().mockResolvedValue(undefined),
   setDocumentIngestJob: vi.fn().mockResolvedValue(undefined),
+  markDocumentNotIndexed: vi.fn().mockResolvedValue(undefined),
   findDocumentInOrg: vi.fn(),
   findFolderPathInProject: vi.fn(),
   findStorageKeyByCollectionAndFilename: vi.fn(),
@@ -82,6 +83,7 @@ import {
   markDocumentProcessing,
   setDocumentBackgroundJob,
   setDocumentIngestJob,
+  markDocumentNotIndexed,
 } from './repository'
 import { makeDocument } from '@/test-utils/db-fixtures'
 import { internalRead } from '@/lib/documents/document-reader'
@@ -191,6 +193,22 @@ describe('dispatchDocument', () => {
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(runBimExtraction).not.toHaveBeenCalled()
     expect(markDocumentProcessing).not.toHaveBeenCalled()
+    expect(setDocumentIngestJob).not.toHaveBeenCalled()
+  })
+
+  /**
+   * An archived document answers nothing: archiving purged its chunks. A
+   * same-name re-upload still versions it, and dispatching those bytes put a
+   * document nobody sees in the listing back into the index.
+   */
+  it.each(['report.pdf', 'haus.ifc'])('reads nothing for an archived %s, and says so on the row', async (name) => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(makeDocument({ authoredBy: 'user', lifecycle: 'archived' }))
+
+    await expect(dispatchDocument(input(name))).resolves.toEqual({ jobId: null, status: 'stored' })
+
+    expect(markDocumentNotIndexed).toHaveBeenCalledWith('doc-1', 'org-1')
+    expect(fetchSpy).not.toHaveBeenCalled()
+    expect(runBimExtraction).not.toHaveBeenCalled()
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
   })
 

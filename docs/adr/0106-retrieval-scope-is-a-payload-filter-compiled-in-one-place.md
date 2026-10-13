@@ -120,7 +120,7 @@ has a read-only key configured for the day the roles split.
 
 * Design: [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md)
   §§3–7.
-* Store decision: [ADR-0104](0104-qdrant-replaces-chroma-reached-through-qdrant-client.md).
+* Store decision: [ADR-0105](0105-qdrant-replaces-chroma-reached-through-qdrant-client.md).
 * On acceptance this amends ADR-0006 (scopes stay logical; collections stop
   being per scope) and ADR-0087 (a restricted folder is a `restriction_id`, not
   a collection). The audience rules of ADR-0094 are unchanged; only their

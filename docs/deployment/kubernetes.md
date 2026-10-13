@@ -30,7 +30,7 @@ their own namespaces.
 | `postgres` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) | CloudNativePG `Cluster` | 1 (→3 HA) | RWO PVC | Add replicas |
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
-| `qdrant` (the vector store, ADR-0104; always deployed) | StatefulSet (`Parallel`) + PDB + `qdrant-snapshot` CronJob | `qdrantReplicas` (default 3, one per node; 1 runs without cluster mode) | RWO PVC `/qdrant/storage` per peer, `Retain` | Peers by hand, shards moved by the runbook ([`qdrant-runbook.md`](qdrant-runbook.md)) |
+| `qdrant` (the vector store, ADR-0105; always deployed) | StatefulSet (`Parallel`) + PDB + `qdrant-snapshot` CronJob | `qdrantReplicas` (default 3, one per node; 1 runs without cluster mode) | RWO PVC `/qdrant/storage` per peer, `Retain` | Peers by hand, shards moved by the runbook ([`qdrant-runbook.md`](qdrant-runbook.md)) |
 | `chroma-migration` (one-shot copy of the retired Chroma store into Qdrant; `chromaMigration`, default off) | Job | 1 pod | reads the retained `data-chroma-0` read-only; scratch is a generic ephemeral claim | n/a ([runbook](qdrant-runbook.md#migrating-from-chroma-on-kubernetes)) |
 | `seaweedfs` (filer + S3 gateway) | StatefulSet | 1 (`single`) / N (`split`) | RWO PVC `/data` (unused under the Postgres filer store) | See §4 |
 | `seaweedfs-master` (`split` only) | StatefulSet | 1 (3 = HA, untested) | RWO PVC `/data` (raft + volume-id sequence) | Odd replica counts only |
@@ -1140,7 +1140,7 @@ The token-heavy workload (deep research) now scales out:
 - **Cancellation works from any replica** — the cancel route flips `job_info` to
   INTERRUPTED and drops the queue row; the runner's 1 s `CancellationMonitor`
   honors it. No scheduler is involved.
-- **Shared vectors**: the Qdrant cluster (ADR-0104) means workers and web
+- **Shared vectors**: the Qdrant cluster (ADR-0105) means workers and web
   replicas read/write one store.
 - **Citation registry** already shares cross-replica via Dragonfly (ADR-0020).
 

@@ -25,7 +25,7 @@ import {
   type DocumentListCursor,
 } from './list-cursor'
 import type { DocumentLevelQuery } from './list-query'
-import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily } from './document-status'
+import { DOCUMENT_READ_FAMILIES, declaredStatusesIn, type DocumentReadFamily, type DocumentStatus } from './document-status'
 import {
   SHELF_SUMMARY_FAILED_LIMIT,
   SHELF_SUMMARY_FOLDER_LIMIT,
@@ -840,6 +840,7 @@ export interface DocumentNameMatchRow {
   displayName: string | null
   fileSize: number | null
   contentHash: string | null
+  status: string
   folderId: string | null
   authoredBy: DocumentAuthor
   lifecycle: DocumentLifecycle
@@ -851,6 +852,7 @@ export const documentNameMatchColumns = {
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentHash: documents.contentHash,
+  status: documents.status,
   folderId: documents.folderId,
   authoredBy: documents.authoredBy,
   lifecycle: documents.lifecycle,
@@ -1011,7 +1013,7 @@ export async function listDocumentIdsForProject(
 }
 
 /** The statuses a read ended in failure at — the `failed` family of `DOCUMENT_STATUS_FACTS`. */
-const READ_FAILED_STATUSES = ['failed', 'error'] as const
+const READ_FAILED_STATUSES = ['failed'] as const
 
 /**
  * The project's active documents whose read FAILED and that a model may name:
@@ -1603,6 +1605,27 @@ export async function setDocumentIngestJob(
 }
 
 /**
+ * Say that the row's bytes are deliberately not in the index: an archived
+ * document, whose chunks `archiveDocument` purged, and a re-upload onto one,
+ * which `dispatchDocument` does not send. `stored` is the status for "the bytes
+ * are here and nothing reads them", which is what the row now is; leaving it
+ * `completed` showed a document Piloti can no longer cite as „Zitierbar“.
+ *
+ * A held row keeps `quarantined`: the hold is what keeps it from every reader
+ * but its uploader and the reviewers (ADR-0086), and archiving it decides
+ * nothing about its content.
+ */
+export async function markDocumentNotIndexed(documentId: string, organizationId: string): Promise<void> {
+  const db = getDb()
+  await withTenant({ organizationId }, () =>
+    db
+      .update(documents)
+      .set({ status: 'stored', updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+  )
+}
+
+/**
  * The `documents.metadata` key of a row placement purged and re-pointed whose
  * re-read into its new collection is the `placement_reingest` job's to do
  * (`lib/projects/collection-placement.ts`, ADR-0087). Only ever set beside
@@ -1951,7 +1974,7 @@ export async function setDocumentReconciledStatus(
   documentId: string,
   organizationId: string,
   resolution: {
-    status: string
+    status: DocumentStatus
     errorMessage: string | null
     screeningOutcome?: DocumentScreeningOutcome
     failure?: IngestFailureFacts
@@ -1988,7 +2011,8 @@ export async function setDocumentReconciledStatus(
           and(
             eq(documents.id, documentId),
             eq(documents.organizationId, organizationId),
-            eq(documents.status, from.status),
+            // The status the read saw, compared as text: a guard, never a write.
+            sql`${documents.status} = ${from.status}`,
             sameDispatch(from.jobId),
           ),
         )
@@ -2139,7 +2163,7 @@ export async function listQuarantinedDocuments(
  * not skipped later: the walk never pays a request for a file that would fail
  * the same way, and the audit's counts say what was actually sent back.
  */
-export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'error', 'uploaded'] as const
+export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'uploaded'] as const
 
 /**
  * `canRetry` (`./retry-policy`) in SQL, for the queries that choose what a bulk

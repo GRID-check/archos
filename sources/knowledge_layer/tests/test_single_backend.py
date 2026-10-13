@@ -28,7 +28,7 @@ def test_setup_always_wires_llamaindex(monkeypatch):
 
 
 def test_a_config_that_still_names_a_chroma_dir_loads():
-    """``chroma_dir`` went with Chroma (ADR-0104): a config written before still loads, and nothing reads it."""
+    """``chroma_dir`` went with Chroma (ADR-0105): a config written before still loads, and nothing reads it."""
     config = KnowledgeRetrievalConfig(chroma_dir="/tmp/chroma_data", collection_name="oib_knowledge")
 
     assert not hasattr(config, "chroma_dir")

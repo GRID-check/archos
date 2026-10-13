@@ -23,7 +23,7 @@ import type { Document, DocumentVersion } from '@/lib/db/schema'
 import type { AuthorizedSession } from '@/lib/auth/types'
 
 vi.mock('./access', () => ({ getAccessibleDocument: vi.fn() }))
-vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn() }))
+vi.mock('./repository', () => ({ findDocumentInOrg: vi.fn(), markDocumentNotIndexed: vi.fn() }))
 vi.mock('./version-repository', () => ({
   findDocumentVersion: vi.fn(),
   findDocumentVersionInOrg: vi.fn(),
@@ -75,7 +75,7 @@ import { placementCollectionFor } from '@/lib/authz/folder-access'
 import { admitRestrictedUse } from '@/lib/conversations/restricted-use'
 import { getAccessibleDocument } from './access'
 import { purgeIngestedChunks } from './collection-file-ref'
-import { findDocumentInOrg } from './repository'
+import { findDocumentInOrg, markDocumentNotIndexed } from './repository'
 import { mayReadDocument } from './document-reader'
 import {
   findDocumentVersion,
@@ -528,7 +528,7 @@ describe('readVersionForService — the conversation is part of the predicate', 
       subjectResourceId: 'doc_1',
     } as never)
     // The repository answers by the reader it is asked for (`documentVisibleTo`).
-    const held = { ...agentDocument, status: 'quarantined' }
+    const held = { ...agentDocument, status: 'quarantined' as const }
     vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) =>
       mayReadDocument(held, reader) ? held : null
     )
@@ -544,7 +544,7 @@ describe('readVersionForService — the conversation is part of the predicate', 
       subjectResourceType: 'document',
       subjectResourceId: 'doc_1',
     } as never)
-    const pending = { ...agentDocument, authoredBy: 'user' as const, status: 'pending', screeningOutcome: null }
+    const pending = { ...agentDocument, authoredBy: 'user' as const, status: 'pending' as const, screeningOutcome: null }
     vi.mocked(findDocumentInOrg).mockImplementation(async (_id, _org, reader) =>
       mayReadDocument(pending, reader) ? pending : null
     )
@@ -701,6 +701,11 @@ describe('archiveDocument', () => {
     )
   })
 
+  it('stops saying the document was read, so it no longer shows as citable', async () => {
+    await archiveDocument(session, 'doc_1')
+    expect(markDocumentNotIndexed).toHaveBeenCalledWith('doc_1', 'org_1')
+  })
+
   it('purges nothing for an agent draft, which owns no passages to purge', async () => {
     vi.mocked(getAccessibleDocument).mockResolvedValue(
       makeDocument({ ...agentDocument, publishedVersionId: null }),
@@ -757,8 +762,8 @@ describe('reading a version’s text, and the download log', () => {
   // A model reads this text, so a document whose screening has not passed
   // answers 404 to its reviewer too (ADR-0086): no held text in a task.
   it.each([
-    ['quarantined', { status: 'quarantined', screeningOutcome: 'quarantined' as const }],
-    ['still being screened', { status: 'processing', screeningOutcome: null }],
+    ['quarantined', { status: 'quarantined' as const, screeningOutcome: 'quarantined' as const }],
+    ['still being screened', { status: 'processing' as const, screeningOutcome: null }],
   ])('refuses the agent task a document that is %s, before reading a byte', async (_label, held) => {
     vi.mocked(getAccessibleDocument).mockResolvedValueOnce({ ...document, ...held })
 
@@ -995,7 +1000,7 @@ describe('versionBytesReadableBy — the version list asks the rule once', () =>
   })
 
   it('offers nothing of a held item through its versions, whatever they record', async () => {
-    const held = { ...screened, status: 'quarantined', screeningOutcome: 'quarantined' as const }
+    const held = { ...screened, status: 'quarantined' as const, screeningOutcome: 'quarantined' as const }
     const screenedEarlier = { ...earlier, screenedHash: 'sha256:before' }
 
     const readable = await versionBytesReadableBy(session, held, [screenedEarlier, current])

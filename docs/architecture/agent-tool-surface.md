@@ -50,7 +50,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `knowledge_search` | Ranked search; `match="exact"` is Ctrl+F across the files | 1,300 | `sources/knowledge_layer/src/register.py` |
 | `ris_lookup` | Austrian law by citation | 760 | `sources/ris_adapter/src/lookup/tool.py` |
 | `read_passage` | Opens one Punkt, page or outline, ≤12 chunks | 730 | `sources/knowledge_layer/src/read_passage.py` |
-| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead | 660 | `sources/knowledge_layer/src/browse.py` |
+| `list_files` | Browse: folder, name, Dokumentart, date, paged, uncapped; opens with the selection's document types (`Dokumentarten (von Piloti zugeordnet): …`) and closes by saying unreadable files are not listed (they are in `documents_unreadable:`). `fassungen_of=<file name>` returns one document's chain of Fassungen instead, and with `compare_to=` what changed between two of them | 770 | `sources/knowledge_layer/src/browse.py` |
 | `surface_documents` | Shows a file or a 1–3 thumbnail choice | 510 | `src/aiq_agent/cards/surface_documents.py` |
 | `ask_user` | Blocking multiple-choice question | 490 | `src/aiq_agent/agents/piloti/ask_user.py` |
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
@@ -152,7 +152,7 @@ server's `dryRun` is ([servers][mcp-fs]).
 | Retag | `PATCH /api/documents/[id]/tags` | Propose | S |
 | Revise any Markdown project document | `POST /api/documents/[id]/versions` | Build. Today only the conversation's subject (`src/aiq_agent/tools/documents/filing.py`) | M |
 | See version history, uploader, lifecycle state | `GET /api/documents/[id]/versions` | Fassungen under other file names: done (`list_files(fassungen_of=…)`). Same-name versions and uploader: add to `list_files` rows | S |
-| Compare versions | `GET /api/documents/[id]/versions/diff` | Build `compare_versions` (§5) | L |
+| Compare versions | `GET /api/documents/[id]/versions/diff` | Fassungen under other file names: done (`list_files(fassungen_of=…, compare_to=…)`, ADR-0104). Same-name versions once every Fassung stays indexed | M |
 | Share | `/api/sharing/[resourceType]/[resourceId]` | Person only | none |
 | Set Dokumentart | platform-only `/api/platform/knowledge/documents/[fileName]/doc-class` | Waits for a project route | n/a |
 | Delete a document | `DELETE /api/documents/[id]` | Never. Hard delete, one-way | none |
@@ -328,6 +328,19 @@ been uploaded and read).
   (`restrict_rows_to_turn`), so a shelf the turn did not ask for, a restricted
   folder's collection and a held upload are not in it. A name that matches two
   different documents asks for the exact name instead of choosing.
+- **`compare_to=` compares two Fassungen of that chain (ADR-0104), still without a
+  tool of its own.** `fassungen_of` names the newer one (or the document, meaning its
+  current Fassung) and `compare_to` the other, by file name or as „vorige“; the order
+  comes from the chain, not the arguments (`browse.resolve_compare`). The report is
+  read from what the index holds, with no model call (`knowledge/fassung_diff.py`):
+  the Plankopf's Index and Stand, pages aligned by their text so an inserted sheet
+  shifts nothing, values that moved inside a printed line („Fluchtweglänge 38 m →
+  42 m“), and from the drawing analysis the quantities and verbatim dimension strings
+  that changed. A model's prose description of a drawing is never compared, because
+  two readings of one sheet word it differently. The stored change line rides along
+  only when it was written against exactly that older file. Reading both files is
+  reported to the restricted-use admission (ADR-0088). Same-name uploads are not in
+  the index yet, so they compare once every Fassung stays indexed.
 - **`read_passage` reads an older Fassung on request and says it is one.** The read
   is not refused (a question about Index B needs B); the first line of the result,
   in the grounding block's notice slot like the search's „Ältere Fassungen

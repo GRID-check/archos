@@ -1713,22 +1713,25 @@ describe('FilePreviewPane — a report Piloti wrote', () => {
     expect(discuss).toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
   })
 
-  it('withholds Ask on a machine-authored row whose status says citable', () => {
-    // The design's own lesson from this feature, which had been written down
-    // and not applied: "Every not-citable affordance derived from `status`.
-    // That was fine while `stored` implied agent-authored, and wrong the
-    // instant anything moved the row out of `stored`. Provenance is the durable
-    // fact." The gates read `status` alone until now.
-    //
-    // Nothing can move an agent row out of `stored` today — `dispatchDocument`
-    // refuses it, and `stored` is terminal so the poller never revisits it —
-    // which is precisely why this is cheap to fix now and expensive to discover
-    // later. `status` says where a document is in a pipeline and can move;
-    // `authored_by` says what it is and cannot.
+  it('calls a published Piloti document what it is: in the knowledge base', () => {
+    // This test used to pin the opposite, on the premise that "nothing can move
+    // an agent row out of `stored`". ADR-0054 made that false: a person who
+    // publishes Piloti's document sends that version to the index
+    // (`ingestPublished`), and the dispatch guard lets nothing else through.
+    // The authorship override then told the reader a published, indexed report
+    // was „nicht in der Wissensbasis“.
     render(<FilePreviewPane file={{ ...generated, status: 'completed' }} projectId="proj-1" />)
 
     const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
-    expect(discuss).toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
+    expect(discuss).not.toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
+  })
+
+  it('names Piloti only for a document Piloti wrote', () => {
+    // An archived upload is `stored` too, and was told „Von Piloti erstellt".
+    render(<FilePreviewPane file={{ ...generated, authoredBy: 'user', status: 'stored' }} projectId="proj-1" />)
+
+    const discuss = screen.getByRole('button', { name: 'Discuss with Piloti' })
+    expect(discuss).not.toHaveAttribute('title', 'Created by Piloti — not in the knowledge base')
   })
 
   it('says nothing extra about a document that is simply still being read', () => {
