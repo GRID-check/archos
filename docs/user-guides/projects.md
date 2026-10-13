@@ -26,6 +26,8 @@ Source: `frontends/ui/src/app/app/projects/page.tsx`, `frontends/ui/src/componen
 
 Click **New project** (or follow `/app/projects?new=1`, which opens the dialog automatically). Enter a name — optionally starting from a template — and create the project in your current WorkOS organization. The creator is automatically assigned the `project-admin` role.
 
+To add a finished project as a reference for the office, create it as **closed**: name how it ended (**Completed** or **Not realized**), its Beginn if you know it, and the month its work ended, with the same rules as [closing a project](#closing-a-project). It opens on its Overview instead of the brief, and is read-only from the start: to add its documents, brief or people, reopen it, fill it in, and close it again.
+
 If no projects exist yet, the page shows a centered empty state with a **Create your first project** action.
 
 Source: `frontends/ui/src/components/projects/create-project-dialog.tsx`

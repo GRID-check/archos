@@ -1,0 +1,9 @@
+---
+fixes:
+  - >
+    An upload the content check holds back now always waits for review instead
+    of showing as failed, and a file that cannot be read keeps its real reason.
+features:
+  - >
+    The preview of a held file shows what the content check found and on which
+    page, and opens the document at that page with the listed word marked.

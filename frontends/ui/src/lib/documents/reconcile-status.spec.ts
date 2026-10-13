@@ -209,7 +209,29 @@ describe('reconcileDocumentStatuses', () => {
     const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
 
     expect(result.status).toBe('failed')
-    expect(db.set).toHaveBeenCalledWith(expect.objectContaining({ status: 'failed' }))
+    // The file's cause, not the adapter's tally.
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorMessage: 'PDF is encrypted' })
+    )
+  })
+
+  it('keeps the job message when the run died before any file reported', async () => {
+    const db = makeDbMock()
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'failed',
+          error_message: 'interrupted: worker stopped',
+          file_details: [{ status: 'ingesting' }],
+        },
+      })
+    )
+
+    await reconcileDocumentStatuses([makeRow()], 'org-1')
+
+    expect(db.set).toHaveBeenCalledWith(
+      expect.objectContaining({ status: 'failed', errorMessage: 'interrupted: worker stopped' })
+    )
   })
 
   it('leaves a row pending while the job is still in progress', async () => {
@@ -1357,7 +1379,19 @@ describe('reconcileDocumentStatuses — upload screening', () => {
 
   it('quarantines from a failed job too', async () => {
     const db = makeDbMock()
-    mockFetch.mockResolvedValue(batchResponse({ 'job-1': { status: 'failed', error_message: verdict } }))
+    // The shape the adapter really produces for a one-file upload it held: the
+    // job carries the tally, the verdict sits on the file. The spec once put the
+    // verdict on the job, a shape no job has, and passed while every real
+    // quarantine was stored as an ordinary failure.
+    mockFetch.mockResolvedValue(
+      batchResponse({
+        'job-1': {
+          status: 'failed',
+          error_message: '1/1 file(s) failed',
+          file_details: [{ status: 'failed', error_message: verdict, screening: 'quarantined' }],
+        },
+      })
+    )
 
     const [result] = await reconcileDocumentStatuses([makeRow()], 'org-1')
 

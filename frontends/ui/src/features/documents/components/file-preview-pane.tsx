@@ -25,10 +25,13 @@ import {
   ListTree,
   Maximize2,
   RotateCcw,
+  ShieldAlert,
   Sparkles,
   X,
   type LucideIcon,
 } from 'lucide-react'
+import { firstFinding, parseQuarantine, type QuarantineFinding } from '@/lib/upload-screening/quarantine'
+import { QuarantineFindings } from './quarantine-findings'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
@@ -379,6 +382,19 @@ export function FilePreviewPane({
   // rendition is a PDF, and `/file` streams the rendition for it.
   const canExpandPreview = shownType === 'application/pdf' || isImage
   const isFailed = file.status === 'failed'
+  /**
+   * Held back by the content check (ADR-0086). Not a failure: nothing broke and
+   * nothing is retried; someone has to look. So the pane shows what was found
+   * and where, and opens the document at the first finding with the office's
+   * term marked, as a citation opens at its Fundstelle. Only the uploader and the
+   * reviewers can open a held file, and both are meant to see why.
+   */
+  const isHeld = file.status === 'quarantined'
+  const heldErrorMessage = isHeld ? file.errorMessage : null
+  const [shownFinding, setShownFinding] = useState<QuarantineFinding | null>(null)
+  useEffect(() => {
+    setShownFinding(firstFinding(parseQuarantine(heldErrorMessage)))
+  }, [file.id, heldErrorMessage])
   const Icon = fileTypeIcon(file.contentType, file.filename)
   const formatMessage = fileFormatMessage(file)
   // The document has visual chunks (drawings/images/charts) whose per-page VLM
@@ -996,6 +1012,8 @@ export function FilePreviewPane({
                     key={file.id}
                     src={documentFileUrl(file.id)}
                     title={actions.name}
+                    page={shownFinding?.page ?? null}
+                    highlight={shownFinding?.highlight ?? null}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}
                     className="size-full"
@@ -1535,6 +1553,24 @@ export function FilePreviewPane({
                       : t('preview.retryIngestion')}
                   </Button>
                 )}
+              </div>
+            )}
+
+            {isHeld && (
+              <div className="mt-4 space-y-2.5 border-t pt-4" data-testid="preview-held">
+                <div className="flex items-start gap-2">
+                  <ShieldAlert className="text-warning mt-0.5 size-4 shrink-0" aria-hidden />
+                  <div className="min-w-0 space-y-2">
+                    <p className="text-warning text-sm font-medium">{t('preview.heldTitle')}</p>
+                    <QuarantineFindings
+                      errorMessage={file.errorMessage}
+                      // A page to jump to only where the well is the PDF viewer.
+                      onShowFinding={shownType === 'application/pdf' ? setShownFinding : undefined}
+                      shownFinding={shownFinding}
+                      testId="preview-held-findings"
+                    />
+                  </div>
+                </div>
               </div>
             )}
 

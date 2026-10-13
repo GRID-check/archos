@@ -316,6 +316,10 @@
     "de": "Ein neuer Chat öffnet sich jetzt mit Begrüßung und Eingabefeld gemeinsam in der Bildschirmmitte, statt dass die Begrüßung weit oben schwebt und das Eingabefeld am unteren Rand fixiert ist. Sobald Sie etwas fragen, wandert das Eingabefeld wieder nach unten und die Antwort nimmt die volle Höhe ein."
   },
   {
+    "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
+    "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+  },
+  {
     "en": "A note that research was cut off, or that an answer came out weaker than usual, now stays with the answer when you reopen the conversation later. Previously that caveat was visible only while the run was live, so a partial answer read as a complete one the next morning.",
     "de": "Ein Hinweis darauf, dass die Recherche unterbrochen wurde oder eine Antwort schwächer als üblich ausgefallen ist, bleibt jetzt auch dann bei der Antwort, wenn Sie die Unterhaltung später wieder öffnen. Bisher war dieser Hinweis nur während des laufenden Vorgangs sichtbar, sodass eine unvollständige Antwort am nächsten Morgen wie eine vollständige wirkte."
   },
@@ -686,6 +690,10 @@
   {
     "en": "An overview now shows its parts as a table or as a mindmap, never both. A mindmap that would only repeat the table is now rare, so a mindmap no longer appears on screen only to vanish when the answer finishes.",
     "de": "Eine Übersicht zeigt ihre Teile jetzt entweder als Tabelle oder als Mindmap, nie beides. Eine Mindmap, die nur die Tabelle wiederholen würde, ist jetzt selten, daher erscheint keine Mindmap mehr kurz auf dem Bildschirm, nur um beim Abschluss der Antwort wieder zu verschwinden."
+  },
+  {
+    "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
+    "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
   },
   {
     "en": "An uploaded file now reaches colleagues only once its check for sensitive data has passed. Until then only the person who uploaded it and those who may release quarantined files see it.",
@@ -2448,6 +2456,10 @@
     "de": "Die Vorschau zeigt jetzt unter dem Dokument die Zusammenfassung, die Piloti vom Dokument erstellt hat. Eine Datei ohne eingebettete Vorschau bietet stattdessen ihren Download an."
   },
   {
+    "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
+    "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
+  },
+  {
     "en": "The privacy policy and the list of external providers now name PostHog, with servers in Frankfurt, as the provider of Piloti's usage analytics, error reports and surveys, and the public website measures visits the same way. The policy says exactly what is collected and stored in your browser, and how you can object at any time.",
     "de": "Die Datenschutzerklärung und die Liste externer Anbieter nennen jetzt PostHog mit Servern in Frankfurt als Anbieter für Piloti-Nutzungsanalysen, Fehlerberichte und Umfragen. Auch die öffentliche Website erfasst Besuche auf dieselbe Weise. In der Datenschutzerklärung steht genau, welche Daten erhoben und in Ihrem Browser gespeichert werden und wie Sie jederzeit widersprechen können."
   },
@@ -3046,6 +3058,10 @@
   {
     "en": "„Piloti hat sich gemerkt“ now belongs to the answer it appeared under. It used to list everything noted anywhere in the conversation, so an early answer could claim notes taken much later; now each answer shows only what it produced, and an answer that produced nothing shows nothing.",
     "de": "„Piloti hat sich gemerkt“ gehört jetzt zu der Antwort, unter der es erscheint. Bisher listete es alles auf, was irgendwo im Gespräch vermerkt war, sodass eine frühe Antwort Notizen für sich beanspruchen konnte, die viel später entstanden. Jetzt zeigt jede Antwort nur, was sie selbst hervorgebracht hat, und eine Antwort ohne Ergebnis zeigt nichts."
+  },
+  {
+    "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
+    "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
   },
   {
     "en": "„Zitierbar“ no longer appears on every file. A status shows only when it changes what you can do next: a document still being read, one that failed, or a report Piloti wrote and deliberately kept out of search.",

@@ -19,9 +19,10 @@ sends it.
 
 `task db:test:rls` is required whenever you touch the tenant boundary, and
 `task verify` does not run it. `next build` typechecks production code only
-(`tsconfig.build.json`); the specs are typechecked by `task fe:types`. `bun
-installs and runs scripts here and is never the runtime: `--bun` exports
-`NODE_OPTIONS=--bun`, which kills Turbopack's PostCSS step.
+(`tsconfig.build.json`); the specs are typechecked by `task fe:types`, which is
+`bun check`, TypeScript 7's checker. Bun is the toolchain here (install, scripts,
+bundling the deploy scripts, type checking) and never the runtime (ADR-0103):
+`--bun` exports `NODE_OPTIONS=--bun`, which kills Turbopack's PostCSS step.
 
 ## Obligations
 

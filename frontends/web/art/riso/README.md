@@ -24,7 +24,7 @@ shows one.
 
 ## Commands
 
-From `frontends/web`, with `npm ci` done (the exporter uses the site's sharp):
+From `frontends/web`, with `bun install --frozen-lockfile` done (the exporter uses the site's sharp):
 
 ```bash
 node art/riso/setup.mjs                         # task art:setup

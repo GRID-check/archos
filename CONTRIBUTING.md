@@ -31,6 +31,11 @@ untouched file at a time. If the whole-repo run flags pre-existing issues, fix
 them in your PR (they are cheap and mechanical) rather than leaving the next
 person to trip over them.
 
+**Editor:** the UI type checks with TypeScript 7 (`bun check`, ADR-0103). In VS
+Code, install the **TypeScript 7** extension (`TypeScriptTeam.native-preview`)
+and run *TypeScript: Enable TypeScript 7*, or the editor keeps reporting
+TypeScript 6's view of the code.
+
 ## Branching
 
 - Cut feature branches from `develop` (the integration branch). `develop` and

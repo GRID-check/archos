@@ -296,6 +296,7 @@ export const files: typeof en.files = {
     download: 'Herunterladen',
     downloadFailed: 'Der Download konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
     ingestionFailed: 'Lesen fehlgeschlagen',
+    heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
     ingestionFailedPreviousVersionKept:
       'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
@@ -354,6 +355,11 @@ export const files: typeof en.files = {
     nameInFolder: 'Ordner „{segment}“ enthält „{term}“',
     partial: 'Einige Seiten hatten keine Textebene und wurden nicht geprüft.',
     unchecked: 'Der Inhalt ließ sich ohne Modell nicht lesen und wurde nur am Namen geprüft.',
+    // Eine Fundstelle der Inhaltsprüfung, wie eine Quelle im Chat: die Seite,
+    // und darauf markiert, was das Büro als sensibel eingetragen hat.
+    findingsLabel: 'Fundstellen der Inhaltsprüfung',
+    findingPage: 'S. {page}',
+    showFinding: 'Fundstelle auf Seite {page} zeigen',
   },
   browser: {
     folderEmptyTitle: 'Dieser Ordner ist leer',

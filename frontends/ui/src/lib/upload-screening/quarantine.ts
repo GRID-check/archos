@@ -55,8 +55,8 @@ export function auditedQuarantineReasons(verdict: QuarantineVerdict | null): str
     .slice(0, 200)
 }
 
-/** One reason, as a short phrase in the reader's language: `„Lohnzettel“ im Text · Seite 2`. */
-export function describeQuarantineReason(reason: QuarantineReason, t: Translator): string {
+/** One reason without its pages, in the reader's language: `„Lohnzettel“ im Text`. */
+export function quarantineReasonHead(reason: QuarantineReason, t: Translator): string {
   const head =
     reason.kind === 'term'
       ? t('screening.reasonTerm', { term: reason.term ?? '' })
@@ -65,9 +65,45 @@ export function describeQuarantineReason(reason: QuarantineReason, t: Translator
         : reason.kind === 'at_svnr'
           ? t('screening.reasonSvnr', { sample: reason.sample ?? '' })
           : t('screening.reasonCard', { sample: reason.sample ?? '' })
+  return head.trim()
+}
+
+/** One reason, as a short phrase in the reader's language: `„Lohnzettel“ im Text · Seite 2`. */
+export function describeQuarantineReason(reason: QuarantineReason, t: Translator): string {
+  const head = quarantineReasonHead(reason, t)
   const pages = reason.pages ?? []
-  if (pages.length === 0) return head.trim()
-  return `${head.trim()} · ${t('screening.reasonPages', { count: pages.length, pages: pages.join(', ') })}`
+  if (pages.length === 0) return head
+  return `${head} · ${t('screening.reasonPages', { count: pages.length, pages: pages.join(', ') })}`
+}
+
+/**
+ * Where a finding is, as a citation points into a document: the page, and the
+ * words to mark on it.
+ *
+ * Only a term has words to mark. The office wrote it, so it is in the page's
+ * text as written (the viewer's matcher folds case and spacing, and looks a page
+ * either side). A detector's finding carries a masked sample, `AT61 •••• 1234`,
+ * which is in no page's text: it opens at the page and marks nothing, because
+ * the value itself is never stored (ADR-0086).
+ */
+export interface QuarantineFinding {
+  page: number
+  highlight: string | null
+}
+
+/** Every page a reason was found on, each as a finding to open. */
+export function findingsOf(reason: QuarantineReason): QuarantineFinding[] {
+  const highlight = reason.kind === 'term' && reason.term ? reason.term : null
+  return (reason.pages ?? []).filter((page) => page >= 1).map((page) => ({ page, highlight }))
+}
+
+/** The finding a held document opens at: the first page of its first reason that has one. */
+export function firstFinding(verdict: QuarantineVerdict | null): QuarantineFinding | null {
+  for (const reason of verdict?.reasons ?? []) {
+    const [first] = findingsOf(reason)
+    if (first) return first
+  }
+  return null
 }
 
 /** A name-gate match, as a short phrase: `Ordner „Personalunterlagen“ enthält „Personal“`. */
