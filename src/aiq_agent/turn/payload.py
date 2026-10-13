@@ -107,6 +107,10 @@ class TurnInputs(NamedTuple):
     #: The event that woke this turn when nobody typed it (``wire_v2.TurnTrigger``),
     #: or None. The prompt says who woke it and to answer where it happened.
     trigger: TurnTrigger | None = None
+    #: The name the sender stamped on the message (``user_message.author_name``).
+    #: A woken turn has no signed-in principal, so this is the only place the
+    #: person who woke it is named; the „Geweckt durch“ block reads it.
+    author_name: str | None = None
 
     @property
     def surface(self) -> TurnSurface:
@@ -146,4 +150,5 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
         request.focus_region,
         thread_reply_requested(request),
         request.trigger,
+        (request.author_name or "").strip() or None,
     )

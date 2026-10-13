@@ -77,6 +77,8 @@ describe('standsAsChanged', () => {
     dueOn: null,
     kind: 'defect',
     body: 'x',
+    replyCount: 0,
+    lastReply: null,
   } as const
 
   it('compares only the fields the change named', () => {

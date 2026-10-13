@@ -60,6 +60,16 @@ ASSIGNEE_UNCLEAR = (
     "Unklar, wer gemeint ist ({detail}). Frage die Person, wen sie meint, und nimm dann den vollen Namen; nichts "
     "wurde geändert."
 )
+#: The BFF's ``details.reason`` when the organization has Piloti propose only (``piloti-acts`` off).
+PILOTI_ACTS_OFF = "piloti-acts-off"
+PROPOSE_ONLY_MARK = (
+    "Nicht gesetzt: Dieses Büro lässt Piloti Anmerkungen nur vorschlagen. Setze sie mit `mark` ohne `open` als "
+    "Vorschlag und sag der Person, dass sie ihn im Dokument übernehmen kann."
+)
+PROPOSE_ONLY_CHANGE = (
+    "Nicht geändert: Dieses Büro lässt Piloti Anmerkungen nur vorschlagen, nicht ändern oder löschen. Sag der "
+    "Person, dass sie das im Dokument selbst tun kann; nicht erneut versuchen."
+)
 UNREACHABLE = (
     "Fehler: Das Dokument ist gerade nicht erreichbar. Sage der Person, dass es nicht geklappt hat; nicht in "
     "derselben Antwort erneut versuchen."
@@ -94,6 +104,8 @@ def refusal_for(exc: CanvasRequestError, operation: str) -> Refused:
     """A BFF refusal as the sentence the model relays."""
     if exc.reason == "no-document-subject":
         return Refused(NO_DOCUMENT, "no_document_subject")
+    if exc.reason == PILOTI_ACTS_OFF:
+        return Refused(PROPOSE_ONLY_MARK if operation == "create" else PROPOSE_ONLY_CHANGE, "piloti_acts_off")
     if exc.reason in ("assignee-unknown", "assignee-ambiguous"):
         return Refused(ASSIGNEE_UNCLEAR.format(detail=exc), "assignee_unclear")
     if exc.status == 403:

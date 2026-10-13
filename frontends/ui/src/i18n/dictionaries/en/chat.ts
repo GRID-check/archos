@@ -659,6 +659,28 @@ export const chat = {
       forPerson: 'for {name}',
       movedOn: 'Someone changed this in the meantime, so it stays as it is.',
       alreadyUndone: 'Already undone.',
+      // Several proposals at once (take over or discard per annotation stays)
+      // and the state of the thread at a glance.
+      batch: {
+        acceptAll: 'Take over all',
+        accepting: 'Taking over …',
+        rejectRest: 'Discard the rest',
+        rejecting: 'Discarding …',
+        confirmTitle:
+          '{count, plural, one {Discard this annotation?} other {Discard # annotations?}}',
+        confirmBody: 'This cannot be undone from here.',
+        confirm: 'Discard',
+        cancel: 'Cancel',
+        already: 'already handled',
+        alreadyBy: 'already handled by {name}',
+        failed:
+          '{count, plural, one {One annotation could not be saved.} other {# annotations could not be saved.}}',
+      },
+      thread: {
+        count: '{count, plural, one {# reply} other {# replies}}',
+        last: 'latest {name}: “{excerpt}”',
+        someone: 'someone',
+      },
     },
     verdictHeader: {
       confidenceHigh: 'high confidence',

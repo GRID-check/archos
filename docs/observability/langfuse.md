@@ -151,6 +151,7 @@ a name is written but not declared, or declared but not listed here.
 | `dialect-repairs` | numeric | agent | answer-dialect blocks repaired; 0 is a measurement |
 | `card-validity` | categorical | agent | per envelope card that missed its schema: `repaired`, `dropped` |
 | `steer-count` | numeric | agent, at the terminal | on a steered turn only: the notes the asker typed into it; the comment says how many it read (`applied N`). A note left unread became the next question |
+| `thread-answered-in-place` | boolean | agent, when the turn leaves the canvas | on a turn asked to answer in an Anmerkung's thread: true when the model replied there itself (`canvas__reply`), false when it did not and the socket posts the answer for it. No score when the turn may not post there (`thread_reply` = `skipped_withheld`). The false rate is how often the prompt is ignored, which the fallback otherwise hides |
 | `review-correctness` | categorical | reviewer, in the queue | `correct`, `partly_correct`, `incorrect` |
 | `review-sources` | categorical | reviewer, in the queue | `right_sources`, `missing_sources`, `wrong_sources` |
 | `judge-answers-question` | numeric 0–1 | LLM judge | how directly the answer addresses the question |

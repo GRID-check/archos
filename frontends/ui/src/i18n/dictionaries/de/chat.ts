@@ -661,6 +661,28 @@ export const chat: typeof en.chat = {
       forPerson: 'für {name}',
       movedOn: 'Jemand hat das inzwischen geändert, daher bleibt es, wie es ist.',
       alreadyUndone: 'Das wurde bereits rückgängig gemacht.',
+      // Mehrere Vorschläge auf einmal (Übernehmen oder Verwerfen je Anmerkung
+      // bleibt) und der Stand des Threads auf einen Blick.
+      batch: {
+        acceptAll: 'Alle übernehmen',
+        accepting: 'Wird übernommen …',
+        rejectRest: 'Übrige verwerfen',
+        rejecting: 'Wird verworfen …',
+        confirmTitle:
+          '{count, plural, one {Diese Anmerkung verwerfen?} other {# Anmerkungen verwerfen?}}',
+        confirmBody: 'Das lässt sich hier nicht rückgängig machen.',
+        confirm: 'Verwerfen',
+        cancel: 'Abbrechen',
+        already: 'bereits erledigt',
+        alreadyBy: 'bereits erledigt von {name}',
+        failed:
+          '{count, plural, one {Eine Anmerkung konnte nicht gespeichert werden.} other {# Anmerkungen konnten nicht gespeichert werden.}}',
+      },
+      thread: {
+        count: '{count, plural, one {# Antwort} other {# Antworten}}',
+        last: 'zuletzt {name}: „{excerpt}“',
+        someone: 'jemand',
+      },
     },
     verdictHeader: {
       confidenceHigh: 'hohe Sicherheit',

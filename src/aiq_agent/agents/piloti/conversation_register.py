@@ -250,12 +250,26 @@ async def _build_agent(config: ChatDeepResearcherConfig, builder: Builder) -> Co
     )
 
 
+def _turn_user_info(inputs: TurnInputs) -> dict[str, Any] | None:
+    """The caller for the prompt: the signed-in principal, else the person who woke this turn.
+
+    A woken turn runs for an internal caller, which has no principal; the wake
+    job stamps the person's name on the message, and the „Geweckt durch“ block
+    names them instead of „Eine Person“. Only a woken turn takes the name from
+    the message: a typed turn trusts the principal alone.
+    """
+    principal = user_info_from_principal()
+    if principal or inputs.trigger is None or not inputs.author_name:
+        return principal
+    return {"name": inputs.author_name, "email": None}
+
+
 def _turn_state(
     inputs: TurnInputs, context: TurnContext, inventory: Inventory, header_scope, *, skip_clarifier: bool
 ) -> ConversationState:
     return ConversationState(
         messages=[HumanMessage(content=inputs.query_text)],
-        user_info=user_info_from_principal(),
+        user_info=_turn_user_info(inputs),
         data_sources=inputs.data_sources,
         available_documents=inventory.available_documents,
         in_flight_documents=inventory.in_flight_documents,

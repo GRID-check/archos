@@ -36,6 +36,7 @@ import {
   MAX_ANNOTATION_BODY,
   type AnnotationKind,
   type AnnotationView,
+  type PilotiWakeTrigger,
 } from '@/lib/annotations/types'
 import { wakeTurnId } from '@/lib/annotations/wake-ids'
 import { cn } from '@/lib/utils'
@@ -44,6 +45,7 @@ import type { FileAssignee } from '../../file-types'
 import { askRegionOf, stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview, ReviewDraft } from '../../hooks/use-document-review'
 import { AssignPopover } from '../assign-popover'
+import { usePilotiByline } from './piloti-attribution'
 
 export const KIND_ICONS: Record<AnnotationKind, typeof TriangleAlert> = {
   hint: MessageSquareText,
@@ -60,15 +62,27 @@ function Message({
   userId,
   at,
   body,
+  proposal,
+  woken,
 }: {
   authorKind: 'person' | 'piloti'
   name: string | null
   userId: string
   at: string
   body: string
+  /** Piloti's finding nobody has taken over: it says so in its byline. */
+  proposal?: boolean
+  /** The reply was written by a turn an event woke, and where (`number` of the Anmerkung). */
+  woken?: { trigger: PilotiWakeTrigger; number: number } | null
 }): JSX.Element {
   const t = useTranslations('files')
   const { locale } = useLocale()
+  const byline = usePilotiByline()
+  const wokenTitle = woken
+    ? name
+      ? t('review.attribution.wokenTitle', { name, number: woken.number })
+      : t('review.attribution.wokenTitleNameless', { number: woken.number })
+    : undefined
   return (
     <div className="flex gap-2.5">
       {authorKind === 'piloti' ? (
@@ -82,11 +96,16 @@ function Message({
       )}
       <div className="min-w-0 flex-1">
         <p className="flex items-baseline gap-1.5 text-xs">
-          <span className="text-foreground font-semibold">
-            {authorKind === 'piloti' ? 'Piloti' : (name ?? t('review.someone'))}
+          <span className="text-foreground font-semibold" data-testid={authorKind === 'piloti' ? 'thread-byline' : undefined}>
+            {authorKind === 'piloti' ? byline(name, { proposal }) : (name ?? t('review.someone'))}
           </span>
           <TimeAgo date={at} locale={locale} className="text-muted-foreground" />
         </p>
+        {woken && (
+          <p className="text-muted-foreground text-[11px] leading-4" title={wokenTitle} data-testid="thread-woken">
+            {t(`review.attribution.woken.${woken.trigger}`)}
+          </p>
+        )}
         <p className="text-foreground mt-0.5 text-[13px] leading-5 break-words whitespace-pre-wrap">{body}</p>
       </div>
     </div>
@@ -811,6 +830,7 @@ export function ThreadCard({
           userId={annotation.createdBy}
           at={annotation.createdAt}
           body={annotation.body}
+          proposal={proposed}
         />
         {annotation.basis && (
           <p className="border-l-source-law/40 text-muted-foreground ml-8.5 flex items-center gap-1.5 border-l-2 pl-2 text-[11px]">
@@ -826,6 +846,7 @@ export function ThreadCard({
             userId={reply.createdBy}
             at={reply.createdAt}
             body={reply.body}
+            woken={reply.wokenBy ? { trigger: reply.wokenBy, number: annotation.number } : null}
           />
         ))}
         {threadAsk && <PilotiThreadRow ask={threadAsk} review={review} />}

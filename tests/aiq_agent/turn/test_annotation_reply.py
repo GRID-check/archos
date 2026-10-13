@@ -296,3 +296,43 @@ class TestOnTheTrace:
 
         assert snapshot is not None
         assert snapshot["metadata"]["thread_reply"] == verdict
+
+    @pytest.mark.parametrize(
+        ("replied", "confined", "scores"),
+        [
+            (True, False, {"thread-answered-in-place": 1.0}),
+            (False, False, {"thread-answered-in-place": 0.0}),
+            (False, True, {}),
+        ],
+    )
+    def test_settling_scores_whether_the_model_answered_in_the_thread(
+        self, monkeypatch, replied, confined, scores
+    ) -> None:
+        sent: list[tuple[str, float]] = []
+        monkeypatch.setattr(
+            annotation_reply,
+            "emit_scores",
+            lambda batch, *, writer, trace_id=None: sent.extend((score.name, score.value) for score in batch),
+        )
+        record = ThreadReply.requested_by(_thread_message())
+        if confined:
+            bind_restricted_use(
+                RestrictedUse(organization_id="o", user_id="u", conversation_id="c", project_id=None, confined=True)
+            )
+        token = bind_thread_reply(record)
+        try:
+            if replied:
+                note_thread_post(ANNOTATION)
+            settle_thread_reply()
+        finally:
+            reset_thread_reply(token)
+
+        assert dict(sent) == scores
+
+    def test_a_turn_that_asked_nothing_in_a_thread_scores_nothing(self, monkeypatch) -> None:
+        sent: list[object] = []
+        monkeypatch.setattr(annotation_reply, "emit_scores", lambda batch, **_: sent.extend(batch))
+
+        settle_thread_reply()
+
+        assert sent == []

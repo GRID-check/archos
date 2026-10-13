@@ -24,6 +24,7 @@ import type { RoomPeerState } from '../../hooks/use-document-room'
 import { PilotiAnswerCard } from './piloti-answer-card'
 import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
+import { ReviewExportMenu } from './review-export-menu'
 import { DraftCard, ThreadCard } from './thread-card'
 
 const TOOLS: Array<{ tool: ReviewTool; key: string; icon: typeof MousePointer2 }> = [
@@ -434,6 +435,13 @@ export function DocumentReviewMode({
               </span>
             )}
             <Presence review={review} following={following} onFollow={setFollowing} />
+            {annotations.length > 0 && (
+              <ReviewExportMenu
+                documentId={review.documentId}
+                hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
+                hasProposals={annotations.some((annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy)}
+              />
+            )}
             {piloti.available && review.canAnnotate && <PilotiReview review={review} />}
           </div>
         </header>

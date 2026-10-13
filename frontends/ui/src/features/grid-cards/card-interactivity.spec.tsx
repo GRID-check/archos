@@ -11,12 +11,18 @@
  * Adding an interactive card type without teaching this spec how to settle it
  * fails the first test below. That is the intended failure: write the case,
  * and you will discover whether the wiring exists.
+ *
+ * The other half is the ratchet for `'live'` cards (the last `describe`). A live
+ * card is a window onto server objects, and every decision on it is a write to
+ * the object: the object is the record (ADR-0105, ADR-0109). So a live card
+ * must NEVER write `cardInteractions`; the spec presses each control of each
+ * live card against a spied store and fails if `setCardDecision` is touched.
  */
 import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
-import { cardKeyOfDecisionKey, INTERACTIVE_CARD_TYPES } from './card-decision'
+import { cardKeyOfDecisionKey, INTERACTIVE_CARD_TYPES, LIVE_CARD_TYPES } from './card-decision'
 import { GridCardItem, GridCards, GridCardView } from './components/GridCards'
 import { CARD_PREVIEW_FIXTURES } from './preview-fixtures'
 
@@ -79,65 +85,6 @@ const SETTLE_CASES: Partial<
     // is about the wiring, and the accept path has its own spec.
     action: 'Discard',
   },
-  canvas_activity: {
-    card: {
-      type: 'canvas_activity',
-      document: { id: 'doc-1', name: 'Grundriss EG.pdf' },
-      items: [
-        {
-          action: 'proposed',
-          annotation_id: 'ann-4',
-          number: 4,
-          page: 1,
-          shape: 'region',
-          x: 0.4,
-          y: 0.3,
-          w: 0.2,
-          h: 0.15,
-          kind: 'defect',
-          body: 'Laufbreite im Treppenhaus unter 1,20 m.',
-        },
-      ],
-    } as GridCard,
-    // Discard is one PATCH; the case carries the body the annotations client
-    // parses, so a card that stopped agreeing with the route fails here.
-    action: 'Discard annotation 4',
-    response: {
-      annotation: {
-        id: 'ann-4',
-        documentId: 'doc-1',
-        number: 4,
-        page: 1,
-        shape: 'region',
-        x: 0.4,
-        y: 0.3,
-        w: 0.2,
-        h: 0.15,
-        kind: 'defect',
-        body: 'Laufbreite im Treppenhaus unter 1,20 m.',
-        basis: null,
-        authorKind: 'piloti',
-        status: 'dismissed',
-        assigneeUserId: null,
-        assigneeName: null,
-        dueOn: null,
-        fassungNumber: 1,
-        onCurrentFassung: true,
-        createdBy: 'user_1',
-        createdByName: 'Anna',
-        createdAt: '2026-10-13T08:00:00.000Z',
-        updatedAt: '2026-10-13T08:01:00.000Z',
-        acceptedBy: null,
-        acceptedByName: null,
-        closedBy: 'user_1',
-        closedByName: 'Anna',
-        closedAt: '2026-10-13T08:01:00.000Z',
-        replies: [],
-        canEdit: true,
-        canDelete: false,
-      },
-    },
-  },
   document_draft: {
     card: {
       type: 'document_draft',
@@ -149,7 +96,7 @@ const SETTLE_CASES: Partial<
       version_id: 'ver-1',
       version_state: 'draft',
     } as GridCard,
-    // Unlike the three above, this one HAS to reach its route: the card's only
+    // Unlike the two above, this one HAS to reach its route: the card's only
     // decision is the submit, and there is no decline. So the case carries the
     // body the lifecycle client parses — a client that stopped agreeing with
     // the route's response shape would fail here rather than settle on nothing.
@@ -292,4 +239,187 @@ describe('interactive card wiring', () => {
     await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
     expect(setCardDecision.mock.calls[0][1]).toBe('memory_proposal-2.b')
   })
+})
+
+// ── Live cards: the object is the record ────────────────────────────────────
+
+type User = ReturnType<typeof userEvent.setup>
+
+interface LiveScenario {
+  name: string
+  /** Press one control (or one path through several) of the card. */
+  press: (user: User) => Promise<void>
+}
+
+const annotationView = (id: string, number: number, status: string) => ({
+  id,
+  documentId: 'doc-1',
+  number,
+  page: 1,
+  shape: 'point',
+  x: 0.4,
+  y: 0.3,
+  w: null,
+  h: null,
+  kind: 'defect',
+  body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+  basis: null,
+  authorKind: id === 'ann-9' ? 'person' : 'piloti',
+  status,
+  assigneeUserId: null,
+  assigneeName: null,
+  dueOn: null,
+  fassungNumber: 1,
+  onCurrentFassung: true,
+  createdBy: 'user_1',
+  createdByName: 'Anna',
+  createdAt: '2026-10-13T08:00:00.000Z',
+  updatedAt: '2026-10-13T08:01:00.000Z',
+  acceptedBy: null,
+  acceptedByName: null,
+  closedBy: null,
+  closedByName: null,
+  closedAt: null,
+  replies: [],
+  canEdit: true,
+  canDelete: false,
+})
+
+const proposedMark = (id: string, number: number) => ({
+  action: 'proposed',
+  annotation_id: id,
+  number,
+  page: 1,
+  shape: 'point',
+  x: 0.4,
+  y: 0.3,
+  kind: 'defect',
+  body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+})
+
+/**
+ * One fixture per live card: a renderable card, the routes its objects answer
+ * on, and every control it offers, each pressed in a fresh render. Keyed by
+ * card type so a live card without a case is an explicit failure, not silent
+ * under-coverage.
+ */
+const LIVE_CASES: Partial<
+  Record<GridCard['type'], { card: GridCard; routes: (url: string, init?: RequestInit) => unknown; scenarios: LiveScenario[] }>
+> = {
+  canvas_activity: {
+    card: {
+      type: 'canvas_activity',
+      document: { id: 'doc-1', name: 'Grundriss EG.pdf' },
+      items: [
+        proposedMark('ann-4', 4),
+        proposedMark('ann-5', 5),
+        proposedMark('ann-6', 6),
+        // A change with no server record, so the browser-side replay is on offer.
+        {
+          action: 'changed',
+          annotation_id: 'ann-9',
+          number: 9,
+          status: 'resolved',
+          changes: [{ field: 'status', before: 'open', after: 'resolved' }],
+          note: 'Erledigt.',
+        },
+      ],
+    } as GridCard,
+    routes: (url, init) => {
+      if (init?.method === 'PATCH') {
+        const id = decodeURIComponent(url.split('/').pop() ?? '')
+        const status = JSON.parse(String(init.body)).status
+        return { annotation: annotationView(id, Number(id.split('-')[1]), status) }
+      }
+      if (url.endsWith('/annotations')) {
+        return {
+          annotations: [
+            annotationView('ann-4', 4, 'proposed'),
+            annotationView('ann-5', 5, 'proposed'),
+            annotationView('ann-6', 6, 'proposed'),
+            annotationView('ann-9', 9, 'resolved'),
+          ],
+          canAnnotate: true,
+        }
+      }
+      if (url.endsWith('/changes')) return { changes: [] }
+      return {}
+    },
+    scenarios: [
+      {
+        name: 'taking one mark over',
+        press: async (user) => user.click(await screen.findByRole('button', { name: 'Take over annotation 4' })),
+      },
+      {
+        name: 'discarding one mark',
+        press: async (user) => user.click(await screen.findByRole('button', { name: 'Discard annotation 5' })),
+      },
+      {
+        name: 'taking every proposed mark over',
+        press: async (user) => user.click(await screen.findByRole('button', { name: 'Take over all' })),
+      },
+      {
+        name: 'discarding the rest, confirmed',
+        press: async (user) => {
+          await user.click(await screen.findByRole('button', { name: 'Discard the rest' }))
+          await user.click(await screen.findByRole('button', { name: 'Discard' }))
+        },
+      },
+      {
+        name: 'undoing a change',
+        press: async (user) => user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 9' })),
+      },
+    ],
+  },
+}
+
+class SeenObserver {
+  constructor(private readonly callback: IntersectionObserverCallback) {}
+  observe() {
+    this.callback([{ isIntersecting: true } as IntersectionObserverEntry], this as unknown as IntersectionObserver)
+  }
+  unobserve() {}
+  disconnect() {}
+}
+
+describe('live card wiring', () => {
+  let fetchMock: ReturnType<typeof vi.fn>
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.stubGlobal('IntersectionObserver', SeenObserver)
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('has a case for every card classified as live', () => {
+    const uncovered = LIVE_CARD_TYPES.filter((type) => !LIVE_CASES[type])
+    expect(
+      uncovered,
+      `Card type(s) ${uncovered.join(', ')} are classified 'live' in CARD_INTERACTIVITY but have no case here. ` +
+        'Add one that presses every control: a live card writes the OBJECT and never cardInteractions.',
+    ).toEqual([])
+  })
+
+  for (const [type, testCase] of Object.entries(LIVE_CASES)) {
+    for (const scenario of testCase.scenarios) {
+      it(`${type}: ${scenario.name} writes the object and nothing on the message`, async () => {
+        fetchMock = vi.fn((url: string, init?: RequestInit) =>
+          Promise.resolve({ ok: true, status: 200, json: async () => testCase.routes(url, init) }),
+        )
+        vi.stubGlobal('fetch', fetchMock)
+        const user = userEvent.setup()
+        render(<GridCards cards={[testCase.card]} projectId="proj-1" messageId="msg-1" />)
+
+        await scenario.press(user)
+
+        // The control really acted (a vacuous pass is no ratchet): it wrote the object.
+        await waitFor(() =>
+          expect(fetchMock.mock.calls.some(([, init]) => (init as RequestInit | undefined)?.method === 'PATCH')).toBe(true),
+        )
+        expect(setCardDecision).not.toHaveBeenCalled()
+      })
+    }
+  }
 })

@@ -11,6 +11,7 @@ import 'server-only'
  * | A woken turn on a delegated mark ended `answered` | `piloti.work_done` | who delegated it |
  * | … ended `failed` | `piloti.work_failed` | who delegated it |
  * | A woken turn on a mention or an answer ended `answered` | `piloti.work_done` | who mentioned or answered |
+ * | … ended `failed` | `piloti.work_failed` | who mentioned or answered |
  * | Any woken turn ended `stopped` | none: the person stopped it | |
  * | Piloti set a Rückfrage, or replied on its own open Rückfrage | `piloti.asks_you` | the mark's Zuständige, else the person its turn acted for |
  * | Piloti set another mark, or replied on another | none: ordinary work | |
@@ -104,9 +105,9 @@ export async function onWakeEnded(
 ): Promise<void> {
   // A person stopped it, or took the mark back: they know.
   if (input.outcome === 'stopped') return
-  // Asking Piloti something is answered or it is not; only a delegation was
-  // handed over to be done, and so only it reports that it could not be.
-  if (input.outcome === 'failed' && input.trigger !== 'assigned') return
+  // A mention or an answer that got nothing back would otherwise vanish: the
+  // person asked Piloti something and waits in a thread that never says it
+  // failed. The copy (`pilotiWorkFailed`) is the same for all three triggers.
   const type = input.outcome === 'answered' ? 'piloti.work_done' : 'piloti.work_failed'
   await bestEffortInbox(`${type} for mark ${input.annotationId}`, input.organizationId, () =>
     emitAboutMark(type, input, input.actorUserId, null)

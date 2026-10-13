@@ -14,19 +14,26 @@
  * from `npm run generate:cards`) is assignable to it: `w`/`h` arrive there as
  * `number | null`, which these accept.
  *
- * ## The decision is per mark
+ * ## The decision is per mark, and the mark records it
  *
  * A card can carry up to twenty proposals, and each one is taken over or
  * discarded on its own: the office keeps the stair finding and drops the
- * door. So the decision is stored per mark, under `itemDecisionKey`
- * (`card-decision.ts`), on the same `ChatMessage.cardInteractions` map every
- * interactive card writes (ADR-0030). The live status beats the stored
- * decision whenever it is known:
- * a colleague may have taken the mark over on the canvas, and the card must
- * say so rather than offer the button again.
+ * door. The answer is a write to the mark (ADR-0105), so the mark is the
+ * record and the card is `live` (`card-decision.ts`). Messages stored before
+ * that kept the answer per mark under `itemDecisionKey` on
+ * `ChatMessage.cardInteractions` (ADR-0030); those still draw, read-only, as a
+ * fallback while the live list has not said anything else. The live status
+ * beats the stored decision whenever it is known: a colleague may have taken
+ * the mark over on the canvas, and the card must say so rather than offer the
+ * button again.
  */
 
-import type { AnnotationKind, AnnotationStatus, UpdateAnnotationRequest } from '@/lib/annotations/types'
+import type {
+  AnnotationAuthor,
+  AnnotationKind,
+  AnnotationStatus,
+  UpdateAnnotationRequest,
+} from '@/lib/annotations/types'
 import type { CardDecision } from '../card-decision'
 
 /** A mark Piloti set on a page, waiting for a person to take it over. */
@@ -112,6 +119,14 @@ export const annotationIdOf = (item: CanvasActivityItem): string | null =>
 /** Where one mark stands, as the card shows it. */
 export type MarkState = AnnotationStatus | 'gone'
 
+/** The newest answer in a mark's thread, as the row tells it at a glance. */
+export interface LastReply {
+  authorKind: AnnotationAuthor
+  /** The author's name as the directory has it; null for Piloti, or when it does not know them. */
+  authorName: string | null
+  body: string
+}
+
 /** What the card knows about a mark from the live list. */
 export interface LiveMark {
   status: AnnotationStatus
@@ -126,6 +141,22 @@ export interface LiveMark {
   dueOn: string | null
   kind: AnnotationKind
   body: string
+  /** How many replies the mark's thread holds. */
+  replyCount: number
+  /** The newest reply, or null for a thread with none. */
+  lastReply: LastReply | null
+}
+
+/**
+ * The first words of a text, for a one-line glance: whitespace collapsed, cut
+ * at a word boundary at or before `max` characters, with an ellipsis when cut.
+ */
+export function firstWords(text: string, max = 60): string {
+  const flat = text.replace(/\s+/g, ' ').trim()
+  if (flat.length <= max) return flat
+  const cut = flat.slice(0, max)
+  const boundary = cut.lastIndexOf(' ')
+  return `${(boundary > max / 2 ? cut.slice(0, boundary) : cut).replace(/[\s.,;:!?-]+$/, '')}…`
 }
 
 /**

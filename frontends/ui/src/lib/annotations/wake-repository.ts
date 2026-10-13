@@ -228,3 +228,44 @@ export async function handBackDelegation(
     .returning({ id: documentAnnotations.id })
   return rows.length > 0
 }
+
+/** What a wake's turn was, as far as telling its replies from any other Piloti reply needs. */
+export interface WakeSpanRow {
+  annotationId: string
+  actorUserId: string
+  triggerKind: PilotiWakeTrigger
+  createdAt: Date
+  endedAt: Date | null
+}
+
+/**
+ * The wakes of one document whose turn answered, or is answering: anything
+ * that was not held at enqueue (`suppressed`), refused or failed. Newest
+ * first. Read by the thread view to mark a Piloti reply that a wake produced.
+ */
+export async function listAnsweringWakes(organizationId: string, documentId: string): Promise<WakeSpanRow[]> {
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select({
+        annotationId: pilotiWakes.annotationId,
+        actorUserId: pilotiWakes.actorUserId,
+        triggerKind: pilotiWakes.triggerKind,
+        createdAt: pilotiWakes.createdAt,
+        endedAt: pilotiWakes.endedAt,
+      })
+      .from(pilotiWakes)
+      .where(
+        and(
+          eq(pilotiWakes.organizationId, organizationId),
+          eq(pilotiWakes.documentId, documentId),
+          inArray(pilotiWakes.status, ['queued', 'started', 'answered', 'stopped'])
+        )
+      )
+      .orderBy(desc(pilotiWakes.createdAt))
+      .limit(MAX_WAKE_SPANS)
+  )
+}
+
+/** A document carries at most this many marks, each with a bounded number of wakes; this only keeps the read bounded. */
+const MAX_WAKE_SPANS = 2000

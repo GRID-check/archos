@@ -179,6 +179,12 @@ SCORE_DEFINITIONS: tuple[ScoreDefinition, ...] = (
         "Each envelope card that missed its schema: repaired, or dropped.",
         categories=("repaired", "dropped"),
     ),
+    ScoreDefinition(
+        "thread-answered-in-place",
+        "BOOLEAN",
+        "On a turn asked to answer in an Anmerkung's thread: true when the model replied there itself, false "
+        "when the socket had to post the answer for it. Not written when the turn may not post there.",
+    ),
 )
 
 #: Scores a person or a judge writes inside Langfuse. Grid never writes these;
@@ -329,6 +335,13 @@ def steer_scores(inbox: Any) -> list[RuntimeScore]:
 def card_validity_score(*, outcome: str, card_type: str, index: int) -> RuntimeScore:
     """One envelope card's schema miss, repaired or dropped."""
     return RuntimeScore("card-validity", outcome, comment=card_type, item=str(index), metadata={"card_type": card_type})
+
+
+def thread_reply_scores(verdict: str) -> list[RuntimeScore]:
+    """A thread turn's ``thread_reply`` verdict as a score: ``replied`` true, ``skipped`` false, else none."""
+    if verdict not in ("replied", "skipped"):
+        return []
+    return [_boolean("thread-answered-in-place", verdict == "replied")]
 
 
 # ---------------------------------------------------------------------------

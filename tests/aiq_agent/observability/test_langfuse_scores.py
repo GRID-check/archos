@@ -17,6 +17,7 @@ from aiq_agent.observability.langfuse_scores import dialect_scores
 from aiq_agent.observability.langfuse_scores import emit_scores
 from aiq_agent.observability.langfuse_scores import score_body
 from aiq_agent.observability.langfuse_scores import score_id
+from aiq_agent.observability.langfuse_scores import thread_reply_scores
 from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 
 REPO = Path(__file__).resolve().parents[3]
@@ -147,6 +148,19 @@ class TestEmit:
         monkeypatch.setenv("LANGFUSE_SECRET_KEY", "sk")
 
         assert emit_scores([RuntimeScore("citation-health", 1.0)], writer="chat") == 0
+
+
+class TestThreadReplyScores:
+    @pytest.mark.parametrize(
+        ("verdict", "scores"),
+        [
+            ("replied", {"thread-answered-in-place": 1.0}),
+            ("skipped", {"thread-answered-in-place": 0.0}),
+            ("skipped_withheld", {}),
+        ],
+    )
+    def test_the_verdict_is_a_boolean_and_a_withheld_turn_has_none(self, verdict, scores):
+        assert _by_name(thread_reply_scores(verdict)) == scores
 
 
 class TestOneListOfNames:

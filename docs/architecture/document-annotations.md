@@ -153,6 +153,16 @@ say when to use which: `open=true` only when the person asked for exactly that
 mark; `update` only when they asked for that change to that mark; `delete`
 only on explicit request.
 
+**Only where the office switched it on.** Acting is the organization's choice:
+the WorkOS flag `piloti-acts`, an entitlement off by default, so a pilot office
+starts with Piloti proposing only. With it off, `runAgentAnnotationRequest`
+refuses `create`, `update` and `delete` before reading or writing anything, a
+403 with code `PILOTI_ACTS_OFF` and `details.reason` `piloti-acts-off`; the
+canvas tools turn it into a sentence (`tools/canvas/calls.py`): a mark the
+person asked for is proposed instead (`canvas__mark` without `open`), and a
+change or a deletion is left to the person, in the document. Reads, the room,
+pointing, highlighting, replies and proposals never ask the flag.
+
 The CHECKs of migration 0135 hold on every path, unchanged:
 
 - `only_piloti_proposes`: a born-open mark is not `proposed`; a person's mark never is.
@@ -324,11 +334,12 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | Item | When | For | Actionable |
 |---|---|---|---|
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
-| `piloti.work_failed` | a delegation's turn ended `failed` | who delegated | no |
+| `piloti.work_failed` | a woken turn ended `failed` (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
 
-A stop makes no item, because the person stopped it. A failed mention makes
-none: only a delegation reports a failure. A `piloti.asks_you` is resolved when
+A stop makes no item, because the person stopped it. A failed mention or answer
+makes a `piloti.work_failed` like a failed delegation, with the same neutral copy
+(„Piloti konnte Anmerkung 4 nicht abschließen“). A `piloti.asks_you` is resolved when
 the person answers it in the thread, and for everyone when the mark is
 resolved, dismissed or deleted.
 
@@ -403,10 +414,54 @@ an answer older than the record. Its actions:
    mark taken over (`accepted`) or dismissed (`dismissed`), and an applied change
    undone (`undone`). The score says what was decided, never by whom.
 
+## The Protokoll: Anmerkungen as a file
+
+A review ends outside the app: as the Protokoll of a Jour fixe, or sent to the
+client or a consultant. „Protokoll exportieren" in the Prüfansicht's header
+(`features/documents/components/review/review-export-menu.tsx`) downloads one.
+
+`GET /api/documents/[id]/annotations/export?format=pdf|docx|md&scope=open|all&fassung=current|all&includeProposals=1`
+(`frontends/ui/src/lib/annotations/export.ts`; the query and the link in
+`export-request.ts`, shared by the route and the menu). The defaults are a PDF
+of the open marks on the current Fassung.
+
+**Who may have it.** Whoever may list the marks: the service reads the document
+with `getAccessibleDocument(…, 'read')` and the marks through `listAnnotations`,
+so a held upload, a document in a folder closed to the reader and another
+organization's document are 404, as they are for the Prüfansicht.
+
+**What it says.** A header: the document, „Fassung 3 von 5 · Stand vom …" (the
+published version's number among the document's versions, and the day it was
+filed), the project, the selection, when and by whom it was exported. Then one
+entry per mark, by number: „Nr. 4 · Seite 2 · Mangel · offen", who set it („von
+Piloti gesetzt · für Anna" for a mark Piloti set that a person stands behind),
+who closed it, the text, Grundlage, Zuständig, Termin, the Fassung it was set on
+when that is an earlier one, and the thread (author · date: text, Piloti's
+replies as „Piloti · für Anna"). Piloti's proposals that nobody took over are
+not the office's: they are left out, or with `includeProposals=1` listed after
+the marks under „Vorschläge von Piloti, nicht geprüft". Dates are on the
+office's calendar (Europe/Vienna).
+
+**How the three files are made.** The Protokoll is built once as the answer
+export's `DocBlock`s and handed to the renderers that already exist: `renderDocx`
+(`lib/answer-export/docx.ts`), `BlocksDocument` (`lib/pdf/blocks-to-pdf.tsx`,
+with its cover page), and `blocksToMarkdown` in `export.ts`, the only new
+writer, which escapes what a person typed so it stays text. No dependency was
+added. A PDF whose layout cost passes `MAX_MARKDOWN_PDF_CHARS` is refused (422)
+before react-pdf blocks the event loop; Word and Markdown have no such bound.
+There is no thumbnail of the marked place: the BFF has no page rasterizer, so
+an entry names its page.
+
+**The trail.** Each export is the audit event `document.annotations.exported`
+on the document: format, scope, Fassung, whether proposals were included, and
+the counts, never a name or a word of the marks. Nothing calls a model, so
+nothing is traced to Langfuse.
+
 ## Known debts
 
 - The chat-hosted canvas (the review open over the chat) still asks an @Piloti reply in the chat's conversation, under the chat's own message id, when wakes are off; only the standalone canvas uses the reply's turn id.
-- The „Geweckt durch“ prompt block names the turn's verified principal, which an internal caller does not have, so a woken turn reads „Eine Person“ there; the person's name is in the trigger row and in `author_name`.
+- The „Geweckt durch“ prompt block names the turn's verified principal; an internal caller has none, so a woken turn takes the name the wake job stamps on the message (`author_name`, `conversation_register._turn_user_info`). That name is the BFF's claim, not a verified principal; a woken turn that arrives without one still reads „Eine Person“.
+- Which Piloti reply a wake wrote is derived, not stored (`lib/annotations/wake-attribution.ts`): a wake of the same person on the same mark that began before the reply and had not ended before it. The thread shows it as „Geweckt durch …“ under the reply's byline.
 
 - The canvas runs its own small turn client next to the chat's turn driver in `use-websocket-chat.ts`. That driver should become one shared module that both use.
 - The Python side posts to internal routes through several near-identical helpers.

@@ -8,13 +8,23 @@ person sees each change with what it was before.
 
 from __future__ import annotations
 
+import io
+import json
+import urllib.error
+
 import pytest
 
 from aiq_agent.tools.canvas import calls as canvas_calls
+from aiq_agent.tools.canvas import client as canvas_client
 from aiq_agent.tools.canvas.client import CanvasRequestError
+from aiq_agent.tools.canvas.register import DESCRIPTIONS
 from aiq_agent.tools.canvas.register import run_delete
 from aiq_agent.tools.canvas.register import run_mark
+from aiq_agent.tools.canvas.register import run_reply
 from aiq_agent.tools.canvas.register import run_update
+from aiq_agent.turn.annotation_reply import ThreadReply
+from aiq_agent.turn.annotation_reply import bind_thread_reply
+from aiq_agent.turn.annotation_reply import reset_thread_reply
 
 from .conftest import ANNOTATION
 from .conftest import CREATE_BODY
@@ -23,7 +33,9 @@ from .conftest import DOCUMENT
 from .conftest import LIST_BODY
 from .conftest import NAME
 from .conftest import PROPOSAL
+from .conftest import PROPOSE_BODY
 from .conftest import PROPOSED
+from .conftest import REPLY_BODY
 from .conftest import UPDATE_BODY
 from .conftest import answering
 
@@ -175,3 +187,98 @@ class TestADelete:
 
         assert "selbst gesetzt" in result and "`resolved`" in result
         assert registry.snapshot() == []
+
+
+#: What the BFF answers while the organization has Piloti propose only (``PilotiActsOffError``, ``agent.ts``).
+def _acts_off() -> CanvasRequestError:
+    return CanvasRequestError(
+        "This organization has Piloti propose only.", status=403, code="PILOTI_ACTS_OFF", reason="piloti-acts-off"
+    )
+
+
+class TestAnOfficeThatHasPilotiProposeOnly:
+    """``piloti-acts`` off: the BFF refuses what Piloti would apply, and the model is told what to do instead."""
+
+    async def test_an_open_mark_is_refused_with_the_way_to_propose_it(self, monkeypatch, calls, registry) -> None:
+        answering(monkeypatch, calls, _acts_off())
+
+        result = await run_mark([PROPOSAL], open=True)
+
+        assert result.startswith("Nicht gesetzt")
+        assert "nur vorschlagen" in result and "`mark` ohne `open`" in result and "übernehmen" in result
+        assert registry.snapshot() == []
+
+    async def test_the_proposal_it_asks_for_goes_through(self, monkeypatch, calls, registry) -> None:
+        answering(monkeypatch, calls, _acts_off(), PROPOSE_BODY)
+
+        await run_mark([PROPOSAL], open=True)
+        result = await run_mark([PROPOSAL])
+
+        assert [payload["op"] for payload, _ in calls] == ["create", "propose"]
+        assert "VORSCHLÄGE" in result
+        assert registry.snapshot()[0]["items"][0]["action"] == "proposed"
+
+    @pytest.mark.parametrize(
+        "run",
+        [
+            lambda: run_update(ANNOTATION, NOTE, status="resolved"),
+            lambda: run_update(ANNOTATION, "Übernommen.", status="open"),
+            lambda: run_delete(ANNOTATION),
+        ],
+        ids=["resolve", "take over", "delete"],
+    )
+    async def test_a_change_is_refused_and_left_to_the_person(self, monkeypatch, calls, registry, run) -> None:
+        answering(monkeypatch, calls, _acts_off())
+
+        result = await run()
+
+        assert result.startswith("Nicht geändert")
+        assert "nur vorschlagen" in result and "selbst tun" in result and "nicht erneut versuchen" in result
+        # Not the missing-permission sentence: the person may well do it, Piloti may not do it for them.
+        assert "darf an diesem Dokument nichts ändern" not in result and "selbst gesetzt" not in result
+        assert registry.snapshot() == []
+
+    async def test_a_refused_change_leaves_the_thread_to_the_answer(self, monkeypatch, calls, registry) -> None:
+        record = ThreadReply(annotation_id=ANNOTATION, document_id=DOCUMENT)
+        token = bind_thread_reply(record)
+        try:
+            answering(monkeypatch, calls, _acts_off())
+            await run_update(ANNOTATION, NOTE, status="resolved")
+        finally:
+            reset_thread_reply(token)
+
+        # Nothing was said in the thread, so the turn's answer still goes there.
+        assert record.posted == set()
+
+    async def test_a_reply_is_not_an_act(self, monkeypatch, calls, registry) -> None:
+        answering(monkeypatch, calls, REPLY_BODY)
+
+        result = await run_reply(ANNOTATION, "Steht im Schnitt B-B.")
+
+        assert "Antwort" in result and calls[0][0]["op"] == "reply"
+
+    async def test_the_refusal_is_recorded_by_its_own_code(self, monkeypatch, calls, registry) -> None:
+        spans: list[tuple[str, dict, dict]] = []
+        monkeypatch.setattr(canvas_calls, "add_trace_tag", lambda tag: None)
+        monkeypatch.setattr(canvas_calls, "emit_step_span", lambda name, i, o: spans.append((name, i, o)))
+        answering(monkeypatch, calls, _acts_off())
+
+        await run_delete(ANNOTATION)
+
+        assert spans == [("canvas.delete", {"step": "delete"}, {"refused": "piloti_acts_off"})]
+
+    def test_the_bff_envelope_is_read_into_the_reason(self) -> None:
+        body = {
+            "error": "This organization has Piloti propose only.",
+            "code": "PILOTI_ACTS_OFF",
+            "details": {"reason": "piloti-acts-off", "op": "update"},
+        }
+        exc = urllib.error.HTTPError("http://frontend/api", 403, "Forbidden", {}, io.BytesIO(json.dumps(body).encode()))
+
+        refusal = canvas_client._refusal(exc)
+
+        assert (refusal.status, refusal.code, refusal.reason) == (403, "PILOTI_ACTS_OFF", "piloti-acts-off")
+
+    @pytest.mark.parametrize("tool", ["mark", "update", "delete"])
+    def test_each_acting_tool_says_so_in_its_description(self, tool) -> None:
+        assert "nur vorschlagen" in DESCRIPTIONS[tool]

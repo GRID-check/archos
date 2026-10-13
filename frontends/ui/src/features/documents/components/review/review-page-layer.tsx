@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils'
 import { askRegionOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview, ReviewDraft, ReviewTool } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
+import { usePilotiByline } from './piloti-attribution'
 
 /** A region smaller than this share of the page, in both directions, was a click: it becomes a point. */
 const MIN_REGION = 0.012
@@ -220,6 +221,7 @@ export function ReviewPageLayer({
   renderAsk?: (ask: CanvasAsk, anchor: { x: number; y: number; flip: boolean }) => JSX.Element | null
 }): JSX.Element {
   const t = useTranslations('files')
+  const byline = usePilotiByline()
   const layerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
@@ -342,6 +344,9 @@ export function ReviewPageLayer({
         const active = annotation.id === selectedId || annotation.id === hoveredId
         const ink = markInk(annotation)
         const proposed = annotation.status === 'proposed'
+        // Piloti's mark says for whom it was set, as a tooltip and to a screen reader.
+        const pilotiLine =
+          annotation.authorKind === 'piloti' ? byline(annotation.createdByName, { proposal: proposed }) : undefined
         const done = !isLive(annotation)
         return (
           <div key={annotation.id} className={cn('contents', active && '[&>*]:z-20')}>
@@ -375,11 +380,14 @@ export function ReviewPageLayer({
                 proposed={proposed}
                 done={done}
                 active={annotation.id === selectedId}
-                aria-label={t('review.pinLabel', {
-                  number: annotation.number,
-                  kind: t(`annotations.kinds.${annotation.kind}`),
-                })}
+                aria-label={[
+                  t('review.pinLabel', { number: annotation.number, kind: t(`annotations.kinds.${annotation.kind}`) }),
+                  pilotiLine,
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
                 aria-pressed={annotation.id === selectedId}
+                title={pilotiLine}
                 onPointerEnter={() => review.hover(annotation.id)}
                 onPointerLeave={() => review.hover(null)}
                 onClick={(event) => {

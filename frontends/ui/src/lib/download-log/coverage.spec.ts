@@ -161,6 +161,9 @@ const ROUTES: Record<string, RouteDisposition> = {
   'conversations/[id]/messages/[messageId]/export/route.ts': {
     exempt: 'renders one chat answer as a document; it is not a stored file, and the answer is the conversation’s own content.',
   },
+  'documents/[id]/annotations/export/route.ts': {
+    exempt: 'renders the document’s Anmerkungen and their threads as a Protokoll; none of the document’s bytes, and the audit event document.annotations.exported records it.',
+  },
   'conversations/[id]/live/route.ts': { exempt: 'server-sent events of a conversation.' },
   'stream/route.ts': { exempt: 'server-sent events.' },
   'realtime/route.ts': { exempt: 'server-sent events of the live channels (lib/realtime): presence, pointers and change hints; no file bytes.' },

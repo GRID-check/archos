@@ -36,6 +36,12 @@
  * not data. A rejoin after the card was away, or after a drop, stamps every
  * mark, because nothing is replayed.
  *
+ * ## The thread at a glance
+ *
+ * Each mark also carries its reply count and its newest reply, taken from the
+ * `replies` the annotations list returns with every mark (no second read): a
+ * row can say „2 Antworten · zuletzt Piloti: …" and move with the thread.
+ *
  * Both reads fail soft: a card that cannot read the live list falls back to
  * the decision its message stored, and one with no thumbnail draws a plain
  * page.
@@ -49,13 +55,27 @@ import { MAX_CHANNELS_PER_CONNECTION } from '@/lib/realtime/types'
 import type { ChannelStatus } from '@/features/realtime/connection'
 import { realtimeLink } from '@/features/realtime/use-channel'
 import { documentRoomChannel } from '@/features/documents/hooks/use-document-room'
-import type { LiveMark } from '../lib/canvas-activity'
+import type { LastReply, LiveMark } from '../lib/canvas-activity'
 
 /** A burst of hints (a batch of replies) is one read; the review waits as long (`use-document-review.ts`). */
 export const CHANGE_DEBOUNCE_MS = 120
 
 /** How many document channels the cards of one tab hold at once: half the connection, the rest is the review's. */
 export const CARD_CHANNEL_BUDGET = MAX_CHANNELS_PER_CONNECTION / 2
+
+/** The newest reply of a thread: the replies arrive oldest first, and a tie goes to the later one. */
+const lastReplyOf = (annotation: AnnotationView): LastReply | null => {
+  const newest = annotation.replies.reduce<AnnotationView['replies'][number] | null>(
+    (latest, reply) => (latest === null || reply.createdAt >= latest.createdAt ? reply : latest),
+    null
+  )
+  if (!newest) return null
+  return {
+    authorKind: newest.authorKind,
+    authorName: newest.authorKind === 'piloti' ? null : newest.createdByName,
+    body: newest.body,
+  }
+}
 
 const liveOf = (annotation: AnnotationView): LiveMark => ({
   status: annotation.status,
@@ -66,6 +86,8 @@ const liveOf = (annotation: AnnotationView): LiveMark => ({
   dueOn: annotation.dueOn,
   kind: annotation.kind,
   body: annotation.body,
+  replyCount: annotation.replies.length,
+  lastReply: lastReplyOf(annotation),
 })
 
 export interface LiveMarks {

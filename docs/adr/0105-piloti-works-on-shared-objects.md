@@ -83,6 +83,10 @@ Its own findings, made without being asked for each one, arrive as proposals.
 * Assigning work to Piloti keeps a person as the assignee; Piloti is a
   delegate on the mark (the pattern Linear ships: work is assigned to people
   and delegated to agents).
+* Acting is behind the organization switch `piloti-acts`, a WorkOS
+  entitlement off by default: an office starts with Piloti proposing only and
+  turns acting on when it trusts it. Off, the BFF refuses `create`, `update`
+  and `delete` (`piloti-acts-off`) and Piloti proposes instead.
 
 ### What is not done
 

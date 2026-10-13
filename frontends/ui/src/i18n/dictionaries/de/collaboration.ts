@@ -349,10 +349,10 @@ export const collaboration: typeof en.collaboration = {
         bodyNoSubject: 'Die Antwort steht im Verlauf der Anmerkung.',
       },
       pilotiWorkFailed: {
-        title: 'Piloti konnte eine Anmerkung nicht bearbeiten',
-        titleRelated: 'Piloti konnte Anmerkung {related} nicht bearbeiten',
-        body: 'Öffnen Sie die Anmerkung in {subject}: Sie können sie selbst übernehmen oder erneut an Piloti delegieren.',
-        bodyNoSubject: 'Öffnen Sie die Anmerkung: Sie können sie selbst übernehmen oder erneut an Piloti delegieren.',
+        title: 'Piloti konnte eine Anmerkung nicht abschließen',
+        titleRelated: 'Piloti konnte Anmerkung {related} nicht abschließen',
+        body: 'Öffnen Sie die Anmerkung in {subject}: Sie können sie selbst übernehmen oder Piloti noch einmal darum bitten.',
+        bodyNoSubject: 'Öffnen Sie die Anmerkung: Sie können sie selbst übernehmen oder Piloti noch einmal darum bitten.',
       },
       // Piloti hat eine Rückfrage gestellt und wartet auf eine Person. Die Frage
       // steht als Auszug darunter.

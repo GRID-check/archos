@@ -4,9 +4,10 @@
  *
  * What this file holds the card to:
  *
- * 1. **One decision per mark**, stored on the message under
- *    `itemDecisionKey`, through the annotations client's PATCH. A stored
- *    decision draws the mark answered and offers nothing again.
+ * 1. **One decision per mark**, a PATCH through the annotations client. The
+ *    mark is the record (the card is `live`): nothing is written to the
+ *    message. A decision a message stored before that still draws the mark
+ *    answered, read-only, and offers nothing again.
  * 2. **The canvas wins.** A mark a colleague answered on the canvas reads as
  *    answered here, and a 409 re-reads instead of recording a decision the
  *    reader never made.
@@ -25,10 +26,16 @@
  *    failed, keeps the card's own copy and its browser-side replay.
  *    `moved-on` and `already-undone` answer calmly, and a live change to one
  *    of the card's marks reads the record again.
+ * 7. **Several proposals answer at once**: „Alle übernehmen" and „Übrige
+ *    verwerfen" are the per-mark write on each mark still proposed, a mark
+ *    somebody decided meanwhile is skipped and its row says who, and
+ *    discarding asks first.
+ * 8. **Each row tells its thread at a glance**: the reply count and the
+ *    newest reply's author and first words, from the live list.
  *
  * Rendered without an `I18nProvider`, so the dictionary falls back to `en`.
  */
-import { render, screen, waitFor } from '@/test-utils'
+import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { AnnotationView } from '@/lib/annotations/types'
@@ -299,29 +306,49 @@ describe('CanvasActivityCard — what it says', () => {
 })
 
 describe('CanvasActivityCard — the answer per mark', () => {
-  it('takes a mark over through the PATCH and records it under the mark', async () => {
+  it('takes a mark over through the PATCH, and the mark is the record', async () => {
     const user = userEvent.setup()
     renderCard([STAIR, DOOR])
 
     await user.click(screen.getByRole('button', { name: 'Take over annotation 7' }))
 
-    await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
-    expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'canvas_activity-0#ann-7', 'accepted')
+    await waitFor(() => expect(screen.getAllByTestId('canvas-activity-state')).toHaveLength(1))
+    expect(screen.getAllByTestId('canvas-activity-proposed')[0]).toHaveAttribute('data-state', 'open')
     const patch = calls.find((call) => call.method === 'PATCH')
     expect(patch?.url).toBe(`/api/documents/${DOC.id}/annotations/ann-7`)
     expect(patch?.body).toEqual({ status: 'open', expectedStatus: 'proposed' })
+    // Nothing is written to the message: the mark holds the answer.
+    expect(setCardDecision).not.toHaveBeenCalled()
     // The other mark still asks.
     expect(screen.getByRole('button', { name: 'Take over annotation 8' })).toBeInTheDocument()
   })
 
-  it('discards a mark with status dismissed and records rejected', async () => {
+  it('discards a mark with status dismissed', async () => {
     const user = userEvent.setup()
     renderCard([STAIR])
 
     await user.click(screen.getByRole('button', { name: 'Discard annotation 7' }))
 
-    await waitFor(() => expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'canvas_activity-0#ann-7', 'rejected'))
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Discarded'))
     expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ status: 'dismissed', expectedStatus: 'proposed' })
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('offers the answer without an owning message too: the mark needs no place to be kept', async () => {
+    const user = userEvent.setup()
+    render(<CanvasActivityCard document={DOC} items={[STAIR]} cardKey="canvas_activity-0" />)
+
+    await user.click(screen.getByRole('button', { name: 'Take over annotation 7' }))
+
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Taken over'))
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('offers no answer on a read-only surface where nothing owns the card', () => {
+    render(<CanvasActivityCard document={DOC} items={[STAIR, DOOR]} cardKey="canvas_activity-0" decisionsMustPersist />)
+
+    expect(screen.queryByRole('button', { name: /Take over/ })).toBeNull()
+    expect(screen.queryByRole('button', { name: /Discard/ })).toBeNull()
   })
 
   it('answers only the proposal it shows: one a colleague discarded meanwhile is not reopened', async () => {
@@ -422,7 +449,7 @@ describe('CanvasActivityCard — what the person asked for', () => {
     expect(screen.getByText('„Erledigt: Die lichte Breite ist im Schnitt B-B mit 1,25 m kotiert.“')).toBeInTheDocument()
   })
 
-  it('undoes a change through the reader’s PATCH, guarded by the status Piloti left, and records it per row', async () => {
+  it('undoes a change through the reader’s PATCH, guarded by the status Piloti left, and keeps nothing on the message', async () => {
     stubRoutes({
       list: [[view('ann-4', 4, { status: 'resolved', authorKind: 'person', closedBy: 'user_1', closedByName: 'Anna' })]],
       patch: (id) => ({ status: 200, body: { annotation: view(id, 4, { status: 'open', authorKind: 'person' }) } }),
@@ -432,10 +459,11 @@ describe('CanvasActivityCard — what the person asked for', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 4' }))
 
-    await waitFor(() => expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'canvas_activity-0#ann-4@0', 'rejected'))
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-changed')).toHaveAttribute('data-undone', 'true'))
     const patch = calls.find((call) => call.method === 'PATCH')
     expect(patch?.url).toBe(`/api/documents/${DOC.id}/annotations/ann-4`)
     expect(patch?.body).toEqual({ status: 'open', expectedStatus: 'resolved' })
+    expect(setCardDecision).not.toHaveBeenCalled()
   })
 
   it('puts an assignee back as it was: none', async () => {
@@ -448,8 +476,9 @@ describe('CanvasActivityCard — what the person asked for', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Undo the change to annotation 4' }))
 
-    await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
+    await waitFor(() => expect(calls.some((call) => call.method === 'PATCH')).toBe(true))
     expect(calls.find((call) => call.method === 'PATCH')?.body).toEqual({ assigneeUserId: null, expectedStatus: 'open' })
+    expect(setCardDecision).not.toHaveBeenCalled()
   })
 
   it('never undoes a colleague’s later move: a mark that moved on shows where it stands', async () => {
@@ -687,7 +716,8 @@ describe('CanvasActivityCard — the card’s own copy is the fallback', () => {
 
     await user.click(await screen.findByRole('button', { name: UNDO_BUTTON }))
 
-    await waitFor(() => expect(setCardDecision).toHaveBeenCalledWith('msg-1', 'canvas_activity-0#ann-4@0', 'rejected'))
+    await waitFor(() => expect(screen.getByTestId('canvas-activity-changed')).toHaveAttribute('data-undone', 'true'))
+    expect(setCardDecision).not.toHaveBeenCalled()
     expect(undo).not.toHaveBeenCalled()
     expect(screen.queryByTestId('canvas-activity-for')).toBeNull()
   })
@@ -801,5 +831,206 @@ describe('CanvasActivityCard — live', () => {
 
     await waitFor(() => expect(turnChanges).toHaveBeenCalledTimes(2))
     await waitFor(() => expect(screen.getByTestId('canvas-activity-state')).toHaveTextContent('Anna'))
+  })
+})
+
+describe('CanvasActivityCard — several proposals at once', () => {
+  const TAKE_ALL = 'Take over all'
+  const DISCARD_REST = 'Discard the rest'
+  const patches = () => calls.filter((call) => call.method === 'PATCH')
+
+  it('offers the two batch answers once the list says several marks are proposed', async () => {
+    renderCard([STAIR, DOOR])
+
+    expect(await screen.findByRole('button', { name: TAKE_ALL })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: DISCARD_REST })).toBeInTheDocument()
+    // The per-mark answers stay.
+    expect(screen.getByRole('button', { name: 'Take over annotation 7' })).toBeInTheDocument()
+  })
+
+  it('offers none for a single proposal', async () => {
+    renderCard([STAIR])
+    await waitFor(() => expect(calls.some((call) => call.url.endsWith('/annotations'))).toBe(true))
+    expect(screen.queryByRole('button', { name: TAKE_ALL })).toBeNull()
+  })
+
+  it('takes every proposed mark over with the per-mark write and records nothing on the message', async () => {
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR])
+
+    await user.click(await screen.findByRole('button', { name: TAKE_ALL }))
+
+    await waitFor(() => expect(patches()).toHaveLength(2))
+    expect(patches().map((call) => [call.url.split('/').pop(), call.body])).toEqual([
+      ['ann-7', { status: 'open', expectedStatus: 'proposed' }],
+      ['ann-8', { status: 'open', expectedStatus: 'proposed' }],
+    ])
+    await waitFor(() => expect(screen.queryByRole('button', { name: TAKE_ALL })).toBeNull())
+    expect(screen.getAllByTestId('canvas-activity-state')).toHaveLength(2)
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('leaves out a mark that is not the reader’s to answer', async () => {
+    stubRoutes({
+      list: [[view('ann-7', 7), view('ann-8', 8, { canEdit: false }), view('ann-9', 9)]],
+    })
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR, { ...STAIR, annotation_id: 'ann-9', number: 9 } as CanvasActivityItem])
+
+    await user.click(await screen.findByRole('button', { name: TAKE_ALL }))
+
+    await waitFor(() => expect(patches()).toHaveLength(2))
+    expect(patches().map((call) => call.url.split('/').pop())).toEqual(['ann-7', 'ann-9'])
+  })
+
+  it('asks before it discards, and does nothing when the reader backs out', async () => {
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR])
+
+    await user.click(await screen.findByRole('button', { name: DISCARD_REST }))
+
+    expect(await screen.findByText('Discard 2 annotations?')).toBeInTheDocument()
+    expect(screen.getByText('This cannot be undone from here.')).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: 'Cancel' }))
+    expect(patches()).toHaveLength(0)
+  })
+
+  it('discards the rest with status dismissed once confirmed', async () => {
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR])
+
+    await user.click(await screen.findByRole('button', { name: DISCARD_REST }))
+    await user.click(await screen.findByRole('button', { name: 'Discard' }))
+
+    await waitFor(() => expect(patches()).toHaveLength(2))
+    expect(patches().map((call) => call.body)).toEqual([
+      { status: 'dismissed', expectedStatus: 'proposed' },
+      { status: 'dismissed', expectedStatus: 'proposed' },
+    ])
+    await waitFor(() => expect(screen.getAllByTestId('canvas-activity-state')).toHaveLength(2))
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('skips a mark somebody decided meanwhile and says so in its row', async () => {
+    stubRoutes({
+      list: [
+        [view('ann-7', 7), view('ann-8', 8)],
+        [view('ann-7', 7, { status: 'open', acceptedByName: 'Anna' }), view('ann-8', 8, { status: 'open', acceptedByName: 'Reader' })],
+      ],
+      patch: (id) =>
+        id === 'ann-7'
+          ? { status: 409, body: { error: 'Somebody changed this Anmerkung a moment ago.', code: 'CONFLICT' } }
+          : { status: 200, body: { annotation: view(id, 8, { status: 'open', acceptedByName: 'Reader' }) } },
+    })
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR])
+
+    await user.click(await screen.findByRole('button', { name: TAKE_ALL }))
+
+    const skipped = await screen.findByTestId('canvas-activity-skipped')
+    expect(skipped).toHaveTextContent('already handled by Anna')
+    // The mark the batch did take over carries no such note.
+    expect(screen.getAllByTestId('canvas-activity-skipped')).toHaveLength(1)
+    expect(skipped.closest('li')).toHaveAttribute('data-testid', 'canvas-activity-proposed')
+    expect(within(skipped.closest('li') as HTMLElement).getByTestId('canvas-activity-state')).toHaveTextContent('Anna')
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('reports the marks it could not save and keeps going', async () => {
+    stubRoutes({
+      patch: (id) =>
+        id === 'ann-7'
+          ? { status: 500, body: { error: 'boom' } }
+          : { status: 200, body: { annotation: view(id, 8, { status: 'open' }) } },
+    })
+    const user = userEvent.setup()
+    renderCard([STAIR, DOOR])
+
+    await user.click(await screen.findByRole('button', { name: TAKE_ALL }))
+
+    expect(await screen.findByText('One annotation could not be saved.')).toBeInTheDocument()
+    expect(patches()).toHaveLength(2)
+  })
+})
+
+describe('CanvasActivityCard — the thread at a glance', () => {
+  const reply = (
+    id: string,
+    patch: Partial<AnnotationView['replies'][number]>
+  ): AnnotationView['replies'][number] => ({
+    id,
+    annotationId: 'ann-7',
+    authorKind: 'person',
+    body: 'x',
+    createdBy: 'user_1',
+    createdByName: 'Anna',
+    createdAt: '2026-10-13T08:00:00.000Z',
+    addressesPiloti: false,
+    ...patch,
+  })
+
+  it('says how many replies there are and who answered last, with their first words', async () => {
+    stubRoutes({
+      list: [
+        [
+          view('ann-7', 7, {
+            replies: [
+              reply('r1', { body: 'Welche Breite gilt hier?' }),
+              reply('r2', {
+                authorKind: 'piloti',
+                createdByName: null,
+                createdAt: '2026-10-13T09:00:00.000Z',
+                body: 'Die Breite beträgt 1,10 m und liegt damit unter dem Mindestmaß von 1,20 m aus der Bauordnung.',
+              }),
+            ],
+          }),
+        ],
+      ],
+    })
+    renderCard([STAIR])
+
+    const glance = await screen.findByTestId('canvas-activity-thread')
+    expect(glance).toHaveTextContent('2 replies')
+    expect(glance).toHaveTextContent('latest Piloti: “Die Breite beträgt 1,10 m und liegt damit unter dem…”')
+  })
+
+  it('names a person by the directory name, and counts one reply in the singular', async () => {
+    stubRoutes({ list: [[view('ann-7', 7, { replies: [reply('r1', { body: 'Bitte prüfen.' })] })]] })
+    renderCard([STAIR])
+
+    expect(await screen.findByTestId('canvas-activity-thread')).toHaveTextContent('1 reply · latest Anna: “Bitte prüfen.”')
+  })
+
+  it('takes the newest reply by its time, not by its place in the list', async () => {
+    stubRoutes({
+      list: [
+        [
+          view('ann-7', 7, {
+            replies: [
+              reply('r2', { createdAt: '2026-10-13T09:00:00.000Z', body: 'Neuere', createdByName: 'Ben' }),
+              reply('r1', { createdAt: '2026-10-13T08:00:00.000Z', body: 'Ältere' }),
+            ],
+          }),
+        ],
+      ],
+    })
+    renderCard([STAIR])
+
+    expect(await screen.findByTestId('canvas-activity-thread')).toHaveTextContent('latest Ben: “Neuere”')
+  })
+
+  it('shows nothing for a thread without replies', async () => {
+    renderCard([STAIR])
+    await waitFor(() => expect(calls.some((call) => call.url.endsWith('/annotations'))).toBe(true))
+    expect(screen.queryByTestId('canvas-activity-thread')).toBeNull()
+  })
+
+  it('shows it on a changed row and on a replied row too', async () => {
+    stubRoutes({
+      list: [[view('ann-4', 4, { status: 'open', authorKind: 'person', replies: [reply('r1', { body: 'Danke' })] })]],
+    })
+    renderCard([ASSIGNED, REPLY])
+
+    await waitFor(() => expect(screen.getAllByTestId('canvas-activity-thread')).toHaveLength(2))
   })
 })

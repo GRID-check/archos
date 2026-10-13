@@ -141,7 +141,7 @@ export const INBOX_ITEM_TYPES = [
    * the row opens the Prüfansicht at it.
    */
   'piloti.work_done',
-  /** Informational, operational tier: a delegated Anmerkung that Piloti could not work. */
+  /** Informational, operational tier: Piloti could not finish a woken turn on an Anmerkung (a delegation, a mention or an answer to its question); a stopped turn tells nobody. */
   'piloti.work_failed',
   /**
    * Actionable, operational tier: Piloti asked a question on an Anmerkung and

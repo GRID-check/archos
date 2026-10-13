@@ -228,7 +228,9 @@ def retired_card_markdown(payload: object) -> str | None:
 #
 # `canvas_activity` carries Piloti's PROPOSED marks, which a person takes over or
 # dismisses from the card as well as on the document: a non-idempotent write
-# per mark, so its decisions are stored per mark.
+# per mark, so its decisions are stored per mark. (On the frontend it is classified
+# `'live'`: the mark is the record, not the message. "Interactive" here means
+# "asks the user", which a live card still does.)
 INTERACTIVE_CARD_TYPES = frozenset(
     {"project_profile_patch", "memory_proposal", "file_operation_proposal", "document_draft", "canvas_activity"}
 )
