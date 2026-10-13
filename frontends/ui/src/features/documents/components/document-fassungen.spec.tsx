@@ -315,7 +315,7 @@ describe('DocumentFassungen — the header says where the newest Fassung stands'
     renderSection({ viewer: viewOnly, client: clientOf([reviewed(1, 'in_review')]) })
 
     const answerLine = await screen.findByTestId('fassung-answer')
-    expect(answerLine).toHaveTextContent('Piloti antwortet erst daraus, wenn sie veröffentlicht ist.')
+    expect(answerLine).toHaveTextContent('Piloti antwortet erst daraus, wenn sie freigegeben ist.')
     expect(answerLine).not.toHaveTextContent('Fassung 1')
   })
 

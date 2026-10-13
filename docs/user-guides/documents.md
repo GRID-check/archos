@@ -228,7 +228,8 @@ document of its own, and a link can be undone later („Verknüpfung lösen“).
   question on its own, „Neue Fassung von „…“?“, with two buttons: „Als neue
   Fassung ablegen“ and „Als eigenes Dokument hochladen“.
 - **Unchanged re-exports** (same name, same content) stay „unverändert, wird
-  übersprungen“ and never get a proposal.
+  übersprungen“ and never get a proposal. The exception is a file Piloti could
+  not read, or never read: uploading the same bytes again retries it.
 
 The tick travels with the upload: Piloti files the link as soon as the new file
 has been read, and says in words what changed. If the older document was deleted
@@ -408,7 +409,8 @@ The header is always visible, also when the section is shut. It is about the
   Veröffentlicht, Ersetzt, Abgelehnt or Stillgelegt. A file you uploaded has no
   state word: nobody approved it, you put it there.
 - **The four steps, named:** Entwurf, In Prüfung, Freigegeben, Veröffentlicht,
-  with the step the Fassung has reached set darker. A file you uploaded has no
+  with the step the Fassung has reached set darker. Approving fills the track to
+  the end: it publishes the Fassung in the same step. A file you uploaded has no
   track, and neither has a Fassung a newer one replaced.
 - **The next step, with a person:** „Nächster Schritt: Freigabe durch Sabine
   Gruber“ (whoever the round was sent to), „Nächster Schritt: Ihre Freigabe“ when
@@ -421,7 +423,7 @@ The header is always visible, also when the section is shut. It is about the
   | The newest is published, or is a file you uploaded, and Piloti has read it | Piloti antwortet aus dieser Fassung. |
   | The newest waits, an older one is published | Piloti antwortet weiter aus Fassung 1. |
   | You uploaded a new Fassung and Piloti is still reading it, or could not read it | Piloti antwortet weiter aus Fassung 1. |
-  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie veröffentlicht ist. |
+  | The newest waits, nothing published yet | Piloti antwortet erst daraus, wenn sie freigegeben ist. |
   | Your first upload is still being read | Piloti antwortet daraus, sobald sie gelesen ist. |
   | The newest was refused, or could not be read, and nothing stands behind it | Piloti antwortet nicht daraus. |
   | You opened an older document a newer one replaced | Piloti antwortet aus der neueren Fassung 2; diese bleibt lesbar, auch für Vergleiche. |
@@ -541,8 +543,9 @@ tables.
 - Files uploaded before this change keep their old index: their text is
   searchable, their pictures are not, and a Word citation opens at page 1.
   Choose „Erneut lesen“ in the file's ⋯ menu to have it read the new way.
-  Uploading the same file again does not: identical bytes are skipped as
-  „Unverändert“. Until the new reading finishes, answers use the old one.
+  Uploading the same file again does not: identical bytes of a file that was
+  read are skipped as „Unverändert“. Until the new reading finishes, answers use
+  the old one.
 - A diagram drawn with Office shapes or SmartArt is not a picture to Piloti.
   Its labels are text and are found; its layout is not described.
 - If the PDF cannot be made, the file shows „Lesen fehlgeschlagen“ with the

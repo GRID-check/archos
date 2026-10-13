@@ -83,12 +83,10 @@ function version(
   }
 }
 
-/** A person's upload, as the server stores it: born published, the uploader standing in as approver (ADR-0054). */
+/** A person's upload, as the server stores it: born published, approved by nobody (migration 0137). */
 function upload(documentId: string, versionNumber: number, createdAt: string, by: string, state: DocumentVersionState = 'published') {
   return version(documentId, versionNumber, state, createdAt, {
     createdBy: by,
-    approvedBy: by,
-    approvedAt: createdAt,
     publishedBy: by,
     publishedAt: createdAt,
   })

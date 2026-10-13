@@ -39,6 +39,10 @@
           "key": "features",
           "notes": [
             {
+              "en": "Ask Piloti what changed between two Fassungen of a document, such as two states of a floor plan, and it answers page by page with the values that changed and the date each Fassung carries.",
+              "de": "Fragen Sie Piloti, was sich zwischen zwei Fassungen eines Dokuments geändert hat, etwa zwischen zwei Planständen eines Grundrisses. Piloti antwortet Seite für Seite mit den geänderten Werten und dem Datum der jeweiligen Fassung."
+            },
+            {
               "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
               "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
             },
@@ -107,6 +111,22 @@
             {
               "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
               "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
+            },
+            {
+              "en": "Uploading a file again now retries it when Piloti could not read it the first time, instead of skipping it as unchanged.",
+              "de": "Wenn Sie eine Datei erneut hochladen, versucht Piloti jetzt erneut, sie zu lesen, wenn das beim ersten Mal nicht möglich war, statt sie als unverändert zu überspringen."
+            },
+            {
+              "en": "When you ask for changes to a document Piloti wrote, Piloti can now revise it and submit it again instead of saying it is still under review.",
+              "de": "Wenn Sie Änderungen an einem von Piloti erstellten Dokument anfordern, kann Piloti es jetzt überarbeiten und erneut einreichen, statt mitzuteilen, dass es noch geprüft wird."
+            },
+            {
+              "en": "An archived document no longer shows as citable, and uploading a new version of it no longer puts it back into Piloti's answers while it stays archived.",
+              "de": "Ein archiviertes Dokument wird nicht mehr als zitierfähig angezeigt, und auch das Hochladen einer neuen Version sorgt nicht dafür, dass es wieder in Piloti-Antworten aufgenommen wird, solange es archiviert bleibt."
+            },
+            {
+              "en": "A report Piloti wrote that a colleague approved and published is now shown as part of the knowledge base, and Piloti can be asked about it like any other document.",
+              "de": "Ein von Piloti verfasster Bericht, den ein Kollege freigegeben und veröffentlicht hat, wird nun als Teil der Wissensbasis angezeigt und Sie können Piloti dazu wie zu jedem anderen Dokument befragen."
             },
             {
               "en": "A file that cannot be read for a lasting reason, such as an encrypted or empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only once its bytes change or Piloti's reader improves. A failure of the moment, like a timeout, can still be retried right away.",

@@ -45,6 +45,7 @@ function match(filename: string): DocumentNameMatch {
     displayName: null,
     fileSize: 1,
     contentHash: null,
+    status: 'completed',
     folderId: null,
     authoredBy: 'user',
     lifecycle: 'active',

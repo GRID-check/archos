@@ -114,8 +114,8 @@ to know what state it is in.
 | **Entwurf** | Written, not yet handed to anybody. This is where a report Piloti files starts. |
 | **In Prüfung** | Submitted. Whoever was asked has an entry in their Postfach. |
 | **Änderungen angefordert** | Sent back, with the reason written on the Fassung. |
-| **Freigegeben** | A person has asserted the content. Piloti does not answer from it yet. |
-| **Veröffentlicht** | Piloti answers from this Fassung. |
+| **Veröffentlicht** | Piloti answers from this Fassung. A Fassung that went through review gets here when a person approves it. |
+| **Freigegeben** | Only on a Fassung approved before approving also published: asserted, but Piloti does not answer from it until somebody publishes it. |
 | **Ersetzt** | A newer Fassung was published. The bytes stay and can still be opened. |
 | **Abgelehnt** | Refused, with a reason. |
 | **Stillgelegt** | The file has left the file list and the knowledge base. Nothing is deleted. |
@@ -143,8 +143,10 @@ never be pressed:
 
 - **Zur Freigabe einreichen** on an Entwurf, or on one that came back for
   changes. Whoever is asked gets a Postfach entry naming the file.
-- **Freigeben** on a Fassung in Prüfung. **Not** available to the person who
-  submitted it: an assertion nobody but the author has read is not one.
+- **Freigeben** on a Fassung in Prüfung. It asserts the content **and** makes
+  the Fassung the one Piloti answers from, in one step: „freigegeben“ means
+  usable. **Not** available to the person who submitted it: an assertion nobody
+  but the author has read is not one.
 - **Änderungen anfordern** and **Ablehnen**, both of which ask you to type why.
   The reason stays on the Fassung, so „was ist noch offen“ is answered by
   reading the file rather than by remembering a conversation.
@@ -154,9 +156,8 @@ never be pressed:
   Not for a file in a folder that not everyone in the project may read: Piloti
   would have to quote it into an Auftrag the whole project sees. The button then
   says why and changes nothing; Änderungen anfordern still works.
-- **Veröffentlichen** on a freigegebene Fassung. It makes that Fassung the one
-  Piloti answers from. Approving asserts the content and publishing puts it to
-  use, so they are two acts and two buttons.
+- **Veröffentlichen**, only on a Fassung approved before approving also
+  published it. It makes that Fassung the one Piloti answers from.
 - **Stilllegen**, which takes the file out of the file list and the knowledge
   base. The bytes and every Fassung stay; it is not a delete.
 
@@ -204,26 +205,32 @@ kein zweites.
 
 ---
 
-## Why it is not in the knowledge base
+## When it is in the knowledge base
 
-**Besprechen** works on a generated report; what it carries is a note saying
-what the conversation cannot do:
+**Besprechen** works on a generated report at every stage. While nobody has
+published it, the button carries a note saying what the conversation cannot do:
 
 > Von Piloti erstellt — nicht in der Wissensbasis
 
-Piloti reads the report itself when you discuss it, and it will never *retrieve*
-it. That is a design decision, not a missing feature and not a wait: a report
-Piloti wrote is never indexed, so no searchable passages of it exist anywhere.
+Piloti reads the report itself when you discuss it, but it does not *retrieve*
+it: a report nobody published has no searchable passages anywhere.
 
-The reason is worth knowing, because it protects you. If a generated report were
-searchable, Piloti could retrieve its own earlier draft and cite it back to you
-as evidence — with the same green *Projektwissen* badge as a stamped Gutachten,
-and no way for you to tell the two apart. A claim it made on Tuesday would come
-back on Friday looking like a source. Not indexing the report makes that
-impossible rather than merely unlikely.
+That changes in one way only. When a colleague approves the report and publishes
+it, that Fassung is read into the knowledge base, and the note disappears. Piloti
+then finds it like any other document, and cites it under its own label,
+**Piloti-Dokument**, with who wrote it and who approved it. It never wears the
+*Projektwissen* badge of a document a person uploaded, and a verdict in an
+answer may not rest on it alone.
 
-The file is still a file: you can search for it **by name** in Dateien, preview
-it, and read it. It is only the *retrieval* layer that has never heard of it.
+The reason is worth knowing, because it protects you. If an unapproved report
+were searchable, Piloti could retrieve its own earlier draft and cite it back to
+you as evidence, looking like a source. A claim it made on Tuesday would come
+back on Friday as if somebody had checked it. Only a report a person approved
+and published is searchable, and even then you can see whose words it is.
+
+A report from deep research is never read into the knowledge base, published or
+not. The file is still a file: you can find it **by name** in Dateien, preview
+it and read it.
 
 ---
 

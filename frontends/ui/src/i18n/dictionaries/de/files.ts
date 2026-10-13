@@ -195,7 +195,7 @@ export const files: typeof en.files = {
           this: 'Piloti antwortet aus dieser Fassung.',
           older: 'Piloti antwortet weiter aus Fassung {number}.',
           newer: 'Piloti antwortet aus der neueren Fassung {number}; diese bleibt lesbar, auch für Vergleiche.',
-          notYet: 'Piloti antwortet erst daraus, wenn sie veröffentlicht ist.',
+          notYet: 'Piloti antwortet erst daraus, wenn sie freigegeben ist.',
           notYetRead: 'Piloti antwortet daraus, sobald sie gelesen ist.',
           never: 'Piloti antwortet nicht daraus.',
         },
@@ -206,7 +206,7 @@ export const files: typeof en.files = {
         bySomeone: 'einem Teammitglied',
         rowMenu: 'Weitere Aktionen zu Fassung {number}',
         approveExplain:
-          'Freigeben heißt: Das Büro steht für den Inhalt ein. Danach kann sie veröffentlicht werden; erst dann antwortet Piloti daraus.',
+          'Freigeben heißt: Das Büro steht für den Inhalt ein. Ab dann antwortet Piloti aus dieser Fassung.',
         changedSince: 'Geändert gegenüber Fassung {number}:',
         archive: 'Datei stilllegen …',
       },
@@ -1216,13 +1216,13 @@ export const files: typeof en.files = {
     // keine hinter der neuesten, kann der Satz nicht auf sie verweisen („Alone“).
     meaning: {
       draftLive: 'Entwurf einer neuen Fassung. Piloti antwortet weiter aus der veröffentlichten Fassung.',
-      draftAlone: 'Entwurf. Piloti antwortet erst daraus, wenn sie freigegeben und veröffentlicht ist.',
+      draftAlone: 'Entwurf. Piloti antwortet erst daraus, wenn sie freigegeben ist.',
       inReviewLive: 'Wartet auf Freigabe. Piloti antwortet aus der veröffentlichten Fassung.',
       inReviewAlone: 'Wartet auf Freigabe. Bis dahin antwortet Piloti nicht daraus.',
       changesRequestedLive:
-        'Änderungen angefordert. Piloti antwortet aus der veröffentlichten Fassung, bis die überarbeitete veröffentlicht ist.',
+        'Änderungen angefordert. Piloti antwortet aus der veröffentlichten Fassung, bis die überarbeitete freigegeben ist.',
       changesRequestedAlone:
-        'Änderungen angefordert. Piloti antwortet erst aus der überarbeiteten Fassung, wenn sie veröffentlicht ist.',
+        'Änderungen angefordert. Piloti antwortet erst aus der überarbeiteten Fassung, wenn sie freigegeben ist.',
       approvedLive:
         'Freigegeben, wartet auf Veröffentlichung. Bis dahin antwortet Piloti aus der veröffentlichten Fassung.',
       approvedAlone: 'Freigegeben, wartet auf Veröffentlichung. Erst danach antwortet Piloti daraus.',

@@ -122,6 +122,7 @@ const BOUNDARY_MIGRATIONS = [
   // its conversation drew on a restricted folder (ADR-0093). Keyed directly by
   // its organization; no foreign key, so the mark outlives the chat.
   '0124_message_restricted_use.sql',
+  '0136_document_version_reviews.sql',
   // Adds mail_imports (ADR-0085), an Outlook archive a member is filing into a
   // project. Keyed by the organization, secured like product_feedback; the
   // stale-upload sweep reads across tenants under the platform role.

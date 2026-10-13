@@ -196,7 +196,7 @@ export const files = {
           this: 'Piloti answers from this revision.',
           older: 'Piloti still answers from revision {number}.',
           newer: 'Piloti answers from the newer revision {number}; this one stays readable, also for comparing.',
-          notYet: 'Piloti answers from it only once it is published.',
+          notYet: 'Piloti answers from it only once it is approved.',
           notYetRead: 'Piloti answers from it once it has been read.',
           never: 'Piloti does not answer from it.',
         },
@@ -207,7 +207,7 @@ export const files = {
         bySomeone: 'a team member',
         rowMenu: 'More actions for revision {number}',
         approveExplain:
-          'Approving means the office stands behind the content. It can then be published; only then does Piloti answer from it.',
+          'Approving means the office stands behind the content. From then on, Piloti answers from this revision.',
         changedSince: 'Changed since revision {number}:',
         archive: 'Retire this file …',
       },
@@ -1262,13 +1262,13 @@ export const files = {
      */
     meaning: {
       draftLive: 'A draft of a new revision. Piloti keeps answering from the published revision.',
-      draftAlone: 'A draft. Piloti answers from it only once it is approved and published.',
+      draftAlone: 'A draft. Piloti answers from it only once it is approved.',
       inReviewLive: 'Waiting for approval. Piloti answers from the published revision.',
       inReviewAlone: 'Waiting for approval. Until then Piloti does not answer from it.',
       changesRequestedLive:
-        'Changes requested. Piloti answers from the published revision until the reworked one is published.',
+        'Changes requested. Piloti answers from the published revision until the reworked one is approved.',
       changesRequestedAlone:
-        'Changes requested. Piloti answers from the reworked revision only once it is published.',
+        'Changes requested. Piloti answers from the reworked revision only once it is approved.',
       approvedLive:
         'Approved, waiting to be published. Until then Piloti answers from the published revision.',
       approvedAlone: 'Approved, waiting to be published. Only then does Piloti answer from it.',

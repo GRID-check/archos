@@ -456,6 +456,10 @@
     "de": "Ein von Piloti erstellter Bericht kann nicht mehr mit einem Ihrer eigenen Dokumente verwechselt werden, wenn beide zufällig denselben Namen haben. Suchergebnisse, Dateizusammenfassungen, Tags, Seitendetails und das Umbenennen beziehen sich jetzt immer auf das tatsächlich geöffnete Dokument. Beim Löschen eines Berichts wird das zugehörige Gutachten nicht mehr aus den Quellen entfernt, die Piloti zitieren kann."
   },
   {
+    "en": "A report Piloti wrote that a colleague approved and published is now shown as part of the knowledge base, and Piloti can be asked about it like any other document.",
+    "de": "Ein von Piloti verfasster Bericht, den ein Kollege freigegeben und veröffentlicht hat, wird nun als Teil der Wissensbasis angezeigt und Sie können Piloti dazu wie zu jedem anderen Dokument befragen."
+  },
+  {
     "en": "A report arrives „Unvergeben“, so it belongs to nobody until someone takes it on. Assigning it to yourself makes it your work, and the check you already run before an Einreichung also finds any report nobody has claimed.",
     "de": "Ein Bericht erscheint als „Unvergeben“ und gehört damit niemandem, bis jemand ihn übernimmt. Wenn Sie ihn sich selbst zuweisen, wird er Ihre Arbeit, und die Prüfung, die Sie ohnehin vor einer Einreichung durchführen, findet auch jeden Bericht, den niemand übernommen hat."
   },
@@ -708,6 +712,10 @@
     "de": "Die Details einer Antwort zeigen jetzt, was sie in Punkten gekostet hat, und bei Ihrem eigenen KI-Schlüssel, wie viel davon er verbraucht hat. Beim Überfahren der Zeile mit der Maus sehen Sie, wie viel auf Lesen, Schreiben und Denken entfällt."
   },
   {
+    "en": "An archived document no longer shows as citable, and uploading a new version of it no longer puts it back into Piloti's answers while it stays archived.",
+    "de": "Ein archiviertes Dokument wird nicht mehr als zitierfähig angezeigt, und auch das Hochladen einer neuen Version sorgt nicht dafür, dass es wieder in Piloti-Antworten aufgenommen wird, solange es archiviert bleibt."
+  },
+  {
     "en": "An archived document no longer turns up as a source in answers, whoever wrote it. The file and its versions stay where they were; archiving is not deleting.",
     "de": "Ein archiviertes Dokument taucht nicht mehr als Quelle in Antworten auf, gleich wer es verfasst hat. Die Datei und ihre Fassungen bleiben erhalten; Archivieren ist kein Löschen."
   },
@@ -846,6 +854,10 @@
   {
     "en": "Archiving a file now takes it out of the file list, which is what archiving was always meant to mean. A new filter shows the archived files again whenever you want them back; nothing is deleted either way.",
     "de": "Beim Archivieren einer Datei wird diese nun aus der Dateiliste entfernt – so, wie es immer gedacht war. Mit einem neuen Filter können Sie archivierte Dateien jederzeit wieder anzeigen; gelöscht wird dabei nichts."
+  },
+  {
+    "en": "Ask Piloti what changed between two Fassungen of a document, such as two states of a floor plan, and it answers page by page with the values that changed and the date each Fassung carries.",
+    "de": "Fragen Sie Piloti, was sich zwischen zwei Fassungen eines Dokuments geändert hat, etwa zwischen zwei Planständen eines Grundrisses. Piloti antwortet Seite für Seite mit den geänderten Werten und dem Datum der jeweiligen Fassung."
   },
   {
     "en": "Ask about the building model in a project that has none, and Piloti now says so at once and answers the rest of your question.",
@@ -2740,6 +2752,10 @@
     "de": "Wenn Sie ein Dokument unter demselben Namen erneut hochladen, ersetzt es die frühere Fassung in der Suche, statt mit ihr zu konkurrieren, sodass Antworten die neue Fassung verwenden. Ein Dokument unter einem neuen Namen ist weiterhin ein neues Dokument: Ob eine Datei eine anders benannte ersetzt, bleibt einer Person überlassen."
   },
   {
+    "en": "Uploading a file again now retries it when Piloti could not read it the first time, instead of skipping it as unchanged.",
+    "de": "Wenn Sie eine Datei erneut hochladen, versucht Piloti jetzt erneut, sie zu lesen, wenn das beim ersten Mal nicht möglich war, statt sie als unverändert zu überspringen."
+  },
+  {
     "en": "Uploading a file again under the same name now keeps the earlier version as a numbered version.",
     "de": "Laden Sie eine Datei erneut unter demselben Namen hoch, bleibt die frühere Fassung als nummerierte Fassung erhalten."
   },
@@ -2962,6 +2978,10 @@
   {
     "en": "When two sources contradict each other, Piloti now shows the difference, names both with their reference and says which rule decides, or that the sources cannot settle it.",
     "de": "Widersprechen sich zwei Quellen, zeigt Piloti den Unterschied jetzt an, nennt beide mit Fundstelle und sagt, welche Regel den Vorrang entscheidet, oder dass sich der Widerspruch aus den Quellen nicht auflösen lässt."
+  },
+  {
+    "en": "When you ask for changes to a document Piloti wrote, Piloti can now revise it and submit it again instead of saying it is still under review.",
+    "de": "Wenn Sie Änderungen an einem von Piloti erstellten Dokument anfordern, kann Piloti es jetzt überarbeiten und erneut einreichen, statt mitzuteilen, dass es noch geprüft wird."
   },
   {
     "en": "When you ask how something was solved before, Piloti now starts with the past projects that fit your question, not only those most like your building, and puts the passages that show a solution first.",
