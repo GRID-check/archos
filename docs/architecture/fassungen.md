@@ -12,6 +12,12 @@ Why a same-name re-upload is a version:
 A file name with an index says a file has Fassungen. It does not say what kind of
 file it is; only the Dokumentart says that.
 
+> **The model below is being replaced.** [ADR-0104](../adr/0104-a-document-is-a-timeline-of-fassungen-and-approval-is-separate.md)
+> (accepted) makes every Fassung, under any name, a row of one document's
+> timeline, keys the index by Fassung, and takes approval out of the history.
+> This page describes what runs until each of its slices lands, and changes
+> with it.
+
 ## The model
 
 A Fassung is stored in one of two ways, and the reader sees one of them.
@@ -265,11 +271,12 @@ name shows as „Ersetzt“, while a same-name version shows its approval state.
 
 ## Compare
 
-Three things, in rising cost.
+Four things, in rising cost.
 
 | | What | Model | Code |
 |---|---|---|---|
 | **Look** | Two Fassungen side by side, overlaid (older cyan, newer orange) or swiped, page by page, through the preview's pdf.js runtime | No | `features/documents/components/fassung-compare/` |
+| **Pages and values** | For the agent: which pages changed, the values that moved in the printed text, the quantities and dimension strings that changed in the drawing reading, and the Plankopf. Read from the index, so nothing is read again | No | `src/aiq_agent/knowledge/fassung_diff.py`, `list_files(compare_to=…)` |
 | **Marks** | On request, Piloti boxes what changed on the newer page and says it in words | One vision call per page pair, cached | `lib/documents/fassung-compare-service.ts`, `routes/fassung_compare.py`, `src/aiq_agent/knowledge/fassung_compare.py` |
 | **Words** | The change summary: what differs between two descriptions | Summary model, at ingest or at confirmation | `document_revisions.py`, `summarize_change` |
 
@@ -301,6 +308,7 @@ The agent reads the same facts the UI does, through the knowledge layer.
 |---|---|---|
 | `list_files` | Marks a row that a person replaced („ersetzt durch X (bestätigt)“), then rows that share a title-block number („aktuelle / ältere Fassung laut Plankopf“), then the name reading. A confirmed link beats the sheets, which beat the name. Prints `Plankopf: Nr. …, Index …, Stand …` | `sources/knowledge_layer/src/browse.py`, `confirmed_revision_marks`, `title_block_marks` |
 | `list_files(fassungen_of=…)` | The whole chain of one document, newest first, with Index and date, upload date and what changed against the one before. The chain follows a confirmed link in both directions, the same title-block number and the name series, transitively | `browse.py`, `render_fassungen`, `_chain_members`, `_chain_order` |
+| `list_files(fassungen_of=…, compare_to=…)` | What changed between two Fassungen of the chain: the Plankopf, pages aligned by their text, values that moved in printed lines, and quantities and dimension strings from the drawing analysis. No model call; the stored change line rides along when its basis is exactly that older file | `browse.py`, `resolve_compare`, `compare_fassungen`; `src/aiq_agent/knowledge/fassung_diff.py` |
 | `knowledge_search` | Leaves confirmed older Fassungen out of the ranking on the user shelves, so an older state cannot outrank its replacement on similarity. Says „Ältere Fassungen ausgeblendet: …“. `file_name=…` bypasses the exclusion, and when the named file is an older Fassung the result carries the same line `read_passage` gives („Ältere Fassung: … ist durch … ersetzt“, the end of the chain). The base corpus is untouched | `sources/knowledge_layer/src/register.py`, `_superseded_files`, `_named_older_fassung_notice`; `document_metadata_store.get_superseded_files` |
 | `read_passage` | Reading an older Fassung is allowed, because „Index B“ and „die alte Fassung“ ask for it. A one-line notice names the current one and tells the answer to say it read the older state | `sources/knowledge_layer/src/read_passage.py`, `_current_fassung`, `_older_fassung_notice` |
 | Inventory | A row suffix carries only the confirmed link, never a suggestion | `src/aiq_agent/knowledge/inventory.py` |

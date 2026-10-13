@@ -392,3 +392,80 @@ class TestTheTool:
     def test_the_description_says_when_to_call_it(self):
         assert "fassungen_of" in _LIST_FILES_DESCRIPTION
         assert "Index B und C" in _LIST_FILES_DESCRIPTION
+
+
+class _FakeCollection:
+    def __init__(self, chunks: dict[str, list[tuple[str, dict]]]) -> None:
+        self._chunks = chunks
+
+    def get(self, where: dict, include: list[str]) -> dict:  # noqa: ARG002 - the store's signature
+        stored = self._chunks.get(where["file_name"], [])
+        return {"documents": [text for text, _ in stored], "metadatas": [meta for _, meta in stored]}
+
+
+class _FakeRetriever:
+    def __init__(self, chunks: dict[str, list[tuple[str, dict]]]) -> None:
+        self._collection = _FakeCollection(chunks)
+
+    def _get_chroma_client(self) -> MagicMock:
+        client = MagicMock()
+        client.get_collection = MagicMock(return_value=self._collection)
+        return client
+
+
+def _page(n: int, text: str) -> tuple[str, dict]:
+    return text, {"page_label": str(n), "content_type": "text"}
+
+
+@pytest.fixture
+def stored(monkeypatch):
+    """Index A and Index B as the index holds them: one value moved on page 2."""
+    chunks = {
+        "Plan_Index_A.pdf": [_page(1, "Deckblatt"), _page(2, "Fluchtweglänge 38 m")],
+        "Plan_Index_B.pdf": [_page(1, "Deckblatt"), _page(2, "Fluchtweglänge 42 m")],
+    }
+    monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: _FakeRetriever(chunks))
+    noted: list[set[str]] = []
+    monkeypatch.setattr(
+        "aiq_agent.knowledge.restricted_use.note_collections_read", lambda collections: noted.append(set(collections))
+    )
+    return noted
+
+
+class TestComparing:
+    """`compare_to` turns the chain into a compare of two of its Fassungen (ADR-0104)."""
+
+    async def _call(self, **kwargs) -> str:
+        async with list_files(ListFilesConfig(), _builder()) as info:
+            return await info.single_fn(info.input_schema(**kwargs))
+
+    async def test_the_previous_fassung_by_default_says_what_moved(self, scope, stored):
+        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+
+        assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
+        assert "Seite 2: Werte: Fluchtweglänge 38 m → 42 m." in text
+        # The stored change line was written against exactly this older file, so it rides along.
+        assert "Wand neu" in text
+
+    async def test_the_order_follows_the_chain_not_the_arguments(self, scope, stored):
+        text = await self._call(fassungen_of="Plan_Index_A.pdf", compare_to="Plan_Index_B.pdf", shelf="project")
+        assert "„Plan_Index_A.pdf“ (älter) → „Plan_Index_B.pdf“ (neuer)" in text
+
+    async def test_reading_both_files_is_reported_for_the_admission(self, scope, stored):
+        await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        assert stored == [{"proj_1"}]
+
+    async def test_a_file_outside_the_chain_is_refused_with_the_chain(self, scope, stored):
+        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="Schnitt.pdf", shelf="project")
+        assert "ist keine Fassung dieses Dokuments" in text
+        assert "Plan_Index_A.pdf" in text
+        assert stored == []
+
+    async def test_a_document_with_one_fassung_has_nothing_to_compare(self, scope, stored):
+        text = await self._call(fassungen_of="Plan_Index_A.pdf", compare_to="vorige", shelf="archiv")
+        assert "nichts zu vergleichen" in text
+
+    async def test_a_file_the_index_does_not_hold_is_said_not_compared(self, scope, monkeypatch):
+        monkeypatch.setattr("aiq_agent.knowledge.factory.get_active_retriever", lambda: _FakeRetriever({}))
+        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+        assert "nicht im Index" in text

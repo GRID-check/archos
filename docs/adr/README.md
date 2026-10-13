@@ -166,6 +166,7 @@ Consequences, where a reader looks for them.
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 | [0102](0102-file-workspaces-load-a-folder-level-by-pages.md) | File workspaces load a folder level by pages | Proposed |
 | [0103](0103-bun-is-the-javascript-toolchain-node-the-runtime.md) | Bun is the JavaScript toolchain, Node the runtime | Proposed |
+| [0104](0104-a-document-is-a-timeline-of-fassungen-and-approval-is-separate.md) | A document is a timeline of Fassungen, and approval is a separate round | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off
