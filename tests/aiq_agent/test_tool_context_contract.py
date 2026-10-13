@@ -67,7 +67,9 @@ def test_the_delegation_tool_declares_its_project_scope_and_its_person():
     assert set(TOOL_CONTEXT_REQUIREMENTS["create_task"]) == {PROJECT_ID_HEADER, *ENVELOPE}
 
 
-@pytest.mark.parametrize("kind", ["propose_file_change", "file_draft", "create_task", "project_lookup", "document_canvas"])
+@pytest.mark.parametrize(
+    "kind", ["propose_file_change", "file_draft", "create_task", "project_lookup", "document_canvas"]
+)
 def test_every_tool_that_acts_as_a_person_declares_the_envelope(kind: str):
     """The tools that echo `get_request_envelope_from_context()` to the BFF."""
     assert set(ENVELOPE) <= set(TOOL_CONTEXT_REQUIREMENTS[kind])
