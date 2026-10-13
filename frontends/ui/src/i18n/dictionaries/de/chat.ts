@@ -602,6 +602,8 @@ export const chat: typeof en.chat = {
         onlyInProject: 'Nur im Projekt merken',
         saving: 'Wird gespeichert …',
         saved: 'Notiz gemerkt.',
+        // Die Überschrift der entschiedenen Karte, wenn bekannt ist, wohin die Notiz kam.
+        savedIn: { organization: 'Im Gedächtnis des Büros gemerkt.', project: 'Im Projekt gemerkt.' },
         dismissed: 'Verworfen. Es wurde nichts gemerkt.',
       },
       profile: {

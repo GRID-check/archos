@@ -50,6 +50,7 @@ import { remarkFileReferences } from '@/features/layout/lib/file-reference-marke
 import { formatTime } from '@/shared/utils/format-time'
 import { formatDurationElapsed } from '@/lib/format'
 import { GridCardItem } from '@/features/grid-cards/components/GridCards'
+import { useDecidedProposals } from '@/features/grid-cards/decided-proposals'
 import {
   CALLOUT_SLOT_INDEX,
   hasPlacedCalloutMarker,
@@ -1307,9 +1308,12 @@ const AgentResponseComponent: FC<AgentResponseProps> = ({
   // item — turn one's answer read „Piloti hat sich 5 gemerkt" after turn five.
   // The reflection stage now delivers a frame addressed to the turn it belongs
   // to, so the chip can finally be what it always claimed to be.
+  // A memory card with a `proposal_id` is decided on the server and writes no
+  // `cardInteractions`: its receipt tells the tab how it ended.
+  const decidedProposals = useDecidedProposals((state) => state.byId)
   const memoryItems = useMemo(
-    () => turnMemoryItems({ stages, cards, cardInteractions }),
-    [stages, cards, cardInteractions]
+    () => turnMemoryItems({ stages, cards, cardInteractions, decidedProposals }),
+    [stages, cards, cardInteractions, decidedProposals]
   )
 
   // What the merged footer's meta row would actually hold. The chip renders

@@ -156,8 +156,11 @@ export function MemoryReceipt({
       headline={(decided) => {
         switch (decided.status) {
           case 'applied':
-          case 'partially_applied':
-            return t('cards.proposalReceipt.memory.saved')
+          case 'partially_applied': {
+            // A row decided before the scope was recorded has none.
+            const scope = decided.results?.find((result) => result.ok)?.scope
+            return scope ? t(`cards.proposalReceipt.memory.savedIn.${scope}`) : t('cards.proposalReceipt.memory.saved')
+          }
           case 'failed':
             return t('cards.proposalReceipt.failed')
           default:

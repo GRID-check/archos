@@ -8,7 +8,9 @@
  * The object is the truth: this hook reads it when the card is shown, after
  * every decision, and when the channel says a colleague decided. It writes
  * nothing to the chat message (`cardInteractions`), because a decision kept on
- * the message would be a second truth beside the object.
+ * the message would be a second truth beside the object. What the rest of the
+ * answer needs to know of a decision (the „gemerkt“ chip) is told through
+ * `decided-proposals`, a copy of the decided object, never through the message.
  */
 
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -16,6 +18,7 @@ import { applyProposal, dismissProposal, getProposal } from '@/lib/proposals/cli
 import { proposalChannelKey, proposalEventSchema, type ProposalEvent } from '@/lib/proposals/live-events'
 import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeView } from '@/lib/proposals/types'
 import { useChannel } from '@/features/realtime/use-channel'
+import { useDecidedProposals } from '../decided-proposals'
 
 /** The proposal view of one kind: its payload is that kind's. */
 export type ProposalOfKind<K extends ProposedChangeKind> = Extract<ProposedChangeView, { kind: K }>
@@ -63,6 +66,13 @@ export function useServerProposal<K extends ProposedChangeKind>(
 
   const onSettledRef = useRef(onSettled)
   onSettledRef.current = onSettled
+
+  // Every decided object this card holds, however it got it (the first read, a
+  // 409's re-read, a colleague's hint, its own click), is told to the tab once.
+  const recordDecided = useDecidedProposals((state) => state.record)
+  useEffect(() => {
+    if (proposal) recordDecided(proposal)
+  }, [proposal, recordDecided])
 
   /** The object read from the server, if it is the kind this card shows. */
   const accept = useCallback(

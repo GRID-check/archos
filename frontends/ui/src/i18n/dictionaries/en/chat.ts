@@ -600,6 +600,8 @@ export const chat = {
         onlyInProject: 'Remember in the project only',
         saving: 'Saving…',
         saved: 'Note remembered.',
+        // The decided card's headline when it is known where the note went.
+        savedIn: { organization: "Remembered in the office's memory.", project: 'Remembered in the project.' },
         dismissed: 'Discarded. Nothing was remembered.',
       },
       profile: {

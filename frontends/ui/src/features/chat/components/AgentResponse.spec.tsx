@@ -9,6 +9,10 @@ import type { MessageStages } from '@/lib/conversations/message-stages'
 import type { GridCard } from '@/shared/cards/schemas'
 import { CARD_PREVIEW_FIXTURES } from '@/features/grid-cards/preview-fixtures'
 import { useAnswerFileReferences } from '../hooks/use-answer-file-references'
+import { resetDecidedProposals } from '@/features/grid-cards/decided-proposals'
+import { http, HttpResponse } from 'msw'
+import { server } from '@/mocks/server'
+import { proposalBase, PROPOSAL_ID, decidedByAnna } from '@/features/grid-cards/components/proposal-test-kit'
 
 /** A presentational card that draws its title, for placement tests. */
 const calculationCard = (title: string): GridCard => ({ ...CARD_PREVIEW_FIXTURES.calculation!, title } as GridCard)
@@ -84,6 +88,50 @@ describe('AgentResponse', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     storeFixture.projectId = null
+    resetDecidedProposals()
+  })
+
+  describe('the „Piloti noted“ chip for a memory card the server decides', () => {
+    const NOTE = 'Fluchtweg über den Innenhof'
+    const card = {
+      type: 'memory_proposal',
+      title: 'Merken?',
+      content: NOTE,
+      kind: 'decision',
+      confidence: 'medium',
+      proposal_id: PROPOSAL_ID,
+    } as unknown as GridCard
+
+    const serveProposal = (status: 'applied' | 'dismissed') =>
+      server.use(
+        http.get(`/api/proposals/${PROPOSAL_ID}`, () =>
+          HttpResponse.json({
+            proposal: {
+              ...proposalBase(),
+              kind: 'memory',
+              payload: { scope: 'organization', kind: 'decision', content: NOTE, confidence: 'medium', supersedes: null },
+              ...decidedByAnna(status, status === 'applied' ? [{ label: NOTE, ok: true, scope: 'organization' }] : null),
+            },
+          })
+        )
+      )
+
+    test('lists the note once its receipt has read the proposal as applied', async () => {
+      serveProposal('applied')
+      const user = userEvent.setup()
+      render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
+
+      await user.click(await screen.findByTestId('answer-details-trigger'))
+      expect(await screen.findByText('Piloti noted')).toBeInTheDocument()
+    })
+
+    test('does not list a note whose proposal was dismissed', async () => {
+      serveProposal('dismissed')
+      render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
+
+      await screen.findByTestId('proposal-status')
+      expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
+    })
   })
 
   describe('a read-only answer (somebody else\'s turn)', () => {

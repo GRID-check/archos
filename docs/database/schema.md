@@ -190,7 +190,9 @@ export const messages = pgTable('messages', {
 — `{ "<cardType>-<index>": { decision, decidedAt } }`, `decision` from a closed
 union and `decidedAt` a UTC ISO instant (ADR-0030). It is why a settled
 `project_profile_patch` / `memory_proposal` cannot re-offer a button that would
-apply the same write twice. Unlike the other keys it is usually written *after*
+apply the same write twice, for a card without a `proposal_id`. A card that has
+one (ADR-0105) is decided on the `proposed_changes` row and writes nothing here;
+the row is also what Piloti reads back in `PROPOSAL_DECISIONS`. Unlike the other keys it is usually written *after*
 the insert, via `PATCH /api/conversations/{id}/messages/{messageId}` (merged per
 card key); it also rides the INSERT when a decision was already recorded
 locally, which is how a decision made before the row existed still reaches the
@@ -871,8 +873,8 @@ judged like a chat that drew on that folder; nothing of that is stored here.
 Repository: `lib/conversations/restricted-use-repository.ts`; proven against
 Postgres in `restricted-use.integration.spec.ts`; its CHECK and down in
 `scripts/rls-test-db.sh`. `listRecentMessagesWithCardDecisions` also reads it:
-a conversation with a row here keeps its card decisions out of the
-project-wide `PROPOSAL_DECISIONS` block.
+a conversation with a row here keeps its card decisions, and the
+`proposed_changes` it made, out of the project-wide `PROPOSAL_DECISIONS` block.
 
 A cross-project lookup (ADR-0094) may record a folder of ANOTHER project here;
 it is judged in the tree of the project it belongs to (through
