@@ -153,7 +153,7 @@ describe.skipIf(!url)('answer-feedback platform reads against live Postgres', ()
       await db.execute(sql`
         insert into projects (id, organization_id, name, created_by, collection_name, profile)
         values (${PROJECT}::uuid, ${ORG}, 'Wohnanlage West', ${USER}, ${`p_feedback_${STAMP}`},
-                '{"facts": {"bundesland": {"value": "tirol"}}}'::jsonb)
+                '{"facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}}'::jsonb)
       `)
       await db.execute(sql`update conversations set project_id = ${PROJECT}::uuid where id = ${CHAT}`)
       // The ledger: two calls for A1's turn, one of them in another

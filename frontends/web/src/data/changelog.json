@@ -36,6 +36,15 @@
       "summary": null,
       "sections": [
         {
+          "key": "features",
+          "notes": [
+            {
+              "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
+              "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+            }
+          ]
+        },
+        {
           "key": "improvements",
           "notes": [
             {
@@ -54,6 +63,10 @@
             {
               "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
               "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
+            {
+              "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
+              "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
             },
             {
               "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",

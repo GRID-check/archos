@@ -38,7 +38,7 @@ import {
   openToOrganizationWhenClosed,
   type ProjectOutcome,
 } from './project-status'
-import { currentMonth, dateToMonth, monthToDate, type Month } from './month'
+import { currentMonth, dateToMonth, isMonth, monthToDate, type Month } from './month'
 import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
@@ -188,8 +188,20 @@ export async function getProjectsGridData(
 }
 
 /**
+ * How a past project created as closed ended (ADR-0098): the same outcome and
+ * Abschluss a close names, plus the Beginn, which a new row has not got yet.
+ */
+export interface ProjectClosing {
+  outcome: ProjectOutcome
+  endedOn: Month
+  startedOn: Month | null
+}
+
+/**
  * Create a project, register it as a WorkOS FGA resource, and make the
- * creator its project-admin.
+ * creator its project-admin. With `closing`, the project is a past one added
+ * as the office's reference (ADR-0098): it is created and then closed at once,
+ * with the outcome, Beginn and Abschluss given here.
  *
  * ## Why the compensating delete
  *
@@ -205,47 +217,64 @@ export async function getProjectsGridData(
  * row is removed and the caller sees the error. A leaked WorkOS resource with no
  * row pointing at it is inert (nothing resolves it, and project ids are UUIDs so
  * it can never be re-hit), which makes it the right thing to leak of the two.
+ *
+ * ## Creating a closed project
+ *
+ * The Abschluss is checked before anything is written, against the same
+ * bounds a close uses. The close itself is the repository write, not
+ * {@link setProjectStatus}: that one asks FGA for `project:manage`, and the
+ * grant made a moment ago may not have reached the check yet. The creator is
+ * the one who may close it by construction. A close that fails is undone like
+ * a failed WorkOS step, so no half-created active project is left behind. It
+ * skips the debrief and the clear-out of an ordinary close: a project created
+ * this second has no memory and no files to review.
  */
 export async function createProject(
   session: AuthorizedSession,
-  input: { name: string },
+  input: { name: string; closing?: ProjectClosing },
   // Optional because the projects-page server action has no `Request` to pass.
   // `recordAuditEvent` already treats it as optional (it only enriches the event
   // context with IP + user agent), so requiring it here was the sole reason that
   // action re-implemented this whole function instead of calling it.
-  request?: Request
+  request?: Request,
+  now: Date = new Date()
 ): Promise<Project> {
+  const closing = input.closing ? closingOrRefuse(input.closing, currentMonth(now)) : undefined
   const workos = getWorkOS()
 
-  const project = await insertProject({
+  const inserted = await insertProject({
     organizationId: session.organizationId,
     name: input.name,
     createdBy: session.userId,
     collectionName: `proj_${crypto.randomUUID()}`,
+    ...(closing?.startedOn ? { startedOn: monthToDate(closing.startedOn) } : {}),
   })
 
+  let project = inserted
   try {
     const resource = await workos.authorization.createResource({
       resourceTypeSlug: 'project',
-      externalId: project.id,
+      externalId: inserted.id,
       organizationId: session.organizationId,
       name: input.name,
     })
 
-    await setProjectWorkosResourceId(project.id, session.organizationId, resource.id)
+    await setProjectWorkosResourceId(inserted.id, session.organizationId, resource.id)
 
     await workos.authorization.assignRole({
       organizationMembershipId: session.organizationMembershipId,
-      resourceExternalId: project.id,
+      resourceExternalId: inserted.id,
       resourceTypeSlug: 'project',
       roleSlug: 'project-admin',
     })
+
+    if (closing) project = await closeNewProject(session, inserted.id, closing, now)
   } catch (error) {
     // Best-effort undo. If even this fails the row survives unreachable, which is
     // the state we are trying to avoid — so say so loudly rather than swallow it.
-    await deleteProjectRow(project.id, session.organizationId).catch((cleanupError) => {
+    await deleteProjectRow(inserted.id, session.organizationId).catch((cleanupError) => {
       console.error(
-        `[projects] project ${project.id} was created without FGA access and could not be rolled back:`,
+        `[projects] project ${inserted.id} was created half-way and could not be rolled back:`,
         cleanupError
       )
     })
@@ -261,8 +290,46 @@ export async function createProject(
     metadata: { name: input.name },
     request,
   })
+  if (closing) {
+    await recordAuditEvent({
+      organizationId: session.organizationId,
+      actor: { userId: session.userId, email: session.email },
+      action: 'project.closed',
+      targetType: 'project',
+      targetId: project.id,
+      metadata: { name: project.name, from: 'active', outcome: closing.outcome, endedOn: closing.endedOn },
+      request,
+    })
+  }
 
   return project
+}
+
+/** The closing of a project being created, or a 400: months, and an Abschluss within `abschlussBounds`. */
+function closingOrRefuse(closing: ProjectClosing, thisMonth: Month): ProjectClosing {
+  if (closing.startedOn !== null && !isMonth(closing.startedOn)) {
+    throw new BadRequestError('The Beginn must be a month, YYYY-MM.', { reason: 'invalid-month' })
+  }
+  abschlussOrRefuse(closing.endedOn, closing.startedOn, thisMonth)
+  return closing
+}
+
+/** Close the row just created and granted; throws when the write changed nothing, so the caller rolls back. */
+async function closeNewProject(
+  session: AuthorizedSession,
+  projectId: string,
+  closing: ProjectClosing,
+  now: Date
+): Promise<Project> {
+  const closed = await setProjectStatusInOrg(projectId, session.organizationId, 'active', {
+    status: 'closed',
+    at: now,
+    closedBy: session.userId,
+    outcome: closing.outcome,
+    endedOn: monthToDate(closing.endedOn),
+  })
+  if (!closed) throw new Error('The project was created but could not be closed, so it was not kept.')
+  return closed
 }
 
 export async function getProject(session: AuthorizedSession, projectId: string): Promise<Project> {
@@ -429,9 +496,12 @@ async function rearmParkedOneShots(projectId: string, organizationId: string): P
   }
 }
 
-/** The Abschluss a close names, or a 400: within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
+/** The Abschluss a close names, or a 400: a month within `abschlussBounds`, so not after this month unless the Beginn is, and never before the Beginn. */
 function abschlussOrRefuse(endedOn: Month, startedOn: Month | null, thisMonth: Month): Month {
   const problem = abschlussProblem(endedOn, startedOn, thisMonth)
+  if (problem === 'invalid') {
+    throw new BadRequestError('The Abschluss must be a month, YYYY-MM.', { reason: 'invalid-month' })
+  }
   if (problem === 'future') {
     throw new BadRequestError('The Abschluss cannot lie in the future.', { reason: 'abschluss-in-future' })
   }

@@ -316,6 +316,10 @@
     "de": "Ein neuer Chat öffnet sich jetzt mit Begrüßung und Eingabefeld gemeinsam in der Bildschirmmitte, statt dass die Begrüßung weit oben schwebt und das Eingabefeld am unteren Rand fixiert ist. Sobald Sie etwas fragen, wandert das Eingabefeld wieder nach unten und die Antwort nimmt die volle Höhe ein."
   },
   {
+    "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
+    "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+  },
+  {
     "en": "A note that research was cut off, or that an answer came out weaker than usual, now stays with the answer when you reopen the conversation later. Previously that caveat was visible only while the run was live, so a partial answer read as a complete one the next morning.",
     "de": "Ein Hinweis darauf, dass die Recherche unterbrochen wurde oder eine Antwort schwächer als üblich ausgefallen ist, bleibt jetzt auch dann bei der Antwort, wenn Sie die Unterhaltung später wieder öffnen. Bisher war dieser Hinweis nur während des laufenden Vorgangs sichtbar, sodass eine unvollständige Antwort am nächsten Morgen wie eine vollständige wirkte."
   },
@@ -3046,6 +3050,10 @@
   {
     "en": "„Piloti hat sich gemerkt“ now belongs to the answer it appeared under. It used to list everything noted anywhere in the conversation, so an early answer could claim notes taken much later; now each answer shows only what it produced, and an answer that produced nothing shows nothing.",
     "de": "„Piloti hat sich gemerkt“ gehört jetzt zu der Antwort, unter der es erscheint. Bisher listete es alles auf, was irgendwo im Gespräch vermerkt war, sodass eine frühe Antwort Notizen für sich beanspruchen konnte, die viel später entstanden. Jetzt zeigt jede Antwort nur, was sie selbst hervorgebracht hat, und eine Antwort ohne Ergebnis zeigt nichts."
+  },
+  {
+    "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
+    "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
   },
   {
     "en": "„Zitierbar“ no longer appears on every file. A status shows only when it changes what you can do next: a document still being read, one that failed, or a report Piloti wrote and deliberately kept out of search.",

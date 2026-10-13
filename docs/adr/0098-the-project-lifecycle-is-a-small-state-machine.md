@@ -101,6 +101,21 @@ always has one (CHECK). A reopen keeps the stored month as the next close's
 suggestion; no surface and no period search reads it while the project runs
 (`abschlussOf`). This amends ADR-0091's "closing pre-fills Abschluss".
 
+**A past project may be created closed** (added 2026-10-13). An office adding a
+finished project as a reference creates it with `closing` (`POST
+/api/projects`, the projects page's form): outcome, Beginn and Abschluss. The
+Abschluss is checked against the same `abschlussBounds` before anything is
+written (400 `abschluss-in-future` / `abschluss-before-beginn`), the Beginn is
+inserted with the row, and once the creator holds `project-admin` the row
+makes the ordinary `active → closed` move through `setProjectStatusInOrg`, so
+the same CHECKs hold it (`projects_closed_outcome_check`, ended_on on the first
+of a month and not before started_on). The move is the repository write, not
+`setProjectStatus`, whose FGA check may not see a grant made a moment earlier;
+a close that fails removes the row like a failed WorkOS step. It is audited as
+`project.created` then `project.closed` (`from: active`). It skips the
+debrief and the clear-out: a project created this second has no memory and no
+files for either to look at.
+
 **The moves are where the reader is.** One hook (`useProjectLifecycle`) serves
 the status card on the Overview, which draws the three states with the current
 one marked; the Overview's „…" menu; and the banner every page of a paused or
@@ -124,6 +139,7 @@ projects out unless one is open.
 * Bad, because work after handover (a Gewährleistung claim, a Schlussrechnung) needs a reopen, which takes the project from the office until it is closed again.
 * Bad, because closing opens the project to the whole office on the project admin's decision alone; there is no confidentiality opt-out.
 * Bad, because every project closed before 0129 is backfilled as `completed`; one that was never built has to be reopened and closed again.
+* Bad, because a project created closed is read-only from its first second: its documents, brief and people are added by reopening it, filling it in and closing it again. Creating it active and closing it afterwards remains the path when the material is at hand.
 
 The last four are open product questions put to the product owner with this ADR (`audit/project-lifecycle-2026-10.md`, review round).
 
@@ -133,6 +149,7 @@ The last four are open product questions put to the product owner with this ADR 
 * `project-status.spec.ts` pins the exact set of moves; `service.status.spec.ts` the conflicts, the Abschluss bounds and the audit names; `project-status.integration.spec.ts` the moves on real Postgres, and that pausing leaves access untouched.
 * `schemas.spec.ts` fails if a move's audit action is emitted without a registered schema, or registered and never emitted.
 * `steckbrief-service.spec.ts` refuses an `endedOn` on the period route and shows none on a running project.
+* `service.create-closed.spec.ts` pins creating a project closed: the bounds refused before any insert, the close after the grant, both audit events, and the rollback when the close write fails.
 
 ## Pros and Cons of the Options
 
