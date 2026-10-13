@@ -42,6 +42,11 @@ const state = vi.hoisted(() => ({
   folders: new Map<string, string>(),
   inFlight: 0,
   peak: 0,
+  /** Whether the backend ranks every collection in one query (Qdrant); false answers like Chroma (409). */
+  grouped: false,
+  /** The grouped search's ranking, as hit ids best first; unset ranks by score. */
+  ranking: null as string[] | null,
+  groupedCalls: [] as Array<{ collections: string[]; filesPerCollection: number; snippetMaxChars?: number }>,
 }))
 
 vi.mock('./audience-reach', () => ({
@@ -92,7 +97,62 @@ vi.mock('@/lib/projects/repository', () => ({
 // be labelled with an open collection (a newer same-named row) unnoticed.
 vi.mock('@/lib/documents/service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/documents/service')>()
+  const projectOf = (projectId: string) => [...state.reachable, ...state.outOfReach].find((one) => one.id === projectId)
+  // The rows the database answers for a project: its hit documents and any same-named siblings.
+  const rowsOf = (projectId: string) =>
+    [
+      ...(state.hits.get(projectId) ?? []).map(({ snippet: _snippet, page: _page, score: _score, ...row }) => ({
+        authoredBy: 'user',
+        ...row,
+      })),
+      ...(state.siblingRows.get(projectId) ?? []),
+    ] as unknown as Array<{ filename: string; collectionName: string; createdAt: Date; authoredBy: string }>
   return {
+    planProjectSearch: vi.fn(async (_session: unknown, projectId: string) => {
+      if (state.failing.has(projectId)) throw new Error('access withdrawn')
+      const found = projectOf(projectId)
+      if (!found) throw new Error('not found')
+      // Cleared restricted collections: every non-own collection the project's hits came from.
+      const restricted = [
+        ...new Set(
+          (state.hits.get(projectId) ?? [])
+            .map((row) => row.collectionName as string)
+            .filter((collection) => collection !== found.collectionName)
+        ),
+      ]
+      return {
+        project: found,
+        access: { sourceFolderOf: (collection: string) => state.folders.get(collection) ?? null, hiddenFolderIds: new Set() },
+        collections: [found.collectionName, ...restricted],
+      }
+    }),
+    fetchGroupedSemanticHits: vi.fn(
+      async (collections: readonly string[], _query: string, filesPerCollection: number, snippetMaxChars?: number) => {
+        if (!state.grouped) return null
+        state.groupedCalls.push({ collections: [...collections], filesPerCollection, snippetMaxChars })
+        const asked = new Set(collections)
+        const all = [...state.hits.values()].flat().filter((row) => asked.has(row.collectionName as string))
+        const order = state.ranking
+        const ranked = order
+          ? [...all].sort((a, b) => order.indexOf(a.id as string) - order.indexOf(b.id as string))
+          : [...all].sort((a, b) => (b.score as number) - (a.score as number))
+        return ranked.map((row, rank) => ({
+          file_name: row.filename as string,
+          collection: row.collectionName as string,
+          score: row.score as number,
+          snippet: row.snippet as string,
+          page_number: row.page as number | null,
+          rank,
+        }))
+      }
+    ),
+    hydrateProjectHits: vi.fn(
+      async (_session: unknown, plan: { project: Project; collections: string[] }, hits: Array<{ collection: string; file_name: string; score: number; snippet: string; page_number: number | null; rank?: number }>) =>
+        actual.joinHitsToFiles(
+          hits.filter((one) => plan.collections.includes(one.collection)),
+          rowsOf(plan.project.id)
+        )
+    ),
     searchProjectDocuments: vi.fn(
       async (_session: unknown, projectId: string, _query: string, topK: number, options: { snippetMaxChars?: number; forModel?: boolean }) => {
         state.searched.push({ projectId, topK, snippetMaxChars: options.snippetMaxChars, forModel: options.forModel })
@@ -130,7 +190,12 @@ import {
   searchAcrossProjects,
   SEARCH_CONCURRENCY,
 } from './service'
-import { CROSS_PROJECT_PAGE_PROJECTS, crossProjectListRequestSchema, crossProjectSearchRequestSchema } from './types'
+import {
+  CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
+  CROSS_PROJECT_PAGE_PROJECTS,
+  crossProjectListRequestSchema,
+  crossProjectSearchRequestSchema,
+} from './types'
 
 const ORG = 'org_1'
 const OWNER = 'user_owner'
@@ -199,6 +264,9 @@ beforeEach(() => {
   state.folders = new Map()
   state.inFlight = 0
   state.peak = 0
+  state.grouped = false
+  state.ranking = null
+  state.groupedCalls = []
 })
 
 describe('searchAcrossProjects', () => {
@@ -531,6 +599,99 @@ describe('searchAcrossProjects', () => {
     const result = await searchAcrossProjects(caller(), search({ limit: 2 }))
 
     expect(result.hits.map((found) => found.filename)).toEqual(['x.pdf', 'y.pdf'])
+  })
+})
+
+describe('searchAcrossProjects on a backend that ranks every collection in one query (ADR-0104)', () => {
+  beforeEach(() => {
+    state.grouped = true
+  })
+
+  it('searches the whole page in ONE call and keeps its ranking, not the scores', async () => {
+    const [one, two] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9)])
+    state.hits.set(two.id, [hit('b', 0.4, { collectionName: 'proj_2' })])
+    state.ranking = ['b', 'a']
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.groupedCalls).toHaveLength(1)
+    expect(state.groupedCalls[0].collections).toEqual(['proj_1', 'proj_2', 'proj_3'])
+    expect(state.searched).toEqual([])
+    expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf', 'a.pdf'])
+  })
+
+  it('covers a wide page per call, since a project no longer costs a search', async () => {
+    state.reachable = Array.from({ length: CROSS_PROJECT_GROUPED_PAGE_PROJECTS + 5 }, (_, index) => project(index + 1))
+
+    const first = await searchAcrossProjects(caller(), search({}))
+
+    expect(first).toMatchObject({
+      projectsSearched: CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
+      nextOffset: CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
+    })
+    expect(state.decisionScopes).toHaveLength(CROSS_PROJECT_GROUPED_PAGE_PROJECTS)
+  })
+
+  it('does not even search a restricted folder from a shared chat', async () => {
+    const [one] = state.reachable
+    state.restrictedFolders = false
+    state.folders.set('proj_1_rabcdef012345', 'folder-honorare')
+    state.hits.set(one.id, [hit('honorar', 0.9, { collectionName: 'proj_1_rabcdef012345' }), hit('plan', 0.7)])
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.groupedCalls[0].collections).not.toContain('proj_1_rabcdef012345')
+    expect(result.hits.map((found) => found.filename)).toEqual(['plan.pdf'])
+  })
+
+  it('records the restricted folder a passage came from, and drops one whose folder cannot be named', async () => {
+    const [one] = state.reachable
+    state.folders.set('proj_1_rabcdef012345', 'folder-honorare')
+    state.hits.set(one.id, [
+      hit('honorar', 0.9, { collectionName: 'proj_1_rabcdef012345' }),
+      hit('unnamed', 0.8, { collectionName: 'proj_1_r999999999999' }),
+      hit('plan', 0.7),
+    ])
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(result.hits.map((found) => found.filename)).toEqual(['honorar.pdf', 'plan.pdf'])
+    expect(state.recorded).toEqual([{ projectIds: [one.id, one.id], folderIds: ['folder-honorare'] }])
+  })
+
+  it('leaves out a project whose access went between listing and search, and keeps the others', async () => {
+    const [one, two] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9)])
+    state.hits.set(two.id, [hit('b', 0.8, { collectionName: 'proj_2' })])
+    state.failing.add(one.id)
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.groupedCalls[0].collections).not.toContain('proj_1')
+    expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf'])
+  })
+
+  it('asks for the longer passage and filters by tags after retrieval, as the per-project search does', async () => {
+    const [one] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9, { tags: ['Detail'] }), hit('b', 0.8, { tags: ['Bescheid'] })])
+
+    const result = await searchAcrossProjects(caller(), search({ documentTypes: ['Bescheid'] }))
+
+    expect(state.groupedCalls[0].snippetMaxChars).toBe(CROSS_PROJECT_SNIPPET_CHARS)
+    expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf'])
+  })
+})
+
+describe('searchAcrossProjects where the backend cannot rank across collections (Chroma)', () => {
+  it('falls back to the bounded per-project page', async () => {
+    const [one] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9)])
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.searched.map((call) => call.projectId)).toEqual(state.reachable.map((one) => one.id))
+    expect(result.hits.map((found) => found.filename)).toEqual(['a.pdf'])
   })
 })
 

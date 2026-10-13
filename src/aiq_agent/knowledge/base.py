@@ -227,6 +227,23 @@ class BaseRetriever(ABC):
         """Prepare ``query`` for a search about to be made (its embedding). Optional; never raises."""
         return None
 
+    async def search_grouped(
+        self,
+        query: str,
+        collection_names: list[str],
+        groups: int,
+        group_size: int,
+    ) -> list[tuple[str, list[Chunk]]]:
+        """One ranking over many collections, grouped per collection, best group first.
+
+        What cross-project search needs (ADR-0094, ADR-0104): every reachable
+        project ranked in ONE query, so scores never have to be compared
+        across separate indexes. Only a backend with a shared index can answer
+        it; the default raises ``NotImplementedError`` and the caller falls
+        back to searching collection by collection.
+        """
+        raise NotImplementedError(f"{self.backend_name} cannot rank across collections in one query")
+
     async def find_text(
         self,
         collection_name: str,

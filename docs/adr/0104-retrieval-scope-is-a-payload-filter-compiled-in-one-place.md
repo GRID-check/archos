@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-13
 decision-makers:
 consulted:
@@ -84,13 +84,23 @@ Chosen option: "A few collections, scope compiled by one function".
 
 ### Confirmation
 
-* An import-linter contract: only `knowledge_layer/qdrant/` imports
-  `qdrant_client`, and only `compile_scope` builds a `models.Filter` for a read.
-* A property test: 50k random envelopes over a seeded multi-office collection,
-  zero results with a foreign `office_id` or an uncleared `restriction_id`.
-* Strict mode with `unindexed_filtering_retrieve: false`, so a filter on an
-  unindexed field fails instead of scanning.
-* Read API pods hold the read-only key; only ingest workers can write.
+What enforces it as built (slice 1, scopes still named by logical collection):
+
+* `sources/knowledge_layer/tests/test_qdrant_import_boundary.py`: no code
+  outside `knowledge_layer/qdrant/` imports `qdrant_client` (tests aside), and
+  a planted import proves the check is not vacuous.
+* Every read filter starts from `scope.scope_filter`, which refuses an empty or
+  blank scope list; the search pipeline only narrows the filter it returns.
+* `test_isolation_property_random_scope_sets` (in `test_qdrant_store.py`, run
+  against a real Qdrant in CI): 200 random scope sets over eight scopes, no hit
+  outside the requested set, and every search non-empty so the property is not
+  vacuous. Removing the scope condition fails it and three other tests.
+* Strict mode with unindexed filtering refused, so a filter on an unindexed
+  field fails instead of scanning (`test_strict_mode_refuses_an_unindexed_filter_at_the_server`).
+
+Not enforced yet: a read-only key for the read paths. The `api` role also
+deletes and re-files documents, so it holds the write key today; the server
+has a read-only key configured for the day the roles split.
 
 ## Pros and Cons of the Options
 

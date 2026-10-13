@@ -216,6 +216,7 @@ import {
   REINGEST_SLICE_DOCUMENTS,
   resolveProjectDocumentsByName,
   searchProjectDocuments,
+  fetchGroupedSemanticHits,
   joinHitsToFiles,
   deriveSearchTopK,
   dispatchDocument,
@@ -1180,6 +1181,51 @@ describe('joinHitsToFiles', () => {
       const reuploaded = { ...open, id: 'open-older', createdAt: new Date('2026-02-01T00:00:00Z') }
       expect(joinHitsToFiles([hitIn('proj_abc')], [reuploaded, open]).map((r) => r.id)).toEqual(['open-root'])
     })
+  })
+})
+
+describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0104)', () => {
+  const ok = (hits: unknown[]) => new Response(JSON.stringify({ hits }), { status: 200 })
+  const backendHit = (collection: string, fileName: string, score: number) => ({
+    file_name: fileName,
+    collection,
+    score,
+    snippet: 's',
+    page_number: 1,
+  })
+
+  it('asks once for every collection, signed for exactly those, and numbers the ranking it gets back', async () => {
+    mockFetch.mockResolvedValueOnce(ok([backendHit('proj_b', 'b.pdf', 0.4), backendHit('proj_a', 'a.pdf', 0.9)]))
+
+    const hits = await fetchGroupedSemanticHits(['proj_a', 'proj_b', 'proj_a'], 'Fluchttreppe', 3, 900)
+
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    const [url, init] = mockFetch.mock.calls[0]
+    expect(String(url)).toMatch(/\/v1\/collections\/search$/)
+    expect(JSON.parse(init.body)).toMatchObject({
+      query: 'Fluchttreppe',
+      collections: ['proj_a', 'proj_b'],
+      groups: 2,
+      files_per_group: 3,
+      snippet_max_chars: 900,
+    })
+    expect(hits?.map((hit) => [hit.collection, hit.rank])).toEqual([
+      ['proj_b', 0],
+      ['proj_a', 1],
+    ])
+  })
+
+  it('drops a hit from a collection it did not ask for', async () => {
+    mockFetch.mockResolvedValueOnce(ok([backendHit('proj_other', 'x.pdf', 0.9), backendHit('proj_a', 'a.pdf', 0.5)]))
+    const hits = await fetchGroupedSemanticHits(['proj_a'], 'q', 3)
+    expect(hits?.map((hit) => hit.collection)).toEqual(['proj_a'])
+  })
+
+  it('answers null, never "nothing found", when the backend cannot rank across collections or fails', async () => {
+    mockFetch.mockResolvedValueOnce(new Response('{"detail":"chroma"}', { status: 409 }))
+    expect(await fetchGroupedSemanticHits(['proj_a'], 'q', 3)).toBeNull()
+    mockFetch.mockRejectedValueOnce(new Error('down'))
+    expect(await fetchGroupedSemanticHits(['proj_a'], 'q', 3)).toBeNull()
   })
 })
 

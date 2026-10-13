@@ -67,7 +67,7 @@ import { deleteAssignmentsForResource } from '@/lib/assignments/repository'
 import { purgeResourceCollaboration } from '@/lib/collaboration/cleanup'
 import { assertNoActiveHold } from '@/lib/compliance/holds'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import type { Document, DocumentAuthor } from '@/lib/db/schema'
+import type { Document, DocumentAuthor, Project } from '@/lib/db/schema'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
 import { reconcileDocumentStatuses, describeBackendIngestState, extractIngestJobId } from './reconcile-status'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from './shelf-listing'
@@ -648,6 +648,12 @@ export interface BackendSearchHit {
   snippet: string
   page_number: number | null
   collection: string
+  /**
+   * Position in ONE ranking across several collections (the grouped search,
+   * `fetchGroupedSemanticHits`), 0 = best. Absent on a single-collection
+   * search, whose hits are ordered by `score`.
+   */
+  rank?: number
 }
 
 /**
@@ -659,6 +665,8 @@ export type SearchedDocument<T> = T & {
   snippet: string
   page: number | null
   score: number
+  /** Position in one ranking across several collections, when the search produced one (`BackendSearchHit.rank`). */
+  rank?: number
 }
 
 /**
@@ -737,6 +745,62 @@ export async function fetchSemanticHits(
     return []
   }
 }
+
+/**
+ * One ranking across many collections, from the backend's grouped search
+ * (`POST /v1/collections/search`, ADR-0104): every collection named is ranked
+ * in ONE query, best collection first, its best documents first, and each hit
+ * carries its position as `rank`. Scores from separate searches are not
+ * comparable; this order is.
+ *
+ * `null` means "not available here", never "nothing found": a backend that
+ * cannot rank across collections (Chroma) answers 409, and any failure reads
+ * the same, so the caller searches collection by collection as before. The
+ * envelope is signed for exactly these collections, every one of which the
+ * caller has already authorized.
+ */
+export async function fetchGroupedSemanticHits(
+  collections: readonly string[],
+  query: string,
+  filesPerCollection: number,
+  snippetMaxChars?: number
+): Promise<BackendSearchHit[] | null> {
+  const unique = [...new Set(collections)]
+  if (unique.length === 0) return []
+  const scopeHeaders = buildGridRequestContextWireHeaders(
+    { collectionScope: unique },
+    process.env.GRID_INTERNAL_API_TOKEN
+  )
+  try {
+    const res = await fetch(`${getBackendUrl()}/v1/collections/search`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...scopeHeaders },
+      body: JSON.stringify({
+        query,
+        collections: unique,
+        groups: Math.min(unique.length, GROUPED_SEARCH_MAX_GROUPS),
+        files_per_group: Math.min(Math.max(1, filesPerCollection), GROUPED_SEARCH_MAX_FILES_PER_GROUP),
+        ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
+      }),
+      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
+    })
+    if (!res.ok) return null
+    const body = await res.json().catch(() => ({}))
+    if (!Array.isArray(body?.hits)) return null
+    const allowed = new Set(unique)
+    // A hit names the collection it came from; one this call did not ask for
+    // is dropped rather than trusted, so the join can only ever see these.
+    return (body.hits as BackendSearchHit[])
+      .filter((hit) => allowed.has(hit.collection))
+      .map((hit, rank) => ({ ...hit, rank }))
+  } catch {
+    return null
+  }
+}
+
+/** The backend's bounds on a grouped search (`GroupedDocumentSearchRequest`). */
+const GROUPED_SEARCH_MAX_GROUPS = 200
+const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
 
 /** The identity of a document in the backend: its collection and its filename. */
 function collectionFileKey(collectionName: string, filename: string): string {
@@ -819,7 +883,13 @@ export function joinHitsToFiles<
     // The hit's own collection, never a name match across collections.
     const file = byName.get(collectionFileKey(hit.collection, hit.file_name))
     if (!file) continue
-    matched.push({ ...file, snippet: hit.snippet, page: hit.page_number ?? null, score: hit.score })
+    matched.push({
+      ...file,
+      snippet: hit.snippet,
+      page: hit.page_number ?? null,
+      score: hit.score,
+      ...(hit.rank === undefined ? {} : { rank: hit.rank }),
+    })
   }
   return matched
 }
@@ -845,26 +915,61 @@ export async function searchProjectDocuments(
   projectId: string,
   query: string,
   topK = 20,
-  options: { snippetMaxChars?: number; forModel?: boolean } = {}
+  options: ProjectSearchOptions = {}
 ): Promise<{ hits: Array<SearchedDocument<ListedDocument>> }> {
-  await requireProjectAccess(session, projectId, 'project:view')
-
-  const project = await findProjectInOrg(projectId, session.organizationId)
-  if (!project) throw new NotFoundError('Project not found')
-
-  // The project's own collection and every restricted one this reader is
-  // cleared for (ADR-0087); one ranking across them, cut to `topK`.
-  const access = await getProjectFolderAccess(session, projectId, project.collectionName)
-  const collections = [project.collectionName, ...access.clearedRestrictedCollections]
+  const plan = await planProjectSearch(session, projectId)
   const hits = (
     await Promise.all(
-      collections.map((collection) => fetchSemanticHits(collection, query, topK, options.snippetMaxChars))
+      plan.collections.map((collection) => fetchSemanticHits(collection, query, topK, options.snippetMaxChars))
     )
   )
     .flat()
     .sort((a, b) => b.score - a.score)
     .slice(0, topK)
-  if (hits.length === 0) return { hits: [] }
+  return { hits: await hydrateProjectHits(session, plan, hits, options) }
+}
+
+/** How a project search's hits are cut and who they are for. */
+export interface ProjectSearchOptions {
+  snippetMaxChars?: number
+  /** The hits go to a model: joined to screened rows only (`SCREENED_ONLY`, ADR-0086). */
+  forModel?: boolean
+}
+
+/** What a reader may search in one project: the project and the collections they are cleared for. */
+export interface ProjectSearchPlan {
+  project: Project
+  access: Awaited<ReturnType<typeof getProjectFolderAccess>>
+  /** The project's own collection and every restricted one this reader is cleared for (ADR-0087). */
+  collections: string[]
+}
+
+/** Authorize a search of one project (`project:view`) and name the collections it covers. */
+export async function planProjectSearch(session: AuthorizedSession, projectId: string): Promise<ProjectSearchPlan> {
+  await requireProjectAccess(session, projectId, 'project:view')
+
+  const project = await findProjectInOrg(projectId, session.organizationId)
+  if (!project) throw new NotFoundError('Project not found')
+
+  const access = await getProjectFolderAccess(session, projectId, project.collectionName)
+  return { project, access, collections: [project.collectionName, ...access.clearedRestrictedCollections] }
+}
+
+/**
+ * Turn one project's backend hits into its document rows, in the hits' order.
+ * Only hits from the plan's own collections are considered: the join below
+ * keys on the hit's collection, and a plan is what this reader was cleared for.
+ */
+export async function hydrateProjectHits(
+  session: AuthorizedSession,
+  plan: ProjectSearchPlan,
+  hits: BackendSearchHit[],
+  options: ProjectSearchOptions = {}
+): Promise<Array<SearchedDocument<ListedDocument>>> {
+  const allowed = new Set(plan.collections)
+  const own = hits.filter((hit) => allowed.has(hit.collection))
+  if (own.length === 0) return []
+  const projectId = plan.project.id
   // The canonical rows, hydrated exactly as the listing hydrates them, so a
   // semantic result is always a real, visible document with its live status.
   const reader = options.forModel ? SCREENED_ONLY : await shelfReaderFor(session, { scope: 'project', projectId })
@@ -875,10 +980,10 @@ export async function searchProjectDocuments(
   const rows = await findProjectDocumentsByFilenames(
     projectId,
     session.organizationId,
-    hits.map((hit) => hit.file_name),
-    { hiddenFolderIds: [...access.hiddenFolderIds], reader }
+    own.map((hit) => hit.file_name),
+    { hiddenFolderIds: [...plan.access.hiddenFolderIds], reader }
   )
-  return { hits: joinHitsToFiles(hits, await toListedDocuments(session, rows, reader)) }
+  return joinHitsToFiles(own, await toListedDocuments(session, rows, reader))
 }
 
 export interface UploadDocumentInput {

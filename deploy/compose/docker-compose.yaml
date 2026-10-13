@@ -113,6 +113,12 @@ services:
       # by each process separately cannot do. The backend keeps no files: the base
       # corpus is in SeaweedFS and a table (ADR-0082), its cache is under /tmp.
       AIQ_CHROMA_URL: ${AIQ_CHROMA_URL:-http://chroma:8000}
+      # The move to Qdrant (ADR-0103): chroma (default) | dual | qdrant. Under
+      # dual or qdrant, start the store with `docker compose --profile qdrant up`
+      # and copy the existing corpus with scripts/backfill_qdrant.py.
+      AIQ_VECTOR_BACKEND: ${AIQ_VECTOR_BACKEND:-chroma}
+      AIQ_QDRANT_URL: ${AIQ_QDRANT_URL:-http://qdrant:6333}
+      AIQ_QDRANT_API_KEY: ${AIQ_QDRANT_API_KEY:-}
       # Research jobs (ADR-0021) are claimed from Postgres by the `agent-worker`
       # service below: the chat role submits one, the api role streams and cancels it.
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
@@ -360,6 +366,33 @@ services:
       pgbouncer:
         condition: service_healthy
     restart: "no"
+
+  qdrant:
+    # The vector store replacing Chroma (ADR-0103), the single-node mirror of
+    # deploy/pulumi/src/data/qdrant.ts. Opt-in (`--profile qdrant`) until a
+    # stack flips AIQ_VECTOR_BACKEND, so the default stack is unchanged. No
+    # published port: only the backend roles on aiq-network reach it, which is
+    # why it runs without an API key here (Pulumi sets one).
+    image: ${QDRANT_IMAGE:-qdrant/qdrant:v1.19.2}
+    profiles: ["qdrant"]
+    environment:
+      QDRANT__TELEMETRY_DISABLED: "true"
+    volumes:
+      - qdrant_data:/qdrant/storage
+    networks:
+      - aiq-network
+    healthcheck:
+      # The image ships bash but no curl: probe /readyz over /dev/tcp. $$s keeps
+      # compose from interpolating it away.
+      test:
+        - "CMD"
+        - "bash"
+        - "-c"
+        - 'exec 3<>/dev/tcp/localhost/6333; printf "GET /readyz HTTP/1.0\r\n\r\n" >&3; read -r s <&3; [[ "$$s" == *200* ]]'
+      interval: 10s
+      timeout: 10s
+      retries: 12
+    restart: unless-stopped
 
   chroma-data-permissions:
     # Only the shared Chroma server writes the volume: it runs as uid 1000.
@@ -1349,6 +1382,8 @@ services:
 
 volumes:
   chroma_data:
+    driver: local
+  qdrant_data:
     driver: local
   # The pre-A2 backend volume, read once by legacy-corpus-import and by nothing else.
   aiq-data:

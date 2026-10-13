@@ -19,6 +19,12 @@ import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-sta
  * the bound on fan-out. A wider scope pages with `offset`.
  */
 export const CROSS_PROJECT_PAGE_PROJECTS = 8
+/**
+ * How many projects one search call covers when the backend ranks every
+ * collection in ONE query (ADR-0104): a project no longer costs a search, only
+ * the authorization and row lookups each of its hits needs.
+ */
+export const CROSS_PROJECT_GROUPED_PAGE_PROJECTS = 40
 /** How many named projects one call may name. */
 export const CROSS_PROJECT_MAX_NAMED = 20
 /** How many hits one search returns at most, across every project it searched. */

@@ -290,6 +290,14 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # coverage sticky comment
+    # A real Qdrant for the knowledge layer's store tests (ADR-0103): the
+    # behaviour under test (German BM25, fusion, strict mode, group_by) is the
+    # server's, so a mock would only test the mock. Same version as production.
+    services:
+      qdrant:
+        image: qdrant/qdrant:v1.19.2
+        ports:
+          - 6333:6333
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -305,6 +313,8 @@ jobs:
         run: task be:test:api:ci
       - name: sources/ package suites
         run: task be:test:sources
+        env:
+          AIQ_QDRANT_TEST_URL: http://localhost:6333
       - name: Coverage comment (backend)
         if: github.event_name == 'pull_request'
         continue-on-error: true # never fail CI on a comment hiccup

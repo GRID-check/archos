@@ -3,6 +3,8 @@ import { createHmac } from "node:crypto";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
 import {
   KEDA_SCALER_CONNECTION_LIMIT,
+  LANGFUSE,
+  QDRANT,
   POOLED_POOLS,
   POSTGRES_DIRECT_RESERVE,
   POSTGRES_POOLER,
@@ -27,6 +29,10 @@ import {
  * has no member here.
  */
 export type BarmanEncryption = "AES256" | "aws:kms";
+
+/** The values `vectorBackend` / `AIQ_VECTOR_BACKEND` accept (ADR-0103). */
+export const VECTOR_BACKENDS = ["chroma", "dual", "qdrant"] as const;
+export type VectorBackend = (typeof VECTOR_BACKENDS)[number];
 
 /**
  * Postgres database AND role name for the SeaweedFS filer namespace.
@@ -543,6 +549,63 @@ export interface GridConfig {
     image: string;
     storageSize: string;
   };
+
+  /**
+   * Self-hosted Qdrant (ADR-0103), deployed BESIDE Chroma until the cutover.
+   * `docs/architecture/qdrant-retrieval-design.md` §9 is the reasoning behind
+   * every default here; `data/qdrant.ts` is the manifest.
+   */
+  qdrant: {
+    /**
+     * Deploy the cluster and hand the backend tiers `AIQ_QDRANT_URL` and
+     * `AIQ_QDRANT_API_KEY`. OFF by default so an existing stack plans no change
+     * until its operator turns it on; `vectorBackend` other than `chroma`
+     * requires it.
+     */
+    enabled: boolean;
+    /**
+     * Pinned. Self-hosted Qdrant cannot skip a minor on upgrade, and a snapshot
+     * restores only into the same or the next minor, so the version moves one
+     * minor at a time and never by accident.
+     */
+    image: string;
+    /**
+     * Peers. 3 keeps Raft quorum through one failure; 1 is for small stacks and
+     * runs without cluster mode. 2 is refused: it tolerates no failure and
+     * doubles the ways to lose quorum.
+     */
+    replicas: number;
+    /** CPU per peer, request = limit. */
+    cpu: string;
+    /**
+     * Memory per peer, request = limit. OOM during segment optimisation is the
+     * most reported Qdrant failure, and a limit above the request is memory
+     * the scheduler never promised.
+     */
+    memory: string;
+    /** Data PVC per peer. Size it at 2x the data: snapshots are staged on it. */
+    storageSize: string;
+    /** `service.api_key`: read and write, and the only key peers accept on p2p. */
+    apiKey: pulumi.Output<string>;
+    /** `service.read_only_api_key`: search only. Must differ from `apiKey`. */
+    readOnlyApiKey: pulumi.Output<string>;
+    snapshots: {
+      /** 5-field cron for the `qdrant-snapshot` CronJob. */
+      schedule: string;
+      /** Snapshots older than this many days are deleted by the same CronJob. */
+      retentionDays: number;
+      /** Access key of the `grid-qdrant` S3 identity (object CRUD on the snapshot bucket). */
+      s3AccessKey: string;
+      s3SecretKey: pulumi.Output<string>;
+    };
+  };
+
+  /**
+   * Which store the backend reads and writes (`AIQ_VECTOR_BACKEND`, ADR-0103):
+   * `chroma` (today), `dual` (ingest writes both, reads stay on Chroma), or
+   * `qdrant`. Anything but `chroma` requires `qdrant.enabled`.
+   */
+  vectorBackend: VectorBackend;
 
   seaweedfs: {
     /**
@@ -1398,6 +1461,102 @@ function requireSecretsTogether(
   );
 }
 
+/** `vectorBackend`, refused unless it is one the backend knows. */
+function vectorBackend(value: string | undefined): VectorBackend {
+  const v = (value ?? "chroma").trim();
+  const known = VECTOR_BACKENDS.find((b) => b === v);
+  if (known) return known;
+  throw new Error(`grid-oib:vectorBackend must be one of ${VECTOR_BACKENDS.join(", ")} (got "${value}").`);
+}
+
+/**
+ * The Qdrant tier and the backend selector (ADR-0103), validated together
+ * because each refusal below would otherwise deploy cleanly and be wrong.
+ */
+function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBackend"> {
+  const enabled = bool(cfg, "qdrantEnabled", false);
+  const backend = vectorBackend(cfg.get("vectorBackend"));
+  // Without the cluster the backend would be told to read or write a store
+  // that does not exist: every retrieval fails, or `dual` ingest errors on its
+  // second write, behind a green `pulumi up`.
+  if (backend !== "chroma" && !enabled) {
+    throw new Error(
+      `grid-oib:vectorBackend=${backend} needs grid-oib:qdrantEnabled=true: the backend would ` +
+        "be pointed at a Qdrant this stack does not deploy. Enable Qdrant first, or set vectorBackend=chroma.",
+    );
+  }
+  const replicas = positiveInt(cfg, "qdrantReplicas", 3);
+  if (replicas === 2) {
+    throw new Error(
+      "grid-oib:qdrantReplicas=2 is refused: two Raft voters lose quorum when either fails, so the " +
+        "cluster tolerates no more failures than one peer and has twice the ways to stop. Use 3, or 1 " +
+        "on a small stack.",
+    );
+  }
+  const retentionDays = positiveInt(cfg, "qdrantSnapshotRetentionDays", 7);
+  const schedule = cfg.get("qdrantSnapshotSchedule") ?? "30 1 * * *";
+  if (schedule.trim().split(/\s+/).length !== 5) {
+    throw new Error(`grid-oib:qdrantSnapshotSchedule must be a 5-field cron expression (got "${schedule}").`);
+  }
+  if (enabled) assertQdrantSecrets(cfg);
+  return {
+    vectorBackend: backend,
+    qdrant: {
+      enabled,
+      image: cfg.get("qdrantImage") ?? "qdrant/qdrant:v1.19.2",
+      replicas,
+      cpu: cfg.get("qdrantCpu") ?? "4",
+      memory: cfg.get("qdrantMemory") ?? "16Gi",
+      storageSize: cfg.get("qdrantStorageSize") ?? "100Gi",
+      apiKey: cfg.getSecret("qdrantApiKey") ?? pulumi.secret(""),
+      readOnlyApiKey: cfg.getSecret("qdrantReadOnlyApiKey") ?? pulumi.secret(""),
+      snapshots: {
+        schedule,
+        retentionDays,
+        s3AccessKey: cfg.get("qdrantS3AccessKey") ?? QDRANT.s3Identity,
+        s3SecretKey: cfg.getSecret("qdrantS3SecretKey") ?? pulumi.secret(""),
+      },
+    },
+  };
+}
+
+/**
+ * The three Qdrant credentials: present, and each its own value. Compared,
+ * never printed — only key NAMES reach a message.
+ */
+function assertQdrantSecrets(cfg: pulumi.Config): void {
+  requireSecretsTogether(
+    cfg,
+    ["qdrantApiKey", "qdrantReadOnlyApiKey", "qdrantS3SecretKey"],
+    "when grid-oib:qdrantEnabled is true (open-source Qdrant answers anyone without a key; " +
+      "generate each with `openssl rand -base64 32`)",
+  );
+  const raw = (key: string) => (cfg.get(key) ?? "").trim();
+  // The read-only key is the one a search-only caller holds. Equal to the
+  // read-write key, it is a read-write key under another name.
+  if (raw("qdrantApiKey") === raw("qdrantReadOnlyApiKey")) {
+    throw new Error(
+      "grid-oib:qdrantReadOnlyApiKey must differ from grid-oib:qdrantApiKey: a request carrying it would " +
+        "match the read-write key, so every holder of the read-only key could write.",
+    );
+  }
+  // SeaweedFS authenticates by key, so a shared secret hands this identity
+  // another's scope: for `seaweedfsSecretKey`, object CRUD on every tenant bucket.
+  const s3Collides = [
+    "seaweedfsSecretKey",
+    "seaweedfsBackendReadSecretKey",
+    "seaweedfsTenantAdminSecretKey",
+    "langfuseS3SecretKey",
+  ].find((other) => raw(other) === raw("qdrantS3SecretKey"));
+  if (s3Collides) {
+    throw new Error(
+      `grid-oib:qdrantS3SecretKey must differ from grid-oib:${s3Collides}. SeaweedFS authenticates by key, ` +
+        "so a shared secret gives the Qdrant snapshot identity that identity's bucket scope instead of " +
+        "its own single bucket.",
+    );
+  }
+}
+
 export function loadConfig(): GridConfig {
   const cfg = new pulumi.Config();
   refuseLangfuseV4WriteMode(cfg.get("langfuseV4WriteMode"));
@@ -1684,6 +1843,8 @@ export function loadConfig(): GridConfig {
       cfg.get("seaweedfsBucket") ?? "grid-documents",
       cfg.get("pgBackupBucket") ?? "grid-pg-backups",
       cfg.get("seaweedfsBackupBucket") ?? "grid-documents-backup",
+      LANGFUSE.bucket,
+      QDRANT.snapshotBucket,
     ];
     for (const bucket of platformBuckets) {
       if (bucket.startsWith(seaweedTenantPrefix)) {
@@ -2422,6 +2583,8 @@ export function loadConfig(): GridConfig {
       image: cfg.get("chromaImage") ?? "chromadb/chroma:1.5.9",
       storageSize: cfg.get("chromaStorageSize") ?? "20Gi",
     },
+
+    ...qdrantConfig(cfg),
 
     seaweedfs: {
       image: cfg.get("seaweedfsImage") ?? "chrislusf/seaweedfs:latest",

@@ -507,6 +507,21 @@ def _get_document_metadata_store() -> "DocumentMetadataStore":
     return _document_metadata_store
 
 
+def _mirror_facts(collection: str, file_names: list[str] | None = None) -> None:
+    """Copy the facts just changed here onto the file's points in Qdrant (ADR-0104).
+
+    This store stays the authority; the vector store carries a copy so a
+    search can filter on a tag, a Dokumentart or a Fassung before ranking
+    instead of after. A no-op unless ``AIQ_VECTOR_BACKEND`` writes Qdrant, and
+    it never raises (``knowledge_layer.qdrant.mirror.refresh_facts``).
+    """
+    try:
+        from knowledge_layer.qdrant import mirror
+    except ImportError:  # the knowledge layer's store extra is not installed here
+        return
+    mirror.refresh_facts(collection, file_names)
+
+
 def register_summary(
     collection: str,
     filename: str,
@@ -523,6 +538,7 @@ def register_summary(
     if not summary:
         return
     _get_document_metadata_store().register(collection, filename, summary, tags, topics)
+    _mirror_facts(collection, [filename])
 
 
 def update_document_tags(collection: str, filename: str, tags: list[str] | None) -> bool:
@@ -535,7 +551,10 @@ def update_document_tags(collection: str, filename: str, tags: list[str] | None)
     caller's responsibility — the store persists whatever it is given, so every
     caller MUST validate against ``document_classification.ALLOWED_TAGS`` first.
     """
-    return _get_document_metadata_store().update_tags(collection, filename, tags)
+    changed = _get_document_metadata_store().update_tags(collection, filename, tags)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
 
 
 def set_document_tags_by_person(collection: str, filename: str, tags: list[str] | None) -> bool:
@@ -545,7 +564,10 @@ def set_document_tags_by_person(collection: str, filename: str, tags: list[str] 
     :func:`update_document_tags` otherwise: validated by the caller, never
     touches the summary, ``False`` when no summary row exists (callers 404).
     """
-    return _get_document_metadata_store().set_tags_by_person(collection, filename, tags)
+    changed = _get_document_metadata_store().set_tags_by_person(collection, filename, tags)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
 
 
 def get_document_person_tags(collection: str, filenames: list[str]) -> dict[str, list[str]]:
@@ -561,7 +583,10 @@ def set_document_topics_by_person(collection: str, filename: str, topics: list[s
     no summary row exists (callers 404). Marks the row as a person's, which
     freezes its tags as well as its topics.
     """
-    return _get_document_metadata_store().set_topics_by_person(collection, filename, topics)
+    changed = _get_document_metadata_store().set_topics_by_person(collection, filename, topics)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
 
 
 def get_document_person_topics(collection: str, filenames: list[str]) -> dict[str, list[str]]:
@@ -601,7 +626,10 @@ def set_document_superseded_by(collection: str, older: str, newer: str | None) -
     A model's reading of two documents goes through :func:`set_document_revision_suggestion`, which
     hides nothing. UPDATE-only: ``False`` when ``older`` has no metadata row.
     """
-    return _get_document_metadata_store().set_superseded_by(collection, older, newer)
+    changed = _get_document_metadata_store().set_superseded_by(collection, older, newer)
+    if changed:
+        _mirror_facts(collection, [older])
+    return changed
 
 
 def link_document_fassung(collection: str, older: str, newer: str) -> "LinkOutcome":
@@ -612,7 +640,9 @@ def link_document_fassung(collection: str, older: str, newer: str) -> "LinkOutco
     clears a suggestion on ``newer`` that named ``older``, and the change line of the file ``older``
     was replaced by until now when it was told against ``older``.
     """
-    return _get_document_metadata_store().link_fassung(collection, older, newer)
+    outcome = _get_document_metadata_store().link_fassung(collection, older, newer)
+    _mirror_facts(collection, [older, newer])
+    return outcome
 
 
 def dismiss_document_revision_suggestion(collection: str, filename: str, older: str) -> bool:
@@ -658,7 +688,10 @@ def set_document_doc_class(collection: str, filename: str, doc_class: str | None
     exists for ``(collection, filename)``. The single factory seam behind the
     ingestion pre-fill and any future doc_class-edit endpoint.
     """
-    return _get_document_metadata_store().set_doc_class(collection, filename, doc_class)
+    changed = _get_document_metadata_store().set_doc_class(collection, filename, doc_class)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
 
 
 def get_document_doc_class(collection: str, filename: str) -> str | None:
@@ -719,7 +752,10 @@ def set_document_folder_path(collection: str, filename: str, folder_path: str | 
     The single seam behind BOTH ingestion (which stamps the folder the BFF sent
     with the file) and the folder mirror endpoint.
     """
-    return _get_document_metadata_store().set_folder_path(collection, filename, (folder_path or "").strip() or None)
+    changed = _get_document_metadata_store().set_folder_path(collection, filename, (folder_path or "").strip() or None)
+    if changed:
+        _mirror_facts(collection, [filename])
+    return changed
 
 
 def get_document_folder_paths(collection: str, filenames: list[str]) -> dict[str, str]:
@@ -773,7 +809,10 @@ def rewrite_document_folder_paths(collection: str, from_path: str, to_path: str 
     renamed / re-parented / deleted folder's whole subtree. Returns the number of
     documents re-filed.
     """
-    return _get_document_metadata_store().rewrite_folder_paths(collection, from_path, to_path)
+    moved = _get_document_metadata_store().rewrite_folder_paths(collection, from_path, to_path)
+    if moved:
+        _mirror_facts(collection)
+    return moved
 
 
 def list_summary_collections() -> list[str]:

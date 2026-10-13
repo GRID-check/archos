@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig, backendAutoscaled } from "../config";
-import { EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT } from "../constants";
+import { EDGE_RATE_LIMIT, GOTENBERG, LANGFUSE, PORT, QDRANT } from "../constants";
 import { KEDA_NAMESPACE, KEDA_OPERATOR_LABEL } from "./keda";
 import { CLUSTER_NAME as POSTGRES_CLUSTER } from "../data/postgres";
 
@@ -21,6 +21,21 @@ const CLICKHOUSE = LANGFUSE.clickhouse;
 export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"] as const;
 
 /**
+ * The pods that get `AIQ_QDRANT_URL` (every role built from `backendEnv`) plus
+ * the snapshot CronJob: the named callers of Qdrant's client ports in rule 16.
+ * A pod that reads or writes vectors and is missing here times out on every
+ * call while its plan is green.
+ */
+export const QDRANT_CALLERS = [
+  "aiq-agent",
+  "aiq-api",
+  "agent-worker",
+  "ingest-worker",
+  "legacy-corpus-import",
+  QDRANT.snapshotJob,
+] as const;
+
+/**
  * Namespace-scoped NetworkPolicies for `grid`: a **default-deny for ingress**
  * plus the minimum set of allows the stack actually needs. This contains lateral
  * movement — a compromised pod in another namespace can't reach the app/data
@@ -37,7 +52,7 @@ export const LANGFUSE_BACKEND_CALLERS = ["aiq-agent", "aiq-api", "agent-worker"]
  *     workers→data, backend→frontend BFF). Per-edge micro-policies buy little
  *     here and are far easier to get subtly wrong. The exceptions are the pods
  *     whose receivers authenticate nobody or hold a store of every tenant's
- *     text (Langfuse and its ClickHouse, Gotenberg) — see rule 2.
+ *     text (Langfuse and its ClickHouse, Gotenberg, Qdrant) — see rule 2.
  *   - Cross-namespace allows are explicit: the **edge** (Envoy Gateway) to the
  *     three public services, and the **CNPG operator** to its managed pods.
  *
@@ -99,6 +114,7 @@ export function installNetworkPolicies(
           values: [
             ...langfuseWithheld,
             ...(cfg.gotenberg.enabled ? [GOTENBERG.name] : []),
+            ...(cfg.qdrant.enabled ? [QDRANT.name] : []),
           ],
         },
       ],
@@ -374,6 +390,47 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 16-17. Qdrant (ADR-0103), withheld from rule 2. Every office's chunk text
+  //     and vectors sit behind one API key that six workloads carry, and its p2p
+  //     port moves shards and Raft state between peers: no other pod has any
+  //     reason to open either. 16 admits the vector callers to the client ports;
+  //     17 keeps p2p (and the client ports, which peers forward requests over)
+  //     between the peers alone.
+  const qdrantPod = { podSelector: { matchLabels: { "app.kubernetes.io/name": QDRANT.name } } };
+  const appToQdrant = cfg.qdrant.enabled
+    ? mk("allow-app-to-qdrant", {
+        ...qdrantPod,
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: QDRANT_CALLERS.map((name) => ({
+              podSelector: { matchLabels: { "app.kubernetes.io/name": name } },
+            })),
+            ports: [
+              { protocol: "TCP", port: PORT.qdrantHttp },
+              { protocol: "TCP", port: PORT.qdrantGrpc },
+            ],
+          },
+        ],
+      })
+    : undefined;
+  const qdrantPeers = cfg.qdrant.enabled
+    ? mk("qdrant-peers", {
+        ...qdrantPod,
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [qdrantPod],
+            ports: [
+              { protocol: "TCP", port: PORT.qdrantHttp },
+              { protocol: "TCP", port: PORT.qdrantGrpc },
+              { protocol: "TCP", port: PORT.qdrantP2p },
+            ],
+          },
+        ],
+      })
+    : undefined;
+
   return [
     deny,
     intra,
@@ -392,5 +449,7 @@ export function installNetworkPolicies(
     ...(backendToLangfuse ? [backendToLangfuse] : []),
     ...(langfuseToClickhouse ? [langfuseToClickhouse] : []),
     ...(gotenberg ? [gotenberg] : []),
+    ...(appToQdrant ? [appToQdrant] : []),
+    ...(qdrantPeers ? [qdrantPeers] : []),
   ];
 }

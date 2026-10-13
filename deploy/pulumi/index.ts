@@ -3,7 +3,8 @@
  *
  * Provisions the whole stack against a provider-supplied kubeconfig:
  *   platform  → cert-manager (+ Let's Encrypt issuer), Envoy Gateway, metrics-server
- *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3)
+ *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3),
+ *               Chroma, and Qdrant beside it until the cutover (ADR-0103)
  *   app       → aiq-agent (StatefulSet, the chat role), aiq-api (Deployment +
  *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job and a WorkOS audit-schema reconcile Job
@@ -30,6 +31,7 @@ import { installClickHouse } from "./src/data/clickhouse";
 import { installSeaweedFS, type SeaweedFS } from "./src/data/seaweedfs";
 import { installSeaweedFSBackup } from "./src/data/seaweedfs-backup";
 import { installChroma } from "./src/data/chroma";
+import { installQdrant } from "./src/data/qdrant";
 import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret, buildSecrets } from "./src/app/config";
 import { runMigrations } from "./src/app/migrations-job";
 import { reconcileAuditSchemas } from "./src/app/audit-schemas-job";
@@ -52,7 +54,7 @@ import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
 import { installDns, managedRecordNames } from "./src/platform/dns";
 import { installLangfuse } from "./src/platform/langfuse";
-import { LANGFUSE } from "./src/constants";
+import { LANGFUSE, QDRANT } from "./src/constants";
 
 const cfg = loadConfig();
 const provider = makeProvider(cfg);
@@ -94,6 +96,8 @@ const extraBuckets = [
   // the init Job creates it — but withheld from the general-purpose `grid` S3
   // identity in `s3IdentityCatalog`; Langfuse reaches it as `grid-langfuse`.
   ...(cfg.langfuse.enabled ? [LANGFUSE.bucket] : []),
+  // Qdrant's shard snapshots (ADR-0103), reached only as `grid-qdrant`.
+  ...(cfg.qdrant.enabled ? [QDRANT.snapshotBucket] : []),
 ];
 const filerNeedsPostgres =
   cfg.seaweedfs.topology === "split" && cfg.seaweedfs.filerStore === "postgres";
@@ -171,6 +175,12 @@ const rateLimitStore = cfg.rateLimit.enabled
   ? installRateLimitStore(cfg, provider, namespace)
   : undefined;
 const chroma = installChroma(cfg, provider, namespace);
+// Qdrant beside Chroma (ADR-0103) while `vectorBackend` moves from `chroma`
+// through `dual` to `qdrant`. Off by default; its snapshot CronJob waits on the
+// bucket it uploads into.
+const qdrant = cfg.qdrant.enabled
+  ? installQdrant(cfg, provider, namespace, seaweed.internalEndpoint, [seaweed.bucketInitJob])
+  : undefined;
 // Office → PDF converter for the document viewer (ADR-0070). Stateless and
 // fail-open, so nothing waits on it; its NetworkPolicies admit the frontend
 // alone and deny it every egress.
@@ -190,6 +200,7 @@ const wiring: AppWiring = {
   seaweedPublicEndpoint: seaweed.publicEndpoint,
   chromaUrl: chroma.url,
   gotenbergUrl: gotenberg?.url,
+  qdrantUrl: qdrant?.url,
   dsn: postgres.dsn,
   imagePullSecrets: pullSecret ? [{ name: PULL_SECRET_NAME }] : [],
 };
@@ -239,6 +250,7 @@ const api = installApi(wiring, cfg, secrets, [
   seaweed.bucketInitJob,
   dragonfly.service,
   ...(chroma ? [chroma.service] : []),
+  ...(qdrant ? [qdrant.service] : []),
 ]);
 
 // Not after `aiq-agent`: the chat tier waits on the frontend (above), so the
@@ -259,6 +271,7 @@ const backend = installBackend(wiring, cfg, secrets, [
   seaweed.bucketInitJob,
   dragonfly.service,
   ...(chroma ? [chroma.service] : []),
+  ...(qdrant ? [qdrant.service] : []),
   frontend.deployment,
 ]);
 
@@ -306,6 +319,7 @@ const agentWorker = installAgentWorker(wiring, cfg, secrets, [
   dragonfly.service,
   seaweed.bucketInitJob,
   ...(chroma ? [chroma.service] : []),
+  ...(qdrant ? [qdrant.service] : []),
   ...queueScalerDeps,
 ]);
 
@@ -317,6 +331,7 @@ const ingestWorker = installIngestWorker(wiring, cfg, secrets, [
   dragonfly.service,
   seaweed.bucketInitJob,
   ...(chroma ? [chroma.service] : []),
+  ...(qdrant ? [qdrant.service] : []),
   ...queueScalerDeps,
 ]);
 
@@ -430,6 +445,7 @@ export const appRoute = routes.app.metadata.name;
 export const webRoute = routes.web.metadata.name;
 export const gatewayName = gatewayResources.gateway.metadata.name;
 export const chromaUrl = chroma.url;
+export const qdrantUrl = qdrant ? qdrant.url : pulumi.output("(none: qdrantEnabled=false)");
 export const pgInstances = cfg.postgres.instances;
 export const pgBackupsEnabled = cfg.postgres.backups.enabled;
 export const networkPoliciesEnabled = cfg.networkPolicies;

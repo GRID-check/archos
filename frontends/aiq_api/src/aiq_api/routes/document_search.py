@@ -24,6 +24,7 @@ from aiq_agent.project_context import GridRequestContext
 from ..models.requests import DocumentSearchHit
 from ..models.requests import DocumentSearchRequest
 from ..models.requests import DocumentSearchResponse
+from ..models.requests import GroupedDocumentSearchRequest
 from .collections import _require_ingestor
 from .collections import require_collection
 
@@ -152,8 +153,66 @@ def _aggregate_hits(
     return hits[:top_k_files]
 
 
+#: Chunks fetched per collection for each document a group may return: a
+#: document's best chunk is not always its first-ranked one.
+GROUP_CHUNKS_PER_FILE = 3
+
+
+def _ranked_group_hits(
+    grouped: list[tuple[str, list[Chunk]]], files_per_group: int, snippet_max_chars: int
+) -> list[DocumentSearchHit]:
+    """The groups as one flat list in the fused order: best collection first, its best documents first.
+
+    The order IS the ranking, and a caller keeps it rather than re-sorting by
+    ``score``, which is each document's cosine and not comparable to the fusion.
+    """
+    hits: list[DocumentSearchHit] = []
+    for collection, chunks in grouped:
+        hits.extend(_aggregate_hits(chunks, collection, files_per_group, snippet_max_chars))
+    return hits
+
+
 def add_document_search_routes(router: APIRouter):
     """Add semantic document-search routes to the FastAPI app."""
+
+    @router.post(
+        "/v1/collections/search",
+        response_model=DocumentSearchResponse,
+        tags=["documents"],
+        summary="One semantic search ranked across many collections",
+    )
+    async def search_across_collections(
+        request: GroupedDocumentSearchRequest, http_request: Request
+    ) -> DocumentSearchResponse:
+        """Rank every named collection's documents in one query (needs the Qdrant backend).
+
+        Every collection must be in the caller's signed scope, as for the
+        single-collection search. A backend that cannot rank across
+        collections answers ``409``, and the BFF searches collection by
+        collection instead.
+        """
+        collections = list(dict.fromkeys(request.collections))
+        for collection in collections:
+            _authorize_collection(http_request, collection)
+        from aiq_agent.knowledge.factory import get_active_retriever
+
+        try:
+            grouped = await get_active_retriever().search_grouped(
+                request.query,
+                collections,
+                groups=request.groups,
+                group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
+            )
+        except NotImplementedError as e:
+            raise HTTPException(status_code=409, detail=str(e)) from e
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+        except Exception as e:
+            logger.error("Grouped document search failed: %s", e)
+            raise HTTPException(status_code=500, detail="grouped document search failed") from e
+        return DocumentSearchResponse(
+            hits=_ranked_group_hits(grouped, request.files_per_group, request.snippet_max_chars)
+        )
 
     @router.post(
         "/v1/collections/{collection_name}/search",

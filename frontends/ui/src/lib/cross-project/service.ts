@@ -29,10 +29,15 @@
  *
  * ## Cost
  *
- * N projects are N collection searches (plus the readable restricted ones). One
- * call searches at most {@link CROSS_PROJECT_PAGE_PROJECTS} projects,
- * {@link SEARCH_CONCURRENCY} at a time, and answers with the offset of the next
- * page; the agent asks again when it wants more.
+ * On a backend with one shared index (Qdrant, ADR-0104) a page of up to
+ * {@link CROSS_PROJECT_GROUPED_PAGE_PROJECTS} projects is ONE search: every
+ * collection the reader is cleared for, ranked together, so hits from
+ * different projects are ordered by one ranking instead of by scores from
+ * separate indexes. Where the backend cannot (Chroma answers 409), N projects
+ * are N collection searches (plus the readable restricted ones), at most
+ * {@link CROSS_PROJECT_PAGE_PROJECTS} per call, {@link SEARCH_CONCURRENCY} at a
+ * time. Either way the answer carries the offset of the next page; the agent
+ * asks again when it wants more.
  */
 
 import 'server-only'
@@ -42,7 +47,15 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { clearanceOf, getProjectFolderAccess, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversations/cross-project-use'
 import type { Project } from '@/lib/db/schema'
-import { searchProjectDocuments } from '@/lib/documents/service'
+import {
+  fetchGroupedSemanticHits,
+  hydrateProjectHits,
+  planProjectSearch,
+  searchProjectDocuments,
+  type ListedDocument,
+  type ProjectSearchPlan,
+  type SearchedDocument,
+} from '@/lib/documents/service'
 import { buildProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { audienceReach, type AudienceReach } from './audience-reach'
@@ -53,6 +66,7 @@ import { bundeslandOf, rankBySimilarity } from './similarity'
 import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
+  CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
   CROSS_PROJECT_PAGE_PROJECTS,
   type CrossProjectBriefRequest,
   type CrossProjectBriefResponse,
@@ -313,6 +327,56 @@ function perProjectTopK(request: CrossProjectSearchRequest): number {
 interface FoundHit {
   hit: CrossProjectHit
   folderId: string | null
+  /** Position in the page's one ranking, when the page was searched at once. */
+  rank?: number
+}
+
+/**
+ * The hits of one project a reader may be handed: the request's tag filters,
+ * no restricted folder in a shared chat, and every restricted passage
+ * carrying the folder it came from (one whose folder cannot be named is
+ * dropped rather than handed out unrecorded).
+ */
+async function foundHitsOf(
+  project: Project,
+  found: Array<SearchedDocument<ListedDocument>>,
+  request: CrossProjectSearchRequest,
+  reach: Pick<AudienceReach, 'restrictedFolders'>,
+  accessOf: () => Promise<{ sourceFolderOf: (collection: string) => string | null | undefined }>
+): Promise<FoundHit[]> {
+  const ref = projectRefOf(project)
+  // `collectionName` on a found hit is the collection the PASSAGE came from:
+  // `joinHitsToFiles` joins a hit only to the row of the hit's own collection,
+  // so this is the hit's collection and not a filename match with a row filed
+  // elsewhere. Restricted or not, and which folder, is decided from it alone.
+  // A shared chat searches no restricted folder: not every reader was asked about it.
+  const matching = found.filter(
+    (hit) => matchesTags(hit.tags ?? [], request) && (reach.restrictedFolders || hit.collectionName === project.collectionName)
+  )
+  const restricted = matching.some((hit) => hit.collectionName !== project.collectionName)
+  const access = restricted ? await accessOf() : null
+  return matching.flatMap((hit) => {
+    const folderId = hit.collectionName === project.collectionName ? null : (access?.sourceFolderOf(hit.collectionName) ?? null)
+    if (hit.collectionName !== project.collectionName && !folderId) return []
+    return [
+      {
+        folderId,
+        ...(hit.rank === undefined ? {} : { rank: hit.rank }),
+        hit: {
+          project: ref,
+          documentId: hit.id,
+          filename: hit.filename,
+          title: hit.displayName && hit.displayName !== hit.filename ? hit.displayName : null,
+          collection: hit.collectionName,
+          page: hit.page,
+          snippet: hit.snippet,
+          score: hit.score,
+          tags: hit.tags ?? [],
+          uploadedAt: new Date(hit.createdAt).toISOString(),
+        },
+      },
+    ]
+  })
 }
 
 /**
@@ -339,38 +403,60 @@ async function searchOneProject(
     // Access withdrawn between the listing and the search, or the project went: nothing from it.
     return []
   }
-  const ref = projectRefOf(project)
-  // `collectionName` on a found hit is the collection the PASSAGE came from:
-  // `joinHitsToFiles` joins a hit only to the row of the hit's own collection,
-  // so this is the hit's collection and not a filename match with a row filed
-  // elsewhere. Restricted or not, and which folder, is decided from it alone.
-  // A shared chat searches no restricted folder: not every reader was asked about it.
-  const matching = found.hits.filter(
-    (hit) => matchesTags(hit.tags ?? [], request) && (reach.restrictedFolders || hit.collectionName === project.collectionName)
+  return foundHitsOf(project, found.hits, request, reach, () =>
+    getProjectFolderAccess(session, project.id, project.collectionName)
   )
-  const restricted = matching.some((hit) => hit.collectionName !== project.collectionName)
-  const access = restricted ? await getProjectFolderAccess(session, project.id, project.collectionName) : null
-  return matching.flatMap((hit) => {
-    const folderId = hit.collectionName === project.collectionName ? null : (access?.sourceFolderOf(hit.collectionName) ?? null)
-    if (hit.collectionName !== project.collectionName && !folderId) return []
-    return [
-      {
-        folderId,
-        hit: {
-          project: ref,
-          documentId: hit.id,
-          filename: hit.filename,
-          title: hit.displayName && hit.displayName !== hit.filename ? hit.displayName : null,
-          collection: hit.collectionName,
-          page: hit.page,
-          snippet: hit.snippet,
-          score: hit.score,
-          tags: hit.tags ?? [],
-          uploadedAt: new Date(hit.createdAt).toISOString(),
-        },
-      },
-    ]
-  })
+}
+
+/**
+ * A page of projects in ONE search (ADR-0104): each project is authorized and
+ * its cleared collections named exactly as its own search names them
+ * (`planProjectSearch`), then every collection is ranked together and each
+ * project's hits are joined to its screened rows. A shared chat does not even
+ * search a restricted folder, rather than searching and discarding it.
+ *
+ * `null` when the backend cannot rank across collections; the caller then
+ * searches project by project. A project whose access went between the
+ * listing and the search yields nothing, as in the per-project search.
+ */
+async function searchPageAtOnce(
+  session: AuthorizedSession,
+  page: readonly Project[],
+  request: CrossProjectSearchRequest,
+  reach: Pick<AudienceReach, 'restrictedFolders'>
+): Promise<FoundHit[] | null> {
+  const planned = await mapBounded(page, SEARCH_CONCURRENCY, (project) =>
+    planProjectSearch(session, project.id).catch(() => null)
+  )
+  const plans = planned.filter((plan): plan is ProjectSearchPlan => plan !== null)
+  const collectionsOf = (plan: ProjectSearchPlan) =>
+    reach.restrictedFolders ? plan.collections : [plan.project.collectionName]
+  const hits = await fetchGroupedSemanticHits(
+    plans.flatMap(collectionsOf),
+    request.query,
+    perProjectTopK(request),
+    CROSS_PROJECT_SNIPPET_CHARS
+  )
+  if (hits === null) return null
+  const perProject = await Promise.all(
+    plans.map(async (plan) => {
+      const own = new Set(collectionsOf(plan))
+      const projectHits = hits.filter((hit) => own.has(hit.collection))
+      if (projectHits.length === 0) return []
+      const found = await hydrateProjectHits(session, plan, projectHits, {
+        snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
+        forModel: true,
+      }).catch(() => [])
+      return foundHitsOf(plan.project, found, request, reach, async () => plan.access)
+    })
+  )
+  return perProject.flat()
+}
+
+/** Best first: by the page's one ranking when it has one, else by score. */
+function byRelevance(a: FoundHit, b: FoundHit): number {
+  if (a.rank !== undefined && b.rank !== undefined) return a.rank - b.rank
+  return b.hit.score - a.hit.score
 }
 
 /**
@@ -445,12 +531,20 @@ export async function searchAcrossProjects(
     request,
     current ?? (caller.currentProjectId ? { id: caller.currentProjectId, profile: null } : null)
   )
-  const page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
+  // One search for a wide page where the backend can rank across collections;
+  // otherwise the bounded per-project page, searched project by project.
+  let page = scope.slice(request.offset, request.offset + CROSS_PROJECT_GROUPED_PAGE_PROJECTS)
+  let documents = await searchPageAtOnce(caller.session, page, request, reach)
+  if (documents === null) {
+    page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
+    documents = (
+      await mapBounded(page, SEARCH_CONCURRENCY, (project) => searchOneProject(caller.session, project, request, reach))
+    ).flat()
+  }
   const memoryScopes = decisionScopes(caller.session, page, reach)
   // Decisions and permit records are judged over the same scopes: the same
   // projects, the same folder clearance, so the two cannot disagree on reach.
-  const [perProject, decided, permitted] = await Promise.all([
-    mapBounded(page, SEARCH_CONCURRENCY, (project) => searchOneProject(caller.session, project, request, reach)),
+  const [decided, permitted] = await Promise.all([
     memoryScopes.then((scopes) => searchProjectDecisions(caller.session.organizationId, scopes, request.query)),
     memoryScopes.then(async (scopes) =>
       searchPermitRequirements(
@@ -475,10 +569,7 @@ export async function searchAcrossProjects(
     const permit = asPermit(found, byId)
     return permit ? [{ permit, folderIds: found.restrictedFolderIds ?? [] }] : []
   })
-  const kept = perProject
-    .flat()
-    .sort((a, b) => b.hit.score - a.hit.score)
-    .slice(0, request.limit)
+  const kept = [...documents].sort(byRelevance).slice(0, request.limit)
   // Recorded before anything is returned: the projects and restricted folders
   // of the hits AND of the decisions and permit records handed out.
   await recordCrossProjectHandOut(

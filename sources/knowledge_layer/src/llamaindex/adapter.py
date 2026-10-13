@@ -3560,6 +3560,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
             get_chunk_text_store().delete_collection(name)
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.delete_scope(name)
             bump_collection_version(name)
 
             logger.info(f"Deleted collection: {name}")
@@ -3895,6 +3898,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
                     get_chunk_text_store().delete_by_file(collection_name, file_name)
+                    from ..qdrant import mirror as qdrant_mirror
+
+                    qdrant_mirror.delete_file(collection_name, file_name)
                     # True only when something of the file was actually removed.
                     return forgotten > 0
                 results = {"ids": matching_ids}
@@ -3914,6 +3920,11 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
 
             get_chunk_text_store().delete_by_file(collection_name, file_name)
+            # By the ids Chroma just deleted: they include a tmp-prefixed or
+            # percent-encoded spelling the name alone would miss.
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.delete_chunks(collection_name, results["ids"])
 
             return True
 
@@ -4313,6 +4324,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             chroma_collection.delete(ids=previous.chunk_ids)
             bump_collection_version(collection_name)
             get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.delete_chunks(collection_name, previous.chunk_ids)
             for stored in previous.stored_names:
                 if stored != file_name:
                     # Permanent: this spelling never returns, and what a person set on
@@ -4363,6 +4377,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             chroma_collection.delete(ids=previous.chunk_ids)
             bump_collection_version(collection_name)
             get_chunk_text_store().delete_chunks(collection_name, previous.chunk_ids)
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.delete_chunks(collection_name, previous.chunk_ids)
             logger.info(
                 "Took %d chunk(s) of the previous version of a quarantined re-upload out of %s",
                 len(previous.chunk_ids),
@@ -4421,6 +4438,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
             chroma_collection.delete(ids=inserted)
             bump_collection_version(collection_name)
             get_chunk_text_store().delete_chunks(collection_name, inserted)
+            from ..qdrant import mirror as qdrant_mirror
+
+            qdrant_mirror.delete_chunks(collection_name, inserted)
             logger.warning(
                 "Discarded %d chunk(s) a failed ingest of %s left in %s", len(inserted), file_name, collection_name
             )
@@ -5360,6 +5380,23 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     except Exception as mirror_error:
                         logger.warning("Chunk text mirror skipped for %s: %s", file_name, mirror_error)
 
+                    # The same chunks into Qdrant, vectors copied from Chroma, never
+                    # re-embedded (ADR-0103). Under AIQ_VECTOR_BACKEND=qdrant a
+                    # failure fails the file: a chunk Qdrant lacks is one no search
+                    # finds. The previous version is skipped like the text mirror
+                    # skips it; its retirement below deletes it from both stores.
+                    from ..qdrant import mirror as qdrant_mirror
+
+                    if qdrant_mirror.enabled():
+                        qdrant_mirror.mirror_file(
+                            chroma_collection,
+                            collection_name,
+                            file_name,
+                            identity=self._embed_fingerprint_metadata(),
+                            config=config,
+                            exclude_ids=previous.chunk_ids if previous else (),
+                        )
+
                     # The document may have been deleted while this attempt
                     # ran: by a delete that did not wait for the replacement
                     # lock, or one that landed after the upload and before
@@ -6028,6 +6065,17 @@ class LlamaIndexRetriever(BaseRetriever):
     ) -> list[Chunk]:
         if not pattern or limit <= 0:
             return []
+        from ..qdrant.config import reads_qdrant
+
+        if reads_qdrant():
+            from ..qdrant import retrieval as qdrant_retrieval
+
+            # Every returned chunk matches, so none ranks above another; the
+            # caller orders them by document and page (cosine 1.0 = distance 0).
+            return [
+                self._chunk_from_hit(hit)
+                for hit in qdrant_retrieval.find_text(collection_name, pattern, filters, limit)
+            ]
         self._ensure_initialized()
         try:
             collection = self._chroma_client.get_collection(name=collection_name)
@@ -6170,33 +6218,21 @@ class LlamaIndexRetriever(BaseRetriever):
                     logger.info(f"Static retrieval cache hit for collection {collection_name}")
                     return cached
 
-            index = self._get_index(collection_name)
-            if index is None:
-                return RetrievalResult(
-                    chunks=[],
-                    query=query,
-                    backend=self.backend_name,
-                    success=False,
-                    error_message=f"Collection '{collection_name}' not found",
-                )
+            from ..qdrant.config import reads_qdrant
 
-            from llama_index.core.schema import QueryBundle
-
-            # Embed once (LRU) and hand the vector to the retriever, so the
-            # per-collection fan-out of one query hits the embedding API once.
-            retriever_kwargs: dict[str, Any] = {"similarity_top_k": top_k}
-            metadata_filters = _to_metadata_filters(filters)
-            if metadata_filters is not None:
-                retriever_kwargs["filters"] = metadata_filters
-            retriever = index.as_retriever(**retriever_kwargs)
-            query_bundle = QueryBundle(query_str=query, embedding=self._embed_query_cached(query))
-            nodes = retriever.retrieve(query_bundle)
-
-            # Normalize results to Chunk schema
-            chunks = [self.normalize(node) for node in nodes]
-
-            if self.hybrid_search:
-                chunks = self._hybrid_lexical_boost(query, collection_name, top_k, filters, chunks)
+            if reads_qdrant():
+                chunks = self._qdrant_chunks(query, collection_name, top_k, filters)
+            else:
+                index = self._get_index(collection_name)
+                if index is None:
+                    return RetrievalResult(
+                        chunks=[],
+                        query=query,
+                        backend=self.backend_name,
+                        success=False,
+                        error_message=f"Collection '{collection_name}' not found",
+                    )
+                chunks = self._chroma_chunks(index, query, collection_name, top_k, filters)
 
             # State each hit's rank in this collection's FINAL order, after the lexical
             # fusion has had its say. `_rank_channel` in register.py documents reading it
@@ -6236,6 +6272,131 @@ class LlamaIndexRetriever(BaseRetriever):
                 success=False,
                 error_message=f"Retrieval failed: {str(e)[:500]}",
             )
+
+    def _chroma_chunks(
+        self, index: Any, query: str, collection_name: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[Chunk]:
+        """The Chroma path: dense retrieval through LlamaIndex, then the hand-fused lexical channels."""
+        from llama_index.core.schema import QueryBundle
+
+        # Embed once (LRU) and hand the vector to the retriever, so the
+        # per-collection fan-out of one query hits the embedding API once.
+        retriever_kwargs: dict[str, Any] = {"similarity_top_k": top_k}
+        metadata_filters = _to_metadata_filters(filters)
+        if metadata_filters is not None:
+            retriever_kwargs["filters"] = metadata_filters
+        retriever = index.as_retriever(**retriever_kwargs)
+        query_bundle = QueryBundle(query_str=query, embedding=self._embed_query_cached(query))
+        chunks = [self.normalize(node) for node in retriever.retrieve(query_bundle)]
+        if self.hybrid_search:
+            chunks = self._hybrid_lexical_boost(query, collection_name, top_k, filters, chunks)
+        return chunks
+
+    def _identity(self) -> dict[str, str]:
+        """The embedder this retriever's query vectors come from, as Qdrant collection metadata holds it."""
+        return embed_fingerprint_metadata(self.embed_model_name, self.embed_base_url)
+
+    def _qdrant_chunks(
+        self, query: str, collection_name: str, top_k: int, filters: dict[str, Any] | None
+    ) -> list[Chunk]:
+        """The Qdrant path: one Query API call fusing dense, German BM25 and exact-term channels.
+
+        The channels are the Chroma path's, run server-side: the dense ranking,
+        BM25 over the chunk text (with the EN->DE glossary terms the German
+        mirror was given), and per selective exact term the dense ranking
+        restricted to chunks containing it. ``hybrid_search`` off leaves the
+        dense channel alone, as on Chroma.
+        """
+        from ..qdrant import retrieval as qdrant_retrieval
+
+        embedding = self._embed_query_cached(query)
+        lexical_text, terms = "", []
+        if self.hybrid_search:
+            lexical_text, terms = self._qdrant_lexical_inputs(query, collection_name)
+        hits = qdrant_retrieval.search(
+            collection_name,
+            vector=embedding,
+            lexical_text=lexical_text,
+            top_k=top_k,
+            filters=filters,
+            exact_terms=terms,
+            identity=self._identity(),
+        )
+        return [self._chunk_from_hit(hit) for hit in hits]
+
+    async def search_grouped(
+        self,
+        query: str,
+        collection_names: list[str],
+        groups: int,
+        group_size: int,
+    ) -> list[tuple[str, list[Chunk]]]:
+        """One fused ranking over ``collection_names``, grouped per collection (Qdrant only)."""
+        from ..qdrant.config import reads_qdrant
+
+        if not reads_qdrant():
+            return await super().search_grouped(query, collection_names, groups, group_size)
+        return await asyncio.to_thread(self._search_grouped_sync, query, collection_names, groups, group_size)
+
+    def _search_grouped_sync(
+        self, query: str, collection_names: list[str], groups: int, group_size: int
+    ) -> list[tuple[str, list[Chunk]]]:
+        from ..qdrant import retrieval as qdrant_retrieval
+
+        self._ensure_initialized()
+        lexical_text = self._bm25_text(query) if self.hybrid_search else ""
+        grouped = qdrant_retrieval.search_grouped(
+            collection_names,
+            vector=self._embed_query_cached(query),
+            lexical_text=lexical_text,
+            groups=groups,
+            group_size=group_size,
+            identity=self._identity(),
+        )
+        return [(scope, [self._chunk_from_hit(hit) for hit in hits]) for scope, hits in grouped]
+
+    def _qdrant_lexical_inputs(self, query: str, collection_name: str) -> tuple[str, list[str]]:
+        """The BM25 query text and the selective exact terms; fails open to dense-only parts."""
+        from .hybrid import extract_exact_terms
+        from .hybrid import selective_terms
+
+        lexical_text = self._bm25_text(query)
+        terms = extract_exact_terms(query) if extract_exact_terms is not None else []
+        if not terms:
+            return lexical_text, []
+        try:
+            from ..qdrant import retrieval as qdrant_retrieval
+
+            total, frequencies = qdrant_retrieval.term_frequencies(collection_name, terms)
+            return lexical_text, selective_terms(frequencies, total)
+        except Exception as e:  # noqa: BLE001 - same fail-open as the Chroma path's pricing
+            logger.warning("Exact-term frequencies unavailable (%s); keeping all terms", e)
+            return lexical_text, terms
+
+    @staticmethod
+    def _bm25_text(query: str) -> str:
+        """The BM25 query: the question plus the EN->DE glossary terms the German mirror was given."""
+        try:
+            from aiq_agent.common.query_expansion import expansion_terms
+
+            return " ".join([query, *expansion_terms(query)])
+        except Exception:  # noqa: BLE001 - the glossary widens recall, it never gates a search
+            logger.debug("Query expansion unavailable for the BM25 channel", exc_info=True)
+            return query
+
+    def _chunk_from_hit(self, hit: Any) -> Chunk:
+        """A Qdrant hit as a Chunk, through the same ``normalize`` every Chroma hit takes.
+
+        ``normalize`` reads the store's ``exp(-distance)`` scale and recovers the
+        cosine from it, so the hit's true cosine is handed over on that scale.
+        """
+        from llama_index.core.schema import NodeWithScore
+        from llama_index.core.schema import TextNode
+
+        from ..qdrant.payload import chunk_metadata
+
+        node = TextNode(text=hit.text, id_=hit.chunk_id, metadata=chunk_metadata(hit.payload))
+        return self.normalize(NodeWithScore(node=node, score=math.exp(-(1.0 - float(hit.cosine)))))
 
     def _selective_exact_terms(self, collection, collection_name: str, terms: list[str]) -> list[str]:
         """Keep the exact terms whose document frequency leaves them worth retrieving.
@@ -6514,7 +6675,13 @@ class LlamaIndexRetriever(BaseRetriever):
             )
 
     async def health_check(self) -> bool:
-        """Check if ChromaDB is accessible."""
+        """Check that the vector store this retriever reads is reachable."""
+        from ..qdrant.config import reads_qdrant
+
+        if reads_qdrant():
+            from ..qdrant import retrieval as qdrant_retrieval
+
+            return await asyncio.to_thread(qdrant_retrieval.healthy)
         try:
             if self._chroma_client:
                 self._chroma_client.heartbeat()

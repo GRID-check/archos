@@ -76,3 +76,17 @@ export function langfuseStackConfig(): Record<string, string> {
     "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
   };
 }
+
+/**
+ * Qdrant (ADR-0103) on top of {@link baseStackConfig}: the tier and its three
+ * credentials, each distinct from the others and from every SeaweedFS secret,
+ * which `loadConfig` checks.
+ */
+export function qdrantStackConfig(): Record<string, string> {
+  return {
+    "grid-oib:qdrantEnabled": "true",
+    "grid-oib:qdrantApiKey": "qd-rw", // pragma: allowlist secret
+    "grid-oib:qdrantReadOnlyApiKey": "qd-ro", // pragma: allowlist secret
+    "grid-oib:qdrantS3SecretKey": "qd-s3", // pragma: allowlist secret
+  };
+}

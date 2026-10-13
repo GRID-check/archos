@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { GridConfig } from "../config";
-import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT } from "../constants";
+import { APP_DEFAULTS, KEDA_SCALER_ROLE, LANGFUSE, PORT, QDRANT } from "../constants";
 import type { Postgres } from "../data/postgres";
 import { FRONTEND_DRAIN_SECONDS, secretChecksum } from "../platform/rollout";
 import { frontendLangfuseEnv, LANGFUSE_SECRETS_NAME, LANGFUSE_SECRET_KEYS } from "../platform/langfuse";
@@ -19,6 +19,8 @@ export interface AppWiring {
   chromaUrl: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
+  /** Qdrant URL (set when cfg.qdrant.enabled, ADR-0103). */
+  qdrantUrl?: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
   dsn: Postgres["dsn"];
   /**
@@ -196,6 +198,10 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
+    // The read-write key (ADR-0103): the ingest tier writes, and the backend
+    // tiers share one env. Only while the tier is deployed, so a stack with
+    // Qdrant off keeps its checksum and rolls nothing.
+    ...(cfg.qdrant.enabled ? { AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey } : {}),
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -411,7 +417,34 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
   // The shared Chroma server. There is no embedded store to fall back to: it
   // would live on a disk the pod loses at every restart.
   env.push({ name: "AIQ_CHROMA_URL", value: w.chromaUrl });
+  env.push(...backendQdrantEnv(w));
   return env;
+}
+
+/**
+ * Qdrant beside Chroma (ADR-0103), and which of the two the backend uses:
+ * `AIQ_VECTOR_BACKEND` is `chroma`, `dual` (ingest writes both, reads Chroma)
+ * or `qdrant`. Nothing while the tier is off, so every pod template of an
+ * existing stack stays byte for byte what it was until the operator turns it on.
+ */
+function backendQdrantEnv(w: AppWiring): EnvVar[] {
+  if (!w.cfg.qdrant.enabled) return [];
+  if (w.qdrantUrl === undefined) {
+    throw new Error("cfg.qdrant.enabled but AppWiring.qdrantUrl is unset: index.ts must pass the installed Qdrant's url.");
+  }
+  return [
+    { name: "AIQ_QDRANT_URL", value: w.qdrantUrl },
+    sref("AIQ_QDRANT_API_KEY"),
+    { name: "AIQ_VECTOR_BACKEND", value: w.cfg.vectorBackend },
+    // Left at 1 and 1 on a cluster, every collection would sit on one peer and
+    // die with it: the shape the three peers exist to avoid.
+    ...(w.cfg.qdrant.replicas > 1
+      ? [
+          { name: "AIQ_QDRANT_SHARD_NUMBER", value: String(QDRANT.tenantShards) },
+          { name: "AIQ_QDRANT_REPLICATION_FACTOR", value: String(QDRANT.tenantReplicationFactor) },
+        ]
+      : []),
+  ];
 }
 
 /**

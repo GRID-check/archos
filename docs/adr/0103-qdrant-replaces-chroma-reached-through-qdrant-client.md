@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-13
 decision-makers:
 consulted:
@@ -83,9 +83,11 @@ Before acceptance: the spike gates G1–G6 in the design doc §10 pass, with the
 answer-suite reports attached to the PR.
 
 After acceptance:
-* An import-linter contract allows `qdrant_client` only under
-  `knowledge_layer/qdrant/`, and allows `chromadb` nowhere once step 5 of the
-  rollout lands.
+* `sources/knowledge_layer/tests/test_qdrant_import_boundary.py` allows
+  `qdrant_client` only under `knowledge_layer/qdrant/`. Extending it to forbid
+  `chromadb` everywhere is part of step 5 of the rollout, which removes Chroma.
+* The Qdrant tests run against `qdrant/qdrant:v1.19.2` as a CI service
+  container and fail, rather than skip, when it is missing on CI.
 * `task be:eval:answer-suite` runs before and after every retrieval change, as
   AGENTS.md already requires.
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import * as pulumi from "@pulumi/pulumi";
 import { loadConfig } from "./config";
-import { baseStackConfig } from "./test-support/stack-config";
+import { baseStackConfig, qdrantStackConfig } from "./test-support/stack-config";
 
 // `new pulumi.Config()` (config.ts:873) namespaces every key by the PROJECT
 // name, which the runtime reads from the mock context. Without this the keys
@@ -102,6 +102,79 @@ describe("the backend's vector store", () => {
 
   it("accepts the shared Chroma server", () => {
     expect(loadWith({ "grid-oib:chromaEnabled": "true" })).toBeNull();
+  });
+});
+
+describe("Qdrant and the vector backend (ADR-0103)", () => {
+  it("leaves an existing stack on Chroma with no Qdrant", () => {
+    pulumi.runtime.setAllConfig(baseStackConfig());
+    const cfg = loadConfig();
+    expect(cfg.qdrant.enabled).toBe(false);
+    expect(cfg.vectorBackend).toBe("chroma");
+  });
+
+  it("defaults the cluster to the design's shape", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig() });
+    const cfg = loadConfig();
+    expect(cfg.qdrant).toMatchObject({
+      image: "qdrant/qdrant:v1.19.2",
+      replicas: 3,
+      cpu: "4",
+      memory: "16Gi",
+      storageSize: "100Gi",
+      snapshots: { schedule: "30 1 * * *", retentionDays: 7, s3AccessKey: "grid-qdrant" },
+    });
+  });
+
+  it.each(["dual", "qdrant"])("accepts vectorBackend=%s with Qdrant deployed", (backend) => {
+    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:vectorBackend": backend })).toBeNull();
+  });
+
+  // The backend would be pointed at a store this stack does not run.
+  it.each(["dual", "qdrant"])("refuses vectorBackend=%s without Qdrant", (backend) => {
+    const error = loadWith({ "grid-oib:vectorBackend": backend });
+    expect(error?.message).toMatch(new RegExp(`vectorBackend=${backend} needs grid-oib:qdrantEnabled=true`));
+  });
+
+  it("refuses a vectorBackend the backend does not know", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:vectorBackend": "pgvector" });
+    expect(error?.message).toMatch(/vectorBackend must be one of chroma, dual, qdrant/);
+  });
+
+  // Open-source Qdrant answers anyone without a key.
+  it("names every missing credential at once", () => {
+    const error = loadWith({ "grid-oib:qdrantEnabled": "true" });
+    expect(error?.message).toMatch(
+      /grid-oib:qdrantApiKey, grid-oib:qdrantReadOnlyApiKey, grid-oib:qdrantS3SecretKey are required/,
+    );
+  });
+
+  it("refuses a read-only key equal to the read-write key", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReadOnlyApiKey": "qd-rw" });
+    expect(error?.message).toMatch(/qdrantReadOnlyApiKey must differ from grid-oib:qdrantApiKey/);
+  });
+
+  it("refuses a snapshot S3 secret shared with another identity", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantS3SecretKey": "s3-secret" });
+    expect(error?.message).toMatch(/qdrantS3SecretKey must differ from grid-oib:seaweedfsSecretKey/);
+  });
+
+  // Two voters lose quorum when either fails.
+  it("refuses two replicas and accepts one", () => {
+    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "2" })?.message).toMatch(
+      /qdrantReplicas=2 is refused/,
+    );
+    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "1" })).toBeNull();
+  });
+
+  it("refuses a snapshot schedule that is not 5-field cron", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantSnapshotSchedule": "0 30 1 * * *" });
+    expect(error?.message).toMatch(/qdrantSnapshotSchedule must be a 5-field cron/);
+  });
+
+  it("refuses a tenant prefix that would cover the snapshot bucket", () => {
+    const error = loadWith({ "grid-oib:seaweedfsTenantBucketPrefix": "qdrant-" });
+    expect(error?.message).toMatch(/is a prefix of the platform bucket "qdrant-snapshots"/);
   });
 });
 

@@ -2558,6 +2558,11 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                 try:
                     search_input["round"] = span_round
                     search_input["tool"] = "knowledge_search"
+                    # Which store answered (ADR-0103): during the move a trace
+                    # from Chroma and one from Qdrant must be told apart.
+                    from .qdrant.config import vector_backend
+
+                    search_input["vector_backend"] = vector_backend()
                     search_input["normalized_query"] = _normalized_query_for_span(query)
                     if file_name:
                         search_input["file_name"] = file_name

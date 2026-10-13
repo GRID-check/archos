@@ -16,6 +16,12 @@
 
 /** Container UIDs baked into the images (verified against the Dockerfiles). */
 export const UID = {
+  /**
+   * Qdrant. The standard `qdrant/qdrant` image is built with `USER_ID=0` and
+   * would run as root; `qdrant-helm` runs it as 1000 and so do we. Everything
+   * it writes is on the data PVC (owned via `fsGroup`) or an emptyDir.
+   */
+  qdrant: 1000,
   /** Backend image (`deploy/Dockerfile`): `USER 1000:1000`. */
   backend: 1000,
   /** Frontend image (`frontends/ui/deploy/Dockerfile`): user `nextjs` = 1001. */
@@ -63,6 +69,16 @@ export const PORT = {
   clickhouseNative: 9000,
   /** Gotenberg API (office → PDF, ADR-0070). Upstream default. */
   gotenberg: 3000,
+  /** Qdrant REST API: clients, probes and the snapshot CronJob. Upstream default. */
+  qdrantHttp: 6333,
+  /** Qdrant gRPC API, which `qdrant-client` prefers (`prefer_grpc`). Upstream default. */
+  qdrantGrpc: 6334,
+  /**
+   * Qdrant peer-to-peer (Raft consensus, shard transfer, forwarded requests).
+   * Only the Qdrant pods themselves may dial it: `qdrant-peers` in
+   * `network-policies.ts`.
+   */
+  qdrantP2p: 6335,
 } as const;
 
 /**
@@ -623,4 +639,55 @@ export const POSTGRES_DIRECT_RESERVE = {
    * keeps its namespace in Postgres.
    */
   filerPerReplica: 40,
+} as const;
+
+/**
+ * Qdrant (ADR-0103) — the fixed parts of the vector store that replaces Chroma.
+ *
+ * What is a knob (`config.ts` → `qdrant`): the image, the replica count, the
+ * envelope, the volume size, the snapshot schedule and retention, and every
+ * credential. What is here: the names that the StatefulSet, the Services, the
+ * NetworkPolicies, the S3 identity catalogue and the snapshot CronJob must all
+ * agree on. `docs/architecture/qdrant-retrieval-design.md` §9 has the reasoning.
+ */
+export const QDRANT = {
+  /** StatefulSet, ClusterIP Service and `app.kubernetes.io/name`. */
+  name: "qdrant",
+  /**
+   * Headless governing Service. Peers address each other as
+   * `qdrant-<n>.qdrant-headless.<ns>` for cluster bootstrap, and the snapshot
+   * CronJob reaches every peer by the same name.
+   */
+  headless: "qdrant-headless",
+  /** The Secret the pods and the snapshot CronJob read their keys from. */
+  secret: "qdrant-credentials", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+  /** CronJob name and `app.kubernetes.io/name` of its pods. */
+  snapshotJob: "qdrant-snapshot",
+  /**
+   * The SeaweedFS bucket shard snapshots are uploaded to (`snapshots_config`
+   * s3). A platform bucket: the init Job creates it, and it is withheld from
+   * the general-purpose `grid` identity like the Langfuse one.
+   */
+  snapshotBucket: "qdrant-snapshots",
+  /**
+   * Dedicated S3 identity: object CRUD on `snapshotBucket` and nothing else
+   * (`s3IdentityCatalog`). Qdrant needs List and Delete as well as Write, to
+   * list and expire its own snapshots.
+   */
+  s3Identity: "grid-qdrant",
+  /**
+   * Shards and replicas of the tenant collection on a cluster, fixed when the
+   * backend creates it (`AIQ_QDRANT_SHARD_NUMBER`, `AIQ_QDRANT_REPLICATION_FACTOR`).
+   * Open-source Qdrant cannot reshard, so 6 fits 1, 2, 3 and 6 nodes; RF 2
+   * survives a peer lost. One peer gets the backend's own default of 1 and 1.
+   */
+  tenantShards: 6,
+  tenantReplicationFactor: 2,
+  /** Any value satisfies SeaweedFS; the SigV4 signature only needs one to be set. */
+  s3Region: "us-east-1",
+  /**
+   * The snapshot CronJob's image. Pinned: `curlimages/curl` is Alpine with
+   * busybox `sh`, `sed` and `date`, which is all the script uses.
+   */
+  curlImage: "curlimages/curl:8.16.0",
 } as const;

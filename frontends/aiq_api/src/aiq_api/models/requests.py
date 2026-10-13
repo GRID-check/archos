@@ -205,6 +205,22 @@ class DocumentSearchRequest(BaseModel):
     )
 
 
+class GroupedDocumentSearchRequest(BaseModel):
+    """Request body for one semantic search across many collections, grouped per collection.
+
+    The cross-project lookup's single call (ADR-0094, ADR-0104): every
+    reachable project's collections are ranked in ONE query, so hits from
+    different projects are ordered by one fused ranking instead of by scores
+    from separate indexes.
+    """
+
+    query: str = Field(..., min_length=1, max_length=1000, description="Natural-language search query")
+    collections: list[str] = Field(..., min_length=1, max_length=500, description="Collections to rank together")
+    groups: int = Field(20, ge=1, le=200, description="Max collections in the answer, best first")
+    files_per_group: int = Field(3, ge=1, le=20, description="Max documents per collection")
+    snippet_max_chars: int = Field(300, ge=100, le=1500, description="Max characters of each document's snippet")
+
+
 class DocumentSearchHit(BaseModel):
     """One document-centric search hit (a file's best-matching chunk)."""
 

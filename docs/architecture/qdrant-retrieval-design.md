@@ -1,11 +1,13 @@
 # Retrieval on Qdrant, from first principles
 
-Status: **proposal, 2026-10-13.** Nothing here is built. The two decisions it
-rests on are [ADR-0103](../adr/0103-qdrant-replaces-chroma-reached-through-qdrant-client.md)
+Status: **accepted 2026-10-13; slice 1 built, behind `AIQ_VECTOR_BACKEND`
+(default `chroma`).** The two decisions it rests on are
+[ADR-0103](../adr/0103-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
 [ADR-0104](../adr/0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
-(scope as a filter, not a collection). Both are `proposed` until the spike in
-§10 clears its gates.
+(scope as a filter, not a collection). What is built, and where it departs
+from the target below, is §12. The gates in §10 are what the flag flip to
+`qdrant` waits on in each environment.
 
 This is not a port. A port would copy today's collection-per-scope layout into
 Qdrant and keep every workaround that layout made necessary. Instead, this doc
@@ -485,3 +487,56 @@ Rollout, each step behind a flag:
 
 The cross-project BFF loop is rewritten on the new `cross_project` pipeline in
 step 4. Its API to the agent tool (`project_lookup`) does not change.
+
+## 12. Build status
+
+### Built in slice 1
+
+| Part | Where |
+|---|---|
+| The store: two collections behind aliases, dense + German BM25, TurboQuant, strict mode, payload indexes created before data | `sources/knowledge_layer/src/qdrant/schema.py`, `store.py` |
+| Every read filter from one function, refusing an empty scope | `qdrant/scope.py` |
+| Hybrid search in one Query API call (dense, BM25 with per-scope IDF, exact-term phrase channels, RRF k=60) and the true cosine per hit | `qdrant/search.py` — `hybrid_search` |
+| Retrieval, exact search (`find_text`) and the health check reading Qdrant under `AIQ_VECTOR_BACKEND=qdrant`; the chunk contract unchanged | `llamaindex/adapter.py` — `_qdrant_chunks`, `_find_text_sync`, `health_check` |
+| Every Chroma write mirrored (insert, retire, discard, delete file, delete collection), vectors copied, never re-embedded | `qdrant/mirror.py`, wired beside each Postgres text-mirror call in the adapter |
+| Person-set facts (tags, topics, Dokumentart, Fassung, folder) mirrored onto points when they change | `aiq_agent/knowledge/factory.py` — `_mirror_facts` |
+| Backfill with `--prune`, `--verify`, `--facts-only`, `--dry-run` | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` |
+| Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
+| Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
+| Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
+
+### Where slice 1 departs from the target, and why
+
+* **Scopes are still logical collection names.** `scope` is the old
+  collection name (`proj_…`, `<proj>_r…`, `s_…`), so the BFF contract, the
+  signed envelope and restricted-folder placement (ADR-0087) are unchanged.
+  `office_id`, `project_id` and `grid_document_id` are on every point written
+  through ingestion, but the backfill only knows the ones a collection name
+  carries (the Büroablage's office). Moving the envelope to ids, and
+  restriction to a `restriction_id` field, is slice 2.
+* **Chroma stays the write-side record.** Its ids decide version retirement
+  and partial-attempt cleanup, so Qdrant mirrors it and point ids are the
+  Chroma chunk ids (which also keeps citations and `already_read` digests
+  valid). Deterministic `UUIDv5(document_version_id, ordinal)` ids arrive with
+  the slice that removes Chroma.
+* **Registry reads stay on Chroma.** File listings, text samples, visual
+  details and page reads still read Chroma, which still holds everything.
+* **Post-filters stay.** `doc_class`, title, folder and tag filters in
+  `register.py` and the BFF still run after retrieval; the facts are now on the
+  points, so pushing them into the search is a change to the callers, not to
+  the store.
+* **One API key.** The read-only key is configured on the server and not yet
+  used by the backend (ADR-0104, Confirmation).
+* **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
+  BM25 and phrase matching cover it; the Chroma path still reads it.
+
+### Next
+
+1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
+   `scripts/backfill_qdrant.py --prune --verify` until every collection is in
+   step, run the gates in §10, then `vectorBackend=qdrant`.
+2. Slice 2: ids in the envelope, `restriction_id`, pre-filters instead of
+   post-filters, project facts on points for cross-project filters and boosts.
+3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads
+   from Postgres and Qdrant, Chroma, the `$contains` channel and the text
+   mirror removed.

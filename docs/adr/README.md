@@ -135,7 +135,7 @@ Consequences, where a reader looks for them.
 | [0069](0069-the-answer-is-markdown-and-a-card-must-earn-its-place.md) | The answer is Markdown, drawn richly, and a card must carry what Markdown cannot | Accepted |
 | [0070](0070-office-files-are-viewed-through-a-pdf-rendition.md) | Office files are viewed through a PDF rendition that Gotenberg makes | Accepted |
 | [0071](0071-word-and-presentation-files-are-indexed-from-their-rendition.md) | Word and presentation files are indexed from their PDF rendition | Accepted |
-| [0072](0072-the-knowledge-layer-has-one-backend-llamaindex.md) | The knowledge layer has one backend: llamaindex | Accepted |
+| [0072](0072-the-knowledge-layer-has-one-backend-llamaindex.md) | The knowledge layer has one backend: llamaindex | Superseded by ADR-0103 |
 | [0073](0073-a-coverage-gap-is-stated-never-enforced.md) | A coverage gap is stated in the block, never enforced on the pool | Accepted |
 | [0074](0074-zero-data-retention-is-the-default-enforced-at-one-seam.md) | Zero data retention is the default, enforced at one OpenRouter seam | Accepted |
 | [0076](0076-ingestion-is-claimed-fairly-from-a-durable-queue.md) | Ingestion is claimed fairly from a durable queue, by a tier that scales on its depth | Proposed |
@@ -165,8 +165,8 @@ Consequences, where a reader looks for them.
 | [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 | [0102](0102-file-workspaces-load-a-folder-level-by-pages.md) | File workspaces load a folder level by pages | Proposed |
-| [0103](0103-qdrant-replaces-chroma-reached-through-qdrant-client.md) | Qdrant replaces Chroma as the vector store, reached through qdrant-client | Proposed |
-| [0104](0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Proposed |
+| [0103](0103-qdrant-replaces-chroma-reached-through-qdrant-client.md) | Qdrant replaces Chroma as the vector store, reached through qdrant-client | Accepted |
+| [0104](0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Accepted |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

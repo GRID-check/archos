@@ -302,6 +302,25 @@ describe("the program constructs in the split topology", () => {
     });
   });
 
+  it("deploys no Qdrant and changes no backend env while qdrantEnabled is off (ADR-0103)", () => {
+    // Off by default so an existing stack plans no change: a new env var on the
+    // backend tiers would roll every one of them for a store nobody uses yet.
+    const qdrantNamed = RESOURCES.filter((r) => r.name.startsWith("qdrant"));
+    expect(qdrantNamed.map((r) => `${r.type}/${r.name}`)).toEqual([]);
+    for (const [type, name] of [
+      ["kubernetes:apps/v1:StatefulSet", "aiq-agent"],
+      ["kubernetes:apps/v1:Deployment", "aiq-api"],
+      ["kubernetes:apps/v1:Deployment", "agent-worker"],
+      ["kubernetes:apps/v1:Deployment", "ingest-worker"],
+    ]) {
+      const env = RESOURCES.find((r) => r.type === type && r.name === name)?.inputs.spec?.template?.spec.containers[0].env;
+      const names = (env ?? []).map((e) => e.name);
+      expect(names, name).not.toContain("AIQ_QDRANT_URL");
+      expect(names, name).not.toContain("AIQ_QDRANT_API_KEY");
+      expect(names, name).not.toContain("AIQ_VECTOR_BACKEND");
+    }
+  });
+
   it("keeps the S3 endpoint on the name the app tier already uses", () => {
     // A rename here silently removes the `allow-edge-to-seaweedfs` NetworkPolicy
     // from the pods that serve S3, and breaks `SEAWEED_ENDPOINT` for every tier.

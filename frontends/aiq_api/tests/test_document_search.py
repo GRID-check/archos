@@ -348,3 +348,93 @@ async def test_search_anonymous_mode_no_scope_allowed(app, monkeypatch):
 
     assert res.status_code == 200
     assert [h["file_name"] for h in res.json()["hits"]] == ["plan.pdf"]
+
+
+# --- One search across many collections (ADR-0094, ADR-0104) -----------------
+
+
+def _grouped_retriever(groups: list[tuple[str, list[Chunk]]]) -> MagicMock:
+    retriever = MagicMock()
+    retriever.backend_name = "test"
+    retriever.search_grouped = AsyncMock(return_value=groups)
+    return retriever
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_keeps_the_fused_order_not_the_scores(app):
+    """Best collection first, its best documents first, whatever each document's cosine."""
+    retriever = _grouped_retriever(
+        [
+            ("proj_b", [_chunk("b1.pdf", 0.40, collection="proj_b"), _chunk("b1.pdf", 0.30, collection="proj_b")]),
+            ("proj_a", [_chunk("a1.pdf", 0.90), _chunk("a2.pdf", 0.80)]),
+        ]
+    )
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "Fluchttreppe", "collections": ["proj_a", "proj_b", "proj_a"], "files_per_group": 2},
+        )
+
+    assert res.status_code == 200
+    assert [(h["collection"], h["file_name"]) for h in res.json()["hits"]] == [
+        ("proj_b", "b1.pdf"),
+        ("proj_a", "a1.pdf"),
+        ("proj_a", "a2.pdf"),
+    ]
+    args = retriever.search_grouped.await_args
+    assert args.args[1] == ["proj_a", "proj_b"]  # de-duplicated, order kept
+    assert args.kwargs["group_size"] == 2 * 3
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_rejects_any_collection_outside_the_signed_scope(app, monkeypatch):
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a", "proj_victim"]},
+            headers=_scope_headers(["proj_a"], secret="s3cr3t"),
+        )
+
+    assert res.status_code == 404
+    retriever.search_grouped.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_needs_a_signed_scope_under_auth(app, monkeypatch):
+    monkeypatch.setenv("REQUIRE_AUTH", "true")
+    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
+    set_active_retriever(_grouped_retriever([]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert res.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_409_when_the_backend_cannot_rank_across_collections(app):
+    """The BFF reads 409 as "search collection by collection" (Chroma)."""
+    retriever = MagicMock()
+    retriever.backend_name = "test"
+    retriever.search_grouped = AsyncMock(side_effect=NotImplementedError("chroma cannot"))
+    set_active_retriever(retriever)
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert res.status_code == 409
+
+
+@pytest.mark.asyncio
+async def test_single_collection_search_is_not_shadowed_by_the_grouped_route(app):
+    set_active_retriever(_make_retriever([_chunk("plan.pdf", 0.9)]))
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search/search", json={"query": "q"})
+    assert res.status_code == 200

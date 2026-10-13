@@ -286,6 +286,28 @@ export const ROLLOUT = {
     endpointDrainSeconds: 0,
   },
 
+  /**
+   * Qdrant (ADR-0103). Its own profile because the store is a Raft cluster
+   * rather than one process:
+   *
+   * - **120 s grace**: Qdrant flushes its WAL and segments on SIGTERM; a
+   *   SIGKILL mid-flush costs a WAL replay at the next start, on every pod of
+   *   every rollout.
+   * - **30 s soak**: `/readyz` turns green once the peer has caught up with
+   *   consensus. The soak keeps the controller from restarting the next peer
+   *   while the one before it is still settling, so a rollout never takes two
+   *   of three voters down together.
+   * - **5 s endpoint drain**: the ClusterIP Service is how every client
+   *   connects, so the pod keeps serving while it leaves the EndpointSlice
+   *   (the `qdrant-helm` chart sleeps 3 s for the same reason).
+   */
+  vectorStore: {
+    minReadySeconds: 30,
+    progressDeadlineSeconds: 1800,
+    terminationGracePeriodSeconds: 120,
+    endpointDrainSeconds: 5,
+  },
+
   /** Observability tier (the OTel Collector) — stateless, single replica. */
   observability: {
     minReadySeconds: 10,
