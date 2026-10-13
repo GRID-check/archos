@@ -203,7 +203,9 @@ def chroma_server(chroma_dir, tmp_path):
     log_path = tmp_path / "chroma-server.log"
     log = log_path.open("wb")
     process = subprocess.Popen(
-        [str(chroma_cli), "run", "--path", str(persist), "--port", str(port)],
+        # Bind the address the test polls: `localhost`, the default, is ::1 on
+        # the CI runner, where polling 127.0.0.1 never connected.
+        [str(chroma_cli), "run", "--path", str(persist), "--host", "127.0.0.1", "--port", str(port)],
         stdout=log,
         stderr=subprocess.STDOUT,
     )

@@ -63,6 +63,7 @@ export const knowledge: typeof en.knowledge = {
     copyQuote: 'Als Zitat kopieren',
     quoteCopied: 'Zitat kopiert',
     copyFailed: 'Kopieren nicht möglich',
+    findSimilar: 'Ähnliche Stellen',
     zoomIn: 'Vergrößern',
     zoomOut: 'Verkleinern',
     zoomFitted: 'Zoom {percent} %, eingepasst',
@@ -95,6 +96,32 @@ export const knowledge: typeof en.knowledge = {
     passwordLabel: 'Kennwort',
     passwordSubmit: 'Dokument öffnen',
     passwordIncorrect: 'Das Kennwort stimmt nicht.',
+  },
+  // „Ähnliche Stellen": wo das Büro Ähnliches geschrieben hat, neben dem Dokument.
+  // Durchsucht wird nur, was die Leserin lesen darf; ein gesperrtes Dokument
+  // erscheint nie, auch nicht ihr eigener Upload in Prüfung.
+  similar: {
+    title: 'Ähnliche Stellen',
+    forPassage: 'Ähnliche Stellen zu dieser Fundstelle suchen',
+    close: 'Ähnliche Stellen schließen',
+    source: 'Ausgangsstelle',
+    backToSource: 'Zurück zur Ausgangsstelle',
+    scope: 'Aus diesem Projekt, anderen Projekten und der Büroablage, soweit Sie sie lesen dürfen.',
+    loading: 'Ähnliche Stellen werden gesucht…',
+    emptyTitle: 'Keine ähnlichen Stellen gefunden',
+    emptyBody:
+      'Durchsucht wurden dieses Projekt, {count, plural, one {# weiteres Projekt} other {# weitere Projekte}} und die Büroablage.',
+    failedTitle: 'Die Suche ist fehlgeschlagen',
+    failedBody: 'Ähnliche Stellen lassen sich gerade nicht suchen.',
+    heldTitle: 'Dieses Dokument wird noch geprüft',
+    heldBody: 'Ähnliche Stellen gibt es, sobald die Prüfung des Dokuments abgeschlossen ist.',
+    retry: 'Erneut versuchen',
+    groupCurrent: 'Dieses Projekt',
+    groupArchiv: 'Büroablage',
+    standDate: 'Stand {date}',
+    superseded: 'Ältere Fassung',
+    openPassage: '{document}, Seite {page} öffnen',
+    openPassageNoPage: '{document} öffnen',
   },
   // Der RIS-Leser: eine Rechtsquelle wird IN Piloti gelesen statt im Browser-Tab.
   risViewer: {

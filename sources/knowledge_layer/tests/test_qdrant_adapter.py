@@ -684,3 +684,22 @@ def test_clearing_many_dokumentarten_restores_them_in_one_batch(retriever, metad
 
     assert calls["batch_update_points"] == 2  # the facts, then every restore together
     assert store.count("proj_a", {"doc_class": "einreichplan"}) == 4
+
+
+# ---------------------------------------------------------------- the query vector for a caller
+
+
+def test_embed_query_initializes_without_reaching_any_store(monkeypatch):
+    """„Ähnliche Stellen“ embeds the selected sentence first: that needs the embedder, never a vector store."""
+
+    class Embedder:
+        def get_query_embedding(self, text: str) -> list[float]:
+            return _vector(text)
+
+    monkeypatch.delenv("AIQ_QDRANT_URL", raising=False)
+    monkeypatch.setattr(adapter_module, "make_embed_model", lambda **kwargs: Embedder())
+    monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("embedding reached the store"))
+    instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
+
+    assert instance.embed_query("Brandwand zwischen Reihenhäusern") == _vector("Brandwand zwischen Reihenhäusern")
+    assert instance.embedding_identity() == instance._identity() != {}

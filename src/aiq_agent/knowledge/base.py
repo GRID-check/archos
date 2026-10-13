@@ -281,6 +281,19 @@ class BaseRetriever(ABC):
         """
         raise NotImplementedError(f"{self.backend_name} cannot rank across collections in one query")
 
+    def embed_query(self, text: str) -> list[float]:
+        """The query vector the production embedder gives ``text``, through the retriever's own cache.
+
+        For a caller that queries the store with a vector of its own: similar
+        passages for a selected sentence. Blocking (one remote round trip on a
+        cache miss). A backend that embeds no queries raises.
+        """
+        raise NotImplementedError(f"{self.backend_name} embeds no queries for a caller")
+
+    def embedding_identity(self) -> dict[str, str]:
+        """The embedder :meth:`embed_query` uses, as the store records it on a collection; empty when unknown."""
+        return {}
+
     async def find_text(
         self,
         collection_name: str,

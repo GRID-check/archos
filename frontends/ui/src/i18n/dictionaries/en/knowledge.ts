@@ -61,6 +61,7 @@ export const knowledge = {
     copyQuote: 'Copy as citation',
     quoteCopied: 'Citation copied',
     copyFailed: 'Could not copy',
+    findSimilar: 'Similar passages',
     zoomIn: 'Zoom in',
     zoomOut: 'Zoom out',
     zoomFitted: 'Zoom {percent}%, fitted',
@@ -93,6 +94,30 @@ export const knowledge = {
     passwordLabel: 'Password',
     passwordSubmit: 'Open document',
     passwordIncorrect: 'That password is not correct.',
+  },
+  // "Similar passages": where the office wrote something like this, beside the document.
+  similar: {
+    title: 'Similar passages',
+    forPassage: 'Find passages similar to this one',
+    close: 'Close similar passages',
+    source: 'Searched from',
+    backToSource: 'Back to the starting passage',
+    scope: 'From this project, other projects and the Büroablage, as far as you may read them.',
+    loading: 'Searching for similar passages…',
+    emptyTitle: 'No similar passages found',
+    emptyBody:
+      'Searched this project, {count, plural, one {# other project} other {# other projects}} and the Büroablage.',
+    failedTitle: 'The search failed',
+    failedBody: 'Similar passages cannot be searched right now.',
+    heldTitle: 'This document is still being screened',
+    heldBody: 'Similar passages are available once the document has passed screening.',
+    retry: 'Try again',
+    groupCurrent: 'This project',
+    groupArchiv: 'Büroablage',
+    standDate: 'Dated {date}',
+    superseded: 'Older Fassung',
+    openPassage: 'Open {document}, page {page}',
+    openPassageNoPage: 'Open {document}',
   },
   // The RIS reader: a legal source read INSIDE Piloti, not in a browser tab.
   risViewer: {

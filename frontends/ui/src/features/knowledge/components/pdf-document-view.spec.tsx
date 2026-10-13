@@ -519,6 +519,36 @@ describe('PdfDocumentView', () => {
     expect(screen.queryByTestId('pdf-quote-bar')).toBeNull()
   })
 
+  /**
+   * „Ähnliche Stellen" on a selection: the words and the page go to whoever
+   * opened the viewer, which decides who may be searched. The Files pane cites
+   * nothing, so it gets this offer alone, without the copy beside it.
+   */
+  it('offers similar passages for a selection, with its words and page, and no citation where none is built', async () => {
+    const onFindSimilar = vi.fn()
+    state.pages = [{ items: [] }, { items: [run('Die Frist betraegt vier Wochen', 700, 180)] }]
+
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" onFindSimilar={onFindSimilar} />)
+    const layer = (await screen.findAllByTestId('pdf-text-layer'))[1]!
+    selectWithin(layer)
+    fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+    fireEvent.click(await screen.findByTestId('pdf-find-similar'))
+
+    expect(onFindSimilar).toHaveBeenCalledWith({ text: 'Die Frist betraegt vier Wochen', page: 2 })
+    expect(screen.getByRole('button', { name: /Similar passages/ })).toBeTruthy()
+    expect(screen.queryByText('Copy as citation')).toBeNull()
+  })
+
+  it('does not offer similar passages for a few words, which say too little to find another like them', async () => {
+    state.pages = [{ items: [run('Frist', 700, 40)] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" onFindSimilar={vi.fn()} quoteFormat={(q) => q.text} />)
+    selectWithin(await screen.findByTestId('pdf-text-layer'))
+    fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+
+    expect(await screen.findByText('Copy as citation')).toBeTruthy()
+    expect(screen.queryByTestId('pdf-find-similar')).toBeNull()
+  })
+
   it('marks a cited region on its page, as shares of the page box (#433)', async () => {
     state.pages = [{ items: [] }, { items: [] }]
     render(
