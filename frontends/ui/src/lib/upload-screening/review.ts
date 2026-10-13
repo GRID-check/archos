@@ -17,7 +17,7 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { recordAuditEvent } from '@/lib/audit/service'
 import { filedInOf } from '@/lib/audit/document-names'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { requireFolderWrite } from '@/lib/authz/folder-access'
+import { canWriteFolder, requireFolderWrite } from '@/lib/authz/folder-access'
 import type { Document } from '@/lib/db/schema'
 import {
   findDocumentInOrg,
@@ -165,6 +165,35 @@ export async function requestQuarantineRelease(
     }))
   )
   return { id: doc.id, notified: reviewers.length }
+}
+
+export interface QuarantineReviewAccess {
+  /** This session may allow the held document (`releaseQuarantinedDocument`) or delete it. */
+  canReview: boolean
+  /** This session uploaded it and may not decide about it, so it may ask those who can (`requestQuarantineRelease`). */
+  canAskForReview: boolean
+}
+
+/**
+ * What this session may do about one held document, for the surface showing it
+ * (the Files preview): decide about it, ask for a decision, or neither.
+ *
+ * The same rules the two actions enforce, asked without acting: a reviewer
+ * (`mayReviewQuarantine`) who may also write the document's folder, as release
+ * requires (ADR-0088); otherwise its uploader. A document this session may not
+ * see is not found (`getAccessibleDocument`), and one that is not held answers
+ * no to both.
+ */
+export async function quarantineReviewAccess(
+  session: AuthorizedSession,
+  documentId: string
+): Promise<QuarantineReviewAccess> {
+  const doc = await getAccessibleDocument(session, documentId)
+  if (!isHeldAtRest(doc)) return { canReview: false, canAskForReview: false }
+  const canReview =
+    (await mayReviewQuarantine(session, doc)) &&
+    (doc.scope !== 'project' || !doc.projectId || (await canWriteFolder(session, doc.projectId, doc.folderId)))
+  return { canReview, canAskForReview: !canReview && doc.createdBy === session.userId }
 }
 
 export interface QuarantineQueueItem {

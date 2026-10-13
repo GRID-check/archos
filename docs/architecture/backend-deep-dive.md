@@ -944,10 +944,11 @@ Each segment becomes its **own chunk**: the rendered structured German text
 segment's scale. The full structured analysis rides on the chunk as
 `drawing_data` (JSON string, embed-excluded), so re-chunking or the detail
 view never needs the VLM again. The same descriptions
-are browsable by the user, second to the one-line summary: `get_document_visual_details`
+are browsable by the user, under the summary: `get_document_visual_details`
 reads the visual chunks back from Qdrant — each item now carrying `segment`
-and the parsed `structured` payload — and the file-preview pane's collapsible
-**"Detailed information"** section lazy-loads them (`GET /api/documents/{id}/visual-details`
+and the parsed `structured` payload — and the file-preview pane's
+**„Auf den Seiten"** section loads them with any document that has visual
+content (`page-readings.tsx`; `GET /api/documents/{id}/visual-details`
 → `GET /v1/collections/{c}/documents/{f}/visual-details`). Drawing chunks carry
 `content_type: "drawing"` in metadata (mapped to `ContentType.DRAWING` at
 retrieval by `normalize`), giving them their own citation format

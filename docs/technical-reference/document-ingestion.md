@@ -529,7 +529,7 @@ Two pollers read two different things.
 - Polls the backend JOB every 5 seconds through the BFF proxy: `GET /api/v1/documents/{jobId}/status` (`documentsClient.getJobStatus`), which reaches `GET /v1/documents/{job_id}/status` in `documents.py` and returns `IngestionJobStatus` with per-file progress
 - Maximum 420 poll attempts (~35 minutes)
 - Persists job state to localStorage for recovery on page refresh
-- Updates `TrackedFile` entries in the Zustand store from the job status
+- Updates `TrackedFile` entries in the Zustand store from the job status. A file the job ends `failed` with a `quarantined:{…}` error becomes `held`, not `failed` (`trackedStatusOfJobFile`), so the tray never offers to retry a file the content check held back (ADR-0086). A row settled by a document status read takes the status's read family instead (`trackedPatchFromStatus`): `quarantined` is `held`, `uploaded` and `stored` are `stored`, never `success`. The tray's states: [`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#the-rule)
 
 **Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/service.ts`)
 - Reads the `documents` row, reconciling an in-flight row first (see below)
@@ -568,6 +568,14 @@ row stops being vouched for by a heartbeat, and the status endpoint answers
 minutes old, which step 2 records like any other failure and re-ingest can
 retry ([python endpoints](../api/python-endpoints.md#ingestion)).
 
+A queued job whose payload the worker cannot read is retired dead, and its
+status fails with `unreadable_job:` on the job **and** on every file it left
+unfinished (`unreadable_job_failure`, `jobs/ingest_dispatch.py`). Step 2 reads a
+single-file job's reason off the file first, so a file that said `interrupted:`
+would tell the reader the service restarted when it did not. The UI says the
+dispatch sentence for it („Das Lesen ließ sich nicht starten“): reading never
+began. It is `transient`, so it is read again.
+
 Dispatch (`dispatchIngest` in `service.ts`) sends `POST /v1/ingest` with a
 ten-second budget. A timeout is sent once more: the backend is idempotent per
 document and object, so the second request joins the job the first one started.
@@ -575,6 +583,32 @@ Only a second timeout, a non-2xx answer or a connection that never reached the
 backend records `failed` with „Ingestion could not be started".
 
 The collection file list is fetched at most once per collection per request.
+
+### Which failures are read again
+
+A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):
+`FileProgress.failure_category` and `retryable`, and the job's `reader_version`
+(`sources/knowledge_layer/src/reader_version.py`). Step 2 writes them onto the row
+(`ingest_failure_category`, `ingest_retryable`, `ingest_reader_version`, migration 0134),
+and `lib/documents/retry-policy.ts` (`canRetry`) decides from them whether reading the
+file again can come out differently:
+
+| category | read again |
+|---|---|
+| `transient` (timeout, connection, 5xx, 429) | yes |
+| `configuration` (401/403/404, a missing vision model) | yes |
+| `deterministic` (encrypted, empty, unparsable bytes, other 4xx) | only once the bytes changed or the deployed reader is newer |
+| `quarantined` | no: a reviewer decides (ADR-0086) |
+| `unknown`, or none recorded | yes, as before the column |
+
+A refused „Erneut lesen“ answers 409 with `code: INGEST_WOULD_FAIL_AGAIN`. The bulk
+„Alle erneut lesen“ and the org rescan select with the same rule in SQL
+(`retryAllowedSql` in `repository.ts`, held to `canRetryRow` by
+`retry-policy.integration.spec.ts`), so they never send a file that would fail the same
+way. Raise `INGEST_READER_VERSION` (and its mirror `CURRENT_INGEST_READER_VERSION`) when a
+reader change could read bytes that failed before; that re-opens every `deterministic`
+failure.
+
 
 Metadata enrichment reads the listing through a 15-second cache
 (`loadCollectionFilesCached`), except in two cases that read it fresh and

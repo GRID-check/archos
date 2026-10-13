@@ -1,6 +1,7 @@
 import { describe, test, expect } from 'vitest'
 import {
   isDeterminate,
+  isTerminal,
   shouldEmitProgress,
   summarizeTransfer,
   TransferRateEstimator,
@@ -32,6 +33,8 @@ describe('uploadPhase', () => {
     ['ingesting', 'processing'],
     ['deleting', 'processing'],
     ['success', 'ready'],
+    ['held', 'held'],
+    ['stored', 'stored'],
     ['failed', 'failed'],
     ['canceled', 'canceled'],
   ] as const)('%s maps to %s', (status, expected) => {
@@ -42,8 +45,19 @@ describe('uploadPhase', () => {
 describe('isDeterminate', () => {
   test('only bytes in flight have a real percentage', () => {
     expect(isDeterminate('uploading')).toBe(true)
-    for (const phase of ['queued', 'processing', 'ready', 'failed', 'canceled'] as const) {
+    for (const phase of ['queued', 'processing', 'ready', 'held', 'stored', 'failed', 'canceled'] as const) {
       expect(isDeterminate(phase)).toBe(false)
+    }
+  })
+})
+
+describe('isTerminal', () => {
+  test('a held and a stored file are at rest, like a ready one', () => {
+    for (const phase of ['ready', 'held', 'stored', 'failed', 'canceled'] as const) {
+      expect(isTerminal(phase)).toBe(true)
+    }
+    for (const phase of ['queued', 'uploading', 'processing'] as const) {
+      expect(isTerminal(phase)).toBe(false)
     }
   })
 })
@@ -72,6 +86,11 @@ describe('uploadedBytes', () => {
   test('a file past the upload counts whole, however the last event landed', () => {
     expect(uploadedBytes(file({ status: 'ingesting', bytesUploaded: 10 }))).toBe(1_000_000)
     expect(uploadedBytes(file({ status: 'success', bytesUploaded: undefined }))).toBe(1_000_000)
+  })
+
+  test('a held or stored file is on the server whole', () => {
+    expect(uploadedBytes(file({ status: 'held', bytesUploaded: undefined }))).toBe(1_000_000)
+    expect(uploadedBytes(file({ status: 'stored', bytesUploaded: 10 }))).toBe(1_000_000)
   })
 
   test('a failure keeps what it managed to send, so the batch bar never runs backwards', () => {
@@ -126,6 +145,27 @@ describe('summarizeTransfer', () => {
     expect(summary.totalBytes).toBe(1_000_000)
     expect(summary.bytesPercent).toBe(100)
     expect(summary.canceled).toBe(1)
+  })
+
+  test('counts held and stored files apart from ready and failed, and settles with them', () => {
+    const summary = summarizeTransfer([
+      file({ id: 'a', status: 'success' }),
+      file({ id: 'b', status: 'held' }),
+      file({ id: 'c', status: 'held' }),
+      file({ id: 'd', status: 'stored' }),
+    ])
+
+    expect(summary).toMatchObject({
+      total: 4,
+      ready: 1,
+      held: 2,
+      stored: 1,
+      failed: 0,
+      settled: 4,
+      stage: 'settled',
+      isSettled: true,
+      bytesPercent: 100,
+    })
   })
 
   test('stage moves transferring → processing → settled', () => {

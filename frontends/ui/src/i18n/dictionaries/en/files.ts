@@ -27,6 +27,11 @@ export const files = {
       mixed: '{ready} added · {failed} failed',
       failedOne: '1 document could not be added',
       failedOther: '{count} documents could not be added',
+      // Held back by the content check (ADR-0086): not a failure, nothing to
+      // retry. Never "release", which collides with approving a revision.
+      heldOne: '1 document held back',
+      heldOther: '{count} documents held back',
+      mixedHeld: '{ready} added · {held} held back',
       canceled: 'Upload canceled',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files = {
       processing: 'Reading',
       ready: 'Citable',
       unchanged: 'Unchanged – already here',
+      // The content check matched; what it found is listed beneath the row.
+      held: 'Held back',
+      // Kept, never read: neither a success nor a failure (as `status.stored`).
+      stored: 'Filed',
       canceled: 'Canceled',
       failed: 'Failed',
     },
@@ -72,7 +81,7 @@ export const files = {
     stored: 'Filed',
     // The content check (ADR-0086) matched: the file is in the project, no
     // model has seen it, and someone has to decide.
-    quarantined: 'Quarantined',
+    quarantined: 'Held back',
     unknown: 'Unknown',
     // Only the office's own uploads: inside one office the queue reads in
     // order, across offices it takes turns (ADR-0076).
@@ -112,13 +121,11 @@ export const files = {
     textTruncated:
       'Only the beginning of this file is shown. Download it to read the whole thing.',
     status: 'Status',
-    // Heading for the rail's fact list (what the FILE is), distinct from
-    // "Detailed information" below it (what the VLM saw on each page).
+    // Heading for the rail's one remaining file fact (where it came from),
+    // distinct from "On the pages" (what the VLM saw on each page).
     properties: 'Properties',
     summaryMore: 'Show full summary',
     summaryLess: 'Show less',
-    type: 'Type',
-    size: 'Size',
     originPath: 'Came from',
     originPathCopied: 'Path copied',
     originPathCopyFailed: "Path couldn't be copied",
@@ -207,8 +214,6 @@ export const files = {
     indexed: {
       title: 'Read by Piloti',
       documentType: 'Document type',
-      project: 'Project',
-      updated: 'Updated',
       pending: 'Piloti is still reading this document – its summary and properties appear here once it is done.',
     },
     contentTypeNames: {
@@ -219,12 +224,34 @@ export const files = {
       drawing: 'Drawings',
     },
     visualDetails: {
-      title: 'Detailed information',
+      title: 'On the pages',
       loading: 'Loading descriptions…',
-      empty: 'No visual descriptions available.',
       failed: 'The descriptions could not be loaded.',
       page: 'Page {page}',
       scale: 'Scale {scale}',
+      pageShort: 'p. {page}',
+      showPage: 'Show page {page} in the document',
+      showAll: 'Show all {count}',
+      showFewer: 'Show fewer',
+      // The drawing types the vision pass names. A type not listed here is
+      // humanized from its key, like the structured vocabulary below.
+      segmentTypes: {
+        floor_plan: 'Floor plan',
+        section: 'Section',
+        elevation: 'Elevation',
+        detail: 'Construction detail',
+        site_plan: 'Site plan',
+        perspective: 'Perspective',
+        axonometric: 'Axonometric',
+        drawing: 'Technical drawing',
+        map: 'Map',
+        photo: 'Photo or rendering',
+        diagram: 'Diagram',
+        table: 'Table',
+        legend: 'Legend',
+        screenshot: 'Screenshot',
+        other: 'Other',
+      },
       structured: {
         toggle: 'Structured data',
         composition: 'Build-up {component}',
@@ -276,8 +303,7 @@ export const files = {
         },
       },
     },
-    unknownType: 'Unknown',
-    // The Type row names the format, never the MIME type (that is the tooltip).
+    // The facts line under the name names the format, never the MIME type (that is the tooltip).
     formats: {
       pdf: 'PDF',
       word: 'Word document',
@@ -301,9 +327,11 @@ export const files = {
     downloadFailed: "The download couldn't be started. Please try again.",
     ingestionFailed: 'Reading failed',
     heldTitle: 'Held back by the content check',
+    heldDecided: 'Someone has already decided about this file.',
     ingestionFailedPreviousVersionKept:
       'Search and Piloti still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
+    retryWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     retryingIngestion: 'Retrying…',
     retryIngestionError: "Reading couldn't be restarted. Please try again.",
     dialogLabel: 'File preview: {name}',
@@ -379,6 +407,7 @@ export const files = {
     findingsLabel: 'Where the content check found it',
     findingPage: 'p. {page}',
     showFinding: 'Show the finding on page {page}',
+    morePages: 'Found on further pages too',
   },
   browser: {
     folderEmptyTitle: 'This folder is empty',
@@ -589,6 +618,7 @@ export const files = {
     reingesting: 'Retrying…',
     reingestRunning: 'Already being read',
     reingestAlreadyDone: 'Already finished',
+    reingestWouldFailAgain: 'Reading this file again would give the same result. Upload a new revision instead.',
     reingestConfirmTitle: 'Read “{name}” again?',
     reingestConfirmDescription:
       'Piloti reads the file again from scratch, for example to pick up the pictures in Word and PowerPoint files. Until it is done, Piloti keeps answering from what it read before.',
@@ -883,6 +913,8 @@ export const files = {
     someUploadsFailed:
       '{failed} of {total} documents could not be uploaded. First reason: {reason}',
     uploadingSkipped: 'Uploading {uploading} {fileLabel}, skipped {skipped} ({summary})',
+    quarantinedReplace:
+      '“{name}” would replace a file waiting in quarantine. Delete that file or have it allowed through, then upload the new one.',
     cannotRetryServerFile: 'Cannot retry server-loaded files. Please upload the file again.',
     imageVlmUnavailable:
       'Images cannot be uploaded here: this deployment has no image recognition set up.',
@@ -1314,8 +1346,9 @@ export const files = {
       'Another filter brings back every file in this folder.',
     responsible: 'Responsible',
     // One word for one gesture, on all three surfaces: the file pane, the report
-    // card and the inbox row.
-    discuss: 'Discuss',
+    // card and the inbox row. It names Piloti: „Discuss" alone did not say with
+    // whom, and beside „Ask a colleague" it read as a meeting with the team.
+    discuss: 'Discuss with Piloti',
     askColleague: 'Ask a colleague',
     copyLink: 'Copy link',
     linkCopied: 'Link copied',

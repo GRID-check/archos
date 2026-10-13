@@ -16,6 +16,12 @@
 import { File, FileText, Image as ImageIcon, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { documentStatusFacts, type DocumentStatusVariant } from '@/lib/documents/document-status'
+import {
+  surfaceStateLabel,
+  surfaceStateOf,
+  surfaceStateVariant,
+  type SurfaceState,
+} from '@/lib/documents/surface-state'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -39,10 +45,13 @@ export function fileTypeIcon(contentType: string | null | undefined, filename?: 
 /** Re-exported so the Files components keep one import for status questions. */
 export type StatusVariant = DocumentStatusVariant
 
+/**
+ * The badge colour, read off the state the badge names (`surfaceStateVariant`),
+ * so the colour and the word cannot disagree. An undeclared status is neutral
+ * rather than green: the honest rendering of "nobody has said what this means".
+ */
 export function documentStatusVariant(status: string | null | undefined): StatusVariant {
-  // An undeclared status is neutral rather than green: the honest rendering of
-  // "nobody has said what this means" is a grey badge with the raw word in it.
-  return documentStatusFacts(status)?.variant ?? 'secondary'
+  return surfaceStateVariant(surfaceStateOf(status))
 }
 
 /**
@@ -142,14 +151,17 @@ export function isNeverIndexedStatus(status: string | null | undefined): boolean
   return facts !== null && facts.variant === 'secondary' && facts.phase === 'terminal'
 }
 
-export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
-  const labelKey = documentStatusFacts(status)?.labelKey
-  if (labelKey) return t(labelKey)
+function labelOfState(state: SurfaceState, status: string | null | undefined, t: Translator): string {
   // An undeclared value is drift, not vocabulary: it renders as the generic
   // unknown label — never the verbatim wire word — and is logged so the gap
   // gets closed in `document-status.ts` instead of leaking into the UI.
-  if (status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
-  return t('status.unknown')
+  if (state === 'unknown' && status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
+  return surfaceStateLabel(state, t)
+}
+
+/** The badge's word for a status. */
+export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
+  return labelOfState(surfaceStateOf(status), status, t)
 }
 
 interface DocumentStatusBadgeProps {
@@ -171,14 +183,17 @@ interface DocumentStatusBadgeProps {
 
 export function DocumentStatusBadge({ status, className, title, queueAhead }: DocumentStatusBadgeProps) {
   const t = useTranslations('files')
+  // One state for the word and the colour, so they cannot disagree.
+  const state = surfaceStateOf(status)
+  const variant = surfaceStateVariant(state)
   const waiting = queueAhead != null && queueAhead > 0 && documentStatusFacts(status)?.phase === 'in-flight'
-  const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : documentStatusLabel(status, t)
+  const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : labelOfState(state, status, t)
   return (
     <Badge
-      variant={documentStatusVariant(status)}
+      variant={variant}
       // Lets a caller that repaints the ground (the card's frosted overlay)
       // repaint the ink for the one variant whose ink is white.
-      data-variant={documentStatusVariant(status)}
+      data-variant={variant}
       className={cn('shrink-0', className)}
       // Defaults to the label itself, so a caller that has to constrain the
       // badge's width (the Files list column, where German "Wird hochgeladen" is

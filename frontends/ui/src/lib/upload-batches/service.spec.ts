@@ -260,6 +260,24 @@ describe('getUploadSummary', () => {
     expect(summary.documents[3]?.errorMessage).toContain('pdf_pages_unreadable')
   })
 
+  it('counts a status nobody declared as being read, as the folder brief does, never as stored', async () => {
+    vi.mocked(findUploadBatch).mockResolvedValue(batch({ sealedAt: new Date() }))
+    vi.mocked(listBatchDocuments).mockResolvedValue([
+      makeDocument({ id: 'x', filename: 'Neu.pdf', status: 'quasi-ready' }),
+      makeDocument({ id: 'u', filename: 'Halb.pdf', status: 'uploading' }),
+      makeDocument({ id: 's', filename: 'Bericht.pdf', status: 'stored' }),
+    ])
+    vi.mocked(reconcileDocumentStatuses).mockImplementation(async (rows) => rows)
+
+    const summary = await getUploadSummary(session, BATCH_ID)
+
+    expect(summary.documents.map((d) => [d.filename, d.outcome])).toEqual([
+      ['Neu.pdf', 'reading'],
+      ['Halb.pdf', 'reading'],
+      ['Bericht.pdf', 'stored'],
+    ])
+  })
+
   it('leaves out what was filed in a folder the uploader may no longer see (ADR-0087)', async () => {
     vi.mocked(listBatchDocuments).mockResolvedValue([
       makeDocument({ id: 'open', filename: 'EG.pdf', folderId: 'f-open' }),

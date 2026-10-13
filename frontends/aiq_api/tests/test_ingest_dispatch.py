@@ -19,6 +19,8 @@ from aiq_agent.knowledge import ingest_queue
 from aiq_agent.knowledge import ingest_status_store
 from aiq_agent.knowledge.base import PreparedIngestJob
 from aiq_agent.knowledge.ingest_scheduler import PLATFORM_LANE
+from aiq_agent.knowledge.schema import FileProgress
+from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 from aiq_api.jobs import ingest_dispatch
@@ -215,6 +217,35 @@ def test_an_unreadable_job_is_dropped_and_reads_failed(db):
     failed = ingest_status_store.get("job-1")
     assert failed.status == JobState.FAILED
     assert failed.error_message.startswith("unreadable_job:")
+
+
+def test_an_unreadable_job_tells_each_unfinished_file_why_not_the_restart(db):
+    # The BFF reads a single-file job's reason off the file before the job, so
+    # the file must say the payload was unreadable, never `interrupted:`.
+    status = _prepared().status
+    status.file_details = [
+        FileProgress(file_id="f-done", file_name="done.pdf", status=FileStatus.SUCCESS),
+        FileProgress(file_id="f-broken", file_name="broken.pdf", status=FileStatus.FAILED, error_message="parser: x"),
+        FileProgress(file_id="f-open", file_name="plan.pdf", status=FileStatus.INGESTING),
+    ]
+    ingest_status_store.put(status)
+    ingest_queue.enqueue("job-1", "org-1", "enc:not-a-payload")
+    worker = FakeIngestor()
+    ingest_dispatch.attach(worker)
+
+    worker.source()()
+
+    failed = ingest_status_store.get("job-1")
+    details = {detail.file_id: detail for detail in failed.file_details}
+    assert details["f-open"].status == FileStatus.FAILED
+    assert details["f-open"].error_message == ingest_dispatch.UNREADABLE_JOB_MESSAGE
+    assert details["f-open"].failure_category == "transient"
+    assert details["f-open"].retryable is True
+    # What had already settled keeps its own outcome.
+    assert details["f-done"].status == FileStatus.SUCCESS
+    assert details["f-broken"].error_message == "parser: x"
+    assert failed.metadata["failure_reason"] == "unreadable_job"
+    assert not any((detail.error_message or "").startswith("interrupted:") for detail in failed.file_details)
 
 
 def test_another_ingestors_free_worker_claims_and_runs_the_job(db, tmp_path, monkeypatch):

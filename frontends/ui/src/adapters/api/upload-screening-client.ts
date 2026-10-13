@@ -4,6 +4,7 @@
  *
  *   - policy  → `GET|PUT /api/organization/upload-screening`
  *   - queue   → `GET     /api/quarantine`
+ *   - access  → `GET     /api/documents/[id]/quarantine`
  *   - release → `POST    /api/documents/[id]/quarantine/release`
  *   - ask     → `POST    /api/documents/[id]/quarantine/request-release`
  *   - delete  → each shelf's own delete route (project, Archiv, chat)
@@ -92,12 +93,32 @@ export async function listQuarantineQueue(signal?: AbortSignal): Promise<Quarant
   return QuarantineQueueSchema.parse(await response.json()).items
 }
 
-/** Release one document: it is read again, unscreened, like any other upload. */
-export async function releaseQuarantinedDocument(documentId: string): Promise<void> {
+const ReleaseSchema = z.object({ status: z.string() })
+
+/**
+ * Release one document: it is read again, unscreened, like any other upload.
+ * Resolves to the status it was dispatched with (`uploaded`, `processing`, …),
+ * so a surface showing the document can show it being read.
+ */
+export async function releaseQuarantinedDocument(documentId: string): Promise<{ status: string }> {
   const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/quarantine/release`, {
     method: 'POST',
   })
   if (!response.ok) throw await requestError(response, 'Failed to release the document')
+  return ReleaseSchema.parse(await response.json())
+}
+
+const QuarantineReviewAccessSchema = z.object({ canReview: z.boolean(), canAskForReview: z.boolean() })
+export type QuarantineReviewAccess = z.infer<typeof QuarantineReviewAccessSchema>
+
+/** What this session may do about one held document: decide about it, or ask for a decision. */
+export async function getQuarantineReviewAccess(
+  documentId: string,
+  signal?: AbortSignal
+): Promise<QuarantineReviewAccess> {
+  const response = await fetch(`/api/documents/${encodeURIComponent(documentId)}/quarantine`, { signal })
+  if (!response.ok) throw await requestError(response, 'Failed to read what may be done about the document')
+  return QuarantineReviewAccessSchema.parse(await response.json())
 }
 
 const ReleaseRequestSchema = z.object({ id: z.string(), notified: z.number().int().nonnegative() })

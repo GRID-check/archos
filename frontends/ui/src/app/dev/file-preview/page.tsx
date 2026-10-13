@@ -28,6 +28,7 @@ import { useFilePreviewStore } from '@/features/documents/stores/file-preview-st
 import { FilePreviewPane } from '@/features/documents/components/file-preview-pane'
 import type { FileItem } from '@/features/documents/components/project-file-workspace'
 import { buildPdf, type PdfLine } from '../_fixtures/sample-pdf'
+import { normalizeDrawingStructured } from '@/lib/documents/drawing-structured'
 
 // A visible "document page" so the left preview renders something real (not a
 // blank iframe) in the screenshot. Encoded as an SVG data URI, backend-free.
@@ -80,7 +81,9 @@ const FIXTURE: FileItem = {
     'Nutzungssicherheit/Barrierefreiheit',
     'Schallschutz',
   ],
-  topics: null,
+  // Free-form subjects beside the vocabulary tags, so the rail's third chip
+  // weight is photographed too.
+  topics: ['Fluchtwege', 'Rauchableitung'],
   capture: null,
   // Somebody is on the hook for this document. `Unvergeben` is the other state
   // and the generated fixture below keeps it, so one run photographs both.
@@ -400,11 +403,14 @@ Ergebnis
 
 // Install the fetch shim at module scope (before any component effect fires) so
 /**
- * A structured analysis exactly as the BFF hands it over (already normalized
- * to the display shape, snake_case only inside `segment`/`sheet` because that
- * is the ingestion schema's own vocabulary).
+ * A structured analysis as ingestion stores it (snake_case, the ingestion
+ * schema's own vocabulary). The shim below serves it through
+ * `normalizeDrawingStructured`, which is what the BFF does before it answers
+ * (`lib/documents/service.ts`). Serving the raw shape, as this preview once
+ * did, crashed the route the moment „Detaillierte Informationen" opened: the
+ * pane reads `segment.entityGroups`, which only the normalizer produces.
  */
-const DEV_STRUCTURED = {
+const DEV_STRUCTURED_RAW = {
   schema_version: 4,
   registry: 'architecture+general@850c9b2d770a',
   segment: {
@@ -680,7 +686,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
               scale: '1:100',
               segment: 0,
               text: 'Regelgeschoss mit eingetragenen Fluchtwegen und Brandabschnittsgrenzen (REI 90).',
-              structured: DEV_STRUCTURED,
+              structured: normalizeDrawingStructured(DEV_STRUCTURED_RAW),
             },
             {
               page: 7,
