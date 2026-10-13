@@ -42,6 +42,15 @@ reads `frontends/ui/tsconfig.build.json` (`typescript.tsconfigPath` in
 `next.config.ts`), which leaves specs and test helpers out of its roots, so a
 type error in a test fails `fe:types` and never the production build.
 
+**`task fe:types` is `bun check`, which is TypeScript 7.** It checks the whole UI
+in about six seconds with no cache, and the pinned Bun version decides which
+TypeScript that is (`tests/test_bun_version_pin.py`). Your editor runs its own
+TypeScript; without the TypeScript 7 extension it is 6 and the two can disagree
+([gotchas](gotchas.md)). `next build` also runs TypeScript 7, through the
+`typescript` package. Five structural specs parse source with the compiler API,
+which TypeScript 7.0 does not ship, so they import `typescript-api`, TypeScript 6
+under an alias (ADR-0103).
+
 **`task db:test:rls` is a required merge check and is not part of `task
 verify`.** It needs PostgreSQL server binaries, so it runs separately. Run it
 whenever you touch the tenant boundary — and whenever you touch a claim that is

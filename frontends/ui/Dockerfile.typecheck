@@ -1,12 +1,12 @@
 # Throwaway image: install deps (fast/reliable in Docker) and run the TS typecheck.
-# Build once (deps cached), then `docker run` to get the full tsc error list.
+# Build once (deps cached), then `docker run` to get the full error list.
 # Uses a public node image so it needs no registry auth.
 FROM node:22-slim
-# Bun installs; Node still runs tsc. See deploy/Dockerfile for why the base is
-# not an `oven/bun` image.
+# Bun installs and type checks (`bun check`, ADR-0103). See deploy/Dockerfile
+# for why the base is still a Node image rather than an `oven/bun` one.
 COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
 WORKDIR /app
 COPY package.json bun.lock ./
 RUN bun install --frozen-lockfile --ignore-scripts
 COPY . .
-CMD ["./node_modules/.bin/tsc", "--noEmit"]
+CMD ["bun", "check", "--all"]

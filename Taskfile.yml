@@ -228,7 +228,10 @@ tasks:
     desc: Typecheck the UI, specs included (next build checks production code only)
     dir: '{{.UI}}'
     cmds:
-      - bun run type-check
+      # `bun check`: TypeScript 7's checker, built into the pinned Bun (ADR-0103).
+      # Extra arguments reach it, so `-- src/lib/foo.ts` checks one file and its
+      # imports. No `.tsbuildinfo`: every run checks the whole project, in seconds.
+      - bun run type-check {{.CLI_ARGS}}
 
   fe:test:
     desc: Run the UI test suite
