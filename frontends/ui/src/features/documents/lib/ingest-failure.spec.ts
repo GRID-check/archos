@@ -32,6 +32,9 @@ const BACKEND_MESSAGES: Array<[string, IngestFailureKind]> = [
     'download_failed',
   ],
   ['interrupted: ingestion stopped when the service restarted; retry to index this file', 'interrupted'],
+  // The queued job's payload could not be read: reading never started, and no
+  // service restarted. Said as a start that failed, never as the restart.
+  ['unreadable_job: the queued ingestion job could not be read; retry to index this file', 'dispatch_failed'],
   [
     'vlm_not_configured: scanned PDF pages need a vision model to be transcribed (AIQ_VLM_API_KEY)',
     'vision_not_configured',

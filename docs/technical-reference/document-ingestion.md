@@ -569,6 +569,14 @@ row stops being vouched for by a heartbeat, and the status endpoint answers
 minutes old, which step 2 records like any other failure and re-ingest can
 retry ([python endpoints](../api/python-endpoints.md#ingestion)).
 
+A queued job whose payload the worker cannot read is retired dead, and its
+status fails with `unreadable_job:` on the job **and** on every file it left
+unfinished (`unreadable_job_failure`, `jobs/ingest_dispatch.py`). Step 2 reads a
+single-file job's reason off the file first, so a file that said `interrupted:`
+would tell the reader the service restarted when it did not. The UI says the
+dispatch sentence for it („Das Lesen ließ sich nicht starten“): reading never
+began. It is `transient`, so it is read again.
+
 Dispatch (`dispatchIngest` in `service.ts`) sends `POST /v1/ingest` with a
 ten-second budget. A timeout is sent once more: the backend is idempotent per
 document and object, so the second request joins the job the first one started.
