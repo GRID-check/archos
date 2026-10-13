@@ -6440,6 +6440,15 @@ class LlamaIndexRetriever(BaseRetriever):
 
         return reads_qdrant()
 
+    def embed_query(self, text: str) -> list[float]:
+        """``text`` as the production embedder's query vector, from the same LRU and in-flight dedupe a search uses."""
+        self._ensure_initialized()
+        return self._embed_query_cached(text)
+
+    def embedding_identity(self) -> dict[str, str]:
+        """The embedder behind :meth:`embed_query`, as Qdrant collection metadata records it."""
+        return self._identity()
+
     def _qdrant_lexical_inputs(self, query: str, collection_names: str | Sequence[str]) -> tuple[str, list[str]]:
         """The BM25 query text and the selective exact terms, both priced against the searched collections.
 

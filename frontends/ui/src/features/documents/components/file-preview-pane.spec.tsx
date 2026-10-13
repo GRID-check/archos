@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
-import { FAKE_FRAME_WIDTH, fakePdfjsRuntime, type FakePdfState } from '@/test-utils/pdfjs-fake'
+import { FAKE_FRAME_WIDTH, fakePdfjsRuntime, fakeTextRun, type FakePdfState } from '@/test-utils/pdfjs-fake'
 import { FilePreviewPane } from './file-preview-pane'
 import { CurrentProjectProvider } from '@/features/projects/lib/current-project'
 
@@ -324,6 +324,49 @@ describe('FilePreviewPane', () => {
       await screen.findByRole('link', { name: /open in new tab/i })
       await waitFor(() => expect(screen.getAllByTestId('pdf-scroll')).toHaveLength(1))
       expect(within(screen.getByRole('dialog')).getByTestId('pdf-scroll')).toBeInTheDocument()
+    })
+
+    /**
+     * „Ähnliche Stellen" from Files: a passage selected in the inline viewer
+     * opens the large viewer with the rail, asking about this document as
+     * SELECTED text (embedded once, never matched to a chunk), in its project.
+     */
+    it('asks for passages like a selection, and opens them beside the document', async () => {
+      pdf.pages = [{ items: [fakeTextRun('Die Fluchttreppe wird als Außentreppe ausgeführt', 700, 300)] }]
+      const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) =>
+        String(input) === '/api/passages/similar'
+          ? new Response(JSON.stringify({ origin: 'embedded', projectsSearched: 0, groups: [] }), { status: 200 })
+          : ({ ok: true, status: 200, json: async () => ({ url: 'https://example.test/plan.pdf' }) } as Response)
+      )
+      render(<FilePreviewPane file={mockFile} projectId="proj-1" />)
+      const layer = await screen.findByTestId('pdf-text-layer')
+      const range = document.createRange()
+      range.selectNodeContents(layer)
+      document.getSelection()!.removeAllRanges()
+      document.getSelection()!.addRange(range)
+      fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+      fireEvent.click(await screen.findByTestId('pdf-find-similar'))
+
+      expect(await screen.findByText('No similar passages found')).toBeInTheDocument()
+      const call = fetchMock.mock.calls.find(([input]) => String(input) === '/api/passages/similar')
+      expect(JSON.parse(String(call?.[1]?.body))).toEqual({
+        document: { kind: 'stored', documentId: 'doc-1' },
+        passage: { text: 'Die Fluchttreppe wird als Außentreppe ausgeführt', page: 1, cited: false },
+        projectId: 'proj-1',
+      })
+    })
+
+    it('offers no similar passages in a document Piloti has not read', async () => {
+      pdf.pages = [{ items: [fakeTextRun('Die Fluchttreppe wird als Außentreppe ausgeführt', 700, 300)] }]
+      presigned()
+      render(<FilePreviewPane file={{ ...mockFile, status: 'processing' }} projectId="proj-1" />)
+      const layer = await screen.findByTestId('pdf-text-layer')
+      const range = document.createRange()
+      range.selectNodeContents(layer)
+      document.getSelection()!.removeAllRanges()
+      document.getSelection()!.addRange(range)
+      fireEvent.pointerUp(screen.getByTestId('pdf-scroll'))
+      expect(screen.queryByTestId('pdf-find-similar')).toBeNull()
     })
 
     it('says it could not load, and retries, when the viewer cannot open the bytes', async () => {

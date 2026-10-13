@@ -1,0 +1,9 @@
+---
+features:
+  - >
+    The document viewer can now show where your office wrote something similar
+    before: "Ähnliche Stellen" on a cited or selected passage lists the closest
+    passages from this project, your other projects and the Büroablage.
+  - >
+    Click a passage to open its document at that spot; only documents you may
+    open are listed.
