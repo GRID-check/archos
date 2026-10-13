@@ -624,7 +624,7 @@ describe('uploadDocument ingest dispatch', () => {
     expect(admitOrDiscard).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
-      expect.objectContaining({ status: 'uploaded' })
+      expect.objectContaining({ status: 'uploaded' as const })
     )
   })
 
@@ -921,7 +921,7 @@ describe('listDocuments', () => {
         screenedHash: null,
         fileSize: 1024,
         contentType: 'application/pdf',
-        status: 'completed',
+        status: 'completed' as const,
         authoredBy: 'user',
         collectionName: 'proj_abc',
         folderId: null,
@@ -1209,7 +1209,7 @@ describe('resolveProjectDocumentsByName', () => {
       id: 'doc-old',
       filename: 'Bestand-1962.pdf',
       createdAt: new Date('2019-01-01T00:00:00Z'),
-      status: 'completed',
+      status: 'completed' as const,
       collectionName: 'proj_abc',
       errorMessage: null,
       authoredBy: 'user',
@@ -1247,7 +1247,7 @@ describe('searchProjectDocuments', () => {
       id: 'doc-a',
       filename: 'plan.pdf',
       createdAt: new Date('2026-01-01T00:00:00Z'),
-      status: 'completed',
+      status: 'completed' as const,
       collectionName: 'proj_abc',
       errorMessage: null,
       authoredBy: 'user',
@@ -1257,7 +1257,7 @@ describe('searchProjectDocuments', () => {
       id: 'doc-b',
       filename: 'permit.pdf',
       createdAt: new Date('2026-01-02T00:00:00Z'),
-      status: 'completed',
+      status: 'completed' as const,
       collectionName: 'proj_abc',
       errorMessage: null,
       authoredBy: 'user',
@@ -1350,7 +1350,7 @@ describe('searchProjectDocuments', () => {
     vi.mocked(reconcileDocumentStatuses).mockResolvedValue(
       fileRows.map((r) => ({
         ...r,
-        ...(r.id === 'doc-a' ? { status: 'quarantined' } : {}),
+        ...(r.id === 'doc-a' ? { status: 'quarantined' as const } : {}),
         createdBy: 'user-1',
         metadata: { ingestJobId: 'j' },
       }))
@@ -1390,7 +1390,7 @@ describe('searchProjectDocuments', () => {
         id: 'doc-generated',
         filename: 'plan.pdf',
         createdAt: new Date('2026-06-01T00:00:00Z'),
-        status: 'completed',
+        status: 'completed' as const,
         collectionName: 'proj_abc',
         errorMessage: null,
         authoredBy: 'agent',
@@ -1443,7 +1443,7 @@ describe('searchProjectDocuments', () => {
 describe('reingestDocument', () => {
   const failedDoc = makeDocument({
     id: 'doc-99',
-    status: 'failed',
+    status: 'failed' as const,
     storageKey: 'org/proj/doc/file.pdf',
   })
 
@@ -1457,7 +1457,7 @@ describe('reingestDocument', () => {
 
     const result = await reingestDocument(session, 'doc-99')
 
-    expect(result).toEqual({ id: 'doc-99', status: 'pending', jobId: 'job-77' })
+    expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-77' })
     expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-77')
     expect(markDocumentIngestFailed).not.toHaveBeenCalled()
   })
@@ -1472,7 +1472,7 @@ describe('reingestDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'failed',
+        status: 'failed' as const,
         storageKey: 'org/org-1/project/proj-1/doc/doc-99/plan.pdf',
         storageBucket: 'grid-org-org-1-deadbeef1234',
       })
@@ -1495,7 +1495,7 @@ describe('reingestDocument', () => {
     // file only picks that up by being read again. No backend question first
     // (the row is terminal) and no chunk delete: the backend keeps the old
     // chunks until the new version has indexed.
-    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...failedDoc, status: 'completed' })
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...failedDoc, status: 'completed' as const })
     mockFetch.mockResolvedValue({
       ok: true,
       status: 200,
@@ -1504,7 +1504,7 @@ describe('reingestDocument', () => {
 
     const result = await reingestDocument(session, 'doc-99')
 
-    expect(result).toEqual({ id: 'doc-99', status: 'pending', jobId: 'job-80' })
+    expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-80' })
     expect(describeBackendIngestState).not.toHaveBeenCalled()
     const methods = mockFetch.mock.calls.map(([, init]) => (init as RequestInit | undefined)?.method)
     expect(methods).not.toContain('DELETE')
@@ -1515,7 +1515,7 @@ describe('reingestDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'completed',
+        status: 'completed' as const,
         storageKey: 'org/proj/doc/file.pdf',
         authoredBy: 'agent',
         authoredByProducer: 'deep_research',
@@ -1532,11 +1532,11 @@ describe('reingestDocument', () => {
   })
 
   it('refuses a row re-ingest does not apply to (409 INGEST_NOT_ELIGIBLE)', async () => {
-    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...failedDoc, status: 'stored' })
+    vi.mocked(findDocumentInOrg).mockResolvedValue({ ...failedDoc, status: 'stored' as const })
 
     await expect(reingestDocument(session, 'doc-99')).rejects.toMatchObject({
       status: 409,
-      details: { status: 'stored', code: INGEST_NOT_ELIGIBLE },
+      details: { status: 'stored' as const, code: INGEST_NOT_ELIGIBLE },
     })
     expect(mockFetch).not.toHaveBeenCalled()
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
@@ -1548,7 +1548,7 @@ describe('reingestDocument', () => {
     // under the SAME id, so citations, chat subjects and assignments survive —
     // the old answer here was 409 and delete + re-upload under a new id.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({ state: 'absent' })
     mockFetch.mockResolvedValue({
@@ -1559,19 +1559,19 @@ describe('reingestDocument', () => {
 
     const result = await reingestDocument(session, 'doc-99')
 
-    expect(result).toEqual({ id: 'doc-99', status: 'pending', jobId: 'job-78' })
+    expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-78' })
     expect(setDocumentIngestJob).toHaveBeenCalledWith('doc-99', 'org-1', 'job-78')
   })
 
   it('refuses while the backend is genuinely still working (409, no double dispatch)', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({ state: 'in-progress' })
 
     await expect(reingestDocument(session, 'doc-99')).rejects.toBeInstanceOf(ConflictError)
     await expect(reingestDocument(session, 'doc-99')).rejects.toMatchObject({
-      details: { status: 'processing', code: INGEST_RUNNING },
+      details: { status: 'processing' as const, code: INGEST_RUNNING },
     })
     expect(mockFetch).not.toHaveBeenCalled()
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
@@ -1584,27 +1584,27 @@ describe('reingestDocument', () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'processing',
+        status: 'processing' as const,
         storageKey: 'org/proj/doc/file.pdf',
         metadata: { ingestJobId: 'job-80' },
       })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({
       state: 'terminal',
-      resolution: { status: 'completed', errorMessage: null },
+      resolution: { status: 'completed' as const, errorMessage: null },
     })
 
     await expect(reingestDocument(session, 'doc-99')).rejects.toMatchObject({
       status: 409,
-      details: { status: 'completed', code: INGEST_ALREADY_DONE },
+      details: { status: 'completed' as const, code: INGEST_ALREADY_DONE },
     })
     // Guarded on the status AND the dispatch it read: a heal lands only on the
     // job whose outcome it is.
     expect(setDocumentReconciledStatus).toHaveBeenCalledWith(
       'doc-99',
       'org-1',
-      { status: 'completed', errorMessage: null },
-      { status: 'processing', jobId: 'job-80' }
+      { status: 'completed' as const, errorMessage: null },
+      { status: 'processing' as const, jobId: 'job-80' }
     )
     expect(mockFetch).not.toHaveBeenCalled()
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
@@ -1612,18 +1612,18 @@ describe('reingestDocument', () => {
 
   it('settles a row the retry finds quarantined, so the quarantine is audited and its reviewers told', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     const verdict = 'quarantined:{"reasons":[{"kind":"iban"}],"checked":"full"}'
     vi.mocked(describeBackendIngestState).mockResolvedValue({
       state: 'terminal',
-      resolution: { status: 'quarantined', errorMessage: verdict, screeningOutcome: 'quarantined' },
+      resolution: { status: 'quarantined' as const, errorMessage: verdict, screeningOutcome: 'quarantined' },
     })
 
     await expect(reingestDocument(session, 'doc-99')).rejects.toMatchObject({
-      details: { status: 'quarantined', code: INGEST_ALREADY_DONE },
+      details: { status: 'quarantined' as const, code: INGEST_ALREADY_DONE },
     })
-    expect(onDocumentsSettled).toHaveBeenCalledWith('org-1', [{ id: 'doc-99', status: 'quarantined' }])
+    expect(onDocumentsSettled).toHaveBeenCalledWith('org-1', [{ id: 'doc-99', status: 'quarantined' as const }])
     expect(setDocumentIngestJob).not.toHaveBeenCalled()
   })
 
@@ -1631,16 +1631,16 @@ describe('reingestDocument', () => {
     // The heal's guarded write found the row already quarantined by a listing
     // read, which settled it. Settling again would audit the quarantine twice.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({
       state: 'terminal',
-      resolution: { status: 'quarantined', errorMessage: 'quarantined:{}', screeningOutcome: 'quarantined' },
+      resolution: { status: 'quarantined' as const, errorMessage: 'quarantined:{}', screeningOutcome: 'quarantined' },
     })
     vi.mocked(setDocumentReconciledStatus).mockResolvedValueOnce(false)
 
     await expect(reingestDocument(session, 'doc-99')).rejects.toMatchObject({
-      details: { status: 'quarantined', code: INGEST_ALREADY_DONE },
+      details: { status: 'quarantined' as const, code: INGEST_ALREADY_DONE },
     })
     expect(onDocumentsSettled).not.toHaveBeenCalled()
   })
@@ -1649,11 +1649,11 @@ describe('reingestDocument', () => {
     // The reader clicked retry on what looked stuck; it had failed. That is
     // exactly what they were retrying, so it is dispatched rather than 409'd.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({
       state: 'terminal',
-      resolution: { status: 'failed', errorMessage: 'boom' },
+      resolution: { status: 'failed' as const, errorMessage: 'boom' },
     })
     mockFetch.mockResolvedValue({
       ok: true,
@@ -1666,17 +1666,17 @@ describe('reingestDocument', () => {
     expect(setDocumentReconciledStatus).toHaveBeenCalledWith(
       'doc-99',
       'org-1',
-      { status: 'failed', errorMessage: 'boom' },
-      { status: 'processing', jobId: null }
+      { status: 'failed' as const, errorMessage: 'boom' },
+      { status: 'processing' as const, jobId: null }
     )
-    expect(result).toEqual({ id: 'doc-99', status: 'pending', jobId: 'job-81' })
+    expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-81' })
     // Dispatched again, so not at rest: nothing settles.
     expect(onDocumentsSettled).not.toHaveBeenCalled()
   })
 
   it('refuses when the backend cannot be asked (fail-closed, row untouched)', async () => {
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'processing', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'processing' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     vi.mocked(describeBackendIngestState).mockResolvedValue({ state: 'unreachable' })
 
@@ -1690,7 +1690,7 @@ describe('reingestDocument', () => {
     // Nothing was ever dispatched for it, so there is nothing running to
     // double and nothing to ask about — straight to re-dispatch.
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-99', status: 'uploaded', storageKey: 'org/proj/doc/file.pdf' })
+      makeDocument({ id: 'doc-99', status: 'uploaded' as const, storageKey: 'org/proj/doc/file.pdf' })
     )
     mockFetch.mockResolvedValue({
       ok: true,
@@ -1700,7 +1700,7 @@ describe('reingestDocument', () => {
 
     const result = await reingestDocument(session, 'doc-99')
 
-    expect(result).toEqual({ id: 'doc-99', status: 'pending', jobId: 'job-79' })
+    expect(result).toEqual({ id: 'doc-99', status: 'pending' as const, jobId: 'job-79' })
     expect(describeBackendIngestState).not.toHaveBeenCalled()
   })
 
@@ -1768,7 +1768,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'failed',
+        status: 'failed' as const,
         storageKey: 'org/org-1/project/proj-1/doc/doc-99/plan.pdf',
         projectId: 'proj-1',
         folderId: 'folder-1',
@@ -1787,7 +1787,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'failed',
+        status: 'failed' as const,
         storageKey: 'org/org-1/archiv/doc/doc-99/norm.pdf',
         projectId: null,
         scope: 'archiv',
@@ -1809,7 +1809,7 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     vi.mocked(findDocumentInOrg).mockResolvedValue(
       makeDocument({
         id: 'doc-99',
-        status: 'failed',
+        status: 'failed' as const,
         storageKey: 'org/org-1/project/proj-1/doc/doc-99/plan.pdf',
         projectId: 'proj-1',
         folderId: null,
@@ -2257,7 +2257,7 @@ describe('getDocumentStatus', () => {
   // reconcile; the read let it through on the earlier verdict, so the rule is
   // asked again of what the reconcile returned (ADR-0086).
   describe('when the reconcile quarantines the file', () => {
-    const reread = makeDocument({ status: 'pending', screeningOutcome: 'clean', createdBy: 'someone-else' })
+    const reread = makeDocument({ status: 'pending' as const, screeningOutcome: 'clean', createdBy: 'someone-else' })
 
     beforeEach(() => {
       // A member of the project, not one of its admins: no reviewer.
@@ -2269,7 +2269,7 @@ describe('getDocumentStatus', () => {
         mayReadDocument(reread, reader) ? reread : null
       )
       vi.mocked(reconcileDocumentStatuses).mockImplementation(
-        async (rows) => rows.map((row) => ({ ...row, status: 'quarantined', screeningOutcome: 'quarantined' })) as never
+        async (rows) => rows.map((row) => ({ ...row, status: 'quarantined' as const, screeningOutcome: 'quarantined' })) as never
       )
     })
 
@@ -2279,7 +2279,7 @@ describe('getDocumentStatus', () => {
 
     it('still answers its uploader', async () => {
       await expect(getDocumentStatus({ ...session, userId: 'someone-else' }, 'doc-1')).resolves.toMatchObject({
-        status: 'quarantined',
+        status: 'quarantined' as const,
       })
     })
   })
@@ -2325,7 +2325,7 @@ describe('the authorship gate on the (collection, filename) join', () => {
     authoredByProducer: 'deep_research',
     authoredByRef: 'run-7',
     authoredByRefKind: 'agent_run',
-    status: 'stored',
+    status: 'stored' as const,
     storageKey: 'org/org-1/project/proj-1/doc/doc-agent/' + collidingName,
   })
 
@@ -2346,7 +2346,7 @@ describe('the authorship gate on the (collection, filename) join', () => {
 
       // The DELETE was unconditional. For an agent row it is always wrong (the
       // row owns no chunks), and on this collision it removed the HUMAN
-      // Gutachten's chunks while that document kept `status: 'completed'`, its
+      // Gutachten's chunks while that document kept `status: 'completed' as const`, its
       // green „zitierbar“ badge and its Ask affordance — and answered nothing
       // from then on.
       expect(documentCalls()).toHaveLength(0)
@@ -2554,7 +2554,7 @@ describe('the authorship gate on the (collection, filename) join', () => {
           screenedHash: null,
           fileSize: 1024,
           contentType: 'application/pdf',
-          status: 'stored',
+          status: 'stored' as const,
           authoredBy: 'agent',
           collectionName: 'proj_abc',
           folderId: null,
@@ -2652,7 +2652,7 @@ describe('runReindexSlice', () => {
     screenedHash: null,
     fileSize: 1024,
     contentType: 'application/pdf',
-    status: 'completed',
+    status: 'completed' as const,
     authoredBy: 'user' as const,
     collectionName: 'proj_abc',
     folderId: null,
@@ -2669,7 +2669,7 @@ describe('runReindexSlice', () => {
   it('re-dispatches without deleting the current chunks first', async () => {
     vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows: [listRow('doc-1', 'plan.pdf')], nextCursor: null })
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed', storageKey: 'k/plan.pdf' })
+      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed' as const, storageKey: 'k/plan.pdf' })
     )
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_id: 'job-1' }) })
 
@@ -2688,7 +2688,7 @@ describe('runReindexSlice', () => {
   it('dispatches every document with bulk priority, so a person’s upload goes first', async () => {
     vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows: [listRow('doc-1', 'plan.pdf')], nextCursor: null })
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed', storageKey: 'k/plan.pdf' })
+      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed' as const, storageKey: 'k/plan.pdf' })
     )
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_id: 'job-1' }) })
 
@@ -2701,7 +2701,7 @@ describe('runReindexSlice', () => {
   it('reports a failed dispatch by name, and sends nothing that removes chunks', async () => {
     vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows: [listRow('doc-1', 'plan.pdf')], nextCursor: null })
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed', storageKey: 'k/plan.pdf' })
+      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'completed' as const, storageKey: 'k/plan.pdf' })
     )
     mockFetch.mockRejectedValue(new Error('backend down'))
 
@@ -2712,10 +2712,11 @@ describe('runReindexSlice', () => {
     expect(methods).not.toContain('DELETE')
   })
 
-  it('skips every in-flight spelling, not just pending and processing', async () => {
+  // The column holds seven values since 0135; the two in flight are skipped.
+  it.each(['pending', 'processing'] as const)('skips a row that is %s', async (status) => {
     vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows: [listRow('doc-1', 'plan.pdf')], nextCursor: null })
     vi.mocked(findDocumentInOrg).mockResolvedValue(
-      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status: 'ingesting', storageKey: 'k/plan.pdf' })
+      makeDocument({ id: 'doc-1', filename: 'plan.pdf', status, storageKey: 'k/plan.pdf' })
     )
 
     const result = await runReindexSlice(session, sliceState())
@@ -2732,7 +2733,7 @@ describe('runReindexSlice', () => {
       makeDocument({
         id: 'doc-1',
         filename: 'plan.pdf',
-        status: 'quarantined',
+        status: 'quarantined' as const,
         storageKey: 'k/plan.pdf',
         createdBy: session.userId,
       })
@@ -2757,7 +2758,7 @@ describe('runReindexSlice', () => {
       .mockResolvedValueOnce({ rows: [listRow('doc-1', 'plan.pdf')], nextCursor: cursor })
       .mockResolvedValueOnce({ rows: [listRow('doc-2', 'old.pdf')], nextCursor: null })
     vi.mocked(findDocumentInOrg).mockImplementation(async (id: string) =>
-      makeDocument({ id, filename: `${id}.pdf`, status: 'completed', storageKey: `k/${id}.pdf` })
+      makeDocument({ id, filename: `${id}.pdf`, status: 'completed' as const, storageKey: `k/${id}.pdf` })
     )
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: async () => ({ job_id: 'job-1' }) })
 
@@ -2806,7 +2807,7 @@ describe('runReindexSlice', () => {
     const rows = Array.from({ length: 25 }, (_, i) => listRow(`doc-${i}`, `plan-${i}.pdf`))
     vi.mocked(listProjectDocumentPage).mockResolvedValueOnce({ rows, nextCursor: null })
     vi.mocked(findDocumentInOrg).mockImplementation(async (id: string) =>
-      makeDocument({ id, filename: `${id}.pdf`, status: 'completed', storageKey: `k/${id}.pdf` })
+      makeDocument({ id, filename: `${id}.pdf`, status: 'completed' as const, storageKey: `k/${id}.pdf` })
     )
     mockFetch.mockRejectedValue(new Error('backend down'))
 
@@ -2847,7 +2848,7 @@ describe('the org-wide rescan of failed ingestions', () => {
 
   describe('runReingestFailedSlice', () => {
     const failedDoc = (id: string) =>
-      makeDocument({ id, filename: `${id}.pdf`, status: 'failed', authoredBy: 'user', storageKey: `k/${id}.pdf` })
+      makeDocument({ id, filename: `${id}.pdf`, status: 'failed' as const, authoredBy: 'user', storageKey: `k/${id}.pdf` })
 
     // The requester as they are today: an admin, who holds the permission the route is gated on.
     const admin: AuthorizedSession = { ...session, role: 'admin', permissions: ['org:settings:manage'] }
@@ -2915,7 +2916,7 @@ describe('the org-wide rescan of failed ingestions', () => {
     it('counts a row that is not retryable as skipped, never as a failure', async () => {
       vi.mocked(listFailedDocumentPageInOrg).mockResolvedValueOnce({ ids: ['doc-1', 'doc-2', 'doc-3'], nextCursor: null })
       vi.mocked(findDocumentInOrg).mockImplementation(async (id: string) =>
-        id === 'doc-1' ? failedDoc(id) : id === 'doc-2' ? makeDocument({ id, status: 'completed', authoredBy: 'agent', storageKey: 'k' }) : (null as never)
+        id === 'doc-1' ? failedDoc(id) : id === 'doc-2' ? makeDocument({ id, status: 'completed' as const, authoredBy: 'agent', storageKey: 'k' }) : (null as never)
       )
 
       const result = await runReingestFailedSlice(admin, rescanState())
@@ -3090,7 +3091,7 @@ describe('re-uploading a filename this collection already holds', () => {
    */
   describe('onto a quarantined file', () => {
     beforeEach(() => {
-      vi.mocked(findLiveDocumentByFilename).mockResolvedValue({ ...existing, status: 'quarantined' })
+      vi.mocked(findLiveDocumentByFilename).mockResolvedValue({ ...existing, status: 'quarantined' as const })
       // The uploader may view the project; nobody here manages it.
       vi.mocked(requireProjectAccess).mockImplementation(async (_s, _projectId, permission) => {
         if (permission === 'project:manage') throw new NotFoundError('Project not found')
@@ -3102,7 +3103,7 @@ describe('re-uploading a filename this collection already holds', () => {
       vi.mocked(findLiveDocumentByFilename).mockResolvedValue({
         ...existing,
         createdBy: 'user-other',
-        status: 'quarantined',
+        status: 'quarantined' as const,
       })
 
       await expect(
@@ -3112,7 +3113,7 @@ describe('re-uploading a filename this collection already holds', () => {
     })
 
     it('refuses its uploader too, saying it waits in quarantine', async () => {
-      vi.mocked(findLiveDocumentByFilename).mockResolvedValue({ ...existing, createdBy: 'user-1', status: 'quarantined' })
+      vi.mocked(findLiveDocumentByFilename).mockResolvedValue({ ...existing, createdBy: 'user-1', status: 'quarantined' as const })
 
       const refusal = uploadDocument(session, makeInput({ name: 'plan.pdf' }), new Request('http://x'))
       await expect(refusal).rejects.toBeInstanceOf(ConflictError)
@@ -3237,7 +3238,7 @@ describe('re-uploading a filename this collection already holds', () => {
       vi.mocked(findLiveDocumentByFilename).mockResolvedValue(makeLiveDocumentMatch({
         ...existing,
         contentHash: digestOfInput,
-        status: 'failed',
+        status: 'failed' as const,
       }))
 
       await uploadDocument(session, makeInput({ name: 'plan.pdf' }), new Request('http://x'))
@@ -3389,7 +3390,7 @@ describe('two FIRST uploads of one filename at once', () => {
     fileSize: 8,
     contentHash: null,
     folderId: null,
-    status: 'uploaded',
+    status: 'uploaded' as const,
   })
 
   beforeEach(() => {
@@ -3671,7 +3672,7 @@ describe('restricted folders (ADR-0087)', () => {
       id,
       filename: 'Protokoll.pdf',
       createdAt: new Date(createdAt),
-      status: 'completed',
+      status: 'completed' as const,
       collectionName,
       errorMessage: null,
       authoredBy: 'user',

@@ -14,7 +14,7 @@
  */
 
 import 'server-only'
-import { and, asc, eq, gt, inArray, isNotNull, isNull, notInArray, or, sql } from 'drizzle-orm'
+import { and, asc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { executeRows } from '@/lib/db/execute-rows'
@@ -214,7 +214,7 @@ export async function markDocumentsRestoring(
         eq(documents.organizationId, organizationId),
         eq(documents.projectId, projectId),
         inArray(documents.folderId, [...folderIds]),
-        notInArray(documents.status, ['quarantined', 'uploading']),
+        ne(documents.status, 'quarantined'),
         or(eq(documents.authoredBy, 'user'), isNotNull(documents.publishedVersionId))
       )
     )

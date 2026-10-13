@@ -67,9 +67,12 @@ import { de } from '@/i18n/dictionaries/de'
 import { en } from '@/i18n/dictionaries/en'
 import { getByPath } from '@/i18n/translate'
 import {
+  DOCUMENT_STATUSES,
   DOCUMENT_STATUS_FACTS,
   IN_FLIGHT_DOCUMENT_STATUSES,
+  columnStatuses,
   documentStatusFacts,
+  isDocumentStatus,
   isKnownDocumentStatus,
 } from './document-status'
 import { SURFACE_STATES, SURFACE_STATE_LABEL_KEYS, surfaceStateOf } from './surface-state'
@@ -335,6 +338,16 @@ describe('every status a writer emits is declared', () => {
     ).toEqual([])
   })
 
+  it('writes only what the column may hold', () => {
+    // Stricter than "declared": the column's CHECK (migration 0135) refuses
+    // every value outside DOCUMENT_STATUSES, so a writer emitting one of the
+    // outside spellings the badge still renders would fail in production.
+    const refused = [...new Set(literals.filter((write) => !isDocumentStatus(write.value)))]
+      .map((write) => `${write.value}  (${write.where})`)
+      .sort()
+    expect(refused, 'documents.status allows only DOCUMENT_STATUSES (CHECK documents_status_known).').toEqual([])
+  })
+
   it('names every write it could not read', () => {
     // The honest half. A status handed a variable, a property, a call or an
     // interpolated template is unreadable by any scanner, so each one is listed
@@ -519,5 +532,27 @@ describe('every surface state has a label in both locales', () => {
     const key = SURFACE_STATE_LABEL_KEYS[state]
     expect(typeof getByPath(en.files, key), `en.files.${key}`).toBe('string')
     expect(typeof getByPath(de.files, key), `de.files.${key}`).toBe('string')
+  })
+})
+
+describe('the column vocabulary (migration 0135)', () => {
+  it('renders every value the column may hold', () => {
+    for (const status of DOCUMENT_STATUSES) expect(isKnownDocumentStatus(status), status).toBe(true)
+  })
+
+  it('is the set the CHECK lists, in the migration and in the schema', () => {
+    // Three spellings of one set: this module, the migration's CHECK and the
+    // drizzle declaration. A value added to one and not the others either fails
+    // writes in production or lets an undeclared one in.
+    const migration = readFileSync(join(process.cwd(), 'drizzle/0135_document_status_closed.sql'), 'utf8')
+    const check = migration.match(/CHECK \("status" IN \(([^)]*)\)\)/)
+    expect(check, 'the CHECK in 0135').not.toBeNull()
+    const listed = [...(check?.[1] ?? '').matchAll(/'([a-z_]+)'/g)].map((match) => match[1])
+    expect(listed.sort()).toEqual([...DOCUMENT_STATUSES].sort())
+  })
+
+  it('narrows an outside set to the column, for a SQL filter', () => {
+    expect(columnStatuses(IN_FLIGHT_DOCUMENT_STATUSES).sort()).toEqual(['pending', 'processing'])
+    expect(columnStatuses(['completed', 'ready', 'success'])).toEqual(['completed'])
   })
 })

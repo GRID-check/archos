@@ -17,7 +17,7 @@
 import 'server-only'
 import { and, eq, inArray, isNotNull, isNull, ne, not, notInArray, or, sql, type SQL } from 'drizzle-orm'
 import { documents } from '@/lib/db/schema'
-import { IN_FLIGHT_DOCUMENT_STATUSES } from './document-status'
+import { IN_FLIGHT_DOCUMENT_STATUSES, columnStatuses } from './document-status'
 import {
   SCREENING_PASSED_OUTCOMES,
   UNSCREENED_SETTLED_STATUSES,
@@ -62,7 +62,7 @@ function passedScreening(): SQL {
  * reached a verdict on them.
  */
 export function heldAtRest(): SQL {
-  return and(not(passedScreening()), notInArray(documents.status, [...IN_FLIGHT_DOCUMENT_STATUSES])) as SQL
+  return and(not(passedScreening()), notInArray(documents.status, columnStatuses(IN_FLIGHT_DOCUMENT_STATUSES))) as SQL
 }
 
 /** A held row this shelf reader may still see: one they uploaded, or any when they review. */

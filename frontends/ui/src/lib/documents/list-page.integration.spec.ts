@@ -145,7 +145,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
    * them and the job's whole position is one cursor it keeps in its payload.
    */
   it('walks the failed documents once each, oldest first, ignoring the ones that were read', async () => {
-    const statuses = ['failed', 'error', 'uploaded', 'failed', 'completed', 'failed', 'failed']
+    const statuses = ['failed', 'failed', 'uploaded', 'failed', 'completed', 'failed', 'failed']
     await inTenant(async () => {
       for (const [index, createdAt] of CREATED_AT.entries()) {
         await db.execute(sql`
@@ -161,7 +161,7 @@ describe.skipIf(!url)('document listing pages against Postgres', () => {
       Array.from(
         await db.execute<{ id: string }>(sql`
           SELECT id FROM documents
-          WHERE organization_id = ${ORG} AND status IN ('failed', 'error', 'uploaded')
+          WHERE organization_id = ${ORG} AND status IN ('failed', 'uploaded')
           ORDER BY created_at ASC, id ASC
         `),
       ).map((row) => String(row.id)),

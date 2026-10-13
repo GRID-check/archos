@@ -34,7 +34,7 @@ interface Seed {
 }
 
 const SEEDS: Record<string, Seed> = {
-  ready: { status: 'ready', category: 'deterministic', retryable: false },
+  read: { status: 'completed', category: 'deterministic', retryable: false },
   uploaded: { status: 'uploaded' },
   transient: { status: 'failed', category: 'transient', retryable: true },
   configuration: { status: 'failed', category: 'configuration', retryable: true },
@@ -42,7 +42,6 @@ const SEEDS: Record<string, Seed> = {
   'before-the-column': { status: 'failed' },
   'flag-only-no': { status: 'failed', retryable: false },
   'deterministic-same': { status: 'failed', category: 'deterministic', retryable: false, reader: CURRENT_INGEST_READER_VERSION },
-  'deterministic-ERROR': { status: 'ERROR', category: 'deterministic', retryable: false, reader: CURRENT_INGEST_READER_VERSION },
   'deterministic-older-reader': { status: 'failed', category: 'deterministic', retryable: false, reader: '2026.9.4' },
   'deterministic-newer-reader': { status: 'failed', category: 'deterministic', retryable: false, reader: '2099.1.1' },
   'deterministic-no-reader': { status: 'failed', category: 'deterministic', retryable: false },
