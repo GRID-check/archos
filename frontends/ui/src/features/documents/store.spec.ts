@@ -626,6 +626,27 @@ describe('useDocumentsStore', () => {
       expect(files.find((f) => f.id === 'server-2')?.status).toBe('failed')
     })
 
+    test('keeps a stored or held attachment at rest across a re-list, never available', () => {
+      // The chat's first-party listing says `stored` for an attachment nobody
+      // read and `held` for one the content check stopped. A re-list used to
+      // read both as `success`, so the chat counted them as sources.
+      const listed = (file_id: string, status: FileInfo['status']): FileInfo => ({
+        file_id,
+        file_name: `${file_id}.pdf`,
+        collection_name: 'session-1',
+        status,
+        chunk_count: 0,
+        metadata: {},
+      })
+      useDocumentsStore.getState().setFilesFromServer('session-1', [listed('stored-1', 'stored'), listed('held-1', 'held')])
+
+      const files = useDocumentsStore.getState().trackedFiles
+      expect(files.find((f) => f.id === 'stored-1')?.status).toBe('stored')
+      expect(files.find((f) => f.id === 'held-1')?.status).toBe('held')
+      // What NoSourcesBanner and the composer count as an available source.
+      expect(files.some((f) => f.status === 'success')).toBe(false)
+    })
+
     test('preserves files from other collections', () => {
       useDocumentsStore.setState({
         trackedFiles: [

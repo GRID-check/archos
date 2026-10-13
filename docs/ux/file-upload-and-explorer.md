@@ -64,6 +64,15 @@ Two terminal phases are neither a success nor a failure:
   read them (the document's `uploaded` / `stored` status). Not „Zitierbar“,
   because Piloti cannot cite it. The header counts it as added.
 
+A fresh file the server refuses because the document it would replace waits in
+the Quarantäne (409, `details.reason: quarantined`, `assertMayReplaceHeld`)
+ends `failed`, but with `retryable: false` on the row and the sentence in the
+reader's language („… ersetzt eine Datei, die in der Quarantäne wartet …“). A
+retry would meet the same 409 until somebody deletes or releases that file, so
+`retryFile` refuses it, and every surface that offers a retry asks
+`mayRetryUpload` (`features/documents/types.ts`), the same rule that keeps a
+held row from being retried.
+
 Every path that settles a row agrees on these. The ingest job poll reads a
 `failed` file whose error starts `quarantined:` as held
 (`trackedStatusOfJobFile` in `features/documents/utils.ts`); a status read maps
@@ -72,7 +81,13 @@ document is held and an `uploaded` one stored; the upload response's
 `uploaded` is stored unless the answer is *unchanged*. The chat says the same:
 the attachment card and the composer chip show a held file with a warning
 shield and the quarantine sentence and offer no retry, and a stored one as
-„Abgelegt“, because the chat cannot answer from a file nobody read.
+„Abgelegt“, because the chat cannot answer from a file nobody read. A re-list
+of a chat's attachments keeps both: the listing's file status
+(`ListedFileStatusSchema`) has `stored` and `held` beside the backend's four
+words, and `sessionDocumentFileStatus` reads them off the one state table
+(`surfaceStateOf`). Only a citable attachment is `success`, the status the
+no-sources banner and the composer count as an available source; an
+undeclared status is at rest and is not one.
 
 `queued` and `uploading` are told apart by `uploadStartedAt`, not by the byte
 count: with a bounded number of slots most of a large batch is genuinely
@@ -125,8 +140,16 @@ decorated afterwards. Where each one landed:
    upload at all** — a 150 MB model uploaded by mistake had to be waited out.
 4. **Consistency and standards.** The same extension chip identifies a document
    in the tray, in the explorer list and in the preview header. Status wording
-   comes from the one `document-status` map. Indeterminate progress follows the
-   ARIA pattern rather than inventing one.
+   comes from the one `document-status` map, through the seven states of
+   `lib/documents/surface-state.ts`: a file whose bytes are still arriving says
+   „Wird hochgeladen“, not „Wird gelesen“, and is counted with the files being
+   read. The badge takes its colour from the same state, so a failed row that
+   still carries the content check's verdict (`quarantined:{…}`, written before
+   the reconcile said `quarantined`) reads „Zurückgehalten“ in the warning
+   colour wherever the caller holds the row's `errorMessage`. The upload
+   summary counts a status nobody declared as being read, as the folder brief
+   does. Indeterminate progress follows the ARIA pattern rather than inventing
+   one.
 5. **Error prevention.** Validation still runs before a byte is sent; the
    concurrency cap keeps the connection pool from starving the status poll; a
    per-file abort handle means cancelling one file cannot cancel another.

@@ -861,6 +861,8 @@ export const files: typeof en.files = {
       '{failed} von {total} Dokumenten konnten nicht hochgeladen werden. Erster Grund: {reason}',
     uploadingSkipped:
       'Es werden {uploading} {fileLabel} hochgeladen, {skipped} übersprungen ({summary})',
+    quarantinedReplace:
+      '„{name}“ ersetzt eine Datei, die in der Quarantäne wartet. Löschen Sie diese Datei oder lassen Sie sie zu, dann laden Sie die neue hoch.',
     cannotRetryServerFile:
       'Vom Server geladene Dateien können nicht erneut versucht werden. Bitte laden Sie die Datei erneut hoch.',
     imageVlmUnavailable:

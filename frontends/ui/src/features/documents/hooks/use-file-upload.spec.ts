@@ -908,6 +908,58 @@ describe('useFileUpload — durable document uploads', () => {
     )
   })
 
+  test('a file refused because it would replace a quarantined one is not offered again (ADR-0086)', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(
+        409,
+        JSON.stringify({
+          error: '"plan-0.pdf" is waiting in quarantine.',
+          code: 'CONFLICT',
+          details: { reason: 'quarantined' },
+        })
+      )
+      await pending
+    })
+
+    // The row says why in the reader's language, and is marked as one a retry cannot fix.
+    const message = en.files.errors.quarantinedReplace.replace('{name}', 'plan-0.pdf')
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed', errorMessage: message, retryable: false })
+    expect(mockDocumentsStoreState.setError).toHaveBeenCalledWith(message)
+
+    // „Alle wiederholen“ calls retryFile for it: it sends nothing and keeps the row.
+    vi.mocked(mockDocumentsStoreState.removeTrackedFile).mockClear()
+    const { result: again } = renderUpload()
+    await act(async () => {
+      await again.current.retryFile('mock-uuid')
+    })
+    expect(mockDocumentsStoreState.removeTrackedFile).not.toHaveBeenCalled()
+    expect(xhr.requests).toHaveLength(1)
+  })
+
+  test('any other conflict stays retryable', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].respond(409, JSON.stringify({ error: 'A document named "plan-0.pdf" already exists here.' }))
+      await pending
+    })
+
+    expect(trackedById('mock-uuid')).toMatchObject({ status: 'failed' })
+    expect(trackedById('mock-uuid')).not.toHaveProperty('retryable')
+  })
+
   test('a rate-limited file waits out Retry-After and goes again instead of failing', async () => {
     vi.useFakeTimers()
     const { result } = renderUpload()

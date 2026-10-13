@@ -896,6 +896,8 @@ export const files = {
     someUploadsFailed:
       '{failed} of {total} documents could not be uploaded. First reason: {reason}',
     uploadingSkipped: 'Uploading {uploading} {fileLabel}, skipped {skipped} ({summary})',
+    quarantinedReplace:
+      '“{name}” would replace a file waiting in quarantine. Delete that file or have it allowed through, then upload the new one.',
     cannotRetryServerFile: 'Cannot retry server-loaded files. Please upload the file again.',
     imageVlmUnavailable:
       'Images cannot be uploaded here: this deployment has no image recognition set up.',

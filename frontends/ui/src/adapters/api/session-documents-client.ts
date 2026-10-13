@@ -18,8 +18,8 @@
  */
 
 import { z } from 'zod'
-import { documentStatusFacts } from '@/lib/documents/document-status'
-import type { DocumentFileStatus, FileInfo } from './documents-schemas'
+import { surfaceStateOf, type SurfaceState } from '@/lib/documents/surface-state'
+import type { FileInfo, ListedFileStatus } from './documents-schemas'
 
 const SessionDocumentRowSchema = z.object({
   id: z.string(),
@@ -40,19 +40,34 @@ const SessionDocumentListSchema = z.object({
 export type SessionDocumentRow = z.infer<typeof SessionDocumentRowSchema>
 
 /**
- * A document row's status in the tracked-file vocabulary. Derived from the one
- * status table (`lib/documents/document-status`): in flight is `ingesting`,
- * a failure or a quarantine is `failed`, anything else at rest is `success`. An undeclared
- * status is at rest: reading it as in flight would poll it forever.
+ * Each state's word in the listed-file vocabulary. Only `citable` is
+ * `success`, the status every chat surface counts as an available source.
+ *
+ * - In flight (`uploading`, `reading`) is `ingesting`, which the chat polls.
+ * - `stored`: an attachment stored and never read (`uploaded`) has nothing in
+ *   the index and no passing verdict, so the chat cannot answer from it
+ *   (ADR-0086). It used to come back `success` and read as available.
+ * - `held`: the content check stopped it; never offered a retry.
+ * - An undeclared status is at rest, or the poll would never end, and not
+ *   `success` either: nothing is known about it, so it is not a source.
  */
-export function sessionDocumentFileStatus(status: string): DocumentFileStatus {
-  const facts = documentStatusFacts(status)
-  if (facts?.phase === 'in-flight') return 'ingesting'
-  // A quarantined attachment (ADR-0086) is not readable either, and saying
-  // „success" would tell the chat it can be asked about. It keeps its
-  // `quarantined:{…}` error, which the documents store reads as `held`
-  // (`trackedStatusOfJobFile`), so it is never offered a retry.
-  return facts?.variant === 'destructive' || facts?.variant === 'warning' ? 'failed' : 'success'
+const LISTED_STATUS_BY_STATE: Record<SurfaceState, ListedFileStatus> = {
+  citable: 'success',
+  uploading: 'ingesting',
+  reading: 'ingesting',
+  held: 'held',
+  unreadable: 'failed',
+  stored: 'stored',
+  unknown: 'stored',
+}
+
+/**
+ * A document row's status in the listed-file vocabulary, from the one status
+ * table (`surfaceStateOf`). The row's reason refines it: a failed row carrying
+ * the gate's verdict is held, as its badge says.
+ */
+export function sessionDocumentFileStatus(status: string, errorMessage?: string | null): ListedFileStatus {
+  return LISTED_STATUS_BY_STATE[surfaceStateOf({ status, errorMessage })]
 }
 
 /** A session document row in the shape the documents store reads. */
@@ -61,7 +76,7 @@ export function sessionDocumentToFileInfo(row: SessionDocumentRow): FileInfo {
     file_id: row.id,
     file_name: row.filename,
     collection_name: row.collectionName,
-    status: sessionDocumentFileStatus(row.status),
+    status: sessionDocumentFileStatus(row.status, row.errorMessage),
     file_size: row.fileSize ?? null,
     chunk_count: row.chunkCount ?? 0,
     uploaded_at: row.createdAt ?? null,

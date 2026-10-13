@@ -19,7 +19,7 @@ import { useDocumentsStore } from '../store'
 import { useAuth } from '@/adapters/auth'
 import { useAppConfig } from '@/shared/context'
 import { useLayoutStore } from '@/features/layout/store'
-import type { TrackedFile, UploadIntent } from '../types'
+import { mayRetryUpload, type TrackedFile, type UploadIntent } from '../types'
 import { mapUploadResponseStatus } from '../utils'
 import { shouldEmitProgress } from '../lib/upload-progress'
 import { isJoblessIngesting } from '../lib/document-status-reads'
@@ -32,7 +32,7 @@ import { markSessionHasCollection } from '../persistence'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
-import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
+import { describeScreenedOut, isQuarantinedReplaceBody } from '@/lib/upload-screening/quarantine'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '../lib/upload-batch'
 import { capturePosthog } from '@/lib/analytics/posthog'
@@ -84,6 +84,20 @@ const failureMessage = (error: unknown, fallback: string, projectClosed?: string
     }
   }
   return error instanceof Error ? error.message : fallback
+}
+
+/**
+ * The server refused this file because the document it would replace waits in
+ * the Quarantäne (`assertMayReplaceHeld`). A retry meets the same 409 until
+ * somebody deletes or releases that file, so the row is not retryable.
+ */
+const isQuarantinedReplace = (error: unknown): boolean => {
+  if (!(error instanceof XhrUploadError) || error.status !== 409) return false
+  try {
+    return isQuarantinedReplaceBody(JSON.parse(error.responseText))
+  } catch {
+    return false
+  }
 }
 
 interface UseFileUploadOptions {
@@ -550,6 +564,13 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // The failure belongs to THIS file. The other eleven documents in
             // an Einreichung are still wanted, and the row that refused is the
             // one that has to say so.
+            if (isQuarantinedReplace(err)) {
+              // Said in the reader's language, and thrown as that sentence so
+              // the batch's own error line says it too.
+              const message = t('errors.quarantinedReplace', { name: file.name })
+              updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message, retryable: false })
+              throw new Error(message)
+            }
             const message = failureMessage(err, 'Upload failed', t('errors.projectClosed'))
             updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message })
             throw err instanceof Error ? err : new Error(message)
@@ -758,7 +779,8 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       const file = trackedFiles.find((f) => f.id === fileId)
       // A held file is not retried, from any surface: the server refuses a
       // re-upload onto it (409), and nothing went wrong to repeat (ADR-0086).
-      if (!file || file.status === 'held') return
+      // Nor is a file refused for a reason the retry meets again.
+      if (!file || !mayRetryUpload(file)) return
 
       if (!file.file) {
         setError(t('errors.cannotRetryServerFile'))

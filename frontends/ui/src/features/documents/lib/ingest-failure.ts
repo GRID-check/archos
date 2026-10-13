@@ -43,12 +43,16 @@ export type IngestFailure =
  * The backend's machine prefixes (the text before the first `:`), each to its
  * category. Parsed by the Python parity test: keep it one `'prefix': 'kind',`
  * entry per line.
+ *
+ * `unreadable_job` (the queued job's payload could not be read,
+ * `jobs/ingest_dispatch.py`) says the dispatch sentence: reading never started,
+ * and no service restarted.
  */
 export const INGEST_FAILURE_PREFIXES = {
   office_rendition_required: 'rendition_failed',
   original_download_failed: 'download_failed',
   interrupted: 'interrupted',
-  unreadable_job: 'interrupted',
+  unreadable_job: 'dispatch_failed',
   pdf_pages_unreadable: 'unreadable_pages',
   vlm_not_configured: 'vision_not_configured',
   document_deleted: 'deleted',
