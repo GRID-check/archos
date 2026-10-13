@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    Ask Piloti what changed between two Fassungen of a document, such as Index B
+    and Index C of a floor plan, and it answers page by page with the values that
+    moved and the title block's index and date.
