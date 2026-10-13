@@ -3108,6 +3108,7 @@ export async function findDocumentStorageKey(
   filename: string,
   organizationId?: string
 ): Promise<{
+  id: string
   storageKey: string
   storageBucket: string | null
   contentType: string | null
