@@ -303,6 +303,8 @@ export const files: typeof en.files = {
     retryIngestionError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
     dialogLabel: 'Dateivorschau: {name}',
+    // The length, in the facts line under the name in the chat peek.
+    pageCount: '{count, plural, one {# Seite} other {# Seiten}}',
     resizePeek: 'Breite der Dateivorschau ändern',
     peekIndexingHint: 'Piloti kann diese Datei erst zitieren, wenn sie gelesen ist.',
     peekFailedHint: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',

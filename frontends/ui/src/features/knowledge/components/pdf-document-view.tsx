@@ -36,7 +36,8 @@ import {
 import type { PDFDocumentProxy, PDFPageProxy } from 'pdfjs-dist'
 import { AlertTriangle, Check, Crosshair, Minus, Plus, Quote } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { ButtonGroup } from '@/components/ui/button-group'
+import { ButtonGroup, ButtonGroupSeparator } from '@/components/ui/button-group'
+import { FloatingToolbar, ToolbarIconButton } from '@/components/ui/floating-toolbar'
 import { Spinner } from '@/components/ui/spinner'
 import { cn } from '@/lib/utils'
 import { REPLAY_BLOCK_CLASS } from '@/lib/analytics/posthog-config'
@@ -99,6 +100,17 @@ export interface PdfDocumentViewProps {
    * shows blank on Android Chrome, which has no inline PDF renderer.
    */
   onLoadError?: () => void
+  /**
+   * Where the controls live. `inline` (the default): a row above a bordered
+   * scroller, for a dialog that is the document's whole surface. `floating`:
+   * the pages sit directly on whatever ground the caller provides, and page
+   * position and zoom ride over them in a glass pill at the bottom — for a
+   * caller that already frames the document (the chat peek's stage), where a
+   * row and a border of the viewer's own were a box inside a box. It carries
+   * no "passage not found" note, so it is for a plain file view, not for
+   * opening a citation.
+   */
+  chrome?: 'inline' | 'floating'
   className?: string
 }
 
@@ -214,9 +226,11 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   regions,
   quoteFormat,
   onLoadError,
+  chrome = 'inline',
   className,
 }) => {
   const t = useTranslations('knowledge')
+  const floating = chrome === 'floating'
   const [doc, setDoc] = useState<PDFDocumentProxy | null>(null)
   const [failed, setFailed] = useState(false)
   const [frameWidth, setFrameWidth] = useState(0)
@@ -643,7 +657,59 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   }
 
   return (
-    <div className={cn('flex min-h-0 min-w-0 flex-1 flex-col gap-2', REPLAY_BLOCK_CLASS, className)}>
+    <div
+      className={cn(
+        'flex min-h-0 min-w-0 flex-1 flex-col',
+        floating ? 'relative' : 'gap-2',
+        REPLAY_BLOCK_CLASS,
+        className,
+      )}
+    >
+      {floating && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+          <FloatingToolbar className="pointer-events-auto max-w-full" data-testid="pdf-floating-toolbar">
+            <span className="text-muted-foreground px-2 text-xs whitespace-nowrap tabular-nums">
+              {doc
+                ? t('viewer.pagePosition', { page: currentPage, count: doc.numPages })
+                : t('viewer.loading')}
+            </span>
+            {(hit || regionsOnPage) && (
+              <ToolbarIconButton
+                onClick={() => {
+                  if (hit) {
+                    revealPassage(hit)
+                    return
+                  }
+                  setPing((previous) => previous + 1)
+                  scrollToRegion(true)
+                }}
+                aria-label={t('viewer.toPassage')}
+                title={t('viewer.toPassage')}
+              >
+                <Crosshair aria-hidden />
+              </ToolbarIconButton>
+            )}
+            <ButtonGroupSeparator />
+            <ToolbarIconButton
+              onClick={() => setZoomStep((step) => Math.max(0, step - 1))}
+              disabled={zoomStep === 0}
+              aria-label={t('viewer.zoomOut')}
+            >
+              <Minus aria-hidden />
+            </ToolbarIconButton>
+            <span className="text-muted-foreground w-10 text-center text-xs tabular-nums">
+              {Math.round(zoom * 100)}%
+            </span>
+            <ToolbarIconButton
+              onClick={() => setZoomStep((step) => Math.min(ZOOM_STEPS.length - 1, step + 1))}
+              disabled={zoomStep === ZOOM_STEPS.length - 1}
+              aria-label={t('viewer.zoomIn')}
+            >
+              <Plus aria-hidden />
+            </ToolbarIconButton>
+          </FloatingToolbar>
+        </div>
+      )}
       {/* `flex-wrap`: this row holds a page count, a "jump to the passage"
           button and the zoom group, and on a phone — where each of those grows
           to the 44px touch floor — they add up past the viewport. Unwrapped, the
@@ -651,7 +717,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
           horizontal with it (measured 445px inside 390), so reading a cited
           passage on a phone meant scrolling the document sideways to find the
           controls for it. Wrapping costs one line and only when it is needed. */}
-      <div className="flex shrink-0 flex-wrap items-center gap-2">
+      <div className={cn('flex shrink-0 flex-wrap items-center gap-2', floating && 'hidden')}>
         {/* Where the reader IS, not how long the document is. A page count is a
             fact about the file; "page 12 of 34" is the answer to the question a
             reader in the middle of a Bescheid actually has, and it is the half
@@ -731,7 +797,14 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
         tabIndex={0}
         role="group"
         aria-label={title}
-        className="min-h-0 w-full flex-1 overflow-auto overscroll-contain rounded-lg border border-border bg-surface-sunken p-3 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className={cn(
+          'min-h-0 w-full flex-1 overflow-auto overscroll-contain focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
+          // Floating: no frame of its own, and room at the bottom so the last
+          // page can scroll clear of the pill riding over it.
+          floating
+            ? 'px-3 pt-4 pb-16 focus-visible:ring-inset'
+            : 'rounded-lg border border-border bg-surface-sunken p-3',
+        )}
       >
         {/* PAGE-SHAPED while it loads. A spinner centred in an empty frame
             was replaced by a white page in one frame — a different shape, a

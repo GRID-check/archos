@@ -30,6 +30,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
+import { InsetStage } from '@/components/ui/inset-stage'
 import type { FassungFacts } from '@/lib/documents/fassung'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { ClampedText } from '@/components/ui/clamped-text'
@@ -39,13 +40,12 @@ import { formatAbsoluteTime, formatBytes } from '@/lib/format'
 import { isOptimizerEligible } from '@/lib/images/optimizable'
 import { cn } from '@/lib/utils'
 import {
-  extChipTint,
-  fileExtensionLabel,
   fileFormatMessage,
   inferDocumentKind,
 } from '../document-kind'
 import type { DocumentKind } from '../document-kind'
 import { DocumentKindThumbnail } from './document-kind-thumbnail'
+import { FileExtChip } from './file-ext-chip'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
@@ -519,6 +519,16 @@ export function FilePreviewPane({
    */
   const [wellRef, wellSeen] = useSeenOnce<HTMLDivElement>()
   const showInlinePdf = wellSeen && !isLargePreviewOpen
+  /**
+   * The well hands its whole area to a viewer that scrolls and zooms itself —
+   * pdf.js, the IFC viewport — instead of padding and scrolling it a second
+   * time. In the peek that is what lets a PDF's pages sit directly on the
+   * stage with their controls floating over them, rather than a bordered
+   * scroller boxed inside a padded box.
+   */
+  const wellHostsViewer =
+    peeking &&
+    (isModel || (canPreview && Boolean(previewUrl) && shownType === 'application/pdf'))
 
   useEffect(() => {
     loadPreview()
@@ -604,8 +614,6 @@ export function FilePreviewPane({
   // now, on the card where the failure is actually read.
   const handleReingest = useCallback(() => void actions.reingest(), [actions])
 
-  const ext = fileExtensionLabel(file.filename)
-
   return (
     <div className="@container bg-card flex h-full min-h-0 flex-col">
       {/* Peek chrome lives on the host — this header is the modal/expanded one,
@@ -632,13 +640,7 @@ export function FilePreviewPane({
           there. */}
       {!peeking && (
         <div className="@md:gap-x-3 @md:px-5 flex shrink-0 items-start gap-x-2 border-b px-3.5 pb-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:pt-3.5">
-          <span
-            className="flex size-9 shrink-0 items-center justify-center rounded-lg text-xs font-bold uppercase leading-none"
-            style={extChipTint(ext)}
-            aria-hidden
-          >
-            {ext || <Icon className="size-4" />}
-          </span>
+          <FileExtChip filename={file.filename} fallback={<Icon className="size-4" />} />
           {/* The name the document was GIVEN, if it was given one. `title`
             carries it in full for the truncated case — and the file's own name
             underneath it, which is the answer to "which file is this actually"
@@ -881,190 +883,196 @@ export function FilePreviewPane({
             real shadow reads as a document ON something — which is what a
             drawing on a desk actually looks like, and the whole reason this
             column exists rather than a download link. */}
-        <div
-          ref={wellRef}
-          data-testid="file-preview-well"
-          className={cn(
-            'from-muted/25 to-muted/60 flex min-w-0 justify-center bg-gradient-to-b',
-            peeking
-              ? // THE GROUND IS THE DOCUMENT'S, and the document sits centred on
-                // it. A drawing fitted to the width of a 320px pane is a quarter
-                // of its height and the well cannot make it bigger — width is the
-                // binding constraint, so the leftover vertical space exists
-                // whatever this element does. Top-aligned, the document read as
-                // having fallen to the top of a box. Handing the slack to the
-                // summary below was worse: that block's content is four lines
-                // whatever the pane's height, so the emptiness simply moved under
-                // it and changed colour. Centred on its own ground, with the
-                // summary as a footer band beneath, is the composition that reads
-                // as deliberate at every height.
-                //
-                // The well is also the peek's document SCROLL container. The peek
-                // body above is `overflow-hidden` and a text page only scrolls
-                // horizontally, so a tall document used to clip here with no way
-                // to reach the rest. Bounded by `flex-1 min-h-0` in the peek
-                // column (the summary footer below is capped and shrink-0), in
-                // the same `scroll-fade-bottom` language the summary speaks.
-                // Centring is per-child `my-auto` rather than `items-center` on
-                // purpose: a centred flex container clips the TOP of overflowing
-                // content unreachably, while auto margins collapse to
-                // top-aligned the moment the document outgrows the well — short
-                // docs sit centred, tall ones scroll from the top.
-                'scroll-fade-bottom h-full min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-3 [&>*]:my-auto'
-              : '@2xl:h-auto @2xl:min-h-0 @2xl:flex-1 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:p-7 h-[50dvh] min-h-[50dvh] shrink-0 overflow-hidden p-5'
-          )}
-        >
-          {isModel ? (
-            <IfcFilePreview
-              documentId={file.id}
-              filename={file.filename}
-              projectId={projectId}
-              canOpenWorkspace={showModels}
-              className="size-full"
-            />
-          ) : isTextual && isLoading ? (
-            <PageMock skeleton />
-          ) : isTextual && previewText ? (
-            <FileTextPage
-              text={previewText.text}
-              truncated={previewText.truncated}
-              contentType={file.contentType}
-              truncatedLabel={t('preview.textTruncated')}
-              peeking={peeking}
-            />
-          ) : canPreview && isLoading ? (
-            // Converting an office file can take seconds on first open, so the
-            // skeleton says what it is waiting for instead of looking stuck.
-            <PageMock
-              skeleton
-              caption={isOfficeRendition ? t('preview.renditionPending') : undefined}
-            />
-          ) : canPreview && previewUrl ? (
-            shownType === 'application/pdf' ? (
-              // THE APP'S OWN VIEWER, NOT THE BROWSER'S. A frame on the
-              // presigned URL drew nothing on Android Chrome (no inline PDF
-              // renderer: a blank box, or a download), little on iOS, and
-              // navigated, zoomed and searched unlike the citation viewer
-              // beside it. pdf.js renders it the same everywhere, fitted to the
-              // well's width with pages rasterised only near the viewport. It
-              // FETCHES the bytes, so it reads the same-origin stream, which
-              // for an office file streams the rendition (ADR-0070). The
-              // preview route above still decides whether there is anything
-              // to show; this only decides how it is drawn.
-              showInlinePdf ? (
-                <PdfDocumentView
-                  key={file.id}
-                  src={documentFileUrl(file.id)}
-                  title={actions.name}
-                  onLoadError={handlePdfFailed}
-                  className="size-full"
-                />
+        <PeekStage peeking={peeking}>
+          <div
+            ref={wellRef}
+            data-testid="file-preview-well"
+            className={cn(
+              'flex min-w-0 justify-center',
+              !peeking && 'from-muted/25 to-muted/60 bg-gradient-to-b',
+              wellHostsViewer
+                ? 'h-full min-h-0 flex-1 overflow-hidden'
+                : peeking
+                ? // THE GROUND IS THE DOCUMENT'S, and the document sits centred on
+                  // it. A drawing fitted to the width of a 320px pane is a quarter
+                  // of its height and the well cannot make it bigger — width is the
+                  // binding constraint, so the leftover vertical space exists
+                  // whatever this element does. Top-aligned, the document read as
+                  // having fallen to the top of a box. Handing the slack to the
+                  // summary below was worse: that block's content is four lines
+                  // whatever the pane's height, so the emptiness simply moved under
+                  // it and changed colour. Centred on its own ground, with the
+                  // summary as a footer band beneath, is the composition that reads
+                  // as deliberate at every height.
+                  //
+                  // The well is also the peek's document SCROLL container. The peek
+                  // body above is `overflow-hidden` and a text page only scrolls
+                  // horizontally, so a tall document used to clip here with no way
+                  // to reach the rest. Bounded by `flex-1 min-h-0` in the peek
+                  // column (the summary footer below is capped and shrink-0), in
+                  // the same `scroll-fade-bottom` language the summary speaks.
+                  // Centring is per-child `my-auto` rather than `items-center` on
+                  // purpose: a centred flex container clips the TOP of overflowing
+                  // content unreachably, while auto margins collapse to
+                  // top-aligned the moment the document outgrows the well — short
+                  // docs sit centred, tall ones scroll from the top.
+                  'scroll-fade-bottom h-full min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain p-4 [&>*]:my-auto'
+                  : '@2xl:h-auto @2xl:min-h-0 @2xl:flex-1 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:p-7 h-[50dvh] min-h-[50dvh] shrink-0 overflow-hidden p-5'
+            )}
+          >
+            {isModel ? (
+              <IfcFilePreview
+                documentId={file.id}
+                filename={file.filename}
+                projectId={projectId}
+                canOpenWorkspace={showModels}
+                className="size-full"
+              />
+            ) : isTextual && isLoading ? (
+              <PageMock skeleton />
+            ) : isTextual && previewText ? (
+              <FileTextPage
+                text={previewText.text}
+                truncated={previewText.truncated}
+                contentType={file.contentType}
+                truncatedLabel={t('preview.textTruncated')}
+                peeking={peeking}
+              />
+            ) : canPreview && isLoading ? (
+              // Converting an office file can take seconds on first open, so the
+              // skeleton says what it is waiting for instead of looking stuck.
+              <PageMock
+                skeleton
+                caption={isOfficeRendition ? t('preview.renditionPending') : undefined}
+              />
+            ) : canPreview && previewUrl ? (
+              shownType === 'application/pdf' ? (
+                // THE APP'S OWN VIEWER, NOT THE BROWSER'S. A frame on the
+                // presigned URL drew nothing on Android Chrome (no inline PDF
+                // renderer: a blank box, or a download), little on iOS, and
+                // navigated, zoomed and searched unlike the citation viewer
+                // beside it. pdf.js renders it the same everywhere, fitted to the
+                // well's width with pages rasterised only near the viewport. It
+                // FETCHES the bytes, so it reads the same-origin stream, which
+                // for an office file streams the rendition (ADR-0070). The
+                // preview route above still decides whether there is anything
+                // to show; this only decides how it is drawn.
+                showInlinePdf ? (
+                  <PdfDocumentView
+                    key={file.id}
+                    src={documentFileUrl(file.id)}
+                    title={actions.name}
+                    onLoadError={handlePdfFailed}
+                    chrome={peeking ? 'floating' : 'inline'}
+                    className="size-full"
+                  />
+                ) : (
+                  <PageMock skeleton />
+                )
               ) : (
-                <PageMock skeleton />
+                // This is where the bytes actually were: the preview URL serves
+                // the FULL-SIZE original into a column a few hundred pixels wide,
+                // so a 4000px scan used to cross the wire whole. `previewImageUrl`
+                // is the same-origin signed path the optimizer can resize; it is
+                // null for the formats the optimizer would choke on (SVG and the
+                // exotic ones), which then fall back to the object-store URL
+                // unoptimized — the old behaviour, kept as the safe default.
+                //
+                // Sizing stays with CSS either way: the well is only bounded on
+                // mobile (`h-[50dvh]`) and grows with its content at `@2xl`, where
+                // a `fill` child would collapse the column to nothing. Hence 0/0
+                // for the ratio next/image cannot know, plus an explicit `w-auto`
+                // so the browser sizes to the image and not to the width="0".
+                <Image
+                  src={previewImageUrl ?? previewUrl}
+                  alt={actions.name}
+                  width={0}
+                  height={0}
+                  sizes="(min-width: 1536px) 720px, 90vw"
+                  unoptimized={!isOptimizerEligible(previewImageUrl ?? previewUrl)}
+                  // Either URL can be expired or unreachable by the time the
+                  // browser fetches the bytes — a presigned link on its own TTL,
+                  // or a signed image path whose window has rolled over — and the
+                  // fetch above only proves the BFF handed one out. Fall back to
+                  // the same failed state the fetch path uses so the user gets the
+                  // caption and the retry button instead of a broken-image glyph.
+                  onError={() => {
+                    setPreviewUrl(null)
+                    setPreviewImageUrl(null)
+                    setPreviewFailed(true)
+                  }}
+                  className={cn(
+                    'bg-background @2xl:max-h-none h-fit max-h-full w-auto max-w-full rounded-lg border object-contain',
+                    peeking ? 'shadow-md' : 'shadow-lg'
+                  )}
+                />
               )
             ) : (
-              // This is where the bytes actually were: the preview URL serves
-              // the FULL-SIZE original into a column a few hundred pixels wide,
-              // so a 4000px scan used to cross the wire whole. `previewImageUrl`
-              // is the same-origin signed path the optimizer can resize; it is
-              // null for the formats the optimizer would choke on (SVG and the
-              // exotic ones), which then fall back to the object-store URL
-              // unoptimized — the old behaviour, kept as the safe default.
-              //
-              // Sizing stays with CSS either way: the well is only bounded on
-              // mobile (`h-[50dvh]`) and grows with its content at `@2xl`, where
-              // a `fill` child would collapse the column to nothing. Hence 0/0
-              // for the ratio next/image cannot know, plus an explicit `w-auto`
-              // so the browser sizes to the image and not to the width="0".
-              <Image
-                src={previewImageUrl ?? previewUrl}
-                alt={actions.name}
-                width={0}
-                height={0}
-                sizes="(min-width: 1536px) 720px, 90vw"
-                unoptimized={!isOptimizerEligible(previewImageUrl ?? previewUrl)}
-                // Either URL can be expired or unreachable by the time the
-                // browser fetches the bytes — a presigned link on its own TTL,
-                // or a signed image path whose window has rolled over — and the
-                // fetch above only proves the BFF handed one out. Fall back to
-                // the same failed state the fetch path uses so the user gets the
-                // caption and the retry button instead of a broken-image glyph.
-                onError={() => {
-                  setPreviewUrl(null)
-                  setPreviewImageUrl(null)
-                  setPreviewFailed(true)
-                }}
-                className={cn(
-                  'bg-background @2xl:max-h-none h-fit max-h-full w-auto max-w-full rounded-lg border object-contain',
-                  peeking ? 'shadow-sm' : 'shadow-lg'
-                )}
+              <PageMock
+                kind={kind}
+                caption={
+                  previewGone
+                    ? t('preview.gone')
+                    : previewFailed
+                      ? t('preview.loadFailed')
+                      : t('preview.noInlinePreview')
+                }
+                action={
+                  previewGone ? (
+                    // The only move left. The document is not coming back, and
+                    // the conversation is still pointed at it — so the way out is
+                    // to stop asking about it, which is also the one thing the
+                    // reader cannot do from inside a viewer that will not load.
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() =>
+                        dropFileSubject({
+                          cleared: t('preview.goneCleared'),
+                          undo: t('preview.goneUndo'),
+                        })
+                      }
+                    >
+                      <X className="size-3.5" aria-hidden />
+                      {t('preview.goneAction')}
+                    </Button>
+                  ) : previewFailed && (canPreview || isTextual) ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={loadPreview}
+                    >
+                      <RotateCcw className="size-3.5" aria-hidden />
+                      {t('preview.tryAgain')}
+                    </Button>
+                  ) : (
+                    // "No inline preview for this file type" used to end there:
+                    // a sentence about a document, in the middle of the surface
+                    // that exists to show it, with nothing to do next. The
+                    // sentence already names the way out ("download it to view
+                    // the full document") — so the way out is here, rather than
+                    // an icon the reader has to go and find in the chrome.
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="gap-1.5"
+                      onClick={() => void actions.download()}
+                      disabled={actions.isDownloading}
+                    >
+                      <Download className="size-3.5" aria-hidden />
+                      {t('preview.download')}
+                    </Button>
+                  )
+                }
               />
-            )
-          ) : (
-            <PageMock
-              kind={kind}
-              caption={
-                previewGone
-                  ? t('preview.gone')
-                  : previewFailed
-                    ? t('preview.loadFailed')
-                    : t('preview.noInlinePreview')
-              }
-              action={
-                previewGone ? (
-                  // The only move left. The document is not coming back, and
-                  // the conversation is still pointed at it — so the way out is
-                  // to stop asking about it, which is also the one thing the
-                  // reader cannot do from inside a viewer that will not load.
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() =>
-                      dropFileSubject({
-                        cleared: t('preview.goneCleared'),
-                        undo: t('preview.goneUndo'),
-                      })
-                    }
-                  >
-                    <X className="size-3.5" aria-hidden />
-                    {t('preview.goneAction')}
-                  </Button>
-                ) : previewFailed && (canPreview || isTextual) ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={loadPreview}
-                  >
-                    <RotateCcw className="size-3.5" aria-hidden />
-                    {t('preview.tryAgain')}
-                  </Button>
-                ) : (
-                  // "No inline preview for this file type" used to end there:
-                  // a sentence about a document, in the middle of the surface
-                  // that exists to show it, with nothing to do next. The
-                  // sentence already names the way out ("download it to view
-                  // the full document") — so the way out is here, rather than
-                  // an icon the reader has to go and find in the chrome.
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="gap-1.5"
-                    onClick={() => void actions.download()}
-                    disabled={actions.isDownloading}
-                  >
-                    <Download className="size-3.5" aria-hidden />
-                    {t('preview.download')}
-                  </Button>
-                )
-              }
-            />
-          )}
-        </div>
+            )}
+          </div>
+        </PeekStage>
 
         {/* WHAT PILOTI MADE OF IT, in the peek.
             The peek dropped the whole rail — properties, tags, the lot — which
@@ -1081,17 +1089,29 @@ export function FilePreviewPane({
             nowhere to go and nothing to do. Capped and scrollable so a
             twelve-line ingestion summary cannot take the document's place, and
             absent entirely when there is no summary yet. */}
+        {/* Set on the card, not boxed: the stage above is the one framed
+            thing in the column, and a bordered card inside a tinted band under
+            it was the third frame in 300px. The label and the text are enough
+            to make it a section; a capped height keeps a long summary from
+            taking the document's place. */}
         {peeking && file.summary && (
           <section
             aria-label={t('preview.indexed.title')}
-            className="border-base bg-surface-sunken scroll-fade-bottom max-h-[38%] shrink-0 overflow-y-auto overscroll-contain border-t px-3 py-2.5"
+            data-testid="file-peek-summary"
+            className="scroll-fade-bottom max-h-[38%] shrink-0 overflow-y-auto overscroll-contain px-4 pt-3.5 pb-4"
           >
             <SectionLabel as="p" icon={Sparkles} className="font-semibold tracking-[0.05em]">
               {t('preview.indexed.title')}
             </SectionLabel>
-            <div className="mt-1.5">
-              <IndexedSummary key={file.id} summary={file.summary} />
-            </div>
+            <ClampedText
+              key={file.id}
+              lines={PEEK_SUMMARY_CLAMP_LINES}
+              moreLabel={t('preview.summaryMore')}
+              lessLabel={t('preview.summaryLess')}
+              className="text-foreground/90 mt-2 text-[13px] leading-[1.6] text-pretty"
+            >
+              {file.summary}
+            </ClampedText>
           </section>
         )}
 
@@ -1494,6 +1514,26 @@ export function FilePreviewPane({
 
 /** Lines of summary shown before it has to ask for the space. */
 const SUMMARY_CLAMP_LINES = 5
+
+/**
+ * The peek's summary is a footer under the document, not a rail beside it:
+ * three lines say what the file is, and the toggle has the rest.
+ */
+const PEEK_SUMMARY_CLAMP_LINES = 3
+
+/**
+ * In the peek the well sits ON a stage — inset from the pane's edges, recessed,
+ * with the drawing-paper grid — so the document reads as a sheet laid on a
+ * desk. Elsewhere the well is its own ground and needs no frame.
+ */
+function PeekStage({ peeking, children }: { peeking: boolean; children: ReactNode }): JSX.Element {
+  if (!peeking) return <>{children}</>
+  return (
+    <InsetStage data-testid="file-peek-stage" className="mx-3 flex min-h-0 flex-1 flex-col">
+      {children}
+    </InsetStage>
+  )
+}
 
 /**
  * The indexed summary, clamped until asked.

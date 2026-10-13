@@ -311,6 +311,8 @@ export const files = {
      * panel library makes every separator one), so it needs a name — an
      * unlabelled separator is announced as nothing at all.
      */
+    // The length, in the facts line under the name in the chat peek.
+    pageCount: '{count, plural, one {# page} other {# pages}}',
     resizePeek: 'Resize file preview',
     /**
      * The CONSEQUENCE of the status badge beside them in the chat peek. The

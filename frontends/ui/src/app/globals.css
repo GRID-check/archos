@@ -192,6 +192,18 @@ body {
   }
 }
 
+/* Drawing paper: a dot every 16px in faint ink. Mixed from the foreground so
+   one rule reads in both themes, and kept under 10% so it is a texture the eye
+   registers as "a surface to put things on", never as content. */
+@utility bg-drafting-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklch, var(--foreground) 9%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
 /* Hide scrollbar utility */
 @utility scrollbar-hide {
   -ms-overflow-style: none;

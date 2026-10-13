@@ -12,13 +12,18 @@ import type { JSX } from 'react'
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { usePathname } from 'next/navigation'
 import { usePanelRef } from 'react-resizable-panels'
-import { AlertCircle, Download, Maximize2, PanelRight, X } from 'lucide-react'
-import { useTranslations } from '@/i18n'
+import { AlertCircle, Download, FileText, Maximize2, PanelRight, X } from 'lucide-react'
+import { useLocale, useTranslations } from '@/i18n'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { Spinner } from '@/components/ui/spinner'
+import { ButtonGroup } from '@/components/ui/button-group'
+import { ToolbarIconButton } from '@/components/ui/floating-toolbar'
+import { formatBytes } from '@/lib/format'
+import { fileFormatMessage } from '../document-kind'
+import { FileExtChip } from './file-ext-chip'
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable'
 import { useSettlingRefresh } from '../hooks/use-settling-refresh'
 import { useDocumentActions, type DocumentScope } from './document-actions'
@@ -668,21 +673,36 @@ function dismissPeek(hide: () => void): void {
 }
 
 /**
- * The peek's own actions, built to the chat's proportions.
- *
- * `size-9` and `rounded-md` are the pill buttons' across the seam, so the two
- * halves of the row are the same control size rather than 28px against 36px.
- * The ring is the app's shared recipe (`FOCUS_RING`) instead of a third
- * hand-rolled variant — `grid-design-language.md` allows exactly two, and a
- * control that invents its own teaches the reader that the ring means nothing.
+ * What the file IS, in one quiet line under its name: "PDF · 12 Seiten ·
+ * 2,4 MB". The name alone left the reader to infer the format from a suffix
+ * the truncation had usually eaten, and the length of the document — the first
+ * thing anyone wants to know before asking about it — appeared nowhere in the
+ * peek. A page count is left out for images and models, where it means nothing.
  */
-const peekIconButtonClass = cn(
-  'text-muted-foreground hover:text-foreground hover:bg-accent flex size-9 shrink-0 items-center justify-center rounded-md',
-  'opacity-70 transition-[opacity,color,background-color] duration-quick ease-out motion-reduce:transition-none',
-  'focus-visible:opacity-100 focus-visible:outline-none group-hover:opacity-100',
-  FOCUS_RING,
-)
+function useFileFacts(file: FileItem): string {
+  const t = useTranslations('files')
+  const { locale } = useLocale()
+  const format = fileFormatMessage(file)
+  const paged = format?.key !== 'image' && format?.key !== 'ifc'
+  const facts: string[] = []
+  if (format) facts.push(t(`preview.formats.${format.key}`, format.values))
+  if (paged && file.pageCount && file.pageCount > 0) {
+    facts.push(t('preview.pageCount', { count: file.pageCount }))
+  }
+  if (file.fileSize && file.fileSize > 0) facts.push(formatBytes(file.fileSize, locale))
+  return facts.join(' · ')
+}
 
+/**
+ * The peek's header: the document's identity on the left, its actions in a
+ * pill on the right.
+ *
+ * Identity is the extension tile, the name, and the facts line — the same
+ * tile the modal header carries, so a file looks like itself on both. The
+ * actions sit in the pill material the chat toolbar uses across the seam,
+ * which makes the two halves of the row one family instead of a toolbar
+ * facing three loose icons.
+ */
 function PeekToolbar({
   file,
   scope,
@@ -698,65 +718,59 @@ function PeekToolbar({
 }): JSX.Element {
   const t = useTranslations('files')
   const actions = useDocumentActions({ document: file, scope })
-  // Shown only when it is NOT the answer the reader assumes. A peek exists
-  // because this file is what the next question is about, and a document that
-  // is still indexing (or failed) is one the agent cannot cite — the modal has
-  // said so under the name since the day it was built, and the peek, the one
-  // surface whose whole reason is "you are asking about this", said nothing.
-  // Silent for a citable file: quiet chrome is the point of the peek.
-  const unreadable = !isCitableStatus(file.status)
+  const facts = useFileFacts(file)
   return (
     <>
-    {/* 48px row, held 10px off the top — the same band the chat's own pills
-        occupy (`ChatToolbar`: `pt-2.5` + `min-h-12`), so the file's name and the
-        session's title sit on one line across the seam instead of missing each
-        other by fourteen pixels. */}
-    <div className="mt-2.5 flex h-12 shrink-0 items-center gap-0.5 px-3">
-      <p
-        // `text-sm`, like the session title in the pills across the seam. At
-        // `text-xs` the two names sat on one line in two different sizes, which
-        // reads as two unrelated surfaces that happen to be adjacent.
-        className="text-foreground min-w-0 flex-1 truncate px-1 text-sm font-medium tracking-[-0.01em]"
-        // The pane is 280px at its narrowest and a plan's filename is not.
-        title={name}
-      >
-        {name}
-      </p>
-      <button
-        type="button"
-        onClick={() => void actions.download()}
-        disabled={actions.isDownloading}
-        aria-label={t('preview.download')}
-        title={t('preview.download')}
-        className={`${peekIconButtonClass} disabled:opacity-40`}
-      >
-        {/* A signed URL for a 40 MB plan is not instant, and a button that only
-            dims tells the reader their click may not have landed — so they
-            click again. The spinner is the acknowledgement, in the place the
-            icon was. */}
-        {actions.isDownloading ? (
-          <Spinner size="xs" aria-hidden />
-        ) : (
-          <Download className="size-4" />
+    {/* Held 10px off the top, the band the chat's own pills occupy
+        (`ChatToolbar`: `pt-2.5` + `min-h-12`), so the file's name and the
+        session's title sit on one line across the seam. */}
+    <div className="mt-2.5 flex min-h-12 shrink-0 items-center gap-2.5 pr-3 pb-2.5 pl-4">
+      <FileExtChip filename={file.filename} size="sm" fallback={<FileText className="size-3.5" />} />
+      <div className="min-w-0 flex-1">
+        <p
+          className="text-foreground truncate text-sm font-semibold leading-tight tracking-[-0.01em]"
+          // The pane is 280px at its narrowest and a plan's filename is not.
+          title={name}
+        >
+          {name}
+        </p>
+        {facts && (
+          <p
+            data-testid="file-peek-facts"
+            className="text-muted-foreground mt-0.5 truncate text-xs tabular-nums"
+          >
+            {facts}
+          </p>
         )}
-      </button>
-      <button
-        type="button"
-        onClick={onExpand}
-        aria-label={t('assignment.expandFile')}
-        title={t('assignment.expandFile')}
-        className={peekIconButtonClass}
-      >
-        <Maximize2 className="size-4" />
-      </button>
-      <button
-        type="button"
-        onClick={() => dismissPeek(onHide)}
-        aria-label={t('preview.closePreview')}
-        className={peekIconButtonClass}
-      >
-        <X className="size-4" />
-      </button>
+      </div>
+      <ButtonGroup className="border-base bg-card/60 shrink-0 gap-0.5 shadow-none">
+        <ToolbarIconButton
+          onClick={() => void actions.download()}
+          disabled={actions.isDownloading}
+          aria-label={t('preview.download')}
+          title={t('preview.download')}
+        >
+          {/* A signed URL for a 40 MB plan is not instant, and a button that
+              only dims tells the reader their click may not have landed — so
+              they click again. The spinner is the acknowledgement, in the
+              place the icon was. */}
+          {actions.isDownloading ? <Spinner size="xs" aria-hidden /> : <Download aria-hidden />}
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          onClick={onExpand}
+          aria-label={t('assignment.expandFile')}
+          title={t('assignment.expandFile')}
+        >
+          <Maximize2 aria-hidden />
+        </ToolbarIconButton>
+        <ToolbarIconButton
+          onClick={() => dismissPeek(onHide)}
+          aria-label={t('preview.closePreview')}
+          title={t('preview.closePreview')}
+        >
+          <X aria-hidden />
+        </ToolbarIconButton>
+      </ButtonGroup>
     </div>
     {/* A STRIP, not a chip beside the name.
         The status has to be here at all: a peek exists because this file is
@@ -772,7 +786,7 @@ function PeekToolbar({
         Nothing at all for a citable file: quiet chrome is the point of the
         peek, and a badge that says "fine" on every document is a badge nobody
         reads when it says something else. */}
-    {unreadable && (
+    {!isCitableStatus(file.status) && (
       <div
         role="status"
         className={cn(
@@ -780,7 +794,10 @@ function PeekToolbar({
           // narrow pane, and a badge floating against the middle of a paragraph
           // reads as unrelated to it. Aligned to the first line it reads as the
           // sentence's subject, which is what it is.
-          'flex shrink-0 items-start gap-2 border-b px-3 pb-2.5 text-xs',
+          // Inset, at the stage's margins and on the radius ladder's inner-panel
+          // step, so it reads as a note ABOUT the document below it rather
+          // than as a band across the pane.
+          'mx-3 mb-2.5 flex shrink-0 items-start gap-2 rounded-md border px-3 py-2 text-xs',
           // TWO REGISTERS, because they are two different pieces of news.
           // "Still being read" is the ordinary state of a document somebody
           // just uploaded: it resolves itself, so it sits on the quiet ground
