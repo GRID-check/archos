@@ -499,12 +499,14 @@ it changes, which is the path ADR-0072 itself named for this case.
 | Pod management | `Parallel` | OrderedReady can deadlock cluster bootstrap |
 | Probes | readiness `/readyz`, liveness `/livez`, never liveness on `/readyz` | `/readyz` fails during Raft catch-up, and as liveness it cascades restarts |
 | Grace period | 120 s; memory request = limit | WAL flush; OOM during optimization is the top reported failure |
-| `office_chunks` | 6 shards, RF 2, `write_consistency_factor` 2 | OSS cannot reshard, so 6 fits 1/2/3/6 nodes. The ingest queue already retries |
+| `office_chunks` | 6 shards, RF 2, `write_consistency_factor` 2 | OSS cannot reshard, so 6 fits 1/2/3/6 nodes. The ingest queue already retries. The factor is under review: drilled, it fails every write to a missing peer's shards and leaves that peer's replicas silently behind when it returns (§12) |
 | `corpus_chunks` | 1 shard, RF 3 | Small and read by every query |
 | Size, start | 4 vCPU / 16 GB per node, data PVC on the Lightbits class at 2× data | Today's whole store fits in a 20Gi PVC and 3–6 Gi RAM |
 | Security | API key plus read-only key from Secrets, `enforce_internal_auth`, p2p TLS via cert-manager, NetworkPolicy on 6333/6334/6335 | Open-source Qdrant is open by default |
-| Backups | CronJob: a snapshot of every shard of every collection to a SeaweedFS bucket (`snapshots_config` s3, `endpoint_url`); aliases recorded separately | No cluster-wide snapshot exists, and aliases are not in snapshots |
-| Metrics | OTel collector Prometheus receiver, scraping each pod's `/metrics` | No Prometheus runs today. `/metrics` reports only the peer it is called on |
+| Backups | CronJob: a snapshot of every shard of every collection to a SeaweedFS bucket (`snapshots_config` s3, `endpoint_url`); `GET /aliases` recorded beside them (`aliases/`) by the same job | No cluster-wide snapshot exists, and aliases are not in snapshots. Restore, per peer and per shard, is drilled in the runbook |
+| Metrics | OTel collector Prometheus receiver, scraping each peer's keyless metrics port (`service.metrics_port`, 6336) by its headless name, re-exposed on the collector's `:8889`; alert rules in the `qdrant-alert-rules` ConfigMap | No Prometheus or metrics backend runs today, so the series are consumable but nothing stores them or evaluates the rules yet. `/metrics` reports only the peer it is called on. On 6333 it needs the key; the metrics port needs none, so the collector holds no Qdrant credential |
+| Quotas | `storage.quotas`: writes refused (507) above 90% of the memory limit or 85% of the volume | An OOM kill mid-optimisation or a full WAL becomes a refused write the ingest queue retries, and `quota_exceeded` says which |
+| Operations | [`qdrant-runbook.md`](../deployment/qdrant-runbook.md): restore, peer replacement, resync, growth, rebuild, OOM, quotas, upgrade, key rotation, the flag flip | Gate G4. Drilled on 2026-10-13 against real containers, with timings |
 | Growth | Add a node, then `replicate_shard` / `move_shard`. A shape change means a new collection, a scroll-and-upsert copy of stored vectors, and an alias switch | No resharding or auto-rebalancing in OSS |
 | Large office | Tiered multitenancy (1.16) promotes one office to its own shard. It requires custom sharding chosen at collection creation | Decided in the spike from the largest office's point count (Q4) |
 
@@ -604,6 +606,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Project facts and status on every chunk of a project, indexed; pushed on profile save, lifecycle move and ingest, swept weekly | `PUT /v1/collections/{c}/project-facts`, `qdrant/payload.py` — `project_payload`; BFF `cross-project/project-facts-mirror.ts` |
 | Cross-project tag pre-filters and the current project's likeness inside the one grouped query (§7 "As built") | `qdrant/boost.py`, `qdrant/search.py` — `grouped_search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Grouped answers ordered document by document across projects; the capability asked before a page is authorized | `routes/document_search.py` — `_ranked_group_hits`, `GET /v1/collections/search/capability` |
+| Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `metricsPipeline`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
 
 ### Where slice 1 departs from the target, and why
 
@@ -658,13 +661,48 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   nested alike. With `rescore: true` the error was 0. Turning it on changes
   every ranking, so it goes through the answer suite (gate G1) on the
   production embedder rather than riding along here.
-* **One API key.** The read-only key is configured on the server and not yet
-  used by the backend (ADR-0105, Confirmation).
+* **One API key.** The read-only key is configured on the server and not
+  used by the backend (ADR-0105, Confirmation), because no tier is read-only
+  today. Every backend tier builds the same process-wide client with the one
+  key (`store.make_client`) and reaches a write path: ingestion mirrors every
+  Chroma write (`mirror.mirror_file`, the ingest worker), the API's deletes
+  mirror theirs (`delete_file`, `delete_scope`), and a changed tag, topic,
+  Dokumentart or Fassung is copied onto points wherever it changes
+  (`factory._mirror_facts`, reached from the chat agent's tools as well as the
+  API), each of which may create a collection on first use
+  (`QdrantStore.ensure`). Handing a tier `AIQ_QDRANT_READ_ONLY_API_KEY` needs
+  two things first: a second client in `store.py` that the read paths
+  (`retrieval.search`, `search_grouped`, `term_frequencies`, `find_text`,
+  `healthy`, `QdrantStore.exists`, `check_identity`) use with the read-only
+  key, and a tier with no write path at all, which means moving the facts
+  mirror and the deletes behind the ingest worker. Two keys in one process buy
+  nothing: whoever has the process has both.
+* **Corpus at RF 2, not on every peer.** `create_collection` gives both
+  collections `AIQ_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
+  peer. The runbook adds the third replica with one `replicate_shard` (drilled,
+  4 s).
+* **`write_consistency_factor` equals RF (2), and that fails badly during a
+  peer outage.** Drilled 2026-10-13 against three real 1.19.2 peers: with one
+  peer down, every write touching a shard with a replica there failed (HTTP
+  500), while the part of the batch that reached the surviving replicas stayed
+  applied. No replica was marked Dead, so when the peer returned nothing
+  repaired it: 300 points written during the outage left the collection at
+  546 by exact count, depending on which replica answered. The same outage
+  against factor 1 acknowledged every write, marked the missing replicas Dead
+  (so `collection_dead_replicas` and its alert see it), and the returning peer
+  recovered them by itself: 600 of 600. Factor 1's cost is a window in which an
+  acknowledged write sits on one replica only. Under `dual` the backfill heals
+  either way (Chroma is the record); under `qdrant` the factor decides whether
+  every rolling restart under ingest needs the runbook's resync. The factor is
+  changeable on a live collection (`PATCH /collections/<name>`, drilled), so
+  this is a decision, not a migration.
 * **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
   BM25 and phrase matching cover it; the Chroma path still reads it.
 
 ### Next
 
+0. Decide `write_consistency_factor` (above) before `vectorBackend=qdrant`
+   reaches an environment that ingests.
 1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.

@@ -157,17 +157,33 @@ def _field_schema(field: str) -> Any:
     return models.PayloadSchemaType.KEYWORD
 
 
-def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int, identity: dict[str, str]) -> None:
-    """Create one physical collection with its vectors, quantization, strict mode and indexes."""
+def create_collection(
+    client: QdrantClient,
+    physical: Physical,
+    name: str,
+    dense_size: int,
+    identity: dict[str, str],
+    *,
+    shards: int | None = None,
+    replication: int | None = None,
+) -> None:
+    """Create one physical collection with its vectors, quantization, strict mode and indexes.
+
+    No alias: :func:`ensure_collection` points the alias at a first version,
+    and a rebuild (``rebuild.py``) creates the next ``_vN`` beside the live one
+    and switches the alias only once the copy is complete. ``shards`` and
+    ``replication`` override the environment's, which is what a rebuild is for.
+    """
     tenant = physical is Physical.OFFICE
+    rf = replication or replication_factor()
     client.create_collection(
         name,
         vectors_config={DENSE: models.VectorParams(size=dense_size, distance=models.Distance.COSINE)},
         sparse_vectors_config={LEXICAL: models.SparseVectorParams(modifier=models.Modifier.IDF)},
         # The corpus is small and read by every query: one shard, on every node.
-        shard_number=shard_number() if tenant else 1,
-        replication_factor=replication_factor(),
-        write_consistency_factor=replication_factor(),
+        shard_number=(shards or shard_number()) if tenant else 1,
+        replication_factor=rf,
+        write_consistency_factor=rf,
         # Per-scope graph links beside the global graph: a project-filtered
         # query walks its own scope's graph, a cross-project one the global.
         hnsw_config=models.HnswConfigDiff(payload_m=16) if tenant else None,
@@ -180,6 +196,11 @@ def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int
         metadata=dict(identity),
     )
     ensure_payload_indexes(client, name)
+
+
+def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int, identity: dict[str, str]) -> None:
+    """Create the first version of a physical collection and point its alias at it."""
+    create_collection(client, physical, name, dense_size, identity)
     client.update_collection_aliases(
         change_aliases_operations=[
             models.CreateAliasOperation(

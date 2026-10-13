@@ -128,6 +128,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Environment Variables](deployment/environment-variables.md) | Every variable by category, with required-ness, defaults and owning service |
 | [Docker Compose](deployment/docker-compose.md) | Service reference: images, ports, volumes, healthchecks, networks |
 | [Kubernetes](deployment/kubernetes.md) | The Pulumi stack |
+| [Qdrant runbook](deployment/qdrant-runbook.md) | Operating the vector store: metrics and alerts, restore from snapshots, peer replacement, rebuilds, upgrades, key rotation, the backend flip; every procedure with its drill |
 | [Coolify](deployment/coolify.md) | The Coolify deployment path |
 | [CD](deployment/cd.md) | Continuous delivery |
 | [Startup Flow](deployment/startup-flow.md) | Boot sequence: PostgreSQL init, SeaweedFS, uvicorn, gateway |

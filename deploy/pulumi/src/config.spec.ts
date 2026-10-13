@@ -122,8 +122,33 @@ describe("Qdrant and the vector backend (ADR-0104)", () => {
       cpu: "4",
       memory: "16Gi",
       storageSize: "100Gi",
+      quotas: { memoryPercent: 90, diskPercent: 85 },
       snapshots: { schedule: "30 1 * * *", retentionDays: 7, s3AccessKey: "grid-qdrant" },
     });
+  });
+
+  // Qdrant refuses an unknown variant at start, on every peer at once.
+  it("refuses a low-memory mode Qdrant does not know, and accepts the two it does", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantLowMemoryMode": "bogus" });
+    expect(error?.message).toMatch(/qdrantLowMemoryMode must be one of no_resident, no_populate/);
+    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantLowMemoryMode": "no_populate" })).toBeNull();
+  });
+
+  // The rotation key is accepted as a read-write key by every peer.
+  it("refuses a rotation key equal to the read-only key", () => {
+    const error = loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantAltApiKey": "qd-ro" });
+    expect(error?.message).toMatch(/qdrantAltApiKey must differ from grid-oib:qdrantReadOnlyApiKey/);
+    expect(loadWith({ ...qdrantStackConfig(), "grid-oib:qdrantAltApiKey": "qd-next" })).toBeNull();
+  });
+
+  // 100 is no quota at all, and 0 refuses every write.
+  it.each([
+    ["qdrantQuotaMemoryPercent", "100"],
+    ["qdrantQuotaDiskPercent", "0"],
+    ["qdrantQuotaDiskPercent", "85.5"],
+  ])("refuses %s=%s", (key, value) => {
+    const error = loadWith({ ...qdrantStackConfig(), [`grid-oib:${key}`]: value });
+    expect(error?.message).toMatch(new RegExp(`${key} must be a whole percentage between 1 and 99`));
   });
 
   it.each(["dual", "qdrant"])("accepts vectorBackend=%s with Qdrant deployed", (backend) => {
