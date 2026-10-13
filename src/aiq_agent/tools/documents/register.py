@@ -117,13 +117,33 @@ _NO_CONVERSATION = (
     "Es wurde nichts abgelegt. Nicht erneut versuchen."
 )
 
-#: The one refusal both filing paths (``create`` and ``update``) reach. An open version outside
-#: :data:`REPLACEABLE_STATES` — ``in_review``, ``approved`` — may not be
-#: replaced by a machine: a reviewer is looking at those bytes, and the
-#: transition table gives the agent no way to take them back.
+#: The refusal of a ``create`` whose reference was already filed onto a version
+#: outside :data:`REPLACEABLE_STATES` (``in_review``, ``approved``). The state
+#: comes from the BFF's answer to that create, so it is live; a machine may not
+#: replace those bytes, because a reviewer is looking at them and the transition
+#: table gives the agent no way to take them back.
 _ALREADY_SUBMITTED = (
     "Fehler: Dieser Entwurf liegt bereits zur Freigabe vor und kann nicht mehr geändert werden. "
     "Sage der Nutzerin, dass eine Person ihn zuerst zurückgeben oder freigeben muss."
+)
+
+
+#: What a ``409`` on ``update`` means. The record in the working directory is a
+#: copy taken at the last filing, and a reviewer's „Änderungen anfordern" does
+#: not reach it, so the tool no longer refuses on that copy: it asks the
+#: lifecycle API, which holds the live state, and words the refusal here. A 409
+#: is either a version under review or one a person changed since; the body does
+#: not say which, so the sentence names both.
+_NOT_REPLACEABLE_NOW = (
+    "Fehler: Der Entwurf im Projekt lässt sich gerade nicht ersetzen. Entweder liegt er zur Freigabe "
+    "vor, oder eine Person hat ihn seit dem letzten Ablegen geändert. Sage der Nutzerin, dass eine "
+    "Person ihn zuerst zurückgeben muss oder sie den Stand im Projekt prüfen soll."
+)
+
+#: What a ``409`` on ``submit`` means: the version is no longer open.
+_NOT_SUBMITTABLE_NOW = (
+    "Fehler: Dieser Entwurf wurde bereits eingereicht. Sage der Nutzerin, dass er auf die "
+    "Freigabe durch eine Person wartet."
 )
 
 
@@ -239,6 +259,7 @@ async def _post(
     envelope: SignedEnvelope,
     *,
     bad_request: str | None = None,
+    conflict: str | None = None,
     failure: str = _CALL_FAILED,
 ) -> dict[str, Any]:
     """The blocking call, off the event loop, with the refusal already worded.
@@ -250,6 +271,9 @@ async def _post(
     the model looking for a filing problem the reader could not act on, when
     what happened is that nobody in the project is called that.
 
+    ``conflict`` is the sentence a ``409`` gets: the version's live state does
+    not allow the operation, which only the BFF knows.
+
     ``failure`` is the generic wording, with ``{error}`` for the transport's
     sentence; see :data:`_SUBMIT_FAILED_AFTER_FILING` for the one other.
     """
@@ -258,6 +282,8 @@ async def _post(
     except FilingError as exc:
         if bad_request is not None and exc.status == 400:
             raise _Refused(bad_request) from exc
+        if conflict is not None and exc.status == 409:
+            raise _Refused(conflict) from exc
         raise _Refused(failure.format(error=exc)) from exc
 
 
@@ -305,6 +331,7 @@ async def _update(usage: DraftUsage, filing: dict[str, str], envelope: SignedEnv
             "ifMatch": filing[FILED_HASH_KEY],
         },
         envelope,
+        conflict=_NOT_REPLACEABLE_NOW,
     )
     return filing_record(body)
 
@@ -354,9 +381,12 @@ class FileDraftConfig(FunctionBaseConfig, name="file_draft"):
 
 
 async def _refile(usage: DraftUsage, envelope: SignedEnvelope) -> dict[str, str]:
-    """A path this conversation has filed before: replace the open version's bytes."""
-    if usage.filing.get(FILED_STATE_KEY, "") not in REPLACEABLE_STATES:
-        raise _Refused(_ALREADY_SUBMITTED)
+    """A path this conversation has filed before: replace the open version's bytes.
+
+    No check of the remembered state first: it is a copy from the last filing,
+    and after „Änderungen anfordern" it still says ``in_review`` while the live
+    version is open again. The BFF decides, and its 409 is worded in ``_update``.
+    """
     return await _update(usage, usage.filing, envelope)
 
 
@@ -393,21 +423,6 @@ def _whom(reviewer: str) -> str:
     return f"an {reviewer}" if reviewer else "an die Bearbeiter des Projekts"
 
 
-def _submittable(filing: dict[str, str]) -> dict[str, str]:
-    """The filing record of a version that may be submitted, or a refusal.
-
-    Only the state is checked: both callers hold a record that names a
-    document — the unchanged path by definition, the other because it just
-    filed one.
-    """
-    if filing.get(FILED_STATE_KEY) not in REPLACEABLE_STATES:
-        raise _Refused(
-            "Fehler: Dieser Entwurf wurde bereits eingereicht. Sage der Nutzerin, dass er auf die "
-            "Freigabe durch eine Person wartet."
-        )
-    return filing
-
-
 async def _submit(
     backend: DraftBackend,
     path: str,
@@ -418,10 +433,14 @@ async def _submit(
     failure: str = _CALL_FAILED,
 ) -> dict[str, str]:
     """Submit the filed version, remember its new state, and return that record."""
+    # No check of the remembered state: after „Änderungen anfordern" it still
+    # says ``in_review`` while the live version may be submitted again. A 409 is
+    # the BFF saying the version is not open.
     body = await _post(
-        _submit_payload(_submittable(filing), reviewer),
+        _submit_payload(filing, reviewer),
         envelope,
         bad_request=_unknown_reviewer(reviewer) if reviewer else None,
+        conflict=_NOT_SUBMITTABLE_NOW,
         failure=failure,
     )
     submitted = filing_record(body)
