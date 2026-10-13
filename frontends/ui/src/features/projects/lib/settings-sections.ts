@@ -8,6 +8,10 @@
  *   - **Overview**: the dashboard. What is this project and where is it in its
  *     life? Name, size, spend, people, memory at a glance; renaming and
  *     deleting sit in the hero's menu, out of the way.
+ *   - **Was Piloti tut**: what is Piloti working on in this project, what
+ *     waits for a decision, and what did it finish lately? Everything Piloti
+ *     does there that the reader may see, whoever it worked for; most of it
+ *     (marks, wakes, proposals) is not a task, so Automation is not its home.
  *   - **Members**: who may work in it, in which role?
  *   - **Memory**: what has Piloti learned here, and is it right?
  *   - **Usage & budget**: what has this project cost, and what stops it?
@@ -36,6 +40,7 @@
 
 export const PROJECT_SETTINGS_SECTION_KEYS = [
   'overview',
+  'piloti',
   'members',
   'memory',
   'usage',

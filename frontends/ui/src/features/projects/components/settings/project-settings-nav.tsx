@@ -7,6 +7,7 @@ import {
   Gauge,
   GitCompareArrows,
   LayoutDashboard,
+  Sparkles,
   Users,
   type LucideIcon,
 } from 'lucide-react'
@@ -20,6 +21,7 @@ import {
 
 const ICONS: Record<ProjectSettingsSectionKey, LucideIcon> = {
   overview: LayoutDashboard,
+  piloti: Sparkles,
   members: Users,
   memory: Brain,
   usage: Gauge,

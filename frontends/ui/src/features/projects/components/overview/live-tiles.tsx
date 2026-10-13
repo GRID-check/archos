@@ -7,12 +7,16 @@
 
 import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
-import { Brain, Pin, Users } from 'lucide-react'
+import { Brain, Pin, Sparkles, Users } from 'lucide-react'
 import { AvatarStack } from '@/components/ui/avatar-stack'
 import { BentoFigure, BentoTile, type BentoSpan } from '@/components/ui/bento'
 import { Chip } from '@/components/ui/chip'
+import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useTranslations } from '@/i18n'
+import { usePilotiActivity, type PilotiActivityFetcher } from '@/features/piloti-activity/hooks/use-piloti-activity'
+import { activityCounts, type ActivityCounts } from '@/features/piloti-activity/lib/activity-counts'
+import type { RunningItem } from '@/lib/piloti-activity/types'
 
 type Load<T> = { state: 'loading' } | { state: 'error' } | { state: 'ready'; value: T }
 
@@ -178,5 +182,110 @@ export function MembersTile({
           </>
         ))}
     </BentoTile>
+  )
+}
+
+/**
+ * What Piloti is doing: how many things run now, how many wait for a decision,
+ * and the one running first. Read through the typed client, the same one the
+ * section reads through, so the tile and the section parse one contract and
+ * count with one function. A count the server cut off (`truncated`) says
+ * „und weitere" beside the number rather than claiming a total.
+ */
+export function PilotiTile({
+  projectId,
+  href,
+  span = 'wide',
+  fetcher,
+}: {
+  projectId: string
+  href: string
+  span?: BentoSpan
+  /** Where the tile reads from; stable across renders. Default: the typed client. */
+  fetcher?: PilotiActivityFetcher
+}): JSX.Element {
+  const t = useTranslations('settings')
+  const { activity, failed } = usePilotiActivity(projectId, fetcher)
+
+  return (
+    <BentoTile
+      label={t('project.overview.piloti.label')}
+      icon={Sparkles}
+      span={span}
+      href={href}
+      linkLabel={t('project.overview.piloti.open')}
+      data-testid="overview-piloti"
+    >
+      {!activity && !failed && <TileSkeleton />}
+      {!activity && failed && (
+        <p className="text-muted-foreground text-sm">{t('project.overview.piloti.error')}</p>
+      )}
+      {activity && (
+        <PilotiBody counts={activityCounts(activity)} first={activity.running.items[0] ?? null} />
+      )}
+    </BentoTile>
+  )
+}
+
+function PilotiBody({
+  counts,
+  first,
+}: {
+  counts: ActivityCounts
+  first: RunningItem | null
+}): JSX.Element {
+  const t = useTranslations('settings')
+  const more = (truncated: boolean): string | null => (truncated ? t('project.overview.piloti.more') : null)
+  const lines = [
+    {
+      key: 'running',
+      count: counts.running,
+      text:
+        counts.running > 0
+          ? t('project.overview.piloti.running', { count: counts.running })
+          : t('project.overview.piloti.runningNone'),
+      more: more(counts.runningTruncated),
+    },
+    {
+      key: 'waiting',
+      count: counts.waiting,
+      text:
+        counts.waiting > 0
+          ? t('project.overview.piloti.waiting', { count: counts.waiting })
+          : t('project.overview.piloti.waitingNone'),
+      more: more(counts.waitingTruncated),
+    },
+  ]
+  const firstTitle =
+    first === null
+      ? null
+      : first.kind === 'run'
+        ? first.title
+        : `${t('project.pilotiActivity.mark', { number: first.mark.number })} · ${first.document.name}`
+
+  return (
+    <div className="flex min-w-0 flex-col gap-3">
+      <div className="flex flex-wrap items-center gap-x-8 gap-y-2">
+        <PilotiGlyph size="md" working={counts.running > 0} />
+        {lines.map((line) => (
+          <p
+            key={line.key}
+            className={
+              line.count > 0
+                ? 'text-xl font-semibold tabular-nums tracking-tight'
+                : 'text-muted-foreground text-xl tracking-tight'
+            }
+          >
+            {line.text}
+            {line.more && <span className="text-muted-foreground ml-2 text-sm font-normal">{line.more}</span>}
+          </p>
+        ))}
+      </div>
+      {firstTitle && (
+        <p className="text-muted-foreground truncate text-sm">
+          {t('project.overview.piloti.now', { title: firstTitle })}
+        </p>
+      )}
+    </div>
   )
 }

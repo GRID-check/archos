@@ -53,13 +53,16 @@ from `types.ts`:
 | `PROPOSED_MARK_DOCUMENTS_CAP` | 20 | the documents with proposed marks |
 | `PROPOSED_MARK_SAMPLE` | 3 | the marks shown per document |
 | `RECENT_DEFAULT_DAYS` / `RECENT_MAX_DAYS` | 14 / 30 | how far back `recent` reads; an older `since` is moved up, never refused |
-| `RECENT_DEFAULT_LIMIT` / `RECENT_MAX_LIMIT` | 30 / 100 | `recent`, and each of its three sources; a larger `limit` is a 400 |
+| `RECENT_DEFAULT_LIMIT` / `RECENT_MAX_LIMIT` | 30 / 100 | `recent`, and each of its four sources; a larger `limit` is a 400 |
 | `CHANGE_DOCUMENTS_SHOWN` | 3 | documents named per `changes` row |
 | `MARK_EXCERPT_MAX` | 200 | characters of a mark's text |
 
 Each source reads one row past its cap, so `truncated` is true exactly when
-something was left out. Migration 0144 adds the indexes the new reads scan by
-(on `piloti_wakes` and `piloti_changes`, by organization and time).
+something was left out. Migration 0144 adds the indexes the new reads scan by:
+`piloti_wakes` and `piloti_changes` by organization and time (neither has a
+project column; a row reaches its project through its document), and
+`proposed_changes` by project and `decided_at`. The open proposals use the
+existing `(project_id, created_at)` index.
 
 ## Who sees what
 
@@ -69,19 +72,28 @@ the gates those places use, not new ones:
 - **The project.** `project:view`, else 404, like every project route.
 - **Documents.** Every read of a mark, a wake, a change or a filed document
   joins `documents` and ANDs `documentVisibleTo(reader)` and
-  `outsideHiddenFolders(hiddenFolderIds)`, both from
-  `projectOverviewReader` (the Overview's own reader). A held upload, a
+  `projectShelfScope(gate)` (the organization, the project, the project shelf
+  and `outsideHiddenFolders(hiddenFolderIds)`, `lib/documents/repository.ts`),
+  the reader and the folders from `projectOverviewReader` (the Overview's own
+  reader). `piloti_wakes` is a guarded table in
+  `document-visibility.spec.ts`, like the marks and the changes. A held upload, a
   document in a folder closed to the reader, a document in the Büroablage and
   another project's document do not appear, by name or in a count.
 - **Conversations.** A proposal and a turn's changes live in the conversation
   they were made in. They are shown only when the reader may open that
   conversation, by the rule the conversation list uses: the visibility
-  predicate of `listVisibleConversations` in SQL (extracted so the two cannot
-  drift), then `lockedConversationIds` for a thread that drew on a restricted
-  folder or another project. A wake's turn runs in its person's private thread
+  predicate of `listVisibleConversations` in SQL
+  (`conversationVisibleInProject`, which the list is built from, so the two
+  cannot drift), then `lockedConversationIds` for a thread that drew on a
+  restricted folder or another project. A wake's turn runs in its person's private thread
   about the document, and a run lives in the thread that commissioned it; both
   rows are shown on the document or project gate, and carry a link to the
-  thread only when it passes the same gate.
+  thread only when it passes the same gate (`listVisibleConversationIds`, then
+  the lock). Decided proposals are gated as the open ones.
+- **Why a wake failed.** A failed or refused wake's stored reason is written
+  for the log; `wakeEndReasonKind` (`lib/piloti-activity/service.ts`) sorts
+  every reason the wake job and the turn's outcome can store into `budget`,
+  `busy`, `access` or `error`, and an unknown one is `error`.
 - **Runs.** The Aufträge list's rule: `project:view`, and
   `withoutUnreadableSubjects` for a revision task whose document the reader may
   no longer read.
@@ -121,8 +133,7 @@ resolves none. Both link into the same places: a mark through
 - Stopping a turn that a mention or an answer woke. Nothing stops those but
   the turn's end, and this view adds no stop route.
 - Wakes a cap or a take-back held at enqueue (`suppressed`): no turn ran.
-- Piloti's open Rückfragen (`piloti.asks_you`) and decided proposals, as their
-  own rows.
+- Piloti's open Rückfragen (`piloti.asks_you`), as their own rows.
 - Live updates. The view reads on open and after the reader acts; there is no
   channel for it.
 - Anything outside the project: the Büroablage, other projects.
@@ -192,8 +203,9 @@ for a wake. If a row needs a shape the kit lacks, add the atom.
 |---|---|
 | `project.nav.piloti` | Was Piloti tut |
 | `project.overview.piloti.label` | Was Piloti tut |
-| `project.overview.piloti.running` | {count, plural, =0 {Läuft gerade nichts} one {# läuft gerade} other {# laufen gerade}} |
-| `project.overview.piloti.waiting` | {count, plural, =0 {nichts wartet} one {# wartet auf Entscheidung} other {# warten auf Entscheidung}} |
+| `project.overview.piloti.running` / `.runningNone` | {count, plural, one {# läuft gerade} other {# laufen gerade}} / Läuft gerade nichts (the plural syntax has no `=0`, so zero is its own key) |
+| `project.overview.piloti.waiting` / `.waitingNone` | {count, plural, one {# wartet auf Entscheidung} other {# warten auf Entscheidung}} / Nichts wartet |
+| `project.overview.piloti.more` / `.now` / `.error` | und weitere (beside a count a cap cut off) / Gerade: {title} / Konnte nicht geladen werden. |
 | `project.overview.piloti.open` | Ansehen |
 | `project.pilotiActivity.title` | Was Piloti tut |
 | `project.pilotiActivity.intro` | Woran Piloti in diesem Projekt arbeitet, was auf Sie oder Ihr Team wartet, und was zuletzt fertig wurde. |
@@ -215,8 +227,14 @@ for a wake. If a row needs a shape the kit lacks, add the atom.
 | `project.pilotiActivity.wake.refused` | Nicht gestartet |
 | `project.pilotiActivity.takeBack` | Von Piloti zurücknehmen |
 | `project.pilotiActivity.takeBackConfirm` | Piloti hört auf, an Anmerkung {number} zu arbeiten. |
+| `project.pilotiActivity.takeBackTitle` / `.takeBackKeep` | Anmerkung {number} von Piloti zurücknehmen? / Piloti weiterarbeiten lassen |
 | `project.pilotiActivity.stop` | Abbrechen |
 | `project.pilotiActivity.stopConfirm` | „{title}" wird abgebrochen. |
+| `project.pilotiActivity.stopTitle` / `.stopConfirmLabel` / `.stopKeep` | Auftrag abbrechen? / Auftrag abbrechen / Weiterlaufen lassen |
+| `project.pilotiActivity.conflict` / `.actionError` | Das hat sich inzwischen geändert. Die Liste zeigt den aktuellen Stand. / Das hat nicht geklappt. Die Liste zeigt den aktuellen Stand. (shown after a 409, or any other failed action; the view reads again either way) |
+| `project.pilotiActivity.wake.reasonKind.*` | budget: Budget aufgebraucht, busy: Piloti kam nicht rechtzeitig dazu, access: Keine Berechtigung mehr, error: Abgebrochen |
+| `project.pilotiActivity.proposalDecided.*` | Übernommen von {name} / Teilweise übernommen von {name} / Fehlgeschlagen / Verworfen von {name} |
+| `project.pilotiActivity.run.filed`, `.changesIn`, `.changesInMore`, `.openTask` | Abgelegt als {document}, in {documents}, in {documents} und {count} weiteren, Auftrag öffnen |
 | `project.pilotiActivity.openMark` | Im Dokument zeigen |
 | `project.pilotiActivity.openTurn` | Im Verlauf öffnen |
 | `project.pilotiActivity.proposal.memory` | Gedächtnis |

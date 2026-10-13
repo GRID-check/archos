@@ -3,16 +3,21 @@
  * Piloti on an Anmerkung, which the caps count.
  *
  * No authorization here; `./wake.ts` and `./wake-job.ts` own it. Every write
- * that belongs to an event's transaction takes that transaction.
+ * that belongs to an event's transaction takes that transaction. A wake is a
+ * document fact (`documents/document-visibility.spec.ts`): the reads keyed by
+ * a mark or a wake already authorized are listed there, and the project-wide
+ * reads („Was Piloti tut") join `documents` behind the reader's predicate.
  */
 
 import 'server-only'
-import { and, desc, eq, gte, inArray, lt, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, lt, ne, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
-import { documentAnnotations, pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema'
+import { documentAnnotations, documents, pilotiWakes, type PilotiWakeRow } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { PilotiWakeTrigger } from './types'
+import { projectShelfScope, type ProjectDocumentGate } from '@/lib/documents/repository'
+import { documentVisibleTo } from '@/lib/documents/visibility'
+import type { AnnotationKind, PilotiWakeStatus, PilotiWakeTrigger } from './types'
 
 export interface NewWake {
   id: string
@@ -269,3 +274,133 @@ export async function listAnsweringWakes(organizationId: string, documentId: str
 
 /** A document carries at most this many marks, each with a bounded number of wakes; this only keeps the read bounded. */
 const MAX_WAKE_SPANS = 2000
+
+/** A wake as the project's activity lists it: the wake, its mark, and the document's name fields. */
+export interface ProjectWakeRow {
+  id: string
+  status: PilotiWakeStatus
+  triggerKind: PilotiWakeTrigger
+  eventId: string
+  actorUserId: string
+  reason: string | null
+  createdAt: Date
+  settledAt: Date | null
+  endedAt: Date | null
+  documentId: string
+  documentFilename: string
+  documentDisplayName: string | null
+  annotationId: string
+  markNumber: number
+  markKind: AnnotationKind
+  markBody: string
+  markDelegatedAt: Date | null
+}
+
+/** The wakes the project's activity can show: not held at enqueue. */
+const LIVE_WAKE_STATUSES = ['queued', 'started'] as const
+const ENDED_WAKE_STATUSES = ['answered', 'stopped', 'failed', 'refused'] as const
+
+/**
+ * The wakes of one project's documents this gate's reader may see, by
+ * `where`, newest first by `order`, at most `limit` rows. The mark and the
+ * document are joined on the wake's organization; the document behind the
+ * gate's project scope and its reader's predicate in THIS query.
+ */
+async function listProjectWakes(
+  gate: ProjectDocumentGate,
+  where: SQL,
+  order: SQL,
+  limit: number
+): Promise<ProjectWakeRow[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId: gate.organizationId }, () =>
+    db
+      .select({
+        id: pilotiWakes.id,
+        status: pilotiWakes.status,
+        triggerKind: pilotiWakes.triggerKind,
+        eventId: pilotiWakes.eventId,
+        actorUserId: pilotiWakes.actorUserId,
+        reason: pilotiWakes.reason,
+        createdAt: pilotiWakes.createdAt,
+        settledAt: pilotiWakes.settledAt,
+        endedAt: pilotiWakes.endedAt,
+        documentId: documents.id,
+        documentFilename: documents.filename,
+        documentDisplayName: documents.displayName,
+        annotationId: documentAnnotations.id,
+        markNumber: documentAnnotations.number,
+        markKind: documentAnnotations.kind,
+        markBody: documentAnnotations.body,
+        markDelegatedAt: documentAnnotations.delegatedAt,
+      })
+      .from(pilotiWakes)
+      .innerJoin(
+        documentAnnotations,
+        and(
+          eq(documentAnnotations.id, pilotiWakes.annotationId),
+          eq(documentAnnotations.organizationId, pilotiWakes.organizationId)
+        )
+      )
+      .innerJoin(
+        documents,
+        and(eq(documents.id, pilotiWakes.documentId), eq(documents.organizationId, pilotiWakes.organizationId))
+      )
+      .where(
+        and(
+          eq(pilotiWakes.organizationId, gate.organizationId),
+          where,
+          ...projectShelfScope(gate),
+          documentVisibleTo(gate.reader)
+        )
+      )
+      .orderBy(order, desc(pilotiWakes.id))
+      .limit(limit)
+  )
+  return rows.map((row) => ({
+    ...row,
+    createdAt: new Date(row.createdAt),
+    settledAt: row.settledAt ? new Date(row.settledAt) : null,
+    endedAt: row.endedAt ? new Date(row.endedAt) : null,
+    markNumber: Number(row.markNumber),
+    markDelegatedAt: row.markDelegatedAt ? new Date(row.markDelegatedAt) : null,
+  }))
+}
+
+/**
+ * The project's wakes whose turn has not ended (`queued`, `started`), newest
+ * first by when the event woke Piloti, at most `limit` (a caller that wants
+ * to know whether there were more asks for one past its cap). Scans
+ * `idx_piloti_wakes_live` (0144).
+ */
+export function listLiveProjectWakes(gate: ProjectDocumentGate, limit: number): Promise<ProjectWakeRow[]> {
+  return listProjectWakes(
+    gate,
+    inArray(pilotiWakes.status, [...LIVE_WAKE_STATUSES]),
+    desc(pilotiWakes.createdAt),
+    limit
+  )
+}
+
+/**
+ * The project's wakes that reached their final word at or after `since`
+ * (`answered`, `stopped`, `failed`, `refused`; a wake held at enqueue,
+ * `suppressed`, ran no turn and is left out), newest first by `ended_at`, at
+ * most `limit`. Scans `idx_piloti_wakes_ended` (0144).
+ */
+export function listEndedProjectWakes(
+  gate: ProjectDocumentGate,
+  since: Date,
+  limit: number
+): Promise<ProjectWakeRow[]> {
+  return listProjectWakes(
+    gate,
+    and(
+      inArray(pilotiWakes.status, [...ENDED_WAKE_STATUSES]),
+      isNotNull(pilotiWakes.endedAt),
+      gte(pilotiWakes.endedAt, since)
+    ) as SQL,
+    desc(pilotiWakes.endedAt),
+    limit
+  )
+}

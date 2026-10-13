@@ -131,11 +131,13 @@ const mayDeleteMark = (record: Pick<AnnotationRecord, 'authorKind' | 'createdBy'
 const annotatable = (doc: Document) => doc.scope === 'project' || doc.scope === 'archiv'
 
 /**
- * Whether this session may write on the document, as a boolean. A refusal of
- * the write (403) is an answer here, not an error: the reader still sees the
- * Anmerkungen, without the controls.
+ * Whether this session may write on the document, as a boolean: the gate every
+ * change to its Anmerkungen passes (a delegation taken back included). A
+ * refusal of the write (403) is an answer here, not an error: the reader still
+ * sees the Anmerkungen, without the controls. Exported for „Was Piloti tut",
+ * which offers „Von Piloti zurücknehmen" only where this says yes.
  */
-async function mayWrite(session: AuthorizedSession, documentId: string): Promise<boolean> {
+export async function mayEditAnnotations(session: AuthorizedSession, documentId: string): Promise<boolean> {
   try {
     await getAccessibleDocument(session, documentId, 'write')
     return true
@@ -355,7 +357,7 @@ export async function listAnnotations(session: AuthorizedSession, documentId: st
   if (!annotatable(doc)) return { annotations: [], canAnnotate: false, pilotiWakes: false }
   const [records, writable, names] = await Promise.all([
     listDocumentAnnotations(session.organizationId, doc.id),
-    mayWrite(session, doc.id),
+    mayEditAnnotations(session, doc.id),
     directoryNames(session.organizationId),
   ])
   const wakes = await wakeSpansFor(session.organizationId, doc.id, records)
@@ -695,7 +697,7 @@ export async function readAnnotation(
   const record = annotatable(doc) ? await findDocumentAnnotation(session.organizationId, doc.id, annotationId) : null
   if (!record) throw new NotFoundError()
   const [writable, names, wakes] = await Promise.all([
-    mayWrite(session, doc.id),
+    mayEditAnnotations(session, doc.id),
     directoryNames(session.organizationId),
     wakeSpansFor(session.organizationId, doc.id, [record]),
   ])

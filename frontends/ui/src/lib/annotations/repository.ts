@@ -5,21 +5,25 @@
  * No authorization here; the service owns that. Every read is keyed by a
  * document the service already loaded through its reader
  * (`getAccessibleDocument`), which is what `documents/document-visibility.spec.ts`
- * holds each function here to.
+ * holds each function here to, except the project-wide reads of proposed marks
+ * („Was Piloti tut"), which join `documents` behind the reader's predicate.
  */
 
 import 'server-only'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, lte, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbTransaction } from '@/lib/db/executor'
 import {
   documentAnnotationReplies,
   documentAnnotations,
+  documents,
   documentVersions,
   type DocumentAnnotationReplyRow,
   type DocumentAnnotationRow,
 } from '@/lib/db/schema'
 import { withTenant } from '@/lib/db/tenant-context'
+import { projectShelfScope, type ProjectDocumentGate } from '@/lib/documents/repository'
+import { documentVisibleTo } from '@/lib/documents/visibility'
 import {
   MAX_ANNOTATIONS_PER_DOCUMENT,
   MAX_REPLIES_PER_ANNOTATION,
@@ -388,4 +392,124 @@ export async function deleteAnnotationReply(
       .returning({ id: documentAnnotationReplies.id })
   )
   return rows.length > 0
+}
+
+/** A document of the project with marks Piloti proposed that nobody took over or dismissed yet. */
+export interface ProposedMarkDocumentRow {
+  documentId: string
+  filename: string
+  displayName: string | null
+  /** How many proposed marks it holds. */
+  count: number
+  /** When the newest of them was proposed. */
+  newestAt: Date
+}
+
+/**
+ * The project's documents holding marks still `proposed`, as this gate's
+ * reader may see them, newest proposal first, at most `limit` documents.
+ */
+export async function listProposedMarkDocuments(
+  gate: ProjectDocumentGate,
+  limit: number
+): Promise<ProposedMarkDocumentRow[]> {
+  const db = getDb()
+  const newest = sql<Date | string>`max(${documentAnnotations.createdAt})`
+  const rows = await withTenant({ organizationId: gate.organizationId }, () =>
+    db
+      .select({
+        documentId: documents.id,
+        filename: documents.filename,
+        displayName: documents.displayName,
+        count: sql<number | string>`count(*)`,
+        newestAt: newest,
+      })
+      .from(documentAnnotations)
+      .innerJoin(
+        documents,
+        and(eq(documents.id, documentAnnotations.documentId), eq(documents.organizationId, documentAnnotations.organizationId))
+      )
+      .where(
+        and(
+          eq(documentAnnotations.organizationId, gate.organizationId),
+          eq(documentAnnotations.status, 'proposed'),
+          ...projectShelfScope(gate),
+          documentVisibleTo(gate.reader)
+        )
+      )
+      .groupBy(documents.id, documents.filename, documents.displayName)
+      .orderBy(desc(newest), desc(documents.id))
+      .limit(limit)
+  )
+  return rows.map((row) => ({ ...row, count: Number(row.count), newestAt: new Date(row.newestAt) }))
+}
+
+/** One proposed mark as a sample of its document. */
+export interface ProposedMarkSampleRow {
+  id: string
+  documentId: string
+  number: number
+  kind: AnnotationKind
+  body: string
+  page: number
+  createdBy: string
+  createdAt: Date
+}
+
+/**
+ * The first `perDocument` proposed marks of each named document by number,
+ * under the same gate as {@link listProposedMarkDocuments} (a mark is a
+ * document fact): one read for every document, `row_number()` per document.
+ */
+export async function listProposedMarkSamples(
+  gate: ProjectDocumentGate,
+  documentIds: readonly string[],
+  perDocument: number
+): Promise<ProposedMarkSampleRow[]> {
+  const unique = [...new Set(documentIds)]
+  if (unique.length === 0 || perDocument < 1) return []
+  const db = getDb()
+  return withTenant({ organizationId: gate.organizationId }, async () => {
+    const ranked = db
+      .select({
+        id: documentAnnotations.id,
+        documentId: documentAnnotations.documentId,
+        number: documentAnnotations.number,
+        kind: documentAnnotations.kind,
+        body: documentAnnotations.body,
+        page: documentAnnotations.page,
+        createdBy: documentAnnotations.createdBy,
+        createdAt: documentAnnotations.createdAt,
+        rank: sql<number>`row_number() OVER (PARTITION BY ${documentAnnotations.documentId} ORDER BY ${documentAnnotations.number})`.as(
+          'rank'
+        ),
+      })
+      .from(documentAnnotations)
+      .innerJoin(
+        documents,
+        and(eq(documents.id, documentAnnotations.documentId), eq(documents.organizationId, documentAnnotations.organizationId))
+      )
+      .where(
+        and(
+          eq(documentAnnotations.organizationId, gate.organizationId),
+          eq(documentAnnotations.status, 'proposed'),
+          inArray(documentAnnotations.documentId, unique),
+          ...projectShelfScope(gate),
+          documentVisibleTo(gate.reader)
+        )
+      )
+      .as('ranked')
+    const rows = await db
+      .select()
+      .from(ranked)
+      .where(lte(ranked.rank, perDocument))
+      .orderBy(asc(ranked.documentId), asc(ranked.number))
+      .limit(unique.length * perDocument)
+    return rows.map(({ rank: _rank, ...row }) => ({
+      ...row,
+      number: Number(row.number),
+      page: Number(row.page),
+      createdAt: new Date(row.createdAt),
+    }))
+  })
 }

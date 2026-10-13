@@ -66,6 +66,10 @@ export const proposedChanges = pgTable(
     organizationIdx: index('idx_proposed_changes_organization_id').on(table.organizationId),
     projectCreatedIdx: index('idx_proposed_changes_project_created').on(table.projectId, table.createdAt),
     conversationIdx: index('idx_proposed_changes_conversation').on(table.originConversationId),
+    // „Was Piloti tut" (0144): the project's decided proposals, newest decision first.
+    projectDecidedIdx: index('idx_proposed_changes_project_decided')
+      .on(table.projectId, table.decidedAt.desc())
+      .where(sql`${table.decidedAt} IS NOT NULL`),
     originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
       .on(table.organizationId, table.originMessageId, table.originCardIndex)
       .where(sql`${table.originCardIndex} IS NOT NULL`),

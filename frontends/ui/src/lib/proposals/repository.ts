@@ -9,8 +9,10 @@
  */
 
 import 'server-only'
-import { and, eq, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt, or, sql, type SQL } from 'drizzle-orm'
+import { conversationVisibleInProject } from '@/lib/conversations/repository'
 import { getDb } from '@/lib/db'
+import { conversations } from '@/lib/db/schema'
 import { proposedChanges, type ProposedChangeRow, type ProposerKind } from '@/lib/db/schema/proposed-changes'
 import { withTenant } from '@/lib/db/tenant-context'
 import type { ProposedChangeKind, ProposedChangeResult, ProposedChangeStatus } from './types'
@@ -193,4 +195,97 @@ export async function dismissProposedChange(
       .returning()
   )
   return row ?? null
+}
+
+/** Who is reading a project's proposals: their conversation rule decides which rows they get. */
+export interface ProposalReader {
+  organizationId: string
+  projectId: string
+  userId: string
+}
+
+/**
+ * `requireReadableProposal`'s rule as SQL over `proposed_changes` LEFT JOIN
+ * `conversations`: a proposal made outside any conversation needs only the
+ * project (the caller proved `project:view`); one made in a conversation needs
+ * that conversation, not deleted, in this project, and open to the reader by
+ * the conversation list's rule (`conversationVisibleInProject`). A thread
+ * locked by what it drew on is the caller's to drop after the query.
+ */
+function readableInProject(reader: ProposalReader): SQL {
+  return or(
+    isNull(proposedChanges.originConversationId),
+    and(
+      isNotNull(conversations.id),
+      isNull(conversations.deletedAt),
+      conversationVisibleInProject(reader.organizationId, reader.userId, reader.projectId)
+    )
+  ) as SQL
+}
+
+/** The project's proposals matching `where` that the reader may read, newest first by `order`, at most `limit`. */
+async function listReadableProposals(
+  reader: ProposalReader,
+  where: SQL,
+  order: SQL,
+  limit: number
+): Promise<ProposedChangeRow[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId: reader.organizationId }, () =>
+    db
+      .select({ row: proposedChanges })
+      .from(proposedChanges)
+      .leftJoin(
+        conversations,
+        and(
+          eq(conversations.id, proposedChanges.originConversationId),
+          eq(conversations.organizationId, proposedChanges.organizationId)
+        )
+      )
+      .where(
+        and(
+          eq(proposedChanges.organizationId, reader.organizationId),
+          eq(proposedChanges.projectId, reader.projectId),
+          where,
+          readableInProject(reader)
+        )
+      )
+      .orderBy(order, desc(proposedChanges.id))
+      .limit(limit)
+  )
+  return rows.map(({ row }) => row)
+}
+
+/**
+ * The project's proposals nobody decided yet (`proposed`), any kind, that the
+ * reader may read, newest first, at most `limit`. Scans
+ * `idx_proposed_changes_project_created`.
+ */
+export function listOpenProposalsInProject(reader: ProposalReader, limit: number): Promise<ProposedChangeRow[]> {
+  return listReadableProposals(reader, eq(proposedChanges.status, 'proposed'), desc(proposedChanges.createdAt), limit)
+}
+
+/** The decided statuses, every one but `proposed`. */
+const DECIDED_STATUSES = ['applied', 'partially_applied', 'failed', 'dismissed'] as const
+
+/**
+ * The project's proposals decided at or after `since`, that the reader may
+ * read, newest decision first, at most `limit`. Scans
+ * `idx_proposed_changes_project_decided` (0144).
+ */
+export function listDecidedProposalsInProject(
+  reader: ProposalReader,
+  since: Date,
+  limit: number
+): Promise<ProposedChangeRow[]> {
+  return listReadableProposals(
+    reader,
+    and(
+      inArray(proposedChanges.status, [...DECIDED_STATUSES]),
+      isNotNull(proposedChanges.decidedAt),
+      gte(proposedChanges.decidedAt, since)
+    ) as SQL,
+    desc(proposedChanges.decidedAt),
+    limit
+  )
 }

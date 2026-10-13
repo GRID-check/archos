@@ -10,10 +10,14 @@
  */
 
 import 'server-only'
-import { and, asc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, isNull, sql } from 'drizzle-orm'
+import { conversationVisibleInProject } from '@/lib/conversations/repository'
 import { getDb } from '@/lib/db'
+import { conversations, documents } from '@/lib/db/schema'
 import { pilotiChanges, type NewPilotiChangeRow, type PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
 import { withTenant } from '@/lib/db/tenant-context'
+import { projectShelfScope, type ProjectDocumentGate } from '@/lib/documents/repository'
+import { documentVisibleTo } from '@/lib/documents/visibility'
 
 export type { PilotiChangeRow }
 
@@ -102,4 +106,91 @@ export async function releaseUndo(
         )
       )
   )
+}
+
+/** What one turn changed on a project's Anmerkungen, as one reader may count it. */
+export interface TurnChangesRow {
+  conversationId: string
+  messageId: string
+  /** The changes on documents the reader may see. */
+  count: number
+  /** How many of those were undone since. */
+  undoneCount: number
+  /** When the newest of them was made. */
+  newestAt: Date
+  /** The person the turn acted for (one per turn; the least, should a turn ever carry two). */
+  onBehalfOf: string
+  /** How many of the reader's documents the turn changed marks on. */
+  documentCount: number
+  /** The first `documentsShown` of those documents' ids. */
+  documentIds: string[]
+}
+
+/**
+ * The turns that changed marks in the gate's project at or after `since`, one
+ * row per turn (its conversation and answer message), newest change first, at
+ * most `limit`. Counts only the changes on documents the gate's reader may see
+ * (the document joined behind the project scope and `documentVisibleTo`), and
+ * only turns of a conversation the reader may open in the project
+ * (`conversationVisibleInProject`, not deleted): the turn card's own rule as a
+ * list. A conversation locked by what it drew on is the caller's to drop
+ * (`lockedConversationIds`). Scans `idx_piloti_changes_org_created` (0144).
+ */
+export async function listRecentTurnChanges(
+  gate: ProjectDocumentGate,
+  userId: string,
+  since: Date,
+  limit: number,
+  documentsShown: number
+): Promise<TurnChangesRow[]> {
+  const db = getDb()
+  const newest = sql<Date | string>`max(${pilotiChanges.createdAt})`
+  const rows = await withTenant({ organizationId: gate.organizationId }, () =>
+    db
+      .select({
+        conversationId: pilotiChanges.originConversationId,
+        messageId: pilotiChanges.originMessageId,
+        count: sql<number | string>`count(*)`,
+        undoneCount: sql<number | string>`count(${pilotiChanges.undoneAt})`,
+        newestAt: newest,
+        onBehalfOf: sql<string>`min(${pilotiChanges.onBehalfOf})`,
+        documentCount: sql<number | string>`count(DISTINCT ${pilotiChanges.documentId})`,
+        documentIds: sql<string[]>`(array_agg(DISTINCT ${pilotiChanges.documentId}::text))[1:${documentsShown}::int]`,
+      })
+      .from(pilotiChanges)
+      .innerJoin(
+        documents,
+        and(eq(documents.id, pilotiChanges.documentId), eq(documents.organizationId, pilotiChanges.organizationId))
+      )
+      .innerJoin(
+        conversations,
+        and(
+          eq(conversations.id, pilotiChanges.originConversationId),
+          eq(conversations.organizationId, pilotiChanges.organizationId)
+        )
+      )
+      .where(
+        and(
+          eq(pilotiChanges.organizationId, gate.organizationId),
+          gte(pilotiChanges.createdAt, since),
+          ...projectShelfScope(gate),
+          documentVisibleTo(gate.reader),
+          isNull(conversations.deletedAt),
+          conversationVisibleInProject(gate.organizationId, userId, gate.projectId)
+        )
+      )
+      .groupBy(pilotiChanges.originConversationId, pilotiChanges.originMessageId)
+      .orderBy(desc(newest), desc(pilotiChanges.originMessageId))
+      .limit(limit)
+  )
+  return rows.map((row) => ({
+    conversationId: row.conversationId,
+    messageId: row.messageId,
+    count: Number(row.count),
+    undoneCount: Number(row.undoneCount),
+    newestAt: new Date(row.newestAt),
+    onBehalfOf: row.onBehalfOf,
+    documentCount: Number(row.documentCount),
+    documentIds: (row.documentIds ?? []).map(String),
+  }))
 }

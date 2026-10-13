@@ -177,6 +177,19 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
     "The rows of one turn's answer, which `listTurnChanges` then narrows by `viewsFor`: a row whose document `listAnnotations` refuses is dropped.",
   'lib/changes/repository.ts#findPilotiChange|pilotiChanges':
     "One row by id for `undoChange`, which reads its document through `listAnnotations` (`loadReadable`) before it plans or runs anything; a document the reader may not see is a 404.",
+  // --- Piloti's wakes: keyed by a mark, a person or a wake id already authorized ---------
+  // The project-wide reads („Was Piloti tut", `listProjectWakes`) join `documents` behind the predicate. These
+  // are the wake's own machinery: each is keyed by something the caller read through its gate first.
+  'lib/annotations/wake-repository.ts#countWakes|pilotiWakes':
+    'A number for the caps, never a row: per mark (one the enqueue or the claim read on a document the person may write) or per person.',
+  'lib/annotations/wake-repository.ts#findWake|pilotiWakes':
+    "The wake job's own row by its id (the job id), before it re-reads the document as the person (`getAccessibleDocument(…, 'write')`).",
+  'lib/annotations/wake-repository.ts#findWakeById|pilotiWakes':
+    "The turn outcome's wake by the turn id the chat socket names; it settles the wake and serves no person a row.",
+  'lib/annotations/wake-repository.ts#findLiveDelegationWake|pilotiWakes':
+    "A mark's live delegation wake, for the take-back of a mark the service read through `getAccessibleDocument(…, 'write')`.",
+  'lib/annotations/wake-repository.ts#listAnsweringWakes|pilotiWakes':
+    'The wake spans of one document `listAnnotations` read through `getAccessibleDocument` first, to mark its Piloti replies.',
   'lib/langfuse/decision-score.ts#changeOriginMessage|pilotiChanges':
     "The answer message id of the turn that made a change, handed to Langfuse to find the trace. An id for a score, never a row for a person; the decision it scores was authorized by the caller.",
 }
@@ -303,6 +316,8 @@ const GUARDED_TABLES: Record<string, string> = {
   documentAnnotationReplies: 'document_annotation_replies',
   // What Piloti changed on a document's Anmerkungen, and the turn that did (migration 0142, ADR-0109): a document fact.
   pilotiChanges: 'piloti_changes',
+  // Each wake of Piloti on an Anmerkung (migration 0139, ADR-0106): who woke it on which mark of which document.
+  pilotiWakes: 'piloti_wakes',
 }
 
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */
@@ -669,6 +684,7 @@ describe('every read of documents states its reader (ADR-0086)', () => {
         'permitRequirements',
         'documentAnnotations',
         'pilotiChanges',
+        'pilotiWakes',
       ])
     )
     expect(DOCUMENT_RELATIONS).toEqual(new Set(['documents', 'document']))

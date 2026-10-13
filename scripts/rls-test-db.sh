@@ -110,7 +110,7 @@ done
 # cosine query — and a mocked drizzle handle cannot disagree with the fixture
 # that mocked it. (The memory suite is the one that found the semantic gate
 # reading `.rows` off a postgres-js array, which every mock had agreed with.)
-echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record and Anmerkungen suites as grid_app_rw"
+echo "==> running the isolation, BIM query, memory consolidation, profile-binding, legal-hold, chat-erasure, restricted-use, cross-project use, run-reconciler, usage-ledger, answer-feedback, restricted memory, download-log, Papierkorb, closed-project, Steckbrief, Ausmisten, upload batches, quarantine decisions, restricted-feedback, revision-subject, the hold on a document, permit-record, Anmerkungen and Piloti-activity suites as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run \
     src/lib/db/tenant-isolation.integration.spec.ts \
@@ -142,6 +142,7 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
     src/lib/annotations/repository.integration.spec.ts \
     src/lib/proposals/repository.integration.spec.ts \
     src/lib/changes/repository.integration.spec.ts \
+    src/lib/piloti-activity/reads.integration.spec.ts \
     src/lib/project-experience/readable-files.integration.spec.ts \
     src/lib/projects/memory-evidence.integration.spec.ts \
     src/lib/download-log/download-log.integration.spec.ts \
@@ -1817,3 +1818,29 @@ check_in grid_kinds "SELECT count(*) FROM proposed_changes" "1" "0143 re-applies
 sql_in grid_kinds <<<"$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)"
 refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)" "uniq_proposed_changes_origin_card" "the re-applied 0143 lost the card's unique index"
 echo "==> 0143 proposal kinds and down migration verified"
+
+
+# ---------------------------------------------------------------------------
+# Migration 0144: the indexes „Was Piloti tut" reads by, and the DOWN.
+#
+# On a database of its own, migrated to 0143. Indexes only: the four exist
+# with their order and their partial predicates, the down drops all four and
+# nothing else, and the up re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0144 activity indexes and their down migration on grid_activity"
+migrate_until grid_activity 0143_proposal_kinds
+apply_in grid_activity 0144_piloti_activity_indexes.sql
+A144="SELECT string_agg(indexname, ',' ORDER BY indexname) FROM pg_indexes WHERE indexname IN ('idx_piloti_wakes_live', 'idx_piloti_wakes_ended', 'idx_piloti_changes_org_created', 'idx_proposed_changes_project_decided')"
+check_in grid_activity "$A144" "idx_piloti_changes_org_created,idx_piloti_wakes_ended,idx_piloti_wakes_live,idx_proposed_changes_project_decided" "0144 creates the four activity indexes"
+check_in grid_activity "SELECT indexdef LIKE '%(organization_id, created_at DESC) WHERE (status = ANY (ARRAY[''queued''::text, ''started''::text]))' FROM pg_indexes WHERE indexname = 'idx_piloti_wakes_live'" "t" "the live-wakes index is partial on queued and started, newest first"
+check_in grid_activity "SELECT indexdef LIKE '%(organization_id, ended_at DESC) WHERE (ended_at IS NOT NULL)' FROM pg_indexes WHERE indexname = 'idx_piloti_wakes_ended'" "t" "the ended-wakes index is partial on ended_at, newest first"
+check_in grid_activity "SELECT indexdef LIKE '%(project_id, decided_at DESC) WHERE (decided_at IS NOT NULL)' FROM pg_indexes WHERE indexname = 'idx_proposed_changes_project_decided'" "t" "the decided-proposals index is partial on decided_at, newest first"
+# What the three tables hold besides the four, for the down to leave alone.
+B144=$($PGBIN/psql -h "$WORKDIR" -p "$PORT" -U grid_app_owner -d grid_activity -tAc "SELECT count(*) - 4 FROM pg_indexes WHERE tablename IN ('piloti_wakes', 'piloti_changes', 'proposed_changes')")
+apply_in grid_activity 0144_piloti_activity_indexes.down.sql
+check_in grid_activity "$A144" "" "down dropped the four activity indexes"
+check_in grid_activity "SELECT count(*) FROM pg_indexes WHERE tablename IN ('piloti_wakes', 'piloti_changes', 'proposed_changes')" "$B144" "down dropped no other index of the three tables"
+apply_in grid_activity 0144_piloti_activity_indexes.sql
+apply_in grid_activity 0144_piloti_activity_indexes.sql
+check_in grid_activity "$A144" "idx_piloti_changes_org_created,idx_piloti_wakes_ended,idx_piloti_wakes_live,idx_proposed_changes_project_decided" "0144 re-applies, twice, with the four indexes"
+echo "==> 0144 activity indexes and down migration verified"

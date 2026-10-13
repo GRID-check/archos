@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
+import { pilotiActivityFixture } from '@/app/dev/_fixtures/piloti-activity'
 import type { ProjectOverviewData } from '../../types'
 import type { ProjectUsageView } from '../settings/usage-settings'
 import { ProjectOverview } from './project-overview'
@@ -108,6 +109,9 @@ beforeEach(() => {
         ],
       })
     }
+    if (url.endsWith('/piloti-activity')) {
+      return Response.json(pilotiActivityFixture('waiting-only', new Date('2026-10-13T12:00:00Z')))
+    }
     return Response.json({})
   })
 })
@@ -152,6 +156,19 @@ describe('ProjectOverview', () => {
     const memory = screen.getByTestId('overview-memory')
     expect(await within(memory).findByText('1 to review')).toBeInTheDocument()
     expect(within(memory).getByText('Sichtbeton Nordfassade')).toBeInTheDocument()
+  })
+
+  test('every reader gets the Piloti tile, reading the typed endpoint and opening its section', async () => {
+    render(<ProjectOverview data={DATA} activity={ACTIVITY} usage={null} access={VIEWER} />)
+
+    const tile = screen.getByTestId('overview-piloti')
+    expect(await within(tile).findByText('9 waiting for a decision')).toBeInTheDocument()
+    expect(within(tile).getByText('Nothing running right now')).toBeInTheDocument()
+    expect(within(tile).getByRole('link', { name: /View/ })).toHaveAttribute(
+      'href',
+      '/app/projects/p1/settings/piloti'
+    )
+    expect(fetch).toHaveBeenCalledWith('/api/projects/p1/piloti-activity', expect.anything())
   })
 
   test('everyone sees the activity counts, never the spend', () => {

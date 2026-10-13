@@ -6,6 +6,7 @@
  * for what they load in the browser (roster, memory, uploads, summary).
  *
  *   /dev/settings            Overview (the bento dashboard)
+ *   /dev/settings/piloti     Was Piloti tut
  *   /dev/settings/members    Members
  *   /dev/settings/memory     Memory
  *   /dev/settings/usage      Usage & budget (`?blocked=project` shows the exhausted state)
@@ -22,9 +23,11 @@ import type { JSX } from 'react'
 import { use } from 'react'
 import { notFound, useSearchParams } from 'next/navigation'
 import { SectionNav } from '@/components/shell/section-nav'
-import { Brain, FileStack, Gauge, GitCompareArrows, LayoutDashboard, Users } from 'lucide-react'
+import { Brain, FileStack, Gauge, GitCompareArrows, LayoutDashboard, Sparkles, Users } from 'lucide-react'
 import { DocumentsSettings } from '@/features/projects/components/settings/documents-settings'
 import { ProjectOverview } from '@/features/projects/components/overview/project-overview'
+import { PilotiActivity } from '@/features/piloti-activity/components/piloti-activity'
+import { SettingsSectionIntro } from '@/features/projects/components/settings/settings-panel'
 import { MembersSettings } from '@/features/projects/components/settings/members-settings'
 import { MemorySettings } from '@/features/projects/components/settings/memory-settings'
 import {
@@ -42,6 +45,7 @@ import { SIMILAR_PAGE } from '../../_fixtures/similar-projects'
 import { SimilarProjects } from '@/features/references/components/similar-projects'
 import { SimilarProjectsTile } from '@/features/projects/components/overview/similar-projects-tile'
 import { answerSteckbrief, useDevSteckbrief } from '../../_fixtures/steckbrief'
+import { pilotiActivityFixture } from '../../_fixtures/piloti-activity'
 
 const PROJECT_ID = FIXTURE_PROJECT_ID
 
@@ -171,6 +175,10 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       // The Steckbrief's reads and writes both: the fixture keeps the edits.
       const steckbrief = await answerSteckbrief(PROJECT_ID, url, init)
       if (steckbrief) return steckbrief
+      // „Was Piloti tut": the fixture, with its `?since`/`limit` query ignored.
+      if (read && url.startsWith(`/api/projects/${PROJECT_ID}/piloti-activity`)) {
+        return Response.json({ ...pilotiActivityFixture('full'), projectId: PROJECT_ID })
+      }
       if (read && url === `/api/projects/${PROJECT_ID}/uploads`)
         return Response.json({ uploads: HISTORY })
       if (read && url === `/api/projects/${PROJECT_ID}/members`) {
@@ -223,6 +231,7 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
 
 const ICONS = {
   overview: LayoutDashboard,
+  piloti: Sparkles,
   members: Users,
   memory: Brain,
   usage: Gauge,
@@ -232,6 +241,7 @@ const ICONS = {
 
 const LABELS: Record<ProjectSettingsSectionKey, string> = {
   overview: 'Overview',
+  piloti: 'What Piloti is doing',
   members: 'Members',
   memory: 'Memory',
   usage: 'Usage & budget',
@@ -296,6 +306,15 @@ export default function SettingsDevPage({
                 />
               }
             />
+          )}
+          {current === 'piloti' && (
+            <div className="flex flex-col gap-6">
+              <SettingsSectionIntro
+                title="What Piloti is doing"
+                description="What Piloti is working on in this project, what is waiting for you or your team, and what was finished lately."
+              />
+              <PilotiActivity projectId={PROJECT_ID} />
+            </div>
           )}
           {current === 'members' && (
             <MembersSettings projectId={PROJECT_ID} currentMembershipId="me" />

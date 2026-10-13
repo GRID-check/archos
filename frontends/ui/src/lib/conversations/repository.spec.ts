@@ -48,6 +48,7 @@ import {
   findMessageInConversation,
   lastProjectActivityByUser,
   listMessagesForConversation,
+  listVisibleConversationIds,
   listVisibleConversations,
   upsertConversationRead,
 } from './repository'
@@ -412,5 +413,29 @@ describe('findConversationTenancy — the probe sharing and the WebSocket gate s
 
     expect(onlyQuery().params).toContain('s_7d1e2c3b_0000_4000_8000_00000000000c')
     expect(row).toMatchObject({ organizationId: 'org_1', visibility: 'private', createdBy: 'user_me' })
+  })
+})
+
+describe('listVisibleConversationIds — the link gate, by the list\'s own project rule', () => {
+  it('asks the ids among the asked ones the caller may open in the project, not deleted, bounded by the ask', async () => {
+    nextRows = [['conv_a']]
+    const ids = await listVisibleConversationIds('org_1', 'user_me', PROJECT_ID, ['conv_a', 'conv_b', 'conv_a'])
+
+    const { sql, params } = onlyQuery()
+    expect(sql).toContain('"conversations"."id" in ($1, $2)')
+    expect(sql).toContain('"conversations"."deleted_at" is null')
+    // The same project branch `listVisibleConversations` builds, organization first.
+    expect(sql).toContain(
+      '"conversations"."organization_id" = $3 and ("conversations"."project_id" = $4 and ("conversations"."visibility" <> $5 or "conversations"."created_by" = $6',
+    )
+    expect(sql).not.toContain('"conversations"."project_id" is null')
+    expect(sql).toMatch(/limit \$\d+$/)
+    expect(params.at(-1)).toBe(2)
+    expect(ids).toEqual(new Set(['conv_a']))
+  })
+
+  it('asks nothing for no ids', async () => {
+    expect(await listVisibleConversationIds('org_1', 'user_me', PROJECT_ID, [])).toEqual(new Set())
+    expect(captured).toHaveLength(0)
   })
 })

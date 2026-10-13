@@ -55,6 +55,8 @@ export const pilotiChanges = pgTable(
     }).onDelete('cascade'),
     originIdx: index('idx_piloti_changes_origin').on(table.organizationId, table.originMessageId, table.createdAt),
     annotationIdx: index('idx_piloti_changes_annotation').on(table.annotationId, table.createdAt),
+    // „Was Piloti tut" (0144): the organization's changes, newest first.
+    orgCreatedIdx: index('idx_piloti_changes_org_created').on(table.organizationId, table.createdAt.desc()),
     objectKnown: check('piloti_changes_object_known', sql`${table.objectKind} IN (${list(PILOTI_CHANGE_OBJECTS)})`),
     opKnown: check('piloti_changes_op_known', sql`${table.op} IN (${list(PILOTI_CHANGE_OPS)})`),
     replyIsCreated: check(

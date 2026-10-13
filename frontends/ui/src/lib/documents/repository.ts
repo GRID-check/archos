@@ -212,6 +212,67 @@ export function outsideHiddenFolders(hiddenFolderIds: readonly string[] | undefi
 }
 
 /**
+ * One person's view of one project's documents: the organization and the
+ * project, and the two reader dimensions the project overview carries
+ * (`projectOverviewReader`: `documentVisibleTo` for a held upload, ADR-0086;
+ * the folders closed to them, ADR-0087). What a read across a project's
+ * document facts takes, so a held upload, a document in a folder closed to the
+ * reader, a Büroablage document and another project's document never reach a
+ * row.
+ */
+export interface ProjectDocumentGate {
+  organizationId: string
+  projectId: string
+  reader: DocumentReader
+  hiddenFolderIds: readonly string[]
+}
+
+/**
+ * The project half of a {@link ProjectDocumentGate} as predicates over
+ * `documents`: the organization, the project, the project shelf, and outside
+ * every hidden folder. NOT the visibility predicate: a query that joins
+ * `documents` ANDs `documentVisibleTo(gate.reader)` itself, beside these, so
+ * `document-visibility.spec.ts` sees it in that query.
+ */
+export function projectShelfScope(gate: ProjectDocumentGate): SQL[] {
+  return [
+    eq(documents.organizationId, gate.organizationId),
+    eq(documents.projectId, gate.projectId),
+    eq(documents.scope, 'project'),
+    ...outsideHiddenFolders(gate.hiddenFolderIds),
+  ]
+}
+
+/** A document as a row names it: its id and the two fields `documentDisplayName` reads. */
+export interface NamedDocumentRow {
+  id: string
+  filename: string
+  displayName: string | null
+}
+
+/**
+ * The ids among `ids` this gate's reader may see in its project, with their
+ * names, in one read: what a list that only holds document ids (a turn's
+ * changes, a run's filed document) names them by. Bounded by the ids asked;
+ * an id the gate refuses is simply absent.
+ */
+export async function listVisibleProjectDocumentNames(
+  gate: ProjectDocumentGate,
+  ids: readonly string[],
+): Promise<NamedDocumentRow[]> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return []
+  const db = getDb()
+  return withTenant({ organizationId: gate.organizationId }, () =>
+    db
+      .select({ id: documents.id, filename: documents.filename, displayName: documents.displayName })
+      .from(documents)
+      .where(and(inArray(documents.id, unique), ...projectShelfScope(gate), documentVisibleTo(gate.reader)))
+      .limit(unique.length),
+  )
+}
+
+/**
  * The columns a listing serves — one definition for the project listing, its
  * keyset page and the Archiv's, so the three cannot disagree about what a
  * `DocumentListRow` is.

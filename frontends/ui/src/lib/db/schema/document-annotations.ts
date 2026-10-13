@@ -213,6 +213,13 @@ export const pilotiWakes = pgTable(
     }).onDelete('cascade'),
     annotationIdx: index('idx_piloti_wakes_annotation_created').on(table.annotationId, table.createdAt),
     actorIdx: index('idx_piloti_wakes_actor_created').on(table.organizationId, table.actorUserId, table.createdAt),
+    // „Was Piloti tut" (0144): the organization's live wakes, and its ended ones, newest first.
+    liveIdx: index('idx_piloti_wakes_live')
+      .on(table.organizationId, table.createdAt.desc())
+      .where(sql`${table.status} IN ('queued', 'started')`),
+    endedIdx: index('idx_piloti_wakes_ended')
+      .on(table.organizationId, table.endedAt.desc())
+      .where(sql`${table.endedAt} IS NOT NULL`),
     triggerKnown: check('piloti_wakes_trigger_known', sql`${table.triggerKind} IN (${list(PILOTI_WAKE_TRIGGERS)})`),
     statusKnown: check('piloti_wakes_status_known', sql`${table.status} IN (${list(PILOTI_WAKE_STATUSES)})`),
     reasonWhenNotStarted: check(

@@ -49,7 +49,7 @@ import { ProjectSteckbrief } from '../project-steckbrief'
 import type { ProjectUsageView } from '../settings/usage-settings'
 import { ActivityPanel, type ProjectActivityView } from './activity-panel'
 import { DocumentsTile } from './documents-tile'
-import { MembersTile, MemoryTile } from './live-tiles'
+import { MembersTile, MemoryTile, PilotiTile } from './live-tiles'
 import { UsageTile } from './usage-tile'
 
 export interface ProjectOverviewAccess {
@@ -111,6 +111,9 @@ export function ProjectOverview({
           href={settingsSectionHref(id, 'documents')}
         />
         <MemoryTile projectId={id} href={settingsSectionHref(id, 'memory')} />
+        {/* A whole row, whichever of Usage and Members this reader gets: the
+            rows below keep their pairing and no cell is left empty. */}
+        <PilotiTile projectId={id} href={settingsSectionHref(id, 'piloti')} />
         {usage && (
           <UsageTile usage={usage} href={settingsSectionHref(id, 'usage')} span={usageSpan} />
         )}

@@ -123,10 +123,7 @@ export async function listVisibleConversations(
         or(
           // Inside the project the caller has proved they reach, only `private`
           // needs narrowing.
-          and(
-            eq(conversations.projectId, projectId),
-            or(ne(conversations.visibility, 'private'), mine, granted),
-          ),
+          visibleInsideProject(organizationId, userId, projectId),
           // Unstamped rows are judged without any project claim, so that the list
           // agrees with the access resolver instead of advertising titles it will
           // then 404 on.
@@ -136,6 +133,66 @@ export async function listVisibleConversations(
     : and(orgScope, withoutContainer)
 
   return db.select().from(conversations).where(scope).orderBy(desc(conversations.updatedAt)).limit(limit)
+}
+
+/**
+ * The project half of {@link listVisibleConversations}' rule: a conversation
+ * stamped with `projectId` that is not `private`, or that the caller created
+ * or was granted. Only sound once the caller has proved they reach the
+ * project (`requireProjectAccess`), as the list's own caller has.
+ */
+function visibleInsideProject(organizationId: string, userId: string, projectId: string): SQL {
+  return and(
+    eq(conversations.projectId, projectId),
+    or(
+      ne(conversations.visibility, 'private'),
+      eq(conversations.createdBy, userId),
+      grantNamesCaller(organizationId, userId),
+    ),
+  ) as SQL
+}
+
+/**
+ * Whether a row of `conversations` is one the caller may open in `projectId`,
+ * as SQL to AND into a query that joins `conversations`: the organization, and
+ * the project branch of {@link listVisibleConversations}, the conversation
+ * list's own rule, so a view that lists rows living in a conversation and the
+ * chat never disagree about which thread a person may open. It does not judge
+ * a deleted row (AND `deleted_at IS NULL` yourself) nor a thread locked by what
+ * it drew on (`lockedConversationIds`, after the query).
+ *
+ * Built per call, never at module load: it names schema tables.
+ */
+export function conversationVisibleInProject(organizationId: string, userId: string, projectId: string): SQL {
+  return and(eq(conversations.organizationId, organizationId), visibleInsideProject(organizationId, userId, projectId)) as SQL
+}
+
+/**
+ * The ids among `ids` that the caller may open in `projectId`
+ * ({@link conversationVisibleInProject}) and that are not deleted: the link
+ * gate for a row that only POINTS at a thread. Bounded by the ids asked.
+ */
+export async function listVisibleConversationIds(
+  organizationId: string,
+  userId: string,
+  projectId: string,
+  ids: readonly string[],
+): Promise<Set<string>> {
+  const unique = [...new Set(ids)]
+  if (unique.length === 0) return new Set()
+  const db = getDb()
+  const rows = await db
+    .select({ id: conversations.id })
+    .from(conversations)
+    .where(
+      and(
+        inArray(conversations.id, unique),
+        isNull(conversations.deletedAt),
+        conversationVisibleInProject(organizationId, userId, projectId),
+      ),
+    )
+    .limit(unique.length)
+  return new Set(rows.map((row) => row.id))
 }
 
 /**

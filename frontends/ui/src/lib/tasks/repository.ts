@@ -400,6 +400,65 @@ export async function listRunsInProject(
     .limit(limit)
 }
 
+/** The run statuses a run ends in. */
+const FINISHED_RUN_STATUSES = ['succeeded', 'failed', 'interrupted', 'skipped', 'error'] as const satisfies readonly TaskRunStatus[]
+
+/**
+ * The project's runs still queued or running, newest first, at most `limit`
+ * (ask one past a cap to know whether there were more). The caller narrows
+ * them by `withoutUnreadableSubjects`, as the Aufträge list does.
+ */
+export async function listActiveRunsInProject(
+  projectId: string,
+  organizationId: string,
+  limit: number,
+): Promise<TaskRun[]> {
+  const db = getDb()
+  return db
+    .select()
+    .from(taskRuns)
+    .where(
+      and(
+        eq(taskRuns.projectId, projectId),
+        eq(taskRuns.organizationId, organizationId),
+        inArray(taskRuns.status, [...ACTIVE_RUN_STATUSES]),
+      ),
+    )
+    .orderBy(desc(taskRuns.createdAt), desc(taskRuns.id))
+    .limit(limit)
+}
+
+/** When a run ended: when it finished, or (a skip that never started) when it was last written. */
+const runEndedAt = () => sql<Date>`COALESCE(${taskRuns.finishedAt}, ${taskRuns.updatedAt})`
+
+/**
+ * The project's runs that ended at or after `since` (`finished_at`, else
+ * `updated_at`), newest first, at most `limit`. The caller narrows them by
+ * `withoutUnreadableSubjects`.
+ */
+export async function listFinishedRunsInProject(
+  projectId: string,
+  organizationId: string,
+  since: Date,
+  limit: number,
+): Promise<TaskRun[]> {
+  const db = getDb()
+  return db
+    .select()
+    .from(taskRuns)
+    .where(
+      and(
+        eq(taskRuns.projectId, projectId),
+        eq(taskRuns.organizationId, organizationId),
+        inArray(taskRuns.status, [...FINISHED_RUN_STATUSES]),
+        // As text with its type: a bare Date beside a raw expression has no column to map it.
+        sql`${runEndedAt()} >= ${since.toISOString()}::timestamptz`,
+      ),
+    )
+    .orderBy(desc(runEndedAt()), desc(taskRuns.id))
+    .limit(limit)
+}
+
 /**
  * The run a backend job id belongs to. NOT tenant-filtered, for the reason
  * `findTaskByBackendJobId` gives: the worker that reports holds the backend id
