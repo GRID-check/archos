@@ -18,11 +18,46 @@ from qdrant_client import models
 from .boost import parse_boost
 from .payload import project_payload
 from .schema import TEXT_FIELD
+from .scope import scope_filter
 from .search import Hit
+from .search import _alias as search_alias
 from .search import exact_term
 from .search import grouped_search
 from .search import hybrid_search
 from .store import get_store
+
+#: The German stopwords spelled with an umlaut or ß (Snowball's list, the one
+#: Postgres' ``german`` config and Qdrant's German BM25 both use). Qdrant folds
+#: before it drops stopwords, so with ``ascii_folding`` „über“ reaches the
+#: index and the query as ``uber``, a term on 18% of the OIB corpus: „was
+#: weißt du über die oib 1“ ranked every chunk with an „über“ (measured,
+#: ``qdrant-gates-2026-10.md``, "Ranking sweep"). The rest of the list Qdrant
+#: drops itself, as Postgres drops all of it.
+BM25_FOLDED_STOPWORDS = frozenset({"daß", "für", "können", "könnte", "über", "während", "würde", "würden"})
+
+#: A file name typed into a question: a word with a document extension.
+_FILE_NAME = re.compile(
+    r"[\w.-]+\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|rtf|txt|md|csv|dwg|dxf|ifc|png|jpe?g|tiff?|eml|msg|zip)\b",
+    re.IGNORECASE,
+)
+
+
+def bm25_candidates(query: str, extra_terms: Sequence[str] = ()) -> list[str]:
+    """The terms of ``query`` the BM25 channel may be asked for, before pricing.
+
+    ``german_text.query_terms``, less what carries no lexical signal here:
+    the stopwords Qdrant's folding lets through, and the pieces of a file
+    name. A file name is an identifier, not prose: split at ``-``, ``_`` and
+    ``.``, „oib-rl_5_ausgabe_mai_2023.pdf“ asked BM25 for „ausgabe mai 2023“,
+    which every Richtlinie's front matter holds, and pushed the named file out
+    of the 60-chunk pool the dense channel alone puts it in.
+    """
+    from aiq_agent.common import german_text
+
+    prose = _FILE_NAME.sub(" ", query)
+    return [
+        term for term in german_text.query_terms(prose, extra_terms=extra_terms) if term not in BM25_FOLDED_STOPWORDS
+    ]
 
 
 def search(
@@ -60,6 +95,7 @@ def search_grouped(
     identity: Mapping[str, str],
     filters: dict[str, Any] | None = None,
     boost: Mapping[str, Any] | None = None,
+    exact_terms: Sequence[str] = (),
 ) -> list[tuple[str, list[Hit]]]:
     """One fused ranking over many logical collections, grouped per collection, best group first.
 
@@ -80,6 +116,7 @@ def search_grouped(
         group_size=group_size,
         filters=filters,
         boost=parse_boost(boost),
+        exact_terms=exact_terms,
     )
 
 
@@ -89,23 +126,38 @@ def set_project_facts(scope: str, facts: Mapping[str, Any] | None, status: str) 
 
 
 def term_frequencies(
-    scope: str, terms: Sequence[str], cache: MutableMapping[tuple[str, int, str], int] | None = None
+    scopes: str | Sequence[str],
+    terms: Sequence[str],
+    cache: MutableMapping[tuple[str, int, str], int] | None = None,
 ) -> tuple[int, dict[str, int]]:
-    """How many chunks ``scope`` holds, and how many contain each exact term (``search.exact_term``).
+    """How many chunks ``scopes`` hold together, and how many contain each exact term (``search.exact_term``).
 
-    ``cache`` keeps a count per ``(scope, total, term)``: a corpus that has not
-    changed size answers a recurring term without a round trip, and any write
-    that changes the count invalidates it.
+    Over several scopes (cross-project search) both counts are over their
+    union: the corpus the BM25 channel's IDF is computed over
+    (``search._prefetches``), so a term is judged selective where it is ranked.
+
+    ``cache`` keeps a count per ``(scopes, total, term)``, the scopes joined
+    sorted: a corpus that has not changed size answers a recurring term without
+    a round trip, and any write that changes the count invalidates it.
     """
+    names = [scopes] if isinstance(scopes, str) else list(dict.fromkeys(scopes))
     store = get_store()
-    total = store.count(scope)
+    if not names or not store.exists(names[0]):
+        return 0, dict.fromkeys(terms, 0)
+    alias = search_alias(store, names)
+
+    def count(*extra: models.Condition) -> int:
+        return store.client.count(alias, count_filter=scope_filter(names, None, *extra), exact=True).count
+
+    total = count()
+    label = ",".join(sorted(names))
     counts: dict[str, int] = {}
     for term in dict.fromkeys(terms):
-        key = (scope, total, term)
+        key = (label, total, term)
         if cache is not None and key in cache:
             counts[term] = cache[key]
             continue
-        counts[term] = store.count(scope, None, exact_term(term))
+        counts[term] = count(exact_term(term))
         if cache is not None:
             cache[key] = counts[term]
     return total, counts

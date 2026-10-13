@@ -41,6 +41,7 @@ from oib_retrieval_eval.qdrant_parity import channels
 from oib_retrieval_eval.qdrant_parity import dimension
 from oib_retrieval_eval.qdrant_parity import evaluation
 from oib_retrieval_eval.qdrant_parity import stores
+from oib_retrieval_eval.qdrant_parity import variants
 from oib_retrieval_eval.qdrant_parity.stores import IndexedChunk
 from oib_retrieval_eval.qdrant_parity.vectors import Embedder
 from oib_retrieval_eval.qdrant_parity.vectors import embed_text
@@ -407,11 +408,14 @@ def run(
     work_dir: Path,
     with_dimension: bool = True,
     use_postgres: bool = True,
+    variant_names: str | None = None,
 ) -> dict[str, Any]:
     """Index both stores from ``inputs``, measure every gate, return the results dict.
 
     ``use_postgres`` False keeps the German mirror on SQLite even where server
     binaries exist (the tests: a cluster costs seconds they do not need).
+    ``variant_names`` (a comma list, or ``all``) also runs the ranking sweep
+    (``variants.py``) over the same Qdrant collection.
     """
     corpus_view = Corpus(inputs.chunks, inputs.excluded)
     fingerprint = stores.identity(inputs.model, inputs.base_url)
@@ -457,6 +461,10 @@ def run(
         report["exact"] = measure_exact(inputs, reader)
         report["hybrid"] = measure_hybrid(inputs, reader, rounds)
         report["hybrid_hard"] = measure_hybrid_hard(inputs, reader, report["lexical"]["relevant_counts"])
+        if variant_names:
+            report["variants"] = variants.run(
+                inputs, reader, report["lexical"]["relevant_counts"], variant_names, rounds, HYBRID_DEPTH
+            )
         if with_dimension:
             from knowledge_layer.qdrant.store import get_store
 
@@ -623,6 +631,9 @@ def render_markdown(report: dict[str, Any]) -> str:
                 lines.append(f"| {key} | " + " | ".join(cells) + " |")
         if "qdrant_index" in dim:
             lines.append(f"\nG6 collection index state: {dim['qdrant_index']}")
+    if report.get("variants"):
+        lines.append("")
+        lines.extend(variants.render(report["variants"]))
     lines.append("\n## Verdicts\n")
     lines.append("| gate | status | detail |")
     lines.append("|---|---|---|")
@@ -660,6 +671,11 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--rounds", type=int, default=5, help="timed passes over every question (G2)")
     parser.add_argument("--out", type=Path, default=corpus.package_root() / "results" / "qdrant_parity")
     parser.add_argument("--no-dimension", action="store_true", help="skip G6")
+    parser.add_argument(
+        "--variants",
+        default=None,
+        help="also run the ranking sweep: a comma list of variants.catalogue() names, or 'all'",
+    )
     args = parser.parse_args(argv)
     logging.basicConfig(level=logging.WARNING, format="%(levelname)s %(name)s: %(message)s")
 
@@ -678,6 +694,7 @@ def main(argv: list[str] | None = None) -> int:
             rounds=args.rounds,
             work_dir=Path(work),
             with_dimension=not args.no_dimension,
+            variant_names=args.variants,
         )
     markdown = render_markdown(report)
     args.out.mkdir(parents=True, exist_ok=True)

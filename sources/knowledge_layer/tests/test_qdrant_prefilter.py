@@ -413,6 +413,7 @@ async def test_doc_class_and_folder_run_inside_the_search_with_no_over_fetch(sea
     assert all("folder_ancestors" in repr(flt) and "doc_class" in repr(flt) for flt in project)
     assert _cited_files(out) == {"Brandschutz.pdf", "Fluchtwege.pdf"}
     assert span["vector_backend"] == "qdrant"
+    assert span["ranking"] == "rrf60+cosine_ties"
     assert span["prefiltered"] == ["doc_class", "folder_ancestors", "superseded"]
 
 

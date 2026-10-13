@@ -159,7 +159,9 @@ How to read these tables:
   0.890 (G6 table), Qdrant hybrid 0.810 and Chroma hybrid 0.725. Equal-weight
   RRF demotes the dense channel's top hit for natural-language questions. The
   RRF weights the design reserves (`weights: [1, 1]`) are the knob, and tuning
-  them is a separate decision from the flip.
+  them is a separate decision from the flip. Measured since: weighting dense
+  costs the hard cases more than it gains
+  ([ranking sweep](#ranking-sweep-2026-10-13)).
 
 ### G2 latency: pass (this machine only)
 
@@ -278,13 +280,27 @@ between 62 and 89 ms across the same runs.
    channel proposed here (`paragraph_refs`, matched by `search.exact_term`),
    and the re-run below measures it.
 2. **G6 resolution.** A larger labelled set before 1024-d is reconsidered.
-3. **TurboQuant oversampling and rescoring.** Measure `ex-filename-rl5` and
-   recall@1 with `oversampling` above 1.0 before the flip, or accept the
-   quantization cost.
+3. ~~TurboQuant oversampling and rescoring~~: measured, rejected. Rescoring
+   at oversampling 1 to 3 improves nothing and does not recover
+   `ex-filename-rl5`; BM25 fed the pieces of the file name did that
+   ([ranking sweep](#ranking-sweep-2026-10-13)).
 4. **G1** on a deployed stack, with the per-expectation diff reviewed; **G4**
    and **G5** as ops drills.
-5. Cross-project grouped search (`search_grouped`) still sends unpriced BM25
-   over several scopes. It is not measured here: this corpus has one scope.
+5. ~~Cross-project grouped search sends unpriced BM25 and no exact terms~~:
+   closed. `search_grouped` takes its lexical inputs from the same
+   `_qdrant_lexical_inputs` as a single-collection search: BM25 terms priced
+   by `select_terms` and the selective exact terms („§ 8“, „REI 90“) run as
+   their channels, both on document frequencies counted over the union of the
+   searched scopes, the corpus its IDF is already computed over. Its RRF ties
+   are ordered by cosine before grouping, so a tie no longer decides which
+   project leads. Pinned against a real Qdrant with three projects
+   (`test_grouped_search_prices_bm25_over_the_searched_scopes`,
+   `test_grouped_search_runs_the_exact_term_channels`,
+   `test_a_tie_between_projects_puts_the_closer_projects_group_first`). Its
+   ranking effect on a real office is not measured: this corpus has one scope.
+6. A query that is a file name finds the file only through the dense channel
+   (file rank 10 for `ex-filename-rl5`). A dense channel restricted to
+   `file_name` equal to the named file would put it first; not built.
 
 ## Re-run on the merged code
 
@@ -302,7 +318,202 @@ BM25 pricing were merged (2026-10-13, without G6). Nothing was re-embedded.
 
 Still open from the cohorts: exact-id recall@16 0.80 on Qdrant against 0.90 on
 Chroma (the `ex-filename-rl5` question, item 3), and overview recall@16 0.883
-against 0.950.
+against 0.950. Both closed by the ranking sweep below.
+
+## Ranking sweep (2026-10-13)
+
+Same corpus, same cached vectors. `task be:eval:qdrant-parity -- --no-dimension
+--variants all` builds the collection once and then reads it through
+`_retrieve_sync` once per variant, each variant swapping
+`knowledge_layer.qdrant.search.RANKING` (a `Ranking`: fusion, RRF `k`, the
+dense channel's RRF weight, rescoring and oversampling, MMR, the tie-break).
+The module is `qdrant_parity/variants.py`; `results.json` keeps every
+question's numbers per variant, and `report.md` lists, per variant, which
+questions moved against the baseline. The baseline is measured again after
+every other variant (`baseline_repeat`), on the same collection, as the noise
+floor.
+
+**Adoption rule.** A variant is adopted only if it improves golden nDCG@10 and
+MRR and hard-case R-precision through full retrieval, moves no cohort and no
+hard case by more than one question, with the per-question moves read, and
+keeps G2 p95 well under its bound. 46 golden questions are a small set: one
+question's first hit is worth about 2 points of MRR.
+
+### What the gaps actually were: two defects in what BM25 was asked
+
+The cohort gaps were not quantization and not fusion. `dense_only` (BM25 and
+the exact-term channels off) put `ex-filename-rl5` at file rank 10 and both
+`ov-rl1` and `ov-rl6` at recall@16 1.0, and no rescoring or oversampling
+variant brought `ex-filename-rl5` back into the pool. What pushed them out was
+the BM25 channel, fed terms that carry no signal:
+
+1. **Umlaut stopwords.** Qdrant's German BM25 folds before it drops stopwords,
+   so with `ascii_folding` „über“, „für“, „können“, „während“, „würde“ reach
+   the index and the query as `uber`, `fur`, … (measured: BM25 for „was“ or
+   „die“ returns nothing, for „über“ 448 chunks). „über“ is on 18% of the
+   corpus, under the 25% pricing ceiling, so „was weißt du über die oib 1“
+   asked BM25 for `über` alone and ranked every chunk holding it.
+2. **File names.** `german_text.query_terms` splits
+   `oib-rl_5_ausgabe_mai_2023.pdf` into `ausgabe mai 2023 pdf`, each on about
+   10% of the corpus, so pricing kept them and BM25 ranked every Richtlinie's
+   front matter over the file the dense channel found.
+
+Fixed in `retrieval.bm25_candidates`, which `_qdrant_lexical_inputs` now uses:
+the eight Snowball stopwords spelled with an umlaut or ß are dropped, and a
+word with a document extension is taken out of the BM25 text (dense still
+reads it). 9 of the 105 harness queries changed their BM25 input, all in the
+overview and exact-id cohorts; no golden or hard-case query changed.
+
+| Qdrant path | exact-id r@16 | overview r@16 | golden nDCG@10 / MRR | hard R-prec |
+|---|---|---|---|---|
+| before (merged code) | 0.800 | 0.850 | 0.847 / 0.810 | 0.586 |
+| after | **1.000** | **0.967** | 0.847 / 0.809 | 0.586 |
+| Chroma path, for reference | 0.900 | 0.950 | 0.782 / 0.725 | 0.544 |
+
+### The fused ranking was not deterministic
+
+Four identical calls returned a different top-60 order for **86 of 105**
+queries, and a different top-16 for 31; the dense channel alone is stable.
+Equal-weight RRF ties exactly whenever two passages hold the same ranks in
+different channels (dense rank 3 alone against BM25 rank 3 alone), and Qdrant
+returns tied points in no fixed order. That is the run-to-run spread every
+earlier table carries: over seven measurements of the unchanged baseline,
+golden nDCG@10 ranged 0.839 to 0.856, MRR 0.798 to 0.821 and hard-case
+R-precision 0.580 to 0.586. It is also why the gate re-run above read 0.856 /
+0.821 where the first run read 0.848 / 0.810 on the same code.
+
+`Ranking.cosine_tie_break` orders tied passages by their cosine to the query,
+then by chunk id. A tie straddling the cut is fetched whole first (a quarter
+more points, `search._tie_slack`) and cut after ordering. Repeated calls then
+vary for **0 of 105** queries.
+
+### The sweep (final run)
+
+Golden: Punkt golden set, 46 questions. Hard: the 21 gating hard cases, mean
+R-precision; `compound` and `compound_only` are the per-kind means (3 and 2
+cases). Cohorts: file recall@16. p95: the store call, 5 timed passes over 76
+questions, this machine. Cosine error: the largest gap between a hit's
+`Chunk.score` and its true cosine (numpy over the stored vectors), over every
+hit of every question.
+
+| variant | nDCG@10 | MRR | r@1 | hard | compound / only | exact-id / overview / paraphrase | p95 ms | verdict |
+|---|---|---|---|---|---|---|---|---|
+| baseline: RRF k=60 | 0.855 | 0.820 | 0.663 | 0.586 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 23.7 | was production |
+| baseline, repeated last | 0.856 | 0.821 | 0.663 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 32.2 | noise floor |
+| dense alone | 0.907 | 0.890 | 0.739 | 0.298 | 0.230 / 0.105 | 1.000 / 0.950 / 1.000 | 16.6 | reference |
+| rescore | 0.834 | 0.791 | 0.620 | 0.586 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 26.8 | rejected |
+| rescore, oversampling 1.5 | 0.841 | 0.802 | 0.641 | 0.581 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 22.9 | rejected |
+| rescore, oversampling 2 | 0.842 | 0.802 | 0.641 | 0.580 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 22.6 | rejected |
+| rescore, oversampling 3 | 0.841 | 0.802 | 0.641 | 0.581 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 26.4 | rejected |
+| RRF k=20 | 0.836 | 0.787 | 0.598 | 0.578 | 0.461 / 0.030 | 1.000 / 0.950 / 1.000 | 26.8 | rejected |
+| RRF k=100 | 0.847 | 0.809 | 0.641 | 0.586 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 25.7 | rejected |
+| dense weight 1.5 | 0.828 | 0.784 | 0.620 | 0.565 | 0.430 / 0.040 | 1.000 / 0.967 / 1.000 | 28.0 | rejected |
+| dense weight 2 | 0.828 | 0.784 | 0.620 | 0.554 | 0.400 / 0.050 | 1.000 / 0.967 / 1.000 | 24.0 | rejected |
+| dense weight 3 | 0.799 | 0.747 | 0.554 | 0.539 | 0.368 / 0.060 | 1.000 / 0.967 / 1.000 | 21.6 | rejected |
+| DBSF | 0.854 | 0.810 | 0.641 | 0.541 | 0.402 / 0.030 | 1.000 / 0.967 / 1.000 | 27.8 | rejected |
+| MMR 0.2 (120 candidates) | 0.848 | 0.810 | 0.641 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 29.8 | rejected |
+| MMR 0.4 (120 candidates) | 0.848 | 0.810 | 0.641 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 29.4 | rejected |
+| rescore os 2 + dense weight 2 | 0.820 | 0.772 | 0.598 | 0.555 | 0.398 / 0.050 | 1.000 / 0.967 / 1.000 | 31.7 | rejected |
+| rescore os 2 + DBSF | 0.855 | 0.812 | 0.641 | 0.541 | 0.402 / 0.020 | 1.000 / 0.942 / 1.000 | 36.6 | rejected |
+| rescore os 2 + MMR 0.2 | 0.850 | 0.813 | 0.663 | 0.580 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 32.1 | rejected |
+| **cosine tie-break** | **0.856** | **0.821** | 0.663 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 29.9 | **adopted** |
+| tie-break + rescore | 0.850 | 0.813 | 0.663 | 0.580 | 0.459 / 0.020 | 1.000 / 0.967 / 1.000 | 32.6 | rejected |
+| tie-break + RRF k=100 | 0.856 | 0.821 | 0.663 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 26.7 | rejected |
+| tie-break + MMR 0.2 | 0.856 | 0.821 | 0.663 | 0.580 | 0.461 / 0.030 | 1.000 / 0.967 / 1.000 | 29.0 | rejected |
+| BM25 decompounded, index and query | 0.845 | 0.808 | 0.630 | 0.573 | 0.296 / 0.066 | 1.000 / 0.942 / 1.000 | 51.5 | rejected |
+| the same + tie-break | 0.852 | 0.818 | 0.652 | 0.571 | 0.296 / 0.066 | 1.000 / 0.942 / 1.000 | 29.7 | rejected |
+| BM25 decompounded, index only | 0.841 | 0.803 | 0.630 | 0.600 | 0.459 / 0.066 | 1.000 / 0.950 / 1.000 | 30.4 | rejected |
+| the same + tie-break | 0.850 | 0.814 | 0.652 | 0.595 | 0.459 / 0.066 | 1.000 / 0.950 / 1.000 | 26.6 | rejected |
+
+The cosine error was 0.000 for every variant.
+
+Why each was decided, from the per-question moves (the three earlier full
+runs of the sweep agree unless said otherwise):
+
+- **Cosine tie-break, adopted.** Against the baseline it moves one golden
+  question up and one hard case down (`para-8`, one of its 9 relevant chunks
+  in or out of the top 9). Its numbers are the top of the baseline's spread
+  (0.856 / 0.821 in this run and 0.857 / 0.822 in the previous one, against
+  0.839 to 0.856 for the baseline), and its hard-case R-precision is the bottom
+  of it (0.580). The golden gain is one question and within that spread; what
+  it buys for certain is that the same question gets the same ranking. It has
+  no constant to tune. It clears the rule only narrowly, which is why the
+  reason for keeping it is the determinism and not the score.
+- **Rescoring, at any oversampling: rejected.** No primary measure improves.
+  The same golden questions get worse in all four runs (`en-fluchtwegbreite`,
+  `en-tragwerk-zuverlaessigkeit`, and one or two others, by a rank each), the
+  hard cases lose 2 to 4 (`comp-fluchtwege`, `comp-only-brandabschnitt`), and
+  p95 rises by up to 26 ms. It does not recover `ex-filename-rl5` (cause above).
+  The quantized order is close enough to exact that the exact one only
+  reshuffles near-ties. It is also not needed for exact scores: every hit's
+  `Chunk.score` is already the exact cosine, from `search._cosines`, an
+  `exact=True` query over the hit ids, which reads the original vectors
+  (probed: error 0.0 against numpy at 256 dimensions, where the quantized
+  default is 0.008 off). That round trip cannot be dropped for rescoring
+  either: a fused query returns the fusion's score, not the dense channel's.
+  The 0.012 gap in [gotchas](../contributing/gotchas.md) is a channel's
+  `$score` inside a boost formula, not a served score.
+- **RRF k=20 and k=100: rejected.** k=100 moved golden questions by net 0,
+  +2, −2 and −2 over the four runs: noise around k=60. k=20 is worse
+  (golden −4/+2, `ov-cross-rl` out of the top 16). k=60 stays, the paper's
+  constant.
+- **Dense weight 1.5 to 3: rejected.** Before the BM25 fixes, weight 2 and 3
+  were the only settings that recovered the exact-id and overview questions;
+  after them, they only cost: golden −6 to −10 questions, hard −7 to −8 cases
+  (`§ 8`, the compounds, ß/umlaut spellings). Dense alone ranks natural
+  questions best (MRR 0.890), but the exact-term channels are what the hard
+  cases need, and Qdrant's weighted RRF scales the rank, not the vote.
+- **DBSF: rejected.** Golden +5/−4, but hard cases −7/+4 (mean 0.541 against
+  0.586): normalising BM25's scores by their spread lets dense outvote the
+  exact-term channels on `§ 8`, `TRVB`, `BROOF`, the compounds.
+- **MMR on the dense channel: rejected.** Aimed at file recall in the overview
+  cohort, it moved none (0.967 with and without); golden ±1, hard −1. Its
+  price is a 120-candidate scan per query. Once the stopword defect was gone,
+  the overview cohort had no diversity gap left to close: its one miss
+  (`ov-cross-rl`, two of three files) is missed by dense alone as well.
+
+### Compound splitting for BM25 (harness-only experiment)
+
+Neither German analyzer splits closed compounds: „Verfahren“ never reaches
+„Nachweisverfahren“. The experiment (`qdrant_parity/decompound.py`) copies the
+corpus into a second scope of the same collection whose BM25 vector is built
+from the chunk text plus the parts of its compounds, keeps dense, payload and
+text index, and prices the parts on the split corpus. Two shapes: parts on
+both sides (the question's compounds split too), and the index only (the
+question keeps its words whole). A separate sparse vector fused as its own
+channel was not built: the index-only shape already shows what the parts do
+to the BM25 ranking, and a fourth RRF channel weighs whatever it returns
+fully, as the dense-weight rows show.
+
+- **Splitter.** CharSplit (Tuggener 2016), from PyPI as `split-words` 0.1.3:
+  MIT, pure Python, no dependencies, its n-gram table (40 MB of JSON) shipped
+  in the 13 MB wheel, no download at runtime. Loading it takes about 2 s and
+  360 MB of memory. `compound-split` (the other packaged CharSplit) is
+  GPL-3.0, and `german-nouns` is CC BY-SA dictionary data; neither fits.
+  CharSplit always proposes a split („Verfahren“ → „Verf|ahren“), so a
+  proposal is kept only when both parts are words of the corpus (four letters
+  or more, a linking „s“ dropped): 2,449 of 2,534 chunks gained parts.
+- **Result: rejected, both shapes.** `compound_only` rose from 0.030 to 0.066
+  (`comp-only-verfahren` 0 → 0.09; „Prüfverfahren“ is not split, and
+  `comp-only-brandabschnitt` did not move). Splitting the question too costs
+  the gating compound cases 0.461 → 0.296 („Brandabschnittsfläche“ widens to
+  every „Brand“ and „Fläche“: R-precision 0.61 → 0.26). The index-only shape
+  keeps them and lifts the ß/umlaut cases (0.460 → 0.512, mostly
+  `sz-fussboden`), so gating hard R-precision rises to 0.600, but golden falls
+  by 4 to 6 questions (English questions whose glossary terms now match
+  compound parts: `en-treppe-steigung-auftritt`, `en-u-wert-aussenwand`,
+  `en-tragwerk-zuverlaessigkeit`) and `ov-cross-rl` drops out of the top 16.
+  The rule allows one.
+- **What production would have needed**, had it won: the parts appended to
+  the text the BM25 `Document` is built from at upsert (`QdrantStore._point`,
+  so every write path), every collection re-written once (the BM25 vector is
+  computed at write), the same split in `retrieval.bm25_candidates` for the
+  query side, and the pricing counting parts on a field that holds them (the
+  `text` index sees only whole words). With the splitter's 360 MB in every
+  process that writes or searches.
+
+Re-running the sweep with these rows: `uv pip install split-words==0.1.3` into
+the venv first; without it the decompounding rows are skipped with a warning.
 
 ## Re-running
 
