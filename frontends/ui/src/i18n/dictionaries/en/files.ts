@@ -306,11 +306,6 @@ export const files = {
     retryingIngestion: 'Retrying…',
     retryIngestionError: "Reading couldn't be restarted. Please try again.",
     dialogLabel: 'File preview: {name}',
-    /**
-     * The seam between the conversation and the file. It is a tab stop (the
-     * panel library makes every separator one), so it needs a name — an
-     * unlabelled separator is announced as nothing at all.
-     */
     // The two faces of the file beside the chat: the document, and what is known about it.
     peekViews: {
       label: 'File view',
@@ -319,6 +314,11 @@ export const files = {
     },
     // The length, in the facts line under the name in the chat peek.
     pageCount: '{count, plural, one {# page} other {# pages}}',
+    /**
+     * The seam between the conversation and the file. It is a tab stop (the
+     * panel library makes every separator one), so it needs a name — an
+     * unlabelled separator is announced as nothing at all.
+     */
     resizePeek: 'Resize file preview',
     /**
      * The CONSEQUENCE of the status badge beside them in the chat peek. The
