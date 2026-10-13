@@ -237,14 +237,3 @@ def _group_in_order(points: Sequence[Any], group_by: str, groups: int, group_siz
         if len(collected[key]) < group_size:
             collected[key].append(point)
     return collected
-
-
-def facet_counts(
-    store: QdrantStore, scopes: Sequence[str], key: str, filters: dict[str, Any] | None = None, limit: int = 50
-) -> list[tuple[str, int]]:
-    """How many chunks carry each value of ``key`` over ``scopes`` (exact counts)."""
-    if not store.exists(scopes[0]):
-        return []
-    alias = _alias(store, scopes)
-    response = store.client.facet(alias, key=key, facet_filter=scope_filter(scopes, filters), limit=limit, exact=True)
-    return [(str(hit.value), int(hit.count)) for hit in response.hits]
