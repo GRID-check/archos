@@ -708,6 +708,13 @@
                       },
                       "itemId": {
                         "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "project",
+                          "organization"
+                        ]
                       }
                     },
                     "required": [
@@ -995,6 +1002,13 @@
                       },
                       "itemId": {
                         "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "project",
+                          "organization"
+                        ]
                       }
                     },
                     "required": [
@@ -1200,6 +1214,13 @@
                       },
                       "itemId": {
                         "type": "string"
+                      },
+                      "scope": {
+                        "type": "string",
+                        "enum": [
+                          "project",
+                          "organization"
+                        ]
                       }
                     },
                     "required": [
@@ -1414,6 +1435,13 @@
                           },
                           "itemId": {
                             "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "project",
+                              "organization"
+                            ]
                           }
                         },
                         "required": [
@@ -1701,6 +1729,13 @@
                           },
                           "itemId": {
                             "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "project",
+                              "organization"
+                            ]
                           }
                         },
                         "required": [
@@ -1906,6 +1941,13 @@
                           },
                           "itemId": {
                             "type": "string"
+                          },
+                          "scope": {
+                            "type": "string",
+                            "enum": [
+                              "project",
+                              "organization"
+                            ]
                           }
                         },
                         "required": [

@@ -785,6 +785,7 @@ describe('applying a memory note', () => {
           label: 'Das Dach wird als extensiv begrüntes Flachdach ausgeführt, mit Attika und innenliegender …',
           ok: true,
           itemId: 'mem_project',
+          scope: 'project',
         },
       ],
     })
@@ -800,7 +801,7 @@ describe('applying a memory note', () => {
       { supersedesContent: null }
     )
     expect(addProjectMemoryItem).not.toHaveBeenCalled()
-    expect(proposal.results).toEqual([{ label: 'Wir runden Flächen auf zwei Stellen', ok: true, itemId: 'mem_org' }])
+    expect(proposal.results).toEqual([{ label: 'Wir runden Flächen auf zwei Stellen', ok: true, itemId: 'mem_org', scope: 'organization' }])
   })
 
   it('files an organization note in the project when the decider says so', async () => {
@@ -811,7 +812,8 @@ describe('applying a memory note', () => {
       supersedesContent: NOTE.supersedes,
     })
     expect(createOrganizationMemoryItem).not.toHaveBeenCalled()
-    expect(proposal.results).toEqual([expect.objectContaining({ ok: true, itemId: 'mem_project' })])
+    // The scope recorded is the one the decider chose, not the one Piloti asked for.
+    expect(proposal.results).toEqual([expect.objectContaining({ ok: true, itemId: 'mem_project', scope: 'project' })])
   })
 
   it('never widens a project note to the office, and refuses a body it does not know', async () => {

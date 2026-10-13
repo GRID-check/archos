@@ -81,7 +81,7 @@ export async function applyMemory(payload: MemoryPayload, context: ApplyContext)
     scope === 'project'
       ? await addProjectMemoryItem(session, projectId, input, options)
       : await createOrganizationMemoryItem(session, input, options)
-  return [{ label: noteLabel(payload.content), ok: true, itemId: item.id }]
+  return [{ label: noteLabel(payload.content), ok: true, itemId: item.id, scope }]
 }
 
 /**

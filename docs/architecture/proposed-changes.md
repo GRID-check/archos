@@ -63,7 +63,7 @@ row cannot name another tenant's project or conversation.
 | `origin_conversation_id`, `origin_message_id` | where the card sits. The proposal goes when its conversation goes |
 | `origin_card_index` | which card of that answer made it. With `origin_message_id` it is the idempotency key, below |
 | `decided_by`, `decided_at` | who applied or dismissed it, and when |
-| `results` | one `{ label, ok, reason?, itemId? }` per item, in order. `itemId` is the id of what the apply created, when it created something addressable (a memory note) |
+| `results` | one `{ label, ok, reason?, itemId?, scope? }` per item, in order. `itemId` is the id of what the apply created, when it created something addressable (a memory note); `scope` (`project` or `organization`) is the memory that note went into, which is the decider's choice and not always the payload's. A row decided before it was recorded has none |
 | `applying_by`, `applying_since` | the claim of an apply in progress. Not part of the contract |
 
 The CHECKs hold the lifecycle, so no code path can break it:
@@ -144,7 +144,7 @@ refuse. Then it writes through the door a person's own click uses:
 `addProjectMemoryItem` for the project, `createOrganizationMemoryItem` for the
 office, with the conversation as `sourceConversationId` (purging a folder that
 conversation drew on deletes the note with it). The result is one item, labelled
-with the note's first twelve words, with the new note's id as `itemId`.
+with the note's first twelve words, with the new note's id as `itemId` and the memory it went into as `scope`.
 
 ### `project_profile`
 
@@ -347,14 +347,19 @@ what must not drift between them:
   colleague's receipt and not an error.
 - A decision is a write to the proposal and nothing else. It writes no
   `cardInteractions`: a decision kept on the message would be a second truth
-  beside the object.
+  beside the object. What the rest of the answer needs to know of it, the
+  „Piloti hat sich gemerkt“ chip, it reads from `features/grid-cards/decided-proposals.ts`:
+  `useServerProposal` records every decided object it holds (first read,
+  re-read, hint, own click), and `turnMemoryItems` lists a memory card with a
+  `proposal_id` only when that copy says `applied`. Cards without a
+  `proposal_id` stay on `cardInteractions`.
 
 What each body adds:
 
 | Kind | Open | Decided |
 |---|---|---|
 | `file_operation` | the operation list | the same list, with each item's result and reason |
-| `memory` | the note, its kind and confidence, „Ersetzt: …“ for a correction, where it goes, and for an office note a second button, „Nur im Projekt merken“ (`memoryScope: 'project'`) | „saved“, or the failure's reason |
+| `memory` | the note, its kind and confidence, „Ersetzt: …“ for a correction, where it goes, and for an office note a second button, „Nur im Projekt merken“ (`memoryScope: 'project'`) | „Im Gedächtnis des Büros gemerkt.“ or „Im Projekt gemerkt.“ from the result's `scope` („Notiz gemerkt.“ for a row without one), or the failure's reason |
 | `project_profile` | the rationale and the Feld / Vorher / Nachher table, „Vorher“ being the profile as it is now | the table with „Nachher“ alone, because the profile holds the change by then; a failure's reason otherwise |
 
 After a profile change is applied, by this reader or a colleague, the facts the
@@ -412,16 +417,6 @@ it finds the decision on reload, or on the 409 of their click.
 
 ## What is not done yet
 
-- The decided memory card does not say which memory the note went into. Its
-  headline says it was saved; the destination is not shown after the decision.
-- The scope a memory note was filed in is not recorded on the proposal. The
-  payload keeps the scope Piloti asked for, and `memoryScope: 'project'` only
-  reaches the applier; nothing stores that the decider narrowed it. The result
-  has the new note's `itemId` and not its scope.
-- The „Piloti hat sich gemerkt“ chip (`features/chat/lib/turn-memory.ts`) still
-  counts an accepted memory card from `cardInteractions` (`savedOrg` and
-  `savedProject`). A memory proposal decided through the server writes none, so
-  the chip does not list it. It should read the proposal.
 - No route lists a project's open proposals; the card reads its own by id.
 - Only Piloti proposes (`proposed_by_kind` is `piloti`). The column and the
   nullable card index exist so a person's proposal needs no migration.

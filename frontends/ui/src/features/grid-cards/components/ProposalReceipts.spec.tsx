@@ -26,6 +26,7 @@ import { server } from '@/mocks/server'
 import type { ProjectProfile, ProjectProfilePatchOperation } from '@/lib/project-profile/types'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import type { GridCard } from '@/shared/cards/schemas'
+import { resetDecidedProposals, useDecidedProposals } from '../decided-proposals'
 import { GridCards } from './GridCards'
 import { MemoryProposalCard } from './MemoryProposalCard'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
@@ -131,7 +132,10 @@ beforeEach(() => {
   server.use(http.get('/api/projects/proj-1/profile', () => HttpResponse.json({ profile: storedProfile, profileVersion: 1 })))
 })
 
-afterEach(resetKit)
+afterEach(() => {
+  resetKit()
+  resetDecidedProposals()
+})
 
 const posts = () => requests.filter((line) => line.startsWith('POST'))
 
@@ -177,7 +181,7 @@ describe('memory proposal with a proposal_id', () => {
         body = await request.text()
         return HttpResponse.json({
           proposal: memoryProposal({
-            ...decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1' }]),
+            ...decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1', scope: 'organization' }]),
             decidedBy: 'user_me',
             decidedByName: 'Mia Huber',
           }),
@@ -189,7 +193,7 @@ describe('memory proposal with a proposal_id', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Apply' }))
 
-    expect(await screen.findByText('Note remembered.')).toBeInTheDocument()
+    expect(await screen.findByText("Remembered in the office's memory.")).toBeInTheDocument()
     expect(screen.getByTestId('proposal-decided-by')).toHaveTextContent(/^Applied by Mia Huber · /)
     expect(body).toBe('')
     expect(posts()).toEqual([`POST /api/proposals/${PROPOSAL_ID}/apply`])
@@ -203,7 +207,7 @@ describe('memory proposal with a proposal_id', () => {
       http.post(`/api/proposals/${PROPOSAL_ID}/apply`, async ({ request }) => {
         body = await request.json()
         return HttpResponse.json({
-          proposal: memoryProposal(decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1' }])),
+          proposal: memoryProposal(decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1', scope: 'project' }])),
         })
       })
     )
@@ -212,7 +216,7 @@ describe('memory proposal with a proposal_id', () => {
 
     await user.click(await screen.findByRole('button', { name: 'Remember in the project only' }))
 
-    expect(await screen.findByText('Note remembered.')).toBeInTheDocument()
+    expect(await screen.findByText('Remembered in the project.')).toBeInTheDocument()
     expect(body).toEqual({ memoryScope: 'project' })
     expect(setCardDecision).not.toHaveBeenCalled()
   })
@@ -267,6 +271,43 @@ describe('memory proposal with a proposal_id', () => {
 
     expect(await screen.findByText('Nothing could be applied. Nothing was changed.')).toBeInTheDocument()
     expect(screen.getByTestId('proposal-failures')).toHaveTextContent('stützt sich auf einen Ordner')
+  })
+
+  it('says „Note remembered.“ for a row decided before the scope was recorded', async () => {
+    serve(memoryProposal(decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1' }])))
+    render(memoryCard)
+
+    expect(await screen.findByText('Note remembered.')).toBeInTheDocument()
+  })
+
+  it('tells the tab how the proposal ended, for the chip, and never the message', async () => {
+    const served = serve(memoryProposal())
+    render(memoryCard)
+    await screen.findByRole('button', { name: 'Apply' })
+    // Open: nothing to tell.
+    expect(useDecidedProposals.getState().byId).toEqual({})
+
+    server.use(
+      http.post(`/api/proposals/${PROPOSAL_ID}/apply`, () =>
+        HttpResponse.json({
+          proposal: memoryProposal(decidedByAnna('applied', [{ label: NOTE, ok: true, itemId: 'm-1', scope: 'organization' }])),
+        })
+      )
+    )
+    served.current = memoryProposal()
+    await userEvent.setup().click(screen.getByRole('button', { name: 'Apply' }))
+
+    await screen.findByTestId('proposal-status')
+    expect(useDecidedProposals.getState().byId[PROPOSAL_ID]).toMatchObject({ status: 'applied' })
+    expect(setCardDecision).not.toHaveBeenCalled()
+  })
+
+  it('tells the tab of a proposal that was already decided when the card was shown', async () => {
+    serve(memoryProposal(decidedByAnna('dismissed')))
+    render(memoryCard)
+
+    await screen.findByTestId('proposal-status')
+    expect(useDecidedProposals.getState().byId[PROPOSAL_ID]).toMatchObject({ status: 'dismissed' })
   })
 
   it("shows a colleague's decision when the channel says so, without a click or a reload", async () => {

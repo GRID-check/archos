@@ -114,6 +114,13 @@ export const proposedChangeResultSchema = z.object({
   reason: z.string().optional(),
   /** What the apply created, when it created something addressable (a memory note's id). */
   itemId: z.string().optional(),
+  /**
+   * Memory notes only: the memory the note went into. It is the scope the
+   * decider's click chose, which is not always the one Piloti asked for in the
+   * payload („Nur im Projekt merken“). Absent on a row written before it was
+   * recorded, and on every other kind.
+   */
+  scope: z.enum(MEMORY_SCOPES).optional(),
 })
 export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 
