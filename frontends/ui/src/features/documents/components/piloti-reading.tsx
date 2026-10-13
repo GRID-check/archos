@@ -103,9 +103,16 @@ export function PilotiReading({
           <p className="text-muted-foreground text-xs">
             {types.length + disciplines.length + topics.length > 0 ? t('preview.reading.classifiedAs') : t('preview.reading.noType')}
           </p>
+          {/* Three weights for three kinds of reading, so the eye ranks them
+              before it reads them. The type is the ink tint: it is the one
+              classification that decides what the document is. A discipline
+              is an outline in ink, a topic the same outline in muted ink, a
+              free-form note. The type used to be `secondary`, the quiet fill
+              (#f2f2f0), which on the rail's sunken ground (#f1f1ef) drew it as
+              a bare word beside bordered disciplines. */}
           <div className="flex flex-wrap items-center gap-1.5">
             {types.map((tag) => (
-              <Chip key={tag} variant="secondary" size="sm" data-testid="piloti-reading-type">
+              <Chip key={tag} variant="default" size="sm" data-testid="piloti-reading-type">
                 {tag}
               </Chip>
             ))}
@@ -115,7 +122,13 @@ export function PilotiReading({
               </Chip>
             ))}
             {topics.map((topic) => (
-              <Chip key={topic} variant="muted" size="sm" data-testid="piloti-reading-topic">
+              <Chip
+                key={topic}
+                variant="outline"
+                size="sm"
+                className="text-muted-foreground font-normal"
+                data-testid="piloti-reading-topic"
+              >
                 {topic}
               </Chip>
             ))}

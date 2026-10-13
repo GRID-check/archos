@@ -312,6 +312,16 @@ how Back ends up doing nothing.
 
 ## Component patterns
 
+**Inspector** — facts about one object on a sunken rail are inset grouped lists:
+`InspectorSection` (a quiet label inset to the group's content edge, closer to
+its group than to the one before), `InspectorGroup` (one white sheet per
+question, `rounded-lg border shadow-2xs`) and `InspectorRow` (glyph, label,
+value; hairline inset past the glyph; the row owns the type of both columns, so
+a value passed in carries no size of its own). `components/ui/inspector-group.tsx`;
+the preview rail is the reference (`docs/ux/file-upload-and-explorer.md`, „The
+preview pane"). A disclosure inside a group is a row with a trailing chevron,
+never a fourth eyebrow.
+
 **Project card** — "a project, listed" has ONE component: `ProjectCard`
 (`components/projects/project-card.tsx`). Rails, grids, pickers and any future
 project surface render that card; a surface that genuinely needs another
