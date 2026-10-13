@@ -272,32 +272,43 @@ describe('PdfDocumentView', () => {
    */
   it('does not re-reveal the passage when the reader zooms', async () => {
     state.pages = [{ items: [run('Die Frist betraegt vier Wochen', 700, 180)] }]
-    render(
-      <PdfDocumentView
-        src="/api/doc.pdf"
-        title="doc.pdf"
-        page={1}
-        highlight="Die Frist betraegt vier Wochen"
-      />,
-    )
-    await screen.findByTestId('passage-mark')
-
-    const frame = screen.getByTestId('pdf-scroll')
+    // Spied before render. The opening settles on an animation frame once page
+    // 1's shape lands (`scrollToRects(hit, false)`), and under load that frame
+    // can fire after the mark is on screen: a spy put on the frame only then
+    // caught the settle and read it as a zoom re-reveal.
     const scrollTo = vi.fn()
-    frame.scrollTo = scrollTo
+    const original = HTMLElement.prototype.scrollTo
+    HTMLElement.prototype.scrollTo = scrollTo
+    try {
+      render(
+        <PdfDocumentView
+          src="/api/doc.pdf"
+          title="doc.pdf"
+          page={1}
+          highlight="Die Frist betraegt vier Wochen"
+        />,
+      )
+      await screen.findByTestId('passage-mark')
+      await waitFor(() =>
+        expect(scrollTo).toHaveBeenCalledWith(expect.objectContaining({ behavior: 'auto' })),
+      )
+      scrollTo.mockClear()
 
-    fireEvent.click(screen.getByLabelText('Zoom in'))
-    await waitFor(() => expect(screen.getByText('125%')).toBeTruthy())
+      fireEvent.click(screen.getByLabelText('Zoom in'))
+      await waitFor(() => expect(screen.getByText('125%')).toBeTruthy())
 
-    // The mark survives the zoom — it is still the answer to the click.
-    expect(screen.getByTestId('passage-mark')).toBeTruthy()
-    // But the frame is not yanked back to it.
-    expect(scrollTo).not.toHaveBeenCalled()
+      // The mark survives the zoom — it is still the answer to the click.
+      expect(screen.getByTestId('passage-mark')).toBeTruthy()
+      // But the frame is not yanked back to it.
+      expect(scrollTo).not.toHaveBeenCalled()
 
-    // The spy is wired correctly: asking to go back DOES scroll. Without this,
-    // "not called" would pass just as well against a broken assertion.
-    fireEvent.click(screen.getByRole('button', { name: 'Go to passage' }))
-    expect(scrollTo).toHaveBeenCalled()
+      // The spy is wired correctly: asking to go back DOES scroll. Without this,
+      // "not called" would pass just as well against a broken assertion.
+      fireEvent.click(screen.getByRole('button', { name: 'Go to passage' }))
+      expect(scrollTo).toHaveBeenCalled()
+    } finally {
+      HTMLElement.prototype.scrollTo = original
+    }
   })
 
   /**
