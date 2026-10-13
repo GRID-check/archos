@@ -28,11 +28,9 @@ dependencies = [
 llamaindex = [
     "llama-index>=0.14.23",
     "llama-index-embeddings-nvidia>=0.1.0",
-    "llama-index-vector-stores-chroma>=0.1.0",
-    "chromadb>=0.4.0",
-    # The vector store replacing Chroma (ADR-0104), reached directly rather
-    # than through llama-index-vector-stores-qdrant, which uses none of the
-    # Query API (prefetch, server fusion, group_by, server-side BM25).
+    # The vector store (ADR-0104), reached directly rather than through
+    # llama-index-vector-stores-qdrant, which uses none of the Query API
+    # (prefetch, server fusion, group_by, server-side BM25).
     "qdrant-client>=1.19.1,<2",
     "pdfplumber>=0.11.10",
     "pypdfium2>=5.12.1",
