@@ -647,6 +647,7 @@ index changes went in place.
 | `health_check` under `qdrant` ignored Chroma, which is still the write record and serves the registry reads | Healthy only when both answer | `adapter.py` `health_check` |
 | Integration review of the merged branches: the project-facts write (`set_scope_payload`) and the rebuild's copy skipped the store's retry, so one 503 from a restarting peer failed a profile save's mirror, or ended a rebuild with a half-copied `_vN` a person had to drop | Both go through `store.with_retry` like every other write | `store.set_scope_payload`, `rebuild.copy_collection` |
 | A list-valued equality filter (`{"project_facts.nutzungen": ["wohnen"]}`) was coerced whole into the string `"['wohnen']"` on a keyword field and matched nothing | A list is any of its values, on every field type | `scope._match` |
+| Compose's `qdrant` service had neither the metrics port nor the write quotas of the Pulumi peers | Both set, the quotas from `QDRANT_QUOTA_MEMORY_PERCENT` / `QDRANT_QUOTA_DISK_PERCENT` (90 / 85) | `deploy/compose/docker-compose.yaml` |
 
 ### Where slice 1 departs from the target, and why
 
