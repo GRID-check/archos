@@ -692,6 +692,10 @@
     "de": "Eine Übersicht zeigt ihre Teile jetzt entweder als Tabelle oder als Mindmap, nie beides. Eine Mindmap, die nur die Tabelle wiederholen würde, ist jetzt selten, daher erscheint keine Mindmap mehr kurz auf dem Bildschirm, nur um beim Abschluss der Antwort wieder zu verschwinden."
   },
   {
+    "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
+    "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
+  },
+  {
     "en": "An uploaded file now reaches colleagues only once its check for sensitive data has passed. Until then only the person who uploaded it and those who may release quarantined files see it.",
     "de": "Eine hochgeladene Datei erreicht Kolleginnen und Kollegen erst, wenn ihre Prüfung auf sensible Daten bestanden ist. Bis dahin sieht sie nur die Person, die sie hochgeladen hat, und wer zurückgehaltene Dateien freigeben darf."
   },
@@ -2450,6 +2454,10 @@
   {
     "en": "The preview now shows the summary Piloti made of the document, under the document itself. A file without an inline preview offers its download instead.",
     "de": "Die Vorschau zeigt jetzt unter dem Dokument die Zusammenfassung, die Piloti vom Dokument erstellt hat. Eine Datei ohne eingebettete Vorschau bietet stattdessen ihren Download an."
+  },
+  {
+    "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
+    "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
   },
   {
     "en": "The privacy policy and the list of external providers now name PostHog, with servers in Frankfurt, as the provider of Piloti's usage analytics, error reports and surveys, and the public website measures visits the same way. The policy says exactly what is collected and stored in your browser, and how you can object at any time.",
