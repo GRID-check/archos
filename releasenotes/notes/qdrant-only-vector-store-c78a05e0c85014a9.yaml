@@ -1,0 +1,16 @@
+---
+operators:
+  - >
+    Qdrant is now the only vector store and Chroma is gone: AIQ_QDRANT_URL is
+    required, and AIQ_VECTOR_BACKEND and the AIQ_CHROMA settings are no longer
+    read. Move existing documents once with the export and import procedure in
+    docs/deployment/qdrant-runbook.md, nothing is embedded again, and verify
+    every collection before this version serves users.
+  - >
+    The Postgres chunk_text table, which mirrored chunk text for the old German
+    full-text search, is no longer used. No migration drops it; drop it by
+    hand once the move to Qdrant is verified.
+  - >
+    A search across an office's other projects ranks up to 40 projects in one
+    query instead of 8, ordered by one ranking rather than by scores from
+    separate searches.

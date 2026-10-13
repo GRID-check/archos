@@ -484,7 +484,7 @@ the case to `tests/fixtures/herleitung/loop_eval_questions.yaml` with a
 `family`, which the suite treats as needing a project, so it cannot be a case.
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
-(uploaded with `scripts/upload_oib_corpus.py`) ingested into `AIQ_CHROMA_DIR`
+(uploaded with `scripts/upload_oib_corpus.py`) ingested into the Qdrant at `AIQ_QDRANT_URL`
 (`-- --ingest` queues the corpus's ingest jobs and runs them in the suite's own process first). Every run costs model calls: the core set at two runs is twelve
 turns, about four minutes three at a time.
 
@@ -503,8 +503,9 @@ overviews; the suite refuses to start on an empty one.
 
 Traps that cost a run:
 
-- **Never run two harnesses against one `AIQ_CHROMA_DIR` at once.** Chroma
-  errors, and the runs that hit it measure nothing.
+- **Never run two harnesses with `--ingest` against one Qdrant at once.** Both
+  replace the same corpus, and a turn that searches mid-replacement measures a
+  half-indexed collection.
 - **A second or two between single runs is noise.** Compare medians over
   several runs, never one run against one run.
 - **Which checkout a run measures.** The suite and the census now put this

@@ -278,10 +278,9 @@ been uploaded and read).
   the files filed in it or under it (`browse._files_by_collection`, the
   exact mode's resolver), and only those are ranked. It used to filter the
   shelf's top `3 × top_k`, so a folder whose passages ranked lower came back
-  empty while holding what was asked. On Chroma the files go to the store as
-  `file_name IN [...]`; under `AIQ_VECTOR_BACKEND=qdrant` the folder is a
-  payload condition (`folder_ancestors`) instead, together with `doc_class`
-  and the superseded exclusion, and none of them over-fetches
+  empty while holding what was asked. The folder is a payload condition
+  on the Qdrant points (`folder_ancestors`), together with `doc_class` and
+  the superseded exclusion, and none of them over-fetches
   (`qdrant/prefilter.py`). The post-filter still runs over what comes back.
 - **Fassungen: marks in `list_files`, and older ones out of the ranking
   (ADR-0099).** A row a PERSON confirmed as replaced reads `ersetzt durch <neuer>

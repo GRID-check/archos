@@ -69,7 +69,7 @@ Backend agents fetch no arbitrary URLs themselves (only internal BFF call in
 ## C. Software supply chain
 
 - **Python:** uv workspace, `uv.lock` + `uv sync --frozen` in image (fully pinned).
-  Core: `nvidia-nat*==1.9.0`, `deepagents`, `langgraph-checkpoint-*`, `chromadb`,
+  Core: `nvidia-nat*==1.9.0`, `deepagents`, `langgraph-checkpoint-*`, `qdrant-client`,
   `llama-index`, `langchain-tavily`, `langchain-modal==0.0.5` (pre-alpha maturity).
   Outlook archives (ADR-0085): `libpff-python==20260926` (libyal, LGPL-3.0-or-later,
   a native extension used unmodified as a library from its manylinux wheel; the
