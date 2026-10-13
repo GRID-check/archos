@@ -548,7 +548,7 @@ Each gate is a number with the place it is measured.
   34 ms).
 - G6 fails its 1-point bound: recall@1 drops by one to two of 46 questions,
   so `dense` stays 3072-d.
-- Ranked `§` lookups regress against Chroma's `$contains` and stay open.
+- Ranked `§` lookups regressed against Chroma's `$contains`; the `paragraph_refs` keyword channel closed it („§ 8“ P@10 0.50 on both paths, [re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 - Two defects in the Qdrant path, found and fixed there: the text index
   dropped digits, and BM25 was sent unpriced.
 - G1, G3, G4 and G5 are not measured by that run.
@@ -755,10 +755,11 @@ index changes went in place.
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.
    - Before the first flip, settle the open items in
-     [the gate report](qdrant-gates-2026-10.md#open-before-the-flip): ranked
-     `§` lookups (the `paragraph_refs` channel from the hardening is built for
-     it; re-run `task be:eval:qdrant-parity` to confirm), TurboQuant
-     oversampling, and G1 on a deployed stack.
+     [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
+     TurboQuant oversampling (the exact-id file the Qdrant pool misses) and G1
+     on a deployed stack. Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
+     both paths after the `paragraph_refs` channel
+     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
    `folder_ancestors`, fact filters in the agent's cross-project contract, and
    the envelope saying `project_status = closed` instead of listing ids for

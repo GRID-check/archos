@@ -7,9 +7,10 @@ This page records the first run of the instrument built for them,
 in the Qdrant path, and what is still not measured.
 
 **Verdict for the flip:** G1b and G2 pass on this corpus. G6 does not pass at
-its own 1-point bound, which keeps `dense` at 3072-d. One ranked-retrieval
-regression stays open (`§` lookups, below) and has to be accepted or fixed
-before the flip. G1 (the answer suite), G3, G4 and G5 are not measured here.
+its own 1-point bound, which keeps `dense` at 3072-d. The one ranked-retrieval
+regression this run found (`§` lookups, below) is closed on the merged code by
+the `paragraph_refs` channel ([re-run](#re-run-on-the-merged-code)). G1 (the
+answer suite), G3, G4 and G5 are not measured here.
 
 ## What was measured, and how
 
@@ -145,7 +146,7 @@ How to read these tables:
   is the dense ranking alone. The likely cause, not yet measured, is TurboQuant
   4-bit with default oversampling: in the G6 table, `q3072` loses top-rank
   hits that float `f3072` keeps.
-- **`§` lookups regress.** This is the one open item. „§ 8“ has P@10 0.50 /
+- **`§` lookups regressed** (closed since: [re-run](#re-run-on-the-merged-code)). „§ 8“ has P@10 0.50 /
   R-precision 0.44 on Chroma and 0 / 0 on Qdrant. Chroma's `$contains "§ 8"`
   restricts the dense ranking to the literal string. In Qdrant `§` is no token
   under any text-index tokenizer that handles the rest of the corpus well
@@ -273,12 +274,9 @@ between 62 and 89 ms across the same runs.
 
 ## Open, before the flip
 
-1. **Ranked `§` lookups** (above). The candidate fix is a keyword channel:
-   extract `§ N` / `§ N Abs. M` references into a `legal_refs` keyword payload
-   field at upsert, and match exact terms that start with `§` against it
-   instead of the phrase index. Needs a payload index on existing collections
-   (strict mode refuses a filter without one) and a backfill pass, so it is
-   not done here. Measure it with the `para-*` hard cases.
+1. ~~Ranked `§` lookups~~: closed. The review's hardening added the keyword
+   channel proposed here (`paragraph_refs`, matched by `search.exact_term`),
+   and the re-run below measures it.
 2. **G6 resolution.** A larger labelled set before 1024-d is reconsidered.
 3. **TurboQuant oversampling and rescoring.** Measure `ex-filename-rl5` and
    recall@1 with `oversampling` above 1.0 before the flip, or accept the
@@ -287,6 +285,24 @@ between 62 and 89 ms across the same runs.
    and **G5** as ops drills.
 5. Cross-project grouped search (`search_grouped`) still sends unpriced BM25
    over several scopes. It is not measured here: this corpus has one scope.
+
+## Re-run on the merged code
+
+Same corpus, same cached vectors, after the hardening from review (the `word`
+tokenizer, `paragraph_refs` for `§` references, write consistency 1) and the
+BM25 pricing were merged (2026-10-13, without G6). Nothing was re-embedded.
+
+| Measure | Chroma path | Qdrant path, first run | Qdrant path, merged |
+|---|---|---|---|
+| „§ 8“ through full retrieval, P@10 / R-precision | 0.50 / 0.44 | 0.00 / 0.00 | 0.50 / 0.56 |
+| Hard cases through full retrieval, mean R-precision | 0.542 | 0.554 | 0.586 |
+| Golden, nDCG@10 / MRR | 0.782 / 0.725 | 0.848 / 0.810 | 0.856 / 0.821 |
+| Exact mode vs `$regex`, 33 phrases | — | identical | identical |
+| G2 store call p95 | 66 ms | 34 ms | 21 ms |
+
+Still open from the cohorts: exact-id recall@16 0.80 on Qdrant against 0.90 on
+Chroma (the `ex-filename-rl5` question, item 3), and overview recall@16 0.883
+against 0.950.
 
 ## Re-running
 
