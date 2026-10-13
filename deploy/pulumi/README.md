@@ -35,7 +35,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 
 ```bash
 cd deploy/pulumi
-npm install
+bun install --frozen-lockfile
 pulumi stack init prod
 
 # Non-secret config is templated in Pulumi.prod.yaml — edit the placeholders
@@ -357,7 +357,7 @@ src/platform/            provider, namespace, cert-manager, gateway (Envoy),
                          dns (Cloudflare records for the Gateway's hosts),
                          metrics-server, scheduling (PDB/spread), rollout
                          (update strategy, drain, secret checksum)
-policy/                  CrossGuard policy pack (own package.json + npm ci)
+policy/                  CrossGuard policy pack (own package.json + bun.lock)
 src/data/                postgres (CNPG), dragonfly, seaweedfs
 src/app/                 config (Secret + env), migrations Job,
                          audit-schemas Job, backend, frontend (+HPA),

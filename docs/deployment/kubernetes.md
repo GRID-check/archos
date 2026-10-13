@@ -369,7 +369,7 @@ In short:
 
 ```bash
 cd deploy/pulumi
-npm install
+bun install --frozen-lockfile
 pulumi stack init prod
 # edit Pulumi.prod.yaml placeholders, then set --secret values (kubeconfig,
 # pgAppPassword, seaweedfsSecretKey, tokens, OpenRouter/Tavily/WorkOS keys)
@@ -1813,7 +1813,7 @@ Helm-rendered charts (cert-manager, Envoy Gateway, CNPG) arrive as a single
 opaque `Release` resource and are out of scope by construction.
 
 ```bash
-cd deploy/pulumi/policy && npm ci      # once
+cd deploy/pulumi/policy && bun install --frozen-lockfile   # once
 cd .. && pulumi preview --policy-pack ./policy
 ```
 

@@ -8,8 +8,8 @@ admin and the `/api/keystatic` routes need a server).
 ## Quick start
 
 ```bash
-npm install
-npm run dev        # http://localhost:4321
+bun install --frozen-lockfile
+bun run dev        # http://localhost:4321
 ```
 
 ## Environment
@@ -63,11 +63,11 @@ so a huge upload still costs image-layer size and build time even though no
 visitor downloads it — the content guard warns above 4 MB for that reason.
 
 Astro's cache is relocated to `frontends/web/.astro-cache` (`cacheDir` in
-`astro.config.mjs`) because the default `node_modules/.astro` is deleted by the
-`npm ci` in `task web:install`, which made every CI build reprocess every image
+`astro.config.mjs`) because the default `node_modules/.astro` was deleted by the
+`npm ci` `task web:install` used to run, which made every CI build reprocess every image
 from cold — 44s versus 19s warm on current content. CI's web job restores and
 saves it via `actions/cache`, and the web image build
-(`.github/actions/build-image`) restores it into the Docker build context, since a layer cache cannot help a `RUN npm run
+(`.github/actions/build-image`) restores it into the Docker build context, since a layer cache cannot help a `RUN bun run
 build` that `COPY . .` has already invalidated.
 
 ### Previewing a post
@@ -92,8 +92,8 @@ node dist/server/entry.mjs &              # background only the server
 until curl -sf http://localhost:4321/ >/dev/null; do sleep 1; done
 
 # playwright-core ships no browser of its own; pin it to match CI.
-npm i --no-save playwright-core@1.62.1
-npx playwright-core install chromium
+bun add --no-save playwright-core@1.62.1
+./node_modules/.bin/playwright-core install chromium
 
 node scripts/preview-shots.mjs ./preview-out http://localhost:4321 /blog/<slug>/
 ```

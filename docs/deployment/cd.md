@@ -37,7 +37,7 @@ a commit CI failed cannot be deployed by accident.
   repository's Deployments page and each deployed commit link to the running
   app. The run summary lists the commit and the three image refs it pinned.
 - **The Pulumi CLI** is the release of the `@pulumi/pulumi` SDK that
-  `deploy/pulumi/package-lock.json` pins, not `latest`. Dependabot bumps the
+  `deploy/pulumi/bun.lock` pins, not `latest`. Dependabot bumps the
   SDK, and the CLI follows in the same reviewed diff; staging and prod always
   run the same one.
 - **Reused PR results**: a push whose tree a green pull request run already

@@ -10,7 +10,7 @@ IfcOpenShell). The agent reaches them through
 Both suites run in CI, behind a `packages/**` paths filter: the `packages` job
 in [`ci.yml`](../.github/workflows/ci.yml), which `CI OK` requires. It is its
 own job because both packages sit outside their neighbouring workspace —
-`ifc-spatial` has its own `package-lock.json` (not the UI's bun workspace),
+`ifc-spatial` has its own `bun.lock` (not the UI's bun workspace),
 `ifc-spatial-py` its own `uv.lock` (not the root uv workspace) — so neither
 tier's install can run them.
 

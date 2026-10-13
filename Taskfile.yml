@@ -117,8 +117,8 @@ tasks:
       # runs) and the policy pack beside it. Installing only the policy pack
       # left a fresh clone failing `task verify` at `infra:types`, because the
       # program's own TypeScript and Vitest were never fetched.
-      - npm --prefix deploy/pulumi ci
-      - npm --prefix deploy/pulumi/policy ci
+      - bun install --frozen-lockfile --cwd deploy/pulumi
+      - bun install --frozen-lockfile --cwd deploy/pulumi/policy
       # packages/ used to be skipped here too, so `task pkg:test` on a fresh
       # clone failed at "vitest: not found" rather than at an assertion.
       - task: pkg:install
@@ -347,20 +347,20 @@ tasks:
     desc: Install web (landing site) dependencies
     dir: '{{.WEB}}'
     cmds:
-      # npm, not bun: the Astro toolchain ships its own lockfile and bundler.
-      - npm ci
+      # Bun installs (ADR-0103); Node still runs Astro, as the scripts' shebangs say.
+      - bun install --frozen-lockfile
 
   web:check:
     desc: Astro typecheck + content validation for the web service
     dir: '{{.WEB}}'
     cmds:
-      - npm run check
+      - bun run check
 
   web:build:
     desc: Production build of the web service
     dir: '{{.WEB}}'
     cmds:
-      - npm run build
+      - bun run build
 
   web:verify:
     desc: Everything CI runs for the web tier
@@ -378,8 +378,8 @@ tasks:
       PUBLIC_INCLUDE_DRAFTS: '1'
       PUBLIC_SITE_URL: '{{.PREVIEW_SITE_URL | default "http://localhost:4321"}}'
     cmds:
-      - npm ci
-      - npm run build
+      - bun install --frozen-lockfile
+      - bun run build
 
   # ── riso art (frontends/web/art/riso — procedural prints for the site) ──────
   # The raw commands are `node art/riso/<script>.mjs` in frontends/web; every
@@ -635,8 +635,8 @@ tasks:
   infra:types:
     desc: Typecheck the Pulumi program and its policy pack
     cmds:
-      - npm --prefix deploy/pulumi run typecheck
-      - npm --prefix deploy/pulumi/policy run typecheck
+      - bun run --cwd deploy/pulumi typecheck
+      - bun run --cwd deploy/pulumi/policy typecheck
 
   infra:test:
     desc: Manifest tests for the Pulumi program (no cluster, no stack credentials)
@@ -647,19 +647,19 @@ tasks:
     # string-valued, all invisible to tsc. These run the program under
     # `pulumi.runtime.setMocks` and assert the resource inputs directly.
     cmds:
-      - npm --prefix deploy/pulumi test
+      - bun run --cwd deploy/pulumi test
 
   infra:preview:
     desc: 'Pulumi preview (needs stack credentials)'
     dir: deploy/pulumi
     cmds:
-      - npm run preview
+      - bun run preview
 
   # ── standalone packages (packages/) ─────────────────────────────────────────
   #
   # Two implementations of the same spatial surface over IFC (ADR-0045), each
   # OUTSIDE the workspace it sits next to: `ifc-spatial` has its own
-  # package-lock.json and is not in the UI's bun workspace; `ifc-spatial-py` has
+  # bun.lock and is not in the UI's bun workspace; `ifc-spatial-py` has
   # its own uv.lock and is not in the root uv workspace. That is why they get
   # their own tasks instead of riding `fe:*` or `be:*` — neither toolchain can
   # see them.
@@ -672,9 +672,9 @@ tasks:
   pkg:install:
     desc: Install the standalone packages' own toolchains (own lockfiles, outside every workspace)
     cmds:
-      # `ci`, not `install`: the lockfile is the contract here exactly as it is
+      # `--frozen-lockfile`: the lockfile is the contract here exactly as it is
       # for the UI and for deploy/pulumi.
-      - npm --prefix packages/ifc-spatial ci
+      - bun install --frozen-lockfile --cwd packages/ifc-spatial
       # The Python package builds its env on first `uv run`; syncing here means
       # `pkg:test:py` measures the suite rather than the download.
       - uv sync --project packages/ifc-spatial-py --all-extras
@@ -682,11 +682,11 @@ tasks:
   pkg:test:ts:
     desc: 'packages/ifc-spatial: tests + typecheck (own lockfile, ~10s)'
     cmds:
-      - npm --prefix packages/ifc-spatial test
+      - bun run --cwd packages/ifc-spatial test
       # `typecheck` runs BOTH tsconfigs — the source one and tsconfig.test.json.
       # A test file that no longer type-checks is how an operator contract
       # silently stops being asserted.
-      - npm --prefix packages/ifc-spatial run typecheck
+      - bun run --cwd packages/ifc-spatial typecheck
 
   pkg:test:py:
     desc: 'packages/ifc-spatial-py: pytest against its own uv.lock (636 tests, ~4 min)'
