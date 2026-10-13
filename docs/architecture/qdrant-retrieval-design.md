@@ -551,7 +551,14 @@ Each gate is a number with the place it is measured.
 - Ranked `§` lookups regressed against Chroma's `$contains`; the `paragraph_refs` keyword channel closed it („§ 8“ P@10 0.50 on both paths, [re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 - Two defects in the Qdrant path, found and fixed there: the text index
   dropped digits, and BM25 was sent unpriced.
-- G1, G3, G4 and G5 are not measured by that run.
+- G1 passes. The answer suite through the real agent (29 questions, two
+  runs each, two passes per path) held the same 180 of 192 checks on Qdrant
+  as on the pre-migration Chroma baseline, with no content expectation lost,
+  and the same seconds and reasoning tokens per question (median deltas
+  −0.3 s and −22 tokens). Retrieval differs by about 15 points of result
+  overlap beyond run-to-run noise without reaching a checked answer
+  ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)).
+- G3, G4 and G5 are not measured by these runs.
 
 Open questions the spike answers:
 
@@ -627,6 +634,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `metricsPipeline`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
 | The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
 | From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`; `retrieval.term_frequencies` |
+| Gate G1: the answer suite through the real agent on the pre-migration Chroma baseline and on Qdrant, one ingest read by both ([results](qdrant-gates-2026-10.md#g1-answer-quality-pass)) | `task be:eval:answer-suite -- --ingest --corpus data/oib`, `scripts/turn_census/suite.py` — `use_local_corpus` |
 
 ### Hardened after review (2026-10-13)
 
@@ -756,10 +764,13 @@ index changes went in place.
    step, run the gates in §10, then `vectorBackend=qdrant`.
    - Before the first flip, settle the open items in
      [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
-     TurboQuant oversampling (the exact-id file the Qdrant pool misses) and G1
-     on a deployed stack. Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
-     both paths after the `paragraph_refs` channel
-     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
+     TurboQuant oversampling (the exact-id file the Qdrant pool misses).
+     Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on both paths after the
+     `paragraph_refs` channel
+     ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)). G1 is
+     closed: the answer suite held every baseline check on Qdrant
+     ([G1](qdrant-gates-2026-10.md#g1-answer-quality-pass)); re-run its
+     Qdrant side after any ranking change.
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
    `folder_ancestors`, fact filters in the agent's cross-project contract, and
    the envelope saying `project_status = closed` instead of listing ids for

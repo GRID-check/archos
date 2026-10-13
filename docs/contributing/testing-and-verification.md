@@ -494,7 +494,7 @@ ingested into `AIQ_CHROMA_DIR` (`-- --ingest` queues the corpus's ingest jobs
 and runs them in the suite's own process first; the 39 OIB PDFs took about
 ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
 at two runs is twelve turns, about four minutes three at a time, and a turn
-cost about one US cent on the boot-default models that day.
+cost about two US cents on the boot-default models that day.
 
 Run it yourself, before and after, as above, and put the report in the PR.
 Its bookkeeping is also covered offline by
