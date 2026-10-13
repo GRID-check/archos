@@ -27,6 +27,16 @@
  * names (`planProjectSearch`): hidden folders are left out, and a restricted
  * folder's collection is searched only for a reader who may read it.
  *
+ * ## Fact filters narrow, likeness still ranks
+ *
+ * A search or a listing may ask for only projects with given facts
+ * (`projectFacts`: Bundesland, Gebäudeklasse, Bauweise, Nutzungen,
+ * Vorhabensart). They are judged on the Postgres profile (`holdsFacts`) over
+ * what the audience's reach already holds, before the page is cut, so a filter
+ * can only narrow the reach, and `projectsInScope`, the paging, the decisions
+ * and the permits all count the same narrowed set. In `similar` and `closed`
+ * the likeness order and the search's likeness lift still rank what is left.
+ *
  * ## Cost
  *
  * Qdrant is the one store (ADR-0104), with one shared index (ADR-0105), so a
@@ -64,7 +74,7 @@ import { audienceReach, type AudienceReach } from './audience-reach'
 import { searchProjectDecisions, type DecisionScope, type FoundDecision } from './decisions-repository'
 import { liveFolderAccess } from '@/lib/permits/live-access'
 import { searchPermitRequirements, type FoundPermitRecord } from '@/lib/permits/repository'
-import { bundeslandOf, rankBySimilarity } from './similarity'
+import { bundeslandOf, rankBySimilarity, similarityFacts } from './similarity'
 import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
@@ -72,6 +82,7 @@ import {
   type CrossProjectBriefRequest,
   type CrossProjectBriefResponse,
   type CrossProjectDecision,
+  type CrossProjectFacts,
   type CrossProjectHit,
   type CrossProjectListed,
   type CrossProjectRef,
@@ -195,20 +206,46 @@ function listed(project: Project, currentProjectId: string | null): CrossProject
 }
 
 /**
- * The projects a search scope covers, the conversation's own left out: for
- * `similar` and `closed`, most like the current project first (`similarity.ts`),
- * so a search of the closed projects (the turn's precedent prefetch) walks the
- * same projects the reference catalog lists first; for `all` and `named`, in the
- * listing's order (newest first).
+ * Whether a project holds the facts a lookup asked for (`crossProjectFactsSchema`):
+ * within a fact any of its values, across facts all of them; no filter, or an
+ * empty one, holds for every project. Read off Postgres, the authority, as the
+ * similarity reads a profile (`similarityFacts`), which is also what every
+ * chunk's mirrored copy carries; a fact the profile does not record does not
+ * match. Only ever narrows what the audience's reach already holds.
+ */
+export function holdsFacts(profile: Project['profile'] | null, filter: CrossProjectFacts | undefined): boolean {
+  if (!filter) return true
+  const facts = similarityFacts(profile)
+  const anyOf = <T>(wanted: readonly T[] | undefined, held: readonly T[]) =>
+    !wanted?.length || wanted.some((value) => held.includes(value))
+  return (
+    anyOf(filter.bundesland, facts.bundesland ? [facts.bundesland] : []) &&
+    anyOf(filter.gebaeudeklasse, facts.gebaeudeklasse) &&
+    anyOf(filter.bauweise, facts.bauweise) &&
+    anyOf(filter.nutzungen, facts.nutzungen) &&
+    anyOf(filter.vorhabensart, facts.vorhabensart)
+  )
+}
+
+/**
+ * The projects a search scope covers, the conversation's own left out and
+ * narrowed by the period and the asked facts first: for `similar` and `closed`,
+ * most like the current project first (`similarity.ts`), so a search of the
+ * closed projects (the turn's precedent prefetch) walks the same projects the
+ * reference catalog lists first; for `all` and `named`, in the listing's order
+ * (newest first). The facts narrow every scope and reorder none.
  */
 export function projectsInScope(
   reachable: readonly Project[],
   request: Pick<CrossProjectSearchRequest, 'scope' | 'projectIds' | 'from' | 'to'> &
-    Partial<Pick<CrossProjectSearchRequest, 'order'>>,
+    Partial<Pick<CrossProjectSearchRequest, 'order' | 'projectFacts'>>,
   current: { id: string; profile: Project['profile'] | null } | null
 ): Project[] {
   const others = reachable.filter(
-    (project) => project.id !== current?.id && periodOverlaps(projectPeriodOf(project), request.from, request.to)
+    (project) =>
+      project.id !== current?.id &&
+      periodOverlaps(projectPeriodOf(project), request.from, request.to) &&
+      holdsFacts(project.profile, request.projectFacts)
   )
   if (request.scope === 'similar') return fitFirst(rankBySimilarity(current?.profile ?? null, others), request.order)
   if (request.scope === 'closed') {
@@ -255,6 +292,7 @@ export async function listLookupProjects(
   const matching = reach.projects.filter((project) => {
     if (request.status && projectStatusOf(project) !== request.status) return false
     if (!periodOverlaps(projectPeriodOf(project), request.from, request.to)) return false
+    if (!holdsFacts(project.profile, request.projectFacts)) return false
     if (!needle) return true
     const haystack = `${project.name} ${projectAddressOf(project) ?? ''}`.toLocaleLowerCase('de')
     return haystack.includes(needle)
@@ -424,7 +462,15 @@ async function searchPage(
   return perProject.flat()
 }
 
-/** The request's type and discipline filters as the grouped search's pre-filters; undefined when none. */
+/**
+ * The request's type and discipline filters as the grouped search's pre-filters; undefined when none.
+ *
+ * The fact filter is deliberately not sent as `project_facts`: the page holds
+ * only projects whose Postgres profile matches (`projectsInScope`), so the
+ * collections named already carry it. The chunks' mirrored copy can lag (a
+ * backfilled chunk carries no facts until the weekly sync), and filtering on
+ * it too would drop a project the authority says matches.
+ */
 function tagFiltersOf(request: CrossProjectSearchRequest): GroupedSearchFilters | undefined {
   if (request.documentTypes.length + request.disciplines.length === 0) return undefined
   return {

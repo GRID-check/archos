@@ -205,6 +205,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
 import { CrossProjectAudienceChangedError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import {
   CROSS_PROJECT_SNIPPET_CHARS,
+  holdsFacts,
   listLookupProjects,
   periodOverlaps,
   readProjectBrief,
@@ -217,6 +218,7 @@ import {
   crossProjectSearchRequestSchema,
 } from './types'
 import { SIMILARITY_WEIGHTS } from './similarity'
+import { projectFactsOf } from './project-facts-mirror'
 
 const ORG = 'org_1'
 const OWNER = 'user_owner'
@@ -1046,5 +1048,185 @@ describe('periodOverlaps', () => {
     expect(periodOverlaps({ start: '2020-01-01', end: '2021-06-30' }, '2021-07-01')).toBe(false)
     expect(periodOverlaps({ start: '2026-05-01', end: null }, undefined, '2026-04-30')).toBe(false)
     expect(periodOverlaps({ start: '2020-01-01', end: null }, '2030-01-01')).toBe(true)
+  })
+})
+
+describe('the project facts a lookup narrows by', () => {
+  type Facts = Record<string, unknown>
+  const closed = { status: 'closed' as const, closedAt: new Date(), closedBy: OWNER }
+  /** A profile with these confirmed facts and these agent suggestions, as the intake and the extractor write them. */
+  const profileOf = (facts: Facts, suggested: Facts = {}): Project['profile'] => ({
+    facts: Object.fromEntries(
+      Object.entries(facts).map(([key, value]) => [
+        key,
+        { value: value as string, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
+      ])
+    ),
+    goals: {},
+    unknowns: [],
+    assumptions: Object.fromEntries(
+      Object.entries(suggested).map(([key, value]) => [
+        key,
+        {
+          value: value as string,
+          status: 'unconfirmed' as const,
+          reason: 'Aus den Unterlagen',
+          source: 'agent_suggested' as const,
+          updatedAt: '',
+        },
+      ])
+    ),
+  })
+  const TIROL_GK4_WOHNEN = { projectFacts: { bundesland: ['tirol'], gebaeudeklasse: [4], nutzungen: ['wohnen'] } }
+
+  /** Five projects: two match Tirol + GK 4 + Wohnen (one through a suggestion), three miss one fact each. */
+  function office(): Project[] {
+    return [
+      project(1, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, nutzungen: ['wohnen', 'buero'] }) }),
+      project(2, { profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 3, nutzungen: ['wohnen'] }) }),
+      project(3, { ...closed, profile: profileOf({ bundesland: 'tirol', nutzungen: ['wohnen'] }, { gebaeudeklasse: 'GK 4' }) }),
+      project(4, { profile: profileOf({ bundesland: 'wien', gebaeudeklasse: 4, nutzungen: ['wohnen'] }) }),
+      // No Gebäudeklasse recorded at all: it cannot match a filter on it.
+      project(5, { profile: profileOf({ bundesland: 'tirol', nutzungen: ['wohnen'] }) }),
+    ]
+  }
+
+  it('searches only the projects whose profile holds every asked fact, and counts and pages the narrowed set', async () => {
+    state.reachable = office()
+    const [one, , three, wien] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9)])
+    state.hits.set(wien.id, [hit('wien', 0.95, { collectionName: 'proj_4' })])
+
+    const result = await searchAcrossProjects(caller(), search({ scope: 'all', ...TIROL_GK4_WOHNEN }))
+
+    expect(state.planned).toEqual([one.id, three.id])
+    expect(state.groupedCalls[0].collections).toEqual(['proj_1', 'proj_3'])
+    expect(result).toMatchObject({ projectsInScope: 2, projectsSearched: 2, nextOffset: null })
+    expect(result.hits.map((found) => found.filename)).toEqual(['a.pdf'])
+    // Decisions and permits are read over the same narrowed page, never a project the filter left out.
+    expect(state.decisionScopes.map((scope) => scope.projectId)).toEqual([one.id, three.id])
+    expect(state.permitScopes.map((scope) => scope.projectId)).toEqual([one.id, three.id])
+  })
+
+  it('selects exactly the projects whose mirrored copy the grouped search’s own fact filter would match', async () => {
+    // The copy on every chunk is `projectFactsOf` (project-facts-mirror.ts); the backend's filter is
+    // any of within a fact and all of across facts. Postgres and the copy agree on a fresh mirror.
+    state.reachable = office()
+    const wanted = TIROL_GK4_WOHNEN.projectFacts
+    const mirrorMatches = (copy: ReturnType<typeof projectFactsOf>) =>
+      wanted.bundesland.includes(copy.bundesland ?? '') &&
+      wanted.gebaeudeklasse.some((gk) => copy.gebaeudeklasse.includes(gk)) &&
+      wanted.nutzungen.some((use) => copy.nutzungen.includes(use))
+
+    await searchAcrossProjects(caller(), search({ scope: 'all', ...TIROL_GK4_WOHNEN }))
+
+    const expected = state.reachable.filter((one) => mirrorMatches(projectFactsOf(one.profile))).map((one) => one.id)
+    expect(expected).toHaveLength(2)
+    expect(state.planned).toEqual(expected)
+  })
+
+  it('does not send the filter to the grouped search: the page already carries it, and the copy may lag', async () => {
+    state.reachable = office()
+
+    await searchAcrossProjects(caller(), search({ ...TIROL_GK4_WOHNEN, documentTypes: ['Detail'] }))
+
+    expect(state.groupedCalls[0].options.filters).toEqual({ document_types: ['Detail'] })
+  })
+
+  it('narrows the likeness scopes and keeps their order and the search’s likeness lift', async () => {
+    const current = project(7, { profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, bauweise: ['holzbau'] }) })
+    state.outOfReach = [current]
+    state.reachable = [
+      project(1, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 2, nutzungen: ['wohnen'] }) }),
+      project(2, {
+        ...closed,
+        profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, bauweise: ['holzbau'], nutzungen: ['wohnen'] }),
+      }),
+      project(3, {
+        ...closed,
+        profile: profileOf({ bundesland: 'wien', gebaeudeklasse: 4, bauweise: ['holzbau'], nutzungen: ['wohnen'] }),
+      }),
+    ]
+    const [low, high] = state.reachable
+
+    await searchAcrossProjects(caller(current.id), search({ scope: 'similar', projectFacts: { bundesland: ['tirol'] } }))
+
+    // The most alike first among the projects the facts left; the Viennese one is out, however alike.
+    expect(state.planned).toEqual([high.id, low.id])
+    expect(state.groupedCalls[0].options.boost).toMatchObject({ facts: { bundesland: 'tirol', gebaeudeklasse: [4] } })
+  })
+
+  it('narrows a named scope too: a named project without the facts is not searched', async () => {
+    state.reachable = office()
+    const [one, two] = state.reachable
+
+    const result = await searchAcrossProjects(
+      caller(),
+      search({ scope: 'named', projectIds: [one.id, two.id], ...TIROL_GK4_WOHNEN })
+    )
+
+    expect(state.planned).toEqual([one.id])
+    expect(result.projectsInScope).toBe(1)
+  })
+
+  it('never widens the audience: a matching project out of reach stays invisible, a shared chat searches no restricted folder', async () => {
+    const stranger = project(9, { ...closed, profile: profileOf({ bundesland: 'tirol', gebaeudeklasse: 4, nutzungen: ['wohnen'] }) })
+    state.outOfReach = [stranger]
+    state.reachable = office()
+    state.restrictedFolders = false
+    const [one] = state.reachable
+    state.folders.set('proj_1_rabcdef012345', 'folder-honorare')
+    state.hits.set(one.id, [hit('honorar', 0.9, { collectionName: 'proj_1_rabcdef012345' }), hit('plan', 0.7)])
+
+    const result = await searchAcrossProjects(
+      caller(),
+      search({ scope: 'named', projectIds: [stranger.id, one.id], ...TIROL_GK4_WOHNEN })
+    )
+
+    expect(state.planned).toEqual([one.id])
+    expect(state.groupedCalls[0].collections).toEqual(['proj_1'])
+    expect(result.hits.map((found) => found.filename)).toEqual(['plan.pdf'])
+    expect(state.recorded).toEqual([{ projectIds: [one.id], folderIds: [] }])
+  })
+
+  it('lists only the projects with the facts, and records only those', async () => {
+    state.reachable = office()
+    const [one, , three] = state.reachable
+
+    const result = await listLookupProjects(caller(), crossProjectListRequestSchema.parse(TIROL_GK4_WOHNEN))
+
+    expect(result.projects.map((found) => found.id)).toEqual([one.id, three.id])
+    expect(result.total).toBe(2)
+    expect(state.recorded).toEqual([{ projectIds: [one.id, three.id], folderIds: [] }])
+  })
+})
+
+describe('holdsFacts', () => {
+  const profileWith = (facts: Record<string, unknown>): Project['profile'] => ({
+    facts: Object.fromEntries(
+      Object.entries(facts).map(([key, value]) => [
+        key,
+        { value: value as string, confidence: 'confirmed' as const, source: 'onboarding' as const, updatedAt: '' },
+      ])
+    ),
+    goals: {},
+    unknowns: [],
+    assumptions: {},
+  })
+
+  it('is any of within a fact, all of across facts, and holds for every project without a filter', () => {
+    const hybrid = profileWith({ bundesland: 'Niederösterreich', bauweise: ['holzbau', 'stahlbeton'], vorhabensart: ['neubau'] })
+
+    expect(holdsFacts(hybrid, undefined)).toBe(true)
+    expect(holdsFacts(hybrid, {})).toBe(true)
+    expect(holdsFacts(hybrid, { bauweise: ['stahlbau', 'holzbau'] })).toBe(true)
+    expect(holdsFacts(hybrid, { bundesland: ['niederoesterreich'], vorhabensart: ['neubau'] })).toBe(true)
+    expect(holdsFacts(hybrid, { bundesland: ['niederoesterreich'], vorhabensart: ['umbau'] })).toBe(false)
+    expect(holdsFacts(null, { bauweise: ['holzbau'] })).toBe(false)
+  })
+
+  it('reads a site abroad and „noch offen" as no value, so neither matches', () => {
+    expect(holdsFacts(profileWith({ bundesland: 'ausserhalb_oesterreichs' }), { bundesland: ['wien'] })).toBe(false)
+    expect(holdsFacts(profileWith({ bauweise: ['offen'] }), { bauweise: ['holzbau'] })).toBe(false)
   })
 })

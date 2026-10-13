@@ -411,8 +411,30 @@ repair (`cross-project/project-facts-mirror.ts`).
 run inside the query, on the chunks' `tags`. Grouped mode asks each project for
 `limit` documents instead of three times that. The BFF's `matchesTags` stays as
 a backstop that judges by the document row. The endpoint also takes
-`project_facts` and `project_status` filters. The agent's tool does not send
-them yet, because its contract (`types.ts`) has no fact filter.
+`project_facts` and `project_status` filters.
+
+**Fact filters in the agent's contract.** `project_lookup` takes
+`project_facts` (one flat token list for the model; `projectFacts` on the
+wire, `crossProjectFactsSchema` in `types.ts`) for `search` and `find`. The
+BFF judges them on the Postgres profile (`holdsFacts`, which reads what
+`similarityFacts` reads and so what the mirror copies), over the audience's
+reach and before the page is cut. It does not pass them to the grouped query
+as `filters.project_facts`, for two reasons:
+
+- the page then holds only matching projects, so the collections named
+  already carry the filter, and `projectsInScope`, the paging, the decisions
+  and the permits (Postgres reads over the page) describe the same set. A
+  filter applied only inside Qdrant would page over 40 projects of which a few
+  match, and hand out decisions and permits of projects the asker excluded;
+- the copy on the chunks can lag. A backfilled chunk carries no facts until the
+  weekly sync, and the endpoint's filter does not match a project whose facts
+  were never mirrored, so a second filter there would drop projects Postgres
+  says match.
+
+`similar` and `closed` keep their likeness order and send the current
+project's boost: facts narrow, likeness ranks what is left. The endpoint's
+`project_facts` filter becomes the narrowing once the envelope stops listing
+project ids (slice 2 below), and the lag matters then.
 
 **Likeness: per channel, before the fusion.** The sketch puts `$score + w ×
 fact` over the fusion. Qdrant computes a fusion that sits inside a prefetch on
@@ -626,6 +648,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Structural reads by filter: `read_passage` (Punkt, page, outline, the whole-document fallback) and the family overview scroll by filter, ordered by `reading_order`, with no embedding and no ranking; Chroma keeps the embedded probe. `family_read` (`fetch` or `retrieve`) on the `retrieve.knowledge_search` span | `BaseRetriever.fetch`, `qdrant/reads.py`, `read_passage._structural_fetch` |
 | Project facts and status on every chunk of a project, indexed; pushed on profile save, lifecycle move and ingest, swept weekly | `PUT /v1/collections/{c}/project-facts`, `qdrant/payload.py` — `project_payload`; BFF `cross-project/project-facts-mirror.ts` |
 | Cross-project tag pre-filters and the current project's likeness inside the one grouped query (§7 "As built") | `qdrant/boost.py`, `qdrant/search.py` — `grouped_search`; BFF `cross-project/service.ts` — `searchPage` |
+| Project-fact filters in the agent's cross-project contract (`project_facts` on `search` and `find`), judged on the Postgres profile before the page is cut; likeness still ranks | `tools/cross_project/register.py` — `project_facts_filter`; BFF `cross-project/types.ts` — `crossProjectFactsSchema`, `service.ts` — `holdsFacts`, `projectsInScope` |
 | Grouped answers ordered document by document across projects | `routes/document_search.py` — `_ranked_group_hits` |
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `metricsPipeline`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
 | The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
@@ -764,9 +787,12 @@ index changes went in place.
      both paths after the `paragraph_refs` channel
      ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in
-   `folder_ancestors`, fact filters in the agent's cross-project contract, and
-   the envelope saying `project_status = closed` instead of listing ids for
-   wide chats (the facts are on the points for it now).
+   `folder_ancestors`, and the envelope saying `project_status = closed`
+   instead of listing ids for wide chats (the facts are on the points for it
+   now). Fact filters in the agent's cross-project contract are built (§7 "Fact
+   filters in the agent's contract"), judged on Postgres; moving them into the
+   query as `filters.project_facts` waits for that envelope, and for a mirror
+   whose freshness is checked rather than assumed.
 3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads
    from Postgres and Qdrant, Chroma, the `$contains` channel and the text
    mirror removed.
