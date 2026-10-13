@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently --kill-others --names \",next\" \"npm run dev:proxy\" \"npm run dev:next\"",
+    "dev": "concurrently --kill-others --names \",next\" \"bun run dev:proxy\" \"bun run dev:next\"",
     "dev:proxy": "node server.js",
     "dev:next": "node scripts/copy-pdfjs-assets.mjs && next dev --turbopack -p 3001",
     "build": "node scripts/copy-pdfjs-assets.mjs && next build",
@@ -26,9 +26,9 @@
     "ci:local": "task -d ../.. fe:verify",
     "ci:quick": "task -d ../.. verify:fast",
     "prepare": "husky",
-    "provision:authz": "tsx scripts/provision-workos-authz.ts",
-    "migrate:folder-grants": "tsx scripts/migrate-folder-grants-to-workos.ts",
-    "provision:workos-env": "tsx scripts/provision-workos-environment.ts"
+    "provision:authz": "bun scripts/provision-workos-authz.ts",
+    "migrate:folder-grants": "bun scripts/migrate-folder-grants-to-workos.ts",
+    "provision:workos-env": "bun scripts/provision-workos-environment.ts"
   },
   "dependencies": {
     "@a2ui/react": "0.11.1",
@@ -154,7 +154,6 @@
     "prettier-plugin-tailwindcss": "^0.5.0",
     "remark-parse": "^11.0.0",
     "tailwindcss": "^4.3.2",
-    "tsx": "^4.22.4",
     "typescript-api": "npm:typescript@6.0.3",
     "unified": "^11.0.5",
     "vitest": "^5.0.0"

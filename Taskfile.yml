@@ -314,7 +314,7 @@ tasks:
     # every organization, which is why a missing one fails the run.
     dir: '{{.UI}}'
     cmds:
-      - ./node_modules/.bin/tsx scripts/check-workos-flags.ts
+      - bun scripts/check-workos-flags.ts
 
   fe:provision:workos-env:
     desc: 'Check WorkOS environment identity drift (add `-- --apply` to reconcile)'
