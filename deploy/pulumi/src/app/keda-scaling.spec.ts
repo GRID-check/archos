@@ -355,6 +355,15 @@ describe("the program's ScaledObjects", () => {
       expect(read("frontends", "ui", "drizzle", "0104_bff_job_queue.sql")).toContain('CREATE TABLE IF NOT EXISTS "bff_job_queue"');
     });
 
+    it("re-run whenever the migrations do, since bff_job_queue is theirs", async () => {
+      // The migrations Job runs the frontend image (`migrations-job.ts`).
+      const { MIGRATIONS_IMAGE_ANNOTATION } = await import("./queue-scaler-grants");
+      const { frontendImage, loadConfig } = await import("../config");
+      const grantsJob = await resolve(find(JOB, "keda-scaler-grants").inputs.spec as Record<string, any>);
+      expect(grantsJob.template.metadata.annotations[MIGRATIONS_IMAGE_ANNOTATION]).toBe(frontendImage(loadConfig()));
+      expect(read("deploy", "pulumi", "src", "app", "migrations-job.ts")).toMatch(/image: frontendImage\(cfg\)/);
+    });
+
     it("exist before anything is granted: the grants Job creates them with the queues' own code, then grants", async () => {
       const { ensureTablesPython } = await import("./queue-scaler-grants");
       const spec = await resolve(find(JOB, "keda-scaler-grants").inputs.spec as Record<string, any>);

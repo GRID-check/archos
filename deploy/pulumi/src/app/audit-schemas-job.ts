@@ -65,9 +65,12 @@ import { AppSecrets, AppWiring, auditSchemaEnv } from "./config";
  *     §5 asks for after every deploy.
  *
  * One caveat this Job inherits from the migrations Job: it re-fires only when
- * its spec changes. CI pins `imageTag` per SHA, so a CI deploy re-runs it; a
- * hand-run deploy against a MOVING tag does not, and then the registry in the
- * image and the schemas in WorkOS can drift apart silently.
+ * its spec changes, which is when the frontend image changes. The audit
+ * registry is in that image, so that is when it can have changed; a deploy that
+ * keeps the frontend's ref (`scripts/resolve-image-refs.sh`) has nothing new to
+ * reconcile. A hand-run deploy against a MOVING tag does not re-fire it, and
+ * then the registry in the image and the schemas in WorkOS can drift apart
+ * silently.
  */
 export function reconcileAuditSchemas(
   w: AppWiring,
