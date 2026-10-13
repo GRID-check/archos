@@ -122,3 +122,120 @@ def test_unreachable_qdrant_exits_two(stores, monkeypatch):
     _, chroma_dir = stores
     monkeypatch.setenv("AIQ_QDRANT_URL", "http://127.0.0.1:9")
     assert _load_script().main(["--chroma-dir", chroma_dir]) == 2
+
+
+def _store() -> store_module.QdrantStore:
+    return store_module.QdrantStore(store_module.make_client(), IDENTITY)
+
+
+def _chunk(collection, store, scope: str, file_name: str, text: str) -> str:
+    """Ingest one chunk the way ingestion does: Chroma first, then the mirror."""
+    from knowledge_layer.qdrant.payload import ChunkRecord
+
+    chunk_id = str(uuid.uuid4())
+    collection.add(ids=[chunk_id], documents=[text], embeddings=[_vector(text)], metadatas=[{"file_name": file_name}])
+    store.upsert(scope, [ChunkRecord(chunk_id, text, _vector(text), {"file_name": file_name})])
+    return chunk_id
+
+
+def test_prune_never_deletes_a_chunk_ingested_while_it_runs(stores):
+    """Chroma's ids were read first, then Qdrant's: a file ingested in between was pruned as stale."""
+    from knowledge_layer.qdrant import backfill
+
+    chroma, chroma_dir = stores
+    collection, _ids = _seed(chroma, "proj_alpha", 6)
+    assert _load_script().main(["--chroma-dir", chroma_dir]) == 0
+    store = _store()
+    arrived: list[str] = []
+
+    class IngestDuringRead:
+        """The Chroma handle, with an upload landing right after its first read."""
+
+        def __getattr__(self, name):
+            return getattr(collection, name)
+
+        def get(self, *args, **kwargs):
+            page = collection.get(*args, **kwargs)
+            if not arrived:
+                arrived.append(_chunk(collection, store, "proj_alpha", "neu.pdf", "Neue Fassung"))
+            return page
+
+    assert backfill.prune_scope(IngestDuringRead(), "proj_alpha", store) == 0
+    assert store.count("proj_alpha", {"file_name": "neu.pdf"}) == 1
+
+
+def test_backfill_leaves_the_ids_ingestion_wrote_and_merges_the_rest(stores, monkeypatch):
+    chroma, chroma_dir = stores
+    collection, ids = _seed(chroma, "proj_alpha", 4)
+    store = _store()
+    # Ingestion mirrored a.pdf with what only its job knows.
+    mirror.mirror_file(
+        collection,
+        "proj_alpha",
+        "a.pdf",
+        identity=IDENTITY,
+        config={"organization_id": "org_1", "project_id": "p1", "document_id": "doc-a"},
+    )
+    assert store.count("proj_alpha", {"project_id": "p1"}) == 2
+    # A field the payload gained after these points were written, and a fact a person set since.
+    store.client.delete_payload(store.alias("proj_alpha"), keys=["paragraph_refs"], points=[ids[1]], wait=True)
+    monkeypatch.setattr(mirror, "facts_by_file", lambda scope, names=None: {"a.pdf": {"tags": ["plan"]}})
+
+    assert _load_script().main(["--chroma-dir", chroma_dir, "--verify"]) == 0
+
+    assert store.count("proj_alpha") == 4
+    assert store.count("proj_alpha", {"project_id": "p1"}) == 2
+    assert store.count("proj_alpha", {"grid_document_id": "doc-a"}) == 2
+    assert store.count("proj_alpha", {"office_id": "org_1"}) == 2
+    assert store.count("proj_alpha", {"tags": "plan"}) == 2
+    [point] = store.client.retrieve(store.alias("proj_alpha"), [ids[1]], with_payload=True)
+    assert point.payload["paragraph_refs"] == [] and point.payload["project_id"] == "p1"
+
+
+def test_a_scope_only_qdrant_holds_is_a_gap_and_prune_removes_it(stores):
+    """A failed delete_collection mirror or a reaped conversation leaves a scope no Chroma collection names."""
+    chroma, chroma_dir = stores
+    _seed(chroma, "proj_alpha", 3)
+    script = _load_script()
+    assert script.main(["--chroma-dir", chroma_dir]) == 0
+    store = _store()
+    from knowledge_layer.qdrant.payload import ChunkRecord
+
+    store.upsert("s_conversation", [ChunkRecord(str(uuid.uuid4()), "Anhang", _vector("Anhang"), {"file_name": "x"})])
+    store.upsert("oib_retired", [ChunkRecord(str(uuid.uuid4()), "Alt", _vector("Alt"), {"file_name": "y"})])
+
+    assert script.main(["--chroma-dir", chroma_dir, "--verify"]) == 1
+    assert store.count("s_conversation") == 1
+    # Naming the collections leaves every other scope alone.
+    assert script.main(["--chroma-dir", chroma_dir, "--collection", "proj_alpha", "--prune", "--verify"]) == 0
+    assert store.count("s_conversation") == 1
+
+    assert script.main(["--chroma-dir", chroma_dir, "--prune", "--verify"]) == 0
+    assert store.count("s_conversation") == 0 and store.count("oib_retired") == 0
+    assert store.count("proj_alpha") == 3
+
+
+def test_verify_compares_ids_not_only_counts(stores):
+    from knowledge_layer.qdrant import backfill
+    from knowledge_layer.qdrant.payload import ChunkRecord
+
+    chroma, chroma_dir = stores
+    collection, ids = _seed(chroma, "proj_alpha", 10)
+    script = _load_script()
+    assert script.main(["--chroma-dir", chroma_dir, "--verify"]) == 0
+    store = _store()
+    # One point lost, one stray in its place: the counts agree, the sets do not.
+    store.delete_chunks("proj_alpha", [ids[0]])
+    store.upsert("proj_alpha", [ChunkRecord(str(uuid.uuid4()), "Fremd", _vector("Fremd"), {"file_name": "c.pdf"})])
+    assert store.count("proj_alpha") == collection.count()
+
+    # Only verifying, nothing copied: the equal counts alone would pass.
+    assert script.main(["--chroma-dir", chroma_dir, "--facts-only", "--verify"]) == 1
+    full = backfill.verify_scope(collection, "proj_alpha", store)
+    assert (full.missing, full.extra, full.sampled) == (1, 1, False)
+    sampled = backfill.verify_scope(collection, "proj_alpha", store, full_limit=5, sample=64)
+    assert (sampled.missing, sampled.extra, sampled.sampled) == (1, 1, True)
+
+    # The copy puts the lost point back; the stray is still a gap until pruned.
+    assert script.main(["--chroma-dir", chroma_dir, "--verify"]) == 1
+    assert script.main(["--chroma-dir", chroma_dir, "--prune", "--verify"]) == 0

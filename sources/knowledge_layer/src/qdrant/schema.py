@@ -54,6 +54,27 @@ SCOPE_FIELD = "scope"
 TEXT_FIELD = "text"
 #: Payload field holding the chunk id every caller knows (the id Chroma gave it).
 CHUNK_ID_FIELD = "chunk_id"
+#: Payload field holding every ``§ n`` the chunk text cites, spelled as
+#: ``legal_terms.extract_exact_terms`` spells a query's (``§ 3``, ``§ 12.1``,
+#: ``§ 3a``). The full-text index cannot answer "§ 3": every tokenizer that
+#: keeps digits drops the ``§``, so the phrase is the bare token ``3`` and
+#: matches "Abs. 3" and "Seite 3" as well (``payload.paragraph_refs``).
+PARAGRAPH_FIELD = "paragraph_refs"
+
+#: The full-text index on :data:`TEXT_FIELD`. ``word`` splits on every
+#: non-alphanumeric character and KEEPS digits: "§ 3" is the token ``3``,
+#: "5.1.1" the phrase ``5 1 1``, "OIB-Richtlinie 2" the phrase ``oib
+#: richtlinie 2``. ``multilingual`` drops digits altogether, so a phrase on a
+#: number matched nothing (``docs/contributing/gotchas.md``). Lowercasing and
+#: ASCII folding keep "Größe", "GROESSE" and "grosse" one token. Fixed when the
+#: index is created; :func:`text_index_drift` reports an index built otherwise.
+TEXT_INDEX = models.TextIndexParams(
+    type=models.TextIndexType.TEXT,
+    tokenizer=models.TokenizerType.WORD,
+    lowercase=True,
+    ascii_folding=True,
+    phrase_matching=True,
+)
 
 #: Payload object holding the owning project's fingerprint (the BFF's
 #: ``FINGERPRINT_KEYS``), mirrored from Postgres ``projects.profile`` by scope.
@@ -95,6 +116,23 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "topics",
     PROJECT_STATUS_FIELD,
     *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "gebaeudeklasse"),
+    PARAGRAPH_FIELD,
+    # Locators and labels the chunkers write (``punkt_chunking``,
+    # ``section_chunking``, the adapter's visual documents) and a model may
+    # name in ``knowledge_search``'s raw ``filters``. ``page_end`` is written
+    # as a string, like ``page_label``. Large or unbounded fields
+    # (``drawing_data``, ``description``) stay unindexed and unfilterable.
+    "punkt_path",
+    "punkt_parent_id",
+    "punkt_title",
+    "page_end",
+    "drawing_type",
+    "drawing_scale",
+    "image_format",
+    "image_key",
+    "authored_by",
+    "approved_by",
+    "producer",
 )
 #: Payload field holding a chunk's place in document order (the seam's
 #: ``READING_ORDER``): derived at write time from ``page_label``, never read
@@ -108,6 +146,12 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "section_order",
     READING_ORDER_FIELD,
     f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
+    "section_part",
+    "table_index",
+    "table_part",
+    "image_index",
+    "stored_image_index",
+    "segment_index",
 )
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
@@ -133,6 +177,11 @@ class Physical(StrEnum):
 ALIASES = {Physical.CORPUS: "piloti_corpus", Physical.OFFICE: "piloti_office"}
 FIRST_VERSION = "_v1"
 
+#: Replicas that must acknowledge a write, whatever the replication factor.
+#: The other replica is durable once it has caught up; until the move off
+#: Chroma is done, Chroma and the backfill are the safety net behind it.
+WRITE_CONSISTENCY_FACTOR = 1
+
 
 def physical_for_scope(scope: str) -> Physical:
     """Which physical collection holds a logical collection's points."""
@@ -143,13 +192,7 @@ def _field_schema(field: str) -> Any:
     if field == SCOPE_FIELD:
         return models.KeywordIndexParams(type=models.KeywordIndexType.KEYWORD, is_tenant=True)
     if field == TEXT_FIELD:
-        return models.TextIndexParams(
-            type=models.TextIndexType.TEXT,
-            tokenizer=models.TokenizerType.MULTILINGUAL,
-            lowercase=True,
-            ascii_folding=True,
-            phrase_matching=True,
-        )
+        return TEXT_INDEX
     if field in INTEGER_FIELDS:
         return models.PayloadSchemaType.INTEGER
     if field in BOOL_FIELDS:
@@ -183,7 +226,11 @@ def create_collection(
         # The corpus is small and read by every query: one shard, on every node.
         shard_number=(shards or shard_number()) if tenant else 1,
         replication_factor=rf,
-        write_consistency_factor=rf,
+        # One replica acknowledges a write; Qdrant brings the other up to date
+        # from its WAL (``wal_delta``) when it is back. At RF 2 a write
+        # consistency of 2 failed every write to a shard whose second peer was
+        # down, which a rollout or a node drain does to most of the six.
+        write_consistency_factor=WRITE_CONSISTENCY_FACTOR,
         # Per-scope graph links beside the global graph: a project-filtered
         # query walks its own scope's graph, a cross-project one the global.
         hnsw_config=models.HnswConfigDiff(payload_m=16) if tenant else None,
@@ -198,17 +245,14 @@ def create_collection(
     ensure_payload_indexes(client, name)
 
 
-def _create(client: QdrantClient, physical: Physical, name: str, dense_size: int, identity: dict[str, str]) -> None:
-    """Create the first version of a physical collection and point its alias at it."""
-    create_collection(client, physical, name, dense_size, identity)
-    client.update_collection_aliases(
-        change_aliases_operations=[
-            models.CreateAliasOperation(
-                create_alias=models.CreateAlias(collection_name=name, alias_name=ALIASES[physical])
-            )
-        ]
-    )
-    logger.info("Created Qdrant collection %s behind alias %s", name, ALIASES[physical])
+def text_index_drift(params: Any) -> str | None:
+    """How an existing text index differs from :data:`TEXT_INDEX`, or None when it does not."""
+    wanted = TEXT_INDEX.model_dump(include={"tokenizer", "lowercase", "ascii_folding", "phrase_matching"})
+    found = {key: getattr(params, key, None) for key in wanted}
+    drift = {key: (found[key], value) for key, value in wanted.items() if found[key] != value}
+    if not drift:
+        return None
+    return ", ".join(f"{key} is {have!r}, wants {want!r}" for key, (have, want) in sorted(drift.items()))
 
 
 def ensure_payload_indexes(client: QdrantClient, collection: str) -> list[str]:
@@ -218,18 +262,49 @@ def ensure_payload_indexes(client: QdrantClient, collection: str) -> list[str]:
     refuses a filter on it until its index exists, so every process that
     reads or writes a collection runs this once before its first query.
     Idempotent: an index that exists is left alone, its points untouched.
+
+    An index cannot change its analysis in place. A text index built with
+    other parameters than :data:`TEXT_INDEX` is reported, loudly, and left:
+    rebuilding it is a new collection and an alias switch, never a silent
+    drop under a running cluster.
     """
-    present = set(client.get_collection(collection).payload_schema or {})
-    missing = sorted(INDEXED_FIELDS - present)
+    schema = client.get_collection(collection).payload_schema or {}
+    text = schema.get(TEXT_FIELD)
+    drift = text_index_drift(text.params) if text is not None else None
+    if drift:
+        logger.error(
+            "Qdrant collection %s: the %r full-text index was built differently (%s). Phrase and exact-term "
+            "matching on numbers (§ 3, 5.1.1) is wrong until it is rebuilt: create a new _vN collection, copy "
+            "the points (scripts/backfill_qdrant.py) and switch the alias (qdrant-retrieval-design.md §9)",
+            collection,
+            TEXT_FIELD,
+            drift,
+        )
+    missing = sorted(INDEXED_FIELDS - set(schema))
     for field in missing:
         client.create_payload_index(collection, field, field_schema=_field_schema(field), wait=True)
-    if missing and present:
+    if missing and schema:
         logger.info("Qdrant collection %s: created missing payload indexes %s", collection, missing)
     return missing
 
 
 def _alias_exists(client: QdrantClient, alias: str) -> bool:
     return any(entry.alias_name == alias for entry in client.get_aliases().aliases)
+
+
+def _create_alias(client: QdrantClient, name: str, alias: str) -> None:
+    """Point ``alias`` at ``name`` unless it already exists; a racing writer that made it first is success."""
+    if _alias_exists(client, alias):
+        return
+    try:
+        client.update_collection_aliases(
+            change_aliases_operations=[
+                models.CreateAliasOperation(create_alias=models.CreateAlias(collection_name=name, alias_name=alias))
+            ]
+        )
+    except Exception:
+        if not _alias_exists(client, alias):
+            raise
 
 
 def identity_mismatch(stored: dict[str, Any] | None, identity: dict[str, str]) -> str | None:
@@ -244,20 +319,38 @@ def identity_mismatch(stored: dict[str, Any] | None, identity: dict[str, str]) -
     )
 
 
+def _create_or_adopt(client: QdrantClient, physical: Physical, dense_size: int, identity: dict[str, str]) -> None:
+    """Create the first collection behind the alias, or finish one another writer started.
+
+    Creating is three steps (collection, indexes, alias) and none of them is
+    atomic with the next. A writer that dies after the first leaves ``_v1``
+    with no alias, and a writer racing this one may hold the collection
+    without its alias yet. Either way the create conflicts, and the
+    collection is finished here instead: every index added, the alias made.
+    Both steps are idempotent, so two writers finishing it at once agree.
+    """
+    alias = ALIASES[physical]
+    name = alias + FIRST_VERSION
+    try:
+        create_collection(client, physical, name, dense_size, identity)
+        logger.info("Created Qdrant collection %s", name)
+    except Exception:
+        if not client.collection_exists(name):
+            raise
+        logger.info("Qdrant collection %s exists without alias %s; finishing it", name, alias)
+        ensure_payload_indexes(client, name)
+    _create_alias(client, name, alias)
+
+
 def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int, identity: dict[str, str]) -> None:
     """Create the physical collection behind its alias if missing; refuse a foreign vector space.
 
-    Idempotent and safe to race: a second process that loses the create sees
-    the alias the first one made. An existing collection gains any payload
-    index added to the schema since it was created (:func:`ensure_payload_indexes`).
+    Idempotent and safe to race, and it recovers a collection a dead writer
+    left without its alias (:func:`_create_or_adopt`).
     """
     alias = ALIASES[physical]
     if not _alias_exists(client, alias):
-        try:
-            _create(client, physical, alias + FIRST_VERSION, dense_size, identity)
-        except Exception:
-            if not _alias_exists(client, alias):
-                raise
+        _create_or_adopt(client, physical, dense_size, identity)
     info = client.get_collection(alias)
     mismatch = identity_mismatch(info.config.metadata, identity)
     if mismatch:

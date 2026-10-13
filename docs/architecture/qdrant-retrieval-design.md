@@ -185,7 +185,8 @@ full-text index.
 | `richtlinie`, `punkt_id`, `punkt_path`, `punkt_depth` | keyword / integer | Corpus structure (corpus only) |
 | `country`, `edition` | keyword | Corpus profile and OIB edition |
 | `file_name`, `title` | keyword, `text` | Display, plus the title-contains filter |
-| `text` | `text` index (multilingual tokenizer, German stemmer and stopwords, `ascii_folding`, `phrase_matching`) | Chunk body. Feeds phrase and exact queries |
+| `text` | `text` index (`word` tokenizer, lowercased, `ascii_folding`, `phrase_matching`; no stemmer, so a phrase is the literal words) | Chunk body. Feeds phrase and exact queries. `word` keeps digits: `multilingual` drops them, and "5.1.1" or "43" matched nothing (§12) |
+| `paragraph_refs[]` | keyword | Every `§ n` the text cites (`§ 3`, `§ 12.1`, `§ 3a`), derived at write time. No tokenizer keeps the `§`, so "§ 3" as a phrase is the token `3` and matches "Abs. 3" |
 | `stand` | datetime, `is_principal` on documents | Document date, for recency |
 
 Payload indexes are created *before* the first upsert (Qdrant builds the
@@ -499,7 +500,7 @@ it changes, which is the path ADR-0072 itself named for this case.
 | Pod management | `Parallel` | OrderedReady can deadlock cluster bootstrap |
 | Probes | readiness `/readyz`, liveness `/livez`, never liveness on `/readyz` | `/readyz` fails during Raft catch-up, and as liveness it cascades restarts |
 | Grace period | 120 s; memory request = limit | WAL flush; OOM during optimization is the top reported failure |
-| `office_chunks` | 6 shards, RF 2, `write_consistency_factor` 2 | OSS cannot reshard, so 6 fits 1/2/3/6 nodes. The ingest queue already retries. The factor is under review: drilled, it fails every write to a missing peer's shards and leaves that peer's replicas silently behind when it returns (§12) |
+| `office_chunks` | 6 shards, RF 2, `write_consistency_factor` 1 | OSS cannot reshard, so 6 fits 1/2/3/6 nodes. Consistency 1 keeps writes going while one peer is down (a rollout, a drain); at 2, writes to about 4 of the 6 shards failed then. The lagging replica catches up from the WAL when its peer returns, so a write is durable on both only after that; Chroma and the backfill are the net behind the window while Chroma is still written. Transient write failures are retried in the store (3 retries, 0.2/0.8/2 s), never a 4xx. Drilled on three 1.19.2 peers: at 1 the returning peer recovered 600 of 600 points; at 2 it stayed silently behind at 546 (§12) |
 | `corpus_chunks` | 1 shard, RF 3 | Small and read by every query |
 | Size, start | 4 vCPU / 16 GB per node, data PVC on the Lightbits class at 2× data | Today's whole store fits in a 20Gi PVC and 3–6 Gi RAM |
 | Security | API key plus read-only key from Secrets, `enforce_internal_auth`, p2p TLS via cert-manager, NetworkPolicy on 6333/6334/6335 | Open-source Qdrant is open by default |
@@ -556,7 +557,8 @@ Open questions the spike answers:
 
 Chroma holds the ids, the 3072-d embeddings, the chunk text and the metadata.
 The backfill pages through each collection, as
-`scripts/backfill_chunk_text.py` already does, and upserts into Qdrant. Each
+`scripts/backfill_chunk_text.py` already does, and inserts what Qdrant lacks
+(insert-only, so a point ingestion wrote keeps its ids; §12). Each
 record is enriched with what the collection name only implied, read from
 `grid_app`:
 
@@ -608,6 +610,24 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Grouped answers ordered document by document across projects; the capability asked before a page is authorized | `routes/document_search.py` — `_ranked_group_hits`, `GET /v1/collections/search/capability` |
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `metricsPipeline`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
 
+### Hardened after review (2026-10-13)
+
+An adversarial review of slice 1 found these, each fixed with a test that fails
+without the fix. No environment had created a Qdrant collection yet, so the
+index changes went in place.
+
+| Defect | What changed | Where |
+|---|---|---|
+| The `text` index used the `multilingual` tokenizer, which drops digits: phrase counts for "5.1.1", "43", "§ 3" were 0, "Abs. 2" ignored its number, and `selective_terms` dropped every numeric exact term the Chroma `$contains` channel served | `word` tokenizer (`schema.TEXT_INDEX`), verified on 1.19.2: "5.1.1", "43", "OIB-Richtlinie 2", "Abs. 2" match exactly, and "Größe", "GRÖSSE", "grosse" stay one token. `§` references go through the `paragraph_refs` keyword field (`search.exact_term`), since every tokenizer drops the `§`. `ensure_payload_indexes` logs an ERROR when an existing text index was built otherwise, naming the rebuild path (new `_vN`, copy, alias switch) | `qdrant/schema.py`, `search.py`, `payload.paragraph_refs` |
+| Under `qdrant`, a delete took Chroma first; a Qdrant failure then left deleted, retired or quarantined (ADR-0086) chunks answering every search, and its raise skipped the Chroma-side cleanup | `mirror.ordered_delete`: under `qdrant`, Qdrant first, and a failure deletes nothing anywhere (the caller's retry starts over); under `dual`, Chroma first and the mirror best effort; the metadata row, the lexical mirror and the version bump always run after it. A retried `delete_file` that finds no Chroma chunks deletes Qdrant's by every stored spelling (`tmp…_`, percent-encoded) the adapter's own rule accepts | `adapter.py` (`delete_file`, `_retire_previous_version`, `_retire_held_predecessor`, `_discard_partial_version`, `delete_collection`), `mirror.py` |
+| `write_consistency_factor` equalled RF, so one peer down failed writes to most shards | Consistency 1, and transient write failures retried in the store (§9) | `schema.WRITE_CONSISTENCY_FACTOR`, `store.with_retry` |
+| The backfill pruned a file ingested between its two reads, stripped `office_id`/`project_id`/`grid_document_id` from points ingestion wrote, never visited a scope Chroma had dropped, and `--verify` compared counts only | Prune reads Qdrant's ids before Chroma's; the copy is insert-only (Qdrant 1.17 `update_mode`) and merges only the chunk's own fields onto existing points, then merges the facts; scopes are enumerated from Qdrant too (facet on `scope`) and `--prune` deletes those Chroma lacks; `--verify` compares the id sets (whole up to 200k chunks, sampled both ways above) | `qdrant/backfill.py`, `scripts/backfill_qdrant.py` |
+| A writer dying between `create_collection` and the alias wedged every later writer on the conflict, and the loser of a create race raised | A conflict finishes the collection: indexes added, alias made if missing; two writers finishing it at once agree | `schema._create_or_adopt` |
+| `find_text` scrolled the whole scope (20k chunks: about 79 requests, 29 MB) | Narrowed on the server by the words every match of the pattern must hold as whole tokens; the regex still decides. A pattern without such a word (one word over three characters, which matches inside longer words) reads the whole scope as before | `retrieval.literal_tokens`, `find_text` |
+| `coerce_field("superseded", "false")` was True; a one-file fact refresh loaded every document of the scope; a folder rename sent one request per file; a cleared Dokumentart stayed on the points | String booleans read for what they say; `get_documents(collection, names)` reads only the named rows; payload updates go in batches of 128, a folder move copies only the folder of the moved files; clearing a stored class puts back the chunk's own (`chunk_doc_class`, written at ingest), which is also what a hit's metadata now carries, as on Chroma | `payload.py`, `mirror.refresh_facts`, `store.set_file_payloads`, `DocumentMetadataStore.get_many` |
+| Raw `filters` a model may pass (`punkt_path`, `page_end`, `table_index`, `section_part`, `drawing_type`, …) raised under `qdrant` | Every metadata key the chunkers write and a filter can plausibly name is indexed, with its stored type; large fields (`drawing_data`, `description`) stay unindexed and still raise, naming the field | `schema.KEYWORD_FIELDS`, `INTEGER_FIELDS` |
+| `health_check` under `qdrant` ignored Chroma, which is still the write record and serves the registry reads | Healthy only when both answer | `adapter.py` `health_check` |
+
 ### Where slice 1 departs from the target, and why
 
 * **Scopes are still logical collection names.** `scope` is the old
@@ -647,11 +667,21 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   it would need a folded copy of the path and two conditions. Points written
   before the field existed carry no ancestors, and a folder search misses them
   until `scripts/backfill_qdrant.py --facts-only` has run.
-* **A cleared Dokumentart is not mirrored.** When a person clears the stored
-  `doc_class`, the payload keeps the old class, because the chunk's own guess
-  that the post-filter falls back to cannot be recovered from the payload. A
-  `doc_class=` search can then miss that document until it is re-ingested.
-  The post-filter keeps a wrong class from being shown.
+* **A cleared Dokumentart is mirrored only on points that kept the chunk's
+  own.** Points carry `chunk_doc_class`, the class ingestion stamped on the
+  chunk, and clearing the stored class puts it back (or removes the field
+  when there was none). A point written before that field existed keeps the
+  old class until it is re-ingested or re-copied; a `doc_class=` search can
+  miss it meanwhile, and the post-filter keeps a wrong class from being shown.
+* **A write is acknowledged by one replica.** The other holds it once Qdrant
+  has re-synced it; a peer lost for good inside that window loses the write
+  in Qdrant, and Chroma plus `backfill_qdrant.py` restore it while Chroma is
+  still written. After the slice that removes Chroma this needs another net
+  (write consistency 2 with a retried queue, or snapshots).
+* **A Qdrant delete that succeeds before a Chroma delete fails** leaves the
+  chunk in Chroma and not in Qdrant: invisible to search, as the caller
+  asked, and the caller's retry finishes it. A backfill run before that
+  retry copies the chunk back from Chroma.
 * **A located passage scores 1.00.** On Chroma its `Relevance Score:` is the
   cosine to the probe label, which measured nothing; a structural fetch has no
   query, so every chunk it returns matches, as `find_text`'s do.
@@ -681,28 +711,26 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   collections `AIQ_QDRANT_REPLICATION_FACTOR`; §9 wants the corpus on every
   peer. The runbook adds the third replica with one `replicate_shard` (drilled,
   4 s).
-* **`write_consistency_factor` equals RF (2), and that fails badly during a
-  peer outage.** Drilled 2026-10-13 against three real 1.19.2 peers: with one
-  peer down, every write touching a shard with a replica there failed (HTTP
-  500), while the part of the batch that reached the surviving replicas stayed
-  applied. No replica was marked Dead, so when the peer returned nothing
-  repaired it: 300 points written during the outage left the collection at
-  546 by exact count, depending on which replica answered. The same outage
-  against factor 1 acknowledged every write, marked the missing replicas Dead
-  (so `collection_dead_replicas` and its alert see it), and the returning peer
-  recovered them by itself: 600 of 600. Factor 1's cost is a window in which an
-  acknowledged write sits on one replica only. Under `dual` the backfill heals
-  either way (Chroma is the record); under `qdrant` the factor decides whether
-  every rolling restart under ingest needs the runbook's resync. The factor is
-  changeable on a live collection (`PATCH /collections/<name>`, drilled), so
-  this is a decision, not a migration.
+* **`write_consistency_factor` is 1, decided by a drill.** On 2026-10-13,
+  against three real 1.19.2 peers with one down, factor 2 (= RF) failed every
+  write touching a shard with a replica there (HTTP 500), kept the part of the
+  batch that reached the surviving replicas, and marked nothing Dead, so the
+  returning peer stayed behind: 300 points written during the outage left 546
+  of 600 by exact count, depending on which replica answered. Factor 1
+  acknowledged every write, marked the missing replicas Dead (so
+  `collection_dead_replicas` and its alert see it), and the returning peer
+  recovered them by itself: 600 of 600. The cost is a window in which an
+  acknowledged write sits on one replica only; Chroma and the backfill cover it
+  while Chroma is still written. `schema.WRITE_CONSISTENCY_FACTOR` holds it,
+  and the store retries transient write failures (`store.with_retry`). A
+  collection created at factor 2 is changed live (`PATCH
+  /collections/<name>`, drilled); the runbook's resync covers replicas that
+  fell behind before the change.
 * **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
   BM25 and phrase matching cover it; the Chroma path still reads it.
 
 ### Next
 
-0. Decide `write_consistency_factor` (above) before `vectorBackend=qdrant`
-   reaches an environment that ingests.
 1. Each environment: `qdrantEnabled`, `vectorBackend=dual`, deploy, run
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.

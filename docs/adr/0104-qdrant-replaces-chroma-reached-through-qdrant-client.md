@@ -89,6 +89,10 @@ After acceptance:
   `chromadb` everywhere is part of step 5 of the rollout, which removes Chroma.
 * The Qdrant tests run against `qdrant/qdrant:v1.19.2` as a CI service
   container and fail, rather than skip, when it is missing on CI.
+* While Chroma is still written, `test_qdrant_adapter_deletes.py` drives every
+  adapter delete against an embedded Chroma and a real Qdrant with a Qdrant
+  failure injected: under `qdrant` no chunk deleted from Chroma still answers
+  from Qdrant, and under `dual` the Chroma-side cleanup always runs.
 * `task be:eval:answer-suite` runs before and after every retrieval change, as
   AGENTS.md already requires.
 

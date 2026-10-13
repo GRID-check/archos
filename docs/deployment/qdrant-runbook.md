@@ -295,21 +295,22 @@ and changed nothing, as it should when nothing is behind.** Use
 `q -X POST $P1/cluster/recover` only when a returning peer's `commit` stays
 behind the leader's: it asks the leader for a consensus snapshot.
 
-What it costs, with the backend's `write_consistency_factor 2` (RF 2): **every
-write that touches a shard with a replica on the missing peer fails** (HTTP
-500, "N out of 6 shards failed to apply operation"), for as long as the peer is
-gone, and the parts of a batch that reached the surviving replicas stay
-applied. Nothing marks the missing replica Dead, so when the peer returns its
-replicas silently lack those writes. Reads then depend on which replica
-answers. In the drill, 12-point writes during an 8-second outage left four
-shards with replicas differing by 1 to 4 points; in a side-by-side test,
-300 points written during an outage left the `write_consistency_factor 2`
-collection at 546 points by exact count and the `1` collection at all 600
-(there the missing replicas were marked Dead, `collection_dead_replicas` read
-4, and the returning peer recovered them by itself). So after any outage
-during which ingestion ran, **resync the returning peer's replicas** (next
-section), and see [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md) §12
-for the factor itself.
+What it costs: the backend creates collections at `write_consistency_factor`
+1 (`schema.WRITE_CONSISTENCY_FACTOR`), so writes keep succeeding on the
+surviving replica, the missing replicas are marked Dead
+(`collection_dead_replicas` > 0, and its alert fires), and the returning peer
+recovers them by itself. **Drilled side by side: 300 points written during an
+outage left the factor-1 collection at all 600.** A collection still at factor
+2 (created before the change) behaves badly instead: every write touching a
+shard with a replica on the missing peer fails (HTTP 500, "N out of 6 shards
+failed to apply operation"), the parts of a batch that reached the surviving
+replicas stay applied, nothing is marked Dead, and the returning peer's
+replicas silently lack those writes (546 of 600 in the same drill). Move such a
+collection to 1 with `q -X PATCH -d '{"params":{"write_consistency_factor":1}}'
+"$P0/collections/<name>"`, and after
+any outage it went through while ingestion ran, **resync the returning peer's
+replicas** (next section). [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md)
+§12 has the reasoning.
 
 ### Resync replicas after a peer outage
 

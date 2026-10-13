@@ -14,6 +14,7 @@ LlamaIndex) gets a stable UUIDv5 point id; the payload keeps the original.
 
 from __future__ import annotations
 
+import re
 import uuid
 from collections.abc import Mapping
 from dataclasses import dataclass
@@ -29,6 +30,7 @@ from .schema import CHUNK_ID_FIELD
 from .schema import FACT_KEYS
 from .schema import INTEGER_FIELDS
 from .schema import KEYWORD_FIELDS
+from .schema import PARAGRAPH_FIELD
 from .schema import PROJECT_FACTS_FIELD
 from .schema import PROJECT_STATUS_FIELD
 from .schema import READING_ORDER_FIELD
@@ -42,7 +44,21 @@ from .schema import TEXT_FIELD
 LLAMA_INTERNAL_KEYS = frozenset({"_node_content", "_node_type", "doc_id", "ref_doc_id", "document_id"})
 
 #: Fields multi-valued by nature: a scalar is wrapped, so a filter can match any.
-LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD})
+LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD, PARAGRAPH_FIELD})
+
+#: Payload field keeping the Dokumentart the chunk was ingested with (its own
+#: ``doc_class`` metadata, "" for none), so clearing a person's class can put
+#: back what ``register._hit_doc_class`` falls back to (``mirror.refresh_facts``).
+#: Stored, not indexed: nothing filters on it.
+CHUNK_DOC_CLASS_FIELD = "chunk_doc_class"
+
+#: A ``§`` reference in chunk text: the number the way ``legal_terms`` reads a
+#: query's (``3``, ``3a``, ``12.1``). The letter counts only when no further
+#: letter follows, so "§ 3Abs" is ``§ 3``; "§§ 3" is ``§ 3``.
+_PARAGRAPH_REF = re.compile(r"§+\s*(\d+(?:\.\d+)?(?:[a-z](?![a-z]))?)", re.IGNORECASE)
+
+_TRUE_STRINGS = frozenset({"true", "1", "yes", "ja"})
+_FALSE_STRINGS = frozenset({"false", "0", "no", "nein", ""})
 
 _POINT_NAMESPACE = uuid.UUID("5b0c7f8e-6b8a-4f0e-9a51-2c1d8f3e7a10")
 
@@ -65,6 +81,32 @@ def point_id(chunk_id: str) -> str:
         return str(uuid.uuid5(_POINT_NAMESPACE, str(chunk_id)))
 
 
+def paragraph_key(number: str) -> str:
+    """One ``§`` reference as :data:`PARAGRAPH_FIELD` holds it: ``§ 3a``, case folded."""
+    return f"§ {number.strip().rstrip('.')}".casefold()
+
+
+def paragraph_refs(text: str) -> list[str]:
+    """Every ``§`` reference ``text`` cites, once each, in order of first appearance."""
+    return list(dict.fromkeys(paragraph_key(match) for match in _PARAGRAPH_REF.findall(text or "")))
+
+
+def _as_bool(value: Any) -> bool | None:
+    """``value`` as a boolean; a string is read for what it says ("false" is False), anything unreadable is None."""
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        folded = value.strip().casefold()
+        if folded in _TRUE_STRINGS:
+            return True
+        if folded in _FALSE_STRINGS:
+            return False
+        return None
+    if isinstance(value, (int, float)):
+        return bool(value)
+    return None
+
+
 def _as_int(value: Any) -> int | None:
     try:
         return int(float(value))
@@ -83,7 +125,7 @@ def coerce_field(key: str, value: Any) -> Any:
     if key in INTEGER_FIELDS:
         return _as_int(value)
     if key in BOOL_FIELDS:
-        return bool(value)
+        return _as_bool(value)
     if key in LIST_FIELDS:
         items = value if isinstance(value, (list, tuple, set)) else [value]
         return [str(item) for item in items if item is not None and str(item)]
@@ -171,7 +213,28 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
     typed[TEXT_FIELD] = record.text or ""
     typed[CHUNK_ID_FIELD] = str(record.chunk_id)
     typed[READING_ORDER_FIELD] = reading_order(typed.get("page_label"))
+    typed[PARAGRAPH_FIELD] = paragraph_refs(typed[TEXT_FIELD])
+    typed[CHUNK_DOC_CLASS_FIELD] = str((record.metadata or {}).get("doc_class") or "")
     return typed
+
+
+#: Fields an ingest job or the metadata store decides, never the chunk itself.
+#: :func:`chunk_own_payload` leaves them out, so a backfill that refreshes a
+#: point's own fields cannot strip what ingestion or a person put there.
+ENRICHED_FIELDS = frozenset(
+    {"office_id", "project_id", "grid_document_id", "folder_path", FOLDER_FIELD, "tags", "topics", "superseded"}
+    | {"doc_class"}
+)
+
+
+def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
+    """The payload fields derived from the chunk alone: its metadata, text and every field computed from them.
+
+    Merged onto a point that already exists (``set_payload``), it brings a
+    field added to :func:`build_payload` after the point was written, and
+    leaves the job's ids and a person's facts as they are.
+    """
+    return {key: value for key, value in build_payload(scope, record).items() if key not in ENRICHED_FIELDS}
 
 
 #: Fields the mirror adds for filtering. A hit's metadata leaves them out, so a
@@ -179,10 +242,31 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: the facts themselves are read from the metadata store, their authority.
 MIRROR_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD, "office_id", "project_id", "grid_document_id"}
-    | {"folder_path", FOLDER_FIELD, "tags", "topics", "superseded", PROJECT_FACTS_FIELD, PROJECT_STATUS_FIELD}
+    | {
+        "folder_path",
+        FOLDER_FIELD,
+        "tags",
+        "topics",
+        "superseded",
+        PROJECT_FACTS_FIELD,
+        PROJECT_STATUS_FIELD,
+        PARAGRAPH_FIELD,
+        CHUNK_DOC_CLASS_FIELD,
+    }
 )
 
 
 def chunk_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """The chunk metadata a caller sees on a hit: the payload minus what only the mirror adds."""
-    return {key: value for key, value in payload.items() if key not in MIRROR_ONLY_FIELDS}
+    """The chunk metadata a caller sees on a hit: the payload minus what only the mirror adds.
+
+    ``doc_class`` is the chunk's own, as Chroma holds it, not the person's
+    class the mirror filters on: the reader resolves the stored class itself
+    and falls back to this one (``register._hit_doc_class``). A point written
+    before :data:`CHUNK_DOC_CLASS_FIELD` existed keeps the payload's.
+    """
+    metadata = {key: value for key, value in payload.items() if key not in MIRROR_ONLY_FIELDS}
+    if CHUNK_DOC_CLASS_FIELD in payload:
+        metadata.pop("doc_class", None)
+        if payload[CHUNK_DOC_CLASS_FIELD]:
+            metadata["doc_class"] = payload[CHUNK_DOC_CLASS_FIELD]
+    return metadata

@@ -507,19 +507,20 @@ def _get_document_metadata_store() -> "DocumentMetadataStore":
     return _document_metadata_store
 
 
-def _mirror_facts(collection: str, file_names: list[str] | None = None) -> None:
+def _mirror_facts(collection: str, file_names: list[str] | None = None, *, folders_only: bool = False) -> None:
     """Copy the facts just changed here onto the file's points in Qdrant (ADR-0105).
 
     This store stays the authority; the vector store carries a copy so a
     search can filter on a tag, a Dokumentart or a Fassung before ranking
     instead of after. A no-op unless ``AIQ_VECTOR_BACKEND`` writes Qdrant, and
     it never raises (``knowledge_layer.qdrant.mirror.refresh_facts``).
+    ``folders_only`` copies just the folder, all a folder move changed.
     """
     try:
         from knowledge_layer.qdrant import mirror
     except ImportError:  # the knowledge layer's store extra is not installed here
         return
-    mirror.refresh_facts(collection, file_names)
+    mirror.refresh_facts(collection, file_names, fields=mirror.FOLDER_FACTS if folders_only else None)
 
 
 def register_summary(
@@ -809,10 +810,10 @@ def rewrite_document_folder_paths(collection: str, from_path: str, to_path: str 
     renamed / re-parented / deleted folder's whole subtree. Returns the number of
     documents re-filed.
     """
-    moved = _get_document_metadata_store().rewrite_folder_paths(collection, from_path, to_path)
+    count, moved = _get_document_metadata_store().rewrite_folder_paths_moved(collection, from_path, to_path)
     if moved:
-        _mirror_facts(collection)
-    return moved
+        _mirror_facts(collection, moved, folders_only=True)
+    return count
 
 
 def list_summary_collections() -> list[str]:
@@ -823,6 +824,11 @@ def list_summary_collections() -> list[str]:
 def get_available_documents(collection: str) -> list["AvailableDocument"]:
     """Get documents with summaries (sync)."""
     return _get_document_metadata_store().get_all(collection)
+
+
+def get_documents(collection: str, filenames: list[str]) -> list["AvailableDocument"]:
+    """The metadata rows of ``filenames`` only (sync); ``supersedes`` is not derived (see ``get_many``)."""
+    return _get_document_metadata_store().get_many(collection, filenames)
 
 
 async def get_available_documents_async(collection: str) -> list["AvailableDocument"]:
