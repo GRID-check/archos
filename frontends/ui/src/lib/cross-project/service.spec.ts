@@ -46,7 +46,16 @@ const state = vi.hoisted(() => ({
   grouped: false,
   /** The grouped search's ranking, as hit ids best first; unset ranks by score. */
   ranking: null as string[] | null,
-  groupedCalls: [] as Array<{ collections: string[]; filesPerCollection: number; snippetMaxChars?: number }>,
+  groupedCalls: [] as Array<{
+    collections: string[]
+    filesPerCollection: number
+    snippetMaxChars?: number
+    options: { filters?: { document_types?: string[]; disciplines?: string[] }; boost?: unknown }
+  }>,
+  /** Every project `planProjectSearch` was asked to authorize, in order. */
+  planned: [] as string[],
+  hydrating: 0,
+  hydratePeak: 0,
 }))
 
 vi.mock('./audience-reach', () => ({
@@ -109,6 +118,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
     ] as unknown as Array<{ filename: string; collectionName: string; createdAt: Date; authoredBy: string }>
   return {
     planProjectSearch: vi.fn(async (_session: unknown, projectId: string) => {
+      state.planned.push(projectId)
       if (state.failing.has(projectId)) throw new Error('access withdrawn')
       const found = projectOf(projectId)
       if (!found) throw new Error('not found')
@@ -126,32 +136,62 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
         collections: [found.collectionName, ...restricted],
       }
     }),
+    groupedSearchAvailable: vi.fn(async () => state.grouped),
+    // What `POST /v1/collections/search` answers (`_ranked_group_hits`): the
+    // chunks' tags filtered inside the query, at most `filesPerCollection`
+    // documents per collection, every document ordered ACROSS collections by
+    // its place in the one fused ranking (`state.ranking`, else the score).
     fetchGroupedSemanticHits: vi.fn(
-      async (collections: readonly string[], _query: string, filesPerCollection: number, snippetMaxChars?: number) => {
+      async (
+        collections: readonly string[],
+        _query: string,
+        filesPerCollection: number,
+        snippetMaxChars?: number,
+        options: { filters?: { document_types?: string[]; disciplines?: string[] }; boost?: unknown } = {}
+      ) => {
         if (!state.grouped) return null
-        state.groupedCalls.push({ collections: [...collections], filesPerCollection, snippetMaxChars })
+        state.groupedCalls.push({ collections: [...collections], filesPerCollection, snippetMaxChars, options })
         const asked = new Set(collections)
-        const all = [...state.hits.values()].flat().filter((row) => asked.has(row.collectionName as string))
+        const anyOf = (tags: string[], wanted?: string[]) => !wanted?.length || wanted.some((tag) => tags.includes(tag))
+        const chunkTags = (row: Record<string, unknown>) => (row.chunkTags ?? row.tags ?? []) as string[]
+        const all = [...state.hits.values()]
+          .flat()
+          .filter((row) => asked.has(row.collectionName as string))
+          .filter((row) => anyOf(chunkTags(row), options.filters?.document_types) && anyOf(chunkTags(row), options.filters?.disciplines))
         const order = state.ranking
-        const ranked = order
-          ? [...all].sort((a, b) => order.indexOf(a.id as string) - order.indexOf(b.id as string))
-          : [...all].sort((a, b) => (b.score as number) - (a.score as number))
-        return ranked.map((row, rank) => ({
-          file_name: row.filename as string,
-          collection: row.collectionName as string,
-          score: row.score as number,
-          snippet: row.snippet as string,
-          page_number: row.page as number | null,
-          rank,
-        }))
+        const fused = order
+          ? (row: Record<string, unknown>) => -order.indexOf(row.id as string)
+          : (row: Record<string, unknown>) => row.score as number
+        const perCollection = new Map<string, Array<Record<string, unknown>>>()
+        for (const row of [...all].sort((a, b) => fused(b) - fused(a))) {
+          const kept = perCollection.get(row.collectionName as string) ?? []
+          if (kept.length < filesPerCollection) kept.push(row)
+          perCollection.set(row.collectionName as string, kept)
+        }
+        return [...perCollection.values()]
+          .flat()
+          .sort((a, b) => fused(b) - fused(a))
+          .map((row, rank) => ({
+            file_name: row.filename as string,
+            collection: row.collectionName as string,
+            score: row.score as number,
+            snippet: row.snippet as string,
+            page_number: row.page as number | null,
+            rank,
+          }))
       }
     ),
     hydrateProjectHits: vi.fn(
-      async (_session: unknown, plan: { project: Project; collections: string[] }, hits: Array<{ collection: string; file_name: string; score: number; snippet: string; page_number: number | null; rank?: number }>) =>
-        actual.joinHitsToFiles(
+      async (_session: unknown, plan: { project: Project; collections: string[] }, hits: Array<{ collection: string; file_name: string; score: number; snippet: string; page_number: number | null; rank?: number }>) => {
+        state.hydrating += 1
+        state.hydratePeak = Math.max(state.hydratePeak, state.hydrating)
+        await Promise.resolve()
+        state.hydrating -= 1
+        return actual.joinHitsToFiles(
           hits.filter((one) => plan.collections.includes(one.collection)),
           rowsOf(plan.project.id)
         )
+      }
     ),
     searchProjectDocuments: vi.fn(
       async (_session: unknown, projectId: string, _query: string, topK: number, options: { snippetMaxChars?: number; forModel?: boolean }) => {
@@ -196,6 +236,7 @@ import {
   crossProjectListRequestSchema,
   crossProjectSearchRequestSchema,
 } from './types'
+import { SIMILARITY_WEIGHTS } from './similarity'
 
 const ORG = 'org_1'
 const OWNER = 'user_owner'
@@ -267,6 +308,9 @@ beforeEach(() => {
   state.grouped = false
   state.ranking = null
   state.groupedCalls = []
+  state.planned = []
+  state.hydrating = 0
+  state.hydratePeak = 0
 })
 
 describe('searchAcrossProjects', () => {
@@ -621,6 +665,17 @@ describe('searchAcrossProjects on a backend that ranks every collection in one q
     expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf', 'a.pdf'])
   })
 
+  it('keeps one project’s weak documents from crowding out another project’s strong one', async () => {
+    const [one, two, three] = state.reachable
+    state.hits.set(one.id, [hit('stark', 0.95), ...Array.from({ length: 12 }, (_, n) => hit(`schwach${n}`, 0.6))])
+    state.hits.set(two.id, [hit('zwei', 0.85, { collectionName: 'proj_2' })])
+    state.hits.set(three.id, [hit('drei', 0.84, { collectionName: 'proj_3' })])
+
+    const result = await searchAcrossProjects(caller(), search({ limit: 3 }))
+
+    expect(result.hits.map((found) => found.filename)).toEqual(['stark.pdf', 'zwei.pdf', 'drei.pdf'])
+  })
+
   it('covers a wide page per call, since a project no longer costs a search', async () => {
     state.reachable = Array.from({ length: CROSS_PROJECT_GROUPED_PAGE_PROJECTS + 5 }, (_, index) => project(index + 1))
 
@@ -631,6 +686,16 @@ describe('searchAcrossProjects on a backend that ranks every collection in one q
       nextOffset: CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
     })
     expect(state.decisionScopes).toHaveLength(CROSS_PROJECT_GROUPED_PAGE_PROJECTS)
+  })
+
+  it('joins a wide page’s hits to their rows a bounded number of projects at a time', async () => {
+    state.reachable = Array.from({ length: CROSS_PROJECT_GROUPED_PAGE_PROJECTS }, (_, index) => project(index + 1))
+    for (const one of state.reachable) state.hits.set(one.id, [hit(`h${one.collectionName}`, 0.5, { collectionName: one.collectionName })])
+
+    await searchAcrossProjects(caller(), search({ limit: 20 }))
+
+    expect(state.hydratePeak).toBeGreaterThan(0)
+    expect(state.hydratePeak).toBeLessThanOrEqual(SEARCH_CONCURRENCY)
   })
 
   it('does not even search a restricted folder from a shared chat', async () => {
@@ -672,14 +737,68 @@ describe('searchAcrossProjects on a backend that ranks every collection in one q
     expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf'])
   })
 
-  it('asks for the longer passage and filters by tags after retrieval, as the per-project search does', async () => {
+  it('hands a page no project of which could be authorized to the per-project search, not past it', async () => {
+    state.reachable = Array.from({ length: CROSS_PROJECT_GROUPED_PAGE_PROJECTS + 5 }, (_, index) => project(index + 1))
+    for (const one of state.reachable) state.failing.add(one.id)
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.groupedCalls).toEqual([])
+    expect(result.nextOffset).toBe(CROSS_PROJECT_PAGE_PROJECTS)
+  })
+
+  it('filters by type and discipline INSIDE the search and asks each project for the limit, not three times it', async () => {
     const [one] = state.reachable
     state.hits.set(one.id, [hit('a', 0.9, { tags: ['Detail'] }), hit('b', 0.8, { tags: ['Bescheid'] })])
 
+    const result = await searchAcrossProjects(caller(), search({ documentTypes: ['Bescheid'], disciplines: ['Brandschutz'], limit: 5 }))
+
+    expect(state.groupedCalls[0]).toMatchObject({
+      filesPerCollection: 5,
+      snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
+      options: { filters: { document_types: ['Bescheid'], disciplines: ['Brandschutz'] } },
+    })
+    expect(result.hits).toEqual([])
+  })
+
+  it('still drops a hit whose document row no longer carries the tag: the search’s copy may lag', async () => {
+    const [one] = state.reachable
+    // The chunk still says Bescheid; a person retagged the document since.
+    state.hits.set(one.id, [hit('a', 0.9, { tags: ['Detail'], chunkTags: ['Bescheid'] }), hit('b', 0.8, { tags: ['Bescheid'] })])
+
     const result = await searchAcrossProjects(caller(), search({ documentTypes: ['Bescheid'] }))
 
-    expect(state.groupedCalls[0].snippetMaxChars).toBe(CROSS_PROJECT_SNIPPET_CHARS)
     expect(result.hits.map((found) => found.filename)).toEqual(['b.pdf'])
+  })
+
+  it('lifts projects like the current one by its fingerprint and the one set of similarity weights', async () => {
+    const current = project(7, {
+      profile: {
+        facts: { bundesland: { value: 'wien', source: 'user_confirmed' }, bauweise: { value: ['holzbau'], source: 'user_confirmed' } },
+        goals: {},
+        unknowns: [],
+        assumptions: {},
+      } as unknown as Project['profile'],
+    })
+    state.outOfReach = [current]
+
+    await searchAcrossProjects(caller(current.id), search({}))
+    await searchAcrossProjects(caller(current.id), search({ scope: 'all' }))
+
+    expect(state.groupedCalls[0].options.boost).toEqual({
+      facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
+      weights: {
+        bundesland: SIMILARITY_WEIGHTS.bundesland,
+        gebaeudeklasse: SIMILARITY_WEIGHTS.gebaeudeklasse,
+        gebaeudeklasse_adjacent: SIMILARITY_WEIGHTS.gebaeudeklasseAdjacent,
+        bauweise: SIMILARITY_WEIGHTS.bauweise,
+        nutzung: SIMILARITY_WEIGHTS.nutzung,
+        nutzung_max: SIMILARITY_WEIGHTS.nutzungMax,
+        vorhabensart: SIMILARITY_WEIGHTS.vorhabensart,
+      },
+    })
+    // `all` walks newest first by definition: nothing to be like.
+    expect(state.groupedCalls[1].options.boost).toBeNull()
   })
 })
 
@@ -692,6 +811,17 @@ describe('searchAcrossProjects where the backend cannot rank across collections 
 
     expect(state.searched.map((call) => call.projectId)).toEqual(state.reachable.map((one) => one.id))
     expect(result.hits.map((found) => found.filename)).toEqual(['a.pdf'])
+  })
+
+  it('learns that before it authorizes a single project for the grouped search', async () => {
+    state.reachable = Array.from({ length: CROSS_PROJECT_GROUPED_PAGE_PROJECTS + 5 }, (_, index) => project(index + 1))
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    // The per-project search authorizes inside `searchProjectDocuments` (mocked here): no second plan of 40.
+    expect(state.planned).toEqual([])
+    expect(state.searched).toHaveLength(CROSS_PROJECT_PAGE_PROJECTS)
+    expect(result.nextOffset).toBe(CROSS_PROJECT_PAGE_PROJECTS)
   })
 })
 

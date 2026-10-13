@@ -19,6 +19,7 @@ from fastapi import FastAPI
 from httpx import ASGITransport
 from httpx import AsyncClient
 
+from aiq_agent.knowledge.base import FUSED_SCORE_KEY
 from aiq_agent.knowledge.factory import clear_active_ingestor
 from aiq_agent.knowledge.factory import clear_active_retriever
 from aiq_agent.knowledge.factory import set_active_ingestor
@@ -360,13 +361,20 @@ def _grouped_retriever(groups: list[tuple[str, list[Chunk]]]) -> MagicMock:
     return retriever
 
 
+def _ranked(file_name: str, cosine: float, fused: float, collection: str = "proj_a") -> Chunk:
+    """A chunk as ``search_grouped`` returns it: its own cosine, and its score in the one fused ranking."""
+    chunk = _chunk(file_name, cosine, collection=collection)
+    chunk.metadata[FUSED_SCORE_KEY] = fused
+    return chunk
+
+
 @pytest.mark.asyncio
-async def test_grouped_search_keeps_the_fused_order_not_the_scores(app):
-    """Best collection first, its best documents first, whatever each document's cosine."""
+async def test_grouped_search_orders_documents_by_the_fused_ranking_not_the_scores(app):
+    """Each document by its best fused chunk, whatever its cosine."""
     retriever = _grouped_retriever(
         [
-            ("proj_b", [_chunk("b1.pdf", 0.40, collection="proj_b"), _chunk("b1.pdf", 0.30, collection="proj_b")]),
-            ("proj_a", [_chunk("a1.pdf", 0.90), _chunk("a2.pdf", 0.80)]),
+            ("proj_b", [_ranked("b1.pdf", 0.40, 0.030, "proj_b"), _ranked("b1.pdf", 0.30, 0.020, "proj_b")]),
+            ("proj_a", [_ranked("a1.pdf", 0.90, 0.025), _ranked("a2.pdf", 0.80, 0.015)]),
         ]
     )
     set_active_retriever(retriever)
@@ -386,6 +394,114 @@ async def test_grouped_search_keeps_the_fused_order_not_the_scores(app):
     args = retriever.search_grouped.await_args
     assert args.args[1] == ["proj_a", "proj_b"]  # de-duplicated, order kept
     assert args.kwargs["group_size"] == 2 * 3
+    assert args.kwargs["filters"] is None and args.kwargs["boost"] is None
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_interleaves_documents_across_projects(app):
+    """The best project's weak documents do not fill the page ahead of another project's strong one.
+
+    The shape the real search produces: one project with one strong and many
+    weak documents, many projects with one fairly strong document each.
+    """
+    best = [_ranked("strong.pdf", 0.95, 1 / 61, "proj_00")] + [
+        _ranked(f"weak{n}.pdf", 0.60, 1 / (61 + 39 + n), "proj_00") for n in range(15)
+    ]
+    others = [(f"proj_{i:02d}", [_ranked(f"doc{i}.pdf", 0.85, 1 / (61 + i), f"proj_{i:02d}")]) for i in range(1, 40)]
+    set_active_retriever(_grouped_retriever([("proj_00", best), *others]))
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": [f"proj_{i:02d}" for i in range(40)],
+                "groups": 40,
+                "files_per_group": 10,
+            },
+        )
+
+    hits = res.json()["hits"]
+    first_page = [(h["collection"], h["file_name"]) for h in hits[:10]]
+    assert first_page[0] == ("proj_00", "strong.pdf")
+    assert [collection for collection, _ in first_page[1:]] == [f"proj_{i:02d}" for i in range(1, 10)]
+    # proj_00 still keeps its documents, at most files_per_group, after the others.
+    assert sum(1 for h in hits if h["collection"] == "proj_00") == 10
+    assert hits[-1]["collection"] == "proj_00"
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_names_the_searched_collection_not_the_chunks_claim(app):
+    chunk = _ranked("a.pdf", 0.9, 0.03, collection="proj_victim")  # metadata claims another collection
+    set_active_retriever(_grouped_retriever([("proj_a", [chunk])]))
+
+    async with _client(app) as client:
+        res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+
+    assert [h["collection"] for h in res.json()["hits"]] == ["proj_a"]
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_grammar(app):
+    retriever = _grouped_retriever([])
+    set_active_retriever(retriever)
+    weights = {"bundesland": 4, "gebaeudeklasse": 3, "gebaeudeklasse_adjacent": 1, "bauweise": 2}
+
+    async with _client(app) as client:
+        res = await client.post(
+            "/v1/collections/search",
+            json={
+                "query": "q",
+                "collections": ["proj_a"],
+                "filters": {
+                    "document_types": ["Detail"],
+                    "disciplines": ["Brandschutz", "Schallschutz"],
+                    "project_facts": {"bauweise": ["holzbau"], "bundesland": "niederoesterreich"},
+                    "project_status": ["closed"],
+                },
+                "boost": {"facts": {"bundesland": "wien", "gebaeudeklasse": [4]}, "weights": weights},
+            },
+        )
+
+    assert res.status_code == 200
+    kwargs = retriever.search_grouped.await_args.kwargs
+    assert kwargs["filters"] == {
+        "$and": [
+            {"tags": {"$in": ["Detail"]}},
+            {"tags": {"$in": ["Brandschutz", "Schallschutz"]}},
+            {"project_facts.bundesland": {"$in": ["niederoesterreich"]}},
+            {"project_facts.bauweise": {"$in": ["holzbau"]}},
+            {"project_status": {"$in": ["closed"]}},
+        ]
+    }
+    assert kwargs["boost"]["facts"]["gebaeudeklasse"] == [4]
+    assert kwargs["boost"]["weights"]["bundesland"] == 4 and kwargs["boost"]["weights"]["nutzung"] == 0
+
+
+@pytest.mark.asyncio
+async def test_grouped_search_refuses_an_unknown_filter_or_status(app):
+    set_active_retriever(_grouped_retriever([]))
+    async with _client(app) as client:
+        unknown = await client.post(
+            "/v1/collections/search", json={"query": "q", "collections": ["proj_a"], "filters": {"farbe": ["rot"]}}
+        )
+        status = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a"], "filters": {"project_status": ["archived"]}},
+        )
+    assert unknown.status_code == 422 and status.status_code == 422
+
+
+@pytest.mark.asyncio
+async def test_capability_says_whether_one_search_can_rank_many_collections(app):
+    retriever = MagicMock()
+    retriever.supports_grouped_search = MagicMock(return_value=True)
+    set_active_retriever(retriever)
+    async with _client(app) as client:
+        yes = await client.get("/v1/collections/search/capability")
+        retriever.supports_grouped_search.return_value = False
+        no = await client.get("/v1/collections/search/capability")
+    assert yes.json() == {"grouped": True} and no.json() == {"grouped": False}
 
 
 @pytest.mark.asyncio

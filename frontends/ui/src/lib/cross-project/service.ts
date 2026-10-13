@@ -33,7 +33,11 @@
  * {@link CROSS_PROJECT_GROUPED_PAGE_PROJECTS} projects is ONE search: every
  * collection the reader is cleared for, ranked together, so hits from
  * different projects are ordered by one ranking instead of by scores from
- * separate indexes. Where the backend cannot (Chroma answers 409), N projects
+ * separate indexes. The tag filters run inside that search, and the current
+ * project's fingerprint lifts passages from projects like it
+ * (`project-facts-mirror.ts`); the walk order no longer decides which
+ * projects are searched. Whether the backend can is asked before any project
+ * is authorized for it. Where it cannot (Chroma), N projects
  * are N collection searches (plus the readable restricted ones), at most
  * {@link CROSS_PROJECT_PAGE_PROJECTS} per call, {@link SEARCH_CONCURRENCY} at a
  * time. Either way the answer carries the offset of the next page; the agent
@@ -49,13 +53,16 @@ import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversation
 import type { Project } from '@/lib/db/schema'
 import {
   fetchGroupedSemanticHits,
+  groupedSearchAvailable,
   hydrateProjectHits,
   planProjectSearch,
   searchProjectDocuments,
+  type GroupedSearchFilters,
   type ListedDocument,
   type ProjectSearchPlan,
   type SearchedDocument,
 } from '@/lib/documents/service'
+import { similarityBoostOf } from './project-facts-mirror'
 import { buildProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { audienceReach, type AudienceReach } from './audience-reach'
@@ -304,7 +311,12 @@ async function mapBounded<T, R>(items: readonly T[], limit: number, work: (item:
   return results
 }
 
-/** Whether a hit's tags satisfy the request's type and discipline filters (each group: any of). */
+/**
+ * Whether a hit's tags satisfy the request's type and discipline filters (each
+ * group: any of). The filter of the per-project search; behind the grouped
+ * search, which filters on the chunks' copy of the tags, a backstop that
+ * judges by the document row.
+ */
 export function matchesTags(
   tags: readonly string[],
   request: Pick<CrossProjectSearchRequest, 'documentTypes' | 'disciplines'>
@@ -314,9 +326,10 @@ export function matchesTags(
 }
 
 /**
- * How many hits to ask each project for: more when a tag filter will drop some
- * after retrieval. The tags live in the ingestion metadata store, not in the
- * chunks, so they cannot be pushed into the vector search.
+ * How many hits to ask each project for in the per-project search (Chroma):
+ * more when a tag filter will drop some after retrieval, because Chroma's
+ * chunks carry no tags to filter on. The grouped search (Qdrant) filters
+ * inside the query and asks for `limit`.
  */
 function perProjectTopK(request: CrossProjectSearchRequest): number {
   const filtered = request.documentTypes.length + request.disciplines.length > 0
@@ -423,34 +436,52 @@ async function searchPageAtOnce(
   session: AuthorizedSession,
   page: readonly Project[],
   request: CrossProjectSearchRequest,
-  reach: Pick<AudienceReach, 'restrictedFolders'>
+  reach: Pick<AudienceReach, 'restrictedFolders'>,
+  current: Pick<Project, 'profile'> | null
 ): Promise<FoundHit[] | null> {
+  // Asked first: on a backend without one shared index, a page of 40 projects
+  // would be authorized only to learn that from a 409.
+  if (!(await groupedSearchAvailable())) return null
   const planned = await mapBounded(page, SEARCH_CONCURRENCY, (project) =>
     planProjectSearch(session, project.id).catch(() => null)
   )
   const plans = planned.filter((plan): plan is ProjectSearchPlan => plan !== null)
+  // Not one project could be planned (a database failure, or every access
+  // withdrawn at once): leave the page to the per-project search, which
+  // covers fewer projects per call, rather than reporting 40 as searched.
+  if (page.length > 0 && plans.length === 0) return null
   const collectionsOf = (plan: ProjectSearchPlan) =>
     reach.restrictedFolders ? plan.collections : [plan.project.collectionName]
+  // The tag filters run inside the search, so a project is asked for exactly
+  // `limit` documents; `matchesTags` below stays as a backstop.
   const hits = await fetchGroupedSemanticHits(
     plans.flatMap(collectionsOf),
     request.query,
-    perProjectTopK(request),
-    CROSS_PROJECT_SNIPPET_CHARS
+    request.limit,
+    CROSS_PROJECT_SNIPPET_CHARS,
+    { filters: tagFiltersOf(request), boost: current ? similarityBoostOf(current.profile) : null }
   )
   if (hits === null) return null
-  const perProject = await Promise.all(
-    plans.map(async (plan) => {
-      const own = new Set(collectionsOf(plan))
-      const projectHits = hits.filter((hit) => own.has(hit.collection))
-      if (projectHits.length === 0) return []
-      const found = await hydrateProjectHits(session, plan, projectHits, {
-        snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
-        forModel: true,
-      }).catch(() => [])
-      return foundHitsOf(plan.project, found, request, reach, async () => plan.access)
-    })
-  )
+  const perProject = await mapBounded(plans, SEARCH_CONCURRENCY, async (plan) => {
+    const own = new Set(collectionsOf(plan))
+    const projectHits = hits.filter((hit) => own.has(hit.collection))
+    if (projectHits.length === 0) return []
+    const found = await hydrateProjectHits(session, plan, projectHits, {
+      snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
+      forModel: true,
+    }).catch(() => [])
+    return foundHitsOf(plan.project, found, request, reach, async () => plan.access)
+  })
   return perProject.flat()
+}
+
+/** The request's type and discipline filters as the grouped search's pre-filters; undefined when none. */
+function tagFiltersOf(request: CrossProjectSearchRequest): GroupedSearchFilters | undefined {
+  if (request.documentTypes.length + request.disciplines.length === 0) return undefined
+  return {
+    ...(request.documentTypes.length ? { document_types: [...request.documentTypes] } : {}),
+    ...(request.disciplines.length ? { disciplines: [...request.disciplines] } : {}),
+  }
 }
 
 /** Best first: by the page's one ranking when it has one, else by score. */
@@ -534,7 +565,7 @@ export async function searchAcrossProjects(
   // One search for a wide page where the backend can rank across collections;
   // otherwise the bounded per-project page, searched project by project.
   let page = scope.slice(request.offset, request.offset + CROSS_PROJECT_GROUPED_PAGE_PROJECTS)
-  let documents = await searchPageAtOnce(caller.session, page, request, reach)
+  let documents = await searchPageAtOnce(caller.session, page, request, reach, current)
   if (documents === null) {
     page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
     documents = (
@@ -550,12 +581,10 @@ export async function searchAcrossProjects(
       searchPermitRequirements(
         caller.session.organizationId,
         // Permits are judged by the document's live folder (permits/live-access.ts), from the same clearance.
-        await Promise.all(
-          scopes.map(async (scope) => ({
-            projectId: scope.projectId,
-            access: await liveFolderAccess(caller.session.organizationId, scope.projectId, scope.readableFolderIds),
-          }))
-        ),
+        await mapBounded(scopes, SEARCH_CONCURRENCY, async (scope) => ({
+          projectId: scope.projectId,
+          access: await liveFolderAccess(caller.session.organizationId, scope.projectId, scope.readableFolderIds),
+        })),
         request.query
       )
     ),

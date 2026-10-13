@@ -26,6 +26,7 @@ from .config import reads_qdrant
 from .config import writes_qdrant
 from .payload import ChunkRecord
 from .payload import document_facts
+from .payload import project_payload
 from .store import get_store
 
 logger = logging.getLogger(__name__)
@@ -92,19 +93,31 @@ def enrichment(scope: str, config: Mapping[str, Any] | None = None) -> dict[str,
 
     ``office_id`` comes from the ingest job (the BFF's ``x-grid-organization-id``)
     or, for the Büroablage, from the collection name itself; ``project_id``
-    and ``grid_document_id`` from the job. A backfilled point without a job
-    has the ids its collection name carries and nothing invented.
+    and ``grid_document_id`` from the job. The project's facts and status
+    come from the job too (the BFF reads them off the project when it
+    dispatches), so a new document is boosted and filtered like its siblings
+    from its first search; a later change reaches it through
+    ``PUT /v1/collections/{c}/project-facts``. A backfilled point without a
+    job has the ids its collection name carries and nothing invented; the
+    BFF's facts sync fills its project facts.
     """
     config = config or {}
     office_id = config.get("organization_id")
     if not office_id and scope.startswith("archiv_"):
         office_id = scope.removeprefix("archiv_")
-    return {
+    base: dict[str, Any] = {
         "office_id": office_id,
         "project_id": config.get("project_id"),
         "grid_document_id": config.get("document_id"),
         "folder_path": config.get("folder_path"),
     }
+    status = config.get("project_status")
+    if status:
+        try:
+            base.update(project_payload(config.get("project_facts"), status))
+        except ValueError:
+            logger.warning("Qdrant mirror: ignoring project facts with status %r on %s", status, scope)
+    return base
 
 
 def mirror_file(

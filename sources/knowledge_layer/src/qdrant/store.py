@@ -185,6 +185,23 @@ class QdrantStore:
         )
         self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
 
+    def set_scope_payload(self, scope: str, payload: Mapping[str, Any]) -> bool:
+        """Overwrite these payload fields on every point of ``scope``; False when it has no point yet.
+
+        The project facts mirror (``PUT /v1/collections/{c}/project-facts``):
+        one call per scope, whatever its size, since the filter names the
+        scope rather than a list of ids. A top-level key replaces the stored
+        value whole, so a nested object loses the keys it no longer has.
+        """
+        # ``exists`` has given an older collection the project facts indexes.
+        if not payload or not self.exists(scope):
+            return False
+        if self.count(scope) == 0:
+            return False
+        selector = models.Filter(must=[scope_condition([scope])])
+        self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+        return True
+
     # ------------------------------------------------------------------ plain reads
 
     def count(self, scope: str, filters: dict[str, Any] | None = None, *extra: models.Condition) -> int:

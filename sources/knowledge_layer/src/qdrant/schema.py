@@ -55,6 +55,23 @@ TEXT_FIELD = "text"
 #: Payload field holding the chunk id every caller knows (the id Chroma gave it).
 CHUNK_ID_FIELD = "chunk_id"
 
+#: Payload object holding the owning project's fingerprint (the BFF's
+#: ``FINGERPRINT_KEYS``), mirrored from Postgres ``projects.profile`` by scope.
+#: Each key is indexed as ``project_facts.<key>``.
+PROJECT_FACTS_FIELD = "project_facts"
+#: Payload field holding the owning project's lifecycle state (ADR-0098).
+PROJECT_STATUS_FIELD = "project_status"
+#: The fingerprint, in the order the BFF's similarity weighs it.
+FACT_KEYS: tuple[str, ...] = ("bundesland", "gebaeudeklasse", "bauweise", "nutzungen", "vorhabensart")
+
+
+def fact_field(key: str) -> str:
+    """The payload path of one fingerprint fact, as filters and formulas name it."""
+    if key not in FACT_KEYS:
+        raise ValueError(f"{key!r} is not a project fact")
+    return f"{PROJECT_FACTS_FIELD}.{key}"
+
+
 #: Fields stored and filtered as strings. A writer that hands one an int (or a
 #: reader that asks with one) is coerced, so ``page_label`` 3 and "3" agree.
 KEYWORD_FIELDS: tuple[str, ...] = (
@@ -76,6 +93,8 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "folder_ancestors",
     "tags",
     "topics",
+    PROJECT_STATUS_FIELD,
+    *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "gebaeudeklasse"),
 )
 #: Payload field holding a chunk's place in document order (the seam's
 #: ``READING_ORDER``): derived at write time from ``page_label``, never read
@@ -84,7 +103,12 @@ READING_ORDER_FIELD = READING_ORDER
 
 #: Fields stored and filtered as integers. The Punkt chunker writes
 #: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
-INTEGER_FIELDS: tuple[str, ...] = ("punkt_depth", "section_order", READING_ORDER_FIELD)
+INTEGER_FIELDS: tuple[str, ...] = (
+    "punkt_depth",
+    "section_order",
+    READING_ORDER_FIELD,
+    f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
+)
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 
@@ -203,7 +227,8 @@ def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int,
     """Create the physical collection behind its alias if missing; refuse a foreign vector space.
 
     Idempotent and safe to race: a second process that loses the create sees
-    the alias the first one made.
+    the alias the first one made. An existing collection gains any payload
+    index added to the schema since it was created (:func:`ensure_payload_indexes`).
     """
     alias = ALIASES[physical]
     if not _alias_exists(client, alias):

@@ -30,6 +30,7 @@ import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { documents } from '@/lib/db/schema'
 import { getBackendUrl } from '@/lib/backend-proxy'
+import { syncAllProjectFacts, type ProjectFactsSyncResult } from '@/lib/cross-project/project-facts-mirror'
 
 // Reconcile touches whole collections; give each backend call more room than a
 // per-request timeout since a large collection's file list can be sizeable.
@@ -54,10 +55,14 @@ export interface VectorReconcileResult {
    * single collection.
    */
   failures: { collectionName: string; error: string }[]
+  /** The facts copy of every project onto its chunks (the third half); absent when it could not run. */
+  projectFacts?: ProjectFactsSyncResult
 }
 
 /** The `collectionName` a whole-sweep summary failure is filed under. */
 export const SUMMARY_SWEEP_FAILURE_NAME = '*'
+/** The `collectionName` a failure of the project facts half as a whole is filed under. */
+export const PROJECT_FACTS_FAILURE_NAME = '*project-facts'
 
 /** The backend's `POST /v1/maintenance/reconcile-summaries` answer. */
 interface BackendSummaryReconcile {
@@ -275,6 +280,19 @@ export async function reconcileOrphanedVectors(): Promise<VectorReconcileResult>
     result.failures.push({
       collectionName: SUMMARY_SWEEP_FAILURE_NAME,
       error: `summary reconcile: ${error instanceof Error ? error.message : 'unknown error'}`,
+    })
+  }
+
+  // Third half: every project's facts onto its chunks (design §4, "Mutable
+  // facts"). Repairs a copy a profile save or a lifecycle move failed to push,
+  // and fills chunks the Qdrant backfill copied in without them. A no-op on a
+  // deployment that does not write Qdrant.
+  try {
+    result.projectFacts = await syncAllProjectFacts()
+  } catch (error) {
+    result.failures.push({
+      collectionName: PROJECT_FACTS_FAILURE_NAME,
+      error: `project facts: ${error instanceof Error ? error.message : 'unknown error'}`,
     })
   }
 

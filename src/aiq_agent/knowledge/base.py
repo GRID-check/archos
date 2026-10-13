@@ -55,6 +55,13 @@ def reading_order(page_label: Any) -> int:
     return page if page >= 1 else 0
 
 
+#: ``Chunk.metadata`` key under which :meth:`BaseRetriever.search_grouped` puts
+#: each chunk's score in the one fused ranking across every group. Comparable
+#: across groups, unlike ``Chunk.score`` (the chunk's own cosine); the grouped
+#: search route orders documents across projects by it.
+FUSED_SCORE_KEY = "fused_score"
+
+
 @dataclass
 class PreparedIngestJob:
     """An ingestion job validated and recorded PENDING, not yet running anywhere.
@@ -256,6 +263,8 @@ class BaseRetriever(ABC):
         collection_names: list[str],
         groups: int,
         group_size: int,
+        filters: dict[str, Any] | None = None,
+        boost: dict[str, Any] | None = None,
     ) -> list[tuple[str, list[Chunk]]]:
         """One ranking over many collections, grouped per collection, best group first.
 
@@ -264,8 +273,23 @@ class BaseRetriever(ABC):
         across separate indexes. Only a backend with a shared index can answer
         it; the default raises ``NotImplementedError`` and the caller falls
         back to searching collection by collection.
+
+        ``filters`` (the grammar ``retrieve`` takes) narrow the search before
+        ranking. ``boost`` (``{"facts": {...}, "weights": {...}}``: the current
+        project's fingerprint and the BFF's similarity weights) lifts passages
+        from projects like the current one. Every chunk carries its fused
+        score as ``metadata[FUSED_SCORE_KEY]``.
         """
         raise NotImplementedError(f"{self.backend_name} cannot rank across collections in one query")
+
+    def supports_grouped_search(self) -> bool:
+        """Whether :meth:`search_grouped` can answer here, asked before a caller prepares one.
+
+        A deployment property, not a tenant's: the BFF reads it once per
+        interval rather than authorizing a page of projects to learn it from
+        a refusal.
+        """
+        return False
 
     async def find_text(
         self,
