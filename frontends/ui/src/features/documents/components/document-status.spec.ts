@@ -49,13 +49,6 @@ describe('documentStatusLabel', () => {
     expect(documentStatusLabel('processing', t)).toBe('status.processing')
   })
 
-  it('calls a failed row with the gate verdict held, when the caller holds its reason', () => {
-    expect(documentStatusLabel({ status: 'failed', errorMessage: 'quarantined:{"reasons":[]}' }, t)).toBe(
-      'status.quarantined'
-    )
-    expect(documentStatusLabel({ status: 'failed', errorMessage: 'parser crashed' }, t)).toBe('status.failed')
-  })
-
   it('never renders a verbatim wire word for an undeclared status', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {

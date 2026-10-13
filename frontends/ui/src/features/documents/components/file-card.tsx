@@ -352,7 +352,6 @@ export const FileCard = memo(function FileCard({
             {showStatus && (
               <DocumentStatusBadge
                 status={file.status}
-                errorMessage={file.errorMessage}
                 queueAhead={file.queueAhead}
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image

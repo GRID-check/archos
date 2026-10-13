@@ -171,8 +171,6 @@ const OPAQUE_STATUS_WRITES: Readonly<Record<string, string>> = {
   'src/lib/documents/service.ts: failure.status': 'the refused row echoed in the 409, returned to the caller',
   // The shelf listing handing a row to the retry rule (`canRetryRow`), a read.
   'src/lib/documents/shelf-listing.ts: row.status': 'a row handed to the retry rule, not a write',
-  // A bare status lifted into the shape `surfaceStateOf` reads. Pure, no write.
-  'src/lib/documents/surface-state.ts: subject': 'a status being classified for display, not a write',
   // Shorthand `{ status }` in a service's RETURN value — the dispatcher's job
   // status on its way back to the caller. Shorthand is worth listing separately
   // from the rest: the name is all there is, so even the expression a reader

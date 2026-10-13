@@ -21,7 +21,6 @@ import {
   surfaceStateOf,
   surfaceStateVariant,
   type SurfaceState,
-  type SurfaceStateSubject,
 } from '@/lib/documents/surface-state'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
@@ -51,8 +50,8 @@ export type StatusVariant = DocumentStatusVariant
  * so the colour and the word cannot disagree. An undeclared status is neutral
  * rather than green: the honest rendering of "nobody has said what this means".
  */
-export function documentStatusVariant(subject: SurfaceStateSubject): StatusVariant {
-  return surfaceStateVariant(surfaceStateOf(subject))
+export function documentStatusVariant(status: string | null | undefined): StatusVariant {
+  return surfaceStateVariant(surfaceStateOf(status))
 }
 
 /**
@@ -160,10 +159,9 @@ function labelOfState(state: SurfaceState, status: string | null | undefined, t:
   return surfaceStateLabel(state, t)
 }
 
-/** The badge's word for a status, or for a row when the caller holds its `errorMessage`. */
-export function documentStatusLabel(subject: SurfaceStateSubject, t: Translator): string {
-  const status = typeof subject === 'object' && subject !== null ? subject.status : subject
-  return labelOfState(surfaceStateOf(subject), status, t)
+/** The badge's word for a status. */
+export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
+  return labelOfState(surfaceStateOf(status), status, t)
 }
 
 interface DocumentStatusBadgeProps {
@@ -181,19 +179,12 @@ interface DocumentStatusBadgeProps {
    * zero or null leaves the status word alone.
    */
   queueAhead?: number | null
-  /**
-   * The row's stored reason, where the caller holds the row. A failed row
-   * carrying the content check's verdict (`quarantined:{…}`, written before the
-   * reconcile learnt to say `quarantined`) is held, not a failed read: the
-   * badge says „Zurückgehalten“ in the warning colour.
-   */
-  errorMessage?: string | null
 }
 
-export function DocumentStatusBadge({ status, className, title, queueAhead, errorMessage }: DocumentStatusBadgeProps) {
+export function DocumentStatusBadge({ status, className, title, queueAhead }: DocumentStatusBadgeProps) {
   const t = useTranslations('files')
   // One state for the word and the colour, so they cannot disagree.
-  const state = surfaceStateOf({ status, errorMessage })
+  const state = surfaceStateOf(status)
   const variant = surfaceStateVariant(state)
   const waiting = queueAhead != null && queueAhead > 0 && documentStatusFacts(status)?.phase === 'in-flight'
   const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : labelOfState(state, status, t)

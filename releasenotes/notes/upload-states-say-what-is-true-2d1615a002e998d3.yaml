@@ -2,8 +2,7 @@
 fixes:
   - >
     A file whose upload is still on its way says „Wird hochgeladen“ again
-    instead of „Wird gelesen“, and an older file the content check held back
-    says „Zurückgehalten“ in amber instead of „Fehlgeschlagen“.
+    instead of „Wird gelesen“.
   - >
     An upload refused because the file it would replace waits in the Quarantäne
     now says so in your language and no longer offers a retry that would be

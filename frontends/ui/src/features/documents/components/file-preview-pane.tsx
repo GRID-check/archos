@@ -739,7 +739,6 @@ export function FilePreviewPane({
               {!isCitable(file) && (
                 <DocumentStatusBadge
                   status={file.status}
-                  errorMessage={file.errorMessage}
                   queueAhead={file.queueAhead}
                   className="shrink-0"
                 />

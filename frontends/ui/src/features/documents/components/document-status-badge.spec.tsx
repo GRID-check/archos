@@ -23,14 +23,8 @@ describe('DocumentStatusBadge state', () => {
     expect(badge).toHaveAttribute('data-variant', 'info')
   })
 
-  it('draws a failed row carrying the gate verdict as held, in the hold colour', () => {
-    render(<DocumentStatusBadge status="failed" errorMessage={'quarantined:{"reasons":[]}'} />)
-    const badge = screen.getByText('Held back')
-    expect(badge).toHaveAttribute('data-variant', 'warning')
-  })
-
   it('keeps a failed read failed', () => {
-    render(<DocumentStatusBadge status="failed" errorMessage="parser crashed" />)
+    render(<DocumentStatusBadge status="failed" />)
     expect(screen.getByText('Failed')).toHaveAttribute('data-variant', 'destructive')
   })
 })

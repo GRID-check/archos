@@ -128,5 +128,8 @@ describe('trackedPatchFromStatus', () => {
 
   it('settles every spelling of a failure as failed', () => {
     expect(trackedPatchFromStatus('error', 'Kaputt')).toEqual({ status: 'failed', errorMessage: 'Kaputt' })
+    // No reason in the read: the patch leaves the row's own reason alone.
+    expect(trackedPatchFromStatus('quarantined')).toEqual({ status: 'held' })
+    expect(trackedPatchFromStatus('failed')).toEqual({ status: 'failed' })
   })
 })

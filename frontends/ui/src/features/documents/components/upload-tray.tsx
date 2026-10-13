@@ -121,6 +121,12 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
    * used, so the timer holds while it is and starts over when it is let go.
    */
   const [isHeld, setIsHeld] = useState(false)
+  // A tray that empties while the pointer or focus is in it (its own
+  // „Ausblenden“) gets no mouseleave or blur from the detached node, so the
+  // hold would outlive it and stop the next clean batch from retiring.
+  useEffect(() => {
+    if (visible.length === 0) setIsHeld(false)
+  }, [visible.length])
 
   const isQuietSuccess =
     summary.isSettled && summary.failed === 0 && summary.held === 0 && summary.canceled === 0

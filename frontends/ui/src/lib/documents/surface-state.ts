@@ -34,7 +34,6 @@
  */
 
 import type { Translator } from '@/i18n/translate'
-import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
 import {
   documentStatusFacts,
   type DocumentReadFamily,
@@ -72,20 +71,6 @@ export const SURFACE_STATES: readonly SurfaceState[] = [
   'unknown',
 ]
 
-/** The facts a state is read from. Only `status` is required; the rest refine it where a surface has them. */
-export interface SurfaceStateInput {
-  status: string | null | undefined
-  /**
-   * The stored reason. A verdict here (`quarantined:{…}`) on a failed row is
-   * the gate's stop, not a failed read. Every listing row carries it
-   * (`FileItem.errorMessage`), so the badge passes it.
-   */
-  errorMessage?: string | null
-}
-
-/** A row, or its bare status for a surface that holds nothing else (the SQL tallies, the history counts). */
-export type SurfaceStateSubject = SurfaceStateInput | string | null | undefined
-
 /**
  * The badge colour is the state: green is "Piloti can quote this", red "the
  * read broke", amber "a person decides". One table, so the colour and the word
@@ -108,31 +93,21 @@ const STATE_BY_STATUS: ReadonlyMap<string, SurfaceState> = new Map<KnownDocument
   ['uploading', 'uploading'],
 ])
 
-function inputOf(subject: SurfaceStateSubject): SurfaceStateInput {
-  if (typeof subject === 'string' || subject === null || subject === undefined) return { status: subject }
-  return subject
-}
-
 /**
- * The gate's own verdict on a failed row. The reconcile turns a verdict into
- * `quarantined` (`failedOrQuarantined`), so a failed row carrying one predates
- * that; it is still a hold, never a failed read.
+ * The state of a document, by its status alone. An undeclared status is
+ * `unknown`, never `citable`: calling something citable that is not is the
+ * error that wastes an afternoon.
+ *
+ * Not by its stored reason: the SQL that counts and filters by family
+ * (`declaredStatusesIn`) cannot read a verdict out of `error_message`, and a
+ * surface that could would call a row held while the counts beside it say
+ * failed. The reconcile writes a held file as `quarantined`
+ * (`failedOrQuarantined`), so the status is enough.
  */
-function heldByVerdict(input: SurfaceStateInput, variant: DocumentStatusVariant | null): boolean {
-  return variant === 'destructive' && Boolean(input.errorMessage?.startsWith(QUARANTINED_PREFIX))
-}
-
-/**
- * The state of a document. An undeclared status is `unknown`, never `citable`:
- * calling something citable that is not is the error that wastes an
- * afternoon.
- */
-export function surfaceStateOf(subject: SurfaceStateSubject): SurfaceState {
-  const input = inputOf(subject)
-  const facts = documentStatusFacts(input.status)
-  if (heldByVerdict(input, facts?.variant ?? null)) return 'held'
+export function surfaceStateOf(status: string | null | undefined): SurfaceState {
+  const facts = documentStatusFacts(status)
   if (!facts) return 'unknown'
-  return STATE_BY_STATUS.get((input.status ?? '').toLowerCase()) ?? STATE_BY_VARIANT[facts.variant]
+  return STATE_BY_STATUS.get((status ?? '').toLowerCase()) ?? STATE_BY_VARIANT[facts.variant]
 }
 
 /**

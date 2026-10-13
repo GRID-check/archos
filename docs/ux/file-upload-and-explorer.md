@@ -143,10 +143,10 @@ decorated afterwards. Where each one landed:
    comes from the one `document-status` map, through the seven states of
    `lib/documents/surface-state.ts`: a file whose bytes are still arriving says
    „Wird hochgeladen“, not „Wird gelesen“, and is counted with the files being
-   read. The badge takes its colour from the same state, so a failed row that
-   still carries the content check's verdict (`quarantined:{…}`, written before
-   the reconcile said `quarantined`) reads „Zurückgehalten“ in the warning
-   colour wherever the caller holds the row's `errorMessage`. The upload
+   read. The badge takes its colour from the same state, so the word and the
+   colour cannot disagree. The state is read from the status alone, never from
+   the stored reason, because the counts beside a badge (the folder brief, the
+   upload summary) are SQL that cannot read the reason either. The upload
    summary counts a status nobody declared as being read, as the folder brief
    does. Indeterminate progress follows the ARIA pattern rather than inventing
    one.

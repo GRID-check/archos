@@ -38,11 +38,6 @@ describe('session documents client', () => {
     expect(sessionDocumentFileStatus(status)).toBe(expected)
   })
 
-  it('reads a failed row carrying the gate verdict as held, as its badge does', () => {
-    expect(sessionDocumentFileStatus('failed', 'quarantined:{"reasons":[]}')).toBe('held')
-    expect(sessionDocumentFileStatus('failed', 'parser crashed')).toBe('failed')
-  })
-
   it('lists a chat first-party, with the document id as the file id', async () => {
     fetchMock.mockResolvedValue({
       ok: true,

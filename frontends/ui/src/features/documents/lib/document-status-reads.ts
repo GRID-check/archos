@@ -173,10 +173,13 @@ export function trackedPatchFromStatus(
   switch (documentReadFamily(status)) {
     case 'readable':
       return { status: 'success', progress: 100 }
+    // The reason only when the read gave one. A patch that carried the key
+    // with no value cleared the reason the row already showed (the retry
+    // path settles from a bare status), and a held row lost its findings.
     case 'failed':
-      return { status: 'failed', errorMessage: errorMessage ?? undefined }
+      return { status: 'failed', ...(errorMessage ? { errorMessage } : {}) }
     case 'held':
-      return { status: 'held', errorMessage: errorMessage ?? undefined }
+      return { status: 'held', ...(errorMessage ? { errorMessage } : {}) }
     case 'unindexed':
       return { status: 'stored', progress: 100 }
     case 'reading':

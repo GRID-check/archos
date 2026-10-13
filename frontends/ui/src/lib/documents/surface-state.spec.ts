@@ -49,16 +49,11 @@ describe('surfaceStateOf', () => {
     expect(surfaceStateOf('READY')).toBe('citable')
   })
 
-  it('holds a failed row that carries the gate verdict, not a failed read', () => {
-    expect(surfaceStateOf({ status: 'failed', errorMessage: 'quarantined:{"reasons":[]}' })).toBe('held')
-    expect(surfaceStateOf({ status: 'failed', errorMessage: 'parser crashed' })).toBe('unreadable')
-    // Drawn in the hold's colour too, so the word and the colour agree.
-    expect(surfaceStateVariant(surfaceStateOf({ status: 'failed', errorMessage: 'quarantined:{}' }))).toBe('warning')
-  })
-
-  it('reads a verdict only off a failed row', () => {
-    // A citable row whose stale reason still names a verdict was released.
-    expect(surfaceStateOf({ status: 'completed', errorMessage: 'quarantined:{}' })).toBe('citable')
+  it('reads the status alone, as the SQL that counts the families does', () => {
+    // A stored reason never moves a row out of its status's state: the counts
+    // beside the badge cannot read it, and they must say the same thing.
+    expect(surfaceStateOf('failed')).toBe('unreadable')
+    expect(surfaceStateVariant(surfaceStateOf('quarantined'))).toBe('warning')
   })
 })
 

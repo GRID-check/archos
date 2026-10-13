@@ -63,11 +63,10 @@ const LISTED_STATUS_BY_STATE: Record<SurfaceState, ListedFileStatus> = {
 
 /**
  * A document row's status in the listed-file vocabulary, from the one status
- * table (`surfaceStateOf`). The row's reason refines it: a failed row carrying
- * the gate's verdict is held, as its badge says.
+ * table (`surfaceStateOf`), by the status alone as every other surface reads it.
  */
-export function sessionDocumentFileStatus(status: string, errorMessage?: string | null): ListedFileStatus {
-  return LISTED_STATUS_BY_STATE[surfaceStateOf({ status, errorMessage })]
+export function sessionDocumentFileStatus(status: string): ListedFileStatus {
+  return LISTED_STATUS_BY_STATE[surfaceStateOf(status)]
 }
 
 /** A session document row in the shape the documents store reads. */
@@ -76,7 +75,7 @@ export function sessionDocumentToFileInfo(row: SessionDocumentRow): FileInfo {
     file_id: row.id,
     file_name: row.filename,
     collection_name: row.collectionName,
-    status: sessionDocumentFileStatus(row.status, row.errorMessage),
+    status: sessionDocumentFileStatus(row.status),
     file_size: row.fileSize ?? null,
     chunk_count: row.chunkCount ?? 0,
     uploaded_at: row.createdAt ?? null,

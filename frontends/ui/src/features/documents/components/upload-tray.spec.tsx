@@ -196,6 +196,23 @@ describe('UploadTray', () => {
       expect(onDismiss).toHaveBeenCalledWith(['f1'])
     })
 
+    it('retires the next clean batch after one dismissed from under the pointer', async () => {
+      const onDismiss = vi.fn()
+      const { rerender } = renderTray([tracked({ status: 'failed', errorMessage: 'boom' })], { onDismiss })
+      const tray = screen.getByTestId('upload-tray')
+
+      // Pointer in, „Dismiss“ pressed: the tray empties while it is held.
+      act(() => {
+        tray.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      })
+      rerender(<UploadTray files={[]} onRetry={vi.fn()} onDismiss={onDismiss} />)
+      act(() => vi.advanceTimersByTime(1_000))
+
+      rerender(<UploadTray files={[tracked({ id: 'next', status: 'success' })]} onRetry={vi.fn()} onDismiss={onDismiss} />)
+      act(() => vi.advanceTimersByTime(6_000))
+      expect(onDismiss).toHaveBeenCalledWith(['next'])
+    })
+
     it('does not retire out from under a keyboard user', () => {
       const onDismiss = vi.fn()
       renderTray([tracked({ status: 'success' })], { onDismiss })
