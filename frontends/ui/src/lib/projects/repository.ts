@@ -186,6 +186,8 @@ export async function insertProject(values: {
   name: string
   createdBy: string
   collectionName: string
+  /** The Beginn, as stored: the first of its month. A past project created closed names it up front. */
+  startedOn?: string | null
 }): Promise<Project> {
   const db = getDb()
   const [row] = await withTenant({ organizationId: values.organizationId }, () =>

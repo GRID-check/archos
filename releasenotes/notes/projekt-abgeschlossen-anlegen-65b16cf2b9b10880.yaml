@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    A new project can now be created as already closed, so a past project can
+    join the office as a reference in one step. The dialog for creating a
+    project was redesigned: it asks whether the project is still running or
+    already finished, and for a finished one how it ended and when.
+fixes:
+  - >
+    „Projekt abschließen“ no longer fails for a project whose brief was never
+    filled in.

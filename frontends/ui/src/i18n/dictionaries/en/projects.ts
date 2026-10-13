@@ -320,9 +320,8 @@ export const projects = {
   },
   dialog: {
     newProject: 'New project',
-    title: 'Create a project',
-    description:
-      'A project is a focused workspace for one building — its documents, members, research, and chat context stay together.',
+    title: 'New project',
+    description: 'A project keeps its documents, its team and the conversations about it together in one place.',
   },
   form: {
     nameRequired: 'Project name is required.',
@@ -330,22 +329,23 @@ export const projects = {
     createError: "We couldn't create this project just now. Please try again in a moment.",
     nameLabel: 'Project name',
     namePlaceholder: 'e.g. Apartment building, 12 Main Street',
-    templateLabel: 'Start from a template',
-    templates: {
-      neubauWohnbau: { label: 'New residential build', name: 'New residential build' },
-      betriebsbauBrandschutz: {
-        label: 'Commercial build — fire safety',
-        name: 'Commercial build — fire safety',
-      },
-      sanierungBestand: {
-        label: 'Existing-building renovation',
-        name: 'Existing-building renovation',
-      },
-      oibBrandschutzAudit: { label: 'OIB fire-safety audit', name: 'OIB fire-safety audit' },
+    state: {
+      label: 'Status',
+      active: 'Ongoing',
+      activeHint: 'We are working on it now.',
+      closed: 'Closed',
+      closedHint: 'A past project, kept as a reference for the office.',
     },
-    footnote:
-      'Create a workspace for documents, members, and chat, grounded in the project files, Office filing, and building law.',
+    closed: {
+      startedOn: 'Start',
+      optional: 'optional',
+      clearStartedOn: 'Clear start',
+      endedOnBeforeStart: 'The completion lies before the start.',
+      readOnly: 'A closed project is read-only. To add documents or the brief, reopen it.',
+    },
+    cancel: 'Cancel',
     submit: 'Create project',
+    submitClosed: 'Create closed project',
   },
   applicableStandards: {
     heading: 'Applicable standards',
