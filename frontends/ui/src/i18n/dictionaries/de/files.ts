@@ -196,6 +196,7 @@ export const files: typeof en.files = {
           older: 'Piloti antwortet weiter aus Fassung {number}.',
           newer: 'Piloti antwortet aus der neueren Fassung {number}; diese bleibt lesbar, auch für Vergleiche.',
           notYet: 'Piloti antwortet erst daraus, wenn sie freigegeben ist.',
+          notYetRead: 'Piloti antwortet daraus, sobald sie gelesen ist.',
           never: 'Piloti antwortet nicht daraus.',
         },
         // {name} kommt mit dem Datum: „Anna Berger · 14.08.2026“, untrennbar.

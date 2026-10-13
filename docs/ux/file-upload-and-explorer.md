@@ -481,7 +481,13 @@ controls, last in the rail), which described one history in two places.
   Freigabe“ when it is the reader's; „ein Teammitglied“ only when the name is
   unknown); and which Fassung Piloti answers from, in one sentence. When that is
   an older one, the sentence names it by number („Piloti antwortet weiter aus
-  Fassung 1.“), so the header and the rows cannot contradict each other. A
+  Fassung 1.“), so the header and the rows cannot contradict each other.
+  Published is not answerable until read: while a person's re-upload is read,
+  or after its reading failed, the previous upload keeps „aktuell“ and the
+  sentence names it, because the knowledge layer retires the old passages only
+  once the new ones are stored. A first upload being read says „Piloti antwortet
+  daraus, sobald sie gelesen ist.“ A Piloti document's publish purges first, so
+  nothing stands in for it. A
   person's upload, born published without a review, gets no state word and no
   track; a Fassung a newer document replaced is „Ersetzt“, without a track.
   Under the header, when a decision is the reader's: „Freigeben“ and

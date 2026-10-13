@@ -197,6 +197,7 @@ export const files = {
           older: 'Piloti still answers from revision {number}.',
           newer: 'Piloti answers from the newer revision {number}; this one stays readable, also for comparing.',
           notYet: 'Piloti answers from it only once it is approved.',
+          notYetRead: 'Piloti answers from it once it has been read.',
           never: 'Piloti does not answer from it.',
         },
         /** {name} arrives with the date: “Anna Berger · 14 Aug 2026”, kept on one line. */
