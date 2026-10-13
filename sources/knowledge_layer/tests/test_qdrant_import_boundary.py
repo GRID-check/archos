@@ -1,10 +1,15 @@
-"""Only ``knowledge_layer/qdrant/`` talks to Qdrant (ADR-0104, ADR-0105).
+"""Only ``knowledge_layer/qdrant/`` talks to Qdrant, and nothing talks to Chroma (ADR-0104, ADR-0105).
 
 The scope filter is the boundary between offices' documents. It holds by
 construction only while every read goes through ``knowledge_layer.qdrant``,
 whose filters cannot be built without a scope; a second client elsewhere
 would be a read path that never asked for one. Tests may import the client to
 drive and inspect the server.
+
+Chroma is gone: Qdrant is the one vector store. The only code that may still
+read a Chroma store is the one-off migration that exports it
+(:data:`CHROMA_ALLOWED`), which carries its own dependencies; a ``chromadb``
+import anywhere else would be a second store creeping back in.
 """
 
 from __future__ import annotations
@@ -17,6 +22,16 @@ ALLOWED = REPO / "sources" / "knowledge_layer" / "src" / "qdrant"
 SEARCHED = ("src", "sources", "frontends/aiq_api/src", "scripts")
 IMPORT = re.compile(r"^\s*(from\s+qdrant_client\b|import\s+qdrant_client\b)", re.MULTILINE)
 
+#: The migration tool that exports an old Chroma store (``docs/deployment/qdrant-runbook.md``).
+CHROMA_ALLOWED = ("deploy/migration",)
+#: Trees that are not this repo's code.
+NOT_OURS = frozenset({".venv", "node_modules", ".git", ".claude", ".agents"})
+CHROMA_IMPORT = re.compile(
+    r"^\s*(from\s+(chromadb|llama_index\.vector_stores\.chroma)\b"
+    r"|import\s+(chromadb|llama_index\.vector_stores\.chroma)\b)",
+    re.MULTILINE,
+)
+
 
 def _offenders() -> list[str]:
     offenders: list[str] = []
@@ -26,6 +41,17 @@ def _offenders() -> list[str]:
                 continue
             if IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
                 offenders.append(str(path.relative_to(REPO)))
+    return offenders
+
+
+def _chroma_importers() -> list[str]:
+    offenders: list[str] = []
+    for path in REPO.rglob("*.py"):
+        relative = path.relative_to(REPO)
+        if NOT_OURS & set(relative.parts) or str(relative).startswith(CHROMA_ALLOWED):
+            continue
+        if CHROMA_IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
+            offenders.append(str(relative))
     return offenders
 
 
@@ -41,3 +67,19 @@ def test_the_boundary_check_would_see_an_offender():
         assert "scripts/_planted_qdrant_import_check.py" in _offenders()
     finally:
         planted.unlink()
+
+
+def test_nothing_but_the_migration_imports_chromadb():
+    assert _chroma_importers() == []
+
+
+def test_the_chroma_check_sees_an_offender_in_code_and_tests_alike():
+    planted = [REPO / "src" / "_planted_chroma_check.py", REPO / "tests" / "_planted_chroma_check.py"]
+    planted[0].write_text("import chromadb\n", encoding="utf-8")
+    planted[1].write_text("from llama_index.vector_stores.chroma import ChromaVectorStore\n", encoding="utf-8")
+    try:
+        found = _chroma_importers()
+        assert "src/_planted_chroma_check.py" in found and "tests/_planted_chroma_check.py" in found
+    finally:
+        for path in planted:
+            path.unlink()
