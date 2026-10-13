@@ -172,6 +172,10 @@ export const research: typeof en.research = {
     statusIngesting: 'Wird gelesen',
     statusAvailable: 'Verfügbar',
     statusError: 'Fehler',
+    // Von der Inhaltsprüfung zurückgehalten (ADR-0086); nie „freigeben“.
+    statusHeld: 'Zurückgehalten',
+    // Gespeichert, nie gelesen: Piloti kann daraus nicht antworten, nichts ist fehlgeschlagen.
+    statusStored: 'Abgelegt',
     statusDeleting: 'Wird gelöscht...',
     expiryPending: 'Löschung ausstehend – erneut hochladen',
     expiresIn: 'Läuft in {minutes} Min. ab',

@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { ShimmerText } from '@/components/ui/shimmer-text'
-import { AlertCircle, Check, ChevronDown, RotateCcw, X } from 'lucide-react'
+import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, X } from 'lucide-react'
 import type { TrackedFile } from '../types'
 import {
   isDeterminate,
@@ -15,6 +15,8 @@ import {
 import { useElapsedSeconds, useTransferRate } from '../hooks/use-transfer-rate'
 import { extChipTint, fileExtensionLabel } from '../document-kind'
 import { IngestFailureNotice } from './ingest-failure-notice'
+import { QuarantineFindings } from './quarantine-findings'
+import { parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { failedWhileReading } from '../lib/ingest-failure'
 import { Button } from '@/components/ui/button'
 import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken } from '@/components/motion'
@@ -54,15 +56,26 @@ interface UploadTrayProps {
 }
 
 /** Phases that belong on a live upload surface. */
-const VISIBLE_PHASES = new Set<UploadPhase>(['queued', 'uploading', 'processing', 'ready', 'failed', 'canceled'])
+const VISIBLE_PHASES = new Set<UploadPhase>([
+  'queued',
+  'uploading',
+  'processing',
+  'ready',
+  'held',
+  'stored',
+  'failed',
+  'canceled',
+])
 
 /**
  * How long a wholly successful batch keeps its summary before retiring itself.
  *
  * Success should be confirmed and then get out of the way; a panel announcing
  * "12 documents added" an hour later is clutter the user has to clear by hand.
- * A batch with anything failed or canceled in it never auto-retires — those
- * rows carry an action, and dismissing an unread failure would lose it.
+ * A batch with anything failed, held or canceled in it never auto-retires —
+ * those rows carry an action or a reason, and dismissing one unread would lose
+ * it. A held file in particular says why it was held, and the uploader is the
+ * one person who can ask for it to be let through.
  */
 const SUCCESS_LINGER_MS = 6_000
 
@@ -108,7 +121,8 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
    */
   const [isHeld, setIsHeld] = useState(false)
 
-  const isQuietSuccess = summary.isSettled && summary.failed === 0 && summary.canceled === 0
+  const isQuietSuccess =
+    summary.isSettled && summary.failed === 0 && summary.held === 0 && summary.canceled === 0
   useEffect(() => {
     if (!isQuietSuccess || !dismissAll || isHeld) return
     const timer = setTimeout(dismissAll, SUCCESS_LINGER_MS)
@@ -119,6 +133,9 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
    * Recovery for the whole batch at once. Three of twelve failing is the common
    * shape of an upload problem (a flaky link, a backend blip), and clearing it
    * one row at a time is work the interface can do on the user's behalf.
+   *
+   * Failed rows only. A held row is not a failure: the server refuses a
+   * re-upload onto it, so retrying it would turn a reason into a 409.
    */
   const retryAll = useMemo(() => {
     const failed = visible.filter((file) => uploadPhase(file) === 'failed')
@@ -272,17 +289,32 @@ function TrayGlyph({ summary }: { summary: TransferSummary }) {
   if (summary.isSettled) {
     // Any failure at all takes the mark, even alongside successes. A green
     // check over "1 added · 1 failed" is the glyph contradicting the sentence
-    // beside it, and the glyph is what gets read at a glance.
+    // beside it, and the glyph is what gets read at a glance. A held file
+    // takes it next, in the warning colour: nothing failed, but the batch is
+    // not done either while somebody has to look at one of its files.
     const hasFailure = summary.failed > 0
+    const hasHeld = !hasFailure && summary.held > 0
     return (
       <span
         aria-hidden
+        data-testid="upload-tray-glyph"
+        data-tone={hasFailure ? 'destructive' : hasHeld ? 'warning' : 'success'}
         className={cn(
           'flex size-5 shrink-0 items-center justify-center rounded-full',
-          hasFailure ? 'bg-destructive/10 text-destructive' : 'bg-success-subtle text-success'
+          hasFailure
+            ? 'bg-destructive/10 text-destructive'
+            : hasHeld
+              ? 'bg-warning-subtle text-warning'
+              : 'bg-success-subtle text-success'
         )}
       >
-        {hasFailure ? <AlertCircle className="size-3.5" /> : <Check className="size-3.5" />}
+        {hasFailure ? (
+          <AlertCircle className="size-3.5" />
+        ) : hasHeld ? (
+          <ShieldAlert className="size-3.5" />
+        ) : (
+          <Check className="size-3.5" />
+        )}
       </span>
     )
   }
@@ -389,6 +421,9 @@ function UploadRow({
   const ext = fileExtensionLabel(file.fileName)
   const canCancel = (phase === 'uploading' || phase === 'queued') && onCancel !== undefined
   const isFailed = phase === 'failed'
+  // Held back by the content check (ADR-0086). Never retried: the server
+  // refuses a re-upload onto it, and nothing went wrong to repeat.
+  const isHeldBack = phase === 'held'
   const unchanged = file.unchanged === true && phase === 'ready'
 
   return (
@@ -435,7 +470,8 @@ function UploadRow({
             'shrink-0 text-right text-xs font-medium tabular-nums',
             phase === 'ready' && !unchanged && 'text-success',
             isFailed && 'text-destructive',
-            (unchanged || (phase !== 'ready' && !isFailed)) && 'text-muted-foreground'
+            isHeldBack && 'text-warning',
+            (unchanged || (phase !== 'ready' && !isFailed && !isHeldBack)) && 'text-muted-foreground'
           )}
           data-testid={unchanged ? 'upload-row-unchanged' : undefined}
         >
@@ -454,7 +490,7 @@ function UploadRow({
         {isFailed && (
           <RowAction label={tc('actions.retry')} onClick={() => onRetry(file.id)} icon={RotateCcw} />
         )}
-        {(phase === 'canceled' || isFailed) && onDismiss && (
+        {(phase === 'canceled' || isFailed || isHeldBack) && onDismiss && (
           <RowAction
             label={t('uploads.actions.dismiss', { name: file.fileName })}
             onClick={() => onDismiss([file.id])}
@@ -486,6 +522,19 @@ function UploadRow({
         file.errorMessage && (
           <p className="mt-1 pl-[34px] text-xs leading-snug text-destructive">{file.errorMessage}</p>
         )
+      )}
+
+      {/* Why it was held, as the Files preview and the upload summary say it.
+          No page buttons: the tray cannot show the document. The sentence
+          that explains holding back stands in only when there are no reasons
+          to list (a verdict that did not parse, or none sent). */}
+      {isHeldBack && (
+        <QuarantineFindings
+          errorMessage={file.errorMessage}
+          withoutSentence={(parseQuarantine(file.errorMessage)?.reasons.length ?? 0) > 0}
+          className="mt-1 pl-[34px]"
+          testId="upload-row-held"
+        />
       )}
     </motion.li>
   )
@@ -524,6 +573,10 @@ function phaseLabel(phase: UploadPhase, percent: number | null, t: ReturnType<ty
       return t('uploads.row.processing')
     case 'ready':
       return t('uploads.row.ready')
+    case 'held':
+      return t('uploads.row.held')
+    case 'stored':
+      return t('uploads.row.stored')
     case 'canceled':
       return t('uploads.row.canceled')
     case 'failed':
@@ -542,16 +595,24 @@ function trayHeadline(summary: TransferSummary, t: ReturnType<typeof useTranslat
       count: summary.processing,
     })
   }
-  if (summary.ready > 0 && summary.failed > 0) {
-    return t('uploads.heading.mixed', { ready: summary.ready, failed: summary.failed })
+  // A stored file was added too, it is only not read; the row says „Abgelegt“.
+  const added = summary.ready + summary.stored
+  if (added > 0 && summary.failed > 0) {
+    return t('uploads.heading.mixed', { ready: added, failed: summary.failed })
   }
   if (summary.failed > 0) {
     return t(summary.failed === 1 ? 'uploads.heading.failedOne' : 'uploads.heading.failedOther', {
       count: summary.failed,
     })
   }
-  if (summary.ready > 0) {
-    return t(summary.ready === 1 ? 'uploads.heading.doneOne' : 'uploads.heading.doneOther', { count: summary.ready })
+  if (added > 0 && summary.held > 0) {
+    return t('uploads.heading.mixedHeld', { ready: added, held: summary.held })
+  }
+  if (summary.held > 0) {
+    return t(summary.held === 1 ? 'uploads.heading.heldOne' : 'uploads.heading.heldOther', { count: summary.held })
+  }
+  if (added > 0) {
+    return t(added === 1 ? 'uploads.heading.doneOne' : 'uploads.heading.doneOther', { count: added })
   }
   return t('uploads.heading.canceled')
 }

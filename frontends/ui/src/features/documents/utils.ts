@@ -4,7 +4,8 @@
  * Shared utility functions for status mapping and other common operations.
  */
 
-import type { DocumentFileStatus } from './types'
+import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
+import type { DocumentFileStatus, TrackedFileStatus } from './types'
 import type { FileSourceStatus } from '@/features/layout/components/FileSourceCard'
 
 /**
@@ -21,28 +22,65 @@ export const mapBackendStatus = (backendStatus: string): DocumentFileStatus => {
 }
 
 /**
+ * A file the backend reports, as a tracked-file status: an ingest job's file
+ * (`file_details`) or a listed file (`FileInfo`).
+ *
+ * The backend's file vocabulary has no word for a file the content check held
+ * back (ADR-0086): the job ends it `failed` with `quarantined:{…}` as its error.
+ * Read as `failed`, the tray coloured it red and offered to retry it, and the
+ * retry was refused, because a re-upload onto a held file is a 409. So the
+ * prefix decides here, once, for every path that reads a backend file.
+ */
+export const trackedStatusOfJobFile = (jobFile: {
+  status: string
+  error_message?: string | null
+}): TrackedFileStatus => {
+  if (jobFile.status === 'failed' && jobFile.error_message?.startsWith(QUARANTINED_PREFIX)) return 'held'
+  return mapBackendStatus(jobFile.status)
+}
+
+/**
  * Map the durable-upload endpoint's document status onto a tracked-file status.
  *
  * The BFF answers with the DOCUMENT's lifecycle (`pending` / `processing` /
- * `uploaded` / `failed`), which is a different vocabulary from the tracked
- * file's. `uploaded` is the odd one: the bytes are stored but ingest handed
- * back no job, so nothing will ever poll it — it is as finished as it is going
- * to get, which is what `success` means here and what the status badge already
- * renders it as.
+ * `uploaded` / `failed` / `quarantined`), which is a different vocabulary from
+ * the tracked file's:
+ *
+ * - `uploaded`: the bytes are stored and nothing will read them, so nothing
+ *   will ever poll it. That is `stored`, which the status badge renders as
+ *   „Abgelegt“, never as citable.
+ * - `quarantined`: a row nothing was dispatched for, waiting on a reviewer.
+ * - `unchanged`: the server already held these exact bytes as the live
+ *   document and wrote nothing. Its answer says `uploaded` only because no
+ *   dispatch happened; the document itself is whatever it was, and the tray
+ *   says „Unverändert – bereits vorhanden“ for it, so it stays `success`.
  */
-export const mapUploadResponseStatus = (status: string | null | undefined): DocumentFileStatus => {
+export const mapUploadResponseStatus = (
+  status: string | null | undefined,
+  unchanged = false
+): TrackedFileStatus => {
+  if (unchanged) return 'success'
   switch (status) {
     case 'failed':
       return 'failed'
     case 'uploaded':
-      return 'success'
+      return 'stored'
+    case 'quarantined':
+      return 'held'
     default:
       return 'ingesting'
   }
 }
 
 /**
- * Map DocumentFileStatus to FileSourceCard display status
+ * Map a tracked-file status to the FileSourceCard display status.
+ *
+ * `stored` is NOT `available`. A chat attachment at `uploaded` was stored and
+ * never read: nothing of it is in the index, and it has no passing screening
+ * verdict, so the hold of ADR-0086 (amended 2026-10-08) keeps it from every
+ * model path, the agent's byte lookup for a chat subject included. The chat
+ * cannot answer from it, so it gets the neutral „Abgelegt“, never the green
+ * „Verfügbar“. `held` has its own look: nothing failed, so not „Fehler“.
  */
 export const mapToDisplayStatus = (status: string): FileSourceStatus => {
   switch (status) {
@@ -52,8 +90,12 @@ export const mapToDisplayStatus = (status: string): FileSourceStatus => {
       return 'ingesting'
     case 'success':
       return 'available'
+    case 'stored':
+      return 'stored'
     case 'failed':
       return 'error'
+    case 'held':
+      return 'held'
     case 'deleting':
       return 'deleting'
     default:

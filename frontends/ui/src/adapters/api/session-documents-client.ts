@@ -49,7 +49,9 @@ export function sessionDocumentFileStatus(status: string): DocumentFileStatus {
   const facts = documentStatusFacts(status)
   if (facts?.phase === 'in-flight') return 'ingesting'
   // A quarantined attachment (ADR-0086) is not readable either, and saying
-  // „success" would tell the chat it can be asked about.
+  // „success" would tell the chat it can be asked about. It keeps its
+  // `quarantined:{…}` error, which the documents store reads as `held`
+  // (`trackedStatusOfJobFile`), so it is never offered a retry.
   return facts?.variant === 'destructive' || facts?.variant === 'warning' ? 'failed' : 'success'
 }
 

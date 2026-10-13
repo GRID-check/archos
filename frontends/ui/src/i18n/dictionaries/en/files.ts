@@ -27,6 +27,11 @@ export const files = {
       mixed: '{ready} added · {failed} failed',
       failedOne: '1 document could not be added',
       failedOther: '{count} documents could not be added',
+      // Held back by the content check (ADR-0086): not a failure, nothing to
+      // retry. Never "release", which collides with approving a revision.
+      heldOne: '1 document held back',
+      heldOther: '{count} documents held back',
+      mixedHeld: '{ready} added · {held} held back',
       canceled: 'Upload canceled',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files = {
       processing: 'Reading',
       ready: 'Citable',
       unchanged: 'Unchanged – already here',
+      // The content check matched; what it found is listed beneath the row.
+      held: 'Held back',
+      // Kept, never read: neither a success nor a failure (as `status.stored`).
+      stored: 'Filed',
       canceled: 'Canceled',
       failed: 'Failed',
     },
