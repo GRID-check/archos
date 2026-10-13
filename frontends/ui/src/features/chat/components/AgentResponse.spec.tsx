@@ -127,9 +127,14 @@ describe('AgentResponse', () => {
 
     test('does not list a note whose proposal was dismissed', async () => {
       serveProposal('dismissed')
+      const user = userEvent.setup()
       render(<AgentResponse content="Answer" messageId="m1" cards={[card]} />)
 
       await screen.findByTestId('proposal-status')
+      // The chip renders inside the answer's details: open them when there are
+      // any, or a wrongly counted note would hide behind the closed disclosure.
+      const trigger = screen.queryByTestId('answer-details-trigger')
+      if (trigger) await user.click(trigger)
       expect(screen.queryByText('Piloti noted')).not.toBeInTheDocument()
     })
   })

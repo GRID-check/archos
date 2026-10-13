@@ -102,7 +102,19 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
     originMessageId: input.answerMessageId,
     originCardIndex: input.answerMessageId ? (input.originCardIndex ?? null) : null,
   })
-  if (!created) return row
+  if (!created) {
+    // The card's key is (answer, card index), and the answer id comes from the
+    // request: a repeat may only get back ITS OWN first proposal. One filed for
+    // another project, conversation or kind is somebody else's, never returned.
+    if (
+      row.projectId !== input.projectId ||
+      row.originConversationId !== input.conversationId ||
+      row.kind !== typed.kind
+    ) {
+      throw new ConflictError('This card already names another proposal', { reason: 'proposal-card-taken' })
+    }
+    return row
+  }
   bestEffort('attention (created)', () =>
     onProposalCreated({
       organizationId: row.organizationId,

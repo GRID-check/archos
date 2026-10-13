@@ -136,9 +136,13 @@ export function useServerProposal<K extends ProposedChangeKind>(
     if (channelStatus === 'live') reread()
   }, [channelStatus, reread])
 
+  // `busy` reaches `live` only on the next render, so two presses in one tick
+  // would both pass it; this ref is set before the first await.
+  const inFlight = useRef(false)
   const decide = useCallback(
     async (action: 'apply' | 'dismiss', body?: ApplyProposalRequest): Promise<void> => {
-      if (live.current.busy) return
+      if (inFlight.current || live.current.busy) return
+      inFlight.current = true
       setProblem(null)
       setBusy({ action, withBody: body !== undefined })
       try {
@@ -165,6 +169,7 @@ export function useServerProposal<K extends ProposedChangeKind>(
           () => setProblem('load')
         )
       } finally {
+        inFlight.current = false
         setBusy(null)
       }
     },

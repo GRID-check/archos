@@ -221,6 +221,12 @@ inserts nothing and returns the FIRST proposal as it stands, which means its id
 and its current status, decided or not. It tells nobody again: the inbox item
 is made once. A proposal made outside an answer needs no index and has none.
 
+Only the request's OWN first proposal comes back. The answer id arrives in the
+request, so a first row filed for another project, conversation or kind under
+the same key is refused with 409 `proposal-card-taken` rather than returned:
+a body naming somebody else's answer learns nothing of their proposal, and a
+card whose position shifted never adopts a proposal of another kind.
+
 The index is the card's position in the registry, so a card that is registered
 and not taken back keeps every later card's index stable. That is why a file
 operation the server did not store stays in the registry (below).
