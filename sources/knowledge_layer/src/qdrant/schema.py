@@ -29,6 +29,8 @@ from typing import Any
 from qdrant_client import QdrantClient
 from qdrant_client import models
 
+from aiq_agent.knowledge.base import READING_ORDER
+
 from .config import replication_factor
 from .config import shard_number
 
@@ -75,9 +77,14 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "tags",
     "topics",
 )
+#: Payload field holding a chunk's place in document order (the seam's
+#: ``READING_ORDER``): derived at write time from ``page_label``, never read
+#: from the chunk's metadata, and what a structural fetch orders by.
+READING_ORDER_FIELD = READING_ORDER
+
 #: Fields stored and filtered as integers. The Punkt chunker writes
 #: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
-INTEGER_FIELDS: tuple[str, ...] = ("punkt_depth", "section_order")
+INTEGER_FIELDS: tuple[str, ...] = ("punkt_depth", "section_order", READING_ORDER_FIELD)
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 
@@ -205,8 +212,8 @@ def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int,
         except Exception:
             if not _alias_exists(client, alias):
                 raise
-    stored = client.get_collection(alias).config.metadata
-    mismatch = identity_mismatch(stored, identity)
+    info = client.get_collection(alias)
+    mismatch = identity_mismatch(info.config.metadata, identity)
     if mismatch:
         raise RuntimeError(f"{alias}: {mismatch}")
     ensure_payload_indexes(client, alias)

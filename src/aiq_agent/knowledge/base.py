@@ -31,6 +31,29 @@ logger = logging.getLogger(__name__)
 # base/project corpora (e.g. "oib_knowledge") are persistent and never auto-deleted.
 SESSION_COLLECTION_PREFIX = "s_"
 
+#: The order a structural fetch (:meth:`BaseRetriever.fetch`) can ask for: the
+#: page a chunk starts on, as an integer, ``0`` when it has none. It is the
+#: leading term of every document order a reader sorts by (``read_passage``'s
+#: ``_punkt_sort_key`` starts with ``Chunk.page_number or 0``), so a fetch that
+#: keeps the first N chunks in this order, and never splits a tie, hands that
+#: reader exactly the chunks its own finer sort would have kept.
+READING_ORDER = "reading_order"
+
+
+def reading_order(page_label: Any) -> int:
+    """A chunk's :data:`READING_ORDER` from its stored ``page_label``.
+
+    The same parse the adapter's ``normalize`` makes for ``Chunk.page_number``
+    (``int(page_label)``, nothing when that fails or is below 1, which a
+    ``Chunk`` cannot carry), then ``or 0``. A worksheet name, a missing label
+    and page 0 all read as 0.
+    """
+    try:
+        page = int(page_label)
+    except (TypeError, ValueError):
+        return 0
+    return page if page >= 1 else 0
+
 
 @dataclass
 class PreparedIngestJob:
@@ -263,6 +286,32 @@ class BaseRetriever(ABC):
         caller re-checks every chunk with the same string. Case-insensitivity,
         spelling variants and word boundaries are the CALLER's, expressed in
         the pattern (``(?i)``, alternation, ``\\b``); a backend matches it as given.
+        """
+        return None
+
+    async def fetch(
+        self,
+        collection_name: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        order_by: str | None = None,
+    ) -> list[Chunk] | None:
+        """The chunks of ``collection_name`` that ``filters`` admits, read by filter alone.
+
+        A structural read: no query, no embedding, no ranking. What a locator
+        needs when the filter has already decided which chunks exist (a named
+        Punkt, a page, a document's outline). Every returned chunk matches, so
+        each carries score 1.0, as :meth:`find_text`'s do.
+
+        At most ``limit`` chunks in the store's own order, or, with
+        ``order_by=READING_ORDER``, the first ``limit`` in that order plus
+        every chunk tied with the last of them: a tie is never split, so a
+        caller that re-sorts by a finer key starting with :data:`READING_ORDER`
+        keeps exactly what it would have kept from the whole set.
+
+        ``None`` means the backend cannot read by filter, never "nothing
+        matched": the caller then takes its old path (``retrieve``). A store
+        error raises.
         """
         return None
 
