@@ -311,6 +311,8 @@ jobs:
         run: task be:test:ci
       - name: aiq_api plugin suite
         run: task be:test:api:ci
+        env:
+          AIQ_QDRANT_TEST_URL: http://localhost:6333
       - name: sources/ package suites
         run: task be:test:sources
         env:
