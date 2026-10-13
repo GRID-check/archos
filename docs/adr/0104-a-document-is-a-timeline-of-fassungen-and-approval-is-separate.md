@@ -1,5 +1,5 @@
 ---
-status: proposed
+status: accepted
 date: 2026-10-13
 decision-makers: Grid engineering, on the product owner's delegation (2026-10-13)
 consulted: product owner
