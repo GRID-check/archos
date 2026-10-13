@@ -194,6 +194,70 @@ describe.skipIf(!url)('document versions under concurrency', () => {
     expect(rows.map((row) => row.state)).toEqual(['superseded', 'published'])
   })
 
+  const roundsOf = (versionId: string) =>
+    inTenant(async () =>
+      Array.from(
+        await db.execute<{ outcome: string; requested_by: string; decided_by: string | null; comment: string | null }>(sql`
+          SELECT outcome, requested_by, decided_by, comment FROM document_version_reviews
+          WHERE version_id = ${versionId}::uuid ORDER BY created_at
+        `),
+      ),
+    )
+
+  /*
+   * A review round is written in the transaction that swaps the version's
+   * state (migration 0136, ADR-0104). A submit opens one; a decision closes
+   * it; a lost swap writes nothing.
+   */
+  it('opens a round on submit and decides it on the review, in the swap\'s transaction', async () => {
+    const doc = await seedDocument()
+    const draft = await inTenant(() =>
+      repo.insertDocumentVersion({ ...baseVersion(doc.id, `${doc.storageKey}.r1`), state: 'draft' }),
+    )
+    const submit = { state: 'in_review' as const, submittedBy: 'user_author', submittedByActor: 'agent' as const, submittedAt: new Date() }
+    await inTenant(() =>
+      repo.compareAndSwapVersionState(draft.id, ORG, 'draft', submit, {
+        kind: 'open',
+        requestedBy: 'user_author',
+        requestedByActor: 'agent',
+        reviewerUserIds: ['user_reviewer'],
+      }),
+    )
+    expect(await roundsOf(draft.id)).toEqual([
+      { outcome: 'requested', requested_by: 'user_author', decided_by: null, comment: null },
+    ])
+
+    const refuse = { state: 'changes_requested' as const, reviewedBy: 'user_reviewer', reviewedAt: new Date(), reviewComment: 'Maße prüfen' }
+    const decide = { kind: 'decide' as const, outcome: 'changes_requested' as const, decidedBy: 'user_reviewer', comment: 'Maße prüfen' }
+    const outcomes = await Promise.all([
+      inTenant(() => repo.compareAndSwapVersionState(draft.id, ORG, 'in_review', refuse, decide)),
+      inTenant(() => repo.compareAndSwapVersionState(draft.id, ORG, 'in_review', refuse, decide)),
+    ])
+
+    // One winner; the loser's swap and its round write rolled back together.
+    expect(outcomes.filter((outcome) => outcome === null)).toHaveLength(1)
+    expect(await roundsOf(draft.id)).toEqual([
+      { outcome: 'changes_requested', requested_by: 'user_author', decided_by: 'user_reviewer', comment: 'Maße prüfen' },
+    ])
+  })
+
+  it('refuses a refusal round without its comment', async () => {
+    const doc = await seedDocument()
+    const version = await inTenant(() =>
+      repo.insertDocumentVersion({ ...baseVersion(doc.id, `${doc.storageKey}.r2`), state: 'draft' }),
+    )
+    const refusal = inTenant(() =>
+      db.execute(sql`
+        INSERT INTO document_version_reviews
+          (organization_id, document_id, version_id, requested_by, requested_by_actor, requested_at,
+           outcome, decided_by, decided_at)
+        VALUES (${ORG}, ${doc.id}::uuid, ${version.id}::uuid, ${USER}, 'human', now(),
+                'rejected', ${USER}, now())
+      `),
+    )
+    await expect(refusal).rejects.toThrow()
+  })
+
   it('lets exactly one of two writers holding the same If-Match win the content swap', async () => {
     const doc = await seedDocument()
     await inTenant(() => repo.insertPublishedVersion(published(doc.id, doc.storageKey)))

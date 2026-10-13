@@ -478,6 +478,21 @@ describe('transitionDocumentVersion — guards', () => {
       'org_1',
       'in_review',
       expect.objectContaining({ state: 'approved', approvedBy: session.userId }),
+      // The open round is decided in the same transaction (migration 0136).
+      { kind: 'decide', outcome: 'approved', decidedBy: session.userId, comment: null },
+    )
+  })
+
+  it('records a request for changes on the round, with its comment', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(version())
+    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'changes_requested' }))
+    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'request_changes', { comment: ' Maße prüfen ' })
+    expect(compareAndSwapVersionState).toHaveBeenCalledWith(
+      'ver_1',
+      'org_1',
+      'in_review',
+      expect.objectContaining({ state: 'changes_requested' }),
+      { kind: 'decide', outcome: 'changes_requested', decidedBy: session.userId, comment: 'Maße prüfen' },
     )
   })
 })
@@ -631,6 +646,8 @@ describe('transitionDocumentVersion — effects', () => {
       'org_1',
       'draft',
       expect.objectContaining({ submittedBy: session.userId, submittedByActor: 'agent' }),
+      // A submit opens a round, naming the hand and the reviewers it went to.
+      expect.objectContaining({ kind: 'open', requestedBy: session.userId, requestedByActor: 'agent' }),
     )
   })
 

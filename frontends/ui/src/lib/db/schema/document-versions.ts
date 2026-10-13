@@ -261,3 +261,59 @@ export const documentVersionsRelations = relations(documentVersions, ({ one }) =
 
 export type DocumentVersion = typeof documentVersions.$inferSelect
 export type NewDocumentVersion = typeof documentVersions.$inferInsert
+
+/** What a review round came to (migration 0136). `requested` while it is open. */
+export const DOCUMENT_REVIEW_OUTCOMES = ['requested', 'approved', 'changes_requested', 'rejected'] as const
+export type DocumentReviewOutcome = (typeof DOCUMENT_REVIEW_OUTCOMES)[number]
+
+/**
+ * One review round on one version (migration 0136, ADR-0104).
+ *
+ * Written in the transaction that moves the version's state
+ * (`compareAndSwapVersionState`): a submit opens a round, an approval, a
+ * request for changes or a rejection decides the open one. Nothing reads it
+ * yet; the version's own columns stay authoritative until the readers move.
+ * At most one round per version is open (`uniq_document_version_reviews_open_per_version`).
+ */
+export const documentVersionReviews = pgTable(
+  'document_version_reviews',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    organizationId: text('organization_id').notNull(),
+    documentId: uuid('document_id').notNull(),
+    versionId: uuid('version_id').notNull(),
+    requestedBy: text('requested_by').notNull(),
+    requestedByActor: text('requested_by_actor').$type<DocumentSubmitActor>().notNull(),
+    requestedAt: timestamp('requested_at', { withTimezone: true }).notNull(),
+    reviewerUserIds: text('reviewer_user_ids').array().notNull().default(sql`'{}'`),
+    outcome: text('outcome').$type<DocumentReviewOutcome>().notNull().default('requested'),
+    decidedBy: text('decided_by'),
+    decidedAt: timestamp('decided_at', { withTimezone: true }),
+    comment: text('comment'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => ({
+    versionFk: foreignKey({
+      name: 'document_version_reviews_version_fkey',
+      columns: [table.versionId, table.documentId],
+      foreignColumns: [documentVersions.id, documentVersions.documentId],
+    }).onDelete('cascade'),
+    documentIdx: index('idx_document_version_reviews_document').on(table.organizationId, table.documentId),
+    actorKnown: check('document_version_reviews_actor_known', sql`${table.requestedByActor} IN ('human', 'agent')`),
+    outcomeKnown: check(
+      'document_version_reviews_outcome_known',
+      sql`${table.outcome} IN (${sql.raw(DOCUMENT_REVIEW_OUTCOMES.map((outcome) => `'${outcome}'`).join(', '))})`
+    ),
+    decisionComplete: check(
+      'document_version_reviews_decision_complete',
+      sql`(${table.outcome} = 'requested') = (${table.decidedBy} IS NULL AND ${table.decidedAt} IS NULL)`
+    ),
+    refusalHasComment: check(
+      'document_version_reviews_refusal_has_comment',
+      sql`${table.outcome} NOT IN ('changes_requested', 'rejected') OR ${table.comment} IS NOT NULL`
+    ),
+  })
+)
+
+export type DocumentVersionReview = typeof documentVersionReviews.$inferSelect
+export type NewDocumentVersionReview = typeof documentVersionReviews.$inferInsert
