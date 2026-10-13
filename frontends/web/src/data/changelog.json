@@ -45,6 +45,10 @@
             {
               "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
               "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+            },
+            {
+              "en": "Reviewers can now allow or delete a held file right from its preview, at the page where the content check found it. Every page with a finding is listed, not just the first ten.",
+              "de": "Sie können eine zurückgehaltene Datei jetzt direkt in der Vorschau auf der Seite freigeben oder löschen, auf der die Inhaltsprüfung sie gefunden hat. Alle Seiten mit einem Fund werden aufgelistet, nicht nur die ersten zehn."
             }
           ]
         },
@@ -105,12 +109,24 @@
               "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
             },
             {
+              "en": "A file that cannot be read for a lasting reason, such as an encrypted or empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only once its bytes change or Piloti's reader improves. A failure of the moment, like a timeout, can still be retried right away.",
+              "de": "Eine Datei, die aus einem dauerhaften Grund nicht gelesen werden kann, etwa ein verschlüsseltes oder leeres PDF, wird bei „Erneut lesen“ oder einem erneuten Scan nicht jedes Mal erneut gelesen, sondern erst, wenn sich ihre Bytes ändern oder sich die Lesefunktion von Piloti verbessert. Ein vorübergehender Fehler wie ein Timeout lässt sich weiterhin sofort erneut versuchen."
+            },
+            {
               "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
               "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
             },
             {
               "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
               "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
+            {
+              "en": "A file the content check held back is now called „Zurückgehalten“ on its badge and in the upload summary, the same word the upload panel, the folder overview and the chat use.",
+              "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, heißt nun auf ihrem Badge und in der Upload-Zusammenfassung „Zurückgehalten“ – genau wie im Upload-Bereich, in der Ordnerübersicht und im Chat."
+            },
+            {
+              "en": "The upload panel and the chat now show a file the content check held back as held for review, with what was found, instead of as failed, and no longer offer to retry it. A file that was kept but not read is shown as filed rather than citable.",
+              "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
             },
             {
               "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
@@ -123,6 +139,30 @@
             {
               "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
               "de": "Nach einer kurzen Störung auf unserer Seite werden gerade eingelesene Dokumente nun selbstständig weiterverarbeitet, und Antworten stocken nicht mehr, während Piloti Ihre Dateien durchsucht."
+            },
+            {
+              "en": "The upload panel no longer jumps or cuts off status words while a batch uploads and is read, and it folds away smoothly once everything is read. A held file can now be sent for review right from the panel.",
+              "de": "Das Upload-Panel springt nicht mehr und schneidet keine Statusangaben ab, während ein Stapel hochgeladen und eingelesen wird. Sobald alles eingelesen ist, klappt es reibungslos ein. Eine zurückgehaltene Datei lässt sich jetzt direkt aus dem Panel zur Prüfung senden."
+            },
+            {
+              "en": "Retrying a file Piloti could not read now reads it again instead of uploading it again, and a file that would fail the same way says so instead of failing once more.",
+              "de": "Wenn Sie den Vorgang für eine Datei wiederholen, die Piloti nicht lesen konnte, wird sie jetzt erneut eingelesen statt hochgeladen. Würde bei einer Datei derselbe Fehler erneut auftreten, wird dies jetzt angezeigt."
+            },
+            {
+              "en": "A file whose upload is still on its way says „Wird hochgeladen“ again instead of „Wird gelesen“.",
+              "de": "Bei einer Datei, deren Upload noch läuft, steht wieder „Wird hochgeladen“ statt „Wird gelesen“."
+            },
+            {
+              "en": "An upload refused because the file it would replace waits in the Quarantäne now says so in your language and no longer offers a retry that would be refused the same way.",
+              "de": "Die Ablehnung eines Uploads, weil die zu ersetzende Datei in der Quarantäne liegt, wird nun in Ihrer Sprache angezeigt. Ein erneuter Versuch, der aus demselben Grund abgelehnt würde, wird nicht mehr angeboten."
+            },
+            {
+              "en": "A chat attachment Piloti has not read, or has held back, no longer counts as an available source after the chat reloads its files.",
+              "de": "Ein Chat-Anhang, den Piloti nicht gelesen oder zurückgehalten hat, gilt nach dem erneuten Laden der Chat-Dateien nicht mehr als verfügbare Quelle."
+            },
+            {
+              "en": "A file Piloti could not start reading now says exactly that, instead of blaming a restart that never happened.",
+              "de": "Wenn Piloti das Lesen einer Datei nicht starten konnte, wird jetzt genau das angezeigt, statt fälschlich einen Neustart als Ursache anzugeben, der nie stattgefunden hat."
             }
           ]
         }
