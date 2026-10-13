@@ -226,7 +226,13 @@ describe('POST /api/internal/proposals', () => {
 
   it('returns the first proposal for the same card of the same answer', async () => {
     vi.mocked(insertProposedChange).mockResolvedValueOnce({
-      row: { id: NEW_ID, status: 'applied' } as Partial<ProposedChangeRow> as ProposedChangeRow,
+      row: {
+        id: NEW_ID,
+        status: 'applied',
+        projectId: PROJECT,
+        originConversationId: 'conv_1',
+        kind: 'file_operation',
+      } as Partial<ProposedChangeRow> as ProposedChangeRow,
       created: false,
     })
     const response = await post({ ...MOVE, originCardIndex: 1 })

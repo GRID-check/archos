@@ -484,6 +484,14 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'task' }],
     metadata: { projectId: 'string', kind: 'string', decision: 'string', withReason: 'boolean' },
   },
+  // A running task's worker was handed a fresh signed envelope, so its tools
+  // keep acting as the requester (ADR-0108, `lib/runs/run-envelope.ts`). The
+  // actor is that requester, re-checked at that moment; the target is the run.
+  // The envelope itself is never in the trail.
+  'task.envelope_renewed': {
+    targets: [{ type: 'task' }],
+    metadata: { projectId: 'string', kind: 'string', trigger: 'string' },
+  },
   // The document lifecycle (ADR-0054). Six version transitions plus the item's
   // own archive. The actor is the person who decided — for the agent's internal
   // route that is the pinned requester, resolved from the signed envelope, never

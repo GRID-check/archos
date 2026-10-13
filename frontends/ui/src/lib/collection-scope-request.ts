@@ -118,7 +118,7 @@ export async function resolveActiveProjectId(
  * scope above, but it is not a conversation anybody checked, so it is never one
  * the BFF signs as reachable (`verifiedConversationId`, ADR-0084).
  */
-async function authorizeConversationScope(
+export async function authorizeConversationScope(
   session: AuthorizedSession,
   conversationId: string
 ): Promise<boolean> {

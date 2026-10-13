@@ -90,6 +90,8 @@ import { listArchivFolders } from '@/lib/archiv/folder-service'
 import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { requireMayRememberFrom } from '@/lib/conversations/cross-project-use'
+import { findConversationInOrg } from '@/lib/conversations/repository'
+import type { Conversation } from '@/lib/db/schema'
 import { requireMayLeaveConversation } from '@/lib/conversations/restricted-egress'
 import type { ProjectMemoryItem } from '@/lib/db/schema'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
@@ -991,13 +993,27 @@ describe('createProposal — every kind, once per card', () => {
   })
 
   it('returns the first proposal for the same card, as it stands, and tells the inbox nothing again', async () => {
+    vi.mocked(findConversationInOrg).mockResolvedValue({ id: CONVERSATION } as Partial<Conversation> as Conversation)
     const first = row({ status: 'dismissed', decidedBy: 'user_2', decidedAt: new Date(), originCardIndex: 0 })
     vi.mocked(insertProposedChange).mockResolvedValue({ row: first, created: false })
 
     await expect(
-      create({ answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
+      create({ conversationId: CONVERSATION, answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
     ).resolves.toMatchObject({ id: ID, status: 'dismissed' })
     await new Promise((resolve) => setTimeout(resolve, 0))
     expect(onProposalCreated).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['another project', { projectId: 'project-other' }],
+    ['another conversation', { originConversationId: 'conversation-other' }],
+    ['another kind', { kind: 'memory' as const, payload: NOTE }],
+  ])('never hands back a first proposal filed for %s under the same card', async (_, foreign) => {
+    vi.mocked(findConversationInOrg).mockResolvedValue({ id: CONVERSATION } as Partial<Conversation> as Conversation)
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: row({ originCardIndex: 0, ...foreign }), created: false })
+
+    await expect(
+      create({ conversationId: CONVERSATION, answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
+    ).rejects.toMatchObject({ details: { reason: 'proposal-card-taken' } })
   })
 })

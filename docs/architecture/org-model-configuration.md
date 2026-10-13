@@ -108,7 +108,7 @@ determine what a turn costs and how good it is.
 | Org override | yes, per group, wins | no; the org sets only where a chat's dial starts |
 | Per chat | no | **yes**: the composer's Aufwand dial, chat answer only |
 | Validated against | the live OpenRouter catalog | a closed vocabulary we own |
-| Reaches the backend via | the signed `X-Grid-Request-Context` envelope's `modelOverrides`; the `x-grid-model-overrides` header only when no envelope arrived (a job worker); else the org-id fallback | `GET /api/internal/reasoning-efforts`, TTL-cached |
+| Reaches the backend via | the signed `X-Grid-Request-Context` envelope's `modelOverrides`; the `x-grid-model-overrides` header only when no envelope arrived (a job worker run that carries none; one that carries the requester's envelope reads it like a chat turn, ADR-0108); else the org-id fallback | `GET /api/internal/reasoning-efforts`, TTL-cached |
 | Falls back to | the YAML `model_name` | the YAML `reasoning_effort` for that role |
 
 ### The Aufwand dial (per chat)

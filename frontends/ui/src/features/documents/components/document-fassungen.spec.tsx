@@ -79,7 +79,7 @@ const fileFixture = (overrides: Partial<FileItem> = {}): FileItem => ({
   displayName: null,
   fileSize: 1024,
   contentType: 'application/pdf',
-  status: 'ready',
+  status: 'completed',
   folderId: null,
   createdAt: '2026-08-14T00:00:00.000Z',
   errorMessage: null,
@@ -284,6 +284,31 @@ describe('DocumentFassungen — the header says where the newest Fassung stands'
     // The state is the header's; the newest row does not say it again.
     expect(rows[0]).not.toHaveTextContent('In Prüfung')
     expect(screen.getByTestId('document-fassungen')).not.toHaveTextContent('Diese Fassung')
+  })
+
+  it('keeps naming the previous upload while a re-upload is still being read, and marks that one current', async () => {
+    const upload = { approvedBy: 'user_author', publishedBy: 'user_author' }
+    await renderOpen({
+      viewer: viewOnly,
+      file: fileFixture({ status: 'processing', authoredBy: 'user' }),
+      client: clientOf([makeVersion(1, 'superseded', upload), makeVersion(2, 'published', upload)]),
+    })
+
+    const header = await screen.findByTestId('fassung-header')
+    expect(within(header).getByTestId('fassung-answer')).toHaveTextContent('Piloti antwortet weiter aus Fassung 1.')
+    const rows = screen.getAllByTestId('fassung-timeline-row')
+    expect(within(rows[0]).queryByTestId('fassung-row-current')).toBeNull()
+    expect(within(rows[1]).getByTestId('fassung-row-current')).toHaveTextContent('aktuell')
+  })
+
+  it('says a first upload answers once it has been read', async () => {
+    renderSection({
+      viewer: viewOnly,
+      file: fileFixture({ status: 'processing' }),
+      client: clientOf([makeVersion(1, 'published', { approvedBy: 'user_author', publishedBy: 'user_author' })]),
+    })
+
+    expect(await screen.findByTestId('fassung-answer')).toHaveTextContent('Piloti antwortet daraus, sobald sie gelesen ist.')
   })
 
   it('does not point at a published Fassung when there is none', async () => {
