@@ -181,6 +181,7 @@ full-text index.
 | `content_type`, `chunking` | keyword | text / table / image / drawing; punkt / section / page |
 | `evidence` | bool | Replaces `chunking != page` and the YAML change-log list |
 | `page`, `page_end`, `section_order` | integer | Locators; `section_order` is `is_principal` for ordered reads |
+| `reading_order` | integer | The page a chunk starts on, 0 when it has none; derived at write time, what a structural fetch orders by (§6) |
 | `richtlinie`, `punkt_id`, `punkt_path`, `punkt_depth` | keyword / integer | Corpus structure (corpus only) |
 | `country`, `edition` | keyword | Corpus profile and OIB edition |
 | `file_name`, `title` | keyword, `text` | Display, plus the title-contains filter |
@@ -284,9 +285,21 @@ matching with `ascii_folding` covers its real queries (gate G1b). If it does
 not, exact mode keeps reading the Postgres mirror, and the mirror stays for
 that one job.
 
-**`read_passage` and the family overview.** `scroll(filter: richtlinie = R,
-punkt_path prefix P, order_by: section_order)`. No embedding is involved, which
-saves the measured 0.6 s first read per process.
+**`read_passage` and the family overview.** `scroll(filter: file_name = F and
+the Punkt, page or outline clause, order_by: reading_order)`. No embedding and
+no ranking. Built: `BaseRetriever.fetch`, `qdrant/reads.py`.
+
+The order exists for the cut only. The reader sorts what it gets by page, then
+Punkt number, then section, line and part, so no single integer can carry its
+order, and none needs to: `reading_order` is the leading term of that sort
+(the start page, as `Chunk.page_number or 0` reads it), and a cut in it that
+never splits a tie keeps exactly the chunks the reader's own sort would have
+kept from the whole set. The fetch reads the first N by `reading_order` and
+then the rest of the last one's tie group. A point written before the field
+existed has no value and `order_by` would skip it, so a set holding one (or a
+collection without the index) is ordered client-side from `page_label`, which
+the field is derived from. `ensure_collection` adds the missing index on the
+next write; the backfill rewrites the payloads.
 
 **Listing and facets.** `facet(key: doc_class | project_id | tags, filter:
 scope)` returns the counts. The file list itself stays a Postgres read, because
@@ -504,6 +517,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
+| Structural reads by filter: `read_passage` (Punkt, page, outline, the whole-document fallback) and the family overview scroll by filter, ordered by `reading_order`, with no embedding and no ranking; Chroma keeps the embedded probe. `family_read` (`fetch` or `retrieve`) on the `retrieve.knowledge_search` span | `BaseRetriever.fetch`, `qdrant/reads.py`, `read_passage._structural_fetch` |
 
 ### Where slice 1 departs from the target, and why
 
@@ -521,6 +535,13 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   the slice that removes Chroma.
 * **Registry reads stay on Chroma.** File listings, text samples, visual
   details and page reads still read Chroma, which still holds everything.
+  None of them is on a chat turn's path: the text sample feeds the
+  post-ingest summary backstop, the visual details a document route, and
+  `collection_pages.read_pages` the project-close and permit backfills. None
+  embeds anything either.
+* **A located passage scores 1.00.** On Chroma its `Relevance Score:` is the
+  cosine to the probe label, which measured nothing; a structural fetch has no
+  query, so every chunk it returns matches, as `find_text`'s do.
 * **Post-filters stay.** `doc_class`, title, folder and tag filters in
   `register.py` and the BFF still run after retrieval; the facts are now on the
   points, so pushing them into the search is a change to the callers, not to

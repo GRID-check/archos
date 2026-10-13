@@ -20,10 +20,13 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from aiq_agent.knowledge.base import reading_order
+
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
 from .schema import INTEGER_FIELDS
 from .schema import KEYWORD_FIELDS
+from .schema import READING_ORDER_FIELD
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 
@@ -105,7 +108,12 @@ def document_facts(document: Any | None) -> dict[str, Any]:
 
 
 def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """The payload for one chunk; ``scope``, ``text`` and ``chunk_id`` always win."""
+    """The payload for one chunk; ``scope``, ``text``, ``chunk_id`` and ``reading_order`` always win.
+
+    ``reading_order`` is derived from the STORED ``page_label`` (a string by
+    then), the value a reader's ``Chunk.page_number`` is parsed from, so the
+    order a fetch sorts by and the order its reader re-sorts by agree.
+    """
     payload: dict[str, Any] = {
         key: value for key, value in (record.metadata or {}).items() if key not in LLAMA_INTERNAL_KEYS
     }
@@ -118,6 +126,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
     typed[SCOPE_FIELD] = scope
     typed[TEXT_FIELD] = record.text or ""
     typed[CHUNK_ID_FIELD] = str(record.chunk_id)
+    typed[READING_ORDER_FIELD] = reading_order(typed.get("page_label"))
     return typed
 
 
@@ -125,7 +134,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: chunk read from Qdrant carries exactly the metadata it carried from Chroma;
 #: the facts themselves are read from the metadata store, their authority.
 MIRROR_ONLY_FIELDS = frozenset(
-    {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, "office_id", "project_id", "grid_document_id"}
+    {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD, "office_id", "project_id", "grid_document_id"}
     | {"folder_path", "tags", "topics", "superseded"}
 )
 

@@ -6060,6 +6060,34 @@ class LlamaIndexRetriever(BaseRetriever):
         """
         return await asyncio.to_thread(self._find_text_sync, collection_name, pattern, filters, limit)
 
+    async def fetch(
+        self,
+        collection_name: str,
+        filters: dict[str, Any] | None,
+        limit: int,
+        order_by: str | None = None,
+    ) -> list[Chunk] | None:
+        """The chunks ``filters`` admits, by scroll, under ``AIQ_VECTOR_BACKEND=qdrant``; ``None`` on Chroma.
+
+        No embedding and no lazy adapter start-up: nothing here needs the
+        embedder (``qdrant/reads.py``). Chroma keeps the caller's old path.
+        """
+        from ..qdrant.config import reads_qdrant
+
+        if not reads_qdrant():
+            return None
+        return await asyncio.to_thread(self._fetch_sync, collection_name, filters, limit, order_by)
+
+    def _fetch_sync(
+        self, collection_name: str, filters: dict[str, Any] | None, limit: int, order_by: str | None
+    ) -> list[Chunk]:
+        from ..qdrant import reads as qdrant_reads
+
+        chunks = [self._chunk_from_hit(hit) for hit in qdrant_reads.fetch(collection_name, filters, limit, order_by)]
+        for rank, chunk in enumerate(chunks):
+            chunk.retrieval_rank = rank
+        return chunks
+
     def _find_text_sync(
         self, collection_name: str, pattern: str, filters: dict[str, Any] | None, limit: int
     ) -> list[Chunk]:

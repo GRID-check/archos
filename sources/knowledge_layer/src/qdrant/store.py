@@ -63,6 +63,7 @@ class QdrantStore:
         self._ensured: set[Physical] = set()
         self._present: set[Physical] = set()
         self._verified: set[Physical] = set()
+        self._indexed: set[tuple[Physical, str]] = set()
         self._ensure_lock = threading.Lock()
 
     @staticmethod
@@ -203,6 +204,35 @@ class QdrantStore:
                     return
             if offset is None:
                 return
+
+    def scroll_ordered(
+        self, scope: str, filters: dict[str, Any] | None, order_by: str, limit: int
+    ) -> list[models.Record]:
+        """The first ``limit`` chunks of ``scope`` matching ``filters``, ascending by the integer field ``order_by``.
+
+        Qdrant skips a point that lacks the field, so a caller asks this only of
+        a set it knows carries it (``reads.fetch``).
+        """
+        if not self.exists(scope):
+            return []
+        page, _next = self.client.scroll(
+            self.alias(scope),
+            scroll_filter=scope_filter([scope], filters),
+            limit=limit,
+            order_by=models.OrderBy(key=order_by, direction=models.Direction.ASC),
+            with_payload=True,
+            with_vectors=False,
+        )
+        return list(page)
+
+    def has_index(self, scope: str, field: str) -> bool:
+        """Whether ``scope``'s collection indexes ``field``. Only "yes" is remembered: a writer may add one later."""
+        physical = physical_for_scope(scope)
+        if (physical, field) in self._indexed:
+            return True
+        present = self.client.get_collection(ALIASES[physical]).payload_schema or {}
+        self._indexed.update((physical, name) for name in present)
+        return field in present
 
     def health(self) -> bool:
         """True when the cluster answers."""
