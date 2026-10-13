@@ -117,9 +117,19 @@ config:
   # NOT protection against losing that store. `pulumi preview` warns about
   # exactly this combination on every run, and the warning is correct.
   grid-oib:seaweedfsEncryptVolumeData: "true"
-  # ── Shared Chroma ──
-  grid-oib:chromaEnabled: "true"
-  grid-oib:chromaStorageSize: 10Gi
+  # ── Vector store ──
+  # Qdrant is always deployed (ADR-0104); its three keys come from the ESC
+  # environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`, `qdrantS3SecretKey`).
+  # A single peer on staging: no cluster mode, and the volume Chroma had.
+  grid-oib:qdrantReplicas: "1"
+  grid-oib:qdrantCpu: "1"
+  grid-oib:qdrantMemory: 4Gi
+  grid-oib:qdrantStorageSize: 20Gi
+  # Copies the retired Chroma's `data-chroma-0` into Qdrant on the deploy that
+  # removes Chroma, once. Switch it off (`pulumi config rm`) once the Job's log
+  # ends in step, and before deleting the claim: docs/deployment/qdrant-runbook.md,
+  # "Migrating from Chroma on Kubernetes".
+  grid-oib:chromaMigration: "true"
   # ── Agent (smaller on staging) ──
   grid-oib:backendRequestsCpu: "500m"
   grid-oib:backendRequestsMemory: 1Gi

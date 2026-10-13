@@ -39,7 +39,6 @@ export const PORT = {
   frontend: 3000,
   /** Astro Node standalone adapter default port (`frontends/web/Dockerfile`). */
   web: 4321,
-  chroma: 8000,
   redis: 6379,
   postgres: 5432,
   seaweedS3: 8333,
@@ -213,20 +212,6 @@ export const DATA_RESOURCES = {
   },
   dragonflyRequests: { cpu: "50m", memory: "128Mi" },
   dragonflyCpuLimit: "500m", // memory limit is the `dragonflyMemoryLimit` knob
-  /**
-   * One Chroma serves every tier's reads and the whole ingest tier's writes. In
-   * the 2026-10 incident its 512Mi request reserved almost nothing on a node it
-   * shared with three ingest workers, and that node went NotReady with Chroma
-   * on it. The request now reserves half the limit, so the
-   * scheduler keeps real room for it; the limit is the headroom a reindex burst
-   * gets (the limits were live-patched on prod that night and are codified
-   * here; the request was raised with them).
-   * A change here rolls the single replica: a short outage of retrieval.
-   */
-  chroma: {
-    requests: { cpu: "1", memory: "3Gi" },
-    limits: { cpu: "4", memory: "6Gi" },
-  },
   /**
    * The single-node topology: one process doing all three jobs. Left exactly as
    * it was before ADR-0043 so that `seaweedfsTopology: single` stays a true
@@ -708,10 +693,10 @@ export const QDRANT = {
    * consistency 1, so a write is acknowledged once ONE replica holds it. The
    * other replica is durable only after Qdrant re-syncs it from the WAL
    * (`wal_delta`) when its peer returns; losing the acknowledging peer for
-   * good before that loses the write. Until the move off Chroma is done,
-   * Chroma (still the write-side record) and `scripts/backfill_qdrant.py` are
-   * the safety net behind that window. Transient write failures (connection,
-   * timeout, 5xx) are retried in the backend with backoff, never a 4xx.
+   * good before that loses the write, and nothing else holds the vectors: the
+   * document comes back by re-indexing it (a project reindex). Transient write
+   * failures (connection, timeout, 5xx) are retried in the backend with
+   * backoff, never a 4xx.
    * One peer gets the backend's own default of 1 and 1.
    */
   tenantShards: 6,
@@ -723,4 +708,56 @@ export const QDRANT = {
    * busybox `sh`, `sed` and `date`, which is all the script uses.
    */
   curlImage: "curlimages/curl:8.16.0",
+} as const;
+
+/**
+ * The one-shot move of the retired Chroma store into Qdrant (ADR-0104,
+ * `app/chroma-migration-job.ts`). Fixed parts only; whether it runs, which
+ * claim it reads and how much scratch it gets are knobs (`config.ts` →
+ * `chromaMigration`). Remove with the Job once every stack has run it.
+ */
+export const CHROMA_MIGRATION = {
+  /** Job name and `app.kubernetes.io/name` of its pod: a named caller in `allow-app-to-qdrant`. */
+  name: "chroma-migration",
+  /** The ConfigMap that carries `deploy/migration/chroma_export.py` into the pod. */
+  exporterConfigMap: "chroma-migration-exporter",
+  /**
+   * The claim the old Chroma StatefulSet left behind: its volumeClaimTemplate
+   * `data` on pod `chroma-0`, kept on delete (`whenDeleted: Retain`), so a
+   * program without Chroma deletes the StatefulSet and never the claim.
+   */
+  retainedClaim: "data-chroma-0",
+  /**
+   * Where the exporter runs. Not the Chroma server image the deployment ran
+   * (`chromadb/chroma:1.5.9`): since 1.0 that is the Rust binary on Debian with
+   * no Python in it (checked on the 1.5.9 image: entrypoint `dumb-init --
+   * chroma`, no interpreter in any layer). A pinned uv on Python 3.12 instead,
+   * and `uv run --script` installs the `chromadb` the exporter pins in its
+   * inline metadata, which must equal that server's version.
+   */
+  exporterImage: "ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim",
+  /**
+   * Exporter: installing `chromadb`, then opening a copy of the persist dir,
+   * which loads the index Chroma served, so the envelope Chroma ran with.
+   */
+  exporterResources: {
+    requests: { cpu: "1", memory: "3Gi" },
+    limits: { cpu: "4", memory: "6Gi" },
+  },
+  /** Importer: reads the export in batches and upserts it over HTTP. */
+  importerResources: {
+    requests: { cpu: "500m", memory: "1Gi" },
+    limits: { cpu: "2", memory: "4Gi" },
+  },
+  /**
+   * Long enough for an operator to read the Job's log, which is the
+   * migration's evidence, after a deploy that ran on a Friday evening.
+   */
+  ttlSecondsAfterFinished: 7 * 24 * 3600,
+  /**
+   * Retries inside the one pod (`restartPolicy: OnFailure`): a failed import
+   * reruns against the export already on the scratch volume rather than
+   * exporting again.
+   */
+  backoffLimit: 3,
 } as const;

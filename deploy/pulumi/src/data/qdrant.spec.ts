@@ -2,7 +2,7 @@ import { execFileSync } from "node:child_process";
 import { describe, it, expect, beforeAll } from "vitest";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
-import { baseStackConfig, qdrantStackConfig } from "../test-support/stack-config";
+import { baseStackConfig } from "../test-support/stack-config";
 import { snapshotScript } from "./qdrant";
 
 /**
@@ -44,7 +44,7 @@ describe("qdrant, one peer", () => {
   beforeAll(async () => {
     const { loadConfig } = await import("../config");
     const { installQdrant } = await import("./qdrant");
-    pulumi.runtime.setAllConfig({ ...baseStackConfig(), ...qdrantStackConfig(), "grid-oib:qdrantReplicas": "1" });
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), "grid-oib:qdrantReplicas": "1" });
     const qdrant = installQdrant(loadConfig(), new k8s.Provider("test", {}), "grid", "http://seaweedfs:8333");
     // Registration is asynchronous: wait for the resources themselves.
     await Promise.all([qdrant.statefulSet.id, qdrant.service.id, qdrant.snapshotCronJob.id].map(resolve));
