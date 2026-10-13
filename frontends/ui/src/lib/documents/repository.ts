@@ -2147,7 +2147,7 @@ export const FAILED_INGEST_RESCAN_STATUSES = ['failed', 'error', 'uploaded'] as 
  * not change. Kept beside the TypeScript rule rather than replacing it, because
  * a single document's retry decides on the row it already holds and a walk
  * must not fetch the rows it will not send; `retry-policy.spec.ts` states the
- * rule and `list-page.spec.ts` pins this text to it.
+ * rule and `retry-policy.integration.spec.ts` holds this SQL to it row by row.
  *
  *   - not in the failed family: the rule says nothing (`uploaded` rows of the
  *     rescan pass);

@@ -85,10 +85,16 @@ const ONE_FACT_ONE_WORD: Record<string, string[]> = {
 
   /**
    * The content check held an upload back (ADR-0086, CONTEXT.md
-   * „Zurückgehalten“): the live upload row and the chat's attachment card. The
-   * tray once said „Fehlgeschlagen“ for it and offered to retry it.
+   * „Zurückgehalten“): the document's badge, the live upload row, the folder
+   * brief's slice and the chat's attachment card. The tray once said
+   * „Fehlgeschlagen“ for it and the badge „In Quarantäne“.
    */
-  'upload: held back by the content check': ['files.uploads.row.held', 'research.fileSourceCard.statusHeld'],
+  'document: held back by the content check': [
+    'files.status.quarantined',
+    'files.uploads.row.held',
+    'files.brief.slice.held',
+    'research.fileSourceCard.statusHeld',
+  ],
 
   /**
    * The bytes are kept and nothing was read: the document's badge, the live

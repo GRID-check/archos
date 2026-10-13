@@ -81,7 +81,7 @@ export const files: typeof en.files = {
     stored: 'Abgelegt',
     // Die Inhaltsprüfung (ADR-0086) hat angeschlagen: Die Datei liegt im
     // Projekt, kein Modell hat sie gesehen, und jemand muss entscheiden.
-    quarantined: 'In Quarantäne',
+    quarantined: 'Zurückgehalten',
     unknown: 'Unbekannt',
     // Nur die eigenen Uploads des Büros: Innerhalb eines Büros wird der Reihe
     // nach gelesen, zwischen Büros fair abgewechselt (ADR-0076).

@@ -96,6 +96,25 @@ def test_a_refused_key_is_configuration():
     assert _verdict(_StatusError(401)) == ("configuration", True)
 
 
+def test_a_missing_model_or_endpoint_is_configuration_not_the_bytes():
+    """A 404 is a misnamed model or base URL: fixing it lets the same file read."""
+    assert _verdict(_StatusError(404)) == ("configuration", True)
+    assert _verdict(HTTPStatusError(404)) == ("configuration", True)
+
+
+def test_an_upstream_answer_that_fails_its_model_is_not_blamed_on_the_file():
+    """pydantic's ValidationError is a ValueError, and it is the answer's shape, not the bytes."""
+    from pydantic import BaseModel
+    from pydantic import ValidationError
+
+    class _Answer(BaseModel):
+        data: list[float]
+
+    with pytest.raises(ValidationError) as caught:
+        _Answer.model_validate({"data": "not a list"})
+    assert _verdict(caught.value) == ("unknown", True)
+
+
 def test_the_adapters_own_sentence_for_an_empty_file_is_deterministic():
     message = "No content extracted (file may be password-protected, corrupted, or empty)"
     assert (classify_failure(message).category, classify_failure(message).retryable) == ("deterministic", False)

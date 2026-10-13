@@ -577,6 +577,32 @@ backend records `failed` with „Ingestion could not be started".
 
 The collection file list is fetched at most once per collection per request.
 
+### Which failures are read again
+
+A terminal job also says *why* each file failed (`aiq_agent/knowledge/ingest_failures.py`):
+`FileProgress.failure_category` and `retryable`, and the job's `reader_version`
+(`sources/knowledge_layer/src/reader_version.py`). Step 2 writes them onto the row
+(`ingest_failure_category`, `ingest_retryable`, `ingest_reader_version`, migration 0134),
+and `lib/documents/retry-policy.ts` (`canRetry`) decides from them whether reading the
+file again can come out differently:
+
+| category | read again |
+|---|---|
+| `transient` (timeout, connection, 5xx, 429) | yes |
+| `configuration` (401/403/404, a missing vision model) | yes |
+| `deterministic` (encrypted, empty, unparsable bytes, other 4xx) | only once the bytes changed or the deployed reader is newer |
+| `quarantined` | no: a reviewer decides (ADR-0086) |
+| `unknown`, or none recorded | yes, as before the column |
+
+A refused „Erneut lesen“ answers 409 with `code: INGEST_WOULD_FAIL_AGAIN`. The bulk
+„Alle erneut lesen“ and the org rescan select with the same rule in SQL
+(`retryAllowedSql` in `repository.ts`, held to `canRetryRow` by
+`retry-policy.integration.spec.ts`), so they never send a file that would fail the same
+way. Raise `INGEST_READER_VERSION` (and its mirror `CURRENT_INGEST_READER_VERSION`) when a
+reader change could read bytes that failed before; that re-opens every `deterministic`
+failure.
+
+
 Metadata enrichment reads the listing through a 15-second cache
 (`loadCollectionFilesCached`), except in two cases that read it fresh and
 replace the cache entry:

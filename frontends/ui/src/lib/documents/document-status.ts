@@ -59,11 +59,11 @@ export interface DocumentStatusFacts {
  */
 export const DOCUMENT_STATUS_FACTS = {
   // --- Indexed: Piloti can quote it. Four spellings, one meaning. ------------
-  ready: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  ingested: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
-  success: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
+  ready: { variant: 'success', phase: 'terminal' },
+  ingested: { variant: 'success', phase: 'terminal' },
+  success: { variant: 'success', phase: 'terminal' },
   /** What `reconcile-status.ts` actually writes when ingestion finishes. */
-  completed: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
+  completed: { variant: 'success', phase: 'terminal' },
   /**
    * The schema's documented terminal success. NOTHING in this repo emits it —
    * it is declared because the column's documentation names it, and because a
@@ -71,17 +71,17 @@ export const DOCUMENT_STATUS_FACTS = {
    * fall through to a grey badge. Declaring it is not a claim that anything
    * writes it; it is the fourth disagreement, written down.
    */
-  processed: { variant: 'success', phase: 'terminal', labelKey: 'status.ready' },
+  processed: { variant: 'success', phase: 'terminal' },
 
   // --- In flight: the row will change on its own, so it gets polled. --------
-  uploading: { variant: 'info', phase: 'in-flight', labelKey: 'status.uploading' },
-  pending: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
-  processing: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
-  ingesting: { variant: 'info', phase: 'in-flight', labelKey: 'status.processing' },
+  uploading: { variant: 'info', phase: 'in-flight' },
+  pending: { variant: 'info', phase: 'in-flight' },
+  processing: { variant: 'info', phase: 'in-flight' },
+  ingesting: { variant: 'info', phase: 'in-flight' },
 
   // --- Failed: terminal, and the card says why. ----------------------------
-  failed: { variant: 'destructive', phase: 'terminal', labelKey: 'status.failed' },
-  error: { variant: 'destructive', phase: 'terminal', labelKey: 'status.failed' },
+  failed: { variant: 'destructive', phase: 'terminal' },
+  error: { variant: 'destructive', phase: 'terminal' },
 
   // --- Neither: the bytes are here and indexing was deliberately skipped. ---
   /**
@@ -96,7 +96,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * job (there is no job — the document was never dispatched to `/v1/ingest`)
    * and the card spins forever on a row that is already at rest.
    */
-  stored: { variant: 'secondary', phase: 'terminal', labelKey: 'status.stored' },
+  stored: { variant: 'secondary', phase: 'terminal' },
   /**
    * Every row's birth status, and nothing else's. The upload path inserts the
    * row as `uploaded` before dispatching, so a listing read in that millisecond
@@ -110,7 +110,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * "Ready" forever. Terminal, so nothing polls it: there is no job to ask
    * about. Retry remains possible through the re-ingest action.
    */
-  uploaded: { variant: 'secondary', phase: 'terminal', labelKey: 'status.stored' },
+  uploaded: { variant: 'secondary', phase: 'terminal' },
 
   // --- Held back: the bytes are here and a person has to decide. -----------
   /**
@@ -124,7 +124,7 @@ export const DOCUMENT_STATUS_FACTS = {
    * at rest either — it waits on a decision. The reasons are in `errorMessage`
    * as `quarantined:{json}` (`lib/upload-screening/quarantine.ts` reads them).
    */
-  quarantined: { variant: 'warning', phase: 'terminal', labelKey: 'status.quarantined' },
+  quarantined: { variant: 'warning', phase: 'terminal' },
 } as const satisfies Record<string, DocumentStatusFacts>
 
 /** The declared vocabulary as a type — `keyof`, so it cannot drift from the data. */

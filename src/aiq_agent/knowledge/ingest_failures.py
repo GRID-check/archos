@@ -212,7 +212,9 @@ def _from_status_code(exc: BaseException) -> FailureCategory | None:
         return None
     if status >= 500 or status in (408, 409, 425, 429):
         return TRANSIENT
-    if status in (401, 403):
+    if status in (401, 403, 404):
+        # 404: a misnamed model or a wrong base URL. The deployment, not the
+        # bytes: once it is fixed the same file reads.
         return CONFIGURATION
     # 400, 413, 415, 422: the request this file made is refused as it is.
     return DETERMINISTIC
@@ -232,6 +234,10 @@ def _is_parse_error(exc: BaseException) -> bool:
     """A ValueError from the splitter, a reader or the binary guard: the bytes, not the moment.
 
     A JSON decode error is a ValueError too, and it is the upstream's garbled
-    answer far more often than the file's, so it stays ``unknown``.
+    answer far more often than the file's, so it stays ``unknown``. So does
+    pydantic's ``ValidationError`` (also a ValueError): an upstream answer
+    that no longer fits its model.
     """
-    return isinstance(exc, ValueError) and not isinstance(exc, json.JSONDecodeError)
+    if not isinstance(exc, ValueError) or isinstance(exc, json.JSONDecodeError):
+        return False
+    return "ValidationError" not in _names(exc)

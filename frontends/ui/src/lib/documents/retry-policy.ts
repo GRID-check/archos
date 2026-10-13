@@ -33,7 +33,7 @@
  * capped if it is ever added; today it is a fact for people, not an input.
  *
  * Pure, no `server-only`: the listing projection, the service and the specs
- * import it, and the SQL twin (`retryRefusedSql` in `./repository`) states the
+ * import it, and the SQL twin (`retryAllowedSql` in `./repository`) states the
  * same rule for the queries that select what a bulk retry sends.
  */
 

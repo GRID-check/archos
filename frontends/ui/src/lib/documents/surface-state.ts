@@ -11,28 +11,26 @@
  * „Unbekannt“. Each surface read `DOCUMENT_STATUS_FACTS` and then decided on
  * its own what to call the result.
  *
- * This module is that decision, made once. Every surface that names a
- * document's state (the badge, the folder brief, the status filter and sort,
- * the upload summary and history, the chat peek) asks {@link surfaceStateOf}
- * and says {@link surfaceStateLabel}: one German word each, „Zitierbar“, „Wird
- * gelesen“, „Zurückgehalten“, „Nicht lesbar“, „Abgelegt“, „Unbekannt“.
+ * This module is that decision, made once. A surface that names a document's
+ * state (the badge, the upload tally) asks {@link surfaceStateOf} and says
+ * {@link surfaceStateLabel}: one word each, „Zitierbar“, „Wird gelesen“,
+ * „Zurückgehalten“, „Fehlgeschlagen“, „Abgelegt“, „Unbekannt“.
  *
  * Nothing here restates the status vocabulary. A status reaches its state
  * through the badge colour `DOCUMENT_STATUS_FACTS` already declares for it
  * (`variant`), so a new status is one entry there and arrives here on its own.
- * `surface-state.spec.ts` holds every declared status to one state and the
- * surfaces to one answer per status.
+ * `surface-state.spec.ts` holds every declared status to one state.
  *
- * Pure and client-safe: no database, no server import. The Postgres side (the
- * shelf summary, the level listing's state filter) counts by status alone
- * through {@link declaredStatusesIn}, which is derived from the same table.
+ * The folder brief's families (`DocumentReadFamily`, counted in SQL) stay in
+ * `./document-status`; {@link readFamilyOfState} and {@link stateOfReadFamily}
+ * translate between the two, and the spec holds them to one answer per status.
+ *
+ * Pure and client-safe: no database, no server import.
  */
 
 import type { Translator } from '@/i18n/translate'
 import { QUARANTINED_PREFIX } from '@/lib/upload-screening/quarantine'
 import {
-  DOCUMENT_STATUS_FACTS,
-  KNOWN_DOCUMENT_STATUSES,
   documentStatusFacts,
   type DocumentReadFamily,
   type DocumentStatusVariant,
@@ -46,7 +44,7 @@ import {
  * - `held`       — the content check stopped it, and a person decides
  *                  („Zurückgehalten“, CONTEXT.md). It waits in the Quarantäne.
  * - `unreadable` — the read went wrong; nothing was decided about its content,
- *                  and a person can read it again („Nicht lesbar“).
+ *                  and a person can read it again („Fehlgeschlagen“).
  * - `stored`     — at rest and deliberately not in the knowledge base: a
  *                  report Piloti wrote, a row stranded at birth („Abgelegt“).
  * - `unknown`    — a status nobody declared („Unbekannt“). Drift, not
@@ -111,13 +109,23 @@ export function surfaceStateOf(subject: SurfaceStateSubject): SurfaceState {
 }
 
 /**
- * The one word for a state, from a translator bound to the `files` namespace
- * (`useTranslations('files')`). The keys are built here rather than written at
- * a call site, so `surface-state.spec.ts` checks every one exists in both
- * dictionaries.
+ * The `files` dictionary key for each state's word. The states reuse the
+ * badge's `status.*` keys, so the badge, the upload tally and anything else
+ * that names a state read one entry. `document-status.spec.ts` checks every
+ * key exists in both dictionaries.
  */
+export const SURFACE_STATE_LABEL_KEYS: Record<SurfaceState, string> = {
+  citable: 'status.ready',
+  reading: 'status.processing',
+  held: 'status.quarantined',
+  unreadable: 'status.failed',
+  stored: 'status.stored',
+  unknown: 'status.unknown',
+}
+
+/** The one word for a state, from a translator bound to the `files` namespace (`useTranslations('files')`). */
 export function surfaceStateLabel(state: SurfaceState, t: Translator): string {
-  return t(`surfaceState.${state}`)
+  return t(SURFACE_STATE_LABEL_KEYS[state])
 }
 
 /**
@@ -158,23 +166,4 @@ const STATE_BY_FAMILY: Record<DocumentReadFamily, SurfaceState> = {
 
 export function stateOfReadFamily(family: DocumentReadFamily): SurfaceState {
   return STATE_BY_FAMILY[family]
-}
-
-/** The family of a document (or a bare status), through its state. */
-export function documentReadFamily(subject: SurfaceStateSubject): DocumentReadFamily {
-  return readFamilyOfState(surfaceStateOf(subject))
-}
-
-/**
- * The declared statuses of one family, lower-case as the column holds them,
- * for the SQL that counts and filters by family. By status alone: Postgres
- * cannot read a verdict out of `error_message`, and no current writer leaves
- * one on a failed row. `reading` is the declared in-flight set only; the SQL
- * that asks for it also takes every status no family declares (`notInArray`
- * over the other four), which is {@link FAMILY_BY_STATE}'s `unknown` fold.
- */
-export function declaredStatusesIn(family: DocumentReadFamily): string[] {
-  return KNOWN_DOCUMENT_STATUSES.filter(
-    (status) => FAMILY_BY_STATE[STATE_BY_VARIANT[DOCUMENT_STATUS_FACTS[status].variant]] === family
-  )
 }

@@ -16,6 +16,7 @@
 import { File, FileText, Image as ImageIcon, type LucideIcon } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { documentStatusFacts, type DocumentStatusVariant } from '@/lib/documents/document-status'
+import { surfaceStateLabel, surfaceStateOf } from '@/lib/documents/surface-state'
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
@@ -143,13 +144,12 @@ export function isNeverIndexedStatus(status: string | null | undefined): boolean
 }
 
 export function documentStatusLabel(status: string | null | undefined, t: Translator): string {
-  const labelKey = documentStatusFacts(status)?.labelKey
-  if (labelKey) return t(labelKey)
+  const state = surfaceStateOf(status)
   // An undeclared value is drift, not vocabulary: it renders as the generic
   // unknown label — never the verbatim wire word — and is logged so the gap
   // gets closed in `document-status.ts` instead of leaking into the UI.
-  if (status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
-  return t('status.unknown')
+  if (state === 'unknown' && status) console.warn(`[document-status] Undeclared status "${status}", rendering as unknown`)
+  return surfaceStateLabel(state, t)
 }
 
 interface DocumentStatusBadgeProps {

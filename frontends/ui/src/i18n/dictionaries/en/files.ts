@@ -81,7 +81,7 @@ export const files = {
     stored: 'Filed',
     // The content check (ADR-0086) matched: the file is in the project, no
     // model has seen it, and someone has to decide.
-    quarantined: 'Quarantined',
+    quarantined: 'Held back',
     unknown: 'Unknown',
     // Only the office's own uploads: inside one office the queue reads in
     // order, across offices it takes turns (ADR-0076).

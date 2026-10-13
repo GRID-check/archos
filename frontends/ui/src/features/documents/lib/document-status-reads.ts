@@ -162,7 +162,7 @@ export function isJoblessIngesting(upload: TrackedFile): boolean {
  *
  * By the status's read family, the same decision the badge and the folder
  * brief make (`documentReadFamily`), so the tray cannot call a row citable
- * that its badge calls „In Quarantäne“ or „Abgelegt“. It used to: every
+ * that its badge calls „Zurückgehalten“ or „Abgelegt“. It used to: every
  * terminal status that was not a failure became `success`, green „Zitierbar“.
  */
 export function trackedPatchFromStatus(

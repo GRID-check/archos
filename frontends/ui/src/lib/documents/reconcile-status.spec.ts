@@ -1281,7 +1281,14 @@ describe('describeBackendIngestState', () => {
 
     const knowledge = await describeBackendIngestState(makeRow({ status: 'processing' }))
 
-    expect(knowledge).toEqual({ state: 'terminal', resolution: { status: 'completed', errorMessage: null } })
+    expect(knowledge).toEqual({
+      state: 'terminal',
+      resolution: {
+        status: 'completed',
+        errorMessage: null,
+        failure: { category: null, retryable: null, readerVersion: null },
+      },
+    })
   })
 
   it("reports absent, not an earlier dispatch's failure, when the backend forgot the job", async () => {

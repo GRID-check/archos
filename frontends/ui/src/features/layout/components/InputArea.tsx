@@ -1676,9 +1676,17 @@ export const InputArea: FC<InputAreaProps> = memo(function InputArea({
     [handleFilesSelected]
   )
 
-  // Count of attached files (successful or in progress) for current session
+  // Count of files attached to the current session: in progress, readable, or
+  // at rest but still attached (held back by the content check, or stored and
+  // never read). A held or stored attachment needs the manage-files entry as
+  // much as any other: it is how a person removes it.
   const attachedFilesCount = sessionFiles.filter(
-    (f) => f.status === 'uploading' || f.status === 'ingesting' || f.status === 'success'
+    (f) =>
+      f.status === 'uploading' ||
+      f.status === 'ingesting' ||
+      f.status === 'success' ||
+      f.status === 'held' ||
+      f.status === 'stored'
   ).length
 
   // Scope chip label: the active project (display-only scope; cross-project
