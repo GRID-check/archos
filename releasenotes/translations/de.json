@@ -260,6 +260,10 @@
     "de": "Bei einer Datei, deren Upload noch läuft, steht wieder „Wird hochgeladen“ statt „Wird gelesen“."
   },
   {
+    "en": "A file you upload no longer shows you as having approved it. Nobody reviewed it, and the history now says so.",
+    "de": "Bei einer von Ihnen hochgeladenen Datei wird nicht mehr angezeigt, dass Sie sie genehmigt haben. Niemand hat sie geprüft, und der Verlauf zeigt das jetzt."
+  },
+  {
     "en": "A filed Recherchebericht now always lands in the project its research was run for. Before, a report from a run started outside a project, or from an older run reopened while another project was open, could end up in the wrong project, with that project's Bundesland on its cover sheet.",
     "de": "Ein abgelegter Recherchebericht landet jetzt immer in dem Projekt, für das die Recherche tatsächlich durchgeführt wurde. Früher konnte ein Bericht aus einem außerhalb eines Projekts gestarteten Recherchelauf oder aus einem älteren, bei geöffnetem anderem Projekt wieder geöffneten Lauf im falschen Projekt landen, mit dem Bundesland dieses Projekts auf dem Deckblatt."
   },
@@ -838,6 +842,10 @@
   {
     "en": "Answers with several cards arrive sooner, because Piloti now builds the cards of an answer together instead of one after another.",
     "de": "Antworten mit mehreren Karten sind schneller da, weil Piloti die Karten einer Antwort jetzt zusammen statt nacheinander erzeugt."
+  },
+  {
+    "en": "Approving a revision now also makes it the one Piloti answers from. There is no separate publish step any more: an approved document is ready to use.",
+    "de": "Mit der Freigabe einer Revision wird diese nun auch zur Grundlage für die Antworten von Piloti. Einen separaten Veröffentlichungsschritt gibt es nicht mehr: Ein freigegebenes Dokument ist sofort einsatzbereit."
   },
   {
     "en": "Approving and publishing are two clearly separate steps, so you can tell at a glance which one has happened.",

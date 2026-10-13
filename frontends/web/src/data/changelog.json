@@ -60,6 +60,14 @@
           "key": "improvements",
           "notes": [
             {
+              "en": "Approving a revision now also makes it the one Piloti answers from. There is no separate publish step any more: an approved document is ready to use.",
+              "de": "Mit der Freigabe einer Revision wird diese nun auch zur Grundlage für die Antworten von Piloti. Einen separaten Veröffentlichungsschritt gibt es nicht mehr: Ein freigegebenes Dokument ist sofort einsatzbereit."
+            },
+            {
+              "en": "A file you upload no longer shows you as having approved it. Nobody reviewed it, and the history now says so.",
+              "de": "Bei einer von Ihnen hochgeladenen Datei wird nicht mehr angezeigt, dass Sie sie genehmigt haben. Niemand hat sie geprüft, und der Verlauf zeigt das jetzt."
+            },
+            {
               "en": "An open document now shows what Piloti saw on each page, with the drawing type and scale, right under its summary, and a click on an entry turns the document to that page. Format, page count and size sit under the name, so the side panel keeps only what Piloti read, the Fassungen and the pages.",
               "de": "Ein geöffnetes Dokument zeigt jetzt direkt unter seiner Zusammenfassung, was Piloti auf jeder Seite erkannt hat, einschließlich Zeichnungstyp und Maßstab; ein Klick auf einen Eintrag springt zu dieser Seite. Format, Seitenzahl und Größe stehen unter dem Namen, sodass die Seitenleiste nur noch das enthält, was Piloti ausgelesen hat, die Fassungen und die Seiten."
             },
