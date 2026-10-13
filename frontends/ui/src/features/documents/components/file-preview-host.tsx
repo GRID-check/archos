@@ -558,7 +558,13 @@ function FilePreviewSplit({
       <ResizablePanel
         key="grid-file-ask-chat"
         id="grid-file-ask-chat"
-        defaultSize="100"
+        // NO `defaultSize`. It used to be "100" — 100% of the row — beside a
+        // file panel defaulting to 320px, two defaults summing past the row.
+        // Whenever the group could measure itself at mount (reduced motion was
+        // the reliable trigger) the library settled that by collapsing the file
+        // panel, and `expand()` could not bring it back: the peek never opened
+        // for anyone who had asked their system for less motion. The chat
+        // panel takes whatever the file panel leaves.
         minSize="40"
         className="relative min-h-0 min-w-0 overflow-hidden"
       >

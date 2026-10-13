@@ -1,0 +1,5 @@
+---
+fixes:
+  - >
+    A file opened beside the chat now appears when your system is set to
+    reduce motion. Before, the file panel stayed closed for those readers.
