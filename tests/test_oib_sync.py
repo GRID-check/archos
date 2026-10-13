@@ -240,7 +240,7 @@ class TestSync:
         oib_sync.sync()
         run_worker()
         oib_sync.sync()
-        ingestor.collection = None  # Chroma wiped or repointed; the table still says "ingested"
+        ingestor.collection = None  # Qdrant wiped or repointed; the table still says "ingested"
 
         result = oib_sync.sync()
 

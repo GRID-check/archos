@@ -534,7 +534,7 @@ class TestRunIngestionImageBranch:
         tags) must not leave the document invisible. Both concurrent LLM calls
         fail; the deterministic text fallback must still register a summary
         row (tags stay None) so the file remains visible in
-        available_documents even though it is fully searchable in Chroma."""
+        available_documents even though it is fully searchable in Qdrant."""
         from aiq_agent.knowledge import get_available_documents
 
         def both_fail(prompt):

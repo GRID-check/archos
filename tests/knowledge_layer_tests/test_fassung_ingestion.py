@@ -7,7 +7,7 @@ previous upload. A person's confirmed link and a dismissed suggestion survive a
 re-read. And no name of a held file reaches the model (ADR-0086).
 
 The unit tests drive ``fassungen`` directly; the end-to-end ones run
-``_run_ingestion`` over a real SQLite store and a real Chroma collection with a
+``_run_ingestion`` over a real SQLite store and a real Qdrant collection with a
 model that answers by the kind of prompt it is given.
 """
 

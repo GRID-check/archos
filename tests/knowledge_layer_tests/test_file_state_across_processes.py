@@ -8,7 +8,7 @@ by the id the worker had issued. The BFF treats a name absent from the listing a
 "the backend never heard of it" and lets the document be dispatched again.
 
 Two ingestors stand for the two processes: they share one SQLite status store and
-one Chroma directory, and nothing else. The worker ingests; the api never ran a job.
+one Qdrant store, and nothing else. The worker ingests; the api never ran a job.
 """
 
 from __future__ import annotations

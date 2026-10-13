@@ -26,9 +26,13 @@ IMPORT = re.compile(r"^\s*(from\s+qdrant_client\b|import\s+qdrant_client\b)", re
 CHROMA_ALLOWED = ("deploy/migration",)
 #: Trees that are not this repo's code.
 NOT_OURS = frozenset({".venv", "node_modules", ".git", ".claude", ".agents"})
+#: An import, or a test's ``pytest.importorskip("chromadb")``: the second one
+#: skipped quietly once ``chromadb`` left the environment, and took its
+#: assertions with it (``test_browse.py``'s exact-mode store tests did).
 CHROMA_IMPORT = re.compile(
     r"^\s*(from\s+(chromadb|llama_index\.vector_stores\.chroma)\b"
-    r"|import\s+(chromadb|llama_index\.vector_stores\.chroma)\b)",
+    r"|import\s+(chromadb|llama_index\.vector_stores\.chroma)\b)"
+    r"|importorskip\(\s*[\"'](chromadb|llama_index\.vector_stores\.chroma)\b",
     re.MULTILINE,
 )
 
@@ -49,6 +53,8 @@ def _chroma_importers() -> list[str]:
     for path in REPO.rglob("*.py"):
         relative = path.relative_to(REPO)
         if NOT_OURS & set(relative.parts) or str(relative).startswith(CHROMA_ALLOWED):
+            continue
+        if path == pathlib.Path(__file__).resolve():  # this file plants the strings it looks for
             continue
         if CHROMA_IMPORT.search(path.read_text(encoding="utf-8", errors="ignore")):
             offenders.append(str(relative))
@@ -74,12 +80,17 @@ def test_nothing_but_the_migration_imports_chromadb():
 
 
 def test_the_chroma_check_sees_an_offender_in_code_and_tests_alike():
-    planted = [REPO / "src" / "_planted_chroma_check.py", REPO / "tests" / "_planted_chroma_check.py"]
+    planted = [
+        REPO / "src" / "_planted_chroma_check.py",
+        REPO / "tests" / "_planted_chroma_check.py",
+        REPO / "tests" / "_planted_chroma_skip_check.py",
+    ]
     planted[0].write_text("import chromadb\n", encoding="utf-8")
     planted[1].write_text("from llama_index.vector_stores.chroma import ChromaVectorStore\n", encoding="utf-8")
+    planted[2].write_text('    chromadb = pytest.importorskip("chromadb")\n', encoding="utf-8")
     try:
         found = _chroma_importers()
-        assert "src/_planted_chroma_check.py" in found and "tests/_planted_chroma_check.py" in found
+        assert {str(path.relative_to(REPO)) for path in planted} <= set(found)
     finally:
         for path in planted:
             path.unlink()
