@@ -19,10 +19,10 @@ import { useDocumentsStore } from '../store'
 import { useAuth } from '@/adapters/auth'
 import { useAppConfig } from '@/shared/context'
 import { useLayoutStore } from '@/features/layout/store'
-import type { TrackedFile, UploadIntent } from '../types'
+import { mayRetryUpload, type TrackedFile, type UploadIntent } from '../types'
 import { mapUploadResponseStatus } from '../utils'
 import { shouldEmitProgress } from '../lib/upload-progress'
-import { isJoblessIngesting } from '../lib/document-status-reads'
+import { isJoblessIngesting, trackedPatchFromStatus } from '../lib/document-status-reads'
 import { runWithConcurrency, sendWaitingOutRateLimit, UPLOAD_CONCURRENCY } from '../lib/upload-queue'
 import { validateFileUpload, type ValidationContext } from '../validation'
 import { summarizeValidation } from '../lib/validation-messages'
@@ -32,11 +32,14 @@ import { markSessionHasCollection } from '../persistence'
 import { notifyDocumentsChanged } from '@/lib/documents/document-changes'
 import { loadUploadScreeningPolicy } from '@/adapters/api/upload-screening-policy'
 import { screenUploadName, type NameMatch } from '@/lib/upload-screening/name-screen'
-import { describeScreenedOut } from '@/lib/upload-screening/quarantine'
+import { describeScreenedOut, isQuarantinedReplaceBody } from '@/lib/upload-screening/quarantine'
 import type { UploadScreeningPolicy } from '@/lib/upload-screening/policy'
 import { exclusionsByTerm, openUploadBatch, sealUploadBatch } from '../lib/upload-batch'
 import { capturePosthog } from '@/lib/analytics/posthog'
 import { fileExtensionLabel } from '../document-kind'
+import { failedWhileReading } from '../lib/ingest-failure'
+import { requestReingest } from '../lib/reingest-request'
+import { toast } from 'sonner'
 
 /**
  * The upload endpoints' response: `/api/documents/upload`,
@@ -84,6 +87,20 @@ const failureMessage = (error: unknown, fallback: string, projectClosed?: string
     }
   }
   return error instanceof Error ? error.message : fallback
+}
+
+/**
+ * The server refused this file because the document it would replace waits in
+ * the Quarantäne (`assertMayReplaceHeld`). A retry meets the same 409 until
+ * somebody deletes or releases that file, so the row is not retryable.
+ */
+const isQuarantinedReplace = (error: unknown): boolean => {
+  if (!(error instanceof XhrUploadError) || error.status !== 409) return false
+  try {
+    return isQuarantinedReplaceBody(JSON.parse(error.responseText))
+  } catch {
+    return false
+  }
 }
 
 interface UseFileUploadOptions {
@@ -533,7 +550,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // tombstone from an earlier delete must not hide it.
             if (result.documentId) removeRecentlyDeletedIds([result.documentId])
             updateTrackedFile(tracked.id, {
-              status: mapUploadResponseStatus(result.status),
+              status: mapUploadResponseStatus(result.status, result.unchanged === true),
               serverFileId: result.documentId,
               jobId: result.jobId ?? undefined,
               ...(result.unchanged ? { unchanged: true } : {}),
@@ -550,6 +567,13 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // The failure belongs to THIS file. The other eleven documents in
             // an Einreichung are still wanted, and the row that refused is the
             // one that has to say so.
+            if (isQuarantinedReplace(err)) {
+              // Said in the reader's language, and thrown as that sentence so
+              // the batch's own error line says it too.
+              const message = t('errors.quarantinedReplace', { name: file.name })
+              updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message, retryable: false })
+              throw new Error(message)
+            }
             const message = failureMessage(err, 'Upload failed', t('errors.projectClosed'))
             updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message })
             throw err instanceof Error ? err : new Error(message)
@@ -756,7 +780,38 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   const retryFile = useCallback(
     async (fileId: string) => {
       const file = trackedFiles.find((f) => f.id === fileId)
-      if (!file) return
+      // A held file is not retried, from any surface: the server refuses a
+      // re-upload onto it (409), and nothing went wrong to repeat (ADR-0086).
+      // Nor is a file refused for a reason the retry meets again.
+      if (!file || !mayRetryUpload(file)) return
+
+      // A file the server accepted and then could not READ is read again, not
+      // sent again. A re-upload of the same bytes went around the retry rule
+      // (`lib/documents/retry-policy.ts`): the shelf upload re-ingests a
+      // failed row whatever its failure, so a file certain to fail the same
+      // way was read again on every press. The re-read request is the one
+      // „Erneut lesen“ sends, and the server answers it by that rule. The
+      // chat's shelf keeps the re-upload: its attachments have their own
+      // routes.
+      if (file.status === 'failed' && file.serverFileId && failedWhileReading(file) && shelf !== 'session') {
+        const outcome = await requestReingest(file.serverFileId)
+        if (outcome.kind === 'failed') {
+          setError(t('actions.reingestError'))
+          return
+        }
+        if (outcome.kind === 'unchanged') {
+          // Refused on purpose. The row keeps its reason and loses its retry;
+          // the way out is a new revision of the file.
+          updateTrackedFile(fileId, { retryable: false })
+          toast.info(t('actions.reingestWouldFailAgain'))
+          return
+        }
+        const settled = outcome.kind === 'settled' ? trackedPatchFromStatus(outcome.status) : null
+        updateTrackedFile(fileId, settled ?? { status: 'ingesting', errorMessage: null, jobId: undefined, progress: 0 })
+        UploadOrchestrator.watchDocuments([fileId])
+        notifyDocumentsChanged()
+        return
+      }
 
       if (!file.file) {
         setError(t('errors.cannotRetryServerFile'))
@@ -799,7 +854,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       pendingRetriesRef.current = { files, done }
       await done
     },
-    [trackedFiles, removeTrackedFile, uploadFiles, setError, t, shelf]
+    [trackedFiles, removeTrackedFile, updateTrackedFile, uploadFiles, setError, t, shelf]
   )
 
   return {

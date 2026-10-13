@@ -45,7 +45,49 @@ The phase model:
 | `queued` | a free upload slot | no — elapsed only |
 | `uploading` | bytes leaving the machine | **yes** — real byte percentage |
 | `processing` | the backend reading and indexing | no — sweep + elapsed |
-| `ready` / `failed` / `canceled` | nothing | terminal |
+| `ready` / `held` / `stored` / `failed` / `canceled` | nothing | terminal |
+
+Two terminal phases are neither a success nor a failure:
+
+- **`held`**, „Zurückgehalten“ (“Held back”), in the warning colour: the content
+  check held the file back (ADR-0086). The row lists what was found
+  (`QuarantineFindings`, without page buttons, because the tray cannot show
+  the document) and offers „Prüfung anfragen“, the uploader's request for a
+  review (`RequestReviewButton`, as in the upload summary and the preview). It
+  can be dismissed and is **never** retried, not by the row
+  and not by „Fehlgeschlagene wiederholen“: a re-upload onto a held file is
+  refused (409), and nothing went wrong to repeat. A batch with a held file in
+  it does not retire itself, the header says „1 Dokument zurückgehalten“ or
+  „2 hinzugefügt · 1 zurückgehalten“, and its glyph is a warning shield unless
+  something also failed.
+- **`stored`**, „Abgelegt“ (“Filed”), muted: the bytes are kept and nothing
+  read them (the document's `uploaded` / `stored` status). Not „Zitierbar“,
+  because Piloti cannot cite it. The header counts it as added.
+
+A fresh file the server refuses because the document it would replace waits in
+the Quarantäne (409, `details.reason: quarantined`, `assertMayReplaceHeld`)
+ends `failed`, but with `retryable: false` on the row and the sentence in the
+reader's language („… ersetzt eine Datei, die in der Quarantäne wartet …“). A
+retry would meet the same 409 until somebody deletes or releases that file, so
+`retryFile` refuses it, and every surface that offers a retry asks
+`mayRetryUpload` (`features/documents/types.ts`), the same rule that keeps a
+held row from being retried.
+
+Every path that settles a row agrees on these. The ingest job poll reads a
+`failed` file whose error starts `quarantined:` as held
+(`trackedStatusOfJobFile` in `features/documents/utils.ts`); a status read maps
+by the status's read family (`trackedPatchFromStatus`), so a `quarantined`
+document is held and an `uploaded` one stored; the upload response's
+`uploaded` is stored unless the answer is *unchanged*. The chat says the same:
+the attachment card and the composer chip show a held file with a warning
+shield and the quarantine sentence and offer no retry, and a stored one as
+„Abgelegt“, because the chat cannot answer from a file nobody read. A re-list
+of a chat's attachments keeps both: the listing's file status
+(`ListedFileStatusSchema`) has `stored` and `held` beside the backend's four
+words, and `sessionDocumentFileStatus` reads them off the one state table
+(`surfaceStateOf`). Only a citable attachment is `success`, the status the
+no-sources banner and the composer count as an available source; an
+undeclared status is at rest and is not one.
 
 `queued` and `uploading` are told apart by `uploadStartedAt`, not by the byte
 count: with a bounded number of slots most of a large batch is genuinely
@@ -94,12 +136,20 @@ decorated afterwards. Where each one landed:
    tells a planner whether Piloti can use the file in an answer, which is what they check first. Sizes, speeds and
    durations are formatted in the app's locale, not the runtime's.
 3. **User control and freedom.** Cancel one file, cancel the batch, retry one,
-   retry all failed, dismiss. Before this change there was **no way to cancel an
+   retry all failed, dismiss. A held file is dismissed, never retried. Before this change there was **no way to cancel an
    upload at all** — a 150 MB model uploaded by mistake had to be waited out.
 4. **Consistency and standards.** The same extension chip identifies a document
    in the tray, in the explorer list and in the preview header. Status wording
-   comes from the one `document-status` map. Indeterminate progress follows the
-   ARIA pattern rather than inventing one.
+   comes from the one `document-status` map, through the seven states of
+   `lib/documents/surface-state.ts`: a file whose bytes are still arriving says
+   „Wird hochgeladen“, not „Wird gelesen“, and is counted with the files being
+   read. The badge takes its colour from the same state, so the word and the
+   colour cannot disagree. The state is read from the status alone, never from
+   the stored reason, because the counts beside a badge (the folder brief, the
+   upload summary) are SQL that cannot read the reason either. The upload
+   summary counts a status nobody declared as being read, as the folder brief
+   does. Indeterminate progress follows the ARIA pattern rather than inventing
+   one.
 5. **Error prevention.** Validation still runs before a byte is sent; the
    concurrency cap keeps the connection pool from starving the status poll; a
    per-file abort handle means cancelling one file cannot cancel another.
@@ -111,14 +161,36 @@ decorated afterwards. Where each one landed:
    remembered per browser. The list is fully keyboard-navigable with a roving
    tabindex, and sorts filenames with a numeric collator so `Plan_2` precedes
    `Plan_10` — a set of drawings is numbered, and lexicographic order scatters it.
-8. **Aesthetic and minimalist design.** A settled row collapses to a single line,
-   so a batch visibly gets quieter as it lands instead of holding twelve
-   animating bars. A wholly successful batch retires itself after six seconds.
-   The preview pane lost a footer band that restated the page count already in
-   the rail.
+8. **Aesthetic and minimalist design.** A row is one line of one height in
+   every live phase: queued, sending, being read and read. The file's byte
+   track sits on the row's bottom edge instead of on a line of its own, and
+   only while bytes move; while the backend reads, the row says „Wird gelesen“
+   and the header's track sweeps once for the batch, instead of a sweeping bar
+   under every row. Size, status and actions each have a fixed column, so the
+   longest German status word („Zurückgehalten“) fits and a row gaining a
+   button does not push its neighbours sideways. On a phone the status sits
+   under the name and the size is left out.
+   The only rows that grow are a held or failed one, whose reason folds open
+   beneath it. Nothing uses a layout animation, which draws a resizing row
+   squashed. The tray folds in above the listing when a batch starts and folds
+   away when it retires; a dismissed row folds away so the rows below slide up.
+   A wholly successful batch retires itself six seconds after it settles,
+   however often the upload store re-renders it in between. The preview pane
+   lost a footer band that restated the page count already in the rail.
+   Measured on `/dev/upload-tray`'s live run: the tray used to change height
+   about ten times between drop and settle, moving the listing below with it
+   each time; it now holds one height until the first file settles.
 9. **Recognize, diagnose, recover.** The server's own reason ("File exceeds the
    100 MB upload limit") lands on the row that owns it, with retry beside it. A
    cancelled file reads as a decision, not a failure — it never colours red.
+   What retry does depends on where the file failed. One that never reached
+   the server is sent again. One the server accepted and could not read is
+   read again, through the same request as „Erneut lesen“, so the retry rule
+   (`lib/documents/retry-policy.ts`) decides: a file that would fail the same
+   way loses its retry and a notice says to upload a new Fassung. Sending the
+   same bytes again went around that rule. The chat's shelf still sends again.
+   A row the server refused for a reason a retry meets again (a re-upload onto
+   a file waiting in quarantine) offers no retry at all (`mayRetryUpload`).
 10. **Help and documentation.** The processing line says *"Reading. There is
     no time estimate, so you can keep working."*, which is the help a user needs
     at exactly the moment they would otherwise sit and watch. When the tray
@@ -159,14 +231,42 @@ Beyond Nielsen:
 
 Same lens, applied to the surface that opens when a document is clicked:
 
-- **The AI summary is promoted.** It is the answer to "does the agent actually
-  understand this file" and it used to be one more 12.5px paragraph read at the
-  same weight as the MIME type. It now sits on its own raised card under its own
-  section label.
-- **One fact list, not two.** Type and size used to sit in a separate block
-  *below the tags*, divorced from the page count they belong with, purely because
-  one group was behind a feature flag and the other was not. The flag now gates
-  **rows**, which is what it was always about.
+**Preview:** `/dev/file-preview` (`?variant=review` for the approval state,
+`?variant=pdf` for the page jump); `/dev/file-ask-split/chat?variant=pdf` for the
+chat peek's Details tab, which draws the same rail.
+
+**The rail is an inspector.** Inset grouped lists on the sunken rail, the shape
+of a macOS „Informationen" panel: a quiet label directly above each group, one
+white group per question, and one row anatomy (glyph, label, value) with
+hairlines inset past the glyph. The atoms are `components/ui/inspector-group.tsx`
+(`InspectorSection`, `InspectorGroup`, `InspectorRow`); the row owns the type of
+both columns, which is what puts label and value on one baseline. Top to bottom:
+
+- **Who and what next.** A contact row (face, name, „Verantwortlich" under it,
+  „Bearbeiten"), then „Mit Piloti besprechen" with Piloti's glyph, then
+  „Kollegin fragen". The primary button names Piloti because „Besprechen" alone
+  did not say with whom, and beside „Kollegin fragen" it read as a team meeting.
+- **Von Piloti gelesen.** The summary, how much was read and what Piloti took
+  the file to be, in ONE group: they are one answer to "does the agent actually
+  understand this file". The type chip is the ink tint, a discipline an ink
+  outline, a topic a muted outline; the quiet fill `secondary` vanished on the
+  rail (#f2f2f0 on #f1f1ef).
+- **Fassungen und Freigabe.** One group divided by what each part asks: the
+  standing, the decision, Piloti's suggestion, the timeline, the archive door.
+  Attention is the group's stronger edge and the decision's primary button; the
+  section used to widen into a card only while something was asked.
+- **Auf den Seiten.** What Piloti saw on each page: page, drawing type (translated,
+  or humanized from the key, never `floor_plan`), scale, the description, and the
+  structured data behind it. Loaded with the document, four entries then „Alle N
+  zeigen", and each entry turns the inline PDF to its page. It was a collapsed
+  „Detaillierte Informationen" disclosure at the foot of the rail, under rows
+  nobody came for.
+- **Eigenschaften**, only when there is an origin path to copy.
+
+**No Project, Type, Size or Updated row.** The project is the one the reader is
+standing in; format, page count and size are the facts line under the name
+(„PDF · 24 Seiten · 4,8 MB", `hooks/use-file-facts.ts`, the line the chat peek
+already carried), with the MIME type in its tooltip; the date is on the Fassung.
 - **The document sits on something.** A soft vertical ground with the page raised
   on a real shadow, instead of a flat grey box — which is what a drawing on a
   desk looks like, and the reason this column exists rather than a download link.

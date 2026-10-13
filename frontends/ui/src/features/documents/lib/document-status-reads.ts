@@ -16,8 +16,7 @@
  * serves every shelf.
  */
 
-import { documentStatusFacts } from '@/lib/documents/document-status'
-import { isFailedStatus } from '../components/document-status'
+import { documentReadFamily, documentStatusFacts } from '@/lib/documents/document-status'
 import type { FileItem } from '../components/project-file-workspace'
 import type { TrackedFile } from '../types'
 import { refreshedFileFields } from './file-item'
@@ -160,13 +159,32 @@ export function isJoblessIngesting(upload: TrackedFile): boolean {
  * The tray patch a terminal status settles an upload row with, or `null` while
  * the document is still being read — or reports a status this build does not
  * know, which is not an answer either way.
+ *
+ * By the status's read family, the same decision the badge and the folder
+ * brief make (`documentReadFamily`), so the tray cannot call a row citable
+ * that its badge calls „Zurückgehalten“ or „Abgelegt“. It used to: every
+ * terminal status that was not a failure became `success`, green „Zitierbar“.
  */
 export function trackedPatchFromStatus(
   status: string | null | undefined,
   errorMessage?: string | null
 ): Partial<TrackedFile> | null {
   if (documentStatusFacts(status)?.phase !== 'terminal') return null
-  return isFailedStatus(status)
-    ? { status: 'failed', errorMessage: errorMessage ?? undefined }
-    : { status: 'success', progress: 100 }
+  switch (documentReadFamily(status)) {
+    case 'readable':
+      return { status: 'success', progress: 100 }
+    // The reason only when the read gave one. A patch that carried the key
+    // with no value cleared the reason the row already showed (the retry
+    // path settles from a bare status), and a held row lost its findings.
+    case 'failed':
+      return { status: 'failed', ...(errorMessage ? { errorMessage } : {}) }
+    case 'held':
+      return { status: 'held', ...(errorMessage ? { errorMessage } : {}) }
+    case 'unindexed':
+      return { status: 'stored', progress: 100 }
+    case 'reading':
+      // A terminal status is never in this family; only an in-flight or an
+      // undeclared one is, and both returned above.
+      return null
+  }
 }

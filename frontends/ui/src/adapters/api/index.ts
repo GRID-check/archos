@@ -34,6 +34,7 @@ export type {
 // Documents Schemas
 export {
   DocumentFileStatusSchema,
+  ListedFileStatusSchema,
   JobStateSchema,
   CollectionInfoSchema,
   FileInfoSchema,
@@ -43,6 +44,7 @@ export {
 
 export type {
   DocumentFileStatus,
+  ListedFileStatus,
   JobState,
   CollectionInfo,
   FileInfo,

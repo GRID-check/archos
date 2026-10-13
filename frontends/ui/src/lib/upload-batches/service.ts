@@ -30,7 +30,7 @@ import {
 import { canManageArchiv } from '@/lib/authz/organizations'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import type { Document, UploadBatch, UploadBatchExclusion, UploadBatchScope } from '@/lib/db/schema'
-import { documentStatusFacts } from '@/lib/documents/document-status'
+import { surfaceStateOf, type SurfaceState } from '@/lib/documents/surface-state'
 import { reconcileDocumentStatuses, type DocumentMetadata } from '@/lib/documents/reconcile-status'
 import { encodeDocumentListCursor, type DocumentListCursor } from '@/lib/documents/list-cursor'
 import { findFolderPathsInProject } from '@/lib/documents/repository'
@@ -231,14 +231,24 @@ export interface UploadSummary {
   documents: UploadSummaryDocument[]
 }
 
+/**
+ * The tally's word for each state (`surfaceStateOf`). A status nobody declared
+ * is counted as being read, as the folder brief and its SQL count it
+ * (`documentReadFamily`), never as stored: „Abgelegt“ is a claim that the
+ * bytes are at rest on purpose, and nothing is known about an undeclared one.
+ */
+const OUTCOME_BY_STATE: Record<SurfaceState, UploadSummaryDocument['outcome']> = {
+  citable: 'ready',
+  uploading: 'reading',
+  reading: 'reading',
+  held: 'quarantined',
+  unreadable: 'failed',
+  stored: 'stored',
+  unknown: 'reading',
+}
+
 function outcomeOf(status: string): UploadSummaryDocument['outcome'] {
-  if (status === 'quarantined') return 'quarantined'
-  const facts = documentStatusFacts(status)
-  if (!facts) return 'stored'
-  if (facts.phase === 'in-flight') return 'reading'
-  if (facts.variant === 'success') return 'ready'
-  if (facts.variant === 'destructive') return 'failed'
-  return 'stored'
+  return OUTCOME_BY_STATE[surfaceStateOf(status)]
 }
 
 type EnrichedDocument = Document & DocumentMetadata

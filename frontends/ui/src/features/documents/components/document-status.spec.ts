@@ -44,6 +44,11 @@ describe('documentStatusLabel', () => {
     expect(documentStatusLabel(null, t)).toBe('status.unknown')
   })
 
+  it('says the bytes are still arriving while a file uploads', () => {
+    expect(documentStatusLabel('uploading', t)).toBe('status.uploading')
+    expect(documentStatusLabel('processing', t)).toBe('status.processing')
+  })
+
   it('never renders a verbatim wire word for an undeclared status', () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
     try {

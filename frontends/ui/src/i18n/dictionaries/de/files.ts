@@ -29,6 +29,11 @@ export const files: typeof en.files = {
       mixed: '{ready} hinzugefügt · {failed} fehlgeschlagen',
       failedOne: '1 Dokument konnte nicht hinzugefügt werden',
       failedOther: '{count} Dokumente konnten nicht hinzugefügt werden',
+      // Von der Inhaltsprüfung zurückgehalten (ADR-0086): kein Fehler, nichts zu
+      // wiederholen. Nie „freigeben“, das Wort gehört der Freigabe einer Fassung.
+      heldOne: '1 Dokument zurückgehalten',
+      heldOther: '{count} Dokumente zurückgehalten',
+      mixedHeld: '{ready} hinzugefügt · {held} zurückgehalten',
       canceled: 'Upload abgebrochen',
     },
     detail: {
@@ -45,6 +50,10 @@ export const files: typeof en.files = {
       processing: 'Wird gelesen',
       ready: 'Zitierbar',
       unchanged: 'Unverändert – bereits vorhanden',
+      // Die Inhaltsprüfung hat angeschlagen; darunter steht, was sie gefunden hat.
+      held: 'Zurückgehalten',
+      // Gespeichert, aber nicht gelesen: kein Erfolg, kein Fehler (wie `status.stored`).
+      stored: 'Abgelegt',
       canceled: 'Abgebrochen',
       failed: 'Fehlgeschlagen',
     },
@@ -72,7 +81,7 @@ export const files: typeof en.files = {
     stored: 'Abgelegt',
     // Die Inhaltsprüfung (ADR-0086) hat angeschlagen: Die Datei liegt im
     // Projekt, kein Modell hat sie gesehen, und jemand muss entscheiden.
-    quarantined: 'In Quarantäne',
+    quarantined: 'Zurückgehalten',
     unknown: 'Unbekannt',
     // Nur die eigenen Uploads des Büros: Innerhalb eines Büros wird der Reihe
     // nach gelesen, zwischen Büros fair abgewechselt (ADR-0076).
@@ -113,8 +122,6 @@ export const files: typeof en.files = {
     properties: 'Eigenschaften',
     summaryMore: 'Vollständige Zusammenfassung',
     summaryLess: 'Weniger anzeigen',
-    type: 'Typ',
-    size: 'Größe',
     originPath: 'Herkunft',
     originPathCopied: 'Pfad kopiert',
     originPathCopyFailed: 'Pfad konnte nicht kopiert werden',
@@ -206,8 +213,6 @@ export const files: typeof en.files = {
     indexed: {
       title: 'Von Piloti gelesen',
       documentType: 'Dokumenttyp',
-      project: 'Projekt',
-      updated: 'Aktualisiert',
       pending: 'Piloti liest das Dokument noch – Zusammenfassung und Merkmale erscheinen hier, sobald es fertig ist.',
     },
     contentTypeNames: {
@@ -218,12 +223,34 @@ export const files: typeof en.files = {
       drawing: 'Zeichnungen',
     },
     visualDetails: {
-      title: 'Detaillierte Informationen',
+      title: 'Auf den Seiten',
       loading: 'Beschreibungen werden geladen …',
-      empty: 'Keine visuellen Beschreibungen verfügbar.',
       failed: 'Die Beschreibungen konnten nicht geladen werden.',
       page: 'Seite {page}',
       scale: 'Maßstab {scale}',
+      pageShort: 'S. {page}',
+      showPage: 'Seite {page} im Dokument zeigen',
+      showAll: 'Alle {count} zeigen',
+      showFewer: 'Weniger zeigen',
+      // The drawing types the vision pass names. A type not listed here is
+      // humanized from its key, like the structured vocabulary below.
+      segmentTypes: {
+        floor_plan: 'Grundriss',
+        section: 'Schnitt',
+        elevation: 'Ansicht',
+        detail: 'Detail',
+        site_plan: 'Lageplan',
+        perspective: 'Perspektive',
+        axonometric: 'Axonometrie',
+        drawing: 'Technische Zeichnung',
+        map: 'Karte',
+        photo: 'Foto oder Rendering',
+        diagram: 'Diagramm',
+        table: 'Tabelle',
+        legend: 'Legende',
+        screenshot: 'Bildschirmfoto',
+        other: 'Sonstiges',
+      },
       structured: {
         toggle: 'Strukturierte Daten',
         composition: 'Bauteilaufbau {component}',
@@ -272,7 +299,6 @@ export const files: typeof en.files = {
         },
       },
     },
-    unknownType: 'Unbekannt',
     // Die Typ-Zeile nennt das Format, nie den MIME-Typ (der steht im Tooltip).
     formats: {
       pdf: 'PDF',
@@ -297,9 +323,12 @@ export const files: typeof en.files = {
     downloadFailed: 'Der Download konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
     ingestionFailed: 'Lesen fehlgeschlagen',
     heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
+    heldDecided: 'Über diese Datei hat schon jemand entschieden.',
     ingestionFailedPreviousVersionKept:
       'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
+    retryWouldFailAgain:
+      'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     retryingIngestion: 'Wird erneut gestartet…',
     retryIngestionError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
@@ -360,6 +389,7 @@ export const files: typeof en.files = {
     findingsLabel: 'Fundstellen der Inhaltsprüfung',
     findingPage: 'S. {page}',
     showFinding: 'Fundstelle auf Seite {page} zeigen',
+    morePages: 'Auch auf weiteren Seiten gefunden',
   },
   browser: {
     folderEmptyTitle: 'Dieser Ordner ist leer',
@@ -567,6 +597,8 @@ export const files: typeof en.files = {
     reingesting: 'Wird erneut gestartet …',
     reingestRunning: 'Wird bereits gelesen',
     reingestAlreadyDone: 'Ist bereits fertig',
+    reingestWouldFailAgain:
+      'Diese Datei liefert beim erneuten Lesen dasselbe Ergebnis. Laden Sie eine neue Fassung hoch.',
     reingestConfirmTitle: '„{name}“ erneut lesen?',
     reingestConfirmDescription:
       'Piloti liest die Datei noch einmal vollständig, zum Beispiel damit Bilder in Word- und PowerPoint-Dateien erfasst werden. Bis Piloti damit fertig ist, antwortet es weiter aus dem bisher Gelesenen.',
@@ -846,6 +878,8 @@ export const files: typeof en.files = {
       '{failed} von {total} Dokumenten konnten nicht hochgeladen werden. Erster Grund: {reason}',
     uploadingSkipped:
       'Es werden {uploading} {fileLabel} hochgeladen, {skipped} übersprungen ({summary})',
+    quarantinedReplace:
+      '„{name}“ ersetzt eine Datei, die in der Quarantäne wartet. Löschen Sie diese Datei oder lassen Sie sie zu, dann laden Sie die neue hoch.',
     cannotRetryServerFile:
       'Vom Server geladene Dateien können nicht erneut versucht werden. Bitte laden Sie die Datei erneut hoch.',
     imageVlmUnavailable:
@@ -1261,7 +1295,9 @@ export const files: typeof en.files = {
     // und Posteingang. Vorher hieß derselbe Knopf „Piloti dazu fragen“ und war
     // ausgerechnet bei Entwürfen ausgegraut — genau den Dokumenten, über die man
     // sprechen will. Piloti kann jetzt auch eine unveröffentlichte Fassung lesen.
-    discuss: 'Besprechen',
+    // „Besprechen“ allein sagte nicht, MIT WEM: neben „Kollegin fragen“ las es
+    // sich wie eine Besprechung im Team. Der Name steht deshalb im Knopf.
+    discuss: 'Mit Piloti besprechen',
     askColleague: 'Kollegin fragen',
     copyLink: 'Link kopieren',
     linkCopied: 'Link kopiert',

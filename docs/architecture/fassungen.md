@@ -336,7 +336,7 @@ name, each labelled as what it is.
   „Fassungen vergleichen“: `…?doc=<newer>&compare=<older>`
   (`features/documents/lib/fassung-compare-link.ts`), which the files workspace
   reads (`hooks/use-compare-param.ts`) to open the preview with the visual
-  comparison on top. „Besprechen“ follows it.
+  comparison on top. „Mit Piloti besprechen“ follows it.
 - **Once.** Each Fassung is announced once: `notifyNewFassung` claims the newer
   document and the item's anchor (the new version, or the older document for a
   link) in `document_fassung_announcements` (migration 0130) before it writes,

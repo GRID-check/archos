@@ -2,6 +2,11 @@ import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest'
 import { act, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { UploadTray } from './upload-tray'
+
+const requestQuarantineRelease = vi.fn(async (_documentId: string) => ({ notified: 1 }))
+vi.mock('@/adapters/api/upload-screening-client', () => ({
+  requestQuarantineRelease: (documentId: string) => requestQuarantineRelease(documentId),
+}))
 import type { TrackedFile } from '../types'
 
 const tracked = (overrides: Partial<TrackedFile> = {}): TrackedFile => ({
@@ -177,6 +182,37 @@ describe('UploadTray', () => {
       expect(onDismiss).toHaveBeenCalledWith(['f1'])
     })
 
+    it('still retires when the parent keeps re-rendering the same settled batch', () => {
+      // A poll or a store write hands a new array (and so a new dismiss) every
+      // few seconds; the timer used to restart on each one and never fire.
+      const onDismiss = vi.fn()
+      const { rerender } = renderTray([tracked({ status: 'success' })], { onDismiss })
+
+      for (let second = 0; second < 6; second++) {
+        act(() => vi.advanceTimersByTime(1_000))
+        rerender(<UploadTray files={[tracked({ status: 'success' })]} onRetry={vi.fn()} onDismiss={(ids) => onDismiss(ids)} />)
+      }
+
+      expect(onDismiss).toHaveBeenCalledWith(['f1'])
+    })
+
+    it('retires the next clean batch after one dismissed from under the pointer', async () => {
+      const onDismiss = vi.fn()
+      const { rerender } = renderTray([tracked({ status: 'failed', errorMessage: 'boom' })], { onDismiss })
+      const tray = screen.getByTestId('upload-tray')
+
+      // Pointer in, „Dismiss“ pressed: the tray empties while it is held.
+      act(() => {
+        tray.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))
+      })
+      rerender(<UploadTray files={[]} onRetry={vi.fn()} onDismiss={onDismiss} />)
+      act(() => vi.advanceTimersByTime(1_000))
+
+      rerender(<UploadTray files={[tracked({ id: 'next', status: 'success' })]} onRetry={vi.fn()} onDismiss={onDismiss} />)
+      act(() => vi.advanceTimersByTime(6_000))
+      expect(onDismiss).toHaveBeenCalledWith(['next'])
+    })
+
     it('does not retire out from under a keyboard user', () => {
       const onDismiss = vi.fn()
       renderTray([tracked({ status: 'success' })], { onDismiss })
@@ -209,6 +245,117 @@ describe('UploadTray', () => {
 
       vi.advanceTimersByTime(60_000)
       expect(onDismiss).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('a file the content check held back (ADR-0086)', () => {
+    const VERDICT = 'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","pages":[2]}],"checked":"full"}'
+    const held = (overrides: Partial<TrackedFile> = {}) =>
+      tracked({ id: 'h', fileName: 'Lohnzettel_03.pdf', status: 'held', serverFileId: 'doc-h', errorMessage: VERDICT, ...overrides })
+
+    it('says held back, in the warning colour, with what was found — never failed', () => {
+      renderTray([held()])
+
+      const row = screen.getByTestId('upload-row')
+      expect(row).toHaveAttribute('data-phase', 'held')
+      const label = within(row).getByText('Held back')
+      expect(label.closest('.text-warning')).not.toBeNull()
+      expect(within(row).queryByText('Failed')).toBeNull()
+      expect(within(screen.getByTestId('upload-row-held')).getByText(/Lohnzettel/)).toBeDefined()
+      // The tray cannot show the document, so the pages are words, not buttons.
+      expect(screen.queryByTestId('upload-row-held-page-2')).toBeNull()
+      expect(screen.queryByText(/^quarantined:/)).toBeNull()
+    })
+
+    it('lets the uploader ask for a review from the row', async () => {
+      const user = userEvent.setup()
+      renderTray([held()])
+
+      await user.click(screen.getByTestId('upload-row-request-review'))
+      expect(requestQuarantineRelease).toHaveBeenCalledWith('doc-h')
+    })
+
+    it('is not retried by „Retry failed", and has no retry of its own', async () => {
+      const onRetry = vi.fn()
+      const user = userEvent.setup()
+      renderTray([held(), tracked({ id: 'f', fileName: 'b.pdf', status: 'failed', errorMessage: 'boom' })], { onRetry })
+
+      await user.click(screen.getByRole('button', { name: 'Retry failed' }))
+      expect(onRetry.mock.calls.map(([id]) => id)).toEqual(['f'])
+      const heldRow = screen.getAllByTestId('upload-row').find((row) => row.getAttribute('data-phase') === 'held')!
+      expect(within(heldRow).queryByRole('button', { name: 'Retry' })).toBeNull()
+    })
+
+    it('offers no retry for a failure a retry would only repeat', () => {
+      // The quarantined-replace 409: uploading again gets the same refusal.
+      renderTray([
+        tracked({ id: 'r', fileName: 'r.pdf', status: 'failed', errorMessage: 'refused', retryable: false }),
+        tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' }),
+      ])
+      expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
+      expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
+    })
+
+    it('offers no „Retry failed" when nothing but a held file is left', () => {
+      renderTray([held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })])
+      expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
+    })
+
+    it('can be dismissed from the tray', async () => {
+      const onDismiss = vi.fn()
+      const user = userEvent.setup()
+      renderTray([held()], { onDismiss })
+
+      await user.click(screen.getByRole('button', { name: 'Dismiss Lohnzettel_03.pdf' }))
+      expect(onDismiss).toHaveBeenCalledWith(['h'])
+    })
+
+    it('heads the batch with what was held, and marks it with a warning, not a check', () => {
+      const { rerender } = renderTray([held()])
+      expect(screen.getByText('1 document held back')).toBeDefined()
+      expect(screen.getByTestId('upload-tray-glyph')).toHaveAttribute('data-tone', 'warning')
+
+      rerender(<UploadTray files={[held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })]} onRetry={vi.fn()} />)
+      expect(screen.getByText('1 added · 1 held back')).toBeDefined()
+
+      rerender(
+        <UploadTray
+          files={[held(), tracked({ id: 'f', fileName: 'b.pdf', status: 'failed', errorMessage: 'boom' })]}
+          onRetry={vi.fn()}
+        />
+      )
+      expect(screen.getByTestId('upload-tray-glyph')).toHaveAttribute('data-tone', 'destructive')
+    })
+
+    describe('the batch', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      it('does not retire itself while anything is held', () => {
+        const onDismiss = vi.fn()
+        renderTray([tracked({ id: 'ok', status: 'success' }), held()], { onDismiss })
+
+        vi.advanceTimersByTime(60_000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('a file stored and not read', () => {
+    it('says filed, muted, and never citable', () => {
+      renderTray([tracked({ status: 'stored', serverFileId: 'doc-s' })])
+
+      const row = screen.getByTestId('upload-row')
+      expect(row).toHaveAttribute('data-phase', 'stored')
+      const label = within(row).getByText('Filed')
+      expect(label.closest('.text-muted-foreground')).not.toBeNull()
+      expect(within(row).queryByText('Citable')).toBeNull()
+      expect(screen.getByText('1 document added')).toBeDefined()
     })
   })
 

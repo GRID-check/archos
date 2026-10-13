@@ -3,7 +3,7 @@ import type { en } from '../en'
 /**
  * Was ein Upload gebracht hat, und alle Uploads eines Projekts (ADR-0086).
  *
- * Die Statuswörter („Zitierbar", „Wird gelesen", „In Quarantäne",
+ * Die Statuswörter („Zitierbar", „Wird gelesen", „Zurückgehalten",
  * „Fehlgeschlagen", „Abgelegt") stehen NICHT hier: Die Übersicht liest sie aus
  * `files.status.*`, damit eine Zahl und das Badge daneben einen Zustand nicht
  * zweimal verschieden benennen.

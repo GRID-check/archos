@@ -9,8 +9,8 @@
  * preview of a held file said nothing at all, and the queue and the upload
  * summary said „Seiten 2, 7" as text the reader had to go and find by hand.
  *
- * The upload tray, the upload summary and the Files preview all say it through
- * this, so a held file reads the same everywhere.
+ * The quarantine queue and the Files preview say it through this, so a reviewer
+ * reads the same findings where they decide and where they look.
  */
 
 import type { FC } from 'react'
@@ -21,14 +21,18 @@ import { cn } from '@/lib/utils'
 import {
   describeQuarantineReason,
   findingsOf,
+  MORE_PAGES_MARK,
   parseQuarantine,
   quarantineReasonHead,
   type QuarantineFinding,
+  type QuarantineVerdict,
 } from '@/lib/upload-screening/quarantine'
 
 export interface QuarantineFindingsProps {
   /** The stored verdict, `quarantined:{…}`. Anything else renders the sentence alone. */
-  errorMessage: string | null | undefined
+  errorMessage?: string | null
+  /** The verdict already read (the quarantine queue's rows carry it parsed). Wins over `errorMessage`. */
+  verdict?: QuarantineVerdict | null
   /**
    * Open the document at a finding. Given, each page is a button; left unset
    * (a surface that cannot show the document), the pages are stated as text.
@@ -47,6 +51,7 @@ const sameFinding = (a: QuarantineFinding | null | undefined, b: QuarantineFindi
 
 export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   errorMessage,
+  verdict: givenVerdict,
   onShowFinding,
   shownFinding,
   withoutSentence = false,
@@ -54,7 +59,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   testId = 'quarantine-findings',
 }) => {
   const t = useTranslations('files')
-  const verdict = parseQuarantine(errorMessage)
+  const verdict = givenVerdict !== undefined ? givenVerdict : parseQuarantine(errorMessage)
   const reasons = verdict?.reasons ?? []
 
   return (
@@ -85,6 +90,18 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
                     </Chip>
                   )
                 })}
+                {/* The job listed only some of the pages (`pages_truncated`). As
+                    text the phrase above ends in „…" already. */}
+                {findings.length > 0 && reason.pages_truncated && (
+                  <span
+                    className="text-muted-foreground px-0.5 text-xs"
+                    title={t('screening.morePages')}
+                    data-testid={`${testId}-more-pages`}
+                  >
+                    <span aria-hidden>{MORE_PAGES_MARK}</span>
+                    <span className="sr-only">{t('screening.morePages')}</span>
+                  </span>
+                )}
               </li>
             )
           })}

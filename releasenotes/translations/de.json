@@ -56,6 +56,10 @@
     "de": "Eine noch laufende Chat-Antwort bricht nicht mehr ab, wenn der Browser-Tab im Hintergrund ist oder das Mobilfunksignal kurz schwächelt."
   },
   {
+    "en": "A chat attachment Piloti has not read, or has held back, no longer counts as an available source after the chat reloads its files.",
+    "de": "Ein Chat-Anhang, den Piloti nicht gelesen oder zurückgehalten hat, gilt nach dem erneuten Laden der Chat-Dateien nicht mehr als verfügbare Quelle."
+  },
+  {
     "en": "A chat shared with someone who later loses the right to read a folder it drew on stays in their list as \"Shared chat\", and opening it says they no longer have the rights, with no title, message or attachment shown. The person who shared it sees them marked \"No longer has access\", and the chat opens again if the role comes back.",
     "de": "Ein Chat, der mit jemandem geteilt ist, die oder der später das Recht verliert, einen Ordner zu lesen, aus dem er schöpft, bleibt in deren Liste als „Geteilter Chat“; beim Öffnen steht dort, dass die Rechte fehlen, ohne Titel, Nachricht oder Anhang. Wer den Chat geteilt hat, sieht die Person als „Hat keinen Zugriff mehr“, und der Chat öffnet sich wieder, sobald die Rolle zurück ist."
   },
@@ -184,6 +188,10 @@
     "de": "Ein fehlgeschlagener Abruf taucht nicht mehr als Quelle in der Herleitung auf."
   },
   {
+    "en": "A file Piloti could not start reading now says exactly that, instead of blaming a restart that never happened.",
+    "de": "Wenn Piloti das Lesen einer Datei nicht starten konnte, wird jetzt genau das angezeigt, statt fälschlich einen Neustart als Ursache anzugeben, der nie stattgefunden hat."
+  },
+  {
     "en": "A file cannot be uploaded over one waiting in quarantine, not even by its uploader, so the held-back version never becomes part of the file's history. Delete the quarantined file first, or have it released.",
     "de": "Über eine Datei, die in Quarantäne wartet, lässt sich keine andere hochladen, auch nicht von ihrem Uploader, sodass die zurückgehaltene Fassung nie Teil des Verlaufs wird. Löschen Sie zuerst die Datei in Quarantäne oder lassen Sie sie freigeben."
   },
@@ -208,12 +216,20 @@
     "de": "Eine Datei, die Piloti nicht laden kann, schlägt jetzt mit einer Begründung fehl, die genau das benennt."
   },
   {
+    "en": "A file that cannot be read for a lasting reason, such as an encrypted or empty PDF, is no longer read again on every „Erneut lesen“ or rescan, only once its bytes change or Piloti's reader improves. A failure of the moment, like a timeout, can still be retried right away.",
+    "de": "Eine Datei, die aus einem dauerhaften Grund nicht gelesen werden kann, etwa ein verschlüsseltes oder leeres PDF, wird bei „Erneut lesen“ oder einem erneuten Scan nicht jedes Mal erneut gelesen, sondern erst, wenn sich ihre Bytes ändern oder sich die Lesefunktion von Piloti verbessert. Ein vorübergehender Fehler wie ein Timeout lässt sich weiterhin sofort erneut versuchen."
+  },
+  {
     "en": "A file that matches an existing document under a different spelling is held back and shown next to that document, instead of becoming a second document. The dialog also names both the old and the new name of a document renamed in Piloti.",
     "de": "Eine Datei, die einem vorhandenen Dokument unter anderer Schreibweise entspricht, wird zurückgehalten und neben diesem Dokument angezeigt, statt ein zweites Dokument zu werden. Der Dialog nennt außerdem den alten und den neuen Namen eines in Piloti umbenannten Dokuments."
   },
   {
     "en": "A file that was still waiting to be read during an interruption is now read afterwards instead of showing as failed.",
     "de": "Eine Datei, die während einer Unterbrechung noch auf das Lesen wartete, wird jetzt danach gelesen, statt als fehlgeschlagen zu erscheinen."
+  },
+  {
+    "en": "A file the content check held back is now called „Zurückgehalten“ on its badge and in the upload summary, the same word the upload panel, the folder overview and the chat use.",
+    "de": "Eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, heißt nun auf ihrem Badge und in der Upload-Zusammenfassung „Zurückgehalten“ – genau wie im Upload-Bereich, in der Ordnerübersicht und im Chat."
   },
   {
     "en": "A file uploaded during the conversation now opens from the answer's source right away. Files Piloti cannot display, such as Word documents or spreadsheets, can be downloaded from there.",
@@ -238,6 +254,10 @@
   {
     "en": "A file whose reading was cut short by an interruption now shows as failed, with a retry, instead of staying in progress and being impossible to read again.",
     "de": "Eine Datei, deren Lesen durch eine Unterbrechung abgebrochen wurde, wird jetzt als fehlgeschlagen angezeigt, mit einem erneuten Versuch, statt bei „Wird gelesen“ hängen zu bleiben und sich nicht mehr lesen zu lassen."
+  },
+  {
+    "en": "A file whose upload is still on its way says „Wird hochgeladen“ again instead of „Wird gelesen“.",
+    "de": "Bei einer Datei, deren Upload noch läuft, steht wieder „Wird hochgeladen“ statt „Wird gelesen“."
   },
   {
     "en": "A filed Recherchebericht now always lands in the project its research was run for. Before, a report from a run started outside a project, or from an older run reopened while another project was open, could end up in the wrong project, with that project's Bundesland on its cover sheet.",
@@ -704,6 +724,10 @@
     "de": "Der leere Chat im Projekt sagt jetzt in einem Satz, dass Piloti auf Zuruf auch Aktenvermerke und Entwürfe schreibt."
   },
   {
+    "en": "An open document now shows what Piloti saw on each page, with the drawing type and scale, right under its summary, and a click on an entry turns the document to that page. Format, page count and size sit under the name, so the side panel keeps only what Piloti read, the Fassungen and the pages.",
+    "de": "Ein geöffnetes Dokument zeigt jetzt direkt unter seiner Zusammenfassung, was Piloti auf jeder Seite erkannt hat, einschließlich Zeichnungstyp und Maßstab; ein Klick auf einen Eintrag springt zu dieser Seite. Format, Seitenzahl und Größe stehen unter dem Namen, sodass die Seitenleiste nur noch das enthält, was Piloti ausgelesen hat, die Fassungen und die Seiten."
+  },
+  {
     "en": "An open file now has a link of its own that you can share, and Back closes the preview instead of leaving Dateien.",
     "de": "Eine geöffnete Datei hat jetzt einen eigenen Link, den Sie weitergeben können, und Zurück schließt die Vorschau, statt die Dateien zu verlassen."
   },
@@ -714,6 +738,10 @@
   {
     "en": "An overview now shows its parts as a table or as a mindmap, never both. A mindmap that would only repeat the table is now rare, so a mindmap no longer appears on screen only to vanish when the answer finishes.",
     "de": "Eine Übersicht zeigt ihre Teile jetzt entweder als Tabelle oder als Mindmap, nie beides. Eine Mindmap, die nur die Tabelle wiederholen würde, ist jetzt selten, daher erscheint keine Mindmap mehr kurz auf dem Bildschirm, nur um beim Abschluss der Antwort wieder zu verschwinden."
+  },
+  {
+    "en": "An upload refused because the file it would replace waits in the Quarantäne now says so in your language and no longer offers a retry that would be refused the same way.",
+    "de": "Die Ablehnung eines Uploads, weil die zu ersetzende Datei in der Quarantäne liegt, wird nun in Ihrer Sprache angezeigt. Ein erneuter Versuch, der aus demselben Grund abgelehnt würde, wird nicht mehr angeboten."
   },
   {
     "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
@@ -1476,6 +1504,10 @@
     "de": "Im Forschungsplan wählen Sie unter Unterlagen, welche Dokumente aus dem Projekt und der Büroablage die Recherche vollständig liest und welche sie nicht verwendet. Ausgeschlossene Dokumente werden nicht zitiert, auch wenn eine Suche sie findet."
   },
   {
+    "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
+    "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
+  },
+  {
     "en": "In the task list a running card shows in one line what the task is doing, such as „Recherchieren · 3 Runden · 9 Dokumente“.",
     "de": "In der Aufträge-Liste zeigt eine laufende Karte in einer Zeile, was der Auftrag gerade tut, etwa „Recherchieren · 3 Runden · 9 Dokumente“."
   },
@@ -2016,8 +2048,16 @@
     "de": "Recherchen, die bereits fertig waren, aber im Verlauf noch als laufend angezeigt wurden, zeigen beim Beenden jetzt ihr tatsächliches Ergebnis, statt hängen zu bleiben. Ein Beenden einer Recherche fragt jetzt zuerst nach einer Bestätigung."
   },
   {
+    "en": "Retrying a file Piloti could not read now reads it again instead of uploading it again, and a file that would fail the same way says so instead of failing once more.",
+    "de": "Wenn Sie den Vorgang für eine Datei wiederholen, die Piloti nicht lesen konnte, wird sie jetzt erneut eingelesen statt hochgeladen. Würde bei einer Datei derselbe Fehler erneut auftreten, wird dies jetzt angezeigt."
+  },
+  {
     "en": "Review requests can now be decided in the inbox: approve, ask for changes or reject. Each row shows the instruction, the deadline and a link to the file.",
     "de": "Prüfanfragen lassen sich jetzt direkt im Posteingang entscheiden: freigeben, Änderungen anfordern oder ablehnen. Jede Zeile zeigt die Anweisung, die Frist und einen Link zur Datei."
+  },
+  {
+    "en": "Reviewers can now allow or delete a held file right from its preview, at the page where the content check found it. Every page with a finding is listed, not just the first ten.",
+    "de": "Sie können eine zurückgehaltene Datei jetzt direkt in der Vorschau auf der Seite freigeben oder löschen, auf der die Inhaltsprüfung sie gefunden hat. Alle Seiten mit einem Fund werden aufgelistet, nicht nur die ersten zehn."
   },
   {
     "en": "Right-click in a project's Files works the way it does in Finder and Explorer: a file, a folder and the empty list each open their own menu. The ⋯ button on a file or folder offers the same actions, so the menu stays available if you never right-click.",
@@ -2270,6 +2310,10 @@
   {
     "en": "The built-in Project Editor and Project Admin roles receive the new filing permission. Grant it to a custom project role yourself, or leave it out if Piloti should only answer.",
     "de": "Die eingebauten Rollen Project Editor und Project Admin erhalten die neue Berechtigung zum Ablegen. Einer eigenen Projektrolle erteilen Sie sie selbst, oder Sie lassen sie weg, wenn Piloti nur antworten soll."
+  },
+  {
+    "en": "The button that starts a conversation about a document now reads „Mit Piloti besprechen“, so it is clear it opens a chat with Piloti and not with a colleague.",
+    "de": "Der Button für ein Gespräch über ein Dokument heißt jetzt „Mit Piloti besprechen“ und macht damit klar, dass sich ein Chat mit Piloti und nicht mit einer Kollegin oder einem Kollegen öffnet."
   },
   {
     "en": "The buttons in the derivation, for folding levels and opening a source, respond to clicks and taps again. On the first question of a new chat the page no longer scrolls along with the growing derivation.",
@@ -2576,8 +2620,16 @@
     "de": "Der Upload-Verlauf in den Projekteinstellungen reicht jetzt bis zum ersten Upload des Projekts zurück. Mit „Ältere Uploads laden“ sehen Sie die nächstälteren Uploads."
   },
   {
+    "en": "The upload panel and the chat now show a file the content check held back as held for review, with what was found, instead of as failed, and no longer offer to retry it. A file that was kept but not read is shown as filed rather than citable.",
+    "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
+  },
+  {
     "en": "The upload panel no longer closes while you are still working in it. A completely successful batch of uploads still clears after a few seconds, but the countdown pauses while your pointer is on the panel or your keyboard focus is inside it.",
     "de": "Das Upload-Panel schließt sich nicht mehr von selbst, während Sie noch damit arbeiten. Ein komplett erfolgreicher Stapel von Uploads verschwindet weiterhin nach einigen Sekunden, doch der Countdown pausiert, solange der Mauszeiger auf dem Panel liegt oder der Tastaturfokus darin ist."
+  },
+  {
+    "en": "The upload panel no longer jumps or cuts off status words while a batch uploads and is read, and it folds away smoothly once everything is read. A held file can now be sent for review right from the panel.",
+    "de": "Das Upload-Panel springt nicht mehr und schneidet keine Statusangaben ab, während ein Stapel hochgeladen und eingelesen wird. Sobald alles eingelesen ist, klappt es reibungslos ein. Eine zurückgehaltene Datei lässt sich jetzt direkt aus dem Panel zur Prüfung senden."
   },
   {
     "en": "The upload summary now shows which files were a new version of a document already there (Geändert), and which went into a folder with its own access list (Geschützt). It counts both and marks each such file.",

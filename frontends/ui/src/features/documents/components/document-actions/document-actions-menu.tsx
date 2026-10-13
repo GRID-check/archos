@@ -21,6 +21,8 @@ import { ActionMenu, type ActionMenuEntry } from '@/components/ui/action-menu'
 import { Button } from '@/components/ui/button'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
+import { DeleteDocumentDialog } from './delete-document-dialog'
 import { RenameDocumentDialog } from './rename-document-dialog'
 import {
   documentActionEntries,
@@ -60,6 +62,14 @@ export interface DocumentActionsMenuProps {
   onOpen?: () => void
   onAsk?: () => void
   trigger?: ReactNode
+  /**
+   * What the default trigger sits on. `floating` (the default) lays it over a
+   * thumbnail or a viewport, so it carries its own translucent ground and
+   * shadow to stay legible on whatever is behind it. `toolbar` sits in a row of
+   * ghost icon buttons (the preview header) and must look like its neighbours:
+   * the floating ground there read as one grey square among plain glyphs.
+   */
+  surface?: 'floating' | 'toolbar'
   align?: 'start' | 'end'
   side?: 'top' | 'right' | 'bottom' | 'left'
 }
@@ -161,18 +171,11 @@ export function useDocumentActionMenu({
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'delete') && (
-        <ConfirmDialog
+        <DeleteDocumentDialog
           open={deleteOpen}
           onOpenChange={setDeleteOpen}
-          title={t('delete.title', { name: documentActions.name })}
-          description={t('delete.confirm')}
-          confirmLabel={documentActions.isDeleting ? t('delete.deleting') : t('delete.confirmAction')}
-          cancelLabel={t('delete.cancel')}
-          pending={documentActions.isDeleting}
-          confirmTestId="document-delete-confirm"
-          onConfirm={async () => {
-            if (await documentActions.remove()) setDeleteOpen(false)
-          }}
+          scope={scope}
+          actions={documentActions}
         />
       )}
       {entries.some((entry) => entry.type === 'item' && entry.id === 'reingest') && (
@@ -202,6 +205,7 @@ export function useDocumentActionMenu({
 
 export function DocumentActionsMenu({
   trigger,
+  surface = 'floating',
   align = 'end',
   side = 'bottom',
   ...props
@@ -222,7 +226,10 @@ export function DocumentActionsMenu({
               type="button"
               variant="ghost"
               size="icon"
-              className="size-8 shrink-0 bg-background/80 shadow-2xs backdrop-blur-sm"
+              className={cn(
+                'size-8 shrink-0',
+                surface === 'floating' && 'bg-background/80 shadow-2xs backdrop-blur-sm',
+              )}
               aria-label={t('actions.label', { name })}
               title={t('actions.menuLabel')}
               data-testid="document-actions-trigger"
