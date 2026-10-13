@@ -121,7 +121,7 @@ third only exists on a PR.
 
 `packages/ifc-spatial` (TypeScript) and `packages/ifc-spatial-py` (Python) are
 two implementations of the same spatial surface over IFC (ADR-0045), and both
-sit **outside** the workspace they live next to: their own `package-lock.json`
+sit **outside** the workspace they live next to: their own `bun.lock`
 and `uv.lock`, their own toolchains. Nothing the frontend or backend tier
 installs can run them, which is how 830 tests behind a default-ON feature that
 renders OIB compliance verdicts ended up with no gate at all — no Taskfile

@@ -17,7 +17,7 @@ Two options were on the table:
 
 - **(a) Export per release.** `scripts/release_notes.py publish` runs in
   `.github/workflows/release-notes.yml` on a bare `ubuntu-latest` with only
-  `uv`. An export there would need Node, the site's `npm ci` (for sharp), the
+  `uv`. An export there would need Node, the site's `bun install` (for sharp), the
   pinned kit clone, its `npm ci`, and a Firefox download, on every merge that
   touches a note, and it would commit two binary files per release forever.
   Rejected: heavy, and it ties the art to the release data's shape.

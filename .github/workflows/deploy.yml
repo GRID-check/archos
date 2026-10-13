@@ -253,21 +253,22 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       # The CrossGuard policy pack is a separate Node program with its own deps.
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Plan + two independent gates on the SAME plan `pulumi up` will apply
       # (the imageTag override is applied BEFORE previewing):
@@ -279,7 +280,7 @@ jobs:
       #      the preview here, before anything touches the cluster.
       # The CLI release of the SDK the lockfile pins, not `latest`: Pulumi
       # releases the two in lockstep, so the CLI moves only in a reviewed
-      # package-lock.json diff (Dependabot's, usually), and staging and prod run
+      # bun.lock diff (Dependabot's, usually), and staging and prod run
       # the same one. `latest` changed the CLI under a deploy nobody changed.
       - name: Install Pulumi
         working-directory: deploy/pulumi
@@ -460,20 +461,21 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: deploy/pulumi/package-lock.json
+
+      # Bun installs; Node runs the Pulumi program (Pulumi.yaml `packagemanager: bun`, ADR-0103).
+      - uses: ./.github/actions/setup-bun
 
       - name: Install program deps
         working-directory: deploy/pulumi
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Install policy-pack deps
         working-directory: deploy/pulumi/policy
-        run: npm ci
+        run: bun install --frozen-lockfile
 
       - name: Typecheck (cluster-free gate)
         working-directory: deploy/pulumi
-        run: npx tsc --noEmit && (cd policy && npx tsc --noEmit)
+        run: bun run typecheck && bun run --cwd policy typecheck
 
       # Prod consumes the tag its committed stack file pins, and nothing else
       # checked that tag was ever built: a promotion to a commit whose publish

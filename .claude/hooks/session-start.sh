@@ -73,15 +73,14 @@ step "UI dependencies (bun)"
 # Do not add `--bun`.
 (cd frontends/ui && bun install --frozen-lockfile)
 
-step "web/landing dependencies (npm)"
-# npm, not bun: the Astro toolchain ships its own lockfile and bundler.
-(cd frontends/web && npm ci)
+step "web/landing dependencies (bun)"
+bun install --frozen-lockfile --cwd frontends/web
 
-step "Pulumi program and policy pack"
+step "Pulumi program and policy pack (bun)"
 # Two Node programs, each with its own lockfile. Installing only the policy pack
 # leaves `task verify` failing at `infra:types`.
-npm --prefix deploy/pulumi ci
-npm --prefix deploy/pulumi/policy ci
+bun install --frozen-lockfile --cwd deploy/pulumi
+bun install --frozen-lockfile --cwd deploy/pulumi/policy
 
 step "agent skills (apm install --frozen)"
 # The step whose absence is invisible. `--frozen` refuses to install when the

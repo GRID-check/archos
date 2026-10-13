@@ -39,6 +39,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
+# Bun installs and runs the scripts; Node runs Astro and the site (ADR-0103).
+# Copied from the official image, as frontends/ui/deploy/Dockerfile does and
+# for the same reasons; the version is the one `.github/actions/setup-bun`
+# pins (`tests/test_bun_version_pin.py`). The runner deletes it again.
+COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
+
 # =============================================================================
 # Stage 2: Dependencies
 # =============================================================================
@@ -46,9 +52,20 @@ FROM base AS deps
 
 WORKDIR /app
 
-COPY package.json package-lock.json ./
+COPY package.json bun.lock ./
 
-RUN npm ci --ignore-scripts
+RUN bun install --frozen-lockfile --ignore-scripts
+
+# Production dependencies only, installed FRESH: `bun install --production`
+# over an existing node_modules prunes nothing (docs/contributing/gotchas.md),
+# so the runner takes its node_modules from here rather than the builder's.
+FROM base AS prod-deps
+
+WORKDIR /app
+
+COPY package.json bun.lock ./
+
+RUN bun install --frozen-lockfile --production --ignore-scripts
 
 # =============================================================================
 # Stage 3: Builder
@@ -68,11 +85,7 @@ ARG PUBLIC_SITE_URL=https://piloti.at
 ENV PUBLIC_SITE_URL=$PUBLIC_SITE_URL
 ENV ASTRO_TELEMETRY_DISABLED=1
 
-RUN npm run build
-
-# Remove devDependencies - keeps dev-only packages out of the production image
-# (tailwind, check tooling, ...). sharp stays (image handling).
-RUN npm prune --omit=dev
+RUN bun run build
 
 # =============================================================================
 # Stage 4: Production Runner
@@ -89,10 +102,12 @@ ENV PORT=4321
 
 RUN groupadd --system --gid 1001 nodejs \
     && useradd --system --uid 1001 --gid nodejs piloti \
-    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+    && rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/bun
 
 COPY --from=builder --chown=piloti:nodejs /app/dist ./dist
-COPY --from=builder --chown=piloti:nodejs /app/node_modules ./node_modules
+# devDependencies stay out of the image (tailwind, check tooling, ...); sharp,
+# a dependency, comes with the rest.
+COPY --from=prod-deps --chown=piloti:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=piloti:nodejs /app/package.json ./package.json
 COPY --from=builder --chown=piloti:nodejs /app/runtime ./runtime
 

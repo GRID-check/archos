@@ -52,8 +52,8 @@ updates:
       - dependency-name: "@types/node"
         update-types: ["version-update:semver-major"]
 
-  # Landing site (Astro microservice).
-  - package-ecosystem: npm
+  # Landing site (Astro microservice). bun.lock, like the UI's (ADR-0103).
+  - package-ecosystem: bun
     directory: "/frontends/web"
     schedule:
       interval: weekly
@@ -71,7 +71,7 @@ updates:
   # The Pulumi program and its policy pack. Bumping @pulumi/pulumi here also
   # moves the CLI the deploy installs (deploy.yml installs the locked SDK's
   # release), so the two can only move together, in a reviewed pull request.
-  - package-ecosystem: npm
+  - package-ecosystem: bun
     directories:
       - "/deploy/pulumi"
       - "/deploy/pulumi/policy"

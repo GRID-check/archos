@@ -102,7 +102,7 @@ infra:
   - '.github/actions/**'
 # The two standalone IFC packages (ADR-0045). Their own family rather than a
 # line in `backend:` or `frontend:`, because they are outside BOTH workspaces —
-# own package-lock.json, own uv.lock, own toolchains — so nothing the backend or
+# own bun.lock, own uv.lock, own toolchains — so nothing the backend or
 # frontend jobs install can run them, and a `packages/`-only PR has no reason to
 # pay for a Next.js build. The `packages` job is ~4 minutes, essentially all of
 # it packages/ifc-spatial-py, which is why it is filtered at all.

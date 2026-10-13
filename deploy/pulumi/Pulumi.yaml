@@ -2,7 +2,7 @@ name: grid-oib
 runtime:
   name: nodejs
   options:
-    packagemanager: npm
+    packagemanager: bun
 description: >-
   Kubernetes deployment for the Grid OIB agent stack (backend, frontend/BFF,
   workers, CloudNativePG, Dragonfly, SeaweedFS, Envoy Gateway + cert-manager).
