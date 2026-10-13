@@ -1380,3 +1380,58 @@ apply_in grid_vhash 0131_document_version_screened_hash.sql
 apply_in grid_vhash 0131_document_version_screened_hash.sql
 check_in grid_vhash "SELECT count(*) FROM document_versions WHERE organization_id = 'org_0131' AND screened_hash = content_hash" "4" "0131 re-applies, twice, to the same verdicts"
 echo "==> 0131 version verdict backfill and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0133: a project's profile always has its four parts, and its DOWN.
+#
+# On a database of its own, migrated to 0132, where a project that never saved
+# its intake still stores `{}` (the old default) and the close dialog's debrief
+# crashed on `profile.facts`. The backfill gives every row the shape and keeps
+# what is well-formed; the default is the empty profile; a hand-written `{}`
+# or a part of the wrong type is refused. The down leaves the data.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0133 project profile shape and its down migration on grid_pshape"
+migrate_until grid_pshape 0132_documents_folder_level_listing_idx
+sql_in grid_pshape <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name) VALUES
+  ('aaaaaaaa-0000-4000-8000-000000000133', 'org_0133', 'Nie erfasst', 'user_1', 'proj_0133a');
+INSERT INTO projects (id, organization_id, name, created_by, collection_name, profile, profile_version) VALUES
+  ('bbbbbbbb-0000-4000-8000-000000000133', 'org_0133', 'Teilweise', 'user_1', 'proj_0133b',
+   '{"facts":{"bundesland":{"value":"tirol"}},"unknowns":"kaputt","extra":1}', 4),
+  ('cccccccc-0000-4000-8000-000000000133', 'org_0133', 'Kein Objekt', 'user_1', 'proj_0133c', '[]', 2);
+SQL
+check_in grid_pshape "SELECT profile::text FROM projects WHERE id = 'aaaaaaaa-0000-4000-8000-000000000133'" "{}" \
+  "before 0133 a project that never saved its intake stores {}"
+apply_in grid_pshape 0133_project_profile_shape.sql
+P133="SELECT profile::text || ' v' || profile_version FROM projects WHERE id ="
+check_in grid_pshape "$P133 'aaaaaaaa-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v1' "the backfill gives a {} row the empty profile, version unchanged"
+check_in grid_pshape "$P133 'bbbbbbbb-0000-4000-8000-000000000133'" \
+  '{"extra": 1, "facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}} v4' \
+  "the backfill keeps a well-formed part and another key, and replaces a part of the wrong type"
+check_in grid_pshape "$P133 'cccccccc-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v2' "the backfill turns a non-object into the empty profile"
+sql_in grid_pshape <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('dddddddd-0000-4000-8000-000000000133', 'org_0133', 'Neu', 'user_1', 'proj_0133d');
+SQL
+check_in grid_pshape "$P133 'dddddddd-0000-4000-8000-000000000133'" \
+  '{"facts": {}, "goals": {}, "unknowns": [], "assumptions": {}} v1' "a new project gets the empty profile by default"
+refused_in grid_pshape "UPDATE projects SET profile = '{}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "a hand-written {} was accepted"
+refused_in grid_pshape "UPDATE projects SET profile = profile || '{\"unknowns\": {}}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "unknowns as an object was accepted"
+refused_in grid_pshape "UPDATE projects SET profile = profile - 'goals' WHERE id = 'dddddddd-0000-4000-8000-000000000133'" \
+  "projects_profile_shape_check" "a profile without goals was accepted"
+apply_in grid_pshape 0133_project_profile_shape.down.sql
+check_in grid_pshape "SELECT count(*) FROM pg_constraint WHERE conname = 'projects_profile_shape_check'" "0" "down dropped the check"
+check_in grid_pshape "SELECT column_default FROM information_schema.columns WHERE table_name = 'projects' AND column_name = 'profile'" \
+  "'{}'::jsonb" "down restored the old default"
+check_in grid_pshape "$P133 'bbbbbbbb-0000-4000-8000-000000000133'" \
+  '{"extra": 1, "facts": {"bundesland": {"value": "tirol"}}, "goals": {}, "unknowns": [], "assumptions": {}} v4' "down left the data"
+sql_in grid_pshape <<<"UPDATE projects SET profile = '{}' WHERE id = 'dddddddd-0000-4000-8000-000000000133'"
+apply_in grid_pshape 0133_project_profile_shape.sql
+apply_in grid_pshape 0133_project_profile_shape.sql
+check_in grid_pshape "SELECT count(*) FROM projects WHERE organization_id = 'org_0133' AND profile ? 'facts'" "4" \
+  "0133 re-applies, twice, and backfills a {} written while it was down"
+echo "==> 0133 project profile shape and down migration verified"

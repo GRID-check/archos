@@ -14,10 +14,15 @@ export const projects = pgTable(
     createdBy: text('created_by').notNull(),
     collectionName: text('collection_name').notNull(),
     workosResourceId: text('workos_resource_id').unique(),
+    /**
+     * Never `{}`: the default is the empty profile, and
+     * `projects_profile_shape_check` holds the four parts to their JSON types
+     * (migration 0133), so a reader can always enumerate `facts`.
+     */
     profile: jsonb('profile')
       .$type<ProjectProfile>()
       .notNull()
-      .default({} as ProjectProfile),
+      .default({ facts: {}, goals: {}, unknowns: [], assumptions: {} }),
     profileVersion: integer('profile_version').notNull().default(1),
     profilePromptView: text('profile_prompt_view'),
     profileDisplay: jsonb('profile_display').$type<ProjectProfileDisplay>(),
@@ -69,6 +74,10 @@ export const projects = pgTable(
     periodCheck: check(
       'projects_period_check',
       sql`(${table.startedOn} IS NULL OR extract(day FROM ${table.startedOn}) = 1) AND (${table.endedOn} IS NULL OR extract(day FROM ${table.endedOn}) = 1) AND (${table.startedOn} IS NULL OR ${table.endedOn} IS NULL OR ${table.endedOn} >= ${table.startedOn})`
+    ),
+    profileShapeCheck: check(
+      'projects_profile_shape_check',
+      sql`jsonb_typeof(${table.profile}->'facts') IS NOT DISTINCT FROM 'object' AND jsonb_typeof(${table.profile}->'goals') IS NOT DISTINCT FROM 'object' AND jsonb_typeof(${table.profile}->'unknowns') IS NOT DISTINCT FROM 'array' AND jsonb_typeof(${table.profile}->'assumptions') IS NOT DISTINCT FROM 'object'`
     ),
     closedStateCheck: check(
       'projects_closed_state_check',
