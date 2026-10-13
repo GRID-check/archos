@@ -301,6 +301,7 @@ export const files = {
     downloadFailed: "The download couldn't be started. Please try again.",
     ingestionFailed: 'Reading failed',
     heldTitle: 'Held back by the content check',
+    heldDecided: 'Someone has already decided about this file.',
     ingestionFailedPreviousVersionKept:
       'Search and Piloti still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
@@ -371,6 +372,7 @@ export const files = {
     findingsLabel: 'Where the content check found it',
     findingPage: 'p. {page}',
     showFinding: 'Show the finding on page {page}',
+    morePages: 'Found on further pages too',
   },
   browser: {
     folderEmptyTitle: 'This folder is empty',

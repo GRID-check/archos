@@ -1,0 +1,6 @@
+---
+features:
+  - >
+    Reviewers can now allow or delete a held file right from its preview, at the
+    page where the content check found it. Every page with a finding is listed,
+    not just the first ten.

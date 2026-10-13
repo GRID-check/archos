@@ -116,13 +116,26 @@ the project's admins and, for the Büroablage, its curators can:
 
 - **Look at it** („Ansehen"), which opens it in the project's Dateien or in the
   Büroablage, where it is filed. A chat attachment has no such view.
-- **Release** it. Piloti then reads it like any other upload. The release
-  applies to exactly these bytes: uploading a changed version screens it again.
-- **Delete** it.
+- **Allow** it („Zulassen"). Piloti then reads it like any other upload. The
+  decision applies to exactly these bytes: uploading a changed version screens
+  it again.
+- **Delete** it („Löschen").
+
+**Deciding from the preview.** „Ansehen" opens the file's preview. A PDF, or an
+office file shown as one, opens at the first page the check found something on,
+with the office's term marked. Under **Von der Inhaltsprüfung zurückgehalten**
+the preview lists every finding, for a PDF one button per page, so you can step
+through them; „…" after the pages means the check found it on more pages than
+it lists. **Zulassen** and **Löschen** sit under the findings, so you can
+decide while looking at the document. They ask the same questions as the
+Quarantäne list. Zulassen needs permission to change files in the file's
+folder; without it the preview shows the findings only. The uploader sees
+**Prüfung anfragen** there instead.
 
 Reviewers get an inbox notice when files wait for them. It names no file. The
-audit log records both the quarantine, as Piloti's own decision, and a release,
-with the terms and checks that matched but never the matched text.
+audit log records both the quarantine, as Piloti's own decision, and the
+decision to allow it, with the terms and checks that matched but never the
+matched text.
 
 **Who sees a quarantined file.** Only the person who uploaded it and the people
 above. For everyone else in the project, or in the Büroablage, it is not there:
@@ -130,7 +143,7 @@ it is missing from the file list, the search, the project overview and the
 model list, and its download, preview and thumbnail answer as if it did not
 exist. Piloti's assistant never reads it. Restoring a folder from the
 Papierkorb, changing a folder's access or re-indexing the project leaves it in
-quarantine; only a release takes it out.
+quarantine; only allowing it takes it out.
 
 **Before the check has finished**, a new file is held back the same way: you
 see your own upload at once, with its progress, and so do the people above;
@@ -140,12 +153,12 @@ new version of a document from a draft: until the new content is checked,
 colleagues do not see the document at all, its earlier version included, and
 a link or a citation to it answers as if it did not exist for those minutes.
 If the corrected file is held back for its content, Piloti stops finding the
-earlier version too, until one of the people above releases or deletes it.
+earlier version too, until one of the people above allows or deletes it.
 
 **A file whose reading failed before the check** (an IFC model too large to
 read, for example) stays held back, because nothing has checked it. It waits in
 **Organisation → Quarantäne**, marked „Nicht geprüft", until one of the people
-above releases or deletes it; its uploader can ask for that from the upload
+above allows or deletes it; its uploader can ask for that from the upload
 summary.
 
 **In the Papierkorb**, a deleted folder counts only the files you may see. A
@@ -155,12 +168,12 @@ held-back ones included.
 **Replacing a quarantined file.** A file cannot be uploaded over one that waits
 in quarantine, not even by its uploader: the held-back version would stay in
 the file's history, where everyone could open it. Delete the quarantined file
-first (or have it released), then upload the corrected one.
+first (or have it allowed), then upload the corrected one.
 
 **Asking for a review.** The uploader can press **Prüfung anfragen** next to
-the file in the upload summary. The people who may review and allow it get an
-inbox notice that names the file and opens the quarantine. Nothing is allowed in
-until one of them decides.
+the file in the upload summary, or under the findings in the file's preview.
+The people who may review and allow it get an inbox notice that names the file
+and opens the quarantine. Nothing is allowed in until one of them decides.
 
 ## What arrived: the upload summary
 
