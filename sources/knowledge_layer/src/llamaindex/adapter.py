@@ -5663,10 +5663,6 @@ class LlamaIndexRetriever(BaseRetriever):
         chunk.metadata[FUSED_SCORE_KEY] = float(hit.fused)
         return chunk
 
-    def supports_grouped_search(self) -> bool:
-        """True: every collection lives in one shared Qdrant index."""
-        return True
-
     def _qdrant_lexical_inputs(self, query: str, collection_name: str) -> tuple[str, list[str]]:
         """The BM25 query text and the selective exact terms, both priced against the collection.
 

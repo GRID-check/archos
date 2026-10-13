@@ -171,9 +171,7 @@ def ingestor(tmp_path, monkeypatch, qdrant_store):
     llm.invoke.side_effect = lambda prompt: MagicMock(
         content='["Bericht"]' if "klassifizierst" in prompt else "Ein Bericht zur Baubesprechung."
     )
-    ing = LlamaIndexIngestor(
-        {"generate_summary": True, "summary_llm": llm, "extract_images": True}
-    )
+    ing = LlamaIndexIngestor({"generate_summary": True, "summary_llm": llm, "extract_images": True})
     ing._embed_model = FakeEmbedder()
     ing._initialized = True
     capture_indexed_documents(monkeypatch, into=_INDEXED)

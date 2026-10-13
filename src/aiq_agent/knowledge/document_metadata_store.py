@@ -1140,8 +1140,7 @@ class DocumentMetadataStore:
                 rows = conn.execute(
                     # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
                     text(
-                        f"SELECT filename FROM {TABLE_NAME} "
-                        "WHERE collection = :collection AND superseded_by = :newer"
+                        f"SELECT filename FROM {TABLE_NAME} WHERE collection = :collection AND superseded_by = :newer"
                     ),
                     {"collection": collection, "newer": newer},
                 )

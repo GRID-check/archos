@@ -493,18 +493,6 @@ async def test_grouped_search_refuses_an_unknown_filter_or_status(app):
 
 
 @pytest.mark.asyncio
-async def test_capability_says_whether_one_search_can_rank_many_collections(app):
-    retriever = MagicMock()
-    retriever.supports_grouped_search = MagicMock(return_value=True)
-    set_active_retriever(retriever)
-    async with _client(app) as client:
-        yes = await client.get("/v1/collections/search/capability")
-        retriever.supports_grouped_search.return_value = False
-        no = await client.get("/v1/collections/search/capability")
-    assert yes.json() == {"grouped": True} and no.json() == {"grouped": False}
-
-
-@pytest.mark.asyncio
 async def test_grouped_search_rejects_any_collection_outside_the_signed_scope(app, monkeypatch):
     monkeypatch.setenv("REQUIRE_AUTH", "true")
     monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "s3cr3t")
@@ -535,17 +523,20 @@ async def test_grouped_search_needs_a_signed_scope_under_auth(app, monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_grouped_search_409_when_the_backend_cannot_rank_across_collections(app):
-    """The BFF reads 409 as "search collection by collection" (Chroma)."""
+async def test_a_failed_grouped_search_is_a_500_not_a_fallback_signal(app):
+    """Qdrant is the only store: no 409 tells the BFF to search collection by collection any more."""
     retriever = MagicMock()
     retriever.backend_name = "test"
-    retriever.search_grouped = AsyncMock(side_effect=NotImplementedError("chroma cannot"))
+    retriever.search_grouped = AsyncMock(side_effect=NotImplementedError("cannot rank across collections"))
     set_active_retriever(retriever)
 
     async with _client(app) as client:
         res = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a"]})
+        capability = await client.get("/v1/collections/search/capability")
 
-    assert res.status_code == 409
+    assert res.status_code == 500
+    # The capability probe is gone; the path now names a collection called "search".
+    assert capability.status_code in (404, 405)
 
 
 @pytest.mark.asyncio

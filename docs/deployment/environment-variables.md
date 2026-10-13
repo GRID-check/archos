@@ -577,7 +577,7 @@ are the ones operators change or meet; the rest are in that function.
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `QDRANT__SERVICE__METRICS_PORT` | `6336` | `service.metrics_port`: a listener serving `/metrics` and nothing else, without the API key (every other path 404). The OTel collector scrapes each peer there (`allow-collector-to-qdrant-metrics`); on 6333 the same path answers 401 without a key. |
-| `QDRANT__STORAGE__QUOTAS__ENABLED`, `..._MAX_RESIDENT_MEMORY_PERCENT`, `..._MAX_DISK_USAGE_PERCENT` | `true`, `grid-oib:qdrantQuotaMemoryPercent` (90), `grid-oib:qdrantQuotaDiskPercent` (85) | Above either, a peer refuses writes with HTTP 507 and reports `quota_exceeded{resource}`. Seeds the quota manager on a cluster's first start only; afterwards `PUT /quotas` changes it. |
+| `QDRANT__STORAGE__QUOTAS__ENABLED`, `..._MAX_RESIDENT_MEMORY_PERCENT`, `..._MAX_DISK_USAGE_PERCENT` | `true`, `grid-oib:qdrantQuotaMemoryPercent` (90), `grid-oib:qdrantQuotaDiskPercent` (85) | Above either, a peer refuses writes with HTTP 507 and reports `quota_exceeded{resource}`. Seeds the quota manager on a cluster's first start only; afterwards `PUT /quotas` changes it. The Compose `qdrant` service sets the same, from `QDRANT_QUOTA_MEMORY_PERCENT` (90) and `QDRANT_QUOTA_DISK_PERCENT` (85), and its metrics port too. |
 | `QDRANT__STORAGE__LOW_MEMORY_MODE` | `grid-oib:qdrantLowMemoryMode`, unset by default | `no_resident` or `no_populate`: load segments without making them resident, to get a peer that OOMs while loading back up. Recovery only; remove it afterwards. An unknown value stops the peer at start, so the config refuses one. |
 
 ---

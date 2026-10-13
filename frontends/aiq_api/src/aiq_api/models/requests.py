@@ -314,12 +314,6 @@ class GroupedDocumentSearchRequest(BaseModel):
     boost: SearchBoost | None = Field(None, description="The current project's facts, to lift similar projects")
 
 
-class GroupedSearchCapability(BaseModel):
-    """Answer of ``GET /v1/collections/search/capability``."""
-
-    grouped: bool = Field(..., description="Whether POST /v1/collections/search can answer on this deployment")
-
-
 class ProjectFactsResult(BaseModel):
     """Answer of ``PUT /v1/collections/{collection}/project-facts``."""
 

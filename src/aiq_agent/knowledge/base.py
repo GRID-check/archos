@@ -271,8 +271,7 @@ class BaseRetriever(ABC):
         What cross-project search needs (ADR-0094, ADR-0105): every reachable
         project ranked in ONE query, so scores never have to be compared
         across separate indexes. Only a backend with a shared index can answer
-        it; the default raises ``NotImplementedError`` and the caller falls
-        back to searching collection by collection.
+        it; the default raises ``NotImplementedError``.
 
         ``filters`` (the grammar ``retrieve`` takes) narrow the search before
         ranking. ``boost`` (``{"facts": {...}, "weights": {...}}``: the current
@@ -281,15 +280,6 @@ class BaseRetriever(ABC):
         score as ``metadata[FUSED_SCORE_KEY]``.
         """
         raise NotImplementedError(f"{self.backend_name} cannot rank across collections in one query")
-
-    def supports_grouped_search(self) -> bool:
-        """Whether :meth:`search_grouped` can answer here, asked before a caller prepares one.
-
-        A deployment property, not a tenant's: the BFF reads it once per
-        interval rather than authorizing a page of projects to learn it from
-        a refusal.
-        """
-        return False
 
     async def find_text(
         self,

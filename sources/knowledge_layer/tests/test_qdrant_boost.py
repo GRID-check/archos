@@ -212,6 +212,30 @@ def test_set_scope_payload_mirrors_facts_onto_every_point_of_one_scope(store):
     assert store.count("proj_a", {"project_facts.bundesland": "wien", "project_status": "closed"}) == 2
 
 
+def test_set_scope_payload_retries_a_transient_failure(store, monkeypatch):
+    """The facts route's one write: a peer restarting mid-rollout must not turn a profile save into a 502."""
+    import httpx
+    from knowledge_layer.qdrant import store as store_module
+    from qdrant_client.http.exceptions import UnexpectedResponse
+
+    _project(store, "proj_a", None, _record("a1.pdf", _unit("a1")))
+    pauses: list[float] = []
+    monkeypatch.setattr(store_module, "_sleep", pauses.append)
+    real = store.client.set_payload
+    errors = [UnexpectedResponse(503, "Service Unavailable", b"", httpx.Headers())]
+
+    def set_payload(*args, **kwargs):
+        if errors:
+            raise errors.pop(0)
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store.client, "set_payload", set_payload)
+
+    assert store.set_scope_payload("proj_a", project_payload(CURRENT, "active"))
+    assert pauses == [0.2]
+    assert store.count("proj_a", {"project_status": "active"}) == 1
+
+
 def test_set_scope_payload_before_the_collection_exists_is_false(store):
     assert store.set_scope_payload("proj_new", project_payload(CURRENT, "active")) is False
 

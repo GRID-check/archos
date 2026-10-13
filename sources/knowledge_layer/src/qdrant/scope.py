@@ -11,6 +11,7 @@ The caller's own filter keeps the backend-neutral grammar the adapter has
 always accepted::
 
     {"field": value}                              -> equality
+    {"field": [v1, ...]}                          -> any of
     {"field": {"$eq"|"$ne": v}}                   -> (not) equal
     {"field": {"$in"|"$nin": [v1, ...]}}          -> (not) in
     {"$and": [node, ...]}  /  {"$or": [node, ...]} -> groups
@@ -38,6 +39,11 @@ _OPERATORS = frozenset({"$eq", "$ne", "$in", "$nin"})
 
 
 def _match(field: str, value: Any) -> models.FieldCondition:
+    # A list is any of its values, whatever the field's type: coerced whole it
+    # became the string "['a', 'b']" on a keyword field (the project facts'
+    # lists) and matched nothing.
+    if isinstance(value, (list, tuple, set)):
+        return _match_any(field, value)
     coerced = coerce_field(field, value)
     if isinstance(coerced, list):
         return models.FieldCondition(key=field, match=models.MatchAny(any=coerced))

@@ -309,8 +309,8 @@ async def test_ingest_books_its_spend_to_the_documents_project_and_uploader(app,
 
 
 @pytest.mark.asyncio
-async def test_ingest_carries_the_projects_facts_for_the_qdrant_mirror(app, mock_ingestor, no_network):
-    """A new document's chunks carry the project's facts from their first search (`qdrant.mirror.enrichment`)."""
+async def test_ingest_carries_the_projects_facts_for_the_chunks(app, mock_ingestor, no_network):
+    """A new document's chunks carry the project's facts from their first search (`qdrant.writes.enrichment`)."""
     body = {
         "file_ref": "http://seaweedfs.test/bucket/plan.pdf",
         "collection": "proj_1",

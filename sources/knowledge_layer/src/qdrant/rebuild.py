@@ -7,7 +7,9 @@ and one alias switch. Every client addresses the store through the alias
 
 The copy is a scroll of the live collection with its stored vectors, upserted
 page by page into the new one: nothing is re-embedded, and the lexical sparse
-vector is copied as Qdrant computed it. ``init_from`` is no shortcut: Qdrant
+vector is copied as Qdrant computed it. Each page is an upsert by point id,
+so a transient failure is retried like every other write (``store.with_retry``)
+instead of leaving a half copy behind a refused target. ``init_from`` is no shortcut: Qdrant
 1.19.2 accepts it and ignores it, leaving the new collection empty (drilled
 2026-10-13, ``docs/deployment/qdrant-runbook.md``).
 
@@ -33,6 +35,7 @@ from .schema import ALIASES
 from .schema import DENSE
 from .schema import Physical
 from .schema import create_collection
+from .store import with_retry
 
 logger = logging.getLogger(__name__)
 
@@ -106,7 +109,7 @@ def copy_collection(
         page, offset = client.scroll(source, limit=page_size, offset=offset, with_payload=True, with_vectors=True)
         if page:
             points = [models.PointStruct(id=record.id, vector=record.vector, payload=record.payload) for record in page]
-            client.upsert(target, points, wait=True)
+            with_retry(f"copy into {target}", lambda: client.upsert(target, points, wait=True))
             copied += len(page)
         if offset is None:
             break

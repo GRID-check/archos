@@ -27,7 +27,6 @@ from ..models.requests import DocumentSearchHit
 from ..models.requests import DocumentSearchRequest
 from ..models.requests import DocumentSearchResponse
 from ..models.requests import GroupedDocumentSearchRequest
-from ..models.requests import GroupedSearchCapability
 from ..models.requests import GroupedSearchFilters
 from .collections import _require_ingestor
 from .collections import require_collection
@@ -235,24 +234,6 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any] | No
 def add_document_search_routes(router: APIRouter):
     """Add semantic document-search routes to the FastAPI app."""
 
-    @router.get(
-        "/v1/collections/search/capability",
-        response_model=GroupedSearchCapability,
-        tags=["documents"],
-        summary="Whether one search can rank many collections here",
-    )
-    async def grouped_search_capability() -> GroupedSearchCapability:
-        """``grouped`` is true when ``POST /v1/collections/search`` can answer (the Qdrant backend).
-
-        A deployment property, the same for every tenant, so it names no
-        collection and needs no scope. The BFF asks it before authorizing a
-        page of projects for a grouped search it would otherwise learn is
-        unavailable only from the 409.
-        """
-        from aiq_agent.knowledge.factory import get_active_retriever
-
-        return GroupedSearchCapability(grouped=get_active_retriever().supports_grouped_search())
-
     @router.post(
         "/v1/collections/search",
         response_model=DocumentSearchResponse,
@@ -262,12 +243,12 @@ def add_document_search_routes(router: APIRouter):
     async def search_across_collections(
         request: GroupedDocumentSearchRequest, http_request: Request
     ) -> DocumentSearchResponse:
-        """Rank every named collection's documents in one query (needs the Qdrant backend).
+        """Rank every named collection's documents in one query (Qdrant, ADR-0105).
 
         Every collection must be in the caller's signed scope, as for the
-        single-collection search. A backend that cannot rank across
-        collections answers ``409``, and the BFF searches collection by
-        collection instead.
+        single-collection search. Qdrant is the only store (ADR-0104), so the
+        BFF has nothing to fall back to: a failed search is a 500, as for the
+        single-collection search, and the BFF surfaces it as an upstream error.
         """
         collections = list(dict.fromkeys(request.collections))
         for collection in collections:
@@ -283,8 +264,6 @@ def add_document_search_routes(router: APIRouter):
                 filters=grouped_filters(request.filters),
                 boost=request.boost.model_dump(mode="json") if request.boost else None,
             )
-        except NotImplementedError as e:
-            raise HTTPException(status_code=409, detail=str(e)) from e
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e)) from e
         except Exception as e:

@@ -253,7 +253,6 @@ async def test_search_grouped_carries_each_chunks_fused_score(retriever):
     groups = await retriever.search_grouped("Fluchttreppe", ["proj_a", "proj_b"], groups=5, group_size=2)
     fused = [chunk.metadata[FUSED_SCORE_KEY] for _, chunks in groups for chunk in chunks]
     assert fused == sorted(fused, reverse=True) and all(score > 0 for score in fused)
-    assert retriever.supports_grouped_search()
 
 
 async def test_search_grouped_ranks_projects_in_one_query(retriever):
@@ -516,7 +515,6 @@ async def test_health_is_qdrants(retriever, monkeypatch):
     assert await retriever.health_check() is True
     monkeypatch.setattr(store_module.QdrantStore, "health", lambda self: False)
     assert await retriever.health_check() is False
-
 
 
 # ---------------------------------------------------------------- superseded follows the newer row
