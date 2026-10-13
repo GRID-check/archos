@@ -25,7 +25,7 @@ Per run it records what the provider billed and what the reader got:
 
 No backend, no BFF: a question about an office's own files needs a project and
 is skipped, and says so. Needs OPENROUTER_API_KEY and the corpus ingested into
-AIQ_CHROMA_DIR (`--ingest` queues the corpus's ingest jobs from the table in
+the Qdrant at AIQ_QDRANT_URL (`--ingest` queues the corpus's ingest jobs from the table in
 AIQ_SUMMARY_DB and the object store, and claims and runs them in this process). Every run costs model calls.
 
 `--set precedent` runs the precedent eval instead
@@ -734,21 +734,18 @@ def _ingest_corpus(poll_seconds: float = 5.0, timeout_seconds: float = 3600.0) -
 
 
 def _corpus_ready() -> bool:
-    """Whether the OIB collection holds chunks, asked through the client the ingest itself opens.
+    """Whether the OIB collection holds chunks in the Qdrant at ``AIQ_QDRANT_URL``.
 
-    ``--ingest`` opens Chroma in THIS process with the adapter's settings, and
-    Chroma refuses a second client on the same path with other settings. A
-    bare ``PersistentClient`` here raised that, the error was swallowed, and a
-    corpus ingested a second earlier read as "not ingested" (the first answer
-    suite run in CI). The reason is printed now, so the next one is not silent.
+    Asked through the process-wide store the ingest itself writes through.
+    The reason a check fails is printed, so a corpus that reads as "not
+    ingested" for another cause (an unreachable server) is not silent.
     """
     try:
-        from knowledge_layer.llamaindex.adapter import _make_chroma_client
+        from knowledge_layer.qdrant.store import get_store
 
-        from aiq_agent.oib_sync import CHROMA_DIR
         from aiq_agent.oib_sync import COLLECTION_NAME
 
-        return _make_chroma_client(str(CHROMA_DIR)).get_collection(COLLECTION_NAME).count() > 0
+        return get_store().count(COLLECTION_NAME) > 0
     except Exception as exc:  # noqa: BLE001 - any failure is "not ready", said out loud
         print(f"corpus check failed: {type(exc).__name__}: {exc}", file=sys.stderr)
         return False
@@ -977,7 +974,7 @@ def _preflight(out: Path, ingest: bool) -> int:
             print(problem, file=sys.stderr)
     if not _corpus_ready():
         print(
-            "The OIB corpus is not ingested into AIQ_CHROMA_DIR. Upload the PDFs "
+            "The OIB corpus is not ingested into the Qdrant at AIQ_QDRANT_URL. Upload the PDFs "
             "(scripts/upload_oib_corpus.py) and run with --ingest.",
             file=sys.stderr,
         )
@@ -1047,7 +1044,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--out", type=Path, default=Path("/tmp/answer_suite") / time.strftime("%Y%m%d-%H%M%S"))
     parser.add_argument("--baseline", type=Path, help="an earlier results.json to compare medians against")
     parser.add_argument("--report", type=Path, help="re-render a results.json; no model calls")
-    parser.add_argument("--ingest", action="store_true", help="sync the OIB corpus into AIQ_CHROMA_DIR first")
+    parser.add_argument("--ingest", action="store_true", help="sync the OIB corpus into Qdrant first")
     parser.add_argument("--override", nargs=2, action="append", metavar=("KEY", "VALUE"))
     parser.add_argument(
         "--set",

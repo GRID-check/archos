@@ -659,19 +659,14 @@ def test_the_suite_reads_the_dialect_the_validator_holds():
     assert suite._DIALECT_BLOCKS == frozenset(DIRECTIVE_BLOCKS)
 
 
-def test_a_corpus_ingested_in_this_process_reads_as_ready(monkeypatch, tmp_path):
-    """The ingest's client and the check's client share one path in one process:
-    with different settings Chroma refused the check, which read as "not ingested"."""
-    from knowledge_layer.llamaindex.adapter import _make_chroma_client
-
+def test_a_corpus_in_the_store_reads_as_ready(qdrant_store):
+    """Readiness is the corpus's chunk count in the store the ingest writes through."""
     from aiq_agent import oib_sync
+    from sources.knowledge_layer.tests.qdrant_testing import record
+    from sources.knowledge_layer.tests.qdrant_testing import write
 
-    for name in ("AIQ_CHROMA_URL", "AIQ_CHROMA_HOST"):
-        monkeypatch.delenv(name, raising=False)
-    path = str(tmp_path / "chroma")
-    monkeypatch.setattr(oib_sync, "CHROMA_DIR", path)
-    collection = _make_chroma_client(path).get_or_create_collection(oib_sync.COLLECTION_NAME)
-    collection.add(ids=["1"], documents=["Punkt 12"], embeddings=[[0.1, 0.2]])
+    assert not suite._corpus_ready()
+    write(oib_sync.COLLECTION_NAME, [record("Punkt 12", "oib-rl_2.pdf")])
     assert suite._corpus_ready()
 
 
