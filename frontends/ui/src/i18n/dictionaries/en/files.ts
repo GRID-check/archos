@@ -311,6 +311,12 @@ export const files = {
      * panel library makes every separator one), so it needs a name — an
      * unlabelled separator is announced as nothing at all.
      */
+    // The two faces of the file beside the chat: the document, and what is known about it.
+    peekViews: {
+      label: 'File view',
+      document: 'Document',
+      details: 'Details',
+    },
     // The length, in the facts line under the name in the chat peek.
     pageCount: '{count, plural, one {# page} other {# pages}}',
     resizePeek: 'Resize file preview',

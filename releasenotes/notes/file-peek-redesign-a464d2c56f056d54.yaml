@@ -4,3 +4,6 @@ improvements:
     A file opened beside the chat now shows what it is under its name:
     the format, the number of pages and the size. The document sits on its
     own surface, and a PDF's page number and zoom float over its pages.
+    A Details tab beside the document shows everything the Files view
+    knows about it: Piloti's reading, the document type, Fassungen and
+    release, and its properties.

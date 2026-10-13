@@ -303,6 +303,12 @@ export const files: typeof en.files = {
     retryIngestionError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
     dialogLabel: 'Dateivorschau: {name}',
+    // The two faces of the file beside the chat: the document, and what is known about it.
+    peekViews: {
+      label: 'Ansicht der Datei',
+      document: 'Dokument',
+      details: 'Details',
+    },
     // The length, in the facts line under the name in the chat peek.
     pageCount: '{count, plural, one {# Seite} other {# Seiten}}',
     resizePeek: 'Breite der Dateivorschau ändern',

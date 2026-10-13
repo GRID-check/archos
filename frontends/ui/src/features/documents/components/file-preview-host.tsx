@@ -379,7 +379,6 @@ export function FilePreviewHost({
           canCollaborate={context.canCollaborate}
           lifecyclePermissions={context.lifecyclePermissions}
           viewerUserId={context.viewerUserId}
-          showMetadataPanel={panePresentation !== 'peek'}
           showModels={context.showModels}
           presentation={panePresentation}
           onClose={overlay ? (mode === 'expanded' ? peek : close) : hide}

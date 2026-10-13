@@ -18,9 +18,11 @@ import {
   Clock,
   Download,
   FileCode2,
+  FileText,
   FolderOpen,
   FolderTree,
   HardDrive,
+  ListTree,
   Maximize2,
   RotateCcw,
   Sparkles,
@@ -31,6 +33,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { SectionLabel } from '@/components/ui/section-label'
 import { InsetStage } from '@/components/ui/inset-stage'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import type { FassungFacts } from '@/lib/documents/fassung'
 import { documentTypeOf } from '@/lib/documents/tag-vocabulary'
 import { ClampedText } from '@/components/ui/clamped-text'
@@ -108,9 +111,8 @@ interface FilePreviewPaneProps {
   onFassungChanged?: (fileId: string, fassung: FassungFacts | null) => void
   /**
    * Whether the "Indexed by GRID" metadata panel (AI summary, key-value props,
-   * editable tags) renders (FB-8). On everywhere except the `peek`
-   * presentation, which has no room for it. Status/type/size rows always
-   * render.
+   * editable tags) renders (FB-8). On by default, the chat peek included,
+   * where it is the Details tab. Status/type/size rows always render.
    */
   showMetadataPanel?: boolean
   /**
@@ -282,6 +284,15 @@ export function FilePreviewPane({
     presentation === 'expanded' ||
     ((storeMode === 'peek' || storeMode === 'expanded') && storeFileId === file.id)
   const peeking = presentation === 'peek'
+  /**
+   * Which face of the peek is up: the document, or everything the Files dialog
+   * knows about it. Back to the document whenever a different file arrives —
+   * a citation opening the next file should show that file, not its metadata.
+   */
+  const [peekView, setPeekView] = useState<PeekView>('document')
+  useEffect(() => {
+    setPeekView('document')
+  }, [file.id])
   const [previewUrl, setPreviewUrl] = useState<string | null>(null)
   /**
    * The same-origin signed path for the same bytes, when the optimizer can
@@ -376,6 +387,14 @@ export function FilePreviewPane({
   // The ingestion-detected document type (first document-type tag), shown as
   // the indexed panel's Type row. Only real metadata — nothing is inferred here.
   const detectedType = documentTypeOf(file.tags)
+  /**
+   * Whether the rail's ownership block has anything in it. In the chat peek an
+   * ordinary upload has no Piloti byline, no Discuss button (the reader is
+   * already in the conversation) and, without collaboration, no assignees:
+   * the block was an empty box with a rule under it, heading the Details tab.
+   */
+  const hasOwnershipBlock =
+    file.authoredBy === 'agent' || canCollaborate || Boolean(projectId && !inChat)
 
   /**
    * The request the well is waiting on, so a newer one can retire it.
@@ -866,6 +885,16 @@ export function FilePreviewPane({
           when split. Without a bounded panel above (the dialog now gives one)
           this used to overflow into the panel's `overflow-hidden` and clip the
           metadata unreachably. */}
+      <PeekTabs
+        peeking={peeking}
+        value={peekView}
+        onValueChange={setPeekView}
+        labels={{
+          list: t('preview.peekViews.label'),
+          document: t('preview.peekViews.document'),
+          details: t('preview.peekViews.details'),
+        }}
+      >
       <div
         className={cn(
           'flex min-h-0 flex-1 flex-col overscroll-contain',
@@ -883,6 +912,7 @@ export function FilePreviewPane({
             real shadow reads as a document ON something — which is what a
             drawing on a desk actually looks like, and the whole reason this
             column exists rather than a download link. */}
+        <PeekPanel peeking={peeking} value="document">
         <PeekStage peeking={peeking}>
           <div
             ref={wellRef}
@@ -1114,6 +1144,7 @@ export function FilePreviewPane({
             </ClampedText>
           </section>
         )}
+        </PeekPanel>
 
         {/* Right: indexed-metadata panel (FB-8; off only in the peek).
             The AI summary that grounds the agent's answers, the ingestion-detected
@@ -1129,8 +1160,17 @@ export function FilePreviewPane({
             middle of a value reads as broken rather than as "there is more".
             The utility is scroll-driven, so the fade RETRACTS at the bottom of
             travel: its presence is the signal, not decoration. */}
-        {!peeking && (
-          <div className="scroll-fade-bottom bg-surface-sunken @2xl:w-[280px] @2xl:shrink-0 @2xl:min-h-0 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:border-l @2xl:border-t-0 @2xl:pb-4 flex w-full flex-col border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">
+        <PeekPanel peeking={peeking} value="details">
+          <div
+            data-testid="file-preview-rail"
+            className={
+              peeking
+                ? // The details view of the peek: the whole column, scrolling
+                  // on its own, on the same sunken ground the stage uses.
+                  'scroll-fade-bottom bg-surface-sunken border-base mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-lg border p-4'
+                : 'scroll-fade-bottom bg-surface-sunken @2xl:w-[280px] @2xl:shrink-0 @2xl:min-h-0 @2xl:overflow-y-auto @2xl:overscroll-contain @2xl:border-l @2xl:border-t-0 @2xl:pb-4 flex w-full flex-col border-t p-4 pb-[max(1rem,env(safe-area-inset-bottom))]'
+            }
+          >
             {/* WHO OWNS THIS DOCUMENT, AND WHAT YOU CAN ASK OF IT.
 
               The byline, who is responsible and „Piloti dazu fragen" all used
@@ -1145,6 +1185,7 @@ export function FilePreviewPane({
               „Verantwortlich" and Ask never need a scroll. In the split layout
               (@2xl+) it is level with the top of the document; stacked, it is
               the first thing under the preview. */}
+            {hasOwnershipBlock && (
             <div className="mb-4 space-y-3 border-b pb-4">
               {/* Provenance, not status: the badge is up in the header with
                 the name. „Von Piloti erstellt" leads the rail instead, because
@@ -1206,6 +1247,7 @@ export function FilePreviewPane({
                 <AskColleagueButton projectId={projectId} file={file} documentId={file.id} />
               )}
             </div>
+            )}
             {/* The building's own numbers lead the rail: they are what the file
               IS. Ungated by the metadata flag, which covers what INGESTION
               derived — these come out of the IFC itself. Renders nothing until
@@ -1501,8 +1543,9 @@ export function FilePreviewPane({
 
             <div className="flex-1" />
           </div>
-        )}
+        </PeekPanel>
       </div>
+      </PeekTabs>
 
       {/* No footer page band. It stated the page count a second time, three
           rows below the "Pages" row that already stated it, in a band that cost
@@ -1520,6 +1563,70 @@ const SUMMARY_CLAMP_LINES = 5
  * three lines say what the file is, and the toggle has the rest.
  */
 const PEEK_SUMMARY_CLAMP_LINES = 3
+
+type PeekView = 'document' | 'details'
+
+/**
+ * The peek's two faces, as tabs. Both panels stay MOUNTED and the inactive
+ * one is hidden: switching to Details must not reload a PDF or reset an IFC
+ * camera, which is the same reason the host parks the pane rather than
+ * unmounting it. Off the peek this renders its children untouched.
+ */
+function PeekTabs({
+  peeking,
+  value,
+  onValueChange,
+  labels,
+  children,
+}: {
+  peeking: boolean
+  value: PeekView
+  onValueChange: (next: PeekView) => void
+  labels: { list: string; document: string; details: string }
+  children: ReactNode
+}): JSX.Element {
+  if (!peeking) return <>{children}</>
+  return (
+    <Tabs
+      value={value}
+      onValueChange={(next) => onValueChange(next === 'details' ? 'details' : 'document')}
+      className="min-h-0 flex-1 gap-0"
+    >
+      <TabsList aria-label={labels.list} className="mx-3 mb-2.5 h-8 w-auto shrink-0">
+        <TabsTrigger value="document" className="text-xs" data-testid="file-peek-tab-document">
+          <FileText aria-hidden className="size-3.5" />
+          {labels.document}
+        </TabsTrigger>
+        <TabsTrigger value="details" className="text-xs" data-testid="file-peek-tab-details">
+          <ListTree aria-hidden className="size-3.5" />
+          {labels.details}
+        </TabsTrigger>
+      </TabsList>
+      {children}
+    </Tabs>
+  )
+}
+
+function PeekPanel({
+  peeking,
+  value,
+  children,
+}: {
+  peeking: boolean
+  value: PeekView
+  children: ReactNode
+}): JSX.Element {
+  if (!peeking) return <>{children}</>
+  return (
+    <TabsContent
+      value={value}
+      forceMount
+      className="mt-0 flex min-h-0 flex-1 flex-col data-[state=inactive]:hidden"
+    >
+      {children}
+    </TabsContent>
+  )
+}
 
 /**
  * In the peek the well sits ON a stage — inset from the pane's edges, recessed,
