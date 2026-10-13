@@ -15,12 +15,10 @@ export interface AppWiring {
   redisUrl: pulumi.Output<string>;
   seaweedInternalEndpoint: pulumi.Output<string>;
   seaweedPublicEndpoint: pulumi.Output<string>;
-  /** Shared Chroma server URL: the backend keeps no volume, so there is no embedded store. */
-  chromaUrl: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** Qdrant URL (set when cfg.qdrant.enabled, ADR-0104). */
-  qdrantUrl?: pulumi.Output<string>;
+  /** The Qdrant cluster's client URL (ADR-0104): the one vector store, so there is no embedded one. */
+  qdrantUrl: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
   dsn: Postgres["dsn"];
   /**
@@ -199,9 +197,8 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
     // The read-write key (ADR-0104): the ingest tier writes, and the backend
-    // tiers share one env. Only while the tier is deployed, so a stack with
-    // Qdrant off keeps its checksum and rolls nothing.
-    ...(cfg.qdrant.enabled ? { AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey } : {}),
+    // tiers share one env.
+    AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey,
   };
 
   const secret = new k8s.core.v1.Secret(
@@ -414,28 +411,19 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
     srefAs("SEAWEED_SECRET_KEY", "SEAWEED_BACKEND_READ_SECRET_KEY"),
     { name: "SEAWEED_BUCKET", value: cfg.seaweedfs.bucket },
   ];
-  // The shared Chroma server. There is no embedded store to fall back to: it
-  // would live on a disk the pod loses at every restart.
-  env.push({ name: "AIQ_CHROMA_URL", value: w.chromaUrl });
   env.push(...backendQdrantEnv(w));
   return env;
 }
 
 /**
- * Qdrant beside Chroma (ADR-0104), and which of the two the backend uses:
- * `AIQ_VECTOR_BACKEND` is `chroma`, `dual` (ingest writes both, reads Chroma)
- * or `qdrant`. Nothing while the tier is off, so every pod template of an
- * existing stack stays byte for byte what it was until the operator turns it on.
+ * The shared Qdrant cluster (ADR-0104), the backend's one vector store. There
+ * is no embedded store to fall back to: it would live on a disk the pod loses
+ * at every restart.
  */
 function backendQdrantEnv(w: AppWiring): EnvVar[] {
-  if (!w.cfg.qdrant.enabled) return [];
-  if (w.qdrantUrl === undefined) {
-    throw new Error("cfg.qdrant.enabled but AppWiring.qdrantUrl is unset: index.ts must pass the installed Qdrant's url.");
-  }
   return [
     { name: "AIQ_QDRANT_URL", value: w.qdrantUrl },
     sref("AIQ_QDRANT_API_KEY"),
-    { name: "AIQ_VECTOR_BACKEND", value: w.cfg.vectorBackend },
     // Left at 1 and 1 on a cluster, every collection would sit on one peer and
     // die with it: the shape the three peers exist to avoid.
     ...(w.cfg.qdrant.replicas > 1
@@ -471,7 +459,7 @@ export function apiEnv(w: AppWiring): EnvVar[] {
 
 /**
  * Research worker (ADR-0021) environment: the full backend env (DB DSNs, shared
- * Chroma, LLM keys, object storage — the worker runs the same `run_agent_job`)
+ * Qdrant, LLM keys, object storage — the worker runs the same `run_agent_job`)
  * plus the worker role + per-process concurrency. `GRID_ROLE=worker` makes the
  * entrypoint run `python -m aiq_api.jobs.worker` with no web server.
  */
@@ -496,7 +484,7 @@ const INGEST_WITHHELD_ENV = new Set(["LANGFUSE_HOST", "LANGFUSE_PUBLIC_KEY", "LA
 
 /**
  * Ingest worker (ADR-0076) environment: the full backend env (it builds the same
- * ingestor: summary model, shared Chroma, object store, DSNs) plus the role, its
+ * ingestor: summary model, shared Qdrant, object store, DSNs) plus the role, its
  * per-process concurrency.
  */
 export function ingestWorkerEnv(w: AppWiring, livenessFile: string): EnvVar[] {

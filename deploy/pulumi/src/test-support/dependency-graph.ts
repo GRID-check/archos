@@ -13,6 +13,8 @@ export interface RecordedResource {
   name: string;
   /** URNs this resource was registered with as direct dependencies. */
   dependencies: string[];
+  /** Its `ignoreChanges` option: property paths a later update never writes. */
+  ignoreChanges: string[];
 }
 
 const urnOf = (type: string, name: string) =>
@@ -23,7 +25,12 @@ export class DependencyGraph {
 
   /** Call after `pulumi.runtime.setMocks`. */
   constructor() {
-    type Req = { getType(): string; getName(): string; getDependenciesList(): string[] };
+    type Req = {
+      getType(): string;
+      getName(): string;
+      getDependenciesList(): string[];
+      getIgnorechangesList(): string[];
+    };
     const monitor = pulumi.runtime.getMonitor() as unknown as {
       registerResource: (req: Req, ...rest: unknown[]) => unknown;
     };
@@ -31,7 +38,12 @@ export class DependencyGraph {
     monitor.registerResource = (req, ...rest) => {
       const type = req.getType();
       const name = req.getName();
-      this.byUrn.set(urnOf(type, name), { type, name, dependencies: [...req.getDependenciesList()] });
+      this.byUrn.set(urnOf(type, name), {
+        type,
+        name,
+        dependencies: [...req.getDependenciesList()],
+        ignoreChanges: [...req.getIgnorechangesList()],
+      });
       return register(req, ...rest);
     };
   }

@@ -183,7 +183,7 @@ export default new PolicyPack("grid-oib-guardrails", {
         "replicas / ordinals / template / updateStrategy / " +
         "persistentVolumeClaimRetentionPolicy / minReadySeconds to be updated in place, so " +
         "writing this field onto an existing StatefulSet makes Pulumi plan a REPLACE — for " +
-        "seaweedfs that is a storage outage, and for chroma the vector index. `OrderedReady` " +
+        "seaweedfs that is a storage outage, and for clickhouse the trace store. `OrderedReady` " +
         "is already the default when the field is unset. The one exception is a StatefulSet " +
         "created with the field and never changed (`CREATED_WITH_POD_MANAGEMENT_POLICY`).",
       enforcementLevel: "mandatory",

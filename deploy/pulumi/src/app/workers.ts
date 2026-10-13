@@ -105,7 +105,7 @@ function internalSweepCronJob(
             template: {
               metadata: { labels: commonLabels(sweep.name) },
               spec: {
-                enableServiceLinks: false, // see chroma.ts — legacy env collisions
+                enableServiceLinks: false, // see platform/security.ts — service-link env collisions
                 imagePullSecrets: w.imagePullSecrets,
                 restartPolicy: "OnFailure",
                 securityContext: {
@@ -182,7 +182,7 @@ export function installWorkers(
             annotations: secretChecksumAnnotations(withLangfuseKeysChecksum(cfg, secrets.checksum)),
           },
           spec: {
-            enableServiceLinks: false, // see chroma.ts — legacy env collisions
+            enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,
             securityContext: { runAsNonRoot: true, runAsUser: UID.frontend, runAsGroup: UID.frontend },
             // Room to finish the purge tick in flight (S3 deletes + DB writes)
@@ -230,7 +230,7 @@ export function installWorkers(
                 annotations: secretChecksumAnnotations(withLangfuseKeysChecksum(cfg, secrets.checksum)),
               },
               spec: {
-                enableServiceLinks: false, // see chroma.ts — legacy env collisions
+                enableServiceLinks: false, // see platform/security.ts — service-link env collisions
                 imagePullSecrets: w.imagePullSecrets,
                 securityContext: { runAsNonRoot: true, runAsUser: UID.frontend, runAsGroup: UID.frontend },
                 // Finish the claimed scheduler batch before exiting.

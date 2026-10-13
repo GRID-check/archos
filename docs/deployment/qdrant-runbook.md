@@ -2,7 +2,7 @@
 
 How to operate the self-hosted Qdrant cluster (ADR-0104): see that it is
 healthy, get it back when it is not, change its shape, upgrade it, rotate its
-key, and move the backend onto it. The manifests are
+key, and move the vectors of a deployment that ran Chroma into it. The manifests are
 `deploy/pulumi/src/data/qdrant.ts`; the reasoning behind every setting is
 [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md) §9.
 
@@ -555,42 +555,104 @@ not yet restarted. The snapshot CronJob reads the key from the Secret at each
 run; the collector holds no key. The read-only key rotates in one deploy
 (`qdrantReadOnlyApiKey`): nothing in the backend uses it yet.
 
-## Flip the vector backend
+## Migrating from Chroma on Kubernetes
 
-From Chroma to Qdrant, each step a deploy and each reversible. **Drilled:
-step 4's `backfill_qdrant.py --prune --verify` against the drill cluster with
-an embedded Chroma: it copied every chunk, pruned 149 points Chroma did not
-hold (written straight to Qdrant by the other drills), verified every
-collection in step, exit 0, 6 s. The deploys themselves are undrilled here.**
+The release that removed Chroma deploys no Chroma: its first `pulumi up`
+deletes the `chroma` StatefulSet and its two Services, and every backend tier
+reads and writes Qdrant only. The data volume stays. `data-chroma-0` was the
+StatefulSet's volumeClaimTemplate, kept on delete (`whenDeleted: Retain`), and
+never a Pulumi resource, so no `up` can delete it. The one-shot
+`chroma-migration` Job (`deploy/pulumi/src/app/chroma-migration-job.ts`) copies
+it into Qdrant with the exporter and importer of the "Migrating from Chroma"
+procedure, specified in `deploy/migration/README.md`:
 
-1. **Deploy the cluster**: `qdrantEnabled true` and the three secrets
-   (`deploy/pulumi/README.md`). Check: three peers in `q $P0/cluster`, a
-   manual snapshot job succeeds (its log ends with `recorded aliases/...` and
-   one `snapshot` line per peer and collection), `up` is 1 for every peer on
-   the collector's export.
-2. **Write both**: `pulumi config set grid-oib:vectorBackend dual`, deploy.
-   Every backend tier rolls; ingestion now mirrors every Chroma write into
-   Qdrant, and the backend creates the two collections on the first write.
-3. **Corpus on every peer** ([above](#add-a-node-and-move-shards)).
-4. **Backfill** what Chroma already held, until it reports every collection
-   in step:
+| Step | Container | Image | Command |
+|---|---|---|---|
+| Export | init container `export` | `ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim` | `uv run --script /migration/chroma_export.py --persist-dir /chroma --out /exchange/export` |
+| Import | container `import` | the backend image of that deploy | `python scripts/import_vectors.py --in /exchange/export --verify` |
+
+`/chroma` is `data-chroma-0`, read-only. `/exchange` is a scratch claim on the
+stack's StorageClass that lives and dies with the pod
+(`chromaMigrationScratchSize`, 50Gi by default): the exporter's copy of the
+persist dir (the Chroma volume's used size), the export (about 16 KB per chunk
+at 3072 dimensions) and about 2 GiB of `chromadb`. The importer gets the
+backend's environment, so the same `AIQ_QDRANT_URL` and key, and the
+`allow-app-to-qdrant` NetworkPolicy names `chroma-migration` as a caller. The
+pod never schedules beside a Chroma pod, and the ReadWriteOnce claim cannot
+attach elsewhere while one holds it, so on the deploy that removes Chroma the
+export starts once the old server is gone. Pulumi does not wait for the Job
+(a large store outlasts the deploy pipeline's hour) and does not replace it on
+a later deploy while the flag stays on: it runs once.
+
+**Undrilled**: the Job and every step below need a Kubernetes cluster. The
+two commands it runs were drilled in Docker ("Migrating from Chroma").
+
+In order, per stack:
+
+1. **Before the deploy** of the release that removed Chroma:
+   - Set the three Qdrant keys if the stack never ran Qdrant: every stack
+     deploys it now and the plan fails without them (`deploy/pulumi/README.md`,
+     the `pulumi config set --secret grid-oib:qdrant…` lines; in the stack's
+     ESC environment where its secrets live). Check the data group has room
+     for `qdrantReplicas` peers of `qdrantCpu` / `qdrantMemory` each, one per
+     node.
+   - Remove the retired keys: `pulumi config rm grid-oib:chromaEnabled` and
+     `grid-oib:chromaStorageSize` (and `chromaImage`, `qdrantEnabled`,
+     `vectorBackend` where set). The plan names any that are left.
+   - Note the Chroma volume's use (`kubectl -n grid exec chroma-0 -- df -h /data`)
+     and raise `chromaMigrationScratchSize` if 50Gi does not hold it plus the
+     export.
+   - Where `protectDataResources` is on (prod), lift the protection from the
+     Chroma StatefulSet, or the `up` refuses to delete it:
+     `pulumi state unprotect 'urn:pulumi:<stack>::grid-oib::kubernetes:apps/v1:StatefulSet::chroma'`.
+     This lifts it from the StatefulSet only; the claim was never Pulumi's.
+   - `pulumi config set grid-oib:chromaMigration true`.
+   - Pause ingestion, so nothing lands in Qdrant that the export does not
+     hold before `--verify` compares the two (an upload waits in the queue,
+     it is not lost): `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas=0`.
+     Pick a quiet hour: a document deleted or re-tagged during the run can
+     come back as it was in Chroma.
+2. **Deploy.** Backend tiers roll onto Qdrant, the Job is created after them,
+   and Chroma is deleted last. Retrieval answers only from what Qdrant holds
+   until the import finishes; on a store that never ran Qdrant that is nothing.
+3. **Watch the Job**:
 
    ```bash
-   kubectl -n grid exec deploy/aiq-api -- python scripts/backfill_qdrant.py --prune --verify
+   kubectl -n grid get pod -l app.kubernetes.io/name=chroma-migration -w
+   kubectl -n grid logs job/chroma-migration -c export -f
+   kubectl -n grid logs job/chroma-migration -c import -f
+   kubectl -n grid wait --for=condition=complete job/chroma-migration --timeout=6h
    ```
 
-   Exit 0 is in step; 1 is a collection that failed or differs (rerun); 2 is
-   Chroma or Qdrant unreachable.
-5. **Gates**: the spike's G1 to G6 (`qdrant-retrieval-design.md` §10), answer
-   suite before and after included.
-6. **Read Qdrant**: `pulumi config set grid-oib:vectorBackend qdrant`, deploy.
-   From here a failed Qdrant write fails the file where a person sees it.
+   A pod held in `ContainerCreating` with `Multi-Attach error` is waiting for
+   the Chroma pod to let go of the claim; it starts once that pod is deleted.
+   The export ends with `Done: N collection(s), M chunk(s)`. The import exits
+   0 with every collection in step; 1 is a collection that failed or differs
+   and the pod retries the import against the same export (three times); 2
+   is Qdrant unreachable, an incomplete export or an embedder mismatch
+   (`[refused]` names it, nothing was written). The log stays for seven days.
+4. **Verify** in the product: a question that cites a project document and
+   one that cites the corpus, from an office that existed before. Then resume
+   ingestion: `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas-`.
+5. **Switch the Job off**: `pulumi config rm grid-oib:chromaMigration`, deploy.
+   The Job and its ConfigMap are deleted. To run it again instead, switch it
+   off for one deploy and on for the next; never after uploads have resumed,
+   since it re-inserts what the export holds.
+6. **Delete the retained claim**, once the new release has served for a while.
+   It is the last copy of the Chroma data and the only way back:
 
-**Rollback**, at any step: `vectorBackend dual` puts reads back on Chroma
-while both stay written; `chroma` stops writing Qdrant too (Qdrant then falls
-behind; run step 4 again before returning). `qdrantEnabled false` deletes the
-StatefulSet and Services; `protectDataResources` (on by default) refuses it
-until lifted, and the PVCs are `Retain`ed either way.
+   ```bash
+   kubectl -n grid get pvc data-chroma-0
+   kubectl -n grid delete pvc data-chroma-0
+   ```
+
+   The StorageClass reclaims the volume (`Delete`). With `chromaMigration`
+   still on, the next plan fails on the missing claim: step 5 comes first.
+
+**Rollback**, before step 6: the claim was only ever read. Redeploying the
+previous release brings Chroma back on the same claim (its StatefulSet
+rebinds `data-chroma-0` by name) with every write Qdrant took since missing
+from it.
 
 ## Drill log
 

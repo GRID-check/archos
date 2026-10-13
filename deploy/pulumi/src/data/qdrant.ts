@@ -40,9 +40,9 @@ const KEY = {
 const CURL_UID = 100;
 
 /**
- * Self-hosted Qdrant 1.19 (ADR-0104), beside Chroma until the cutover.
+ * Self-hosted Qdrant 1.19 (ADR-0104), the stack's one vector store.
  *
- * A raw StatefulSet like `chroma.ts`, with `qdrant-helm` 1.19.2 as the oracle
+ * A raw StatefulSet, with `qdrant-helm` 1.19.2 as the oracle
  * for everything Qdrant-specific: the cluster bootstrap, `Parallel` pod
  * management, the probes, and the read-only root with emptyDirs for the two
  * paths the image writes outside its data. Diff against the chart on every
@@ -119,7 +119,7 @@ export function installQdrant(
     {
       provider,
       dependsOn: [secret],
-      // Immutable volumeClaimTemplates, as in chroma.ts: grow via PVC patch.
+      // Immutable volumeClaimTemplates, as in seaweedfs-single.ts: grow via PVC patch.
       ignoreChanges: ["spec.volumeClaimTemplates"],
       // Fixed name: a create-before-delete replace collides with itself. The
       // PVCs are Retain and rebind by template name.

@@ -242,7 +242,7 @@ export function renderS3Config(
         tenantBucketPrefix,
         provisioning,
         langfuseBucket: cfg.langfuse.enabled ? LANGFUSE.bucket : undefined,
-        qdrantBucket: cfg.qdrant.enabled ? QDRANT.snapshotBucket : undefined,
+        qdrantBucket: QDRANT.snapshotBucket,
       }).map((identity) => ({
         name: identity.name,
         credentials: [credentials[identity.name]],

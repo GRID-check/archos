@@ -113,8 +113,7 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | `AIQ_CHROMA_PORT` | No | `8000`, or `443` when TLS is on | Port for the shared Chroma server. A port embedded in `AIQ_CHROMA_URL` wins over this. |
 | `AIQ_CHROMA_SSL` | No | `false` | Use TLS when connecting via `AIQ_CHROMA_HOST` (`1`/`true`/`yes` enable). Ignored with `AIQ_CHROMA_URL`, where the `https://` scheme decides. |
 | `AIQ_CHROMA_HTTP_TIMEOUT_SECONDS` | No | `120` | The longest one request to the shared Chroma server may take; connecting is bounded at 5 s within it. chromadb's own HTTP client has no timeout, so without this a request on a connection to a Chroma pod whose node died never returns, and the process loses that thread for good (2026-10-12: the API's whole thread pool). Must exceed the slowest legitimate call, a metadata scan of the largest collection. |
-| `AIQ_VECTOR_BACKEND` | No | `chroma` | Which vector store the backend uses (ADR-0104): `chroma` reads and writes Chroma, as today; `dual` writes every ingest to both Chroma and Qdrant while reads stay on Chroma; `qdrant` reads and writes Qdrant. `dual` and `qdrant` need `AIQ_QDRANT_URL`. On Kubernetes set from `grid-oib:vectorBackend` and emitted only while `grid-oib:qdrantEnabled` is on (the plan refuses anything but `chroma` without it). aiq-agent, aiq-api, agent-worker, ingest-worker. |
-| `AIQ_QDRANT_URL` | With `AIQ_VECTOR_BACKEND` `dual` or `qdrant` | (unset) | REST URL of the Qdrant cluster (ADR-0104). Kubernetes: `http://qdrant.<namespace>.svc.cluster.local:6333`, the ClusterIP Service in front of every peer (gRPC on 6334 behind the same name); set only while `grid-oib:qdrantEnabled` is on, and reachable only from the backend tiers through the `allow-app-to-qdrant` NetworkPolicy. aiq-agent, aiq-api, agent-worker, ingest-worker. |
+| `AIQ_QDRANT_URL` | Yes | (unset) | REST URL of the Qdrant cluster (ADR-0104). Kubernetes: `http://qdrant.<namespace>.svc.cluster.local:6333`, the ClusterIP Service in front of every peer (gRPC on 6334 behind the same name), set on every backend tier and on the `chroma-migration` Job's importer, and reachable only from those through the `allow-app-to-qdrant` NetworkPolicy. Compose: `http://qdrant:6333`. aiq-agent, aiq-api, agent-worker, ingest-worker. |
 | `AIQ_QDRANT_API_KEY` | With `AIQ_QDRANT_URL` | (unset) | Qdrant's read-write API key (`service.api_key`), sent as the `api-key` header. Open-source Qdrant answers anyone without one. Kubernetes: from `grid-oib:qdrantApiKey`, in the `grid-secrets` Secret (`secretKeyRef`); the same value is in the `qdrant-credentials` Secret the peers read. The read-only key (`grid-oib:qdrantReadOnlyApiKey`) is configured on the server but not handed to the backend: every tier that holds this key reaches a write path today, so there is no read-only tier to give it to (`docs/architecture/qdrant-retrieval-design.md` §12 says what would have to change). During a key rotation the peers also accept `QDRANT__SERVICE__ALT_API_KEY` (below). aiq-agent, aiq-api, agent-worker, ingest-worker. |
 | `AIQ_QDRANT_SHARD_NUMBER` | No | `1` | Shards of the tenant collection (`piloti_office`), fixed when the backend first creates it: open-source Qdrant cannot reshard, so a cluster grows by moving shards and a different count means a new collection and an alias switch (`docs/architecture/qdrant-retrieval-design.md` §9). The corpus collection always has one. Kubernetes sets `6` when `grid-oib:qdrantReplicas` is above 1. Read in `knowledge_layer/qdrant/config.py`. |
 | `AIQ_QDRANT_REPLICATION_FACTOR` | No | `1` | Replicas per shard, also fixed at creation. The write consistency factor is always `1`, whatever this says: a write is acknowledged once one replica has it, and the other becomes durable when Qdrant re-syncs it from the WAL after its peer returns. So with `2`, a lost peer (a rollout, a node drain) keeps reads, writes and the Raft quorum; losing the acknowledging peer for good before the re-sync loses the write, and during the move off Chroma, Chroma (the write-side record) and `scripts/backfill_qdrant.py` are the net behind that. The backend retries a transient write failure (connection, timeout, 5xx) three times with 0.2/0.8/2 s backoff, never a 4xx (`knowledge_layer/qdrant/store.py`). A self-hosted cluster does not re-replicate after a node loss by itself. Kubernetes sets `2` when `grid-oib:qdrantReplicas` is above 1. |
@@ -577,10 +576,27 @@ are the ones operators change or meet; the rest are in that function.
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `QDRANT__SERVICE__METRICS_PORT` | `6336` | `service.metrics_port`: a listener serving `/metrics` and nothing else, without the API key (every other path 404). The OTel collector scrapes each peer there (`allow-collector-to-qdrant-metrics`); on 6333 the same path answers 401 without a key. |
-| `QDRANT__STORAGE__QUOTAS__ENABLED`, `..._MAX_RESIDENT_MEMORY_PERCENT`, `..._MAX_DISK_USAGE_PERCENT` | `true`, `grid-oib:qdrantQuotaMemoryPercent` (90), `grid-oib:qdrantQuotaDiskPercent` (85) | Above either, a peer refuses writes with HTTP 507 and reports `quota_exceeded{resource}`. Seeds the quota manager on a cluster's first start only; afterwards `PUT /quotas` changes it. |
+| `QDRANT__STORAGE__QUOTAS__ENABLED`, `..._MAX_RESIDENT_MEMORY_PERCENT`, `..._MAX_DISK_USAGE_PERCENT` | `true`, `grid-oib:qdrantQuotaMemoryPercent` (90), `grid-oib:qdrantQuotaDiskPercent` (85) | Above either, a peer refuses writes with HTTP 507 and reports `quota_exceeded{resource}`. Seeds the quota manager on a cluster's first start only; afterwards `PUT /quotas` changes it. The Compose `qdrant` service sets the same, from `QDRANT_QUOTA_MEMORY_PERCENT` (90) and `QDRANT_QUOTA_DISK_PERCENT` (85), and its metrics port too. |
 | `QDRANT__STORAGE__LOW_MEMORY_MODE` | `grid-oib:qdrantLowMemoryMode`, unset by default | `no_resident` or `no_populate`: load segments without making them resident, to get a peer that OOMs while loading back up. Recovery only; remove it afterwards. An unknown value stops the peer at start, so the config refuses one. |
 
 ---
+
+## Chroma migration Job (Kubernetes/Pulumi-injected)
+
+The one-shot `chroma-migration` Job (`grid-oib:chromaMigration`,
+`deploy/pulumi/src/app/chroma-migration-job.ts`) sets these on its `export`
+init container, which runs `deploy/migration/chroma_export.py` through
+`uv run --script` on a read-only root. Not settable from the stack. The
+`import` container gets the backend's environment (`backendEnv`, service name
+`grid-chroma-migration`).
+
+| Variable | Value | Description |
+|----------|-------|-------------|
+| `UV_CACHE_DIR` | `/exchange/uv-cache` | Where uv builds the environment holding the `chromadb` the script pins, on the scratch volume. |
+| `UV_PYTHON_DOWNLOADS` | `never` | uv runs the image's Python 3.12 and never fetches another. |
+| `HOME`, `TMPDIR` | `/exchange/home`, `/exchange/tmp` | Anything else written lands on the scratch volume, not the read-only root. |
+| `ANONYMIZED_TELEMETRY` | `False` | `chromadb`'s usage reporting, off. |
+| `PYTHONUNBUFFERED` | `1` | The export's progress reaches `kubectl logs` as it happens. |
 
 ## Notes
 
