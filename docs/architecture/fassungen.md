@@ -52,7 +52,11 @@ the listing is read.
   offers none of the three to a reader who may not receive its bytes
   (`bytesReadable` on the version listing, see Privacy). The header speaks about the newest
   Fassung and names the older one Piloti still answers from by number
-  (`features/documents/lib/fassung-standing.ts`).
+  (`features/documents/lib/fassung-standing.ts`). Which one that is follows the
+  reading status as well as the review state: a published upload that is still
+  being read, or failed, is not current, and the upload it replaced is
+  (`answeringVersionId` in `fassung-timeline.ts`), because a person's re-upload
+  retires the old passages only after the new ones are stored.
 - Nothing about the link model reaches the person.
 
 ## Detection
@@ -247,8 +251,10 @@ content of a version. It is not the link between two documents.
 - **A person's upload is born published and approved.** Putting the file there is
   the assertion. Approval matters for what Piloti wrote and for revisions that
   need a second pair of eyes.
-- **Piloti answers from the published version** while a newer one is in review.
-  The section says so („Piloti antwortet aus der veröffentlichten Fassung“).
+- **Piloti answers from the published version** while a newer one is in review,
+  and from the previous upload while a person's re-upload is still being read
+  or after its reading failed. The section says so („Piloti antwortet weiter aus
+  Fassung 1.“).
 - **Publishing purges first.** The previous version's chunks go before the new
   bytes are sent, so a failed dispatch stops the document answering instead of
   answering from the version somebody replaced.

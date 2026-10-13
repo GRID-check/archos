@@ -65,6 +65,7 @@ import type { DocumentLifecycleClient } from '@/lib/documents/lifecycle-client'
 import { documentLifecycleClient, versionFileUrl } from '@/lib/documents/lifecycle-client'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import { readDocumentText } from '@/lib/documents/text-client'
+import { documentReadFamily } from '@/lib/documents/document-status'
 import type { FileItem } from '../file-types'
 import {
   newestVersion,
@@ -315,6 +316,7 @@ export function DocumentFassungen({
     return <Skeleton className={cn('h-16 w-full rounded-lg', className)} />
   }
 
+  const newestRead = documentReadFamily(file.status)
   const rows = buildFassungTimeline({
     versions,
     publishedVersionId: listing?.publishedVersionId ?? null,
@@ -322,6 +324,8 @@ export function DocumentFassungen({
     directIds,
     headAt: file.createdAt ?? null,
     newer: supersededBy,
+    newestRead,
+    predecessorStandsIn: file.authoredBy !== 'agent',
   })
   rowsRef.current = rows
   const standing = fassungStanding({
@@ -330,6 +334,7 @@ export function DocumentFassungen({
     lifecycle,
     reviewerUserIds: listing?.reviewerUserIds ?? [],
     viewer,
+    newestRead,
   })
 
   // Every source of a name the pane has: the listing's own resolution of the
