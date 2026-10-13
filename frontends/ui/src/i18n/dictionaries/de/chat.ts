@@ -570,6 +570,119 @@ export const chat: typeof en.chat = {
         noProject:
           'Diese Unterhaltung gehört zu keinem Projekt, es gibt hier also keine Ablage zu ändern.',
       },
+      // Eine Karte, deren Vorschlag der Server hält (ADR-0105): Stand, Ergebnis
+      // je Zeile und wer entschieden hat, kommen aus diesem Objekt, also sieht
+      // jede Leserin die Entscheidung der Kollegin.
+      live: {
+        partial: '{applied} von {total} übernommen.',
+        failed: 'Nichts konnte übernommen werden. Es wurde nichts geändert.',
+        decidedBy: {
+          applied: 'Übernommen von {name} · {when}',
+          partially_applied: 'Übernommen von {name} · {when}',
+          failed: 'Versucht von {name} · {when}',
+          dismissed: 'Verworfen von {name} · {when}',
+        },
+        // Der Name ist dieser Leserin nicht bekannt.
+        someone: 'einer Kollegin oder einem Kollegen',
+        // Der Klick kam an, nachdem jemand anderes entschieden hatte.
+        overtaken: 'Inzwischen wurde darüber entschieden.',
+        readOnly: 'Sie können diesen Vorschlag lesen, in diesem Projekt aber nicht übernehmen.',
+        loadError: 'Der Stand dieses Vorschlags konnte nicht geladen werden.',
+        dismissError: 'Konnte nicht verworfen werden.',
+      },
+    },
+    // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
+    // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
+    // der Weg in die Prüfansicht an genau diese Stelle. Eine Datei heißt hier
+    // Dokument, nie „Plan“.
+    canvasActivity: {
+      headline: {
+        proposed: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}',
+        repliedOne: 'Im Thread von #{number} geantwortet',
+        repliedMany: 'In {count} Threads geantwortet',
+        created: '{count, plural, one {# Anmerkung gesetzt} other {# Anmerkungen gesetzt}}',
+        changed: '{count, plural, one {# Anmerkung geändert} other {# Anmerkungen geändert}}',
+        deleted: '{count, plural, one {# Anmerkung gelöscht} other {# Anmerkungen gelöscht}}',
+        repliedPart: 'in {threads, plural, one {einem Thread} other {# Threads}} geantwortet',
+      },
+      kinds: {
+        hint: 'Hinweis',
+        question: 'Rückfrage',
+        defect: 'Mangel',
+      },
+      page: 'Seite {page}',
+      repliedIn: 'Antwort im Thread von #{number}',
+      show: 'Im Dokument zeigen',
+      showMarkLabel: 'Anmerkung {number} im Dokument zeigen',
+      showThreadLabel: 'Thread von Anmerkung {number} im Dokument zeigen',
+      showError: 'Das Dokument konnte nicht geöffnet werden.',
+      accept: 'Übernehmen',
+      accepting: 'Wird übernommen …',
+      acceptLabel: 'Anmerkung {number} übernehmen',
+      reject: 'Verwerfen',
+      rejectLabel: 'Anmerkung {number} verwerfen',
+      state: {
+        proposed: 'Vorgeschlagen',
+        open: 'Übernommen',
+        resolved: 'Erledigt',
+        dismissed: 'Verworfen',
+        gone: 'Nicht mehr vorhanden',
+      },
+      error: 'Konnte nicht gespeichert werden.',
+      forbidden: 'Sie können diese Anmerkung nicht ändern.',
+      // Was Piloti auf Bitte der Person an einer Anmerkung geändert hat, in
+      // ihren Worten: „#4 erledigt“, „#4 Anna zugewiesen“.
+      change: {
+        taken: 'übernommen',
+        reopened: 'wieder geöffnet',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+        assigned: '{name} zugewiesen',
+        someone: 'jemandem',
+        unassigned: 'Zuständigkeit entfernt',
+        due: 'Frist {date}',
+        undue: 'Frist entfernt',
+        kind: 'als {kind} eingestuft',
+        body: 'Text geändert',
+      },
+      status: {
+        proposed: 'Vorschlag',
+        open: 'offen',
+        resolved: 'erledigt',
+        dismissed: 'verworfen',
+      },
+      undo: 'Rückgängig',
+      undoing: 'Wird rückgängig gemacht …',
+      undoLabel: 'Änderung an Anmerkung {number} rückgängig machen',
+      undone: 'Rückgängig gemacht',
+      movedSince: 'Seitdem geändert, jetzt {state}',
+      deleted: 'Anmerkung #{number} gelöscht',
+      // Who the turn acted for, and why an undo did not happen (ADR-0109).
+      forPerson: 'für {name}',
+      movedOn: 'Jemand hat das inzwischen geändert, daher bleibt es, wie es ist.',
+      alreadyUndone: 'Das wurde bereits rückgängig gemacht.',
+      // Mehrere Vorschläge auf einmal (Übernehmen oder Verwerfen je Anmerkung
+      // bleibt) und der Stand des Threads auf einen Blick.
+      batch: {
+        acceptAll: 'Alle übernehmen',
+        accepting: 'Wird übernommen …',
+        rejectRest: 'Übrige verwerfen',
+        rejecting: 'Wird verworfen …',
+        confirmTitle:
+          '{count, plural, one {Diese Anmerkung verwerfen?} other {# Anmerkungen verwerfen?}}',
+        confirmBody: 'Das lässt sich hier nicht rückgängig machen.',
+        confirm: 'Verwerfen',
+        cancel: 'Abbrechen',
+        already: 'bereits erledigt',
+        alreadyBy: 'bereits erledigt von {name}',
+        failed:
+          '{count, plural, one {Eine Anmerkung konnte nicht gespeichert werden.} other {# Anmerkungen konnten nicht gespeichert werden.}}',
+      },
+      thread: {
+        count: '{count, plural, one {# Antwort} other {# Antworten}}',
+        last: 'zuletzt {name}: „{excerpt}“',
+        someone: 'jemand',
+      },
     },
     verdictHeader: {
       confidenceHigh: 'hohe Sicherheit',
@@ -858,6 +971,15 @@ export const chat: typeof en.chat = {
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
           taskCreated: 'Auftrag wird angelegt …',
+          // Anmerkungen in einem Dokument. Eigene Befunde schlägt Piloti nur
+          // vor: Erst eine Person übernimmt oder verwirft sie. Setzen, ändern
+          // und löschen tut Piloti nur, worum die Person bittet.
+          annotationsRead: 'Anmerkungen werden gelesen …',
+          annotationsPropose: 'Anmerkungen werden vorgeschlagen …',
+          annotationsSet: 'Anmerkungen werden gesetzt …',
+          annotationsUpdate: 'Anmerkung wird geändert …',
+          annotationsDelete: 'Anmerkung wird gelöscht …',
+          annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
         // Worte wie `activity.composing` darüber: ein Vokabular für dieselbe
@@ -874,6 +996,13 @@ export const chat: typeof en.chat = {
         // kann, bleibt markiert.
         repair: 'Ein Zitat weicht vom Wortlaut der Quelle ab — wird am Original korrigiert …',
         escalation: 'Kurzrecherche reicht nicht — Tiefenrecherche startet',
+        // Eine Ergänzung, die die Person getippt hat, während Piloti
+        // arbeitet. `{text}` sind ihre eigenen Worte; `{round}` die Runde,
+        // in der Piloti sie gelesen hat.
+        steer: {
+          received: 'Ergänzt: „{text}“ — wird berücksichtigt …',
+          applied: 'Ergänzung übernommen in Runde {round}: „{text}“',
+        },
       },
     },
     // Das eine Skill-Ereignis, das Lesende sehen, danach unterschieden, WER
@@ -903,6 +1032,8 @@ export const chat: typeof en.chat = {
       // abgelegt oder zur Freigabe eingereicht.
       filing: 'Ablage',
       task: 'Auftrag',
+      // Anmerkungen im Dokument: gelesen, vorgeschlagen oder beantwortet.
+      annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
       fileProposal: 'Ablagevorschlag',
       // Ein Chip pro Skill, den dieser Turn tatsächlich angewendet hat.

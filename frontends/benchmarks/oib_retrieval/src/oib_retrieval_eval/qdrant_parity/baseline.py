@@ -1,7 +1,7 @@
 """What the Chroma path measured: the fixed reference the Qdrant numbers are read against.
 
 Chroma, its Postgres German mirror and the ``$contains`` channel left the stack in
-one change (ADR-0105), so their path cannot be run again. These are its numbers
+one change (ADR-0111), so their path cannot be run again. These are its numbers
 from the final gate run of 2026-10-13 (``docs/architecture/qdrant-gates-2026-10.md``,
 "Results"): the OIB Punkt corpus, the production embedder at 3,072 dimensions, the
 same golden, overview and hard-case fixtures this harness reads, the same machine

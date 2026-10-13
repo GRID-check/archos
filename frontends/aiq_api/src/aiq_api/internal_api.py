@@ -1,4 +1,4 @@
-"""The backend's writes into the BFF's internal API: a message row, a run's report.
+"""The backend's writes into the BFF's internal API: a message row, a run's report, a turn's outcome.
 
 Python never touches the database (``grid_app`` is single-writer); every write
 goes over the internal HTTP API with the shared ``GRID_INTERNAL_API_TOKEN``.
@@ -205,6 +205,56 @@ async def post_internal_run_report(
     except Exception:  # noqa: BLE001 — the write happened; a missing id costs only the ledger's link
         message_id = None
     return message_id if isinstance(message_id, str) else ""
+
+
+#: The outcome notice is small and sent after the answer is out: a short timeout
+#: per attempt, retried like every write here, and never on the turn's path.
+_OUTCOME_TIMEOUT_SECONDS = 5.0
+
+TURN_OUTCOME_PATH = "/api/internal/turns/outcome"
+
+
+async def post_internal_turn_outcome(
+    *, conversation_id: str, turn_id: str, outcome: str, reason: str | None = None
+) -> bool:
+    """Tell the BFF how a turn it started ended (ADR-0106, ADR-0109). Fail-soft.
+
+    ``POST /api/internal/turns/outcome`` with ``{conversationId, turnId,
+    outcome, reason?}``: the contract is ``turnOutcomeRequestSchema`` in
+    ``frontends/ui/src/lib/turns/outcome-types.ts``, exported as
+    ``frontends/ui/tests/fixtures/turn-outcome.schema.json``. The BFF detaches
+    from a headless turn once it runs, so this is the only way its wake learns
+    the end. The chat socket calls it once per headless turn, after the
+    terminal went out and the answer row was written (``chat_socket``).
+
+    The BFF answers ``{settled}``, false for a turn it did not start or already
+    closed; both are a success here. Retried briefly (``internal_retry``) on a
+    transport failure or a 5xx; a 404 (an older BFF without the route) is
+    final. Returns ``True`` only when the BFF accepted the notice.
+    """
+    base_url = internal_base_url()
+    headers = internal_headers()
+    if not base_url or headers is None:
+        logger.warning("Cannot report the outcome of turn %s: internal API not configured", turn_id)
+        return False
+    payload: dict[str, Any] = {"conversationId": conversation_id, "turnId": turn_id, "outcome": outcome}
+    if reason:
+        payload["reason"] = reason
+    url = f"{base_url.rstrip('/')}{TURN_OUTCOME_PATH}"
+
+    async def _send() -> httpx.Response:
+        async with httpx.AsyncClient(timeout=_OUTCOME_TIMEOUT_SECONDS) as client:
+            return await client.post(url, json=payload, headers=headers)
+
+    response = await send_with_retry(_send, label=f"Outcome of turn {turn_id}")
+    if response is None:
+        logger.warning("Failed to report the outcome of turn %s of conversation %s", turn_id, conversation_id)
+        return False
+    if response.status_code not in (200, 201):
+        logger.warning("The outcome of turn %s returned HTTP %s", turn_id, response.status_code)
+        return False
+    logger.info("Reported turn %s of conversation %s as %s", turn_id, conversation_id, outcome)
+    return True
 
 
 #: The policy read sits in front of a socket's first message, so it gets one

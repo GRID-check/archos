@@ -1,4 +1,4 @@
-"""The Qdrant store against a real Qdrant server (ADR-0105, ADR-0106).
+"""The Qdrant store against a real Qdrant server (ADR-0111, ADR-0112).
 
 What is under test is the server's behaviour as this package drives it: German
 BM25, server-side fusion, strict mode, phrase matching, grouping. A mock would
@@ -273,7 +273,7 @@ def test_a_foreign_embedder_is_refused(store):
 
 
 def test_isolation_property_random_scope_sets(store):
-    """No hit ever comes from a scope outside the requested set (ADR-0106 Confirmation)."""
+    """No hit ever comes from a scope outside the requested set (ADR-0112 Confirmation)."""
     scopes = [f"proj_{name}" for name in "abcdef"] + ["archiv_org1", "s_conv1"]
     words = ["Fluchtweg", "Brandschutz", "Stiege", "Holzbau", "Auflage", "Bescheid"]
     rng = random.Random(7)

@@ -39,12 +39,56 @@
           "key": "features",
           "notes": [
             {
+              "en": "Export a document's annotations from the review as minutes for a site meeting or the client, as PDF, Word or Markdown: each one by number, with its page, status, who is responsible, the due date and its thread. Choose open ones or all, and add Piloti's unreviewed proposals under their own heading if you want them.",
+              "de": "Exportieren Sie die Anmerkungen eines Dokuments aus der Prüfung als Protokoll für eine Baustellenbesprechung oder den Auftraggeber – als PDF, Word oder Markdown: nummeriert, jeweils mit Seite, Status, Zuständigkeit, Fälligkeitsdatum und Thread. Wählen Sie offene Anmerkungen oder alle aus und fügen Sie bei Bedarf Piloti’s ungeprüfte Vorschläge unter einer eigenen Überschrift hinzu."
+            },
+            {
+              "en": "You can now mark up a document together: open it full screen, set a point or draw a box on the page, give it a person and a date, and discuss it in its thread while you see who else is looking and where.",
+              "de": "Sie können ein Dokument jetzt gemeinsam markieren: Öffnen Sie es im Vollbild, setzen Sie einen Punkt oder zeichnen Sie einen Rahmen auf der Seite, weisen Sie eine Person und ein Datum zu und diskutieren Sie im zugehörigen Thread, während Sie sehen, wer sonst gerade mitliest und an welcher Stelle."
+            },
+            {
+              "en": "Draw a box around any detail and ask Piloti about exactly that part of the page; the answer appears right beside it and can be kept as an annotation. Piloti's own findings arrive as suggestions you take over or dismiss.",
+              "de": "Zeichnen Sie einen Rahmen um ein Detail und fragen Sie Piloti genau zu diesem Teil der Seite. Die Antwort erscheint direkt daneben und kann als Anmerkung gespeichert werden. Eigene Erkenntnisse von Piloti werden als Vorschläge angezeigt, die Sie übernehmen oder verwerfen können."
+            },
+            {
+              "en": "Ask Piloti to set, resolve, reopen, assign, date or delete an annotation and it does so in your name, with your rights, leaving a short note in the annotation's thread; the chat lists each change with a way to undo it.",
+              "de": "Bitten Sie Piloti, eine Anmerkung festzulegen, als erledigt zu markieren, wieder zu öffnen, zuzuweisen, zu datieren oder zu löschen. Piloti führt die Änderungen in Ihrem Namen und mit Ihren Rechten aus, hinterlässt eine kurze Notiz im Thread der Anmerkung und listet im Chat jede Änderung mit der Möglichkeit auf, sie rückgängig zu machen."
+            },
+            {
               "en": "Ask Piloti what changed between two Fassungen of a document, such as two states of a floor plan, and it answers page by page with the values that changed and the date each Fassung carries.",
               "de": "Fragen Sie Piloti, was sich zwischen zwei Fassungen eines Dokuments geändert hat, etwa zwischen zwei Planständen eines Grundrisses. Piloti antwortet Seite für Seite mit den geänderten Werten und dem Datum der jeweiligen Fassung."
             },
             {
+              "en": "When Piloti proposes to move, rename, file or assign documents, everyone in the conversation now sees the same proposal and the same decision: once someone accepts it, it is applied in that person's name and with their rights, and the card shows who decided and what landed.",
+              "de": "Wenn Piloti vorschlägt, Dokumente zu verschieben, umzubenennen, abzulegen oder zuzuweisen, sehen jetzt alle im Gespräch denselben Vorschlag und dieselbe Entscheidung: Sobald jemand ihn annimmt, wird er im Namen dieser Person und mit deren Berechtigungen ausgeführt. Die Karte zeigt, wer entschieden hat und was umgesetzt wurde."
+            },
+            {
               "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
               "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
+            },
+            {
+              "en": "Scheduled and delegated work now acts with the rights of the person who commissioned it, so Piloti can file drafts and propose changes to files while the work runs. If that person leaves the office or loses access to the project, their running work stops acting for them.",
+              "de": "Geplante und delegierte Aufgaben werden nun mit den Berechtigungen der Person ausgeführt, die sie beauftragt hat. So kann Piloti während der Ausführung Entwürfe ablegen und Änderungen an Dateien vorschlagen. Verlässt diese Person das Büro oder verliert sie den Zugriff auf das Projekt, werden laufende Aufgaben nicht mehr in ihrem Namen ausgeführt."
+            },
+            {
+              "en": "The chat card shows each annotation as it stands now, and each change Piloti made to one, including an annotation it set for you and a reply it wrote for you, can be undone from there while nobody has changed it or answered in its thread since.",
+              "de": "Die Chat-Karte zeigt jede Anmerkung in ihrem aktuellen Stand und alle Änderungen, die Piloti daran vorgenommen hat. Auch eine von Piloti für Sie gesetzte Anmerkung und eine für Sie verfasste Antwort können Sie dort rückgängig machen, solange niemand die Anmerkung geändert oder in ihrem Thread geantwortet hat."
+            },
+            {
+              "en": "When you write @Piloti in an Anmerkung's thread or answer a question Piloti asked there, Piloti answers in that thread even when nobody has the chat open. You can also hand an open Anmerkung to Piloti („An Piloti delegieren“): it stays assigned to its person, and Piloti works it for you and hands it back with its reply.",
+              "de": "Wenn Sie in einem Anmerkungs-Thread @Piloti schreiben oder eine dort von Piloti gestellte Frage beantworten, antwortet Piloti in diesem Thread, auch wenn niemand den Chat geöffnet hat. Sie können eine offene Anmerkung auch an Piloti delegieren („An Piloti delegieren“): Sie bleibt der zuständigen Person zugewiesen, während Piloti sie für Sie bearbeitet und mit seiner Antwort zurückgibt."
+            },
+            {
+              "en": "Your office decides whether Piloti may change annotations when you ask it to. Until it is switched on for your organization, Piloti only proposes: an annotation you ask for arrives as a suggestion you take over, and a change or deletion is left for you to make in the document.",
+              "de": "Ihr Büro entscheidet, ob Piloti Anmerkungen ändern darf, wenn Sie es dazu auffordern. Bis die Funktion für Ihre Organisation aktiviert ist, macht Piloti nur Vorschläge: Eine von Ihnen angeforderte Anmerkung wird als Vorschlag angezeigt, den Sie übernehmen können; Änderungen oder Löschungen im Dokument nehmen Sie selbst vor."
+            },
+            {
+              "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
+              "de": "Während Piloti an Ihrer Frage arbeitet, können Sie es im Chat oder über seine Karte in einem Dokument („nicht die Tür, die Treppe“) lenken. Ihre Anmerkung berücksichtigt es im nächsten Schritt, statt von vorne anzufangen. Eine Markierung oder Antwort, die Piloti bereits ausgewählt hat, wartet auf Ihre Anmerkung. Kommt diese erst nach der Antwort, wird sie als Ihre nächste Frage behandelt."
+            },
+            {
+              "en": "When you mention Piloti in an annotation's thread, or hand an open annotation to Piloti, your inbox tells you when it is done or when it has a question for you. Taking an annotation back from Piloti stops the work.",
+              "de": "Wenn Sie Piloti im Thread einer Anmerkung erwähnen oder Piloti eine offene Anmerkung übergeben, informiert Sie Ihre Inbox, sobald die Aufgabe erledigt ist oder Piloti eine Rückfrage hat. Wenn Sie eine Anmerkung von Piloti zurücknehmen, wird die Arbeit gestoppt."
             },
             {
               "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
@@ -59,6 +103,14 @@
         {
           "key": "improvements",
           "notes": [
+            {
+              "en": "Approving a revision now also makes it the one Piloti answers from. There is no separate publish step any more: an approved document is ready to use.",
+              "de": "Mit der Freigabe einer Revision wird diese nun auch zur Grundlage für die Antworten von Piloti. Einen separaten Veröffentlichungsschritt gibt es nicht mehr: Ein freigegebenes Dokument ist sofort einsatzbereit."
+            },
+            {
+              "en": "A file you upload no longer shows you as having approved it. Nobody reviewed it, and the history now says so.",
+              "de": "Bei einer von Ihnen hochgeladenen Datei wird nicht mehr angezeigt, dass Sie sie genehmigt haben. Niemand hat sie geprüft, und der Verlauf zeigt das jetzt."
+            },
             {
               "en": "An open document now shows what Piloti saw on each page, with the drawing type and scale, right under its summary, and a click on an entry turns the document to that page. Format, page count and size sit under the name, so the side panel keeps only what Piloti read, the Fassungen and the pages.",
               "de": "Ein geöffnetes Dokument zeigt jetzt direkt unter seiner Zusammenfassung, was Piloti auf jeder Seite erkannt hat, einschließlich Zeichnungstyp und Maßstab; ein Klick auf einen Eintrag springt zu dieser Seite. Format, Seitenzahl und Größe stehen unter dem Namen, sodass die Seitenleiste nur noch das enthält, was Piloti ausgelesen hat, die Fassungen und die Seiten."
@@ -109,8 +161,16 @@
           "key": "fixes",
           "notes": [
             {
+              "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
+              "de": "Wenn Sie eine neue Revision einer Datei hochladen, weist das Dokument jetzt darauf hin, dass Piloti weiterhin auf Grundlage der vorherigen Revision antwortet, bis die neue eingelesen wurde, und zeigt diesen Hinweis auch an, wenn das Einlesen fehlschlägt. Zuvor hieß es, Piloti antworte direkt nach dem Upload bereits auf Grundlage der neuen Revision."
+            },
+            {
               "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
               "de": "In der Seitenleiste eines geöffneten Dokuments sind Bezeichnungen und Werte wieder korrekt ausgerichtet, Dokumenttypen werden als solche statt als Rohcodes wie „floor_plan“ angezeigt, und die Phasen einer Fassung werden auf Deutsch nicht mehr abgeschnitten."
+            },
+            {
+              "en": "Accepting a proposal to move an office document into one of the Büroablage's folders now finds that folder, and a proposal to assign a document to the person accepting it no longer fails.",
+              "de": "Beim Annehmen eines Vorschlags, ein Bürodokument in einen Ordner der Büroablage zu verschieben, wird der betreffende Ordner jetzt gefunden, und ein Vorschlag, ein Dokument der annehmenden Person zuzuweisen, schlägt nicht mehr fehl."
             },
             {
               "en": "Uploading a file again now retries it when Piloti could not read it the first time, instead of skipping it as unchanged.",

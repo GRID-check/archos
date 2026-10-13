@@ -635,7 +635,7 @@ export const POSTGRES_DIRECT_RESERVE = {
 } as const;
 
 /**
- * Qdrant (ADR-0105) — the fixed parts of the vector store that replaces Chroma.
+ * Qdrant (ADR-0111) — the fixed parts of the vector store that replaces Chroma.
  *
  * What is a knob (`config.ts` → `qdrant`): the image, the replica count, the
  * envelope, the volume size, the snapshot schedule and retention, and every
@@ -711,7 +711,7 @@ export const QDRANT = {
 } as const;
 
 /**
- * The one-shot move of the retired Chroma store into Qdrant (ADR-0105,
+ * The one-shot move of the retired Chroma store into Qdrant (ADR-0111,
  * `app/chroma-migration-job.ts`). Fixed parts only; whether it runs, which
  * claim it reads and how much scratch it gets are knobs (`config.ts` →
  * `chromaMigration`). Remove with the Job once every stack has run it.

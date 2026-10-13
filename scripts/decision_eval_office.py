@@ -84,7 +84,7 @@ SWEEP = (0.1, 0.15, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8)
 #: The partition thresholds the fit part compares.
 FIT_SWEEP = (0.5, 0.6, 0.7, 0.8)
 
-#: The first page the per-project cross-project search walked before ADR-0106 (8 projects); the BFF's
+#: The first page the per-project cross-project search walked before ADR-0112 (8 projects); the BFF's
 #: page (`CROSS_PROJECT_PAGE_PROJECTS`) is now 40 in one grouped query. Kept so runs stay comparable.
 PAGE = 8
 

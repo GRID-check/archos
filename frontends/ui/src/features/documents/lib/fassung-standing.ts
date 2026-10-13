@@ -23,6 +23,7 @@
  * No React, no I/O, no copy: the component turns this into words.
  */
 
+import type { DocumentReadFamily } from '@/lib/documents/document-status'
 import type { DocumentVersionView } from '@/lib/documents/lifecycle-types'
 import {
   availableLifecycleGestures,
@@ -48,13 +49,22 @@ export interface NextStep {
 export type AnswerBasis =
   /** The newest Fassung itself. */
   | { kind: 'this' }
-  /** An older Fassung of this document, still published while the newest waits or was refused. */
+  /**
+   * An older Fassung of this document: still published while the newest waits
+   * or was refused, or standing in while the newest is read or after its
+   * reading failed.
+   */
   | { kind: 'older'; number: number }
   /** A newer document that replaced this one. */
   | { kind: 'newer'; number: number }
   /** Nothing yet: the newest waits, and no published Fassung stands behind it. */
   | { kind: 'notYet' }
-  /** Nothing: the newest was refused, and no published Fassung stands behind it. */
+  /** Nothing yet: the newest is published and still being read, and nothing stands in. */
+  | { kind: 'notYetRead' }
+  /**
+   * Nothing: the newest was refused, or could not be read (or was held, or is
+   * deliberately not read), and nothing stands in.
+   */
   | { kind: 'never' }
   /** The document was retired: Piloti cites none of it. */
   | { kind: 'retired' }
@@ -80,6 +90,8 @@ export interface StandingInput {
   /** Who the open review round was sent to (`DocumentVersionListResponse.reviewerUserIds`). */
   reviewerUserIds?: readonly string[]
   viewer?: DocumentLifecycleViewer
+  /** The reading of the current bytes (`documentReadFamily(file.status)`); the rows were built with the same. */
+  newestRead?: DocumentReadFamily
 }
 
 /** The states a review walks through, which the track can show honestly. */
@@ -98,6 +110,7 @@ export function fassungStanding({
   lifecycle,
   reviewerUserIds = [],
   viewer,
+  newestRead = 'readable',
 }: StandingInput): FassungStanding {
   const own = ownNewestRow(rows)
   const newer = rows.find((row) => row.kind === 'newer') ?? null
@@ -110,7 +123,7 @@ export function fassungStanding({
     progress,
     stage: progress ? Math.max(0, progress.reached - 1) : null,
     nextStep: state === 'archived' || newer !== null ? null : nextStepOf(newest, lifecycle, reviewerUserIds, viewer),
-    answer: answerBasis(rows, newest, lifecycle, newer?.number ?? null),
+    answer: answerBasis(rows, newest, lifecycle, newer?.number ?? null, newestRead),
   }
 }
 
@@ -130,11 +143,17 @@ function answerBasis(
   newest: DocumentVersionView | null,
   lifecycle: 'active' | 'archived',
   newerNumber: number | null,
+  read: DocumentReadFamily,
 ): AnswerBasis {
   if (lifecycle === 'archived') return { kind: 'retired' }
   if (newerNumber !== null) return { kind: 'newer', number: newerNumber }
-  if (newest === null || newest.state === 'published' || newest.state === 'superseded') return { kind: 'this' }
+  // The timeline already moved `current` off a published Fassung nobody has read.
   const live = rows.find((row) => row.kind === 'version' && row.current && !row.newest)
+  if (newest === null || newest.state === 'published' || newest.state === 'superseded') {
+    if (read === 'readable') return { kind: 'this' }
+    if (live) return { kind: 'older', number: live.number }
+    return read === 'reading' ? { kind: 'notYetRead' } : { kind: 'never' }
+  }
   if (live) return { kind: 'older', number: live.number }
   return newest.state === 'rejected' ? { kind: 'never' } : { kind: 'notYet' }
 }

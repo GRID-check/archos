@@ -148,7 +148,55 @@ export interface PdfDocumentViewProps {
    * a stage. Everything else — the sheets, the pill, the rail — is the same.
    */
   ground?: 'stage' | 'host'
+  /**
+   * What the caller lays over one page: marks it keeps itself (a document's
+   * Anmerkungen), positioned in PERCENT of the page as `RegionMarks` are, so
+   * they need no scale and survive every zoom. A render function rather than a
+   * list of pins, for the reason `quoteFormat` is a formatter: what a mark
+   * means belongs to whoever opened the viewer, and the viewer knows pages.
+   */
+  pageOverlay?: (page: number) => ReactNode
+  /**
+   * Controls the caller adds to the start of the viewer's own pill (a review
+   * surface's tools), so a stage has one pill rather than two competing at its
+   * foot. Rendered as they come, followed by a divider.
+   */
+  toolbarLead?: ReactNode
+  /**
+   * A point to bring to the middle of the view: a page, and the share of its
+   * height to centre. A new `key` asks again for the same point. `instant`
+   * jumps rather than glides, for a view that follows somebody else's.
+   */
+  focus?: { page: number; y: number; key: string | number; instant?: boolean } | null
+  /**
+   * Where the view is, whenever it moves: the page at its middle and the share
+   * of that page's height there. For a reader others may follow.
+   */
+  onViewport?: (viewport: { page: number; y: number }) => void
   className?: string
+}
+
+/** A point on a page, as a share of the page as the viewer shows it, top-left origin. */
+export interface PagePoint {
+  page: number
+  x: number
+  y: number
+}
+
+/** The point a click at (`clientX`, `clientY`) hit on a page whose box is `rect`, clamped onto the page. */
+export function pointOnPage(
+  page: number,
+  rect: Pick<DOMRect, 'left' | 'top' | 'width' | 'height'>,
+  clientX: number,
+  clientY: number,
+): PagePoint | null {
+  if (rect.width <= 0 || rect.height <= 0) return null
+  const clamp = (value: number) => Math.min(1, Math.max(0, value))
+  return {
+    page,
+    x: clamp((clientX - rect.left) / rect.width),
+    y: clamp((clientY - rect.top) / rect.height),
+  }
 }
 
 /**
@@ -309,6 +357,10 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   onFindSimilar,
   onLoadError,
   ground = 'stage',
+  pageOverlay,
+  toolbarLead,
+  focus,
+  onViewport,
   className,
 }) => {
   const t = useTranslations('knowledge')
@@ -722,6 +774,56 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
     [doc],
   )
 
+  // Bring the caller's point to the middle of the view. Keyed, so the same
+  // point can be asked for twice (the reader scrolled away and asks again).
+  const focusKey = focus ? `${focus.key}` : null
+  const focusRef = useRef(focus)
+  focusRef.current = focus
+  useEffect(() => {
+    const frameNode = scrollRef.current
+    const focus = focusRef.current
+    if (!focus || !doc || !frameNode) return
+    const pageNode = pageRefs.current.get(clampPage(focus.page, doc.numPages))
+    if (!pageNode) return
+    const frameBox = frameNode.getBoundingClientRect()
+    const pageBox = pageNode.getBoundingClientRect()
+    const pointTop = pageBox.top - frameBox.top + frameNode.scrollTop + focus.y * pageBox.height
+    frameNode.scrollTo({
+      top: Math.max(0, pointTop - frameBox.height / 2),
+      behavior: scrollBehavior(!focus.instant),
+    })
+  }, [focusKey, doc])
+
+  // Say where the view is, once a frame at most, for whoever follows it.
+  const onViewportRef = useRef(onViewport)
+  onViewportRef.current = onViewport
+  const reportsViewport = onViewport !== undefined
+  useEffect(() => {
+    const frameNode = scrollRef.current
+    if (!frameNode || !doc || !reportsViewport) return
+    let frame: number | null = null
+    const report = () => {
+      frame = null
+      const frameBox = frameNode.getBoundingClientRect()
+      const middle = frameBox.top + frameBox.height / 2
+      for (const [number, node] of pageRefs.current) {
+        const box = node.getBoundingClientRect()
+        if (box.top <= middle && box.bottom >= middle && box.height > 0) {
+          onViewportRef.current?.({ page: number, y: Math.min(1, Math.max(0, (middle - box.top) / box.height)) })
+          return
+        }
+      }
+    }
+    const onScroll = () => {
+      if (frame === null) frame = requestAnimationFrame(report)
+    }
+    frameNode.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      frameNode.removeEventListener('scroll', onScroll)
+      if (frame !== null) cancelAnimationFrame(frame)
+    }
+  }, [doc, reportsViewport])
+
   /**
    * Read the reader's selection: what it says, which page it is on, and where
    * to hang the offer to quote it. Nothing selected inside the document
@@ -999,7 +1101,8 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
       onKeyDown={onKeyDown}
     >
       <Ground className="flex min-h-0 flex-1 flex-row">
-        {doc && railOpen && (
+        {/* A rail of one thumbnail is a 150px column that says „1". */}
+        {doc && railOpen && doc.numPages > 1 && (
           <PdfThumbnailRail
             doc={doc}
             pages={pages}
@@ -1075,6 +1178,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
                     marks={hit?.page === number ? hit.rects : null}
                     searchMarks={searchMarks.get(number) ?? null}
                     regions={number === page ? regionsOnPage : null}
+                    overlay={pageOverlay?.(number)}
                     fuzzy={hit?.page === number && hit.fuzzy}
                     ping={ping}
                     onPassage={handlePassage}
@@ -1135,6 +1239,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
               onToggleSearch={() => (searchOpen ? closeSearch() : openSearch())}
               railOpen={railOpen}
               onToggleRail={() => setRailOpen((open) => !open)}
+              lead={toolbarLead}
             />
           </div>
         </div>
@@ -1341,6 +1446,8 @@ interface PdfPageCanvasProps {
   searchMarks: Array<{ rects: HighlightRect[]; active: boolean }> | null
   /** The cited region's boxes, when this is the page they were stated for. */
   regions: readonly PageRegion[] | null
+  /** The caller's own marks on this page (see `PdfDocumentViewProps.pageOverlay`). */
+  overlay?: ReactNode
   /** The marks are a guess — see {@link PassageHit.fuzzy}. */
   fuzzy: boolean
   ping: number
@@ -1372,6 +1479,7 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
   marks,
   searchMarks,
   regions,
+  overlay,
   fuzzy,
   ping,
   onPassage,
@@ -1596,6 +1704,7 @@ const PdfPageCanvas: FC<PdfPageCanvasProps> = ({
         style={{ ['--total-scale-factor' as string]: scale } as CSSProperties}
       />
       {regions && <RegionMarks regions={regions} color={highlightColor} ping={ping} />}
+      {overlay && <div className="pointer-events-none absolute inset-0 z-20">{overlay}</div>}
       {searchMarks?.flatMap((entry, entryIndex) =>
         entry.rects.map((rect, index) => (
           <span

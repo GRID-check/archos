@@ -40,6 +40,28 @@ describe('SHAREABLE_REGISTRY', () => {
   })
 })
 
+describe('a document deep link to a mark', () => {
+  const link = describeResource('document').deepLink
+
+  it('opens the Prüfansicht at the mark in the project, with the params the preview pane answers', () => {
+    expect(link('doc-1', { projectId: 'p1', markId: 'ann-1' })).toBe(
+      '/app/projects/p1/files?doc=doc-1&review=1&mark=ann-1',
+    )
+  })
+
+  it('does the same for a Büroablage document', () => {
+    expect(link('doc-1', { markId: 'ann-1' })).toBe('/app/archiv?doc=doc-1&review=1&mark=ann-1')
+  })
+
+  it('does not read a plain anchor as a mark: a Fassung anchors its rows too', () => {
+    expect(link('doc-1', { projectId: 'p1', anchorId: 'version-9' })).toBe('/app/projects/p1/files?doc=doc-1')
+  })
+
+  it('encodes the ids', () => {
+    expect(link('a b', { projectId: 'p', markId: 'x&y' })).toBe('/app/projects/p/files?doc=a%20b&review=1&mark=x%26y')
+  })
+})
+
 describe('a document is changed by writing in its folder (ADR-0088)', () => {
   const tenancy = (folderId: string | null, projectId: string | null = 'proj_1') =>
     ({ organizationId: 'org_1', projectId, folderId, visibility: 'project', createdBy: 'u', filename: 'a.pdf', displayName: null }) as never

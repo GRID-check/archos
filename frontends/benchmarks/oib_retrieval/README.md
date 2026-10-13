@@ -234,7 +234,7 @@ written into Qdrant through ingestion's own `write_chunks`, and read through
 `LlamaIndexRetriever._retrieve_sync` and `_find_text_sync`, with the query vectors
 pre-cached so no embedding sits inside a timed call.
 
-Chroma left the stack in one change (ADR-0105), so its path cannot be run again.
+Chroma left the stack in one change (ADR-0111), so its path cannot be run again.
 Every section that once compared against it prints the Chroma path's numbers from
 the final gate run beside Qdrant's (`qdrant_parity/baseline.py`, sourced from the
 gate report). They describe the production-embedder run on this corpus; the report

@@ -217,7 +217,7 @@ def test_a_write_the_store_refuses_raises(retriever, monkeypatch):
 
 
 def test_adapter_never_imports_qdrant_client():
-    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0105)."""
+    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0111)."""
     source = open(adapter_module.__file__, encoding="utf-8").read()
     assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE)
 

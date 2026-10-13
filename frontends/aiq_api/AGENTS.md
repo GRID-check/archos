@@ -43,6 +43,16 @@ many jobs one organization may have waiting. A scheduled fire is `bulk`. Do not
 turn a full cluster back into a refusal: a scheduled task that meets one is
 skipped, not retried.
 
+**A background run acts as its requester, by echo** (ADR-0108). The worker
+injects the identity headers from the run's identity and, when the run carries
+one, the requester's signed request-context envelope the BFF minted, so the
+tools that act as a person behave as on a chat turn. The envelope is kept at
+submit only when it verifies for the run's requester (`jobs/run_envelope.py`,
+`capture_request_envelope`), travels in the encrypted payload, and is renewed
+by the BFF at claim once it is an hour old. This tier verifies and forwards; it
+never builds or signs one, and never logs one. Any refusal or failure means the
+run acts as nobody and those tools refuse.
+
 ## Reference
 
 - [`README.md`](README.md) here has the run commands and the layered

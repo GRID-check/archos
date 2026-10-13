@@ -1,4 +1,4 @@
-"""Rebuild a physical collection as a new ``_vN`` and move its alias (ADR-0105).
+"""Rebuild a physical collection as a new ``_vN`` and move its alias (ADR-0111).
 
 Open-source Qdrant cannot reshard or change a collection's replication shape
 in place, so a changed shape is a new collection beside the live one, a copy,

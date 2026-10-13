@@ -163,7 +163,7 @@ function makeConfig(overrides: Record<string, unknown> = {}) {
       s3AccessKey: "grid-langfuse",
       s3SecretKey: pulumi.secret("langfuse-secret"), // pragma: allowlist secret
     },
-    // The Qdrant snapshot identity (ADR-0105): always declared, Qdrant always runs.
+    // The Qdrant snapshot identity (ADR-0111): always declared, Qdrant always runs.
     qdrant: {
       snapshots: {
         s3AccessKey: "grid-qdrant",
@@ -732,7 +732,7 @@ describe("s3 identities", () => {
     expect(cfg.identities.map((i) => i.name)).toEqual(["grid", "grid-backend-read", "grid-qdrant"]);
   });
 
-  // ADR-0105. A snapshot is every office's chunk text and vectors in one file.
+  // ADR-0111. A snapshot is every office's chunk text and vectors in one file.
   it("confines the Qdrant identity to the snapshot bucket, and keeps `grid` off it", async () => {
     const cfg = await render({}, undefined, ["qdrant-snapshots"]);
     const qdrant = cfg.identities.find((i) => i.name === "grid-qdrant")!;

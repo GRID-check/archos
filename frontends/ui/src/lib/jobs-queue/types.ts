@@ -25,6 +25,13 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `purge_binned_chunks` walks as the system as well:
  * it finishes a delete a person already committed, and whether a binned folder
  * stays searchable must not depend on whether that person is still a member.
+ * `piloti_wake` is one step that runs AS the person whose act woke Piloti
+ * (ADR-0106): it opens a turn on the chat socket under their pinned session,
+ * and waits (`notBefore`) while another turn of their thread runs.
+ * `piloti_wake_stop` is the stop of a wake's running turn, queued in the
+ * transaction in which a person takes the mark back; it runs as the system:
+ * the take-back was authorized when it was made, and a stop must still land
+ * when the person who woke Piloti has left or their budget is spent.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -40,6 +47,8 @@ export const BFF_JOB_KINDS = [
   'office_rendition',
   'file_research_report',
   'mail_import',
+  'piloti_wake',
+  'piloti_wake_stop',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -284,6 +293,44 @@ export const mailImportPayloadSchema = z.object({
 })
 export type MailImportPayload = z.infer<typeof mailImportPayloadSchema>
 
+/**
+ * `piloti_wake`: wake Piloti on an Anmerkung as the person whose act is the
+ * event (ADR-0106). The job id is `wakeId`, which is also the turn id and the
+ * `piloti_wakes` row (`lib/annotations/wake-ids.ts`). Ids only: the reply's
+ * text, the mark and the person's rights are read again when it runs, so a
+ * queued wake carries no tenant content and a revoked right ends it.
+ */
+export const pilotiWakePayloadSchema = z.object({
+  wakeId: z.string().uuid(),
+  trigger: z.enum(['thread_mention', 'thread_reply', 'assigned']),
+  /** The reply id, or the delegation's event id. */
+  eventId: z.string().min(1).max(128),
+  documentId: z.string().uuid(),
+  annotationId: z.string().uuid(),
+  /** The person whose act is the event: the turn runs as them, today. */
+  actor: z.object({ userId: z.string().min(1), email: z.string().nullable() }),
+  /** How often the wake has waited already (another turn ran, or no server could take it). */
+  waits: z.number().int().nonnegative(),
+})
+export type PilotiWakePayload = z.infer<typeof pilotiWakePayloadSchema>
+
+/**
+ * `piloti_wake_stop`: stop the turn a wake started, because the person took the
+ * mark back (ADR-0106). Queued in the take-back's own transaction, so a crash
+ * between the commit and the send loses nothing. Ids only: the conversation is
+ * derived from the document and the person whose act woke Piloti, the turn id
+ * is the wake id. It carries the actor because the wake row is gone with a
+ * deleted mark.
+ */
+export const pilotiWakeStopPayloadSchema = z.object({
+  wakeId: z.string().uuid(),
+  documentId: z.string().uuid(),
+  annotationId: z.string().uuid(),
+  /** The person the woken turn runs as: whose thread about the document it is in. */
+  actorUserId: z.string().min(1),
+})
+export type PilotiWakeStopPayload = z.infer<typeof pilotiWakeStopPayloadSchema>
+
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {
   /** True when a failure now leaves the job dead, so the work must leave its own truth behind. */
@@ -294,4 +341,11 @@ export interface JobAttempt {
 export interface JobSliceResult<TPayload> {
   done: boolean
   payload: TPayload
+  /**
+   * Not done, and nothing to do before then: the runner gives the claim back
+   * WITHOUT spending an attempt and the job is not claimed again before this
+   * moment. For a job that waits on something outside it (a wake whose
+   * person's thread is busy), not for a failure, which throws.
+   */
+  notBefore?: Date
 }

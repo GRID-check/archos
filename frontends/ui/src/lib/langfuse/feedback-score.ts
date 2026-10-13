@@ -243,7 +243,11 @@ function serialized(scoreId: string, what: string, work: () => Promise<unknown>)
   return next
 }
 
-function upsertScore(config: LangfuseApiConfig, scoreId: string, score: ScoreRequest): Promise<void> {
+/**
+ * Create or overwrite one score by its id, bounded and never rejecting; calls
+ * for one id run in order. Shared with the decision score (`decision-score.ts`).
+ */
+export function upsertScore(config: LangfuseApiConfig, scoreId: string, score: ScoreRequest): Promise<void> {
   return serialized(scoreId, 'score upsert', () =>
     clientFor(config).api.scores.create(score, requestOptions())
   )

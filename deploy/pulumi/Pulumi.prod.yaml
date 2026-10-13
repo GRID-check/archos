@@ -257,7 +257,7 @@ config:
   grid-oib:seaweedfsAccessKey: grid
   # ── Vector store ──
 
-  # Qdrant is always deployed (ADR-0105), three peers by default; its three keys
+  # Qdrant is always deployed (ADR-0111), three peers by default; its three keys
 
   # come from the ESC environment (`qdrantApiKey`, `qdrantReadOnlyApiKey`,
 

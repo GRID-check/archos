@@ -299,7 +299,7 @@ class GroupedSearchFilters(BaseModel):
 class GroupedDocumentSearchRequest(BaseModel):
     """Request body for one semantic search across many collections, grouped per collection.
 
-    The cross-project lookup's single call (ADR-0094, ADR-0106): every
+    The cross-project lookup's single call (ADR-0094, ADR-0112): every
     reachable project's collections are ranked in ONE query, so hits from
     different projects are ordered by one fused ranking instead of by scores
     from separate indexes.

@@ -33,6 +33,7 @@ from typing import Any
 
 from aiq_agent.common import build_human_prompt
 from aiq_agent.common import extract_user_response
+from aiq_agent.turn.api_seam import headless_turn_requested
 from nat.plugin_api import Builder
 from nat.plugin_api import Context
 from nat.plugin_api import FunctionBaseConfig
@@ -255,10 +256,28 @@ async def _prompt_user(manager: Any, question: str, labels: list[str]) -> Any:
         raise _Undeliverable("The question could not be delivered.") from exc
 
 
+#: What the model is told on a turn an event woke (``X-AIQ-Mode: headless``):
+#: nobody holds the socket, so a prompt would wait out its thirty minutes. The
+#: question belongs where the event happened, in the thread.
+_HEADLESS = (
+    "Nobody is watching this turn live: it was started by an event, not typed, so a question here would "
+    "never be answered. Do not wait. If you need something from the person, ask it where you were "
+    "addressed (in the Anmerkung's thread with `canvas__reply`, or in your answer), and meanwhile answer "
+    "with the most reasonable assumption, saying which assumption you made."
+)
+
 _REFUSALS = {
     "in_flight": "Another question is already waiting for this conversation.",
     "already_asked": "You already asked the user once this turn.",
 }
+
+
+def _headless() -> bool:
+    """Whether this turn runs headless (``turn.api_seam``); a failure to tell reads as attended."""
+    try:
+        return headless_turn_requested()
+    except Exception:  # noqa: BLE001 - outside the API tier there is no caller to read
+        return False
 
 
 def _reply_for(answer: str, option_count: int) -> str:
@@ -282,6 +301,9 @@ async def _ask(question: str, options: list[str] | str | None = None) -> str:
     rejection = _reject_arguments(question_text, labels)
     if rejection is not None:
         return rejection
+    if _headless():
+        logger.info("ask_user refused on a headless turn")
+        return _HEADLESS
     scope = _turn_scope()
     if scope is None:
         return f"No channel to ask the user is available here. {_FALL_BACK_TO_ASSUMPTION}"

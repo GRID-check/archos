@@ -116,6 +116,29 @@ say „Piloti antwortet aus dieser Fassung“, never „Grundlage für Antworten
 _Avoid_: „freigeben“ for a held upload (see **Zurückgehalten**) or for sharing
 (see **Share**); „Änderungen erbeten“; “Superseded”.
 
+**Anmerkung** (annotation):
+A mark someone sets on one page of one Fassung: a point or a drawn box (*Bereich*)
+with what it says, a running number („Nummer 4“, what a Jour fixe and a
+Protokoll name), optionally a person responsible and a date, and a thread of
+answers. It is *offen*, *erledigt* or *verworfen*. Piloti's own findings are
+*Vorschläge* until a person takes them over (*übernehmen*); only then are they
+the office's. A mark the person asked Piloti to set is open at once, in that
+person's name, and when asked Piloti changes or deletes marks as the person
+could, leaving a short note in the mark's thread. Marks are set and discussed
+in the *Prüfansicht*, the document opened full screen, together and live.
+A person can hand an open mark to Piloti (*an Piloti delegieren*): the mark
+keeps its *Zuständige*, and Piloti works it on behalf of the person who
+delegated („Piloti arbeitet daran · für Miriam“) and hands it back when that
+turn has ended, whatever its outcome; taking it back stops Piloti. An answer in
+the thread that names Piloti (@Piloti), or answers Piloti's own open Rückfrage,
+*weckt* Piloti: it answers there even when nobody has the chat open (ADR-0106).
+Each change Piloti makes to a mark is recorded with its turn and can be undone
+while nobody has changed it since, including a mark it set for you and a reply
+it wrote for you, as long as nobody else has answered in that thread.
+_Avoid_: ticket, issue, Mangel for every mark (a Mangel is one *Art*); comment,
+for the mark itself rather than an answer in its thread; „Piloti zuweisen“:
+work is assigned to people and delegated to Piloti.
+
 **Zurückgehalten** (held back):
 An upload the content check (*Inhaltsprüfung*) keeps from every model until
 someone with the right *prüft* it and lets it through (*zulassen*, “allow”) or

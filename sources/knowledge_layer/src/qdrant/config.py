@@ -1,4 +1,4 @@
-"""How the knowledge layer reaches Qdrant, its one vector store (ADR-0105).
+"""How the knowledge layer reaches Qdrant, its one vector store (ADR-0111).
 
 Every value is read from the environment per call: a test, or an operator,
 can repoint it without rebuilding a process-wide singleton (``store.reset_store``

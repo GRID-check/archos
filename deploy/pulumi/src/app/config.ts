@@ -17,7 +17,7 @@ export interface AppWiring {
   seaweedPublicEndpoint: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** The Qdrant cluster's client URL (ADR-0105): the one vector store, so there is no embedded one. */
+  /** The Qdrant cluster's client URL (ADR-0111): the one vector store, so there is no embedded one. */
   qdrantUrl: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
   dsn: Postgres["dsn"];
@@ -196,7 +196,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
-    // The read-write key (ADR-0105): the ingest tier writes, and the backend
+    // The read-write key (ADR-0111): the ingest tier writes, and the backend
     // tiers share one env.
     AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey,
   };
@@ -416,7 +416,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
 }
 
 /**
- * The shared Qdrant cluster (ADR-0105), the backend's one vector store. There
+ * The shared Qdrant cluster (ADR-0111), the backend's one vector store. There
  * is no embedded store to fall back to: it would live on a disk the pod loses
  * at every restart.
  */

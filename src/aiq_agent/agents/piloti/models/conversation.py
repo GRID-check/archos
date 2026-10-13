@@ -20,6 +20,8 @@ from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
 from aiq_agent.common.plan_documents import PlanDocuments
+from aiq_agent.common.wire_v2 import FocusRegion
+from aiq_agent.common.wire_v2 import TurnTrigger
 from aiq_agent.knowledge import AvailableDocument
 
 #: Which path a turn took. ``meta`` and ``shallow`` are OBSERVED off the
@@ -94,6 +96,16 @@ class ConversationState(BaseModel):
     # which file instead of retrieving the one the user is looking at.
     focus_file_name: str | None = None
     focus_shelf: str | None = None
+    # The box a person drew on a page of the document (the review canvas), and
+    # whether they asked in a mark's thread. Rendered as the „Fokusbereich“
+    # section of the prompt: look at that crop first, and answer in the thread
+    # with `canvas__reply` when asked there. Turn-scoped, like the focus above.
+    focus_region: FocusRegion | None = None
+    reply_in_thread: bool = False
+    # The event that woke this turn when nobody typed it (a reply or mention in
+    # an Anmerkung's thread, an assignment). Turn-scoped like the focus above:
+    # every turn's input states it, None included.
+    trigger: TurnTrigger | None = None
     skip_clarifier: bool = False
     # STICKY, for the life of the conversation: the user rejected a research
     # plan. A rejection is not a cancel — the question is still on the table and

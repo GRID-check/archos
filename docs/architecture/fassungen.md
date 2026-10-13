@@ -58,7 +58,11 @@ the listing is read.
   offers none of the three to a reader who may not receive its bytes
   (`bytesReadable` on the version listing, see Privacy). The header speaks about the newest
   Fassung and names the older one Piloti still answers from by number
-  (`features/documents/lib/fassung-standing.ts`).
+  (`features/documents/lib/fassung-standing.ts`). Which one that is follows the
+  reading status as well as the review state: a published upload that is still
+  being read, or failed, is not current, and the upload it replaced is
+  (`answeringVersionId` in `fassung-timeline.ts`), because a person's re-upload
+  retires the old passages only after the new ones are stored.
 - Nothing about the link model reaches the person.
 
 ## Detection
@@ -240,21 +244,28 @@ content of a version. It is not the link between two documents.
 | State | Meaning |
 |---|---|
 | `draft`, `in_review`, `changes_requested` | Being worked on. At most one open version per document. |
-| `approved` | A person asserted the content. Not yet answering. |
+| `approved` | Only a version approved before approval became one step (ADR-0104): asserted, not yet answering, published by „Veröffentlichen“. Nothing lands here any more. |
 | `published` | The version the index holds. |
 | `superseded` | Replaced by a later published version. Bytes stay. |
 | `rejected` | Closed without publishing. |
 
 - **Only a published version is indexed.** The database holds the chain: a version
-  may be published only if a person approved it, and only the `publish` and
-  `upload` transitions promote a version. `ingestPublished` appears on the
-  `publish` row of the transition table and nowhere else
-  (`lib/documents/lifecycle-types.ts`).
-- **A person's upload is born published and approved.** Putting the file there is
-  the assertion. Approval matters for what Piloti wrote and for revisions that
-  need a second pair of eyes.
-- **Piloti answers from the published version** while a newer one is in review.
-  The section says so („Piloti antwortet aus der veröffentlichten Fassung“).
+  that began as a draft (`origin = 'draft'`) may be published only if a person
+  approved it, and only the `upload`, `approve` and `publish` transitions promote
+  a version. `ingestPublished` appears on the `approve` and `publish` rows of the
+  transition table and nowhere else (`lib/documents/lifecycle-types.ts`).
+- **„Freigeben“ is one step** (ADR-0104 rule 5). Approving a version in review
+  publishes it: it becomes the one Piloti answers from, and the open review round
+  is decided in the same transaction. `publish` remains only for a version
+  approved before this.
+- **A person's upload is born published, and approved by nobody**
+  (`origin = 'upload'`, migration 0137). Putting the file there is the assertion;
+  no approver column carries the uploader's name. Approval matters for what
+  Piloti wrote and for revisions that need a second pair of eyes.
+- **Piloti answers from the published version** while a newer one is in review,
+  and from the previous upload while a person's re-upload is still being read
+  or after its reading failed. The section says so („Piloti antwortet weiter aus
+  Fassung 1.“).
 - **Publishing purges first.** The previous version's chunks go before the new
   bytes are sent, so a failed dispatch stops the document answering instead of
   answering from the version somebody replaced.

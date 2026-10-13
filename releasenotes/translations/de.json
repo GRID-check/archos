@@ -260,6 +260,10 @@
     "de": "Bei einer Datei, deren Upload noch läuft, steht wieder „Wird hochgeladen“ statt „Wird gelesen“."
   },
   {
+    "en": "A file you upload no longer shows you as having approved it. Nobody reviewed it, and the history now says so.",
+    "de": "Bei einer von Ihnen hochgeladenen Datei wird nicht mehr angezeigt, dass Sie sie genehmigt haben. Niemand hat sie geprüft, und der Verlauf zeigt das jetzt."
+  },
+  {
     "en": "A filed Recherchebericht now always lands in the project its research was run for. Before, a report from a run started outside a project, or from an older run reopened while another project was open, could end up in the wrong project, with that project's Bundesland on its cover sheet.",
     "de": "Ein abgelegter Recherchebericht landet jetzt immer in dem Projekt, für das die Recherche tatsächlich durchgeführt wurde. Früher konnte ein Bericht aus einem außerhalb eines Projekts gestarteten Recherchelauf oder aus einem älteren, bei geöffnetem anderem Projekt wieder geöffneten Lauf im falschen Projekt landen, mit dem Bundesland dieses Projekts auf dem Deckblatt."
   },
@@ -600,6 +604,10 @@
     "de": "Auf Ihrer Projektübersicht gibt es keine Seitenleiste mehr: Die Seite nutzt jetzt die gesamte Bildschirmbreite und hat eine schmale Kopfzeile mit Archiv, Posteingang und Ihrem Kontomenü."
   },
   {
+    "en": "Accepting a proposal to move an office document into one of the Büroablage's folders now finds that folder, and a proposal to assign a document to the person accepting it no longer fails.",
+    "de": "Beim Annehmen eines Vorschlags, ein Bürodokument in einen Ordner der Büroablage zu verschieben, wird der betreffende Ordner jetzt gefunden, und ein Vorschlag, ein Dokument der annehmenden Person zuzuweisen, schlägt nicht mehr fehl."
+  },
+  {
     "en": "Access to every project in your organization now comes with the administrator role itself, not with a role named Admin. A custom administrator role reaches projects like the built-in one.",
     "de": "Der Zugriff auf jedes Projekt Ihrer Organisation ist jetzt Teil der Administratorrolle selbst, nicht einer Rolle namens Admin. Eine eigene Administratorrolle erreicht Projekte genauso wie die eingebaute."
   },
@@ -840,6 +848,10 @@
     "de": "Antworten mit mehreren Karten sind schneller da, weil Piloti die Karten einer Antwort jetzt zusammen statt nacheinander erzeugt."
   },
   {
+    "en": "Approving a revision now also makes it the one Piloti answers from. There is no separate publish step any more: an approved document is ready to use.",
+    "de": "Mit der Freigabe einer Revision wird diese nun auch zur Grundlage für die Antworten von Piloti. Einen separaten Veröffentlichungsschritt gibt es nicht mehr: Ein freigegebenes Dokument ist sofort einsatzbereit."
+  },
+  {
     "en": "Approving and publishing are two clearly separate steps, so you can tell at a glance which one has happened.",
     "de": "Freigeben und Veröffentlichen sind zwei deutlich getrennte Schritte, sodass Sie auf einen Blick sehen, welcher davon erledigt ist."
   },
@@ -854,6 +866,10 @@
   {
     "en": "Archiving a file now takes it out of the file list, which is what archiving was always meant to mean. A new filter shows the archived files again whenever you want them back; nothing is deleted either way.",
     "de": "Beim Archivieren einer Datei wird diese nun aus der Dateiliste entfernt – so, wie es immer gedacht war. Mit einem neuen Filter können Sie archivierte Dateien jederzeit wieder anzeigen; gelöscht wird dabei nichts."
+  },
+  {
+    "en": "Ask Piloti to set, resolve, reopen, assign, date or delete an annotation and it does so in your name, with your rights, leaving a short note in the annotation's thread; the chat lists each change with a way to undo it.",
+    "de": "Bitten Sie Piloti, eine Anmerkung festzulegen, als erledigt zu markieren, wieder zu öffnen, zuzuweisen, zu datieren oder zu löschen. Piloti führt die Änderungen in Ihrem Namen und mit Ihren Rechten aus, hinterlässt eine kurze Notiz im Thread der Anmerkung und listet im Chat jede Änderung mit der Möglichkeit auf, sie rückgängig zu machen."
   },
   {
     "en": "Ask Piloti what changed between two Fassungen of a document, such as two states of a floor plan, and it answers page by page with the values that changed and the date each Fassung carries.",
@@ -1180,6 +1196,10 @@
     "de": "Das Ziehen von Dateien in Dateien lädt diese jetzt auch hoch, wenn sie direkt aus einer E-Mail oder einem cloud-synchronisierten Ordner stammen – zuvor blieb das Ablegen ohne Wirkung."
   },
   {
+    "en": "Draw a box around any detail and ask Piloti about exactly that part of the page; the answer appears right beside it and can be kept as an annotation. Piloti's own findings arrive as suggestions you take over or dismiss.",
+    "de": "Zeichnen Sie einen Rahmen um ein Detail und fragen Sie Piloti genau zu diesem Teil der Seite. Die Antwort erscheint direkt daneben und kann als Anmerkung gespeichert werden. Eigene Erkenntnisse von Piloti werden als Vorschläge angezeigt, die Sie übernehmen oder verwerfen können."
+  },
+  {
     "en": "Drawing on a closed project changes nothing about your chat. A chat that drew on a running project, or on a restricted folder of another project, can be shared only with people who may open it, and nothing from it goes into the project memory.",
     "de": "Das Heranziehen eines abgeschlossenen Projekts ändert nichts an Ihrem Chat. Ein Chat, der auf ein laufendes Projekt oder auf einen eingeschränkten Ordner eines anderen Projekts zurückgegriffen hat, lässt sich nur mit Personen teilen, die ihn öffnen dürfen, und nichts daraus wird im Projektspeicher gespeichert."
   },
@@ -1286,6 +1306,10 @@
   {
     "en": "Existing budget limits were converted from euros to points. Check your organization, member and project limits once and adjust them if the new values are not what you meant.",
     "de": "Bestehende Budgetlimits wurden von Euro in Punkte umgerechnet. Prüfen Sie Ihre Organisations-, Mitglieder- und Projektlimits einmal und passen Sie sie an, wenn die neuen Werte nicht dem entsprechen, was Sie gemeint haben."
+  },
+  {
+    "en": "Export a document's annotations from the review as minutes for a site meeting or the client, as PDF, Word or Markdown: each one by number, with its page, status, who is responsible, the due date and its thread. Choose open ones or all, and add Piloti's unreviewed proposals under their own heading if you want them.",
+    "de": "Exportieren Sie die Anmerkungen eines Dokuments aus der Prüfung als Protokoll für eine Baustellenbesprechung oder den Auftraggeber – als PDF, Word oder Markdown: nummeriert, jeweils mit Seite, Status, Zuständigkeit, Fälligkeitsdatum und Thread. Wählen Sie offene Anmerkungen oder alle aus und fügen Sie bei Bedarf Piloti’s ungeprüfte Vorschläge unter einer eigenen Überschrift hinzu."
   },
   {
     "en": "Facts Piloti suggests from a closed project's documents are checked against the quoted words, so a value the quote contradicts is no longer suggested.",
@@ -2080,6 +2104,10 @@
     "de": "Karten von Zeitplänen zeigen jetzt den Auftrag mit eigenen Worten statt des verwendeten Skills, und Sie können einen Zeitplan wieder löschen."
   },
   {
+    "en": "Scheduled and delegated work now acts with the rights of the person who commissioned it, so Piloti can file drafts and propose changes to files while the work runs. If that person leaves the office or loses access to the project, their running work stops acting for them.",
+    "de": "Geplante und delegierte Aufgaben werden nun mit den Berechtigungen der Person ausgeführt, die sie beauftragt hat. So kann Piloti während der Ausführung Entwürfe ablegen und Änderungen an Dateien vorschlagen. Verlässt diese Person das Büro oder verliert sie den Zugriff auf das Projekt, werden laufende Aufgaben nicht mehr in ihrem Namen ausgeführt."
+  },
+  {
     "en": "Scheduled research reports are filed into the project again in offices where this feature is enabled for them; they had been held back.",
     "de": "Geplante Recherche-Berichte werden in Büros, für die diese Funktion aktiviert ist, wieder im Projekt abgelegt; sie waren zurückgehalten worden."
   },
@@ -2334,6 +2362,10 @@
   {
     "en": "The changelog on piloti.at is quicker to read: the latest week shows its new features and improvements, older busy weeks open with their headings, and fixes stay folded until you open them.",
     "de": "Der Changelog auf piloti.at liest sich schneller: Die jüngste Woche zeigt ihre neuen Funktionen und Verbesserungen, ältere Wochen mit vielen Änderungen zeigen zuerst ihre Überschriften, und Fehlerbehebungen bleiben eingeklappt, bis Sie sie öffnen."
+  },
+  {
+    "en": "The chat card shows each annotation as it stands now, and each change Piloti made to one, including an annotation it set for you and a reply it wrote for you, can be undone from there while nobody has changed it or answered in its thread since.",
+    "de": "Die Chat-Karte zeigt jede Anmerkung in ihrem aktuellen Stand und alle Änderungen, die Piloti daran vorgenommen hat. Auch eine von Piloti für Sie gesetzte Anmerkung und eine für Sie verfasste Antwort können Sie dort rückgängig machen, solange niemand die Anmerkung geändert oder in ihrem Thread geantwortet hat."
   },
   {
     "en": "The chat header no longer repeats the project name next to the conversation title, and its buttons are a touch smaller and quieter.",
@@ -2844,6 +2876,10 @@
     "de": "Schlägt Piloti einen Rechercheplan vor und Sie antworten in eigenen Worten, überarbeitet es den Plan jetzt mit Ihrer Antwort. Ein schlichtes Nein überspringt den Plan weiterhin und führt zur direkten Antwort."
   },
   {
+    "en": "When Piloti proposes to move, rename, file or assign documents, everyone in the conversation now sees the same proposal and the same decision: once someone accepts it, it is applied in that person's name and with their rights, and the card shows who decided and what landed.",
+    "de": "Wenn Piloti vorschlägt, Dokumente zu verschieben, umzubenennen, abzulegen oder zuzuweisen, sehen jetzt alle im Gespräch denselben Vorschlag und dieselbe Entscheidung: Sobald jemand ihn annimmt, wird er im Namen dieser Person und mit deren Berechtigungen ausgeführt. Die Karte zeigt, wer entschieden hat und was umgesetzt wurde."
+  },
+  {
     "en": "When Piloti researches a question in depth, it now shows as a task in the conversation, with phases, rounds, documents and running time; it can be cancelled and its report is filed.",
     "de": "Recherchiert Piloti eine Frage gründlich, erscheint das jetzt als Auftrag im Verlauf, mit Phasen, Runden, Dokumenten und Laufzeit; er lässt sich abbrechen, und der Bericht wird abgelegt."
   },
@@ -2996,6 +3032,10 @@
     "de": "Wenn Sie ein Projekt abschließen, schlägt Piloti jetzt vor, welche Dateien es nicht mehr braucht, etwa Arbeitskopien, ältere Fassungen, Duplikate und temporäre Dateien. Der Vorschlag ist als KI-Vorschlag gekennzeichnet, Sie entscheiden über jede Datei, und was Sie bestätigen, kommt für 14 Tage in den Papierkorb."
   },
   {
+    "en": "When you mention Piloti in an annotation's thread, or hand an open annotation to Piloti, your inbox tells you when it is done or when it has a question for you. Taking an annotation back from Piloti stops the work.",
+    "de": "Wenn Sie Piloti im Thread einer Anmerkung erwähnen oder Piloti eine offene Anmerkung übergeben, informiert Sie Ihre Inbox, sobald die Aufgabe erledigt ist oder Piloti eine Rückfrage hat. Wenn Sie eine Anmerkung von Piloti zurücknehmen, wird die Arbeit gestoppt."
+  },
+  {
     "en": "When you move through the file list with the keyboard, your place is kept instead of jumping back to the first row. Home and End jump to the start and end of the list.",
     "de": "Wenn Sie die Dateiliste mit der Tastatur durchgehen, bleibt Ihre Position erhalten, statt zur ersten Zeile zurückzuspringen. Pos1 und Ende springen an den Anfang bzw. das Ende der Liste."
   },
@@ -3008,8 +3048,16 @@
     "de": "Wenn Sie einen Chat teilen, der aus einem eingeschränkten Ordner geschöpft hat, bietet Piloti nur Kolleginnen und Kollegen an, die alle diese Ordner lesen dürfen, und zeigt die anderen ausgegraut mit „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt“. Den Ordner nennt es nie."
   },
   {
+    "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
+    "de": "Wenn Sie eine neue Revision einer Datei hochladen, weist das Dokument jetzt darauf hin, dass Piloti weiterhin auf Grundlage der vorherigen Revision antwortet, bis die neue eingelesen wurde, und zeigt diesen Hinweis auch an, wenn das Einlesen fehlschlägt. Zuvor hieß es, Piloti antworte direkt nach dem Upload bereits auf Grundlage der neuen Revision."
+  },
+  {
     "en": "When you upload a new version of a file under the same name, the document type, display title and folder carry over from the earlier version. Before, they were lost, and Piloti guessed the document type from the file name again.",
     "de": "Wenn Sie eine neue Fassung einer Datei unter demselben Namen hochladen, bleiben Dokumentart, Anzeigetitel und Ordner der früheren Fassung erhalten. Bisher gingen sie verloren, und Piloti leitete die Dokumentart erneut aus dem Dateinamen ab."
+  },
+  {
+    "en": "When you write @Piloti in an Anmerkung's thread or answer a question Piloti asked there, Piloti answers in that thread even when nobody has the chat open. You can also hand an open Anmerkung to Piloti („An Piloti delegieren“): it stays assigned to its person, and Piloti works it for you and hands it back with its reply.",
+    "de": "Wenn Sie in einem Anmerkungs-Thread @Piloti schreiben oder eine dort von Piloti gestellte Frage beantworten, antwortet Piloti in diesem Thread, auch wenn niemand den Chat geöffnet hat. Sie können eine offene Anmerkung auch an Piloti delegieren („An Piloti delegieren“): Sie bleibt der zuständigen Person zugewiesen, während Piloti sie für Sie bearbeitet und mit seiner Antwort zurückgibt."
   },
   {
     "en": "When your browser runs out of room, your chat history is not wiped: Piloti clears only the text of the oldest chats, and their titles, drafts and list entries stay, and a chat loads its text again when you open it.",
@@ -3026,6 +3074,10 @@
   {
     "en": "Where an office has upload screening switched on, Piloti checks the text of each upload on its servers before any AI model reads it. A file the check holds back waits in Quarantine, where no model reads it, until an office or project admin releases or deletes it under Organization → Quarantine.",
     "de": "Wo eine Organisation die Prüfung von Uploads eingeschaltet hat, prüft Piloti den Text jedes Uploads auf Pilotis Servern, bevor ein KI-Modell ihn liest. Eine Datei, die die Prüfung zurückhält, wartet unter Organisation → Quarantäne, wo kein Modell sie liest, bis ein Büro- oder Projekt-Admin sie freigibt oder löscht."
+  },
+  {
+    "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
+    "de": "Während Piloti an Ihrer Frage arbeitet, können Sie es im Chat oder über seine Karte in einem Dokument („nicht die Tür, die Treppe“) lenken. Ihre Anmerkung berücksichtigt es im nächsten Schritt, statt von vorne anzufangen. Eine Markierung oder Antwort, die Piloti bereits ausgewählt hat, wartet auf Ihre Anmerkung. Kommt diese erst nach der Antwort, wird sie als Ihre nächste Frage behandelt."
   },
   {
     "en": "While Piloti works, its thinking indicator and the lines of the Herleitung no longer strain a phone.",
@@ -3084,6 +3136,10 @@
     "de": "Sie können Piloti im Chat jetzt auch wiederkehrende Arbeit übergeben: „prüf das jeden Montag“ legt einen Zeitplan an, der immer wieder läuft. Dafür braucht es die Berechtigung, Zeitpläne im Projekt zu verwalten."
   },
   {
+    "en": "You can now mark up a document together: open it full screen, set a point or draw a box on the page, give it a person and a date, and discuss it in its thread while you see who else is looking and where.",
+    "de": "Sie können ein Dokument jetzt gemeinsam markieren: Öffnen Sie es im Vollbild, setzen Sie einen Punkt oder zeichnen Sie einen Rahmen auf der Seite, weisen Sie eine Person und ein Datum zu und diskutieren Sie im zugehörigen Thread, während Sie sehen, wer sonst gerade mitliest und an welcher Stelle."
+  },
+  {
     "en": "You can now move a document to another folder with Move to folder in its menu. Each destination is listed by its full path, and All Files takes it out of every folder.",
     "de": "Sie können ein Dokument jetzt über „In Ordner verschieben“ im Menü in einen anderen Ordner legen. Jedes Ziel steht mit seinem vollständigen Pfad da, und „Alle Dateien“ nimmt es aus jedem Ordner heraus."
   },
@@ -3122,6 +3178,10 @@
   {
     "en": "Your office can now build its own roles in Piloti, under Organisation → Personen & Zugriff → Eigene Rollen, and decide per project folder which roles may read it and which may edit it. A role not on a folder's list does not see the folder, its files or what Piloti finds in them, and organization admins may read and edit everything.",
     "de": "Ihr Büro kann jetzt unter Organisation → Personen & Zugriff → Eigene Rollen eigene Rollen in Piloti anlegen und je Projektordner festlegen, welche Rollen ihn lesen und welche ihn bearbeiten dürfen. Eine Rolle, die nicht auf der Liste eines Ordners steht, sieht weder den Ordner noch seine Dateien noch das, was Piloti darin findet, und Organisations-Admins dürfen alles lesen und bearbeiten."
+  },
+  {
+    "en": "Your office decides whether Piloti may change annotations when you ask it to. Until it is switched on for your organization, Piloti only proposes: an annotation you ask for arrives as a suggestion you take over, and a change or deletion is left for you to make in the document.",
+    "de": "Ihr Büro entscheidet, ob Piloti Anmerkungen ändern darf, wenn Sie es dazu auffordern. Bis die Funktion für Ihre Organisation aktiviert ist, macht Piloti nur Vorschläge: Eine von Ihnen angeforderte Anmerkung wird als Vorschlag angezeigt, den Sie übernehmen können; Änderungen oder Löschungen im Dokument nehmen Sie selbst vor."
   },
   {
     "en": "Your office now decides what must not be uploaded, under Organisation → Sensible Daten: terms for file and folder names, terms for the content, and checks for IBANs, Austrian social security numbers and card numbers. Piloti starts you on a suggested list you can keep, change or switch off.",

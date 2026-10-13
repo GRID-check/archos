@@ -28,7 +28,13 @@ from typing import Any
 
 from aiq_api.auth.errors import AuthError
 
-__all__ = ["AuthError", "enqueue_ingest_job", "skip_clarifier_requested", "submit_agent_job"]
+__all__ = [
+    "AuthError",
+    "enqueue_ingest_job",
+    "headless_turn_requested",
+    "skip_clarifier_requested",
+    "submit_agent_job",
+]
 
 
 def skip_clarifier_requested() -> bool:
@@ -41,6 +47,18 @@ def skip_clarifier_requested() -> bool:
     from aiq_api.auth.middleware import get_current_user
 
     return bool(get_current_user().get("skip_clarifier"))
+
+
+def headless_turn_requested() -> bool:
+    """Whether the caller said ``X-AIQ-Mode: headless``: a job holds the socket, and no person watches it.
+
+    Narrower than :func:`skip_clarifier_requested`, which an anonymous caller
+    also sets: a question put to a headless turn's asker (``ask_user``) would
+    wait out its timeout on a socket nobody reads.
+    """
+    from aiq_api.auth.middleware import get_current_user
+
+    return bool(get_current_user().get("headless"))
 
 
 async def submit_agent_job(**kwargs: Any) -> str:

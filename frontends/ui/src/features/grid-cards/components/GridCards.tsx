@@ -4,6 +4,7 @@ import { cardKey } from '../card-decision'
 import { ProjectProfilePatchCard } from './ProjectProfilePatchCard'
 import { MemoryProposalCard } from './MemoryProposalCard'
 import { FileOperationProposalCard } from './FileOperationProposalCard'
+import { CanvasActivityCard } from './CanvasActivityCard'
 import { CalculationCard } from './CalculationCard'
 import { BuildingSectionCard } from '../schematics/BuildingSectionCard'
 import { StairDiagramCard } from '../schematics/StairDiagramCard'
@@ -423,6 +424,21 @@ export const GridCardView: FC<GridCardViewProps> = ({
           operation={card.operation}
           operations={card.operations}
           note={card.note}
+          proposalId={card.proposal_id}
+          messageId={messageId}
+          cardKey={key}
+          decisionsMustPersist={decisionsMustPersist}
+        />
+      </FadeIn>
+    )
+  }
+
+  if (card.type === 'canvas_activity') {
+    return (
+      <FadeIn distance={6}>
+        <CanvasActivityCard
+          document={card.document}
+          items={card.items}
           messageId={messageId}
           cardKey={key}
           decisionsMustPersist={decisionsMustPersist}

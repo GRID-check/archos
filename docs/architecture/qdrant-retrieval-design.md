@@ -3,9 +3,9 @@
 Status: **accepted 2026-10-13; built. Qdrant is the only vector store:
 Chroma, its mirror and the `AIQ_VECTOR_BACKEND` flag are gone (slice 3, §12).**
 The two decisions it rests on are
-[ADR-0105](../adr/0105-qdrant-replaces-chroma-reached-through-qdrant-client.md)
+[ADR-0111](../adr/0111-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
-[ADR-0106](../adr/0106-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
+[ADR-0112](../adr/0112-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
 (scope as a filter, not a collection). What is built, and where it departs
 from the target below, is §12. The gates in §10 decided the move
 ([results](qdrant-gates-2026-10.md)); §2 describes the Chroma-era system the
@@ -485,7 +485,7 @@ The route then orders DOCUMENTS across projects by their best fused score. It
 used to list every document of the best project before the next project's, so
 one project's weak documents filled the BFF's first page.
 
-**No fallback.** Qdrant is the only store (ADR-0105), so the grouped query
+**No fallback.** Qdrant is the only store (ADR-0111), so the grouped query
 is the cross-project search's one path. The per-project loop that searched 8
 projects 4 at a time on Chroma, the `GET /v1/collections/search/capability`
 probe the BFF asked before authorizing a page, and the route's 409 that sent
@@ -629,7 +629,7 @@ Chroma holds the ids, the 3072-d embeddings, the chunk text and the metadata,
 so the move copies them and re-parses, describes and embeds nothing; Qdrant
 computes the lexical sparse vector from `text` at upsert. The copy is two
 programs that share a file format and nothing else, so no Chroma code stays
-in the product (ADR-0105):
+in the product (ADR-0111):
 
 - **The exporter**, `deploy/migration/chroma_export.py`, runs beside Chroma in
   a throwaway Python container with `chromadb` pinned to the server's version
@@ -671,7 +671,7 @@ change took Chroma out. What was built:
 | Ingestion writes Qdrant directly: a `SentenceSplitter` per job (the job's chunk size and overlap, no process-wide `Settings`), the ingestor's own embedder over each chunk's EMBED rendering, then `write_chunks`, which enriches every point (office, project, BFF document, folder, project facts, `indexed_at`) and adds the facts the metadata store holds. A failed write fails the file. Point ids stay `point_id(chunk_id)`, the chunker's node ids, so migrated points and fresh ingests agree and citations survive the move | `llamaindex/adapter.py` — `_embedded_records`, `_ingest_job`; `qdrant/writes.py` |
 | Re-ingest keeps retire-after-insert: the previous version's chunk ids are read from Qdrant (a `file_name` filter over its spellings) before the write and deleted by id after it; a failed or deleted-while-indexing attempt deletes exactly the ids it sent (fresh node ids, so never the previous version's) | `adapter.py` — `_find_previous_versions`, `_retire_previous_version`, `_retire_held_predecessor`, `_discard_partial_version` |
 | Every delete is one store's: `delete_file` reads the ids under every accepted spelling and deletes those, `delete_collection` deletes by scope; nothing is deleted or recorded as deleted when Qdrant refuses. Deletes go in bounded requests | `adapter.py`; `store.delete_chunks` (`DELETE_BATCH`) |
-| Registry reads from Qdrant: a file listing is one payload-limited scroll (no text); a collection's chunks and files are an exact count and a facet; `list_collections` is one facet per physical collection; a text sample is a structural fetch; visual details and `collection_pages.read_pages` scroll by filter. `get_collection` never answers "missing": a collection is a scope, and an empty one has no chunks (ADR-0106) | `adapter.py` — `_indexed_files`, `_collection_info`, `list_collections`; `collection_pages.py` |
+| Registry reads from Qdrant: a file listing is one payload-limited scroll (no text); a collection's chunks and files are an exact count and a facet; `list_collections` is one facet per physical collection; a text sample is a structural fetch; visual details and `collection_pages.read_pages` scroll by filter. `get_collection` never answers "missing": a collection is a scope, and an empty one has no chunks (ADR-0112) | `adapter.py` — `_indexed_files`, `_collection_info`, `list_collections`; `collection_pages.py` |
 | A collection's `updated_at` (what the reaper of conversation uploads reads) is the newest `indexed_at` on its points, an ordered scroll | `schema.INDEXED_AT_FIELD`, `store.newest` |
 | A fact copy follows the rows a register or unregister changes the meaning of: the rows whose `superseded_by` names the file are copied again, so a Fassung that became current is not hidden by `superseded != true` | `factory.register_summary`, `unregister_summary`; `DocumentMetadataStore.files_linked_to` |
 | Deleted: Chroma's client and collections, `AIQ_VECTOR_BACKEND`, `qdrant/mirror.py` and `ordered_delete`, the Postgres `chunk_text` mirror, the `$contains` channel and its pricing, `exp(-d)` score recovery, `embed_fingerprint_mismatch` (the identity lives in Qdrant's collection metadata only), the Chroma backfill (`backfill_qdrant.py`, `backfill_chunk_text.py`), and `chromadb` plus `llama-index-vector-stores-chroma` from the dependencies | — |
@@ -811,7 +811,7 @@ rest stands.
   (0.012 off at 256 dimensions, 0.037 at 8), which only the boost formula
   (`boost.py`) reads.
 * **One API key.** The read-only key is configured on the server and not
-  used by the backend (ADR-0106, Confirmation), because no tier is read-only
+  used by the backend (ADR-0112, Confirmation), because no tier is read-only
   today. Every backend tier builds the same process-wide client with the one
   key (`store.make_client`) and reaches a write path: ingestion mirrors every
   Chroma write (`mirror.mirror_file`, the ingest worker), the API's deletes

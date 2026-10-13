@@ -32,7 +32,7 @@ Document ingestion and retrieval for Piloti, on one backend: `llamaindex`.
 ## The Backend
 
 `llamaindex` is the knowledge layer's only backend: LlamaIndex for loading and
-chunking, Qdrant as the one vector store (ADR-0105, reached through
+chunking, Qdrant as the one vector store (ADR-0111, reached through
 `qdrant-client` inside `knowledge_layer/qdrant/`), embeddings and the VLM
 through OpenRouter. It runs in the agent's process and needs a Qdrant cluster
 (`AIQ_QDRANT_URL`) and OpenRouter. It is the production backend,

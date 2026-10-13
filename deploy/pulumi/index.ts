@@ -4,7 +4,7 @@
  * Provisions the whole stack against a provider-supplied kubeconfig:
  *   platform  → cert-manager (+ Let's Encrypt issuer), Envoy Gateway, metrics-server
  *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3),
- *               Qdrant (the vector store, ADR-0105)
+ *               Qdrant (the vector store, ADR-0111)
  *   app       → aiq-agent (StatefulSet, the chat role), aiq-api (Deployment +
  *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job, a WorkOS audit-schema reconcile Job and,
@@ -97,7 +97,7 @@ const extraBuckets = [
   // the init Job creates it — but withheld from the general-purpose `grid` S3
   // identity in `s3IdentityCatalog`; Langfuse reaches it as `grid-langfuse`.
   ...(cfg.langfuse.enabled ? [LANGFUSE.bucket] : []),
-  // Qdrant's shard snapshots (ADR-0105), reached only as `grid-qdrant`.
+  // Qdrant's shard snapshots (ADR-0111), reached only as `grid-qdrant`.
   QDRANT.snapshotBucket,
 ];
 const filerNeedsPostgres =
@@ -175,7 +175,7 @@ const langfuseQueue = cfg.langfuse.enabled
 const rateLimitStore = cfg.rateLimit.enabled
   ? installRateLimitStore(cfg, provider, namespace)
   : undefined;
-// The vector store (ADR-0105). Its snapshot CronJob waits on the bucket it
+// The vector store (ADR-0111). Its snapshot CronJob waits on the bucket it
 // uploads into. Chroma is gone: its StatefulSet kept its claim on delete
 // (`whenDeleted: Retain`), which `chromaMigration` reads below.
 const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint, [seaweed.bucketInitJob]);
@@ -328,7 +328,7 @@ const ingestWorker = installIngestWorker(wiring, cfg, secrets, [
   ...queueScalerDeps,
 ]);
 
-// The retired Chroma store, carried into Qdrant once (ADR-0105). Opt-in, on a
+// The retired Chroma store, carried into Qdrant once (ADR-0111). Opt-in, on a
 // deploy after the one that removed Chroma. After every backend tier, so none
 // still writes Chroma while the export reads it.
 if (cfg.chromaMigration.enabled) {
@@ -422,7 +422,7 @@ if (cfg.observability.enabled) {
       ...(langfuse ? [langfuse.webService] : []),
     ],
     langfuse ? langfuse.secret.metadata.name : undefined,
-    // Every Qdrant peer's metrics port (ADR-0105): the collector's one
+    // Every Qdrant peer's metrics port (ADR-0111): the collector's one
     // metrics pipeline, re-exposed on :8889 for whatever reads metrics.
     qdrant.metricsTargets,
   );

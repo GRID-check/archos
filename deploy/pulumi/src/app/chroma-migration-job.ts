@@ -66,7 +66,7 @@ function exporterScript(): string {
 }
 
 /**
- * Moves the retired Chroma store into Qdrant, once (ADR-0105). Opt-in
+ * Moves the retired Chroma store into Qdrant, once (ADR-0111). Opt-in
  * (`chromaMigration`), on the deploy that removes Chroma or any after it; the
  * order of operations is the Qdrant runbook's "Migrating from Chroma on
  * Kubernetes".

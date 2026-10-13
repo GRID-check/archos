@@ -48,7 +48,7 @@ from typing import Any
 ROOT = Path(__file__).resolve().parent.parent.parent
 FIXTURES = ROOT / "frontends" / "ui" / "tests" / "fixtures" / "precedent"
 
-#: The per-project page the BFF searched before ADR-0106 (8 projects). The BFF now ranks a page of
+#: The per-project page the BFF searched before ADR-0112 (8 projects). The BFF now ranks a page of
 #: `CROSS_PROJECT_PAGE_PROJECTS` (40, `lib/cross-project/types.ts`) in one grouped query; kept at 8 so
 #: census runs stay comparable with the earlier ones.
 PAGE_PROJECTS = 8

@@ -108,7 +108,7 @@ services:
       SEAWEED_SECRET_KEY: ${SEAWEED_READONLY_SECRET_KEY:?set it in deploy/.env — see the SeaweedFS section of deploy/.env.example}
       SEAWEED_BUCKET: ${SEAWEED_BUCKET:-grid-documents}
       # Every role talks to ONE Qdrant over HTTP (the `qdrant` service below,
-      # ADR-0105): the chat and api roles read and write the same collections,
+      # ADR-0111): the chat and api roles read and write the same collections,
       # and the ingest worker writes what they read. The backend keeps no files:
       # the base corpus is in SeaweedFS and a table (ADR-0082), its cache is under
       # /tmp. An installation that ran Chroma moves its vectors over once:
@@ -330,7 +330,7 @@ services:
     restart: "no"
 
   qdrant:
-    # The vector store (ADR-0105), the single-node mirror of
+    # The vector store (ADR-0111), the single-node mirror of
     # deploy/pulumi/src/data/qdrant.ts. No published port: only the backend
     # roles on aiq-network reach it, which is why it runs without an API key
     # here (Pulumi sets one).
@@ -1344,7 +1344,7 @@ services:
     restart: unless-stopped
 
 volumes:
-  # No `chroma_data` any more (ADR-0105). An installation that ran Chroma still
+  # No `chroma_data` any more (ADR-0111). An installation that ran Chroma still
   # has the volume (`compose_chroma_data` with the default project name):
   # undeclared, `docker compose down -v` cannot remove it, and the migration
   # reads it. Delete it by hand once the vectors are in Qdrant.

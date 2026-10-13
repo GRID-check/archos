@@ -2581,7 +2581,7 @@ async def knowledge_retrieval(config: KnowledgeRetrievalConfig, _builder: Builde
                     if dropped_by_family:
                         search_input["dropped_by_family"] = dropped_by_family
                     if overview is not None:
-                        # "fetch": the members were read by filter, no embedding (ADR-0105).
+                        # "fetch": the members were read by filter, no embedding (ADR-0111).
                         search_input["family_read"] = "fetch" if overview.structural else "retrieve"
                     if coverage is not None:
                         search_input["coverage"] = "insufficient"

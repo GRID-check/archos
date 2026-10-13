@@ -42,9 +42,16 @@ def _tools(config: dict, agent: str) -> list[str]:
 
 @pytest.mark.parametrize("agent", ["shallow_research_agent", "deep_research_agent"])
 def test_every_tool_an_agent_lists_is_declared(config: dict, functions: dict, agent: str):
-    """A name in `tools:` that is not under `functions:` binds nothing."""
-    missing = [name for name in _tools(config, agent) if name not in functions]
-    assert missing == [], f"{agent} lists tools that no `functions:` entry declares: {missing}"
+    """A name in `tools:` that is not under `functions:` or `function_groups:` binds nothing."""
+    groups = config.get("function_groups") or {}
+    missing = [name for name in _tools(config, agent) if name not in functions and name not in groups]
+    assert missing == [], f"{agent} lists tools that no `functions:` or `function_groups:` entry declares: {missing}"
+
+
+def test_the_chat_works_the_review_canvas_as_one_function_group(config: dict):
+    """The canvas tools reach the model as `canvas__look` …: the group is declared AND listed."""
+    assert config["function_groups"]["canvas"]["_type"] == "document_canvas"
+    assert "canvas" in _tools(config, "shallow_research_agent")
 
 
 @pytest.mark.parametrize("agent", ["shallow_research_agent", "deep_research_agent"])

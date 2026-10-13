@@ -2,7 +2,7 @@
 
 The move to Qdrant waited on the gates in
 [`qdrant-retrieval-design.md` §10](qdrant-retrieval-design.md#10-spike-gates-before-anything-is-built);
-it was then made in one change, with no flag and no dual period (ADR-0105).
+it was then made in one change, with no flag and no dual period (ADR-0111).
 The `AIQ_VECTOR_BACKEND` and `AIQ_CHROMA_*` settings below describe how each
 path was measured at the time; none of them exists any more. This page records the first run of the instrument built for them,
 `task be:eval:qdrant-parity`, what it found, the two defects it found and fixed
@@ -733,7 +733,7 @@ task be:eval:qdrant-parity                       # data/oib, Qdrant, OPENROUTER_
 task be:eval:qdrant-parity -- --embedder hashed  # keyless wiring check, numbers mean nothing
 ```
 
-Chroma has since left the stack (ADR-0105), so a re-run measures the Qdrant
+Chroma has since left the stack (ADR-0111), so a re-run measures the Qdrant
 path alone, written through ingestion's `write_chunks`. The Chroma path's numbers
 above are its fixed reference (`qdrant_parity/baseline.py`, checked against this
 page by `tests/benchmarks/test_qdrant_parity.py`), and exact mode is held to a

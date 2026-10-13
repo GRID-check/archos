@@ -63,6 +63,16 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   // outside the conversation will. Its own key, and not one of the two above,
   // because no draft is moving.
   'status.action.taskCreated': 'thinking.turnStatus.',
+  // Anmerkungen on a document: reading them, proposing findings, setting one
+  // the person asked for, changing one, deleting one, answering in a thread.
+  // One line each, because nothing else on screen says which is running, and
+  // only the first changes nothing.
+  'status.action.annotationsRead': 'thinking.turnStatus.',
+  'status.action.annotationsPropose': 'thinking.turnStatus.',
+  'status.action.annotationsSet': 'thinking.turnStatus.',
+  'status.action.annotationsUpdate': 'thinking.turnStatus.',
+  'status.action.annotationsDelete': 'thinking.turnStatus.',
+  'status.action.annotationsReply': 'thinking.turnStatus.',
   // The tool calls are over and the answer is being written. Without this key
   // the live line keeps showing the last retrieval event through the whole
   // synthesis call — a status event marks what happens NEXT, and nothing else
@@ -79,6 +89,18 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   // activation is now the model reaching for a capability, which is what
   // `skill.activated` already said.
   'skill.activated': 'thinking.',
+}
+
+/**
+ * Keys the FOLD writes, from a wire event that is not a step: a note the asker
+ * typed while the turn ran (`steer_received`, then `steer_applied`,
+ * `turn-fold.ts`). The backend never sends these as a step key, so they sit
+ * apart from {@link TURN_EVENT_KEYS}, which mirrors `ALL_STATUS_KEYS` exactly.
+ * `{text}` is the asker's own words, echoed back; `{round}` the round that read it.
+ */
+export const FOLD_EVENT_KEYS: Record<string, string> = {
+  'status.steer.received': 'thinking.turnStatus.',
+  'status.steer.applied': 'thinking.turnStatus.',
 }
 
 /** Keys whose template has a `{corpus}` slot filled from a list of corpus ids. */
@@ -122,7 +144,7 @@ export const renderTurnEventKey = (
   values: Record<string, string> | undefined,
   t: StepEventTranslator
 ): string | null => {
-  const prefix = TURN_EVENT_KEYS[key]
+  const prefix = TURN_EVENT_KEYS[key] ?? FOLD_EVENT_KEYS[key]
   if (prefix === undefined) return null
 
   const vars: Record<string, string> = { ...(values ?? {}) }

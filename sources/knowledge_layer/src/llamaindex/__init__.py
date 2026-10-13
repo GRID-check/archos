@@ -2,7 +2,7 @@
 LlamaIndex Knowledge Adapter.
 
 LlamaIndex readers and chunking, an OpenAI-compatible embedder, vectors in
-Qdrant (ADR-0105). Supports multimodal extraction (text, tables, charts, images).
+Qdrant (ADR-0111). Supports multimodal extraction (text, tables, charts, images).
 """
 
 from .adapter import LlamaIndexIngestor

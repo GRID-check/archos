@@ -27,19 +27,10 @@ import { ConflictError, ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
-import { getBudgetStatus } from '@/lib/budgets/service'
-import { getEffectiveModelOverrides } from '@/lib/model-config/service'
-import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
-import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
-import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { computeCollectionScope } from '@/lib/collection-scope'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
-import {
-  buildGridRequestContextWireHeaders,
-  encodeGridBudgetHeader,
-  type GridBudgetSnapshot,
-} from '@/lib/request-context'
-import { isMemoryReflectionEnabled, isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { buildGridRequestContextWireHeaders, encodeGridBudgetHeader } from '@/lib/request-context'
+import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
+import { resolveRunContext, runRequestContextInput, warnIfRunEnvelopeLarge } from './run-context'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -593,30 +584,9 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     )
   }
   const { organizationId, projectId, userId } = spec
-  const [
-    budgetSnapshot,
-    modelOverrides,
-    collectionScope,
-    projectContext,
-    bundesland,
-    projectMemory,
-    memoryReflectionEnabled,
-    orgInstructions,
-  ] = await Promise.all([
-    resolveBudgetSnapshot(organizationId, userId, projectId),
-    getEffectiveModelOverrides(organizationId).catch(() => null),
-    buildProjectCollectionScope(projectId, organizationId),
-    loadProjectPromptView(projectId, organizationId).catch(() => null),
-    loadProjectBundesland(projectId, organizationId).catch(() => null),
-    buildProjectMemoryDigest(projectId, organizationId, { query: spec.prompt }).catch(() => null),
-    isMemoryReflectionEnabled(organizationId).catch(() => false),
-    // The organization's standing instruction block. A scheduled or delegated
-    // run is a turn like any other, so it carries the same preferences a chat
-    // turn does — a task that answered in a voice the office had asked against
-    // would be the whole point of the block, missed.
-    resolveOrgInstructions(organizationId),
-  ])
-  const budgetHeader = budgetSnapshot ? encodeGridBudgetHeader(budgetSnapshot) : null
+  const subject = { organizationId, projectId, userId }
+  const context = await resolveRunContext(subject, spec.prompt)
+  const budgetHeader = context.budget ? encodeGridBudgetHeader(context.budget) : null
   const conversationId = spec.conversationId
 
   const payload: JobSubmitPayload = {
@@ -630,35 +600,30 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
     ...(spec.clarifierResult ? { clarifier_result: spec.clarifierResult } : {}),
     ...(spec.documents ? { documents: spec.documents } : {}),
     data_sources: withAlwaysOnSources(spec.dataSources ?? null),
-    collection_scope: collectionScope,
-    project_context: projectContext,
-    project_memory: projectMemory,
-    memory_reflection_enabled: memoryReflectionEnabled,
+    collection_scope: context.collectionScope,
+    project_context: context.projectContext,
+    project_memory: context.projectMemory,
+    memory_reflection_enabled: context.memoryReflectionEnabled,
     organization_id: organizationId,
     user_id: userId,
     project_id: projectId,
     owner_email: spec.ownerEmail,
     budget_header: budgetHeader,
-    model_overrides: modelOverrides,
+    model_overrides: context.modelOverrides,
     priority: spec.priority ?? 'interactive',
   }
 
+  // The worker keeps this envelope with the job and echoes it to the BFF from
+  // the run's tools, so a background run acts as the person who commissioned it
+  // (ADR-0108). It therefore carries what a chat turn's envelope carries for
+  // those tools: the thread the run writes into, and `issuedAt`. Past the
+  // renewal age the worker asks `POST /api/internal/runs/[runId]/envelope` for a
+  // fresh one, signed from the same `runRequestContextInput`.
   const contextHeaders = buildGridRequestContextWireHeaders(
-    {
-      organizationId,
-      userId,
-      projectId,
-      collectionScope,
-      projectContext,
-      projectMemory,
-      orgInstructions,
-      modelOverrides,
-      budget: budgetSnapshot,
-      bundesland,
-      memoryReflectionEnabled,
-    },
+    runRequestContextInput(subject, context, conversationId, Date.now()),
     process.env.GRID_INTERNAL_API_TOKEN,
   )
+  warnIfRunEnvelopeLarge(contextHeaders, spec.runId)
 
   const { jobId, queued } = await submitJob(payload, contextHeaders)
   const runMessageId = conversationId
@@ -963,49 +928,4 @@ export async function fireScheduledJob(
     return { fired: true, jobId: run.backendJobId ?? undefined }
   }
   return { fired: false, reason: run.status === 'skipped' ? 'skipped' : 'error' }
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-/**
- * The raw remaining-budget snapshot — identical values to the interactive
- * path's `x-grid-budget` header. Best-effort: a lookup failure must not block
- * the run.
- */
-async function resolveBudgetSnapshot(
-  organizationId: string,
-  userId: string,
-  projectId: string,
-): Promise<GridBudgetSnapshot | null> {
-  try {
-    const status = await getBudgetStatus(organizationId, userId, projectId)
-    return {
-      remainingOrgUsd: status.remainingOrgUsd,
-      remainingUserUsd: status.remainingUserUsd,
-      remainingProjectUsd: status.remainingProjectUsd,
-    }
-  } catch {
-    return null
-  }
-}
-
-/**
- * The ordered collection scope for the project — exactly what
- * buildCollectionScopeFromRequest produces for a project. Resolved from the
- * project row (session-less path); falls back to the id-derived name if the
- * row is gone.
- */
-async function buildProjectCollectionScope(
-  projectId: string,
-  organizationId: string,
-): Promise<string[] | null> {
-  const project = await findProjectInOrg(projectId, organizationId)
-  const scope = computeCollectionScope(null, {
-    projectId,
-    projectCollectionName: project?.collectionName,
-    includeProject: true,
-  })
-  return scope.length > 0 ? scope : null
 }

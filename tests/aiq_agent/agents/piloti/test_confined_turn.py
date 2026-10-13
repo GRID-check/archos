@@ -131,6 +131,7 @@ class TestTheReflectionStageSeesWhatEarlierTurnsWereShown:
         from aiq_agent.memory.restriction import RestrictedNote
         from aiq_agent.memory.shown_notes import ShownNotes
         from aiq_agent.turn.admission import TurnOutcome
+        from aiq_agent.turn.payload import TurnInputs
         from aiq_agent.turn.registries import TurnRegistries
 
         seen: dict = {}
@@ -150,7 +151,7 @@ class TestTheReflectionStageSeesWhatEarlierTurnsWereShown:
             TurnOutcome(state=object(), refusal=None),
             TurnRegistries(cards=CardRegistry(), shown_notes=shown),
             types.SimpleNamespace(stage_facts="request facts"),
-            types.SimpleNamespace(query_text="q"),
+            TurnInputs("q", None, None, None),
             message_id="m1",
             stage_llms={},
         )

@@ -439,11 +439,9 @@ describe('a cadence turns the delegation into a schedule', () => {
 
 describe('what a delegated run is told to produce', () => {
   it('never tells a `document` or `revision` run to call the filing tools', async () => {
-    // The job worker injects three unsigned identity headers and never the
-    // signed envelope, so `file_draft` has no acting person and refuses — by
-    // design. Telling the run to call it would spend budget on a refusal and
-    // then have it report a failure for work it had actually done. The BFF is
-    // the party with a real session at completion, so the BFF files.
+    // The BFF files these kinds at completion, in the requester's pinned
+    // session. A run told to call `file_draft` as well would file the document
+    // twice, even though its tools now act as the requester (ADR-0108).
     for (const kind of ['document', 'revision'] as const) {
       vi.clearAllMocks()
       vi.mocked(repository.insertDefinition).mockImplementation(async (values) => {

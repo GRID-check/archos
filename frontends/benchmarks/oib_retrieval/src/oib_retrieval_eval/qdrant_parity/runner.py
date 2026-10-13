@@ -7,7 +7,7 @@ Needs: the corpus in ``data/oib`` (operator-provided), a Qdrant 1.19 server
 (``--qdrant-url``, default ``$AIQ_QDRANT_TEST_URL`` or ``http://localhost:6333``), and
 for ``--embedder production`` (the default) an OpenRouter key.
 
-Chroma left the stack in one change (ADR-0105). Where a gate once compared against
+Chroma left the stack in one change (ADR-0111). Where a gate once compared against
 the Chroma path (its Postgres German mirror, its full retrieval, its latency), it
 now compares against that path's numbers from the final gate run, ``baseline.py``,
 printed beside every Qdrant row; the exact mode compares ``find_text`` with a full

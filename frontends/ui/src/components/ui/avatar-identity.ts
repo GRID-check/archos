@@ -113,3 +113,15 @@ export function personInitials(name: string): string {
     .join('')
   return letters || '?'
 }
+
+/**
+ * The person's colour at full strength, for what stands for them on a canvas
+ * rather than beside their name: their pointer, the outline of a region they
+ * marked, the disc of a mark they set. Same hue as their avatar, so the
+ * pointer moving over a drawing and the avatar in the corner read as one
+ * person; strong enough to stay legible over the black linework of a drawing.
+ * Multiplayer identity, the one place hue means a person rather than a source.
+ */
+export function identityInk(userId: string): string {
+  return `oklch(0.58 0.16 ${avatarHue(userId)})`
+}

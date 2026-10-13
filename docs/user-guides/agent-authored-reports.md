@@ -114,8 +114,8 @@ to know what state it is in.
 | **Entwurf** | Written, not yet handed to anybody. This is where a report Piloti files starts. |
 | **In Prüfung** | Submitted. Whoever was asked has an entry in their Postfach. |
 | **Änderungen angefordert** | Sent back, with the reason written on the Fassung. |
-| **Freigegeben** | A person has asserted the content. Piloti does not answer from it yet. |
-| **Veröffentlicht** | Piloti answers from this Fassung. |
+| **Veröffentlicht** | Piloti answers from this Fassung. A Fassung that went through review gets here when a person approves it. |
+| **Freigegeben** | Only on a Fassung approved before approving also published: asserted, but Piloti does not answer from it until somebody publishes it. |
 | **Ersetzt** | A newer Fassung was published. The bytes stay and can still be opened. |
 | **Abgelehnt** | Refused, with a reason. |
 | **Stillgelegt** | The file has left the file list and the knowledge base. Nothing is deleted. |
@@ -143,8 +143,10 @@ never be pressed:
 
 - **Zur Freigabe einreichen** on an Entwurf, or on one that came back for
   changes. Whoever is asked gets a Postfach entry naming the file.
-- **Freigeben** on a Fassung in Prüfung. **Not** available to the person who
-  submitted it: an assertion nobody but the author has read is not one.
+- **Freigeben** on a Fassung in Prüfung. It asserts the content **and** makes
+  the Fassung the one Piloti answers from, in one step: „freigegeben“ means
+  usable. **Not** available to the person who submitted it: an assertion nobody
+  but the author has read is not one.
 - **Änderungen anfordern** and **Ablehnen**, both of which ask you to type why.
   The reason stays on the Fassung, so „was ist noch offen“ is answered by
   reading the file rather than by remembering a conversation.
@@ -154,9 +156,8 @@ never be pressed:
   Not for a file in a folder that not everyone in the project may read: Piloti
   would have to quote it into an Auftrag the whole project sees. The button then
   says why and changes nothing; Änderungen anfordern still works.
-- **Veröffentlichen** on a freigegebene Fassung. It makes that Fassung the one
-  Piloti answers from. Approving asserts the content and publishing puts it to
-  use, so they are two acts and two buttons.
+- **Veröffentlichen**, only on a Fassung approved before approving also
+  published it. It makes that Fassung the one Piloti answers from.
 - **Stilllegen**, which takes the file out of the file list and the knowledge
   base. The bytes and every Fassung stay; it is not a delete.
 

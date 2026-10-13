@@ -4,7 +4,7 @@ LlamaIndex adapter for the Knowledge Layer.
 It uses:
 - LlamaIndex's document loaders and chunking (``SentenceSplitter``)
 - Embeddings via LlamaIndex's `NVIDIAEmbedding` client pointed at an OpenAI-compatible endpoint (OpenRouter by default)
-- Qdrant for every chunk, written and read through ``knowledge_layer.qdrant`` (ADR-0105)
+- Qdrant for every chunk, written and read through ``knowledge_layer.qdrant`` (ADR-0111)
 - Optional multimodal extraction (tables, charts, images) with VLM captioning through the same endpoint
 
 Configuration options:
@@ -197,7 +197,7 @@ def retrieval_dependency_faults() -> list[tuple[str, BaseException]]:
 
     def _vector_store() -> None:
         # A presence probe only: every read and write goes through ``..qdrant``,
-        # the one package that imports the client (ADR-0105).
+        # the one package that imports the client (ADR-0111).
         __import__("qdrant_client")
 
     _probe("llama-index-core", "llama_index.core", _core)
@@ -2467,7 +2467,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     LlamaIndex-based document ingestor with optional multimodal extraction.
 
     Chunks with LlamaIndex, embeds through an OpenAI-compatible endpoint and
-    writes every chunk to Qdrant (``knowledge_layer.qdrant``, ADR-0105).
+    writes every chunk to Qdrant (``knowledge_layer.qdrant``, ADR-0111).
 
     Configuration options:
         embed_model: Embedding model name (default: openai/text-embedding-3-large)
@@ -3234,7 +3234,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     def _collection_info(self, name: str, chunk_count: int | None = None) -> CollectionInfo:
         """One collection as the store holds it: its chunks, its files, when it was first and last written.
 
-        A collection is a scope on the store's points (ADR-0106), so there is
+        A collection is a scope on the store's points (ADR-0112), so there is
         nothing to look up besides them. The timestamps are the oldest and
         newest ``indexed_at`` its points carry; a collection whose points all
         predate the field states none, which the reaper reads as "skip".
@@ -3263,7 +3263,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         """Answer for the collection ``name``; there is nothing to create.
 
         A collection is a scope on the points of one physical Qdrant collection
-        (ADR-0106), which the first write creates once it knows the vector
+        (ADR-0112), which the first write creates once it knows the vector
         size. ``description`` is echoed and ``metadata`` dropped: nothing reads
         either back.
         """
@@ -4797,7 +4797,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                     # The last moment a run that lost its claim can stop with
                     # nothing of this file written: the new owner indexes it.
                     self._assert_still_owner(job_id)
-                    # Into Qdrant, the one store (ADR-0105). A failure fails the
+                    # Into Qdrant, the one store (ADR-0111). A failure fails the
                     # file, and the attempt's ids are discarded below.
                     attempted = [record.chunk_id for record in records]
                     from ..qdrant import writes as qdrant_writes
@@ -5213,7 +5213,7 @@ class LlamaIndexRetriever(BaseRetriever):
     LlamaIndex-based document retriever.
 
     Embeds the query through an OpenAI-compatible endpoint and reads Qdrant
-    (``knowledge_layer.qdrant``, ADR-0105).
+    (``knowledge_layer.qdrant``, ADR-0111).
 
     Configuration options:
         embed_model: Embedding model id (default from AIQ_EMBED_MODEL)
