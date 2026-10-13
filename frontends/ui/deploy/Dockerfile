@@ -93,8 +93,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # Tag choice: `-slim` (Debian bookworm, glibc — matches this node base), not
 # `-debian`. Bun does not publish a `-debian` alias for every release (1.3.11
 # has none), so that suffix breaks the build on an ordinary version bump.
-# Keep the version in lockstep with `.github/actions/setup-bun`.
-COPY --from=oven/bun:1.3.11-slim /usr/local/bin/bun /usr/local/bin/bun
+# The version is the one `.github/actions/setup-bun` pins;
+# `tests/test_bun_version_pin.py` fails when they differ.
+COPY --from=oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
 
 # =============================================================================
 # Stage 2: Dependencies
