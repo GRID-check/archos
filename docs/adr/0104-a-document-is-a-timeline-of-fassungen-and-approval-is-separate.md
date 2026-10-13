@@ -90,7 +90,11 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
 1. **Current is a pointer, not a state.** `documents.current_fassung_id` names
    the Fassung Piloti answers from. Older and newer are read from `seq` against
    it. There is no `superseded` state and no `superseded_by` link.
-2. **Every Fassung stays in the index, keyed by its id.** Chunks and the
+2. **Every Fassung that is read stays in the index, keyed by its id.** Being
+   read and being found are two things. A person's upload is read when it
+   arrives; a `piloti` Fassung only once a person approved it (rule 4); a
+   Fassung kept out on purpose stays `not_read` (rule 8). Once read, its
+   chunks stay, whether or not it is current. Chunks and the
    knowledge layer's metadata row carry `fassung_id` and `document_id`. Search
    filters to current Fassungen by default; naming a file or a Fassung reads an
    older one, as `read_passage` already allows. Making a Fassung current flips
@@ -120,9 +124,18 @@ and re-read, the `stored` special case and the synthetic approval on uploads.
    numbers after A's) and makes the newest of them current under rule 3. B's
    `documents` row stays as an alias (`merged_into_id = A`), out of every
    listing, so a citation, share or chat subject naming B resolves to A for a
-   reader who may open A. B's shares and assignments move to A. Detaching moves
-   the Fassungen back and lifts the alias. Nothing is read again, because chunks
-   belong to the Fassung.
+   reader who may open A. B's shares and assignments move to A. Nothing is read
+   again, because chunks belong to the Fassung.
+
+   The attach writes one `fassung_attachments` row that keeps what the inverse
+   needs: B, the Fassungen moved with their `seq` on B, B's and A's
+   `current_fassung_id` before the attach, and the shares and assignments moved
+   from B. Detaching applies that row backwards in one transaction: the
+   Fassungen return to B with their old `seq`, both pointers are restored (A's
+   to its own current Fassung if the one it held came from B), the moved shares
+   and assignments return to B unless a person changed them on A since, the
+   alias is lifted, and the row is closed. Only the latest attach of B can be
+   detached; a Fassung added to A after the attach stays on A.
 8. **The reading status is a closed set on the Fassung,** with a CHECK:
    `waiting`, `reading`, `ready`, `failed`, `held`, `not_read`. `held` is the
    content check's hold and the only place it is recorded; the verdict columns
@@ -214,7 +227,9 @@ Each rule lands with the gate that keeps it, slice by slice:
 * The compare: planted changes in a two-Fassung fixture, scored for pages and
   values found; the marks keep their Langfuse generation.
 
-Until a slice lands, its rule is enforced by nothing but review.
+Until a slice lands, its rule has no gate of its own: Nothing enforces this
+yet; review is the only gate. The gap per rule closes with the slice named
+under More Information, and each slice's PR names the gate it adds.
 
 ## Pros and Cons of the Options
 
