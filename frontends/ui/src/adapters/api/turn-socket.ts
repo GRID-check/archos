@@ -125,15 +125,24 @@ export const forServer = (message: ClientMessage, accepts: ReadonlySet<string>):
   // The PostHog session id links the turn's Langfuse trace to the recording. A
   // server that does not read it refuses the whole question, the key present
   // even as null, so the key goes, not the value.
-  if (
-    message.type === 'user_message' &&
-    message.posthog_session_id !== undefined &&
-    !accepts.has('user_message.posthog_session_id')
-  ) {
-    const { posthog_session_id: _unread, ...rest } = message
-    return rest
+  if (message.type !== 'user_message') return message
+  let shaped = message
+  if (shaped.posthog_session_id !== undefined && !accepts.has('user_message.posthog_session_id')) {
+    const { posthog_session_id: _unread, ...rest } = shaped
+    shaped = rest
   }
-  return message
+  // A box on the review canvas and the ask to answer in its thread. An older
+  // server answers the question about the whole document and in the chat only,
+  // which is what it did before the canvas could ask: better than refusing it.
+  if (shaped.focus_region !== undefined && !accepts.has('user_message.focus_region')) {
+    const { focus_region: _unread, ...rest } = shaped
+    shaped = rest
+  }
+  if (shaped.reply_in_thread !== undefined && !accepts.has('user_message.reply_in_thread')) {
+    const { reply_in_thread: _unread, ...rest } = shaped
+    shaped = rest
+  }
+  return shaped
 }
 
 /** The heartbeat interval assumed until the server states its own. */

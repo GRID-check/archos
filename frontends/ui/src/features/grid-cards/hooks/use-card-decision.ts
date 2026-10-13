@@ -49,7 +49,7 @@ const owningConversation = (
     ? state.currentConversation
     : state.conversations.find((c) => c.messages.some((m) => m.id === messageId))
 
-const selectCardDecision = (
+export const selectCardDecision = (
   state: Pick<ChatStore, 'currentConversation' | 'conversations'>,
   messageId: string | undefined,
   cardKey: string

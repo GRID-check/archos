@@ -70,6 +70,7 @@ from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import TypeAdapter
 from pydantic import model_serializer
+from pydantic import model_validator
 
 #: The only wire version. There is no ``v: 1`` reader anywhere (ADR-0068).
 WIRE_VERSION: Literal[2] = 2
@@ -562,7 +563,12 @@ class RejectedBody(_CustomBody):
 #: the hello. The server reads client messages strictly (``extra="forbid"``), so
 #: a client sends an optional field only to a server whose hello names it: a tab
 #: that outlives a rolling deploy may be talking to a pod one release older.
-ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = ("cancel_turn.shown", "user_message.posthog_session_id")
+ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
+    "cancel_turn.shown",
+    "user_message.posthog_session_id",
+    "user_message.focus_region",
+    "user_message.reply_in_thread",
+)
 
 
 class HelloValue(_Model):
@@ -768,6 +774,40 @@ class _ClientBase(_Model):
     conversation_id: str = Field(min_length=1)
 
 
+#: Rounding slack on the page edge: a box the canvas measured flush with the
+#: edge arrives as 0.30000000000000004 + 0.7 often enough.
+_EDGE_EPSILON = 1e-6
+
+
+class FocusRegion(_Model):
+    """A box on one page of the conversation's document: what the question is about.
+
+    Normalized to the page as it is shown (its own rotation applied), origin
+    top left, so ``x`` and ``w`` are shares of the page's width and ``y`` and
+    ``h`` of its height: the frame an Anmerkung's region uses
+    (``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows
+    the model exactly that crop (``view_knowledge_image(region=...)``).
+    """
+
+    page: int = Field(ge=1, description="The page, from 1.")
+    x: float = Field(ge=0, le=1, description="Left edge, as a share of the page's width.")
+    y: float = Field(ge=0, le=1, description="Top edge, as a share of the page's height.")
+    w: float = Field(gt=0, le=1, description="Width, as a share of the page's width; x + w is at most 1.")
+    h: float = Field(gt=0, le=1, description="Height, as a share of the page's height; y + h is at most 1.")
+    annotation_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="The Anmerkung this box is the region of, when the question was asked in its thread.",
+    )
+
+    @model_validator(mode="after")
+    def _on_the_page(self) -> FocusRegion:
+        if self.x + self.w > 1 + _EDGE_EPSILON or self.y + self.h > 1 + _EDGE_EPSILON:
+            raise ValueError("the region reaches past the page: x + w and y + h are at most 1")
+        return self
+
+
 class UserMessage(_ClientBase):
     """A question (or, with ``context_only``, a colleague's line the agent must see but not answer).
 
@@ -799,6 +839,21 @@ class UserMessage(_ClientBase):
             "Read per turn because the id rotates after 30 idle minutes. Bounded here and checked for the "
             "UUIDv7 shape where it is used (`langfuse_trace_attributes.record_posthog_session`): "
             "a malformed value costs the replay link, never the turn."
+        ),
+    )
+    focus_region: FocusRegion | None = Field(
+        default=None,
+        description=(
+            "A box drawn on a page of the conversation's document: the turn looks at that crop before it "
+            "answers. Sent only to a server whose hello accepts 'user_message.focus_region'."
+        ),
+    )
+    reply_in_thread: bool | None = Field(
+        default=None,
+        description=(
+            "Post the answer as Piloti's reply in the thread of focus_region.annotation_id, readable by everyone "
+            "who can read the document. Ignored without an annotation_id. Sent only to a server whose hello "
+            "accepts 'user_message.reply_in_thread'."
         ),
     )
 

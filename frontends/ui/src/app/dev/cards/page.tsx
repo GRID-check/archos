@@ -550,6 +550,55 @@ function Gallery() {
           projectId={null}
         />
       </Section>
+
+      {/* A system card the annotations tool pushes: what Piloti did on a
+          document. Two proposed marks (a box, a point) to take over or discard
+          one by one, and an answer in an existing thread. The gallery's
+          document does not exist, so the live read fails soft: the marks stay
+          „proposed" and page 1 is drawn as a plain sheet. */}
+      <Section id="canvas_activity">
+        <GridCards
+          cards={[
+            {
+              type: 'canvas_activity',
+              document: { id: '00000000-0000-4000-8000-0000000000c1', name: 'Grundriss EG.pdf' },
+              items: [
+                {
+                  action: 'proposed',
+                  annotation_id: '00000000-0000-4000-8000-0000000000c2',
+                  number: 7,
+                  page: 1,
+                  shape: 'region',
+                  x: 0.58,
+                  y: 0.34,
+                  w: 0.14,
+                  h: 0.22,
+                  kind: 'defect',
+                  body: 'Laufbreite im Treppenhaus 1,10 m; für GK 4 sind 1,20 m nutzbare Laufbreite gefordert (OIB-Richtlinie 4, Pkt. 2.2).',
+                },
+                {
+                  action: 'proposed',
+                  annotation_id: '00000000-0000-4000-8000-0000000000c3',
+                  number: 8,
+                  page: 2,
+                  shape: 'point',
+                  x: 0.31,
+                  y: 0.62,
+                  kind: 'question',
+                  body: 'Ist die Tür zum Müllraum als EI2 30-C ausgeführt?',
+                },
+                {
+                  action: 'replied',
+                  annotation_id: '00000000-0000-4000-8000-0000000000c4',
+                  number: 4,
+                  excerpt: 'Die Brandschutztür ist im Türenbuch als EI2 30-C geführt, Position T-EG-04.',
+                },
+              ],
+            },
+          ] as GridCard[]}
+          projectId={null}
+        />
+      </Section>
     </main>
   )
 }

@@ -16,7 +16,7 @@ import { render, screen, waitFor } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
-import { INTERACTIVE_CARD_TYPES } from './card-decision'
+import { cardKeyOfDecisionKey, INTERACTIVE_CARD_TYPES } from './card-decision'
 import { GridCardItem, GridCards, GridCardView } from './components/GridCards'
 import { CARD_PREVIEW_FIXTURES } from './preview-fixtures'
 
@@ -78,6 +78,65 @@ const SETTLE_CASES: Partial<
     // Discard settles without touching a route, like Reject above: this spec
     // is about the wiring, and the accept path has its own spec.
     action: 'Discard',
+  },
+  canvas_activity: {
+    card: {
+      type: 'canvas_activity',
+      document: { id: 'doc-1', name: 'Grundriss EG.pdf' },
+      items: [
+        {
+          action: 'proposed',
+          annotation_id: 'ann-4',
+          number: 4,
+          page: 1,
+          shape: 'region',
+          x: 0.4,
+          y: 0.3,
+          w: 0.2,
+          h: 0.15,
+          kind: 'defect',
+          body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+        },
+      ],
+    } as GridCard,
+    // Discard is one PATCH; the case carries the body the annotations client
+    // parses, so a card that stopped agreeing with the route fails here.
+    action: 'Discard annotation 4',
+    response: {
+      annotation: {
+        id: 'ann-4',
+        documentId: 'doc-1',
+        number: 4,
+        page: 1,
+        shape: 'region',
+        x: 0.4,
+        y: 0.3,
+        w: 0.2,
+        h: 0.15,
+        kind: 'defect',
+        body: 'Laufbreite im Treppenhaus unter 1,20 m.',
+        basis: null,
+        authorKind: 'piloti',
+        status: 'dismissed',
+        assigneeUserId: null,
+        assigneeName: null,
+        dueOn: null,
+        fassungNumber: 1,
+        onCurrentFassung: true,
+        createdBy: 'user_1',
+        createdByName: 'Anna',
+        createdAt: '2026-10-13T08:00:00.000Z',
+        updatedAt: '2026-10-13T08:01:00.000Z',
+        acceptedBy: null,
+        acceptedByName: null,
+        closedBy: 'user_1',
+        closedByName: 'Anna',
+        closedAt: '2026-10-13T08:01:00.000Z',
+        replies: [],
+        canEdit: true,
+        canDelete: false,
+      },
+    },
   },
   document_draft: {
     card: {
@@ -162,8 +221,10 @@ describe('interactive card wiring', () => {
       const [messageId, cardKey] = setCardDecision.mock.calls[0]
       expect(messageId).toBe('msg-1')
       // The key GridCards hands down must be the positional card identity, so a
-      // decision and the card it belongs to cannot drift apart.
-      expect(cardKey).toBe(`${type}-0`)
+      // decision and the card it belongs to cannot drift apart. A card that
+      // asks per item (`canvas_activity`) stores under `itemDecisionKey`, whose
+      // card part is that same identity.
+      expect(cardKeyOfDecisionKey(cardKey)).toBe(`${type}-0`)
     })
 
     // The same card is drawn ALONE when the answer placed it inline with a
@@ -180,7 +241,7 @@ describe('interactive card wiring', () => {
       await user.click(screen.getByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
-      expect(setCardDecision.mock.calls[0][1]).toBe(`${type}-2`)
+      expect(cardKeyOfDecisionKey(setCardDecision.mock.calls[0][1])).toBe(`${type}-2`)
     })
 
     /**
@@ -215,7 +276,7 @@ describe('interactive card wiring', () => {
       await user.click(screen.getByRole('button', { name: testCase.action }))
 
       await waitFor(() => expect(setCardDecision).toHaveBeenCalled())
-      expect(setCardDecision.mock.calls[0][1]).toBe(`${type}-1`)
+      expect(cardKeyOfDecisionKey(setCardDecision.mock.calls[0][1])).toBe(`${type}-1`)
     })
   }
 

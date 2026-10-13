@@ -98,11 +98,16 @@ our own thin layer over Dragonfly rather than a library.
 
 Piloti reaches marks in two ways.
 
-**By tool.** `document_annotations` (`src/aiq_agent/tools/annotations/`) calls
-`/api/internal/document-annotations` with `list`, `propose` or `reply`.
+**By tool.** The `canvas` function group (`src/aiq_agent/tools/canvas/`) calls
+`/api/internal/document-annotations`: `canvas__marks` (`list`), `canvas__mark`
+(`propose`), `canvas__reply` (`reply`), `canvas__room` (`room`), and the
+gestures `canvas__point` and `canvas__highlight`; `canvas__look` renders the page
+or a box on it through `view_knowledge_image`'s own body. The turn sends
+`leave` when it ends, so Piloti's cursor goes with it.
 
-- The document is always the conversation's *subject*, resolved on the server (`lib/annotations/agent.ts`). The request cannot name one.
-- A conversation that is not about a document gets a typed 422.
+- A tool may name a document (`document`: a file name from the turn's inventory, or an id); the name is resolved against the inventory and its id read from `GET /api/internal/document-file` with the envelope echoed. Without one it acts on the document open on the canvas (`focus_document_id`), then on the conversation's *subject*. The server checks a named document against the asker's access and the turn's signed scope (`lib/annotations/agent.ts`).
+- With no document named and no subject, the tool gets a typed 422 and asks which document is meant.
+- A reply, a proposal, a highlight and a labelled pointer are seen by everyone who opens the document, so a conversation that drew on a restricted folder or another project may write none of them (`tools/canvas/policy.py`).
 - A held upload reaches no model.
 - A subject in a restricted folder is admitted against the conversation first.
 
@@ -110,14 +115,38 @@ Piloti reaches marks in two ways.
 
 1. The canvas opens a conversation whose subject is the document, before the socket opens. The proxy only verifies a conversation that exists at upgrade time.
 2. It sends the question with `focus_region` (page and normalized box) on the wire v2 `user_message`.
-3. The agent looks at a server-side crop of exactly that box, from `view_knowledge_image` with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
+3. The agent looks at a server-side crop of exactly that box, from `canvas__look` (or `view_knowledge_image`) with `region`. The crop is rendered from the screened Fassung, never from pixels the browser sends.
 4. The answer streams into a card beside the box and can be kept as a mark.
 
-Mentioning Piloti in a thread sends the same turn with `reply_in_thread`; Piloti
-posts its answer into that thread through the internal `reply` op.
+Mentioning Piloti in a thread sends the same turn with `reply_in_thread`. The
+prompt tells the model it was asked in that thread, and the model answers there
+with `canvas__reply`: nothing is posted on its behalf. The turn runs without
+restricted folders in scope, so its own research cannot keep the reply out.
 
 The trace carries `turn_surface` and `focus_region_viewed`
 ([`docs/observability/langfuse.md`](../observability/langfuse.md)).
+
+## In the chat
+
+Whatever Piloti did on a document in a turn comes back as one
+`canvas_activity` card ([cards.md](cards.md#current-card-types)). It is the
+way from the chat onto the canvas and back:
+
+1. Each proposed mark carries „Übernehmen" and „Verwerfen". The answer goes
+   through the same typed client the canvas uses, and is stored on the message
+   per mark. Before a take-over the card reads the mark again: the API lets a
+   discarded mark be opened again, so a 409 alone would not stop it reopening
+   one a colleague just discarded.
+2. „Im Dokument zeigen" puts the document in the peek beside the chat (the
+   preview store) and writes `review=1&mark=<id>` onto the chat's own URL with
+   `router.replace`. The pane opens the Prüfansicht at that mark and strips
+   both params. Closing the review leaves the document in the peek and the
+   conversation where it was. On the chat the link never carries `doc`,
+   because there `doc` is the subject of an ask. A copied link
+   (`doc=…&review=1&mark=…`) still works: the chat opens that document
+   beside it, leaves the composer alone, and drops `doc` once the pane has
+   taken the link. Off the chat the card goes to Dateien with all three
+   params.
 
 ## Known debts
 

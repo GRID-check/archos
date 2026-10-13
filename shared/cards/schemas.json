@@ -395,6 +395,219 @@
       "title": "CalculationStep",
       "type": "object"
     },
+    "CanvasActivityCard": {
+      "description": "What Piloti did on one document in this turn: marks proposed, threads answered.\n\nA proposed mark is taken over or dismissed from here as well as on the\ndocument, through the same annotations API.\n\nSystem-emitted by the canvas tools (``src/aiq_agent/tools/canvas/``) after\nthe BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).",
+      "properties": {
+        "document": {
+          "$ref": "#/$defs/CanvasDocument"
+        },
+        "items": {
+          "description": "What happened, in the order it happened",
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "proposed": "#/$defs/CanvasProposedItem",
+                "replied": "#/$defs/CanvasRepliedItem"
+              },
+              "propertyName": "action"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/CanvasProposedItem"
+              },
+              {
+                "$ref": "#/$defs/CanvasRepliedItem"
+              }
+            ]
+          },
+          "maxItems": 20,
+          "minItems": 1,
+          "title": "Items",
+          "type": "array"
+        },
+        "type": {
+          "const": "canvas_activity",
+          "default": "canvas_activity",
+          "title": "Type",
+          "type": "string"
+        }
+      },
+      "required": [
+        "document",
+        "items"
+      ],
+      "title": "CanvasActivityCard",
+      "type": "object"
+    },
+    "CanvasDocument": {
+      "description": "The document the activity happened on, by the BFF's id and its file name.",
+      "properties": {
+        "id": {
+          "description": "The document's id, as the BFF returned it",
+          "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "description": "The file name, as the BFF returned it",
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name"
+      ],
+      "title": "CanvasDocument",
+      "type": "object"
+    },
+    "CanvasProposedItem": {
+      "description": "A mark Piloti proposed: a person takes it over or dismisses it on the document.",
+      "properties": {
+        "action": {
+          "const": "proposed",
+          "default": "proposed",
+          "title": "Action",
+          "type": "string"
+        },
+        "annotation_id": {
+          "description": "The mark's id",
+          "minLength": 1,
+          "title": "Annotation Id",
+          "type": "string"
+        },
+        "body": {
+          "description": "What the mark says",
+          "maxLength": 2000,
+          "minLength": 1,
+          "title": "Body",
+          "type": "string"
+        },
+        "h": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Height share, for a region",
+          "title": "H"
+        },
+        "kind": {
+          "enum": [
+            "hint",
+            "question",
+            "defect"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "number": {
+          "description": "The mark's number on the document",
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "page": {
+          "description": "The page, from 1",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "shape": {
+          "enum": [
+            "point",
+            "region"
+          ],
+          "title": "Shape",
+          "type": "string"
+        },
+        "w": {
+          "anyOf": [
+            {
+              "exclusiveMinimum": 0,
+              "maximum": 1,
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Width share, for a region",
+          "title": "W"
+        },
+        "x": {
+          "description": "Left edge (or the point), as a share of the page's width",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "description": "Top edge (or the point), as a share of the page's height",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "annotation_id",
+        "number",
+        "page",
+        "shape",
+        "x",
+        "y",
+        "kind",
+        "body"
+      ],
+      "title": "CanvasProposedItem",
+      "type": "object"
+    },
+    "CanvasRepliedItem": {
+      "description": "An answer Piloti wrote in a mark's thread.",
+      "properties": {
+        "action": {
+          "const": "replied",
+          "default": "replied",
+          "title": "Action",
+          "type": "string"
+        },
+        "annotation_id": {
+          "description": "The mark whose thread was answered",
+          "minLength": 1,
+          "title": "Annotation Id",
+          "type": "string"
+        },
+        "excerpt": {
+          "description": "The start of the reply",
+          "maxLength": 300,
+          "minLength": 1,
+          "title": "Excerpt",
+          "type": "string"
+        },
+        "number": {
+          "description": "The mark's number on the document",
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "annotation_id",
+        "number",
+        "excerpt"
+      ],
+      "title": "CanvasRepliedItem",
+      "type": "object"
+    },
     "DaylightIncidenceCard": {
       "description": "A daylight (Belichtung) schematic: the 45\u00b0 free-light line vs obstructions.\n\nEmit for daylight/Belichtung questions (OIB 3). Draws a window section, the\n45\u00b0 free-light-incidence line from the window's lower edge, any obstruction,\nand a glass-area-vs-floor-area check. The renderer does the 45\u00b0 geometry \u2014\nthe model supplies distances/heights only.",
       "properties": {
@@ -2625,6 +2838,7 @@
     "mapping": {
       "building_section": "#/$defs/BuildingSectionCard",
       "calculation": "#/$defs/CalculationCard",
+      "canvas_activity": "#/$defs/CanvasActivityCard",
       "daylight_incidence": "#/$defs/DaylightIncidenceCard",
       "dimension_diagram": "#/$defs/DimensionDiagramCard",
       "document_draft": "#/$defs/DocumentDraftCard",
@@ -2693,6 +2907,9 @@
     },
     {
       "$ref": "#/$defs/FileOperationProposalCard"
+    },
+    {
+      "$ref": "#/$defs/CanvasActivityCard"
     },
     {
       "$ref": "#/$defs/IfcViewerCard"

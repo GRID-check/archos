@@ -33,7 +33,7 @@ export function AnnotationsSummary({
 }): JSX.Element {
   const t = useTranslations('files')
   const live = review.annotations.filter(isLive)
-  const others = review.room.peers.length
+  const others = new Set(review.room.peers.filter((state) => state.peer.kind !== 'piloti').map((state) => state.peer.userId)).size
   return (
     <InspectorSection
       label={t('annotations.section')}

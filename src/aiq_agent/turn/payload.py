@@ -9,6 +9,7 @@ from it here, once per turn, because retrieval reads the same ContextVars.
 """
 
 from dataclasses import dataclass
+from typing import Literal
 from typing import NamedTuple
 
 from aiq_agent.common import parse_data_sources
@@ -16,6 +17,7 @@ from aiq_agent.common.focus_file import get_focused_file_name
 from aiq_agent.common.focus_file import get_focused_shelf
 from aiq_agent.common.focus_file import set_turn_intent
 from aiq_agent.common.reasoning_settings import set_turn_reasoning_effort
+from aiq_agent.common.wire_v2 import FocusRegion
 from aiq_agent.common.wire_v2 import UserMessage
 
 
@@ -59,6 +61,23 @@ class SubjectVersion:
 _OPEN_VERSION_STATES = frozenset({"draft", "in_review", "changes_requested"})
 
 
+#: Where a question was asked, as Langfuse slices turns by it (``turn_surface``).
+TurnSurface = Literal["chat", "review_canvas", "annotation_thread"]
+
+
+def thread_reply_requested(message: UserMessage) -> bool:
+    """Whether ``message`` asks for its answer in an Anmerkung's thread: the flag AND a region naming the mark."""
+    region = message.focus_region
+    return bool(message.reply_in_thread) and region is not None and bool(region.annotation_id)
+
+
+def turn_surface(focus_region: FocusRegion | None, *, reply_in_thread: bool) -> TurnSurface:
+    """``annotation_thread`` for a thread reply, ``review_canvas`` for a box, else ``chat``. Pure."""
+    if reply_in_thread:
+        return "annotation_thread"
+    return "review_canvas" if focus_region is not None else "chat"
+
+
 class TurnInputs(NamedTuple):
     """Everything one user message states about how to answer it.
 
@@ -77,6 +96,18 @@ class TurnInputs(NamedTuple):
     #: back from a ContextVar like the two fields above it: nothing in retrieval
     #: consumes it, so it never becomes turn-wide state.
     subject: SubjectVersion = SubjectVersion()
+    #: The box drawn on a page of the conversation's document, or None. The
+    #: prompt names it and tells the model to look at that crop first.
+    focus_region: FocusRegion | None = None
+    #: Post the answer into the thread of ``focus_region.annotation_id``
+    #: (:mod:`aiq_agent.turn.annotation_reply`). Only ever True with a region
+    #: that names its Anmerkung: the wire flag alone has no thread to answer in.
+    reply_in_thread: bool = False
+
+    @property
+    def surface(self) -> TurnSurface:
+        """Where the question was asked: :func:`turn_surface` of this turn's fields."""
+        return turn_surface(self.focus_region, reply_in_thread=self.reply_in_thread)
 
 
 def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
@@ -94,7 +125,12 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
         return TurnInputs(request.strip(), None, None, None)
     if not isinstance(request, UserMessage):
         raise TypeError(f"A turn is asked with a v2 user_message or a plain question, not a {type(request).__name__}")
-    set_turn_intent(file_name=request.focus_file_name, shelf=request.focus_shelf, source_preset=request.source_preset)
+    set_turn_intent(
+        file_name=request.focus_file_name,
+        shelf=request.focus_shelf,
+        source_preset=request.source_preset,
+        document_id=request.focus_document_id,
+    )
     set_turn_reasoning_effort(request.reasoning_effort)
     subject = SubjectVersion(request.focus_document_id, request.focus_version_id, request.focus_version_state)
     return TurnInputs(
@@ -103,4 +139,6 @@ def extract_turn_inputs(request: UserMessage | str) -> TurnInputs:
         get_focused_file_name(),
         get_focused_shelf(),
         subject,
+        request.focus_region,
+        thread_reply_requested(request),
     )

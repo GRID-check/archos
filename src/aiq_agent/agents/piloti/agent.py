@@ -69,6 +69,8 @@ from aiq_agent.common.deferred_tool_loading import bind_tools_deferred
 from aiq_agent.common.grounding_block import begin_grounding_capture
 from aiq_agent.common.grounding_block import end_grounding_capture
 from aiq_agent.common.grounding_block import strip_trace_lanes
+from aiq_agent.common.model_vision import chat_model_scope
+from aiq_agent.common.model_vision import model_name_of
 from aiq_agent.common.prompt_caching import begin_stable_prefix
 from aiq_agent.common.prompt_caching import end_stable_prefix
 from aiq_agent.common.retrieval_rounds import assistant_checkpoint
@@ -1337,7 +1339,10 @@ class PilotiAgent:
         split = _split_round(state, binding.disabled_sources, binding.max_calls_per_round)
         withheld = split.withheld
         executing_round = _executing_retrieval_round(state, split.ran)
-        with retrieval_round_scope(executing_round):
+        # The model answering this turn rides into its tools beside the round
+        # stamp, for the same node-boundary reason: an image view asks whether
+        # it can see at all (`common/model_vision.py`).
+        with retrieval_round_scope(executing_round), chat_model_scope(model_name_of(binding.llm)):
             result = await binding.tool_node.ainvoke(_without_dropped_calls(state, withheld) if withheld else state)
         registry = get_session_registry()
         if registry is None:

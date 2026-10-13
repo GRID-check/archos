@@ -1,5 +1,6 @@
 /**
- * The typed client for a document's Anmerkungen and its room (ADR-0055).
+ * The typed client for a document's Anmerkungen (ADR-0055). The room travels
+ * on the live channels (`features/realtime`, `lib/realtime`).
  *
  * The paths, the verbs and the response shapes are written once, here; the
  * browser and the route specs both go through it, so a second consumer cannot
@@ -10,7 +11,6 @@
  */
 
 import { ROOM_PEER_HEADER } from './peer-header'
-import type { RoomPost } from './room-types'
 import {
   annotationListResponseSchema,
   annotationResponseSchema,
@@ -73,8 +73,6 @@ const documentPath = (documentId: string) => `/api/documents/${encodeURIComponen
 export const annotationsPath = (documentId: string) => `${documentPath(documentId)}/annotations`
 const annotationPath = (documentId: string, annotationId: string) =>
   `${annotationsPath(documentId)}/${encodeURIComponent(annotationId)}`
-/** The room's SSE stream and its POST, one path. */
-export const roomPath = (documentId: string) => `${documentPath(documentId)}/live`
 
 const one = (value: unknown) => annotationResponseSchema.parse(value).annotation
 
@@ -122,18 +120,6 @@ export function deleteAnnotation(
     run,
     annotationPath(documentId, annotationId),
     { method: 'DELETE', headers: peerId ? { [ROOM_PEER_HEADER]: peerId } : {} },
-    () => undefined
-  )
-}
-
-/**
- * Say something to the room. `keepalive`, so a „gone" sent while the tab
- * closes still leaves; a refusal is swallowed, because a pointer is worthless a
- * moment later and the next one is already on its way.
- */
-export function postToRoom(documentId: string, post: RoomPost, run: AnnotationFetch = defaultFetch): Promise<void> {
-  return run(roomPath(documentId), { ...json('POST', post), keepalive: true }).then(
-    () => undefined,
     () => undefined
   )
 }

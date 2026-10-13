@@ -34,12 +34,12 @@ sources, and the persisted decisions of interactive cards.
 ## Current card types
 
 Defined in `src/aiq_agent/cards/models.py` as a discriminated union (`GridCard`)
-— **22 types in four families**: 17 the answering model may emit, 16 of them
+— **23 types in four families**: 17 the answering model may emit, 16 of them
 through `emit_card` too; the 17th is `surface` (ADR-0065), a composition whose
 leaves are content cards or `Text`, offered on the chat envelope only
 (`CHAT_ONLY_CARD_TYPES`: `emit_card`, `describe_card` and the post-hoc
 validator refuse it, because only the chat pipeline recites its `[N]`); and
-five it may not on any surface (`SYSTEM_CARD_TYPES`, the tool-owned cards).
+six it may not on any surface (`SYSTEM_CARD_TYPES`, the tool-owned cards).
 
 Twenty-three former types were **deleted** from the union in 2026-09
 (`catalog.RETIRED_CARD_TYPES`, before launch, so no stored message needed
@@ -139,6 +139,7 @@ catalog omits them entirely).
 | `document_draft` | a document written into this conversation's working directory — title, path, `v{n}` and size, with the Files feature's „Von Piloti erstellt" byline. Its „Ins Projekt übernehmen" is drawn **inert**: filing is a later slice, and until it is wired the card reports the draft rather than offering to move it | the working directory's `write_file` / `edit_file` |
 | `task_created` | work Piloti has taken on, as a task row somebody can come back to — title, goal, due date and a link to the run's thread. Informational: the task is already queued when it renders, so there is no Accept | the `create_task` tool |
 | `file_operation_proposal` **(interactive)** | a workspace change the agent PROPOSED and did not make — a move, a rename, a new folder, an assignment. One card type for four verbs, discriminated by `operation`, carrying a capped LIST so an „organise the Einreichung" turn is one decision and not four. Accepting runs the operations in order through the routes the Files pane uses, in the reader's own session, and reports each one — a batch where the third fails says three landed and one did not (`partiallyApplied`) | the four write-side tools under `src/aiq_agent/tools/files/` (a Dokumentart proposal waits for a project-scoped doc_class route) |
+| `canvas_activity` **(interactive)** | what Piloti did on ONE document: the marks it proposed (each drawn on a small page at its normalized place, numbered like the canvas's pins, dashed while a proposal) and the threads it answered in. Each proposed mark is answered on its own, „Übernehmen" / „Verwerfen", through the annotations client (`PATCH …/annotations/{id}`, status `open` / `dismissed`), and stored per mark under `itemDecisionKey`. The card reads the document's marks once it is on screen and lets the canvas win, so a mark a colleague answered there reads as answered here. „Im Dokument zeigen" opens the Prüfansicht at that mark over the chat (`features/documents/lib/open-review.ts`) | the canvas tools under `src/aiq_agent/tools/canvas/` |
 
 **(interactive)** marks a card whose answer is a commitment and is therefore
 persisted on the message; see
@@ -767,10 +768,11 @@ own payload alone.
 > which writes something.**
 
 Most cards are pure presentation: same payload in, same pixels out, nothing to
-remember. **Two are not.** `project_profile_patch` and `memory_proposal` ask the
-user to authorize a write (`propose, never auto-apply` —
-`project-memory-design.md` §11.7), which makes the user's click the only place
-that outcome exists.
+remember. **Five are not** (`CARD_INTERACTIVITY`). `project_profile_patch`,
+`memory_proposal`, `file_operation_proposal` and `canvas_activity` ask the user
+to authorize a write (`propose, never auto-apply` —
+`project-memory-design.md` §11.7), and `document_draft` submits one for
+approval, which makes the user's click the only place that outcome exists.
 
 `diagram` was briefly a third and was never made one; the card has since been
 retired for a ```` ```mermaid ```` fence (see
@@ -798,6 +800,7 @@ HITL prompt.
 | The stored decision | `ChatMessage.cardInteractions: Record<cardKey, { decision, decidedAt }>` |
 | The closed set of outcomes | `CARD_DECISIONS` in `features/grid-cards/card-decision.ts` |
 | Card identity within a message | `` cardKey(card, index) `` → `` `${type}-${index}` `` (also the React key) |
+| One item's decision, for a card that asks per item | `` itemDecisionKey(cardKey, itemId) `` → `` `${type}-${index}#${itemId}` `` (`canvas_activity`: one per proposed mark). It lives and dies with its card in `reconcileCardInteractions` |
 | Keeping keys honest mid-stream | `reconcileCardInteractions` — a streaming turn replaces `cards` wholesale, so a decision is kept only while the card at its index is byte-identical to the one it was made about |
 | Read/write from a renderer | `useCardDecision(messageId, cardKey)` — not a hand-rolled `useState` (the hook keeps one mount-scoped fallback for when the store write cannot land) |
 | → localStorage | the chat store's `persist` middleware (rides the message) |
@@ -902,10 +905,10 @@ without re-plumbing generation or transport.
 
 ## Card catalog
 
-The catalog is the twenty-two types tabulated under
+The catalog is the twenty-three types tabulated under
 [Current card types](#current-card-types) — three structured
 (`project_profile_patch`, `calculation`, `surface`), eight schematic, six
-model-facing IFC and five system — and that is the only place in this document
+model-facing IFC and six system — and that is the only place in this document
 where they are listed, on purpose: a card type appearing in two tables means one
 of them is already wrong. See
 [ADR-0012](../adr/0012-cards-as-rich-ui-layer.md).

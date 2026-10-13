@@ -119,13 +119,14 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # envelope is a per-turn credential a worker would have to MINT rather than
     # forward.
     "create_task": (PROJECT_ID_HEADER,),
-    # Anmerkungen on the conversation's subject document (`tools/annotations/`).
-    # Nothing an entry path supplies: the document is resolved by the BFF from
-    # the conversation the signed envelope names, and may belong to no project
-    # (an Archiv or session upload), so the project header is not a requirement.
+    # The review canvas (`tools/canvas/`, the `canvas` function group): a
+    # document's Anmerkungen and its room. Nothing an entry path supplies: the
+    # document is named by the model or resolved by the BFF from the
+    # conversation the signed envelope names, and may belong to no project (an
+    # Archiv or session upload), so the project header is not a requirement.
     # The envelope itself is not declared, for the reason stated above
-    # `file_draft`; without one the tool refuses.
-    "document_annotations": (),
+    # `file_draft`; without one every canvas tool refuses.
+    "document_canvas": (),
 }
 
 # Consolidated signed context envelope (backlog T3-9 follow-up, 2026-07-16).

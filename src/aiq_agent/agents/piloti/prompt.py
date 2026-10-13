@@ -218,6 +218,72 @@ def shelf_label(shelf: str | None) -> str | None:
     return SHELF_QUALIFIERS.get(parsed) if parsed is not None else None
 
 
+def _where_on_the_page(region: Any) -> str:
+    """The box's place in words, by its centre: „oben links“, „in der Seitenmitte“, „unten rechts“."""
+    cx, cy = region.x + region.w / 2, region.y + region.h / 2
+    row = "oben" if cy < 1 / 3 else ("unten" if cy > 2 / 3 else "")
+    column = "links" if cx < 1 / 3 else ("rechts" if cx > 2 / 3 else "")
+    if row and column:
+        return f"{row} {column}"
+    if row:
+        return f"{row} in der Mitte"
+    return f"in der Mitte {column}" if column else "in der Seitenmitte"
+
+
+def _percent(share: float) -> str:
+    return f"{max(1, round(share * 100))} %"
+
+
+def focus_region_block(state: Any, tool_names: Sequence[str]) -> str | None:
+    """The „Fokusbereich“ section: the box a person drew, and what to do with it. None without one.
+
+    German like the blocks around it, and short: which document, page and box in
+    words a person would use, then the order of work — look at exactly that crop
+    before answering (``canvas__look``, or ``view_knowledge_image`` where the
+    canvas tools are not bound), show what the answer refers to, propose
+    findings as marks, and answer in the thread when the question was asked
+    there. The model decides; nothing is posted for it.
+    """
+    region = getattr(state, "focus_region", None)
+    if region is None:
+        return None
+    file_name = getattr(state, "focus_file_name", None)
+    document = f"von **{file_name}**" if file_name else "des geöffneten Dokuments"
+    box = f"[{region.x:.3f}, {region.y:.3f}, {region.w:.3f}, {region.h:.3f}]"
+    canvas = "canvas__look" in tool_names
+    lines = [
+        "## Fokusbereich",
+        f"Die Person hat auf Seite {region.page} {document} einen Rahmen gezogen: {_where_on_the_page(region)}, "
+        f"etwa {_percent(region.w)} der Seitenbreite und {_percent(region.h)} der Seitenhöhe (`region={box}`: "
+        "x, y, w, h als Anteile der Seite, Ursprung oben links). „Hier“, „das“ und „diese Stelle“ meinen diesen "
+        "Ausschnitt.",
+    ]
+    if canvas:
+        lines.append(
+            f"Sieh ihn an, bevor du antwortest: `canvas__look` mit `page={region.page}` und `region={box}`. "
+            "Antworte über das, was im Rahmen liegt, und sag, wenn du dafür etwas außerhalb brauchst. Zeig mit "
+            "`canvas__highlight` oder `canvas__point`, worauf du dich beziehst; Befunde schlägst du mit "
+            "`canvas__mark` als Anmerkungen vor, die Stelle abgelesen an dem, was du gesehen hast."
+        )
+    else:
+        target = f'`file_name="{file_name}"`, ' if file_name else ""
+        lines.append(
+            f"Sieh ihn an, bevor du antwortest: `view_knowledge_image` mit {target}`page_number={region.page}` "
+            f"und `region={box}`. Antworte über das, was im Rahmen liegt."
+        )
+    if getattr(state, "reply_in_thread", False) and region.annotation_id and canvas:
+        lines.append(
+            f"Gefragt wurdest du im Verlauf der Anmerkung mit der id `{region.annotation_id}`: Antworte dort mit "
+            "`canvas__reply` (`annotation` = diese id), kurz, für sich verständlich und ohne Quellenmarken, und "
+            "gib hier dieselbe Antwort."
+        )
+    lines.append(
+        "Zeigt das Werkzeug kein Bild, etwa weil das Modell dieses Büros keine Bilder liest, sag das offen und "
+        "rate nicht, was im Rahmen steht."
+    )
+    return "\n".join(lines)
+
+
 def oib_applicability(project_context: str | None) -> str | None:
     """Which OIB-Richtlinien this project's own facts make applicable, or None.
 
@@ -316,6 +382,7 @@ def render_system_prompt(
         ),
         focus_file_name=state.focus_file_name,
         focus_shelf_label=shelf_label(state.focus_shelf),
+        focus_region_block=focus_region_block(state, [tool.get("name", "") for tool in tools_info]),
         oib_applicability=oib_applicability(state.project_context),
         parcel_note=parcel_note(documents),
         # The L1 skills catalog, collated by the register layer; None renders

@@ -31,7 +31,7 @@ vi.mock('@/lib/auth/require-auth', () => ({
 vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
-vi.mock('@/lib/annotations/room', () => ({ publishToRoom: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -62,7 +62,7 @@ import {
   updateDocumentAnnotation,
   type AnnotationRecord,
 } from '@/lib/annotations/repository'
-import { publishToRoom } from '@/lib/annotations/room'
+import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { canUserAccessProject } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -255,7 +255,7 @@ describe('POST /api/documents/[id]/annotations', () => {
       createdBy: 'user_1',
       marks: [expect.objectContaining({ shape: 'region', w: 0.3, h: 0.2, body: 'Brüstung zu niedrig', basis: null })],
     })
-    expect(publishToRoom).toHaveBeenCalledWith('doc_1', {
+    expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', {
       kind: 'annotations.changed',
       annotationIds: ['ann_1'],
       change: 'created',
@@ -324,6 +324,17 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
     })
   })
 
+  it('refuses a take-over from a copy once a colleague dismissed the proposal, rather than reopening it', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, status: 'dismissed' })
+
+    const failure = await updateAnnotation('doc_1', 'ann_p', { status: 'open', expectedStatus: 'proposed' }, { run }).catch(
+      (error: unknown) => error
+    )
+
+    expect(failure).toMatchObject({ status: 409 })
+    expect(updateDocumentAnnotation).not.toHaveBeenCalled()
+  })
+
   it('dismisses a proposal as closed by the person', async () => {
     vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
 
@@ -367,7 +378,7 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
     await expect(updateAnnotation('doc_1', 'ann_1', { status: 'resolved' }, { run })).rejects.toMatchObject({
       status: 409,
     })
-    expect(publishToRoom).not.toHaveBeenCalled()
+    expect(publishToDocumentRoom).not.toHaveBeenCalled()
   })
 
   it('refuses an empty change and a change to the place', async () => {
@@ -383,7 +394,7 @@ describe('DELETE /api/documents/[id]/annotations/[annotationId]', () => {
   it('deletes one the caller set, and tells the room', async () => {
     await expect(deleteAnnotation('doc_1', 'ann_1', { run })).resolves.toBeUndefined()
     expect(deleteDocumentAnnotation).toHaveBeenCalledWith('org_1', 'doc_1', 'ann_1')
-    expect(publishToRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'deleted' }))
+    expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'deleted' }))
   })
 
   it("refuses one somebody else set, and Piloti's proposals, which are dismissed instead", async () => {
@@ -408,7 +419,7 @@ describe('POST /api/documents/[id]/annotations/[annotationId]/replies', () => {
       body: 'Ist im Index D drin.',
       createdBy: 'user_1',
     })
-    expect(publishToRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'replied' }))
+    expect(publishToDocumentRoom).toHaveBeenCalledWith('doc_1', expect.objectContaining({ change: 'replied' }))
   })
 
   it('is refused to a reader who may not write', async () => {

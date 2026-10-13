@@ -8,6 +8,11 @@
  * moving (each pointer re-renders the review, and a listener that re-subscribed
  * on every render cancelled the read: the bug this suite caught); colleagues'
  * pointers are drawn on their page; and a reader who may not write gets no tools.
+ *
+ * And Piloti on the canvas, through the real canvas client on a scripted
+ * socket: a box drawn with the Piloti tool opens its card, the question goes
+ * out with the box, the answer streams into the card and can be taken over as
+ * an Anmerkung at the box, and @Piloti in a thread asks for a reply there.
  */
 
 import { act, useEffect } from 'react'
@@ -17,10 +22,15 @@ import { http, HttpResponse } from 'msw'
 import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 import { installLayoutObservers } from '@/test-utils/layout-observers'
 import { server } from '@/mocks/server'
+import type { TurnSocket, TurnSocketOptions } from '@/adapters/api/turn-socket'
+import type { ClientMessage } from '@/adapters/api/wire-v2'
 import type { RoomFrame, RoomPost } from '@/lib/annotations/room-types'
 import type { AnnotationView } from '@/lib/annotations/types'
+import { eventOf, frameOf } from '@/test-utils/wire-v2-fixtures'
+import { createCanvasTurnClient, type CanvasTurnClientOptions } from '../../lib/canvas-turn-client'
 import { useDocumentReview } from '../../hooks/use-document-review'
 import type { RoomTransport } from '../../hooks/use-document-room'
+import { PilotiAnswerCard } from './piloti-answer-card'
 import { ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
@@ -84,9 +94,55 @@ function scriptedRoom() {
 
 const ANNA = { peerId: 'peer_anna_0001', userId: 'user_anna', name: 'Anna Berger', kind: 'person' as const }
 
+/** Piloti's socket, played by the test: what the canvas sends, and the answer's frames on cue. */
+function scriptedPiloti() {
+  const sent: ClientMessage[] = []
+  let options: TurnSocketOptions | null = null
+  const socket: TurnSocket = {
+    connect: async () => options?.onStatus?.('open'),
+    send: (message) => {
+      sent.push(message)
+      return true
+    },
+    reconnect: () => {},
+    close: () => {},
+  }
+  const createClient = (given: CanvasTurnClientOptions) =>
+    createCanvasTurnClient({
+      ...given,
+      createSocket: (socketOptions) => {
+        options = socketOptions
+        return socket
+      },
+    })
+  const questions = () =>
+    sent.filter((message): message is Extract<ClientMessage, { message_id: string }> => message.type === 'user_message')
+  return {
+    sent,
+    questions,
+    createClient,
+    deliver: (seq: number, body: Record<string, unknown>) => {
+      const turnId = questions().at(-1)?.message_id ?? 'turn-1'
+      act(() => options?.onEvent(eventOf(frameOf(seq, body, turnId))))
+    },
+  }
+}
+
 /** The pane's join, without the viewer: page 1's layer in a sized box, the open thread, and the panel. */
-function Harness({ transport, onReady }: { transport: RoomTransport; onReady?: (review: ReturnType<typeof useDocumentReview>) => void }) {
-  const review = useDocumentReview('doc_1', { enabled: true, transport })
+function Harness({
+  transport,
+  onReady,
+  piloti,
+}: {
+  transport: RoomTransport
+  onReady?: (review: ReturnType<typeof useDocumentReview>) => void
+  piloti?: ReturnType<typeof scriptedPiloti>
+}) {
+  const review = useDocumentReview('doc_1', {
+    enabled: true,
+    transport,
+    piloti: piloti ? { projectId: 'proj_1', fileName: 'Grundriss.pdf', createClient: piloti.createClient } : undefined,
+  })
   useEffect(() => {
     onReady?.(review)
   })
@@ -99,6 +155,7 @@ function Harness({ transport, onReady }: { transport: RoomTransport; onReady?: (
             page={1}
             review={review}
             focused
+            renderAsk={(ask, { flip }) => <PilotiAnswerCard review={review} ask={ask} flip={flip} />}
             renderThread={({ flip }) =>
               review.draft ? (
                 <DraftCard review={review} draft={review.draft} flip={flip} canPickAssignee={false} />
@@ -112,6 +169,9 @@ function Harness({ transport, onReady }: { transport: RoomTransport; onReady?: (
       <button type="button" onClick={() => review.setTool('region')}>
         region tool
       </button>
+      <button type="button" onClick={() => review.setTool('ask')}>
+        piloti tool
+      </button>
       <ReviewPanel review={review} onOpen={(annotation) => review.select(annotation.id)} />
     </>
   )
@@ -122,7 +182,49 @@ const serve = (annotations: AnnotationView[], canAnnotate = true) =>
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  window.sessionStorage.clear()
 })
+
+/** The page's capture surface, measured as an 800 × 600 sheet. */
+function captureSurface() {
+  const capture = within(screen.getByTestId('sheet')).getByTestId('review-capture')
+  vi.spyOn(capture, 'getBoundingClientRect').mockReturnValue({
+    left: 0, top: 0, width: 800, height: 600, right: 800, bottom: 600, x: 0, y: 0, toJSON: () => ({}),
+  } as DOMRect)
+  capture.setPointerCapture = () => {}
+  return capture
+}
+
+/** The conversation and its question rows, as the BFF answers them; what was posted is recorded. */
+function serveConversation() {
+  const posted: Array<{ path: string; body: unknown }> = []
+  server.use(
+    http.post('/api/conversations', async ({ request }) => {
+      posted.push({ path: 'conversation', body: await request.json() })
+      return HttpResponse.json({}, { status: 201 })
+    }),
+    http.post('/api/conversations/:id/messages', async ({ request }) => {
+      posted.push({ path: 'message', body: await request.json() })
+      return HttpResponse.json([], { status: 201 })
+    })
+  )
+  return posted
+}
+
+/** Draw a box with the Piloti tool, ask about it, and let Piloti answer. */
+async function askAboutABox(piloti: ReturnType<typeof scriptedPiloti>) {
+  await userEvent.click(screen.getByRole('button', { name: 'piloti tool' }))
+  const capture = captureSurface()
+  fireEvent.pointerDown(capture, { button: 0, clientX: 80, clientY: 120, pointerId: 1 })
+  fireEvent.pointerMove(capture, { clientX: 320, clientY: 300, pointerId: 1 })
+  fireEvent.pointerUp(capture, { clientX: 320, clientY: 300, pointerId: 1 })
+
+  const card = await screen.findByTestId('piloti-card')
+  expect(within(card).getByTestId('piloti-composer')).toBeInTheDocument()
+  expect(within(screen.getByTestId('sheet')).getByTestId('piloti-ask-box')).toHaveAttribute('data-status', 'composing')
+  await userEvent.click(within(card).getByTestId('piloti-quick-dimensions'))
+  await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+}
 
 describe('the review', () => {
   it('draws a point as a pin and a region as a box with its pin at the corner', async () => {
@@ -284,5 +386,176 @@ describe('the review', () => {
     const thread = await screen.findByTestId('review-thread')
     expect(within(thread).queryByTestId('thread-accept')).not.toBeInTheDocument()
     expect(within(thread).queryByTestId('thread-reply')).not.toBeInTheDocument()
+  })
+
+  it('asks Piloti about a box drawn with its tool, and streams the answer beside it', async () => {
+    serve([])
+    const posted = serveConversation()
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+    await screen.findByTestId('review-empty')
+
+    await askAboutABox(piloti)
+
+    expect(posted[0]).toEqual({
+      path: 'conversation',
+      body: {
+        id: expect.any(String),
+        title: 'Grundriss.pdf · Review',
+        projectId: 'proj_1',
+        subjectResourceType: 'document',
+        subjectResourceId: 'doc_1',
+      },
+    })
+    expect(posted[1]).toEqual({
+      path: 'message',
+      body: {
+        id: piloti.questions()[0].message_id,
+        role: 'user',
+        content: 'Check the dimensions in this detail: are they complete, consistent and plausible?',
+        messageType: 'user',
+      },
+    })
+    expect(piloti.questions()[0]).toMatchObject({
+      text: 'Check the dimensions in this detail: are they complete, consistent and plausible?',
+      focus_document_id: 'doc_1',
+      focus_file_name: 'Grundriss.pdf',
+      focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.3 },
+      reasoning_effort: 'low',
+    })
+    expect(piloti.questions()[0]).not.toHaveProperty('reply_in_thread')
+
+    const card = screen.getByTestId('piloti-card')
+    expect(within(card).getByTestId('piloti-card-thinking')).toBeInTheDocument()
+    expect(within(screen.getByTestId('sheet')).getByTestId('piloti-ask-box')).toHaveAttribute('data-status', 'thinking')
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'TEXT_MESSAGE_START', message_id: 'a-1' })
+    piloti.deliver(3, { type: 'TEXT_MESSAGE_CONTENT', message_id: 'a-1', delta: 'Die Raumhöhe ist ' })
+    piloti.deliver(4, { type: 'TEXT_MESSAGE_CONTENT', message_id: 'a-1', delta: 'nicht kotiert.' })
+    expect(await within(card).findByText(/Die Raumhöhe ist nicht kotiert\./)).toBeInTheDocument()
+
+    piloti.deliver(5, {
+      type: 'RUN_FINISHED',
+      outcome: 'answered',
+      result: { message_id: 'a-1', text: 'Die Raumhöhe ist nicht kotiert.\n\n[[card:1]]' },
+    })
+    await waitFor(() => expect(within(card).queryByTestId('piloti-card-thinking')).toBeNull())
+    expect(within(card).queryByText(/card:1/)).toBeNull()
+    expect(within(card).getByTestId('piloti-card-chat')).toHaveAttribute(
+      'href',
+      `/app/projects/proj_1/chat?session=${(posted[0].body as { id: string }).id}`
+    )
+  })
+
+  it("takes Piloti's answer over as an Anmerkung at the box", async () => {
+    serve([])
+    serveConversation()
+    const created: unknown[] = []
+    server.use(
+      http.post('/api/documents/:id/annotations', async ({ request }) => {
+        created.push(await request.json())
+        return HttpResponse.json(
+          { annotation: view({ id: 'kept', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.3, kind: 'hint', body: 'Raumhöhe fehlt.' }) },
+          { status: 201 }
+        )
+      })
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+    await screen.findByTestId('review-empty')
+    await askAboutABox(piloti)
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: '**Raumhöhe** fehlt.' } })
+
+    await userEvent.click(await screen.findByTestId('piloti-card-adopt'))
+
+    await waitFor(() =>
+      expect(created).toEqual([
+        { page: 1, shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.3, kind: 'hint', body: 'Raumhöhe fehlt.' },
+      ])
+    )
+    await waitFor(() => expect(screen.queryByTestId('piloti-card')).toBeNull())
+    expect(within(screen.getByTestId('sheet')).queryByTestId('piloti-ask-box')).toBeNull()
+    expect(await screen.findByTestId('review-thread')).toBeInTheDocument()
+  })
+
+  it('brings Piloti into a thread with @Piloti: the reply is saved, then Piloti is asked to answer there', async () => {
+    serve([view({ id: 'ann_1', shape: 'region', x: 0.1, y: 0.2, w: 0.3, h: 0.25 })])
+    serveConversation()
+    const replies: unknown[] = []
+    server.use(
+      http.post('/api/documents/:id/annotations/:annotationId/replies', async ({ request }) => {
+        replies.push(await request.json())
+        return HttpResponse.json({
+          annotation: view({
+            id: 'ann_1',
+            shape: 'region',
+            x: 0.1,
+            y: 0.2,
+            w: 0.3,
+            h: 0.25,
+            replies: [
+              {
+                id: 'r1',
+                annotationId: 'ann_1',
+                authorKind: 'person',
+                body: 'Stimmt die Breite?',
+                createdBy: 'user_me',
+                createdByName: 'Miriam Hofer',
+                createdAt: '2026-10-01T09:00:00.000Z',
+              },
+            ],
+          }),
+        })
+      })
+    )
+    const piloti = scriptedPiloti()
+    render(<Harness transport={scriptedRoom().transport} piloti={piloti} />)
+
+    await userEvent.click(await screen.findByTestId('review-row'))
+    const thread = await screen.findByTestId('review-thread')
+    const box = within(thread).getByTestId('thread-reply')
+    await userEvent.type(box, '@pil')
+    await userEvent.click(within(thread).getByTestId('thread-reply-mention-option'))
+    expect(within(thread).getByTestId('thread-reply-mention-chip')).toHaveTextContent('@Piloti')
+    await userEvent.type(box, 'Stimmt die Breite?{Enter}')
+
+    await waitFor(() => expect(replies).toEqual([{ body: 'Stimmt die Breite?' }]))
+    await waitFor(() => expect(piloti.questions()).toHaveLength(1))
+    expect(piloti.questions()[0]).toMatchObject({
+      text: 'Stimmt die Breite?',
+      reply_in_thread: true,
+      focus_region: { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.25, annotation_id: 'ann_1' },
+    })
+    // No card: Piloti answers in the thread, and the thread says it is on it.
+    expect(screen.queryByTestId('piloti-card')).toBeNull()
+    expect(within(screen.getByTestId('review-thread')).getByTestId('thread-piloti-pending')).toBeInTheDocument()
+
+    piloti.deliver(1, { type: 'RUN_STARTED', message_id: 'a-1' })
+    piloti.deliver(2, { type: 'RUN_FINISHED', outcome: 'answered', result: { message_id: 'a-1', text: 'Ja, 1,20 m.' } })
+    await waitFor(() => expect(screen.queryByTestId('thread-piloti-pending')).toBeNull())
+  })
+
+  it("draws Piloti's own pointer and what it points out, from the room", async () => {
+    const restore = installLayoutObservers({ frameWidth: 800 })
+    serve([])
+    const room = scriptedRoom()
+    render(<Harness transport={room.transport} />)
+    await screen.findByTestId('review-empty')
+    const PILOTI = { peerId: 'piloti_peer_01', userId: 'piloti', name: 'Piloti', kind: 'piloti' as const }
+
+    room.send({ kind: 'event', event: { kind: 'presence', peer: PILOTI, state: 'here', ttlMs: 25_000 } })
+    room.send({ kind: 'event', event: { kind: 'cursor', peer: PILOTI, cursor: { page: 1, x: 0.4, y: 0.4 } } })
+    room.send({
+      kind: 'event',
+      event: { kind: 'activity', peer: PILOTI, state: 'reading', label: 'Liest die Stiege', box: { page: 1, x: 0.5, y: 0.1, w: 0.2, h: 0.3 } },
+    })
+
+    const sheet = screen.getByTestId('sheet')
+    expect(await within(sheet).findByText('Liest die Stiege', { selector: '[data-slot="live-cursor"] *' })).toBeInTheDocument()
+    const highlight = await within(sheet).findByTestId('piloti-highlight')
+    expect(highlight.style.left).toBe('50%')
+    restore()
   })
 })

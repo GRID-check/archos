@@ -437,6 +437,70 @@
       "title": "EmptyValue",
       "type": "object"
     },
+    "FocusRegion": {
+      "additionalProperties": false,
+      "description": "A box on one page of the conversation's document: what the question is about.\n\nNormalized to the page as it is shown (its own rotation applied), origin\ntop left, so ``x`` and ``w`` are shares of the page's width and ``y`` and\n``h`` of its height: the frame an Anmerkung's region uses\n(``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows\nthe model exactly that crop (``view_knowledge_image(region=...)``).",
+      "properties": {
+        "annotation_id": {
+          "anyOf": [
+            {
+              "maxLength": 128,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The Anmerkung this box is the region of, when the question was asked in its thread.",
+          "title": "Annotation Id"
+        },
+        "h": {
+          "description": "Height, as a share of the page's height; y + h is at most 1.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "H",
+          "type": "number"
+        },
+        "page": {
+          "description": "The page, from 1.",
+          "minimum": 1,
+          "title": "Page",
+          "type": "integer"
+        },
+        "w": {
+          "description": "Width, as a share of the page's width; x + w is at most 1.",
+          "exclusiveMinimum": 0,
+          "maximum": 1,
+          "title": "W",
+          "type": "number"
+        },
+        "x": {
+          "description": "Left edge, as a share of the page's width.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "X",
+          "type": "number"
+        },
+        "y": {
+          "description": "Top edge, as a share of the page's height.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Y",
+          "type": "number"
+        }
+      },
+      "required": [
+        "page",
+        "x",
+        "y",
+        "w",
+        "h"
+      ],
+      "title": "FocusRegion",
+      "type": "object"
+    },
     "Heartbeat": {
       "additionalProperties": false,
       "properties": {
@@ -2699,6 +2763,18 @@
           "default": null,
           "title": "Focus File Name"
         },
+        "focus_region": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/FocusRegion"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "A box drawn on a page of the conversation's document: the turn looks at that crop before it answers. Sent only to a server whose hello accepts 'user_message.focus_region'."
+        },
         "focus_shelf": {
           "anyOf": [
             {
@@ -2785,6 +2861,19 @@
           "default": null,
           "description": "The composer's Aufwand dial for this turn; absent keeps the platform level.",
           "title": "Reasoning Effort"
+        },
+        "reply_in_thread": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Post the answer as Piloti's reply in the thread of focus_region.annotation_id, readable by everyone who can read the document. Ignored without an annotation_id. Sent only to a server whose hello accepts 'user_message.reply_in_thread'.",
+          "title": "Reply In Thread"
         },
         "source_preset": {
           "anyOf": [

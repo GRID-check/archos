@@ -377,6 +377,48 @@ describe('optional fields, by what the hello accepts', () => {
     })
   })
 
+  describe('a box on the review canvas, and the ask to answer in its thread', () => {
+    const question = {
+      type: 'user_message',
+      conversation_id: 'conv_1',
+      message_id: 'm2',
+      text: 'Passt die Türbreite hier?',
+      focus_region: { page: 2, x: 0.5, y: 0.5, w: 0.1, h: 0.1, annotation_id: 'a-1' },
+      reply_in_thread: true,
+    } as const
+    const { focus_region: _region, reply_in_thread: _reply, ...bareQuestion } = question
+
+    it('goes to a server whose hello names both', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({
+        ...HELLO,
+        value: { build: 'new', accepts: ['user_message.focus_region', 'user_message.reply_in_thread'] },
+      })
+      socket.send(question)
+      expect(latest().sent).toEqual([question])
+    })
+
+    it('loses only the field a server does not name', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().open()
+      latest().receive({ ...HELLO, value: { build: 'new', accepts: ['user_message.focus_region'] } })
+      socket.send(question)
+      const { reply_in_thread: _dropped, ...withRegion } = question
+      expect(latest().sent).toEqual([withRegion])
+    })
+
+    it('is left out for an older server, and the question still goes', async () => {
+      const { socket } = setup()
+      await socket.connect()
+      latest().greet()
+      socket.send(question)
+      expect(latest().sent).toEqual([bareQuestion])
+    })
+  })
+
   it('takes a hello naming fields this page has never heard of', async () => {
     const { socket, statuses } = setup()
     await socket.connect()

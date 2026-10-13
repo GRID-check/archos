@@ -457,6 +457,8 @@ class ConversationGraph:
             reference_projects=state.reference_projects,
             focus_file_name=state.focus_file_name,
             focus_shelf=state.focus_shelf,
+            focus_region=state.focus_region,
+            reply_in_thread=state.reply_in_thread,
             # Told to the model so it writes an answer instead of a hand-off
             # sentence. `_finalize_answer` still refuses the escalation if it
             # asks anyway: the prompt is the fix, this is the layer that holds

@@ -35,7 +35,7 @@ ws://<host>/websocket?v=2&projectId=<uuid>&conversationId=<session_id>
   is said to it in its own dialect.
 - **The server speaks first: `hello`.** Once the version and the caller have
   passed, the first frame on every socket is
-  `{"v":2,"type":"CUSTOM","name":"hello","ts":…,"value":{"build":"<sha>","accepts":["cancel_turn.shown","user_message.posthog_session_id"]}}`
+  `{"v":2,"type":"CUSTOM","name":"hello","ts":…,"value":{"build":"<sha>","accepts":["cancel_turn.shown","user_message.posthog_session_id","user_message.focus_region","user_message.reply_in_thread"]}}`
   (`build` is `GRID_GIT_SHA`, or `unknown`, as `/health` has it). `accepts`
   names the optional client fields this server reads, as `<type>.<field>`; the
   client sends such a field only to a server whose hello names it (see
@@ -331,7 +331,7 @@ refuse the whole message.
 
 | `type` | Fields | Notes |
 |---|---|---|
-| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?` | A question. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
+| `user_message` | `message_id` (becomes `turn_id`), `text`, `data_sources[]`, `context_only?`, `author_name?`, `focus_file_name?`, `focus_shelf?`, `source_preset?`, `focus_document_id?`, `focus_version_id?`, `focus_version_state?`, `reasoning_effort?`, `posthog_session_id?`, `focus_region?`, `reply_in_thread?` | A question. The type name is what the gateway's turn limiter (`lib/limits/ws-frames.js`) counts. A second `user_message` for a turn already running or run, on any replica, is `rejected{duplicate_turn}` (the turn id is claimed on the bus for as long as the stream keeps it); a new one supersedes and cancels a stale turn, on whichever replica runs it, and starts only once the stale turn has stopped: the conversation's running marker (`conv:<id>:running`, ADR-0080) is held by the turn that runs, so two turns of one conversation never run at once. If the stale turn has not stopped within `GRID_CHAT_SUPERSEDE_WAIT_SECONDS`, the new question ends with a refused `RUN_FINISHED` ("still finishing the previous answer", with a retry hint) and nothing runs. With `GRID_CHAT_AFFINITY` off, a turn that can no longer renew its marker (Dragonfly unreachable from its replica for most of `GRID_CHAT_RUNNING_TTL_SECONDS`, or the marker gone) stops itself before a newer turn could take the marker and ends with a `cancelled` `RUN_FINISHED`; the partial answer is not persisted. |
 | `interaction_response` | `turn_id`, `interaction_id`, `answer: {text} \| {option_id}` | Exactly one answer, structurally. Only the person the prompt addressed may answer; anyone else gets `rejected{not_asker}`, and an answer with no prompt waiting `rejected{no_pending_interaction}`. |
 | `cancel_turn` | `turn_id`, `shown?: {seq, chars}` | Stop. Only the asker's verified subject (or an internal caller) may cancel; anyone else gets `rejected{not_asker}`. The server cancels the graph run, not just the socket. `shown` says how much was on screen (the first `chars` code points of the answer as folded through `seq`), and the stopped answer is cut to it; sent only when the hello accepts `cancel_turn.shown`. |
 | `attach` | `turn_id`, `after_seq` | Replay the turn from `after_seq + 1`, then continue live. Sent for every open turn after a reconnect, and with `after_seq: 0` after a reload. `rejected{turn_not_found}` when the stream holds nothing for the turn: ask for the persisted answer instead. |
@@ -580,6 +580,36 @@ frames). On a terminal status the client disconnects; on unmount it disconnects.
 Each block holds its own subscription, keyed by run id — several live runs in one
 thread are the normal case. A refused read or a stream that never opens leaves the
 stored ledger on screen; a reload shows the same block either way.
+
+### The review canvas (`focus_region` / `reply_in_thread`)
+
+Two fields the review canvas sends, each only to a server whose hello lists it
+in `accepts` (`user_message.focus_region`, `user_message.reply_in_thread`); a
+key is omitted, never `null`, when there is nothing to say. An older server
+answers the question about the whole document and only in the chat, which is
+what it did before the canvas could ask.
+
+| Field | Type | Meaning |
+|-------|------|---------|
+| `focus_region` | `{page, x, y, w, h, annotation_id?}` | A box a person drew on a page of the document the question is about. `page` counts from 1; `x`, `y`, `w`, `h` are shares of the page **as shown** (its rotation applied), origin top left, the frame an Anmerkung's region uses: `0 ≤ x, y ≤ 1`, `0 < w, h ≤ 1`, `x + w ≤ 1` and `y + h ≤ 1` (a rounding slack of 1e-6 is allowed; the JSON Schema cannot state the sums, so the server's model does and refuses the message). `annotation_id` names the Anmerkung the box is the region of, when the question was asked in its thread. |
+| `reply_in_thread` | `boolean` | The question was asked in the thread of `focus_region.annotation_id`. Without an `annotation_id` it means nothing. |
+
+What the turn does with them (`turn/payload.py`, `agents/piloti/prompt.py`):
+the system prompt gains a „Fokusbereich“ section naming the document, page and
+box in words, and telling the model to look at exactly that crop
+(`canvas__look` with `region=[x, y, w, h]`) before it answers. With
+`reply_in_thread`, it is told it was asked in that mark's thread and to answer
+there with `canvas__reply`: nothing is posted on the model's behalf. Such a
+turn runs with no restricted folder in scope, because a thread is read by
+everyone who can open the document (`tools/canvas/policy.py`). The canvas also
+sends `focus_document_id`, which the canvas tools act on when the model names
+no document. Both fields are on the turn's trace as `turn_surface`
+([`langfuse.md`](../observability/langfuse.md)).
+
+Because `accepts` is itself withheld while `GRID_WIRE_V2_ADDITIVE_FIELDS` is
+off, a page sends neither field until that flag is on: the review canvas's
+region asks and thread replies need it on; with it off, a canvas question
+reaches Piloti without its box.
 
 ### `user_message.posthog_session_id`
 

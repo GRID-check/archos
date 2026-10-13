@@ -58,6 +58,7 @@ import { useLayoutStore } from '@/features/layout/store'
 import { useDocumentsStore } from '@/features/documents/store'
 import { getPosthogSessionId } from '@/lib/analytics/posthog'
 import { fetchRunMessage } from '../lib/commissioned-run'
+import { clampFocusRegion, registerCanvasChatSender, type CanvasFocus, type CanvasFocusRegion } from '../lib/canvas-bridge'
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
 import type { TurnView } from '../lib/turn-fold'
@@ -95,6 +96,12 @@ export interface SendMessageOptions {
    * retry under a down-voted answer.
    */
   reasoningEffort?: ChatEffort
+  /**
+   * Asked on the review canvas over this chat (`lib/canvas-bridge.ts`): the
+   * document and the box the question is about, in place of the composer's
+   * subject, and whether Piloti answers in an Anmerkung's thread.
+   */
+  canvas?: CanvasFocus
 }
 
 /** A refusal the composer can localise from `details.reason`. */
@@ -1000,7 +1007,8 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       content: string,
       dataSourcesForMessage: string[],
       conversationId: string | undefined,
-      reasoningEffort?: ChatEffort
+      reasoningEffort?: ChatEffort,
+      canvas?: CanvasFocus
     ): boolean => {
       if (!conversationId) {
         addErrorCard('system.unknown', 'No active conversation')
@@ -1028,22 +1036,27 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         effort,
         data_source_count: dataSourcesForMessage.length,
       })
-      ensureDriver(conversationId).ask({
+      // `focus_region` and `reply_in_thread` are being added to the wire; until
+      // the generated type carries them they ride on this wider local type.
+      const question: UserMessage & { focus_region?: CanvasFocusRegion | null; reply_in_thread?: boolean } = {
         type: 'user_message',
         conversation_id: conversationId,
         message_id: messageId,
         text: content,
         data_sources: dataSourcesForMessage,
-        focus_file_name: subjectName || null,
-        focus_shelf: subject?.shelf ?? null,
-        focus_document_id: subject?.resourceId ?? null,
-        focus_version_id: subject?.versionId ?? null,
-        focus_version_state: openVersionState(subject?.versionState),
+        focus_file_name: canvas ? canvas.fileName : subjectName || null,
+        focus_shelf: canvas ? canvas.shelf : (subject?.shelf ?? null),
+        focus_document_id: canvas ? canvas.documentId : (subject?.resourceId ?? null),
+        focus_version_id: canvas ? canvas.versionId : (subject?.versionId ?? null),
+        focus_version_state: openVersionState(canvas ? canvas.versionState : subject?.versionState),
+        ...(canvas ? { focus_region: canvas.region ? clampFocusRegion(canvas.region) : null } : {}),
+        ...(canvas?.replyInThread ? { reply_in_thread: true } : {}),
         source_preset: useLayoutStore.getState().activeSourcePreset ?? null,
         reasoning_effort: effort,
         // Omitted, not null, while PostHog is off: `forServer` keys on presence.
         ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
-      })
+      }
+      ensureDriver(conversationId).ask(question)
       return true
     },
     [addErrorCard, collectSendMetadata, ensureDriver]
@@ -1173,9 +1186,28 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       const message = addUserMessage(content, { enabledDataSources: dataSourcesForMessage, messageFiles })
       // The conversation may have just been created inside addUserMessage.
       const conversationId = useChatStore.getState().currentConversation?.id
-      return openAgentTurn(message.id, content, dataSourcesForMessage, conversationId, options?.reasoningEffort)
+      return openAgentTurn(
+        message.id,
+        content,
+        dataSourcesForMessage,
+        conversationId,
+        options?.reasoningEffort,
+        options?.canvas
+      )
     },
     [addUserMessage, collectSendMetadata, openAgentTurn, sendRuledMessage]
+  )
+
+  // The review canvas over this chat asks through this driver (`canvas-bridge.ts`).
+  useEffect(
+    () =>
+      registerCanvasChatSender((question) => {
+        const sent = sendMessage(question.text, { reasoningEffort: question.effort, canvas: question.focus })
+        const { currentConversation, currentUserMessageId } = useChatStore.getState()
+        if (sent !== true || !currentConversation || !currentUserMessageId) return null
+        return { conversationId: currentConversation.id, turnId: currentUserMessageId }
+      }),
+    [sendMessage]
   )
 
   /**

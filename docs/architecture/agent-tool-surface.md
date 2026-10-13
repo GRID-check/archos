@@ -29,7 +29,7 @@ We apply the published guidance:
 
 Tool retrieval pays off on catalogs of
 hundreds or thousands of tools ([RAG-MCP][rag-mcp], [Less is More][less-more],
-[Gorilla/BFCL][bfcl]). Piloti binds 20, at OpenAI's line. Of a 33.4k-token research call,
+[Gorilla/BFCL][bfcl]). Piloti binds 26, past OpenAI's line of 20 since the canvas group (§2). Of a 33.4k-token research call,
 26.1k are a cached prefix, and tool execution is 1.3 s of a 31.3 s median turn
 ([turns audit](turns-per-answer-audit-2026-09.md),
 [turn latency](turn-latency-measured-2026-09.md) §2). Seconds follow rounds and
@@ -40,7 +40,8 @@ model to do next.
 
 ## 2. The surface today
 
-A project turn binds 20 tools, about 16.1k tokens. Tool schemas were 38 % of a
+A project turn binds 26 tools, about 16.8k tokens (the canvas group replaced
+the one `document_annotations` tool, 940 tokens, with seven, 1,625). Tool schemas were 38 % of a
 research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 
 | Tool | What it does | ~Tokens | Owner |
@@ -56,7 +57,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
-| `document_annotations` | Reads, proposes and answers Anmerkungen on the chat's document; a proposal waits for a person | 940 | `src/aiq_agent/tools/annotations/register.py` |
+| `canvas__look`, `canvas__room`, `canvas__point`, `canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__reply` | The review canvas, one NAT function group: look at a page or a box on it, who is in the document and where, point and highlight for everyone, read Anmerkungen, propose one (a person takes it over), answer in a thread. Each takes an optional `document`; the default is the document open on the canvas, then the conversation's subject | 217 / 161 / 184 / 216 / 140 / 520 / 187 (1,625) | `src/aiq_agent/tools/canvas/register.py` |
 | `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |

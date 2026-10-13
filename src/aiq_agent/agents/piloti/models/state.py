@@ -8,6 +8,7 @@ from langchain_core.messages import AnyMessage
 from langgraph.graph.message import add_messages
 from pydantic import BaseModel
 
+from aiq_agent.common.wire_v2 import FocusRegion
 from aiq_agent.knowledge import AvailableDocument
 
 from ..markers import CappedReason
@@ -150,6 +151,12 @@ class ResearchAgentState(BaseModel):
     # has an antecedent.
     focus_file_name: str | None = None
     focus_shelf: str | None = None
+    # The box a person drew on a page of the document (the review canvas), and
+    # whether they asked in a mark's thread. Rendered as the „Fokusbereich“
+    # section of the prompt: look at that crop first, and answer in the thread
+    # with `canvas__reply` when asked there. Turn-scoped, like the focus above.
+    focus_region: FocusRegion | None = None
+    reply_in_thread: bool = False
     source_lookup_attempted: bool = False
     answer_citation_grounded: bool = False
     # Whether every QUOTED span in the final answer was found (fuzzily) in a

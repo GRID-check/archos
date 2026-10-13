@@ -2,7 +2,7 @@
  * @vitest-environment node
  */
 /**
- * The committed JSON Schema is what Piloti's `document_annotations` tool is
+ * The committed JSON Schema is what Piloti's canvas tools (`src/aiq_agent/tools/canvas/`) are
  * tested against, and this keeps it from going stale: it REWRITES the fixture
  * when `UPDATE_FIXTURES=1` and otherwise compares.
  */
@@ -30,10 +30,10 @@ describe('document annotations JSON Schema', () => {
     )
   })
 
-  it('describes the request as a closed union over its three ops', () => {
+  it('describes the request as a closed union over its ops: the Anmerkungen and the room', () => {
     const request = (documentAnnotationsJsonSchema().$defs as Record<string, { oneOf?: unknown[]; anyOf?: unknown[] }>)
       .InternalAnnotationRequest
     const options = (request.oneOf ?? request.anyOf) as Array<{ properties: { op: { const: string } } }>
-    expect(options.map((option) => option.properties.op.const).sort()).toEqual(['list', 'propose', 'reply'])
+    expect(options.map((option) => option.properties.op.const).sort()).toEqual(['highlight', 'leave', 'list', 'point', 'propose', 'reply', 'room'])
   })
 })

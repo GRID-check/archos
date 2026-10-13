@@ -62,6 +62,13 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // same files a second time (or fail confusingly, because they are no longer
   // where the card says they are).
   file_operation_proposal: 'interactive',
+  // Reports the marks Piloti set on a document and the threads it answered in,
+  // and asks, per proposed mark, „übernehmen oder verwerfen?". Either answer is
+  // a status move through the annotations API, recorded per mark under
+  // `itemDecisionKey`: taking a mark over twice is harmless, but a card that
+  // forgot it had discarded one would offer to take it over, and the API lets
+  // a discarded mark be opened again.
+  canvas_activity: 'interactive',
 
   // The Rechenweg computes its own result from the operands it was given and
   // reveals where those numbers came from on click. Nothing is written, and
@@ -138,13 +145,17 @@ export const CARD_DECISIONS = [
   /**
    * project_profile_patch: the patch was applied to the project brief.
    * file_operation_proposal: every operation on the card was applied.
+   * canvas_activity (per mark): the reader took Piloti's mark over.
    *
    * The file card reuses this pair rather than growing its own: the reader's
    * answer is the same answer, and the card's payload already says which verb
    * it was.
    */
   'accepted',
-  /** project_profile_patch / file_operation_proposal: the user declined. */
+  /**
+   * project_profile_patch / file_operation_proposal: the user declined.
+   * canvas_activity (per mark): the reader discarded Piloti's mark.
+   */
   'rejected',
   /** memory_proposal: written org-wide. */
   'savedOrg',
@@ -216,6 +227,24 @@ export type CardInteractions = Record<string, CardInteraction>
 export const cardKey = (card: Pick<GridCard, 'type'>, index: number): string =>
   `${card.type}-${index}`
 
+/**
+ * The key ONE ITEM's decision is stored under, for a card that asks per item:
+ * the card's key, a `#`, the item's own id (`canvas_activity` keys each mark by
+ * its annotation id, so „take over #4, discard #5" are two decisions).
+ *
+ * `#` because no card key contains it — `${type}-${index}`, or a surface
+ * leaf's `${type}-${index}.${leafId}` — so the card an item decision belongs
+ * to is always the part before it ({@link cardKeyOfDecisionKey}). The PATCH
+ * route caps a key at 64 characters: `canvas_activity-19#` and a uuid are 55.
+ */
+export const itemDecisionKey = (key: string, itemId: string): string => `${key}#${itemId}`
+
+/** The card a stored decision belongs to: the key itself, or the part before an item's `#`. */
+export const cardKeyOfDecisionKey = (key: string): string => {
+  const hash = key.indexOf('#')
+  return hash === -1 ? key : key.slice(0, hash)
+}
+
 const DECISIONS: ReadonlySet<string> = new Set(CARD_DECISIONS)
 
 export const isCardDecision = (value: unknown): value is CardDecision =>
@@ -275,7 +304,8 @@ export const reconcileCardInteractions = (
     }
   })
 
-  const kept = Object.entries(interactions).filter(([key]) => survivors.has(key))
+  // An item's decision (`itemDecisionKey`) lives and dies with its card.
+  const kept = Object.entries(interactions).filter(([key]) => survivors.has(cardKeyOfDecisionKey(key)))
   return kept.length > 0 ? Object.fromEntries(kept) : undefined
 }
 

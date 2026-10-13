@@ -231,6 +231,24 @@ def record_lessons(arm: str, lesson_ids: Sequence[str]) -> None:
     )
 
 
+#: Trace metadata key: where the question was asked (``chat``, ``review_canvas``,
+#: ``annotation_thread``), and the tag every canvas turn carries.
+TURN_SURFACE_METADATA_KEY = "turn_surface"
+REVIEW_CANVAS_TAG = "surface:review-canvas"
+
+
+def record_turn_surface(surface: str) -> None:
+    """Put where the question was asked on the turn's trace; a canvas turn is also tagged.
+
+    Both the review canvas and a thread on it carry ``surface:review-canvas``:
+    the tag finds every turn asked from a document, and ``turn_surface`` tells
+    the two apart. Labels only; recorded with no identity switch.
+    """
+    record_trace_metadata(**{TURN_SURFACE_METADATA_KEY: surface})
+    if surface != "chat":
+        add_trace_tag(REVIEW_CANVAS_TAG)
+
+
 def add_trace_tag(tag: str) -> None:
     """Tag this turn's traces, e.g. so every turn that read a model is findable.
 

@@ -1,7 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useReducedMotion } from '@/hooks/use-reduced-motion'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import {
   AnnotationRequestError,
   createAnnotation,
@@ -10,7 +9,6 @@ import {
   replyToAnnotation,
   updateAnnotation,
 } from '@/lib/annotations/client'
-import type { RoomCursor } from '@/lib/annotations/room-types'
 import {
   compareAnnotations,
   isLive,
@@ -19,9 +17,11 @@ import {
   type AnnotationView,
   type UpdateAnnotationRequest,
 } from '@/lib/annotations/types'
+import { useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
 import { useDocumentRoom, type RoomTransport } from './use-document-room'
 
-export type ReviewTool = 'select' | 'point' | 'region'
+/** `ask`: drag a box and ask Piloti about it (P). */
+export type ReviewTool = 'select' | 'point' | 'region' | 'ask'
 export type ReviewFilter = 'open' | 'closed'
 
 /** A place picked on a page and not yet saved: a point, or a region dragged out. */
@@ -34,25 +34,12 @@ export interface ReviewDraft {
   h: number | null
 }
 
-/** Where Piloti's pointer is while it walks the reader through what it just proposed. */
-export interface PilotiTour {
-  cursor: RoomCursor | null
-  /** Proposals the walk has not reached yet: drawn only once the pointer has arrived. */
-  pending: ReadonlySet<string>
-}
-
-/** Time the pointer takes to travel to a finding, and to rest there before the mark lands. */
-const TOUR_TRAVEL_MS = 650
-const TOUR_DWELL_MS = 380
-const TOUR_LINGER_MS = 1400
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
-
 /**
  * Everything a review of one document holds, shared by the inline preview and
  * the focused review, so a mark selected in one is selected in the other and
  * a tab is in the room once: the Anmerkungen, the room, the tool in hand, the
- * draft, the selection, the filter, and Piloti's walk.
+ * draft, the selection, the filter, and the questions asked of Piloti on the
+ * canvas (`use-canvas-ask.ts`). Piloti itself is in the room, as a peer.
  *
  * The list is the server's: every write replaces its row with what the API
  * answered, and a change somebody else made (a room hint) re-reads the list,
@@ -61,10 +48,19 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
  */
 export function useDocumentReview(
   documentId: string,
-  { enabled, transport }: { enabled: boolean; transport?: RoomTransport }
+  {
+    enabled,
+    transport,
+    piloti: pilotiOptions,
+  }: {
+    enabled: boolean
+    transport?: RoomTransport
+    /** Asking Piloti on the canvas; absent (or without a project) it is not offered. */
+    piloti?: Omit<UseCanvasAskOptions, 'documentId' | 'enabled'>
+  }
 ) {
   const room = useDocumentRoom(documentId, { enabled, transport })
-  const reduceMotion = useReducedMotion()
+  const canvas = useCanvasAsk({ ...pilotiOptions, documentId, enabled })
   const [load, setLoad] = useState<'loading' | 'ready' | 'error'>('loading')
   const [annotations, setAnnotations] = useState<AnnotationView[]>([])
   const [canAnnotate, setCanAnnotate] = useState(false)
@@ -72,14 +68,14 @@ export function useDocumentReview(
   const [tool, setToolState] = useState<ReviewTool>('select')
   const [draft, setDraft] = useState<ReviewDraft | null>(null)
   const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Which mark this reader has open, for the room: Piloti resolves „diese Anmerkung“ by it.
+  const { sendSelection } = room
+  useEffect(() => sendSelection(selectedId), [selectedId, sendSelection])
   const [hoveredId, setHoveredId] = useState<string | null>(null)
   const [filter, setFilter] = useState<ReviewFilter>('open')
   /** Only what is on this reader's plate: assigned to them, or set by them. */
   const [mine, setMine] = useState(false)
-  const [tour, setTour] = useState<PilotiTour | null>(null)
   const [notice, setNotice] = useState<'conflict' | null>(null)
-  const tourQueue = useRef<string[]>([])
-  const touring = useRef(false)
 
   const fetchList = useCallback(async () => {
     const result = await listAnnotations(documentId)
@@ -97,38 +93,6 @@ export function useDocumentReview(
     fetchList().catch(() => setLoad('error'))
   }, [enabled, fetchList, attempt])
 
-  /** Walk Piloti's pointer to each new proposal in turn, landing each mark as it arrives. */
-  const runTour = useCallback(
-    async (list: AnnotationView[]) => {
-      if (touring.current) return
-      touring.current = true
-      try {
-        while (tourQueue.current.length > 0) {
-          const ids = tourQueue.current.splice(0)
-          const marks = ids
-            .map((id) => list.find((annotation) => annotation.id === id))
-            .filter((mark): mark is AnnotationView => Boolean(mark && mark.onCurrentFassung))
-          if (reduceMotion || marks.length === 0) continue
-          const pending = new Set(marks.map((mark) => mark.id))
-          setTour({ cursor: null, pending: new Set(pending) })
-          for (const mark of marks) {
-            const target = { page: mark.page, x: mark.x + (mark.w ?? 0) / 2, y: mark.y + (mark.h ?? 0) / 2 }
-            setTour({ cursor: target, pending: new Set(pending) })
-            await sleep(TOUR_TRAVEL_MS)
-            pending.delete(mark.id)
-            setTour({ cursor: target, pending: new Set(pending) })
-            await sleep(TOUR_DWELL_MS)
-          }
-          await sleep(TOUR_LINGER_MS)
-        }
-      } finally {
-        touring.current = false
-        setTour(null)
-      }
-    },
-    [reduceMotion]
-  )
-
   // Somebody else changed the Anmerkungen: read them again. Several hints in a
   // burst (a batch of replies) are one read. Subscribed on the room's stable
   // callbacks, not on `room`: pointers re-render it a dozen times a second, and
@@ -139,21 +103,16 @@ export function useDocumentReview(
     let timer: ReturnType<typeof setTimeout> | null = null
     const unsubscribe = onAnnotationsChanged((event) => {
       if (event.actor.peerId && event.actor.peerId === peerId) return
-      if (event.actor.kind === 'piloti' && event.change === 'created') tourQueue.current.push(...event.annotationIds)
       if (timer) clearTimeout(timer)
       timer = setTimeout(() => {
-        void fetchList()
-          .then((list) => {
-            if (tourQueue.current.length > 0) void runTour(list)
-          })
-          .catch(() => {})
+        void fetchList().catch(() => {})
       }, 120)
     })
     return () => {
       unsubscribe()
       if (timer) clearTimeout(timer)
     }
-  }, [enabled, onAnnotationsChanged, peerId, fetchList, runTour])
+  }, [enabled, onAnnotationsChanged, peerId, fetchList])
 
   const replace = useCallback((next: AnnotationView) => {
     setAnnotations((current) =>
@@ -179,15 +138,63 @@ export function useDocumentReview(
 
   const write = useMemo(() => ({ peerId: room.peerId }), [room.peerId])
 
+  // One card beside the pages at a time: a mark's thread, the draft, or a
+  // question to Piloti. Opening one puts the others away.
+  const closeAskCard = canvas.open
+  const select = useCallback(
+    (annotationId: string | null) => {
+      if (annotationId) closeAskCard(null)
+      setSelectedId(annotationId)
+    },
+    [closeAskCard]
+  )
+  const placeDraft = useCallback(
+    (next: ReviewDraft | null) => {
+      if (next) closeAskCard(null)
+      setDraft(next)
+    },
+    [closeAskCard]
+  )
+  const piloti = useMemo(
+    () => ({
+      ...canvas,
+      compose: (...args: Parameters<typeof canvas.compose>) => {
+        setDraft(null)
+        setSelectedId(null)
+        setToolState('select')
+        return canvas.compose(...args)
+      },
+      ask: (input: Parameters<typeof canvas.ask>[0]) => {
+        if (input.region && !input.replyInThread) {
+          setDraft(null)
+          setSelectedId(null)
+        }
+        return canvas.ask(input)
+      },
+      open: (id: string | null) => {
+        if (id) {
+          setDraft(null)
+          setSelectedId(null)
+        }
+        canvas.open(id)
+      },
+    }),
+    [canvas]
+  )
+
   const setTool = useCallback((next: ReviewTool) => {
     setToolState(next)
     if (next !== 'select') setSelectedId(null)
   }, [])
 
+  /** Set a mark at the draft, or at `place` (an answer of Piloti's taken over at its box). */
   const create = useCallback(
-    async (content: { kind: AnnotationKind; body: string; assigneeUserId?: string | null; dueOn?: string | null }) => {
-      if (!draft) return null
-      const created = await guard(() => createAnnotation(documentId, { ...draft, ...content }, write))
+    async (
+      content: { kind: AnnotationKind; body: string; assigneeUserId?: string | null; dueOn?: string | null },
+      place: ReviewDraft | null = draft
+    ) => {
+      if (!place) return null
+      const created = await guard(() => createAnnotation(documentId, { ...place, ...content }, write))
       replace(created)
       setDraft(null)
       setToolState('select')
@@ -264,6 +271,7 @@ export function useDocumentReview(
   return {
     documentId,
     room,
+    piloti,
     load,
     retry: () => setAttempt((value) => value + 1),
     annotations,
@@ -273,16 +281,15 @@ export function useDocumentReview(
     tool,
     setTool,
     draft,
-    setDraft,
+    setDraft: placeDraft,
     selectedId,
-    select: setSelectedId,
+    select,
     hoveredId,
     hover: setHoveredId,
     filter,
     setFilter,
     mine,
     setMine,
-    tour,
     notice,
     dismissNotice: () => setNotice(null),
     create,

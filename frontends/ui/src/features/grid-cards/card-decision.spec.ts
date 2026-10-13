@@ -5,7 +5,9 @@ import { describe, expect, it } from 'vitest'
 import type { GridCard } from '@/shared/cards/schemas'
 import {
   cardKey,
+  cardKeyOfDecisionKey,
   isCardDecision,
+  itemDecisionKey,
   reconcileCardInteractions,
   sanitizeCardInteractions,
 } from './card-decision'
@@ -115,6 +117,38 @@ describe('reconcileCardInteractions', () => {
 
   it('is a no-op when nothing was decided', () => {
     expect(reconcileCardInteractions(undefined, [memory('x')], [memory('x')])).toBeUndefined()
+  })
+})
+
+describe('item decisions', () => {
+  const decided = (key: string) => ({
+    [key]: { decision: 'rejected' as const, decidedAt: '2026-10-13T09:00:00.000Z' },
+  })
+  const canvas = (body: string) =>
+    ({
+      type: 'canvas_activity',
+      document: { id: '00000000-0000-4000-8000-0000000000d1', name: 'Grundriss EG.pdf' },
+      items: [
+        { action: 'proposed', annotation_id: 'ann-7', number: 7, page: 1, shape: 'point', x: 0.1, y: 0.1, kind: 'hint', body },
+      ],
+    }) as unknown as GridCard
+
+  it('keys one item under its card and reads the card back out of the key', () => {
+    const key = itemDecisionKey('canvas_activity-2', 'ann-7')
+    expect(key).toBe('canvas_activity-2#ann-7')
+    expect(cardKeyOfDecisionKey(key)).toBe('canvas_activity-2')
+    expect(cardKeyOfDecisionKey('memory_proposal-0')).toBe('memory_proposal-0')
+  })
+
+  it('fits the route’s 64-character key with a uuid at the highest index', () => {
+    expect(itemDecisionKey('canvas_activity-19', '00000000-0000-4000-8000-000000000000').length).toBeLessThanOrEqual(64)
+  })
+
+  it('keeps an item decision while its card is unchanged, and drops it with the card', () => {
+    const before = [canvas('Treppe')]
+    const key = itemDecisionKey('canvas_activity-0', 'ann-7')
+    expect(reconcileCardInteractions(decided(key), before, [canvas('Treppe')])).toEqual(decided(key))
+    expect(reconcileCardInteractions(decided(key), before, [canvas('Tür')])).toBeUndefined()
   })
 })
 

@@ -117,6 +117,7 @@ from aiq_agent.observability.langfuse_scores import turn_outcome_scores
 from aiq_agent.observability.langfuse_trace_attributes import begin_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import end_trace_contributions
 from aiq_agent.observability.langfuse_trace_attributes import record_posthog_session
+from aiq_agent.observability.langfuse_trace_attributes import record_turn_surface
 from aiq_agent.observability.turn_outcome import begin_turn_outcome
 from aiq_agent.observability.turn_outcome import end_turn_outcome
 from aiq_agent.observability.turn_outcome import record_turn_error
@@ -130,6 +131,8 @@ from aiq_agent.project_context import REQUEST_CONTEXT_ENVELOPE_SIG_HEADER
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.turn.admission import TurnRefusal
 from aiq_agent.turn.admission import refused
+from aiq_agent.turn.payload import thread_reply_requested
+from aiq_agent.turn.payload import turn_surface
 from aiq_agent.turn.response import answer_message_id
 from aiq_agent.turn.streaming import TurnTextFold
 from aiq_api.auth.errors import AuthError
@@ -1312,6 +1315,9 @@ async def _drive(
     # export task of the turn snapshots the context it was created in.
     contributions = begin_trace_contributions()
     record_posthog_session(request.posthog_session_id)
+    # Where the question was asked: the chat, a box on the review canvas, or an
+    # Anmerkung's thread (`turn_surface`), for every span of the turn.
+    record_turn_surface(turn_surface(request.focus_region, reply_in_thread=thread_reply_requested(request)))
     try:
         with pinned_trace(trace_id_for_message(turn.message_id)), user_context(caller), request_trace_tag_context(tags):
             async with session_manager.session(

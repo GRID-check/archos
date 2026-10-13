@@ -14,8 +14,9 @@
  * only a person takes one over or dismisses it. The CHECKs in 0135 hold that
  * too, so the rule does not depend on this file.
  *
- * Every write tells the document's room (`./room`), so everyone looking at the
- * document re-reads; a failed publish never fails the write.
+ * Every write tells the document's room (the `doc:<id>` live channel,
+ * `lib/realtime/document-channel.ts`), so everyone looking at the document
+ * re-reads; a failed publish never fails the write.
  *
  * Only the office's own shelves carry Anmerkungen, the project and the
  * Büroablage. A chat attachment has no folder and no team to act on a mark.
@@ -48,7 +49,7 @@ import {
   type AnnotationRecord,
   type NewAnnotationValues,
 } from './repository'
-import { publishToRoom } from './room'
+import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import type { AnnotationChange } from './room-types'
 import {
   annotationBox,
@@ -187,7 +188,7 @@ function announce(
   change: AnnotationChange,
   actor: AnnotationActor
 ): void {
-  void publishToRoom(documentId, {
+  void publishToDocumentRoom(documentId, {
     kind: 'annotations.changed',
     annotationIds,
     change,
@@ -338,6 +339,8 @@ export function transition(
 }
 
 /** Change one Anmerkung: take it over, dismiss, resolve or reopen it, reword it, assign it, give it a date. */
+const conflict = () => new ConflictError('Somebody changed this Anmerkung a moment ago. Look again.')
+
 export async function updateAnnotation(
   session: AuthorizedSession,
   documentId: string,
@@ -349,6 +352,7 @@ export async function updateAnnotation(
   const doc = await requireWritableDocument(session, documentId)
   const existing = await findDocumentAnnotation(session.organizationId, doc.id, annotationId)
   if (!existing) throw new NotFoundError()
+  if (parsed.expectedStatus && parsed.expectedStatus !== existing.status) throw conflict()
   if (parsed.assigneeUserId) await requireAssignable(session, doc, parsed.assigneeUserId)
 
   const changes: AnnotationChanges = {
@@ -365,7 +369,7 @@ export async function updateAnnotation(
 
   const updated = await updateDocumentAnnotation(session.organizationId, doc.id, annotationId, existing.status, changes)
   // Gone, or a colleague moved it first: say so rather than overwrite their move.
-  if (!updated) throw new ConflictError('Somebody changed this Anmerkung a moment ago. Look again.')
+  if (!updated) throw conflict()
   announce(session, doc.id, [annotationId], 'updated', actor)
   return { annotation: await viewOf(session, doc, annotationId) }
 }

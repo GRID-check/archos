@@ -145,3 +145,36 @@ class TestTurnReasoningEffort:
             _message(reasoning_effort="none")
         with pytest.raises(ValidationError):
             _message(reasoning_effort="max")
+
+
+class TestTheReviewCanvas:
+    """The box a person drew, and the ask to answer in its thread."""
+
+    def test_a_box_is_lifted_and_the_turn_is_a_canvas_turn(self):
+        region = {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2}
+        inputs = extract_turn_inputs(_message(focus_region=region))
+
+        assert inputs.focus_region is not None and inputs.focus_region.page == 2
+        assert inputs.reply_in_thread is False
+        assert inputs.surface == "review_canvas"
+
+    def test_a_thread_reply_needs_the_mark_the_box_belongs_to(self):
+        region = {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2}
+        without_mark = extract_turn_inputs(_message(focus_region=region, reply_in_thread=True))
+        with_mark = extract_turn_inputs(_message(focus_region={**region, "annotation_id": "a-1"}, reply_in_thread=True))
+
+        assert without_mark.reply_in_thread is False and without_mark.surface == "review_canvas"
+        assert with_mark.reply_in_thread is True and with_mark.surface == "annotation_thread"
+
+    def test_a_plain_question_is_a_chat_turn(self):
+        assert extract_turn_inputs(_message()).surface == "chat"
+        assert extract_turn_inputs("Wie hoch?").surface == "chat"
+
+    def test_the_canvas_document_is_set_for_the_tools_and_cleared_next_turn(self):
+        from aiq_agent.common.focus_file import get_focused_document_id
+
+        extract_turn_inputs(_message(focus_document_id="11111111-0000-4000-8000-000000000001"))
+        assert get_focused_document_id() == "11111111-0000-4000-8000-000000000001"
+
+        extract_turn_inputs(_message())
+        assert get_focused_document_id() is None

@@ -28,6 +28,7 @@ from aiq_agent.common.citation_verification import reset_session_registry
 from aiq_agent.common.citation_verification import set_session_registry
 from aiq_agent.common.image_view_budget import begin_image_view_budget
 from aiq_agent.common.image_view_budget import end_image_view_budget
+from aiq_agent.common.image_view_budget import get_image_view_budget
 from aiq_agent.knowledge.project_memory import begin_turn_memory_log
 from aiq_agent.knowledge.project_memory import end_turn_memory_log
 from aiq_agent.knowledge.project_memory import turn_memory_writes
@@ -64,6 +65,10 @@ class TurnRegistries:
     #: their collections (ADR-0087, ``memory/shown_notes.py``). Read by the
     #: memory restriction decision; bound for the ``remember`` tool as well.
     shown_notes: ShownNotes = field(default_factory=ShownNotes)
+    #: How many image views of the turn rendered a REGION of a page
+    #: (``image_view_budget``): whether it looked at the box a person drew.
+    #: Filled when the context exits.
+    regions_viewed: int = 0
 
 
 async def load_session_registry(conversation_id: str | None) -> SourceRegistry:
@@ -133,6 +138,8 @@ async def turn_registries(
         registries.memory_writes = turn_memory_writes()
         registries.restricted_memory_writes = turn_restricted_memory_writes()
         registries.source_collections = _registry_collections(session_registry)
+        budget = get_image_view_budget()
+        registries.regions_viewed = budget.regions_viewed if budget is not None else 0
         unbind_shown_notes(shown_token)
         end_turn_memory_log(memory_token)
         end_image_view_budget(image_token)

@@ -1,22 +1,28 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
-import { MessageSquarePlus, MousePointer2, Sparkles, SquareDashed, X } from 'lucide-react'
+import Link from 'next/link'
+import { MessageSquarePlus, MousePointer2, RotateCcw, Sparkles, SquareDashed, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { Kbd } from '@/components/ui/kbd'
+import { PilotiGlyph } from '@/components/ui/piloti-glyph'
+import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
+import { liveLine } from '@/features/chat/lib/turn-events'
 import { useTranslations } from '@/i18n'
 import type { AnnotationView } from '@/lib/annotations/types'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { cn } from '@/lib/utils'
+import { stepsOf, type CanvasAsk } from '../../hooks/use-canvas-ask'
 import type { DocumentReview as ReviewState, ReviewTool } from '../../hooks/use-document-review'
 import type { RoomPeerState } from '../../hooks/use-document-room'
-import { ReviewPageLayer } from './review-page-layer'
+import { PilotiAnswerCard } from './piloti-answer-card'
+import { isPilotiPeer, ReviewPageLayer } from './review-page-layer'
 import { ReviewPanel } from './review-panel'
 import { DraftCard, ThreadCard } from './thread-card'
 
@@ -24,16 +30,23 @@ const TOOLS: Array<{ tool: ReviewTool; key: string; icon: typeof MousePointer2 }
   { tool: 'select', key: 'V', icon: MousePointer2 },
   { tool: 'point', key: 'C', icon: MessageSquarePlus },
   { tool: 'region', key: 'R', icon: SquareDashed },
+  { tool: 'ask', key: 'P', icon: Sparkles },
 ]
+
+/** Which tools a reader has: marks need the right to set them; Piloti needs a project to ask in. */
+const toolOffered = (tool: ReviewTool, review: ReviewState): boolean =>
+  tool === 'select' || (tool === 'ask' ? review.piloti.available : review.canAnnotate)
 
 /** Whether a key press belongs to a field the reader is typing in. */
 const typing = (target: EventTarget | null) =>
   target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
 
-/** The people in the room, one face per person however many tabs they have open. */
+/** The people in the room, one face per person however many tabs they have open. Piloti is not one of them. */
 function people(peers: readonly RoomPeerState[]): RoomPeerState[] {
   const byUser = new Map<string, RoomPeerState>()
-  for (const state of peers) if (!byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
+  for (const state of peers) {
+    if (!isPilotiPeer(state) && !byUser.has(state.peer.userId)) byUser.set(state.peer.userId, state)
+  }
   return [...byUser.values()]
 }
 
@@ -52,18 +65,19 @@ function Presence({
 }): JSX.Element | null {
   const t = useTranslations('files')
   const others = people(review.room.peers)
-  const pilotiHere = review.tour !== null
-  if (others.length === 0 && !pilotiHere) return null
+  // Piloti in the room as itself: a peer the server publishes while it works on the document.
+  const piloti = review.room.peers.find(isPilotiPeer) ?? null
+  if (others.length === 0 && !piloti) return null
   return (
     <div className="flex items-center -space-x-1" data-testid="review-presence">
-      {pilotiHere && (
+      {piloti && (
         <Tooltip>
           <TooltipTrigger asChild>
-            <span className="bg-foreground text-background ring-background relative flex size-7 items-center justify-center rounded-full ring-2">
-              <Sparkles className="size-3.5" aria-hidden />
+            <span data-testid="review-presence-piloti" className="ring-background rounded-full ring-2">
+              <PilotiGlyph size="md" working={Boolean(piloti.activity)} label="Piloti" />
             </span>
           </TooltipTrigger>
-          <TooltipContent>{t('review.pilotiWorking')}</TooltipContent>
+          <TooltipContent>{piloti.activity?.label || t('review.pilotiWorking')}</TooltipContent>
         </Tooltip>
       )}
       {others.map((state) => {
@@ -99,6 +113,90 @@ function Presence({
   )
 }
 
+/** The whole-document review asked of Piloti: the latest one, while it is in the header. */
+const documentReviewOf = (asks: readonly CanvasAsk[]): CanvasAsk | null =>
+  asks.findLast((ask) => ask.region === null && !ask.replyInThread) ?? null
+
+/**
+ * „Piloti prüfen lassen" in place: Piloti goes through the document while it
+ * stays open, its findings landing as proposals through the room, its pointer
+ * on the pages. The header says what it is doing, compactly, and where the
+ * conversation is.
+ */
+function PilotiReview({ review }: { review: ReviewState }): JSX.Element {
+  const t = useTranslations('files')
+  const tChat = useTranslations('chat')
+  const { piloti } = review
+  const run = documentReviewOf(piloti.asks)
+  if (!run) {
+    return (
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        className="h-8 gap-1.5"
+        data-testid="review-with-piloti"
+        disabled={piloti.busy}
+        onClick={() => piloti.ask({ text: t('review.reviewSeed'), region: null, effort: 'medium' })}
+      >
+        <Sparkles className="size-3.5" aria-hidden />
+        {t('review.reviewWithPiloti')}
+      </Button>
+    )
+  }
+  const working = run.status === 'thinking'
+  const line = working
+    ? (liveLine(stepsOf(run.view), tChat) ?? t('review.piloti.reviewing'))
+    : run.status === 'failed'
+      ? t('review.piloti.reviewFailed')
+      : t('review.piloti.reviewDone')
+  return (
+    <div
+      role="status"
+      data-testid="review-piloti-status"
+      className="border-border/70 bg-muted/40 flex h-8 max-w-80 items-center gap-2 rounded-full border pr-1 pl-1"
+    >
+      <PilotiGlyph working={working} />
+      {working ? (
+        <ShimmerText className="min-w-0 flex-1 text-xs">{line}</ShimmerText>
+      ) : (
+        <span className="text-foreground min-w-0 flex-1 truncate text-xs font-medium">{line}</span>
+      )}
+      {piloti.conversationHref && (
+        <Button asChild variant="ghost" size="sm" className="h-6 px-2 text-xs">
+          <Link href={piloti.conversationHref} data-testid="review-piloti-conversation">
+            {t('review.piloti.openConversation')}
+          </Link>
+        </Button>
+      )}
+      {run.status === 'failed' && (
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="size-6 rounded-full [&_svg]:size-3"
+          aria-label={t('review.piloti.retry')}
+          onClick={() => piloti.retry(run.id)}
+        >
+          <RotateCcw aria-hidden />
+        </Button>
+      )}
+      <Button
+        type="button"
+        variant="ghost"
+        size="icon"
+        className="size-6 rounded-full [&_svg]:size-3"
+        aria-label={working ? t('review.piloti.stop') : t('review.piloti.close')}
+        title={working ? t('review.piloti.stop') : t('review.piloti.close')}
+        data-testid="review-piloti-dismiss"
+        onClick={() => piloti.dismiss(run.id)}
+      >
+        <X aria-hidden />
+      </Button>
+    </div>
+  )
+}
+
 /**
  * The focused review of one document: the sheet, the marks on it, the threads
  * under them, and the people looking at it with you.
@@ -108,9 +206,10 @@ function Presence({
  * it, without a form in the way (C, click, type, Enter). Together: a Jour fixe
  * or a call where everybody looks at the same sheet, sees each other's
  * pointers, follows whoever is talking, and watches the marks land. Piloti is
- * in the room as a colleague whose findings arrive as proposals: its pointer
- * walks to each one as it lands, and nothing it sets counts until a person
- * takes it over.
+ * in the room as a colleague: asked about a box (P, or from a draft or a
+ * thread), it answers beside it; asked to review the document, it works
+ * through it with its own pointer, and its findings arrive as proposals that
+ * count only once a person takes one over.
  *
  * Everything else of the workspace is gone while it is open (a full-screen
  * `Dialog`, the overlay the design language gives an artifact looked at with
@@ -125,8 +224,6 @@ export function DocumentReviewMode({
   fassungLabel,
   canPickAssignee,
   focusRequest,
-  onAskPiloti,
-  onReviewWithPiloti,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -137,14 +234,12 @@ export function DocumentReviewMode({
   canPickAssignee: boolean
   /** A mark to open at, when the review was entered from one. */
   focusRequest?: { annotationId: string; key: number } | null
-  onAskPiloti?: (annotation: AnnotationView) => void
-  /** Ask Piloti to go through the document and propose what it finds. */
-  onReviewWithPiloti?: () => void
 }): JSX.Element {
   const t = useTranslations('files')
   const [focus, setFocus] = useState<{ page: number; y: number; key: string; instant?: boolean } | null>(null)
   const [following, setFollowing] = useState<string | null>(null)
-  const { annotations, select, setTool, tool, selectedId, draft, setDraft, room } = review
+  const { annotations, select, setTool, tool, selectedId, draft, setDraft, room, piloti } = review
+  const openAsk = piloti.asks.find((ask) => ask.id === piloti.openId) ?? null
 
   const bring = useCallback(
     (annotation: AnnotationView) => {
@@ -204,9 +299,10 @@ export function DocumentReviewMode({
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
       if (event.key === 'Escape') {
-        if (typing(event.target) && !draft) return
+        if (typing(event.target) && !draft && !openAsk) return
         event.preventDefault()
-        if (draft) setDraft(null)
+        if (openAsk) piloti.open(null)
+        else if (draft) setDraft(null)
         else if (following) setFollowing(null)
         else if (tool !== 'select') setTool('select')
         else if (selectedId) select(null)
@@ -217,6 +313,7 @@ export function DocumentReviewMode({
       const key = event.key.toLowerCase()
       if (key === 'v') setTool('select')
       else if ((key === 'c' || key === 'r') && review.canAnnotate) setTool(key === 'c' ? 'point' : 'region')
+      else if (key === 'p' && piloti.available) setTool('ask')
       else if (key === 'j' || key === 'k') {
         const next = review.step(key === 'j' ? 1 : -1)
         if (next) bring(next)
@@ -231,17 +328,18 @@ export function DocumentReviewMode({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, draft, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
+  }, [open, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
 
   /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
-  const tools = review.canAnnotate ? (
+  const offered = TOOLS.filter(({ tool: option }) => toolOffered(option, review))
+  const tools = offered.length > 1 ? (
     <div
       role="toolbar"
       aria-label={t('review.toolsLabel')}
       data-testid="review-tools"
       className="bg-popover/95 border-border/70 pointer-events-auto absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-xl border p-1 shadow-md backdrop-blur-md"
     >
-      {TOOLS.map(({ tool: option, key, icon: Icon }) => (
+      {offered.map(({ tool: option, key, icon: Icon }) => (
         <Tooltip key={option}>
           <TooltipTrigger asChild>
             <button
@@ -322,19 +420,7 @@ export function DocumentReviewMode({
               </span>
             )}
             <Presence review={review} following={following} onFollow={setFollowing} />
-            {onReviewWithPiloti && review.canAnnotate && (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8 gap-1.5"
-                data-testid="review-with-piloti"
-                onClick={onReviewWithPiloti}
-              >
-                <Sparkles className="size-3.5" aria-hidden />
-                {t('review.reviewWithPiloti')}
-              </Button>
-            )}
+            {piloti.available && review.canAnnotate && <PilotiReview review={review} />}
           </div>
         </header>
 
@@ -371,6 +457,7 @@ export function DocumentReviewMode({
                   page={page}
                   review={review}
                   focused
+                  renderAsk={(ask, { flip }) => <PilotiAnswerCard key={ask.id} review={review} ask={ask} flip={flip} />}
                   renderThread={({ flip }) => {
                     if (draft && draft.page === page) {
                       return <DraftCard review={review} draft={draft} flip={flip} canPickAssignee={canPickAssignee} />
@@ -383,7 +470,6 @@ export function DocumentReviewMode({
                         annotation={selected}
                         flip={flip}
                         canPickAssignee={canPickAssignee}
-                        onAskPiloti={onAskPiloti}
                         onCopyLink={(annotation) => {
                           const url = new URL(window.location.href)
                           url.searchParams.set('doc', annotation.documentId)

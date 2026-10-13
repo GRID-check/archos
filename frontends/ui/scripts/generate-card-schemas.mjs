@@ -119,12 +119,35 @@ export const refParserOverride = (node) => {
   return node.description ? `${target}.describe(${JSON.stringify(node.description)})` : target
 }
 
+/**
+ * Emit a tagged union of defs — Pydantic's `Annotated[A | B, Field(discriminator=…)]`,
+ * which it writes as `oneOf` of `$ref`s beside a `discriminator` — as
+ * `z.discriminatedUnion`.
+ *
+ * Left to the library, such a node becomes `z.any().superRefine(…)` written
+ * against Zod 4's `z.core` types, which this repo's Zod does not have: the
+ * module stops compiling, and the field's type is erased to `any` besides.
+ * Only the shape Pydantic emits is taken (every branch a `$ref`); anything else
+ * returns undefined and goes to the library as before.
+ */
+export const discriminatedOneOfOverride = (node) => {
+  if (!node || typeof node !== 'object' || !Array.isArray(node.oneOf)) return undefined
+  const property = node.discriminator?.propertyName
+  if (typeof property !== 'string' || !node.oneOf.every((entry) => typeof entry?.$ref === 'string')) return undefined
+  const members = node.oneOf.map((entry) => exportName(refToDefName(entry.$ref))).join(', ')
+  const union = `z.discriminatedUnion(${JSON.stringify(property)}, [${members}])`
+  return node.description ? `${union}.describe(${JSON.stringify(node.description)})` : union
+}
+
+/** Every override the generator applies, first match wins. */
+export const cardParserOverride = (node, refs) => refParserOverride(node, refs) ?? discriminatedOneOfOverride(node, refs)
+
 /** The whole `generated.ts` module, as text. Pure — no file system. */
 export function buildCardSchemaModule(root) {
   const defs = root.$defs ?? root.definitions ?? {}
 
   const declarations = topologicallyOrderedDefNames(root).map((defName) => {
-    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, parserOverride: refParserOverride })
+    const zodExpr = jsonSchemaToZod(defs[defName], { module: false, parserOverride: cardParserOverride })
     return `export const ${exportName(defName)} = ${zodExpr}`
   })
 

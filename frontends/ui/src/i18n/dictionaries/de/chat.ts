@@ -571,6 +571,43 @@ export const chat: typeof en.chat = {
           'Diese Unterhaltung gehört zu keinem Projekt, es gibt hier also keine Ablage zu ändern.',
       },
     },
+    // Was Piloti an einem Dokument getan hat: Anmerkungen gesetzt, in einem
+    // Thread geantwortet. Je Anmerkung ein „Übernehmen“ oder „Verwerfen“, und
+    // der Weg in die Prüfansicht an genau diese Stelle. Eine Datei heißt hier
+    // Dokument, nie „Plan“.
+    canvasActivity: {
+      headline: {
+        proposed: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}',
+        repliedOne: 'Im Thread von #{number} geantwortet',
+        repliedMany: 'In {count} Threads geantwortet',
+        both: '{count, plural, one {# Anmerkung vorgeschlagen} other {# Anmerkungen vorgeschlagen}}, in {threads, plural, one {einem Thread} other {# Threads}} geantwortet',
+      },
+      kinds: {
+        hint: 'Hinweis',
+        question: 'Rückfrage',
+        defect: 'Mangel',
+      },
+      page: 'Seite {page}',
+      repliedIn: 'Antwort im Thread von #{number}',
+      show: 'Im Dokument zeigen',
+      showMarkLabel: 'Anmerkung {number} im Dokument zeigen',
+      showThreadLabel: 'Thread von Anmerkung {number} im Dokument zeigen',
+      showError: 'Das Dokument konnte nicht geöffnet werden.',
+      accept: 'Übernehmen',
+      accepting: 'Wird übernommen …',
+      acceptLabel: 'Anmerkung {number} übernehmen',
+      reject: 'Verwerfen',
+      rejectLabel: 'Anmerkung {number} verwerfen',
+      state: {
+        proposed: 'Vorgeschlagen',
+        open: 'Übernommen',
+        resolved: 'Erledigt',
+        dismissed: 'Verworfen',
+        gone: 'Nicht mehr vorhanden',
+      },
+      error: 'Konnte nicht gespeichert werden.',
+      forbidden: 'Sie können diese Anmerkung nicht ändern.',
+    },
     verdictHeader: {
       confidenceHigh: 'hohe Sicherheit',
       confidenceMedium: 'mittlere Sicherheit',

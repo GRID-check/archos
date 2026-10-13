@@ -576,7 +576,20 @@ export function FilePreviewPane({
    * nobody but its reviewers reads. One instance for the inline preview and
    * the focused review, so the tab is in the room once.
    */
-  const review = useDocumentReview(file.id, { enabled: pdfInWell && showMetadataPanel && !isHeld })
+  const review = useDocumentReview(file.id, {
+    enabled: pdfInWell && showMetadataPanel && !isHeld,
+    // Piloti on the canvas. Over the chat (the pane is its peek) a question is
+    // a turn of the chat's own conversation, through its driver, so closing
+    // the review finds it in the transcript; elsewhere it goes into the
+    // document's own conversation (`use-canvas-ask.ts`).
+    piloti: {
+      projectId: scope === 'archiv' ? null : projectId,
+      fileName: file.filename,
+      versionState: file.versionState ?? null,
+      shelf: 'project',
+      chatHosted: inChat,
+    },
+  })
   const [reviewOpen, setReviewOpen] = useState(false)
   const [reviewFocus, setReviewFocus] = useState<{ annotationId: string; key: number } | null>(null)
   const openReview = useCallback((annotationId?: string) => {
@@ -592,14 +605,18 @@ export function FilePreviewPane({
   const markParam = searchParams?.get('mark') ?? null
   const docParam = searchParams?.get('doc') ?? null
   useEffect(() => {
-    if (!reviewParam || docParam !== file.id || !pdfInWell) return
+    // In the chat the pane is the peek, and `doc` there means „a new chat about
+    // this file" (`project-chat-client.tsx`): a link into the review of the
+    // peeked document carries `review` and `mark` alone.
+    const forThisFile = docParam === file.id || (docParam === null && inChat)
+    if (!reviewParam || !forThisFile || !pdfInWell) return
     openReview(markParam ?? undefined)
     const params = new URLSearchParams(searchParams?.toString() ?? '')
     params.delete('review')
     params.delete('mark')
     const query = params.toString()
     router.replace(query ? `${pathname ?? ''}?${query}` : (pathname ?? ''), { scroll: false })
-  }, [reviewParam, markParam, docParam, file.id, pdfInWell, openReview, pathname, router, searchParams])
+  }, [reviewParam, markParam, docParam, file.id, inChat, pdfInWell, openReview, pathname, router, searchParams])
 
   useEffect(() => {
     loadPreview()
@@ -1639,33 +1656,6 @@ export function FilePreviewPane({
           }
           canPickAssignee={canCollaborate}
           focusRequest={reviewFocus}
-          onAskPiloti={
-            projectId
-              ? (annotation) =>
-                  askAboutFile({
-                    projectId,
-                    file,
-                    ask: t('annotations.askSeed', {
-                      number: annotation.number,
-                      kind: t(`annotations.kinds.${annotation.kind}`),
-                      page: annotation.page,
-                      body: annotation.body,
-                    }),
-                    navigate: (href) => router.push(href),
-                  })
-              : undefined
-          }
-          onReviewWithPiloti={
-            projectId
-              ? () =>
-                  askAboutFile({
-                    projectId,
-                    file,
-                    ask: t('review.reviewSeed'),
-                    navigate: (href) => router.push(href),
-                  })
-              : undefined
-          }
         />
       )}
     </div>

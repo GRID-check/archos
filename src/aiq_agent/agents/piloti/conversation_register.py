@@ -52,8 +52,12 @@ from aiq_agent.knowledge.restricted_use import bind_restricted_use
 from aiq_agent.knowledge.restricted_use import without_restricted
 from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
 from aiq_agent.memory.shown_notes import ShownNotes
+from aiq_agent.observability.turn_outcome import record_turn_facts
 from aiq_agent.project_context import GridRequestContext
 from aiq_agent.stages import schedule_post_answer_stages
+from aiq_agent.tools.canvas.policy import withhold_restricted_for_thread
+from aiq_agent.tools.canvas.presence import begin_canvas_presence
+from aiq_agent.tools.canvas.presence import leave_canvas
 from aiq_agent.turn.admission import PROFILE_AGENT_NAME
 from aiq_agent.turn.admission import TurnLedgers
 from aiq_agent.turn.admission import TurnOutcome
@@ -258,6 +262,8 @@ def _turn_state(
         collection_scope=[entry.collection for entry in header_scope] if header_scope else None,
         focus_file_name=inputs.focus_file_name,
         focus_shelf=inputs.focus_shelf,
+        focus_region=inputs.focus_region,
+        reply_in_thread=inputs.reply_in_thread,
         skip_clarifier=skip_clarifier,
         project_context=context.project_context,
         platform_lessons=context.platform_lessons,
@@ -284,6 +290,10 @@ def _finished(
     what gates them is declared in `aiq_agent/stages/`. Every fact a gate may
     read is captured here, while the request context is still live.
     """
+    if inputs.focus_region is not None:
+        # Whether the turn looked at the box the person drew (a region view
+        # ran), on the turn's root: the one fact the review canvas rests on.
+        record_turn_facts(focus_region_viewed=registries.regions_viewed > 0)
     if outcome.refusal is not None:
         return refused(outcome.refusal, message_id=message_id)
     assert outcome.state is not None
@@ -498,6 +508,11 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
                 request, conversation_id, answer_message_id=turn_answer_message_id(conversation_id)
             )
         )
+        if inputs.reply_in_thread:
+            # Asked in an Anmerkung's thread, which everyone who opens the
+            # document reads: no restricted folder in this turn's scope, so its
+            # own research cannot be what keeps the reply out (`tools/canvas/policy.py`).
+            withhold_restricted_for_thread()
         # What the conversation drew on from OTHER projects (ADR-0094): a fresh
         # object every turn, filled from the turn context and by the lookups.
         bind_cross_project_turn(CrossProjectTurn())
@@ -517,6 +532,9 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
         ledgers = TurnLedgers()
         fold = TurnTextFold()
         terminal: RunFinishedBody | None = None
+        # Where Piloti pointed on a document this turn (`tools/canvas/presence.py`):
+        # bound before the graph so its tools write into it, left in the `finally`.
+        presence = begin_canvas_presence()
         try:
             # The profiler root opens BEFORE the setup I/O so every setup step has a
             # row; `inline_flush=False` posts its final batch after the answer is out.
@@ -559,6 +577,9 @@ def _turn_runner(agent: ConversationGraph, config: ChatDeepResearcherConfig, sta
             # Two BFF round-trips, posted AFTER the reader has the answer; in the
             # `finally` so a consumer that closes the stream early still posts.
             await flush_after_answer(profiler, ledgers.cost_tracker)
+            # Piloti's cursor and highlights leave the document with the turn,
+            # however it ended: presence, not content, so the harness sends it.
+            await leave_canvas(presence)
 
     return _run
 

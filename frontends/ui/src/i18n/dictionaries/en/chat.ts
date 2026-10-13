@@ -570,6 +570,42 @@ export const chat = {
         noProject: 'This chat is not attached to a project, so there is no file store to change.',
       },
     },
+    // What Piloti did on a document: marks it set, threads it answered in.
+    // One „take over" or „discard" per mark, and the way into the review at
+    // exactly that place.
+    canvasActivity: {
+      headline: {
+        proposed: '{count, plural, one {# annotation proposed} other {# annotations proposed}}',
+        repliedOne: 'Replied in the thread of #{number}',
+        repliedMany: 'Replied in {count} threads',
+        both: '{count, plural, one {# annotation proposed} other {# annotations proposed}}, replied in {threads, plural, one {one thread} other {# threads}}',
+      },
+      kinds: {
+        hint: 'Note',
+        question: 'Question',
+        defect: 'Defect',
+      },
+      page: 'Page {page}',
+      repliedIn: 'Reply in the thread of #{number}',
+      show: 'Show in document',
+      showMarkLabel: 'Show annotation {number} in the document',
+      showThreadLabel: 'Show the thread of annotation {number} in the document',
+      showError: 'The document could not be opened.',
+      accept: 'Take over',
+      accepting: 'Taking over …',
+      acceptLabel: 'Take over annotation {number}',
+      reject: 'Discard',
+      rejectLabel: 'Discard annotation {number}',
+      state: {
+        proposed: 'Proposed',
+        open: 'Taken over',
+        resolved: 'Resolved',
+        dismissed: 'Discarded',
+        gone: 'No longer there',
+      },
+      error: 'Could not be saved.',
+      forbidden: 'You cannot change this annotation.',
+    },
     verdictHeader: {
       confidenceHigh: 'high confidence',
       confidenceMedium: 'medium confidence',

@@ -69,7 +69,17 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   // because stored turns carry it.
   submit_draft: 'filing',
   create_task: 'task',
-  // Anmerkungen on the chat's document: read, proposed or answered, one chip.
+  // The review canvas (the `canvas` group; basenames arrive without the
+  // `canvas__` prefix): looking at a page is reading the drawing, everything
+  // else on the canvas shares the Anmerkungen chip. The old single tool's name
+  // stays because stored turns carry it.
+  look: 'drawing',
+  room: 'annotations',
+  point: 'annotations',
+  highlight: 'annotations',
+  marks: 'annotations',
+  mark: 'annotations',
+  reply: 'annotations',
   document_annotations: 'annotations',
   // The file-operation tool proposes and never writes (ADR-0003). One tool
   // with an `operation` since the merge; the four old names stay because

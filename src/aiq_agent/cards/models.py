@@ -1119,6 +1119,79 @@ class FileOperationProposalCard(CardModel):
         return self
 
 
+# ── Canvas activity (system-emitted) ───────────────────────────────────────
+# What Piloti did on a document in this turn: the marks it proposed and the
+# threads it answered (`tools/canvas/`). The chat says it in prose; the card is
+# the proof, built from what the BFF returned (the mark's id and number), so a
+# reader can open the document at exactly that mark. One card per document per
+# turn, extended by every further call (`tools/canvas/cards.py`), the way the
+# file-operation card is. Interactive (`INTERACTIVE_CARD_TYPES`): a proposed mark
+# is taken over or dismissed on this card or on the document, whichever the
+# person reaches first. Both go through the same annotations API, which changes a
+# mark's status by compare-and-swap, so the second of the two sees a 409 and
+# shows the state the first one left. Its decisions are stored per mark.
+
+#: How many entries one card carries: the `mark` tool proposes at most 20 per call.
+MAX_CANVAS_ACTIVITY_ITEMS = 20
+
+
+class CanvasDocument(CardModel):
+    """The document the activity happened on, by the BFF's id and its file name."""
+
+    id: str = Field(
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description="The document's id, as the BFF returned it",
+    )
+    name: str = Field(min_length=1, description="The file name, as the BFF returned it")
+
+
+class CanvasProposedItem(CardModel):
+    """A mark Piloti proposed: a person takes it over or dismisses it on the document."""
+
+    action: Literal["proposed"] = "proposed"
+    annotation_id: str = Field(min_length=1, description="The mark's id")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    page: int = Field(ge=1, description="The page, from 1")
+    shape: Literal["point", "region"]
+    x: float = Field(ge=0, le=1, description="Left edge (or the point), as a share of the page's width")
+    y: float = Field(ge=0, le=1, description="Top edge (or the point), as a share of the page's height")
+    w: float | None = Field(default=None, gt=0, le=1, description="Width share, for a region")
+    h: float | None = Field(default=None, gt=0, le=1, description="Height share, for a region")
+    kind: Literal["hint", "question", "defect"]
+    body: str = Field(min_length=1, max_length=2000, description="What the mark says")
+
+
+class CanvasRepliedItem(CardModel):
+    """An answer Piloti wrote in a mark's thread."""
+
+    action: Literal["replied"] = "replied"
+    annotation_id: str = Field(min_length=1, description="The mark whose thread was answered")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    excerpt: str = Field(min_length=1, max_length=300, description="The start of the reply")
+
+
+CanvasActivityItem = Annotated[CanvasProposedItem | CanvasRepliedItem, Field(discriminator="action")]
+
+
+class CanvasActivityCard(CardModel):
+    """What Piloti did on one document in this turn: marks proposed, threads answered.
+
+    A proposed mark is taken over or dismissed from here as well as on the
+    document, through the same annotations API.
+
+    System-emitted by the canvas tools (``src/aiq_agent/tools/canvas/``) after
+    the BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).
+    """
+
+    type: Literal["canvas_activity"] = "canvas_activity"
+    document: CanvasDocument
+    items: list[CanvasActivityItem] = Field(
+        min_length=1,
+        max_length=MAX_CANVAS_ACTIVITY_ITEMS,
+        description="What happened, in the order it happened",
+    )
+
+
 # ---------------------------------------------------------------------------
 # IFC/BIM viewer card
 # ---------------------------------------------------------------------------
@@ -1681,6 +1754,7 @@ GridCard = (
     | DocumentDraftCard
     | TaskCreatedCard
     | FileOperationProposalCard
+    | CanvasActivityCard
     | IfcViewerCard
     | IfcComplianceCard
     | IfcScheduleCard
@@ -1698,6 +1772,7 @@ __all__ = [
     "CalculationLimit",
     "CalculationOperand",
     "CalculationStep",
+    "CanvasActivityCard",
     "CardModel",
     "DocumentDraftCard",
     "DocumentGridCard",

@@ -14,6 +14,10 @@
             "answerMessageId": {
               "type": "string",
               "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
             }
           },
           "required": [
@@ -28,6 +32,10 @@
               "const": "propose"
             },
             "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
               "type": "string",
               "format": "uuid"
             },
@@ -127,6 +135,10 @@
               "type": "string",
               "format": "uuid"
             },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
             "annotationId": {
               "type": "string",
               "format": "uuid"
@@ -143,6 +155,129 @@
             "body"
           ],
           "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "room"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "point"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "page": {
+              "type": "integer"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "op",
+            "page",
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "highlight"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "page": {
+              "type": "integer"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number"
+            },
+            "h": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "op",
+            "page",
+            "x",
+            "y",
+            "w",
+            "h",
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "leave"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
         }
       ],
       "discriminator": {
@@ -153,6 +288,9 @@
       "type": "object",
       "properties": {
         "documentId": {
+          "type": "string"
+        },
+        "documentName": {
           "type": "string"
         },
         "annotations": {
@@ -327,6 +465,7 @@
       },
       "required": [
         "documentId",
+        "documentName",
         "annotations"
       ],
       "additionalProperties": true
@@ -335,6 +474,9 @@
       "type": "object",
       "properties": {
         "documentId": {
+          "type": "string"
+        },
+        "documentName": {
           "type": "string"
         },
         "proposed": {
@@ -350,12 +492,63 @@
               },
               "page": {
                 "type": "integer"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "point",
+                  "region"
+                ]
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "h": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "hint",
+                  "question",
+                  "defect"
+                ]
+              },
+              "body": {
+                "type": "string"
               }
             },
             "required": [
               "id",
               "number",
-              "page"
+              "page",
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h",
+              "kind",
+              "body"
             ],
             "additionalProperties": true
           }
@@ -363,6 +556,7 @@
       },
       "required": [
         "documentId",
+        "documentName",
         "proposed"
       ],
       "additionalProperties": true
@@ -371,6 +565,9 @@
       "type": "object",
       "properties": {
         "documentId": {
+          "type": "string"
+        },
+        "documentName": {
           "type": "string"
         },
         "annotationId": {
@@ -385,9 +582,169 @@
       },
       "required": [
         "documentId",
+        "documentName",
         "annotationId",
         "number",
         "replies"
+      ],
+      "additionalProperties": true
+    },
+    "InternalRoomResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "peers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "piloti"
+                ]
+              },
+              "page": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "viewport": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "integer"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "y"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selectedMarkNumber": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "draft": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "integer"
+                      },
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number"
+                      },
+                      "h": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "page",
+              "viewport",
+              "selectedMarkNumber",
+              "draft"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "marks": {
+          "type": "object",
+          "properties": {
+            "open": {
+              "type": "integer"
+            },
+            "proposed": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "open",
+            "proposed"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "peers",
+        "marks"
+      ],
+      "additionalProperties": true
+    },
+    "InternalRoomGestureResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "ok": {
+          "const": true
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "ok"
       ],
       "additionalProperties": true
     }

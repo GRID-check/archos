@@ -356,6 +356,18 @@ llms:
     request_timeout: 25
     reasoning_effort: none
 
+# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# works a document the way a person at the canvas does. `look` at a page or a
+# box on it, see who is in the `room`, `point` and `highlight` for everyone,
+# read the `marks`, propose a `mark` (a person takes it over) and `reply` in a
+# thread. The model calls them `canvas__<tool>`. Each acts on a document the
+# model names, the one open on the canvas, or the conversation's subject; the
+# BFF checks it against the asker's access and the turn's signed scope, from
+# the signed envelope. Chat only, because only a turn carries an envelope.
+function_groups:
+  canvas:
+    _type: document_canvas
+
 functions:
   data_sources:
     _type: data_source_registry
@@ -709,14 +721,6 @@ functions:
   project_lookup:
     _type: project_lookup
 
-  # Anmerkungen on the document a chat is about (src/aiq_agent/tools/annotations):
-  # read the marks people set, propose findings as Piloti's suggestions for a
-  # person to take over or dismiss, answer in a thread. Acts only on the
-  # conversation's subject document, which the BFF resolves from the signed
-  # envelope; chat only, because only a turn carries an envelope.
-  document_annotations:
-    _type: document_annotations
-
   # BIM/IFC: deterministic structured queries over the project's uploaded IFC
   # model (ADR-0045). Distinct from knowledge_search in kind, not degree — that
   # tool retrieves text about REGULATIONS, this one runs SQL against THIS
@@ -778,7 +782,8 @@ functions:
       - file_draft
       - create_task
       - project_lookup
-      - document_annotations
+      # The `canvas` function group (below): seven tools, `canvas__look` …
+      - canvas
       - ifc_query
       - ifc_measure
       - ask_user

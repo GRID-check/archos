@@ -2284,7 +2284,7 @@ async def test_the_posthog_session_of_a_turn_becomes_trace_metadata_when_identit
     sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
-    assert seen[0]["metadata"] == {"$posthog_session_id": _POSTHOG_SESSION}
+    assert seen[0]["metadata"] == {"$posthog_session_id": _POSTHOG_SESSION, "turn_surface": "chat"}
 
 
 async def test_a_turn_without_identity_attributes_keeps_the_session_off_the_trace(harness, monkeypatch):
@@ -2294,7 +2294,36 @@ async def test_a_turn_without_identity_attributes_keeps_the_session_off_the_trac
     sock.client(type="user_message", message_id="t1", text="?", posthog_session_id=_POSTHOG_SESSION)
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
-    assert seen[0]["metadata"] == {}
+    assert seen[0]["metadata"] == {"turn_surface": "chat"}
+
+
+@pytest.mark.parametrize(
+    ("fields", "surface", "tags"),
+    [
+        ({}, "chat", []),
+        (
+            {"focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2}},
+            "review_canvas",
+            ["surface:review-canvas"],
+        ),
+        (
+            {
+                "focus_region": {"page": 2, "x": 0.1, "y": 0.2, "w": 0.3, "h": 0.2, "annotation_id": "a-1"},
+                "reply_in_thread": True,
+            },
+            "annotation_thread",
+            ["surface:review-canvas"],
+        ),
+    ],
+)
+async def test_where_the_question_was_asked_is_on_every_span_of_the_turn(harness, fields, surface, tags):
+    seen: list = []
+    sock = harness(_contributions_seen_by(seen)).connect()
+    sock.client(type="user_message", message_id="t1", text="?", **fields)
+    await until(lambda: _last(sock) == "RUN_FINISHED")
+
+    assert seen[0]["metadata"]["turn_surface"] == surface
+    assert seen[0]["tags"] == tags
 
 
 async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(harness, monkeypatch):
@@ -2305,4 +2334,4 @@ async def test_a_malformed_session_id_costs_the_replay_link_and_not_the_turn(har
     await until(lambda: _last(sock) == "RUN_FINISHED")
 
     assert sock.events()[-1]["outcome"] == "answered"
-    assert seen[0]["metadata"] == {}
+    assert "$posthog_session_id" not in seen[0]["metadata"]

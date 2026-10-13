@@ -53,12 +53,15 @@ Trace metadata on the root:
 | `reference_fit_scored`, `reference_fit_top`, `reference_fit_fitting` | the reference fit (ADR-0064 use 10): how many catalog lines it scored, the best p(fits), how many moved ahead |
 | `organization_id`, `project_id` | the tenant, only with identity attributes on |
 | `$posthog_session_id` | the asker's PostHog browser session, only with identity attributes on and a UUIDv7 ([PostHog export](#posthog-export)) |
+| `turn_surface` | where the question was asked: `chat`, `review_canvas` (a box drawn on a document, `user_message.focus_region`) or `annotation_thread` (asked in an Anmerkung's thread, `reply_in_thread` with the mark's id). Recorded by the socket for every turn (`record_turn_surface`); both canvas values also carry the tag `surface:review-canvas` |
+| `focus_region_viewed` | on a turn with a box only: whether a region view (`canvas__look` or `view_knowledge_image` with `region`) ran, read off the turn's image budget (`conversation_register._finished`). `false` is a turn that answered about a drawing it never looked at |
 
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 `confidence:<…>`, `capped:<…>`, `citations-removed`, `quote-not-found`,
 `research-truncated`, `handed-off`, `error:<code>`, `feature:ifc`,
-`feature:cross-project` (a `project_lookup` ran), `feature:annotations` (a
-`document_annotations` call ran), `reference-prefetch`,
+`feature:cross-project` (a `project_lookup` ran), `feature:canvas` (a canvas
+tool ran), `surface:review-canvas` (the question was asked from a document's
+review canvas or one of its threads), `reference-prefetch`,
 `cited-precedent`,
 `feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
 identity attributes on. Tags are labels, never ids or text, with the one
@@ -75,15 +78,22 @@ and score, with each pick's `solved` and the pool's `solved_any` and
 when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`,
 `audience_changed`, `invalid`, `unreachable` or `invalid_arguments`.
 
-Each `document_annotations` call is an `annotate.<operation>` step
-(`annotate.list`, `annotate.propose`, `annotate.reply`;
-`tools/annotations/register.py`): its input the operation and, for `propose`,
-how many proposals were sent; its output counts and numbers, never the text of a
-mark: the document id, and `annotations`, `live` and `by_kind` for a list,
-`proposed` and `pages` for a proposal, the mark's `number` and its `replies`
-for a reply. A refusal is `{"refused": <code>}`: `no_envelope`,
+Each canvas tool (the `canvas` function group, `tools/canvas/`) is a tool
+observation of its own (`canvas__look`, `canvas__room`, `canvas__point`,
+`canvas__highlight`, `canvas__marks`, `canvas__mark`, `canvas__reply`), and
+under it a `canvas.<tool>` step (`calls.observe`): its input the page, whether a
+region was asked, how many proposals were sent; its output counts and numbers,
+never the text of a mark, a reply or a label, nor a person's name: the document
+id, and `annotations`, `live` and `by_kind` for `marks`, `proposed` and `pages`
+for `mark`, the mark's `number` and its `replies` for `reply`, `peers`,
+`drafts` and `selected` for `room`, `viewed` for `look`, `ok` for a gesture. A
+refusal is `{"refused": <code>}`: `no_envelope`, `unresolved_document`,
 `no_document_subject`, `forbidden`, `not_found`, `conflict`, `invalid`,
-`unreachable` or `invalid_arguments`.
+`unreachable`, `invalid_arguments`, or `restricted` (a write everyone who opens
+the document would see, refused because the conversation drew on a restricted
+folder or another project: `tools/canvas/policy.py`). The harness's one call,
+taking Piloti's cursor off a document when the turn ends, is a `canvas.leave`
+step.
 
 ### The decision model
 

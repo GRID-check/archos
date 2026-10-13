@@ -1,0 +1,177 @@
+/**
+ * The canvas's questions to Piloti: which driver carries each, and how an ask
+ * moves from the box being drawn to the answer.
+ *
+ * What is pinned: one conversation per document per tab; over the chat, a
+ * question is a turn of the chat's conversation through the chat's sender and
+ * read back from the chat store (never a second driver on it); elsewhere it
+ * goes to the canvas client; a thread reply's entry goes once its turn ended.
+ */
+
+import { act, renderHook } from '@testing-library/react'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { registerCanvasChatSender, type CanvasChatQuestion } from '@/features/chat/lib/canvas-bridge'
+import { initialTurnView, type TurnView } from '@/features/chat/lib/turn-fold'
+import { useChatStore } from '@/features/chat/store'
+import type { CanvasQuestion, CanvasTurnClient, CanvasTurnClientOptions } from '../lib/canvas-turn-client'
+import { askRegionOf, useCanvasAsk, type UseCanvasAskOptions } from './use-canvas-ask'
+
+const REGION = { page: 1, x: 0.1, y: 0.2, w: 0.3, h: 0.2 }
+
+/** A client that records its questions; the test plays its turns through `onTurn`. */
+function fakeClients() {
+  const made: Array<{ options: CanvasTurnClientOptions; asked: Array<{ question: CanvasQuestion; turnId: string }> }> = []
+  const createClient = (options: CanvasTurnClientOptions): CanvasTurnClient => {
+    const record = { options, asked: [] as Array<{ question: CanvasQuestion; turnId: string }> }
+    made.push(record)
+    return {
+      conversationId: options.conversationId,
+      ensureConversation: async () => {},
+      ask: async (question, turnId) => {
+        record.asked.push({ question, turnId })
+        options.onTurn(initialTurnView(turnId, options.conversationId))
+      },
+      cancel: vi.fn(),
+      close: vi.fn(),
+    }
+  }
+  return { made, createClient }
+}
+
+const finished = (turnId: string, text: string): TurnView => ({
+  ...initialTurnView(turnId, 'conv'),
+  phase: 'finished',
+  outcome: 'answered',
+  text,
+})
+
+const hook = (options: Partial<UseCanvasAskOptions> & Pick<UseCanvasAskOptions, 'createClient'>) =>
+  renderHook((props: Partial<UseCanvasAskOptions>) =>
+    useCanvasAsk({ documentId: 'doc_1', enabled: true, projectId: 'proj_1', fileName: 'Grundriss.pdf', ...options, ...props })
+  )
+
+beforeEach(() => {
+  window.sessionStorage.clear()
+})
+
+afterEach(() => {
+  vi.restoreAllMocks()
+})
+
+describe('asking Piloti on the canvas', () => {
+  it('turns a composing card into a question, and follows its turn to the answer', () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient })
+
+    let composing = ''
+    act(() => {
+      composing = result.current.compose(REGION)
+    })
+    expect(result.current.openId).toBe(composing)
+    expect(result.current.asks[0]).toMatchObject({ status: 'composing', region: REGION })
+
+    let asked = ''
+    act(() => {
+      asked = result.current.ask({ id: composing, text: 'Was ist das?', region: REGION, intent: 'what' })
+    })
+    expect(result.current.asks).toHaveLength(1)
+    expect(result.current.asks[0]).toMatchObject({ id: asked, status: 'thinking', backend: 'canvas', intent: 'what' })
+    expect(result.current.openId).toBe(asked)
+    expect(made[0].asked[0]).toMatchObject({ turnId: asked, question: { text: 'Was ist das?', region: REGION } })
+    expect(made[0].options.title).toBe('Grundriss.pdf · Review')
+
+    act(() => made[0].options.onTurn(finished(asked, 'Eine Brandschutztür.')))
+    expect(result.current.asks[0]).toMatchObject({ status: 'answered', view: { text: 'Eine Brandschutztür.' } })
+  })
+
+  it('keeps one conversation per document for the tab', () => {
+    const first = fakeClients()
+    const a = hook({ createClient: first.createClient })
+    act(() => void a.result.current.ask({ text: 'Eins', region: REGION }))
+    a.unmount()
+
+    const second = fakeClients()
+    const b = hook({ createClient: second.createClient })
+    act(() => void b.result.current.ask({ text: 'Zwei', region: REGION }))
+    expect(second.made[0].options.conversationId).toBe(first.made[0].options.conversationId)
+
+    const other = fakeClients()
+    const c = hook({ createClient: other.createClient, documentId: 'doc_2' })
+    act(() => void c.result.current.ask({ text: 'Drei', region: REGION }))
+    expect(other.made[0].options.conversationId).not.toBe(first.made[0].options.conversationId)
+  })
+
+  it('names the Anmerkung a box belongs to, and drops a thread reply once its turn ended', () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient })
+    let id = ''
+    act(() => {
+      id = result.current.ask({ text: '@Piloti stimmt das?', region: REGION, annotationId: 'ann_3', replyInThread: true, baseline: 0 })
+    })
+    expect(made[0].asked[0].question).toMatchObject({ region: { ...REGION, annotation_id: 'ann_3' }, replyInThread: true })
+    // No card for a thread reply: the thread shows it.
+    expect(result.current.openId).toBeNull()
+
+    act(() => made[0].options.onTurn(finished(id, 'Ja.')))
+    expect(result.current.asks).toEqual([])
+  })
+
+  it('over the chat, asks through the chat and reads the turn from its store', () => {
+    const { made, createClient } = fakeClients()
+    const questions: CanvasChatQuestion[] = []
+    const withdraw = registerCanvasChatSender((question) => {
+      questions.push(question)
+      act(() => useChatStore.setState({ turns: { 'msg-9': initialTurnView('msg-9', 'chat_conv') } }))
+      return { conversationId: 'chat_conv', turnId: 'msg-9' }
+    })
+    const { result } = hook({ createClient, chatHosted: true })
+
+    act(() => void result.current.ask({ text: 'Maße prüfen', region: REGION, effort: 'low' }))
+
+    expect(made).toEqual([])
+    expect(questions).toEqual([
+      {
+        text: 'Maße prüfen',
+        effort: 'low',
+        focus: {
+          documentId: 'doc_1',
+          fileName: 'Grundriss.pdf',
+          versionId: null,
+          versionState: null,
+          shelf: 'project',
+          region: REGION,
+          replyInThread: false,
+        },
+      },
+    ])
+    expect(result.current.asks[0]).toMatchObject({ backend: 'chat', turnId: 'msg-9', status: 'thinking' })
+    expect(result.current.conversationHref).toBe('/app/projects/proj_1/chat?session=chat_conv')
+
+    act(() => useChatStore.setState({ turns: { 'msg-9': { ...finished('msg-9', 'Fehlt.'), conversationId: 'chat_conv' } } }))
+    expect(result.current.asks[0]).toMatchObject({ status: 'answered', view: { text: 'Fehlt.' } })
+    withdraw()
+    act(() => useChatStore.setState({ turns: {} }))
+  })
+
+  it('stands alone when no chat is there to carry the question', () => {
+    const { made, createClient } = fakeClients()
+    const { result } = hook({ createClient, chatHosted: true })
+    act(() => void result.current.ask({ text: 'Was ist das?', region: REGION }))
+    expect(made).toHaveLength(1)
+    expect(result.current.asks[0].backend).toBe('canvas')
+  })
+
+  it('offers nothing without a project to ask in', () => {
+    const { createClient } = fakeClients()
+    const { result } = hook({ createClient, projectId: null })
+    expect(result.current.available).toBe(false)
+  })
+})
+
+describe('askRegionOf', () => {
+  it('keeps a region, and makes a point a small box around it on its page', () => {
+    expect(askRegionOf({ page: 3, x: 0.1, y: 0.2, w: 0.3, h: 0.4 })).toEqual({ page: 3, x: 0.1, y: 0.2, w: 0.3, h: 0.4 })
+    expect(askRegionOf({ page: 1, x: 0.5, y: 0.5, w: null, h: null })).toEqual({ page: 1, x: 0.46, y: 0.46, w: 0.08, h: 0.08 })
+    expect(askRegionOf({ page: 1, x: 0.99, y: 0.01 })).toEqual({ page: 1, x: 0.92, y: 0, w: 0.08, h: 0.08 })
+  })
+})
