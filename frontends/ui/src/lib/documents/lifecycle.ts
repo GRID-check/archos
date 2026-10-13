@@ -87,7 +87,6 @@ import {
   findDocumentVersionTransition,
   type DocumentVersionEffect,
   type DocumentVersionOp,
-  type DocumentVersionState,
   type DocumentVersionListResponse,
   type DocumentVersionTransition,
   type DocumentVersionView,
@@ -444,7 +443,9 @@ const EFFECT_REGISTRY: Record<DocumentVersionEffect, EffectRunner> = {
    * The slot was named before it did anything, and that is why the door could
    * be opened without moving a call site: "only a published version is ever
    * dispatched" is a property of the transition table — this effect appears on
-   * the `publish` row and nowhere else — rather than of somebody remembering
+   * the promoting review rows (`approve`, which publishes in one step since
+   * ADR-0104 rule 5, and `publish` for a version approved before that) and
+   * nowhere else — rather than of somebody remembering
    * where to put the dispatch. Do not call `dispatchDocument` from anywhere
    * else in this module.
    *
@@ -850,12 +851,26 @@ async function assertReviewGuards(
 
 /** The columns a transition stamps, by the state it lands in. */
 function stampFor(
-  to: DocumentVersionState,
+  transition: Pick<DocumentVersionTransition, 'to' | 'op'>,
   session: AuthorizedSession,
   input: TransitionInput,
   now: Date,
 ): Record<string, unknown> {
   const comment = input.comment?.trim() || null
+  const { to } = transition
+  // „Freigeben" approves and publishes in one step (ADR-0104 rule 5): both
+  // stamps, one person, one moment.
+  if (transition.op === 'approve') {
+    return {
+      state: to,
+      reviewedBy: session.userId,
+      reviewedAt: now,
+      approvedBy: session.userId,
+      approvedAt: now,
+      reviewComment: comment,
+      ...(to === 'published' ? { publishedBy: session.userId, publishedAt: now } : {}),
+    }
+  }
   switch (to) {
     case 'in_review':
       return {
@@ -866,15 +881,6 @@ function stampFor(
         // one thing and the row another.
         submittedByActor: input.actingHuman === false ? ('agent' as const) : ('human' as const),
         submittedAt: now,
-      }
-    case 'approved':
-      return {
-        state: to,
-        reviewedBy: session.userId,
-        reviewedAt: now,
-        approvedBy: session.userId,
-        approvedAt: now,
-        reviewComment: comment,
       }
     case 'changes_requested':
     case 'rejected':
@@ -894,26 +900,28 @@ function stampFor(
 /**
  * What a transition writes to the version's review rounds (migration 0136,
  * ADR-0104), beside the stamp {@link stampFor} writes on the version. Only the
- * four review transitions touch a round; publish, update and archive do not.
+ * four review ops touch a round; publish, update and archive do not.
  */
 function reviewRoundFor(
-  to: DocumentVersionState,
+  op: DocumentVersionOp,
   session: AuthorizedSession,
   input: TransitionInput,
 ): ReviewRoundWrite | undefined {
   const comment = input.comment?.trim() || null
-  switch (to) {
-    case 'in_review':
+  switch (op) {
+    case 'submit':
       return {
         kind: 'open',
         requestedBy: session.userId,
         requestedByActor: input.actingHuman === false ? 'agent' : 'human',
         reviewerUserIds: input.reviewerUserIds ?? [],
       }
-    case 'approved':
-    case 'changes_requested':
-    case 'rejected':
-      return { kind: 'decide', outcome: to, decidedBy: session.userId, comment }
+    case 'approve':
+      return { kind: 'decide', outcome: 'approved', decidedBy: session.userId, comment }
+    case 'request_changes':
+      return { kind: 'decide', outcome: 'changes_requested', decidedBy: session.userId, comment }
+    case 'reject':
+      return { kind: 'decide', outcome: 'rejected', decidedBy: session.userId, comment }
     default:
       return undefined
   }
@@ -980,7 +988,8 @@ export async function transitionDocumentVersion(
     selfReview: review.selfReview,
   }
 
-  const stamp = stampFor(transition.to, session, effectInput, new Date())
+  const stamp = stampFor(transition, session, effectInput, new Date())
+  const round = reviewRoundFor(transition.op, session, effectInput)
   // `promotes` rows go through the transaction that also supersedes the
   // previous published version and moves the item's pointer; see the flag.
   const promoted = transition.promotes
@@ -990,17 +999,12 @@ export async function transitionDocumentVersion(
         session.organizationId,
         version.state,
         stamp,
+        round,
       )
     : null
   const swapped = transition.promotes
     ? (promoted?.version ?? null)
-    : await compareAndSwapVersionState(
-        versionId,
-        session.organizationId,
-        version.state,
-        stamp,
-        reviewRoundFor(transition.to, session, effectInput),
-      )
+    : await compareAndSwapVersionState(versionId, session.organizationId, version.state, stamp, round)
   if (!swapped) {
     throw new ConflictError('The version changed while you were deciding', { op })
   }
@@ -1073,18 +1077,12 @@ export async function createDocumentVersion(
     contentHash: input.contentHash,
     createdBy: session.userId,
     originConversationId: input.originConversationId ?? null,
-    // A published version needs an approver, and for an upload the person who
-    // uploaded it IS the assertion — the CHECK is satisfied honestly rather
-    // than worked around. A draft carries none of this.
+    // An upload is published by the person who put it there, and approved by
+    // nobody: the person is the assertion, and an approver column filled with
+    // their name would record a review that never happened (migration 0137).
     ...(transition.to === 'published'
-      ? {
-          state: 'published' as const,
-          approvedBy: session.userId,
-          approvedAt: now,
-          publishedBy: session.userId,
-          publishedAt: now,
-        }
-      : { state: transition.to }),
+      ? { state: 'published' as const, origin: 'upload' as const, publishedBy: session.userId, publishedAt: now }
+      : { state: transition.to, origin: 'draft' as const }),
   }
 
   // A row born `published` cannot be INSERTED and then have its predecessor
@@ -1162,6 +1160,7 @@ export async function forkDraftVersion(
     documentId,
     projectId: document.projectId,
     state: 'draft',
+    origin: 'draft',
     storageKey: source.storageKey,
     storageBucket: source.storageBucket,
     contentType: source.contentType,
@@ -1287,7 +1286,7 @@ export async function replaceVersionContent(
     document,
     version,
     rendered,
-    stamp: stampFor(transition.to, session, {}, new Date()),
+    stamp: stampFor(transition, session, {}, new Date()),
   })
 
   await runEffects({

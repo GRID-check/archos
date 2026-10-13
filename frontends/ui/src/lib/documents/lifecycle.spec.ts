@@ -199,6 +199,7 @@ function version(overrides: Partial<DocumentVersion> = {}): DocumentVersion {
     projectId: 'proj_1',
     versionNumber: 2,
     state: 'in_review',
+    origin: 'draft',
     storageKey: 'org/org_1/project/proj_1/doc/doc_1/v2/plan.md',
     storageBucket: 'grid-org-1',
     contentType: 'text/markdown',
@@ -221,6 +222,14 @@ function version(overrides: Partial<DocumentVersion> = {}): DocumentVersion {
     updatedAt: new Date('2026-09-01T00:00:00Z'),
     ...overrides,
   }
+}
+
+/** „Freigeben" lands through the promoting transaction (ADR-0104 rule 5). */
+function approvedInOneStep(): void {
+  vi.mocked(promoteVersionToPublished).mockResolvedValue({
+    version: version({ state: 'published' }),
+    superseded: [],
+  })
 }
 
 /**
@@ -401,11 +410,11 @@ describe('transitionDocumentVersion — guards', () => {
     vi.mocked(findDocumentVersion).mockResolvedValue(
       version({ submittedBy: session.userId, submittedByActor: 'agent' }),
     )
-    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'approved' }))
+    approvedInOneStep()
 
     await expect(
       transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve'),
-    ).resolves.toMatchObject({ state: 'approved' })
+    ).resolves.toMatchObject({ state: 'published' })
   })
 
   it('waives the guard for a sole editor, and says so on the trail', async () => {
@@ -416,7 +425,7 @@ describe('transitionDocumentVersion — guards', () => {
     vi.mocked(findDocumentVersion).mockResolvedValue(
       version({ submittedBy: session.userId, submittedByActor: 'human' }),
     )
-    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'approved' }))
+    approvedInOneStep()
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve')
 
@@ -471,16 +480,50 @@ describe('transitionDocumentVersion — guards', () => {
 
   it('swaps on the state it read, which is what makes the race decidable', async () => {
     vi.mocked(findDocumentVersion).mockResolvedValue(version())
-    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'approved' }))
-    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve')
+    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'changes_requested' }))
+    await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'request_changes', { comment: 'GK stimmt nicht' })
     expect(compareAndSwapVersionState).toHaveBeenCalledWith(
       'ver_1',
       'org_1',
       'in_review',
-      expect.objectContaining({ state: 'approved', approvedBy: session.userId }),
+      expect.objectContaining({ state: 'changes_requested', reviewedBy: session.userId }),
       // The open round is decided in the same transaction (migration 0136).
+      { kind: 'decide', outcome: 'changes_requested', decidedBy: session.userId, comment: 'GK stimmt nicht' },
+    )
+  })
+
+  it('approves and publishes in one step, deciding the round in the promoting transaction', async () => {
+    // ADR-0104 rule 5: „Freigeben" makes the version the one Piloti answers
+    // from. The plain swap would leave it `approved`, a state nothing reads as
+    // usable, so the approval goes through the promotion.
+    vi.mocked(findDocumentVersion).mockResolvedValue(version())
+    approvedInOneStep()
+
+    const result = await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve')
+
+    expect(result.state).toBe('published')
+    expect(promoteVersionToPublished).toHaveBeenCalledWith(
+      'ver_1',
+      'doc_1',
+      'org_1',
+      'in_review',
+      expect.objectContaining({
+        state: 'published',
+        approvedBy: session.userId,
+        publishedBy: session.userId,
+        reviewedBy: session.userId,
+      }),
       { kind: 'decide', outcome: 'approved', decidedBy: session.userId, comment: null },
     )
+    expect(compareAndSwapVersionState).not.toHaveBeenCalled()
+  })
+
+  it('reports a lost race on approval as a conflict, with nothing promoted', async () => {
+    vi.mocked(findDocumentVersion).mockResolvedValue(version())
+    vi.mocked(promoteVersionToPublished).mockResolvedValue(null)
+    await expect(transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve')).rejects.toMatchObject({
+      status: 409,
+    })
   })
 
   it('records a request for changes on the round, with its comment', async () => {
@@ -777,7 +820,7 @@ describe('transitionDocumentVersion — effects', () => {
 
   it('resolves the round for every reviewer, not only the one who decided', async () => {
     vi.mocked(findDocumentVersion).mockResolvedValue(version())
-    vi.mocked(compareAndSwapVersionState).mockResolvedValue(version({ state: 'approved' }))
+    approvedInOneStep()
 
     await transitionDocumentVersion(session, 'doc_1', 'ver_1', 'approve', {
       reviewerUserIds: ['user_a', 'user_b'],
@@ -843,7 +886,7 @@ describe('transitionDocumentVersion — effects', () => {
     expect(announceNewFassung).not.toHaveBeenCalled()
   })
 
-  it('publish moves the pointer and supersedes, in the one transaction that can', async () => {
+  it('publishes a version approved before approval became one step', async () => {
     const published = version({ state: 'published' })
     vi.mocked(findDocumentVersion).mockResolvedValue(version({ state: 'approved' }))
     vi.mocked(promoteVersionToPublished).mockResolvedValue({
@@ -860,6 +903,8 @@ describe('transitionDocumentVersion — effects', () => {
       'org_1',
       'approved',
       expect.objectContaining({ state: 'published', publishedBy: session.userId }),
+      // Publishing decides no round: the approval that opened the way did.
+      undefined,
     )
     // The plain swap is NOT used for a promoting row: two published versions of
     // one document is a state the partial unique index refuses to hold.
@@ -910,7 +955,7 @@ describe('transitionDocumentVersion — effects', () => {
  *
  * The dispatcher's own guard is asserted in `dispatch.spec.ts`, version state by
  * version state. What is asserted here is the OTHER half: that the effect the
- * `publish` row names is the only thing in this module that reaches the
+ * promoting rows (`approve`, `publish`) name is the only thing in this module that reaches the
  * dispatcher, that it carries the four provenance keys, and that the version
  * being replaced loses its passages BEFORE the new ones are written.
  */
@@ -1106,7 +1151,9 @@ describe('createDocumentVersion — a human upload', () => {
       contentHash: 'sha256:x',
     })
 
-  it('is born published AND born approved, so the CHECK is satisfied honestly', async () => {
+  it('is born published as an upload, with no approval nobody gave', async () => {
+    // ADR-0104 rule 6: the person is the assertion. The CHECK asks an approver
+    // of a `draft` only (migration 0137), so none is written in their name.
     vi.mocked(insertPublishedVersion).mockImplementation(async (values) => ({
       version: version({ ...(values as Partial<DocumentVersion>), id: 'ver_new' }),
       superseded: [],
@@ -1114,13 +1161,10 @@ describe('createDocumentVersion — a human upload', () => {
 
     await upload()
 
-    expect(insertPublishedVersion).toHaveBeenCalledWith(
-      expect.objectContaining({
-        state: 'published',
-        approvedBy: session.userId,
-        publishedBy: session.userId,
-      }),
-    )
+    const values = vi.mocked(insertPublishedVersion).mock.calls[0][0]
+    expect(values).toMatchObject({ state: 'published', origin: 'upload', publishedBy: session.userId })
+    expect(values).not.toHaveProperty('approvedBy')
+    expect(values).not.toHaveProperty('approvedAt')
   })
 
   it('inserts the published row INSIDE the supersede transaction, never beside it', async () => {

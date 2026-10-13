@@ -136,6 +136,7 @@ function version(overrides: Partial<DocumentVersion> = {}): DocumentVersion {
     projectId: 'proj_1',
     versionNumber: 1,
     state: 'draft',
+    origin: 'draft',
     storageKey: 'org/org_1/project/proj_1/doc/doc_1/plan.md',
     storageBucket: 'grid-org-1',
     contentType: 'text/markdown',
