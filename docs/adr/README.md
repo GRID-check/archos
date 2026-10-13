@@ -165,6 +165,8 @@ Consequences, where a reader looks for them.
 | [0100](0100-posthog-is-the-product-platform-and-langfuse-feeds-it.md) | PostHog is the product platform, and Langfuse feeds it the LLM traces | Accepted |
 | [0101](0101-the-steckbrief-lists-the-projects-members-on-its-own.md) | The Steckbrief lists the project's members on its own | Accepted |
 | [0102](0102-file-workspaces-load-a-folder-level-by-pages.md) | File workspaces load a folder level by pages | Proposed |
+| [0103](0103-qdrant-replaces-chroma-reached-through-qdrant-client.md) | Qdrant replaces Chroma as the vector store, reached through qdrant-client | Proposed |
+| [0104](0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md) | Retrieval scope is a payload filter compiled in one place, not a collection | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

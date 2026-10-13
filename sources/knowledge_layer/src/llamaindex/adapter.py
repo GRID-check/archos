@@ -10,9 +10,9 @@ It uses:
 
 Configuration options:
     persist_dir: Directory for ChromaDB persistence (default: /tmp/chroma_data)
-    embed_model: NVIDIA embedding model (default: nvidia/llama-nemotron-embed-vl-1b-v2)
+    embed_model: Embedding model (default: openai/text-embedding-3-large, 3072-d, via AIQ_EMBED_MODEL)
     embed_base_url: Embedding model base URL (default: https://openrouter.ai/api/v1)
-    chunk_size: Chunk size for text splitting (default: 1024, model supports up to 2048 tokens)
+    chunk_size: Chunk size for text splitting (default: 1024)
     chunk_overlap: Overlap between chunks (default: 128)
 
 Multimodal options:
@@ -952,10 +952,11 @@ def embed_fingerprint(model: str, base_url: str) -> str:
     """Stable digest of the embedding identity a collection's vectors were written with.
 
     ``base_url`` is part of the identity, not decoration: the same model name served by
-    a different provider is a different vector space, and this deployment's code default
-    (``nvidia/llama-nemotron-embed-vl-1b-v2`` on NVIDIA) differs from what compose
-    actually sets (``openai/text-embedding-3-large`` on OpenRouter), so any deployment
-    path that misses the env var writes foreign vectors into a shared collection.
+    a different provider is a different vector space. The model default
+    (``openai/text-embedding-3-large`` on OpenRouter) once differed from the code default
+    (``nvidia/llama-nemotron-embed-vl-1b-v2`` on NVIDIA), so a deployment path that missed
+    the env var wrote foreign vectors into a shared collection; a repointed base URL can
+    still do the same.
     """
     payload = json.dumps({"model": model, "base_url": (base_url or "").rstrip("/")}, sort_keys=True)
     return hashlib.sha256(payload.encode()).hexdigest()[:16]
@@ -2744,7 +2745,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
 
     Configuration options:
         persist_dir: ChromaDB persistence directory (default from AIQ_CHROMA_DIR)
-        embed_model: NVIDIA embedding model name (default: nvidia/llama-nemotron-embed-vl-1b-v2)
+        embed_model: Embedding model name (default: openai/text-embedding-3-large)
         embed_base_url: Embedding model base URL (default: https://openrouter.ai/api/v1)
         chunk_size: Text chunk size (default: 1024, model supports up to 2048 tokens)
         chunk_overlap: Chunk overlap (default: 128)
@@ -2845,7 +2846,6 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         self.persist_dir = self.config.get("persist_dir", self.DEFAULT_PERSIST_DIR)
         self.embed_base_url = self.config.get("embed_base_url", self.DEFAULT_EMBED_BASE_URL)
         self.embed_model_name = self.config.get("embed_model", self.DEFAULT_EMBED_MODEL)
-        # llama-nemotron-embed-vl-1b-v2 supports up to 2048 tokens
         self.chunk_size = self.config.get("chunk_size", 1024)
         self.chunk_overlap = self.config.get("chunk_overlap", 128)
 
