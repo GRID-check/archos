@@ -13,7 +13,13 @@ vi.mock('next/navigation', () => ({
 // The form pulls in a server action; the dialog behaviour under test does not
 // depend on it, so stub it out to keep the test focused and hermetic.
 vi.mock('./create-project-form', () => ({
-  CreateProjectForm: () => <div data-testid="create-project-form" />,
+  CreateProjectForm: ({ onCancel }: { onCancel?: () => void }) => (
+    <div data-testid="create-project-form">
+      <button type="button" onClick={onCancel}>
+        Cancel
+      </button>
+    </div>
+  ),
 }))
 
 describe('CreateProjectDialog', () => {
@@ -45,5 +51,14 @@ describe('CreateProjectDialog', () => {
       expect(screen.queryByTestId('create-project-form')).toBeNull(),
     )
     expect(replace).not.toHaveBeenCalled()
+  })
+
+  test('the form\'s Cancel closes the dialog', async () => {
+    render(<CreateProjectDialog />)
+
+    await userEvent.click(screen.getByRole('button', { name: /New project/i }))
+    await userEvent.click(await screen.findByRole('button', { name: 'Cancel' }))
+
+    await waitFor(() => expect(screen.queryByTestId('create-project-form')).toBeNull())
   })
 })

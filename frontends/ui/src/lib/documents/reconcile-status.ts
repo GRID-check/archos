@@ -269,7 +269,14 @@ const resolveFromJobStatus = (job: BackendJobStatus | null | undefined): JobReso
     return { kind: 'terminal', resolution: completedOutcome(job) }
   }
   if (job.status === 'failed') {
-    const errorMessage = job.error_message ?? job.file_details?.find((f) => f.error_message)?.error_message ?? null
+    // The file's own reason first. When every file fails the adapter sets the
+    // job's message to a tally ("1/1 file(s) failed"), and taking that stored
+    // the tally instead of the cause and turned every quarantine verdict into
+    // an ordinary failure: no decision row, no reviewer, retried as broken.
+    // The job's message stays the answer when the run died before any file
+    // reported (an exception, `interrupted:`).
+    const fileReason = job.file_details?.find((f) => f.error_message)?.error_message
+    const errorMessage = fileReason ?? job.error_message ?? null
     return { kind: 'terminal', resolution: failedOrQuarantined(errorMessage) }
   }
   const ahead = job.metadata?.queue_ahead

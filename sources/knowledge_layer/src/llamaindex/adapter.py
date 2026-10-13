@@ -5381,7 +5381,7 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                         logger.warning("Chunk text mirror skipped for %s: %s", file_name, mirror_error)
 
                     # The same chunks into Qdrant, vectors copied from Chroma, never
-                    # re-embedded (ADR-0103). Under AIQ_VECTOR_BACKEND=qdrant a
+                    # re-embedded (ADR-0104). Under AIQ_VECTOR_BACKEND=qdrant a
                     # failure fails the file: a chunk Qdrant lacks is one no search
                     # finds. The previous version is skipped like the text mirror
                     # skips it; its retirement below deletes it from both stores.

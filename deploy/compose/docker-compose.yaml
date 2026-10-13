@@ -113,7 +113,7 @@ services:
       # by each process separately cannot do. The backend keeps no files: the base
       # corpus is in SeaweedFS and a table (ADR-0082), its cache is under /tmp.
       AIQ_CHROMA_URL: ${AIQ_CHROMA_URL:-http://chroma:8000}
-      # The move to Qdrant (ADR-0103): chroma (default) | dual | qdrant. Under
+      # The move to Qdrant (ADR-0104): chroma (default) | dual | qdrant. Under
       # dual or qdrant, start the store with `docker compose --profile qdrant up`
       # and copy the existing corpus with scripts/backfill_qdrant.py.
       AIQ_VECTOR_BACKEND: ${AIQ_VECTOR_BACKEND:-chroma}
@@ -368,7 +368,7 @@ services:
     restart: "no"
 
   qdrant:
-    # The vector store replacing Chroma (ADR-0103), the single-node mirror of
+    # The vector store replacing Chroma (ADR-0104), the single-node mirror of
     # deploy/pulumi/src/data/qdrant.ts. Opt-in (`--profile qdrant`) until a
     # stack flips AIQ_VECTOR_BACKEND, so the default stack is unchanged. No
     # published port: only the backend roles on aiq-network reach it, which is

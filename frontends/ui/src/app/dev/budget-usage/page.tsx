@@ -25,26 +25,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { BudgetUsageCard } from '../../app/(shell)/organization/budget-usage-card'
 
 /** Amounts in the tenant's unit (ADR-0053) — credits here; the card never sees cost. */
-const window = (amount: number, events: number) => ({ amount, events })
+const spend = (amount: number, events: number) => ({ amount, events })
 
 const MODELS = [
-  { model: 'anthropic/claude-opus-4.6', day: window(390, 41), month: window(6140, 812) },
-  { model: 'openai/gpt-5.2', day: window(210, 33), month: window(2480, 501) },
-  { model: 'google/gemini-3.0-pro', day: window(90, 18), month: window(1220, 288) },
-  { model: 'mistralai/mistral-large-2', day: window(0, 0), month: window(640, 140) },
-  { model: 'meta-llama/llama-4-70b-instruct-turbo', day: window(40, 9), month: window(410, 96) },
-  { model: 'cohere/command-r-plus', day: window(20, 5), month: window(260, 61) },
-  { model: 'qwen/qwen3-235b', day: window(0, 0), month: window(140, 30) },
-  { model: 'deepseek/deepseek-v4', day: window(10, 2), month: window(90, 22) },
-  { model: 'x-ai/grok-4', day: window(5, 1), month: window(60, 14) },
-  { model: 'zhipu/glm-5', day: window(2, 1), month: window(30, 8) },
+  { model: 'anthropic/claude-opus-4.6', day: spend(390, 41), month: spend(6140, 812) },
+  { model: 'openai/gpt-5.2', day: spend(210, 33), month: spend(2480, 501) },
+  { model: 'google/gemini-3.0-pro', day: spend(90, 18), month: spend(1220, 288) },
+  { model: 'mistralai/mistral-large-2', day: spend(0, 0), month: spend(640, 140) },
+  { model: 'meta-llama/llama-4-70b-instruct-turbo', day: spend(40, 9), month: spend(410, 96) },
+  { model: 'cohere/command-r-plus', day: spend(20, 5), month: spend(260, 61) },
+  { model: 'qwen/qwen3-235b', day: spend(0, 0), month: spend(140, 30) },
+  { model: 'deepseek/deepseek-v4', day: spend(10, 2), month: spend(90, 22) },
+  { model: 'x-ai/grok-4', day: spend(5, 1), month: spend(60, 14) },
+  { model: 'zhipu/glm-5', day: spend(2, 1), month: spend(30, 8) },
 ]
 
-const DAY = window(
+const DAY = spend(
   MODELS.reduce((sum, m) => sum + m.day.amount, 0),
   MODELS.reduce((sum, m) => sum + m.day.events, 0),
 )
-const MONTH = window(
+const MONTH = spend(
   MODELS.reduce((sum, m) => sum + m.month.amount, 0),
   MODELS.reduce((sum, m) => sum + m.month.events, 0),
 )
@@ -66,9 +66,9 @@ const USAGE = {
   unit: 'credit',
   summary: { day: DAY, month: MONTH, perModel: MODELS },
   perMember: [
-    { userId: 'user_01', day: window(420, 52), month: window(4890, 704) },
-    { userId: 'user_02', day: window(230, 31), month: window(3910, 610) },
-    { userId: 'user_03', day: window(90, 14), month: window(2240, 402) },
+    { userId: 'user_01', day: spend(420, 52), month: spend(4890, 704) },
+    { userId: 'user_02', day: spend(230, 31), month: spend(3910, 610) },
+    { userId: 'user_03', day: spend(90, 14), month: spend(2240, 402) },
   ],
   // The month is deliberately over its limit and the day comfortably under, so
   // both meter states — and the over-limit tick — are on screen at once.

@@ -30,7 +30,7 @@ import {
  */
 export type BarmanEncryption = "AES256" | "aws:kms";
 
-/** The values `vectorBackend` / `AIQ_VECTOR_BACKEND` accept (ADR-0103). */
+/** The values `vectorBackend` / `AIQ_VECTOR_BACKEND` accept (ADR-0104). */
 export const VECTOR_BACKENDS = ["chroma", "dual", "qdrant"] as const;
 export type VectorBackend = (typeof VECTOR_BACKENDS)[number];
 
@@ -551,7 +551,7 @@ export interface GridConfig {
   };
 
   /**
-   * Self-hosted Qdrant (ADR-0103), deployed BESIDE Chroma until the cutover.
+   * Self-hosted Qdrant (ADR-0104), deployed BESIDE Chroma until the cutover.
    * `docs/architecture/qdrant-retrieval-design.md` §9 is the reasoning behind
    * every default here; `data/qdrant.ts` is the manifest.
    */
@@ -601,7 +601,7 @@ export interface GridConfig {
   };
 
   /**
-   * Which store the backend reads and writes (`AIQ_VECTOR_BACKEND`, ADR-0103):
+   * Which store the backend reads and writes (`AIQ_VECTOR_BACKEND`, ADR-0104):
    * `chroma` (today), `dual` (ingest writes both, reads stay on Chroma), or
    * `qdrant`. Anything but `chroma` requires `qdrant.enabled`.
    */
@@ -1470,7 +1470,7 @@ function vectorBackend(value: string | undefined): VectorBackend {
 }
 
 /**
- * The Qdrant tier and the backend selector (ADR-0103), validated together
+ * The Qdrant tier and the backend selector (ADR-0104), validated together
  * because each refusal below would otherwise deploy cleanly and be wrong.
  */
 function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant" | "vectorBackend"> {

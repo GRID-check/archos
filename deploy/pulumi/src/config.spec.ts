@@ -105,7 +105,7 @@ describe("the backend's vector store", () => {
   });
 });
 
-describe("Qdrant and the vector backend (ADR-0103)", () => {
+describe("Qdrant and the vector backend (ADR-0104)", () => {
   it("leaves an existing stack on Chroma with no Qdrant", () => {
     pulumi.runtime.setAllConfig(baseStackConfig());
     const cfg = loadConfig();

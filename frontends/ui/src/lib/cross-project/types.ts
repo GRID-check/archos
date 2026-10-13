@@ -21,7 +21,7 @@ import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-sta
 export const CROSS_PROJECT_PAGE_PROJECTS = 8
 /**
  * How many projects one search call covers when the backend ranks every
- * collection in ONE query (ADR-0104): a project no longer costs a search, only
+ * collection in ONE query (ADR-0105): a project no longer costs a search, only
  * the authorization and row lookups each of its hits needs.
  */
 export const CROSS_PROJECT_GROUPED_PAGE_PROJECTS = 40

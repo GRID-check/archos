@@ -33,6 +33,10 @@ const panel = vi.hoisted(() => ({ calls: [] as string[], sizeInPixels: 320 }))
 const declared = vi.hoisted(
   () => ({ current: null as null | Record<string, unknown> }),
 )
+/** Props the chat panel was last rendered with. */
+const declaredChat = vi.hoisted(
+  () => ({ current: null as null | Record<string, unknown> }),
+)
 /**
  * The group's `onLayoutChanged`, as last rendered. Standing in for the library
  * is the only way to fire it here: it is the library that decides a gesture has
@@ -83,6 +87,7 @@ vi.mock('react-resizable-panels', async () => {
     },
     Panel: ({ children, id, ...rest }: Record<string, unknown> & { children?: unknown; id?: string }) => {
       if (id === 'grid-file-ask-file') declared.current = rest
+      if (id === 'grid-file-ask-chat') declaredChat.current = rest
       return React.createElement(
         'div',
         { 'data-slot': 'resizable-panel', id, ...pickDom(rest) },
@@ -136,6 +141,7 @@ const reset = (): void => {
   panel.calls = []
   panel.sizeInPixels = 320
   declared.current = null
+  declaredChat.current = null
   group.onLayoutChanged = null
   separator.current = null
   window.localStorage.clear()
@@ -197,6 +203,24 @@ describe('FilePreviewSplit — the file panel actually opens', () => {
       collapsible: true,
       collapsedSize: 0,
     })
+  })
+
+  it('gives the chat panel no default of its own, so the two never overflow the row', () => {
+    // The chat panel defaulted to "100" (percent) beside a file panel
+    // defaulting to 320px. When the group could measure itself at mount, which
+    // reduced motion made reliable, the library resolved the overflow by
+    // collapsing the file panel for good, and the peek never opened. Measured
+    // in a browser: 1203px / 0px under reduced motion, 883 / 320 without.
+    useFilePreviewStore.getState().open(FILE, 'peek', { projectId: 'p1' })
+    nav.pathname = '/app/projects/p1/chat'
+    render(
+      <FilePreviewBridge>
+        <div>chat transcript</div>
+      </FilePreviewBridge>,
+    )
+
+    expect(declaredChat.current).not.toBeNull()
+    expect(declaredChat.current).not.toHaveProperty('defaultSize')
   })
 
   it('does not feed the dragged width back into `defaultSize`', () => {

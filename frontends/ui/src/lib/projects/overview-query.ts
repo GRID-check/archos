@@ -5,6 +5,8 @@ import type { ProjectOverviewData } from '@/features/projects/types'
 import { getApplicableStandards } from '@/lib/oib/applicable-standards'
 import { outsideHiddenFolders } from '@/lib/documents/repository'
 import { documentVisibleTo, type ShelfReader } from '@/lib/documents/visibility'
+import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
+import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { lifecycleViewOf } from './project-status'
 
 export interface ProjectOverviewReader {
@@ -126,7 +128,11 @@ export async function getProjectOverviewData(
 
   // Derive which OIB-Richtlinien apply from the project's own brief, and whether
   // that brief has enough captured facts to tailor the applicability.
-  const applicableStandards = getApplicableStandards(project.profile ?? null)
+  // Salvaged like `findProjectInOrg`'s: a project whose intake was never saved
+  // stored `{}` before migration 0133, and the close dialog's debrief reads
+  // `profile.facts` (it crashed opening „Projekt abschließen").
+  const profile = salvageProjectProfile(project.profile).profile ?? emptyProjectProfile()
+  const applicableStandards = getApplicableStandards(profile)
   const briefComplete = Boolean(project.profileDisplay?.keyFacts?.length)
 
   return {
@@ -142,7 +148,7 @@ export async function getProjectOverviewData(
           keyFacts: project.profileDisplay?.keyFacts ?? [],
         }
       : null,
-    profile: project.profile ?? null,
+    profile,
     applicableStandards,
     briefComplete,
     documentCount: stats?.count ?? 0,

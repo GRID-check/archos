@@ -1,6 +1,6 @@
 """Which vector store this process reads and writes, and how it reaches Qdrant.
 
-The move off Chroma (ADR-0103) runs in three steps, each one flag flip:
+The move off Chroma (ADR-0104) runs in three steps, each one flag flip:
 
 * ``chroma`` — today. Chroma is read and written; Qdrant is not touched.
 * ``dual`` — ingestion writes both stores; retrieval still reads Chroma. The

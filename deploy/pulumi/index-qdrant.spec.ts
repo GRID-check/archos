@@ -5,7 +5,7 @@ import { baseStackConfig, qdrantStackConfig } from "./src/test-support/stack-con
 import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
- * Qdrant beside Chroma (ADR-0103), with the tier on, three peers, a data group
+ * Qdrant beside Chroma (ADR-0104), with the tier on, three peers, a data group
  * and `vectorBackend: dual`: the whole program built once and every manifest
  * string the design (`qdrant-retrieval-design.md` §9) depends on checked.
  *

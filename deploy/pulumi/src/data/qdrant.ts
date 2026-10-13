@@ -34,7 +34,7 @@ const KEY = {
 const CURL_UID = 100;
 
 /**
- * Self-hosted Qdrant 1.19 (ADR-0103), beside Chroma until the cutover.
+ * Self-hosted Qdrant 1.19 (ADR-0104), beside Chroma until the cutover.
  *
  * A raw StatefulSet like `chroma.ts`, with `qdrant-helm` 1.19.2 as the oracle
  * for everything Qdrant-specific: the cluster bootstrap, `Parallel` pod

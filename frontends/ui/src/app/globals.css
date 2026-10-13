@@ -192,6 +192,18 @@ body {
   }
 }
 
+/* Drawing paper: a dot every 16px in faint ink. Mixed from the foreground so
+   one rule reads in both themes, and kept under 10% so it is a texture the eye
+   registers as "a surface to put things on", never as content. */
+@utility bg-drafting-grid {
+  background-image: radial-gradient(
+    circle at 1px 1px,
+    color-mix(in oklch, var(--foreground) 9%, transparent) 1px,
+    transparent 0
+  );
+  background-size: 16px 16px;
+}
+
 /* Hide scrollbar utility */
 @utility scrollbar-hide {
   -ms-overflow-style: none;
@@ -928,6 +940,38 @@ body {
 .dark .passage-highlight--fuzzy {
   --passage-strength: 40%;
   --passage-peak: 70%;
+}
+
+/* The reader's own search hits. Ink, not a provenance colour: a hit is where
+   a word the reader typed occurs, which is a fact about the reader's question
+   and not about any source. A FIXED ink rather than `--foreground`, because the
+   mark composites against the page, which is paper in both themes — the
+   theme's foreground is paper-white in dark mode and would vanish on it (see
+   the passage strengths above). Every hit carries a light wash; the one on
+   screen a stronger one and an outline, so "3 of 12" has a place to point. */
+:root {
+  --paper-ink: oklch(0.244 0.006 271.2);
+}
+
+.pdf-search-hit {
+  background-color: color-mix(in oklch, var(--paper-ink) 14%, transparent);
+  mix-blend-mode: multiply;
+  border-radius: 2px;
+}
+
+.pdf-search-hit--active {
+  background-color: color-mix(in oklch, var(--paper-ink) 26%, transparent);
+  outline: 1.5px solid color-mix(in oklch, var(--paper-ink) 70%, transparent);
+  outline-offset: 1px;
+}
+
+@media (prefers-contrast: more) {
+  .pdf-search-hit {
+    background-color: color-mix(in oklch, var(--paper-ink) 24%, transparent);
+  }
+  .pdf-search-hit--active {
+    outline-color: var(--paper-ink);
+  }
 }
 
 /* =============================================================================

@@ -75,7 +75,7 @@ Every other HTTP route is [`aiq-api`](#aiq-api-the-api-role)'s.
 | `AIQ_LOCK_DB_URL` | `postgresql://aiq:aiq_dev@postgres:5432/aiq_jobs` (direct: session advisory locks) |
 | `GRID_ROLE` | `chat` |
 | `AIQ_CHROMA_URL` | `http://chroma:8000` (no embedded fallback: the backend keeps no volume) |
-| `AIQ_VECTOR_BACKEND` | `chroma`; `dual` or `qdrant` need the opt-in `qdrant` service (`docker compose --profile qdrant up`), ADR-0103 |
+| `AIQ_VECTOR_BACKEND` | `chroma`; `dual` or `qdrant` need the opt-in `qdrant` service (`docker compose --profile qdrant up`), ADR-0104 |
 | `AIQ_QDRANT_URL` | `http://qdrant:6333` (the `qdrant` service; no published port, no API key on the internal network) |
 | `CONFIG_FILE` | `/app/configs/config_oib_openrouter.yml` |
 | `HOST` | `0.0.0.0` |

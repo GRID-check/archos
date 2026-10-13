@@ -748,7 +748,7 @@ export async function fetchSemanticHits(
 
 /**
  * One ranking across many collections, from the backend's grouped search
- * (`POST /v1/collections/search`, ADR-0104): every collection named is ranked
+ * (`POST /v1/collections/search`, ADR-0105): every collection named is ranked
  * in ONE query, best collection first, its best documents first, and each hit
  * carries its position as `rank`. Scores from separate searches are not
  * comparable; this order is.

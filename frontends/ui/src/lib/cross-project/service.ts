@@ -29,7 +29,7 @@
  *
  * ## Cost
  *
- * On a backend with one shared index (Qdrant, ADR-0104) a page of up to
+ * On a backend with one shared index (Qdrant, ADR-0105) a page of up to
  * {@link CROSS_PROJECT_GROUPED_PAGE_PROJECTS} projects is ONE search: every
  * collection the reader is cleared for, ranked together, so hits from
  * different projects are ordered by one ranking instead of by scores from
@@ -409,7 +409,7 @@ async function searchOneProject(
 }
 
 /**
- * A page of projects in ONE search (ADR-0104): each project is authorized and
+ * A page of projects in ONE search (ADR-0105): each project is authorized and
  * its cleared collections named exactly as its own search names them
  * (`planProjectSearch`), then every collection is ranked together and each
  * project's hits are joined to its screened rows. A shared chat does not even

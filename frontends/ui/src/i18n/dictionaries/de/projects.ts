@@ -318,9 +318,8 @@ export const projects: typeof en.projects = {
   },
   dialog: {
     newProject: 'Neues Projekt',
-    title: 'Projekt erstellen',
-    description:
-      'Ein Projekt ist ein fokussierter Arbeitsbereich für ein Gebäude — dessen Dokumente, Mitglieder, Recherche und Chat-Kontext bleiben zusammen.',
+    title: 'Neues Projekt',
+    description: 'Ein Projekt hält seine Dokumente, sein Team und die Gespräche darüber an einem Ort zusammen.',
   },
   form: {
     nameRequired: 'Der Projektname ist erforderlich.',
@@ -329,19 +328,24 @@ export const projects: typeof en.projects = {
       'Wir konnten dieses Projekt gerade nicht erstellen. Bitte versuchen Sie es in einem Moment erneut.',
     nameLabel: 'Projektname',
     namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
-    templateLabel: 'Mit einer Vorlage beginnen',
-    templates: {
-      neubauWohnbau: { label: 'Neubau Wohnbau', name: 'Neubau Wohnbau' },
-      betriebsbauBrandschutz: {
-        label: 'Betriebsbau Brandschutz',
-        name: 'Betriebsbau — Brandschutz',
-      },
-      sanierungBestand: { label: 'Sanierung Bestand', name: 'Sanierung Bestand' },
-      oibBrandschutzAudit: { label: 'OIB Brandschutz-Audit', name: 'OIB Brandschutz-Audit' },
+    state: {
+      label: 'Stand',
+      active: 'Laufend',
+      activeHint: 'Wir arbeiten gerade daran.',
+      closed: 'Abgeschlossen',
+      closedHint: 'Ein früheres Projekt als Referenz fürs Büro.',
     },
-    footnote:
-      'Erstellen Sie einen Arbeitsbereich für Dokumente, Mitglieder und Chat, fundiert in den Projektdateien, der Büroablage und dem Baurecht.',
-    submit: 'Projekt erstellen',
+    closed: {
+      startedOn: 'Beginn',
+      optional: 'optional',
+      clearStartedOn: 'Beginn leeren',
+      endedOnBeforeStart: 'Der Abschluss liegt vor dem Beginn.',
+      readOnly:
+        'Ein abgeschlossenes Projekt ist schreibgeschützt. Dokumente und Briefing ergänzen Sie, indem Sie es wieder öffnen.',
+    },
+    cancel: 'Abbrechen',
+    submit: 'Projekt anlegen',
+    submitClosed: 'Abgeschlossen anlegen',
   },
   applicableStandards: {
     heading: 'Anwendbare Standards',

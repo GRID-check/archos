@@ -119,7 +119,7 @@ After acceptance:
 
 * The design this decision serves:
   [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md).
-* Companion decision: [ADR-0104](0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
+* Companion decision: [ADR-0105](0105-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
   (scope as a payload filter).
 * On acceptance this supersedes
   [ADR-0072](0072-the-knowledge-layer-has-one-backend-llamaindex.md). The seam

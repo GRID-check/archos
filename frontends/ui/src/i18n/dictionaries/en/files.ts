@@ -300,12 +300,21 @@ export const files = {
     download: 'Download',
     downloadFailed: "The download couldn't be started. Please try again.",
     ingestionFailed: 'Reading failed',
+    heldTitle: 'Held back by the content check',
     ingestionFailedPreviousVersionKept:
       'Search and Piloti still use the previous revision. The download serves the new file.',
     retryIngestion: 'Read again',
     retryingIngestion: 'Retrying…',
     retryIngestionError: "Reading couldn't be restarted. Please try again.",
     dialogLabel: 'File preview: {name}',
+    // The two faces of the file beside the chat: the document, and what is known about it.
+    peekViews: {
+      label: 'File view',
+      document: 'Document',
+      details: 'Details',
+    },
+    // The length, in the facts line under the name in the chat peek.
+    pageCount: '{count, plural, one {# page} other {# pages}}',
     /**
      * The seam between the conversation and the file. It is a tab stop (the
      * panel library makes every separator one), so it needs a name — an
@@ -365,6 +374,11 @@ export const files = {
     nameInFolder: 'Folder “{segment}” contains “{term}”',
     partial: 'Some pages had no text layer and were not checked.',
     unchecked: 'The content could not be read without a model and was checked by name only.',
+    // A content-check finding, the way a chat source is shown: the page, and on
+    // it, marked, what the office listed as sensitive.
+    findingsLabel: 'Where the content check found it',
+    findingPage: 'p. {page}',
+    showFinding: 'Show the finding on page {page}',
   },
   browser: {
     folderEmptyTitle: 'This folder is empty',

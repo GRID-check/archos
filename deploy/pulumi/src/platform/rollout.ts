@@ -287,7 +287,7 @@ export const ROLLOUT = {
   },
 
   /**
-   * Qdrant (ADR-0103). Its own profile because the store is a Raft cluster
+   * Qdrant (ADR-0104). Its own profile because the store is a Raft cluster
    * rather than one process:
    *
    * - **120 s grace**: Qdrant flushes its WAL and segments on SIGTERM; a

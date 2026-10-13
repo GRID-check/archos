@@ -93,3 +93,18 @@ export const assemblePdf = (objects: readonly string[]): Uint8Array<ArrayBuffer>
   for (let i = 0; i < file.length; i += 1) bytes[i] = file.charCodeAt(i) & 0xff
   return bytes
 }
+
+/**
+ * A one-page PDF encrypted with the user password `piloti` (RC4, 128 bit), for
+ * the viewer's password prompt. Not built here: the encryption dictionary and
+ * the encrypted streams are cryptography, not layout, and a hand-rolled RC4 in
+ * a fixture would be a second implementation to get wrong. Made with pypdf:
+ * `PdfWriter().add_blank_page(595, 842)` then
+ * `encrypt(user_password="piloti", owner_password="piloti", algorithm="RC4-128")`.
+ */
+export const ENCRYPTED_PDF_PASSWORD = 'piloti'
+
+export const encryptedPdf = (): Uint8Array<ArrayBuffer> =>
+  Uint8Array.from(atob(
+    'JVBERi0xLjMKJeLjz9MKMSAwIG9iago8PAovUHJvZHVjZXIgPDAzMjcyODBiNDQ+Cj4+CmVuZG9iagoyIDAgb2JqCjw8Ci9UeXBlIC9QYWdlcwovQ291bnQgMQovS2lkcyBbIDQgMCBSIF0KPj4KZW5kb2JqCjMgMCBvYmoKPDwKL1R5cGUgL0NhdGFsb2cKL1BhZ2VzIDIgMCBSCj4+CmVuZG9iago0IDAgb2JqCjw8Ci9UeXBlIC9QYWdlCi9SZXNvdXJjZXMgPDwKPj4KL01lZGlhQm94IFsgMC4wIDAuMCA1OTUgODQyIF0KL1BhcmVudCAyIDAgUgo+PgplbmRvYmoKNSAwIG9iago8PAovViAyCi9SIDMKL0xlbmd0aCAxMjgKL1AgNDI5NDk2NzI5MgovRmlsdGVyIC9TdGFuZGFyZAovTyA8YjhmMTM4OWE0ODU1YTkxOGQ5Nzk2ZjhkMTcxNTkwMGQxZjZkZWVhYmQzMDhkYzRlMGQ5OGE4YzQyY2FmMjc5NT4KL1UgPDA3YTAzMDI3ODczZmU0Y2IzMjQyOGNhZWQ0MWFlYTc5MjhiZjRlNWU0ZTc1OGE0MTY0MDA0ZTU2ZmZmYTAxMDg+Cj4+CmVuZG9iagp4cmVmCjAgNgowMDAwMDAwMDAwIDY1NTM1IGYgCjAwMDAwMDAwMTUgMDAwMDAgbiAKMDAwMDAwMDA1OSAwMDAwMCBuIAowMDAwMDAwMTE4IDAwMDAwIG4gCjAwMDAwMDAxNjcgMDAwMDAgbiAKMDAwMDAwMDI2MSAwMDAwMCBuIAp0cmFpbGVyCjw8Ci9TaXplIDYKL1Jvb3QgMyAwIFIKL0luZm8gMSAwIFIKL0lEIFsgPDM0MzEzNzMzMzAzMDY1MzM2MTMyMzM2MjY2NjYzMzM5NjI2NjY0MzQ2NDM3NjEzOTM0MzEzNDM4MzkzMTYzMzQ+IDwzNDMxMzczMzMwMzA2NTMzNjEzMjMzNjI2NjY2MzMzOTYyNjY2NDM0NjQzNzYxMzkzNDMxMzQzODM5MzE2MzM0PiBdCi9FbmNyeXB0IDUgMCBSCj4+CnN0YXJ0eHJlZgo0NzYKJSVFT0YK',
+  ), (character) => character.charCodeAt(0))

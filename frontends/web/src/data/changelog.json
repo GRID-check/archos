@@ -36,6 +36,19 @@
       "summary": null,
       "sections": [
         {
+          "key": "features",
+          "notes": [
+            {
+              "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
+              "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
+            },
+            {
+              "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
+              "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+            }
+          ]
+        },
+        {
           "key": "improvements",
           "notes": [
             {
@@ -43,8 +56,36 @@
               "de": "Große Ordner in den Dateien eines Projekts und im Archiv öffnen sich jetzt schneller und lassen sich flüssiger durchscrollen: Die ersten Dokumente werden sofort angezeigt, während die übrigen im Hintergrund laden, und Vorschauen werden geladen, sobald Sie zu ihnen scrollen."
             },
             {
+              "en": "A file opened beside the chat now shows its format, page count and size under its name, and a PDF's page number and zoom float over its pages. You see what you are asking about before you ask.",
+              "de": "Eine neben dem Chat geöffnete Datei zeigt jetzt unter ihrem Namen Format, Seitenanzahl und Größe an; bei PDFs werden Seitenzahl und Zoom über den Seiten eingeblendet. So sehen Sie, worauf sich Ihre Frage bezieht, bevor Sie sie stellen."
+            },
+            {
+              "en": "A Details tab beside the document shows everything the Files view knows about it: Piloti's reading, the document type, Fassungen and release, and its properties.",
+              "de": "Ein Details-Tab neben dem Dokument zeigt alles, was die Files-Ansicht darüber weiß: Piloti-Auswertung, Dokumenttyp, Fassungen und Freigabe sowie die Eigenschaften."
+            },
+            {
               "en": "Very large folders in the Büroablage and in a project's files now open right away, and more documents load as you scroll to the end. The folder counts and the folder overview still cover every document in the folder.",
               "de": "Sehr große Ordner in der Büroablage und in den Dateien eines Projekts öffnen jetzt sofort, weitere Dokumente werden geladen, während Sie bis zum Ende scrollen. Die Dokumentanzahl und die Ordnerübersicht beziehen sich weiterhin auf alle Dokumente im Ordner."
+            },
+            {
+              "en": "A PDF now opens the same way everywhere: a cited source, a file in Files, its enlarged view and the file beside the chat. The pages lie on one stage, with the controls in one bar at its foot.",
+              "de": "Ein PDF wird jetzt überall auf dieselbe Weise geöffnet: als zitierte Quelle, als Datei in Files, in der vergrößerten Ansicht und neben dem Chat. Die Seiten liegen auf einer gemeinsamen Fläche, die Bedienelemente befinden sich in einer Leiste am unteren Rand."
+            },
+            {
+              "en": "Type a page number to jump to it, turn pages with Page Up and Page Down, and zoom to fit the width or the whole page, or pinch to zoom in where the pointer is.",
+              "de": "Geben Sie eine Seitenzahl ein, um direkt dorthin zu springen, blättern Sie mit Page Up und Page Down und passen Sie die Ansicht an die Seitenbreite oder die ganze Seite an; mit einer Pinch-Geste zoomen Sie an der Position des Mauszeigers hinein."
+            },
+            {
+              "en": "A wide view shows every page down its left edge, so a page in a long document is found by how it looks rather than by its number.",
+              "de": "In der Breitansicht sehen Sie alle Seiten am linken Rand, sodass Sie eine Seite in einem langen Dokument anhand ihres Aussehens statt anhand ihrer Nummer finden."
+            },
+            {
+              "en": "Ctrl+F (Cmd+F on a Mac) inside a PDF searches the document. It counts the matches and steps through them.",
+              "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
+            },
+            {
+              "en": "A password-protected PDF asks for its password instead of failing. A PDF that cannot be opened offers to try again, or to open it in the browser.",
+              "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
             }
           ]
         },
@@ -52,8 +93,20 @@
           "key": "fixes",
           "notes": [
             {
+              "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
+              "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
+            },
+            {
               "en": "PDFs with large blocks of display lettering, such as the legend on a structural engineering sheet, are now read instead of marked as failed. Read an affected document again to pick it up.",
               "de": "PDFs mit großen Textblöcken in Displayschrift, etwa der Legende auf einem Tragwerksplan, werden jetzt eingelesen statt als fehlgeschlagen markiert. Lesen Sie ein betroffenes Dokument erneut ein, damit es verarbeitet wird."
+            },
+            {
+              "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
+              "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
+            },
+            {
+              "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",
+              "de": "Eine neben dem Chat geöffnete Datei wird jetzt auch angezeigt, wenn Sie in Ihrem System „Bewegung reduzieren“ aktiviert haben. Bisher blieb der Dateibereich für Nutzer mit dieser Einstellung geschlossen."
             },
             {
               "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",

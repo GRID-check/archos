@@ -302,7 +302,7 @@ describe("the program constructs in the split topology", () => {
     });
   });
 
-  it("deploys no Qdrant and changes no backend env while qdrantEnabled is off (ADR-0103)", () => {
+  it("deploys no Qdrant and changes no backend env while qdrantEnabled is off (ADR-0104)", () => {
     // Off by default so an existing stack plans no change: a new env var on the
     // backend tiers would roll every one of them for a store nobody uses yet.
     const qdrantNamed = RESOURCES.filter((r) => r.name.startsWith("qdrant"));

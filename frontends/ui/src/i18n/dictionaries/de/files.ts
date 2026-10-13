@@ -296,6 +296,7 @@ export const files: typeof en.files = {
     download: 'Herunterladen',
     downloadFailed: 'Der Download konnte nicht gestartet werden. Bitte versuchen Sie es erneut.',
     ingestionFailed: 'Lesen fehlgeschlagen',
+    heldTitle: 'Von der Inhaltsprüfung zurückgehalten',
     ingestionFailedPreviousVersionKept:
       'Die Suche und Piloti verwenden weiterhin die vorige Fassung. Der Download liefert die neue Datei.',
     retryIngestion: 'Erneut lesen',
@@ -303,6 +304,14 @@ export const files: typeof en.files = {
     retryIngestionError:
       'Das erneute Lesen konnte nicht gestartet werden. Bitte versuchen Sie es noch einmal.',
     dialogLabel: 'Dateivorschau: {name}',
+    // The two faces of the file beside the chat: the document, and what is known about it.
+    peekViews: {
+      label: 'Ansicht der Datei',
+      document: 'Dokument',
+      details: 'Details',
+    },
+    // The length, in the facts line under the name in the chat peek.
+    pageCount: '{count, plural, one {# Seite} other {# Seiten}}',
     resizePeek: 'Breite der Dateivorschau ändern',
     peekIndexingHint: 'Piloti kann diese Datei erst zitieren, wenn sie gelesen ist.',
     peekFailedHint: 'Lesen fehlgeschlagen. Piloti kann diese Datei nicht zitieren.',
@@ -346,6 +355,11 @@ export const files: typeof en.files = {
     nameInFolder: 'Ordner „{segment}“ enthält „{term}“',
     partial: 'Einige Seiten hatten keine Textebene und wurden nicht geprüft.',
     unchecked: 'Der Inhalt ließ sich ohne Modell nicht lesen und wurde nur am Namen geprüft.',
+    // Eine Fundstelle der Inhaltsprüfung, wie eine Quelle im Chat: die Seite,
+    // und darauf markiert, was das Büro als sensibel eingetragen hat.
+    findingsLabel: 'Fundstellen der Inhaltsprüfung',
+    findingPage: 'S. {page}',
+    showFinding: 'Fundstelle auf Seite {page} zeigen',
   },
   browser: {
     folderEmptyTitle: 'Dieser Ordner ist leer',

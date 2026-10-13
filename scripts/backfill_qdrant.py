@@ -1,4 +1,4 @@
-"""Copy every Chroma collection into Qdrant, without re-embedding, and repair drift (ADR-0103).
+"""Copy every Chroma collection into Qdrant, without re-embedding, and repair drift (ADR-0104).
 
 Chroma holds each chunk's id, text, metadata and embedding, so this is a paged
 copy: no re-parse, no vision model, no embedding call. Point ids are the chunk

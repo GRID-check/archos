@@ -1,4 +1,4 @@
-"""Copy what Chroma holds into Qdrant, and repair drift between the two (ADR-0103).
+"""Copy what Chroma holds into Qdrant, and repair drift between the two (ADR-0104).
 
 Chroma stores every chunk's id, text, metadata AND its embedding, so the copy
 re-parses nothing, calls no vision model and embeds nothing: each page of

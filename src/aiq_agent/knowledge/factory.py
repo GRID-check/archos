@@ -508,7 +508,7 @@ def _get_document_metadata_store() -> "DocumentMetadataStore":
 
 
 def _mirror_facts(collection: str, file_names: list[str] | None = None) -> None:
-    """Copy the facts just changed here onto the file's points in Qdrant (ADR-0104).
+    """Copy the facts just changed here onto the file's points in Qdrant (ADR-0105).
 
     This store stays the authority; the vector store carries a copy so a
     search can filter on a tag, a Dokumentart or a Fassung before ranking

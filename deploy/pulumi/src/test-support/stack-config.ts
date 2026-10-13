@@ -78,7 +78,7 @@ export function langfuseStackConfig(): Record<string, string> {
 }
 
 /**
- * Qdrant (ADR-0103) on top of {@link baseStackConfig}: the tier and its three
+ * Qdrant (ADR-0104) on top of {@link baseStackConfig}: the tier and its three
  * credentials, each distinct from the others and from every SeaweedFS secret,
  * which `loadConfig` checks.
  */

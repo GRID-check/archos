@@ -290,7 +290,7 @@ jobs:
     permissions:
       contents: read
       pull-requests: write # coverage sticky comment
-    # A real Qdrant for the knowledge layer's store tests (ADR-0103): the
+    # A real Qdrant for the knowledge layer's store tests (ADR-0104): the
     # behaviour under test (German BM25, fusion, strict mode, group_by) is the
     # server's, so a mock would only test the mock. Same version as production.
     services:
@@ -351,7 +351,7 @@ jobs:
         with:
           persist-credentials: false
       # Node is the RUNTIME (Turbopack's PostCSS step spawns a real `node`);
-      # Bun is only the installer and script runner.
+      # Bun is the toolchain: install, scripts, `bun check` (ADR-0103).
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
@@ -458,12 +458,11 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: frontends/web/package-lock.json
+      - uses: ./.github/actions/setup-bun
       - uses: ./.github/actions/setup-task
       # Astro reprocesses every blog image on a cold cache. Keyed on the image
       # sources, with `restore-keys` turning a miss into a partial hit. Outside
-      # node_modules, where `npm ci` would delete it. The web image build
+      # node_modules, where a fresh install would delete it. The web image build
       # restores the same entry into its build context.
       - uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
@@ -486,15 +485,12 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: |
-            deploy/pulumi/package-lock.json
-            deploy/pulumi/policy/package-lock.json
-      - run: npm ci
+      - uses: ./.github/actions/setup-bun
+      - run: bun install --frozen-lockfile
         working-directory: deploy/pulumi
       # The policy pack is its own Node program with its own lockfile; a rule
       # that no longer compiles would otherwise surface only at deploy time.
-      - run: npm ci
+      - run: bun install --frozen-lockfile
         working-directory: deploy/pulumi/policy
       - uses: ./.github/actions/setup-task
       # What can run on an untrusted PR: the types (every CRD `spec`, and the
@@ -505,7 +501,7 @@ jobs:
       - run: task infra:types
       - run: task infra:test
 
-  # packages/ sits outside both workspaces (own package-lock.json, own uv.lock),
+  # packages/ sits outside both workspaces (own bun.lock, own uv.lock),
   # so neither tier's install can run it. ~4 minutes, nearly all of it
   # ifc-spatial-py, which is why it is filtered at all.
   packages:
@@ -521,8 +517,7 @@ jobs:
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "22"
-          cache: npm
-          cache-dependency-path: packages/ifc-spatial/package-lock.json
+      - uses: ./.github/actions/setup-bun
       # Keyed on the package's OWN uv.lock: the root one would restore an
       # environment this suite never uses (IfcOpenShell + shapely wheels).
       - uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0

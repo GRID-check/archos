@@ -19,7 +19,7 @@ export interface AppWiring {
   chromaUrl: pulumi.Output<string>;
   /** Office → PDF converter URL (set when cfg.gotenberg.enabled, ADR-0070). */
   gotenbergUrl?: pulumi.Output<string>;
-  /** Qdrant URL (set when cfg.qdrant.enabled, ADR-0103). */
+  /** Qdrant URL (set when cfg.qdrant.enabled, ADR-0104). */
   qdrantUrl?: pulumi.Output<string>;
   /** Every DSN states its route (`via`), pooled or direct: see `PgRoute` in `data/postgres.ts`. */
   dsn: Postgres["dsn"];
@@ -198,7 +198,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
       as: { user: "grid_app_rw", password: cfg.postgres.runtimePassword },
     }),
     GRID_APP_MIGRATION_DATABASE_URL: w.dsn({ db: "grid_app", via: "direct" }),
-    // The read-write key (ADR-0103): the ingest tier writes, and the backend
+    // The read-write key (ADR-0104): the ingest tier writes, and the backend
     // tiers share one env. Only while the tier is deployed, so a stack with
     // Qdrant off keeps its checksum and rolls nothing.
     ...(cfg.qdrant.enabled ? { AIQ_QDRANT_API_KEY: cfg.qdrant.apiKey } : {}),
@@ -422,7 +422,7 @@ export function backendEnv(w: AppWiring, otelServiceName = "grid-aiq-agent"): En
 }
 
 /**
- * Qdrant beside Chroma (ADR-0103), and which of the two the backend uses:
+ * Qdrant beside Chroma (ADR-0104), and which of the two the backend uses:
  * `AIQ_VECTOR_BACKEND` is `chroma`, `dual` (ingest writes both, reads Chroma)
  * or `qdrant`. Nothing while the tier is off, so every pod template of an
  * existing stack stays byte for byte what it was until the operator turns it on.

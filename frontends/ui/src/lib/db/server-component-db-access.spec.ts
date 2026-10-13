@@ -26,7 +26,7 @@
 
 import { readFileSync, readdirSync } from 'node:fs'
 import { join } from 'node:path'
-import ts from 'typescript'
+import ts from 'typescript-api'
 import { describe, expect, it } from 'vitest'
 import { PRE_EXISTING_DB_IMPORTERS } from '../../../eslint-rules/route-db-access-allowlist.mjs'
 

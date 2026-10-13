@@ -1184,7 +1184,7 @@ describe('joinHitsToFiles', () => {
   })
 })
 
-describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0104)', () => {
+describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0105)', () => {
   const ok = (hits: unknown[]) => new Response(JSON.stringify({ hits }), { status: 200 })
   const backendHit = (collection: string, fileName: string, score: number) => ({
     file_name: fileName,

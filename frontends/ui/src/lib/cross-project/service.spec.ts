@@ -602,7 +602,7 @@ describe('searchAcrossProjects', () => {
   })
 })
 
-describe('searchAcrossProjects on a backend that ranks every collection in one query (ADR-0104)', () => {
+describe('searchAcrossProjects on a backend that ranks every collection in one query (ADR-0105)', () => {
   beforeEach(() => {
     state.grouped = true
   })

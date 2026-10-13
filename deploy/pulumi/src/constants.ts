@@ -642,7 +642,7 @@ export const POSTGRES_DIRECT_RESERVE = {
 } as const;
 
 /**
- * Qdrant (ADR-0103) — the fixed parts of the vector store that replaces Chroma.
+ * Qdrant (ADR-0104) — the fixed parts of the vector store that replaces Chroma.
  *
  * What is a knob (`config.ts` → `qdrant`): the image, the replica count, the
  * envelope, the volume size, the snapshot schedule and retention, and every

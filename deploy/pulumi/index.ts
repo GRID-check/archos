@@ -4,7 +4,7 @@
  * Provisions the whole stack against a provider-supplied kubeconfig:
  *   platform  → cert-manager (+ Let's Encrypt issuer), Envoy Gateway, metrics-server
  *   data      → CloudNativePG Postgres (3 DBs), Dragonfly cache, SeaweedFS (S3),
- *               Chroma, and Qdrant beside it until the cutover (ADR-0103)
+ *               Chroma, and Qdrant beside it until the cutover (ADR-0104)
  *   app       → aiq-agent (StatefulSet, the chat role), aiq-api (Deployment +
  *               HPA, the api role), frontend (Deployment + HPA), purger, skill-scheduler, gotenberg (office
  *               → PDF), a migration Job and a WorkOS audit-schema reconcile Job
@@ -96,7 +96,7 @@ const extraBuckets = [
   // the init Job creates it — but withheld from the general-purpose `grid` S3
   // identity in `s3IdentityCatalog`; Langfuse reaches it as `grid-langfuse`.
   ...(cfg.langfuse.enabled ? [LANGFUSE.bucket] : []),
-  // Qdrant's shard snapshots (ADR-0103), reached only as `grid-qdrant`.
+  // Qdrant's shard snapshots (ADR-0104), reached only as `grid-qdrant`.
   ...(cfg.qdrant.enabled ? [QDRANT.snapshotBucket] : []),
 ];
 const filerNeedsPostgres =
@@ -175,7 +175,7 @@ const rateLimitStore = cfg.rateLimit.enabled
   ? installRateLimitStore(cfg, provider, namespace)
   : undefined;
 const chroma = installChroma(cfg, provider, namespace);
-// Qdrant beside Chroma (ADR-0103) while `vectorBackend` moves from `chroma`
+// Qdrant beside Chroma (ADR-0104) while `vectorBackend` moves from `chroma`
 // through `dual` to `qdrant`. Off by default; its snapshot CronJob waits on the
 // bucket it uploads into.
 const qdrant = cfg.qdrant.enabled

@@ -2,9 +2,9 @@
 
 Status: **accepted 2026-10-13; slice 1 built, behind `AIQ_VECTOR_BACKEND`
 (default `chroma`).** The two decisions it rests on are
-[ADR-0103](../adr/0103-qdrant-replaces-chroma-reached-through-qdrant-client.md)
+[ADR-0104](../adr/0104-qdrant-replaces-chroma-reached-through-qdrant-client.md)
 (the store and the client) and
-[ADR-0104](../adr/0104-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
+[ADR-0105](../adr/0105-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
 (scope as a filter, not a collection). What is built, and where it departs
 from the target below, is §12. The gates in §10 are what the flag flip to
 `qdrant` waits on in each environment.
@@ -526,7 +526,7 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   points, so pushing them into the search is a change to the callers, not to
   the store.
 * **One API key.** The read-only key is configured on the server and not yet
-  used by the backend (ADR-0104, Confirmation).
+  used by the backend (ADR-0105, Confirmation).
 * **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
   BM25 and phrase matching cover it; the Chroma path still reads it.
 

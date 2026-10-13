@@ -196,7 +196,7 @@ def test_chroma_backend_never_touches_qdrant(monkeypatch):
 
 
 def test_adapter_never_imports_qdrant_client():
-    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0103)."""
+    """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0104)."""
     source = open(adapter_module.__file__, encoding="utf-8").read()
     assert "qdrant_client" not in source
 

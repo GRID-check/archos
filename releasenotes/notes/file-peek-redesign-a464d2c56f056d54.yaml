@@ -1,0 +1,10 @@
+---
+improvements:
+  - >
+    A file opened beside the chat now shows its format, page count and size
+    under its name, and a PDF's page number and zoom float over its pages.
+    You see what you are asking about before you ask.
+  - >
+    A Details tab beside the document shows everything the Files view knows
+    about it: Piloti's reading, the document type, Fassungen and release,
+    and its properties.

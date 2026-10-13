@@ -13,7 +13,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 | Layer | Resources |
 |-------|-----------|
 | Platform | namespace `grid` (+ default-deny NetworkPolicies), cert-manager (Gateway-API) + Let's Encrypt `ClusterIssuer`, Envoy Gateway, observability (ADR-0029: `otel-collector` Deployment + Service + ConfigMap — only when `observabilityEnabled` **and** something consumes it: Langfuse or `posthogLogsEnabled`), Langfuse (ADR-0044: `langfuse-web` + `langfuse-worker` Deployments, `clickhouse` StatefulSet, a dedicated ingestion queue, HTTPRoute + SecurityPolicy — only when `langfuseEnabled` **and** its config deps are set; flag **on by default**), (metrics-server only on bare clusters) |
-| Data | CloudNativePG operator + `Cluster` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job, Chroma, and Qdrant beside it (ADR-0103: `qdrant` StatefulSet + headless and ClusterIP Services + PDB + `qdrant-snapshot` CronJob — only when `qdrantEnabled`, off by default) |
+| Data | CloudNativePG operator + `Cluster` (`aiq_jobs`, `aiq_checkpoints`, `grid_app`) with optional PITR backups to SeaweedFS (`ScheduledBackup`), Dragonfly, SeaweedFS (one StatefulSet under `seaweedfsTopology=single`; master + volume + filer StatefulSets, and a `seaweedfs_filer` CNPG database + role, under `split`) + bucket-init Job, Chroma, and Qdrant beside it (ADR-0104: `qdrant` StatefulSet + headless and ClusterIP Services + PDB + `qdrant-snapshot` CronJob — only when `qdrantEnabled`, off by default) |
 | App | `aiq-agent` StatefulSet (no PVC; +PDB/spread in db mode), `frontend` Deployment + HPA + PDB, `agent-worker` Deployment + HPA + PDB (db mode), `purger`, `skill-scheduler`, a one-shot `drizzle-kit migrate` Job, a one-shot WorkOS audit-schema reconcile Job (when `requireAuth`) |
 | Edge | Gateway API (Envoy Gateway, HA: 2 replicas + PDB) + HTTPRoutes with cert-manager TLS for `app.<baseDomain>` and `s3.<baseDomain>` |
 | DNS | Cloudflare A records for exactly the Gateway's HTTPS listener hosts, plus optionally the zone-level `www` / `_dmarc` / apex-redirect records — only when `dnsEnabled` (off by default; records are otherwise maintained by hand) |
@@ -35,7 +35,7 @@ SeaweedFS object storage — behind Envoy Gateway (Gateway API) with automatic L
 
 ```bash
 cd deploy/pulumi
-npm install
+bun install --frozen-lockfile
 pulumi stack init prod
 
 # Non-secret config is templated in Pulumi.prod.yaml — edit the placeholders
@@ -79,7 +79,7 @@ pulumi config set --secret grid-oib:seaweedfsFilerDbPassword "$(openssl rand -ba
 # identity allowed to create and drop tenant buckets.
 pulumi config set --secret grid-oib:seaweedfsTenantAdminSecretKey "$(openssl rand -base64 24)"
 # REQUIRED with qdrantEnabled=true: the read-write and read-only API keys and
-# the snapshot S3 identity's secret, each its own value (ADR-0103).
+# the snapshot S3 identity's secret, each its own value (ADR-0104).
 pulumi config set --secret grid-oib:qdrantApiKey         "$(openssl rand -base64 32)"
 pulumi config set --secret grid-oib:qdrantReadOnlyApiKey "$(openssl rand -base64 32)"
 pulumi config set --secret grid-oib:qdrantS3SecretKey    "$(openssl rand -base64 32)"
@@ -187,7 +187,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | `chromaEnabled` | `true` | Shared vector server. REQUIRED: `false` fails the plan, because the backend keeps no volume (ADR-0082) and an embedded store would be wiped at every restart |
 | `chromaImage` | `chromadb/chroma:1.5.9` | Pinned to match the backend's chromadb client |
 | `chromaStorageSize` | `20Gi` | Vector store volume (grow via PVC patch) |
-| **Qdrant (vectors, ADR-0103)** | | Beside Chroma until the cutover; [`qdrant-retrieval-design.md`](../../docs/architecture/qdrant-retrieval-design.md) §9 has the reasoning |
+| **Qdrant (vectors, ADR-0104)** | | Beside Chroma until the cutover; [`qdrant-retrieval-design.md`](../../docs/architecture/qdrant-retrieval-design.md) §9 has the reasoning |
 | `qdrantEnabled` | `false` | Deploy the `qdrant` StatefulSet, its Services, PDB, NetworkPolicies (`allow-app-to-qdrant`, `qdrant-peers`), the `qdrant-snapshots` bucket and `grid-qdrant` S3 identity, and the `qdrant-snapshot` CronJob, and hand the backend tiers `AIQ_QDRANT_URL`, `AIQ_QDRANT_API_KEY` and `AIQ_VECTOR_BACKEND`. Off, the plan is unchanged. Turning it on rolls every backend tier (new env, new `grid-secrets` key) and SeaweedFS (new identity in `s3.json`) |
 | `vectorBackend` | `chroma` | `AIQ_VECTOR_BACKEND`: `chroma` (today), `dual` (ingest writes both stores, reads stay on Chroma) or `qdrant` (reads and writes Qdrant). Anything but `chroma` fails the plan without `qdrantEnabled` |
 | `qdrantImage` | `qdrant/qdrant:v1.19.2` | Pinned. Self-hosted Qdrant upgrades one minor at a time and a snapshot restores only into the same or the next minor; diff `data/qdrant.ts` against `qdrant-helm` on each minor |
@@ -373,7 +373,7 @@ src/platform/            provider, namespace, cert-manager, gateway (Envoy),
                          dns (Cloudflare records for the Gateway's hosts),
                          metrics-server, scheduling (PDB/spread), rollout
                          (update strategy, drain, secret checksum)
-policy/                  CrossGuard policy pack (own package.json + npm ci)
+policy/                  CrossGuard policy pack (own package.json + bun.lock)
 src/data/                postgres (CNPG), dragonfly, seaweedfs, chroma, qdrant
 src/app/                 config (Secret + env), migrations Job,
                          audit-schemas Job, backend, frontend (+HPA),

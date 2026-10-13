@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   buildPassageIndex,
+  findOccurrences,
   findPassage,
   locatePassage,
   locatePassageInText,
@@ -362,5 +363,28 @@ describe('locatePassageInText', () => {
 
   it('says nothing for a snippet too short to identify anything', () => {
     expect(locatePassageInText('Ein Text mit ja darin.', 'ja')).toBeNull()
+  })
+})
+
+describe('findOccurrences', () => {
+  it('finds every occurrence, whatever its case, one rectangle set each', () => {
+    const index = buildPassageIndex(page('Der Fluchtweg ist frei', 'ein zweiter FLUCHTWEG fehlt'))
+    const hits = findOccurrences(index, 'fluchtweg')
+    expect(hits).toHaveLength(2)
+    expect(hits[0]![0]).toMatchObject({ x: 4 * CHAR_WIDTH, y: 0, width: 9 * CHAR_WIDTH })
+    expect(hits[1]![0]!.y).toBe(LINE_HEIGHT * 1.5)
+  })
+
+  it('finds a word the PDF hyphenated across two lines', () => {
+    const index = buildPassageIndex(page('der Flucht-', 'weg ist frei'))
+    expect(findOccurrences(index, 'Fluchtweg')).toHaveLength(1)
+  })
+
+  it('does not search for a single character', () => {
+    expect(findOccurrences(buildPassageIndex(page('a b c')), 'a')).toEqual([])
+  })
+
+  it('stops at the cap', () => {
+    expect(findOccurrences(buildPassageIndex(page('die die die die')), 'die', 2)).toHaveLength(2)
   })
 })

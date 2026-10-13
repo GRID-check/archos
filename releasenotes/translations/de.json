@@ -4,12 +4,20 @@
     "de": "Eine unter Windows aus Excel exportierte CSV- oder Textdatei zeigt in der Vorschau jetzt die Zeichen €, „ “ und den Strich „–“ richtig an."
   },
   {
+    "en": "A Details tab beside the document shows everything the Files view knows about it: Piloti's reading, the document type, Fassungen and release, and its properties.",
+    "de": "Ein Details-Tab neben dem Dokument zeigt alles, was die Files-Ansicht darüber weiß: Piloti-Auswertung, Dokumenttyp, Fassungen und Freigabe sowie die Eigenschaften."
+  },
+  {
     "en": "A Freigabe ausstehend filter sits beside Unvergeben and Von Piloti and combines with both.",
     "de": "Der Filter „Freigabe ausstehend“ steht neben „Unvergeben“ und „Von Piloti“ und lässt sich mit beiden kombinieren."
   },
   {
     "en": "A Markdown note or a spreadsheet whose name contains „Plan“, such as „Projektplan.md“, no longer shows a floor plan on its card. The file format decides the thumbnail.",
     "de": "Eine Markdown-Notiz oder eine Tabelle mit „Plan“ im Namen, etwa „Projektplan.md“, zeigt auf ihrer Karte keinen Grundriss mehr. Das Vorschaubild richtet sich nach dem Dateiformat."
+  },
+  {
+    "en": "A PDF now opens the same way everywhere: a cited source, a file in Files, its enlarged view and the file beside the chat. The pages lie on one stage, with the controls in one bar at its foot.",
+    "de": "Ein PDF wird jetzt überall auf dieselbe Weise geöffnet: als zitierte Quelle, als Datei in Files, in der vergrößerten Ansicht und neben dem Chat. Die Seiten liegen auf einer gemeinsamen Fläche, die Bedienelemente befinden sich in einer Leiste am unteren Rand."
   },
   {
     "en": "A PDF with a few damaged pages is now read up to its last page instead of stopping at the first damaged one. A PDF with too many damaged pages fails with a retry instead of being read with gaps.",
@@ -188,6 +196,14 @@
     "de": "Eine Datei wird auch gefunden, wenn die Antwort ihren Namen anders groß schreibt oder wenn sie als Beilage in diesem Chat hochgeladen wurde."
   },
   {
+    "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",
+    "de": "Eine neben dem Chat geöffnete Datei wird jetzt auch angezeigt, wenn Sie in Ihrem System „Bewegung reduzieren“ aktiviert haben. Bisher blieb der Dateibereich für Nutzer mit dieser Einstellung geschlossen."
+  },
+  {
+    "en": "A file opened beside the chat now shows its format, page count and size under its name, and a PDF's page number and zoom float over its pages. You see what you are asking about before you ask.",
+    "de": "Eine neben dem Chat geöffnete Datei zeigt jetzt unter ihrem Namen Format, Seitenanzahl und Größe an; bei PDFs werden Seitenzahl und Zoom über den Seiten eingeblendet. So sehen Sie, worauf sich Ihre Frage bezieht, bevor Sie sie stellen."
+  },
+  {
     "en": "A file that Piloti cannot load now fails, with a reason that says so.",
     "de": "Eine Datei, die Piloti nicht laden kann, schlägt jetzt mit einer Begründung fehl, die genau das benennt."
   },
@@ -316,12 +332,20 @@
     "de": "Ein neuer Chat öffnet sich jetzt mit Begrüßung und Eingabefeld gemeinsam in der Bildschirmmitte, statt dass die Begrüßung weit oben schwebt und das Eingabefeld am unteren Rand fixiert ist. Sobald Sie etwas fragen, wandert das Eingabefeld wieder nach unten und die Antwort nimmt die volle Höhe ein."
   },
   {
+    "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
+    "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+  },
+  {
     "en": "A note that research was cut off, or that an answer came out weaker than usual, now stays with the answer when you reopen the conversation later. Previously that caveat was visible only while the run was live, so a partial answer read as a complete one the next morning.",
     "de": "Ein Hinweis darauf, dass die Recherche unterbrochen wurde oder eine Antwort schwächer als üblich ausgefallen ist, bleibt jetzt auch dann bei der Antwort, wenn Sie die Unterhaltung später wieder öffnen. Bisher war dieser Hinweis nur während des laufenden Vorgangs sichtbar, sodass eine unvollständige Antwort am nächsten Morgen wie eine vollständige wirkte."
   },
   {
     "en": "A one-off task now has the same colour on its card as its block in the timetable.",
     "de": "Eine einmalige Aufgabe trägt auf ihrer Karte jetzt dieselbe Farbe wie ihr Block im Stundenplan."
+  },
+  {
+    "en": "A password-protected PDF asks for its password instead of failing. A PDF that cannot be opened offers to try again, or to open it in the browser.",
+    "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
   },
   {
     "en": "A phone photo taken in portrait format now appears upright, and Piloti reads it upright too.",
@@ -540,6 +564,10 @@
     "de": "Eine Fassung lässt sich zur Freigabe einreichen: Die prüfende Person bekommt einen Eintrag im Posteingang und kann freigeben, Änderungen anfordern oder ablehnen, die beiden Letzteren mit Begründung. Wer eingereicht hat, kann nicht selbst freigeben."
   },
   {
+    "en": "A wide view shows every page down its left edge, so a page in a long document is found by how it looks rather than by its number.",
+    "de": "In der Breitansicht sehen Sie alle Seiten am linken Rand, sodass Sie eine Seite in einem langen Dokument anhand ihres Aussehens statt anhand ihrer Nummer finden."
+  },
+  {
     "en": "Above the folder view, a named way back such as „Zurück zu Planung“ now accompanies the breadcrumb trail.",
     "de": "Über der Ordneransicht steht jetzt ein benannter Weg nach oben wie „Zurück zu Planung“ neben der Pfadleiste."
   },
@@ -686,6 +714,10 @@
   {
     "en": "An overview now shows its parts as a table or as a mindmap, never both. A mindmap that would only repeat the table is now rare, so a mindmap no longer appears on screen only to vanish when the answer finishes.",
     "de": "Eine Übersicht zeigt ihre Teile jetzt entweder als Tabelle oder als Mindmap, nie beides. Eine Mindmap, die nur die Tabelle wiederholen würde, ist jetzt selten, daher erscheint keine Mindmap mehr kurz auf dem Bildschirm, nur um beim Abschluss der Antwort wieder zu verschwinden."
+  },
+  {
+    "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
+    "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
   },
   {
     "en": "An uploaded file now reaches colleagues only once its check for sensitive data has passed. Until then only the person who uploaded it and those who may release quarantined files see it.",
@@ -966,6 +998,10 @@
   {
     "en": "Creating a folder with a name that is already taken in that place now tells you the name is taken, instead of showing an error.",
     "de": "Wenn Sie einen Ordner mit einem Namen anlegen, der dort schon vergeben ist, sagt Piloti jetzt, dass der Name vergeben ist, statt einen Fehler anzuzeigen."
+  },
+  {
+    "en": "Ctrl+F (Cmd+F on a Mac) inside a PDF searches the document. It counts the matches and steps through them.",
+    "de": "Ctrl+F (Cmd+F am Mac) durchsucht ein PDF. Die Suche zählt die Treffer und springt zwischen ihnen."
   },
   {
     "en": "Dateien and the Archiv now use the same words for reading a document: „Wird gelesen“, „Lesen fehlgeschlagen“ and „Erneut lesen“. Before, the same step appeared under five names.",
@@ -2448,6 +2484,10 @@
     "de": "Die Vorschau zeigt jetzt unter dem Dokument die Zusammenfassung, die Piloti vom Dokument erstellt hat. Eine Datei ohne eingebettete Vorschau bietet stattdessen ihren Download an."
   },
   {
+    "en": "The preview of a held file shows what the content check found and on which page, and opens the document at that page with the listed word marked.",
+    "de": "Die Vorschau einer zurückgehaltenen Datei zeigt, was die Inhaltsprüfung gefunden hat und auf welcher Seite, und öffnet das Dokument auf dieser Seite mit dem aufgeführten Wort markiert."
+  },
+  {
     "en": "The privacy policy and the list of external providers now name PostHog, with servers in Frankfurt, as the provider of Piloti's usage analytics, error reports and surveys, and the public website measures visits the same way. The policy says exactly what is collected and stored in your browser, and how you can object at any time.",
     "de": "Die Datenschutzerklärung und die Liste externer Anbieter nennen jetzt PostHog mit Servern in Frankfurt als Anbieter für Piloti-Nutzungsanalysen, Fehlerberichte und Umfragen. Auch die öffentliche Website erfasst Besuche auf dieselbe Weise. In der Datenschutzerklärung steht genau, welche Daten erhoben und in Ihrem Browser gespeichert werden und wie Sie jederzeit widersprechen können."
   },
@@ -2606,6 +2646,10 @@
   {
     "en": "Two revisions can be compared side by side, overlaid with the changes in colour, or with a swipe. On request Piloti marks what changed on the drawing and says it in words.",
     "de": "Zwei Fassungen lassen sich nebeneinander, übereinandergelegt mit farbig hervorgehobenen Änderungen oder mit einem Wischregler vergleichen. Auf Wunsch markiert Piloti auf der Zeichnung, was sich geändert hat, und beschreibt es in Worten."
+  },
+  {
+    "en": "Type a page number to jump to it, turn pages with Page Up and Page Down, and zoom to fit the width or the whole page, or pinch to zoom in where the pointer is.",
+    "de": "Geben Sie eine Seitenzahl ein, um direkt dorthin zu springen, blättern Sie mit Page Up und Page Down und passen Sie die Ansicht an die Seitenbreite oder die ganze Seite an; mit einer Pinch-Geste zoomen Sie an der Position des Mauszeigers hinein."
   },
   {
     "en": "Typing in the search field narrows the file list as you go, and Enter searches the full text of every project document. Each result shows the passage that matched and its page.",
@@ -3046,6 +3090,10 @@
   {
     "en": "„Piloti hat sich gemerkt“ now belongs to the answer it appeared under. It used to list everything noted anywhere in the conversation, so an early answer could claim notes taken much later; now each answer shows only what it produced, and an answer that produced nothing shows nothing.",
     "de": "„Piloti hat sich gemerkt“ gehört jetzt zu der Antwort, unter der es erscheint. Bisher listete es alles auf, was irgendwo im Gespräch vermerkt war, sodass eine frühe Antwort Notizen für sich beanspruchen konnte, die viel später entstanden. Jetzt zeigt jede Antwort nur, was sie selbst hervorgebracht hat, und eine Antwort ohne Ergebnis zeigt nichts."
+  },
+  {
+    "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
+    "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
   },
   {
     "en": "„Zitierbar“ no longer appears on every file. A status shows only when it changes what you can do next: a document still being read, one that failed, or a report Piloti wrote and deliberately kept out of search.",
