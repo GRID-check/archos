@@ -275,7 +275,8 @@ class TestWithoutAnInbox:
 
         result = await _run(_agent(model))
 
-        assert RAN == ["look:1", "mark:Tür"]
+        # One round runs its calls concurrently: what ran is the claim, not the order.
+        assert sorted(RAN) == ["look:1", "mark:Tür"]
         assert all(not isinstance(m, HumanMessage) for m in model.requests[1][2:])
         assert result.steering == []
 
