@@ -551,6 +551,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     from ..jobs.access import ensure_job_access_table
     from ..jobs.access import get_job_project_collection
     from ..jobs.event_store import EventStore
+    from ..jobs.run_envelope import capture_request_envelope
     from ..jobs.submit import DuplicateJobIdError
     from ..jobs.submit import MissingPrincipalError
     from ..jobs.submit import submit_agent_job as submit_authorized_job
@@ -658,6 +659,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
     )
     async def submit_job(
         req: Annotated[JobSubmitRequest, Body(openapi_examples=JOB_SUBMIT_EXAMPLES)],
+        request: Request,
     ) -> JobStatusResponse:
         """Submit a new async job for deep research or other registered agents."""
         try:
@@ -687,6 +689,10 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
         from aiq_agent.auth import get_auth_token
 
         auth_token = get_auth_token()
+        # The envelope the BFF signed for this submit, carried so the run's
+        # person-acting tools act as the person who asked (ADR-0108). Only one
+        # that verifies for THIS principal; anything else and the run acts as nobody.
+        request_envelope = capture_request_envelope(request.headers, user_id=principal.sub)
         try:
             job_id = await submit_authorized_job(
                 agent_type=req.agent_type,
@@ -697,6 +703,7 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
                 expiry_seconds=expiry,
                 data_sources=req.data_sources,
                 auth_token=auth_token,
+                request_envelope=request_envelope,
             )
         except JobAdmissionError as e:
             raise HTTPException(429, str(e), headers={"Retry-After": str(e.retry_after_seconds)})
@@ -717,12 +724,13 @@ async def register_job_routes(app: FastAPI, builder: WorkflowBuilder, worker: Fa
             raise HTTPException(500, "Failed to persist async job authorization metadata")
 
         logger.info(
-            "Submitted %s job %s (expiry=%ds) for principal %s:%s",
+            "Submitted %s job %s (expiry=%ds) for principal %s:%s (acts as requester: %s)",
             req.agent_type,
             job_id,
             expiry,
             principal.type,
             principal.sub,
+            request_envelope is not None,
         )
         return JobStatusResponse(
             job_id=job_id,

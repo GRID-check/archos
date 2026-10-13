@@ -51,6 +51,7 @@ def _build_run_agent_payload(
     memory_reflection_llm,
     run_id,
     documents=None,
+    request_envelope=None,
 ) -> dict:
     """Build the JSON-serializable ``run_agent_job`` kwargs a research worker replays.
 
@@ -101,6 +102,10 @@ def _build_run_agent_payload(
         # The Unterlagen the reader named on the plan, as the BFF handed them
         # over; the runner sanitises them into the agent state and the ledger.
         "documents": documents,
+        # The requester's signed request-context envelope, exactly as the BFF
+        # sent it with the submit, so the run's person-acting tools can echo it
+        # (ADR-0108, ``jobs/run_envelope.py``). ``None`` when none verified.
+        "request_envelope": request_envelope,
         # No owner at submit time (unclaimed): the research worker fills in its
         # own worker id at replay for the runner's still-owner publish gate
         # (hardening item 10). Travels inside the encrypted payload like the rest.
@@ -283,6 +288,7 @@ async def submit_agent_job(
     run_id: str | None = None,
     documents: dict | None = None,
     priority: str | None = None,
+    request_envelope: dict[str, str] | None = None,
 ) -> str:
     """
     Submit an agent job to the research queue (ADR-0021).
@@ -324,11 +330,15 @@ async def submit_agent_job(
         priority: ``"interactive"`` (the default) or ``"bulk"``. Inside one
             organization the queue runs interactive jobs first: a question the
             reader escalated goes before a scheduled sweep of the same
-            organization, and never before another organization's. Only the
+            organization, and never before another organization's.
         run_id: Optional id of the ``task_runs`` row this job is. Carried into
             the worker so the run can flush its ledger to its own message; a
             job submitted without one still narrates itself on its event
             stream and writes nothing (``jobs/run_ledger_fold.py``).
+        request_envelope: ``{"header", "signature"}`` of the requester's signed
+            request-context envelope, as ``run_envelope.capture_request_envelope``
+            kept it from the submit. Never captured here: only a route that
+            verified it for the run's requester may pass one (ADR-0108).
 
     Returns:
         The job ID.
@@ -505,6 +515,7 @@ async def submit_agent_job(
             memory_reflection_llm=memory_reflection_llm,
             run_id=run_id,
             documents=documents,
+            request_envelope=request_envelope,
         )
         await job_store._create_job(
             config_file=config_path or None,

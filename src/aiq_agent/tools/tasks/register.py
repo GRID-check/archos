@@ -27,8 +27,9 @@ identity, permission or budget: the BFF reads the acting person out of the
 signed envelope this tool echoes, resolves that person's pinned session, checks
 `project:edit` (plus `project:skills:manage` for a cadence) against the named
 project and pins them as the task's requester (ADR-0054 §4, ADR-0055). A run
-with no envelope — a CLI call, an eval, the job worker — has no acting person,
-and the tool refuses rather than falling back to the unsigned individual headers.
+with no envelope — a CLI call, an eval, a background run that carries none
+(ADR-0108) — has no acting person, and the tool refuses rather than falling
+back to the unsigned individual headers.
 
 The task then costs the requester's budget and runs under their permissions,
 which is why creating one is a real act and why the prompt tells the model to

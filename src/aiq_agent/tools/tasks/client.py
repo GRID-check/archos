@@ -14,8 +14,9 @@ choosing the acting user id with a credential that only authenticates the
 service. The envelope the BFF minted at the start of the turn is forwarded
 byte-for-byte; the BFF verifies it, resolves that person's pinned session and
 creates the task with them as the requester. A run with no envelope — a CLI call,
-an eval, the job worker — has no acting person, and the tool refuses rather than
-falling back to the unsigned individual headers a caller could have set.
+an eval, a background run that carries none (ADR-0108) — has no acting person,
+and the tool refuses rather than falling back to the unsigned individual headers
+a caller could have set.
 
 ## Why this is not ``tools/documents/filing.py``
 

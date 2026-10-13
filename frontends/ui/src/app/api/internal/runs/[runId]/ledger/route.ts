@@ -34,9 +34,9 @@
  * a person — they file a document, they queue work that will run as somebody —
  * so they need the signed statement of who that person is. This one acts as
  * nobody: it patches one jsonb key on a message a run already owns, and the run
- * row says whose it is. A scheduled fire has no human envelope to echo at all
- * („echo, never sign" — `aiq_agent/tools/documents/filing.py`), so requiring one
- * would mean a nightly task could never narrate itself.
+ * row says whose it is. A run's envelope can also be refused at renewal
+ * (ADR-0108: its requester left, or lost the right), so requiring one would mean
+ * such a run could never narrate how it ended.
  */
 
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'

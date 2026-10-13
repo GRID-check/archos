@@ -170,6 +170,7 @@ Consequences, where a reader looks for them.
 | [0105](0105-piloti-works-on-shared-objects.md) | Piloti works on shared objects, as the person it acts for | Accepted |
 | [0106](0106-events-on-pilotis-work-wake-a-turn.md) | Events on Piloti's work wake a turn, run as the person who acted | Accepted |
 | [0107](0107-a-running-turn-is-steered-at-its-next-tool-step.md) | A running turn is steered at its next tool step | Accepted |
+| [0108](0108-background-runs-act-as-the-person-who-commissioned-them.md) | Background runs act as the person who commissioned them | Accepted |
 | [0109](0109-every-change-piloti-applies-knows-its-turn.md) | Every change Piloti applies knows its turn | Accepted |
 | [0110](0110-live-channels-are-one-module-over-dragonfly.md) | Live channels are one module of our own over Dragonfly | Proposed |
 
