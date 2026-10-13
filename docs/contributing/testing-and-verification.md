@@ -370,6 +370,12 @@ its passage; this asks what the reader waited for and what they got.
   question (default 2), `--workers N` how many run at once (default 3). `--override KEY VALUE` sets a config value for every
   run, in `nat run` dot notation, and repeats. `--all`, `--baseline`,
   `--report` and `--ingest` are described above and below.
+- **No stack needed:** `--ingest --corpus data/oib` takes the base corpus
+  from that directory's PDFs instead of the object store, so the suite runs
+  on a machine with no BFF and no SeaweedFS. The table, the ingest queue and
+  the ingestion itself are the real ones (a SQLite `AIQ_SUMMARY_DB` holds
+  them); only the bytes come from the directory. Unchanged files are not
+  ingested again on the next run.
 
 ```bash
 task be:eval:answer-suite -- --out /tmp/suite/before         # on the base branch
@@ -483,9 +489,12 @@ the case to `tests/fixtures/herleitung/loop_eval_questions.yaml` with a
 `family`, which the suite treats as needing a project, so it cannot be a case.
 
 It needs `OPENROUTER_API_KEY` (or `OPENROUTER_KEY`) and the corpus
-(uploaded with `scripts/upload_oib_corpus.py`) ingested into `AIQ_CHROMA_DIR`
-(`-- --ingest` queues the corpus's ingest jobs and runs them in the suite's own process first). Every run costs model calls: the core set at two runs is twelve
-turns, about four minutes three at a time.
+(uploaded with `scripts/upload_oib_corpus.py`, or `-- --corpus data/oib`)
+ingested into `AIQ_CHROMA_DIR` (`-- --ingest` queues the corpus's ingest jobs
+and runs them in the suite's own process first; the 39 OIB PDFs took about
+ten minutes on 4 CPUs on 2026-10-13). Every run costs model calls: the core set
+at two runs is twelve turns, about four minutes three at a time, and a turn
+cost about one US cent on the boot-default models that day.
 
 Run it yourself, before and after, as above, and put the report in the PR.
 Its bookkeeping is also covered offline by
