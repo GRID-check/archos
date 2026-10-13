@@ -25,6 +25,13 @@
  *   open (`openTurns`): a running turn from its last seq, and a finished one
  *   until its stages have landed or the server's stage TTL has passed. A gap
  *   in a turn's seq is attached from the last seq folded.
+ * - **Steering.** While the asker's own turn runs, what they type is a
+ *   `steer` for it, not a question: the server puts it in the turn's inbox
+ *   (`steer_received`) and the graph reads it before its next round
+ *   (`steer_applied`). It is offered only when the hello names `steer`. A note
+ *   the turn never read (it arrived while the turn was writing its answer, or
+ *   the server refused it) is asked as the next question once the turn has
+ *   ended, unless the asker stopped the turn.
  * - **Ending.** Stop is `cancel_turn`; the partial answer stays, marked
  *   stopped, and the cancel says how much of it was on screen (`shown`), so
  *   the row the server stores is that text too. A turn the stream no longer holds, or a socket that gave up, asks
@@ -58,9 +65,16 @@ import { useLayoutStore } from '@/features/layout/store'
 import { useDocumentsStore } from '@/features/documents/store'
 import { getPosthogSessionId } from '@/lib/analytics/posthog'
 import { fetchRunMessage } from '../lib/commissioned-run'
+import {
+  clampFocusRegion,
+  registerCanvasChatSender,
+  registerCanvasChatSteerer,
+  type CanvasFocus,
+  type CanvasFocusRegion,
+} from '../lib/canvas-bridge'
 import { STAGE_COUNT } from '../lib/turn-projection'
 import { runErrorCard, type RunErrorCard } from '../lib/run-error'
-import type { TurnView } from '../lib/turn-fold'
+import { isSteerRead, type TurnView } from '../lib/turn-fold'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
 import type { ChatMessage, Conversation, PendingInteraction } from '../types'
 
@@ -95,6 +109,12 @@ export interface SendMessageOptions {
    * retry under a down-voted answer.
    */
   reasoningEffort?: ChatEffort
+  /**
+   * Asked on the review canvas over this chat (`lib/canvas-bridge.ts`): the
+   * document and the box the question is about, in place of the composer's
+   * subject, and whether Piloti answers in an Anmerkung's thread.
+   */
+  canvas?: CanvasFocus
 }
 
 /** A refusal the composer can localise from `details.reason`. */
@@ -252,7 +272,8 @@ type UserMessage = Extract<ClientMessage, { message_id: string }>
 /** What the driver needs from the hook: the reader-facing half of a failure. */
 interface DriverHooks {
   refreshAuth: () => Promise<void>
-  onConnected: (connected: boolean) => void
+  /** The socket opened or closed; `steerOffered`: its server reads `steer` (the hello named it). */
+  onConnected: (connected: boolean, steerOffered: boolean) => void
   /** The socket gave up reconnecting: say why, if the reason can be found. */
   onGaveUp: () => void
   /** The job queue refused the turn: a warning the reader can act on. */
@@ -274,6 +295,28 @@ export interface TurnDriver {
    * out for a server that does not read it (`forServer`).
    */
   cancel: (turnId: string, shown?: ShownAnswer) => void
+  /**
+   * A note for the running turn `turnId`. False when this socket's server does
+   * not read `steer` (the caller keeps the text). Once taken, the note is
+   * either read by the turn or, unread when the turn ends, handed to
+   * `onLeftover`: the next question. A turn the asker stopped drops it.
+   */
+  steer: (turnId: string, text: string, options?: SteerOptions) => boolean
+}
+
+/** What a steering note carries beyond its text, and what becomes of it if the turn never reads it. */
+export interface SteerOptions {
+  /** A box drawn on the canvas while Piloti works. */
+  focusRegion?: CanvasFocusRegion | null
+  /** The note was never read: ask it as the next question. */
+  onLeftover?: (text: string) => void
+}
+
+/** A note this page sent, until its turn ends. */
+interface SentSteer {
+  turnId: string
+  text: string
+  onLeftover?: (text: string) => void
 }
 
 const store = () => useChatStore.getState()
@@ -334,6 +377,8 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
   let flushTimer: ReturnType<typeof setTimeout> | null = null
   let authExpired = 0
   let socketOpen = false
+  /** The notes this page sent, by `steer_id`, until their turn ends. */
+  const steers = new Map<string, SentSteer>()
 
   const keyOf = (message: ClientMessage): string =>
     `${message.type}:${'turn_id' in message ? message.turn_id : message.message_id}`
@@ -408,7 +453,7 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
     onSilent: silent,
     onStatus: (status) => {
       socketOpen = status === 'open'
-      hooks.onConnected(socketOpen)
+      hooks.onConnected(socketOpen, socketOpen && socket.accepts('steer'))
       if (status === 'open') opened()
       else if (status === 'failed' || status === 'incompatible' || status === 'outdated') gaveUp(status)
     },
@@ -440,9 +485,25 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
     for (const view of runningTurns()) endInterruptedTurn(view)
   }
 
+  /**
+   * The turn ended: each note this page sent it that it never read becomes the
+   * next question, after the fold that ended it. A Stop drops them: the asker
+   * ended the turn, and a question nobody asked for would start another.
+   */
+  const settleSteers = (view: TurnView): void => {
+    for (const [steerId, note] of [...steers]) {
+      if (note.turnId !== view.turnId) continue
+      steers.delete(steerId)
+      if (isSteerRead(view, steerId) || view.outcome === 'cancelled') continue
+      const leftover = note.onLeftover
+      if (leftover) setTimeout(() => leftover(note.text), 0)
+    }
+  }
+
   /** What a folded turn asks of the page beyond its messages. */
   const react = (previous: TurnView | undefined, view: TurnView | undefined): void => {
     if (!view) return
+    if (view.phase !== 'running' && previous?.phase === 'running') settleSteers(view)
     if (view.gap && gapsAttached.get(view.turnId) !== view.lastSeq) {
       gapsAttached.set(view.turnId, view.lastSeq)
       socket.send({ type: 'attach', conversation_id: conversationId, turn_id: view.turnId, after_seq: view.lastSeq })
@@ -485,6 +546,12 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
 
   const rejected = ({ turn_id: turnId, value }: Rejection): void => {
     const view = store().turns[turnId]
+    // A refused note never ends or loses its turn. It stays this page's, unread:
+    // it is asked as the next question when the turn ends, or now if it already has.
+    if (value.of === 'steer' && value.code !== 'auth_expired') {
+      if (view && view.phase !== 'running') settleSteers(view)
+      return
+    }
     switch (value.code) {
       case 'auth_expired': {
         authExpired += 1
@@ -572,6 +639,24 @@ const createTurnDriver = (conversationId: string, projectId: string | undefined,
       forget(turnId)
       deliver({ type: 'cancel_turn', conversation_id: conversationId, turn_id: turnId, ...(shown && { shown }) })
     },
+    steer: (turnId, text, options) => {
+      if (!socket.accepts('steer')) return false
+      const steerId = uuidv4()
+      const message: ClientMessage = {
+        type: 'steer',
+        conversation_id: conversationId,
+        turn_id: turnId,
+        steer_id: steerId,
+        text,
+        ...(options?.focusRegion ? { focus_region: clampFocusRegion(options.focusRegion) } : {}),
+      }
+      steers.set(steerId, { turnId, text, onLeftover: options?.onLeftover })
+      sent.set(keyOf(message), message)
+      // Not queued for a later socket: a note that cannot go now is asked as
+      // the next question when its turn ends, which `settleSteers` does.
+      socket.send(message)
+      return true
+    },
   }
 }
 
@@ -596,6 +681,14 @@ interface UseWebSocketChatOptions {
    * private threads either.
    */
   canCollaborate?: boolean
+}
+
+/** Steer the running turn with a note, for the composer and the canvas. */
+export interface SteerRequest {
+  text: string
+  focusRegion?: CanvasFocusRegion | null
+  /** What to do with a note the turn never read; by default it is asked as the next question. */
+  onLeftover?: (text: string) => void
 }
 
 interface UseWebSocketChatReturn {
@@ -624,6 +717,14 @@ interface UseWebSocketChatReturn {
   isLoading: boolean
   /** The question the agent is waiting on. */
   pendingInteraction: PendingInteraction | null
+  /**
+   * Put a note into the asker's running turn (`steer`). False when there is no
+   * running turn in this conversation or its server does not read notes; the
+   * caller then keeps the text.
+   */
+  steer: (request: SteerRequest) => boolean
+  /** The open socket's server reads notes: while a turn runs, the composer steers it. */
+  canSteer: boolean
 }
 
 /**
@@ -787,6 +888,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
 
   const driverRef = useRef<TurnDriver | null>(null)
   const [isConnected, setIsConnected] = useState(false)
+  const [steerOffered, setSteerOffered] = useState(false)
 
   /**
    * The reader-facing half of the driver, read through a ref so a socket
@@ -800,7 +902,10 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       if (!authRequired || !getAccessToken) return
       await getAccessToken()
     },
-    onConnected: setIsConnected,
+    onConnected: (connected, offered) => {
+      setIsConnected(connected)
+      setSteerOffered(offered)
+    },
     onGaveUp: () => void explainConnectionFailure(),
     onQueueFull: (text, retryAfter) => {
       // One sentence saying when to resend, in the reader's language. The
@@ -849,7 +954,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
     budgetCheckedRef.current = false
     const driver = createTurnDriver(conversationId, projectId, {
       refreshAuth: () => hooksRef.current.refreshAuth(),
-      onConnected: (connected) => hooksRef.current.onConnected(connected),
+      onConnected: (connected, offered) => hooksRef.current.onConnected(connected, offered),
       onGaveUp: () => hooksRef.current.onGaveUp(),
       onQueueFull: (text, retryAfter) => hooksRef.current.onQueueFull(text, retryAfter),
     })
@@ -876,6 +981,7 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       driver.close()
       driverRef.current = null
       setIsConnected(false)
+      setSteerOffered(false)
     }
   }, [currentConversationId, projectId, autoConnect, socketPermitted, ensureDriver])
   useEffect(
@@ -1000,7 +1106,8 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       content: string,
       dataSourcesForMessage: string[],
       conversationId: string | undefined,
-      reasoningEffort?: ChatEffort
+      reasoningEffort?: ChatEffort,
+      canvas?: CanvasFocus
     ): boolean => {
       if (!conversationId) {
         addErrorCard('system.unknown', 'No active conversation')
@@ -1028,22 +1135,27 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
         effort,
         data_source_count: dataSourcesForMessage.length,
       })
-      ensureDriver(conversationId).ask({
+      // `focus_region` and `reply_in_thread` are being added to the wire; until
+      // the generated type carries them they ride on this wider local type.
+      const question: UserMessage & { focus_region?: CanvasFocusRegion | null; reply_in_thread?: boolean } = {
         type: 'user_message',
         conversation_id: conversationId,
         message_id: messageId,
         text: content,
         data_sources: dataSourcesForMessage,
-        focus_file_name: subjectName || null,
-        focus_shelf: subject?.shelf ?? null,
-        focus_document_id: subject?.resourceId ?? null,
-        focus_version_id: subject?.versionId ?? null,
-        focus_version_state: openVersionState(subject?.versionState),
+        focus_file_name: canvas ? canvas.fileName : subjectName || null,
+        focus_shelf: canvas ? canvas.shelf : (subject?.shelf ?? null),
+        focus_document_id: canvas ? canvas.documentId : (subject?.resourceId ?? null),
+        focus_version_id: canvas ? canvas.versionId : (subject?.versionId ?? null),
+        focus_version_state: openVersionState(canvas ? canvas.versionState : subject?.versionState),
+        ...(canvas ? { focus_region: canvas.region ? clampFocusRegion(canvas.region) : null } : {}),
+        ...(canvas?.replyInThread ? { reply_in_thread: true } : {}),
         source_preset: useLayoutStore.getState().activeSourcePreset ?? null,
         reasoning_effort: effort,
         // Omitted, not null, while PostHog is off: `forServer` keys on presence.
         ...(posthogSessionId ? { posthog_session_id: posthogSessionId } : {}),
-      })
+      }
+      ensureDriver(conversationId).ask(question)
       return true
     },
     [addErrorCard, collectSendMetadata, ensureDriver]
@@ -1173,9 +1285,48 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
       const message = addUserMessage(content, { enabledDataSources: dataSourcesForMessage, messageFiles })
       // The conversation may have just been created inside addUserMessage.
       const conversationId = useChatStore.getState().currentConversation?.id
-      return openAgentTurn(message.id, content, dataSourcesForMessage, conversationId, options?.reasoningEffort)
+      return openAgentTurn(
+        message.id,
+        content,
+        dataSourcesForMessage,
+        conversationId,
+        options?.reasoningEffort,
+        options?.canvas
+      )
     },
     [addUserMessage, collectSendMetadata, openAgentTurn, sendRuledMessage]
+  )
+
+  /**
+   * A note for the turn running in this conversation: the composer's Enter
+   * while the asker's own answer streams, or a box drawn on the canvas
+   * meanwhile. An unread note is asked as the next question by default.
+   */
+  const steer = useCallback(
+    ({ text, focusRegion, onLeftover }: SteerRequest): boolean => {
+      const { currentConversation, turns } = useChatStore.getState()
+      const running = runningTurnIn(turns, currentConversation?.id)
+      const driver = driverRef.current
+      if (!text.trim() || !running || driver?.conversationId !== running.conversationId) return false
+      return driver.steer(running.turnId, text.trim(), {
+        focusRegion,
+        onLeftover: onLeftover ?? ((leftover) => void sendMessage(leftover)),
+      })
+    },
+    [sendMessage]
+  )
+
+  // The review canvas over this chat asks through this driver (`canvas-bridge.ts`).
+  useEffect(() => registerCanvasChatSteerer((request) => steer(request)), [steer])
+  useEffect(
+    () =>
+      registerCanvasChatSender((question) => {
+        const sent = sendMessage(question.text, { reasoningEffort: question.effort, canvas: question.focus })
+        const { currentConversation, currentUserMessageId } = useChatStore.getState()
+        if (sent !== true || !currentConversation || !currentUserMessageId) return null
+        return { conversationId: currentConversation.id, turnId: currentUserMessageId }
+      }),
+    [sendMessage]
   )
 
   /**
@@ -1201,5 +1352,13 @@ export const useWebSocketChat = (options: UseWebSocketChatOptions = {}): UseWebS
     [respondToPrompt, ensureDriver]
   )
 
-  return { sendMessage, respondToInteraction, noteSendIntent, isLoading, pendingInteraction }
+  return {
+    sendMessage,
+    respondToInteraction,
+    noteSendIntent,
+    isLoading,
+    pendingInteraction,
+    steer,
+    canSteer: isConnected && steerOffered,
+  }
 }

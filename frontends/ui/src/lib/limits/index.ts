@@ -38,6 +38,7 @@ export {
   MENTION_LIMIT,
   SHARE_LIMIT,
   TYPING_LIMIT,
+  ROOM_LIMIT,
   WS_CONTROL_LIMIT,
   WS_UPGRADE_LIMIT,
 } from './catalog'

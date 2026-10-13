@@ -1,0 +1,1231 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Grid document annotations wire contract",
+  "description": "Generated from frontends/ui/src/lib/annotations/types.ts. Do not edit by hand: annotation-schema.spec.ts rewrites this file and fails when it is stale.",
+  "$defs": {
+    "InternalAnnotationRequest": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "list"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "propose"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "proposals": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "integer"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "point",
+                      "region"
+                    ]
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "w": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "h": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "hint",
+                      "question",
+                      "defect"
+                    ]
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "basis": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "page",
+                  "shape",
+                  "x",
+                  "y",
+                  "kind",
+                  "body"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "op",
+            "proposals"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "create"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "marks": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "properties": {
+                  "page": {
+                    "type": "integer"
+                  },
+                  "shape": {
+                    "type": "string",
+                    "enum": [
+                      "point",
+                      "region"
+                    ]
+                  },
+                  "x": {
+                    "type": "number"
+                  },
+                  "y": {
+                    "type": "number"
+                  },
+                  "w": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "h": {
+                    "anyOf": [
+                      {
+                        "type": "number"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "hint",
+                      "question",
+                      "defect"
+                    ]
+                  },
+                  "body": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "basis": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "page",
+                  "shape",
+                  "x",
+                  "y",
+                  "kind",
+                  "body"
+                ],
+                "additionalProperties": false
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "op",
+            "marks"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "update"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "annotationId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "status": {
+              "type": "string",
+              "enum": [
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assignee": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "expectedStatus": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "note": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "op",
+            "annotationId",
+            "note"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "delete"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "annotationId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op",
+            "annotationId"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "reply"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "annotationId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "body": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            }
+          },
+          "required": [
+            "op",
+            "annotationId",
+            "body"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "room"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "point"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "page": {
+              "type": "integer"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 80
+            }
+          },
+          "required": [
+            "op",
+            "page",
+            "x",
+            "y"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "highlight"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "page": {
+              "type": "integer"
+            },
+            "x": {
+              "type": "number"
+            },
+            "y": {
+              "type": "number"
+            },
+            "w": {
+              "type": "number"
+            },
+            "h": {
+              "type": "number"
+            },
+            "label": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 120
+            }
+          },
+          "required": [
+            "op",
+            "page",
+            "x",
+            "y",
+            "w",
+            "h",
+            "label"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
+              "const": "leave"
+            },
+            "answerMessageId": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "documentId": {
+              "type": "string",
+              "format": "uuid"
+            }
+          },
+          "required": [
+            "op"
+          ],
+          "additionalProperties": false
+        }
+      ],
+      "discriminator": {
+        "propertyName": "op"
+      }
+    },
+    "InternalAnnotationListResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotations": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "point",
+                  "region"
+                ]
+              },
+              "box": {
+                "type": "array",
+                "prefixItems": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "number"
+                  }
+                ],
+                "minItems": 4,
+                "maxItems": 4
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "hint",
+                  "question",
+                  "defect"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "proposed",
+                  "open",
+                  "resolved",
+                  "dismissed"
+                ]
+              },
+              "authorKind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "piloti"
+                ]
+              },
+              "body": {
+                "type": "string"
+              },
+              "basis": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "assigneeName": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "dueOn": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "onCurrentFassung": {
+                "type": "boolean"
+              },
+              "createdByName": {
+                "anyOf": [
+                  {
+                    "type": "string"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "replies": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "authorKind": {
+                      "type": "string",
+                      "enum": [
+                        "person",
+                        "piloti"
+                      ]
+                    },
+                    "body": {
+                      "type": "string"
+                    },
+                    "createdByName": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "authorKind",
+                    "body",
+                    "createdByName"
+                  ],
+                  "additionalProperties": true
+                }
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "page",
+              "shape",
+              "box",
+              "kind",
+              "status",
+              "authorKind",
+              "body",
+              "basis",
+              "assigneeName",
+              "dueOn",
+              "onCurrentFassung",
+              "createdByName",
+              "createdAt",
+              "replies"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotations"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationProposeResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "proposed": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "point",
+                  "region"
+                ]
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "h": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "hint",
+                  "question",
+                  "defect"
+                ]
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "page",
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h",
+              "kind",
+              "body"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "proposed"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationCreateResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "created": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "number": {
+                "type": "integer"
+              },
+              "page": {
+                "type": "integer"
+              },
+              "shape": {
+                "type": "string",
+                "enum": [
+                  "point",
+                  "region"
+                ]
+              },
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              },
+              "w": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "h": {
+                "anyOf": [
+                  {
+                    "type": "number"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "hint",
+                  "question",
+                  "defect"
+                ]
+              },
+              "body": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "number",
+              "page",
+              "shape",
+              "x",
+              "y",
+              "w",
+              "h",
+              "kind",
+              "body"
+            ],
+            "additionalProperties": true
+          }
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "created"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationUpdateResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotationId": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "status": {
+          "type": "string",
+          "enum": [
+            "proposed",
+            "open",
+            "resolved",
+            "dismissed"
+          ]
+        },
+        "before": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assigneeUserId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assigneeName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "after": {
+          "type": "object",
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "proposed",
+                "open",
+                "resolved",
+                "dismissed"
+              ]
+            },
+            "assigneeUserId": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "assigneeName": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "dueOn": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "kind": {
+              "type": "string",
+              "enum": [
+                "hint",
+                "question",
+                "defect"
+              ]
+            },
+            "body": {
+              "type": "string"
+            }
+          },
+          "additionalProperties": true
+        },
+        "noted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotationId",
+        "number",
+        "status",
+        "before",
+        "after",
+        "noted"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationDeleteResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotationId": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "body": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotationId",
+        "number",
+        "body"
+      ],
+      "additionalProperties": true
+    },
+    "InternalAnnotationReplyResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "annotationId": {
+          "type": "string"
+        },
+        "number": {
+          "type": "integer"
+        },
+        "replies": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "annotationId",
+        "number",
+        "replies"
+      ],
+      "additionalProperties": true
+    },
+    "InternalRoomResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "peers": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "person",
+                  "piloti"
+                ]
+              },
+              "page": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "viewport": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "integer"
+                      },
+                      "y": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "y"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "selectedMarkNumber": {
+                "anyOf": [
+                  {
+                    "type": "integer"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "draft": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "page": {
+                        "type": "integer"
+                      },
+                      "x": {
+                        "type": "number"
+                      },
+                      "y": {
+                        "type": "number"
+                      },
+                      "w": {
+                        "type": "number"
+                      },
+                      "h": {
+                        "type": "number"
+                      }
+                    },
+                    "required": [
+                      "page",
+                      "x",
+                      "y",
+                      "w",
+                      "h"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              }
+            },
+            "required": [
+              "name",
+              "kind",
+              "page",
+              "viewport",
+              "selectedMarkNumber",
+              "draft"
+            ],
+            "additionalProperties": true
+          }
+        },
+        "marks": {
+          "type": "object",
+          "properties": {
+            "open": {
+              "type": "integer"
+            },
+            "proposed": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "open",
+            "proposed"
+          ],
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "peers",
+        "marks"
+      ],
+      "additionalProperties": true
+    },
+    "InternalRoomGestureResponse": {
+      "type": "object",
+      "properties": {
+        "documentId": {
+          "type": "string"
+        },
+        "documentName": {
+          "type": "string"
+        },
+        "ok": {
+          "const": true
+        }
+      },
+      "required": [
+        "documentId",
+        "documentName",
+        "ok"
+      ],
+      "additionalProperties": true
+    }
+  }
+}

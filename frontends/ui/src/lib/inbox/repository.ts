@@ -430,6 +430,40 @@ export async function resolveInboxItemsForTargets(
 }
 
 /**
+ * Resolve the open items of these types that are anchored on one thing — one
+ * mark, one proposal — for one recipient, or for everyone when none is named.
+ *
+ * For a settle event that knows its subject's id and not the resource the items
+ * point at (a mark is answered by an event that carries the mark, while the
+ * item's group key also names its document). Anchors are uuids, and the type
+ * list keeps another type's anchor out of reach. Returns who was resolved, so
+ * the caller can nudge their badge.
+ */
+export async function resolveOpenItemsAnchoredOn(input: {
+  organizationId: string
+  types: readonly InboxItemType[]
+  anchorId: string
+  recipientUserId?: string
+}): Promise<string[]> {
+  if (input.types.length === 0) return []
+  const db = getDb()
+  const rows = await db
+    .update(inboxItems)
+    .set({ resolvedAt: new Date() })
+    .where(
+      and(
+        eq(inboxItems.organizationId, input.organizationId),
+        inArray(inboxItems.type, [...input.types]),
+        eq(inboxItems.anchorId, input.anchorId),
+        isNull(inboxItems.resolvedAt),
+        input.recipientUserId ? eq(inboxItems.recipientUserId, input.recipientUserId) : undefined,
+      ),
+    )
+    .returning({ recipientUserId: inboxItems.recipientUserId })
+  return [...new Set(rows.map((row) => row.recipientUserId))]
+}
+
+/**
  * Neutralise one person's items for a resource — called in the SAME operation
  * that revokes their access (spec IB-14). Snippets are wiped, not just hidden:
  * the payload is the copy of content they must no longer be able to read.

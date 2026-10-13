@@ -10,8 +10,9 @@
  * job's payload.
  *
  * WHAT COSTS AN ATTEMPT. Only a clean give-back is free: a drain, a claim over
- * its lane's cap, or a long claim yielding its slot (`runClaim`) gives the job
- * back WITHOUT spending an attempt. Everything
+ * its lane's cap, a long claim yielding its slot (`runClaim`), or a slice that
+ * says it is waiting (`defer`: not done, and nothing to do before `notBefore`)
+ * gives the job back WITHOUT spending an attempt. Everything
  * else spends one and the job waits out a backoff before its next: a handler
  * that threw, a slice that timed out, a BFF that answered 5xx or not at all. A
  * job that always times out, or always takes the BFF down, is therefore dead
@@ -64,6 +65,7 @@ const { databaseOutage, describeTransportError, describeFailedResponse, isTransi
  * What one slice came to, from the loop's point of view.
  *
  * @typedef {{ kind: 'done' } | { kind: 'more', payload: Record<string, unknown> } | { kind: 'lost' }
+ *   | { kind: 'defer', payload: Record<string, unknown>, notBefore: Date }
  *   | { kind: 'transient', failure: { kind: string, detail?: string } }
  *   | { kind: 'error', message: string }} SliceOutcome
  */
@@ -106,8 +108,15 @@ function createSliceRunner({ url, token, timeoutMs, fetchImpl = fetch }) {
         const failure = await describeFailedResponse(res)
         return isTransientStatus(res.status) ? { kind: 'transient', failure } : { kind: 'error', message: failure.detail ?? failure.kind }
       }
-      const body = /** @type {{ done?: unknown, payload?: Record<string, unknown> }} */ (await res.json())
-      return body.done === true ? { kind: 'done' } : { kind: 'more', payload: body.payload ?? {} }
+      const body = /** @type {{ done?: unknown, payload?: Record<string, unknown>, notBefore?: unknown }} */ (await res.json())
+      if (body.done === true) return { kind: 'done' }
+      // A job waiting on something outside it (a wake whose person's thread is
+      // busy) names when to look again; a date it cannot read is no wait.
+      const notBefore = typeof body.notBefore === 'string' ? new Date(body.notBefore) : null
+      if (notBefore && !Number.isNaN(notBefore.getTime())) {
+        return { kind: 'defer', payload: body.payload ?? {}, notBefore }
+      }
+      return { kind: 'more', payload: body.payload ?? {} }
     } catch (error) {
       return { kind: 'transient', failure: describeTransportError(error) }
     }
@@ -176,6 +185,7 @@ function createRunner(config, deps) {
         if (held.lost) return log.warn(`[bff-jobs] job ${claim.jobId} (${claim.kind}) lost its claim; stopping`)
         if (stopping) return await giveBack(held, 'draining')
         const outcome = await runSlice(claim, worker)
+        if (outcome.kind === 'defer') return await defer(held, outcome)
         if (outcome.kind !== 'more') return await settle(held, outcome)
         // The slice's progress is what the next worker resumes from, so a
         // claim that cannot save it has been lost and must stop here.
@@ -191,8 +201,22 @@ function createRunner(config, deps) {
   }
 
   /**
+   * A slice that waits: its progress is saved and the claim given back without
+   * spending an attempt, not to be claimed before `notBefore`.
+   *
+   * @param {{ claim: Claim, worker: string }} held
+   * @param {{ payload: Record<string, unknown>, notBefore: Date }} outcome
+   */
+  async function defer(held, outcome) {
+    const deferred = await queue.defer(sql, held.claim.jobId, held.worker, outcome.payload, outcome.notBefore)
+    if (deferred) {
+      log.log(`[bff-jobs] job ${held.claim.jobId} (${held.claim.kind}) waits until ${outcome.notBefore.toISOString()}`)
+    }
+  }
+
+  /**
    * @param {{ claim: Claim, worker: string, lost: boolean }} held
-   * @param {Exclude<SliceOutcome, { kind: 'more' }>} outcome
+   * @param {Exclude<SliceOutcome, { kind: 'more' | 'defer' }>} outcome
    */
   async function settle(held, outcome) {
     const { claim, worker } = held

@@ -583,7 +583,7 @@ export interface ServiceReader {
  * every member may read was admitted, so the agent knows the conversation is
  * confined from this turn on.
  */
-async function admitSubjectRead(
+export async function admitSubjectRead(
   document: Document,
   organizationId: string,
   conversationId: string,

@@ -602,6 +602,21 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document' }],
     metadata: { olderDocumentId: 'string', linked: 'boolean', collectionName: 'string' },
   },
+  // A person exported a document's Anmerkungen as a Protokoll file
+  // (`lib/annotations/export.ts`): office review content leaving the product.
+  // What was asked for and how many marks it carried, never a name or a word
+  // of the marks, so it needs no `filedIn`.
+  'document.annotations.exported': {
+    targets: [{ type: 'document' }],
+    metadata: {
+      format: 'string',
+      scope: 'string',
+      fassung: 'string',
+      includeProposals: 'boolean',
+      markCount: 'number',
+      proposalCount: 'number',
+    },
+  },
   'archiv.document.uploaded': {
     targets: [{ type: 'document' }],
     metadata: { filename: 'string', fileSize: 'number', collectionName: 'string' },
@@ -685,6 +700,17 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
   'resource.ownership.escalated': {
     targets: [{ type: 'conversation' }],
     metadata: { previousRole: 'string', via: 'string' },
+  },
+  // A wake of Piloti that came to nothing (ADR-0106): one that started no turn
+  // (a cap held it, the organization's switch was off by the time it ran, the
+  // person lost the right to write the document, their budget refused it, or
+  // no server took it: `stage` enqueue or claim, no model call, no Langfuse
+  // trace), or one whose turn ran and failed (`stage: 'turn'`, migration
+  // 0141). This and its `piloti_wakes` row are its record. The actor is the
+  // person whose act woke, or would have woken, Piloti.
+  'piloti.wake.suppressed': {
+    targets: [{ type: 'document_annotation' }],
+    metadata: { documentId: 'string', trigger: 'string', status: 'string', reason: 'string', stage: 'string' },
   },
   // Assignment is not access (ADR-0047). Who is on the hook for a file.
   'resource.assigned': {

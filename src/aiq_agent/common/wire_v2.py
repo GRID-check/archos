@@ -19,7 +19,9 @@ the heartbeat and the stage frames are its own, and they share the counter
 with everything the workflow yields.
 
 **Client messages** are what the browser sends: ``user_message``,
-``interaction_response``, ``cancel_turn`` and ``attach``.
+``interaction_response``, ``cancel_turn``, ``attach`` and ``steer`` (a note
+for the running turn, read at its next tool-round boundary; it never starts or
+supersedes a turn).
 
 One frame is none of the three: :class:`Hello`, the server's first frame on
 every socket. It belongs to the connection, not to a turn, so it has no
@@ -70,6 +72,7 @@ from pydantic import SerializationInfo
 from pydantic import SerializerFunctionWrapHandler
 from pydantic import TypeAdapter
 from pydantic import model_serializer
+from pydantic import model_validator
 
 #: The only wire version. There is no ``v: 1`` reader anywhere (ADR-0068).
 WIRE_VERSION: Literal[2] = 2
@@ -486,9 +489,14 @@ class RejectedValue(_Model):
     ``of`` is the refused message's ``type``, or ``unknown`` for a frame that is
     not JSON or names no type this contract has: that is answered too, so a
     client never waits on silence.
+
+    ``busy`` answers only a ``user_message`` that said ``if_idle``: the
+    conversation runs another turn, and this one would have superseded it.
+    ``steer_limit`` answers a ``steer`` past the turn's cap
+    (``common.steering.MAX_STEERS_PER_TURN``).
     """
 
-    of: Literal["user_message", "interaction_response", "cancel_turn", "attach", "unknown"]
+    of: Literal["user_message", "interaction_response", "cancel_turn", "attach", "steer", "unknown"]
     code: Literal[
         "auth_expired",
         "conversation_mismatch",
@@ -497,8 +505,24 @@ class RejectedValue(_Model):
         "no_pending_interaction",
         "turn_not_found",
         "invalid_message",
+        "busy",
+        "steer_limit",
     ]
     message: str | None = None
+
+
+class SteerReceivedValue(_Model):
+    """A steering note reached the running turn's inbox. ``text`` is the note as the model will read it (masked)."""
+
+    steer_id: str = Field(min_length=1, max_length=128)
+    text: str = Field(min_length=1)
+
+
+class SteerAppliedValue(_Model):
+    """The turn read the note: it is in the request of the decision numbered ``round`` (from 1)."""
+
+    steer_id: str = Field(min_length=1, max_length=128)
+    round: int = Field(ge=1)
 
 
 class _CustomBody(_Model):
@@ -558,11 +582,37 @@ class RejectedBody(_CustomBody):
     value: RejectedValue
 
 
+class SteerReceivedBody(_CustomBody):
+    """A ``steer`` was taken into the turn's inbox. Sent by the socket, on the turn's ``seq``."""
+
+    name: Literal["steer_received"] = "steer_received"
+    value: SteerReceivedValue
+
+
+class SteerAppliedBody(_CustomBody):
+    """The graph spliced the note into its next model request. A note with no ``steer_applied``
+    before the terminal was never read: the client asks it as the next question."""
+
+    name: Literal["steer_applied"] = "steer_applied"
+    value: SteerAppliedValue
+
+
 #: The optional client fields this server reads, as ``<type>.<field>``, named in
 #: the hello. The server reads client messages strictly (``extra="forbid"``), so
 #: a client sends an optional field only to a server whose hello names it: a tab
 #: that outlives a rolling deploy may be talking to a pod one release older.
-ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = ("cancel_turn.shown", "user_message.posthog_session_id")
+ACCEPTED_CLIENT_FIELDS: tuple[str, ...] = (
+    "cancel_turn.shown",
+    "user_message.posthog_session_id",
+    "user_message.focus_region",
+    "user_message.reply_in_thread",
+    "user_message.trigger",
+    "user_message.if_idle",
+    # A whole message type, not a field: a server that does not name it refuses
+    # the frame (``invalid_message``), so the client keeps the note for the next
+    # question instead of sending it.
+    "steer",
+)
 
 
 class HelloValue(_Model):
@@ -671,6 +721,14 @@ class Rejected(Envelope, RejectedBody):
     pass
 
 
+class SteerReceived(Envelope, SteerReceivedBody):
+    pass
+
+
+class SteerApplied(Envelope, SteerAppliedBody):
+    pass
+
+
 CustomEvent = Annotated[
     Masthead
     | Card
@@ -680,7 +738,9 @@ CustomEvent = Annotated[
     | Stage
     | InteractionRequest
     | InteractionResolved
-    | Rejected,
+    | Rejected
+    | SteerReceived
+    | SteerApplied,
     Field(discriminator="name"),
 ]
 
@@ -717,6 +777,8 @@ EventBody = (
     | InteractionRequestBody
     | InteractionResolvedBody
     | RejectedBody
+    | SteerReceivedBody
+    | SteerAppliedBody
 )
 
 _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
@@ -738,6 +800,8 @@ _EVENT_OF_BODY: dict[type[BaseModel], type[Envelope]] = {
     InteractionRequestBody: InteractionRequest,
     InteractionResolvedBody: InteractionResolved,
     RejectedBody: Rejected,
+    SteerReceivedBody: SteerReceived,
+    SteerAppliedBody: SteerApplied,
 }
 
 
@@ -766,6 +830,54 @@ def to_frame(event: Envelope | Hello) -> dict[str, Any]:
 class _ClientBase(_Model):
     v: Literal[2] = WIRE_VERSION
     conversation_id: str = Field(min_length=1)
+
+
+#: Rounding slack on the page edge: a box the canvas measured flush with the
+#: edge arrives as 0.30000000000000004 + 0.7 often enough.
+_EDGE_EPSILON = 1e-6
+
+
+class FocusRegion(_Model):
+    """A box on one page of the conversation's document: what the question is about.
+
+    Normalized to the page as it is shown (its own rotation applied), origin
+    top left, so ``x`` and ``w`` are shares of the page's width and ``y`` and
+    ``h`` of its height: the frame an Anmerkung's region uses
+    (``lib/annotations/types.ts``). Drawn on the review canvas; the turn shows
+    the model exactly that crop (``view_knowledge_image(region=...)``).
+    """
+
+    page: int = Field(ge=1, description="The page, from 1.")
+    x: float = Field(ge=0, le=1, description="Left edge, as a share of the page's width.")
+    y: float = Field(ge=0, le=1, description="Top edge, as a share of the page's height.")
+    w: float = Field(gt=0, le=1, description="Width, as a share of the page's width; x + w is at most 1.")
+    h: float = Field(gt=0, le=1, description="Height, as a share of the page's height; y + h is at most 1.")
+    annotation_id: str | None = Field(
+        default=None,
+        min_length=1,
+        max_length=128,
+        description="The Anmerkung this box is the region of, when the question was asked in its thread.",
+    )
+
+    @model_validator(mode="after")
+    def _on_the_page(self) -> FocusRegion:
+        if self.x + self.w > 1 + _EDGE_EPSILON or self.y + self.h > 1 + _EDGE_EPSILON:
+            raise ValueError("the region reaches past the page: x + w and y + h are at most 1")
+        return self
+
+
+class TurnTrigger(_Model):
+    """The event that woke this turn, when no person typed it (ADR-0105 draft, §3(b)).
+
+    Set by the BFF's wake job, never by a browser: the person whose act is the
+    event holds the socket (their pinned session), and the turn answers where
+    the event happened. ``event_id`` is the reply (or assignment) id the job was
+    enqueued for; ``annotation_id`` the Anmerkung it happened on.
+    """
+
+    kind: Literal["thread_mention", "thread_reply", "assigned"]
+    event_id: str = Field(min_length=1, max_length=128)
+    annotation_id: str | None = Field(default=None, min_length=1, max_length=128)
 
 
 class UserMessage(_ClientBase):
@@ -799,6 +911,37 @@ class UserMessage(_ClientBase):
             "Read per turn because the id rotates after 30 idle minutes. Bounded here and checked for the "
             "UUIDv7 shape where it is used (`langfuse_trace_attributes.record_posthog_session`): "
             "a malformed value costs the replay link, never the turn."
+        ),
+    )
+    focus_region: FocusRegion | None = Field(
+        default=None,
+        description=(
+            "A box drawn on a page of the conversation's document: the turn looks at that crop before it "
+            "answers. Sent only to a server whose hello accepts 'user_message.focus_region'."
+        ),
+    )
+    reply_in_thread: bool | None = Field(
+        default=None,
+        description=(
+            "Post the answer as Piloti's reply in the thread of focus_region.annotation_id, readable by everyone "
+            "who can read the document. Ignored without an annotation_id. Sent only to a server whose hello "
+            "accepts 'user_message.reply_in_thread'."
+        ),
+    )
+    trigger: TurnTrigger | None = Field(
+        default=None,
+        description=(
+            "The event that woke this turn (a reply or mention in an Anmerkung's thread, an assignment), when "
+            "it was not typed. Rendered for the model as who woke it and where to answer. Sent only to a server "
+            "whose hello accepts 'user_message.trigger'."
+        ),
+    )
+    if_idle: bool | None = Field(
+        default=None,
+        description=(
+            "Run only if the conversation has no running turn: a running one is never superseded, and the "
+            "question is refused with rejected{busy} instead, so the sender can retry later. Sent only to a "
+            "server whose hello accepts 'user_message.if_idle'."
         ),
     )
 
@@ -851,6 +994,29 @@ class CancelTurn(_ClientBase):
     )
 
 
+#: Bound on one steering note: a correction, not a second question.
+MAX_STEER_CHARS = 2000
+
+
+class Steer(_ClientBase):
+    """A note for the running turn, typed while it works („nicht die Tür, die Treppe“).
+
+    Not a turn: it never claims, holds or supersedes the conversation. The turn
+    reads it at its next tool-round boundary and the model decides again with
+    it; a note the turn never read (it arrived during the final call) is the
+    client's to ask as the next question. Only the asker may steer (v1), as
+    only the asker may stop. Sent only to a server whose hello accepts 'steer'.
+    """
+
+    type: Literal["steer"] = "steer"
+    turn_id: str = Field(min_length=1, description="The running turn (Codex's expectedTurnId).")
+    steer_id: str = Field(min_length=1, max_length=128, description="Idempotency key and ack correlation.")
+    text: str = Field(min_length=1, max_length=MAX_STEER_CHARS)
+    focus_region: FocusRegion | None = Field(
+        default=None, description="A box drawn on the canvas while Piloti works: what the note is about."
+    )
+
+
 class Attach(_ClientBase):
     """After a reconnect or a reload: replay this turn from ``after_seq`` + 1, then continue live."""
 
@@ -860,7 +1026,7 @@ class Attach(_ClientBase):
 
 
 ClientMessage = Annotated[
-    UserMessage | InteractionResponse | CancelTurn | Attach,
+    UserMessage | InteractionResponse | CancelTurn | Attach | Steer,
     Field(discriminator="type"),
 ]
 

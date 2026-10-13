@@ -16,9 +16,11 @@ the contract in [`websocket-protocol.md`](../api/websocket-protocol.md)).
    once the server's first frame, `hello`, says it speaks wire v2; a server
    that stays silent or opens with anything else fails the attempt.
 2. `server.js` upgrade handler resolves auth and scope (see [WebSocket Gateway](websocket-gateway.md)).
-3. The client sends four messages: `user_message` (its `message_id` is the
+3. The client sends five messages: `user_message` (its `message_id` is the
    question's id, which becomes the turn id), `interaction_response`,
-   `cancel_turn` (Stop) and `attach{turn_id, after_seq}` (resume).
+   `cancel_turn` (Stop), `attach{turn_id, after_seq}` (resume) and `steer`
+   (a note typed into the asker's own running turn, read before its next
+   round; never a turn of its own).
 4. Every server event carries `turn_id` and `seq`. The driver in
    `features/chat/hooks/use-websocket-chat.ts` hands them to the store's
    `applyTurnEvents`, which folds them with `foldTurnEvent`

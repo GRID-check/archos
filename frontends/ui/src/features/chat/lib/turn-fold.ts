@@ -19,6 +19,11 @@
  *   `answer_retracted` clears them and the cards; `RUN_FINISHED`'s result is
  *   authoritative for all four, except after a Stop pressed on this page,
  *   which keeps what was on screen (`stoppedHere`).
+ * - A steering note (`steer_received`, then `steer_applied`) is kept under its
+ *   id in `steers` and drawn as a status row of the turn (`steer:<id>`), so
+ *   the transcript says „Ergänzt …“ and then which round read it. A note with
+ *   no `round` when the terminal lands was never read: the driver asks it as
+ *   the next question.
  */
 
 import type { ShownAnswer, TurnResult, WireEvent } from '@/adapters/api/wire-v2'
@@ -36,6 +41,13 @@ export type InteractionRequestValue = Named<'interaction_request'>['value']
 export type StageValue = Named<'stage'>['value']
 export type StageId = StageValue['stage']
 export type TurnOutcome = Extract<WireEvent, { type: 'RUN_FINISHED' }>['outcome']
+
+/** A note the asker typed into the running turn: its (masked) text, and the round that read it. */
+export interface SteerView {
+  text: string
+  /** The decision that read it, from 1; absent while it waits in the turn's inbox. */
+  round?: number
+}
 
 export interface TurnView {
   turnId: string
@@ -86,6 +98,8 @@ export interface TurnView {
    * (`cutStoppedAnswer`).
    */
   stoppedLate?: boolean
+  /** The asker's steering notes, by `steer_id`, as the server acknowledged them. */
+  steers?: Record<string, SteerView>
 }
 
 export const initialTurnView = (turnId: string, conversationId: string): TurnView => ({
@@ -382,8 +396,49 @@ const applyCustom = (view: TurnView, event: Extract<WireEvent, { type: 'CUSTOM' 
       return view.interaction?.interaction_id === event.value.interaction_id ? { ...view, interaction: undefined } : view
     case 'rejected':
       return view
+    case 'steer_received':
+      return foldSteer(view, event.value.steer_id, { text: event.value.text }, event.ts)
+    case 'steer_applied': {
+      const known = view.steers?.[event.value.steer_id]
+      return foldSteer(view, event.value.steer_id, { text: known?.text ?? '', round: event.value.round }, event.ts)
+    }
   }
 }
+
+/** The step id a note's row is kept under: newest wins, so the „angewendet“ row replaces „ergänzt“. */
+export const steerStepId = (steerId: string): string => `steer:${steerId}`
+
+/**
+ * One note, kept in `steers` and drawn as a live status row. The note's own
+ * words are the asker's, echoed back like the query of a retrieval line, so
+ * they travel as a value; the sentence around them is the dictionary's.
+ */
+const foldSteer = (view: TurnView, steerId: string, steer: SteerView, ts: number): TurnView => {
+  const id = steerStepId(steerId)
+  const previous = view.steps[id]
+  const applied = steer.round !== undefined
+  const step: StoredThinkingStep = {
+    id,
+    userMessageId: view.turnId,
+    timestamp: previous?.timestamp ?? new Date(ts).toISOString(),
+    isComplete: applied,
+    kind: 'status',
+    slot: 'steer',
+    turnEvent: {
+      key: applied ? 'status.steer.applied' : 'status.steer.received',
+      values: { text: steer.text, ...(applied ? { round: String(steer.round) } : {}) },
+    },
+  }
+  return {
+    ...view,
+    steers: { ...view.steers, [steerId]: steer },
+    steps: { ...view.steps, [id]: step },
+    stepOrder: previous ? view.stepOrder : [...view.stepOrder, id],
+  }
+}
+
+/** Whether the turn read this note (`steer_applied` folded). A note it never acknowledged was not read either. */
+export const isSteerRead = (view: TurnView, steerId: string): boolean => view.steers?.[steerId]?.round !== undefined
 
 /** One event folded into the turn's view. `view` undefined starts the turn from this event. */
 export const foldTurnEvent = (view: TurnView | undefined, event: WireEvent): TurnView => {

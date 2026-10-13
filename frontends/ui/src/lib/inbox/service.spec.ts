@@ -30,6 +30,7 @@ vi.mock('./repository', () => ({
   markItemsInertForResource: vi.fn(),
   markItemsInertForSubjectRow: vi.fn(),
   resolveInboxItemsForTargets: vi.fn(),
+  resolveOpenItemsAnchoredOn: vi.fn(),
   upsertInboxItems: vi.fn(),
 }))
 
@@ -54,6 +55,7 @@ import * as repository from './repository'
 import {
   upsertWaves,
   emitInboxItems,
+  resolveInboxItemsAnchoredOn,
   archiveItem,
   getInboxSummary,
   listInbox,
@@ -117,6 +119,12 @@ const ALL_TYPES = [
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
   'document.new_fassung',
+  // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
+  // not a chat feature either.
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+  'piloti.proposal_waiting',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -143,6 +151,12 @@ const OPERATIONAL_TYPES = [
   // A newer Fassung of a document you follow (ADR-0054): documents are not a
   // chat feature, and an office without collaboration still has uploaders.
   'document.new_fassung',
+  // Piloti's work on marks and proposals (ADR-0105, ADR-0106): Anmerkungen are
+  // not a chat feature either.
+  'piloti.work_done',
+  'piloti.work_failed',
+  'piloti.asks_you',
+  'piloti.proposal_waiting',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')
@@ -914,5 +928,29 @@ describe('emitInboxItems — repeated keys in one call', () => {
     }
     await emitInboxItems([emission, emission])
     expect(repository.upsertInboxItems).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('resolveInboxItemsAnchoredOn', () => {
+  it('resolves through the repository and nudges each person whose badge moved, once', async () => {
+    vi.mocked(repository.resolveOpenItemsAnchoredOn).mockResolvedValue(['user_a', 'user_b'])
+    vi.mocked(publishToUser).mockClear()
+
+    const input = { organizationId: 'org_1', types: ['piloti.asks_you'] as InboxItemType[], anchorId: 'ann_1' }
+    expect(await resolveInboxItemsAnchoredOn(input)).toBe(2)
+
+    expect(repository.resolveOpenItemsAnchoredOn).toHaveBeenCalledWith(input)
+    expect(publishToUser).toHaveBeenCalledTimes(2)
+    expect(publishToUser).toHaveBeenCalledWith('user_a', { kind: 'inbox.changed', pending: -1 })
+  })
+
+  it('nudges nobody when nothing was open', async () => {
+    vi.mocked(repository.resolveOpenItemsAnchoredOn).mockResolvedValue([])
+    vi.mocked(publishToUser).mockClear()
+
+    expect(
+      await resolveInboxItemsAnchoredOn({ organizationId: 'org_1', types: ['piloti.asks_you'], anchorId: 'ann_1' }),
+    ).toBe(0)
+    expect(publishToUser).not.toHaveBeenCalled()
   })
 })

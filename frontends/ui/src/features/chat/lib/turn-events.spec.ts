@@ -14,7 +14,8 @@ import { describe, test, expect } from 'vitest'
 import { de, en } from '@/i18n/dictionaries'
 import { createTranslator, getByPath } from '@/i18n/translate'
 import { fixtureSteps, storedStep } from '@/test-utils/wire-v2-steps'
-import { TURN_EVENT_KEYS } from './turn-event-keys'
+import type { StoredThinkingStep } from '@/lib/conversations/message-provenance'
+import { FOLD_EVENT_KEYS, TURN_EVENT_KEYS } from './turn-event-keys'
 import { answerDegradations, deepResearchCutoff, liveLine, researchTruncation } from './turn-events'
 
 const tDe = createTranslator(de, 'chat')
@@ -102,7 +103,7 @@ describe('every key the backend can emit has words in every locale', () => {
 
   test.each(['de', 'en'])('%s has a string for every declared key', (locale) => {
     const dictionary = locale === 'de' ? de : en
-    const missing = Object.entries(TURN_EVENT_KEYS).filter(
+    const missing = Object.entries({ ...TURN_EVENT_KEYS, ...FOLD_EVENT_KEYS }).filter(
       ([key, prefix]) => typeof getByPath(dictionary, `chat.${prefix}${key}`) !== 'string'
     )
     expect(missing.map(([key]) => key)).toEqual([])
@@ -185,5 +186,14 @@ describe('answerDegradations', () => {
 
   test('no record is the ordinary case', () => {
     expect(answerDegradations(fixtureSteps('turn-answered.jsonl'))).toEqual([])
+  })
+})
+
+describe('a steering note on the live line', () => {
+  test('says it was added, then which round read it, in the reader’s language', () => {
+    const steer = (key: string, values: Record<string, string>) =>
+      ({ id: 'steer:s1', userMessageId: 't', timestamp: '', isComplete: false, kind: 'status', slot: 'steer', turnEvent: { key, values } }) as StoredThinkingStep
+    expect(liveLine([steer('status.steer.received', { text: 'die Treppe' })], tDe)).toContain('die Treppe')
+    expect(liveLine([steer('status.steer.applied', { text: 'die Treppe', round: '2' })], tEn)).toContain('round 2')
   })
 })

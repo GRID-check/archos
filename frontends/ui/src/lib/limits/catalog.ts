@@ -17,6 +17,7 @@ import type { LimitRule } from './types'
 
 export const SHARE_LIMIT: LimitRule = rules.SHARE_LIMIT
 export const TYPING_LIMIT: LimitRule = rules.TYPING_LIMIT
+export const ROOM_LIMIT: LimitRule = rules.ROOM_LIMIT
 export const MENTION_LIMIT: LimitRule = rules.MENTION_LIMIT
 export const WS_UPGRADE_LIMIT: LimitRule = rules.WS_UPGRADE_LIMIT
 export const CHAT_TURN_LIMIT: LimitRule = rules.CHAT_TURN_LIMIT
@@ -38,6 +39,7 @@ export const DICTATION_LIMIT: LimitRule = rules.DICTATION_LIMIT
 export const LIMIT_CATALOG = {
   [SHARE_LIMIT.name]: SHARE_LIMIT,
   [TYPING_LIMIT.name]: TYPING_LIMIT,
+  [ROOM_LIMIT.name]: ROOM_LIMIT,
   [MENTION_LIMIT.name]: MENTION_LIMIT,
   [WS_UPGRADE_LIMIT.name]: WS_UPGRADE_LIMIT,
   [CHAT_TURN_LIMIT.name]: CHAT_TURN_LIMIT,

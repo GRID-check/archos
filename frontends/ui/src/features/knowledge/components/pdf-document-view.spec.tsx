@@ -7,7 +7,7 @@ import {
   fakeTextRun as run,
   type FakePdfState,
 } from '@/test-utils/pdfjs-fake'
-import { PdfDocumentView } from './pdf-document-view'
+import { PdfDocumentView, pointOnPage } from './pdf-document-view'
 import { capturePosthog } from '@/lib/analytics/posthog'
 
 vi.mock('@/lib/analytics/posthog', () => ({ capturePosthog: vi.fn() }))
@@ -540,6 +540,33 @@ describe('PdfDocumentView', () => {
     expect(screen.queryByTestId('region-mark')).toBeNull()
   })
 
+  it("lays the caller's overlay over each page, told which page it is on", async () => {
+    state.pages = [{ items: [] }, { items: [] }]
+    render(
+      <PdfDocumentView
+        src="/api/doc.pdf"
+        title="plan.pdf"
+        pageOverlay={(page) => (page === 2 ? <span data-testid="overlay-mark">pin on {page}</span> : null)}
+      />,
+    )
+    const mark = await screen.findByTestId('overlay-mark')
+    expect(mark.closest('[data-page]')?.getAttribute('data-page')).toBe('2')
+    expect(screen.getAllByTestId('overlay-mark')).toHaveLength(1)
+  })
+
+  it("puts the caller's controls first in its own pill", async () => {
+    state.pages = [{ items: [] }]
+    render(
+      <PdfDocumentView
+        src="/api/doc.pdf"
+        title="plan.pdf"
+        toolbarLead={<button type="button">Kommentar</button>}
+      />,
+    )
+    const pill = await screen.findByTestId('pdf-floating-toolbar')
+    expect(within(pill).getAllByRole('button')[0]).toHaveTextContent('Kommentar')
+  })
+
   it('releases the document when the viewer goes away', async () => {
     state.pages = [{ items: [] }]
     const { unmount } = render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
@@ -709,5 +736,21 @@ describe('PdfDocumentView', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Hide page overview' }))
     expect(screen.queryByRole('navigation', { name: 'Pages' })).toBeNull()
+  })
+})
+
+describe('pointOnPage', () => {
+  const rect = { left: 10, top: 20, width: 200, height: 100 }
+
+  it('is the share of the page the click hit, top-left origin', () => {
+    expect(pointOnPage(3, rect, 60, 45)).toEqual({ page: 3, x: 0.25, y: 0.25 })
+  })
+
+  it('clamps a click on the page edge onto the page', () => {
+    expect(pointOnPage(1, rect, 0, 500)).toEqual({ page: 1, x: 0, y: 1 })
+  })
+
+  it('has no point on a page with no size yet', () => {
+    expect(pointOnPage(1, { ...rect, width: 0 }, 60, 45)).toBeNull()
   })
 })

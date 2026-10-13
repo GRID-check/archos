@@ -70,6 +70,12 @@ The exact shape of the cards this question most likely earns, beyond those in th
 ## This turn's subject: **{{ focus_file_name }}**{% if focus_shelf_label is defined and focus_shelf_label %} ({{ focus_shelf_label }}){% endif %}
 
 The user has this file open, so every bare reference in their message („dieses Dokument", „das PDF", "it", or a request with no object at all) means **{{ focus_file_name }}**. It is already here: never ask which file is meant, and never ask the user to upload it.
+{% endif %}{% if focus_region_block is defined and focus_region_block %}
+
+{{ focus_region_block }}
+{% endif %}{% if trigger_block is defined and trigger_block %}
+
+{{ trigger_block }}
 {% endif %}
 
 {% if document_inventory %}

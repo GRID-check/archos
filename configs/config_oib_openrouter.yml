@@ -356,6 +356,19 @@ llms:
     request_timeout: 25
     reasoning_effort: none
 
+# The review canvas (src/aiq_agent/tools/canvas), one NAT function group: Piloti
+# works a document the way a person at the canvas does. `look` at a page or a
+# box on it, see who is in the `room`, `point` and `highlight` for everyone,
+# read the `marks`, propose a `mark` (a person takes it over), and, when the
+# person asks, set one open, `update` or `delete` one in their name; `reply` in
+# a thread. The model calls them `canvas__<tool>`. Each acts on a document the
+# model names, the one open on the canvas, or the conversation's subject; the
+# BFF checks it against the asker's access and the turn's signed scope, from
+# the signed envelope. Chat only, because only a turn carries an envelope.
+function_groups:
+  canvas:
+    _type: document_canvas
+
 functions:
   data_sources:
     _type: data_source_registry
@@ -770,6 +783,8 @@ functions:
       - file_draft
       - create_task
       - project_lookup
+      # The `canvas` function group (below): nine tools, `canvas__look` …
+      - canvas
       - ifc_query
       - ifc_measure
       - ask_user

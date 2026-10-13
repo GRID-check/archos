@@ -42,7 +42,11 @@ import { hasPlatformPermission } from '@/lib/authz/platform'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { resolveResourceAccess } from '@/lib/sharing/access'
 import { describeResource } from '@/lib/sharing/registry'
-import { PLATFORM_INBOX_PERMISSION } from './registry'
+import {
+  MARK_ANCHORED_INBOX_TYPES,
+  PLATFORM_INBOX_PERMISSION,
+  PROPOSAL_ANCHORED_INBOX_TYPES,
+} from './registry'
 import { findOwnUploadBatch } from '@/lib/upload-batches/service'
 
 /** Row-level context a deep link may use. */
@@ -128,11 +132,19 @@ function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
       // line is content: the row renders redacted, like a revoked one.
       if (access.contentLocked) return null
       return {
-        deepLink: (context) =>
-          describeResource(type).deepLink(resourceId, {
-            anchorId: context.anchorId ?? undefined,
+        deepLink: (context) => {
+          // An anchor means different things by type: a message of a chat, a
+          // mark of a document, a proposal or a Fassung. Only the first two are
+          // places the target can open at.
+          const anchor = context.anchorId ?? undefined
+          const onMark = MARK_ANCHORED_INBOX_TYPES.includes(context.itemType)
+          const onProposal = PROPOSAL_ANCHORED_INBOX_TYPES.includes(context.itemType)
+          return describeResource(type).deepLink(resourceId, {
+            anchorId: onMark || onProposal ? undefined : anchor,
+            markId: onMark ? anchor : undefined,
             projectId: access.container.projectId,
-          }),
+          })
+        },
       }
     },
   }
@@ -209,6 +221,9 @@ const projectTarget: InboxTargetDescriptor = {
           const folder = anchor && !anchor.startsWith('import:') ? anchor : null
           return `/app/projects/${resourceId}/files${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`
         }
+        // A proposal without a chat to show it in waits in the project's chat,
+        // where Piloti's cards live.
+        if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/chat`
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
         if (taskId) {

@@ -1288,6 +1288,80 @@ describe('InputArea', () => {
         expect(mockDrafts['session-1']).toBe('Und die Brandschutzklasse?')
       })
 
+      describe('steering the own turn, when the server reads notes', () => {
+        const mockSteer = vi.fn(() => true)
+        const offerSteering = () =>
+          vi.mocked(useWebSocketChat).mockReturnValue({
+            sendMessage: mockSendMessage,
+            isLoading: false,
+            respondToInteraction: mockRespondToInteraction,
+            noteSendIntent: mockNoteSendIntent,
+            pendingInteraction: null,
+            steer: mockSteer,
+            canSteer: true,
+          } as unknown as ReturnType<typeof useWebSocketChat>)
+        beforeEach(() => mockSteer.mockClear())
+
+        test('says Enter steers Piloti, with a small chip by the field, and keeps Stop', () => {
+          offerSteering()
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          expect(input).toHaveAttribute('placeholder', 'Steer Piloti …')
+          expect(input).toHaveAccessibleDescription(
+            'Enter adds to the running answer; Piloti reads it before its next step.'
+          )
+          expect(screen.getByTestId('composer-steer-chip')).toHaveTextContent('steering')
+          expect(screen.getByRole('button', { name: /stop response/i })).toBeInTheDocument()
+        })
+
+        test('Enter sends the note into the running turn, not a question, and clears the field', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          await user.click(input)
+          await user.keyboard('nicht die Tür, die Treppe{Enter}')
+
+          expect(mockSteer).toHaveBeenCalledWith({ text: 'nicht die Tür, die Treppe' })
+          expect(mockSendMessage).not.toHaveBeenCalled()
+          expect(mockStopStreaming).not.toHaveBeenCalled()
+          expect(input).toHaveValue('')
+        })
+
+        test('a note the turn could not take stays in the field', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          mockSteer.mockReturnValueOnce(false)
+          startOwnTurn()
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          const input = screen.getByRole('textbox')
+          await user.click(input)
+          await user.keyboard('die Treppe{Enter}')
+
+          expect(mockSteer).toHaveBeenCalledTimes(1)
+          expect(input).toHaveValue('die Treppe')
+        })
+
+        test('without a running turn of its own, the same Enter asks a question', async () => {
+          const user = userEvent.setup()
+          offerSteering()
+          mockSendMessage.mockReturnValue(true)
+          render(<InputArea isAuthenticated={true} connectionMode="sse" />)
+
+          await user.click(screen.getByRole('textbox'))
+          await user.keyboard('Erste Frage{Enter}')
+
+          expect(mockSteer).not.toHaveBeenCalled()
+          expect(mockSendMessage).toHaveBeenCalledWith('Erste Frage')
+          expect(screen.queryByTestId('composer-steer-chip')).toBeNull()
+        })
+      })
+
       test('after the settle the button is Send again and Enter sends exactly once', async () => {
         const user = userEvent.setup()
         mockSendMessage.mockReturnValue(true)

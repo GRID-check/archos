@@ -42,7 +42,7 @@ def _ts_interactive_types() -> set[str]:
         re.DOTALL | re.MULTILINE,
     )
     assert match, f"CARD_INTERACTIVITY not found in {TS_CARD_DECISION}"
-    return set(re.findall(r"^\s*(\w+):\s*'interactive'", match.group(1), re.MULTILINE))
+    return set(re.findall(r"^\s*(\w+):\s*'(?:interactive|live)'", match.group(1), re.MULTILINE))
 
 
 def test_interactive_types_are_real_card_types():
@@ -68,7 +68,7 @@ def test_every_card_type_is_classified_in_the_frontend():
         re.DOTALL | re.MULTILINE,
     )
     assert match, f"CARD_INTERACTIVITY not found in {TS_CARD_DECISION}"
-    classified = set(re.findall(r"^\s*(\w+):\s*'(?:interactive|presentational)'", match.group(1), re.MULTILINE))
+    classified = set(re.findall(r"^\s*(\w+):\s*'(?:interactive|live|presentational)'", match.group(1), re.MULTILINE))
     missing = _card_types() - classified
     assert not missing, (
         f"Card type(s) {sorted(missing)} are not classified in CARD_INTERACTIVITY "

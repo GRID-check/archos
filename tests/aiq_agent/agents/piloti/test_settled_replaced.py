@@ -24,6 +24,7 @@ from aiq_agent.common.wire_v2 import TextMessageContentBody
 from aiq_agent.common.wire_v2 import TurnResult
 from aiq_agent.turn import answer_stream
 from aiq_agent.turn.admission import TurnOutcome
+from aiq_agent.turn.payload import TurnInputs
 from aiq_agent.turn.streaming import note_settled_replaced
 
 
@@ -71,7 +72,7 @@ def workflow(monkeypatch):
 
     monkeypatch.setattr(cr.Context, "get", staticmethod(lambda: types.SimpleNamespace(conversation_id="c1")))
     monkeypatch.setattr(cr.GridRequestContext, "from_context", staticmethod(lambda: None))
-    monkeypatch.setattr(cr, "extract_turn_inputs", lambda _q: types.SimpleNamespace(query_text="q", data_sources=[]))
+    monkeypatch.setattr(cr, "extract_turn_inputs", lambda _q: TurnInputs("q", [], None, None))
     monkeypatch.setattr(cr, "get_scoped_collections_from_context", lambda: None)
     monkeypatch.setattr(cr, "documents_loading_step", lambda _shelves: None)
     monkeypatch.setattr(cr, "turn_identity", lambda *_a: None)

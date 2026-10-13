@@ -27,6 +27,7 @@ describe('stepNameLabel', () => {
     ['view_knowledge_image', 'thinking.stepName.drawing'],
     ['write_file', 'thinking.stepName.draft'],
     ['file_draft', 'thinking.stepName.filing'],
+    ['document_annotations', 'thinking.stepName.annotations'],
     ['set_doc_class', 'thinking.stepName.fileProposal'],
   ])('%s → %s', (name, key) => {
     expect(stepNameLabel(name, t)).toBe(key)

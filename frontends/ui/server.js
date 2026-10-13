@@ -35,7 +35,7 @@ const crypto = require('crypto')
 // feature was switched on for them at all. Rationale in full: `src/lib/boot.ts`.
 //
 // DUPLICATED from `formatBootLine`/`flagSource`/`deployedSha` in that module,
-// for the same reason the envelope builder below is duplicated: this file is
+// for the same reason `src/lib/turns/turn-headers.js` duplicates the envelope builder: this file is
 // plain CommonJS (see the `require(...)` calls above) and cannot import a TS
 // module. `tests/lib/boot.test.ts` extracts THIS function from the source and
 // runs it against the TS one over the same table, so the two cannot print
@@ -48,81 +48,16 @@ function bootLogLine(env) {
   return `[boot] sha=${sha} flags=${flags}`
 }
 
-// ── Signed context envelope (backlog T3-9 follow-up, 2026-07-16, user-mandated) ──
-// One consolidated, signed `X-Grid-Request-Context` header (+ integrity
-// signature `X-Grid-Request-Context-Sig`) carrying every x-grid-* field this
-// file already forwards individually below. Minted in ONE canonical place on
-// the TS side: `buildGridRequestContextEnvelope` /
-// `buildGridRequestContextEnvelopePayload` in
-// `frontends/ui/src/lib/request-context.ts`. server.js is plain CommonJS
-// (see the `require(...)` calls above — no ESM/TS imports anywhere in this
-// file) and cannot import that module, so the payload shape + signing logic
-// is DUPLICATED here. If the TS builder's field list, omission rules, or key
-// order ever change, this function must change identically — the
-// cross-language contract fixture (`tests/fixtures/grid_request_context.json`
-// `envelopeCases`) pins both sides' *output* so drift fails a test instead of
-// degrading silently in prod, but it cannot catch drift in this file's
-// *source* automatically since server.js has no test harness in this repo.
-// DUAL-WRITE: called alongside (not instead of) the individual x-grid-*
-// header assignments below — this is the transition-safety design agreed
-// with the user; removing the individual headers is a later cleanup.
-function buildGridRequestContextEnvelopeHeaders(input) {
-  const payload = {}
-  if (input.organizationId) payload.organizationId = input.organizationId
-  if (input.userId) payload.userId = input.userId
-  if (input.projectId) payload.projectId = input.projectId
-  if (input.collectionScope && input.collectionScope.length > 0) payload.collectionScope = input.collectionScope
-  if (input.contextTransport !== 'bff' && input.projectContext) payload.projectContext = input.projectContext
-  if (input.contextTransport !== 'bff' && input.projectMemory) payload.projectMemory = input.projectMemory
-  if (input.modelOverrides && Object.keys(input.modelOverrides).length > 0) {
-    payload.modelOverrides = input.modelOverrides
-  }
-  if (input.budget) payload.budget = input.budget
-  if (input.disabledSources && input.disabledSources.length > 0) payload.disabledSources = input.disabledSources
-  if (input.memoryReflectionEnabled !== undefined) payload.memoryReflectionEnabled = input.memoryReflectionEnabled
-  // `bundesland` (backlog T3-9 follow-up, 2026-07-16, user-mandated):
-  // envelope-only structured jurisdiction field, appended LAST in key order
-  // to keep every pre-existing signed payload byte-identical — see
-  // `buildGridRequestContextEnvelopePayload`'s docstring in request-context.ts
-  // (the canonical definition this function is pinned to).
-  if (input.bundesland) payload.bundesland = input.bundesland
-  // `conversationId` and `issuedAt` (ADR-0054), appended LAST in key order for
-  // the reason `bundesland` was last before them: every pre-existing signed
-  // payload stays byte-identical, so the fixture's precomputed header/signature
-  // values keep exact-matching on both sides of the language boundary.
-  //
-  // These two are what make the envelope usable as a CREDENTIAL and not only as
-  // context. The agent's document route reads the acting user out of the
-  // verified payload and files in that person's pinned session, so it needs to
-  // know which conversation asked (`conversationId`) and it must be able to
-  // refuse a replay (`issuedAt`, inside the signed bytes, checked against
-  // GRID_REQUEST_CONTEXT_MAX_AGE_MS by `verifyGridRequestContextEnvelope`).
-  if (input.conversationId) payload.conversationId = input.conversationId
-  if (input.issuedAt !== undefined && input.issuedAt !== null) payload.issuedAt = input.issuedAt
-  // `orgInstructions` — the organization's standing instruction block
-  // (`organization_instructions`, migration 0087), appended LAST in key order
-  // for the reason every field added since `memoryReflectionEnabled` has been
-  // last: every pre-existing signed payload stays byte-identical. Pinned to
-  // `buildGridRequestContextEnvelopePayload` in request-context.ts, as this
-  // whole function is.
-  if (input.contextTransport !== 'bff' && input.orgInstructions) payload.orgInstructions = input.orgInstructions
-  if (input.contextTransport) payload.contextTransport = input.contextTransport
-
-  const json = JSON.stringify(payload)
-  const headers = {
-    'x-grid-request-context': Buffer.from(json, 'utf8').toString('base64url'),
-  }
-  // Fail-open note (dev): when GRID_INTERNAL_API_TOKEN is unset, the envelope
-  // is still minted and forwarded (unsigned) — the backend's enforcement
-  // middleware mirrors this: signature verification is skipped when it also
-  // has no token configured, but envelope PRESENCE is still required for
-  // authenticated requests either way.
-  const secret = process.env.GRID_INTERNAL_API_TOKEN
-  if (secret) {
-    headers['x-grid-request-context-sig'] = crypto.createHmac('sha256', secret).update(json, 'utf8').digest('hex')
-  }
-  return headers
-}
+// ── The turn's headers, and the signed context envelope (ADR-0054, ADR-0106) ──
+// Every x-grid-* header this file forwards on a chat upgrade, and the one
+// consolidated, signed `X-Grid-Request-Context` envelope beside them, are built
+// by `turnContextHeaders` in `src/lib/turns/turn-headers.js` from the turn
+// context `/api/auth/websocket-scope` resolved. The BFF's wake job builds the
+// headers of the socket it opens as a person with the same function, so the
+// two producers of a chat turn cannot drift. The canonical envelope payload is
+// `buildGridRequestContextEnvelopePayload` in `src/lib/request-context.ts`;
+// `request-context.spec.ts` pins the CommonJS copy to it.
+const { turnContextHeaders } = require('./src/lib/turns/turn-headers.js')
 
 const dev = process.env.NODE_ENV !== 'production'
 const hostname = process.env.HOSTNAME || '0.0.0.0'
@@ -670,121 +605,26 @@ const startServer = async () => {
             socket.destroy()
             return
           }
-          req.headers['x-grid-collection-scope'] = result.header
-
-          // Forward user context so the Python backend knows who the caller is
-          if (result.data?.organizationId) {
-            req.headers['x-grid-organization-id'] = result.data.organizationId
-            req.headers['x-grid-user-id'] = result.data.userId
-          }
-          if (result.data?.accessToken) {
-            req.headers['authorization'] = `Bearer ${result.data.accessToken}`
-          }
-          // Anonymous development keeps inline context; authenticated turns
-          // fetch prompt blocks from the BFF in an HTTP body instead.
-          if (!result.data?.organizationId || !result.data?.userId) {
-            for (const [field, header] of [
-              ['projectContext', 'x-grid-project-context'],
-              ['projectMemory', 'x-grid-project-memory'],
-              ['orgInstructions', 'x-grid-org-instructions'],
-            ]) {
-              if (result.data?.[field]) {
-                req.headers[header] = Buffer.from(result.data[field], 'utf8').toString('base64url')
-              }
-            }
-          }
-          if (result.data?.projectId) {
-            req.headers['x-grid-project-id'] = result.data.projectId
-          }
-          // Feature flag: whether the async memory-reflection stage is enabled
-          // for this caller (WorkOS flag per-org, or the env fallback). Always
-          // forwarded so the backend fails closed when the header is absent.
-          req.headers['x-grid-feature-memory-reflection'] = result.data?.memoryReflectionEnabled
-            ? 'true'
-            : 'false'
-          // Per-org runtime model overrides ({agentGroup: openrouterModelId},
-          // from the org's active model-config version) and the remaining LLM
-          // budget snapshot. Both are JSON → base64url-encoded like the other
-          // structured headers; decoded in aiq_agent (model_overrides.py /
-          // cost_tracking.py). Absent header = workflow defaults / no cap.
-          if (result.data?.modelOverrides) {
-            req.headers['x-grid-model-overrides'] = Buffer.from(
-              JSON.stringify(result.data.modelOverrides),
-              'utf8'
-            ).toString('base64url')
-          }
-          if (result.data?.budget) {
-            req.headers['x-grid-budget'] = Buffer.from(
-              JSON.stringify(result.data.budget),
-              'utf8'
-            ).toString('base64url')
-          }
-          // Org-disabled data sources (e.g. web_search when the org toggle is
-          // off, ADR-0022). Decoded in aiq_agent (data_sources.py) and
-          // subtracted from every tool selection. Absent header = nothing
-          // disabled.
-          if (Array.isArray(result.data?.disabledSources) && result.data.disabledSources.length > 0) {
-            req.headers['x-grid-disabled-sources'] = Buffer.from(
-              JSON.stringify(result.data.disabledSources),
-              'utf8'
-            ).toString('base64url')
-          }
-          // Consolidated, signed context envelope (backlog T3-9 follow-up,
-          // 2026-07-16, user-mandated) — DUAL-WRITE alongside every
-          // individual x-grid-* header set above, built from the SAME
-          // `result.data` values. See buildGridRequestContextEnvelopeHeaders'
-          // own comment (top of file) for why this is duplicated rather than
-          // imported from request-context.ts.
           // SAST: `express-data-exfiltration` fires on remote-looking data
           // reaching `req.headers`. Here the data is not remote. `result` is
           // this server's own `/api/auth/websocket-scope` render (see
           // `resolveCollectionScope` above): same process, same trust domain,
           // and every field is derived server-side from the authenticated
           // session — organization and user from the session itself, the scope
-          // from `buildCollectionScopeFromRequest` after its FGA checks. None
-          // of it is caller-supplied, and the client cannot influence which
-          // fields come back.
-          //
-          // The rule is also not new to this change. The identical block is on
-          // `develop` at this line; ADR-0047 edited ONE field inside it
-          // (`collectionScope` now carries shelves), and the scan is
-          // diff-aware, so touching a line put the whole pre-existing pattern
-          // into the diff window. Suppressed narrowly, by rule id, on this call
-          // only — a broader ignore would hide the case where genuinely
-          // caller-supplied data starts reaching `req.headers`, which is what
-          // the rule is worth having for.
+          // from `buildCollectionScopeFromRequest` after its FGA checks, the
+          // conversation the one `authorizeConversationScope` ran on. None of
+          // it is caller-supplied, and the client cannot influence which fields
+          // come back. Suppressed narrowly, by rule id, on this call only — a
+          // broader ignore would hide the case where genuinely caller-supplied
+          // data starts reaching `req.headers`, which is what the rule is worth
+          // having for.
           // nosemgrep: javascript.express.security.express-data-exfiltration.express-data-exfiltration
           Object.assign(
             req.headers,
-            buildGridRequestContextEnvelopeHeaders({
-              organizationId: result.data?.organizationId,
-              userId: result.data?.userId,
-              projectId: result.data?.projectId,
-              // Shelf-bearing entries when the resolver supplied them, bare
-              // names otherwise. The envelope is the copy `scoping.py` trusts
-              // for an authenticated turn, so the shelf has to ride HERE and
-              // not only on the raw header (ADR-0047).
-              collectionScope: result.data?.scopedCollections ?? result.data?.scope,
-              projectContext: result.data?.projectContext,
-              projectMemory: result.data?.projectMemory,
-              orgInstructions: result.data?.orgInstructions,
-              modelOverrides: result.data?.modelOverrides,
-              budget: result.data?.budget,
-              disabledSources: result.data?.disabledSources,
-              memoryReflectionEnabled: result.data?.memoryReflectionEnabled,
-              bundesland: result.data?.bundesland,
-              // The conversation the scope route AUTHORIZED, not the raw query
-              // param: `buildCollectionScopeFromRequest` runs
-              // `authorizeConversationScope` on it and the upgrade is already
-              // refused when that fails, so the id echoed back is one this tier
-              // asserted. Signing the query param instead would put a
-              // caller-chosen value inside a signature a write route trusts.
-              conversationId: result.data?.conversationId,
-              // Minted HERE rather than inside the builder: the envelope's age
-              // is the age of THIS handshake, and a builder that stamped its own
-              // clock would silently refresh a payload a caller handed it.
+            turnContextHeaders(result.data, {
+              // Minted HERE: the envelope's age is the age of THIS handshake.
               issuedAt: Date.now(),
-              contextTransport: result.data?.organizationId && result.data?.userId ? 'bff' : undefined,
+              secret: process.env.GRID_INTERNAL_API_TOKEN,
             })
           )
         } else if (result.status === 401 || result.status === 403) {

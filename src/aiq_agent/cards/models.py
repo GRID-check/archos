@@ -1006,16 +1006,19 @@ class TaskCreatedCard(CardModel):
 # ── File-operation proposal (system-emitted, interactive) ────────────────────
 # ONE card type for four verbs, discriminated by `operation`, because the
 # alternative is four cards that differ in one field and share every line of
-# their chrome, their decision lifecycle and their i18n. The four write-side
-# workspace tools (`tools/files/`) each emit this card and NEVER perform the
+# their chrome, their decision lifecycle and their i18n. The one write-side
+# workspace tool (`tools/files/`) emits this card and NEVER performs the
 # operation: the Python tier holds no path into `grid_app` (ADR-0003), so
-# accepting it is what executes — through the same routes the Files pane uses,
-# in the reader's own session, under `requireProjectAccess`.
+# accepting it is what executes. With `proposal_id` the server applies the
+# stored proposal in the accepting person's session (ADR-0105); without one the
+# browser runs it through the routes the Files pane uses, in the reader's own
+# session. Either way under `requireProjectAccess`.
 #
-# The batch is what makes it one card and not one per file. „Räum die
-# Einreichunterlagen zusammen" is four moves, and four cards asking the same
-# question four times is four decisions for one intention. So `operations`
-# is a list, capped, and every entry shares the card's `operation` kind.
+# The batch is why `operations` is a list, capped, every entry sharing the
+# card's `operation` kind: „Räum die Einreichunterlagen zusammen" is four
+# moves. A stored proposal cannot grow, so today only the browser-executed card
+# batches; a server-backed one carries the call that created it
+# (`tools/files/cards.py` says why).
 
 #: How many operations one card may carry. A tidying turn proposes a handful;
 #: past that the card stops being a decision the reader can actually read
@@ -1078,13 +1081,17 @@ class FileOperationItem(CardModel):
 
 
 class FileOperationProposalCard(CardModel):
-    """A workspace change the agent PROPOSES and the reader executes.
+    """A workspace change the agent PROPOSES and a person applies.
 
-    System-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``),
-    one card per ``operation``. Every operation is a write, none of them writes: the card is the proposal, the
-    reader's Accept runs it through the existing document/folder/assignment
-    routes in their own session, and the tool's own result text says plainly
-    that nothing has changed yet.
+    System-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``).
+    Every operation is a write, none of them writes: the tool's own result text
+    says plainly that nothing has changed yet. With ``proposal_id`` the card
+    shows a proposal stored on the server (ADR-0105), which the server applies
+    in the accepting person's session; it then carries the one operation of
+    the call that created it. Without one (an older BFF, a run with no
+    envelope) the reader's Accept runs the rows through the existing
+    document/folder/assignment routes from the browser, and repeated calls of
+    one ``operation`` extend the card.
     """
 
     type: Literal["file_operation_proposal"] = "file_operation_proposal"
@@ -1096,6 +1103,14 @@ class FileOperationProposalCard(CardModel):
         description="The proposed changes, in the order they will be applied",
     )
     note: str | None = Field(default=None, description="One line of context under the list, when it adds something")
+    proposal_id: str | None = Field(
+        default=None,
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description=(
+            "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser executes "
+            "the rows, as before proposals were server objects"
+        ),
+    )
 
     @model_validator(mode="after")
     def _require_operation_fields(self) -> "FileOperationProposalCard":
@@ -1117,6 +1132,128 @@ class FileOperationProposalCard(CardModel):
             if missing:
                 raise ValueError(f"operation {index} ({self.operation}) is missing {', '.join(missing)}")
         return self
+
+
+# ── Canvas activity (system-emitted) ───────────────────────────────────────
+# What Piloti did on a document in this turn: the marks it proposed or set at
+# the person's request, the marks it changed or deleted for them, and the
+# threads it answered (`tools/canvas/`). The chat says it in prose; the card is
+# the proof, built from what the BFF returned (the mark's id and number), so a
+# reader can open the document at exactly that mark. One card per document per
+# turn, extended by every further call (`tools/canvas/cards.py`), the way the
+# file-operation card is. Interactive (`INTERACTIVE_CARD_TYPES`): a proposed mark
+# is taken over or dismissed on this card or on the document, whichever the
+# person reaches first. Both go through the same annotations API, which changes a
+# mark's status by compare-and-swap, so the second of the two sees a 409 and
+# shows the state the first one left. Its decisions are stored per mark. A
+# change Piloti made carries what each field was before and after, so the
+# person can undo it from the card through the same API, guarded by the status
+# Piloti left (a colleague's later move is a 409, never undone).
+
+#: How many entries one card carries: the `mark` tool proposes at most 20 per call.
+MAX_CANVAS_ACTIVITY_ITEMS = 20
+
+
+class CanvasDocument(CardModel):
+    """The document the activity happened on, by the BFF's id and its file name."""
+
+    id: str = Field(
+        pattern=r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+        description="The document's id, as the BFF returned it",
+    )
+    name: str = Field(min_length=1, description="The file name, as the BFF returned it")
+
+
+class _CanvasSetMark(CardModel):
+    """A mark Piloti set on a page: where, what kind, what it says."""
+
+    annotation_id: str = Field(min_length=1, description="The mark's id")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    page: int = Field(ge=1, description="The page, from 1")
+    shape: Literal["point", "region"]
+    x: float = Field(ge=0, le=1, description="Left edge (or the point), as a share of the page's width")
+    y: float = Field(ge=0, le=1, description="Top edge (or the point), as a share of the page's height")
+    w: float | None = Field(default=None, gt=0, le=1, description="Width share, for a region")
+    h: float | None = Field(default=None, gt=0, le=1, description="Height share, for a region")
+    kind: Literal["hint", "question", "defect"]
+    body: str = Field(min_length=1, max_length=2000, description="What the mark says")
+
+
+class CanvasProposedItem(_CanvasSetMark):
+    """A mark Piloti proposed: a person takes it over or dismisses it on the document."""
+
+    action: Literal["proposed"] = "proposed"
+
+
+class CanvasCreatedItem(_CanvasSetMark):
+    """A mark Piloti set because the person asked for it: open at once, in the person's name."""
+
+    action: Literal["created"] = "created"
+
+
+class CanvasFieldChange(CardModel):
+    """One field a change moved. An absent ``before``/``after`` is an empty field (no assignee, no date)."""
+
+    field: Literal["status", "assignee", "due_on", "kind", "body"]
+    before: str | None = Field(default=None, max_length=2000, description="The value before; absent when empty")
+    after: str | None = Field(default=None, max_length=2000, description="The value after; absent when empty")
+    before_label: str | None = Field(default=None, max_length=200, description="The assignee's name before")
+    after_label: str | None = Field(default=None, max_length=200, description="The assignee's name after")
+
+
+class CanvasChangedItem(CardModel):
+    """A mark Piloti changed because the person asked: what moved, the note it left, and the status it left."""
+
+    action: Literal["changed"] = "changed"
+    annotation_id: str = Field(min_length=1, description="The mark's id")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    status: Literal["proposed", "open", "resolved", "dismissed"] = Field(
+        description="The mark's status after the change: what an undo expects to find"
+    )
+    changes: list[CanvasFieldChange] = Field(min_length=1, max_length=5)
+    note: str = Field(min_length=1, max_length=300, description="The start of Piloti's note in the thread")
+
+
+class CanvasDeletedItem(CardModel):
+    """A mark Piloti deleted because the person who set it asked. Gone with its thread; no undo."""
+
+    action: Literal["deleted"] = "deleted"
+    number: int = Field(ge=1, description="The deleted mark's number")
+    body: str = Field(min_length=1, max_length=2000, description="What the mark said")
+
+
+class CanvasRepliedItem(CardModel):
+    """An answer Piloti wrote in a mark's thread."""
+
+    action: Literal["replied"] = "replied"
+    annotation_id: str = Field(min_length=1, description="The mark whose thread was answered")
+    number: int = Field(ge=1, description="The mark's number on the document")
+    excerpt: str = Field(min_length=1, max_length=300, description="The start of the reply")
+
+
+CanvasActivityItem = Annotated[
+    CanvasProposedItem | CanvasCreatedItem | CanvasChangedItem | CanvasDeletedItem | CanvasRepliedItem,
+    Field(discriminator="action"),
+]
+
+
+class CanvasActivityCard(CardModel):
+    """What Piloti did on one document in this turn: marks proposed or set, changed, deleted, threads answered.
+
+    A proposed mark is taken over or dismissed from here as well as on the
+    document, and a change is undone from here, through the same annotations API.
+
+    System-emitted by the canvas tools (``src/aiq_agent/tools/canvas/``) after
+    the BFF confirmed each write; the model cannot emit it (``SYSTEM_CARD_TYPES``).
+    """
+
+    type: Literal["canvas_activity"] = "canvas_activity"
+    document: CanvasDocument
+    items: list[CanvasActivityItem] = Field(
+        min_length=1,
+        max_length=MAX_CANVAS_ACTIVITY_ITEMS,
+        description="What happened, in the order it happened",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -1681,6 +1818,7 @@ GridCard = (
     | DocumentDraftCard
     | TaskCreatedCard
     | FileOperationProposalCard
+    | CanvasActivityCard
     | IfcViewerCard
     | IfcComplianceCard
     | IfcScheduleCard
@@ -1698,6 +1836,7 @@ __all__ = [
     "CalculationLimit",
     "CalculationOperand",
     "CalculationStep",
+    "CanvasActivityCard",
     "CardModel",
     "DocumentDraftCard",
     "DocumentGridCard",

@@ -212,8 +212,19 @@ export async function applyFileOperations(
       results.push({ label, ok: false, reason: error instanceof Error ? error.message : String(error) })
     }
   }
-  // A listing that still shows the old folder, or the old name, is the reader's
-  // proof that nothing happened. Fired once, and only when something did.
-  if (results.some((result) => result.ok)) notifyDocumentsChanged()
+  notifyIfAnyApplied(results)
   return results
+}
+
+/**
+ * Tell the Files list and the document caches that the estate changed, if any
+ * of these results changed it. Shared by both ways a card is applied: from the
+ * browser ({@link applyFileOperations}) and on the server (a proposal's
+ * `results`, ADR-0105), so the Files list refreshes after either.
+ *
+ * A listing that still shows the old folder, or the old name, is the reader's
+ * proof that nothing happened. Fired once, and only when something did.
+ */
+export function notifyIfAnyApplied(results: readonly Pick<FileOperationResult, 'ok'>[] | null | undefined): void {
+  if (results?.some((result) => result.ok)) notifyDocumentsChanged()
 }
