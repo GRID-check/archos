@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Anmerkungen rows (migration 0135) against a REAL Postgres through the
+ * Anmerkungen rows (migration 0138) against a REAL Postgres through the
  * restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
@@ -23,7 +23,7 @@
  *     not touched;
  *   - another organization reads none of them and cannot plant one on this
  *     organization's document;
- *   - a wake of Piloti (migration 0136, ADR-0106) is recorded and queued in
+ *   - a wake of Piloti (migration 0139, ADR-0106) is recorded and queued in
  *     the reply's transaction, and a reply that rolls back leaves neither; the
  *     caps count the recorded wakes; a delegation is both columns or neither,
  *     only on an open mark, and Piloti's reply leaves it alone.
@@ -314,7 +314,7 @@ describe.skipIf(!url)('Anmerkungen against live Postgres', () => {
     await expect(insert(ids.document, [mark()], { organizationId: OTHER_ORG })).rejects.toThrow()
   })
 
-  describe('waking Piloti (migration 0136)', () => {
+  describe('waking Piloti (migration 0139)', () => {
     const count = async (query: ReturnType<typeof sql>) =>
       Number(Array.from(await inOrg(ORG, () => db.execute<{ n: number }>(query)))[0]?.n)
     const event = (annotationId: string, eventId: string) => ({

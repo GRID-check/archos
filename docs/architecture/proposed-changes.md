@@ -18,7 +18,7 @@ session.
 | Piece | Where |
 |---|---|
 | The contract (zod, shared by every slice) | `frontends/ui/src/lib/proposals/types.ts` |
-| The table and its CHECKs | `frontends/ui/drizzle/0137_proposed_changes.sql`, mirrored in `src/lib/db/schema/proposed-changes.ts` |
+| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, mirrored in `src/lib/db/schema/proposed-changes.ts` |
 | SQL | `src/lib/proposals/repository.ts` |
 | Rules: who may read, who may decide, how apply runs | `src/lib/proposals/service.ts` |
 | The four verbs, ported to the server | `src/lib/proposals/executors.ts` |

@@ -34,7 +34,7 @@ const list = (values: readonly string[]) => sql.raw(values.map((value) => `'${va
 
 /**
  * `document_annotations` — a mark set at a place on a page of a document, a
- * point or a region, by a person or proposed by Piloti (migration 0135;
+ * point or a region, by a person or proposed by Piloti (migration 0138;
  * CONTEXT.md „Anmerkung").
  *
  * Bound to the document and to the Fassung shown when it was set: a position
@@ -74,7 +74,7 @@ export const documentAnnotations = pgTable(
     closedAt: timestamp('closed_at', { withTimezone: true }),
     /**
      * Piloti is the delegate: it works the mark on this person's behalf
-     * (migration 0136, ADR-0105). The mark keeps its human assignee. Set by the
+     * (migration 0139, ADR-0105). The mark keeps its human assignee. Set by the
      * person's own PATCH, cleared when Piloti replies (it hands the mark back)
      * or the mark closes.
      */
@@ -143,7 +143,7 @@ export const documentAnnotations = pgTable(
 export type DocumentAnnotationRow = typeof documentAnnotations.$inferSelect
 export type NewDocumentAnnotationRow = typeof documentAnnotations.$inferInsert
 
-/** `document_annotation_replies` — the thread under one Anmerkung, in order (migration 0135). */
+/** `document_annotation_replies` — the thread under one Anmerkung, in order (migration 0138). */
 export const documentAnnotationReplies = pgTable(
   'document_annotation_replies',
   {
@@ -154,7 +154,7 @@ export const documentAnnotationReplies = pgTable(
     body: text('body').notNull(),
     createdBy: text('created_by').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-    /** The reply addresses Piloti: the composer's mention chip, never a match on the text (migration 0136). */
+    /** The reply addresses Piloti: the composer's mention chip, never a match on the text (migration 0139). */
     addressesAgent: boolean('addresses_agent').notNull().default(false),
   },
   (table) => ({
@@ -180,7 +180,7 @@ export type DocumentAnnotationReplyRow = typeof documentAnnotationReplies.$infer
 
 /**
  * `piloti_wakes` — one row per event on an Anmerkung that met a wake rule
- * (migration 0136, ADR-0106). Its id is the `bff_job_queue` job id and the
+ * (migration 0139, ADR-0106). Its id is the `bff_job_queue` job id and the
  * turn id, uuid5 of the event (`lib/annotations/wake-ids.ts`), so one event
  * wakes Piloti at most once. The queue forgets a finished job; this row keeps
  * what the wake came to, and the caps count it.
@@ -202,7 +202,7 @@ export const pilotiWakes = pgTable(
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     settledAt: timestamp('settled_at', { withTimezone: true }),
-    /** When it reached its final word: the turn's end, or the settle of one that never started (0138). */
+    /** When it reached its final word: the turn's end, or the settle of one that never started (0141). */
     endedAt: timestamp('ended_at', { withTimezone: true }),
   },
   (table) => ({

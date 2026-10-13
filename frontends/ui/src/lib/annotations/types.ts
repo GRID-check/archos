@@ -6,7 +6,7 @@
  * region, with what is to be done about it (a Hinweis, a Rückfrage or a
  * Mangel), a thread of replies under it, and optionally someone who is to act
  * on it by a date. A person sets one, or Piloti proposes one for a person to
- * take over (migration 0135).
+ * take over (migration 0138).
  *
  * No `server-only` and no drizzle: the browser, the typed client (`./client`),
  * the route handlers and, through the JSON Schema fixture, the Python tier read
@@ -41,7 +41,7 @@ export const PILOTI_WAKE_TRIGGERS = ['thread_mention', 'thread_reply', 'assigned
 export type PilotiWakeTrigger = (typeof PILOTI_WAKE_TRIGGERS)[number]
 
 /**
- * What a wake came to (`piloti_wakes.status`, migrations 0136 and 0138).
+ * What a wake came to (`piloti_wakes.status`, migrations 0139 and 0141).
  * `queued` until the job runs; `started` while its turn runs; then the turn's
  * end: `answered`, `stopped` (a person stopped it, or took the mark back), or
  * `failed`. `suppressed` and `refused` never started a turn; `failed` can be

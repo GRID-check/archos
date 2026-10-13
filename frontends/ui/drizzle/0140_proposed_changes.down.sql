@@ -1,4 +1,4 @@
--- Reverse 0137. ORDER: roll the frontend back first; the newer build creates,
+-- Reverse 0140. ORDER: roll the frontend back first; the newer build creates,
 -- reads and applies proposed changes, and its file-operation card shows one.
 --
 -- Lossy: every proposed change and the record of what applying it did go with

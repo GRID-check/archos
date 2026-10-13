@@ -1,7 +1,7 @@
 -- `piloti_changes`: every change Piloti APPLIED to an Anmerkung or a thread,
 -- recorded with the turn that made it (ADR-0109).
 --
--- What a proposal is to an unasked change (`proposed_changes`, 0137), this is
+-- What a proposal is to an unasked change (`proposed_changes`, 0140), this is
 -- to an asked one: a server row the turn's card reads back, a colleague's
 -- window shows, Langfuse can score, and undo works from. Before this, what a
 -- turn changed lived only in its card, and undo was the browser replaying the

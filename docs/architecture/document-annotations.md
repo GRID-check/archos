@@ -8,7 +8,7 @@ parts.
 
 ## The data, and the rules the database holds
 
-Migration `frontends/ui/drizzle/0135_document_annotations.sql` creates two
+Migration `frontends/ui/drizzle/0138_document_annotations.sql` creates two
 tables, both under `grid_secure_table` RLS.
 
 | Table | Holds | RLS predicate |
@@ -32,16 +32,16 @@ cannot route around them:
 `scripts/rls-test-db.sh` refuses each CHECK against a real PostgreSQL, then
 applies the down migration and re-applies the up migration.
 
-Migration `0136_piloti_wakes.sql` adds what wakes Piloti (below, „Events wake
+Migration `0139_piloti_wakes.sql` adds what wakes Piloti (below, „Events wake
 Piloti“):
 
 | Where | Holds | CHECK |
 |---|---|---|
 | `document_annotation_replies.addresses_agent` | the reply addresses Piloti: the composer's @Piloti chip, never read from the text | default false |
 | `document_annotations.delegated_by`, `delegated_at` | Piloti is the delegate, working the mark for this person | both or neither (`…_delegation_complete`); only on an open mark (`…_delegated_while_open`) |
-| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0138_wake_ends.sql`); RLS on the org and the mark's org |
+| `piloti_wakes` | one row per event that met a wake rule: its id is the job id and the turn id (uuid5 of the event); trigger, event, the person who acted, and what it came to: `queued`, then `started` and its final word, `answered`, `stopped` or `failed` (a turn that ran), or `suppressed` and `refused` (no turn ran) | a reason exactly for `suppressed`, `refused` and `failed`; `settled_at` exactly when it left `queued`; `ended_at` exactly when it reached its final word (migration `0141_wake_ends.sql`); RLS on the org and the mark's org |
 
-Migration `0139_piloti_changes.sql` adds the change record: every change Piloti
+Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
 it, and undo runs from it (below, „In the chat“).
 
@@ -163,7 +163,7 @@ person asked for is proposed instead (`canvas__mark` without `open`), and a
 change or a deletion is left to the person, in the document. Reads, the room,
 pointing, highlighting, replies and proposals never ask the flag.
 
-The CHECKs of migration 0135 hold on every path, unchanged:
+The CHECKs of migration 0138 hold on every path, unchanged:
 
 - `only_piloti_proposes`: a born-open mark is not `proposed`; a person's mark never is.
 - `acceptance_complete`: `accepted_by` and `accepted_at` are set together, on birth or by `transition()`.

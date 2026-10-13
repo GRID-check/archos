@@ -8,7 +8,7 @@
  *
  * The repository is an in-memory fake that keeps the compare-and-swap honest
  * (a transition from anything but `proposed`, or past a live claim, finds no
- * row) and checks every row against the CHECKs of migration 0137. The
+ * row) and checks every row against the CHECKs of migration 0140. The
  * document, folder and assignment services are mocked at their seams; what is
  * under test is that applying calls THEM, with the deciding person's session,
  * in order, resolving names and paths the way the browser did, and records

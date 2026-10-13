@@ -19,7 +19,7 @@ turn made a change, and Langfuse could not score a person's decision on it,
 because nothing on the server joined a change to the turn.
 
 Proposals, Piloti's UNASKED changes, already became server rows
-(`proposed_changes`, migration 0137). The asked ones had no row at all. The
+(`proposed_changes`, migration 0140). The asked ones had no row at all. The
 work lives on the objects; what is missing is the record of what a turn did to
 them.
 
@@ -41,7 +41,7 @@ them.
 
 ## Decision Outcome
 
-Chosen option: 3, `piloti_changes` (migration 0139).
+Chosen option: 3, `piloti_changes` (migration 0142).
 
 * **One row per applied change**, written by the BFF in the route Piloti
   calls (`lib/annotations/agent.ts`): `create`, `update` or `delete` of a mark,
@@ -79,7 +79,7 @@ Chosen option: 3, `piloti_changes` (migration 0139).
 
 ### Confirmation
 
-* Migration 0139's CHECKs (states by op, a reply is only created, undo
+* Migration 0142's CHECKs (states by op, a reply is only created, undo
   complete) exercised in `scripts/rls-test-db.sh`.
 * `lib/changes` specs: each op records its row; no answer id records nothing;
   the list leaves out invisible documents; undo refuses `moved-on` and

@@ -1,6 +1,6 @@
 /**
  * Proposed changes repository — the SQL over `proposed_changes` (migration
- * 0137). No authorization here; `./service` owns it. Every statement is keyed
+ * 0140). No authorization here; `./service` owns it. Every statement is keyed
  * by the organization as well as the id, and runs in its tenant scope.
  *
  * Every transition is a compare-and-swap on `proposed`, so two people (or two

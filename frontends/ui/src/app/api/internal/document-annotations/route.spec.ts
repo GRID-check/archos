@@ -17,7 +17,7 @@
  * over a fake repository): a mark asked for is born open with the asker behind
  * it, a change posts Piloti's note in the thread, a stale `expectedStatus` is
  * a 409 with no note, and nothing the asker could not do goes through. Every
- * row the fake holds is checked against the CHECKs of migration 0135.
+ * row the fake holds is checked against the CHECKs of migration 0138.
  *
  * Parity is the organization's choice (`piloti-acts`, an entitlement, off by
  * default): with it off, `create`, `update` and `delete` are refused with
@@ -438,7 +438,7 @@ const record = (patch: Partial<AnnotationRecord> = {}): AnnotationRecord => ({
 })
 
 /**
- * The CHECKs of migrations 0135 and 0136 that an author, a status move or a
+ * The CHECKs of migrations 0138 and 0139 that an author, a status move or a
  * delegation touches, as predicates over a row: what the database would refuse.
  */
 function violatedChecks(row: DocumentAnnotationRow): string[] {

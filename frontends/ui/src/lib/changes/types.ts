@@ -1,5 +1,5 @@
 /**
- * The change record's vocabulary and wire contract (migration 0139, ADR-0109).
+ * The change record's vocabulary and wire contract (migration 0142, ADR-0109).
  *
  * Every change Piloti APPLIES to an Anmerkung or a thread is one
  * `piloti_changes` row, with the turn that made it. A turn's card reads its

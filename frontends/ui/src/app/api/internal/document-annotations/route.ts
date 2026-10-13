@@ -11,7 +11,7 @@
  * named one is admitted only within the envelope's signed scope
  * (`lib/annotations/agent.ts`). Piloti's own findings are born proposals; a
  * mark the asker asked for is born open with the asker as `accepted_by` (the
- * CHECKs of migration 0135 hold that Piloti's open mark has a person behind
+ * CHECKs of migration 0138 hold that Piloti's open mark has a person behind
  * it). A change posts Piloti's note in the mark's thread in the same request.
  *
  * `POST` `InternalAnnotationRequest` → the `InternalAnnotation*Response` of its
