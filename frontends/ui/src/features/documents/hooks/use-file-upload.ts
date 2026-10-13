@@ -533,7 +533,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
             // tombstone from an earlier delete must not hide it.
             if (result.documentId) removeRecentlyDeletedIds([result.documentId])
             updateTrackedFile(tracked.id, {
-              status: mapUploadResponseStatus(result.status),
+              status: mapUploadResponseStatus(result.status, result.unchanged === true),
               serverFileId: result.documentId,
               jobId: result.jobId ?? undefined,
               ...(result.unchanged ? { unchanged: true } : {}),
@@ -756,7 +756,9 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   const retryFile = useCallback(
     async (fileId: string) => {
       const file = trackedFiles.find((f) => f.id === fileId)
-      if (!file) return
+      // A held file is not retried, from any surface: the server refuses a
+      // re-upload onto it (409), and nothing went wrong to repeat (ADR-0086).
+      if (!file || file.status === 'held') return
 
       if (!file.file) {
         setError(t('errors.cannotRetryServerFile'))

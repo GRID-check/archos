@@ -8,7 +8,7 @@
 'use client'
 
 import { type FC, useState, useEffect } from 'react'
-import { Check, FileText, Trash2, X } from 'lucide-react'
+import { Check, FileText, ShieldAlert, Trash2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Spinner } from '@/components/ui/spinner'
@@ -18,10 +18,17 @@ import { motion, motionQuick, springDrawer, useMotionToken } from '@/components/
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useLocale, useTranslations } from '@/i18n'
 import { IngestFailureNotice } from '@/features/documents/components/ingest-failure-notice'
+import { QuarantineFindings } from '@/features/documents/components/quarantine-findings'
 import { formatBytes } from '@/lib/format'
 
-/** File source status types */
-export type FileSourceStatus = 'uploading' | 'ingesting' | 'available' | 'error' | 'deleting'
+/**
+ * File source status types.
+ *
+ * `held`: the content check held the file back (ADR-0086). Not an error:
+ * nothing failed, and the card says why in the quarantine sentence.
+ * `stored`: kept and never read, so the chat cannot answer from it; neutral.
+ */
+export type FileSourceStatus = 'uploading' | 'ingesting' | 'available' | 'held' | 'stored' | 'error' | 'deleting'
 
 export interface FileSourceCardProps {
   /** Unique identifier for the file */
@@ -36,7 +43,7 @@ export interface FileSourceCardProps {
   description?: string
   /** Current status of the file */
   status: FileSourceStatus
-  /** Error message when status is 'error' */
+  /** Error message when status is 'error'; the stored `quarantined:{…}` verdict when it is 'held' */
   errorMessage?: string
   /**
    * The failure happened while the file was being read, so `errorMessage` is a
@@ -79,6 +86,16 @@ const STATUS_CONFIG: Record<
   available: {
     labelKey: 'fileSourceCard.statusAvailable',
     textClass: 'text-success',
+    showSpinner: false,
+  },
+  held: {
+    labelKey: 'fileSourceCard.statusHeld',
+    textClass: 'text-warning',
+    showSpinner: false,
+  },
+  stored: {
+    labelKey: 'fileSourceCard.statusStored',
+    textClass: 'text-muted-foreground',
     showSpinner: false,
   },
   error: {
@@ -218,7 +235,10 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
         <Spinner size="sm" label={label} />
       ) : (
         <FileText
-          className={cn('size-8', status === 'error' ? 'text-error' : 'text-muted-foreground')}
+          className={cn(
+            'size-8',
+            status === 'error' ? 'text-error' : status === 'held' ? 'text-warning' : 'text-muted-foreground'
+          )}
           aria-hidden="true"
         />
       )}
@@ -256,6 +276,7 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
               <Check className="size-3 text-success" aria-hidden="true" />
             )}
             {status === 'error' && <X className="size-3 text-error" aria-hidden="true" />}
+            {status === 'held' && <ShieldAlert className="size-3 text-warning" aria-hidden="true" />}
             <span className={cn(config.showSpinner ? 'text-sm' : 'text-xs', config.textClass)}>
               {label}
             </span>
@@ -285,6 +306,13 @@ export const FileSourceCard: FC<FileSourceCardProps> = ({
         ) : (
           status === 'error' &&
           errorMessage && <span className="mt-1 text-xs text-error">{errorMessage}</span>
+        )}
+
+        {/* Why it was held, and the sentence that says what happens next: the
+            same reasons the tray and the Files preview list, never the stored
+            `quarantined:{…}` text behind a „Details“ disclosure. */}
+        {status === 'held' && (
+          <QuarantineFindings errorMessage={errorMessage} className="mt-1" testId="file-source-card-held" />
         )}
       </div>
     </>

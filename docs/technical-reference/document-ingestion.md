@@ -530,7 +530,7 @@ Two pollers read two different things.
 - Polls the backend JOB every 5 seconds through the BFF proxy: `GET /api/v1/documents/{jobId}/status` (`documentsClient.getJobStatus`), which reaches `GET /v1/documents/{job_id}/status` in `documents.py` and returns `IngestionJobStatus` with per-file progress
 - Maximum 420 poll attempts (~35 minutes)
 - Persists job state to localStorage for recovery on page refresh
-- Updates `TrackedFile` entries in the Zustand store from the job status
+- Updates `TrackedFile` entries in the Zustand store from the job status. A file the job ends `failed` with a `quarantined:{…}` error becomes `held`, not `failed` (`trackedStatusOfJobFile`), so the tray never offers to retry a file the content check held back (ADR-0086). A row settled by a document status read takes the status's read family instead (`trackedPatchFromStatus`): `quarantined` is `held`, `uploaded` and `stored` are `stored`, never `success`. The tray's states: [`docs/ux/file-upload-and-explorer.md`](../ux/file-upload-and-explorer.md#the-rule)
 
 **Document status**: `GET /api/documents/{id}/status` (`frontends/ui/src/app/api/documents/[id]/status/route.ts` → `getDocumentStatus` in `lib/documents/service.ts`)
 - Reads the `documents` row, reconciling an in-flight row first (see below)

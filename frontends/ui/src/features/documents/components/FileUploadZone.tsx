@@ -9,13 +9,15 @@
 'use client'
 
 import { type ChangeEvent, type FC, useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, FileText, Upload, XCircle } from 'lucide-react'
+import { CheckCircle2, FileText, ShieldAlert, Upload, XCircle } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { useDocumentsStore } from '../store'
 import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
+import type { TrackedFileStatus } from '../types'
+import { QuarantineFindings } from './quarantine-findings'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
 import {
@@ -33,11 +35,38 @@ import { cn } from '@/lib/utils'
 // Types
 // ============================================================================
 
+/**
+ * What a row shows. `held` (the content check held it back, ADR-0086) and
+ * `stored` (kept, not read) are at rest and neither green nor red; `canceled`
+ * is the user's own decision. Each used to fall to `uploading` and spin.
+ */
+type UploadZoneStatus = 'uploading' | 'success' | 'held' | 'stored' | 'canceled' | 'error'
+
 interface UploadedFile {
   id: string
   file: File
-  status: 'uploading' | 'success' | 'error'
+  status: UploadZoneStatus
   errorMessage?: string
+}
+
+/** A tracked file's status as the zone shows it, decided for every status there is. */
+function zoneStatusOf(status: TrackedFileStatus): UploadZoneStatus {
+  switch (status) {
+    case 'failed':
+      return 'error'
+    case 'success':
+      return 'success'
+    case 'held':
+      return 'held'
+    case 'stored':
+      return 'stored'
+    case 'canceled':
+      return 'canceled'
+    case 'uploading':
+    case 'ingesting':
+    case 'deleting':
+      return 'uploading'
+  }
 }
 
 interface FileUploadZoneProps {
@@ -102,12 +131,7 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
       .map((tf) => ({
         id: tf.id,
         file: tf.file!,
-        status:
-          tf.status === 'failed'
-            ? ('error' as const)
-            : tf.status === 'success'
-              ? ('success' as const)
-              : ('uploading' as const),
+        status: zoneStatusOf(tf.status),
         errorMessage: tf.errorMessage ?? undefined,
       }))
     setUploadValue(mapped)
@@ -207,12 +231,27 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
               <FileText className="size-4 shrink-0 text-muted-foreground" aria-hidden />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm text-foreground">{item.file.name}</p>
-                {item.errorMessage ? <p className="text-xs text-destructive">{item.errorMessage}</p> : null}
+                {/* A held file's stored text is the verdict as JSON: it reads
+                    as its reasons, never as a red error line. */}
+                {item.status === 'held' ? (
+                  <QuarantineFindings errorMessage={item.errorMessage} testId="upload-zone-held" />
+                ) : item.status === 'error' && item.errorMessage ? (
+                  <p className="text-xs text-destructive">{item.errorMessage}</p>
+                ) : null}
               </div>
               {item.status === 'uploading' ? (
                 <Spinner size="sm" className="shrink-0 text-muted-foreground" />
               ) : null}
               {item.status === 'success' ? <CheckCircle2 className="size-4 shrink-0 text-success" aria-hidden /> : null}
+              {item.status === 'held' ? (
+                <ShieldAlert className="size-4 shrink-0 text-warning" aria-label={t('uploads.row.held')} />
+              ) : null}
+              {item.status === 'stored' ? (
+                <CheckCircle2 className="size-4 shrink-0 text-muted-foreground" aria-label={t('uploads.row.stored')} />
+              ) : null}
+              {item.status === 'canceled' ? (
+                <XCircle className="size-4 shrink-0 text-muted-foreground" aria-label={t('uploads.row.canceled')} />
+              ) : null}
               {item.status === 'error' ? <XCircle className="size-4 shrink-0 text-destructive" aria-hidden /> : null}
             </motion.li>
           ))}

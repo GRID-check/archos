@@ -212,6 +212,99 @@ describe('UploadTray', () => {
     })
   })
 
+  describe('a file the content check held back (ADR-0086)', () => {
+    const VERDICT = 'quarantined:{"reasons":[{"kind":"term","term":"Lohnzettel","pages":[2]}],"checked":"full"}'
+    const held = (overrides: Partial<TrackedFile> = {}) =>
+      tracked({ id: 'h', fileName: 'Lohnzettel_03.pdf', status: 'held', serverFileId: 'doc-h', errorMessage: VERDICT, ...overrides })
+
+    it('says held back, in the warning colour, with what was found — never failed', () => {
+      renderTray([held()])
+
+      const row = screen.getByTestId('upload-row')
+      expect(row).toHaveAttribute('data-phase', 'held')
+      const label = within(row).getByText('Held back')
+      expect(label.closest('.text-warning')).not.toBeNull()
+      expect(within(row).queryByText('Failed')).toBeNull()
+      expect(within(screen.getByTestId('upload-row-held')).getByText(/Lohnzettel/)).toBeDefined()
+      // The tray cannot show the document, so the pages are words, not buttons.
+      expect(screen.queryByTestId('upload-row-held-page-2')).toBeNull()
+      expect(screen.queryByText(/^quarantined:/)).toBeNull()
+    })
+
+    it('is not retried by „Retry failed", and has no retry of its own', async () => {
+      const onRetry = vi.fn()
+      const user = userEvent.setup()
+      renderTray([held(), tracked({ id: 'f', fileName: 'b.pdf', status: 'failed', errorMessage: 'boom' })], { onRetry })
+
+      await user.click(screen.getByRole('button', { name: 'Retry failed' }))
+      expect(onRetry.mock.calls.map(([id]) => id)).toEqual(['f'])
+      const heldRow = screen.getAllByTestId('upload-row').find((row) => row.getAttribute('data-phase') === 'held')!
+      expect(within(heldRow).queryByRole('button', { name: 'Retry' })).toBeNull()
+    })
+
+    it('offers no „Retry failed" when nothing but a held file is left', () => {
+      renderTray([held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })])
+      expect(screen.queryByRole('button', { name: 'Retry failed' })).toBeNull()
+    })
+
+    it('can be dismissed from the tray', async () => {
+      const onDismiss = vi.fn()
+      const user = userEvent.setup()
+      renderTray([held()], { onDismiss })
+
+      await user.click(screen.getByRole('button', { name: 'Dismiss Lohnzettel_03.pdf' }))
+      expect(onDismiss).toHaveBeenCalledWith(['h'])
+    })
+
+    it('heads the batch with what was held, and marks it with a warning, not a check', () => {
+      const { rerender } = renderTray([held()])
+      expect(screen.getByText('1 document held back')).toBeDefined()
+      expect(screen.getByTestId('upload-tray-glyph')).toHaveAttribute('data-tone', 'warning')
+
+      rerender(<UploadTray files={[held(), tracked({ id: 'ok', fileName: 'ok.pdf', status: 'success' })]} onRetry={vi.fn()} />)
+      expect(screen.getByText('1 added · 1 held back')).toBeDefined()
+
+      rerender(
+        <UploadTray
+          files={[held(), tracked({ id: 'f', fileName: 'b.pdf', status: 'failed', errorMessage: 'boom' })]}
+          onRetry={vi.fn()}
+        />
+      )
+      expect(screen.getByTestId('upload-tray-glyph')).toHaveAttribute('data-tone', 'destructive')
+    })
+
+    describe('the batch', () => {
+      beforeEach(() => {
+        vi.useFakeTimers({ shouldAdvanceTime: true })
+      })
+
+      afterEach(() => {
+        vi.useRealTimers()
+      })
+
+      it('does not retire itself while anything is held', () => {
+        const onDismiss = vi.fn()
+        renderTray([tracked({ id: 'ok', status: 'success' }), held()], { onDismiss })
+
+        vi.advanceTimersByTime(60_000)
+        expect(onDismiss).not.toHaveBeenCalled()
+      })
+    })
+  })
+
+  describe('a file stored and not read', () => {
+    it('says filed, muted, and never citable', () => {
+      renderTray([tracked({ status: 'stored', serverFileId: 'doc-s' })])
+
+      const row = screen.getByTestId('upload-row')
+      expect(row).toHaveAttribute('data-phase', 'stored')
+      const label = within(row).getByText('Filed')
+      expect(label.closest('.text-muted-foreground')).not.toBeNull()
+      expect(within(row).queryByText('Citable')).toBeNull()
+      expect(screen.getByText('1 document added')).toBeDefined()
+    })
+  })
+
   it('collapses the file list without hiding the batch status', async () => {
     const user = userEvent.setup()
     renderTray([tracked({ uploadStartedAt: 1 })])
