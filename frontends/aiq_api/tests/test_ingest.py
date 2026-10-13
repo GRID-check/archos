@@ -309,6 +309,25 @@ async def test_ingest_books_its_spend_to_the_documents_project_and_uploader(app,
 
 
 @pytest.mark.asyncio
+async def test_ingest_carries_the_projects_facts_for_the_qdrant_mirror(app, mock_ingestor, no_network):
+    """A new document's chunks carry the project's facts from their first search (`qdrant.mirror.enrichment`)."""
+    body = {
+        "file_ref": "http://seaweedfs.test/bucket/plan.pdf",
+        "collection": "proj_1",
+        "project_facts": {"facts": {"bundesland": "wien", "gebaeudeklasse": [4]}, "status": "closed"},
+    }
+    sent = await _post_json(app, body)
+    assert sent.status_code == 202
+    config = mock_ingestor.submit_job.call_args[1]["config"]
+    assert config["project_status"] == "closed"
+    assert config["project_facts"]["bundesland"] == "wien" and config["project_facts"]["gebaeudeklasse"] == [4]
+
+    without = await _post(app, "http://seaweedfs.test/bucket/plan.pdf", collection="oib")
+    assert without.status_code == 202
+    assert "project_facts" not in mock_ingestor.submit_job.call_args[1]["config"]
+
+
+@pytest.mark.asyncio
 async def test_ingest_priority_defaults_to_interactive_and_accepts_bulk(app, mock_ingestor, no_network):
     """A person's upload is interactive; a reindex or rescan states `bulk`. The job config carries it."""
     base = {"file_ref": "http://seaweedfs.test/bucket/plan.pdf", "collection": "proj_1"}

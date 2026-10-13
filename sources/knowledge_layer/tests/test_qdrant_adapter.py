@@ -212,6 +212,29 @@ def test_refresh_facts_copies_a_persons_edit_onto_the_points(retriever, monkeypa
     assert store.count("proj_a", {"doc_class": "Baubescheid"}) == 1
 
 
+def test_an_ingest_job_stamps_the_projects_facts_on_its_chunks(retriever):
+    """A new document is boosted and filtered like its siblings from its first search."""
+    facts = {"bundesland": "wien", "gebaeudeklasse": [4], "bauweise": ["holzbau"]}
+    _ingest(retriever, "proj_a", [_row("eins", "a.pdf")], project_facts=facts, project_status="closed")
+    _ingest(retriever, "proj_a", [_row("zwei", "b.pdf")])
+    store = store_module.get_store()
+    assert store.count("proj_a", {"project_facts.bauweise": "holzbau", "project_status": "closed"}) == 1
+    # A job with a status it does not know writes no facts rather than failing the file.
+    _ingest(retriever, "proj_a", [_row("drei", "c.pdf")], project_facts=facts, project_status="archived")
+    assert store.count("proj_a", {"project_facts.bauweise": "holzbau"}) == 1
+
+
+async def test_search_grouped_carries_each_chunks_fused_score(retriever):
+    from aiq_agent.knowledge.base import FUSED_SCORE_KEY
+
+    _ingest(retriever, "proj_a", [_row("Fluchttreppe aus Holz", "a.pdf")])
+    _ingest(retriever, "proj_b", [_row("Fluchttreppe", "b.pdf")])
+    groups = await retriever.search_grouped("Fluchttreppe", ["proj_a", "proj_b"], groups=5, group_size=2)
+    fused = [chunk.metadata[FUSED_SCORE_KEY] for _, chunks in groups for chunk in chunks]
+    assert fused == sorted(fused, reverse=True) and all(score > 0 for score in fused)
+    assert retriever.supports_grouped_search()
+
+
 async def test_search_grouped_ranks_projects_in_one_query(retriever):
     _ingest(retriever, "proj_a", [_row("Fluchttreppe aus Holz", "a.pdf"), _row("Fassade", "a2.pdf")])
     _ingest(retriever, "proj_b", [_row("Fluchttreppe als Sicherheitstreppenhaus", "b.pdf")])

@@ -275,7 +275,9 @@ group_by: document_id, group_size: 3, limit: 16       # replaces the soft per-fi
 - Qdrant documents RRF's `k` default as 2, not the canonical 60, so it is
   always set explicitly.
 - Fusion inside a prefetch is computed per shard, so fusion stays at the top
-  level.
+  level. That rules out the "then (nested)" formula above on a sharded
+  collection: a boost rescores each channel before the fusion instead, and
+  grouping is done over the flat fused list (§7 "As built").
 
 **Exact mode.** It runs as `filter: text phrase "…"` (or `text_any`) with no
 vector, ordered by `section_order`. Qdrant has no regex. `match="exact"`
@@ -338,6 +340,9 @@ group_by: project_id, group_size: 3, limit: 20
 with_lookup: documents                       # title, Fassung, date per hit
 ```
 
+This is the first sketch. Neither the formula over the fusion nor Qdrant's
+`group_by` with a fusion holds on 1.19; "As built" below says what runs instead.
+
 What this enables:
 
 1. **Office-wide ranking in one call.** "Wie haben wir das gelöst?" ranks every
@@ -363,6 +368,77 @@ What this enables:
 7. **Restrictions without waste.** Uncleared restricted chunks are filtered
    out before scoring instead of fetched and discarded. A folder moved into or
    out of restriction is effective at the next query.
+
+### As built: facts on points, pre-filters, likeness
+
+Items 3 and 4 are built (2026-10-13). Three things the sketch above assumes
+did not hold on Qdrant 1.19.2, and the build differs from it there.
+
+**Facts on points.** Every chunk of a project's collections carries
+`project_facts.{bundesland, gebaeudeklasse, bauweise, nutzungen, vorhabensart}`
+and `project_status`, indexed (`qdrant/schema.py`; a collection created
+before them gains the indexes in place, `ensure_indexes`). What is copied is
+what the BFF's similarity reads (`similarityFacts`: confirmed facts, else the
+agent's suggestion). One endpoint writes it, `PUT
+/v1/collections/{c}/project-facts`, which runs a `set_payload` by scope. The
+BFF calls it after every profile save or patch (`persistProfile`) and every
+lifecycle move (`setProjectStatus`), once per collection of the project. The
+call is awaited and never thrown: the person's change is committed, and the
+copy never decides access. A new document's ingest job carries the facts
+itself, and the weekly vector reconcile pushes every project as backfill and
+repair (`cross-project/project-facts-mirror.ts`).
+
+**Pre-filters.** The type and discipline filters of a cross-project search
+run inside the query, on the chunks' `tags`. Grouped mode asks each project for
+`limit` documents instead of three times that. The BFF's `matchesTags` stays as
+a backstop that judges by the document row. The endpoint also takes
+`project_facts` and `project_status` filters. The agent's tool does not send
+them yet, because its contract (`types.ts`) has no fact filter.
+
+**Likeness: per channel, before the fusion.** The sketch puts `$score + w ×
+fact` over the fusion. Qdrant computes a fusion that sits inside a prefetch on
+each shard, over that shard's points ("a fusion merges results across all
+shards only when it is the main query"), and a main query cannot be both a
+fusion and a formula. The fusion has to stay the main query, so a formula
+cannot rescore it. With `$score` alone as the formula, nesting matched the
+top-level fusion's grouped top 10 at 0.84 on one shard and 0.39 on six;
+`office_chunks` is planned at six (§9). Separate likeness channels fused beside
+dense and BM25 fail too, because weighted RRF scales a channel's rank, not its
+vote: weight `w` adds `1 / (k − 1 + rank / w)`, measured. So each channel is
+rescored by a pointwise formula before the fusion:
+
+```text
+$score × (1 + 0.05 × Σ weightᵢ · conditionᵢ / most)
+```
+
+`conditionᵢ` are the terms of `similarity()` (the Land, the same or a
+neighbouring Gebäudeklasse, Bauweise, one and two shared uses, Vorhabensart).
+The weights come in the request from `SIMILARITY_WEIGHTS`, so they live in one
+place. A project sharing every fact gains 5 % of its own score in each channel.
+The ranking is identical on one and six shards (`test_qdrant_boost.py`).
+`similar` and `closed` scopes send the current project's boost; `all` and
+`named` send none.
+
+**Grouping is done in our code.** Qdrant's group query with a fusion as its
+query fuses again for every round of groups it collects. Each round's best
+passage scores rank 0, so the groups interleave by round instead of by
+relevance. That was true of the slice-1 call and is pinned by a test.
+`grouped_search` now asks for one flat fused ranking and groups it in order.
+The route then orders DOCUMENTS across projects by their best fused score. It
+used to list every document of the best project before the next project's, so
+one project's weak documents filled the BFF's first page.
+
+**Capability before cost.** The BFF asks `GET
+/v1/collections/search/capability` (remembered for a minute per process)
+before it authorizes a page of 40 projects. On Chroma it learned that from the
+409 only after 40 authorizations, then planned the fallback's 8 again.
+
+**Counts (item 5) are not built.** A facet counts chunks matching a filter, not
+passages relevant to the question: without a phrase or a relevance threshold,
+"6 von 8" would count projects that hold documents of the type, not projects
+that answered. The answer already says which projects its hits come from and
+how many were searched (`projectsSearched`). Counts wait for a lexical phrase
+condition the agent can ask for.
 
 What stays as it is:
 - the audience rules
@@ -504,6 +580,9 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Cross-project search: a page of up to 40 projects in ONE grouped query, ordered by the fused ranking; Chroma falls back to the 8-project loop | `POST /v1/collections/search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
 | Infrastructure: 3-peer StatefulSet, Raft bootstrap, API and read-only keys, snapshots to SeaweedFS with retention, NetworkPolicies, the policy-pack allowance for `Parallel`; Compose service behind `--profile qdrant` | `deploy/pulumi/src/data/qdrant.ts`, `deploy/compose/docker-compose.yaml` |
 | Trace metadata: `vector_backend` on every `retrieve.knowledge_search` span | `register.py` |
+| Project facts and status on every chunk of a project, indexed; pushed on profile save, lifecycle move and ingest, swept weekly | `PUT /v1/collections/{c}/project-facts`, `qdrant/payload.py` — `project_payload`; BFF `cross-project/project-facts-mirror.ts` |
+| Cross-project tag pre-filters and the current project's likeness inside the one grouped query (§7 "As built") | `qdrant/boost.py`, `qdrant/search.py` — `grouped_search`; BFF `cross-project/service.ts` — `searchPageAtOnce` |
+| Grouped answers ordered document by document across projects; the capability asked before a page is authorized | `routes/document_search.py` — `_ranked_group_hits`, `GET /v1/collections/search/capability` |
 
 ### Where slice 1 departs from the target, and why
 
@@ -521,10 +600,16 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
   the slice that removes Chroma.
 * **Registry reads stay on Chroma.** File listings, text samples, visual
   details and page reads still read Chroma, which still holds everything.
-* **Post-filters stay.** `doc_class`, title, folder and tag filters in
-  `register.py` and the BFF still run after retrieval; the facts are now on the
-  points, so pushing them into the search is a change to the callers, not to
-  the store.
+* **Post-filters stay, except cross-project tags.** `doc_class`, title and
+  folder filters in `register.py` still run after retrieval. The cross-project
+  search's tag filters now run inside its query, with the BFF's `matchesTags`
+  kept as a backstop.
+* **Rescoring is off.** §4 says "rescoring on". No search sets it, and Qdrant
+  does not rescore TurboQuant candidates by default: served cosines were off by
+  0.012 at 256 dimensions and 0.037 at 8 (measured 2026-10-13), top level and
+  nested alike. With `rescore: true` the error was 0. Turning it on changes
+  every ranking, so it goes through the answer suite (gate G1) on the
+  production embedder rather than riding along here.
 * **One API key.** The read-only key is configured on the server and not yet
   used by the backend (ADR-0104, Confirmation).
 * **The Postgres `chunk_text` mirror stays** until gate G1b shows Qdrant's
@@ -536,7 +621,9 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
    `scripts/backfill_qdrant.py --prune --verify` until every collection is in
    step, run the gates in §10, then `vectorBackend=qdrant`.
 2. Slice 2: ids in the envelope, `restriction_id`, pre-filters instead of
-   post-filters, project facts on points for cross-project filters and boosts.
+   the remaining post-filters, fact filters in the agent's cross-project
+   contract, and the envelope saying `project_status = closed` instead of
+   listing ids for wide chats (the facts are on the points for it now).
 3. Slice 3: ingestion writes Qdrant only, deterministic ids, registry reads
    from Postgres and Qdrant, Chroma, the `$contains` channel and the text
    mirror removed.

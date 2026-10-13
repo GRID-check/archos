@@ -1,0 +1,16 @@
+---
+operators:
+  - >
+    With Qdrant answering, a search across an office's other projects filters
+    by document type and discipline inside the search, and lifts passages from
+    projects like the current one instead of choosing by that likeness which
+    projects to search. It lists the strongest documents across projects first,
+    so one project no longer fills the page with its weaker documents.
+  - >
+    Each project's facts and status are copied onto its documents in Qdrant
+    when the brief or the project's status changes and when a document is
+    filed. The weekly vector maintenance copies every project's facts again;
+    run it once after the Qdrant backfill, so the copied documents carry them.
+  - >
+    On Chroma, a search across projects no longer checks access to 40 projects
+    before falling back to searching 8 of them one by one.

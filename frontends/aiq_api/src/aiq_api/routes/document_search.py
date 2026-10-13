@@ -8,12 +8,14 @@ file (its best-scoring chunk), sorted by score descending.
 
 import logging
 import os
+from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Depends
 from fastapi import HTTPException
 from fastapi import Request
 
+from aiq_agent.knowledge.base import FUSED_SCORE_KEY
 from aiq_agent.knowledge.base import BaseIngestor
 from aiq_agent.knowledge.schema import Chunk
 from aiq_agent.knowledge.scoping import _normalize_collection_name
@@ -25,6 +27,8 @@ from ..models.requests import DocumentSearchHit
 from ..models.requests import DocumentSearchRequest
 from ..models.requests import DocumentSearchResponse
 from ..models.requests import GroupedDocumentSearchRequest
+from ..models.requests import GroupedSearchCapability
+from ..models.requests import GroupedSearchFilters
 from .collections import _require_ingestor
 from .collections import require_collection
 
@@ -158,22 +162,96 @@ def _aggregate_hits(
 GROUP_CHUNKS_PER_FILE = 3
 
 
+def _fused(chunk: Chunk) -> float:
+    """A chunk's place in the one fused ranking (``FUSED_SCORE_KEY``); 0 from a backend that states none."""
+    value = chunk.metadata.get(FUSED_SCORE_KEY)
+    return float(value) if isinstance(value, (int, float)) else 0.0
+
+
 def _ranked_group_hits(
     grouped: list[tuple[str, list[Chunk]]], files_per_group: int, snippet_max_chars: int
 ) -> list[DocumentSearchHit]:
-    """The groups as one flat list in the fused order: best collection first, its best documents first.
+    """Every group's best documents as one list, ordered DOCUMENT by document across the groups.
 
-    The order IS the ranking, and a caller keeps it rather than re-sorting by
-    ``score``, which is each document's cosine and not comparable to the fusion.
+    Each document is represented by its best chunk in the fused ranking, at
+    most ``files_per_group`` per collection, and the documents are ordered by
+    that chunk's fused score, ties in group order. A group-major list (the
+    best collection's documents, then the next collection's) would let one
+    project's weak documents fill a caller's first page ahead of another
+    project's strong one. The order IS the ranking: a caller keeps it rather
+    than re-sorting by ``score``, each document's cosine.
+
+    ``collection`` is the group key, the collection that was searched and
+    authorized, never what a chunk's own metadata claims (the
+    single-collection search makes the same choice in the BFF).
     """
-    hits: list[DocumentSearchHit] = []
-    for collection, chunks in grouped:
-        hits.extend(_aggregate_hits(chunks, collection, files_per_group, snippet_max_chars))
-    return hits
+    ranked: list[tuple[float, int, int, DocumentSearchHit]] = []
+    for group_index, (collection, chunks) in enumerate(grouped):
+        best: dict[str, Chunk] = {}
+        for chunk in chunks:
+            current = best.get(chunk.file_name)
+            if current is None or (_fused(chunk), chunk.score) > (_fused(current), current.score):
+                best[chunk.file_name] = chunk
+        documents = sorted(best.values(), key=lambda chunk: (_fused(chunk), chunk.score), reverse=True)
+        for file_index, chunk in enumerate(documents[:files_per_group]):
+            hit = DocumentSearchHit(
+                file_name=chunk.file_name,
+                score=chunk.score,
+                snippet=_snippet(chunk.content, snippet_max_chars),
+                page_number=chunk.page_number,
+                collection=collection,
+            )
+            ranked.append((-_fused(chunk), group_index, file_index, hit))
+    ranked.sort(key=lambda entry: entry[:3])
+    return [entry[3] for entry in ranked]
+
+
+def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any] | None:
+    """The typed request filters in the retriever's filter grammar; None when nothing narrows.
+
+    The grammar is what ``knowledge_layer.qdrant.scope`` compiles into the
+    scope filter, so these become pre-filters inside the one query. Each
+    tag group is a separate any-of, as the BFF's ``matchesTags`` reads them.
+    """
+    if filters is None:
+        return None
+    parts: list[dict[str, Any]] = []
+    for group in (filters.document_types, filters.disciplines):
+        if group:
+            parts.append({"tags": {"$in": list(group)}})
+    if filters.project_facts is not None:
+        facts = filters.project_facts.model_dump(mode="json")
+        for key, value in facts.items():
+            values = [value] if isinstance(value, str) else list(value or [])
+            if values:
+                parts.append({f"project_facts.{key}": {"$in": values}})
+    if filters.project_status:
+        parts.append({"project_status": {"$in": list(filters.project_status)}})
+    if not parts:
+        return None
+    return parts[0] if len(parts) == 1 else {"$and": parts}
 
 
 def add_document_search_routes(router: APIRouter):
     """Add semantic document-search routes to the FastAPI app."""
+
+    @router.get(
+        "/v1/collections/search/capability",
+        response_model=GroupedSearchCapability,
+        tags=["documents"],
+        summary="Whether one search can rank many collections here",
+    )
+    async def grouped_search_capability() -> GroupedSearchCapability:
+        """``grouped`` is true when ``POST /v1/collections/search`` can answer (the Qdrant backend).
+
+        A deployment property, the same for every tenant, so it names no
+        collection and needs no scope. The BFF asks it before authorizing a
+        page of projects for a grouped search it would otherwise learn is
+        unavailable only from the 409.
+        """
+        from aiq_agent.knowledge.factory import get_active_retriever
+
+        return GroupedSearchCapability(grouped=get_active_retriever().supports_grouped_search())
 
     @router.post(
         "/v1/collections/search",
@@ -202,6 +280,8 @@ def add_document_search_routes(router: APIRouter):
                 collections,
                 groups=request.groups,
                 group_size=request.files_per_group * GROUP_CHUNKS_PER_FILE,
+                filters=grouped_filters(request.filters),
+                boost=request.boost.model_dump(mode="json") if request.boost else None,
             )
         except NotImplementedError as e:
             raise HTTPException(status_code=409, detail=str(e)) from e

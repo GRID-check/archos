@@ -39,6 +39,7 @@ import { filedInOf } from '@/lib/audit/document-names'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { buildGridRequestContextWireHeaders } from '@/lib/request-context'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { projectFactsForIngest, type ProjectFactsWire, type SearchBoostWire } from '@/lib/cross-project/project-facts-mirror'
 import {
   ApiError,
   BadRequestError,
@@ -433,6 +434,7 @@ export async function dispatchIngest(
   // Read from the row rather than threaded through every caller; a failed read
   // books the spend to the organization alone, never fails the dispatch.
   const attribution = await findDocumentInOrg(documentId, organizationId, internalRead('ingest')).catch(() => null)
+  const projectFacts = await projectFactsForIngest(attribution?.projectId, organizationId)
   // The content gate's rules (ADR-0086). Every path into the index passes this
   // line — upload, re-ingest, re-index, Archiv, chat, the IFC digest — so the
   // gate is not something a new caller has to remember. A policy that cannot
@@ -451,6 +453,10 @@ export async function dispatchIngest(
     document_id: documentId,
     project_id: attribution?.projectId ?? null,
     user_id: attribution?.createdBy ?? null,
+    // The project's facts and status, stamped onto every chunk the job writes
+    // to Qdrant, so a new document is filtered and lifted like its siblings
+    // from its first search (`cross-project/project-facts-mirror.ts`).
+    project_facts: projectFacts,
     thumbnail_upload_url: thumbnailUploadUrl,
     // A PDF of an office original (ADR-0070), for the thumbnail: the
     // backend cannot rasterise a .docx. Null for everything else and
@@ -749,9 +755,11 @@ export async function fetchSemanticHits(
 /**
  * One ranking across many collections, from the backend's grouped search
  * (`POST /v1/collections/search`, ADR-0104): every collection named is ranked
- * in ONE query, best collection first, its best documents first, and each hit
- * carries its position as `rank`. Scores from separate searches are not
- * comparable; this order is.
+ * in ONE query, and the documents come back in that ranking's order across
+ * collections (at most `filesPerCollection` from any one), each hit carrying
+ * its position as `rank`. Scores from separate searches are not comparable;
+ * this order is. `options` narrow the search and lift similar projects inside
+ * the same query.
  *
  * `null` means "not available here", never "nothing found": a backend that
  * cannot rank across collections (Chroma) answers 409, and any failure reads
@@ -763,7 +771,8 @@ export async function fetchGroupedSemanticHits(
   collections: readonly string[],
   query: string,
   filesPerCollection: number,
-  snippetMaxChars?: number
+  snippetMaxChars?: number,
+  options: GroupedSearchOptions = {}
 ): Promise<BackendSearchHit[] | null> {
   const unique = [...new Set(collections)]
   if (unique.length === 0) return []
@@ -781,9 +790,12 @@ export async function fetchGroupedSemanticHits(
         groups: Math.min(unique.length, GROUPED_SEARCH_MAX_GROUPS),
         files_per_group: Math.min(Math.max(1, filesPerCollection), GROUPED_SEARCH_MAX_FILES_PER_GROUP),
         ...(snippetMaxChars ? { snippet_max_chars: snippetMaxChars } : {}),
+        ...(options.filters ? { filters: options.filters } : {}),
+        ...(options.boost ? { boost: options.boost } : {}),
       }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
+    if (res.status === 409) rememberGroupedSearchUnavailable()
     if (!res.ok) return null
     const body = await res.json().catch(() => ({}))
     if (!Array.isArray(body?.hits)) return null
@@ -801,6 +813,62 @@ export async function fetchGroupedSemanticHits(
 /** The backend's bounds on a grouped search (`GroupedDocumentSearchRequest`). */
 const GROUPED_SEARCH_MAX_GROUPS = 200
 const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
+
+/** The grouped search's pre-filters (`GroupedSearchFilters`): within a list any of, across lists all of. */
+export interface GroupedSearchFilters {
+  document_types?: string[]
+  disciplines?: string[]
+  project_facts?: Partial<ProjectFactsWire>
+  project_status?: Array<'active' | 'paused' | 'closed'>
+}
+
+/** What narrows and what lifts a grouped search, applied inside its one query. */
+export interface GroupedSearchOptions {
+  filters?: GroupedSearchFilters
+  /** The current project's facts and the similarity weights (`similarityBoostOf`). */
+  boost?: SearchBoostWire | null
+}
+
+/**
+ * How long an answer about the grouped search's availability is trusted.
+ * Availability is a property of the deployment (`AIQ_VECTOR_BACKEND`), the
+ * same for every organization and carrying no tenant data, so one answer per
+ * process serves every caller; it changes only with a redeploy of the backend.
+ */
+const GROUPED_CAPABILITY_TTL_MS = 60_000
+let groupedCapability: { grouped: boolean; until: number } | null = null
+
+function rememberGroupedSearchUnavailable(now = Date.now()): void {
+  groupedCapability = { grouped: false, until: now + GROUPED_CAPABILITY_TTL_MS }
+}
+
+/**
+ * Whether the backend can rank many collections in one search (Qdrant), asked
+ * BEFORE a caller authorizes a page of projects for one: on Chroma, learning it
+ * from the grouped search's 409 cost a page of 40 authorizations on every
+ * cross-project search, then the fallback's 8 again. Any failure reads as "no",
+ * and the caller searches collection by collection, which works everywhere.
+ */
+export async function groupedSearchAvailable(now = Date.now()): Promise<boolean> {
+  if (groupedCapability && groupedCapability.until > now) return groupedCapability.grouped
+  let grouped = false
+  try {
+    const res = await fetch(`${getBackendUrl()}/v1/collections/search/capability`, {
+      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
+    })
+    const body = res.ok ? await res.json().catch(() => ({})) : {}
+    grouped = body?.grouped === true
+  } catch {
+    grouped = false
+  }
+  groupedCapability = { grouped, until: now + GROUPED_CAPABILITY_TTL_MS }
+  return grouped
+}
+
+/** Forget the remembered availability (tests). */
+export function resetGroupedSearchAvailability(): void {
+  groupedCapability = null
+}
 
 /** The identity of a document in the backend: its collection and its filename. */
 function collectionFileKey(collectionName: string, filename: string): string {

@@ -29,6 +29,9 @@ from typing import Any
 
 from qdrant_client import models
 
+from .boost import Boost
+from .boost import boosted
+from .boost import likeness_formula
 from .schema import DENSE
 from .schema import LEXICAL
 from .schema import TEXT_FIELD
@@ -154,6 +157,7 @@ def grouped_search(
     groups: int,
     group_size: int,
     filters: dict[str, Any] | None = None,
+    boost: Boost | None = None,
     candidates: int = 200,
 ) -> list[tuple[str, list[Hit]]]:
     """The fused ranking over ``scopes``, grouped by a payload field, best group first.
@@ -161,23 +165,55 @@ def grouped_search(
     Cross-project search groups by ``scope``: one call ranks every reachable
     project's documents together, instead of one search per project merged
     on scores that are not comparable across indexes.
+
+    ``filters`` narrow every channel inside the scope (tags, project facts):
+    a pre-filter, so nothing is fetched to be dropped afterwards. ``boost``
+    rescores each channel by the passage's project's likeness to the current
+    one before the fusion (``boost.py``); the fusion stays the main query, so
+    the ranking stays global on a sharded collection.
     """
     if groups <= 0 or not store.exists(scopes[0]):
         return []
     alias = _alias(store, scopes)
     query_filter = scope_filter(scopes, filters)
-    result = store.client.query_points_groups(
+    likeness = likeness_formula(boost)
+    prefetch = [
+        boosted(channel, likeness)
+        for channel in _prefetches(scopes, query_filter, vector, lexical_text, (), candidates)
+    ]
+    # One flat fused ranking, grouped here in its order. Qdrant's group query
+    # is no substitute: with a fusion as its query it fuses again for every
+    # round of groups it collects, so each round's best passage scores rank 0
+    # and the groups interleave by round instead of by relevance (measured on
+    # 1.19.2; ``test_qdrant_boost.py`` pins it).
+    result = store.client.query_points(
         alias,
-        group_by=group_by,
-        prefetch=_prefetches(scopes, query_filter, vector, lexical_text, (), candidates),
+        prefetch=prefetch,
         query=models.RrfQuery(rrf=models.Rrf(k=RRF_K)),
-        limit=groups,
-        group_size=group_size,
+        limit=max(candidates, groups * group_size),
         with_payload=True,
     )
-    ids = [hit.id for group in result.groups for hit in group.hits]
+    collected = _group_in_order(result.points, group_by, groups, group_size)
+    ids = [point.id for points in collected.values() for point in points]
     cosines = _cosines(store, alias, scopes, vector, ids)
-    return [(str(group.id), [_hit(hit, cosines) for hit in group.hits]) for group in result.groups]
+    return [(key, [_hit(point, cosines) for point in points]) for key, points in collected.items()]
+
+
+def _group_in_order(points: Sequence[Any], group_by: str, groups: int, group_size: int) -> dict[str, list[Any]]:
+    """The first ``groups`` values of ``group_by`` in ranking order, each with its best ``group_size`` points."""
+    collected: dict[str, list[Any]] = {}
+    for point in points:
+        key = (point.payload or {}).get(group_by)
+        if key is None:
+            continue
+        key = str(key)
+        if key not in collected:
+            if len(collected) >= groups:
+                continue
+            collected[key] = []
+        if len(collected[key]) < group_size:
+            collected[key].append(point)
+    return collected
 
 
 def facet_counts(

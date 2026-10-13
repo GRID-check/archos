@@ -12,6 +12,8 @@ from collections.abc import Mapping
 from collections.abc import Sequence
 from typing import Any
 
+from .boost import parse_boost
+from .payload import project_payload
 from .search import Hit
 from .search import grouped_search
 from .search import hybrid_search
@@ -52,8 +54,14 @@ def search_grouped(
     groups: int,
     group_size: int,
     identity: Mapping[str, str],
+    filters: dict[str, Any] | None = None,
+    boost: Mapping[str, Any] | None = None,
 ) -> list[tuple[str, list[Hit]]]:
-    """One fused ranking over many logical collections, grouped per collection, best group first."""
+    """One fused ranking over many logical collections, grouped per collection, best group first.
+
+    ``filters`` is the backend-neutral filter grammar (``scope.translate``);
+    ``boost`` is ``{"facts": {...}, "weights": {...}}`` (``boost.parse_boost``).
+    """
     store = get_store(identity)
     store.check_identity(scopes[0])
     return grouped_search(
@@ -64,7 +72,14 @@ def search_grouped(
         group_by="scope",
         groups=groups,
         group_size=group_size,
+        filters=filters,
+        boost=parse_boost(boost),
     )
+
+
+def set_project_facts(scope: str, facts: Mapping[str, Any] | None, status: str) -> bool:
+    """Mirror a project's facts and status onto every point of ``scope``; False when no collection holds it yet."""
+    return get_store().set_scope_payload(scope, project_payload(facts, status))
 
 
 def term_frequencies(scope: str, terms: Sequence[str]) -> tuple[int, dict[str, int]]:

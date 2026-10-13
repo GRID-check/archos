@@ -53,6 +53,23 @@ TEXT_FIELD = "text"
 #: Payload field holding the chunk id every caller knows (the id Chroma gave it).
 CHUNK_ID_FIELD = "chunk_id"
 
+#: Payload object holding the owning project's fingerprint (the BFF's
+#: ``FINGERPRINT_KEYS``), mirrored from Postgres ``projects.profile`` by scope.
+#: Each key is indexed as ``project_facts.<key>``.
+PROJECT_FACTS_FIELD = "project_facts"
+#: Payload field holding the owning project's lifecycle state (ADR-0098).
+PROJECT_STATUS_FIELD = "project_status"
+#: The fingerprint, in the order the BFF's similarity weighs it.
+FACT_KEYS: tuple[str, ...] = ("bundesland", "gebaeudeklasse", "bauweise", "nutzungen", "vorhabensart")
+
+
+def fact_field(key: str) -> str:
+    """The payload path of one fingerprint fact, as filters and formulas name it."""
+    if key not in FACT_KEYS:
+        raise ValueError(f"{key!r} is not a project fact")
+    return f"{PROJECT_FACTS_FIELD}.{key}"
+
+
 #: Fields stored and filtered as strings. A writer that hands one an int (or a
 #: reader that asks with one) is coerced, so ``page_label`` 3 and "3" agree.
 KEYWORD_FIELDS: tuple[str, ...] = (
@@ -71,10 +88,12 @@ KEYWORD_FIELDS: tuple[str, ...] = (
     "folder_path",
     "tags",
     "topics",
+    PROJECT_STATUS_FIELD,
+    *(f"{PROJECT_FACTS_FIELD}.{key}" for key in FACT_KEYS if key != "gebaeudeklasse"),
 )
 #: Fields stored and filtered as integers. The Punkt chunker writes
 #: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
-INTEGER_FIELDS: tuple[str, ...] = ("punkt_depth", "section_order")
+INTEGER_FIELDS: tuple[str, ...] = ("punkt_depth", "section_order", f"{PROJECT_FACTS_FIELD}.gebaeudeklasse")
 #: Fields stored and filtered as booleans.
 BOOL_FIELDS: tuple[str, ...] = ("superseded",)
 
@@ -173,11 +192,30 @@ def identity_mismatch(stored: dict[str, Any] | None, identity: dict[str, str]) -
     )
 
 
+def ensure_indexes(client: QdrantClient, alias: str) -> list[str]:
+    """Create every index :data:`INDEXED_FIELDS` names that the collection lacks; returns the fields created.
+
+    A collection created before a field was added to the schema has no index
+    for it, and strict mode then refuses every read that filters on it. This
+    closes that gap in place, idempotently: an index that exists is left alone,
+    and a concurrent creator of the same index is harmless (Qdrant treats it
+    as an update). The new index covers existing points, built server-side.
+    """
+    present = set((client.get_collection(alias).payload_schema or {}).keys())
+    missing = sorted(INDEXED_FIELDS - present)
+    for field in missing:
+        client.create_payload_index(alias, field, field_schema=_field_schema(field), wait=True)
+    if missing:
+        logger.info("Qdrant %s: created missing payload indexes %s", alias, ", ".join(missing))
+    return missing
+
+
 def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int, identity: dict[str, str]) -> None:
     """Create the physical collection behind its alias if missing; refuse a foreign vector space.
 
     Idempotent and safe to race: a second process that loses the create sees
-    the alias the first one made.
+    the alias the first one made. An existing collection gains any payload
+    index added to the schema since it was created (:func:`ensure_indexes`).
     """
     alias = ALIASES[physical]
     if not _alias_exists(client, alias):
@@ -190,3 +228,4 @@ def ensure_collection(client: QdrantClient, physical: Physical, dense_size: int,
     mismatch = identity_mismatch(stored, identity)
     if mismatch:
         raise RuntimeError(f"{alias}: {mismatch}")
+    ensure_indexes(client, alias)

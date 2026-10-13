@@ -217,6 +217,8 @@ import {
   resolveProjectDocumentsByName,
   searchProjectDocuments,
   fetchGroupedSemanticHits,
+  groupedSearchAvailable,
+  resetGroupedSearchAvailability,
   joinHitsToFiles,
   deriveSearchTopK,
   dispatchDocument,
@@ -1227,6 +1229,42 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0104)', 
     mockFetch.mockRejectedValueOnce(new Error('down'))
     expect(await fetchGroupedSemanticHits(['proj_a'], 'q', 3)).toBeNull()
   })
+
+  it('sends the pre-filters and the boost in the one request, and nothing when there are none', async () => {
+    const boost = { facts: { bundesland: 'wien', gebaeudeklasse: [4], bauweise: [], nutzungen: [], vorhabensart: [] }, weights: { bundesland: 4 } }
+    mockFetch.mockResolvedValueOnce(ok([]))
+    await fetchGroupedSemanticHits(['proj_a'], 'q', 10, 900, { filters: { document_types: ['Bescheid'] }, boost })
+    expect(JSON.parse(mockFetch.mock.calls[0][1].body)).toMatchObject({ filters: { document_types: ['Bescheid'] }, boost })
+
+    mockFetch.mockResolvedValueOnce(ok([]))
+    await fetchGroupedSemanticHits(['proj_a'], 'q', 10)
+    const plain = JSON.parse(mockFetch.mock.calls[1][1].body)
+    expect('filters' in plain || 'boost' in plain).toBe(false)
+  })
+})
+
+describe('groupedSearchAvailable (asked before a page of projects is authorized)', () => {
+  beforeEach(() => resetGroupedSearchAvailability())
+
+  it('asks the backend once per interval, and any failure reads as unavailable', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ grouped: true }), { status: 200 }))
+    expect(await groupedSearchAvailable(1_000)).toBe(true)
+    expect(await groupedSearchAvailable(30_000)).toBe(true)
+    expect(mockFetch).toHaveBeenCalledTimes(1)
+    expect(String(mockFetch.mock.calls[0][0])).toMatch(/\/v1\/collections\/search\/capability$/)
+
+    mockFetch.mockRejectedValueOnce(new Error('down'))
+    expect(await groupedSearchAvailable(1_000 + 61_000)).toBe(false)
+  })
+
+  it('remembers a 409 from the grouped search itself', async () => {
+    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ grouped: true }), { status: 200 }))
+    expect(await groupedSearchAvailable()).toBe(true)
+    mockFetch.mockResolvedValueOnce(new Response('{"detail":"chroma"}', { status: 409 }))
+    await fetchGroupedSemanticHits(['proj_a'], 'q', 3)
+    expect(await groupedSearchAvailable()).toBe(false)
+    expect(mockFetch).toHaveBeenCalledTimes(2)
+  })
 })
 
 describe('deriveSearchTopK', () => {
@@ -1800,6 +1838,32 @@ describe('the folder a document is filed in reaches the ingest dispatch', () => 
     await uploadDocument(session, { ...makeInput(), folderId: 'folder-1' }, new Request('http://x'))
 
     expect(ingestBody().folder_path).toBe('Brandschutz/Fluchtwege')
+  })
+
+  it('sends the project’s facts and status, so the new chunks are filtered and lifted like their siblings', async () => {
+    vi.mocked(findDocumentInOrg).mockResolvedValue(makeDocument({ projectId: 'proj-1' }))
+    vi.mocked(findProjectInOrg).mockResolvedValue(
+      makeProject({
+        id: 'proj-1',
+        status: 'closed',
+        profile: {
+          facts: {
+            bundesland: { value: 'Wien', source: 'user_confirmed' },
+            bauweise: { value: ['holzbau'], source: 'user_confirmed' },
+          },
+          goals: {},
+          unknowns: [],
+          assumptions: {},
+        } as unknown as ReturnType<typeof makeProject>['profile'],
+      })
+    )
+
+    await uploadDocument(session, makeInput(), new Request('http://x'))
+
+    expect(ingestBody().project_facts).toEqual({
+      facts: { bundesland: 'wien', gebaeudeklasse: [], bauweise: ['holzbau'], nutzungen: [], vorhabensart: [] },
+      status: 'closed',
+    })
   })
 
   it('sends null for an upload at the project root', async () => {

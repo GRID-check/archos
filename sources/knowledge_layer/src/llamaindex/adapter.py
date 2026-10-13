@@ -6330,16 +6330,26 @@ class LlamaIndexRetriever(BaseRetriever):
         collection_names: list[str],
         groups: int,
         group_size: int,
+        filters: dict[str, Any] | None = None,
+        boost: dict[str, Any] | None = None,
     ) -> list[tuple[str, list[Chunk]]]:
         """One fused ranking over ``collection_names``, grouped per collection (Qdrant only)."""
         from ..qdrant.config import reads_qdrant
 
         if not reads_qdrant():
-            return await super().search_grouped(query, collection_names, groups, group_size)
-        return await asyncio.to_thread(self._search_grouped_sync, query, collection_names, groups, group_size)
+            return await super().search_grouped(query, collection_names, groups, group_size, filters, boost)
+        return await asyncio.to_thread(
+            self._search_grouped_sync, query, collection_names, groups, group_size, filters, boost
+        )
 
     def _search_grouped_sync(
-        self, query: str, collection_names: list[str], groups: int, group_size: int
+        self,
+        query: str,
+        collection_names: list[str],
+        groups: int,
+        group_size: int,
+        filters: dict[str, Any] | None,
+        boost: dict[str, Any] | None,
     ) -> list[tuple[str, list[Chunk]]]:
         from ..qdrant import retrieval as qdrant_retrieval
 
@@ -6352,8 +6362,24 @@ class LlamaIndexRetriever(BaseRetriever):
             groups=groups,
             group_size=group_size,
             identity=self._identity(),
+            filters=filters,
+            boost=boost,
         )
-        return [(scope, [self._chunk_from_hit(hit) for hit in hits]) for scope, hits in grouped]
+        return [(scope, [self._grouped_chunk(hit) for hit in hits]) for scope, hits in grouped]
+
+    def _grouped_chunk(self, hit: Any) -> Chunk:
+        """A grouped hit as a Chunk that also states its place in the one fused ranking."""
+        from aiq_agent.knowledge.base import FUSED_SCORE_KEY
+
+        chunk = self._chunk_from_hit(hit)
+        chunk.metadata[FUSED_SCORE_KEY] = float(hit.fused)
+        return chunk
+
+    def supports_grouped_search(self) -> bool:
+        """True exactly when retrieval reads Qdrant, the one backend with a shared index."""
+        from ..qdrant.config import reads_qdrant
+
+        return reads_qdrant()
 
     def _qdrant_lexical_inputs(self, query: str, collection_name: str) -> tuple[str, list[str]]:
         """The BM25 query text and the selective exact terms; fails open to dense-only parts."""

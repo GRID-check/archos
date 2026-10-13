@@ -22,8 +22,11 @@ from typing import Any
 
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
+from .schema import FACT_KEYS
 from .schema import INTEGER_FIELDS
 from .schema import KEYWORD_FIELDS
+from .schema import PROJECT_FACTS_FIELD
+from .schema import PROJECT_STATUS_FIELD
 from .schema import SCOPE_FIELD
 from .schema import TEXT_FIELD
 
@@ -104,6 +107,39 @@ def document_facts(document: Any | None) -> dict[str, Any]:
     return facts
 
 
+#: The lifecycle states a project can be in (ADR-0098), as the BFF writes them.
+PROJECT_STATUSES = ("active", "paused", "closed")
+
+
+def _fact_values(key: str, value: Any) -> list[Any]:
+    items = value if isinstance(value, (list, tuple, set)) else [value]
+    if key == "gebaeudeklasse":
+        return sorted({number for number in (_as_int(item) for item in items) if number is not None})
+    return list(dict.fromkeys(str(item) for item in items if item is not None and str(item).strip()))
+
+
+def project_payload(facts: Mapping[str, Any] | None, status: str) -> dict[str, Any]:
+    """The project's facts and status as the payload every one of its points carries.
+
+    ``facts`` is the BFF's similarity reading of ``projects.profile`` (the
+    authority): ``bundesland`` one token or absent, every other key a list.
+    The whole ``project_facts`` object is written at once, so a fact a person
+    removed disappears from the points instead of lingering. Unknown keys are
+    dropped; an unknown status raises, since it would filter as nothing.
+    """
+    if status not in PROJECT_STATUSES:
+        raise ValueError(f"project status {status!r} is not one of {', '.join(PROJECT_STATUSES)}")
+    shaped: dict[str, Any] = {}
+    for key in FACT_KEYS:
+        values = _fact_values(key, (facts or {}).get(key))
+        if key == "bundesland":
+            if values:
+                shaped[key] = values[0]
+        else:
+            shaped[key] = values
+    return {PROJECT_FACTS_FIELD: shaped, PROJECT_STATUS_FIELD: status}
+
+
 def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """The payload for one chunk; ``scope``, ``text`` and ``chunk_id`` always win."""
     payload: dict[str, Any] = {
@@ -126,7 +162,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: the facts themselves are read from the metadata store, their authority.
 MIRROR_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, "office_id", "project_id", "grid_document_id"}
-    | {"folder_path", "tags", "topics", "superseded"}
+    | {"folder_path", "tags", "topics", "superseded", PROJECT_FACTS_FIELD, PROJECT_STATUS_FIELD}
 )
 
 

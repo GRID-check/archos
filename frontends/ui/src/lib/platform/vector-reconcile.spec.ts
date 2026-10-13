@@ -13,9 +13,37 @@ vi.mock('@/lib/db/schema', () => ({
   documents: { collectionName: 'collection_name', filename: 'filename', authoredBy: 'authored_by' },
 }))
 
+// The third half has its own spec (`cross-project/project-facts-mirror.spec.ts`).
+const syncAllProjectFacts = vi.fn()
+vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
+  syncAllProjectFacts: (...args: unknown[]) => syncAllProjectFacts(...args),
+}))
+
 import { getDb } from '@/lib/db'
 import { asDb } from '@/test-utils/db-fixtures'
-import { reconcileOrphanedVectors } from './vector-reconcile'
+import { PROJECT_FACTS_FAILURE_NAME, reconcileOrphanedVectors } from './vector-reconcile'
+
+describe('reconcileOrphanedVectors: the project facts half', () => {
+  const fetchFacts = vi.fn()
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchFacts)
+    vi.mocked(getDb).mockReturnValue(asDb({ select: () => ({ from: () => Promise.resolve([]) }) }))
+  })
+  afterEach(() => vi.unstubAllGlobals())
+
+  it('copies every project’s facts onto its chunks, and reports what it did', async () => {
+    syncAllProjectFacts.mockResolvedValueOnce({ projects: 3, failed: 1, unsupported: false })
+    const result = await reconcileOrphanedVectors()
+    expect(result.projectFacts).toEqual({ projects: 3, failed: 1, unsupported: false })
+  })
+
+  it('records its failure without undoing the halves before it', async () => {
+    syncAllProjectFacts.mockRejectedValueOnce(new Error('db down'))
+    const result = await reconcileOrphanedVectors()
+    expect(result.projectFacts).toBeUndefined()
+    expect(result.failures).toContainEqual({ collectionName: PROJECT_FACTS_FAILURE_NAME, error: 'project facts: db down' })
+  })
+})
 
 const fetchMock = vi.fn()
 

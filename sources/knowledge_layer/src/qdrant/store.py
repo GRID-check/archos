@@ -35,6 +35,7 @@ from .schema import LEXICAL
 from .schema import TEXT_FIELD
 from .schema import Physical
 from .schema import ensure_collection
+from .schema import ensure_indexes
 from .schema import identity_mismatch
 from .schema import physical_for_scope
 from .scope import scope_condition
@@ -63,6 +64,7 @@ class QdrantStore:
         self._ensured: set[Physical] = set()
         self._present: set[Physical] = set()
         self._verified: set[Physical] = set()
+        self._indexed: set[Physical] = set()
         self._ensure_lock = threading.Lock()
 
     @staticmethod
@@ -78,6 +80,7 @@ class QdrantStore:
                 if physical not in self._ensured:
                     ensure_collection(self.client, physical, dense_size, self.identity)
                     self._ensured.add(physical)
+                    self._indexed.add(physical)
         return ALIASES[physical]
 
     def exists(self, scope: str) -> bool:
@@ -168,6 +171,33 @@ class QdrantStore:
             ]
         )
         self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+
+    def ensure_indexes(self, scope: str) -> None:
+        """Give ``scope``'s existing collection every payload index the schema names; once per process."""
+        physical = physical_for_scope(scope)
+        if physical in self._indexed or not self.exists(scope):
+            return
+        with self._ensure_lock:
+            if physical not in self._indexed:
+                ensure_indexes(self.client, ALIASES[physical])
+                self._indexed.add(physical)
+
+    def set_scope_payload(self, scope: str, payload: Mapping[str, Any]) -> bool:
+        """Overwrite these payload fields on every point of ``scope``; False when it has no point yet.
+
+        The project facts mirror (``PUT /v1/collections/{c}/project-facts``):
+        one call per scope, whatever its size, since the filter names the
+        scope rather than a list of ids. A top-level key replaces the stored
+        value whole, so a nested object loses the keys it no longer has.
+        """
+        if not payload or not self.exists(scope):
+            return False
+        self.ensure_indexes(scope)
+        if self.count(scope) == 0:
+            return False
+        selector = models.Filter(must=[scope_condition([scope])])
+        self.client.set_payload(self.alias(scope), payload=dict(payload), points=selector, wait=True)
+        return True
 
     # ------------------------------------------------------------------ plain reads
 
