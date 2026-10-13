@@ -637,10 +637,13 @@ prose from ("Opened … (Projekt, Ordner Brandschutz/Fluchtwege)"). A file at th
 root gets no `Ordner` at all — absence must read as absence, not as a folder the
 user never made.
 
-**Retrieval.** `knowledge_search` takes `folder=`, applied post-merge alongside
-`doc_class` / `title_contains` / `file_name` so it works uniformly across the
-base, session and project layers, and it covers the **subtree**: `Brandschutz`
-also reads `Brandschutz/Fluchtwege`. `_format_results` emits an `Ordner:` line
+**Retrieval.** `knowledge_search` takes `folder=`, which narrows the ranking
+to the folder's files before retrieval and is checked again post-merge
+alongside `doc_class` / `title_contains` / `file_name`, so it works uniformly
+across the base, session and project layers, and it covers the **subtree**:
+`Brandschutz` also reads `Brandschutz/Fluchtwege`. Under
+`AIQ_VECTOR_BACKEND=qdrant` the narrowing is a payload condition on
+`folder_ancestors` (`qdrant/prefilter.py`). `_format_results` emits an `Ordner:` line
 per hit so a cited passage can say where its document lives. The store read
 (`_resolve_folder_paths`) is one batched query per in-scope collection and fails
 open to an empty map — which means "at the root", so a `folder=`-scoped search
@@ -1200,7 +1203,10 @@ Five retrieval-quality improvements sit in the knowledge layer's `register.py`
    `sonstiges`) and `title_contains` (case-insensitive substring of file name
    or display title). `_apply_agent_filters` applies them post-merge with an
    over-fetch factor of 3 (`_AGENT_FILTER_OVERFETCH`): retrieval asks for 3×
-   `top_k` candidates so the filters still leave ≥ `top_k` results. `doc_class`
+   `top_k` candidates so the filters still leave ≥ `top_k` results. Under
+   `AIQ_VECTOR_BACKEND=qdrant`, `doc_class` (and `folder`) run inside the
+   vector search as payload conditions and only `title_contains` and
+   `file_name` still over-fetch (`qdrant/prefilter.py`). `doc_class`
    and titles are **store-authoritative**: `_resolve_doc_classes` /
    `_resolve_display_titles` build `(collection, file_name) → value` maps via
    `aiq_agent.knowledge.factory` (`get_document_doc_classes` /

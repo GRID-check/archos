@@ -20,6 +20,8 @@ from dataclasses import dataclass
 from dataclasses import field
 from typing import Any
 
+from .prefilter import FOLDER_FIELD
+from .prefilter import folder_ancestors
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
 from .schema import INTEGER_FIELDS
@@ -34,7 +36,7 @@ from .schema import TEXT_FIELD
 LLAMA_INTERNAL_KEYS = frozenset({"_node_content", "_node_type", "doc_id", "ref_doc_id", "document_id"})
 
 #: Fields multi-valued by nature: a scalar is wrapped, so a filter can match any.
-LIST_FIELDS = frozenset({"tags", "topics"})
+LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD})
 
 _POINT_NAMESPACE = uuid.UUID("5b0c7f8e-6b8a-4f0e-9a51-2c1d8f3e7a10")
 
@@ -99,8 +101,12 @@ def document_facts(document: Any | None) -> dict[str, Any]:
     }
     if doc_class := getattr(document, "doc_class", None):
         facts["doc_class"] = doc_class
-    if folder_path := getattr(document, "folder_path", None):
-        facts["folder_path"] = folder_path
+    # The folder is stated even at the root (None, []), so a file moved to the
+    # root stops matching the folder it left. ``doc_class`` is not: without a
+    # stored class the chunk's own one stands, as it does for the post-filter.
+    folder_path = getattr(document, "folder_path", None) or None
+    facts["folder_path"] = folder_path
+    facts[FOLDER_FIELD] = folder_ancestors(folder_path)
     return facts
 
 
@@ -115,6 +121,8 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
         coerced = coerce_field(key, value)
         if coerced is not None:
             typed[key] = coerced
+    # Derived from whichever folder won, never taken from a writer.
+    typed[FOLDER_FIELD] = folder_ancestors(typed.get("folder_path"))
     typed[SCOPE_FIELD] = scope
     typed[TEXT_FIELD] = record.text or ""
     typed[CHUNK_ID_FIELD] = str(record.chunk_id)
@@ -126,7 +134,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: the facts themselves are read from the metadata store, their authority.
 MIRROR_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, "office_id", "project_id", "grid_document_id"}
-    | {"folder_path", "tags", "topics", "superseded"}
+    | {"folder_path", FOLDER_FIELD, "tags", "topics", "superseded"}
 )
 
 

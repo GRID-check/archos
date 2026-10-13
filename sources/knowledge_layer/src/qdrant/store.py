@@ -35,6 +35,7 @@ from .schema import LEXICAL
 from .schema import TEXT_FIELD
 from .schema import Physical
 from .schema import ensure_collection
+from .schema import ensure_payload_indexes
 from .schema import identity_mismatch
 from .schema import physical_for_scope
 from .scope import scope_condition
@@ -92,9 +93,23 @@ class QdrantStore:
             return True
         alias = ALIASES[physical]
         if any(entry.alias_name == alias for entry in self.client.get_aliases().aliases):
+            self._ensure_indexes(alias)
             self._present.add(physical)
             return True
         return False
+
+    def _ensure_indexes(self, alias: str) -> None:
+        """Add the payload indexes a collection made by older code lacks, before this process reads it.
+
+        A process that only reads never calls :meth:`ensure`, and without the
+        index strict mode refuses the filter. A key that may not create
+        indexes is logged here and the read goes on: a query that needs the
+        missing index then fails at the server, naming the field.
+        """
+        try:
+            ensure_payload_indexes(self.client, alias)
+        except Exception:  # noqa: BLE001 - see the docstring; the refusal surfaces on the query
+            logger.error("Qdrant %s: could not create missing payload indexes", alias, exc_info=True)
 
     def check_identity(self, scope: str) -> None:
         """Raise when ``scope``'s collection holds vectors from another embedder than this process's.
