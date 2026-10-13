@@ -259,3 +259,34 @@ def test_the_markdown_report_renders_every_section_from_plain_results():
     markdown = runner.render_markdown(report)
     for heading in ("G1b lexical", "Exact mode", "Hybrid", "G2 latency", "Verdicts", "full retrieval"):
         assert heading in markdown
+
+
+# ---------------------------------------------------------------- the ranking sweep
+
+
+def test_the_sweep_diff_names_the_questions_that_moved():
+    from oib_retrieval_eval.qdrant_parity import variants
+
+    def result(first: dict, recall: dict, hard: dict) -> dict:
+        return {
+            "per_golden": {q: {"first": rank, "ndcg10": 1.0 / (rank or 100)} for q, rank in first.items()},
+            "per_overview": {q: {"cohort": "overview", "recall16": r} for q, r in recall.items()},
+            "per_hard": hard,
+        }
+
+    base = result({"a": 1, "b": 3, "c": None}, {"o1": 1.0, "o2": 0.5}, {"h1": 0.5, "h2": 0.2})
+    other = result({"a": 2, "b": 1, "c": 4}, {"o1": 0.5, "o2": 0.5}, {"h1": 0.5, "h2": 0.4})
+
+    moves = variants.diff(base, other)
+
+    assert moves["golden_first_rank"] == {"worse": ["a"], "better": ["b", "c"]}
+    assert moves["overview_recall16"] == {"worse": ["o1"], "better": []}
+    assert moves["hard_r_precision"] == {"worse": [], "better": ["h2"]}
+
+
+def test_a_sweep_selection_always_starts_from_the_baseline_and_refuses_unknown_names():
+    from oib_retrieval_eval.qdrant_parity import variants
+
+    assert list(variants.select("rrf_k100")) == [variants.BASELINE, "rrf_k100"]
+    with pytest.raises(ValueError, match="unknown variants"):
+        variants.select("rrf_k7")

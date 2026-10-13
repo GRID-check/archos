@@ -76,10 +76,12 @@ def qdrant_bm25(retriever: Any, query: str, depth: int, filters: dict[str, Any] 
     return [str((point.payload or {}).get("chunk_id") or point.id) for point in result.points]
 
 
-def hybrid(retriever: Any, query: str, depth: int, filters: dict[str, Any] | None) -> tuple[list[Any], float]:
+def hybrid(
+    retriever: Any, query: str, depth: int, filters: dict[str, Any] | None, scope: str = SCOPE
+) -> tuple[list[Any], float]:
     """The per-collection retrieval and its wall time in ms (no embedding inside it)."""
     started = time.perf_counter()
-    result = retriever._retrieve_sync(query, SCOPE, depth, filters)
+    result = retriever._retrieve_sync(query, scope, depth, filters)
     elapsed = (time.perf_counter() - started) * 1000.0
     if not result.success:
         raise RuntimeError(f"retrieval failed for {query!r}: {result.error_message}")

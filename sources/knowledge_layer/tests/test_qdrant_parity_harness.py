@@ -51,6 +51,7 @@ def report(tmp_path_factory):
             rounds=1,
             work_dir=tmp_path_factory.mktemp("parity"),
             use_postgres=False,
+            variant_names="all",
         )
     finally:
         reset_chunk_text_store()
@@ -84,3 +85,24 @@ def test_every_gate_has_a_verdict_and_the_unmeasurable_ones_say_so(report):
 def test_the_report_renders(report):
     markdown = runner.render_markdown(report)
     assert "| G2 latency |" in markdown and "qdrant_bm25" in markdown
+
+
+def test_the_ranking_sweep_measures_every_variant_against_the_baseline(report):
+    from oib_retrieval_eval.qdrant_parity import decompound
+    from oib_retrieval_eval.qdrant_parity import variants
+
+    sweep = report["variants"]
+    catalogue = variants.catalogue()
+    ordinary = [name for name, setting in catalogue.items() if not isinstance(setting, decompound.Variant)]
+    split = [name for name in catalogue if name not in ordinary] if decompound.available() else []
+    assert list(sweep) == [*ordinary, variants.REPEAT, *split]
+    assert "diff" not in sweep[variants.BASELINE]
+    assert all("diff" in result for name, result in sweep.items() if name != variants.BASELINE)
+    assert "## Ranking sweep" in runner.render_markdown(report)
+
+
+def test_every_variant_serves_the_true_cosine_as_the_score(report):
+    """``Chunk.score`` is printed in the grounding block and compared against
+    thresholds: whatever the fusion and the quantized read, it stays the exact cosine."""
+    errors = {name: result["cosine_error"]["max"] for name, result in report["variants"].items()}
+    assert all(error < 1e-4 for error in errors.values()), errors
