@@ -1605,6 +1605,27 @@ export async function setDocumentIngestJob(
 }
 
 /**
+ * Say that the row's bytes are deliberately not in the index: an archived
+ * document, whose chunks `archiveDocument` purged, and a re-upload onto one,
+ * which `dispatchDocument` does not send. `stored` is the status for "the bytes
+ * are here and nothing reads them", which is what the row now is; leaving it
+ * `completed` showed a document Piloti can no longer cite as „Zitierbar“.
+ *
+ * A held row keeps `quarantined`: the hold is what keeps it from every reader
+ * but its uploader and the reviewers (ADR-0086), and archiving it decides
+ * nothing about its content.
+ */
+export async function markDocumentNotIndexed(documentId: string, organizationId: string): Promise<void> {
+  const db = getDb()
+  await withTenant({ organizationId }, () =>
+    db
+      .update(documents)
+      .set({ status: 'stored', updatedAt: new Date() })
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+  )
+}
+
+/**
  * The `documents.metadata` key of a row placement purged and re-pointed whose
  * re-read into its new collection is the `placement_reingest` job's to do
  * (`lib/projects/collection-placement.ts`, ADR-0087). Only ever set beside
