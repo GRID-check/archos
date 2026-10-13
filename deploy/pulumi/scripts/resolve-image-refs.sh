@@ -13,6 +13,7 @@
 #   EXPLICIT_TAG             the operator's rollback tag; empty otherwise
 #   RESOLVE_DEPTH            first-parent commits to search (default 200)
 #   FIND_PUBLISHED_TAG       registry lookup; default find-published-tag.sh here
+#   IMAGE_DIGEST             digest lookup; default image-digest.sh here
 # Needs `git` with history back to the deployed commit (checkout
 # `fetch-depth: 0`), `pulumi` with the stack selected, and `jq`.
 #
@@ -23,6 +24,14 @@
 #   2. operator rollback (dispatch with EXPLICIT_TAG): that tag, for all three;
 #   3. otherwise the newest commit on develop's first-parent history, at or
 #      before DEPLOY_SHA, whose sha-<commit> tag GHCR actually has.
+# Then, in every case: when that tag and the deployed sha- tag name one
+# digest, the deployed ref is kept. CI rebuilds only the images a commit's
+# inputs changed and re-tags the rest (ci.yml, `publish`), so most commits move
+# one or two images, not three. A new tag on the same bytes still changes every
+# pod template and Job that names it: the tier rolled and every Job on that
+# image re-ran (the chat tier, three workers, the scaler grants, ~3 minutes on
+# staging) to end up running what it already ran. A failed digest lookup pins
+# the new tag, as before.
 #
 # Case 3 used to read the Actions run index
 # (`/actions/workflows/publish-images.yml/runs?branch=develop&status=success`).
@@ -41,6 +50,7 @@ set -euo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 find_published_tag="${FIND_PUBLISHED_TAG:-$here/find-published-tag.sh}"
+image_digest="${IMAGE_DIGEST:-$here/image-digest.sh}"
 depth="${RESOLVE_DEPTH:-200}"
 owner="$(printf '%s' "${GITHUB_REPOSITORY_OWNER:?}" | tr '[:upper:]' '[:lower:]')"
 registry="ghcr.io/${owner}"
@@ -110,6 +120,30 @@ resolve_ref() {
   printf '%s' "${registry}/grid-oib-${service}:${tag}"
 }
 
+# `deployed` when it is a sha- tag of this service's GHCR repository naming the
+# same digest as `new`, else `new`.
+# A lookup that fails costs a needless roll, never a wrong image, so it warns
+# and falls through.
+same_image_ref() {
+  local service="$1" deployed="$2" new="$3" a b
+  if [ "$deployed" = "$new" ] || [ -z "$(commit_of "$deployed")" ] \
+    || [ "${deployed%:*}" != "${registry}/grid-oib-${service}" ]; then
+    printf '%s' "$new"
+    return 0
+  fi
+  if a="$("$image_digest" "$owner" "$service" "${deployed##*:}")" \
+    && b="$("$image_digest" "$owner" "$service" "${new##*:}")"; then
+    if [ "$a" = "$b" ]; then
+      log "${service}: ${new##*:} is the deployed image (${a}); keeping ${deployed}"
+      printf '%s' "$deployed"
+      return 0
+    fi
+  else
+    log "::warning::${service}: could not compare digests; pinning ${new}"
+  fi
+  printf '%s' "$new"
+}
+
 # Fail when `new` would move the service back past what is deployed, unless
 # an operator asked for exactly that.
 guard() {
@@ -140,6 +174,7 @@ for service in backend frontend web; do
   new="$(resolve_ref "$service" "$deployed")" || { failed=1; continue; }
   log "${service}: ${deployed:-unknown} -> ${new}"
   guard "$service" "$deployed" "$new" || failed=1
+  new="$(same_image_ref "$service" "$deployed" "$new")"
   out+="$(printf '%s' "$service" | tr '[:lower:]' '[:upper:]')_IMAGE_REF=${new}"$'\n'
 done
 

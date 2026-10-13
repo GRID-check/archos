@@ -5,7 +5,7 @@ import { GridConfig, appPullPolicy, frontendImage } from "../config";
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext } from "../platform/security";
 import { JOB_DEFAULTS, LIGHT_WORKER_RESOURCES, UID } from "../constants";
-import { AppSecrets, AppWiring, authzCatalogEnv, folderGrantsCarryOverEnv } from "./config";
+import { AppSecrets, AppWiring, authzCatalogEnv } from "./config";
 
 type EnvVar = k8s.types.input.core.v1.EnvVar;
 
@@ -94,40 +94,6 @@ export function reconcileAuthzCatalog(
     "authz-catalog",
     "provision-workos-authz.mjs",
     authzCatalogEnv(cfg),
-    w,
-    cfg,
-    secrets,
-    dependsOn,
-  );
-}
-
-/**
- * Carries the role grants of folders with their own list over to WorkOS folder
- * roles (ADR-0097, `migrate:folder-grants --apply`), after the frontend that
- * reads folder roles has rolled out and after the catalog Job has created the
- * folder roles.
- *
- * After, not before, because a list narrowed in the old dialog after an early
- * run would come back wider: the script skips a folder it already registered.
- * Until it has run, a folder with its own list is readable only by
- * organization admins (and by every project member when everyone reads it).
- *
- * Re-running every deploy is a no-op: it skips a registered folder, and saving
- * a list in the new dialog deletes that folder's `project_folder_grants` rows,
- * so a list someone changed is never carried over again. Delete this Job with
- * the migration that drops `project_folder_grants`.
- */
-export function carryOverFolderGrants(
-  w: AppWiring,
-  cfg: GridConfig,
-  secrets: AppSecrets,
-  dependsOn: pulumi.Resource[],
-): k8s.batch.v1.Job {
-  return workosJob(
-    "grid-app-folder-grants",
-    "folder-grants",
-    "migrate-folder-grants-to-workos.mjs",
-    folderGrantsCarryOverEnv(),
     w,
     cfg,
     secrets,

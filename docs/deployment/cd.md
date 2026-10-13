@@ -178,6 +178,19 @@ backwards, and it logs a warning. A deployed ref that is not a `sha-` tag, or a
 commit the checkout does not know, is a warning, not a failure. Each service's
 move is logged as `<service>: <deployed ref> -> <resolved ref>`.
 
+Last, **an unchanged image keeps its ref**. CI builds only the images whose
+inputs a commit changed and re-tags the others, so a frontend-only merge gives
+the backend a new `sha-` tag on the bytes already running. Pinning that tag
+changed every pod template and Job naming the image, and the deploy rolled the
+chat tier, the api tier, three workers and every backend Job to end where it
+started. Now each service whose resolved tag names the same digest as its
+deployed `sha-` tag ([`image-digest.sh`](../../deploy/pulumi/scripts/image-digest.sh),
+a manifest `HEAD`) keeps the deployed ref, and logs
+`<service>: <tag> is the deployed image (<digest>); keeping <deployed ref>`.
+`deployedImages` then still names the commit that first shipped those bytes,
+and the backend's PostHog release with it. A digest that cannot be read pins
+the new tag, as before: the cost of a failed lookup is one needless roll.
+
 The committed stack file cannot say what is deployed: CI's `pulumi config set`
 never reaches git, so `pulumi config get grid-oib:backendImage` on a fresh
 checkout is empty and `imageTag` reads `latest` whatever is running. That is why

@@ -6,12 +6,9 @@ import { baseStackConfig } from "./src/test-support/stack-config";
 import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
- * The WorkOS authorization rollout is part of the deploy
- * (`src/app/workos-authz-jobs.ts`): the catalog Job creates the permissions and
- * roles, and the folder-grants carry-over (ADR-0097) runs only after the
- * frontend that reads folder roles has rolled out. Run earlier, a list
- * narrowed in the old dialog would come back wider, and nothing in a green
- * `pulumi up` would say so.
+ * The WorkOS authorization catalog is part of the deploy
+ * (`src/app/workos-authz-jobs.ts`): its Job creates the permissions and roles
+ * the code checks, and nothing on the request path waits for WorkOS.
  *
  * Nothing here contacts a cluster. It reads what the SDK registers.
  */
@@ -54,20 +51,13 @@ describe("WorkOS authorization rollout runs with the deploy", () => {
     );
   }, 120_000);
 
-  it("carries folder grants over only after the frontend, the migrations and the catalog", () => {
-    expect(graph.waitsOn(JOB, "grid-app-folder-grants", DEPLOYMENT, "frontend")).toBe(true);
-    expect(graph.waitsOn(JOB, "grid-app-folder-grants", JOB, "grid-app-migrate")).toBe(true);
-    expect(graph.waitsOn(JOB, "grid-app-folder-grants", JOB, "grid-app-authz-catalog")).toBe(true);
-  });
-
   it("never makes the frontend wait on WorkOS", () => {
     expect(graph.waitsOn(DEPLOYMENT, "frontend", JOB, "grid-app-authz-catalog")).toBe(false);
-    expect(graph.waitsOn(DEPLOYMENT, "frontend", JOB, "grid-app-folder-grants")).toBe(false);
   });
 
   it("runs only bundles the frontend image builds, from scripts that exist", () => {
     const dockerfile = readFileSync(resolve(UI, "deploy/Dockerfile"), "utf8");
-    for (const job of ["grid-app-authz-catalog", "grid-app-folder-grants"]) {
+    for (const job of ["grid-app-authz-catalog"]) {
       const command = commands.get(job) ?? [];
       expect(command[0]).toBe("node");
       const bundle = /^dist-scripts\/(.+)\.mjs$/.exec(command[1] ?? "");

@@ -235,8 +235,9 @@ Runbook: [row-level security](../database/row-level-security.md), ADR-0041.
 ### grid-workos-authz
 
 One-shot WorkOS authorization rollout from the frontend image, the compose
-equivalent of the Kubernetes Jobs `grid-app-authz-catalog` and
-`grid-app-folder-grants` (`deploy/pulumi/src/app/workos-authz-jobs.ts`). It
+equivalent of the Kubernetes Job `grid-app-authz-catalog`
+(`deploy/pulumi/src/app/workos-authz-jobs.ts`) and of the retired
+`grid-app-folder-grants`. It
 runs `provision:authz --apply`, which creates the catalog's missing permissions
 and roles, then `migrate:folder-grants --apply`, which carries folder role
 grants over to WorkOS folder roles (ADR-0097) and is a no-op once done. Both are

@@ -745,7 +745,8 @@ export const projectFolders = pgTable('project_folders', {
 One role's access to a folder with its own list, as ADR-0088 had it. **Nothing
 in the app reads or writes it since migration `0128`.** Its one reader is the
 conversion script `frontends/ui/scripts/migrate-folder-grants-to-workos.ts`
-(`migrate:folder-grants`, run by the deploy Job `grid-app-folder-grants`), which
+(`migrate:folder-grants`, run by Compose's `grid-workos-authz` and once by hand
+or by the retired deploy Job `grid-app-folder-grants` elsewhere), which
 turns each role entry into folder roles of the people who hold that role
 ([the rollout](../deployment/workos-provisioning.md#rolling-out-folder-roles-adr-0097)).
 `0128` itself carried the `*` entries over: one that read became

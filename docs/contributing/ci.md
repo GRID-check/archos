@@ -89,7 +89,10 @@ The contract, end to end:
    tags in place.
 4. `deploy.yml` runs on `workflow_run` of CI, for a successful **push** run of
    this repository on `develop`, and pins all three services to
-   `sha-<commit>`. No polling, no per-service guessing.
+   `sha-<commit>`, except a service whose new tag names the digest it already
+   runs, which keeps its ref and does not roll
+   ([cd.md](../deployment/cd.md#image-pinning)). No polling, no per-service
+   guessing.
 5. A prod promotion pins any `develop` commit CI passed. All of them have all
    three images.
 
