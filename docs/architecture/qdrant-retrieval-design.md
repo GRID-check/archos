@@ -143,7 +143,7 @@ one delete by `document_version_id`.
 
 | Name | Kind | Source | Storage |
 |---|---|---|---|
-| `dense` | 3072-d cosine | `openai/text-embedding-3-large`, unchanged from today | Quantized copy (TurboQuant 4-bit, or int8 if the spike says so) in RAM, originals on disk, rescoring on |
+| `dense` | 3072-d cosine | `openai/text-embedding-3-large`, unchanged from today | Quantized copy (TurboQuant 4-bit, or int8 if the spike says so) in RAM, originals on disk; rescoring off, measured (§12) |
 | `lexical` | sparse, `modifier: idf` | Server-side `qdrant/bm25`, `language: german`, built from `text` at upsert | Sparse index pinned in RAM |
 
 The embedded text is built explicitly: chunk body plus a short header
@@ -270,7 +270,7 @@ prefetch:
   - query: Document(text, model: qdrant/bm25, options: {language: german}),
     using: lexical, limit: 60, filter: scope
     params: { idf: { corpus: { office_id: O } } }   # per-office IDF, 1.19
-query: { rrf: { k: 60, weights: [1, 1] } }           # weights tuned on the eval set
+query: { rrf: { k: 60 } }                            # no weights: measured, §12
 then (nested): formula boost
   $score + 0.05 * (doc_class in boosted) + gauss_decay(stand) for recency questions
 group_by: document_id, group_size: 3, limit: 16       # replaces the soft per-file cap
@@ -281,6 +281,11 @@ group_by: document_id, group_size: 3, limit: 16       # replaces the soft per-fi
   cross-encoder then reranks the fused pool, as today.
 - Qdrant documents RRF's `k` default as 2, not the canonical 60, so it is
   always set explicitly.
+- As built, every knob of this call is one value, `search.RANKING`. The
+  sweep measured `k` 20/60/100, dense weights 1.5 to 3, DBSF, MMR and
+  rescoring, and kept plain RRF at 60; RRF ties are ordered by cosine in the
+  application, because Qdrant returns them in no fixed order
+  ([gate report](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
 - Fusion inside a prefetch is computed per shard, so fusion stays at the top
   level. That rules out the "then (nested)" formula above on a sharded
   collection: a boost rescores each channel before the fusion instead, and
@@ -552,6 +557,12 @@ Each gate is a number with the place it is measured.
 - Two defects in the Qdrant path, found and fixed there: the text index
   dropped digits, and BM25 was sent unpriced.
 - G1, G3, G4 and G5 are not measured by that run.
+- The ranking sweep (`--variants all`) measured rescoring, RRF `k`, dense
+  weights, DBSF, MMR and BM25 compound splitting against the same corpus and
+  adopted one setting, a cosine tie-break for RRF ties. The exact-id and
+  overview gaps were BM25 fed umlaut stopwords and file-name pieces, now
+  fixed (exact-id recall@16 1.000, overview 0.967, both above Chroma)
+  ([sweep](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
 
 Open questions the spike answers:
 
@@ -626,7 +637,10 @@ step 4. Its API to the agent tool (`project_lookup`) does not change.
 | Grouped answers ordered document by document across projects; the capability asked before a page is authorized | `routes/document_search.py` — `_ranked_group_hits`, `GET /v1/collections/search/capability` |
 | Operations: every peer scraped by the collector on a keyless metrics port, 13 alert rules held to the collector's real export, quotas, the alias record beside the snapshots, alias-based rebuilds, a second key for rotation, the low-memory load mode, and a runbook whose procedures were drilled against real containers | `data/qdrant.ts`, `data/qdrant-alerts.ts`, `platform/otel-collector.ts` — `metricsPipeline`; `qdrant/rebuild.py`, `scripts/qdrant_rebuild.py`; [`qdrant-runbook.md`](../deployment/qdrant-runbook.md) |
 | The gate measurement (G1b, G2, G6): both paths over one OIB corpus with one set of production vectors, through the production retriever ([results](qdrant-gates-2026-10.md)) | `task be:eval:qdrant-parity`, `frontends/benchmarks/oib_retrieval/src/oib_retrieval_eval/qdrant_parity/` |
-| From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`, `_search_grouped_sync`; `retrieval.term_frequencies` |
+| The ranking sweep: every `search.Ranking` variant read through the production retriever on one collection, per-question moves against a baseline measured first and last; the BM25 compound-splitting experiment ([results](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)) | `qdrant_parity/variants.py`, `decompound.py`; `task be:eval:qdrant-parity -- --variants all` |
+| From the sweep: RRF ties ordered by cosine, then chunk id, with a tie straddling the cut fetched whole (repeated calls returned another top-60 for 86 of 105 queries, now 0), in grouped search before the grouping; the settings named once (`RANKING`) and on the span as `ranking` | `qdrant/search.py` — `Ranking`, `RANKING`, `_cosine_ordered_ties`; `register.py` |
+| From the sweep: BM25 never asked for the umlaut stopwords Qdrant's folding lets through (`über`, `für`, …) or for the pieces of a file name | `retrieval.bm25_candidates`, used by `_qdrant_lexical_inputs` |
+| From that measurement: BM25 terms priced by the German mirror's own rule (`german_text.select_terms`), with counts cached per collection size. Cross-project grouped search prices them too, and runs the same exact-term channels, with document frequencies over the union of the searched scopes (the corpus its IDF is computed over). It also found the tokenizer defect, fixed below under "Hardened after review" | `adapter.py` — `_qdrant_lexical_inputs`, `_search_grouped_sync`; `retrieval.term_frequencies` |
 
 ### Hardened after review (2026-10-13)
 
@@ -703,12 +717,16 @@ index changes went in place.
 * **A located passage scores 1.00.** On Chroma its `Relevance Score:` is the
   cosine to the probe label, which measured nothing; a structural fetch has no
   query, so every chunk it returns matches, as `find_text`'s do.
-* **Rescoring is off.** §4 says "rescoring on". No search sets it, and Qdrant
-  does not rescore TurboQuant candidates by default: served cosines were off by
-  0.012 at 256 dimensions and 0.037 at 8 (measured 2026-10-13), top level and
-  nested alike. With `rescore: true` the error was 0. Turning it on changes
-  every ranking, so it goes through the answer suite (gate G1) on the
-  production embedder rather than riding along here.
+* **Rescoring is off, by measurement.** §4 says "rescoring on". The ranking
+  sweep measured `rescore: true` at oversampling 1 to 3 and rejected it: no
+  primary measure improved, the same golden questions lost a rank in every
+  run, and it did not recover the exact-id question it was suspected of
+  losing ([gate report](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)).
+  Served scores do not need it: `Chunk.score` is the exact cosine, from an
+  `exact=True` query over the hit ids (error 0.000 on every hit of every
+  variant). Without rescoring, a channel's own `$score` is the quantized one
+  (0.012 off at 256 dimensions, 0.037 at 8), which only the boost formula
+  (`boost.py`) reads.
 * **One API key.** The read-only key is configured on the server and not
   used by the backend (ADR-0105, Confirmation), because no tier is read-only
   today. Every backend tier builds the same process-wide client with the one
@@ -756,8 +774,8 @@ index changes went in place.
    step, run the gates in §10, then `vectorBackend=qdrant`.
    - Before the first flip, settle the open items in
      [the gate report](qdrant-gates-2026-10.md#open-before-the-flip):
-     TurboQuant oversampling (the exact-id file the Qdrant pool misses) and G1
-     on a deployed stack. Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
+     G1 on a deployed stack. TurboQuant oversampling is measured and rejected
+     ([sweep](qdrant-gates-2026-10.md#ranking-sweep-2026-10-13)). Ranked `§` lookups are closed: „§ 8“ P@10 0.50 on
      both paths after the `paragraph_refs` channel
      ([re-run](qdrant-gates-2026-10.md#re-run-on-the-merged-code)).
 2. Slice 2: ids in the envelope, `restriction_id`, folder ids in

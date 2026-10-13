@@ -26,6 +26,39 @@ from .search import grouped_search
 from .search import hybrid_search
 from .store import get_store
 
+#: The German stopwords spelled with an umlaut or ß (Snowball's list, the one
+#: Postgres' ``german`` config and Qdrant's German BM25 both use). Qdrant folds
+#: before it drops stopwords, so with ``ascii_folding`` „über“ reaches the
+#: index and the query as ``uber``, a term on 18% of the OIB corpus: „was
+#: weißt du über die oib 1“ ranked every chunk with an „über“ (measured,
+#: ``qdrant-gates-2026-10.md``, "Ranking sweep"). The rest of the list Qdrant
+#: drops itself, as Postgres drops all of it.
+BM25_FOLDED_STOPWORDS = frozenset({"daß", "für", "können", "könnte", "über", "während", "würde", "würden"})
+
+#: A file name typed into a question: a word with a document extension.
+_FILE_NAME = re.compile(
+    r"[\w.-]+\.(?:pdf|docx?|xlsx?|pptx?|odt|ods|rtf|txt|md|csv|dwg|dxf|ifc|png|jpe?g|tiff?|eml|msg|zip)\b",
+    re.IGNORECASE,
+)
+
+
+def bm25_candidates(query: str, extra_terms: Sequence[str] = ()) -> list[str]:
+    """The terms of ``query`` the BM25 channel may be asked for, before pricing.
+
+    ``german_text.query_terms``, less what carries no lexical signal here:
+    the stopwords Qdrant's folding lets through, and the pieces of a file
+    name. A file name is an identifier, not prose: split at ``-``, ``_`` and
+    ``.``, „oib-rl_5_ausgabe_mai_2023.pdf“ asked BM25 for „ausgabe mai 2023“,
+    which every Richtlinie's front matter holds, and pushed the named file out
+    of the 60-chunk pool the dense channel alone puts it in.
+    """
+    from aiq_agent.common import german_text
+
+    prose = _FILE_NAME.sub(" ", query)
+    return [
+        term for term in german_text.query_terms(prose, extra_terms=extra_terms) if term not in BM25_FOLDED_STOPWORDS
+    ]
+
 
 def search(
     scope: str,
@@ -62,6 +95,7 @@ def search_grouped(
     identity: Mapping[str, str],
     filters: dict[str, Any] | None = None,
     boost: Mapping[str, Any] | None = None,
+    exact_terms: Sequence[str] = (),
 ) -> list[tuple[str, list[Hit]]]:
     """One fused ranking over many logical collections, grouped per collection, best group first.
 
@@ -82,6 +116,7 @@ def search_grouped(
         group_size=group_size,
         filters=filters,
         boost=parse_boost(boost),
+        exact_terms=exact_terms,
     )
 
 
