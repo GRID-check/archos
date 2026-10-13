@@ -426,7 +426,7 @@ What it may look at is decided by Piloti's server, never by the model, and by
   every one of them may open; no folder with its own access list;
 - in a chat the whole project can see: the closed projects;
 - never the project this chat belongs to (Piloti searches that one anyway);
-- one search covers up to eight projects; Piloti continues when it needs to.
+- one search covers up to forty projects; Piloti continues when it needs to.
 
 So everything Piloti shows in a chat is something everyone already in it may
 read.

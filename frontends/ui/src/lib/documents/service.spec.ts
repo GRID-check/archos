@@ -217,8 +217,6 @@ import {
   resolveProjectDocumentsByName,
   searchProjectDocuments,
   fetchGroupedSemanticHits,
-  groupedSearchAvailable,
-  resetGroupedSearchAvailability,
   joinHitsToFiles,
   deriveSearchTopK,
   dispatchDocument,
@@ -1223,11 +1221,13 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0105)', 
     expect(hits?.map((hit) => hit.collection)).toEqual(['proj_a'])
   })
 
-  it('answers null, never "nothing found", when the backend cannot rank across collections or fails', async () => {
-    mockFetch.mockResolvedValueOnce(new Response('{"detail":"chroma"}', { status: 409 }))
-    expect(await fetchGroupedSemanticHits(['proj_a'], 'q', 3)).toBeNull()
+  it('throws an upstream error, never "nothing found", when the backend refuses, fails or answers garbage', async () => {
+    mockFetch.mockResolvedValueOnce(new Response('{"detail":"grouped document search failed"}', { status: 500 }))
+    await expect(fetchGroupedSemanticHits(['proj_a'], 'q', 3)).rejects.toBeInstanceOf(UpstreamError)
     mockFetch.mockRejectedValueOnce(new Error('down'))
-    expect(await fetchGroupedSemanticHits(['proj_a'], 'q', 3)).toBeNull()
+    await expect(fetchGroupedSemanticHits(['proj_a'], 'q', 3)).rejects.toBeInstanceOf(UpstreamError)
+    mockFetch.mockResolvedValueOnce(new Response('{"nothits":1}', { status: 200 }))
+    await expect(fetchGroupedSemanticHits(['proj_a'], 'q', 3)).rejects.toBeInstanceOf(UpstreamError)
   })
 
   it('sends the pre-filters and the boost in the one request, and nothing when there are none', async () => {
@@ -1240,30 +1240,6 @@ describe('fetchGroupedSemanticHits (one ranking across collections, ADR-0105)', 
     await fetchGroupedSemanticHits(['proj_a'], 'q', 10)
     const plain = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect('filters' in plain || 'boost' in plain).toBe(false)
-  })
-})
-
-describe('groupedSearchAvailable (asked before a page of projects is authorized)', () => {
-  beforeEach(() => resetGroupedSearchAvailability())
-
-  it('asks the backend once per interval, and any failure reads as unavailable', async () => {
-    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ grouped: true }), { status: 200 }))
-    expect(await groupedSearchAvailable(1_000)).toBe(true)
-    expect(await groupedSearchAvailable(30_000)).toBe(true)
-    expect(mockFetch).toHaveBeenCalledTimes(1)
-    expect(String(mockFetch.mock.calls[0][0])).toMatch(/\/v1\/collections\/search\/capability$/)
-
-    mockFetch.mockRejectedValueOnce(new Error('down'))
-    expect(await groupedSearchAvailable(1_000 + 61_000)).toBe(false)
-  })
-
-  it('remembers a 409 from the grouped search itself', async () => {
-    mockFetch.mockResolvedValueOnce(new Response(JSON.stringify({ grouped: true }), { status: 200 }))
-    expect(await groupedSearchAvailable()).toBe(true)
-    mockFetch.mockResolvedValueOnce(new Response('{"detail":"chroma"}', { status: 409 }))
-    await fetchGroupedSemanticHits(['proj_a'], 'q', 3)
-    expect(await groupedSearchAvailable()).toBe(false)
-    expect(mockFetch).toHaveBeenCalledTimes(2)
   })
 })
 

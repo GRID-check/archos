@@ -156,6 +156,4 @@ async def test_facts_put_is_409_where_qdrant_is_not_written(stack, monkeypatch):
     monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
     async with _client(app) as client:
         res = await client.put("/v1/collections/proj_a/project-facts", json={"facts": {}, "status": "active"})
-        capability = await client.get("/v1/collections/search/capability")
     assert res.status_code == 409
-    assert capability.json() == {"grouped": False}

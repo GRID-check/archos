@@ -133,7 +133,7 @@ _DESCRIPTION = (
     "`all` = alle neueste zuerst, "
     "`named` = nur `project_ids`; optional `document_types`, `disciplines`, "
     "`period_from`/`period_to` als JJJJ-MM-TT für den Projektzeitraum). Ein Aufruf durchsucht "
-    "höchstens 8 Projekte; nennt das Ergebnis eine nächste Seite, mit `offset` weiter. "
+    "höchstens 40 Projekte; nennt das Ergebnis eine nächste Seite, mit `offset` weiter. "
     "`open_folders_only` lässt Ordner mit eigener Zugriffsliste weg (Standard: aus; lass es weg, außer du "
     "willst bewusst nichts, was diesen Chat einschränkt). "
     "Die Suche liefert auch Bescheide früherer Verfahren (Auflagen, Nachforderungen mit Behörde, Gemeinde "

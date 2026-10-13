@@ -23,40 +23,35 @@
  * rule a chat turn's own scope uses: a project viewer reads documents but does
  * not get the agent pointed at them). The conversation's own project is never
  * in a lookup's scope; its own tools search it under its own scope. Inside a
- * project, search IS `searchProjectDocuments`, the project's own search: hidden
- * folders are left out, and a restricted folder's collection is searched only
- * for a reader who may read it.
+ * project, the collections searched are the ones the project's own search
+ * names (`planProjectSearch`): hidden folders are left out, and a restricted
+ * folder's collection is searched only for a reader who may read it.
  *
  * ## Cost
  *
- * On a backend with one shared index (Qdrant, ADR-0105) a page of up to
- * {@link CROSS_PROJECT_GROUPED_PAGE_PROJECTS} projects is ONE search: every
- * collection the reader is cleared for, ranked together, so hits from
+ * Qdrant is the one store (ADR-0104), with one shared index (ADR-0105), so a
+ * page of up to {@link CROSS_PROJECT_PAGE_PROJECTS} projects is ONE search:
+ * every collection the reader is cleared for, ranked together, so hits from
  * different projects are ordered by one ranking instead of by scores from
  * separate indexes. The tag filters run inside that search, and the current
  * project's fingerprint lifts passages from projects like it
  * (`project-facts-mirror.ts`); the walk order no longer decides which
- * projects are searched. Whether the backend can is asked before any project
- * is authorized for it. Where it cannot (Chroma), N projects
- * are N collection searches (plus the readable restricted ones), at most
- * {@link CROSS_PROJECT_PAGE_PROJECTS} per call, {@link SEARCH_CONCURRENCY} at a
- * time. Either way the answer carries the offset of the next page; the agent
- * asks again when it wants more.
+ * projects are searched. A failed search is an upstream error, never an empty
+ * page. The answer carries the offset of the next page; the agent asks again
+ * when it wants more.
  */
 
 import 'server-only'
 import { decisionOriginOf } from './decision-origin'
-import { BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { BadRequestError, NotFoundError, UpstreamError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
-import { clearanceOf, getProjectFolderAccess, readableFolderIdsFor } from '@/lib/authz/folder-access'
+import { clearanceOf, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversations/cross-project-use'
 import type { Project } from '@/lib/db/schema'
 import {
   fetchGroupedSemanticHits,
-  groupedSearchAvailable,
   hydrateProjectHits,
   planProjectSearch,
-  searchProjectDocuments,
   type GroupedSearchFilters,
   type ListedDocument,
   type ProjectSearchPlan,
@@ -73,7 +68,6 @@ import { bundeslandOf, rankBySimilarity } from './similarity'
 import { abschlussOf, toProjectStatus } from '@/lib/projects/project-status'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import {
-  CROSS_PROJECT_GROUPED_PAGE_PROJECTS,
   CROSS_PROJECT_PAGE_PROJECTS,
   type CrossProjectBriefRequest,
   type CrossProjectBriefResponse,
@@ -89,7 +83,7 @@ import {
   type ProjectStatus,
 } from './types'
 
-/** How many project searches run at the same time within one page. */
+/** How many projects are authorized, joined to their rows or read for memory at the same time within one page. */
 export const SEARCH_CONCURRENCY = 4
 
 /**
@@ -313,9 +307,8 @@ async function mapBounded<T, R>(items: readonly T[], limit: number, work: (item:
 
 /**
  * Whether a hit's tags satisfy the request's type and discipline filters (each
- * group: any of). The filter of the per-project search; behind the grouped
- * search, which filters on the chunks' copy of the tags, a backstop that
- * judges by the document row.
+ * group: any of). Behind the grouped search, which filters on the chunks' copy
+ * of the tags, a backstop that judges by the document row.
  */
 export function matchesTags(
   tags: readonly string[],
@@ -323,17 +316,6 @@ export function matchesTags(
 ): boolean {
   const has = (wanted: readonly string[]) => wanted.length === 0 || wanted.some((tag) => tags.includes(tag))
   return has(request.documentTypes) && has(request.disciplines)
-}
-
-/**
- * How many hits to ask each project for in the per-project search (Chroma):
- * more when a tag filter will drop some after retrieval, because Chroma's
- * chunks carry no tags to filter on. The grouped search (Qdrant) filters
- * inside the query and asks for `limit`.
- */
-function perProjectTopK(request: CrossProjectSearchRequest): number {
-  const filtered = request.documentTypes.length + request.disciplines.length > 0
-  return Math.min(filtered ? request.limit * 3 : request.limit, 30)
 }
 
 /** A hit, and the restricted folder its passage came from (null for the project's own collection). */
@@ -393,63 +375,31 @@ async function foundHitsOf(
 }
 
 /**
- * One project's hits, through the project's own search; a project that fails
- * yields none. A passage from a restricted folder's collection carries that
- * folder, for the record; one whose folder cannot be named is dropped rather
- * than handed out unrecorded.
- */
-async function searchOneProject(
-  session: AuthorizedSession,
-  project: Project,
-  request: CrossProjectSearchRequest,
-  reach: Pick<AudienceReach, 'restrictedFolders'>
-): Promise<FoundHit[]> {
-  let found: Awaited<ReturnType<typeof searchProjectDocuments>>
-  try {
-    // Every hit goes to the model: screened rows only, never the asker's own
-    // held uploads in that project nor what they review in its quarantine.
-    found = await searchProjectDocuments(session, project.id, request.query, perProjectTopK(request), {
-      snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
-      forModel: true,
-    })
-  } catch {
-    // Access withdrawn between the listing and the search, or the project went: nothing from it.
-    return []
-  }
-  return foundHitsOf(project, found.hits, request, reach, () =>
-    getProjectFolderAccess(session, project.id, project.collectionName)
-  )
-}
-
-/**
  * A page of projects in ONE search (ADR-0105): each project is authorized and
  * its cleared collections named exactly as its own search names them
  * (`planProjectSearch`), then every collection is ranked together and each
  * project's hits are joined to its screened rows. A shared chat does not even
  * search a restricted folder, rather than searching and discarding it.
  *
- * `null` when the backend cannot rank across collections; the caller then
- * searches project by project. A project whose access went between the
- * listing and the search yields nothing, as in the per-project search.
+ * A project whose access went between the listing and the search yields
+ * nothing. A page not one project of which could be planned (a database
+ * failure, or every access withdrawn at once) is an upstream error rather than
+ * an empty page reported as searched.
  */
-async function searchPageAtOnce(
+async function searchPage(
   session: AuthorizedSession,
   page: readonly Project[],
   request: CrossProjectSearchRequest,
   reach: Pick<AudienceReach, 'restrictedFolders'>,
   current: Pick<Project, 'profile'> | null
-): Promise<FoundHit[] | null> {
-  // Asked first: on a backend without one shared index, a page of 40 projects
-  // would be authorized only to learn that from a 409.
-  if (!(await groupedSearchAvailable())) return null
+): Promise<FoundHit[]> {
   const planned = await mapBounded(page, SEARCH_CONCURRENCY, (project) =>
     planProjectSearch(session, project.id).catch(() => null)
   )
   const plans = planned.filter((plan): plan is ProjectSearchPlan => plan !== null)
-  // Not one project could be planned (a database failure, or every access
-  // withdrawn at once): leave the page to the per-project search, which
-  // covers fewer projects per call, rather than reporting 40 as searched.
-  if (page.length > 0 && plans.length === 0) return null
+  if (page.length > 0 && plans.length === 0) {
+    throw new UpstreamError('No project of the page could be authorized for the search')
+  }
   const collectionsOf = (plan: ProjectSearchPlan) =>
     reach.restrictedFolders ? plan.collections : [plan.project.collectionName]
   // The tag filters run inside the search, so a project is asked for exactly
@@ -461,7 +411,6 @@ async function searchPageAtOnce(
     CROSS_PROJECT_SNIPPET_CHARS,
     { filters: tagFiltersOf(request), boost: current ? similarityBoostOf(current.profile) : null }
   )
-  if (hits === null) return null
   const perProject = await mapBounded(plans, SEARCH_CONCURRENCY, async (plan) => {
     const own = new Set(collectionsOf(plan))
     const projectHits = hits.filter((hit) => own.has(hit.collection))
@@ -562,16 +511,8 @@ export async function searchAcrossProjects(
     request,
     current ?? (caller.currentProjectId ? { id: caller.currentProjectId, profile: null } : null)
   )
-  // One search for a wide page where the backend can rank across collections;
-  // otherwise the bounded per-project page, searched project by project.
-  let page = scope.slice(request.offset, request.offset + CROSS_PROJECT_GROUPED_PAGE_PROJECTS)
-  let documents = await searchPageAtOnce(caller.session, page, request, reach, current)
-  if (documents === null) {
-    page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
-    documents = (
-      await mapBounded(page, SEARCH_CONCURRENCY, (project) => searchOneProject(caller.session, project, request, reach))
-    ).flat()
-  }
+  const page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
+  const documents = await searchPage(caller.session, page, request, reach, current)
   const memoryScopes = decisionScopes(caller.session, page, reach)
   // Decisions and permit records are judged over the same scopes: the same
   // projects, the same folder clearance, so the two cannot disagree on reach.

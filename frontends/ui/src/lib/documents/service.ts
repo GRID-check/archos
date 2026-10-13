@@ -761,11 +761,11 @@ export async function fetchSemanticHits(
  * this order is. `options` narrow the search and lift similar projects inside
  * the same query.
  *
- * `null` means "not available here", never "nothing found": a backend that
- * cannot rank across collections (Chroma) answers 409, and any failure reads
- * the same, so the caller searches collection by collection as before. The
- * envelope is signed for exactly these collections, every one of which the
- * caller has already authorized.
+ * Qdrant is the only store (ADR-0104), so there is nothing to fall back to: a
+ * backend that refuses, cannot be reached or answers something unreadable is
+ * an {@link UpstreamError}, never an empty result a caller would read as
+ * "nothing found". The envelope is signed for exactly these collections, every
+ * one of which the caller has already authorized.
  */
 export async function fetchGroupedSemanticHits(
   collections: readonly string[],
@@ -773,15 +773,16 @@ export async function fetchGroupedSemanticHits(
   filesPerCollection: number,
   snippetMaxChars?: number,
   options: GroupedSearchOptions = {}
-): Promise<BackendSearchHit[] | null> {
+): Promise<BackendSearchHit[]> {
   const unique = [...new Set(collections)]
   if (unique.length === 0) return []
   const scopeHeaders = buildGridRequestContextWireHeaders(
     { collectionScope: unique },
     process.env.GRID_INTERNAL_API_TOKEN
   )
+  let res: Response
   try {
-    const res = await fetch(`${getBackendUrl()}/v1/collections/search`, {
+    res = await fetch(`${getBackendUrl()}/v1/collections/search`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...scopeHeaders },
       body: JSON.stringify({
@@ -795,19 +796,18 @@ export async function fetchGroupedSemanticHits(
       }),
       signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
     })
-    if (res.status === 409) rememberGroupedSearchUnavailable()
-    if (!res.ok) return null
-    const body = await res.json().catch(() => ({}))
-    if (!Array.isArray(body?.hits)) return null
-    const allowed = new Set(unique)
-    // A hit names the collection it came from; one this call did not ask for
-    // is dropped rather than trusted, so the join can only ever see these.
-    return (body.hits as BackendSearchHit[])
-      .filter((hit) => allowed.has(hit.collection))
-      .map((hit, rank) => ({ ...hit, rank }))
-  } catch {
-    return null
+  } catch (error) {
+    throw new UpstreamError('Grouped search backend unreachable', error instanceof Error ? error.message : undefined)
   }
+  if (!res.ok) throw new UpstreamError(`Grouped search backend returned ${res.status}`)
+  const body = await res.json().catch(() => null)
+  if (!Array.isArray(body?.hits)) throw new UpstreamError('Grouped search backend returned an unexpected shape')
+  const allowed = new Set(unique)
+  // A hit names the collection it came from; one this call did not ask for
+  // is dropped rather than trusted, so the join can only ever see these.
+  return (body.hits as BackendSearchHit[])
+    .filter((hit) => allowed.has(hit.collection))
+    .map((hit, rank) => ({ ...hit, rank }))
 }
 
 /** The backend's bounds on a grouped search (`GroupedDocumentSearchRequest`). */
@@ -827,47 +827,6 @@ export interface GroupedSearchOptions {
   filters?: GroupedSearchFilters
   /** The current project's facts and the similarity weights (`similarityBoostOf`). */
   boost?: SearchBoostWire | null
-}
-
-/**
- * How long an answer about the grouped search's availability is trusted.
- * Availability is a property of the deployment (`AIQ_VECTOR_BACKEND`), the
- * same for every organization and carrying no tenant data, so one answer per
- * process serves every caller; it changes only with a redeploy of the backend.
- */
-const GROUPED_CAPABILITY_TTL_MS = 60_000
-let groupedCapability: { grouped: boolean; until: number } | null = null
-
-function rememberGroupedSearchUnavailable(now = Date.now()): void {
-  groupedCapability = { grouped: false, until: now + GROUPED_CAPABILITY_TTL_MS }
-}
-
-/**
- * Whether the backend can rank many collections in one search (Qdrant), asked
- * BEFORE a caller authorizes a page of projects for one: on Chroma, learning it
- * from the grouped search's 409 cost a page of 40 authorizations on every
- * cross-project search, then the fallback's 8 again. Any failure reads as "no",
- * and the caller searches collection by collection, which works everywhere.
- */
-export async function groupedSearchAvailable(now = Date.now()): Promise<boolean> {
-  if (groupedCapability && groupedCapability.until > now) return groupedCapability.grouped
-  let grouped = false
-  try {
-    const res = await fetch(`${getBackendUrl()}/v1/collections/search/capability`, {
-      signal: AbortSignal.timeout(BACKEND_FETCH_TIMEOUT_MS),
-    })
-    const body = res.ok ? await res.json().catch(() => ({})) : {}
-    grouped = body?.grouped === true
-  } catch {
-    grouped = false
-  }
-  groupedCapability = { grouped, until: now + GROUPED_CAPABILITY_TTL_MS }
-  return grouped
-}
-
-/** Forget the remembered availability (tests). */
-export function resetGroupedSearchAvailability(): void {
-  groupedCapability = null
 }
 
 /** The identity of a document in the backend: its collection and its filename. */

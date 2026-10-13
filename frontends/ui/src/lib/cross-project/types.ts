@@ -14,17 +14,12 @@ import { DISCIPLINE_TAGS, DOCUMENT_TYPE_TAGS } from '@/lib/documents/tag-vocabul
 import { PROJECT_STATUSES, type ProjectStatus } from '@/lib/projects/project-status'
 
 /**
- * How many projects one search call searches at most: one collection search
- * per project (plus the restricted collections the reader may read), so this is
- * the bound on fan-out. A wider scope pages with `offset`.
+ * How many projects one search call covers. The backend ranks every collection
+ * of the page in ONE query (ADR-0105), so a project costs no search of its own,
+ * only the authorization and row lookups each of its hits needs. A wider scope
+ * pages with `offset`.
  */
-export const CROSS_PROJECT_PAGE_PROJECTS = 8
-/**
- * How many projects one search call covers when the backend ranks every
- * collection in ONE query (ADR-0105): a project no longer costs a search, only
- * the authorization and row lookups each of its hits needs.
- */
-export const CROSS_PROJECT_GROUPED_PAGE_PROJECTS = 40
+export const CROSS_PROJECT_PAGE_PROJECTS = 40
 /** How many named projects one call may name. */
 export const CROSS_PROJECT_MAX_NAMED = 20
 /** How many hits one search returns at most, across every project it searched. */
