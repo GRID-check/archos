@@ -71,6 +71,12 @@ TOOLS: dict[str, tuple[str, str]] = {
     "describe_card": ("no_collection_content", "returns a card type's schema"),
     "file_draft": ("no_collection_content", "files the conversation's own draft; returns the filing outcome"),
     "create_task": ("no_collection_content", "queues work; returns the task it created"),
+    "document_annotations": (
+        "no_collection_content",
+        "reads Anmerkungen rows of the conversation's subject document only, which the BFF admits against "
+        "the conversation's audience before it answers, as it admits the subject's bytes "
+        "(lib/annotations/agent.ts, admitSubjectRead, ADR-0093)",
+    ),
     "project_memory_remember": (
         "no_collection_content",
         "writes a note; restricted memory is served into a prompt only after the BFF admits its folders",

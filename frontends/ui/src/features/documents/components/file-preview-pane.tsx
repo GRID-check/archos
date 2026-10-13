@@ -89,11 +89,15 @@ import type {
   DocumentVersionState,
 } from '@/lib/documents/lifecycle-types'
 import { AssignPopover } from './assign-popover'
-import { useRouter } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { askAboutFile } from '../lib/ask-about-file'
 import { DiscussDocumentButton } from './discuss-document-button'
 import { dropFileSubject } from '../lib/open-file-peek'
 import { useFilePreviewStore } from '../stores/file-preview-store'
+import { useDocumentReview } from '../hooks/use-document-review'
+import { AnnotationsSummary } from './review/annotations-summary'
+import { DocumentReviewMode } from './review/document-review'
+import { ReviewPageLayer } from './review/review-page-layer'
 import { useCurrentProject } from '@/features/projects/lib/current-project'
 import { ProjectClosedChip } from '@/components/projects/project-status'
 
@@ -565,6 +569,37 @@ export function FilePreviewPane({
    */
   const pdfInWell = canPreview && Boolean(previewUrl) && shownType === 'application/pdf'
   const wellHostsViewer = peeking && (isModel || pdfInWell)
+  /**
+   * The document's Anmerkungen and its room: who else has it open, their
+   * pointers, and Piloti's proposals landing. Only where the well IS the PDF
+   * viewer (a mark needs a page under it), and never for a held upload, which
+   * nobody but its reviewers reads. One instance for the inline preview and
+   * the focused review, so the tab is in the room once.
+   */
+  const review = useDocumentReview(file.id, { enabled: pdfInWell && showMetadataPanel && !isHeld })
+  const [reviewOpen, setReviewOpen] = useState(false)
+  const [reviewFocus, setReviewFocus] = useState<{ annotationId: string; key: number } | null>(null)
+  const openReview = useCallback((annotationId?: string) => {
+    setReviewFocus(annotationId ? { annotationId, key: Date.now() } : null)
+    setReviewOpen(true)
+  }, [])
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const pathname = usePathname()
+  // A link into the review (`?doc=…&review=1&mark=…`, „Link kopieren" on a
+  // thread) opens it at its mark once, then leaves the URL to the preview.
+  const reviewParam = searchParams?.get('review') ?? null
+  const markParam = searchParams?.get('mark') ?? null
+  const docParam = searchParams?.get('doc') ?? null
+  useEffect(() => {
+    if (!reviewParam || docParam !== file.id || !pdfInWell) return
+    openReview(markParam ?? undefined)
+    const params = new URLSearchParams(searchParams?.toString() ?? '')
+    params.delete('review')
+    params.delete('mark')
+    const query = params.toString()
+    router.replace(query ? `${pathname ?? ''}?${query}` : (pathname ?? ''), { scroll: false })
+  }, [reviewParam, markParam, docParam, file.id, pdfInWell, openReview, pathname, router, searchParams])
 
   useEffect(() => {
     loadPreview()
@@ -1062,6 +1097,9 @@ export function FilePreviewPane({
                     highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}
+                    pageOverlay={(page) => (
+                      <ReviewPageLayer page={page} review={review} focused={false} onOpenMark={openReview} />
+                    )}
                     className="size-full"
                   />
                 ) : (
@@ -1409,6 +1447,19 @@ export function FilePreviewPane({
               />
             )}
 
+            {/* ANMERKUNGEN — how much is open on the pages, and the door into
+              the focused review where marks are set and worked. After the
+              approval state, before the page readings: what the office found
+              on the sheets is work waiting, and the readings are the longest
+              list on the rail. */}
+            {pdfInWell && review.load === 'ready' && (
+              <AnnotationsSummary
+                review={review}
+                onOpenReview={openReview}
+                className={cn((showIndexedHeading || fassungenShown) && 'mt-5')}
+              />
+            )}
+
             {/* After the approval state, not before it: whether the office
               stands behind the document outranks what is on sheet 7, and this
               list is the longest thing on the rail. */}
@@ -1574,6 +1625,49 @@ export function FilePreviewPane({
           rows below the "Pages" row that already stated it, in a band that cost
           the preview column ~32px of height on every document — the definition
           of a part that could be removed without losing anything. */}
+
+      {pdfInWell && (
+        <DocumentReviewMode
+          open={reviewOpen}
+          onOpenChange={setReviewOpen}
+          review={review}
+          documentName={actions.name}
+          fassungLabel={
+            file.versionCount && file.versionCount > 1
+              ? t('review.fassung', { number: file.versionCount })
+              : null
+          }
+          canPickAssignee={canCollaborate}
+          focusRequest={reviewFocus}
+          onAskPiloti={
+            projectId
+              ? (annotation) =>
+                  askAboutFile({
+                    projectId,
+                    file,
+                    ask: t('annotations.askSeed', {
+                      number: annotation.number,
+                      kind: t(`annotations.kinds.${annotation.kind}`),
+                      page: annotation.page,
+                      body: annotation.body,
+                    }),
+                    navigate: (href) => router.push(href),
+                  })
+              : undefined
+          }
+          onReviewWithPiloti={
+            projectId
+              ? () =>
+                  askAboutFile({
+                    projectId,
+                    file,
+                    ask: t('review.reviewSeed'),
+                    navigate: (href) => router.push(href),
+                  })
+              : undefined
+          }
+        />
+      )}
     </div>
   )
 }

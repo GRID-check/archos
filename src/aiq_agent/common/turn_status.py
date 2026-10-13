@@ -395,6 +395,13 @@ KEY_ACTION_DRAFT_SUBMITTED = "status.action.draftSubmitted"
 #: told that this turn will NOT produce the answer, and something outside the
 #: conversation will.
 KEY_ACTION_TASK_CREATED = "status.action.taskCreated"
+#: Anmerkungen on the chat's document (`tools/annotations`), one key per
+#: operation: reading the marks, proposing findings, answering in a thread are
+#: three different things to the reader, and nothing else on screen says which.
+#: The proposal line carries that nothing is set yet, as the file proposal does.
+KEY_ACTION_ANNOTATIONS_READ = "status.action.annotationsRead"
+KEY_ACTION_ANNOTATIONS_PROPOSE = "status.action.annotationsPropose"
+KEY_ACTION_ANNOTATIONS_REPLY = "status.action.annotationsReply"
 
 KEY_CITATIONS = "status.citations"
 #: The turn's one bounded repair (ADR-0067): a quotation no passage holds
@@ -435,6 +442,9 @@ ALL_STATUS_KEYS: tuple[str, ...] = (
     "status.action.draftFiled",
     "status.action.draftSubmitted",
     "status.action.taskCreated",
+    "status.action.annotationsRead",
+    "status.action.annotationsPropose",
+    "status.action.annotationsReply",
     "status.citations",
     "status.repair",
     "status.escalation",
@@ -590,6 +600,14 @@ _ACTION_KEYS = {
     # :func:`_action_key`. (`submit_draft` was merged into that argument.)
     "file_draft": KEY_ACTION_DRAFT_FILED,
     "create_task": KEY_ACTION_TASK_CREATED,
+    # `list`; `propose` and `reply` read their own key off the arguments in :func:`_action_key`.
+    "document_annotations": KEY_ACTION_ANNOTATIONS_READ,
+}
+
+#: ``document_annotations``'s writing operations, by their ``operation`` argument.
+_ANNOTATION_OPERATION_KEYS = {
+    "propose": KEY_ACTION_ANNOTATIONS_PROPOSE,
+    "reply": KEY_ACTION_ANNOTATIONS_REPLY,
 }
 
 
@@ -598,12 +616,16 @@ def _action_key(base: str, args: Any) -> str | None:
 
     One tool, two promises: ``file_draft`` with ``submit`` hands the draft to a
     reviewer, and the filing line would describe only the half of that call
-    which asks nobody for anything.
+    which asks nobody for anything. ``document_annotations`` reads, proposes or
+    answers by its ``operation``, and only the first leaves the document as it was.
     """
     if base == "file_draft" and isinstance(args, dict) and str(args.get("submit")).strip().lower() == "true":
         # `str(True)` is "True": a boolean and a model that quoted it read alike,
         # the way the tool's own argument parsing reads them.
         return KEY_ACTION_DRAFT_SUBMITTED
+    if base == "document_annotations" and isinstance(args, dict):
+        operation = str(args.get("operation") or "").strip().lower()
+        return _ANNOTATION_OPERATION_KEYS.get(operation, KEY_ACTION_ANNOTATIONS_READ)
     return _ACTION_KEYS.get(base)
 
 

@@ -858,6 +858,11 @@ export const chat: typeof en.chat = {
           draftFiled: 'Entwurf wird im Projekt abgelegt …',
           draftSubmitted: 'Entwurf wird zur Freigabe eingereicht …',
           taskCreated: 'Auftrag wird angelegt …',
+          // Anmerkungen im Dokument dieses Chats. Vorschläge setzt Piloti nur
+          // vor: Erst eine Person übernimmt oder verwirft sie.
+          annotationsRead: 'Anmerkungen werden gelesen …',
+          annotationsPropose: 'Anmerkungen werden vorgeschlagen …',
+          annotationsReply: 'Antwort auf eine Anmerkung wird geschrieben …',
         },
         // Die Werkzeuge sind durch, die Antwort wird geschrieben. Dieselben
         // Worte wie `activity.composing` darüber: ein Vokabular für dieselbe
@@ -903,6 +908,8 @@ export const chat: typeof en.chat = {
       // abgelegt oder zur Freigabe eingereicht.
       filing: 'Ablage',
       task: 'Auftrag',
+      // Anmerkungen im Dokument: gelesen, vorgeschlagen oder beantwortet.
+      annotations: 'Anmerkungen',
       // Die Dateiaktionen SCHLAGEN vor und schreiben nichts (ADR-0003).
       fileProposal: 'Ablagevorschlag',
       // Ein Chip pro Skill, den dieser Turn tatsächlich angewendet hat.

@@ -139,6 +139,11 @@ const BOUNDARY_MIGRATIONS = [
   // announced, so a re-read does not announce one again. Keyed directly by its
   // organization; cascades with the newer document.
   '0130_document_fassung_announcements.sql',
+  // Adds document_annotations and document_annotation_replies — marks people
+  // and Piloti set at a place on a page, and the thread under each (CONTEXT.md
+  // „Anmerkung"). Keyed by their organization AND the document's (the mark's,
+  // for a reply), so a row cannot be planted on another tenant's document.
+  '0135_document_annotations.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

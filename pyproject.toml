@@ -128,6 +128,10 @@ aiq_tasks = "aiq_agent.tools.tasks.register"
 # entry point: it imports the knowledge layer's lane fan-out lazily, and a
 # deployment without the lookups must keep every other tool.
 aiq_cross_project = "aiq_agent.tools.cross_project.register"
+# Anmerkungen on the chat's document (`document_annotations`): read them, propose
+# findings for a person to take over, answer in a thread. Its own entry point:
+# it calls its own BFF route, and a deployment without it keeps every other tool.
+aiq_annotations = "aiq_agent.tools.annotations.register"
 # Grid telemetry `_type`s named in the shipped YAML. They register at import
 # via NAT decorators and used to ride in on `chat_researcher.register`. After
 # that package dissolved, `load_config` in a clean interpreter (the container's

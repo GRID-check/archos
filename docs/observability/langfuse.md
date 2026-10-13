@@ -57,7 +57,8 @@ Trace metadata on the root:
 Tags, the trace list's fast filter: `outcome:<…>`, `route:<…>`,
 `confidence:<…>`, `capped:<…>`, `citations-removed`, `quote-not-found`,
 `research-truncated`, `handed-off`, `error:<code>`, `feature:ifc`,
-`feature:cross-project` (a `project_lookup` ran), `reference-prefetch`,
+`feature:cross-project` (a `project_lookup` ran), `feature:annotations` (a
+`document_annotations` call ran), `reference-prefetch`,
 `cited-precedent`,
 `feature:<auxiliary feature>`, `surface:auxiliary`, and `org:<id>` with
 identity attributes on. Tags are labels, never ids or text, with the one
@@ -73,6 +74,16 @@ and score, with each pick's `solved` and the pool's `solved_any` and
 `injection_flagged` when the hit judge ran (ADR-0064 use 11; `judged: false`
 when it did not). A refusal is `{"refused": <code>}`: `no_envelope`, `not_found`,
 `audience_changed`, `invalid`, `unreachable` or `invalid_arguments`.
+
+Each `document_annotations` call is an `annotate.<operation>` step
+(`annotate.list`, `annotate.propose`, `annotate.reply`;
+`tools/annotations/register.py`): its input the operation and, for `propose`,
+how many proposals were sent; its output counts and numbers, never the text of a
+mark: the document id, and `annotations`, `live` and `by_kind` for a list,
+`proposed` and `pages` for a proposal, the mark's `number` and its `replies`
+for a reply. A refusal is `{"refused": <code>}`: `no_envelope`,
+`no_document_subject`, `forbidden`, `not_found`, `conflict`, `invalid`,
+`unreachable` or `invalid_arguments`.
 
 ### The decision model
 

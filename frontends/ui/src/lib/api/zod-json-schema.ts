@@ -115,6 +115,15 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
       // enforced by the route's 400. Unwrapping keeps the export honest about
       // the shape without re-implementing the check in a second language.
       return toJsonSchema((definition.schema as ZodTypeAny) ?? z.unknown())
+    case z.ZodFirstPartyTypeKind.ZodPipeline:
+      // `z.string().transform(trim).pipe(z.string().min(1))`: the wire carries
+      // a string, and the bounds the route enforces are the piped side's, so
+      // that is the side described. The trim itself is BFF-side, like a refine.
+      return toJsonSchema((definition.out as ZodTypeAny) ?? z.unknown())
+    case z.ZodFirstPartyTypeKind.ZodTuple: {
+      const items = (definition.items as ZodTypeAny[]).map((item) => toJsonSchema(item))
+      return { type: 'array', prefixItems: items, minItems: items.length, maxItems: items.length }
+    }
     case z.ZodFirstPartyTypeKind.ZodNullable:
       // `anyOf` rather than a type array, because the inner node may carry
       // constraints (`maxLength`, `enum`) that a `["string", "null"]` shorthand

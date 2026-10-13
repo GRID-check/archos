@@ -63,6 +63,12 @@ export const TURN_EVENT_KEYS: Record<string, string> = {
   // outside the conversation will. Its own key, and not one of the two above,
   // because no draft is moving.
   'status.action.taskCreated': 'thinking.turnStatus.',
+  // Anmerkungen on the chat's document: reading them, proposing findings,
+  // answering in a thread. One line each, because nothing else on screen says
+  // which of the three is running, and only the first changes nothing.
+  'status.action.annotationsRead': 'thinking.turnStatus.',
+  'status.action.annotationsPropose': 'thinking.turnStatus.',
+  'status.action.annotationsReply': 'thinking.turnStatus.',
   // The tool calls are over and the answer is being written. Without this key
   // the live line keeps showing the last retrieval event through the whole
   // synthesis call — a status event marks what happens NEXT, and nothing else

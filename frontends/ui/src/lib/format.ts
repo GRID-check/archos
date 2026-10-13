@@ -304,3 +304,14 @@ export const formatDurationElapsed = (seconds: number, locale?: string): string 
  */
 export const formatTransferRate = (bytesPerSecond: number, locale?: string): string =>
   `${formatBytes(bytesPerSecond, locale)}/s`
+
+/**
+ * The reader's own calendar day as `YYYY-MM-DD`, the shape a Postgres `date`
+ * arrives in, so a stored day compares with it as a string. Local, not UTC:
+ * a Frist that ends today is not overdue at 00:30 in Vienna because UTC is
+ * still on yesterday.
+ */
+export const localCalendarDay = (date: Date = new Date()): string => {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}

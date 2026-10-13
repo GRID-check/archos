@@ -152,6 +152,22 @@ const KEYED_BY_A_READ_DOCUMENT: Record<string, string> = {
   // --- Assignments: keyed by resources already authorized ------------------
   'lib/assignments/repository.ts#listAssignmentsForResources|resourceAssignments':
     'Ids from `requireResourceAccess` (which reads a document through the sharing registry) or from a listing its reader narrowed.',
+
+  // --- Anmerkungen: keyed by a document the caller already read -------------
+  'lib/annotations/repository.ts#listDocumentAnnotations|documentAnnotations':
+    'The Anmerkungen of a document the service read through `getAccessibleDocument` first.',
+  'lib/annotations/repository.ts#listDocumentAnnotations|documentVersions':
+    'The Fassung number each Anmerkung was set on, of that same document.',
+  'lib/annotations/repository.ts#findDocumentAnnotation|documentAnnotations':
+    'One Anmerkung of a document the service read through `getAccessibleDocument` first.',
+  'lib/annotations/repository.ts#findDocumentAnnotation|documentVersions':
+    'The Fassung number it was set on, of that same document.',
+  'lib/annotations/repository.ts#insertDocumentAnnotations|documentAnnotations':
+    "The next number and the count, under the insert's lock, for a document the service read for writing.",
+  'lib/annotations/repository.ts#listReplies|documentAnnotationReplies':
+    'The threads of Anmerkungen just read from a document the service read first.',
+  'lib/annotations/repository.ts#insertAnnotationReply|documentAnnotationReplies':
+    "The thread's count under the insert's lock, for an Anmerkung of a document the service read for writing.",
 }
 
 /**
@@ -271,6 +287,9 @@ const GUARDED_TABLES: Record<string, string> = {
   // What a Bescheid said (permitting memory, ADR-0095): derived from a document, served to the agent.
   permitRecords: 'permit_records',
   permitRequirements: 'permit_requirements',
+  // Where a person marked a page (migration 0135): a document fact, keyed by the document.
+  documentAnnotations: 'document_annotations',
+  documentAnnotationReplies: 'document_annotation_replies',
 }
 
 /** The relational-API names that reach `documents` from another table (`one(documents)`, `many(documents)`). */
@@ -635,6 +654,7 @@ describe('every read of documents states its reader (ADR-0086)', () => {
         'bimCheckConfirmations',
         'resourceAssignments',
         'permitRequirements',
+        'documentAnnotations',
       ])
     )
     expect(DOCUMENT_RELATIONS).toEqual(new Set(['documents', 'document']))

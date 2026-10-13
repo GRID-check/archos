@@ -56,6 +56,7 @@ research call's input ([turns audit](turns-per-answer-audit-2026-09.md)).
 | `remember` | Project memory capture | 420 | `src/aiq_agent/memory/register.py` |
 | `create_task` | Delegates work as a task | 400 | `src/aiq_agent/tools/tasks/register.py` |
 | `propose_file_change` | Move, rename, create folder, assign; proposes only | 390 | `src/aiq_agent/tools/files/register.py` |
+| `document_annotations` | Reads, proposes and answers Anmerkungen on the chat's document; a proposal waits for a person | 940 | `src/aiq_agent/tools/annotations/register.py` |
 | `view_knowledge_image` | Shows a page or figure to the model | 300 | `sources/knowledge_layer/src/view_image.py` |
 | `ls`, `read_file`, `write_file`, `edit_file` | Draft working directory (DeepAgents stock) | 131 / 226 / 244 / 312 | `src/aiq_agent/tools/documents/tools.py` |
 | `file_draft` | Files a draft; `submit=True` sends it for review | 190 | `src/aiq_agent/tools/documents/register.py` |

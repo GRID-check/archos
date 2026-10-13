@@ -946,6 +946,13 @@
       "when": 1792454400020,
       "tag": "0134_document_ingest_failure_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1792454400021,
+      "tag": "0135_document_annotations",
+      "breakpoints": true
     }
   ]
 }

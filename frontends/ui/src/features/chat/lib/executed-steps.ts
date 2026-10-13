@@ -69,6 +69,8 @@ const TOOL_LABEL_KEYS: Record<string, string> = {
   // because stored turns carry it.
   submit_draft: 'filing',
   create_task: 'task',
+  // Anmerkungen on the chat's document: read, proposed or answered, one chip.
+  document_annotations: 'annotations',
   // The file-operation tool proposes and never writes (ADR-0003). One tool
   // with an `operation` since the merge; the four old names stay because
   // stored turns carry them.

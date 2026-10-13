@@ -12,7 +12,7 @@
  * arrows go first, because the page field and the keys still turn pages.
  */
 
-import { useEffect, useRef, useState, type FC } from 'react'
+import { useEffect, useRef, useState, type FC, type ReactNode } from 'react'
 import {
   ChevronDown,
   ChevronLeft,
@@ -56,6 +56,8 @@ export interface PdfControlsProps {
   /** Whether the page rail is open; undefined when the stage has no room for one. */
   railOpen: boolean
   onToggleRail: () => void
+  /** The caller's own controls, first in the pill (a review surface's tools). */
+  lead?: ReactNode
 }
 
 export const PdfControls: FC<PdfControlsProps> = ({
@@ -72,6 +74,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   onToggleSearch,
   railOpen,
   onToggleRail,
+  lead,
 }) => {
   const t = useTranslations('knowledge')
   const ready = pageCount !== null
@@ -82,6 +85,12 @@ export const PdfControls: FC<PdfControlsProps> = ({
       data-testid="pdf-floating-toolbar"
       className="scrollbar-hide pointer-events-auto max-w-full overflow-x-auto"
     >
+      {lead && (
+        <>
+          {lead}
+          <ToolbarDivider />
+        </>
+      )}
       {/* The rail is a wide-stage affordance: below the width the rail needs,
           the toggle would switch nothing on. */}
       <ToolbarIconButton

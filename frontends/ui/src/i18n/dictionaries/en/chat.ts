@@ -880,6 +880,11 @@ export const chat = {
           draftFiled: 'Filing the draft in the project …',
           draftSubmitted: 'Sending the draft for approval …',
           taskCreated: 'Creating the task …',
+          // Annotations on this chat's document. Piloti only suggests marks: a
+          // person takes each one over or dismisses it.
+          annotationsRead: 'Reading the annotations …',
+          annotationsPropose: 'Suggesting annotations …',
+          annotationsReply: 'Replying to an annotation …',
         },
         // The tools are done, the answer is being written. The same words as
         // `activity.composing` above: one vocabulary for one thing — whether
@@ -920,6 +925,8 @@ export const chat = {
       /** The draft leaves the working directory: filed, or submitted for approval. */
       filing: 'Filing',
       task: 'Task',
+      /** Annotations on the document: read, suggested or answered. */
+      annotations: 'Annotations',
       /** The file actions PROPOSE and write nothing (ADR-0003). */
       fileProposal: 'File proposal',
       // One chip per skill the turn actually applied. `{name}` is resolved by

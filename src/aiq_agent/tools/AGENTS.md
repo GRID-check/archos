@@ -2,8 +2,11 @@
 
 Tools that act on the user's workspace rather than retrieve from a corpus.
 Evidence sources are packages under `sources/`; what lives here is the BIM
-surface (`bim/`), the conversation's working directory (`documents/`) and the
-write-side workspace verbs (`files/`).
+surface (`bim/`), the conversation's working directory (`documents/`), the
+write-side workspace verbs (`files/`) and the Anmerkungen on the chat's document
+(`annotations/`, `document_annotations`: its marks are born proposals a person
+takes over or dismisses, and it acts only on the conversation's subject, which
+the BFF resolves from the envelope).
 
 ## The invariant
 

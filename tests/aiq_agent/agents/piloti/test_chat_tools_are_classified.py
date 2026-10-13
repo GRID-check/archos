@@ -34,6 +34,7 @@ NOT_SOURCES = {
     "propose_file_change": "proposes an edit for a person to accept",
     "file_draft": "files a draft from the working directory",
     "create_task": "hands work over; the confirmation is not evidence",
+    "document_annotations": "reads and proposes marks on the chat's document; a mark is a person's note, not a source",
     "ask_user": "asks the reader a question",
     "ifc_query": "answers from the building model through cards, not passages",
     "ifc_measure": "measures in the building model; its numbers arrive through cards",
