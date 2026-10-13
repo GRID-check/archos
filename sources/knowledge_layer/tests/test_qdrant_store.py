@@ -271,3 +271,13 @@ def test_isolation_property_random_scope_sets(store):
         assert len(hits) == min(20, 5 * len(requested)), case
         returned += len(hits)
     assert returned > 0
+
+
+def test_no_scope_is_an_empty_answer_not_an_index_error(monkeypatch):
+    """A caller with nothing to search gets nothing back, before any store call."""
+    from knowledge_layer.qdrant import retrieval
+
+    monkeypatch.setattr(retrieval, "get_store", lambda *a, **k: pytest.fail("store touched for no scope"))
+    assert retrieval.search_grouped([], vector=[0.1], lexical_text="x", groups=3, group_size=2, identity={}) == []
+    assert grouped_search(object(), [], vector=[0.1], lexical_text="x", group_by="scope", groups=3, group_size=2) == []
+    assert hybrid_search(object(), [], vector=[0.1], lexical_text="x", limit=3) == []

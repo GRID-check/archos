@@ -129,7 +129,7 @@ def hybrid_search(
     candidates: int | None = None,
 ) -> list[Hit]:
     """The fused ranking over ``scopes``, best first."""
-    if limit <= 0 or not store.exists(scopes[0]):
+    if limit <= 0 or not scopes or not store.exists(scopes[0]):
         return []
     alias = _alias(store, scopes)
     query_filter = scope_filter(scopes, filters)
@@ -162,7 +162,7 @@ def grouped_search(
     project's documents together, instead of one search per project merged
     on scores that are not comparable across indexes.
     """
-    if groups <= 0 or not store.exists(scopes[0]):
+    if groups <= 0 or not scopes or not store.exists(scopes[0]):
         return []
     alias = _alias(store, scopes)
     query_filter = scope_filter(scopes, filters)

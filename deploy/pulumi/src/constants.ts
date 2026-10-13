@@ -678,8 +678,12 @@ export const QDRANT = {
   /**
    * Shards and replicas of the tenant collection on a cluster, fixed when the
    * backend creates it (`AIQ_QDRANT_SHARD_NUMBER`, `AIQ_QDRANT_REPLICATION_FACTOR`).
-   * Open-source Qdrant cannot reshard, so 6 fits 1, 2, 3 and 6 nodes; RF 2
-   * survives a peer lost. One peer gets the backend's own default of 1 and 1.
+   * Open-source Qdrant cannot reshard, so 6 fits 1, 2, 3 and 6 nodes. With RF 2
+   * a lost peer keeps every shard readable and the 3-peer Raft quorum intact,
+   * but writes to a shard whose second replica is down fail until it returns:
+   * write consistency equals RF, so a write is acknowledged only once both
+   * replicas hold it, and the ingest queue retries rather than losing it.
+   * One peer gets the backend's own default of 1 and 1.
    */
   tenantShards: 6,
   tenantReplicationFactor: 2,

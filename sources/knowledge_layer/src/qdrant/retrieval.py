@@ -54,6 +54,8 @@ def search_grouped(
     identity: Mapping[str, str],
 ) -> list[tuple[str, list[Hit]]]:
     """One fused ranking over many logical collections, grouped per collection, best group first."""
+    if not scopes:
+        return []
     store = get_store(identity)
     store.check_identity(scopes[0])
     return grouped_search(

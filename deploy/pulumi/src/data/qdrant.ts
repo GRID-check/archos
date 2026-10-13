@@ -365,7 +365,9 @@ export function peerUrls(namespace: string, replicas: number): string[] {
 export function snapshotScript(): string {
   return String.raw`set -eu -o pipefail
 q() { curl -fsS --connect-timeout 10 -H "api-key: $QDRANT_API_KEY" "$@"; }
-names() { grep -o '"name":"[^"]*"' | cut -d'"' -f4; }
+# No collection yet is no name, not a failure: under pipefail a grep with no
+# match would fail the listing and report every fresh cluster as a broken backup.
+names() { { grep -o '"name":"[^"]*"' || true; } | cut -d'"' -f4; }
 cutoff=$(date -u -d "@$(( $(date +%s) - RETENTION_DAYS * 86400 ))" +%Y%m%d%H%M%S)
 failed=0
 fail() { echo "FAILED: $*"; failed=1; }

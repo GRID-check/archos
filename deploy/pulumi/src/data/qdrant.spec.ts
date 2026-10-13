@@ -1,7 +1,9 @@
+import { execFileSync } from "node:child_process";
 import { describe, it, expect, beforeAll } from "vitest";
 import * as k8s from "@pulumi/kubernetes";
 import * as pulumi from "@pulumi/pulumi";
 import { baseStackConfig, qdrantStackConfig } from "../test-support/stack-config";
+import { snapshotScript } from "./qdrant";
 
 /**
  * The small-stack shape of `data/qdrant.ts`: one peer, no worker groups.
@@ -74,5 +76,31 @@ describe("qdrant, one peer", () => {
     );
     const env = spec.spec.jobTemplate.spec.template.spec.containers[0].env;
     expect(env.find((e) => e.name === "PEERS")?.value).toBe("http://qdrant-0.qdrant-headless.grid.svc.cluster.local:6333");
+  });
+});
+
+describe("the snapshot script's collection listing", () => {
+  // Runs the script's own `names` function in a POSIX shell under its own
+  // `set -eu -o pipefail`: a fresh cluster answers with no collections, and
+  // that must read as "nothing to snapshot", not as a failed listing.
+  const namesDef = (): string => {
+    const line = snapshotScript().split("\n").find((l) => l.startsWith("names()"));
+    if (!line) throw new Error("snapshotScript defines no names()");
+    return line;
+  };
+  const run = (answer: string): string =>
+    // bash, not sh: dash has no pipefail; the image's busybox ash does, as bash does.
+    execFileSync("bash", ["-c", `set -eu -o pipefail\n${namesDef()}\nprintf '%s' '${answer}' | names\necho END`], {
+      encoding: "utf8",
+    });
+
+  it("lists nothing, successfully, when the cluster has no collections", () => {
+    expect(run('{"result":{"collections":[]},"status":"ok"}')).toBe("END\n");
+  });
+
+  it("lists every collection name otherwise", () => {
+    expect(run('{"result":{"collections":[{"name":"piloti_office_v1"},{"name":"piloti_corpus_v1"}]}}')).toBe(
+      "piloti_office_v1\npiloti_corpus_v1\nEND\n",
+    );
   });
 });
