@@ -6,10 +6,11 @@ LlamaIndex's bookkeeping), the chunk text as a top-level field, the logical
 the office, project and BFF document it came from, and the facts a person
 set on the document (tags, Dokumentart, Fassung status, folder).
 
-Point ids stay the chunk ids Chroma holds, so a citation, an ``already_read``
-digest or a Langfuse score that names a chunk still names the same one in
-both stores during the move. A chunk id that is not a UUID (a writer outside
-LlamaIndex) gets a stable UUIDv5 point id; the payload keeps the original.
+A point id is the chunk id (the chunker's node id), so a citation, an
+``already_read`` digest or a Langfuse score that names a chunk names the
+point, and chunks copied from the old store keep the ids they were cited
+by. A chunk id that is not a UUID gets a stable UUIDv5 point id; the payload
+keeps the original.
 """
 
 from __future__ import annotations
@@ -28,6 +29,7 @@ from .prefilter import folder_ancestors
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
 from .schema import FACT_KEYS
+from .schema import INDEXED_AT_FIELD
 from .schema import INTEGER_FIELDS
 from .schema import KEYWORD_FIELDS
 from .schema import PARAGRAPH_FIELD
@@ -48,7 +50,7 @@ LIST_FIELDS = frozenset({"tags", "topics", FOLDER_FIELD, PARAGRAPH_FIELD})
 
 #: Payload field keeping the Dokumentart the chunk was ingested with (its own
 #: ``doc_class`` metadata, "" for none), so clearing a person's class can put
-#: back what ``register._hit_doc_class`` falls back to (``mirror.refresh_facts``).
+#: back what ``register._hit_doc_class`` falls back to (``writes.refresh_facts``).
 #: Stored, not indexed: nothing filters on it.
 CHUNK_DOC_CLASS_FIELD = "chunk_doc_class"
 
@@ -65,7 +67,7 @@ _POINT_NAMESPACE = uuid.UUID("5b0c7f8e-6b8a-4f0e-9a51-2c1d8f3e7a10")
 
 @dataclass
 class ChunkRecord:
-    """A chunk as Chroma holds it: id, text, vector and metadata."""
+    """One embedded chunk: its id, text, dense vector and metadata, as ingestion (or a migration) writes it."""
 
     chunk_id: str
     text: str
@@ -223,7 +225,7 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
 #: point's own fields cannot strip what ingestion or a person put there.
 ENRICHED_FIELDS = frozenset(
     {"office_id", "project_id", "grid_document_id", "folder_path", FOLDER_FIELD, "tags", "topics", "superseded"}
-    | {"doc_class"}
+    | {"doc_class", INDEXED_AT_FIELD}
 )
 
 
@@ -237,10 +239,10 @@ def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
     return {key: value for key, value in build_payload(scope, record).items() if key not in ENRICHED_FIELDS}
 
 
-#: Fields the mirror adds for filtering. A hit's metadata leaves them out, so a
-#: chunk read from Qdrant carries exactly the metadata it carried from Chroma;
-#: the facts themselves are read from the metadata store, their authority.
-MIRROR_ONLY_FIELDS = frozenset(
+#: Fields the store adds for filtering. A hit's metadata leaves them out, so a
+#: chunk read back carries exactly the metadata the chunker gave it; the facts
+#: themselves are read from the metadata store, their authority.
+STORE_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD, "office_id", "project_id", "grid_document_id"}
     | {
         "folder_path",
@@ -252,19 +254,20 @@ MIRROR_ONLY_FIELDS = frozenset(
         PROJECT_STATUS_FIELD,
         PARAGRAPH_FIELD,
         CHUNK_DOC_CLASS_FIELD,
+        INDEXED_AT_FIELD,
     }
 )
 
 
 def chunk_metadata(payload: Mapping[str, Any]) -> dict[str, Any]:
-    """The chunk metadata a caller sees on a hit: the payload minus what only the mirror adds.
+    """The chunk metadata a caller sees on a hit: the payload minus what only the store adds.
 
-    ``doc_class`` is the chunk's own, as Chroma holds it, not the person's
-    class the mirror filters on: the reader resolves the stored class itself
+    ``doc_class`` is the chunk's own, as the chunker stamped it, not the
+    person's class a pre-filter matches: the reader resolves the stored class itself
     and falls back to this one (``register._hit_doc_class``). A point written
     before :data:`CHUNK_DOC_CLASS_FIELD` existed keeps the payload's.
     """
-    metadata = {key: value for key, value in payload.items() if key not in MIRROR_ONLY_FIELDS}
+    metadata = {key: value for key, value in payload.items() if key not in STORE_ONLY_FIELDS}
     if CHUNK_DOC_CLASS_FIELD in payload:
         metadata.pop("doc_class", None)
         if payload[CHUNK_DOC_CLASS_FIELD]:

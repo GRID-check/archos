@@ -15,7 +15,7 @@ always accepted::
     {"field": {"$in"|"$nin": [v1, ...]}}          -> (not) in
     {"$and": [node, ...]}  /  {"$or": [node, ...]} -> groups
 
-``$ne`` and ``$nin`` keep a point that lacks the field, as Chroma did and as
+``$ne`` and ``$nin`` keep a point that lacks the field, as
 ``test_page_chunk_exclusion.py`` pins: the base corpus's ``chunking $ne page``
 must not drop chunks written before ``chunking`` existed. A field that is not
 indexed raises, because strict mode would refuse it at the server anyway and

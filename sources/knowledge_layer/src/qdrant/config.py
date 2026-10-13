@@ -1,67 +1,31 @@
-"""Which vector store this process reads and writes, and how it reaches Qdrant.
+"""How the knowledge layer reaches Qdrant, its one vector store (ADR-0104).
 
-The move off Chroma (ADR-0104) runs in three steps, each one flag flip:
-
-* ``chroma`` — today. Chroma is read and written; Qdrant is not touched.
-* ``dual`` — ingestion writes both stores; retrieval still reads Chroma. The
-  backfill (``scripts/backfill_qdrant.py``) fills Qdrant with what Chroma
-  already holds, so the two converge without a re-embed.
-* ``qdrant`` — retrieval reads Qdrant. Ingestion still writes both, because
-  Chroma remains the write-side record (its ids drive version retirement and
-  deletion) until the slice that removes it.
-
-Every value is read from the environment per call: the flag is cheap to read
-and a test, or an operator, can flip it without rebuilding a process-wide
-singleton.
+Every value is read from the environment per call: a test, or an operator,
+can repoint it without rebuilding a process-wide singleton (``store.reset_store``
+drops the client built from it).
 """
 
 from __future__ import annotations
 
 import os
 
-# @environment_variable AIQ_VECTOR_BACKEND
-# @category Knowledge Layer
-# @type str
-# @default chroma
-# @required false
-# Which vector store the knowledge layer reads and writes: chroma | dual | qdrant.
-VECTOR_BACKENDS = ("chroma", "dual", "qdrant")
-
-#: Bounds one request to Qdrant. The chromadb client set none, and one dead
-#: Chroma pod drained the API's thread pool on 2026-10-12; the Qdrant client
-#: takes a timeout natively, so this is a constant, not a reach-in.
+#: Bounds one request to Qdrant. The chromadb client this replaced set none,
+#: and one dead pod drained the API's thread pool on 2026-10-12; the Qdrant
+#: client takes a timeout natively, so this is a constant, not a reach-in.
 REQUEST_TIMEOUT_SECONDS = 30
-
-
-def vector_backend() -> str:
-    """The configured backend; an unknown value raises rather than silently meaning Chroma."""
-    value = (os.environ.get("AIQ_VECTOR_BACKEND") or "chroma").strip().lower()
-    if value not in VECTOR_BACKENDS:
-        raise ValueError(f"AIQ_VECTOR_BACKEND={value!r} is not one of {', '.join(VECTOR_BACKENDS)}")
-    return value
-
-
-def writes_qdrant() -> bool:
-    """True when ingestion must also write Qdrant (``dual`` and ``qdrant``)."""
-    return vector_backend() != "chroma"
-
-
-def reads_qdrant() -> bool:
-    """True when retrieval reads Qdrant."""
-    return vector_backend() == "qdrant"
 
 
 # @environment_variable AIQ_QDRANT_URL
 # @category Knowledge Layer
 # @type str
 # @default (unset)
-# @required false
-# Qdrant HTTP endpoint, e.g. http://qdrant:6333. Required unless AIQ_VECTOR_BACKEND=chroma.
+# @required true
+# Qdrant HTTP endpoint, e.g. http://qdrant:6333. Every backend tier that reads or writes the knowledge layer needs it.
 def qdrant_url() -> str:
-    """The Qdrant HTTP endpoint; required whenever the backend touches Qdrant."""
+    """The Qdrant HTTP endpoint; every read and write of the knowledge layer needs it."""
     url = (os.environ.get("AIQ_QDRANT_URL") or "").strip()
     if not url:
-        raise RuntimeError("AIQ_QDRANT_URL is not set, but AIQ_VECTOR_BACKEND needs Qdrant")
+        raise RuntimeError("AIQ_QDRANT_URL is not set; the knowledge layer stores every chunk in Qdrant")
     return url
 
 

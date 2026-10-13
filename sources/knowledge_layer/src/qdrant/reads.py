@@ -1,8 +1,8 @@
 """Structural reads: the chunks a filter admits, with no query vector and no ranking.
 
 ``read_passage`` and the family overview already know WHICH chunks they want
-(a document's Punkt, a page, its outline); on Chroma they still had to embed a
-label as a query to get them back. Here they are a scroll by filter
+(a document's Punkt, a page, its outline); on the store this replaced they
+still had to embed a label as a query to get them back. Here they are a scroll by filter
 (design doc §6, "read_passage and the family overview"), so nothing is
 embedded and nothing is ranked.
 

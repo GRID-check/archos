@@ -65,6 +65,9 @@ PAYLOAD_BATCH = 128
 #: Distinct values one facet request may return: every file of a scope, every
 #: scope of a collection. Above it the caller reads a truncated list, and says so.
 FACET_LIMIT = 100_000
+#: Chunk ids per delete request: a re-upload retires every chunk of the version
+#: it replaces, and a large drawing set has thousands.
+DELETE_BATCH = 1024
 
 #: The pause before each retry of a write that failed transiently. A peer
 #: that is restarting (a rollout, a drain) answers again within seconds; a
@@ -194,8 +197,10 @@ class QdrantStore:
     ) -> int:
         """Write ``records`` into ``scope``; returns how many points were sent.
 
-        The dense vector is the one already computed for Chroma (no embedding
-        call); the lexical vector is computed by Qdrant from the text.
+        The dense vector is the one the caller computed (ingestion's embedder,
+        or a migration's copy: no embedding call here); the lexical vector is
+        computed by Qdrant from the text. A point with the same id is replaced
+        whole, which is what a retried write needs.
 
         ``insert_only`` leaves a point that already exists exactly as it is
         (Qdrant's ``update_mode: insert_only``) and merges only the fields the
@@ -251,18 +256,18 @@ class QdrantStore:
         )
 
     def delete_chunks(self, scope: str, chunk_ids: Sequence[str]) -> None:
-        """Delete these chunks of ``scope``."""
-        ids = [str(chunk_id) for chunk_id in chunk_ids if chunk_id]
-        if ids:
-            self._delete(scope, models.FieldCondition(key=CHUNK_ID_FIELD, match=models.MatchAny(any=ids)))
+        """Delete these chunks of ``scope``, in bounded requests. Ids with no point are no error."""
+        ids = list(dict.fromkeys(str(chunk_id) for chunk_id in chunk_ids if chunk_id))
+        for start in range(0, len(ids), DELETE_BATCH):
+            batch = ids[start : start + DELETE_BATCH]
+            self._delete(scope, models.FieldCondition(key=CHUNK_ID_FIELD, match=models.MatchAny(any=batch)))
 
     def delete_file(self, scope: str, file_name: str, matches: Callable[[str], bool] | None = None) -> None:
         """Delete every chunk of one file in ``scope``.
 
         ``matches`` widens "this file" to every stored spelling it accepts
         (the adapter's rule: a ``tmp…_`` upload prefix, percent-encoding), read
-        from the scope's own ``file_name`` values: what a retried delete needs
-        once Chroma no longer holds the ids that named those spellings.
+        from the scope's own ``file_name`` values.
         """
         names = {file_name}
         if matches is not None:
@@ -270,7 +275,7 @@ class QdrantStore:
         self._delete(scope, models.FieldCondition(key="file_name", match=models.MatchAny(any=sorted(names))))
 
     def delete_scope(self, scope: str) -> None:
-        """Delete every chunk of ``scope``: what dropping a Chroma collection did."""
+        """Delete every chunk of ``scope``: a collection deleted, a conversation's uploads reaped."""
         self._delete(scope)
 
     @staticmethod
@@ -299,46 +304,61 @@ class QdrantStore:
         ]
         self._batch(self.alias(scope), f"set payloads in {scope}", operations)
 
-    def restore_chunk_doc_class(self, scope: str, file_name: str) -> None:
-        """Put a file's own Dokumentart back on its points after a person cleared theirs.
+    def restore_chunk_doc_classes(self, scope: str, file_names: Iterable[str]) -> None:
+        """Put each file's own Dokumentart back on its points after a person cleared theirs.
 
-        The stored class beats the chunk's, so the mirror wrote it over the
-        chunk's; with the stored class gone, the chunk's is what a reader
-        falls back to (``register._hit_doc_class``) and what a ``doc_class``
+        The stored class beats the chunk's, so the copy wrote it over the
+        chunk's; with the stored class gone, the chunk's is what a reader falls
+        back to (``register._hit_doc_class``) and what a ``doc_class``
         pre-filter must match. It is per file (ingestion stamps it per file),
-        so one point says it. A point written before
+        so one point of each file says it: one small read per file, then every
+        change in bounded batches. A point written before
         :data:`payload.CHUNK_DOC_CLASS_FIELD` existed cannot say it, and is left.
         """
-        if not self.exists(scope):
+        names = sorted(set(file_names))
+        if not names or not self.exists(scope):
             return
         alias = self.alias(scope)
-        page, _next = self.client.scroll(
-            alias,
-            scroll_filter=self._file_filter(scope, file_name),
-            limit=1,
-            with_payload=[CHUNK_DOC_CLASS_FIELD, "doc_class"],
-            with_vectors=False,
-        )
-        payload = dict(page[0].payload or {}) if page else {}
-        if CHUNK_DOC_CLASS_FIELD not in payload:
-            return
-        own = payload[CHUNK_DOC_CLASS_FIELD] or None
-        if own == payload.get("doc_class"):
-            return
-        selector = self._file_filter(scope, file_name)
-        if own:
-            work = lambda: self.client.set_payload(alias, payload={"doc_class": own}, points=selector, wait=True)  # noqa: E731
-        else:
-            work = lambda: self.client.delete_payload(alias, keys=["doc_class"], points=selector, wait=True)  # noqa: E731
-        with_retry(f"restore doc_class in {scope}", work)
+        operations: list[Any] = []
+        for file_name in names:
+            page, _next = self.client.scroll(
+                alias,
+                scroll_filter=self._file_filter(scope, file_name),
+                limit=1,
+                with_payload=[CHUNK_DOC_CLASS_FIELD, "doc_class"],
+                with_vectors=False,
+            )
+            payload = dict(page[0].payload or {}) if page else {}
+            if CHUNK_DOC_CLASS_FIELD not in payload:
+                continue
+            own = payload[CHUNK_DOC_CLASS_FIELD] or None
+            if own == payload.get("doc_class"):
+                continue
+            selector = self._file_filter(scope, file_name)
+            if own:
+                operations.append(
+                    models.SetPayloadOperation(
+                        set_payload=models.SetPayload(payload={"doc_class": own}, filter=selector)
+                    )
+                )
+            else:
+                operations.append(
+                    models.DeletePayloadOperation(
+                        delete_payload=models.DeletePayload(keys=["doc_class"], filter=selector)
+                    )
+                )
+        self._batch(alias, f"restore doc_class in {scope}", operations)
 
     # ------------------------------------------------------------------ inventory
 
-    def _facet(self, alias: str, key: str, facet_filter: models.Filter | None) -> list[str]:
+    def _facet_counts(self, alias: str, key: str, facet_filter: models.Filter | None) -> dict[str, int]:
         response = self.client.facet(alias, key=key, facet_filter=facet_filter, limit=FACET_LIMIT, exact=True)
         if len(response.hits) >= FACET_LIMIT:
             logger.warning("Qdrant %s: more than %d values of %s; the list is truncated", alias, FACET_LIMIT, key)
-        return [str(hit.value) for hit in response.hits]
+        return {str(hit.value): int(hit.count) for hit in response.hits}
+
+    def _facet(self, alias: str, key: str, facet_filter: models.Filter | None) -> list[str]:
+        return list(self._facet_counts(alias, key, facet_filter))
 
     def file_names(self, scope: str) -> list[str]:
         """Every ``file_name`` value the points of ``scope`` carry."""
@@ -346,12 +366,22 @@ class QdrantStore:
             return []
         return self._facet(self.alias(scope), "file_name", models.Filter(must=[scope_condition([scope])]))
 
+    def file_counts(self, scope: str) -> dict[str, int]:
+        """``file_name -> chunks`` for every file with a point in ``scope``, one exact facet."""
+        if not self.exists(scope):
+            return {}
+        return self._facet_counts(self.alias(scope), "file_name", models.Filter(must=[scope_condition([scope])]))
+
     def scopes(self, physical: Physical) -> list[str]:
         """Every logical scope with at least one point in ``physical``'s collection."""
+        return list(self.scope_counts(physical))
+
+    def scope_counts(self, physical: Physical) -> dict[str, int]:
+        """``scope -> chunks`` for every logical scope with at least one point in ``physical``'s collection."""
         alias = ALIASES[physical]
         if not any(entry.alias_name == alias for entry in self.client.get_aliases().aliases):
-            return []
-        return self._facet(alias, SCOPE_FIELD, None)
+            return {}
+        return self._facet_counts(alias, SCOPE_FIELD, None)
 
     def chunk_ids(self, scope: str) -> Iterable[str]:
         """The chunk id of every point of ``scope``, read by scroll with nothing else in the payload."""
@@ -444,8 +474,14 @@ class QdrantStore:
         filters: dict[str, Any] | None = None,
         *extra: models.Condition | models.Filter,
         limit: int | None = None,
+        fields: Sequence[str] | None = None,
+        page_size: int = SCROLL_PAGE,
     ) -> Iterator[models.Record]:
-        """Every chunk of ``scope`` matching ``filters`` and ``extra``, in point-id order, payload only."""
+        """Every chunk of ``scope`` matching ``filters`` and ``extra``, in point-id order, payload only.
+
+        ``fields`` limits the payload to those keys: a listing that needs a
+        file's name and page reads no chunk text.
+        """
         if not self.exists(scope):
             return
         query_filter = scope_filter([scope], filters, *extra)
@@ -455,9 +491,9 @@ class QdrantStore:
             page, offset = self.client.scroll(
                 self.alias(scope),
                 scroll_filter=query_filter,
-                limit=SCROLL_PAGE,
+                limit=page_size,
                 offset=offset,
-                with_payload=True,
+                with_payload=list(fields) if fields is not None else True,
                 with_vectors=False,
             )
             for record in page:
@@ -469,24 +505,40 @@ class QdrantStore:
                 return
 
     def scroll_ordered(
-        self, scope: str, filters: dict[str, Any] | None, order_by: str, limit: int
+        self,
+        scope: str,
+        filters: dict[str, Any] | None,
+        order_by: str,
+        limit: int,
+        *,
+        descending: bool = False,
+        fields: Sequence[str] | None = None,
     ) -> list[models.Record]:
-        """The first ``limit`` chunks of ``scope`` matching ``filters``, ascending by the integer field ``order_by``.
+        """The first ``limit`` chunks of ``scope`` matching ``filters``, ordered by the integer field ``order_by``.
 
-        Qdrant skips a point that lacks the field, so a caller asks this only of
-        a set it knows carries it (``reads.fetch``).
+        Ascending unless ``descending``. Qdrant skips a point that lacks the
+        field, so a caller asks this only of a set it knows carries it
+        (``reads.fetch``), or one where a missing value means "unknown"
+        (:meth:`newest`).
         """
         if not self.exists(scope):
             return []
+        direction = models.Direction.DESC if descending else models.Direction.ASC
         page, _next = self.client.scroll(
             self.alias(scope),
             scroll_filter=scope_filter([scope], filters),
             limit=limit,
-            order_by=models.OrderBy(key=order_by, direction=models.Direction.ASC),
-            with_payload=True,
+            order_by=models.OrderBy(key=order_by, direction=direction),
+            with_payload=list(fields) if fields is not None else True,
             with_vectors=False,
         )
         return list(page)
+
+    def newest(self, scope: str, field: str, *, oldest: bool = False) -> int | None:
+        """The largest (``oldest``: smallest) value of the integer ``field`` in ``scope``; None if none has one."""
+        page = self.scroll_ordered(scope, None, field, 1, descending=not oldest, fields=[field])
+        value = (page[0].payload or {}).get(field) if page else None
+        return int(value) if value is not None else None
 
     def has_index(self, scope: str, field: str) -> bool:
         """Whether ``scope``'s collection indexes ``field``. Only "yes" is remembered: a writer may add one later."""

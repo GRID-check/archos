@@ -14,8 +14,9 @@ vector is copied as Qdrant computed it. ``init_from`` is no shortcut: Qdrant
 The alias moves only in :func:`switch_alias`, one request that deletes and
 recreates it, which Qdrant applies atomically. The old collection is left
 where it was: switching back to it is the rollback. Writes that land in the old
-collection while the copy runs are not in the new one, which is why the runbook
-runs ``scripts/backfill_qdrant.py --prune --verify`` right after the switch.
+collection while the copy runs are not in the new one, and nothing else holds
+them, so ingestion is paused for the copy (the runbook,
+``docs/deployment/qdrant-runbook.md``, says how).
 
 ``scripts/qdrant_rebuild.py`` is the command line around it.
 """

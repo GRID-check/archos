@@ -977,10 +977,11 @@ def _phrase_pattern(phrase: str) -> str:
 def phrase_pattern(phrases: Sequence[str]) -> str | None:
     """The ONE case-insensitive regex that finds any of ``phrases``, or None when it is too long.
 
-    The store (Chroma's ``$regex``, Rust ``regex``) and the re-check here
-    (Python ``re``) run the same string, so it keeps to what both dialects read
-    alike: ``(?i)`` at the start, non-capturing groups, classes, ``\\s``,
-    ``\\b``, escaped literals; no lookaround, no backreference. Longest phrase
+    It is written to mean the same in Rust's ``regex`` and Python's ``re``
+    (``qdrant.retrieval.find_text`` narrows by its literal words on the server
+    and applies it in Python), so it keeps to what both dialects read alike:
+    ``(?i)`` at the start, non-capturing groups, classes, ``\\s``, ``\\b``,
+    escaped literals; no lookaround, no backreference. Longest phrase
     first, so at one position „Brandschutzplan“ is taken before „Brandschutz“
     and a match is counted once however many alternatives it satisfies.
     """

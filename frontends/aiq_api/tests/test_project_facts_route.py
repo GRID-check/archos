@@ -24,11 +24,10 @@ BODY = {"facts": {"bundesland": "wien", "gebaeudeklasse": [4], "bauweise": ["hol
 
 @pytest.fixture
 def written(monkeypatch):
-    """The store's write, recorded instead of sent; Qdrant is written (``dual``)."""
+    """The store's write, recorded instead of sent."""
     from knowledge_layer.qdrant import retrieval
 
     calls: list[tuple[str, dict, str]] = []
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "dual")
     monkeypatch.setattr(
         retrieval, "set_project_facts", lambda scope, facts, status: calls.append((scope, facts, status)) or True
     )
@@ -107,10 +106,3 @@ async def test_an_unknown_status_or_fact_is_refused(client, written, signed):
             headers=signed(["proj_a"]),
         )
     assert status.status_code == 422 and fact.status_code == 422 and written == []
-
-
-async def test_409_where_this_deployment_does_not_write_qdrant(client, written, signed, monkeypatch):
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
-    async with client:
-        res = await client.put("/v1/collections/proj_a/project-facts", json=BODY, headers=signed(["proj_a"]))
-    assert res.status_code == 409 and written == []

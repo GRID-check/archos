@@ -189,7 +189,7 @@ def _patch_main_deps(monkeypatch, stats, *, llm_raises=False):
         return MagicMock()
 
     monkeypatch.setattr(backfill, "build_summary_llm", _build_llm)
-    monkeypatch.setattr(backfill, "make_chunk_text_fetcher", lambda chroma_dir: None)
+    monkeypatch.setattr(backfill, "make_chunk_text_fetcher", lambda: None)
     monkeypatch.setattr(backfill, "run_backfill", lambda **kwargs: stats)
 
 

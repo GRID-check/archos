@@ -37,26 +37,9 @@ class _FakeLLM:
         return SimpleNamespace(content=json.dumps(self.replies.pop(0)))
 
 
-class _FakeCollection:
-    def get(self, where: dict[str, str], include: list[str]) -> dict[str, Any]:
-        chunks = CHUNKS.get(where["file_name"], [])
-        return {
-            "documents": [text for _, text in chunks],
-            "metadatas": [{"page_label": page} for page, _ in chunks],
-        }
-
-
-class _FakeChroma:
-    def get_collection(self, name: str) -> _FakeCollection:
-        return _FakeCollection()
-
-
 class _FakeRetriever:
     def __init__(self, llm: Any):
         self.summary_llm = llm
-
-    def _get_chroma_client(self) -> _FakeChroma:
-        return _FakeChroma()
 
 
 def _body() -> dict[str, Any]:
@@ -84,7 +67,10 @@ def app(monkeypatch: pytest.MonkeyPatch) -> FastAPI:
 
 
 def _patch_knowledge(monkeypatch: pytest.MonkeyPatch, llm: Any) -> None:
+    from aiq_agent.knowledge import collection_pages
+
     monkeypatch.setattr(factory, "get_active_retriever", lambda: _FakeRetriever(llm))
+    monkeypatch.setattr(collection_pages, "read_pages", lambda collection, file_name: CHUNKS.get(file_name))
     monkeypatch.setattr(
         factory, "get_available_documents", lambda collection: [AvailableDocument(file_name="Baubeschreibung.pdf")]
     )

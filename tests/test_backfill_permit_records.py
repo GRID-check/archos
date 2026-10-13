@@ -137,7 +137,7 @@ def test_a_real_run_without_document_ids_exits_zero_and_stores_by_file_name(monk
     monkeypatch.setattr("aiq_agent.knowledge.configure_summary_db", lambda url: None)
     monkeypatch.setattr("aiq_agent.knowledge.get_available_documents", lambda collection: [_doc()])
     monkeypatch.setattr("aiq_agent.knowledge.permit_records_client.store_permit_record", fake_store)
-    monkeypatch.setattr(backfill, "make_page_fetcher", lambda chroma_dir: _fetch)
+    monkeypatch.setattr(backfill, "make_page_fetcher", lambda: _fetch)
     monkeypatch.setattr(backfill, "build_extraction_llm", lambda: FakeLLM())
 
     exit_code = backfill.main(["--organization-id", "org_1", "--collection", "proj_1"])

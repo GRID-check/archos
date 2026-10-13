@@ -42,8 +42,8 @@ logger = logging.getLogger(__name__)
 # These are read from environment variables at module load time.
 # The API layer uses these defaults - users don't need to specify per-request.
 #
-# NOTE: Backend-specific configuration (milvus_uri, chroma_path, etc.) should
-# be defined in each adapter, NOT here. The factory is backend-agnostic.
+# NOTE: Backend-specific configuration (the Qdrant URL, the embedder) is
+# defined in each adapter, NOT here. The factory is backend-agnostic.
 
 # @environment_variable KNOWLEDGE_RETRIEVER_BACKEND
 # @category Knowledge Layer
@@ -87,7 +87,7 @@ _ACTIVE_INGESTOR: BaseIngestor | None = None
 # Active retriever for the Knowledge API (lazily built from the active ingestor's
 # backend/config on first use — see get_active_retriever). Cached so a fresh
 # process serving /v1/collections/{c}/search initializes the retriever once and
-# reuses it (no per-request embed-client / Chroma re-init).
+# reuses it (no per-request embed-client re-init).
 _ACTIVE_RETRIEVER: BaseRetriever | None = None
 _active_retriever_lock = threading.Lock()
 
@@ -218,7 +218,7 @@ def get_retriever(
         ValueError: If backend is not registered.
 
     Example:
-        >>> retriever = get_retriever("llamaindex", {"persist_dir": "/data/chroma"})
+        >>> retriever = get_retriever("llamaindex", {"embed_model": "openai/text-embedding-3-large"})
         >>> result = await retriever.retrieve("What is RAG?", "my_collection")
     """
     # Use configured default if not specified
@@ -281,7 +281,7 @@ def get_ingestor(
         ValueError: If backend is not registered.
 
     Example:
-        >>> ingestor = get_ingestor("llamaindex", {"persist_dir": "/data/chroma"})
+        >>> ingestor = get_ingestor("llamaindex", {"embed_model": "openai/text-embedding-3-large"})
         >>> job_id = ingestor.submit_job(["/path/to/file.pdf"], "my_collection")
     """
     # Use configured default if not specified
@@ -350,18 +350,17 @@ def clear_active_ingestor() -> None:
 
 
 def _retriever_config_from_ingestor(ingestor: BaseIngestor) -> dict[str, Any]:
-    """Mirror the active ingestor's store + embedding config for the retriever.
+    """Mirror the active ingestor's embedding config for the retriever.
 
-    The retriever and ingestor MUST read the same Chroma persist directory and
-    embed the same model, or search would query a different (empty) store than
-    was ingested into. The ingestor exposes its resolved settings as attributes
-    (``persist_dir``/``embed_base_url``/``embed_model_name``); we copy the ones
-    that resolve into the retriever's config-key names. Read defensively via
+    The retriever and ingestor MUST embed with the same model, or every search
+    is refused as an embedding mismatch against the vectors that were ingested.
+    The ingestor exposes its resolved settings as attributes
+    (``embed_base_url``/``embed_model_name``); we copy the ones that resolve
+    into the retriever's config-key names. Read defensively via
     ``getattr`` so a backend that does not expose an attribute simply falls back
     to the retriever adapter's own default for that key.
     """
     attr_to_key = {
-        "persist_dir": "persist_dir",
         "embed_base_url": "embed_base_url",
         "embed_model_name": "embed_model",
     }
@@ -397,9 +396,8 @@ def get_active_retriever() -> BaseRetriever:
     Mirrors the active-ingestor singleton. The first caller in a fresh process
     builds ONE retriever from the same backend + store/embedding config the
     active ingestor was created with (see :func:`_retriever_config_from_ingestor`),
-    so both share the same Chroma persist directory and embedding model. The
-    instance is cached and reused for every subsequent request — no per-request
-    embed-client / Chroma re-init. (The adapter itself still lazy-initializes its
+    so both embed with the same model. The instance is cached and reused for
+    every subsequent request — no per-request embed-client re-init. (The adapter itself still lazy-initializes its
     heavy components on the first ``retrieve`` call.)
 
     If no active ingestor is set, falls back to the factory default backend/config
@@ -512,15 +510,14 @@ def _mirror_facts(collection: str, file_names: list[str] | None = None, *, folde
 
     This store stays the authority; the vector store carries a copy so a
     search can filter on a tag, a Dokumentart or a Fassung before ranking
-    instead of after. A no-op unless ``AIQ_VECTOR_BACKEND`` writes Qdrant, and
-    it never raises (``knowledge_layer.qdrant.mirror.refresh_facts``).
+    instead of after. It never raises (``knowledge_layer.qdrant.writes.refresh_facts``).
     ``folders_only`` copies just the folder, all a folder move changed.
     """
     try:
-        from knowledge_layer.qdrant import mirror
+        from knowledge_layer.qdrant import writes
     except ImportError:  # the knowledge layer's store extra is not installed here
         return
-    mirror.refresh_facts(collection, file_names, fields=mirror.FOLDER_FACTS if folders_only else None)
+    writes.refresh_facts(collection, file_names, fields=writes.FOLDER_FACTS if folders_only else None)
 
 
 def register_summary(
@@ -538,8 +535,10 @@ def register_summary(
     """
     if not summary:
         return
-    _get_document_metadata_store().register(collection, filename, summary, tags, topics)
-    _mirror_facts(collection, [filename])
+    store = _get_document_metadata_store()
+    store.register(collection, filename, summary, tags, topics)
+    # A row linked to this one reads as replaced again now that it is back.
+    _mirror_facts(collection, [filename, *store.files_linked_to(collection, filename)])
 
 
 def update_document_tags(collection: str, filename: str, tags: list[str] | None) -> bool:
@@ -860,7 +859,7 @@ def reconcile_collection_summaries(
     file_name) -> str | None`` method (duck-typed via ``getattr`` — deliberately
     not part of the abstract ``BaseIngestor`` interface, so this stays opt-in
     per backend); see ``LlamaIndexIngestor.get_document_text_sample`` for the
-    reference implementation, which reads chunk text back out of Chroma. When a
+    reference implementation, which reads chunk text back out of Qdrant. When a
     backend has no such method, or the sample comes back empty, the filename
     itself becomes the fallback summary — a row that exists beats no row at
     all.
@@ -943,8 +942,15 @@ def unregister_summary(collection: str, filename: str, *, permanent: bool = Fals
     """Delete a file's metadata row; the Fassung facts a person made are kept for its return unless ``permanent``.
 
     See :meth:`DocumentMetadataStore.unregister`. ``permanent`` is a delete nobody undoes.
+    Every row this one replaced reads as current once it is gone, so their
+    ``superseded`` is copied again: left ``true`` on the points, the pre-filter
+    would hide the Fassung that is now the current one from every search.
     """
-    _get_document_metadata_store().unregister(collection, filename, permanent=permanent)
+    store = _get_document_metadata_store()
+    linked = store.files_linked_to(collection, filename)
+    store.unregister(collection, filename, permanent=permanent)
+    if linked:
+        _mirror_facts(collection, linked)
 
 
 def clear_collection_summaries(collection: str) -> None:

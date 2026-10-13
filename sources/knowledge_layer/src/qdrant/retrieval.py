@@ -1,8 +1,8 @@
 """The adapter's reads from Qdrant, in the adapter's terms: one logical collection per call.
 
 ``LlamaIndexRetriever`` keeps its contract (``retrieve(query, collection)``,
-``find_text(collection, pattern)``) and, under ``AIQ_VECTOR_BACKEND=qdrant``,
-answers from here. Nothing returned carries a ``qdrant_client`` type.
+``find_text(collection, pattern)``) and answers from here. Nothing returned
+carries a ``qdrant_client`` type.
 """
 
 from __future__ import annotations

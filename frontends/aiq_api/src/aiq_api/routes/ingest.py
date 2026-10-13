@@ -173,7 +173,7 @@ def _job_config(request: IngestRequest, organization_id: str | None, dispatch_ke
             config["project_id"] = request.project_id
         if request.user_id:
             config["user_id"] = request.user_id
-    # The project's facts for the Qdrant mirror (`qdrant.mirror.enrichment`), as
+    # The project's facts for the chunks' payload (`qdrant.writes.enrichment`), as
     # plain data so they ride the durable queue's JSON payload unchanged.
     if request.project_facts is not None:
         config["project_facts"] = request.project_facts.facts.model_dump(mode="json")

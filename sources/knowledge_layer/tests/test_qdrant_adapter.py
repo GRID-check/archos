@@ -1,35 +1,29 @@
-"""The LlamaIndex adapter on Qdrant: reads under ``AIQ_VECTOR_BACKEND=qdrant``, the ingest mirror.
+"""The LlamaIndex adapter on Qdrant: retrieval, exact search, the ingest write, facts, health.
 
-Against a real Qdrant (see ``test_qdrant_store.py`` for why and how). The
-embedding API and Chroma are stood in for: what is under test is the seam,
-that the adapter's contract (``retrieve``, ``find_text``, the chunk a caller
-gets) holds on the new store, and that every write the adapter makes to
-Chroma lands in Qdrant too.
+Against a real Qdrant (``qdrant_testing``). The embedding API is stood in for:
+what is under test is the seam, that the adapter's contract (``retrieve``,
+``find_text``, the chunk a caller gets) holds on the store, and that what the
+ingest path writes (``writes.write_chunks``) carries everything a read filters on.
 """
 
 from __future__ import annotations
 
 import math
-import os
-import random
-import uuid
+import re
 from typing import Any
 
 import pytest
 from knowledge_layer.llamaindex import adapter as adapter_module
 from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-from knowledge_layer.qdrant import mirror
-from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module
+from knowledge_layer.qdrant import writes
+from knowledge_layer.qdrant.payload import ChunkRecord
 
-DIM = 8
-#: The real reader, before ``qdrant_env`` stubs it for the tests that need no metadata store.
-FACTS_BY_FILE = mirror.facts_by_file
+from sources.knowledge_layer.tests.qdrant_testing import record as _record
+from sources.knowledge_layer.tests.qdrant_testing import vector as _vector
 
-
-def _vector(seed: str) -> list[float]:
-    rng = random.Random(seed)
-    return [rng.uniform(-1, 1) for _ in range(DIM)]
+#: The real reader, before ``retriever`` stubs it for the tests that need no metadata store.
+FACTS_BY_FILE = writes.facts_by_file
 
 
 def _cosine(a: list[float], b: list[float]) -> float:
@@ -38,68 +32,29 @@ def _cosine(a: list[float], b: list[float]) -> float:
 
 
 @pytest.fixture
-def qdrant_env(monkeypatch):
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
-    if not url:
-        if os.environ.get("CI"):
-            pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("AIQ_QDRANT_TEST_URL not set")
-    suffix = uuid.uuid4().hex[:8]
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"adapter_corpus_{suffix}")
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"adapter_office_{suffix}")
-    monkeypatch.setenv("AIQ_QDRANT_URL", url)
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "qdrant")
-    monkeypatch.setattr(mirror, "facts_by_file", lambda scope, names=None: {})
-    store_module.reset_store()
-    yield
-    client = store_module.make_client()
-    for physical in schema.Physical:
-        name = schema.ALIASES[physical] + schema.FIRST_VERSION
-        if client.collection_exists(name):
-            client.delete_collection(name)
-    store_module.reset_store()
-
-
-@pytest.fixture
-def retriever(qdrant_env, monkeypatch) -> LlamaIndexRetriever:
+def retriever(qdrant_store, monkeypatch) -> LlamaIndexRetriever:
+    monkeypatch.setattr(writes, "facts_by_file", lambda scope, names=None: {})
     instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
     instance._initialized = True
     monkeypatch.setattr(instance, "_embed_query_cached", lambda query: _vector(query))
+    # The process-wide store takes this retriever's embedder as its identity.
+    store_module.reset_store()
+    store_module.get_store(instance._identity())
     return instance
 
 
-class FakeChroma:
-    """The slice of a Chroma collection the mirror reads: ``get`` by file name."""
-
-    def __init__(self, rows: list[dict[str, Any]]):
-        self.rows = rows
-
-    def get(self, *, where: dict[str, Any], include: list[str]) -> dict[str, Any]:
-        rows = [row for row in self.rows if row["metadata"].get("file_name") == where["file_name"]]
-        return {
-            "ids": [row["id"] for row in rows],
-            "documents": [row["text"] for row in rows],
-            "metadatas": [row["metadata"] for row in rows],
-            "embeddings": [row["embedding"] for row in rows],
-        }
+def _row(text: str, file_name: str, **metadata: Any) -> ChunkRecord:
+    return _record(text, file_name, page_label="2", _node_content="{...}", **metadata)
 
 
-def _row(text: str, file_name: str, **metadata: Any) -> dict[str, Any]:
-    return {
-        "id": str(uuid.uuid4()),
-        "text": text,
-        "embedding": _vector(text),
-        "metadata": {"file_name": file_name, "page_label": "2", "_node_content": "{...}", **metadata},
-    }
+def _ingest(retriever: LlamaIndexRetriever, scope: str, rows: list[ChunkRecord], **config: Any) -> None:
+    """Write ``rows`` the way the ingest path does: one ``write_chunks`` per file."""
+    for file_name in sorted({row.metadata["file_name"] for row in rows}):
+        mine = [row for row in rows if row.metadata["file_name"] == file_name]
+        writes.write_chunks(scope, file_name, mine, identity=retriever._identity(), config=config)
 
 
-def _ingest(retriever: LlamaIndexRetriever, scope: str, rows: list[dict[str, Any]], **config: Any) -> None:
-    chroma = FakeChroma(rows)
-    for file_name in sorted({row["metadata"]["file_name"] for row in rows}):
-        mirror.mirror_file(chroma, scope, file_name, identity=retriever._identity(), config=config)
-
-
-async def test_retrieve_answers_from_qdrant_with_the_chroma_chunk_contract(retriever):
+async def test_retrieve_answers_from_qdrant_with_the_chunk_contract(retriever):
     rows = [
         _row("Die Fluchtwege sind in Gebäudeklasse 4 rauchfrei auszuführen.", "brandschutz.pdf"),
         _row("Die Tragwerksplanung berücksichtigt die Holzbauweise.", "statik.pdf"),
@@ -111,10 +66,11 @@ async def test_retrieve_answers_from_qdrant_with_the_chroma_chunk_contract(retri
     assert result.success and result.chunks
     top = result.chunks[0]
     assert top.file_name == "brandschutz.pdf" and top.page_number == 2
-    assert top.chunk_id == rows[0]["id"]
-    assert top.score == pytest.approx(max(0.0, _cosine(_vector("Fluchtweg"), rows[0]["embedding"])), abs=1e-3)
-    # The chunk carries the metadata it carried from Chroma, not the mirror's own fields.
+    assert top.chunk_id == rows[0].chunk_id
+    assert top.score == pytest.approx(max(0.0, _cosine(_vector("Fluchtweg"), rows[0].embedding)), abs=1e-3)
+    # The chunk carries the metadata the chunker gave it, not the store's own fields.
     assert "office_id" not in top.metadata and "_node_content" not in top.metadata
+    assert "indexed_at" not in top.metadata
     assert [chunk.retrieval_rank for chunk in result.chunks] == list(range(len(result.chunks)))
 
 
@@ -126,6 +82,11 @@ async def test_retrieve_applies_the_callers_filter(retriever):
     )
     result = await retriever.retrieve("Punkt", "oib_knowledge", top_k=5, filters={"chunking": {"$ne": "page"}})
     assert [chunk.content for chunk in result.chunks] == ["Punkt eins"]
+
+
+async def test_retrieve_from_a_collection_with_no_chunks_is_an_empty_success(retriever):
+    result = await retriever.retrieve("Fluchtweg", "s_never_uploaded", top_k=3)
+    assert result.success and result.chunks == []
 
 
 def test_bm25_terms_are_priced_like_the_german_mirror(retriever):
@@ -142,12 +103,36 @@ def test_bm25_terms_are_priced_like_the_german_mirror(retriever):
     assert ("oib_knowledge", 28, "fluchtwege") in retriever._qdrant_term_df, "a priced term is cached per size"
 
 
+def test_unmeasurable_term_frequencies_leave_the_lexical_channels_unpriced(retriever, monkeypatch):
+    """Fail open: pricing sharpens the channels, it never takes them away."""
+    from knowledge_layer.qdrant import retrieval as qdrant_retrieval
+
+    def down(*args: Any, **kwargs: Any) -> None:
+        raise ConnectionError("qdrant down")
+
+    monkeypatch.setattr(qdrant_retrieval, "term_frequencies", down)
+    text, terms = retriever._qdrant_lexical_inputs("Was regelt § 3 zur Fluchttreppe?", "proj_a")
+    assert text == retriever._bm25_text("Was regelt § 3 zur Fluchttreppe?")
+    assert terms == ["§ 3"]
+
+
 async def test_a_foreign_embedder_fails_the_retrieval_loudly(retriever, monkeypatch):
     _ingest(retriever, "proj_a", [_row("x", "a.pdf")])
     store_module.reset_store()
     monkeypatch.setattr(retriever, "embed_model_name", "another-model")
     result = await retriever.retrieve("x", "proj_a")
     assert not result.success and "embedding mismatch" in (result.error_message or "")
+
+
+def test_a_foreign_embedder_is_refused_on_write(retriever):
+    """The write checks the identity the collection was created with: two vector spaces never share one."""
+    _ingest(retriever, "proj_a", [_row("x", "a.pdf")])
+    store_module.reset_store()
+    other = {"aiq:embed_fingerprint": "other-fp", "aiq:embed_model": "other-model"}
+    with pytest.raises(RuntimeError, match="embedding mismatch"):
+        writes.write_chunks("proj_a", "b.pdf", [_row("y", "b.pdf")], identity=other)
+    store_module.reset_store()
+    assert store_module.get_store(retriever._identity()).count("proj_a") == 1
 
 
 async def test_find_text_applies_the_phrase_pattern(retriever):
@@ -162,69 +147,86 @@ async def test_find_text_applies_the_phrase_pattern(retriever):
     assert [chunk.file_name for chunk in chunks] == ["a.pdf"]
 
 
-def test_mirror_carries_the_ids_the_collection_name_implied(retriever):
+def test_the_write_carries_the_ids_the_collection_name_implied(retriever):
     _ingest(retriever, "archiv_org_9", [_row("Ablage", "a.pdf")], document_id="doc-1")
     store = store_module.get_store()
     assert store.count("archiv_org_9", {"office_id": "org_9"}) == 1
     assert store.count("archiv_org_9", {"grid_document_id": "doc-1"}) == 1
 
 
-def test_mirror_skips_the_version_being_replaced(retriever):
-    old, new = _row("alt", "a.pdf"), _row("neu", "a.pdf")
-    mirror.mirror_file(
-        FakeChroma([old, new]), "proj_a", "a.pdf", identity=retriever._identity(), exclude_ids=[old["id"]]
-    )
-    assert store_module.get_store().count("proj_a") == 1
+def test_the_write_stamps_when_it_happened(retriever, monkeypatch):
+    """``indexed_at`` is what a collection's ``updated_at`` (and the reaper of uploads) reads."""
+    monkeypatch.setattr(writes.time, "time", lambda: 1_700_000_000.5)
+    _ingest(retriever, "s_conv", [_row("eins", "a.pdf")])
+    monkeypatch.setattr(writes.time, "time", lambda: 1_700_000_900.0)
+    _ingest(retriever, "s_conv", [_row("zwei", "b.pdf")])
+    store = store_module.get_store()
+    assert store.newest("s_conv", "indexed_at") == 1_700_000_900
+    assert store.newest("s_conv", "indexed_at", oldest=True) == 1_700_000_000
+    assert store.newest("s_other", "indexed_at") is None
 
 
-def test_mirror_deletes_follow_chroma(retriever):
+def test_a_rewrite_of_the_same_records_overwrites_and_never_duplicates(retriever):
+    rows = [_row("eins", "a.pdf"), _row("zwei", "a.pdf")]
+    _ingest(retriever, "proj_a", rows)
+    _ingest(retriever, "proj_a", rows)
+    assert store_module.get_store().count("proj_a") == 2
+
+
+def test_deletes_go_by_chunk_file_and_scope(retriever):
     rows = [_row("eins", "a.pdf"), _row("zwei", "a.pdf"), _row("drei", "b.pdf")]
     _ingest(retriever, "proj_a", rows)
+    _ingest(retriever, "proj_b", [_row("vier", "a.pdf")])
     store = store_module.get_store()
-    chroma: list[str] = []
-    mirror.ordered_delete("proj_a", lambda: chroma.append("chunks"), chunk_ids=[rows[0]["id"]])
+    store.delete_chunks("proj_a", [rows[0].chunk_id, "no-such-chunk"])
     assert store.count("proj_a") == 2
-    mirror.ordered_delete("proj_a", lambda: chroma.append("file"), file_name="a.pdf")
+    store.delete_file("proj_a", "a.pdf")
     assert store.count("proj_a") == 1
-    mirror.ordered_delete("proj_a", lambda: chroma.append("scope"), whole_scope=True)
+    store.delete_scope("proj_a")
     assert store.count("proj_a") == 0
-    assert chroma == ["chunks", "file", "scope"]
+    assert store.count("proj_b") == 1, "a delete names its scope and never reaches another"
 
 
-def test_dual_swallows_a_mirror_failure_and_qdrant_raises_before_chroma(qdrant_env, monkeypatch):
-    def broken(*args: Any, **kwargs: Any) -> None:
+def test_a_long_delete_goes_in_bounded_requests(retriever, monkeypatch):
+    rows = [_row(f"Chunk {index}", "a.pdf") for index in range(7)]
+    _ingest(retriever, "proj_a", rows)
+    monkeypatch.setattr(store_module, "DELETE_BATCH", 3)
+    store = store_module.get_store()
+    calls = {"delete": 0}
+    real = store.client.delete
+
+    def counted(*args, **kwargs):
+        calls["delete"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store.client, "delete", counted)
+    store.delete_chunks("proj_a", [row.chunk_id for row in rows])
+    assert calls["delete"] == 3 and store.count("proj_a") == 0
+
+
+def test_a_write_the_store_refuses_raises(retriever, monkeypatch):
+    """No other store holds the chunk: a refused write fails the file instead of passing as written."""
+
+    def refused(*args: Any, **kwargs: Any) -> None:
         raise ConnectionError("qdrant down")
 
-    monkeypatch.setattr(store_module.QdrantStore, "delete_file", broken)
-    chroma: list[str] = []
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "dual")
-    assert mirror.ordered_delete("proj_a", lambda: chroma.append("dual") or "done", file_name="a.pdf") == "done"
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "qdrant")
+    monkeypatch.setattr(store_module, "_sleep", lambda seconds: None)
+    monkeypatch.setattr(store_module.get_store().client, "upsert", refused)
     with pytest.raises(ConnectionError):
-        mirror.ordered_delete("proj_a", lambda: chroma.append("qdrant"), file_name="a.pdf")
-    assert chroma == ["dual"]
-
-
-def test_chroma_backend_never_touches_qdrant(monkeypatch):
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
-    monkeypatch.setattr(store_module, "get_store", lambda *a, **k: pytest.fail("Qdrant touched under chroma"))
-    assert mirror.ordered_delete("proj_a", lambda: "chroma", chunk_ids=["x"], file_name="a.pdf") == "chroma"
-    assert mirror.ordered_delete("proj_a", lambda: "chroma", whole_scope=True) == "chroma"
-    mirror.refresh_facts("proj_a")
-    assert not mirror.enabled()
+        _ingest(retriever, "proj_a", [_row("eins", "a.pdf")])
 
 
 def test_adapter_never_imports_qdrant_client():
     """The adapter reaches Qdrant only through ``knowledge_layer.qdrant`` (ADR-0104)."""
     source = open(adapter_module.__file__, encoding="utf-8").read()
-    assert "qdrant_client" not in source
+    assert not re.search(r"^\s*(from|import)\s+qdrant_client\b", source, re.MULTILINE)
 
 
 def test_refresh_facts_copies_a_persons_edit_onto_the_points(retriever, monkeypatch):
     _ingest(retriever, "proj_a", [_row("eins", "a.pdf"), _row("zwei", "b.pdf")])
     facts = {"a.pdf": {"tags": ["bescheid"], "superseded": True, "doc_class": "Baubescheid"}}
-    monkeypatch.setattr(mirror, "facts_by_file", lambda scope, names=None: {n: facts[n] for n in (names or facts)})
-    mirror.refresh_facts("proj_a", ["a.pdf"])
+    monkeypatch.setattr(writes, "facts_by_file", lambda scope, names=None: {n: facts[n] for n in (names or facts)})
+    writes.refresh_facts("proj_a", ["a.pdf"])
     store = store_module.get_store()
     assert store.count("proj_a", {"tags": "bescheid"}) == 1
     assert store.count("proj_a", {"superseded": True}) == 1
@@ -263,12 +265,6 @@ async def test_search_grouped_ranks_projects_in_one_query(retriever):
 
     assert {scope for scope, _ in groups} == {"proj_a", "proj_b"}  # proj_c was not asked for
     assert all(chunk.metadata.get("file_name") for _, chunks in groups for chunk in chunks)
-
-
-async def test_search_grouped_needs_qdrant(retriever, monkeypatch):
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
-    with pytest.raises(NotImplementedError):
-        await retriever.search_grouped("x", ["proj_a"], groups=1, group_size=1)
 
 
 # ---------------------------------------------------------------- numeric legal references, end to end
@@ -424,7 +420,7 @@ def metadata_store(tmp_path, monkeypatch):
     from aiq_agent.knowledge import configure_summary_db
     from aiq_agent.knowledge import factory
 
-    monkeypatch.setattr(mirror, "facts_by_file", FACTS_BY_FILE)
+    monkeypatch.setattr(writes, "facts_by_file", FACTS_BY_FILE)
     factory._document_metadata_store = None
     configure_summary_db(f"sqlite:///{tmp_path / 'summaries.db'}")
     yield
@@ -499,7 +495,7 @@ def test_clearing_a_dokumentart_puts_the_chunks_own_back(retriever, metadata_sto
     assert store.count("proj_a", {"doc_class": "korrespondenz"}) == 0
 
 
-async def test_a_hit_carries_the_chunks_own_dokumentart_as_chroma_does(retriever, metadata_store):
+async def test_a_hit_carries_the_chunks_own_dokumentart(retriever, metadata_store):
     from aiq_agent.knowledge import register_summary
     from aiq_agent.knowledge import set_document_doc_class
 
@@ -515,20 +511,57 @@ async def test_a_hit_carries_the_chunks_own_dokumentart_as_chroma_does(retriever
 # ---------------------------------------------------------------- health
 
 
-async def test_health_needs_chroma_too_under_qdrant(retriever, monkeypatch):
-    """Chroma is still the write record and serves registry reads: a dead one is not healthy."""
-
-    class DeadChroma:
-        def heartbeat(self):
-            raise ConnectionError("chroma down")
-
-    class LiveChroma:
-        def heartbeat(self):
-            return 1
-
-    retriever._chroma_client = DeadChroma()
-    assert await retriever.health_check() is False
-    retriever._chroma_client = LiveChroma()
+async def test_health_is_qdrants(retriever, monkeypatch):
+    """Qdrant is the one store: it answering is the whole of health."""
     assert await retriever.health_check() is True
     monkeypatch.setattr(store_module.QdrantStore, "health", lambda self: False)
     assert await retriever.health_check() is False
+
+
+
+# ---------------------------------------------------------------- superseded follows the newer row
+
+
+def test_removing_the_newer_fassung_makes_the_older_one_findable_again(retriever, metadata_store):
+    """A link counts only while the newer row exists; the points must say what the rows say.
+
+    Left ``superseded: true``, the ``superseded != true`` pre-filter hid the
+    Fassung that had become the current one from every search.
+    """
+    from aiq_agent.knowledge import link_document_fassung
+    from aiq_agent.knowledge import register_summary
+    from aiq_agent.knowledge import unregister_summary
+
+    _ingest(retriever, "proj_a", [_row("Alte Statik", "alt.pdf"), _row("Neue Statik", "neu.pdf")])
+    register_summary("proj_a", "alt.pdf", "A")
+    register_summary("proj_a", "neu.pdf", "N")
+    link_document_fassung("proj_a", "alt.pdf", "neu.pdf")
+    store = store_module.get_store()
+    assert store.count("proj_a", {"superseded": True, "file_name": "alt.pdf"}) == 1
+
+    unregister_summary("proj_a", "neu.pdf")
+    assert store.count("proj_a", {"superseded": True}) == 0
+
+    register_summary("proj_a", "neu.pdf", "N, wieder da")
+    assert store.count("proj_a", {"superseded": True, "file_name": "alt.pdf"}) == 1
+
+
+def test_clearing_many_dokumentarten_restores_them_in_one_batch(retriever, metadata_store, monkeypatch):
+    names = [f"{index}.pdf" for index in range(4)]
+    _ingest(retriever, "proj_a", [_row(f"Plan {name}", name, doc_class="einreichplan") for name in names])
+    store = store_module.get_store()
+    store.set_file_payloads("proj_a", {name: {"doc_class": "bescheid"} for name in names})
+    monkeypatch.setattr(writes, "facts_by_file", lambda scope, names=None: {name: {"tags": []} for name in names})
+    calls = {"batch_update_points": 0}
+    real = store.client.batch_update_points
+
+    def counted(*args, **kwargs):
+        calls["batch_update_points"] += 1
+        return real(*args, **kwargs)
+
+    monkeypatch.setattr(store.client, "batch_update_points", counted)
+
+    writes.refresh_facts("proj_a", names)
+
+    assert calls["batch_update_points"] == 2  # the facts, then every restore together
+    assert store.count("proj_a", {"doc_class": "einreichplan"}) == 4

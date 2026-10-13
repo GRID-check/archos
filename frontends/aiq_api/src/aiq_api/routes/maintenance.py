@@ -1,7 +1,7 @@
 """Internal maintenance endpoints used by the purger service and the BFF's sweep.
 
-Deletes the Python-side resources of a purged project: the Chroma
-collection (+ its summaries), aiq_jobs rows, and LangGraph checkpoints.
+Deletes the Python-side resources of a purged project: the collection's
+chunks in Qdrant (+ its summaries), aiq_jobs rows, and LangGraph checkpoints.
 Guarded by GRID_INTERNAL_API_TOKEN; never exposed to end users.
 All operations are idempotent — re-running on already-deleted data is a no-op.
 
@@ -128,7 +128,6 @@ def _reconcile_one_collection(
     the raise as a per-collection failure and moves on.
     """
     from aiq_agent.knowledge import factory as knowledge_factory
-    from aiq_agent.knowledge.chunk_text_store import get_chunk_text_store
     from aiq_agent.knowledge.ingest_status_store import in_flight_files
 
     summaries = knowledge_factory.get_available_documents(collection)
@@ -139,7 +138,7 @@ def _reconcile_one_collection(
     if collection in live_chunk_counts:
         files = ingestor.list_files(collection)
         # ``list_files`` answers ``[]`` for a collection it could not reach as
-        # well as for an empty one. Chroma reported chunks a moment ago, so an
+        # well as for an empty one. The store reported chunks a moment ago, so an
         # empty listing here is a failed read, not an empty collection — and
         # a failed read must not forget every summary the collection has.
         if not files and live_chunk_counts[collection] > 0:
@@ -147,7 +146,7 @@ def _reconcile_one_collection(
         # ANY tracked status keeps a summary: a file that failed or is still
         # ingesting has no chunks yet and is not an orphan.
         held = {_normalized_name(f.file_name) for f in files}
-    # A collection Chroma no longer has: every summary in it is an orphan
+    # A collection the store holds no chunk of: every summary in it is an orphan
     # (the purge route clears them the same way). Either way, a file whose
     # ingest is still running is not judged this sweep.
     for name in in_flight_files([collection]).get(collection, []):
@@ -156,15 +155,8 @@ def _reconcile_one_collection(
     orphans = sorted(doc.file_name for doc in summaries if _normalized_name(doc.file_name) not in held)
     if dry_run:
         return orphans
-    text_store = get_chunk_text_store()
     for file_name in orphans:
         knowledge_factory.unregister_summary(collection, file_name)
-        # The lexical mirror is keyed the way the row is; forget it under both
-        # spellings, as ``delete_file`` does.
-        text_store.delete_by_file(collection, file_name)
-        normalized = _normalized_name(file_name)
-        if normalized != file_name:
-            text_store.delete_by_file(collection, normalized)
     return orphans
 
 
@@ -182,7 +174,7 @@ async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run
     if ingestor is None:
         raise HTTPException(status_code=503, detail="No active ingestor; summaries cannot be reconciled")
     try:
-        # Chroma scans are synchronous; keep them off the event loop so a long
+        # Store reads are synchronous; keep them off the event loop so a long
         # sweep does not stall every other request the API is serving.
         live_chunk_counts = {info.name: info.chunk_count for info in await asyncio.to_thread(ingestor.list_collections)}
     except Exception as exc:

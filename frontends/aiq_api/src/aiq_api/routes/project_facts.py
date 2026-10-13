@@ -43,21 +43,17 @@ def add_project_facts_routes(router: APIRouter):
 
         Authorized like the searches: the collection must be in the request's
         signed scope (404 when not, 403 under auth without one). 400 for a
-        collection that is not a project's. 409 when this deployment does not
-        write Qdrant (``AIQ_VECTOR_BACKEND=chroma``): the BFF reads that as
-        "nothing to mirror here". Idempotent: the same body twice writes the
-        same payload.
+        collection that is not a project's. 409 when this process has no
+        Qdrant store installed: the BFF reads that as "nothing to mirror
+        here". Idempotent: the same body twice writes the same payload.
         """
         _authorize_collection(http_request, collection_name)
         if not collection_name.startswith(PROJECT_COLLECTION_PREFIX):
             raise HTTPException(status_code=400, detail="project facts belong to a project collection")
         try:
             from knowledge_layer.qdrant import retrieval
-            from knowledge_layer.qdrant.config import writes_qdrant
         except ImportError as e:  # the knowledge layer's store extra is not installed here
             raise HTTPException(status_code=409, detail="this deployment has no Qdrant store") from e
-        if not writes_qdrant():
-            raise HTTPException(status_code=409, detail="this deployment does not write Qdrant")
         try:
             # One set_payload over the whole scope: off the event loop, as the
             # store's other blocking calls are.

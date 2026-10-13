@@ -65,7 +65,6 @@ def stack(monkeypatch):
     monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"route_corpus_{suffix}")
     monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"route_office_{suffix}")
     monkeypatch.setenv("AIQ_QDRANT_URL", url)
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "qdrant")
     monkeypatch.delenv("REQUIRE_AUTH", raising=False)
     monkeypatch.setattr(socket, "getaddrinfo", _GETADDRINFO)
     store_module.reset_store()
@@ -149,13 +148,3 @@ async def test_facts_put_then_filter_and_lift_through_the_routes(stack):
 
     assert [hit["collection"] for hit in filtered.json()["hits"]] == ["proj_b"]
     assert missing.json() == {"collection": "proj_new", "applied": False}
-
-
-async def test_facts_put_is_409_where_qdrant_is_not_written(stack, monkeypatch):
-    app, _ = stack
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "chroma")
-    async with _client(app) as client:
-        res = await client.put("/v1/collections/proj_a/project-facts", json={"facts": {}, "status": "active"})
-        capability = await client.get("/v1/collections/search/capability")
-    assert res.status_code == 409
-    assert capability.json() == {"grouped": False}

@@ -1,12 +1,12 @@
 """``knowledge_search``'s narrowing, pushed into the Qdrant query instead of run after it (ADR-0105).
 
-On Chroma the human-set facts live only in Postgres, so ``register.search``
-fetched three times ``top_k`` and dropped what did not match (``doc_class``,
-``folder``), and named the files to rank by list (``file_name $in`` for a
-folder, ``$nin`` for superseded Fassungen). Under ``AIQ_VECTOR_BACKEND=qdrant``
-those facts are mirrored onto every point (``payload.document_facts``), so each
-one becomes a condition inside the vector search and no candidate is fetched
-only to be thrown away:
+On the store this replaced, the human-set facts lived only in Postgres, so
+``register.search`` fetched three times ``top_k`` and dropped what did not
+match (``doc_class``, ``folder``), and named the files to rank by list
+(``file_name $in`` for a folder, ``$nin`` for superseded Fassungen). Those
+facts are copied onto every point (``payload.document_facts``), so each one
+becomes a condition inside the vector search and no candidate is fetched only
+to be thrown away:
 
 =================  ====================================  ========================
 Filter             Pushed down as                        Post-filter kept?
@@ -24,8 +24,8 @@ display title, and Qdrant's full-text index matches tokens: ``schutz`` is in
 drop documents the substring rule keeps, so it stays a post-filter.
 ``file_name`` likewise matches either name containing the other.
 
-**Postgres stays the authority.** A mirrored fact can lag the store by a failed
-mirror write until the reconcile or ``backfill_qdrant.py --facts-only``
+**Postgres stays the authority.** A copied fact can lag the store by a failed
+copy (``writes.refresh_facts`` never raises) until the weekly reconcile
 repairs it. So the rules are:
 
 * A pre-filter only ever NARROWS: it is AND-ed onto the scope filter, never a
@@ -42,7 +42,7 @@ repairs it. So the rules are:
 
 This module builds filters in the backend-neutral grammar the adapter accepts,
 so every condition still goes through ``scope.scope_filter``. It imports no
-``qdrant_client``: the Chroma path imports it too, to learn it has nothing to do.
+``qdrant_client``.
 """
 
 from __future__ import annotations
@@ -51,8 +51,6 @@ from collections.abc import Iterable
 from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import Any
-
-from .config import reads_qdrant
 
 #: Payload field the folder filter matches (see :func:`folder_ancestors`).
 FOLDER_FIELD = "folder_ancestors"
@@ -98,7 +96,7 @@ class Pushdown:
     def clauses(self, *, user_shelf: bool) -> list[dict[str, Any]]:
         """The conditions for one collection; superseded Fassungen are hidden on user shelves only.
 
-        The base corpus replaces by its own hash registry, as on Chroma.
+        The base corpus has no Fassungen: it replaces by its own hash registry.
         """
         clauses: list[dict[str, Any]] = []
         if self.doc_class:
@@ -131,28 +129,18 @@ class Pushdown:
         ]
 
 
-def plan(*, doc_class: str | None, folder: str | None, file_name: str | None) -> Pushdown | None:
-    """The pushdown for one search, or None when retrieval reads Chroma (which keeps its lists and post-filters)."""
-    if not reads_qdrant():
-        return None
+def plan(*, doc_class: str | None, folder: str | None, file_name: str | None) -> Pushdown:
+    """The pushdown for one search."""
     return Pushdown(doc_class=doc_class or None, folder=folder_key(folder), hide_superseded=not file_name)
 
 
-def post_filtered(
-    pushdown: Pushdown | None,
-    *,
-    doc_class: str | None,
-    title_contains: str | None,
-    file_name: str | None,
-    folder: str | None,
-) -> bool:
+def post_filtered(*, title_contains: str | None, file_name: str | None) -> bool:
     """True when a filter still drops candidates only after retrieval, so the pool must be over-fetched.
 
-    A pushed-down filter does not: its post-filter is a backstop over hits
-    that already match, not the narrowing itself.
+    A pushed-down filter (``doc_class``, ``folder``, the superseded exclusion)
+    does not: its post-filter is a backstop over hits that already match, not
+    the narrowing itself.
     """
-    if pushdown is None:
-        return bool(doc_class or title_contains or file_name or folder)
     return bool(title_contains or file_name)
 
 

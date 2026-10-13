@@ -9,8 +9,6 @@ fault is answered as `error` with empty lists, never as a non-200. A bad request
 
 import asyncio
 import logging
-from collections.abc import Callable
-from typing import Any
 
 from fastapi import APIRouter
 from fastapi import Request
@@ -24,16 +22,10 @@ from .internal_auth import _require_internal_token
 logger = logging.getLogger(__name__)
 
 
-def _chroma_page_fetcher(retriever: Any) -> Callable[[str, str], list[tuple[Any, str]] | None]:
-    """A per-file reader of ``(page_label, chunk text)`` from the collection's chunks (``collection_pages``)."""
-    from aiq_agent.knowledge.collection_pages import read_pages
-
-    return lambda collection, file_name: read_pages(retriever._get_chroma_client(), collection, file_name)
-
-
 def _read_project(request: ProjectExperienceRequest) -> ProjectExperienceResponse:
     """The blocking half: the retriever's summary model and chunks. Runs on a worker thread and never raises."""
     try:
+        from aiq_agent.knowledge.collection_pages import read_pages
         from aiq_agent.knowledge.factory import get_active_retriever
         from aiq_agent.knowledge.factory import get_available_documents
 
@@ -42,7 +34,7 @@ def _read_project(request: ProjectExperienceRequest) -> ProjectExperienceRespons
             request,
             llm=getattr(retriever, "summary_llm", None),
             list_documents=get_available_documents,
-            fetch_pages=_chroma_page_fetcher(retriever),
+            fetch_pages=read_pages,
         )
     except Exception:  # noqa: BLE001 - the contract answers 200 with error=extraction_failed
         logger.exception("Project experience: no retriever to read the project with")

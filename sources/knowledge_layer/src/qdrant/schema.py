@@ -52,7 +52,8 @@ SCOPE_FIELD = "scope"
 #: Payload field holding the chunk text: what BM25 reads, what the full-text
 #: index serves phrase queries from, and what a hit's content is.
 TEXT_FIELD = "text"
-#: Payload field holding the chunk id every caller knows (the id Chroma gave it).
+#: Payload field holding the chunk id every caller knows: the node id the
+#: chunker gave it, which citations and ``already_read`` digests name.
 CHUNK_ID_FIELD = "chunk_id"
 #: Payload field holding every ``§ n`` the chunk text cites, spelled as
 #: ``legal_terms.extract_exact_terms`` spells a query's (``§ 3``, ``§ 12.1``,
@@ -138,6 +139,10 @@ KEYWORD_FIELDS: tuple[str, ...] = (
 #: ``READING_ORDER``): derived at write time from ``page_label``, never read
 #: from the chunk's metadata, and what a structural fetch orders by.
 READING_ORDER_FIELD = READING_ORDER
+#: Payload field holding when ingestion wrote the point, in seconds since the
+#: epoch. A collection's ``updated_at`` is its newest value (an ordered scroll),
+#: which is what the reaper of conversation uploads (``TTLCleanupMixin``) reads.
+INDEXED_AT_FIELD = "indexed_at"
 
 #: Fields stored and filtered as integers. The Punkt chunker writes
 #: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
@@ -145,6 +150,7 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "punkt_depth",
     "section_order",
     READING_ORDER_FIELD,
+    INDEXED_AT_FIELD,
     f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
     "section_part",
     "table_index",
@@ -178,8 +184,9 @@ ALIASES = {Physical.CORPUS: "piloti_corpus", Physical.OFFICE: "piloti_office"}
 FIRST_VERSION = "_v1"
 
 #: Replicas that must acknowledge a write, whatever the replication factor.
-#: The other replica is durable once it has caught up; until the move off
-#: Chroma is done, Chroma and the backfill are the safety net behind it.
+#: The other replica is durable once it has caught up; the snapshots to
+#: SeaweedFS are the net behind the window in which it has not
+#: (``docs/deployment/qdrant-runbook.md``).
 WRITE_CONSISTENCY_FACTOR = 1
 
 

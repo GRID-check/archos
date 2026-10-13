@@ -12,7 +12,8 @@ Architecture:
     └── factory.py               # Registry + factory pattern
 
     sources/knowledge_layer/src/ # Backend implementations
-    └── llamaindex/              # ChromaDB + OpenRouter embeddings
+    ├── llamaindex/              # LlamaIndex readers and chunking, OpenRouter embeddings
+    └── qdrant/                  # The vector store (ADR-0104): every chunk, every read
 
 Usage:
     from aiq_agent.knowledge import Chunk, BaseRetriever, get_retriever

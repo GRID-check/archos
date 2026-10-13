@@ -1125,6 +1125,31 @@ class DocumentMetadataStore:
         """The confirmed ``superseded_by`` of the rows among ``filenames`` that have one."""
         return self._get_column_batch(collection, filenames, "superseded_by")
 
+    def files_linked_to(self, collection: str, newer: str) -> list[str]:
+        """The rows whose stored ``superseded_by`` names ``newer``, whether or not ``newer`` has a row (sync).
+
+        What a register or an unregister of ``newer`` changes the meaning of: the
+        link counts only while ``newer`` has its row (:meth:`get_superseded_files`),
+        so each of these rows reads as replaced or as current again. Fail-open to
+        ``[]``.
+        """
+        from sqlalchemy import text
+
+        try:
+            with self._sync_engine.connect() as conn:
+                rows = conn.execute(
+                    # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
+                    text(
+                        f"SELECT filename FROM {TABLE_NAME} "
+                        "WHERE collection = :collection AND superseded_by = :newer"
+                    ),
+                    {"collection": collection, "newer": newer},
+                )
+                return sorted(row[0] for row in rows)
+        except Exception as e:
+            logger.warning("Failed to read the files linked to %s in %s: %s", newer, collection, e)
+            return []
+
     def get_superseded_files(self, collection: str) -> dict[str, str]:
         """Every file of ``collection`` a person replaced, with the file that replaced it (sync).
 

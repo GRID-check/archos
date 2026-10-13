@@ -51,7 +51,6 @@ from aiq_agent.turn import api_seam
 logger = logging.getLogger(__name__)
 
 COLLECTION_NAME = os.environ.get("OIB_COLLECTION_NAME") or os.environ.get("COLLECTION_NAME") or "oib_knowledge"
-CHROMA_DIR = os.environ.get("AIQ_CHROMA_DIR", "/tmp/chroma_data")
 
 # One sync cycle at a time across replicas.
 SYNC_LOCK_KEY = "oib-sync"
@@ -177,13 +176,13 @@ def _collection_is_empty(ingestor) -> bool:
     """True when the OIB collection is missing or holds no vectors.
 
     Detects table/vector-store drift. The table says what was ingested, but the
-    vectors live in Chroma, which can be reset or repointed (``AIQ_CHROMA_URL``
-    at a fresh server) while the table still lists the whole corpus as ingested;
+    vectors live in Qdrant, which can be reset or repointed (``AIQ_QDRANT_URL``
+    at a fresh cluster) while the table still lists the whole corpus as ingested;
     the change detector would then find nothing to do and leave the collection
     empty forever.
 
     Returns ``False`` (the safe, non-destructive answer) if the store cannot be
-    probed, so a transient Chroma hiccup never discards what the table knows.
+    probed, so a transient store hiccup never discards what the table knows.
     """
     try:
         info = ingestor.get_collection(COLLECTION_NAME)
@@ -201,7 +200,7 @@ def _get_oib_ingestor():
     # without importing the full NAT/LlamaIndex stack.
     import knowledge_layer.llamaindex.adapter  # noqa: F401
 
-    return get_ingestor("llamaindex", {"persist_dir": CHROMA_DIR})
+    return get_ingestor("llamaindex")
 
 
 def _indexed_names(ingestor) -> set[str]:

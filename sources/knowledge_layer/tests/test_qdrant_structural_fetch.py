@@ -1,7 +1,7 @@
 """Structural reads on Qdrant: ``read_passage`` and the family overview by filter, never by embedding.
 
 Against a real Qdrant (``test_qdrant_store.py`` says why and how). The corpus
-is seeded through the same Chroma mirror ingestion uses, shaped like the OIB
+is seeded through the write ingestion uses (``writes.write_chunks``), shaped like the OIB
 corpus (Punkt chunks with ``punkt_id``/``punkt_depth``/``page_label``/
 ``page_end``, a split Punkt, a captioned table in row groups) next to a
 page-chunked report, a workbook and a Markdown file.
@@ -21,7 +21,6 @@ What is pinned:
 from __future__ import annotations
 
 import importlib
-import os
 import random
 import re
 import uuid
@@ -31,10 +30,10 @@ from unittest.mock import MagicMock
 
 import pytest
 from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
-from knowledge_layer.qdrant import mirror
 from knowledge_layer.qdrant import reads
 from knowledge_layer.qdrant import schema
 from knowledge_layer.qdrant import store as store_module
+from knowledge_layer.qdrant import writes
 from knowledge_layer.qdrant.payload import ChunkRecord
 from knowledge_layer.qdrant.payload import build_payload
 from knowledge_layer.qdrant.payload import chunk_metadata
@@ -147,43 +146,10 @@ def _markdown() -> list[dict[str, Any]]:
     ]
 
 
-class FakeChroma:
-    """The slice of a Chroma collection the mirror reads: ``get`` by file name."""
-
-    def __init__(self, rows: list[dict[str, Any]]):
-        self.rows = rows
-
-    def get(self, *, where: dict[str, Any], include: list[str]) -> dict[str, Any]:
-        rows = [row for row in self.rows if row["metadata"].get("file_name") == where["file_name"]]
-        return {
-            "ids": [row["id"] for row in rows],
-            "documents": [row["text"] for row in rows],
-            "metadatas": [row["metadata"] for row in rows],
-            "embeddings": [row["embedding"] for row in rows],
-        }
-
-
 @pytest.fixture
-def qdrant_env(monkeypatch):
-    url = os.environ.get("AIQ_QDRANT_TEST_URL", "").strip()
-    if not url:
-        if os.environ.get("CI"):
-            pytest.fail("AIQ_QDRANT_TEST_URL is unset on CI: the Qdrant service container is missing")
-        pytest.skip("AIQ_QDRANT_TEST_URL not set")
-    suffix = uuid.uuid4().hex[:8]
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.CORPUS, f"structural_corpus_{suffix}")
-    monkeypatch.setitem(schema.ALIASES, schema.Physical.OFFICE, f"structural_office_{suffix}")
-    monkeypatch.setenv("AIQ_QDRANT_URL", url)
-    monkeypatch.setenv("AIQ_VECTOR_BACKEND", "qdrant")
-    monkeypatch.setattr(mirror, "facts_by_file", lambda scope, names=None: {})
-    store_module.reset_store()
-    yield
-    client = store_module.make_client()
-    for physical in schema.Physical:
-        name = schema.ALIASES[physical] + schema.FIRST_VERSION
-        if client.collection_exists(name):
-            client.delete_collection(name)
-    store_module.reset_store()
+def qdrant_env(qdrant_store, monkeypatch):
+    monkeypatch.setattr(writes, "facts_by_file", lambda scope, names=None: {})
+    return qdrant_store
 
 
 class EmbedSpy:
@@ -207,14 +173,20 @@ def retriever(qdrant_env, monkeypatch, embed_spy) -> LlamaIndexRetriever:
     instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
     instance._initialized = True
     monkeypatch.setattr(instance, "_embed_query_cached", embed_spy)
+    store_module.reset_store()
+    store_module.get_store(instance._identity())
     return instance
 
 
 def _seed(retriever: LlamaIndexRetriever, rows: list[dict[str, Any]], scope: str = SCOPE) -> None:
-    chroma = FakeChroma(rows)
     for file_name in sorted({row["metadata"]["file_name"] for row in rows}):
-        written = mirror.mirror_file(chroma, scope, file_name, identity=retriever._identity())
-        assert written == sum(1 for row in rows if row["metadata"]["file_name"] == file_name)
+        records = [
+            ChunkRecord(row["id"], row["text"], row["embedding"], row["metadata"])
+            for row in rows
+            if row["metadata"]["file_name"] == file_name
+        ]
+        written = writes.write_chunks(scope, file_name, records, identity=retriever._identity())
+        assert written == len(records)
 
 
 @pytest.fixture
@@ -376,10 +348,11 @@ async def test_a_collection_without_the_index_is_read_client_side_until_a_writer
     assert store_module.get_store().has_index(SCOPE, READING_ORDER)
 
 
-async def test_fetch_declines_on_chroma(monkeypatch):
-    monkeypatch.delenv("AIQ_VECTOR_BACKEND", raising=False)
-    instance = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
-    assert await instance.fetch(SCOPE, {"file_name": OIB}, 12, READING_ORDER) is None
+async def test_fetch_needs_no_embedder_and_no_start_up(retriever, embed_spy):
+    _seed(retriever, _oib())
+    cold = LlamaIndexRetriever({"embed_model": "test-model", "embed_base_url": "https://test"})
+    chunks = await cold.fetch(SCOPE, {"file_name": OIB}, 3, READING_ORDER)
+    assert chunks and not cold._initialized and embed_spy.queries == []
 
 
 @pytest.mark.parametrize("label", ["3", " 12 ", "0", "-1", "Übersicht", "3.5", "", None])
@@ -391,5 +364,5 @@ def test_reading_order_is_the_page_number_a_reader_sorts_by(label):
         Hit("c1", "text", payload, 0.0, 1.0)
     )
     assert payload[READING_ORDER] == (chunk.page_number or 0) == reading_order(label)
-    # A reader never sees the field: the chunk's metadata is what Chroma held.
+    # A reader never sees the field: the chunk's metadata is what the chunker wrote.
     assert READING_ORDER not in chunk_metadata(payload)
