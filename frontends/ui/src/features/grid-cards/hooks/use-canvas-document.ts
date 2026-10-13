@@ -7,7 +7,7 @@
  * The marks are a live view (ADR-0105: the card is a live receipt of the
  * objects the turn produced). The card reads them once it has been seen, and
  * while it is on screen it listens to the document's room (`doc:<id>`,
- * ADR-0104) and reads them again on every `annotations.changed`, debounced as
+ * ADR-0110) and reads them again on every `annotations.changed`, debounced as
  * the review does it. The hint is never the data: every change is a fresh
  * read through the annotations client.
  *

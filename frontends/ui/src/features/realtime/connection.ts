@@ -1,5 +1,5 @@
 /**
- * The tab's one live connection (ADR-0104): ONE `EventSource` carrying every
+ * The tab's one live connection (ADR-0110): ONE `EventSource` carrying every
  * channel the tab has open, demultiplexed by `ch`, and one POST path up.
  *
  * Channels are ref-counted: two components in one document's room are one

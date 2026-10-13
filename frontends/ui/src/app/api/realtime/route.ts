@@ -1,6 +1,6 @@
 /**
  * `GET /api/realtime?ch=<kind>:<id>&ch=…` — a tab's live channels on one
- * Server-Sent Events stream (ADR-0104, `lib/realtime`).
+ * Server-Sent Events stream (ADR-0110, `lib/realtime`).
  *
  * `data: <RealtimeFrame>` per message: first `welcome`, then `{kind:'event',
  * ch, event}` for each channel, and `revoked{ch}` / `unsupported{ch}` for a

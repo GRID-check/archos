@@ -1,5 +1,5 @@
 /**
- * The wire of the live channels (`lib/realtime`, ADR-0104): what one SSE
+ * The wire of the live channels (`lib/realtime`, ADR-0110): what one SSE
  * connection carries down and what one POST carries up, whatever the channel.
  *
  * A channel is named by a key, `<kind>:<id>` (`doc:<uuid>`). One connection

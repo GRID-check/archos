@@ -1,6 +1,6 @@
 /**
  * The gossip roster of a live channel: who else is here, kept without a list
- * on the server (ADR-0104).
+ * on the server (ADR-0110).
  *
  * Presence is a claim with a TTL, refreshed every `refreshMs` and withdrawn
  * (`gone`) when the tab goes. A newcomer learns who is already here because

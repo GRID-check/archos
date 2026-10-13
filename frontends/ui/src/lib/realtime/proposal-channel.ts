@@ -1,5 +1,5 @@
 /**
- * A proposal as a live channel: `proposal:<proposalId>` (ADR-0104, ADR-0105).
+ * A proposal as a live channel: `proposal:<proposalId>` (ADR-0110, ADR-0105).
  *
  * Being in the channel is reading the proposal, by the same rule as
  * `GET /api/proposals/[id]`: `project:view` on its project AND `viewer` on the

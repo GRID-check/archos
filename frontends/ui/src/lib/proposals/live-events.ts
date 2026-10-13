@@ -1,5 +1,5 @@
 /**
- * A decided proposal as a live channel hint (ADR-0104, ADR-0105): the
+ * A decided proposal as a live channel hint (ADR-0110, ADR-0105): the
  * vocabulary of `proposal:<id>`, shared by the server that publishes it and the
  * card that reads it. No `server-only`: the browser parses these.
  *

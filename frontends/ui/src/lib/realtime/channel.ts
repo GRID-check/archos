@@ -1,5 +1,5 @@
 /**
- * What a live channel is (ADR-0104): a kind of key, the topics it listens to,
+ * What a live channel is (ADR-0110): a kind of key, the topics it listens to,
  * who may be in it, and what may be said in it.
  *
  * A channel kind is declared once with {@link defineChannel} and listed in

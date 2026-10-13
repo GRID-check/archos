@@ -4,7 +4,7 @@
  * Anmerkungen changed.
  *
  * The room is the `doc:<id>` channel of the live channels (`lib/realtime`,
- * ADR-0104): carried down on the tab's one `GET /api/realtime` stream and up on
+ * ADR-0110): carried down on the tab's one `GET /api/realtime` stream and up on
  * `POST /api/realtime/send`, with these schemas as the channel's vocabulary
  * (`lib/realtime/document-channel.ts`). The server stamps who sent a message
  * from the session; a client only says what it is doing.

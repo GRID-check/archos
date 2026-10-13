@@ -1,5 +1,5 @@
 /**
- * The one copy of the live channels' SSE plumbing (ADR-0104): a tab's channels
+ * The one copy of the live channels' SSE plumbing (ADR-0110): a tab's channels
  * on one `text/event-stream`.
  *
  * In order:
