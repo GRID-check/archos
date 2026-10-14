@@ -24,8 +24,9 @@
  *
  * A stale copy never widens access: who may read a chunk is the signed scope
  * of each search, decided here from Postgres. A fact on a chunk only ranks and
- * narrows. A deployment that does not write Qdrant answers 409, which is not a
- * failure: there is nothing to copy to.
+ * narrows. A backend process built without the knowledge layer's store (no
+ * `llamaindex` extra) answers 409, which is not a failure: there is nothing to
+ * copy to.
  */
 
 import 'server-only'
