@@ -505,7 +505,7 @@ export function FolderCard({
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
       // another, which is the same gesture that moves a document.
-      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly && !editing ? folderDragProps(folder.id) : {})}
       {...drop.dropProps}
     >
       <div
@@ -517,11 +517,19 @@ export function FolderCard({
           <FolderActionsMenu folder={folder} onStartRename={() => setEditing(true)} onDeleteFolder={onDeleteFolder} />
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => onOpen(folder.id)}
-        aria-label={openLabel}
-        className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      {/*
+        THE NAME FIELD IS NEVER INSIDE THE OPEN BUTTON.
+
+        It was, and every click into the field to place the caret bubbled to
+        the button and opened the folder (#1055). An <input> inside a <button>
+        is invalid HTML besides. While renaming, the same body renders in a
+        plain wrapper and nothing on the tile opens the folder; the list row
+        swaps its whole content for the editor for the same reason.
+      */}
+      <FolderCardFrame
+        editing={editing}
+        onOpen={() => onOpen(folder.id)}
+        openLabel={openLabel}
       >
         <GridTileBody className="flex-1 p-0">
           <GridTileMedia className="flex h-[124px] items-center justify-center bg-muted/30">
@@ -578,8 +586,33 @@ export function FolderCard({
             )}
           </span>
         </GridTileFooter>
-      </button>
+      </FolderCardFrame>
     </GridTileShell>
+  )
+}
+
+/** The tile's open button, or a plain box with the same layout while the name is being edited. */
+function FolderCardFrame({
+  editing,
+  onOpen,
+  openLabel,
+  children,
+}: {
+  editing: boolean
+  onOpen: () => void
+  openLabel: string
+  children: ReactNode
+}): JSX.Element {
+  if (editing) return <div className="flex h-full w-full flex-col text-left">{children}</div>
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={openLabel}
+      className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      {children}
+    </button>
   )
 }
 
