@@ -43,7 +43,7 @@ import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
 import { onProposalCreated, onProposalDecided } from './attention'
 import { auditProposalCreated, auditProposalDecided } from './audit'
-import { applyKind, DECIDE_PERMISSIONS, parseKindPayload, requireProposable, summaryOf } from './kinds'
+import { applyKind, DECIDE_PERMISSIONS, noticeVariantOf, parseKindPayload, requireProposable, summaryOf } from './kinds'
 import { publishProposalDecided } from './live'
 import {
   claimProposedChange,
@@ -127,6 +127,7 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
       originConversationId: row.originConversationId,
       onBehalfOf: row.onBehalfOf,
       summary: summaryOf(typed),
+      variant: noticeVariantOf(typed),
     })
   )
   return row

@@ -33,10 +33,12 @@
  * delegation's own turn ending hands a mark back, never a reply of Piloti's
  * (`lib/turns/outcome.ts`).
  *
- * A person's decisions leave two traces after the write committed, both
+ * A person's decisions leave traces after the write committed, all
  * best-effort: what Piloti asked on a mark is no longer waiting on them
  * (`./attention.ts`), and taking over or dismissing a mark Piloti proposed is
- * a score on the turn that proposed it (`lib/langfuse/decision-score.ts`).
+ * a line in the organization's audit trail (`piloti.mark.decided`,
+ * `./mark-audit.ts`) and a score on the turn that proposed it
+ * (`lib/langfuse/decision-score.ts`).
  *
  * Every write tells the document's room (the `doc:<id>` live channel,
  * `lib/realtime/document-channel.ts`), so everyone looking at the document
@@ -77,6 +79,7 @@ import {
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { onMarkSettledByPerson } from './attention'
+import { auditMarkDecided } from './mark-audit'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
@@ -492,17 +495,21 @@ function traceSettled(session: AuthorizedSession, annotationId: string, closed: 
 /**
  * What a person's move of status leaves behind, once it committed: a closed
  * mark settles what Piloti asked on it, and taking over or dismissing a mark
- * Piloti proposed is a score on the turn that proposed it.
+ * Piloti proposed is a decision on Piloti's work, in the audit trail
+ * (`piloti.mark.decided`, `./mark-audit.ts`) and as a score on the turn that
+ * proposed it.
  */
 function traceMove(
   session: AuthorizedSession,
+  doc: { id: string; projectId: string | null },
   annotationId: string,
-  existing: Pick<AnnotationRecord, 'authorKind' | 'status'>,
+  existing: Pick<AnnotationRecord, 'authorKind' | 'status' | 'number' | 'kind' | 'createdBy'>,
   to: 'open' | 'resolved' | 'dismissed' | undefined
 ): void {
   if (to === 'resolved' || to === 'dismissed') traceSettled(session, annotationId, true)
   const proposal = existing.authorKind === 'piloti' && existing.status === 'proposed'
   if (!proposal || (to !== 'open' && to !== 'dismissed')) return
+  auditMarkDecided(session, doc, { ...existing, id: annotationId }, to === 'open' ? 'taken_over' : 'dismissed')
   bestEffort('score the decision', () =>
     recordDecisionScore({
       subject: 'annotation',
@@ -632,7 +639,9 @@ export async function updateAnnotation(
       console.warn('[annotations] could not keep a taken-back wake from starting:', error)
     )
   }
-  if (actor.kind === 'person' && moves) traceMove(session, annotationId, existing, parsed.status)
+  if (actor.kind === 'person' && moves) {
+    traceMove(session, { id: doc.id, projectId: doc.projectId ?? null }, annotationId, existing, parsed.status)
+  }
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
 }

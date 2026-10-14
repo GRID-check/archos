@@ -262,10 +262,14 @@ the document can reply, so only they can wake it. At most
 `GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
 `GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
 `piloti_wakes` rows at enqueue and again at claim. The WorkOS flag
-`piloti-wakes`, an entitlement off by default. A wake that started no turn has
-no trace, so it is on its row and in the audit trail as
+`piloti-wakes`, an entitlement off by default. A wake held before Piloti was
+asked (a cap, the switch, rights lost, the mark gone, the delegation taken
+back) has no trace, so it is on its row and in the audit trail as
 `piloti.wake.suppressed`. One that started is `piloti.wake.started` there, and
-however it ended `piloti.wake.ended` (`frontends/ui/src/lib/annotations/wake-audit.ts`).
+every end, however it came, is one `piloti.wake.ended`: the turn's, or the
+job's when it was refused or gave up before a turn answered, with the class of
+its reason (`reasonKind`, the inbox's `variant` below)
+(`frontends/ui/src/lib/annotations/wake-audit.ts`).
 
 **With the switch off** the reply answers `wake: 'off'` and the browser asks
 Piloti itself, as before, under the turn id a server wake of the same reply
@@ -341,14 +345,46 @@ An item about a mark opens the Prüfansicht at that mark (`markId` in
 | Item | When | For | Actionable |
 |---|---|---|---|
 | `piloti.work_done` | a woken turn ended `answered` | who mentioned, answered or delegated | no |
-| `piloti.work_failed` | a woken turn ended `failed` (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
+| `piloti.work_failed` | a woken turn ended `failed`, or the wake job was refused or gave up before a turn answered (a delegation, a mention or an answer) | who delegated, mentioned or answered | no |
 | `piloti.asks_you` | Piloti set a Rückfrage, or replied on its own open one | the mark's Zuständige, else the person its turn acted for | yes |
 
-A stop makes no item, because the person stopped it. A failed mention or answer
-makes a `piloti.work_failed` like a failed delegation, with the same neutral copy
-(„Piloti konnte Anmerkung 4 nicht abschließen“). A `piloti.asks_you` is resolved when
-the person answers it in the thread, and for everyone when the mark is
-resolved, dismissed or deleted.
+Each row reads as a colleague's sentence: what Piloti did, to which mark in
+which document, and what the reader can do now. The payload carries the
+document's name (`subject`), the mark's number (`related`) and, as the excerpt,
+what the mark says (Piloti's question for a Rückfrage):
+
+| Item | Title | Body |
+|---|---|---|
+| `piloti.work_done` | „Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet“ | „Lesen Sie die Antwort im Verlauf der Anmerkung.“ |
+| `piloti.work_failed` | „Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten“ | why, and what to do (below) |
+| `piloti.asks_you` | „Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG““ | „Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.“ |
+
+A failure says why. `onWakeEnded` classes the wake's stored reason with
+`wakeEndReasonKind` (`frontends/ui/src/lib/annotations/wake-end-reason.ts`) and
+stores the class as the item's `variant`; the row reads
+`pilotiWorkFailed.variants.<class>.body`, never the stored reason, which is
+English and meant for the audit trail:
+
+| Class | Stored reasons | The body says |
+|---|---|---|
+| `budget` | `budget: …`, the agent's „LLM budget is exhausted“ | the usage budget is used up; whoever manages the organization raises it under Organisation → Nutzung & Budgets |
+| `busy` | `gave up waiting: …`, the admission and fence refusals („send your message again in a moment“, „answers in progress“, „research jobs waiting“) | Piloti did not get to it in time; ask again later |
+| `access` | `rejected: auth_expired`, `rejected: conversation_mismatch`, `auth_error`, `token_expired`, `token_invalid` | Piloti could not sign in on the person's behalf; ask again |
+| `error` | anything else, `DEFAULT_FAILURE_REASON` included | the work broke off before there was an answer; ask again, or work on the mark yourself |
+
+A stop makes no item, because the person stopped it; nor does a suppressed wake
+(the person's own act, a rule or a cap held it). A wake the job ends without an
+answer is told and handed back as a turn's end is (`wake-job.ts`), so a
+delegated mark never keeps reading „Piloti arbeitet daran“ after a refusal. A
+`piloti.asks_you` is resolved when the person answers it in the thread, and for
+everyone when the mark is resolved, dismissed or deleted.
+
+A proposal Piloti made (`piloti.proposal_waiting`, `lib/proposals/attention.ts`)
+is worded by what it changes, stored as its `variant`: a file operation by its
+verb („Piloti schlägt eine Umbenennung vor“), a note („Piloti möchte sich eine
+Notiz merken“), a change to the project context. Its excerpt names the files,
+the note or the change, and its body says the proposal is in the chat and that
+nothing changes until the person applies it.
 
 ### Piloti as the delegate
 
@@ -358,7 +394,8 @@ switch is on, on an open mark) sets `delegated_by` and `delegated_at` and wakes
 Piloti; the mark keeps its assignee, and the thread shows „Piloti arbeitet
 daran · für Miriam“. „Von Piloti zurücknehmen“ clears it without a wake, and stops the turn that
 works it (below). Piloti hands the mark back when the turn the delegation woke
-ends, never by a reply of its own, and resolves it only when the person who
+ends, or when its wake was refused or gave up before a turn answered (a spent
+budget, a busy thread), never by a reply of its own, and resolves it only when the person who
 delegated asked for that; closing the mark ends the delegation. Piloti cannot
 delegate to itself.
 
@@ -420,7 +457,10 @@ an answer older than the record. Its actions:
    the catalogue is in [`langfuse.md`](../observability/langfuse.md)): a proposed
    mark taken over (`accepted`) or dismissed (`dismissed`), and an applied change
    undone (`undone`). The score says what was decided, never by whom; the
-   audit trail says who undid it (`piloti.change.undone`).
+   audit trail says who: who undid it (`piloti.change.undone`), and who took
+   over or dismissed a proposed mark (`piloti.mark.decided`,
+   `frontends/ui/src/lib/annotations/mark-audit.ts`, one per mark, the live
+   card's batch included, since it sends the same PATCH per mark).
 
 ## The Protokoll: Anmerkungen as a file
 

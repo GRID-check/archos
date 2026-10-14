@@ -1552,6 +1552,10 @@
     "de": "In der Aufträge-Liste zeigt eine laufende Karte in einer Zeile, was der Auftrag gerade tut, etwa „Recherchieren · 3 Runden · 9 Dokumente“."
   },
   {
+    "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
+    "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
+  },
+  {
     "en": "Jobs and Skills now sit together in one Automation section, as two tabs instead of two places in the sidebar. Jobs comes first, since a job is the instruction this project runs on a timer, and Skills is one click away.",
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
   },
@@ -2556,8 +2560,8 @@
     "de": "Der Hinweis unter dem Nachrichtenfeld zeigt jetzt, welche anderen Projekte einen Chat gerade einschränken. Bisher wurde ein Projekt auch nach dem Schließen weiterhin angezeigt, und ein eingeschränkter Ordner eines geschlossenen Projekts wurde nicht berücksichtigt."
   },
   {
-    "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended. Who undid one of Piloti's changes is in it too.",
-    "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, und wie das ausging. Auch wer eine Änderung von Piloti rückgängig gemacht hat, steht darin."
+    "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended, with why when it gave up. Who undid one of Piloti's changes, and who took over or dismissed an Anmerkung it proposed, is in it too.",
+    "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, wie das ausging und, wenn es aufgegeben hat, warum. Auch wer eine Änderung von Piloti rückgängig gemacht oder eine von Piloti vorgeschlagene Anmerkung übernommen oder verworfen hat, steht darin."
   },
   {
     "en": "The page for setting up an organization is simpler: one field, one button and three lines on what happens next, with sign-out always at the top right.",
@@ -2854,6 +2858,10 @@
   {
     "en": "What the conversation has already settled, such as your answers to Piloti's questions, goes into the research instead of being asked again.",
     "de": "Was im Gespräch schon geklärt wurde, etwa Ihre Antworten auf Pilotis Rückfragen, geht in die Recherche ein, statt noch einmal gefragt zu werden."
+  },
+  {
+    "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
+    "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
   },
   {
     "en": "When Piloti files a draft, creates a task, gathers documents or suggests something to remember, its cards now appear while the answer is still being checked, instead of all at the very end.",

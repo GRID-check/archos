@@ -215,7 +215,7 @@ describe('audit schema coverage', () => {
     // text is refused here, before an emitter can fill it.
     const CONTENT = /body|content|text|note|title|label|name|summary|payload|path|comment|value|rationale/i
     const piloti = Object.entries(REGISTRY).filter(([action]) => action.startsWith('piloti.'))
-    expect(piloti.length).toBeGreaterThanOrEqual(8)
+    expect(piloti.length).toBeGreaterThanOrEqual(9)
     for (const [action, schema] of piloti) {
       expect(Object.keys(schema.metadata ?? {}).filter((key) => CONTENT.test(key)), action).toEqual([])
     }

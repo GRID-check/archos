@@ -27,6 +27,7 @@ vi.mock('@/lib/annotations/repository', () => ({ findDocumentAnnotation: vi.fn()
 vi.mock('@/lib/annotations/attention', () => ({ onWakeEnded: vi.fn() }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
+vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn() }))
 
 import { onWakeEnded } from '@/lib/annotations/attention'
@@ -37,6 +38,7 @@ import type { Document, PilotiWakeRow } from '@/lib/db/schema'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
+import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { expectRegistered } from '@/test-utils/audit'
 import { DEFAULT_FAILURE_REASON, recordTurnOutcome, wakeEndOf } from './outcome'
 import type { TurnOutcomeRequest } from './outcome-types'
@@ -81,7 +83,12 @@ const request = (wake: PilotiWakeRow, over: Partial<TurnOutcomeRequest> = {}): T
 
 /** The mark as the service reads it: delegated at that moment, or not delegated. */
 function markIs(delegatedAt: Date | null) {
-  vi.mocked(findDocumentAnnotation).mockResolvedValue({ id: MARK_ID, number: 4, delegatedAt } as Partial<AnnotationRecord> as AnnotationRecord)
+  vi.mocked(findDocumentAnnotation).mockResolvedValue({
+    id: MARK_ID,
+    number: 4,
+    body: 'Türbreite prüfen',
+    delegatedAt,
+  } as Partial<AnnotationRecord> as AnnotationRecord)
 }
 
 /** `endWake` as the database would answer it: the row as ended, or null when it was not `started`. */
@@ -102,6 +109,9 @@ beforeEach(() => {
   vi.mocked(findDocumentInOrg).mockResolvedValue({ id: DOC_ID, projectId: 'proj_1' } as Partial<Document> as Document)
   vi.mocked(publishToDocumentRoom).mockResolvedValue(undefined)
   vi.mocked(onWakeEnded).mockResolvedValue(undefined)
+  vi.mocked(loadOrganizationDirectory).mockResolvedValue(
+    new Map([[USER, { userId: USER, email: 'anna@example.at', name: 'Anna Berger', profilePictureUrl: null }]])
+  )
 })
 
 describe('wakeEndOf', () => {
@@ -241,7 +251,15 @@ describe('recordTurnOutcome', () => {
       actorUserId: USER,
       trigger: 'thread_mention',
       outcome: 'answered',
+      reason: null,
+      markText: 'Türbreite prüfen',
     })
+  })
+
+  it('tells attention why a failed turn failed, so the notice can say it', async () => {
+    wakeEndsAs(MENTION)
+    await recordTurnOutcome(request(MENTION, { outcome: 'failed', reason: 'token_expired' }))
+    expect(onWakeEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed', reason: 'token_expired' }))
   })
 
   it('still settles when attention throws', async () => {
@@ -254,6 +272,12 @@ describe('recordTurnOutcome', () => {
 
   describe('the audit trail', () => {
     const audited = (): AuditEventInput[] => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+    // The wake's row keeps no email: the event goes out once the directory named the person.
+    const recorded = async (): Promise<AuditEventInput[]> => {
+      await vi.waitFor(() => expect(recordAuditEvent).toHaveBeenCalled())
+      return audited()
+    }
+    const settle = () => new Promise((resolve) => setTimeout(resolve, 0))
     // Whatever was emitted, WorkOS would accept: every target type and key is registered.
     afterEach(() => {
       for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
@@ -264,11 +288,11 @@ describe('recordTurnOutcome', () => {
       markIs(DELEGATED_AT)
       await recordTurnOutcome(request(DELEGATION, { outcome: 'handed_off' }))
 
-      expect(audited()).toEqual([
+      expect(await recorded()).toEqual([
         {
           action: 'piloti.wake.ended',
           organizationId: ORG,
-          actor: { userId: USER, email: null },
+          actor: { userId: USER, email: 'anna@example.at' },
           targetType: 'document_annotation',
           targetId: MARK_ID,
           alsoTargets: [
@@ -282,6 +306,7 @@ describe('recordTurnOutcome', () => {
             outcome: 'answered',
             turnOutcome: 'handed_off',
             reason: null,
+            reasonKind: null,
             handedBack: true,
             markNumber: 4,
           },
@@ -290,20 +315,29 @@ describe('recordTurnOutcome', () => {
     })
 
     it.each([
-      ['stopped', undefined, 'stopped', null],
-      ['refused', 'Budget erschöpft.', 'failed', 'Budget erschöpft.'],
-      ['failed', undefined, 'failed', DEFAULT_FAILURE_REASON],
-    ] as const)('records a %s turn with its outcome and reason', async (outcome, reason, recorded, recordedReason) => {
+      ['stopped', undefined, 'stopped', null, null],
+      ['refused', 'The organization budget is exhausted.', 'failed', 'The organization budget is exhausted.', 'budget'],
+      ['failed', 'token_expired', 'failed', 'token_expired', 'access'],
+      ['failed', undefined, 'failed', DEFAULT_FAILURE_REASON, 'error'],
+    ] as const)('records a %s turn with its outcome, reason and its class', async (outcome, reason, ended, recordedReason, reasonKind) => {
       wakeEndsAs(MENTION)
       await recordTurnOutcome(request(MENTION, { outcome, reason }))
-      expect(audited()).toHaveLength(1)
-      expect(audited()[0].metadata).toMatchObject({ outcome: recorded, turnOutcome: outcome, reason: recordedReason })
+      await settle()
+      expect(await recorded()).toHaveLength(1)
+      expect(audited()[0].metadata).toMatchObject({ outcome: ended, turnOutcome: outcome, reason: recordedReason, reasonKind })
     })
 
     it('cuts a long reason', async () => {
       wakeEndsAs(MENTION)
       await recordTurnOutcome(request(MENTION, { outcome: 'failed', reason: 'x'.repeat(900) }))
-      expect(String(audited()[0].metadata?.reason)).toHaveLength(200)
+      expect(String((await recorded())[0].metadata?.reason)).toHaveLength(200)
+    })
+
+    it('names the person by id alone when the directory does not know them', async () => {
+      wakeEndsAs(MENTION)
+      vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map())
+      await recordTurnOutcome(request(MENTION))
+      expect((await recorded())[0].actor).toEqual({ userId: USER, email: null })
     })
 
     it('records nothing for a turn that is not a wake, a wrong thread, or a wake that already ended', async () => {
@@ -316,6 +350,7 @@ describe('recordTurnOutcome', () => {
       vi.mocked(findWakeById).mockResolvedValue(MENTION)
       vi.mocked(endWake).mockResolvedValue(null)
       await recordTurnOutcome(request(MENTION))
+      await settle()
       expect(recordAuditEvent).not.toHaveBeenCalled()
     })
 
@@ -323,7 +358,7 @@ describe('recordTurnOutcome', () => {
       wakeEndsAs(MENTION)
       vi.mocked(findDocumentInOrg).mockResolvedValue(null)
       await recordTurnOutcome(request(MENTION))
-      expect(audited()[0].alsoTargets).toContainEqual({ type: 'project', id: null })
+      expect((await recorded())[0].alsoTargets).toContainEqual({ type: 'project', id: null })
       expect(onWakeEnded).not.toHaveBeenCalled()
     })
 

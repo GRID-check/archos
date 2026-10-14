@@ -709,14 +709,15 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'conversation' }],
     metadata: { previousRole: 'string', via: 'string' },
   },
-  // A wake of Piloti that came to nothing (ADR-0106): one that started no turn
-  // (a cap held it, the organization's switch was off by the time it ran, the
-  // person lost the right to write the document, their budget refused it, or
-  // no server took it: `stage` enqueue or claim, no model call, no Langfuse
-  // trace). This and its `piloti_wakes` row are its record. The actor is the
-  // person whose act woke, or would have woken, Piloti. Until 2026-10-14 a turn
-  // that ran and failed was recorded here too (`stage: 'turn'`); it is now
-  // `piloti.wake.ended` with `outcome: 'failed'`.
+  // A wake of Piloti held before Piloti was asked (ADR-0106): a cap held it,
+  // the organization's switch was off by the time it ran, the person lost the
+  // right to write the document or left, the mark or the reply is gone, or the
+  // delegation was taken back (`stage` enqueue or claim, `status` suppressed;
+  // no model call, no Langfuse trace). This and its `piloti_wakes` row are its
+  // record. The actor is the person whose act would have woken Piloti. Until
+  // 2026-10-14 a turn that ran and failed (`stage: 'turn'`), and a wake the job
+  // ended `refused` (a spent budget) or `failed` (gave up waiting, a rejected
+  // message) were recorded here too; they are now `piloti.wake.ended`.
   'piloti.wake.suppressed': {
     targets: [{ type: 'document_annotation' }],
     metadata: { documentId: 'string', trigger: 'string', status: 'string', reason: 'string', stage: 'string' },
@@ -794,6 +795,16 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       messageId: 'string',
     },
   },
+  // A person decided on a mark Piloti proposed, on the canvas: took it over
+  // (`decision` taken_over, the mark is open and theirs) or dismissed it
+  // (`dismissed`). One event per mark, for the move that left `proposed`; a
+  // colleague's earlier move (409) records nothing. Actor: the person who
+  // decided; `onBehalfOf` the person Piloti proposed it for (the mark's
+  // `created_by`). `markKind` defect, question, note…
+  'piloti.mark.decided': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }],
+    metadata: { decision: 'string', markNumber: 'number', markKind: 'string', onBehalfOf: 'string' },
+  },
   // A wake started a turn (ADR-0106): the socket took it. Actor: the person
   // whose act woke Piloti, as whom the turn runs; the conversation is their
   // thread about the document. `waits` is how often it waited for a busy
@@ -802,9 +813,14 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
     metadata: { trigger: 'string', wakeId: 'string', markNumber: 'number', waits: 'number' },
   },
-  // How a woken turn ended (`lib/turns/outcome.ts`): `outcome` answered,
-  // stopped or failed, `turnOutcome` what the socket reported, `reason` its
-  // words for a failure (cut at 200). `handedBack`: the delegation ended with it.
+  // How a wake ended, once: its turn's end (`lib/turns/outcome.ts`; `outcome`
+  // answered, stopped or failed, `turnOutcome` what the socket reported), or
+  // the wake job's before a turn answered (`lib/annotations/wake-job.ts`;
+  // `outcome` refused for a spent budget or a refusal at the socket, failed for
+  // a give-up or a rejected message; no `turnOutcome`). `reason` is the stored
+  // reason (cut at 200), `reasonKind` its class as the person's inbox notice
+  // words it: budget, busy, access or error. `handedBack`: the delegation ended
+  // with it.
   'piloti.wake.ended': {
     targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
     metadata: {
@@ -813,6 +829,7 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
       outcome: 'string',
       turnOutcome: 'string',
       reason: 'string',
+      reasonKind: 'string',
       handedBack: 'boolean',
       markNumber: 'number',
     },

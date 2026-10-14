@@ -667,6 +667,8 @@ describe('createProposal — the inbox is told', () => {
       originConversationId: CONVERSATION,
       onBehalfOf: 'user_2',
       summary: 'Grundriss EG.pdf, Schnitt A-A.pdf +1',
+      // Which change it proposes, so the inbox titles it („Piloti schlägt einen neuen Ablageort vor").
+      variant: 'move',
     })
   })
 

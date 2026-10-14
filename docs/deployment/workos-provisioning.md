@@ -345,7 +345,9 @@ Deliberately NOT audited: high-frequency content activity (memory items,
 profile edits, conversation messages, renames, user preferences) — it would
 drown the admin trail. A person's own edits of Anmerkungen are content
 activity; Piloti's are not, because a machine acting in a person's name is
-what an admin has to be able to account for.
+what an admin has to be able to account for, and neither is a person taking
+over or dismissing a mark Piloti proposed: that is a decision on Piloti's
+work (`piloti.mark.decided`).
 
 - **What Piloti did** (`piloti.*`, added 2026-10-14). Piloti acts in a
   person's session as that person (ADR-0105, ADR-0108), so the trail names the
@@ -357,10 +359,11 @@ what an admin has to be able to account for.
   | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
   | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
   | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
+  | `piloti.mark.decided` | a person took over (`open`) or dismissed a mark Piloti proposed, on the canvas: the per-mark buttons and the live card's batch send the same PATCH, so one per mark that left `proposed` (`lib/annotations/service.ts`); a colleague's earlier move (409) records nothing | the person who decided | mark, document, project | `decision` (taken_over, dismissed), `markNumber`, `markKind`, `onBehalfOf` (the person Piloti proposed it for) |
   | `piloti.wake.started` | a wake's turn started (`lib/annotations/wake-job.ts`) | the person whose act woke Piloti | mark, document, project, their thread | `trigger`, `wakeId`, `markNumber`, `waits` |
-  | `piloti.wake.ended` | the woken turn ended (`lib/turns/outcome.ts`) | the same person | the same | `trigger`, `wakeId`, `outcome` (answered, stopped, failed), `turnOutcome`, `reason` (the turn's own words for a failure, cut at 200), `handedBack`, `markNumber` |
+  | `piloti.wake.ended` | the wake ended, once: its turn ended (`lib/turns/outcome.ts`), or the wake job refused it or gave up before a turn answered (`lib/annotations/wake-job.ts`) | the same person | the same | `trigger`, `wakeId`, `outcome` (answered, stopped, failed; refused for the job's refusal), `turnOutcome` (what the socket reported; absent when the job ended it), `reason` (the stored reason, cut at 200), `reasonKind` (budget, busy, access, error: the class the person's inbox notice is worded by, `lib/annotations/wake-end-reason.ts`), `handedBack`, `markNumber` |
   | `piloti.wake.stopped` | a person took the mark back, or deleted it, and that stopped a queued or running wake (`lib/annotations/take-back.ts`) | who took it back | the same | `trigger`, `wakeId`, `wakeStatus`, `wokenBy`, `by` (person, or piloti when Piloti closed the mark) |
-  | `piloti.wake.suppressed` | a wake started no turn (unchanged; a failed turn was recorded here with `stage: 'turn'` until 2026-10-14, and is now `piloti.wake.ended`) | the person whose act woke Piloti | mark | `documentId`, `trigger`, `status`, `reason`, `stage` |
+  | `piloti.wake.suppressed` | a wake was held before Piloti was asked: a cap, the switch off, the person's right to write gone, the mark or reply gone, the delegation taken back. Until 2026-10-14 a failed turn (`stage: 'turn'`) and a wake the job ended `refused` or `failed` were recorded here too; they are now `piloti.wake.ended` | the person whose act woke Piloti | mark | `documentId`, `trigger`, `status` (suppressed), `reason`, `stage` (enqueue, claim) |
 
   *The actor model.* The actor is always a person, never Piloti: the actor is
   the authorization principal (`AuditActorType` in `lib/audit/service.ts`, the
@@ -368,7 +371,10 @@ what an admin has to be able to account for.
   and the export filter by. An agent actor would hide on whose behalf Piloti
   acted in the one place an admin searches. So an admin finds everything Piloti
   did with the action filter on `piloti.*`, and everything it did for one
-  person with that person's actor filter added; the turn is the
+  person with that person's actor filter added. A wake's row keeps the
+  person's id and not their email, so the wake events look the email up in
+  the organization's directory before they go out (best effort: the id alone
+  when the directory does not know the person). The turn is the
   `conversation` target and `messageId`, the answer whose Langfuse trace and
   change card carry the same id. A `via: 'piloti'` key would only repeat the
   action family.
@@ -382,7 +388,9 @@ what an admin has to be able to account for.
   call whose compare-and-swap won (`recordAuditEventAfterCommit`, fire and
   forget: a lost line is logged, the act is never failed or rolled back). A
   repeated proposal card, an already-undone undo, a wake the job or the outcome
-  settled twice, and a change that moved nothing emit nothing. A background run
+  settled twice, a decision a colleague made first, and a change that moved
+  nothing emit nothing. Undoing a mark Piloti proposed dismisses it, so it is
+  both `piloti.change.undone` and `piloti.mark.decided`. A background run
   (ADR-0108) reaches the same internal routes, so what Piloti changes in one
   is recorded the same way; `task.*` records the run itself.
 
