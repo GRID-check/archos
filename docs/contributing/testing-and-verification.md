@@ -526,7 +526,7 @@ Traps that cost a run:
 
 For the seconds BEFORE the first model call, which the suite reports only as
 a slice, `scripts/turn_census/startup_probe.py` prints each turn's provider
-calls and the retriever's embed, lexical and retrieve phases in milliseconds,
+calls and the retriever's embed, store (the one Qdrant query) and retrieve phases in milliseconds,
 several questions in one process so all but the first are warm. What both
 measured on 2026-09-24, and the effort A/B:
 [turn-latency-measured-2026-09.md](../architecture/turn-latency-measured-2026-09.md).

@@ -766,3 +766,16 @@ def test_a_local_corpus_directory_is_ingested_without_a_bff_or_an_object_store(m
 def test_corpus_without_ingest_is_refused():
     with pytest.raises(SystemExit):
         suite.main(["--corpus", "data/oib"])
+
+
+def test_the_startup_probe_times_only_methods_the_retriever_has():
+    # The probe wrapped `_hybrid_lexical_boost` after the Qdrant rewrite removed
+    # it, and died with AttributeError before the first turn.
+    import re
+
+    import startup_probe
+    from knowledge_layer.llamaindex.adapter import LlamaIndexRetriever
+
+    timed = re.findall(r"retriever\.(\w+) = timed\(", Path(startup_probe.__file__).read_text())
+    assert timed, "the probe times no retriever method; this test reads its source"
+    assert [name for name in timed if not hasattr(LlamaIndexRetriever, name)] == []
