@@ -104,9 +104,32 @@ curl -s localhost:8889/metrics | grep -E '^(up|collection_dead_replicas|collecti
 
 **Alerts.** The rules are in the ConfigMap `qdrant-alert-rules`
 (`qdrant.rules.yaml`, rendered by `deploy/pulumi/src/data/qdrant-alerts.ts`
-against the stack's memory limit). Nothing evaluates them until a Prometheus,
-Mimir, Alloy or vmalert loads that file and scrapes `otel-collector:8889`;
-each rule's `check` annotation is the by-hand command meanwhile.
+against the stack's memory limit). **They are inert: nothing stores the
+metrics and nothing evaluates the rules, on staging or anywhere else.** The
+collector only re-exposes the scrape on `otel-collector:8889/metrics`; no
+series is kept and no one is paged when a peer goes down. Each rule's `check`
+annotation is the by-hand command meanwhile.
+
+**Connecting alerting is a precondition for prod**, not a follow-up: every
+office's retrieval runs on this cluster, and QdrantPeerDown is the only signal
+of an outage before users notice. Staging runs without it, knowingly. Do not
+build a metrics stack in this repository; connect one that exists:
+
+- the provider's metrics stack (the cluster ships one that cannot be removed,
+  which is why `installMetricsServer` is off): have it scrape
+  `otel-collector.grid.svc.cluster.local:8889` (path `/metrics`) and load
+  `qdrant.rules.yaml` from the `qdrant-alert-rules` ConfigMap as a rule group;
+- or a `vmalert` (or Prometheus) beside it, with
+  `-rule=/rules/qdrant.rules.yaml` from that ConfigMap mounted at `/rules`, its
+  datasource a VictoriaMetrics/Prometheus that scrapes the same endpoint, and
+  a notifier (Alertmanager) that reaches a person.
+
+Either way the scraper's pod needs a NetworkPolicy allow to the collector's
+port 8889 if it runs outside `grid`, and QdrantDiskHigh additionally needs the
+kubelet's volume stats (`kubelet_volume_stats_*`), which the collector does
+not scrape. Prove it works before prod depends on it: stop one peer on the
+scratch stack (`kubectl -n grid delete pod qdrant-2`) and see QdrantPeerDown
+reach a person.
 
 | Alert | Fires when | Go to |
 |---|---|---|

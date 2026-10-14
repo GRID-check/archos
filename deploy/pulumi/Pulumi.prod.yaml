@@ -63,6 +63,16 @@
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:rateLimitStorePassword "$(openssl rand -base64 32)" --secret
 
+#   # Qdrant (ADR-0111), always deployed: the read-write and read-only API keys
+
+#   # and the snapshot S3 identity's secret. REQUIRED, each its own value.
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantApiKey          "$(openssl rand -base64 32)" --secret
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantReadOnlyApiKey  "$(openssl rand -base64 32)" --secret
+
+#   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:qdrantS3SecretKey     "$(openssl rand -base64 32)" --secret
+
 #   # Optional (only if using the local BYOK backend):
 
 #   esc env set matthiasbigl/grid-oib/prod pulumiConfig.grid-oib:byokLocalKek          "$(openssl rand -base64 32)" --secret
@@ -264,6 +274,16 @@ config:
   # `qdrantS3SecretKey`). The retired Chroma's volume stays as `data-chroma-0`
 
   # until `chromaMigration` has copied it (docs/deployment/qdrant-runbook.md).
+
+  # The promotion that brings the release without Chroma MUST set
+
+  # `grid-oib:chromaMigration: "true"` here, after the runbook's "Production
+
+  # prerequisites" (scratch-stack rehearsal at 3 peers, three data nodes, the
+
+  # ESC keys, `pulumi state unprotect` of the chroma StatefulSet, alerting).
+
+  # Without it the deploy removes Chroma and copies nothing.
   # ── Agent (backend) — vertical scaling levers ──
 
   grid-oib:backendRequestsCpu: "1"

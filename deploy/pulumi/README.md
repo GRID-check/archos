@@ -52,8 +52,13 @@ pulumi stack init prod
 #      resolving through ESC yields the same values, so a non-empty diff means
 #      a key did not make it across (restore from git and retry).
 # Edit secrets afterwards via `pulumi env edit grid-oib/dev` (add under
-# values.pulumiConfig as fn::secret). The `pulumi config set --secret` commands
-# below are the file-based alternative (ciphertext in the stack file):
+# values.pulumiConfig as fn::secret), or one key at a time with
+#   esc env set matthiasbigl/grid-oib/<stack> pulumiConfig.grid-oib:<key> "<value>" --secret
+# Staging (dev) and prod keep EVERY secret in ESC: for them, run each line below
+# as that `esc env set` (the stack files' headers list them in that form). A
+# `pulumi config set --secret` writes ciphertext into the committed stack file
+# instead, and stack config wins over ESC, so on those stacks it shadows the
+# ESC value. The lines below are for a scratch stack without ESC:
 pulumi config set --secret grid-oib:kubeconfig           "$(cat ~/.kube/grid-config)"
 pulumi config set --secret grid-oib:pgAppPassword        "$(openssl rand -base64 24)"
 pulumi config set --secret grid-oib:seaweedfsSecretKey   "$(openssl rand -base64 24)"
@@ -186,7 +191,7 @@ All keys live under the `grid-oib:` namespace. **Bold** = required (no default).
 | 🔒 **`dragonflyPassword`** | — | REQUIRED. `requirepass` for the cache. Without it any pod in the namespace can read the conversation bus (every chat frame), the cached user directory, authz decisions and budget state |
 | 🔒 **`rateLimitStorePassword`** | — | REQUIRED while `rateLimitEnabled`. `requirepass` for the counter store; enforced DISTINCT from `dragonflyPassword` |
 | `allowUnauthenticatedRedis` | `false` | Dev-only escape hatch for both passwords above (warns on every deploy) |
-| **Qdrant (vectors, ADR-0111)** | | The only vector store, always deployed; [`qdrant-retrieval-design.md`](../../docs/architecture/qdrant-retrieval-design.md) §9 has the reasoning. Every stack gets the `qdrant` StatefulSet, its Services, PDB, NetworkPolicies (`allow-app-to-qdrant`, `qdrant-peers`, and `allow-collector-to-qdrant-metrics` when the collector is deployed), the `qdrant-snapshots` bucket and `grid-qdrant` S3 identity, the `qdrant-snapshot` CronJob and the `qdrant-alert-rules` ConfigMap (Prometheus rules, rendered against `qdrantMemory`; nothing evaluates them yet), a scrape of every peer's keyless metrics port (6336) by the OTel collector, re-exposed on `otel-collector:8889/metrics`, and `AIQ_QDRANT_URL` + `AIQ_QDRANT_API_KEY` on every backend tier. `chromaEnabled`, `chromaImage`, `chromaStorageSize`, `qdrantEnabled` and `vectorBackend` are retired: a stack that still sets one fails the plan with the keys to `pulumi config rm` |
+| **Qdrant (vectors, ADR-0111)** | | The only vector store, always deployed; [`qdrant-retrieval-design.md`](../../docs/architecture/qdrant-retrieval-design.md) §9 has the reasoning. Every stack gets the `qdrant` StatefulSet, its Services, PDB, NetworkPolicies (`allow-app-to-qdrant`, `qdrant-peers`, and `allow-collector-to-qdrant-metrics` when the collector is deployed), the `qdrant-snapshots` bucket and `grid-qdrant` S3 identity, the `qdrant-snapshot` CronJob and the `qdrant-alert-rules` ConfigMap (Prometheus rules, rendered against `qdrantMemory`; inert: nothing stores the metrics or evaluates the rules on any stack, and connecting the provider's metrics stack or a vmalert to `otel-collector:8889` with these rules is a precondition for prod, see the runbook's "Alerts"), a scrape of every peer's keyless metrics port (6336) by the OTel collector, re-exposed on `otel-collector:8889/metrics`, and `AIQ_QDRANT_URL` + `AIQ_QDRANT_API_KEY` on every backend tier. `chromaEnabled`, `chromaImage`, `chromaStorageSize`, `qdrantEnabled` and `vectorBackend` are retired: a stack that still sets one fails the plan with the keys to `pulumi config rm` |
 | `qdrantImage` | `qdrant/qdrant:v1.19.2` | Pinned. Self-hosted Qdrant upgrades one minor at a time and a snapshot restores only into the same or the next minor; diff `data/qdrant.ts` against `qdrant-helm` on each minor |
 | `qdrantReplicas` | `3` | Peers, one per node (required anti-affinity once `nodeGroupData` is set). `3` keeps Raft quorum through one failure, runs in cluster mode with `ENFORCE_INTERNAL_AUTH`, and hands the backend `AIQ_QDRANT_SHARD_NUMBER=6` / `AIQ_QDRANT_REPLICATION_FACTOR=2` for the collections it creates; `1` runs without cluster mode, for small stacks; `2` is refused. Going from 1 to 3 later turns cluster mode on over existing storage: plan it as a migration, not a knob |
 | `qdrantCpu` / `qdrantMemory` | `4` / `16Gi` | Per peer, request = limit (Guaranteed QoS). OOM during optimisation is the most reported Qdrant failure |

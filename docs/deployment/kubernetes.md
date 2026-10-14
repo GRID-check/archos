@@ -2048,6 +2048,11 @@ peer's series, and the alert rules for them ship in the `qdrant-alert-rules`
 ConfigMap; until one exists, `kubectl port-forward svc/otel-collector 8889`
 reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)). A scraper in
 another namespace needs a NetworkPolicy rule admitting it to port 8889.
+**Qdrant alerting is therefore not active on any stack, staging included, and
+connecting it is a precondition for prod**: point the provider's metrics stack
+(or a `vmalert` beside it) at `otel-collector:8889` and load
+`qdrant.rules.yaml` from `qdrant-alert-rules`. The runbook's "Alerts" says how
+and how to prove it pages someone.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger
