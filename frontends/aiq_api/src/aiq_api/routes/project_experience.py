@@ -23,21 +23,25 @@ logger = logging.getLogger(__name__)
 
 
 def _read_project(request: ProjectExperienceRequest) -> ProjectExperienceResponse:
-    """The blocking half: the retriever's summary model and chunks. Runs on a worker thread and never raises."""
+    """The blocking half: the ingestor's summary model and the chunks. Runs on a worker thread and never raises.
+
+    The summary model belongs to the ingestor (``LlamaIndexIngestor.summary_llm``),
+    not the retriever: asked of the retriever, it was always None and the route
+    answered "no model" in every deployment.
+    """
     try:
         from aiq_agent.knowledge.collection_pages import read_pages
-        from aiq_agent.knowledge.factory import get_active_retriever
+        from aiq_agent.knowledge.factory import get_active_ingestor
         from aiq_agent.knowledge.factory import get_available_documents
 
-        retriever = get_active_retriever()
         return read_project_experience(
             request,
-            llm=getattr(retriever, "summary_llm", None),
+            llm=getattr(get_active_ingestor(), "summary_llm", None),
             list_documents=get_available_documents,
             fetch_pages=read_pages,
         )
     except Exception:  # noqa: BLE001 - the contract answers 200 with error=extraction_failed
-        logger.exception("Project experience: no retriever to read the project with")
+        logger.exception("Project experience: the project could not be read")
         return ProjectExperienceResponse(error="extraction_failed")
 
 
