@@ -122,6 +122,15 @@ function pickKey(dictionary: unknown, i18nKey: string, candidates: readonly stri
   return null
 }
 
+/**
+ * The leaves a row tries, its variant's first: a type worded per variant (why
+ * Piloti could not work a mark, what a proposal changes) keeps them under
+ * `variants.<variant>`, and a variant it has no words for reads the type's own.
+ */
+function withVariant(variant: string | null, leaves: readonly string[]): string[] {
+  return variant ? [...leaves.map((leaf) => `variants.${variant}.${leaf}`), ...leaves] : [...leaves]
+}
+
 export interface InboxItemRowProps {
   item: InboxItemView
   /** Called when the row's link is followed, so the list can mark it read. */
@@ -228,14 +237,18 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     // twenty that had been read claim "1 new message". Three cases, not two.
     item.count > 1 ? ['titleMany', 'title'] : item.count === 1 ? ['titleOne', 'title'] : ['titleNone', 'titleOne', 'title']
   // A row that names a second thing reads the title written for two names,
-  // where its type has one, and the plain title otherwise. A type that is a
-  // sentence about a person (`{actor} hat …`) may say it without one when the
-  // actor is unknown, rather than „Jemand hat …".
-  const titleCandidates = [
+  // where its type has one, and the plain title otherwise; one whose payload
+  // lost the first name (a document that could not be described) reads the
+  // title written without it. A type that is a sentence about a person
+  // (`{actor} hat …`) may say it without one when the actor is unknown, rather
+  // than „Jemand hat …".
+  const titleCandidates = withVariant(item.variant, [
     ...(item.actorName === null ? ['titleNoActor'] : []),
-    ...(item.related !== null && !redacted ? ['titleRelated'] : []),
+    ...(item.related !== null && !redacted
+      ? [...(item.subject === null ? ['titleRelatedNoSubject'] : []), 'titleRelated']
+      : []),
     ...countedTitles,
-  ]
+  ])
   const titleLeaf = pickKey(dictionary, presentation.i18nKey, titleCandidates) ?? 'title'
   const title = t(`inbox.types.${presentation.i18nKey}.${titleLeaf}`, vars)
   // A row whose payload names no subject (an upload to the Büroablage or a
@@ -243,11 +256,15 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
   // type whose excerpt IS the news (a new Fassung's „what changed") writes its
   // body only for the row without one, as `bodyNoExcerpt`: a sentence above
   // the excerpt saying „open it to see what changed" repeated it.
-  const bodyLeaf = pickKey(dictionary, presentation.i18nKey, [
-    ...(item.subject === null ? ['bodyNoSubject'] : []),
-    ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
-    'body',
-  ])
+  const bodyLeaf = pickKey(
+    dictionary,
+    presentation.i18nKey,
+    withVariant(item.variant, [
+      ...(item.subject === null ? ['bodyNoSubject'] : []),
+      ...(item.excerpt === null ? ['bodyNoExcerpt'] : []),
+      'body',
+    ]),
+  )
   /*
     A REDACTED row gets a complete sentence of its own rather than the templated
     "in {subject}".

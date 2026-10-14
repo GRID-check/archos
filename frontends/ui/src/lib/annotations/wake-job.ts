@@ -23,7 +23,11 @@
  * answer is `busy`, and the job waits (`notBefore`) without spending an
  * attempt. `duplicate_turn` is a wake already answered. Every way it ends
  * without a turn is recorded on its `piloti_wakes` row and in the audit trail;
- * a turn that started has its trace in Langfuse.
+ * a turn that started has its trace in Langfuse. A wake that was refused or
+ * gave up is then ended as a turn's end is (`lib/turns/outcome.ts`): a
+ * delegated mark is handed back, and the person who woke Piloti hears why
+ * (`piloti.work_failed`). A suppressed wake tells nobody: the person's own
+ * act, a rule or a cap held it.
  */
 
 import 'server-only'
@@ -33,19 +37,22 @@ import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { insertMessages } from '@/lib/conversations/repository'
 import { getDb } from '@/lib/db'
+import { withTenant } from '@/lib/db/tenant-context'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import type { JobAttempt, JobSliceResult, PilotiWakePayload } from '@/lib/jobs-queue/types'
+import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
+import { onWakeEnded } from './attention'
 import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
 import { delegationEventId } from './wake-ids'
-import { findWake, settleWake } from './wake-repository'
+import { findWake, handBackDelegation, settleWake } from './wake-repository'
 
 /** The hello entries a server must name before a wake is sent: without `if_idle` it would supersede. */
 export const WAKE_REQUIRES = [
@@ -133,6 +140,55 @@ async function recordTrigger(
   ])
 }
 
+/**
+ * A wake the job ended without an answer (`refused`, or `failed` after its
+ * waits or a rejected message): afterwards the same as a turn's end
+ * (`lib/turns/outcome.ts`). A delegation still this wake's is handed back, so
+ * the mark stops reading „Piloti arbeitet daran", and the person who woke
+ * Piloti is told why (`onWakeEnded`). The row is settled and audited already;
+ * nothing here fails the job.
+ */
+async function afterEndWithoutAnswer(input: {
+  organizationId: string
+  payload: PilotiWakePayload
+  doc: Document
+  mark: AnnotationRecord
+  reason: string
+}): Promise<void> {
+  const { organizationId, payload, doc, mark, reason } = input
+  const delegatedAt = mark.delegatedAt ? new Date(mark.delegatedAt) : null
+  const ownsDelegation =
+    payload.trigger === 'assigned' && delegatedAt !== null && delegationEventId(mark.id, delegatedAt) === payload.eventId
+  try {
+    const handedBack =
+      ownsDelegation && delegatedAt
+        ? await withTenant({ organizationId }, () => handBackDelegation(getDb(), organizationId, mark.id, delegatedAt))
+        : false
+    if (handedBack) {
+      await publishToDocumentRoom(doc.id, {
+        kind: 'annotations.changed',
+        annotationIds: [mark.id],
+        change: 'updated',
+        actor: { peerId: null, userId: payload.actor.userId, name: 'Piloti', kind: 'piloti' },
+      }).catch(() => undefined)
+    }
+  } catch (error) {
+    console.error('[wake-job] the mark could not be handed back after the wake ended:', error)
+  }
+  await onWakeEnded({
+    organizationId,
+    documentId: doc.id,
+    annotationId: mark.id,
+    annotationNumber: mark.number,
+    projectId: doc.projectId ?? null,
+    actorUserId: payload.actor.userId,
+    trigger: payload.trigger,
+    outcome: 'failed',
+    reason,
+    markText: mark.body,
+  })
+}
+
 /** The person's document, for writing, today; null when they may no longer write it. */
 async function writableDocument(session: AuthorizedSession, documentId: string): Promise<Document | null> {
   try {
@@ -153,8 +209,9 @@ export async function runPilotiWake(
   // Settled by an earlier run of this job, or gone with its mark.
   if (!wake || wake.status !== 'queued') return done
 
-  const end = async (status: 'suppressed' | 'refused' | 'failed', reason: string): Promise<Result> => {
-    if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
+  const settle = async (status: 'suppressed' | 'refused' | 'failed', reason: string): Promise<boolean> => {
+    const settled = await settleWake(organizationId, payload.wakeId, { status, reason })
+    if (settled) {
       auditSuppressedWake({
         organizationId,
         actor: payload.actor,
@@ -166,15 +223,12 @@ export async function runPilotiWake(
         stage: 'claim',
       })
     }
-    return done
+    return settled
   }
-  const wait = (reason: string): Promise<Result> | Result => {
-    if (payload.waits >= MAX_WAKE_WAITS) return end('failed', `gave up waiting: ${reason}`)
-    return {
-      done: false,
-      payload: { ...payload, waits: payload.waits + 1 },
-      notBefore: new Date(Date.now() + waitAfter(payload.waits)),
-    }
+  // Nothing to tell: the person's own act, a rule or a cap held it.
+  const end = async (status: 'suppressed', reason: string): Promise<Result> => {
+    await settle(status, reason)
+    return done
   }
 
   const session = await resolvePinnedRequesterSession({
@@ -188,6 +242,19 @@ export async function runPilotiWake(
   if (!doc) return end('suppressed', 'the person may no longer write the document')
   const mark = await findDocumentAnnotation(organizationId, doc.id, payload.annotationId)
   if (!mark) return end('suppressed', 'the mark is gone')
+  // Piloti was asked and did not answer: the person hears why, as from a turn's end.
+  const fail = async (status: 'refused' | 'failed', reason: string): Promise<Result> => {
+    if (await settle(status, reason)) await afterEndWithoutAnswer({ organizationId, payload, doc, mark, reason })
+    return done
+  }
+  const wait = (reason: string): Promise<Result> | Result => {
+    if (payload.waits >= MAX_WAKE_WAITS) return fail('failed', `gave up waiting: ${reason}`)
+    return {
+      done: false,
+      payload: { ...payload, waits: payload.waits + 1 },
+      notBefore: new Date(Date.now() + waitAfter(payload.waits)),
+    }
+  }
   // A delegation taken back (or re-delegated) since this wake was queued must
   // not still run: the take-back suppresses the queued wake after its commit,
   // and a crash in between would otherwise leave it to run anyway.
@@ -222,7 +289,7 @@ export async function runPilotiWake(
   try {
     context = await resolveTurnContext(session, { projectId: doc.projectId ?? undefined, conversationId })
   } catch (error) {
-    if (error instanceof TurnBudgetExhaustedError) return end('refused', `budget: ${error.message}`)
+    if (error instanceof TurnBudgetExhaustedError) return fail('refused', `budget: ${error.message}`)
     if (isAuthzError(error)) return end('suppressed', 'the person may no longer chat here')
     throw error
   }
@@ -249,13 +316,13 @@ export async function runPilotiWake(
     case 'unavailable':
       return wait(outcome.reason)
     case 'refused':
-      return end('refused', outcome.reason)
+      return fail('refused', outcome.reason)
     case 'rejected':
       // The session or the envelope was wrong: a fresh one may not be, so the
       // queue retries it, and the last attempt records why it gave up.
       if ((outcome.code === 'auth_expired' || outcome.code === 'conversation_mismatch') && !attempt.last) {
         throw new Error(`the chat socket refused the wake: ${outcome.code}`)
       }
-      return end('failed', `rejected: ${outcome.code}${outcome.message ? ` (${outcome.message})` : ''}`)
+      return fail('failed', `rejected: ${outcome.code}${outcome.message ? ` (${outcome.message})` : ''}`)
   }
 }

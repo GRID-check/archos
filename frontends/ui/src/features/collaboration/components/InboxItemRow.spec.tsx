@@ -32,6 +32,7 @@ const base: InboxItemView = {
   subject: 'Atrium – Rauchabschnitte',
   related: null,
   excerpt: 'Ist die Annahme richtig?',
+  variant: null,
   // Deliberately DIFFERENT moments: the row is timed by `updatedAt`, and while
   // the two matched here every assertion about which one the <time> carries was
   // true of both.
@@ -206,7 +207,7 @@ describe('InboxItemRow — inert items are never links (IB-13)', () => {
     // needs a real title, and the placeholder inside it produced nonsense in the
     // primary product language ("… in Nicht mehr verfügbar").
     expect(
-      screen.getByText('This conversation is no longer available to you.'),
+      screen.getByText('This is no longer available to you.'),
     ).toBeInTheDocument()
     expect(screen.queryByText('in Untitled conversation')).not.toBeInTheDocument()
   })
@@ -762,5 +763,111 @@ describe('InboxItemRow — a new Fassung (document.new_fassung)', () => {
     render(<InboxItemRow item={newFassung({ href: null, subject: null, related: null, excerpt: null })} />)
     expect(screen.queryByText(/Grundriss EG/)).not.toBeInTheDocument()
     expect(screen.queryByRole('link')).not.toBeInTheDocument()
+  })
+})
+
+describe('InboxItemRow — what Piloti did, in the reader’s words', () => {
+  const onMark = (overrides: Partial<InboxItemView> = {}) =>
+    item({
+      type: 'piloti.work_done',
+      state: 'unread',
+      actionable: false,
+      resourceType: 'document',
+      resourceId: 'doc-eg',
+      anchorId: 'mark-4',
+      actorName: null,
+      actorUserId: null,
+      href: '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4',
+      subject: 'Grundriss EG',
+      related: '4',
+      excerpt: 'Türbreite prüfen',
+      variant: null,
+      ...overrides,
+    })
+
+  const german = (row: InboxItemView) =>
+    renderPlain(
+      <I18nProvider initialLocale="de" fixedLocale>
+        <InboxItemRow item={row} />
+      </I18nProvider>,
+    )
+
+  test('a finished mark names the mark and the document, says it was for the reader, and what to do', () => {
+    german(onMark())
+    expect(screen.getByText('Piloti hat Anmerkung 4 in „Grundriss EG“ für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.getByText('Lesen Sie die Antwort im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Türbreite prüfen')
+    expect(screen.getByRole('link')).toHaveAttribute('href', '/app/projects/p1/files?doc=doc-eg&review=1&mark=mark-4')
+  })
+
+  test('without a document name it still names the mark, never „Chat ohne Titel“', () => {
+    german(onMark({ subject: null }))
+    expect(screen.getByText('Piloti hat Anmerkung 4 für Sie bearbeitet')).toBeInTheDocument()
+    expect(screen.queryByText(/Chat ohne Titel/)).not.toBeInTheDocument()
+  })
+
+  test.each([
+    ['budget', /Das Nutzungsbudget ist aufgebraucht\..*Organisation → Nutzung & Budgets/],
+    ['busy', /Piloti kam nicht rechtzeitig dazu.*später noch einmal/],
+    ['access', /Piloti konnte sich nicht in Ihrem Namen anmelden\./],
+    ['error', /Die Bearbeitung brach ab, bevor eine Antwort da war\./],
+  ] as const)('a failure says why (%s) and what the reader can do', (variant, body) => {
+    german(onMark({ type: 'piloti.work_failed', variant }))
+    expect(screen.getByText('Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten')).toBeInTheDocument()
+    expect(screen.getByText(body)).toBeInTheDocument()
+  })
+
+  test('a failure stored before the reason was kept reads the general sentence', () => {
+    german(onMark({ type: 'piloti.work_failed', variant: null }))
+    expect(
+      screen.getByText('Öffnen Sie die Anmerkung: Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst.'),
+    ).toBeInTheDocument()
+  })
+
+  test('a variant the build has no words for reads the type’s general wording', () => {
+    german(onMark({ type: 'piloti.work_failed', variant: 'quota_from_the_future' }))
+    expect(screen.getByText('Piloti konnte Anmerkung 4 in „Grundriss EG“ nicht bearbeiten')).toBeInTheDocument()
+    expect(screen.getByText(/Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst/)).toBeInTheDocument()
+  })
+
+  test('a Rückfrage asks the reader, with the question below', () => {
+    german(onMark({ type: 'piloti.asks_you', actionable: true, excerpt: 'Ist die Brüstungshöhe hier 1,00 m?' }))
+    expect(screen.getByText('Piloti hat eine Rückfrage an Sie zu Anmerkung 4 in „Grundriss EG“')).toBeInTheDocument()
+    expect(screen.getByText('Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.')).toBeInTheDocument()
+    expect(screen.getByTestId('inbox-item-excerpt')).toHaveTextContent('Ist die Brüstungshöhe hier 1,00 m?')
+  })
+
+  test('a proposal says what it changes, and that nothing changes until the reader decides', () => {
+    german(
+      onMark({
+        type: 'piloti.proposal_waiting',
+        actionable: true,
+        resourceType: 'conversation',
+        resourceId: 'c1',
+        anchorId: 'prop-1',
+        href: '/app/projects/p1/chat?session=c1',
+        subject: null,
+        related: null,
+        excerpt: 'Grundriss.pdf, Schnitt.pdf +1',
+        variant: 'rename',
+      }),
+    )
+    expect(screen.getByText('Piloti schlägt eine Umbenennung vor')).toBeInTheDocument()
+    expect(
+      screen.getByText('Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.'),
+    ).toBeInTheDocument()
+  })
+
+  test('mirrors the meaning in English', () => {
+    render(<InboxItemRow item={onMark({ type: 'piloti.work_failed', variant: 'budget' })} />)
+    expect(screen.getByText('Piloti could not work on annotation 4 in “Grundriss EG”')).toBeInTheDocument()
+    expect(screen.getByText(/The usage budget is used up\./)).toBeInTheDocument()
+  })
+
+  test('a redacted row names neither the mark nor why', () => {
+    german(onMark({ type: 'piloti.work_failed', href: null, subject: null, related: null, excerpt: null, variant: null }))
+    expect(screen.getByText('Piloti konnte eine Anmerkung nicht bearbeiten')).toBeInTheDocument()
+    // Not „Dieser Chat …": the row points at a mark in a document.
+    expect(screen.getByText('Das ist für Sie nicht mehr verfügbar.')).toBeInTheDocument()
   })
 })

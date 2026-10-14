@@ -12,6 +12,7 @@ import 'server-only'
  * | … ended `failed` | `piloti.work_failed` | who delegated it |
  * | A woken turn on a mention or an answer ended `answered` | `piloti.work_done` | who mentioned or answered |
  * | … ended `failed` | `piloti.work_failed` | who mentioned or answered |
+ * | The wake job was refused, or gave up, before a turn answered | `piloti.work_failed` | whoever woke Piloti |
  * | Any woken turn ended `stopped` | none: the person stopped it | |
  * | Piloti set a Rückfrage, or replied on its own open Rückfrage | `piloti.asks_you` | the mark's Zuständige, else the person its turn acted for |
  * | Piloti set another mark, or replied on another | none: ordinary work | |
@@ -23,11 +24,16 @@ import 'server-only'
  * They point at the document, anchored on the mark, and `lib/inbox/targets`
  * builds the link that opens the Prüfansicht at it. Access is the document's,
  * re-derived when the row is read. They carry the document's name and the
- * mark's number, and for a Rückfrage a short excerpt of the question.
+ * mark's number, so the row says which mark in which document; as the excerpt,
+ * a Rückfrage carries Piloti's question and a finished or failed wake what the
+ * mark says. A failed wake carries the class of its reason as the row's
+ * `variant` (`./wake-end-reason.ts`), so the notice says why in words the
+ * person can act on, never the stored reason itself.
  */
 
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { isLive } from './types'
+import { wakeEndReasonKind } from './wake-end-reason'
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
@@ -64,12 +70,13 @@ async function documentName(ref: MarkRef): Promise<string | null> {
   }
 }
 
-/** One item about a mark, addressed to one person. */
+/** One item about a mark, addressed to one person. `variant` picks the row's wording, where its type has more than one. */
 async function emitAboutMark(
   type: InboxItemType,
   ref: MarkRef,
   recipientUserId: string,
-  excerpt: string | null
+  excerpt: string | null,
+  variant: string | null = null
 ): Promise<void> {
   const subject = await documentName(ref)
   await emitInboxItems([
@@ -86,31 +93,41 @@ async function emitAboutMark(
         ...(subject ? { subject } : {}),
         related: String(ref.annotationNumber),
         ...(excerpt ? { excerpt } : {}),
+        ...(variant ? { variant } : {}),
       },
     },
   ])
 }
 
 /**
- * A woken turn on a mark ended (`lib/turns/outcome.ts`). `actorUserId` is the
- * person whose act woke Piloti: who mentioned it, answered it, or delegated
- * the mark. Called once per wake, with its final word.
+ * A wake on a mark ended: its turn's outcome (`lib/turns/outcome.ts`), or the
+ * wake job giving up or being refused before a turn answered
+ * (`./wake-job.ts`). `actorUserId` is the person whose act woke Piloti: who
+ * mentioned it, answered it, or delegated the mark. Called once per wake, with
+ * its final word. `reason` is the wake's stored reason for a failure;
+ * `markText` what the mark says, quoted so the person knows which one it was.
  */
 export async function onWakeEnded(
   input: MarkRef & {
     actorUserId: string
     trigger: 'thread_mention' | 'thread_reply' | 'assigned'
     outcome: 'answered' | 'stopped' | 'failed'
+    reason?: string | null
+    markText?: string | null
   }
 ): Promise<void> {
   // A person stopped it, or took the mark back: they know.
   if (input.outcome === 'stopped') return
   // A mention or an answer that got nothing back would otherwise vanish: the
   // person asked Piloti something and waits in a thread that never says it
-  // failed. The copy (`pilotiWorkFailed`) is the same for all three triggers.
+  // failed. The copy (`pilotiWorkFailed`) is the same for all three triggers;
+  // what differs is why, and that is the variant.
   const type = input.outcome === 'answered' ? 'piloti.work_done' : 'piloti.work_failed'
+  // Always named on a failure: rows fold per mark and their payloads merge, so
+  // an absent variant would keep an earlier failure's cause.
+  const variant = input.outcome === 'failed' ? (wakeEndReasonKind('failed', input.reason ?? null) ?? 'error') : null
   await bestEffortInbox(`${type} for mark ${input.annotationId}`, input.organizationId, () =>
-    emitAboutMark(type, input, input.actorUserId, null)
+    emitAboutMark(type, input, input.actorUserId, excerptOf(input.markText), variant)
   )
 }
 

@@ -80,7 +80,12 @@ const request = (wake: PilotiWakeRow, over: Partial<TurnOutcomeRequest> = {}): T
 
 /** The mark as the service reads it: delegated at that moment, or not delegated. */
 function markIs(delegatedAt: Date | null) {
-  vi.mocked(findDocumentAnnotation).mockResolvedValue({ id: MARK_ID, number: 4, delegatedAt } as Partial<AnnotationRecord> as AnnotationRecord)
+  vi.mocked(findDocumentAnnotation).mockResolvedValue({
+    id: MARK_ID,
+    number: 4,
+    body: 'Türbreite prüfen',
+    delegatedAt,
+  } as Partial<AnnotationRecord> as AnnotationRecord)
 }
 
 /** `endWake` as the database would answer it: the row as ended, or null when it was not `started`. */
@@ -240,7 +245,15 @@ describe('recordTurnOutcome', () => {
       actorUserId: USER,
       trigger: 'thread_mention',
       outcome: 'answered',
+      reason: null,
+      markText: 'Türbreite prüfen',
     })
+  })
+
+  it('tells attention why a failed turn failed, so the notice can say it', async () => {
+    wakeEndsAs(MENTION)
+    await recordTurnOutcome(request(MENTION, { outcome: 'failed', reason: 'token_expired' }))
+    expect(onWakeEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed', reason: 'token_expired' }))
   })
 
   it('still settles when attention throws', async () => {

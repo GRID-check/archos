@@ -288,7 +288,7 @@ enum, not a coerced boolean (`z.coerce.boolean()` reads `"false"` as `true`).
 **Access is re-checked at read time** (spec IB-13). An item never grants access.
 For every distinct target on the page — resolved **once per resource**, not once
 per item — access is re-derived; anything unreachable, or already marked inert,
-comes back with `href: null`, `subject: null`, `related: null` and `excerpt: null`. Such rows are **redacted, not
+comes back with `href: null`, `subject: null`, `related: null`, `excerpt: null` and `variant: null`. Such rows are **redacted, not
 dropped**: a redacted row explains itself, a vanished one looks like a bug.
 A run's row (`job.completed`, `job.failed`, `job.waiting`) targets its project,
 and is also judged by the run it names: a revision task whose document now sits
@@ -299,7 +299,9 @@ and the run view withhold it.
 `InboxItemView` carries `type`, `state` (`unread`/`read`/`resolved`/`archived`/
 `inert`), `actionable`, `count`, `actorName`, `actorUserId`, `subject`,
 `related` (the second name a type shows, e.g. the newer document of a
-`document.new_fassung`), `excerpt`, `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
+`document.new_fassung`), `excerpt`, `variant` (which wording of its type the
+row reads, a key segment: why Piloti could not work a mark, what a proposal
+changes), `href`, `resourceType`/`resourceId`/`anchorId`, and timestamps.
 Rendering is driven entirely by `INBOX_TYPE_PRESENTATION` in
 `lib/inbox/types.ts`, so a new item type needs a registry entry and its
 translations — no new component (spec IB-6).

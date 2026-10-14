@@ -22,7 +22,16 @@ vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
 vi.mock('./document-thread', () => ({ ensureDocumentThread: vi.fn() }))
 vi.mock('./repository', () => ({ findDocumentAnnotation: vi.fn() }))
-vi.mock('./wake-repository', () => ({ findWake: vi.fn(), settleWake: vi.fn(), countWakes: vi.fn(), insertWake: vi.fn() }))
+vi.mock('./wake-repository', () => ({
+  findWake: vi.fn(),
+  settleWake: vi.fn(),
+  countWakes: vi.fn(),
+  insertWake: vi.fn(),
+  handBackDelegation: vi.fn(),
+}))
+vi.mock('./attention', () => ({ onWakeEnded: vi.fn() }))
+vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn() }))
+vi.mock('@/lib/db/tenant-context', () => ({ withTenant: vi.fn((_scope: unknown, fn: () => unknown) => fn()) }))
 vi.mock('@/lib/turns/headless-turn', () => ({ runHeadlessTurn: vi.fn(), chatSocketUrl: vi.fn(() => 'ws://aiq-agent:8000/websocket') }))
 vi.mock('@/lib/turns/turn-context', async () => {
   const actual = await vi.importActual<typeof import('@/lib/turns/turn-context')>('@/lib/turns/turn-context')
@@ -41,10 +50,12 @@ import { verifyGridRequestContextEnvelope } from '@/lib/request-context'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { runHeadlessTurn, type HeadlessTurnRequest } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
+import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
+import { onWakeEnded } from './attention'
 import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { MAX_WAKE_WAITS, runPilotiWake, waitAfter, WAKE_REQUIRES } from './wake-job'
-import { countWakes, findWake, settleWake } from './wake-repository'
+import { countWakes, findWake, handBackDelegation, settleWake } from './wake-repository'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from './wake-ids'
 
 const SECRET = 'wake-secret'
@@ -121,6 +132,9 @@ beforeEach(() => {
     memoryReflectionEnabled: false,
   })
   vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'started' })
+  vi.mocked(handBackDelegation).mockResolvedValue(true)
+  vi.mocked(publishToDocumentRoom).mockResolvedValue(undefined)
+  vi.mocked(onWakeEnded).mockResolvedValue(undefined)
 })
 
 afterEach(() => {
@@ -311,11 +325,93 @@ describe('asked again when the job runs', () => {
     )
   })
 
+  it('a suppressed wake tells nobody: the person’s own act, a rule or a cap held it', async () => {
+    vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    expect(onWakeEnded).not.toHaveBeenCalled()
+    expect(handBackDelegation).not.toHaveBeenCalled()
+  })
+
   it('a wake already settled by an earlier run does nothing', async () => {
     vi.mocked(findWake).mockResolvedValue({ ...WAKE, status: 'started' })
 
     await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
     expect(runHeadlessTurn).not.toHaveBeenCalled()
+  })
+})
+
+describe('a wake that ends without an answer', () => {
+  const DELEGATED_AT = new Date('2026-10-13T09:59:00Z')
+  const DELEGATION = { ...PAYLOAD, trigger: 'assigned' as const, eventId: delegationEventId(MARK_ID, DELEGATED_AT) }
+
+  it('tells the person who woke Piloti why, with the mark it was about', async () => {
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(onWakeEnded).toHaveBeenCalledTimes(1)
+    expect(onWakeEnded).toHaveBeenCalledWith({
+      organizationId: 'org_1',
+      documentId: DOC_ID,
+      annotationId: MARK_ID,
+      annotationNumber: 4,
+      projectId: 'proj_1',
+      actorUserId: 'user_anna',
+      trigger: 'thread_mention',
+      outcome: 'failed',
+      reason: expect.stringMatching(/^budget: /),
+      markText: 'Türbreite prüfen',
+    })
+  })
+
+  it.each([
+    ['a refusal', { kind: 'refused', reason: 'The assistant is busy right now. Please send your message again in a moment.' }, 0],
+    ['a give-up', { kind: 'busy' }, MAX_WAKE_WAITS],
+  ] as const)('tells after %s too', async (_case, outcome, waits) => {
+    vi.mocked(runHeadlessTurn).mockResolvedValue(outcome)
+
+    await runPilotiWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
+
+    expect(onWakeEnded).toHaveBeenCalledWith(expect.objectContaining({ outcome: 'failed', reason: expect.any(String) }))
+  })
+
+  it('hands a delegated mark back, so it stops reading „Piloti arbeitet daran“', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+
+    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+
+    expect(handBackDelegation).toHaveBeenCalledWith(expect.anything(), 'org_1', MARK_ID, DELEGATED_AT)
+    expect(publishToDocumentRoom).toHaveBeenCalledWith(
+      DOC_ID,
+      expect.objectContaining({ kind: 'annotations.changed', annotationIds: [MARK_ID] })
+    )
+    expect(onWakeEnded).toHaveBeenCalledWith(expect.objectContaining({ trigger: 'assigned', outcome: 'failed' }))
+  })
+
+  it('hands nothing back for a mention, and still tells when the hand-back fails', async () => {
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    expect(handBackDelegation).not.toHaveBeenCalled()
+
+    vi.mocked(onWakeEnded).mockClear()
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
+    vi.mocked(handBackDelegation).mockRejectedValue(new Error('database down'))
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await expect(runPilotiWake('org_1', DELEGATION, NOT_LAST)).resolves.toMatchObject({ done: true })
+    expect(onWakeEnded).toHaveBeenCalledTimes(1)
+    expect(log).toHaveBeenCalled()
+    log.mockRestore()
+  })
+
+  it('tells nobody when another end settled the wake first', async () => {
+    vi.mocked(settleWake).mockResolvedValue(false)
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(onWakeEnded).not.toHaveBeenCalled()
   })
 })
