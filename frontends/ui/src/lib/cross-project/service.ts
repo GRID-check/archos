@@ -40,7 +40,8 @@
  * ## Cost
  *
  * Qdrant is the one store (ADR-0111), with one shared index (ADR-0112), so a
- * page of up to {@link CROSS_PROJECT_PAGE_PROJECTS} projects is ONE search:
+ * page of up to {@link CROSS_PROJECT_PAGE_PROJECTS} projects, and at most
+ * {@link BACKEND_SEARCH_MAX_COLLECTIONS} collections, is ONE search:
  * every collection the reader is cleared for, ranked together, so hits from
  * different projects are ordered by one ranking instead of by scores from
  * separate indexes. The tag filters run inside that search, and the current
@@ -59,9 +60,11 @@ import { clearanceOf, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { recordCrossProjectHandOut, type HandOutParty } from '@/lib/conversations/cross-project-use'
 import type { Project } from '@/lib/db/schema'
 import {
+  BACKEND_SEARCH_MAX_COLLECTIONS,
   fetchGroupedSemanticHits,
   hydrateProjectHits,
   planProjectSearch,
+  projectsWithinCollectionCap,
   type GroupedSearchFilters,
   type ListedDocument,
   type ProjectSearchPlan,
@@ -412,12 +415,24 @@ async function foundHitsOf(
   })
 }
 
+/** What one page's search found, and how many of the page's projects it covered. */
+interface SearchedPage {
+  found: FoundHit[]
+  /** The page's leading projects searched; the rest wait for the next page (the backend's collection cap). */
+  searched: number
+}
+
 /**
  * A page of projects in ONE search (ADR-0112): each project is authorized and
  * its cleared collections named exactly as its own search names them
  * (`planProjectSearch`), then every collection is ranked together and each
  * project's hits are joined to its screened rows. A shared chat does not even
  * search a restricted folder, rather than searching and discarding it.
+ *
+ * One search names at most {@link BACKEND_SEARCH_MAX_COLLECTIONS}
+ * collections, and each project brings its own plus every restricted folder
+ * the reader is cleared for. The page stops at the project that would pass
+ * the cap; it and the ones after it are searched on the next page.
  *
  * A project whose access went between the listing and the search yields
  * nothing. A page not one project of which could be planned (a database
@@ -430,20 +445,21 @@ async function searchPage(
   request: CrossProjectSearchRequest,
   reach: Pick<AudienceReach, 'restrictedFolders'>,
   current: Pick<Project, 'profile'> | null
-): Promise<FoundHit[]> {
+): Promise<SearchedPage> {
   const planned = await mapBounded(page, SEARCH_CONCURRENCY, (project) =>
     planProjectSearch(session, project.id).catch(() => null)
   )
-  const plans = planned.filter((plan): plan is ProjectSearchPlan => plan !== null)
-  if (page.length > 0 && plans.length === 0) {
+  if (page.length > 0 && planned.every((plan) => plan === null)) {
     throw new UpstreamError('No project of the page could be authorized for the search')
   }
   const collectionsOf = (plan: ProjectSearchPlan) =>
     reach.restrictedFolders ? plan.collections : [plan.project.collectionName]
+  const searched = projectsWithinCollectionCap(planned.map((plan) => (plan ? collectionsOf(plan).length : 0)))
+  const plans = planned.slice(0, searched).filter((plan): plan is ProjectSearchPlan => plan !== null)
   // The tag filters run inside the search, so a project is asked for exactly
   // `limit` documents; `matchesTags` below stays as a backstop.
   const hits = await fetchGroupedSemanticHits(
-    plans.flatMap(collectionsOf),
+    plans.flatMap(collectionsOf).slice(0, BACKEND_SEARCH_MAX_COLLECTIONS),
     request.query,
     request.limit,
     CROSS_PROJECT_SNIPPET_CHARS,
@@ -453,13 +469,19 @@ async function searchPage(
     const own = new Set(collectionsOf(plan))
     const projectHits = hits.filter((hit) => own.has(hit.collection))
     if (projectHits.length === 0) return []
+    // A join that fails is a failed search, never a project with nothing found.
     const found = await hydrateProjectHits(session, plan, projectHits, {
       snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
       forModel: true,
-    }).catch(() => [])
+    }).catch((error: unknown) => {
+      throw new UpstreamError(
+        'The hits could not be joined to their documents',
+        error instanceof Error ? error.message : undefined
+      )
+    })
     return foundHitsOf(plan.project, found, request, reach, async () => plan.access)
   })
-  return perProject.flat()
+  return { found: perProject.flat(), searched }
 }
 
 /**
@@ -557,8 +579,10 @@ export async function searchAcrossProjects(
     request,
     current ?? (caller.currentProjectId ? { id: caller.currentProjectId, profile: null } : null)
   )
-  const page = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
-  const documents = await searchPage(caller.session, page, request, reach, current)
+  const candidates = scope.slice(request.offset, request.offset + CROSS_PROJECT_PAGE_PROJECTS)
+  const { found: documents, searched } = await searchPage(caller.session, candidates, request, reach, current)
+  // What the collection cap deferred is the next page's, decisions and permits included.
+  const page = candidates.slice(0, searched)
   const memoryScopes = decisionScopes(caller.session, page, reach)
   // Decisions and permit records are judged over the same scopes: the same
   // projects, the same folder clearance, so the two cannot disagree on reach.

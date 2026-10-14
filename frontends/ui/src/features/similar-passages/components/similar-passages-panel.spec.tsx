@@ -37,7 +37,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: 'Brandschutzkonzept',
           contentType: 'application/pdf',
           stand: { kind: 'index', text: 'Index C' },
-          superseded: false,
           passages: [
             { page: 3, snippet: 'Außentreppe in Stahlbeton', score: 0.91 },
             { page: 5, snippet: 'Laufbreite 1,20 m', score: 0.84 },
@@ -55,7 +54,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: null,
           contentType: 'application/pdf',
           stand: { kind: 'date', text: '01.02.2025' },
-          superseded: false,
           passages: [{ page: null, snippet: 'Treppe außen', score: 0.8 }],
         },
       ],
@@ -70,7 +68,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: null,
           contentType: 'application/pdf',
           stand: null,
-          superseded: true,
           passages: [{ page: 2, snippet: 'Außentreppe gefordert', score: 0.78 }],
         },
       ],
@@ -123,7 +120,7 @@ describe('SimilarPassagesPanel', () => {
     expect(within(groups[1]!).getByText('closed')).toBeTruthy()
     expect(screen.getAllByText('Brandschutzkonzept · Index C')).toHaveLength(2)
     expect(screen.getByText('Musterdetail.pdf · Dated 01.02.2025')).toBeTruthy()
-    expect(screen.getByText('Protokoll_v1.pdf · Older Fassung')).toBeTruthy()
+    expect(screen.getByText('Protokoll_v1.pdf')).toBeTruthy()
     expect(screen.getByText('p. 3')).toBeTruthy()
     expect(screen.getByText('„Außentreppe in Stahlbeton“')).toBeTruthy()
     // The order is the relevance: no percentage reaches the reader.

@@ -233,6 +233,32 @@ def test_refresh_facts_copies_a_persons_edit_onto_the_points(retriever, monkeypa
     assert store.count("proj_a", {"doc_class": "Baubescheid"}) == 1
 
 
+def test_copy_facts_repairs_a_copy_refresh_facts_swallowed_and_counts_the_files(retriever, monkeypatch):
+    """The weekly reconcile's document facts half: what a failed copy left stale is copied again.
+
+    ``refresh_facts`` never raises after a person's edit; ``copy_facts``, which the
+    reconcile calls, raises so the sweep can count the failure.
+    """
+    _ingest(retriever, "proj_a", [_row("eins", "a.pdf"), _row("zwei", "b.pdf")])
+    facts = {"a.pdf": {"tags": ["bescheid"], "superseded": True}, "b.pdf": {"tags": ["plan"]}}
+
+    def metadata_store_down(scope, names=None):
+        raise RuntimeError("metadata store down")
+
+    monkeypatch.setattr(writes, "facts_by_file", metadata_store_down)
+    writes.refresh_facts("proj_a")  # the edit's copy: logged, never raised
+    with pytest.raises(RuntimeError):
+        writes.copy_facts("proj_a")
+    store = store_module.get_store()
+    assert store.count("proj_a", {"tags": "bescheid"}) == 0
+
+    monkeypatch.setattr(writes, "facts_by_file", lambda scope, names=None: {n: facts[n] for n in (names or facts)})
+    assert writes.copy_facts("proj_a") == 2
+    assert store.count("proj_a", {"tags": "bescheid"}) == 1
+    assert store.count("proj_a", {"superseded": True}) == 1
+    assert store.count("proj_a", {"tags": "plan"}) == 1
+
+
 def test_an_ingest_job_stamps_the_projects_facts_on_its_chunks(retriever):
     """A new document is boosted and filtered like its siblings from its first search."""
     facts = {"bundesland": "wien", "gebaeudeklasse": [4], "bauweise": ["holzbau"]}

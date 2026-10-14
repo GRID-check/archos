@@ -1,5 +1,6 @@
 """Request and response models for knowledge API endpoints."""
 
+import logging
 from typing import Annotated
 from typing import Any
 from typing import Literal
@@ -8,7 +9,12 @@ from pydantic import BaseModel
 from pydantic import ConfigDict
 from pydantic import Field
 from pydantic import StringConstraints
+from pydantic import ValidationError
+from pydantic import ValidationInfo
+from pydantic import ValidatorFunctionWrapHandler
 from pydantic import field_validator
+
+logger = logging.getLogger(__name__)
 
 #: Bounds of an office's screening terms. The ingest job applies the same ones
 #: (``aiq_agent.common.content_screen``) to whatever reaches it.
@@ -139,6 +145,33 @@ class IngestRequest(BaseModel):
         max_length=120,
         description="The member who put the document there, so its ingestion spend is booked to them.",
     )
+
+    @field_validator("project_facts", mode="wrap")
+    @classmethod
+    def _drop_unreadable_project_facts(
+        cls, value: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo
+    ) -> ProjectFactsUpdate | None:
+        """Project facts this tier cannot read are dropped with a warning, never a 422 on the upload.
+
+        They are a copy stamped onto the chunks; the upload is a person's file.
+        Refusing the request over one malformed fact on the project (a class
+        outside 1..5, an overlong token) would fail every upload into it until
+        someone fixed the profile. Without them the job writes chunks that carry
+        no facts, which the next ``PUT /v1/collections/{c}/project-facts`` and
+        the weekly sweep fill. ``ProjectFacts`` itself stays strict: that PUT
+        and the boosted search still refuse a malformed body, so a BFF that
+        sends one is seen there.
+        """
+        try:
+            return handler(value)
+        except ValidationError as error:
+            logger.warning(
+                "Ingest into %s: dropping project facts that do not validate (%s)",
+                info.data.get("collection"),
+                "; ".join(".".join(str(part) for part in issue["loc"]) or "facts" for issue in error.errors()),
+            )
+            return None
+
     priority: Literal["interactive", "bulk"] = Field(
         "interactive",
         description=(

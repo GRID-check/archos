@@ -123,7 +123,6 @@ export const knowledge: typeof en.knowledge = {
     groupArchiv: 'Büroablage',
     groupClosed: 'abgeschlossen',
     standDate: 'Stand {date}',
-    superseded: 'Ältere Fassung',
     page: 'S. {page}',
     open: 'Öffnen',
     openPassage: '{document}, Seite {page} öffnen',

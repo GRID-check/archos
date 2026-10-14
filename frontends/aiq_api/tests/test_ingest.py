@@ -327,6 +327,40 @@ async def test_ingest_carries_the_projects_facts_for_the_chunks(app, mock_ingest
     assert "project_facts" not in mock_ingestor.submit_job.call_args[1]["config"]
 
 
+@pytest.mark.parametrize(
+    "facts",
+    [
+        {"gebaeudeklasse": [8]},
+        {"gebaeudeklasse": [0]},
+        {"gebaeudeklasse": [6]},
+        {"bauweise": ["x" * 81]},
+        {"nutzungen": [f"n{n}" for n in range(41)]},
+        {"unknown_fact": "wien"},
+    ],
+)
+@pytest.mark.asyncio
+async def test_ingest_drops_project_facts_it_cannot_read_and_keeps_the_upload(
+    app, mock_ingestor, no_network, caplog, facts
+):
+    """A malformed fact on the project must not fail every upload into it: the facts are a copy, the upload is not.
+
+    The job runs without them (its chunks carry none until the next facts push or the weekly
+    sweep), and the drop is a warning naming the collection, never a 422.
+    """
+    body = {
+        "file_ref": "http://seaweedfs.test/bucket/plan.pdf",
+        "collection": "proj_1",
+        "project_facts": {"facts": {"bundesland": "wien", **facts}, "status": "active"},
+    }
+    with caplog.at_level(logging.WARNING, logger="aiq_api.models.requests"):
+        sent = await _post_json(app, body)
+
+    assert sent.status_code == 202
+    config = mock_ingestor.submit_job.call_args[1]["config"]
+    assert "project_facts" not in config and "project_status" not in config
+    assert any("project facts" in record.getMessage() for record in caplog.records)
+
+
 @pytest.mark.asyncio
 async def test_ingest_priority_defaults_to_interactive_and_accepts_bulk(app, mock_ingestor, no_network):
     """A person's upload is interactive; a reindex or rescan states `bulk`. The job config carries it."""

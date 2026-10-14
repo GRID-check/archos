@@ -120,7 +120,6 @@ export const knowledge = {
     groupArchiv: 'Büroablage',
     groupClosed: 'closed',
     standDate: 'Dated {date}',
-    superseded: 'Older Fassung',
     page: 'p. {page}',
     open: 'Open',
     openPassage: 'Open {document}, page {page}',

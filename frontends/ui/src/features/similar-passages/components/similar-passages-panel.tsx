@@ -159,9 +159,7 @@ const Results: FC<{
                 : null
               return document.passages.map((passage, index) => {
                 const key = passageKey(document, index)
-                const where = [nameOf(document), fassung, document.superseded ? t('similar.superseded') : null].filter(
-                  Boolean
-                )
+                const where = [nameOf(document), fassung].filter(Boolean)
                 return (
                   <SimilarPassageButton
                     key={key}

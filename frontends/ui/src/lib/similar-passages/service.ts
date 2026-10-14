@@ -33,17 +33,22 @@
  * ## Cost
  *
  * One backend call: a nearest-neighbour query over at most
- * {@link SIMILAR_MAX_PROJECTS} projects' collections and the Büroablage. A
- * cited passage is matched to its stored chunk there and costs no embedding.
+ * {@link SIMILAR_MAX_PROJECTS} projects' collections and the Büroablage, and
+ * never more than the backend's {@link BACKEND_SEARCH_MAX_COLLECTIONS}: the
+ * projects most like the reader's are walked first, and the walk stops at the
+ * one whose collections would pass it. A cited passage is matched to its
+ * stored chunk there and costs no embedding.
  */
 
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { hasPassedScreening, SCREENED_ONLY } from '@/lib/documents/document-reader'
 import {
+  BACKEND_SEARCH_MAX_COLLECTIONS,
   hydrateProjectHits,
   joinHitsToFiles,
   planProjectSearch,
+  projectsWithinCollectionCap,
   type BackendSearchHit,
   type ProjectSearchPlan,
   type SearchedDocument,
@@ -221,7 +226,12 @@ interface RankedDocument {
 
 /**
  * Fold one group's joined rows (one per passage) into documents, the source
- * document left out, in ranking order.
+ * document and every superseded Fassung left out, in ranking order.
+ *
+ * The backend already leaves out points marked superseded, but that mark is
+ * Qdrant's copy and can lag a person's confirmation. The row is Postgres, the
+ * authority, so a replaced Fassung is dropped here too, as `knowledge_search`'s
+ * post-check does (ADR-0099).
  */
 export function foldDocuments(
   found: ReadonlyArray<SearchedDocument<ListedDocument>>,
@@ -229,7 +239,7 @@ export function foldDocuments(
 ): RankedDocument[] {
   const byId = new Map<string, RankedDocument>()
   for (const row of found) {
-    if (row.id === excludedDocumentId) continue
+    if (row.id === excludedDocumentId || row.fassung?.supersededBy) continue
     const entry =
       byId.get(row.id) ??
       ({
@@ -240,7 +250,6 @@ export function foldDocuments(
           displayName: row.displayName && row.displayName !== row.filename ? row.displayName : null,
           contentType: row.contentType,
           stand: fassungTag(row.filename, row.revisionFacts ?? null),
-          superseded: Boolean(row.fassung?.supersededBy),
           passages: [],
         },
       } satisfies RankedDocument)
@@ -248,6 +257,15 @@ export function foldDocuments(
     entry.document.passages.push({ page: row.page, snippet: row.snippet, score: row.score })
   }
   return [...byId.values()].sort((a, b) => a.rank - b.rank)
+}
+
+/**
+ * A join of the hits to their rows that failed: the error state, never an
+ * empty answer the panel would read as „Im Büro noch nicht behandelt".
+ */
+function joinFailed(error: unknown): never {
+  console.warn('[SimilarPassages] could not join the hits to their documents', error)
+  throw new ServiceUnavailableError('Similar passages could not be searched')
 }
 
 /** The group's place: its best document's. */
@@ -275,9 +293,20 @@ export async function findSimilarPassages(
     PLAN_CONCURRENCY,
     (project) => planProjectSearch(session, project.id).catch(() => null)
   )
-  const plans = [currentPlan, ...planned].filter((plan): plan is ProjectSearchPlan => plan !== null)
+  const candidates = [currentPlan, ...planned].filter((plan): plan is ProjectSearchPlan => plan !== null)
+  // One search names at most BACKEND_SEARCH_MAX_COLLECTIONS, the Büroablage's
+  // among them. There is no next page here: the projects past the cap are not
+  // searched, and the reader's own, walked first, always is (cut to the cap).
+  const projectCap = BACKEND_SEARCH_MAX_COLLECTIONS - 1
+  const plans = candidates.slice(
+    0,
+    projectsWithinCollectionCap(
+      candidates.map((plan) => plan.collections.length),
+      projectCap
+    )
+  )
   const archiv = archivCollectionName(session.organizationId)
-  const collections = [...new Set([...plans.flatMap((plan) => plan.collections), archiv])]
+  const collections = [...new Set([...plans.flatMap((plan) => plan.collections).slice(0, projectCap), archiv])]
 
   const backend = await fetchSimilarFromBackend(source, request.passage, collections)
   const hits = asSearchHits(backend.documents)
@@ -287,7 +316,7 @@ export async function findSimilarPassages(
     const projectHits = hits.filter((hit) => own.has(hit.collection))
     if (projectHits.length === 0) return null
     // `forModel` selects the SCREENED_ONLY reader: no held document, whoever asks.
-    const found = await hydrateProjectHits(session, plan, projectHits, { forModel: true }).catch(() => [])
+    const found = await hydrateProjectHits(session, plan, projectHits, { forModel: true }).catch(joinFailed)
     const documents = foldDocuments(found, source.documentId)
     if (documents.length === 0) return null
     return { plan, documents }
@@ -296,7 +325,7 @@ export async function findSimilarPassages(
     await hydrateArchivHits(
       session,
       hits.filter((hit) => hit.collection === archiv)
-    ).catch(() => []),
+    ).catch(joinFailed),
     source.documentId
   )
 

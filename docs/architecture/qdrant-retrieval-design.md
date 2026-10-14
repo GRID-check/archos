@@ -210,8 +210,12 @@ project status and facts are all edited by people in Postgres. They are
 - The mirror carries a `meta_version`, and conditional updates (1.16) refuse to
   apply an older version over a newer one.
 - The existing weekly reconcile (`frontends/ui/src/lib/platform/vector-reconcile.ts`)
-  grows a payload check: it samples points per document, compares them with
-  Postgres and repairs drift.
+  repairs drift by copying again rather than by sampling and comparing: its
+  document facts half sends every live collection, in batches of 25, to
+  `POST /v1/maintenance/refresh-document-facts`, which runs
+  `writes.copy_facts(scope)` per collection (the same copy an edit makes,
+  raising instead of swallowing a failure) and reports the files copied and
+  the collections that failed.
 
 This removes the 3× over-fetch and the `$in`/`$nin` file lists. Each filter
 becomes a pre-filter inside the vector search. The post-filters in
@@ -334,14 +338,17 @@ benefit yet.
 
 ## 7. Cross-project search
 
-### Today
+### Before Qdrant
 
-ADR-0094 search is a BFF loop (`frontends/ui/src/lib/cross-project/service.ts`):
-- It takes up to 8 projects in hand-weighted fingerprint-similarity order and
-  searches them in waves of 4.
-- Each project costs one HTTP search per collection, plus one file-listing call
+How ADR-0094 search ran before this design was built (`frontends/ui/src/lib/cross-project/service.ts`);
+"As built" below says what runs now: a page of up to 40 projects
+(`CROSS_PROJECT_PAGE_PROJECTS`) in one grouped query, at most 500 collections
+(`BACKEND_SEARCH_MAX_COLLECTIONS`, the backend's cap).
+- It took up to 8 projects in hand-weighted fingerprint-similarity order and
+  searched them in waves of 4.
+- Each project cost one HTTP search per collection, plus one file-listing call
   for tags.
-- The merged hits are sorted by **raw score**, although the knowledge layer's
+- The merged hits were sorted by **raw score**, although the knowledge layer's
   own merge states that scores are not comparable across collections
   (`register.py:703-722`).
 
@@ -349,7 +356,7 @@ The consequences:
 
 | Limitation | Caused by |
 |---|---|
-| "Which projects had X" means paging `offset` 8 projects at a time; there is no office-wide top-k | Collection per project |
+| "Which projects had X" meant paging `offset` 8 projects at a time; there was no office-wide top-k | Collection per project |
 | Cost grows linearly in projects; "sign every project into scope" was rejected for that reason (ADR-0094 l. 288) | Collection per project |
 | Raw-score merge across collections | Collection per project |
 | Tag and project-fact filters run after retrieval, with 3× over-fetch | Tags and facts are not on chunks |
@@ -381,14 +388,16 @@ This is the first sketch. Neither the formula over the fusion nor Qdrant's
 What this enables:
 
 1. **Office-wide ranking in one call.** "Wie haben wir das gelöst?" ranks every
-   reachable project by relevance. The 8-project page, the waves and offset
-   paging go away, and so does the cost argument against wide reach.
+   reachable project by relevance. The waves go away, and the page grows
+   from 8 projects to 40, bounded by the backend's 500 collections per search;
+   `offset` paging stays for an office with more. The cost argument against
+   wide reach goes away.
 2. **Comparable scores.** There is one index and one query, so the raw-score
    merge problem disappears rather than being worked around. The cross-encoder
    reranks the grouped top hits across projects, which today's path never does.
 3. **Similarity as a relevance boost, not a walk order.** The fingerprint
-   weights become formula terms on relevance. Today they decide which 8 projects
-   get searched at all. The weights are still hand-set, but a wrong weight now
+   weights become formula terms on relevance. Before, they decided which 8
+   projects got searched at all. The weights are still hand-set, but a wrong weight now
    nudges a ranking instead of hiding a project.
 4. **Real filters.** "Alle Dachdetails von Holzbauten in NÖ" is a pre-filter
    (`doc_class`, `project_facts.bauweise`, `project_facts.bundesland`) inside
@@ -705,6 +714,7 @@ itself.
 | `knowledge_search` pre-filters under `qdrant`: `doc_class = X` (the stored class over the chunk's guess, as `_hit_doc_class` resolves), `superseded != true` on user shelves unless `file_name=` names a file, `folder` as one match on `folder_ancestors` (case-folded paths, `/`-bounded). No 3× over-fetch and no `file_name $in/$nin` lists for them. The Postgres post-filters stay as a backstop, and the Postgres superseded list still drops hits a lagging mirror let through. The span carries `prefiltered: [fields]` | `qdrant/prefilter.py`; `register.py` — `search` |
 | Payload indexes added to an existing collection on first read or write (`ensure_payload_indexes`), so a new indexed field needs no rebuild | `qdrant/schema.py`, `store.py` — `exists`, `ensure` |
 | Structural reads by filter: `read_passage` (Punkt, page, outline, the whole-document fallback) and the family overview scroll by filter, ordered by `reading_order`, with no embedding and no ranking; Chroma keeps the embedded probe. `family_read` (`fetch` or `retrieve`) on the `retrieve.knowledge_search` span | `BaseRetriever.fetch`, `qdrant/reads.py`, `read_passage._structural_fetch` |
+| Document facts (tags, Dokumentart, superseded, folder) copied again weekly, every live collection, so a copy an edit failed to make (`refresh_facts` never raises) is repaired; counted per file, failed per collection | `POST /v1/maintenance/refresh-document-facts` (`routes/maintenance.py`), `qdrant/writes.py` — `copy_facts`; BFF `platform/vector-reconcile.ts` — `refreshDocumentFacts` |
 | Project facts and status on every chunk of a project, indexed; pushed on profile save, lifecycle move and ingest, swept weekly | `PUT /v1/collections/{c}/project-facts`, `qdrant/payload.py` — `project_payload`; BFF `cross-project/project-facts-mirror.ts` |
 | Cross-project tag pre-filters and the current project's likeness inside the one grouped query (§7 "As built") | `qdrant/boost.py`, `qdrant/search.py` — `grouped_search`; BFF `cross-project/service.ts` — `searchPage` |
 | Project-fact filters in the agent's cross-project contract (`project_facts` on `search` and `find`), judged on the Postgres profile before the page is cut; likeness still ranks | `tools/cross_project/register.py` — `project_facts_filter`; BFF `cross-project/types.ts` — `crossProjectFactsSchema`, `service.ts` — `holdsFacts`, `projectsInScope` |

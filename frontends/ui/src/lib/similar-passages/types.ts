@@ -60,8 +60,6 @@ export interface SimilarDocument {
   contentType: string | null
   /** The Fassung the office gave it (Index C, or the date it is stamped with), when it says one. */
   stand: FassungTag | null
-  /** A person confirmed a newer Fassung replaces it (CONTEXT.md, „Fassung"). */
-  superseded: boolean
   passages: SimilarPassage[]
 }
 

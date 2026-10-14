@@ -96,7 +96,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: 'Brandschutzkonzept Stiege 2',
           contentType: 'application/pdf',
           stand: { kind: 'index', text: 'Index C' },
-          superseded: false,
           passages: [
             {
               page: 4,
@@ -117,7 +116,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: null,
           contentType: 'application/pdf',
           stand: { kind: 'date', text: '02.09.2026' },
-          superseded: false,
           passages: [
             {
               page: 2,
@@ -138,7 +136,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: 'Musterauflagen der Baubehörde',
           contentType: 'application/pdf',
           stand: null,
-          superseded: false,
           passages: [
             {
               page: 1,
@@ -160,7 +157,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: 'Baubewilligung BA-2024-0112',
           contentType: 'application/pdf',
           stand: { kind: 'date', text: '14.03.2024' },
-          superseded: false,
           passages: [
             {
               page: 1,
@@ -182,7 +178,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: 'Protokoll Bauverhandlung',
           contentType: 'application/pdf',
           stand: { kind: 'index', text: 'v1' },
-          superseded: true,
           passages: [
             {
               page: 2,

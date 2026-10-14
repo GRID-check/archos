@@ -110,13 +110,13 @@ def write_chunks(
 FOLDER_FACTS = frozenset({"folder_path", FOLDER_FIELD})
 
 
-def refresh_facts(scope: str, file_names: Iterable[str] | None = None, *, fields: Iterable[str] | None = None) -> None:
-    """Copy the person-set facts of these files (all of ``scope`` when None) onto their points.
+def copy_facts(scope: str, file_names: Iterable[str] | None = None, *, fields: Iterable[str] | None = None) -> int:
+    """Copy the person-set facts of these files (all of ``scope`` when None) onto their points; the files copied.
 
-    Called after the metadata store changed a fact. Never raises: the store
-    has the change, a person's edit must not fail over its copy, the
-    Postgres post-filters stay as the backstop, and the weekly vector
-    reconcile repairs drift.
+    Raises when the metadata store or Qdrant fails. :func:`refresh_facts` is
+    the call after a person's edit, which must not fail over its copy; the
+    weekly vector reconcile calls this one through
+    ``POST /v1/maintenance/refresh-document-facts`` so a failure is counted.
 
     The facts of every file go in bounded batches, not one request per file
     (a folder rename re-files a whole subtree). A file with no stored
@@ -125,18 +125,27 @@ def refresh_facts(scope: str, file_names: Iterable[str] | None = None, *, fields
     to those facts (:data:`FOLDER_FACTS` after a folder move), and the
     Dokumentart is then put back only when it is one of them.
     """
+    store = get_store()
+    facts = facts_by_file(scope, file_names)
+    wanted = set(fields) if fields is not None else None
+    if wanted is not None:
+        facts = {name: {key: value for key, value in values.items() if key in wanted} for name, values in facts.items()}
+    store.set_file_payloads(scope, facts)
+    if wanted is None or "doc_class" in wanted:
+        store.restore_chunk_doc_classes(scope, [name for name, values in facts.items() if "doc_class" not in values])
+    return len(facts)
+
+
+def refresh_facts(scope: str, file_names: Iterable[str] | None = None, *, fields: Iterable[str] | None = None) -> None:
+    """:func:`copy_facts`, after the metadata store changed a fact. Never raises.
+
+    The store has the change, a person's edit must not fail over its copy,
+    the Postgres post-filters stay as the backstop, and the weekly vector
+    reconcile copies every live collection's facts again (its document facts
+    half, ``lib/platform/vector-reconcile.ts``), which repairs a copy that
+    failed here.
+    """
     try:
-        store = get_store()
-        facts = facts_by_file(scope, file_names)
-        wanted = set(fields) if fields is not None else None
-        if wanted is not None:
-            facts = {
-                name: {key: value for key, value in values.items() if key in wanted} for name, values in facts.items()
-            }
-        store.set_file_payloads(scope, facts)
-        if wanted is None or "doc_class" in wanted:
-            store.restore_chunk_doc_classes(
-                scope, [name for name, values in facts.items() if "doc_class" not in values]
-            )
+        copy_facts(scope, file_names, fields=fields)
     except Exception:  # noqa: BLE001 - see the docstring
         logger.warning("Qdrant: copying the facts of %s onto its points failed", scope, exc_info=True)
