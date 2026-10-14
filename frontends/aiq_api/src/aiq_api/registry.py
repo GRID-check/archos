@@ -100,3 +100,14 @@ register_agent(
     config_name="shallow_research_agent",
     description="Performs quick single-turn research",
 )
+
+# Reads a new project's documents and writes suggested profile values onto the
+# project, not a report. The class is loaded by path at job time (never imported
+# here) and declares ``produces_report = False``; ``config_name`` is the NAT
+# function name in the YAML, whose ``_type`` is also ``project_intake_agent``.
+register_agent(
+    agent_type="project_intake",
+    class_path="aiq_agent.agents.intake.agent.ProjectIntakeAgent",
+    config_name="project_intake_agent",
+    description="Reads a new project's documents and suggests its profile values (ADR-0111)",
+)

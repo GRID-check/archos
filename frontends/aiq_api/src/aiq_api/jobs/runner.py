@@ -863,6 +863,18 @@ def _load_agent_class(agent_class_path: str) -> type:
     return getattr(module, class_name)
 
 
+# NAT function ``_type``s whose single ``llm`` runs on the tool-calling chat model's
+# group (``AgentGroup.RESEARCH``) rather than the deep-research default.
+_CHAT_MODEL_AGENT_TYPES = frozenset({"research_agent", "project_intake_agent"})
+
+# Agent types the completion-token budget cap guards: fan-out research and the
+# intake's long document-reading loop are the run-away-cost shapes it exists for.
+_BUDGET_GUARDED_AGENT_TYPES = frozenset({"deep_research_agent", "project_intake_agent"})
+
+# Profiling label per agent type; anything not listed keeps the historical label.
+_JOB_PROFILE_NAMES = {"project_intake_agent": "project_intake_job"}
+
+
 async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
     """Create a role-aware LLM provider from a NAT function config."""
     from aiq_agent.common import AgentGroup
@@ -898,7 +910,9 @@ async def _create_llm_provider(builder: Any, fn_config: Any) -> tuple[Any, Any]:
             if llm_ref not in llm_cache:
                 llm_cache[llm_ref] = await get_langchain_llm(builder, llm_ref)
             default_llm = llm_cache[llm_ref]
-            if getattr(fn_config, "type", None) == "research_agent":
+            # The intake agent is a tool-calling loop like the chat agent, not a
+            # planner/researcher/writer pipeline: it runs on the chat model's group.
+            if getattr(fn_config, "type", None) in _CHAT_MODEL_AGENT_TYPES:
                 default_group = AgentGroup.RESEARCH
 
     provider = LLMProvider()
@@ -1507,7 +1521,8 @@ async def run_agent_job(
                     # planner/researcher/writer subagent structure the phase
                     # detector understands, and long-running fan-out research is
                     # the run-away-cost shape the budget cap exists for.
-                    is_deep_research_job = getattr(fn_config, "type", None) == "deep_research_agent"
+                    fn_type = getattr(fn_config, "type", None)
+                    is_deep_research_job = fn_type == "deep_research_agent"
                     if is_deep_research_job:
                         callbacks.append(
                             PhaseProgressCallback(
@@ -1516,6 +1531,7 @@ async def run_agent_job(
                             )
                         )
 
+                    if fn_type in _BUDGET_GUARDED_AGENT_TYPES:
                         from aiq_agent.common import create_budget_guard_callback
 
                         budget_guard_callback = create_budget_guard_callback()
@@ -1550,7 +1566,7 @@ async def run_agent_job(
                     _usage = usage_context or {}
                     with (
                         track_agent_profile(
-                            agent_name="deep_research_job",
+                            agent_name=_JOB_PROFILE_NAMES.get(fn_type, "deep_research_job"),
                             job_id=job_id,
                             identity=_usage.get("identity") or {},
                         ),
@@ -1624,30 +1640,20 @@ async def run_agent_job(
                     # the thread turn and the notification waited) for up to the
                     # card timeout plus the reflection model's retries after the
                     # reader already had the report.
-                    cards_result, anatomy, follow_ups = await asyncio.gather(
-                        _generate_grid_cards(llm, input_text, report),
-                        # The report's anatomy (masthead) and its findings
-                        # (Befundmatrix), read off the finished report in one
-                        # structured call, and the follow-up questions the
-                        # report just made askable. Both post hoc, both
-                        # additive: a failure costs the reader a layer, never
-                        # the report.
-                        _extract_report_anatomy(llm, input_text, report),
-                        _propose_report_follow_ups(llm, query=input_text, report=report, organization_id=_job_org_id),
-                    )
-                    # Reflection reads the report WITH its findings, after the
-                    # extraction: a Befund with its value and status lands in
-                    # project memory as a fact, an open one as an open point,
-                    # instead of both being fished back out of the prose.
-                    await _run_deep_research_reflection(
+                    # An agent that declares ``produces_report = False`` writes to
+                    # objects, not a report: it gets none of the post-report passes.
+                    cards_result, anatomy, follow_ups = await _run_report_passes(
+                        produces_report=_produces_report(agent_cls),
+                        llm=llm,
+                        input_text=input_text,
+                        report=report,
+                        organization_id=_job_org_id,
                         builder=builder,
                         job_id=job_id,
                         # A scheduled job's submitter (the BFF) knows the flag but
                         # not the config's LLM ref; the worker has the config.
                         reflection_llm_ref=memory_reflection_llm or _workflow_reflection_llm_ref(config),
                         reflection_enabled=memory_reflection_enabled,
-                        query=input_text,
-                        report=_reflection_text(report, anatomy.findings),
                         usage_context=usage_context,
                         memory_digest=memory_digest,
                         org_credential=resolved_org_credential,
@@ -2200,6 +2206,52 @@ def _merge_job_cards(emitted: list[dict[str, Any]], generated: list[Any] | None)
     """
     merged = [*emitted, *(generated or [])]
     return merged or None
+
+
+def _produces_report(agent_cls: type) -> bool:
+    """Whether the agent's job output is a report the post-report passes read.
+
+    Defaults to True: every agent before the project intake wrote one. An agent
+    that writes to objects instead declares ``produces_report = False``.
+    """
+    return bool(getattr(agent_cls, "produces_report", True))
+
+
+async def _run_report_passes(
+    *,
+    produces_report: bool,
+    llm: Any,
+    input_text: str,
+    report: str,
+    organization_id: str | None,
+    **reflection_kwargs: Any,
+) -> tuple[CardGenerationResult, ReportAnatomy, dict[str, Any] | None]:
+    """The model calls over a finished report: grid cards, anatomy, follow-ups, then reflection.
+
+    The first three are independent and best-effort, so they run together. The
+    reflection reads the report WITH its findings, after the extraction: a
+    Befund with its value and status lands in project memory as a fact, an open
+    one as an open point, instead of both being fished back out of the prose.
+    ``reflection_kwargs`` go to ``_run_deep_research_reflection`` unchanged.
+
+    A run with no report (``produces_report`` False) makes no model call here
+    and returns the empty result of each pass.
+    """
+    if not produces_report:
+        return CardGenerationResult(cards=None), ReportAnatomy(), None
+    cards_result, anatomy, follow_ups = await asyncio.gather(
+        _generate_grid_cards(llm, input_text, report),
+        # The report's anatomy (masthead) and its findings (Befundmatrix), read
+        # off the finished report in one structured call, and the follow-up
+        # questions the report just made askable. Both post hoc, both additive:
+        # a failure costs the reader a layer, never the report.
+        _extract_report_anatomy(llm, input_text, report),
+        _propose_report_follow_ups(llm, query=input_text, report=report, organization_id=organization_id),
+    )
+    await _run_deep_research_reflection(
+        query=input_text, report=_reflection_text(report, anatomy.findings), **reflection_kwargs
+    )
+    return cards_result, anatomy, follow_ups
 
 
 def _reflection_text(report: str, findings: dict[str, Any] | None) -> str:
