@@ -1428,6 +1428,35 @@ describe('searchProjectDocuments', () => {
     })
   })
 
+  it('hands a model no superseded Fassung, and still shows it to the person who searches (ADR-0099)', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: () =>
+        Promise.resolve({
+          hits: [
+            { file_name: 'permit.pdf', score: 0.91, snippet: 'permit snippet', page_number: 2, collection: 'proj_abc' },
+            { file_name: 'plan.pdf', score: 0.44, snippet: 'plan snippet', page_number: null, collection: 'proj_abc' },
+          ],
+        }),
+    })
+    // A person confirmed permit.pdf replaces plan.pdf; the vector copy of that mark may lag.
+    const replaced = () =>
+      new Map([
+        [
+          'doc-a',
+          { supersededBy: { id: 'doc-b', filename: 'permit.pdf' }, supersedes: [], suggestion: null, changeSummary: null },
+        ],
+      ])
+    vi.mocked(loadFassungFacts).mockResolvedValueOnce(replaced()).mockResolvedValueOnce(replaced())
+
+    const forPerson = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20)
+    const forModel = await searchProjectDocuments(session, 'proj-1', 'fire escape', 20, { forModel: true })
+
+    expect(forPerson.hits.map((h) => h.id)).toEqual(['doc-b', 'doc-a'])
+    expect(forModel.hits.map((h) => h.id)).toEqual(['doc-b'])
+  })
+
   it('asks for no rows when the search found nothing', async () => {
     mockFetch.mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve({ hits: [] }) })
 

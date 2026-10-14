@@ -148,3 +148,23 @@ async def test_facts_put_then_filter_and_lift_through_the_routes(stack):
 
     assert [hit["collection"] for hit in filtered.json()["hits"]] == ["proj_b"]
     assert missing.json() == {"collection": "proj_new", "applied": False}
+
+
+async def test_a_superseded_fassung_stays_out_of_the_grouped_search(stack):
+    """ADR-0099: search leaves a replaced Fassung out; the cross-project lookup would hand it to the model."""
+    app, store = stack
+    _put(store, "proj_a", ("plan_index_b.pdf", 0.90), ("plan_index_c.pdf", 0.80))
+    _put(store, "proj_b", ("detail.pdf", 0.70))
+    store.set_file_payloads("proj_a", {"plan_index_b.pdf": {"superseded": True}})
+
+    async with _client(app) as client:
+        plain = await client.post("/v1/collections/search", json={"query": "q", "collections": ["proj_a", "proj_b"]})
+        tagged = await client.post(
+            "/v1/collections/search",
+            json={"query": "q", "collections": ["proj_a", "proj_b"], "filters": {"document_types": ["Plan"]}},
+        )
+
+    assert plain.status_code == 200
+    assert [hit["file_name"] for hit in plain.json()["hits"]] == ["plan_index_c.pdf", "detail.pdf"]
+    # Beside another filter too: none of these points carries the tag, so nothing is left.
+    assert tagged.status_code == 200 and tagged.json()["hits"] == []

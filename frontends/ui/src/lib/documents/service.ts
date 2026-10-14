@@ -987,7 +987,10 @@ export async function searchProjectDocuments(
 /** How a project search's hits are cut and who they are for. */
 export interface ProjectSearchOptions {
   snippetMaxChars?: number
-  /** The hits go to a model: joined to screened rows only (`SCREENED_ONLY`, ADR-0086). */
+  /**
+   * The hits go to a model: joined to screened rows only (`SCREENED_ONLY`,
+   * ADR-0086), and no superseded Fassung among them (ADR-0099).
+   */
   forModel?: boolean
 }
 
@@ -1038,7 +1041,12 @@ export async function hydrateProjectHits(
     own.map((hit) => hit.file_name),
     { hiddenFolderIds: [...plan.access.hiddenFolderIds], reader }
   )
-  return joinHitsToFiles(own, await toListedDocuments(session, rows, reader))
+  const joined = joinHitsToFiles(own, await toListedDocuments(session, rows, reader))
+  // A model is handed no superseded Fassung (ADR-0099: search leaves it out
+  // unless asked by name). The backend filters Qdrant's copy of the mark,
+  // which can lag a person's confirmation; the row is the authority. A person
+  // searching still sees it, badged by the listing.
+  return options.forModel ? joined.filter((row) => !row.fassung?.supersededBy) : joined
 }
 
 export interface UploadDocumentInput {

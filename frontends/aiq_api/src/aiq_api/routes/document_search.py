@@ -205,15 +205,22 @@ def _ranked_group_hits(
     return [entry[3] for entry in ranked]
 
 
-def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any] | None:
-    """The typed request filters in the retriever's filter grammar; None when nothing narrows.
+#: A superseded Fassung stays out of the ranking (ADR-0099: search leaves it out
+#: unless asked for by name, and the grouped search names no file). ``$ne``
+#: keeps a point the mirror has not stamped yet, as ``knowledge_search``'s
+#: pre-filter and the similar-passages query do; the BFF checks the row again.
+CURRENT_FASSUNGEN: dict[str, Any] = {"superseded": {"$ne": True}}
+
+
+def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any]:
+    """The typed request filters in the retriever's filter grammar, always with the superseded exclusion.
 
     The grammar is what ``knowledge_layer.qdrant.scope`` compiles into the
     scope filter, so these become pre-filters inside the one query. Each
     tag group is a separate any-of, as the BFF's ``matchesTags`` reads them.
     """
     if filters is None:
-        return None
+        return CURRENT_FASSUNGEN
     parts: list[dict[str, Any]] = []
     for group in (filters.document_types, filters.disciplines):
         if group:
@@ -227,8 +234,8 @@ def grouped_filters(filters: GroupedSearchFilters | None) -> dict[str, Any] | No
     if filters.project_status:
         parts.append({"project_status": {"$in": list(filters.project_status)}})
     if not parts:
-        return None
-    return parts[0] if len(parts) == 1 else {"$and": parts}
+        return CURRENT_FASSUNGEN
+    return {"$and": [*parts, CURRENT_FASSUNGEN]}
 
 
 def add_document_search_routes(router: APIRouter):

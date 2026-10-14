@@ -394,7 +394,8 @@ async def test_grouped_search_orders_documents_by_the_fused_ranking_not_the_scor
     args = retriever.search_grouped.await_args
     assert args.args[1] == ["proj_a", "proj_b"]  # de-duplicated, order kept
     assert args.kwargs["group_size"] == 2 * 3
-    assert args.kwargs["filters"] is None and args.kwargs["boost"] is None
+    # Only the superseded exclusion narrows a plain search (ADR-0099).
+    assert args.kwargs["filters"] == {"superseded": {"$ne": True}} and args.kwargs["boost"] is None
 
 
 @pytest.mark.asyncio
@@ -472,6 +473,7 @@ async def test_grouped_search_hands_filters_and_boost_to_the_retriever_as_its_gr
             {"project_facts.bundesland": {"$in": ["niederoesterreich"]}},
             {"project_facts.bauweise": {"$in": ["holzbau"]}},
             {"project_status": {"$in": ["closed"]}},
+            {"superseded": {"$ne": True}},
         ]
     }
     assert kwargs["boost"]["facts"]["gebaeudeklasse"] == [4]
