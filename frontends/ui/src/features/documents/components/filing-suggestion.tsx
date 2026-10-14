@@ -16,12 +16,26 @@
  * the slot draws nothing.
  */
 
-import { createContext, useCallback, useContext, useMemo, type JSX, type ReactNode } from 'react'
+import { createContext, Fragment, useCallback, useContext, useMemo, type JSX, type ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { InlineSuggestion } from '@/components/ui/inline-suggestion'
 import { useServerProposal, type ProposalOfKind } from '@/features/grid-cards/hooks/use-server-proposal'
 import { useTranslations } from '@/i18n'
 import type { FilingSuggestionView } from '../lib/filing-suggestions'
+
+/**
+ * A folder path may break after a slash, so a narrow card wraps „Behörde/“ and
+ * „Bescheide“ instead of splitting the last word. The text stays whole.
+ */
+function breakAfterSlashes(text: string): ReactNode {
+  const parts = text.split('/')
+  return parts.map((part, index) => (
+    <Fragment key={index}>
+      {index > 0 && <wbr />}
+      {index < parts.length - 1 ? `${part}/` : part}
+    </Fragment>
+  ))
+}
 
 interface FilingSuggestionsContextValue {
   suggestionFor: (documentId: string) => FilingSuggestionView | undefined
@@ -45,6 +59,12 @@ export function FilingSuggestionsProvider({
     [byDocument, onSettled]
   )
   return <FilingSuggestionsContext.Provider value={value}>{children}</FilingSuggestionsContext.Provider>
+}
+
+/** Whether a provider holds a suggestion for this document: a row that gives it a row of its own asks first. */
+export function useHasFilingSuggestion(documentId: string | null | undefined): boolean {
+  const context = useContext(FilingSuggestionsContext)
+  return Boolean(documentId && context?.suggestionFor(documentId))
 }
 
 /** The suggestion for one document, where a provider holds one; nothing otherwise. */
@@ -117,7 +137,7 @@ export function FilingSuggestion({
       data-testid="filing-suggestion"
       data-status="proposed"
       aria-label={t('filing.label')}
-      title={<span title={title}>{title}</span>}
+      title={<span title={title}>{breakAfterSlashes(title)}</span>}
       detail={
         problem === 'apply' || problem === 'dismiss' ? (
           <span className="text-destructive">{t('filing.error')}</span>

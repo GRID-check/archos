@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { http, HttpResponse } from 'msw'
 import userEvent from '@testing-library/user-event'
-import { render, screen, waitFor } from '@/test-utils'
+import { render, screen, waitFor, within } from '@/test-utils'
 import { server } from '@/mocks/server'
 import {
   PROPOSAL_ID,
@@ -11,6 +11,8 @@ import {
 } from '@/features/grid-cards/components/proposal-test-kit'
 import type { ProposedChangeView } from '@/lib/proposals/types'
 import { FilingSuggestionsProvider, FilingSuggestionSlot } from './filing-suggestion'
+import { FileListView } from './file-list-view'
+import type { FileItem } from './project-file-workspace'
 import { suggestionsByDocument, type FilingSuggestionView } from '../lib/filing-suggestions'
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
@@ -122,6 +124,51 @@ describe('FilingSuggestion', () => {
   it('draws nothing for a file Piloti has nothing to say about', () => {
     renderSlot(current, 'doc_elsewhere')
     expect(screen.queryByTestId('filing-suggestion')).not.toBeInTheDocument()
+  })
+})
+
+const listed = (id: string, filename: string): FileItem => ({
+  id,
+  filename,
+  displayName: null,
+  fileSize: 1_000,
+  contentType: 'application/pdf',
+  status: 'ready',
+  folderId: null,
+  createdAt: '2026-06-01T09:00:00Z',
+  errorMessage: null,
+  summary: null,
+  pageCount: null,
+  chunkCount: null,
+  contentTypes: null,
+  tags: null,
+  topics: null,
+  capture: null,
+})
+
+describe('FilingSuggestion in the list', () => {
+  it('takes a row of its own under its file, across every column, and none for a file without one', async () => {
+    const byDocument = suggestionsByDocument([{ proposal: current, documents: DOCUMENTS }])
+    render(
+      <FilingSuggestionsProvider byDocument={byDocument} onSettled={vi.fn()}>
+        <FileListView
+          files={[listed('doc_1', 'MA37_Bescheid.pdf'), listed('doc_other', 'Einreichplan.pdf')]}
+          selectedFileId={null}
+          onSelectFile={vi.fn()}
+        />
+      </FilingSuggestionsProvider>
+    )
+    const suggestionRow = await screen.findByTestId('file-list-suggestion-row')
+    expect(screen.getAllByTestId('file-list-suggestion-row')).toHaveLength(1)
+    // Its own row, directly after its file's, spanning the table.
+    const fileRow = screen.getAllByTestId('file-list-row').find((row) => row.textContent?.includes('MA37_Bescheid.pdf'))!
+    expect(fileRow).toBeDefined()
+    expect(fileRow.nextElementSibling).toBe(suggestionRow)
+    expect(suggestionRow.querySelector('td')).toHaveAttribute('colspan')
+    // Not inside the Name cell any more, where it was squeezed.
+    expect(within(fileRow).queryByTestId('filing-suggestion')).not.toBeInTheDocument()
+    expect(within(suggestionRow).getByText('Belongs in “Bescheide”')).toBeInTheDocument()
+    expect(within(suggestionRow).getByRole('button', { name: 'Move all 2' })).toBeInTheDocument()
   })
 })
 

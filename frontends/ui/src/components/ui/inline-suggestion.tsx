@@ -9,9 +9,12 @@ import { PilotiGlyph } from './piloti-glyph'
  * a remark beside the thing, not a card over it: no border, no shadow, the
  * muted ground the row's own hover uses.
  *
- * The answer (`actions`) wraps under the text on a narrow row instead of
- * squeezing it, and its buttons wrap among themselves on a card. The caller
- * keeps clicks on it from reaching the row underneath (`stopRowEvents`).
+ * What it suggests (`title`) is what the person decides on, so it is never cut:
+ * it wraps, even inside one long word. Only the reason (`detail`) gives way, to
+ * one line with an ellipsis. The answer (`actions`) sits on the same line as
+ * the text where the row is wide and wraps under it where it is not; its
+ * buttons wrap among themselves on a card. The caller keeps clicks on it from
+ * reaching the row underneath (`stopRowEvents`).
  */
 export function InlineSuggestion({
   title,
@@ -22,7 +25,7 @@ export function InlineSuggestion({
   ...props
 }: {
   title: ReactNode
-  /** One line of why; cut with an ellipsis, whole on hover through `title` of the caller's text. */
+  /** One line of why; cut with an ellipsis, whole on hover through `title` of the caller's text. `title` above is never cut. */
   detail?: ReactNode
   actions?: ReactNode
   /** Whether a click or a key inside it is kept from the row it sits in (a row that opens on click). */
@@ -45,11 +48,11 @@ export function InlineSuggestion({
     >
       {/* The glyph stays beside the text; the text keeps at least 10rem before
           the answer wraps under it, so a narrow row (a phone, a card) never
-          cuts the suggestion to one word. */}
+          squeezes the suggestion to one word. */}
       <div className="flex min-w-0 flex-1 basis-40 items-center gap-2">
         <PilotiGlyph size="xs" />
         <div className="min-w-0 flex-1">
-          <p className="text-foreground truncate font-medium leading-snug">{title}</p>
+          <p className="text-foreground text-pretty font-medium leading-snug [overflow-wrap:anywhere]">{title}</p>
           {detail && <p className="text-muted-foreground truncate leading-snug">{detail}</p>}
         </div>
       </div>

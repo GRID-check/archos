@@ -466,8 +466,17 @@ it away. A reader the server says may not decide sees the suggestion with
 
 While an upload is on screen the shelf asks for its open suggestions every
 4 seconds (`useFilingSuggestions`); otherwise when the shelf is shown and after
-a change. On a narrow row the answer wraps under the text, and a long button
-label wraps inside the button rather than out of the card.
+a change.
+
+**Where it sits.** The folder is the one thing the person decides on, so it is
+never cut: `InlineSuggestion` lets the line wrap and only the reason gives way,
+to one line with its full text on hover. In the upload tray the line spans the
+row under the file. In the list view it is a row of its own under its file,
+across every column and indented under the name (the file row drops its bottom
+hairline, so the pair is one entry), which keeps „Anlegen und verschieben“ and
+„Belassen“ on one line at desktop width. On a card it takes the card's full
+width in the footer. On a narrow card the answer stacks under the text, and a
+long button label wraps inside the button rather than out of the card.
 
 ## Fassungen: a suggestion, then a person's link
 

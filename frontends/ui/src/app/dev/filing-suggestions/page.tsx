@@ -12,8 +12,9 @@
  *      card, one proposal per target folder („Alle 2 verschieben").
  *   3. A folder that does not exist yet: „Anlegen und verschieben".
  *   4. A reader who may not move files sees the suggestion and no buttons.
- *   5. A folder's description at the top of the folder and on its row, and
- *      the dialog it is written in.
+ *   5. A folder's description at the top of the folder, in its three states
+ *      (described and writable, undescribed and writable, described and
+ *      read-only), and the dialog it is written in.
  *
  * Nothing leaves the browser: a fetch shim answers `/api/proposals/{id}` and
  * its apply and dismiss, so the buttons can be pressed. Not linked from
@@ -217,6 +218,16 @@ function Stage({ title, note, children }: { title: string; note: string; childre
   )
 }
 
+/** One state of a component, named, so a row of look-alikes reads as the states they are. */
+function State({ label, children }: { label: string; children: ReactNode }): JSX.Element {
+  return (
+    <div className="space-y-1.5 p-4">
+      <p className="text-muted-foreground text-[11px] font-medium uppercase tracking-wider">{label}</p>
+      {children}
+    </div>
+  )
+}
+
 export default function FilingSuggestionsDevPage(): JSX.Element {
   const [writing, setWriting] = useState<FolderItem | null>(null)
   const byDocument = suggestionsByDocument(LISTED)
@@ -263,10 +274,16 @@ export default function FilingSuggestionsDevPage(): JSX.Element {
         title="4 · Was in einen Ordner gehört"
         note="Oben im Ordner: die Beschreibung, und für wer schreiben darf, der Weg sie zu ändern."
       >
-        <div className="space-y-3 p-4">
-          <FolderDescriptionLine folder={DESCRIBED} canEdit onEdit={() => setWriting(DESCRIBED)} />
-          <FolderDescriptionLine folder={UNDESCRIBED} canEdit onEdit={() => setWriting(UNDESCRIBED)} />
-          <FolderDescriptionLine folder={DESCRIBED} canEdit={false} onEdit={noop} />
+        <div className="divide-y">
+          <State label="Mit Beschreibung, für wer schreiben darf">
+            <FolderDescriptionLine folder={DESCRIBED} canEdit onEdit={() => setWriting(DESCRIBED)} />
+          </State>
+          <State label="Ohne Beschreibung, für wer schreiben darf: nur die Einladung">
+            <FolderDescriptionLine folder={UNDESCRIBED} canEdit onEdit={() => setWriting(UNDESCRIBED)} />
+          </State>
+          <State label="Mit Beschreibung, für wer nur lesen darf: kein Weg, sie zu ändern">
+            <FolderDescriptionLine folder={DESCRIBED} canEdit={false} onEdit={noop} />
+          </State>
         </div>
       </Stage>
 

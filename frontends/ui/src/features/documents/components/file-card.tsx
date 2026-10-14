@@ -467,8 +467,10 @@ export const FileCard = memo(function FileCard({
           </GridTileFooter>
         )}
       </button>
-      {/* Beside the card's button, not in it: the suggestion has buttons of its own. */}
-      <FilingSuggestionSlot documentId={file.id} className="mx-2 mb-2" />
+      {/* Beside the card's button, not in it: the suggestion has buttons of its
+          own. The card's full width, edge to edge in the footer, so the folder
+          it names is read in full; it wraps rather than being cut. */}
+      <FilingSuggestionSlot documentId={file.id} className="rounded-none px-2.5 py-2" />
     </GridTileShell>
   )
 })
