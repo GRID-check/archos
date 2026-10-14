@@ -67,6 +67,10 @@ _REFUSAL_TEXT = {
     "dismissed": "refused: a person dismissed this value before; do not record it again",
     "unreadable-file": "refused: this file may not feed the profile; take the value from another document",
 }
+_CLASS_REFUSAL = (
+    "refused: the Gebäudeklasse is derived from the inputs you record, never recorded; record the inputs the "
+    "document gives"
+)
 #: Keys one ``unknown-key`` refusal names as the closest it knows.
 CLOSEST_KEYS = 3
 
@@ -241,8 +245,11 @@ RECORD_VALUES_DESCRIPTION = (
     f"and the verbatim quote that states it. Up to {client.MAX_RECORD_VALUES} per call, several keys at once. "
     "Nothing you record becomes a fact: each value is a suggestion a person confirms against the quote, so "
     "record only what a document states for THIS project, as its Zielzustand (a Bestand key: the existing "
-    "building), never a guess, a typical value or something you worked out; the Gebäudeklasse is derived from "
-    "what you record, never record it unless a document states the class itself. Value: select, the option "
+    "building), never a guess, a typical value or something you worked out. A value the document calls "
+    "undecided, under review or one of several options is not stated: a person would be confirming a decision "
+    "nobody made. A drawing's Planart (Einreichplan) names the drawing, not the project's phase. Never record "
+    "the Gebäudeklasse, even where a document states one: the system derives it from the inputs you record and "
+    "a person confirms it there, so record the inputs the document gives. Value: select, the option "
     "token exactly (multi_select: a list); number, "
     "a plain number in the question's unit, no unit text (`7,2 m` is 7.2); yes/no, true or false; text, the "
     "words as written. Quote: the document's own words, copied from text a tool showed you in this run in that "
@@ -437,6 +444,8 @@ def _outcome_line(key: str, result: dict[str, Any], session: IntakeSession) -> t
     outcome = str(result.get("outcome") or "")
     if outcome == "refused":
         reason = str(result.get("reason") or "")
+        if reason == "unknown-key" and key.split("@", maxsplit=1)[0] == "gebaeudeklasse":
+            return "refused:unknown-key", _CLASS_REFUSAL
         text = _REFUSAL_TEXT.get(reason, f"refused ({reason or 'no reason given'})")
         close = session.closest_keys(key) if reason == "unknown-key" else []
         if close:

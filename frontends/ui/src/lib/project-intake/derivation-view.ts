@@ -26,6 +26,9 @@ import type { DerivationView } from './types'
 /** The profile key the class of one Bauwerk is stored under. */
 export const gebaeudeklasseKey = (bauwerkId: string): string => `gebaeudeklasse@${bauwerkId}`
 
+/** Whether `key` holds a class, of a Bauwerk or flat: derived here, never recorded by a reading. */
+export const isGebaeudeklasseKey = (key: string): boolean => key.split('@')[0] === 'gebaeudeklasse'
+
 /** The reason a derived suggestion carries, beside its evidence. Read by a person and by the agent's prompt view. */
 export const DERIVED_REASON = `Abgeleitet: ${GEBAEUDEKLASSE_DERIVATION.citation}`
 

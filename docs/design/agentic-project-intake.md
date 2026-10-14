@@ -289,7 +289,9 @@ question writes, in the scope that question is asked in, or on a Bauwerk the
 profile does not describe, is refused (`unknown-key`; `questionForKey` in
 `needs.ts`), while a key whose question is not asked yet is taken, so the
 Wohnungen found before the Nutzungen that open them are kept and a batch has no
-order dependency; a value a person dismissed is refused; evidence from a
+order dependency; `gebaeudeklasse@bwN` is always refused, beside a confirmed
+class too, because the class is derived from its inputs and only proposed (and
+it is what an injected line asks for); a value a person dismissed is refused; evidence from a
 file outside `extractableFileNames` is refused; a value equal to a confirmed
 fact corroborates it (its evidence is added); a different one becomes an
 alternative on the fact (a contradiction); a different suggestion already

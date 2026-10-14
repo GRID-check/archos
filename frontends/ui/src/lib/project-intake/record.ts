@@ -17,9 +17,11 @@
  *     consulted: a reading may find the Wohnungen before the Nutzungen that
  *     open their question, and the values of one batch do not depend on their
  *     order. A key with a confirmed fact is never refused here: the reading
- *     may corroborate or contradict it (the derived `gebaeudeklasse@bwN`
- *     included). Checked against the profile at the write, the first three
- *     before (they do not move);
+ *     may corroborate or contradict it. The derived `gebaeudeklasse@bwN` is
+ *     always refused, a confirmed one included: it is derived from its inputs
+ *     and proposed, and a class taken from a document would skip the inputs a
+ *     person checks (and is what an injected line asks for). Checked against
+ *     the profile at the write, the first three before (they do not move);
  *  5. equal to the confirmed fact: `corroborated`, its evidence grows;
  *     different: `contradiction`, an alternative on the FACT, which is never
  *     overwritten;
@@ -37,7 +39,13 @@ import {
 } from '@/lib/project-profile/intake-definition'
 import type { DocumentEvidence } from '@/lib/project-profile/evidence-schema'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
-import { bauwerkeTouchedBy, bauwerkIdsOf, gebaeudeklasseKey, withDerivedClass } from './derivation-view'
+import {
+  bauwerkeTouchedBy,
+  bauwerkIdsOf,
+  gebaeudeklasseKey,
+  isGebaeudeklasseKey,
+  withDerivedClass,
+} from './derivation-view'
 import {
   isMeaningfulValue,
   pointerSegment,
@@ -108,6 +116,7 @@ function applyValue(
   now: string
 ): { profile: ProjectProfile; result: RecordResult } {
   const { key, value, evidence } = item
+  if (isGebaeudeklasseKey(key)) return { profile, result: { key, outcome: 'refused', reason: 'unknown-key' } }
   const fact = profile.facts[key]
   if (fact) {
     const corroborates = sameProfileValue(fact.value, value)

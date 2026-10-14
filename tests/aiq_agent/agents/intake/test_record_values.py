@@ -213,6 +213,16 @@ class TestTheBffDecides:
         assert "closest keys intake_needs listed: geschosse_oberirdisch@bw1" in text
         assert session.refusals["refused:unknown-key"] == 1
 
+    async def test_a_recorded_gebaeudeklasse_is_refused_as_derived(self, signed_run, route, session, pages_read):
+        route(
+            record=lambda body: {
+                "results": [{"key": "gebaeudeklasse@bw1", "outcome": "refused", "reason": "unknown-key"}]
+            }
+        )
+        text = await record_values(session, [_value("gebaeudeklasse@bw1", 1, "drei oberirdische Geschoße")])
+        assert "the Gebäudeklasse is derived from the inputs you record" in text
+        assert "closest keys" not in text
+
     async def test_a_stale_reading_stops_every_later_record(self, signed_run, route, session, pages_read):
         fake = route(record=409)
         first = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
@@ -275,6 +285,15 @@ class TestTheDescriptionsCarryTheRules:
             "refused, with the reason",
         ):
             assert phrase in RECORD_VALUES_DESCRIPTION, phrase
+
+    def test_record_values_says_what_does_not_count_as_stated_and_why(self):
+        from aiq_agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
+
+        for phrase in ("undecided, under review or one of several options", "Planart", "names the drawing"):
+            assert phrase in RECORD_VALUES_DESCRIPTION, phrase
+        # The route refuses the class: the description says never, and why.
+        assert "Never record the Gebäudeklasse, even where a document states one" in RECORD_VALUES_DESCRIPTION
+        assert "unless a document states the class" not in RECORD_VALUES_DESCRIPTION
 
     def test_intake_needs_says_what_each_state_means(self):
         from aiq_agent.agents.intake.tools import INTAKE_NEEDS_DESCRIPTION

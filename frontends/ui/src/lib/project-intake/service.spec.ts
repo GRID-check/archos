@@ -379,6 +379,21 @@ describe('recordIntakeValues — what a value becomes', () => {
     ])
   })
 
+  it('refuses the Gebäudeklasse a document states, beside a confirmed class too: it is derived, never recorded', async () => {
+    useProfile({
+      ...emptyProfile(),
+      facts: { 'gebaeudeklasse@bw1': { value: 4, confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+    })
+
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('gebaeudeklasse@bw1', 1), value('gebaeudeklasse@bw2', 1)])
+
+    expect(results).toEqual([
+      { key: 'gebaeudeklasse@bw1', outcome: 'refused', reason: 'unknown-key' },
+      { key: 'gebaeudeklasse@bw2', outcome: 'refused', reason: 'unknown-key' },
+    ])
+    expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+
   it('never derives over a confirmed Gebäudeklasse: a different class becomes an alternative on the fact', async () => {
     useProfile({
       ...emptyProfile(),
