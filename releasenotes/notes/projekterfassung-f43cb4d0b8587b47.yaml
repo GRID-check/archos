@@ -1,0 +1,14 @@
+---
+features:
+  - >
+    Piloti can set up a new project from its documents: give a name and the
+    address, add the files, and Piloti suggests every value with the page it
+    found it on and asks only what would change the Gebäudeklasse.
+  - >
+    The address field in the new project dialog suggests Austrian addresses
+    as you type and fills in the Bundesland and the Gemeinde.
+fixes:
+  - >
+    The list of applicable OIB-Richtlinien now uses the Fluchtniveau, the
+    Gebäudeklasse, the uses and the underground storeys entered in the project
+    setup, instead of listing the generic six.
