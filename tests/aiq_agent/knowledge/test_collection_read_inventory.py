@@ -105,6 +105,13 @@ TOOLS: dict[str, tuple[str, str]] = {
     "chat_deepresearcher_agent": ("agent", "the chat workflow around Piloti"),
     "deep_research_agent": ("agent", "a restricted collection is never signed into a run's scope (ADR-0087)"),
     "deep_research_workflow": ("agent", "wraps deep_research_agent"),
+    # The intake agent (ADR-0111) reads through read_document, list_files, knowledge_search and
+    # read_passage; its own reader keeps to the project's main collection and refuses a restricted
+    # folder's even when one is signed in.
+    "project_intake_agent": (
+        "agent",
+        "tests/aiq_agent/agents/intake/test_reading.py::test_a_restricted_folders_collection_is_never_read",
+    ),
 }
 
 _KINDS = {"reports", "lists_nothing_restricted", "no_collection_content", "external", "agent"}

@@ -55,6 +55,16 @@ The three answer modes of a project intake question. A Wert becomes a fact, a
 Schätzung an unconfirmed assumption, and noch offen an open question Piloti asks
 about when an answer depends on it.
 
+**Projekterfassung** (project setup from the documents):
+The way into a new project where Piloti reads the project's documents, suggests
+each value with the page it was found on (*Vorschlag*), and asks only the
+*Rückfragen* whose answer would change the Gebäudeklasse; a person confirms.
+The *Einrichtung* (the wizard) is the other way into the same profile. A value
+two documents state differently is a *Widerspruch*, shown, never decided by
+Piloti. A project created as abgeschlossen is set up the same way and closed
+when its Erfassung is finished.
+_Avoid_: wizard, for the Projekterfassung; „Plan" for any of the documents it reads.
+
 **Gebäudeklasse** (building class):
 The OIB classification of a building that many requirements depend on. Piloti
 asks for it when an answer turns on it.

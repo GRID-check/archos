@@ -159,6 +159,7 @@ const row = (extra: Partial<ProposedChangeRow> = {}): ProposedChangeRow => ({
   id: ID,
   organizationId: 'org_1',
   projectId: PROJECT,
+  scope: 'project',
   kind: 'file_operation',
   payload: MOVE,
   status: 'proposed',
@@ -173,6 +174,7 @@ const row = (extra: Partial<ProposedChangeRow> = {}): ProposedChangeRow => ({
   results: null,
   applyingBy: null,
   applyingSince: null,
+  originTraceId: null,
   ...extra,
 })
 
@@ -579,6 +581,7 @@ describe('what follows a decision (live card, inbox, Langfuse)', () => {
       decision: 'accepted',
       decidedBy: 'user_1',
       origin: ORIGIN,
+      traceId: null,
     })
   })
 

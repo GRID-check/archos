@@ -26,7 +26,7 @@ import { formatAbsoluteTime } from '@/lib/format'
 import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeStatus } from '@/lib/proposals/types'
 import type { ProposalOfKind, ServerProposal } from '../hooks/use-server-proposal'
 import { ProposalShell } from './ProposalShell'
-import { StackedLabel } from './StackedLabel'
+import { StackedLabel } from '@/components/ui/stacked-label'
 
 type ProposalTone = ComponentProps<typeof ProposalShell>['tone']
 

@@ -65,6 +65,7 @@ export function FileOperationReceipt({
   const verb = proposal?.payload.operation ?? operation
   const items: readonly FileOperationItem[] = proposal?.payload.operations ?? operations
   const shownNote = proposal ? proposal.payload.note : note
+  const newFolder = proposal?.payload.new_folder
 
   return (
     <ProposalReceipt
@@ -73,7 +74,7 @@ export function FileOperationReceipt({
       title={title}
       open={
         <>
-          <OperationList operation={verb} items={items} />
+          <OperationList operation={verb} items={items} newFolder={newFolder} />
           {shownNote && <p className="card-caption text-muted-foreground">{shownNote}</p>}
         </>
       }
@@ -95,7 +96,12 @@ export function FileOperationReceipt({
       }}
       decidedBody={(decided) =>
         decided.status === 'dismissed' ? null : (
-          <OperationList operation={decided.payload.operation} items={decided.payload.operations} results={decided.results} />
+          <OperationList
+            operation={decided.payload.operation}
+            items={decided.payload.operations}
+            results={decided.results}
+            newFolder={decided.payload.new_folder}
+          />
         )
       }
     />

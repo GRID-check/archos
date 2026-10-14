@@ -13,13 +13,16 @@ export function StackedLabel({
   busy,
   idle,
   working,
+  className,
 }: {
   busy: boolean
   idle: string
   working: string
+  /** On the cell: `text-start` where a glyph sits before the label (a button centres its text). */
+  className?: string
 }) {
   return (
-    <span className="grid">
+    <span className={cn('grid', className)}>
       <span className={cn('col-start-1 row-start-1', busy && 'invisible')} aria-hidden={busy}>
         {idle}
       </span>

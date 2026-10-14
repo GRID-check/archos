@@ -347,6 +347,14 @@ Read by `frontends/ui/workers/jobs/index.js`, the entry point of the `bff-jobs` 
 | `GRID_BFF_JOBS_MAX_PER_ORG` | No | `0` | Most jobs one organisation may run **across the whole fleet**; 0 for no cap. The claim is fair without it. Hard: a claim that raced past the cap gives its job back. Pulumi `bffJobsMaxPerOrg`. |
 | `GRID_BFF_JOBS_SLICE_TIMEOUT_MS` | No | `300000` | Ceiling on one slice's request to the BFF; a slice that outlives it is a failed attempt. |
 
+### Filing suggestions
+
+Read by the BFF where an upload batch is sealed and settled (`frontends/ui/src/lib/filing/trigger.ts`).
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_FILING_SUGGESTIONS` | No | on | `off` stops Piloti from judging where an upload belongs: no `filing_review` job is queued and no model call is made. Open suggestions stay until decided. |
+
 ### Wakes of Piloti (ADR-0106)
 
 An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `GRID_CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `GRID_INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.
@@ -408,6 +416,7 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 | `LANGCHAIN_PROJECT` | No | `aiq-research` | LangSmith project name. |
 | `LANGCHAIN_TRACING_V2` | No | — | Set to `true` to enable LangSmith tracing. |
 | `WANDB_API_KEY` | No | — | Weights & Biases API key for experiment tracking. |
+| `GRID_GEOCODER_URL` | No | _(unset)_ | Base URL of a [Photon](https://github.com/komoot/photon) (OSM) geocoder, e.g. `https://photon.komoot.io` or a self-hosted instance (`frontends/ui/src/lib/geocoding`). Behind `GET /api/geocode`, the address search of the project creation dialog: Austrian addresses and places in, coordinates, Bundesland (the intake `A2_land` token) and Gemeinde out. Unset (or not an http(s) URL), the route answers `{ enabled: false, results: [] }` and the dialog falls back to choosing the Bundesland by hand. An address is client data and every keystroke-driven search is sent to this host, so the provider is a deployment choice: the public komoot instance is for trials, production should self-host. Only same-origin redirects are followed; a search that fails or takes over 4 s answers no results. Read per request. Frontend service. |
 
 ## Observability (OTel collector, Kubernetes/Pulumi-injected)
 

@@ -531,6 +531,48 @@ export const files = {
       saveError: 'Access could not be changed. Please try again.',
       forbidden: 'Only project admins can change who may read and edit a folder.',
     },
+    describe: 'Description…',
+    /** What belongs in a folder (migration 0145): Piloti files uploads by it. */
+    description: {
+      title: 'What belongs in “{name}”?',
+      hint: 'A sentence or two on what this folder holds. Everyone who opens the folder reads it, and Piloti suggests where an upload belongs by it.',
+      label: 'Description',
+      placeholder: 'e.g. Permits and statements from the building authority',
+      count: '{count} / {max} characters',
+      tooLong: 'At most {max} characters.',
+      save: 'Save',
+      saveError: 'The description could not be saved. Please try again.',
+      edit: 'Edit description',
+      empty: 'Describe what belongs here',
+    },
+  },
+  /**
+   * Piloti's filing suggestion: the chip on a card, a list row and an upload
+   * row, the popover it opens, and the filing bar that decides per folder.
+   */
+  filing: {
+    label: 'Filing suggestion from Piloti',
+    /** The chip's accessible name; it shows only the folder's last segment. */
+    chip: 'Filing suggestion: {folder}',
+    new: 'new',
+    /** Where a file at the top level of a shelf is now, struck through in the popover. */
+    rootProject: 'Project folder (top level)',
+    rootOffice: 'Office filing (top level)',
+    /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
+    from: 'Now in',
+    to: 'Would move to',
+    barHeading: '{count, plural, one {Piloti suggests filing # file} other {Piloti suggests filing # files}}',
+    fileCount: '{count, plural, one {# file} other {# files}}',
+    others: '{count, plural, one {with # more file} other {with # more files}}',
+    move: 'Move',
+    moveAll: 'Move all {count}',
+    createAndMove: 'Create and move',
+    keep: 'Leave it',
+    moved: 'Moved to “{folder}”.',
+    kept: 'Stays where it is.',
+    failed: 'Could not be moved.',
+    error: 'That did not work. Please try again.',
+    readOnly: 'Only people who may file here can move it.',
   },
   /** The Papierkorb of a project (ADR-0088). */
   bin: {

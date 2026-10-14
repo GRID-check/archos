@@ -125,6 +125,9 @@ const ALL_TYPES = [
   'piloti.work_failed',
   'piloti.asks_you',
   'piloti.proposal_waiting',
+  // A reading of a project's documents is ready for review (ADR-0111): setting
+  // a project up is not a chat feature.
+  'piloti.intake_ready',
 ] as const satisfies readonly InboxItemType[]
 
 /** What a tenant WITHOUT collaboration may see: the operational types only. */
@@ -157,6 +160,9 @@ const OPERATIONAL_TYPES = [
   'piloti.work_failed',
   'piloti.asks_you',
   'piloti.proposal_waiting',
+  // A reading of a project's documents is ready for review (ADR-0111): setting
+  // a project up is not a chat feature.
+  'piloti.intake_ready',
 ] as const satisfies readonly InboxItemType[]
 
 const at = new Date('2026-07-29T10:00:00.000Z')

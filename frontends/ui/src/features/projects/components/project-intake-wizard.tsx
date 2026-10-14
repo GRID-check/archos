@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { MutableRefObject } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -9,7 +9,6 @@ import {
   AlertTriangle,
   Check,
   FolderOpen,
-  HelpCircle,
   Loader2,
   PencilLine,
   Plus,
@@ -17,25 +16,16 @@ import {
   Trash2,
 } from 'lucide-react'
 import { projectTourUrl } from '@/features/onboarding/lib/product-tour'
-import { AnimatePresence, motion, springGlide } from '@/components/motion'
+import { AnimatePresence, motion } from '@/components/motion'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Progress } from '@/components/ui/progress'
 import { SectionLabel } from '@/components/ui/section-label'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Textarea } from '@/components/ui/textarea'
 import { cn } from '@/lib/utils'
 import { DocumentRoleField } from './document-role-field'
+import { QuestionControl, QuestionHeader } from './intake-question-field'
 import { ProjektgrundlagenStep } from './projektgrundlagen-step'
 import {
   createUploadTracker,
@@ -1881,8 +1871,6 @@ function QuestionField({
   onSetAnswer: (key: string, value: ProjectPrimitiveValue) => void
   onSetMode: (key: string, mode: IntakeAnswerMode) => void
 }) {
-  const t = useTranslations('projects')
-  const value = answers[answerKey]
   const domId = `q-${answerKey}`
 
   if (question.type === 'info_placeholder') {
@@ -1907,389 +1895,15 @@ function QuestionField({
       </div>
     )
   }
-
-  const header = <QuestionHeader question={question} domId={domId} />
-  const errorText = error ? (
-    <p id={`${domId}-error`} className="text-destructive text-sm">
-      {error}
-    </p>
-  ) : null
-
-  switch (question.type) {
-    case 'text':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Input
-            id={domId}
-            type="text"
-            value={typeof value === 'string' ? value : ''}
-            placeholder={question.placeholder}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => onSetAnswer(answerKey, e.target.value)}
-            className="max-w-md"
-          />
-          {errorText}
-        </div>
-      )
-    case 'textarea':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Textarea
-            id={domId}
-            value={typeof value === 'string' ? value : ''}
-            placeholder={question.placeholder}
-            onChange={(e) => onSetAnswer(answerKey, e.target.value)}
-            className="min-h-24 max-w-2xl"
-          />
-          {errorText}
-        </div>
-      )
-    case 'number':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Input
-            id={domId}
-            type="number"
-            inputMode="decimal"
-            value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
-            aria-invalid={error ? true : undefined}
-            onChange={(e) => {
-              const raw = e.target.value
-              if (raw === '') return onSetAnswer(answerKey, '')
-              const parsed = Number(raw)
-              onSetAnswer(answerKey, Number.isFinite(parsed) ? parsed : raw)
-            }}
-            className="max-w-40"
-          />
-          {errorText}
-        </div>
-      )
-    case 'number_tri':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <NumberTriControl
-            domId={domId}
-            question={question}
-            value={value}
-            mode={(answers[modeKeyFor(answerKey)] as IntakeAnswerMode) ?? 'wert'}
-            onValue={(v) => onSetAnswer(answerKey, v)}
-            onMode={(m) => onSetMode(answerKey, m)}
-          />
-          {errorText}
-        </div>
-      )
-    case 'yes_no_open':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Segmented
-            ariaLabel={question.label}
-            value={typeof value === 'string' ? value : ''}
-            options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
-              { value: 'offen', label: t('intake.open'), tone: 'muted' },
-            ]}
-            onChange={(v) => onSetAnswer(answerKey, v)}
-          />
-          {errorText}
-        </div>
-      )
-    case 'boolean':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Segmented
-            ariaLabel={question.label}
-            value={value === true ? 'ja' : value === false ? 'nein' : ''}
-            options={[
-              { value: 'ja', label: t('intake.yes') },
-              { value: 'nein', label: t('intake.no') },
-            ]}
-            onChange={(v) => onSetAnswer(answerKey, v === 'ja')}
-          />
-          {errorText}
-        </div>
-      )
-    case 'single_select':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <Select
-            value={typeof value === 'string' ? value : ''}
-            onValueChange={(v) => onSetAnswer(answerKey, v)}
-          >
-            <SelectTrigger
-              id={domId}
-              className="w-full max-w-md"
-              aria-invalid={error ? true : undefined}
-            >
-              <SelectValue placeholder={t('intake.selectPlaceholder')} />
-            </SelectTrigger>
-            <SelectContent>
-              {(question.options ?? []).map((opt) => (
-                <SelectItem key={opt.value} value={opt.value}>
-                  {opt.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          {errorText}
-        </div>
-      )
-    case 'multi_select':
-      return (
-        <div className="flex flex-col gap-2">
-          {header}
-          <ChipMultiSelect
-            question={question}
-            value={Array.isArray(value) ? value : []}
-            onChange={(next) => onSetAnswer(answerKey, next)}
-          />
-          {errorText}
-        </div>
-      )
-    default:
-      return null
-  }
-}
-
-function QuestionHeader({ question, domId }: { question: ProjectIntakeQuestion; domId: string }) {
-  const t = useTranslations('projects')
-  const [whyOpen, setWhyOpen] = useState(false)
-  const whyId = `${domId}-why`
   return (
-    <div className="flex flex-col gap-1">
-      {/* `items-center` on touch: the rationale glyph beside the label is a full
-          44px control there, and baseline alignment would hang it off the label's
-          text baseline instead of centring it in the row it now defines. */}
-      <div className="flex items-baseline gap-2 pointer-coarse:items-center">
-        <Label htmlFor={domId} className="text-sm font-medium">
-          {question.label}
-          {/* Mark the handful of hard-required fields so they're distinguishable
-              from the ~90 soft ones BEFORE Next is pressed (error prevention),
-              mirroring the FieldShell required marker used elsewhere. */}
-          {question.required && (
-            <span aria-hidden className="text-destructive">
-              {' '}
-              *
-            </span>
-          )}
-        </Label>
-        {question.optional && (
-          <span className="text-muted-foreground text-xs font-normal">{t('intake.optional')}</span>
-        )}
-        {/* The rationale rides ON the label row as a glyph rather than under it
-            as its own "Warum fragen wir das?" line. Nearly every question in the
-            catalog carries a `why`, so a per-field row put a second, louder
-            control beside every label — an accordion the length of the form
-            competing with the questions it annotates. */}
-        {question.why && (
-          <button
-            type="button"
-            onClick={() => setWhyOpen((previous) => !previous)}
-            aria-expanded={whyOpen}
-            aria-controls={whyId}
-            aria-label={t('intake.why')}
-            title={t('intake.why')}
-            // 44px of REAL layout space, not a negative-margin overhang.
-            //
-            // The overhang is the tempting version — it grows the target and
-            // moves nothing — and it is wrong here because this control has
-            // neighbours on every side it would grow into: the `<Label>` is 8px
-            // to its left and the field it annotates is 4px below. A 14px
-            // overhang therefore covers the end of the label (which focuses the
-            // field) and the top edge of the field itself, so the two taps a
-            // reader is most likely to make in this row would both open the
-            // rationale instead. A target that big by theft is worse than a
-            // small one: it is wrong on purpose rather than by omission.
-            //
-            // The cost is the honest one — the label row is 44px tall on touch.
-            // `pointer-coarse:items-center` below keeps the glyph and the label
-            // aligned once the row is taller than its baseline.
-            className="text-muted-foreground hover:text-foreground focus-visible:ring-ring/40 pointer-coarse:size-11 inline-flex size-4 shrink-0 items-center justify-center self-center rounded-full outline-none transition-colors duration-quick ease-out focus-visible:ring-2 motion-reduce:transition-none"
-          >
-            <HelpCircle className="size-3.5" aria-hidden />
-          </button>
-        )}
-      </div>
-      {question.why && whyOpen && (
-        // The documented quotation rule (`border-l-2 border-border`) on a real
-        // surface, rather than a second differently-alpha'd action ink.
-        <p
-          id={whyId}
-          className="border-border bg-muted text-muted-foreground max-w-prose border-l-2 px-3 py-2 text-xs"
-        >
-          {question.why}
-        </p>
-      )}
-      {question.help && <p className="text-muted-foreground text-xs">{question.help}</p>}
-    </div>
-  )
-}
-
-/** Number input with a value/estimate/open answer-mode segmented control. */
-function NumberTriControl({
-  domId,
-  question,
-  value,
-  mode,
-  onValue,
-  onMode,
-}: {
-  domId: string
-  question: ProjectIntakeQuestion
-  value: ProjectPrimitiveValue
-  mode: IntakeAnswerMode
-  onValue: (v: ProjectPrimitiveValue) => void
-  onMode: (m: IntakeAnswerMode) => void
-}) {
-  const t = useTranslations('projects')
-  const disabled = mode === 'offen'
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex flex-wrap items-center gap-2">
-        <Input
-          id={domId}
-          type="number"
-          inputMode="decimal"
-          disabled={disabled}
-          placeholder={question.placeholder}
-          value={typeof value === 'number' ? value : typeof value === 'string' ? value : ''}
-          onChange={(e) => {
-            const raw = e.target.value
-            if (raw === '') return onValue('')
-            const parsed = Number(raw)
-            onValue(Number.isFinite(parsed) ? parsed : raw)
-          }}
-          className="max-w-32 font-mono"
-        />
-        {question.unit && (
-          <span className="text-muted-foreground font-mono text-xs">{question.unit}</span>
-        )}
-        <Segmented
-          ariaLabel={t('intake.mode.aria')}
-          size="sm"
-          value={mode}
-          options={[
-            { value: 'wert', label: t('intake.mode.wert') },
-            { value: 'geschaetzt', label: t('intake.mode.geschaetzt'), tone: 'warning' },
-            { value: 'offen', label: t('intake.mode.offen'), tone: 'muted' },
-          ]}
-          onChange={(v) => onMode(v as IntakeAnswerMode)}
-        />
-      </div>
-      {question.hint && <p className="text-muted-foreground max-w-xl text-xs">{question.hint}</p>}
-    </div>
-  )
-}
-
-type SegmentTone = 'default' | 'warning' | 'muted'
-
-/** A compact segmented single-choice control (yes/no/open, answer modes). */
-function Segmented({
-  value,
-  options,
-  onChange,
-  ariaLabel,
-  size = 'md',
-}: {
-  value: string
-  options: { value: string; label: string; tone?: SegmentTone }[]
-  onChange: (value: string) => void
-  ariaLabel: string
-  size?: 'sm' | 'md'
-}) {
-  // One pill per control: several Segmented share a page, so the shared-layout
-  // id is scoped to this instance or the fill would fly between questions.
-  const pillId = useId()
-  return (
-    <div
-      role="group"
-      aria-label={ariaLabel}
-      className="border-border inline-flex w-fit flex-wrap self-start overflow-hidden rounded-lg border"
-    >
-      {options.map((opt, i) => {
-        const active = value === opt.value
-        const tone = opt.tone ?? 'default'
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() => onChange(opt.value)}
-            className={cn(
-              'border-border relative isolate inline-flex items-center justify-center transition-colors duration-quick ease-out motion-reduce:transition-none',
-              i > 0 && 'border-l',
-              // Comfortable tap targets on touch screens; denser on desktop pointers.
-              size === 'sm'
-                ? 'min-h-9 px-3 text-xs font-medium md:min-h-8 md:px-2.5 md:text-[11px]'
-                : 'min-h-11 px-4 text-sm md:min-h-9 md:px-3.5',
-              !active && 'bg-card text-foreground hover:bg-muted',
-              active && tone === 'default' && 'text-primary-foreground',
-              active && tone === 'warning' && 'text-white',
-              active && tone === 'muted' && 'text-background'
-            )}
-          >
-            {active && (
-              <motion.span
-                layoutId={pillId}
-                transition={springGlide}
-                aria-hidden="true"
-                className={cn(
-                  'absolute inset-0 -z-10',
-                  tone === 'default' && 'bg-primary',
-                  tone === 'warning' && 'bg-warning',
-                  tone === 'muted' && 'bg-muted-foreground'
-                )}
-              />
-            )}
-            <span className="relative">{opt.label}</span>
-          </button>
-        )
-      })}
-    </div>
-  )
-}
-
-/** Multi-select rendered as toggleable chips. */
-function ChipMultiSelect({
-  question,
-  value,
-  onChange,
-}: {
-  question: ProjectIntakeQuestion
-  value: string[]
-  onChange: (next: string[]) => void
-}) {
-  return (
-    <div className="flex max-w-2xl flex-wrap gap-2">
-      {(question.options ?? []).map((opt) => {
-        const active = value.includes(opt.value)
-        return (
-          <button
-            key={opt.value}
-            type="button"
-            aria-pressed={active}
-            onClick={() =>
-              onChange(active ? value.filter((v) => v !== opt.value) : [...value, opt.value])
-            }
-            className={cn(
-              'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-1.5 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none md:min-h-9 md:px-3.5',
-              active
-                ? 'border-primary bg-primary text-primary-foreground'
-                : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5'
-            )}
-          >
-            {opt.label}
-          </button>
-        )
-      })}
-    </div>
+    <QuestionControl
+      question={question}
+      answerKey={answerKey}
+      answers={answers}
+      error={error}
+      onSetAnswer={onSetAnswer}
+      onSetMode={onSetMode}
+    />
   )
 }
 

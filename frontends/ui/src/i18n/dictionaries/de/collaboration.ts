@@ -404,6 +404,16 @@ export const collaboration: typeof en.collaboration = {
           project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
         },
       },
+      // Piloti hat die Dokumente eines Projekts gelesen und Werte für das
+      // Projektprofil vorgeschlagen (ADR-0111). {subject} ist der Projektname,
+      // {related} die Zahl der Rückfragen, die die Gebäudeklasse entscheiden;
+      // ohne Rückfragen fehlt sie, dann gilt `title`. Was Piloti zusammengefasst
+      // hat, steht als Auszug darunter.
+      pilotiIntakeReady: {
+        title: 'Piloti hat die Dokumente von „{subject}“ gelesen',
+        titleRelated: 'Piloti hat die Dokumente von „{subject}“ gelesen – Rückfragen: {related}',
+        body: 'Prüfen Sie die Vorschläge und bestätigen Sie, was stimmt.',
+      },
       unknown: {
         title: 'Es gab Aktivität',
         body: 'in {subject}',

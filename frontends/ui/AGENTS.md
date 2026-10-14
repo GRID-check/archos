@@ -78,9 +78,12 @@ one per deployment (platform defaults, an upstream catalog) goes in
 `eslint-rules/global-cache-keys.mjs` **with the reason it is safe to share** —
 an unexplained entry there is indistinguishable from a leak somebody silenced.
 
-**The project profile has one editor, the intake wizard.** Settings shows it
+**The project profile has one form, the intake wizard.** Settings shows it
 read-only and links there. Its facts are interdependent, so edits belong in the
-guided flow rather than a second form.
+guided flow rather than a second form. The Projekterfassung (ADR-0111) is not a
+second form: it confirms or dismisses what Piloti read, and answers a single
+open question with the wizard's own control (`intake-question-field.tsx`),
+writing through `patchProjectProfile`, the profile's one door.
 
 **Piloti is the product, GRID is the repo.** User-facing strings say Piloti;
 env vars (`GRID_*`), headers (`x-grid-*`) and CSS variables stay GRID.

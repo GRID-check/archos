@@ -269,6 +269,50 @@ class TestManyStates:
     async def test_nothing_to_decide_is_all_none_without_a_request(self):
         assert await decide_many([], QUESTIONS, slot="x") == []
 
+    async def test_one_transport_serves_every_call_of_a_batch(self, records):
+        # A batch used to wrap the one transport in a client per call and close
+        # each client after its call, which closed the transport under every
+        # other call: they failed with ReadError, and five of them opened the
+        # breaker for the whole process.
+        transport = _ClosingTransport(_ok)
+        decided = await decide_many(["a", "b", "c", "d"], QUESTIONS, slot="fingerprint_verify", transport=transport)
+        assert all(decision is not None for decision in decided)
+        assert transport.requests == 4
+        assert not decisions._breaker_open()
+
+    def test_decide_many_blocking_decides_every_state(self, records):
+        transports: list[_ClosingTransport] = []
+
+        def build() -> _ClosingTransport:
+            transports.append(_ClosingTransport(_ok))
+            return transports[-1]
+
+        with patch.object(httpx, "AsyncHTTPTransport", side_effect=build):
+            decided = decisions.decide_many_blocking(["a", "b", "c"], QUESTIONS, slot="fingerprint_verify")
+        assert [decision is not None for decision in decided] == [True, True, True]
+        assert all(transport.closed for transport in transports)
+
+
+class _ClosingTransport(httpx.AsyncBaseTransport):
+    """A mock that, like ``httpx.AsyncHTTPTransport``, fails every request once it was closed."""
+
+    def __init__(self, handler) -> None:
+        self._inner = httpx.MockTransport(handler)
+        self.closed = False
+        self.requests = 0
+
+    async def handle_async_request(self, request: httpx.Request) -> httpx.Response:
+        import asyncio
+
+        await asyncio.sleep(0)  # in flight together, as concurrent calls are
+        if self.closed:
+            raise httpx.ReadError("the transport was closed", request=request)
+        self.requests += 1
+        return await self._inner.handle_async_request(request)
+
+    async def aclose(self) -> None:
+        self.closed = True
+
 
 class TestTheCostIsOnTheLedger:
     async def test_a_decision_records_a_usage_event(self):

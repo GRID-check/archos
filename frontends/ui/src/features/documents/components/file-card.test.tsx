@@ -264,14 +264,16 @@ describe('FileCard while the document is still being read', () => {
   it('grows the raised content block so the footer sits on the bottom edge', () => {
     render(<FileCard file={unsettled} isSelected={false} onSelect={() => {}} locale="de" />)
 
+    // The card's button fills the tile above the footer, and inside it the
+    // raised white block is the growing child, so the footer (the button's
+    // sibling, since it holds the filing chip) sits on the bottom edge.
     const card = screen.getByTestId('file-card')
-    expect(card.className).toContain('h-full')
+    expect(card.className).toContain('flex-1')
     expect(card.className).toContain('flex-col')
 
-    // First child is the raised white block, last is the size · time footer tab.
     const [contentBlock] = Array.from(card.children)
     expect(contentBlock.className).toContain('flex-1')
-    expect(card.lastElementChild).not.toBe(contentBlock)
+    expect(card.nextElementSibling).toBe(screen.getByTestId('file-card-footer'))
   })
 
   it('holds the description slot with skeleton lines instead of leaving it blank', () => {
@@ -367,7 +369,8 @@ describe('FileCard for a report Piloti wrote', () => {
     expect(byline.tagName).toBe('P')
     // In the BODY, under the name — not in the footer, which is the assignment
     // slot where the faces and the word `Unvergeben` live.
-    expect(screen.getByTestId('file-card').lastElementChild).not.toContainElement(byline)
+    expect(screen.getByTestId('file-card')).toContainElement(byline)
+    expect(screen.getByTestId('file-card-footer')).not.toContainElement(byline)
   })
 
   it('stays silent about authorship for an uploaded file', () => {
@@ -403,10 +406,12 @@ describe('FileCard headlines carry no version numbers', () => {
     )
 
     const card = screen.getByTestId('file-card')
+    const footer = screen.getByTestId('file-card-footer')
     expect(card.textContent).not.toMatch(/\bv\d+\b/i)
+    expect(footer.textContent).not.toMatch(/\bv\d+\b/i)
     // The footer keeps what it measures: size · time.
-    expect(card.textContent).toMatch('1 kB')
-    expect(card.querySelector('time')).toBeInTheDocument()
+    expect(footer.textContent).toMatch('1 kB')
+    expect(footer.querySelector('time')).toBeInTheDocument()
   })
 
   it('states the word once the document has a history — and still no number', () => {

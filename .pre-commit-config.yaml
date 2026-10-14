@@ -141,6 +141,17 @@ repos:
         pass_filenames: false
         files: ^skills/.*$|^scripts/validate_skills\.py$
 
+      - id: release-notes
+        name: release notes keep to the house rules
+        # The rules (two sentences an entry, no template text, no code words)
+        # were checked only by CI's Repo checks, so a note over the limit was
+        # found after the push, twice on one branch. The house lint needs no
+        # reno; `task release:lint` still runs reno's own scan in CI.
+        entry: .venv/bin/python scripts/release_notes.py lint
+        language: system
+        pass_filenames: false
+        files: ^releasenotes/.*\.yaml$|^scripts/release_notes\.py$
+
   - repo: https://github.com/tcort/markdown-link-check
     rev: v3.11.2
     hooks:

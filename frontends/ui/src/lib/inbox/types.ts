@@ -148,6 +148,7 @@ export const INBOX_TYPE_PRESENTATION: Record<InboxItemType, InboxTypePresentatio
   'piloti.work_failed': { icon: 'alert-triangle', i18nKey: 'pilotiWorkFailed', tone: 'warning' },
   'piloti.asks_you': { icon: 'message-square', i18nKey: 'pilotiAsksYou', tone: 'request' },
   'piloti.proposal_waiting': { icon: 'layers', i18nKey: 'pilotiProposalWaiting', tone: 'request' },
+  'piloti.intake_ready': { icon: 'check-circle', i18nKey: 'pilotiIntakeReady', tone: 'request' },
 }
 
 /**

@@ -24,7 +24,15 @@ import {
   validateProfilePatchVocabulary,
 } from './intake-definition'
 import { ProjectProfileSchema } from './types'
-import type { ProjectPrimitiveValue, ProjectProfile, ProjectProfilePatchOperation } from './types'
+import type {
+  ProfileAlternative,
+  ProfileEvidence,
+  ProjectAssumption,
+  ProjectFact,
+  ProjectPrimitiveValue,
+  ProjectProfile,
+  ProjectProfilePatchOperation,
+} from './types'
 
 const definition = projectIntakeDefinitionV1
 type Answers = Record<string, ProjectPrimitiveValue>
@@ -394,6 +402,198 @@ describe('mergeIntakeProfile', () => {
     const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'wien' }, definition)
     expect(mergeIntakeProfile(built, null, definition)).toBe(built)
   })
+
+  describe('what a reading left (ADR-0111)', () => {
+    const NOW = '2026-01-01T00:00:00.000Z'
+    const evidenceOn = (quote: string): ProfileEvidence[] => [
+      { kind: 'document', fileName: 'Baubeschreibung.pdf', page: 4, quote },
+    ]
+    const suggestion = (
+      value: ProjectPrimitiveValue,
+      extra: Partial<ProjectAssumption> = {}
+    ): ProjectAssumption => ({
+      value,
+      status: 'unconfirmed',
+      reason: 'Baubeschreibung.pdf, S. 4',
+      source: 'agent_suggested',
+      updatedAt: NOW,
+      evidence: evidenceOn('3 oberirdische Geschoße'),
+      ...extra,
+    })
+    const alternative = (value: ProjectPrimitiveValue): ProfileAlternative => ({
+      value,
+      evidence: evidenceOn('laut Einreichplan'),
+      recordedAt: NOW,
+    })
+    const previousWith = (partial: Partial<ProjectProfile>): ProjectProfile => ({
+      facts: {},
+      goals: {},
+      unknowns: [],
+      assumptions: {},
+      ...partial,
+    })
+
+    it('keeps an agent suggestion under an intake key when the save does not answer that key', () => {
+      const previous = previousWith({
+        assumptions: {
+          'geschosse_oberirdisch@bw1': suggestion(3),
+          bundesland: suggestion('tirol'),
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'wien' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      // Untouched suggestion: value and evidence survive whole.
+      expect(merged.assumptions['geschosse_oberirdisch@bw1']).toEqual(
+        previous.assumptions['geschosse_oberirdisch@bw1']
+      )
+      // The save answered `bundesland`; the fact wins and the suggestion is gone.
+      expect(merged.facts.bundesland?.value).toBe('wien')
+      expect(merged.assumptions.bundesland).toBeUndefined()
+    })
+
+    it('drops a suggestion the save estimates instead', () => {
+      const previous = previousWith({ assumptions: { 'geschosse_oberirdisch@bw1': suggestion(3) } })
+      const built = buildIntakeProfile(
+        { 'C1@bw1': 'gebaeude', 'C3@bw1': 4, [modeKeyFor('C3@bw1')]: 'geschaetzt' },
+        definition,
+        { bauwerke: [{ id: 'bw1', name: 'Bauwerk 1' }] }
+      )
+      expect(built.assumptions['geschosse_oberirdisch@bw1']?.source).toBe('onboarding_default')
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.assumptions['geschosse_oberirdisch@bw1']).toMatchObject({
+        value: 4,
+        source: 'onboarding_default',
+      })
+    })
+
+    it('carries the evidence when the confirmed value is the suggested one', () => {
+      const previous = previousWith({
+        assumptions: { bundesland: suggestion('wien', { evidence: evidenceOn('Wien') }) },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'wien' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.bundesland?.evidence).toEqual(evidenceOn('Wien'))
+    })
+
+    it('carries the evidence of a previous fact when its value is unchanged, and drops it when the value changed', () => {
+      const fact = (value: ProjectPrimitiveValue): ProjectFact => ({
+        value,
+        confidence: 'confirmed',
+        source: 'user_confirmed',
+        updatedAt: NOW,
+        evidence: evidenceOn('Wien'),
+      })
+      const previous = previousWith({ facts: { bundesland: fact('wien') } })
+
+      const unchanged = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at', A2_land: 'wien' }, definition),
+        previous,
+        definition
+      )
+      const changed = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at', A2_land: 'tirol' }, definition),
+        previous,
+        definition
+      )
+
+      expect(unchanged.facts.bundesland?.evidence).toEqual(evidenceOn('Wien'))
+      expect(changed.facts.bundesland?.value).toBe('tirol')
+      expect(changed.facts.bundesland?.evidence).toBeUndefined()
+    })
+
+    it('treats a multi-select as unchanged whatever the order of its options', () => {
+      const previous = previousWith({
+        facts: {
+          vorhabensart: {
+            value: ['sanierung', 'neubau'],
+            confidence: 'confirmed',
+            source: 'user_confirmed',
+            updatedAt: NOW,
+            evidence: evidenceOn('Neubau und Sanierung'),
+          },
+        },
+      })
+      const built = buildIntakeProfile(
+        { A2_country: 'at', A5: ['neubau', 'sanierung'] },
+        definition
+      )
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.vorhabensart?.evidence).toEqual(evidenceOn('Neubau und Sanierung'))
+    })
+
+    it('carries the alternatives of a fact, except the one that equals the new value', () => {
+      const previous = previousWith({
+        facts: {
+          bundesland: {
+            value: 'wien',
+            confidence: 'confirmed',
+            source: 'user_confirmed',
+            updatedAt: NOW,
+            alternatives: [alternative('tirol'), alternative('salzburg')],
+          },
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'tirol' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.bundesland?.alternatives?.map((entry) => entry.value)).toEqual([
+        'salzburg',
+      ])
+    })
+
+    it('carries the alternatives of a suggestion onto the fact the save writes for its key', () => {
+      const previous = previousWith({
+        assumptions: { bundesland: suggestion('wien', { alternatives: [alternative('tirol')] }) },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at', A2_land: 'wien' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.facts.bundesland?.alternatives?.map((entry) => entry.value)).toEqual(['tirol'])
+    })
+
+    it("still retires the wizard's own onboarding_default assumptions under an intake key", () => {
+      const previous = previousWith({
+        assumptions: {
+          'geschosse_oberirdisch@bw1': {
+            value: 3,
+            status: 'unconfirmed',
+            reason: 'Während der Erhebung geschätzt',
+            source: 'onboarding_default',
+            updatedAt: NOW,
+          },
+        },
+      })
+      const built = buildIntakeProfile({ A2_country: 'at' }, definition)
+
+      const merged = mergeIntakeProfile(built, previous, definition)
+
+      expect(merged.assumptions['geschosse_oberirdisch@bw1']).toBeUndefined()
+    })
+
+    it('keeps the profile parseable', () => {
+      const previous = previousWith({
+        assumptions: {
+          'geschosse_oberirdisch@bw1': suggestion(3, { alternatives: [alternative(4)] }),
+        },
+      })
+      const merged = mergeIntakeProfile(
+        buildIntakeProfile({ A2_country: 'at' }, definition),
+        previous,
+        definition
+      )
+      expect(() => ProjectProfileSchema.parse(merged)).not.toThrow()
+    })
+  })
 })
 
 describe('evaluateIntakeCondition', () => {
@@ -405,6 +605,15 @@ describe('evaluateIntakeCondition', () => {
     expect(evaluateIntakeCondition(cb6, { ...base, 'CB4@bw1': ['kernsanierung'] }, 'bw1')).toBe(
       true
     )
+  })
+
+  it('asks for the Bundesland while the country is open or Austria, never elsewhere', () => {
+    const land = findIntakeQuestion(definition, 'A2_land')!
+    expect(evaluateIntakeCondition(land, {})).toBe(true)
+    expect(evaluateIntakeCondition(land, { A2_country: 'at' })).toBe(true)
+    for (const country of ['de', 'ch', 'other']) {
+      expect(evaluateIntakeCondition(land, { A2_country: country })).toBe(false)
+    }
   })
 
   it('resolves a bauwerk-scope param within the current instance', () => {
@@ -865,5 +1074,73 @@ describe('v1.0 → v1.2 bridges — the second review pass', () => {
       definition
     )
     expect(reopened.answers['G1']).toBe('Ein Wohnhaus.\n\nHanglage.')
+  })
+})
+
+describe('where a value is found, and what it feeds', () => {
+  const questions = flattenIntakeQuestions(definition)
+  const byId = (id: string) => {
+    const question = findIntakeQuestion(definition, id)
+    if (!question) throw new Error(`no question ${id}`)
+    return question
+  }
+
+  it('names the documents of every core question in modules A to F that writes a key', () => {
+    const coreWriters = definition.stages
+      .filter((stage) => 'ABCDEF'.includes(stage.id))
+      .flatMap((stage) => stage.questions)
+      .filter((question) => question.core && question.writesTo)
+    expect(coreWriters.length).toBeGreaterThan(10)
+    for (const question of coreWriters) {
+      expect(question.foundIn?.length, question.id).toBeGreaterThan(0)
+    }
+  })
+
+  it('marks exactly the inputs of the Gebäudeklasse as feeding it', () => {
+    const feeding = questions
+      .filter((question) => question.feeds === 'gebaeudeklasse')
+      .map((question) => question.id)
+    expect(feeding.sort()).toEqual(['C1', 'C3', 'C5', 'C6', 'C7', 'C8', 'C9', 'C9_zugang', 'D0'])
+  })
+
+  it('asks about access on three sides only for a freistehendes Gebäude, after the Gebäudestellung', () => {
+    const ids = definition.stages
+      .find((stage) => stage.id === 'C')!
+      .questions.map((question) => question.id)
+    expect(ids.indexOf('C9_zugang')).toBe(ids.indexOf('C9') + 1)
+    const question = byId('C9_zugang')
+    expect(question).toMatchObject({
+      type: 'yes_no_open',
+      writesTo: '/facts/zugang_drei_seiten/value',
+    })
+
+    const asked = (stellung: string) =>
+      evaluateIntakeCondition(question, { 'C1@bw1': 'gebaeude', 'C9@bw1': stellung }, 'bw1')
+    expect(asked('freistehend')).toBe(true)
+    expect(asked('angebaut')).toBe(false)
+    expect(
+      evaluateIntakeCondition(question, { 'C1@bw1': 'klein', 'C9@bw1': 'freistehend' }, 'bw1')
+    ).toBe(false)
+  })
+
+  it('stores the access answer as a boolean fact and reads it back', () => {
+    const answers: Answers = {
+      'C1@bw1': 'gebaeude',
+      'C9@bw1': 'freistehend',
+      'C9_zugang@bw1': 'ja',
+    }
+    const profile = buildIntakeProfile(answers, definition, {
+      bauwerke: [{ id: 'bw1', name: 'Haus' }],
+    })
+    expect(profile.facts['zugang_drei_seiten@bw1']?.value).toBe(true)
+    expect(answersFromProfile(profile, definition).answers['C9_zugang@bw1']).toBe('ja')
+  })
+
+  it('defines the Fluchtniveau as the OIB does', () => {
+    const hint = byId('C5').hint ?? ''
+    expect(hint).toContain('höchstgelegenen oberirdischen Geschoßes')
+    expect(hint).toContain('Geländeoberfläche nach Fertigstellung im Mittel')
+    expect(hint).not.toContain('Aufenthaltsräumen')
+    expect(hint).not.toContain('tiefsten Punkt')
   })
 })

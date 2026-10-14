@@ -7,11 +7,14 @@ import 'server-only'
  * Piloti acted in (`piloti.proposal_waiting`). Whoever decides it, that person
  * or a colleague who may write in the project, settles it for them.
  *
- * The item points at the chat the proposal was made in, where its card is, and
- * at the project's chat when it has no chat; either way the reader's access to
- * it is re-derived when the row is read. It carries the one-line summary as its
- * excerpt, what the proposal changes as its `variant` (the row's wording: „Piloti
- * schlägt vor, Dateien umzubenennen“), and no actor: Piloti proposed it.
+ * The item points at the chat the proposal was made in, where its card is.
+ * A proposal no chat made is a filing suggestion (`lib/filing`): it points at
+ * the shelf, the project's Dateien or, for one with no project, the
+ * Büroablage (`organization`), where the file row carries it. Either way the
+ * reader's access is re-derived when the row is read. It carries the one-line
+ * summary as its excerpt, what the proposal changes as its `variant` (the
+ * row's wording: „Piloti schlägt vor, Dateien umzubenennen“), and no actor:
+ * Piloti proposed it.
  */
 
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
@@ -27,7 +30,8 @@ const SUMMARY_LENGTH = 200
 /** A proposal was stored (`lib/proposals/service.ts`): the person it was made for may decide it. */
 export async function onProposalCreated(input: {
   organizationId: string
-  projectId: string
+  /** Null for a Büroablage proposal (0146). */
+  projectId: string | null
   proposalId: string
   originConversationId: string | null
   onBehalfOf: string
@@ -39,7 +43,9 @@ export async function onProposalCreated(input: {
   await bestEffortInbox(`${TYPE} for proposal ${input.proposalId}`, input.organizationId, () => {
     const [resourceType, resourceId] = input.originConversationId
       ? (['conversation', input.originConversationId] as const)
-      : (['project', input.projectId] as const)
+      : input.projectId
+        ? (['project', input.projectId] as const)
+        : (['organization', input.organizationId] as const)
     const summary = input.summary.replace(/\s+/g, ' ').trim()
     return emitInboxItems([
       {

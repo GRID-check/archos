@@ -39,6 +39,9 @@ import {
   type ProjectOutcome,
 } from './project-status'
 import { currentMonth, dateToMonth, isMonth, monthToDate, type Month } from './month'
+import type { ProjectSetup } from './create-project-schema'
+import { startProjectIntake } from './intake-seed'
+import type { GeocodeResult } from '@/lib/geocoding/types'
 import { rearmOneShotsSkippedWhileParked } from '@/lib/tasks/repository'
 import { shelfReaderFor } from '@/lib/upload-screening/quarantine-reviewers'
 import { memberReader } from '@/lib/documents/visibility'
@@ -114,18 +117,33 @@ async function listProjectsHolding(
   order: 'newest' | 'oldest'
 ): Promise<Project[]> {
   const projects = await listProjectsInOrg(session.organizationId, { order })
+  return projectsHolding(session, projects, permissions)
+}
+
+/**
+ * Of `projects`, the ones on which the caller holds ANY of `permissions`; the
+ * filter {@link listProjects} applies, for a caller that already has its
+ * candidates (the same-address lookup asks about its few matches, not all of
+ * them).
+ */
+export async function projectsHolding<T extends Pick<Project, 'id' | 'status'>>(
+  session: AuthorizedSession,
+  projects: readonly T[],
+  permissions: readonly ProjectPermission[] = ['project:view']
+): Promise<T[]> {
   // The same permission-gated bypass `requireProjectAccess` applies, checked the
   // same way — if these two ever disagreed the grid would list projects the
   // detail view then refuses, or hide ones it would have opened.
-  if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return projects
+  if (hasPermission(session, ORG_PERMISSIONS.projectsAdminister)) return [...projects]
 
-  const holds = async (project: Project): Promise<boolean> => {
+  const holds = async (project: T): Promise<boolean> => {
     // A closed project (ADR-0090), decided as `requireProjectAccess` decides it:
     // only what a closed project still allows is asked, and what is open to the
     // whole organization (reading, chatting) every member holds.
-    const asked = isProjectClosed(project) ? keptWhenClosed(permissions) : permissions
+    const closed = isProjectClosed(project)
+    const asked = closed ? keptWhenClosed(permissions) : permissions
     if (asked.length === 0) return false
-    if (isProjectClosed(project) && openToOrganizationWhenClosed(asked)) return true
+    if (closed && openToOrganizationWhenClosed(asked)) return true
     for (const permissionSlug of asked) {
       const allowed = await checkResourcePermission({
         organizationMembershipId: session.organizationMembershipId,
@@ -138,8 +156,8 @@ async function listProjectsHolding(
     }
     return false
   }
-  const visible = await Promise.all(projects.map(async (project) => ((await holds(project)) ? project : null)))
-  return visible.filter((project): project is Project => project !== null)
+  const held = await Promise.all(projects.map(holds))
+  return projects.filter((_, index) => held[index])
 }
 
 /**
@@ -199,6 +217,24 @@ export interface ProjectClosing {
 }
 
 /**
+ * `setup` says how a new project is set up. `piloti`: Piloti reads the
+ * documents and the person reviews (ADR-0111); the project gets its
+ * `project_intakes` row. `self`: no intake, the wizard fills the profile.
+ */
+export interface CreateProjectInput {
+  name: string
+  closing?: ProjectClosing
+  /** Absent means `self`: the person-facing callers (the route, the form's action) default to `piloti`. */
+  setup?: ProjectSetup
+  /** „Worum geht es?", at most 500 characters. Kept with the intake. */
+  description?: string
+  /** The address search's hit. Seeds the profile (address, country, Bundesland). */
+  location?: GeocodeResult
+  /** A Bundesland token chosen by hand when no geocoder is configured. */
+  bundesland?: string
+}
+
+/**
  * Create a project, register it as a WorkOS FGA resource, and make the
  * creator its project-admin. With `closing`, the project is a past one added
  * as the office's reference (ADR-0098): it is created and then closed at once,
@@ -229,10 +265,20 @@ export interface ProjectClosing {
  * a failed WorkOS step, so no half-created active project is left behind. It
  * skips the debrief and the clear-out of an ordinary close: a project created
  * this second has no memory and no files to review.
+ *
+ * ## Piloti sets it up
+ *
+ * With `setup: 'piloti'` the project gets its intake row, status
+ * `waiting`, and the profile facts the chosen address decides, in one write
+ * after the FGA steps and inside the same compensating delete (the intake row
+ * cascades with the project). A closing given with it is NOT carried out: the
+ * project stays active while its documents are read and is closed when the
+ * person finishes the review, so the intake keeps the closing as an intent.
+ * Without it this is the function it always was.
  */
 export async function createProject(
   session: AuthorizedSession,
-  input: { name: string; closing?: ProjectClosing },
+  input: CreateProjectInput,
   // Optional because the projects-page server action has no `Request` to pass.
   // `recordAuditEvent` already treats it as optional (it only enriches the event
   // context with IP + user agent), so requiring it here was the sole reason that
@@ -241,6 +287,9 @@ export async function createProject(
   now: Date = new Date()
 ): Promise<Project> {
   const closing = input.closing ? closingOrRefuse(input.closing, currentMonth(now)) : undefined
+  const piloti = input.setup === 'piloti'
+  // A closing Piloti sets up is carried out when the review is finished.
+  const closeNow = closing && !piloti ? closing : undefined
   const workos = getWorkOS()
 
   const inserted = await insertProject({
@@ -248,6 +297,8 @@ export async function createProject(
     name: input.name,
     createdBy: session.userId,
     collectionName: `proj_${crypto.randomUUID()}`,
+    // The Beginn is the person's answer, whoever sets the project up: closing it
+    // waits for the review, the month it began does not.
     ...(closing?.startedOn ? { startedOn: monthToDate(closing.startedOn) } : {}),
   })
 
@@ -269,7 +320,20 @@ export async function createProject(
       roleSlug: 'project-admin',
     })
 
-    if (closing) project = await closeNewProject(session, inserted.id, closing, now)
+    if (piloti) {
+      await startProjectIntake(
+        session,
+        inserted,
+        {
+          description: input.description,
+          location: input.location,
+          bundesland: input.bundesland,
+          closing: closing && { outcome: closing.outcome, startedOn: closing.startedOn, endedOn: closing.endedOn },
+        },
+        now
+      )
+    }
+    if (closeNow) project = await closeNewProject(session, inserted.id, closeNow, now)
   } catch (error) {
     // Best-effort undo. If even this fails the row survives unreachable, which is
     // the state we are trying to avoid — so say so loudly rather than swallow it.
@@ -288,17 +352,17 @@ export async function createProject(
     action: 'project.created',
     targetType: 'project',
     targetId: project.id,
-    metadata: { name: input.name },
+    metadata: piloti ? { name: input.name, setup: 'piloti' } : { name: input.name },
     request,
   })
-  if (closing) {
+  if (closeNow) {
     await recordAuditEvent({
       organizationId: session.organizationId,
       actor: { userId: session.userId, email: session.email },
       action: 'project.closed',
       targetType: 'project',
       targetId: project.id,
-      metadata: { name: project.name, from: 'active', outcome: closing.outcome, endedOn: closing.endedOn },
+      metadata: { name: project.name, from: 'active', outcome: closeNow.outcome, endedOn: closeNow.endedOn },
       request,
     })
   }

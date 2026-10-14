@@ -1612,6 +1612,14 @@ export interface SourcePreviewChipProps {
    * `full`; see {@link CitationDetail}.
    */
   detail?: CitationDetail
+  /**
+   * The project the cited file is looked up in, for a surface that is not the
+   * chat (the Projekterfassung cites the project's own documents and has no
+   * conversation to read it from). Unset, it is the chat's project.
+   */
+  projectId?: string | null
+  /** The chip's text where the document's name alone is not the point (name and page). Unset, the document's label. */
+  label?: string
 }
 
 /**
@@ -1639,8 +1647,11 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
   variant = 'chip',
   trailing,
   detail = 'full',
+  projectId: projectIdOverride,
+  label: labelOverride,
 }) => {
-  const projectId = useChatStore((s) => s.projectId)
+  const chatProjectId = useChatStore((s) => s.projectId)
+  const projectId = projectIdOverride === undefined ? chatProjectId : projectIdOverride
   const conversationId = useConversationId()
   const { document: doc, locus } = citation
   // Only a document with a filename and no outbound link can resolve to a
@@ -1670,7 +1681,7 @@ export const SourcePreviewChip: FC<SourcePreviewChipProps> = ({
       ? (asDownloadTarget(resolved) ?? resolved)
       : resolved
 
-  const label = citationLabel(doc)
+  const label = labelOverride ?? citationLabel(doc)
   const precedent = isPrecedent(doc, projectId)
   // A chip stands for a DOCUMENT, so it names every marker that document
   // carries — "2, 7", not an arbitrary one of them. A chip narrowed to a locus

@@ -134,6 +134,10 @@ aiq_cross_project = "aiq_agent.tools.cross_project.register"
 # thread. Its own entry point: it calls its own BFF
 # route, and a deployment without it keeps every other tool.
 aiq_canvas = "aiq_agent.tools.canvas.register"
+# The Erfassungs-Agent's config (`_type: project_intake_agent`, ADR-0111). The
+# research worker reads it by name and runs the agent; NAT only has to know the
+# type, or `load_config` refuses the YAML that names it.
+aiq_project_intake = "aiq_agent.agents.intake.register"
 # Grid telemetry `_type`s named in the shipped YAML. They register at import
 # via NAT decorators and used to ride in on `chat_researcher.register`. After
 # that package dissolved, `load_config` in a clean interpreter (the container's

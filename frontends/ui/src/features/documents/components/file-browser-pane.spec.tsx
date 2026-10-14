@@ -121,7 +121,8 @@ describe('FileBrowserPane — card grid', () => {
     const { unmount } = renderPane()
     const card = screen.getAllByTestId('file-card').find((c) => within(c).queryByText('site-plan.pdf'))!
     expect(within(card).getByText('PDF')).toBeInTheDocument()
-    expect(within(card).getByText(/1 kB/)).toBeInTheDocument()
+    // The size is in the footer, the card button's sibling.
+    expect(within(card.nextElementSibling as HTMLElement).getByText(/1 kB/)).toBeInTheDocument()
     // Citable is the normal state: the card says nothing about it.
     expect(within(card).queryByText('Citable')).not.toBeInTheDocument()
     unmount()

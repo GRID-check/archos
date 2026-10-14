@@ -16,7 +16,7 @@
 
 import { useEffect, useState } from 'react'
 import type { ProjectProfile } from '@/lib/project-profile/types'
-import type { ProposedChangeResult, ProposedChangeView } from '@/lib/proposals/types'
+import type { ListedProposal, ProposedChangeResult, ProposedChangeView } from '@/lib/proposals/types'
 
 const id = (n: number) => `00000000-0000-4000-8000-0000000002${String(n).padStart(2, '0')}`
 
@@ -163,10 +163,17 @@ const PROFILE_NOW: ProjectProfile = {
 const json = (body: unknown, status = 200): Response =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 
-/** Replace `fetch` with the faked API; the returned function puts the real one back. */
-export function installFakeProposalClient(): () => void {
+/**
+ * Replace `fetch` with the faked API; the returned function puts the real one
+ * back. `listed` are proposals a preview brings of its own, with the documents
+ * they name (the setup page's filing suggestions): answered like the built-in
+ * ones, and by the open-proposals list (`GET /api/proposals`).
+ */
+export function installFakeProposalClient(listed: readonly ListedProposal[] = []): () => void {
   const real = window.fetch
   const proposals = seed()
+  const documentsOf = new Map(listed.map((entry) => [entry.proposal.id, entry.documents]))
+  for (const { proposal } of listed) proposals.set(proposal.id, proposal)
 
   const decide = (current: ProposedChangeView, status: 'applied' | 'dismissed'): ProposedChangeView => {
     const results: ProposedChangeResult[] | null =
@@ -188,6 +195,15 @@ export function installFakeProposalClient(): () => void {
 
   window.fetch = async (input, init) => {
     const url = new URL(typeof input === 'string' ? input : input instanceof URL ? input.href : input.url, window.location.href)
+    if (url.pathname === '/api/proposals' && (init?.method ?? 'GET') === 'GET') {
+      const open = [...proposals.values()].flatMap((proposal) => {
+        const documents = documentsOf.get(proposal.id)
+        return documents && proposal.status === 'proposed' && proposal.projectId === url.searchParams.get('projectId')
+          ? [{ proposal, documents }]
+          : []
+      })
+      return json({ proposals: open })
+    }
     const match = url.pathname.match(/^\/api\/proposals\/([^/]+)(?:\/(apply|dismiss))?$/)
     if (match) {
       const current = proposals.get(match[1])
@@ -207,16 +223,19 @@ export function installFakeProposalClient(): () => void {
   }
 }
 
-/** Install the faked API for the life of the page; true once it is in place, so no card asks the real one first. */
-export function useFakeProposalClient(): boolean {
+/**
+ * Install the faked API for the life of the page; true once it is in place, so
+ * no card asks the real one first. `listed` must be a stable array.
+ */
+export function useFakeProposalClient(listed?: readonly ListedProposal[]): boolean {
   const [ready, setReady] = useState(false)
   useEffect(() => {
-    const restore = installFakeProposalClient()
+    const restore = installFakeProposalClient(listed)
     setReady(true)
     return () => {
       restore()
       setReady(false)
     }
-  }, [])
+  }, [listed])
   return ready
 }

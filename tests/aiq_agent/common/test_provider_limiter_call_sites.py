@@ -362,10 +362,10 @@ async def test_the_decision_models_client_holds_a_slot(pool, monkeypatch):
     sent: list[tuple[int, dict]] = []
     _serving(monkeypatch, pool, sent)
     monkeypatch.setattr(decisions, "_shared_client", None)
-    client, owned = decisions._client(3.0, None)
     try:
-        assert owned is False
-        await client.post("https://openrouter.ai/api/alpha/decisions", json={"model": "vendor/decide"})
+        async with decisions._client(3.0, None) as client:
+            await client.post("https://openrouter.ai/api/alpha/decisions", json={"model": "vendor/decide"})
+        assert not client.is_closed  # the loop's keep-alive client outlives the call
     finally:
         await client.aclose()
         monkeypatch.setattr(decisions, "_shared_client", None)

@@ -177,6 +177,7 @@ describe('extractProjectExperience', () => {
         reason: 'Baubeschreibung.pdf, S. 2: „Niederösterreich"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
+        evidence: [expect.objectContaining({ kind: 'document' })],
       },
       gebaeudeklasse: {
         value: 4,
@@ -184,6 +185,7 @@ describe('extractProjectExperience', () => {
         reason: 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
+        evidence: [expect.objectContaining({ kind: 'document' })],
       },
       bauweise: {
         value: ['holzbau', 'stahlbeton'],
@@ -191,6 +193,7 @@ describe('extractProjectExperience', () => {
         reason: 'Baubeschreibung.pdf, S. 2: „Holz-Stahlbeton"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
+        evidence: [expect.objectContaining({ kind: 'document' })],
       },
       oib_ausgabe: {
         value: '2019',
@@ -198,7 +201,46 @@ describe('extractProjectExperience', () => {
         reason: 'Baubeschreibung.pdf, S. 2: „OIB-RL 2019"',
         source: 'agent_suggested',
         updatedAt: expect.any(String),
+        evidence: [expect.objectContaining({ kind: 'document' })],
       },
+    })
+  })
+
+  it('stores the structured evidence beside the reason, one entry per quote, the page as a number', async () => {
+    answerWith(
+      backendAnswer({
+        fingerprint: [
+          {
+            key: 'gebaeudeklasse',
+            value: '4',
+            evidence: [evidence('Gebäudeklasse 4', '3'), { fileName: 'Bescheid.pdf', page: '', quote: 'GK 4' }],
+          },
+        ],
+      })
+    )
+
+    await extractProjectExperience(session, PROJECT_ID)
+
+    expect(writtenAssumptions().gebaeudeklasse).toMatchObject({
+      reason: 'Baubeschreibung.pdf, S. 3: „Gebäudeklasse 4"',
+      evidence: [
+        { kind: 'document', fileName: 'Baubeschreibung.pdf', page: 3, quote: 'Gebäudeklasse 4' },
+        { kind: 'document', fileName: 'Bescheid.pdf', page: null, quote: 'GK 4' },
+      ],
+    })
+  })
+
+  it('masks the quote in the evidence too, not only in the reason', async () => {
+    answerWith(
+      backendAnswer({
+        fingerprint: [{ key: 'gebaeudeklasse', value: '4', evidence: [evidence('Bauwerberin Maria Huber, GK 4')] }],
+      })
+    )
+
+    await extractProjectExperience(session, PROJECT_ID)
+
+    expect(writtenAssumptions().gebaeudeklasse).toMatchObject({
+      evidence: [{ quote: 'Bauwerberin [Name], GK 4' }],
     })
   })
 

@@ -34,8 +34,14 @@ const updateFolderSchema = z
     // `.nullable().optional()` and not merely optional: absent and null mean
     // different things here.
     parentId: z.string().uuid().nullable().optional(),
+    /**
+     * What belongs in the folder (migration 0145). `null` or blank clears it.
+     * Bounded above the column's 500 so the service, which folds whitespace
+     * first, gives the refusal in words; this is only the untrusted edge.
+     */
+    description: z.string().max(2000).nullable().optional(),
   })
-  .refine((body) => body.name !== undefined || body.parentId !== undefined, {
+  .refine((body) => body.name !== undefined || body.parentId !== undefined || body.description !== undefined, {
     message: 'Nothing to update.',
   })
 
@@ -82,12 +88,12 @@ export function createFolderHandler<P>(
   }
 }
 
-/** `PATCH …/folders/[folderId]` `{ name?, parentId? }` → `{ folder }`. */
+/** `PATCH …/folders/[folderId]` `{ name?, parentId?, description? }` → `{ folder }`. */
 export function updateFolderHandler<P extends { folderId: string }>(
   update: (
     params: P,
     session: AuthorizedSession,
-    patch: { name?: string; parentId?: string | null },
+    patch: { name?: string; parentId?: string | null; description?: string | null },
     request: Request,
   ) => Promise<Outcome<{ folder: FolderRow }>>,
 ) {
@@ -97,6 +103,7 @@ export function updateFolderHandler<P extends { folderId: string }>(
       await update(params, session, {
         ...(body.name !== undefined ? { name: body.name } : {}),
         ...(body.parentId !== undefined ? { parentId: body.parentId } : {}),
+        ...(body.description !== undefined ? { description: body.description } : {}),
       }, request),
     )
     return { folder }

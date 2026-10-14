@@ -17,7 +17,7 @@ the Fachbereich): [`analyst-guide.md`](analyst-guide.md).
 
 | Field in Langfuse | Where it comes from | Values |
 |---|---|---|
-| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `fassung-visual-compare` (two page images in one vision call, input shown without the pixels) |
+| Trace name | `trace_context.trace_name_for_root` (NAT runs), `observed_generation` (auxiliary calls) | `chat-turn`, `research-job`, `conversation-title`, `project-summary`, `consistency-check`, `skill-review`, `lesson-distill`, `feedback-digest`, `cleanup-proposal`, `change-summary`, `fassung-visual-compare` (two page images in one vision call, input shown without the pixels), `filing-fit` (where an upload batch belongs; metadata `batch_id`, `project_id`, `shelf`, `basis`, and the counts; a decision on the proposal it made is a `piloti-decision` score on its trace, through `proposed_changes.origin_trace_id`) |
 | Environment | `APP_ENV`, coerced to Langfuse's alphabet | `production`, … |
 | Release | `GRID_GIT_SHA`, the image's commit | the commit hash |
 | Session | the conversation id (NAT sets `session.id`) | one session per chat |
@@ -113,6 +113,29 @@ masked like the question. A write the model chose before the note arrived and
 the turn held back is the technical step `status:steered:<round>` beside
 `repeat`, `refused` and `width`.
 
+### The project intake run
+
+The reading of a new project's documents (ADR-0111) is a `research-job` trace of
+agent type `project_intake` (ADR-0108), not a trace of its own name. The run
+writes its facts once, when it ends, in `_record_trace`
+(`src/aiq_agent/agents/intake/agent.py`):
+
+| Key | Meaning |
+|---|---|
+| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `no_model`, `refused`, `error` or `no_job` |
+| `intake_mode` | the mode the intake was read in (`active` unless the intake's needs say otherwise) |
+| `intake_documents_read` | how many documents the run opened |
+| `intake_suggested` | values recorded as suggestions, which a person will check |
+| `intake_corroborated` | values the profile already held, where the run added its evidence |
+| `intake_contradictions` | values that differ from the one on the profile, kept beside it for a person |
+| `intake_withdrawn` | suggestions the run recorded and then took back itself (`withdraw_values`); a refused withdrawal is counted under `intake_refusals` as `withdraw:<reason>` |
+| `intake_finish_held` | whether `finish_intake` held the model's first call once, because decisive needs were open and files unread |
+| `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`, `refused:<reason>`, `withdraw:<reason>`); absent when there were none |
+| `intake_decisive_open` | how many decisive needs were still open when the run ended |
+
+A suggestion a person accepts or dismisses is scored `piloti-decision` on this
+same trace, with `subject` `intake_suggestion` (see [Scores](#scores)).
+
 ### The decision model
 
 Every call of the decision model (Jev, ADR-0064) is a generation named
@@ -136,7 +159,7 @@ a name is written but not declared, or declared but not listed here.
 |---|---|---|---|
 | `user-feedback` | numeric 0–1 | BFF, on a vote | 1 helpful, 0 not. The mean is the helpful rate |
 | `user-feedback-reason` | categorical | BFF, on a down-vote | `inaccurate`, `wrong_source`, `too_slow`, `other` |
-| `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn. One score per decision, on the trace of the producing turn; metadata `subject` (`proposal`, `annotation`, `change`) and `subject_id`. The acceptance rate of Piloti's work |
+| `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn, or with a value a reading of the project's documents suggested (ADR-0111). One score per decision, on the trace of the producing turn (for an intake suggestion, the reading's `research-job` trace); metadata `subject` (`proposal`, `annotation`, `change`, `intake_suggestion`) and `subject_id`. The acceptance rate of Piloti's work |
 | `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
 | `answer-grounded` | boolean | agent | false when sources were retrieved but no citation survived |
 | `citations-removed` | numeric | agent | citations verification dropped |
