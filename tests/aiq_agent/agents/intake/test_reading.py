@@ -95,6 +95,14 @@ class TestOnlyTheProjectShelves:
         monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
         assert reading.project_collections() == ["proj_1", "legacy"]
 
+    def test_a_restricted_folders_collection_is_never_read(self, monkeypatch):
+        from aiq_agent.knowledge.scoping import ScopedCollection
+
+        restricted = "proj_1_r0f0e0d0c0b0a"
+        scope = [ScopedCollection("proj_1", Shelf.PROJECT), ScopedCollection(restricted, Shelf.PROJECT)]
+        monkeypatch.setattr("aiq_agent.knowledge.scoping.get_scoped_collections_from_context", lambda: scope)
+        assert reading.project_collections() == ["proj_1"]
+
 
 def _hit(file_name: str, page: int, body: str, shelf: Shelf | None = Shelf.PROJECT) -> GroundingHit:
     return GroundingHit(

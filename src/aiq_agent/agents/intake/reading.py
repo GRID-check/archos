@@ -39,6 +39,7 @@ from aiq_agent.common.grounding_block import strip_trace_lanes
 from aiq_agent.common.message_utils import content_to_text
 from aiq_agent.common.source_kinds import SHELF_QUALIFIERS
 from aiq_agent.common.source_kinds import Shelf
+from aiq_agent.knowledge.restricted_collections import is_restricted_collection
 
 from .read_log import IntakeReadLog
 from .read_log import current_read_log
@@ -112,11 +113,20 @@ class ProjectDocument:
 
 
 def project_collections() -> list[str]:
-    """The run's project shelves from its signed scope: the corpus, the Archiv and a session never."""
+    """The run's project shelves from its signed scope: the corpus, the Archiv, a session and a restricted folder never.
+
+    The BFF signs only the project's main collection into the run, so a restricted folder's
+    collection should never be here. It is refused anyway: what the intake reads becomes a profile
+    every member reads (ADR-0087, ADR-0111), and a scope that drifted must not widen that.
+    """
     from aiq_agent.knowledge.scoping import get_scoped_collections_from_context
 
     entries = get_scoped_collections_from_context() or []
-    return [entry.collection for entry in entries if entry.shelf in (None, Shelf.PROJECT)]
+    return [
+        entry.collection
+        for entry in entries
+        if entry.shelf in (None, Shelf.PROJECT) and not is_restricted_collection(entry.collection)
+    ]
 
 
 async def project_documents() -> list[ProjectDocument]:
