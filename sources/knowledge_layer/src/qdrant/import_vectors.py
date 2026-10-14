@@ -346,11 +346,18 @@ def import_scope(
     decides are merged onto it. The person-set facts are then merged onto
     every file (:func:`apply_facts`), so a full run leaves them in step too.
     ``store`` must carry the collection's own identity (:meth:`CollectionEntry.identity`).
+
+    Each chunk gets its place in its file (``chunk_ordinal``) from the export's
+    order: the exporter pages ``collection.get``, which returns Chroma's
+    insertion order, and ingestion inserted a file's chunks as the chunker cut
+    them. ``_node_content``'s ``start_char_idx`` cannot stand in: it counts
+    within one LlamaIndex Document, and was 0 for most chunks of a real store.
     """
     report = ScopeReport(name)
     facts = {} if dry_run else facts_by_file(name)
     base = scope_enrichment(name)
     ids: set[str] = set()
+    ordinals: dict[str, int] = {}
     for records in export.batches(name):
         report.read += len(records)
         ids.update(record.chunk_id for record in records)
@@ -359,7 +366,10 @@ def import_scope(
             continue
         by_file: dict[str, list[ChunkRecord]] = {}
         for record in records:
-            by_file.setdefault(str(record.metadata.get("file_name") or ""), []).append(record)
+            file_name = str(record.metadata.get("file_name") or "")
+            record.ordinal = ordinals.get(file_name, 0)
+            ordinals[file_name] = record.ordinal + 1
+            by_file.setdefault(file_name, []).append(record)
         for file_name, file_records in by_file.items():
             report.written += store.upsert(name, file_records, {**base, **facts.get(file_name, {})}, insert_only=True)
     if not dry_run:

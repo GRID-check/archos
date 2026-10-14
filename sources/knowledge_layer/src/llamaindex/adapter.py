@@ -3932,6 +3932,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         chunk's EMBED rendering (its metadata header, minus the keys
         ``_stamp_chunk_metadata`` excluded, then its text); what is stored is
         the bare text. The model is passed explicitly, never read off a global.
+        ``documents`` are one file's, so a record's ``ordinal`` (its index in
+        the chunker's output) is its place in the file: what orders the chunks
+        of one page, whose node ids are random.
         """
         from llama_index.core.node_parser import SentenceSplitter
         from llama_index.core.schema import MetadataMode
@@ -3950,8 +3953,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 text=node.get_content(metadata_mode=MetadataMode.NONE),
                 embedding=[float(value) for value in vector],
                 metadata=dict(node.metadata),
+                ordinal=ordinal,
             )
-            for node, vector in zip(nodes, vectors, strict=True)
+            for ordinal, (node, vector) in enumerate(zip(nodes, vectors, strict=True))
         ]
 
     @staticmethod

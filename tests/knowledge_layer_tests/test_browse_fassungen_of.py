@@ -454,6 +454,30 @@ class TestComparing:
         text = await self._call(fassungen_of="Plan_Index_A.pdf", compare_to="vorige", shelf="archiv")
         assert "nichts zu vergleichen" in text
 
+    async def test_identical_fassungen_with_several_chunks_on_a_page_compare_as_unchanged(
+        self,
+        scope,
+        qdrant_store,  # noqa: ARG002
+    ):
+        """Point ids are random node ids, so only the chunk's place in the file orders a page's chunks.
+
+        One chunk per page (the fixture above) cannot see a shuffled page; the
+        Sentence splitter cuts several from a real one.
+        """
+        from sources.knowledge_layer.tests.qdrant_testing import write
+
+        lines = [f"Zeile {i}: Brandabschnitt {i} hat Feuerwiderstand REI {30 + i}" for i in range(8)]
+        for name in ("Plan_Index_A.pdf", "Plan_Index_B.pdf"):
+            records = [_page(name, 1, line) for line in lines]
+            for ordinal, record in enumerate(records):
+                record.ordinal = ordinal
+            write("proj_1", records)
+
+        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+
+        assert "Seiten: 1 → 1; 1 unverändert, 0 geändert." in text
+        assert "Im gelesenen Inhalt unterscheiden sich die beiden Dateien nicht." in text
+
     async def test_a_file_the_index_does_not_hold_is_said_not_compared(self, scope, qdrant_store):  # noqa: ARG002
         text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
         assert "nicht im Index" in text

@@ -28,6 +28,7 @@ from .prefilter import FOLDER_FIELD
 from .prefilter import folder_ancestors
 from .schema import BOOL_FIELDS
 from .schema import CHUNK_ID_FIELD
+from .schema import CHUNK_ORDINAL_FIELD
 from .schema import FACT_KEYS
 from .schema import INDEXED_AT_FIELD
 from .schema import INTEGER_FIELDS
@@ -73,6 +74,8 @@ class ChunkRecord:
     text: str
     embedding: list[float]
     metadata: dict[str, Any] = field(default_factory=dict)
+    #: The chunk's place in its file (``schema.CHUNK_ORDINAL_FIELD``); None when the writer does not know it.
+    ordinal: int | None = None
 
 
 def point_id(chunk_id: str) -> str:
@@ -194,7 +197,7 @@ def project_payload(facts: Mapping[str, Any] | None, status: str) -> dict[str, A
 
 
 def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any] | None = None) -> dict[str, Any]:
-    """The payload for one chunk; ``scope``, ``text``, ``chunk_id`` and ``reading_order`` always win.
+    """The payload for one chunk; ``scope``, ``text``, ``chunk_id``, ``reading_order`` and the ordinal always win.
 
     ``reading_order`` is derived from the STORED ``page_label`` (a string by
     then), the value a reader's ``Chunk.page_number`` is parsed from, so the
@@ -215,6 +218,8 @@ def build_payload(scope: str, record: ChunkRecord, enrichment: Mapping[str, Any]
     typed[TEXT_FIELD] = record.text or ""
     typed[CHUNK_ID_FIELD] = str(record.chunk_id)
     typed[READING_ORDER_FIELD] = reading_order(typed.get("page_label"))
+    if record.ordinal is not None:
+        typed[CHUNK_ORDINAL_FIELD] = int(record.ordinal)
     typed[PARAGRAPH_FIELD] = paragraph_refs(typed[TEXT_FIELD])
     typed[CHUNK_DOC_CLASS_FIELD] = str((record.metadata or {}).get("doc_class") or "")
     return typed
@@ -245,6 +250,7 @@ def chunk_own_payload(scope: str, record: ChunkRecord) -> dict[str, Any]:
 STORE_ONLY_FIELDS = frozenset(
     {TEXT_FIELD, SCOPE_FIELD, CHUNK_ID_FIELD, READING_ORDER_FIELD, "office_id", "project_id", "grid_document_id"}
     | {
+        CHUNK_ORDINAL_FIELD,
         "folder_path",
         FOLDER_FIELD,
         "tags",

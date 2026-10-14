@@ -185,6 +185,7 @@ full-text index.
 | `evidence` | bool | Replaces `chunking != page` and the YAML change-log list |
 | `page`, `page_end`, `section_order` | integer | Locators; `section_order` is `is_principal` for ordered reads |
 | `reading_order` | integer | The page a chunk starts on, 0 when it has none; derived at write time, what a structural fetch orders by (§6) |
+| `chunk_ordinal` | integer | The chunk's place in its file, 0 for the first the chunker cut; written at ingest and by the import (in the export's order). Point ids are random node ids, so it is what orders the chunks of one page (§6) |
 | `richtlinie`, `punkt_id`, `punkt_path`, `punkt_depth` | keyword / integer | Corpus structure (corpus only) |
 | `country`, `edition` | keyword | Corpus profile and OIB edition |
 | `file_name`, `title` | keyword, `text` | Display, plus the title-contains filter |
@@ -316,6 +317,16 @@ existed has no value and `order_by` would skip it, so a set holding one (or a
 collection without the index) is ordered client-side from `page_label`, which
 the field is derived from. `ensure_collection` adds the missing index on the
 next write; the import from Chroma rewrites the payloads of the points it carries.
+
+A reader of a whole document (the Fassung compare, `collection_pages.read_pages`)
+needs the order within a page too, and no server-side order gives it: a
+`SentenceSplitter` chunk of a PDF page carries no position, and point ids are
+the chunker's random node ids. `reads.in_document_order` sorts by page, then by
+the section structure `read_passage` sorts by (`base.section_position`:
+section, first line, part), then by `chunk_ordinal`, then chunk id. A point
+written before `chunk_ordinal` existed sorts after the numbered ones of its
+place, by chunk id: stable, though not the chunker's order, until it is
+re-ingested or the import runs over its collection again.
 
 **Listing and facets.** `facet(key: doc_class | project_id | tags, filter:
 scope)` returns the counts. The file list itself stays a Postgres read, because
@@ -747,6 +758,7 @@ test that fails without the fix.
 | Defect | What changed | Where |
 |---|---|---|
 | The summary reconcile read a collection missing from `list_collections` as "no chunk" and forgot every `document_metadata` row in it. Qdrant lists no collection without points, so during the import from Chroma, or on any empty or partly filled store, every collection not yet imported lost its summaries, tags, Dokumentart, titles and folders | A collection with no point is never judged: its rows stay, and the answer lists it in `collections_absent`. A store with no point at all is a 503. Only files the store lacks, inside collections it holds, are forgotten. Deleting a whole collection is the purge route's, which clears the rows itself | `routes/maintenance.py` — `reconcile_orphaned_summaries` |
+| The Fassung compare and the page reads got a page's chunks in point-id order, which is random (uuid4 node ids): two identical Fassungen with several chunks on a page diffed as changed. Chroma had returned insertion order | Each chunk carries `chunk_ordinal`, indexed; ingestion writes the node's index in its file, the import numbers each file's records in export order (Chroma's insertion order, checked against a real 1.5.9 store; `start_char_idx` was 0 for most chunks there). Both readers sort by page, section structure, ordinal, chunk id | `schema.CHUNK_ORDINAL_FIELD`, `adapter._embedded_records`, `import_vectors.import_scope`, `reads.in_document_order`, `collection_pages.py` |
 
 ### Where slice 1 departed from the target, and why
 

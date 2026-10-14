@@ -174,6 +174,15 @@ Each batch is gzip of UTF-8 JSON lines, one record per line:
 | `document` | The chunk text (`""` when Chroma has none) |
 | `metadata` | The chunk's metadata object as Chroma holds it (`{}` when none) |
 
+The records stand in the order `collection.get` returned them, batch after
+batch, and the order is part of the format: it is Chroma's insertion order
+(checked on 1.5.9 against `embeddings.id` for every collection of a real
+store), and ingestion inserted a file's chunks as the chunker cut them. The
+importer numbers each file's records in that order as their `chunk_ordinal`,
+the only thing that orders the chunks of one page; `_node_content`'s
+`start_char_idx` counts within one LlamaIndex Document and was 0 for most
+chunks.
+
 A collection name is Chroma's (`[A-Za-z0-9._-]`, starting and ending with a
 letter or digit); the importer refuses any other before it becomes a path.
 

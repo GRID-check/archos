@@ -143,6 +143,11 @@ READING_ORDER_FIELD = READING_ORDER
 #: epoch. A collection's ``updated_at`` is its newest value (an ordered scroll),
 #: which is what the reaper of conversation uploads (``TTLCleanupMixin``) reads.
 INDEXED_AT_FIELD = "indexed_at"
+#: Payload field holding a chunk's place in its file, 0 for the first chunk the
+#: chunker cut: what orders the chunks of one page, whose point ids are random.
+#: Written at ingest and by the import from Chroma (in the export's order, which
+#: is Chroma's insertion order); a point written before it existed has none.
+CHUNK_ORDINAL_FIELD = "chunk_ordinal"
 
 #: Fields stored and filtered as integers. The Punkt chunker writes
 #: ``punkt_depth`` as an int and some readers ask with "1"; both become 1.
@@ -150,6 +155,7 @@ INTEGER_FIELDS: tuple[str, ...] = (
     "punkt_depth",
     "section_order",
     READING_ORDER_FIELD,
+    CHUNK_ORDINAL_FIELD,
     INDEXED_AT_FIELD,
     f"{PROJECT_FACTS_FIELD}.gebaeudeklasse",
     "section_part",
