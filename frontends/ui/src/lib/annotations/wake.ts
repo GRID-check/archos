@@ -193,8 +193,8 @@ export const wakeOutcomeOf = (wake: EnqueuedWake | null): WakeOutcome => (wake ?
  * A wake that started no turn has no model call and so no trace: it is on its
  * `piloti_wakes` row, and here, in the organization's audit trail, so an admin
  * can see that Piloti was asked and why it did not answer. A turn that started
- * and then failed is recorded the same way (`stage: 'turn'`); one that answered
- * or was stopped has its trace in Langfuse. Never throws.
+ * is `piloti.wake.started`, and however it ended `piloti.wake.ended`
+ * (`./wake-audit.ts`). Never throws.
  */
 export function auditSuppressedWake(input: {
   organizationId: string
@@ -204,8 +204,7 @@ export function auditSuppressedWake(input: {
   trigger: PilotiWakeTrigger
   status: 'suppressed' | 'refused' | 'failed'
   reason: string
-  /** `turn`: the wake started and its turn ended in failure (`lib/turns/outcome.ts`). */
-  stage: 'enqueue' | 'claim' | 'turn'
+  stage: 'enqueue' | 'claim'
 }): void {
   void recordAuditEvent({
     action: 'piloti.wake.suppressed',

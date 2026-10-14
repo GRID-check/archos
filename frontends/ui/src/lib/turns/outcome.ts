@@ -15,8 +15,9 @@
  *
  * When the wake was a DELEGATION, its end hands the mark back, but only while
  * the mark is still delegated by THAT delegation: a person who took it back
- * and delegated it again in between must not lose the second. Then
- * `onWakeEnded` tells the attention slice, once.
+ * and delegated it again in between must not lose the second. Then the audit
+ * trail records the end (`piloti.wake.ended`, every outcome, the failure's
+ * reason included) and `onWakeEnded` tells the attention slice, each once.
  *
  * Idempotent and forgiving: a turn that is not a wake (a browser's), a
  * conversation that is not the wake's thread, and a wake that already ended
@@ -28,7 +29,7 @@
 
 import 'server-only'
 import { onWakeEnded } from '@/lib/annotations/attention'
-import { auditSuppressedWake } from '@/lib/annotations/wake'
+import { auditWakeEnded } from '@/lib/annotations/wake-audit'
 import { findDocumentAnnotation } from '@/lib/annotations/repository'
 import { delegationEventId, documentThreadConversationId } from '@/lib/annotations/wake-ids'
 import {
@@ -94,11 +95,26 @@ async function endInTransaction(
   )
 }
 
-/** After the commit, never failing the outcome: the room re-reads the mark, attention hears the end. */
+/** The wake's document as the person whose act woke Piloti reads it: theirs to write, so theirs to read. */
+async function wakeDocument(wake: PilotiWakeRow) {
+  try {
+    return await findDocumentInOrg(wake.documentId, wake.organizationId, memberReader(wake.actorUserId))
+  } catch (error) {
+    console.error('[turns/outcome] could not read the document of a wake that ended:', error)
+    return null
+  }
+}
+
+/**
+ * After the commit, never failing the outcome: the room re-reads the mark, the
+ * audit trail records how the turn ended (`piloti.wake.ended`), attention
+ * hears the end.
+ */
 async function afterEnd(
   wake: PilotiWakeRow,
   end: WakeEnd,
-  done: { markNumber: number | null; handedBack: boolean }
+  done: { markNumber: number | null; handedBack: boolean },
+  turnOutcome: TurnOutcomeRequest['outcome']
 ): Promise<void> {
   if (done.handedBack) {
     await publishToDocumentRoom(wake.documentId, {
@@ -108,23 +124,27 @@ async function afterEnd(
       actor: { peerId: null, userId: wake.actorUserId, name: 'Piloti', kind: 'piloti' },
     }).catch(() => undefined)
   }
-  if (end.status === 'failed') {
-    auditSuppressedWake({
+  const doc = await wakeDocument(wake)
+  auditWakeEnded(
+    {
       organizationId: wake.organizationId,
-      actor: { userId: wake.actorUserId, email: null },
-      annotationId: wake.annotationId,
+      wakeId: wake.id,
       documentId: wake.documentId,
+      annotationId: wake.annotationId,
       trigger: wake.triggerKind,
-      status: 'failed',
-      reason: end.reason,
-      stage: 'turn',
-    })
-  }
-  if (done.markNumber === null) return
+      wokenBy: { userId: wake.actorUserId, email: null },
+      projectId: doc?.projectId ?? null,
+      markNumber: done.markNumber,
+    },
+    {
+      outcome: end.status,
+      turnOutcome,
+      reason: end.status === 'failed' ? end.reason : null,
+      handedBack: done.handedBack,
+    }
+  )
+  if (done.markNumber === null || !doc) return
   try {
-    // As the person whose act woke Piloti: the document is theirs to write, so it is theirs to read.
-    const doc = await findDocumentInOrg(wake.documentId, wake.organizationId, memberReader(wake.actorUserId))
-    if (!doc) return
     await onWakeEnded({
       organizationId: wake.organizationId,
       documentId: wake.documentId,
@@ -158,6 +178,6 @@ export async function recordTurnOutcome(request: TurnOutcomeRequest): Promise<Tu
   const end = wakeEndOf(request)
   const done = await endInTransaction(wake, end)
   if (!done) return NOT_SETTLED
-  await afterEnd(done.ended, end, done)
+  await afterEnd(done.ended, end, done, request.outcome)
   return { settled: true }
 }

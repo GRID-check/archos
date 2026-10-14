@@ -22,8 +22,9 @@
  * A turn already running in the thread is never superseded (`if_idle`): the
  * answer is `busy`, and the job waits (`notBefore`) without spending an
  * attempt. `duplicate_turn` is a wake already answered. Every way it ends
- * without a turn is recorded on its `piloti_wakes` row and in the audit trail;
- * a turn that started has its trace in Langfuse.
+ * without a turn is recorded on its `piloti_wakes` row and in the audit trail
+ * (`piloti.wake.suppressed`); a turn that started is in the trail as
+ * `piloti.wake.started` and has its trace in Langfuse.
  */
 
 import 'server-only'
@@ -44,6 +45,7 @@ import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
+import { auditWakeStarted } from './wake-audit'
 import { delegationEventId } from './wake-ids'
 import { findWake, settleWake } from './wake-repository'
 
@@ -242,7 +244,23 @@ export async function runPilotiWake(
   switch (outcome.kind) {
     case 'started':
     case 'duplicate':
-      await settleWake(organizationId, payload.wakeId, { status: 'started' })
+      // Only the settle that moved it from `queued`: a second run of the job, or
+      // a turn that already reported its end, adds no line.
+      if (await settleWake(organizationId, payload.wakeId, { status: 'started' })) {
+        auditWakeStarted(
+          {
+            organizationId,
+            wakeId: payload.wakeId,
+            documentId: doc.id,
+            annotationId: mark.id,
+            trigger: payload.trigger,
+            wokenBy: payload.actor,
+            projectId: doc.projectId ?? null,
+            markNumber: mark.number,
+          },
+          payload.waits
+        )
+      }
       return done
     case 'busy':
       return wait('another turn of the thread ran')

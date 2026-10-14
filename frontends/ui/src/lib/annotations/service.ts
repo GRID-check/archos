@@ -81,7 +81,14 @@ import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
 import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
-import { readTakeBack, settleTakenBack, type EndedDelegation, type TakeBack } from './take-back'
+import {
+  auditDeletedWithMark,
+  readTakeBack,
+  settleTakenBack,
+  type EndedDelegation,
+  type TakeBack,
+  type TakeBackAudit,
+} from './take-back'
 import {
   annotationBox,
   annotationProposalSchema,
@@ -620,7 +627,8 @@ export async function updateAnnotation(
   if (ended && enqueued.takeBack) {
     const { takeBack } = enqueued
     // The queued wake is the one thing a crash here can leave behind; its job would run a turn nobody wants.
-    await settleTakenBack(ended, takeBack, { stopTurn }).catch((error: unknown) =>
+    const by = takeBackAudit(session, doc, existing, actor)
+    await settleTakenBack(ended, takeBack, { stopTurn }, by).catch((error: unknown) =>
       console.warn('[annotations] could not keep a taken-back wake from starting:', error)
     )
   }
@@ -628,6 +636,20 @@ export async function updateAnnotation(
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
 }
+
+/** Who took a mark back from Piloti, for the wakes it stops (`./take-back`). */
+const takeBackAudit = (
+  session: AuthorizedSession,
+  doc: { projectId: string | null },
+  mark: { number: number },
+  actor: AnnotationActor
+): TakeBackAudit => ({
+  userId: session.userId,
+  email: session.email || null,
+  piloti: actor.kind === 'piloti',
+  projectId: doc.projectId ?? null,
+  markNumber: mark.number,
+})
 
 /** A wake a cap held at enqueue goes into the audit trail, after its write committed. */
 function auditHeldWake(
@@ -668,6 +690,8 @@ export async function deleteAnnotation(
   }
   const ended = delegationOfMark(session, doc.id, existing)
   const stopTurn = actor.kind === 'person'
+  // Set in the delete's transaction; a holder, because a closure's assignment is not narrowed.
+  const found: { takeBack: TakeBack | null } = { takeBack: null }
   await deleteDocumentAnnotation(
     session.organizationId,
     doc.id,
@@ -676,11 +700,12 @@ export async function deleteAnnotation(
     // A wake still queued needs nothing: its job finds the mark gone.
     ended
       ? async (tx) => {
-          await readTakeBack(tx, ended, { stopTurn })
+          found.takeBack = await readTakeBack(tx, ended, { stopTurn })
         }
       : undefined
   )
   announce(session, doc.id, [annotationId], 'deleted', actor)
+  if (found.takeBack) auditDeletedWithMark(found.takeBack, takeBackAudit(session, doc, existing, actor))
   if (actor.kind === 'person') traceSettled(session, annotationId, true)
   return null
 }

@@ -14,11 +14,13 @@
  *   (`project:memory:write`) for a note or a profile change, `project:edit`
  *   for all three. A reader without it gets a 403. A closed project is
  *   read-only and refuses with its own 403.
- * - **After a decision** (committed, never awaited, never failing it) three
+ * - **After a decision** (committed, never awaited, never failing it) four
  *   things follow: the live channel `proposal:<id>` hears of it, so every open
  *   card re-reads (`lib/realtime/proposal-channel.ts`); the inbox is told
- *   nothing waits any more (`./attention`); and the decision is a score on the
- *   trace of the turn that proposed it (`lib/langfuse/decision-score.ts`).
+ *   nothing waits any more (`./attention`); the organization's audit trail
+ *   records who decided and how (`./audit`); and the decision is a score on
+ *   the trace of the turn that proposed it (`lib/langfuse/decision-score.ts`).
+ *   Filing a proposal is in the trail too, once per card.
  * - **Applying** runs the kind's applier in the DECIDING person's session:
  *   the document, folder and assignment services for a file operation
  *   (`./executors`), the memory and profile services for the other two
@@ -40,6 +42,7 @@ import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { recordDecisionScore, type Decision } from '@/lib/langfuse/decision-score'
 import { onProposalCreated, onProposalDecided } from './attention'
+import { auditProposalCreated, auditProposalDecided } from './audit'
 import { applyKind, DECIDE_PERMISSIONS, parseKindPayload, requireProposable, summaryOf } from './kinds'
 import { publishProposalDecided } from './live'
 import {
@@ -115,6 +118,7 @@ export async function createProposal(session: AuthorizedSession, input: CreatePr
     }
     return row
   }
+  auditProposalCreated(session, row, typed)
   bestEffort('attention (created)', () =>
     onProposalCreated({
       organizationId: row.organizationId,
@@ -147,6 +151,7 @@ function afterDecision(session: AuthorizedSession, row: ProposedChangeRow): void
   if (status === 'proposed') return
   bestEffort('live publish', () => publishProposalDecided(row.id, status))
   bestEffort('attention (decided)', () => onProposalDecided({ organizationId: row.organizationId, proposalId: row.id }))
+  auditProposalDecided(session, row)
   const decision: Decision | null =
     status === 'dismissed' ? 'dismissed' : status === 'failed' ? null : 'accepted'
   if (!decision) return

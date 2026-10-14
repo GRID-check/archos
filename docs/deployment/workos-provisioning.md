@@ -339,10 +339,57 @@ Broadly the trail covers: org creation/settings, budgets, model configuration
 (org versions, ZDR, fleet defaults), BYOK credentials, legal holds,
 break-glass platform access (lands in the GRID Platform org's trail, throttled
 to once per actor per hour), project lifecycle and role grants, document and
-Archiv uploads/deletes, and the sharing/ownership changes from ADR-0032.
+Archiv uploads/deletes, the sharing/ownership changes from ADR-0032, and what
+Piloti did in the office (below).
 Deliberately NOT audited: high-frequency content activity (memory items,
 profile edits, conversation messages, renames, user preferences) — it would
-drown the admin trail.
+drown the admin trail. A person's own edits of Anmerkungen are content
+activity; Piloti's are not, because a machine acting in a person's name is
+what an admin has to be able to account for.
+
+- **What Piloti did** (`piloti.*`, added 2026-10-14). Piloti acts in a
+  person's session as that person (ADR-0105, ADR-0108), so the trail names the
+  person and the action family names Piloti:
+
+  | Action | When | Actor | Targets | Metadata |
+  |---|---|---|---|---|
+  | `piloti.change.applied` | Piloti set, changed or deleted a mark, or answered in its thread, in the asker's name: one per `piloti_changes` row (`lib/changes/service.ts`) | the person the turn acted for | mark, document, project, conversation | `op` (create, update, delete, reply), `markNumber`, `markKind`, `status`, `fields` (names of the fields that moved), `messageId`, `changeId` |
+  | `piloti.change.undone` | a person undid one (`POST /api/piloti-changes/[id]/undo`) | who undid it | mark, document, conversation | `op`, `inverse`, `markNumber`, `onBehalfOf`, `messageId`, `changeId` |
+  | `piloti.proposal.created` | Piloti filed a proposed change, once per card (`lib/proposals/service.ts`) | the person Piloti acted for | proposal, project, conversation | `kind`, `operation`, `items`, `memoryScope`, `messageId` |
+  | `piloti.proposal.decided` | a person applied or dismissed it | the decider | proposal, project, conversation | `kind`, `decision` (applied, partially_applied, failed, dismissed), `operation`, `items`, `appliedItems`, `memoryScope`, `onBehalfOf`, `messageId` |
+  | `piloti.wake.started` | a wake's turn started (`lib/annotations/wake-job.ts`) | the person whose act woke Piloti | mark, document, project, their thread | `trigger`, `wakeId`, `markNumber`, `waits` |
+  | `piloti.wake.ended` | the woken turn ended (`lib/turns/outcome.ts`) | the same person | the same | `trigger`, `wakeId`, `outcome` (answered, stopped, failed), `turnOutcome`, `reason` (the turn's own words for a failure, cut at 200), `handedBack`, `markNumber` |
+  | `piloti.wake.stopped` | a person took the mark back, or deleted it, and that stopped a queued or running wake (`lib/annotations/take-back.ts`) | who took it back | the same | `trigger`, `wakeId`, `wakeStatus`, `wokenBy`, `by` (person, or piloti when Piloti closed the mark) |
+  | `piloti.wake.suppressed` | a wake started no turn (unchanged; a failed turn was recorded here with `stage: 'turn'` until 2026-10-14, and is now `piloti.wake.ended`) | the person whose act woke Piloti | mark | `documentId`, `trigger`, `status`, `reason`, `stage` |
+
+  *The actor model.* The actor is always a person, never Piloti: the actor is
+  the authorization principal (`AuditActorType` in `lib/audit/service.ts`, the
+  decision `document.generated` already took), and it is the field the viewer
+  and the export filter by. An agent actor would hide on whose behalf Piloti
+  acted in the one place an admin searches. So an admin finds everything Piloti
+  did with the action filter on `piloti.*`, and everything it did for one
+  person with that person's actor filter added; the turn is the
+  `conversation` target and `messageId`, the answer whose Langfuse trace and
+  change card carry the same id. A `via: 'piloti'` key would only repeat the
+  action family.
+
+  *No content.* Ids, numbers, kinds, field names and counts only: never a word
+  of a mark, a reply, a note, a proposal or a document name, so none of these
+  actions needs `filedIn`. `schemas.spec.ts` refuses a `piloti.*` metadata key
+  that could carry text.
+
+  *Once per act.* Each is emitted after the write it records committed, by the
+  call whose compare-and-swap won (`recordAuditEventAfterCommit`, fire and
+  forget: a lost line is logged, the act is never failed or rolled back). A
+  repeated proposal card, an already-undone undo, a wake the job or the outcome
+  settled twice, and a change that moved nothing emit nothing. A background run
+  (ADR-0108) reaches the same internal routes, so what Piloti changes in one
+  is recorded the same way; `task.*` records the run itself.
+
+  The deploy's schema Job registers the new actions; no new environment
+  variable. An environment reconciled by hand needs
+  `npm run provision:audit-schemas -- --apply` before this release, or WorkOS
+  rejects these events (and the trail silently lacks them).
 
 - **Schemas are reconciled on every deploy, on all three deployment paths.**
   Each runs `node scripts/provision-workos-audit-schemas.mjs --apply` from the

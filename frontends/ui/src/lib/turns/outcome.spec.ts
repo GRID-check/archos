@@ -4,12 +4,12 @@
 /**
  * How a woken turn ended (ADR-0106, ADR-0109): the outcome names its wake by
  * the turn id, and the wake's final word, the mark handed back from a
- * delegation, and the one call to attention follow from it. The repository
- * layer is mocked; what is pinned is which calls the service makes, in which
- * order, and when it makes none.
+ * delegation, the one audit event and the one call to attention follow from
+ * it. The repository layer is mocked; what is pinned is which calls the
+ * service makes, in which order, and when it makes none.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/db', () => ({
   getDb: vi.fn(() => ({ transaction: (run: (tx: unknown) => unknown) => run(TX) })),
@@ -25,18 +25,19 @@ vi.mock('@/lib/annotations/wake-repository', () => ({
 }))
 vi.mock('@/lib/annotations/repository', () => ({ findDocumentAnnotation: vi.fn() }))
 vi.mock('@/lib/annotations/attention', () => ({ onWakeEnded: vi.fn() }))
-vi.mock('@/lib/annotations/wake', () => ({ auditSuppressedWake: vi.fn() }))
+vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/documents/repository', () => ({ findDocumentInOrg: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn() }))
 
 import { onWakeEnded } from '@/lib/annotations/attention'
-import { auditSuppressedWake } from '@/lib/annotations/wake'
 import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
 import { findDocumentAnnotation, type AnnotationRecord } from '@/lib/annotations/repository'
 import { endWake, findWakeById, handBackDelegation } from '@/lib/annotations/wake-repository'
 import type { Document, PilotiWakeRow } from '@/lib/db/schema'
 import { findDocumentInOrg } from '@/lib/documents/repository'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
+import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import { DEFAULT_FAILURE_REASON, recordTurnOutcome, wakeEndOf } from './outcome'
 import type { TurnOutcomeRequest } from './outcome-types'
 
@@ -251,13 +252,89 @@ describe('recordTurnOutcome', () => {
     log.mockRestore()
   })
 
-  it('audits a failed turn and no other', async () => {
-    wakeEndsAs(MENTION)
-    await recordTurnOutcome(request(MENTION, { outcome: 'answered' }))
-    expect(auditSuppressedWake).not.toHaveBeenCalled()
-    await recordTurnOutcome(request(MENTION, { outcome: 'failed', reason: 'model down' }))
-    expect(auditSuppressedWake).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'failed', reason: 'model down', stage: 'turn', organizationId: ORG })
-    )
+  describe('the audit trail', () => {
+    const audited = (): AuditEventInput[] => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+    // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+    afterEach(() => {
+      for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+    })
+
+    it('records every end once as piloti.wake.ended, as the person whose act woke Piloti', async () => {
+      wakeEndsAs(DELEGATION)
+      markIs(DELEGATED_AT)
+      await recordTurnOutcome(request(DELEGATION, { outcome: 'handed_off' }))
+
+      expect(audited()).toEqual([
+        {
+          action: 'piloti.wake.ended',
+          organizationId: ORG,
+          actor: { userId: USER, email: null },
+          targetType: 'document_annotation',
+          targetId: MARK_ID,
+          alsoTargets: [
+            { type: 'document', id: DOC_ID },
+            { type: 'project', id: 'proj_1' },
+            { type: 'conversation', id: THREAD },
+          ],
+          metadata: {
+            trigger: 'assigned',
+            wakeId: DELEGATION.id,
+            outcome: 'answered',
+            turnOutcome: 'handed_off',
+            reason: null,
+            handedBack: true,
+            markNumber: 4,
+          },
+        },
+      ])
+    })
+
+    it.each([
+      ['stopped', undefined, 'stopped', null],
+      ['refused', 'Budget erschöpft.', 'failed', 'Budget erschöpft.'],
+      ['failed', undefined, 'failed', DEFAULT_FAILURE_REASON],
+    ] as const)('records a %s turn with its outcome and reason', async (outcome, reason, recorded, recordedReason) => {
+      wakeEndsAs(MENTION)
+      await recordTurnOutcome(request(MENTION, { outcome, reason }))
+      expect(audited()).toHaveLength(1)
+      expect(audited()[0].metadata).toMatchObject({ outcome: recorded, turnOutcome: outcome, reason: recordedReason })
+    })
+
+    it('cuts a long reason', async () => {
+      wakeEndsAs(MENTION)
+      await recordTurnOutcome(request(MENTION, { outcome: 'failed', reason: 'x'.repeat(900) }))
+      expect(String(audited()[0].metadata?.reason)).toHaveLength(200)
+    })
+
+    it('records nothing for a turn that is not a wake, a wrong thread, or a wake that already ended', async () => {
+      vi.mocked(findWakeById).mockResolvedValue(null)
+      await recordTurnOutcome(request(MENTION))
+      wakeEndsAs(MENTION)
+      await recordTurnOutcome(request(MENTION, { conversationId: documentThreadConversationId(DOC_ID, 'user_bernd') }))
+      vi.mocked(findWakeById).mockResolvedValue({ ...MENTION, status: 'answered' })
+      await recordTurnOutcome(request(MENTION))
+      vi.mocked(findWakeById).mockResolvedValue(MENTION)
+      vi.mocked(endWake).mockResolvedValue(null)
+      await recordTurnOutcome(request(MENTION))
+      expect(recordAuditEvent).not.toHaveBeenCalled()
+    })
+
+    it('still records the end when the document cannot be read, without a project', async () => {
+      wakeEndsAs(MENTION)
+      vi.mocked(findDocumentInOrg).mockResolvedValue(null)
+      await recordTurnOutcome(request(MENTION))
+      expect(audited()[0].alsoTargets).toContainEqual({ type: 'project', id: null })
+      expect(onWakeEnded).not.toHaveBeenCalled()
+    })
+
+    it('settles the wake when the trail fails', async () => {
+      wakeEndsAs(MENTION)
+      vi.mocked(recordAuditEvent).mockRejectedValueOnce(new Error('WorkOS down'))
+      const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+      expect(await recordTurnOutcome(request(MENTION))).toEqual({ settled: true })
+      expect(onWakeEnded).toHaveBeenCalledTimes(1)
+      await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+      warn.mockRestore()
+    })
   })
 })

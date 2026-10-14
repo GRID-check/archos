@@ -2556,6 +2556,10 @@
     "de": "Der Hinweis unter dem Nachrichtenfeld zeigt jetzt, welche anderen Projekte einen Chat gerade einschränken. Bisher wurde ein Projekt auch nach dem Schließen weiterhin angezeigt, und ein eingeschränkter Ordner eines geschlossenen Projekts wurde nicht berücksichtigt."
   },
   {
+    "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended. Who undid one of Piloti's changes is in it too.",
+    "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, und wie das ausging. Auch wer eine Änderung von Piloti rückgängig gemacht hat, steht darin."
+  },
+  {
     "en": "The page for setting up an organization is simpler: one field, one button and three lines on what happens next, with sign-out always at the top right.",
     "de": "Die Seite zum Einrichten der Organisation ist einfacher: ein Feld, ein Knopf und drei Zeilen dazu, wie es weitergeht, mit dem Abmelden immer oben rechts."
   },

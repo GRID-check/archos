@@ -33,6 +33,7 @@ import { ForbiddenError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import { insertMessages } from '@/lib/conversations/repository'
 import type { Document, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -317,5 +318,57 @@ describe('asked again when the job runs', () => {
     await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
     expect(resolvePinnedRequesterSession).not.toHaveBeenCalled()
     expect(runHeadlessTurn).not.toHaveBeenCalled()
+  })
+})
+
+describe('the audit trail of a wake that started', () => {
+  const started = () => vi.mocked(recordAuditEvent).mock.calls.filter(([input]) => input.action === 'piloti.wake.started')
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+
+  it('records the start once, as the person whose act woke Piloti, on the mark, its document, project and thread', async () => {
+    await runPilotiWake('org_1', { ...PAYLOAD, waits: 2 }, NOT_LAST)
+
+    expect(recordAuditEvent).toHaveBeenCalledTimes(1)
+    expect(started()[0][0]).toEqual({
+      action: 'piloti.wake.started',
+      organizationId: 'org_1',
+      actor: { userId: 'user_anna', email: 'anna@example.at' },
+      targetType: 'document_annotation',
+      targetId: MARK_ID,
+      alsoTargets: [
+        { type: 'document', id: DOC_ID },
+        { type: 'project', id: 'proj_1' },
+        { type: 'conversation', id: THREAD },
+      ],
+      metadata: { trigger: 'thread_mention', wakeId: WAKE_ID, markNumber: 4, waits: 2 },
+    })
+  })
+
+  it('records nothing when another run, or the turn’s own end, settled the wake first', async () => {
+    vi.mocked(settleWake).mockResolvedValue(false)
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'duplicate' })
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for a busy thread: the wake has not started', async () => {
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('is done when the trail fails', async () => {
+    vi.mocked(recordAuditEvent).mockRejectedValueOnce(new Error('WorkOS down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+    warn.mockRestore()
   })
 })

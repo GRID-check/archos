@@ -720,7 +720,7 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
   `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
   with a fresh envelope, and the last attempt records `failed`. Each outcome
   is on the `piloti_wakes` row; one without a turn is also audited as
-  `piloti.wake.suppressed`.
+  `piloti.wake.suppressed`, one that started as `piloti.wake.started`.
 
 ### `user_message.posthog_session_id`
 

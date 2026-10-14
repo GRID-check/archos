@@ -282,6 +282,57 @@ describe('agent-authored events', () => {
   })
 })
 
+// An act of Piloti's is about a mark, the document it is on, the project and
+// the turn's conversation: each a target, so the viewer filters by each.
+describe('further targets', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    createEvent.mockResolvedValue(undefined)
+    process.env.GRID_AUDIT_LOGS_ENABLED = 'true'
+  })
+
+  it('follow the subject in order, and one without an id is left out', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { userId: 'user_1', email: 'anna@acme.at' },
+      action: 'piloti.change.applied',
+      targetType: 'document_annotation',
+      targetId: 'mark_1',
+      alsoTargets: [
+        { type: 'document', id: 'doc_1' },
+        { type: 'project', id: null },
+        { type: 'conversation', id: 'conv_1' },
+      ],
+      metadata: { op: 'update', markNumber: 4, messageId: null },
+    })
+
+    expect(lastEvent().targets).toEqual([
+      { type: 'document_annotation', id: 'mark_1' },
+      { type: 'document', id: 'doc_1' },
+      { type: 'conversation', id: 'conv_1' },
+    ])
+    expect(lastEvent().actor).toEqual({ type: 'user', id: 'user_1', name: 'anna@acme.at', metadata: {} })
+    expect(lastEvent().metadata).toEqual({ op: 'update', markNumber: 4 })
+  })
+
+  it('come before what produced an agent-authored event', async () => {
+    await recordAuditEvent({
+      organizationId: 'org_1',
+      actor: { type: 'agent', userId: 'user_1', ref: { kind: 'agent_run', id: 'run_7' } },
+      action: 'document.generated',
+      filedIn: null,
+      targetType: 'document',
+      targetId: 'doc_9',
+      alsoTargets: [{ type: 'document', id: 'doc_8' }],
+    })
+    expect(lastEvent().targets).toEqual([
+      { type: 'document', id: 'doc_9' },
+      { type: 'document', id: 'doc_8' },
+      { type: 'agent_run', id: 'run_7' },
+    ])
+  })
+})
+
 describe('recordAuditEventOrThrow (the events whose absence is the failure)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
