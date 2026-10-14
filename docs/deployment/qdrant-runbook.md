@@ -628,14 +628,23 @@ From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-com
      python scripts/import_vectors.py --in /exchange/export --verify
    ```
 
-   Exit 0 is every collection in step. 1 is a collection that failed or
-   differs: run it again, it inserts only what is missing. 2 is Qdrant
-   unreachable, an incomplete export (no manifest, a batch missing or not
-   matching the manifest's digest), or vectors from another embedder than
-   the Qdrant collection holds (`[refused]` names it; nothing was written).
+   Exit 0 is every collection in step, and the run records that in the
+   Qdrant collections: a later run that would write is refused (exit 2,
+   `[refused] an import already verified`) unless `--force`, because an old
+   export imported again brings back the chunks of every document deleted
+   since. 1 is a collection that failed or differs: run it again, it inserts
+   only what is missing. 2 is Qdrant unreachable, an incomplete export (no
+   manifest, a batch missing or not matching the manifest's digest), vectors
+   from another embedder than the Qdrant collection holds, or that refusal
+   (`[refused]` names it; nothing was written).
+
    If Qdrant already held points before this (a `dual` run of an earlier
-   release), add `--prune` once: it deletes what the export does not hold,
-   so never run it after uploads have restarted.
+   release), add `--prune` once. **`--prune` deletes every point the export
+   does not hold, including anything ingested after the export was taken**: a
+   new file, a whole new project. Run it only while nothing has written to
+   Qdrant since the export; never after uploads have restarted. (A file the
+   export holds that ingestion wrote again since is the one exception: the
+   import leaves its new chunks alone and does not insert its old ones.)
 
 5. **Start the stack**: `$DC up -d`. Answer a question that cites a project
    document and one that cites the corpus before telling anyone it is done.
@@ -789,9 +798,11 @@ In order, per stack:
    ```
 
    The export ends with `Done: N collection(s), M chunk(s)`. The import exits
-   0 with every collection in step; 1 is a collection that failed or differs;
-   2 is Qdrant unreachable, an incomplete export or an embedder mismatch
-   (`[refused]` names it, nothing was written).
+   0 with every collection in step, and records that in the Qdrant
+   collections; 1 is a collection that failed or differs; 2 is Qdrant
+   unreachable, an incomplete export, an embedder mismatch, or an import that
+   already verified into this Qdrant (`[refused]` names it, nothing was
+   written).
 3. **If the deploy failed on the Job**, the old release is still serving from
    Chroma and nothing is lost. Nothing retries (`restartPolicy: Never`,
    `backoffLimit: 0`): the failed pod stays, with its logs
@@ -829,6 +840,9 @@ In order, per stack:
    The Job runs once and has no TTL: a Job Kubernetes reaped would be created
    and run again by the next `up` after a `pulumi refresh`, a second import of
    an old export bringing back the chunks of every document deleted since.
+   Should a second Job run anyway (the flag switched off and on), its import
+   finds the mark the first one left and refuses (exit 2): the deploy fails
+   before anything rolled, and nothing is written.
 6. **Delete the retained claim**, once the new release has served for a while.
    It is the last copy of the Chroma data and the only way back:
 
@@ -878,11 +892,13 @@ kubectl -n grid delete pvc data-qdrant-0          # and data-qdrant-1, -2 on pro
 
 The redo's Qdrant then starts empty, and the Job imports the export it takes
 from the Chroma the revert brought back, which by then holds the writes made
-since the revert. Keep the claims instead and the redo imports a new export
-into collections that still hold the old one: chunks of every document
-deleted since the first attempt come back, and `--verify` reports them as
-extra. On Compose, where the export is a directory you hold, the same reset is
-`import_vectors.py --prune --verify` by hand before `up`.
+since the revert. Keep the claims instead and the redo's Job finds the mark
+the first import left in the collections and refuses (exit 2): the deploy
+fails before anything rolled, which is safe but no migration. On Compose,
+where the export is a directory you hold, the alternative to emptying the
+`qdrant_data` volume is a prune by hand before `up`:
+`import_vectors.py --in … --prune --verify --force`, which deletes every point
+the new export lacks, right only because nothing has written to Qdrant since.
 
 ## Drill log
 

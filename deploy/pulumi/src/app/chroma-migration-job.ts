@@ -78,7 +78,8 @@ function exporterScript(): string {
  *    change it.
  * 2. `import`, in the backend image with the backend's Qdrant URL and key,
  *    runs `scripts/import_vectors.py --verify`: 0 is in step, 1 is drift, 2 is
- *    Qdrant unreachable or the export invalid.
+ *    Qdrant unreachable, the export invalid, or an import that already
+ *    verified into this Qdrant (refused, nothing written).
  *
  * Awaited, and before the backend tiers. Pulumi waits for the Job to complete
  * (up to `chromaMigration.timeoutMinutes`), and `index.ts` makes every backend
@@ -204,7 +205,8 @@ export function migrateChromaToQdrant(
       // Once, not once per deploy. A Job's spec is immutable, so the next
       // backend image would otherwise replace it and run the import again
       // over a store that has moved on, bringing back the chunks of every
-      // document deleted or re-indexed since.
+      // document deleted or re-indexed since. The importer refuses a second
+      // import too, by the mark a verified one leaves in the collections.
       ignoreChanges: ["spec"],
       // A fixed name: should it ever be replaced, the old Job goes first.
       deleteBeforeReplace: true,

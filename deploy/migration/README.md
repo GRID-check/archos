@@ -98,8 +98,16 @@ it where the backend runs.
   exists keeps its payload (the office, project and document ids ingestion
   wrote); only the fields the chunk alone decides are merged onto it.
 - **The person-set facts** (tags, topics, Dokumentart, Fassung, folder) are read
-  from the metadata store and merged onto every file's points, never replacing
-  a payload whole.
+  from the metadata store once a collection is written, and merged onto every
+  file's points, never replacing a payload whole. Read at the end, not the
+  start, so an edit a person made while the collection was copied wins.
+- **A file ingested again after the export keeps what ingestion wrote.** When
+  Qdrant already holds points of a file the export holds, with chunk ids the
+  export lacks and an `indexed_at` later than the manifest's `created_at`,
+  the file was re-uploaded or re-indexed since: its exported chunks are left
+  out (a warning names it), and `--verify` and `--prune` expect the new ones
+  instead. Inserted, the old Fassung would answer beside the new one under one
+  file name, and a prune would then delete the new one.
 - **The embedder must match.** Each collection's `aiq:embed_fingerprint` is
   checked against the Qdrant collection it lands in before anything is written;
   one mismatch refuses the whole run (exit 2). A collection without a
@@ -114,11 +122,22 @@ it where the backend runs.
   `--prune` before uploads restart.
 - **`--prune`** deletes the points, and without `--collection` the whole scopes,
   the export does not hold. The export is a snapshot: prune only before the new
-  release takes uploads, or what was uploaded since is deleted.
+  release takes uploads, or **what was uploaded since is deleted**, a new file
+  or a whole new project (the re-ingested file above is the one exception).
+- **Once, unless forced.** A run with `--verify` over every collection that
+  ends in step records it in the Qdrant collections' metadata
+  (`aiq:vector_import`: which export, verified when). Every later run that
+  would write is then refused with exit 2 and writes nothing, unless
+  `--force`: an old export imported again brings back the chunks of every
+  document deleted since. `--dry-run` and `--verify-only` are never refused.
+  The mark lives and dies with the collections: `qdrant_rebuild.py` copies it
+  into the next `_vN` with the rest of the metadata, and a Qdrant whose
+  collections were deleted carries none.
 
 Exit codes: `0` done and, with `--verify`, every collection in step; `1` a
 collection failed or differs (run it again); `2` Qdrant unreachable, or the
-export invalid, incomplete or refused.
+export invalid, incomplete or refused (another embedder, or an import that
+already verified).
 
 ## The format: `piloti-vectors/1`
 
