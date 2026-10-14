@@ -9,6 +9,11 @@ vi.mock('@/lib/backend-proxy', () => ({
 }))
 
 vi.mock('@/lib/db', () => ({ getDb: vi.fn() }))
+// The per-collection re-read is `where(eq(documents.collectionName, X))`: the stub reads X back.
+vi.mock('drizzle-orm', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('drizzle-orm')>()),
+  eq: (column: unknown, value: unknown) => ({ column, value }),
+}))
 vi.mock('@/lib/db/schema', () => ({
   documents: { collectionName: 'collection_name', filename: 'filename', authoredBy: 'authored_by' },
 }))
@@ -47,9 +52,20 @@ describe('reconcileOrphanedVectors: the project facts half', () => {
 
 const fetchMock = vi.fn()
 
-/** Stub getDb so `db.select({...}).from(documents)` resolves to `rows`. */
-function stubRows(rows: { collectionName: string; filename: string; authoredBy: string }[]) {
-  vi.mocked(getDb).mockReturnValue(asDb({ select: () => ({ from: () => Promise.resolve(rows) }) }))
+type Row = { collectionName: string; filename: string; authoredBy: string }
+
+/**
+ * Stub getDb so `db.select({...}).from(documents)` (the snapshot of every
+ * collection) resolves to `rows`, and `.where(collection = X)` (the second
+ * look at one collection before its orphans are deleted) to `now`'s rows of X,
+ * which default to the snapshot's.
+ */
+function stubRows(rows: Row[], now: Row[] = rows) {
+  const from = () =>
+    Object.assign(Promise.resolve(rows), {
+      where: (condition: { value: string }) => Promise.resolve(now.filter((row) => row.collectionName === condition.value)),
+    })
+  vi.mocked(getDb).mockReturnValue(asDb({ select: () => ({ from }) }))
 }
 
 /** A backend list response (array of FileInfo-ish objects). */
@@ -186,6 +202,32 @@ describe('reconcileOrphanedVectors', () => {
     const deleteCall = fetchMock.mock.calls[1]
     expect(deleteCall[1].method).toBe('DELETE')
     expect(JSON.parse(deleteCall[1].body)).toEqual({ file_ids: ['ghost.pdf'] })
+  })
+
+  it('does not delete the chunks of a document filed after the snapshot was taken', async () => {
+    // The live names are read once, before a sweep that may run for minutes. A
+    // document uploaded in between has a row and chunks the snapshot never saw.
+    const before = [{ collectionName: 'proj_a', filename: 'live.pdf', authoredBy: 'user' }]
+    // Its row holds the decoded name; its chunks were stored under the encoded one.
+    stubRows(before, [...before, { collectionName: 'proj_a', filename: 'Neu hochgeladen.pdf', authoredBy: 'user' }])
+    fetchMock.mockResolvedValueOnce(listResponse(['live.pdf', 'Neu%20hochgeladen.pdf', 'ghost.pdf']))
+    fetchMock.mockResolvedValueOnce(deleteResponse(2))
+
+    const result = await reconcileOrphanedVectors()
+
+    expect(result.orphansFound).toBe(1)
+    expect(JSON.parse(fetchMock.mock.calls[1][1].body)).toEqual({ file_ids: ['ghost.pdf'] })
+  })
+
+  it('deletes nothing in a collection whose every candidate turned out live on the second look', async () => {
+    const before = [{ collectionName: 'proj_a', filename: 'live.pdf', authoredBy: 'user' }]
+    stubRows(before, [...before, { collectionName: 'proj_a', filename: 'neu.pdf', authoredBy: 'user' }])
+    fetchMock.mockResolvedValueOnce(listResponse(['live.pdf', 'neu.pdf']))
+
+    const result = await reconcileOrphanedVectors()
+
+    expect(result.orphansFound).toBe(0)
+    expect(callsBeforeDocumentFacts().some((call) => call[1]?.method === 'DELETE')).toBe(false)
   })
 
   it('treats a live document stored under a percent-encoded name as live (regression)', async () => {

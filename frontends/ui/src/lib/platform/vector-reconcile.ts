@@ -33,6 +33,7 @@
  */
 
 import 'server-only'
+import { eq } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
 import { documents } from '@/lib/db/schema'
@@ -197,6 +198,26 @@ async function liveFilenamesByCollection(): Promise<Map<string, Set<string>>> {
   return byCollection
 }
 
+/**
+ * The filenames one collection's human-authored rows hold NOW: the second look
+ * before its orphans are deleted. The snapshot ({@link liveFilenamesByCollection})
+ * is taken once, before a sweep that can run for minutes, and a document filed
+ * in between has a row and chunks the snapshot never saw. Same authorship rule
+ * as the snapshot.
+ */
+async function liveFilenamesIn(collectionName: string): Promise<Set<string>> {
+  const db = getDb()
+  const rows = (await withPlatformAccess(
+    'vector reconciliation sweep: re-reading one collection before deleting its orphans',
+    () =>
+      db
+        .select({ filename: documents.filename, authoredBy: documents.authoredBy })
+        .from(documents)
+        .where(eq(documents.collectionName, collectionName)),
+  )) as { filename: string; authoredBy: string }[]
+  return new Set(rows.filter((row) => row.authoredBy === 'user').map((row) => row.filename))
+}
+
 /** Distinct stored `file_name` values the vector store holds for a collection. */
 async function listStoredFilenames(collectionName: string): Promise<string[]> {
   const res = await fetch(
@@ -335,8 +356,12 @@ export async function reconcileOrphanedVectors(): Promise<VectorReconcileResult>
     result.collectionsScanned += 1
     try {
       const stored = await listStoredFilenames(collectionName)
-      // Orphan = a stored chunk name whose decoded form has no live row.
-      const orphans = stored.filter((name) => !liveNames.has(safeDecode(name)))
+      // Orphan = a stored chunk name whose decoded form has no live row, in
+      // the snapshot AND on a second look right before the delete.
+      const candidates = stored.filter((name) => !liveNames.has(safeDecode(name)))
+      if (candidates.length === 0) continue
+      const liveNow = await liveFilenamesIn(collectionName)
+      const orphans = candidates.filter((name) => !liveNow.has(safeDecode(name)))
       if (orphans.length === 0) continue
       result.orphansFound += orphans.length
       // Delete by the exact stored name so the backend's exact-match path hits
