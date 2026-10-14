@@ -297,7 +297,9 @@ export async function createProject(
     name: input.name,
     createdBy: session.userId,
     collectionName: `proj_${crypto.randomUUID()}`,
-    ...(closeNow?.startedOn ? { startedOn: monthToDate(closeNow.startedOn) } : {}),
+    // The Beginn is the person's answer, whoever sets the project up: closing it
+    // waits for the review, the month it began does not.
+    ...(closing?.startedOn ? { startedOn: monthToDate(closing.startedOn) } : {}),
   })
 
   let project = inserted

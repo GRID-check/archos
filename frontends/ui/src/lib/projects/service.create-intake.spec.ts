@@ -108,7 +108,7 @@ describe('createProject, set up by Piloti', () => {
     expect(project.id).toBe('p1')
   })
 
-  it('stores a closing as the intake intent and does not close the project, nor give it a Beginn', async () => {
+  it('stores a closing as the intake intent and does not close the project, but keeps its Beginn', async () => {
     await createProject(
       session,
       { name: 'Schule Nord', setup: 'piloti', closing: { outcome: 'completed', startedOn: '2019-03', endedOn: '2022-08' } },
@@ -123,7 +123,7 @@ describe('createProject, set up by Piloti', () => {
       NOW
     )
     expect(setProjectStatusInOrg).not.toHaveBeenCalled()
-    expect(insertProject).toHaveBeenCalledWith(expect.not.objectContaining({ startedOn: expect.anything() }))
+    expect(insertProject).toHaveBeenCalledWith(expect.objectContaining({ startedOn: '2019-03-01' }))
     // Not closed yet, so nothing says it was.
     expect(recordAuditEvent.mock.calls.map(([event]) => (event as { action: string }).action)).toEqual(['project.created'])
   })
