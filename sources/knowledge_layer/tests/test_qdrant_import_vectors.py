@@ -11,6 +11,7 @@ helpers; ``deploy/migration/tests`` runs the real exporter into the same importe
 from __future__ import annotations
 
 import base64
+import datetime
 import gzip
 import hashlib
 import importlib.util
@@ -82,11 +83,11 @@ class ExportWriter:
             "id_digest": f"sha256-sum:{digest:064x}",
         }
 
-    def finish(self) -> pathlib.Path:
+    def finish(self, created_at: str = "2026-10-13T08:00:00+00:00") -> pathlib.Path:
         manifest = {
             "format": "piloti-vectors/1",
             "chroma_version": "1.5.9",
-            "created_at": "2026-10-13T08:00:00+00:00",
+            "created_at": created_at,
             "collections": self.collections,
         }
         (self.root / "manifest.json").write_text(json.dumps(manifest), encoding="utf-8")
@@ -106,11 +107,18 @@ def _records(count: int, files: tuple[str, ...] = ("b.pdf", "a.pdf")) -> list[di
     ]
 
 
-def _export(tmp_path: pathlib.Path, collections: dict[str, list[dict]], **metadata) -> pathlib.Path:
+def _export(
+    tmp_path: pathlib.Path, collections: dict[str, list[dict]], created_at: str | None = None, **metadata
+) -> pathlib.Path:
     writer = ExportWriter(tmp_path / f"export-{uuid.uuid4().hex[:6]}")
     for name, records in collections.items():
         writer.add(name, records, metadata.get(name))
-    return writer.finish()
+    return writer.finish(created_at) if created_at else writer.finish()
+
+
+def _now() -> str:
+    """A manifest's ``created_at`` for an export taken now: after everything the test wrote before."""
+    return datetime.datetime.now(datetime.UTC).isoformat(timespec="seconds")
 
 
 # ---------------------------------------------------------------------- the format, no Qdrant
@@ -251,7 +259,8 @@ def test_import_is_idempotent_and_prune_repairs_deletes(qdrant, tmp_path):
     assert script.main(["--in", str(_export(tmp_path, {"proj_alpha": records}))]) == 0
     assert script.main(["--in", str(_export(tmp_path, {"proj_alpha": records}))]) == 0
 
-    smaller = _export(tmp_path, {"proj_alpha": records[4:]})  # four files deleted before the export was taken
+    # Four chunks deleted in Chroma before a second export was taken, after the first import.
+    smaller = _export(tmp_path, {"proj_alpha": records[4:]}, created_at=_now())
     assert script.main(["--in", str(smaller), "--verify"]) == 1  # 8 vs 12: a gap
     assert script.main(["--in", str(smaller), "--prune", "--verify"]) == 0
     assert _store().count("proj_alpha") == 8
@@ -366,7 +375,8 @@ def test_a_collection_without_a_fingerprint_takes_the_configured_embedder(qdrant
     root = _export(tmp_path, {"proj_alpha": _records(3)}, proj_alpha={})
     assert script.main(["--in", str(root), "--verify"]) == 0
     monkeypatch.setattr(script, "_configured_identity", lambda: dict(OTHER))
-    assert script.main(["--in", str(root)]) == 2
+    # --force: refused for the embedder, not for the import that already verified.
+    assert script.main(["--in", str(root), "--force"]) == 2
 
 
 def test_a_scope_only_qdrant_holds_is_a_gap_and_prune_removes_it(qdrant, tmp_path):
@@ -409,5 +419,90 @@ def test_verify_compares_ids_not_only_counts(qdrant, tmp_path):
     assert (sampled.missing, sampled.extra, sampled.sampled) == (1, 1, True)
 
     # The import puts the lost point back; the stray is still a gap until pruned.
-    assert script.main(["--in", str(root), "--verify"]) == 1
-    assert script.main(["--in", str(root), "--prune", "--verify"]) == 0
+    # --force: the first run verified, and repairing drift is a deliberate second import.
+    assert script.main(["--in", str(root), "--verify", "--force"]) == 1
+    assert script.main(["--in", str(root), "--prune", "--verify", "--force"]) == 0
+
+
+def test_a_second_import_after_one_verified_is_refused_unless_forced(qdrant, tmp_path):
+    """A Job re-created by a refresh, or a flag switched off and on: an old export brings deleted chunks back."""
+    records = _records(6)
+    root = _export(tmp_path, {"proj_alpha": records, "oib_knowledge": _records(2)})
+    script = _load_script()
+    assert script.main(["--in", str(root), "--verify"]) == 0
+    store = _store()
+    marker = import_vectors.recorded_import(store)
+    assert marker and "2026-10-13T08:00:00+00:00" in marker
+    for physical in schema.Physical:
+        metadata = store.client.get_collection(schema.ALIASES[physical]).config.metadata
+        assert metadata[import_vectors.IMPORT_MARKER_KEY] == marker
+        assert metadata["aiq:embed_fingerprint"] == "fp-test"  # merged, not replaced
+
+    # A document deleted since: a second import must not bring it back.
+    store.delete_chunks("proj_alpha", [records[0]["id"]])
+    assert script.main(["--in", str(root), "--verify"]) == 2
+    assert script.main(["--in", str(root), "--collection", "proj_alpha"]) == 2
+    assert script.main(["--in", str(root), "--prune", "--verify"]) == 2
+    assert store.count("proj_alpha") == 5
+    # Reading is never refused.
+    assert script.main(["--in", str(root), "--dry-run"]) == 0
+    assert script.main(["--in", str(root), "--verify-only"]) == 1
+    # Deliberately, it still can.
+    assert script.main(["--in", str(root), "--verify", "--force"]) == 0
+    assert store.count("proj_alpha") == 6
+
+
+def test_only_a_full_verified_import_is_recorded(qdrant, tmp_path):
+    root = _export(tmp_path, {"proj_alpha": _records(3), "proj_beta": _records(3)})
+    script = _load_script()
+    assert script.main(["--in", str(root)]) == 0  # not verified
+    assert script.main(["--in", str(root), "--collection", "proj_alpha", "--verify"]) == 0  # not every collection
+    assert import_vectors.recorded_import(_store()) is None
+    assert script.main(["--in", str(root), "--verify"]) == 0
+    assert import_vectors.recorded_import(_store()) is not None
+
+
+def test_a_file_ingested_again_after_the_export_keeps_what_ingestion_wrote(qdrant, tmp_path):
+    """A re-upload before its scope was imported: the export's older Fassung must not go live beside it."""
+    records = _records(6)  # a.pdf and b.pdf, three chunks each
+    store = _store()
+    # Ingestion wrote a new Fassung of a.pdf after the export was taken: new chunk ids, indexed now.
+    fresh = [
+        ChunkRecord(str(uuid.uuid4()), f"Neu {index}", _vector(f"Neu {index}"), {"file_name": "a.pdf"})
+        for index in range(2)
+    ]
+    store.upsert("proj_alpha", fresh, {schema.INDEXED_AT_FIELD: int(datetime.datetime.now(datetime.UTC).timestamp())})
+    root = _export(tmp_path, {"proj_alpha": records})  # taken on 2026-10-13, before that upload
+
+    assert _load_script().main(["--in", str(root), "--verify"]) == 0
+
+    old_a = [r["id"] for r in records if r["metadata"]["file_name"] == "a.pdf"]
+    assert store.missing_chunk_ids("proj_alpha", old_a) == old_a  # none of the old Fassung went in
+    assert store.count("proj_alpha", {"file_name": "a.pdf"}) == 2
+    assert store.count("proj_alpha", {"file_name": "b.pdf"}) == 3
+    # Pruning against the export leaves the new Fassung alone.
+    assert _load_script().main(["--in", str(root), "--prune", "--verify", "--force"]) == 0
+    assert store.count("proj_alpha", {"file_name": "a.pdf"}) == 2
+
+
+def test_chunks_from_before_the_export_are_still_imported_beside_older_points(qdrant, tmp_path):
+    """Only what is newer than the export counts as ingestion: a stale point from before it is not."""
+    records = _records(4)
+    store = _store()
+    stale = ChunkRecord(str(uuid.uuid4()), "Alt", _vector("Alt"), {"file_name": "a.pdf"})
+    store.upsert("proj_alpha", [stale], {schema.INDEXED_AT_FIELD: 5})
+    root = _export(tmp_path, {"proj_alpha": records})
+
+    assert _load_script().main(["--in", str(root), "--prune", "--verify"]) == 0
+    assert store.count("proj_alpha", {"file_name": "a.pdf"}) == 2
+    assert store.missing_chunk_ids("proj_alpha", [stale.chunk_id]) == [stale.chunk_id]
+
+
+def test_facts_are_read_again_at_the_end_so_an_edit_made_meanwhile_wins(qdrant, tmp_path, monkeypatch):
+    """A person re-tags a file while its collection is copied: the snapshot from the start must not overwrite it."""
+    answers = iter([{"a.pdf": {"tags": ["alt"]}}, {"a.pdf": {"tags": ["neu"]}}])
+    monkeypatch.setattr(import_vectors, "facts_by_file", lambda scope: next(answers))
+    assert _load_script().main(["--in", str(_export(tmp_path, {"proj_alpha": _records(4)})), "--verify"]) == 0
+    store = _store()
+    assert store.count("proj_alpha", {"tags": "neu"}) == 2
+    assert store.count("proj_alpha", {"tags": "alt"}) == 0

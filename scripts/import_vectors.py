@@ -16,7 +16,16 @@ and finishes a run that stopped halfway.
 Without ``--collection``, the scopes Qdrant holds and the export does not are
 found too: ``--prune`` deletes them, ``--verify`` counts them as out of step.
 ``--prune`` treats the export as the whole truth: run it only before the new
-release takes writes, or it deletes what was uploaded since the export.
+release takes writes, or it deletes what was uploaded since the export (a new
+file, a new project). A file the export holds that ingestion wrote again
+after the export was taken is the one exception: its exported chunks are not
+inserted, and its new ones are neither pruned nor counted as a gap.
+
+Once an import has verified in step (``--verify``, every collection, exit 0),
+it marks the Qdrant collections, and every later run that would write is
+refused (exit 2) unless ``--force``: importing an old export again brings back
+the chunks of every document deleted since. ``--dry-run`` and
+``--verify-only`` write nothing and are never refused.
 
 Each collection's vectors must come from the embedder the Qdrant collection
 was created with (``aiq:embed_fingerprint``); a mismatch refuses the run
@@ -27,7 +36,8 @@ facts, the metadata store's settings, as the backend does.
 
 EXIT CODES: ``0`` done and, with ``--verify``, every collection in step;
 ``1`` a collection failed or, with ``--verify``, differs (run it again);
-``2`` Qdrant unreachable, or the export invalid, incomplete or refused.
+``2`` Qdrant unreachable, or the export invalid, incomplete or refused (another
+embedder, or an import that already verified).
 """
 
 from __future__ import annotations
@@ -57,6 +67,9 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     parser.add_argument("--prune", action="store_true", help="Delete Qdrant points and scopes the export lacks.")
     parser.add_argument("--verify", action="store_true", help="Compare chunk ids per collection; exit 1 on a gap.")
     parser.add_argument("--verify-only", action="store_true", help="Only compare; import nothing.")
+    parser.add_argument(
+        "--force", action="store_true", help="Write although an earlier import into this Qdrant already verified."
+    )
     args = parser.parse_args(argv)
     args.verify = args.verify or args.verify_only
     return args
@@ -77,7 +90,8 @@ def _run_one(
 ) -> ScopeReport:
     scoped = QdrantStore(store.client, identity)
     if args.verify_only:
-        report, ids = ScopeReport(name), export.id_set(name)
+        newer = import_vectors.ingested_since_export(export, name, scoped)
+        report, ids = ScopeReport(name), import_vectors.expected_ids(export, name, export.id_set(name), newer)
     else:
         report, ids = import_vectors.import_scope(export, name, scoped, dry_run=args.dry_run)
     if args.prune:
@@ -163,6 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     if _refused(store, export, names, fallback):
         logger.error("Nothing written: the export's embedder does not match Qdrant's")
         return 2
+    if _already_imported(store, args):
+        return 2
     logger.info("Export of %s (Chroma %s): %d collection(s)", export.created_at, export.chroma_version, len(names))
 
     failed = invalid = 0
@@ -188,7 +204,36 @@ def main(argv: list[str] | None = None) -> int:
         invalid,
         " (dry run)" * args.dry_run,
     )
-    return 2 if invalid else 1 if failed else 0
+    code = 2 if invalid else 1 if failed else 0
+    _record_if_complete(store, export, args, code)
+    return code
+
+
+def _writes(args: argparse.Namespace) -> bool:
+    return not (args.dry_run or args.verify_only)
+
+
+def _already_imported(store: QdrantStore, args: argparse.Namespace) -> bool:
+    """Refuse a run that would write into a Qdrant an earlier import already verified, unless ``--force``."""
+    if not _writes(args) or args.force:
+        return False
+    marker = import_vectors.recorded_import(store)
+    if marker is None:
+        return False
+    logger.error(
+        "[refused] an import already verified into this Qdrant (%s). Importing again brings back the chunks "
+        "of every document deleted since. Nothing written; pass --force to import anyway",
+        marker,
+    )
+    return True
+
+
+def _record_if_complete(store: QdrantStore, export: Export, args: argparse.Namespace, code: int) -> None:
+    """Mark the collections once a full import verified in step, so the next one is refused."""
+    if code != 0 or not args.verify or not _writes(args) or args.collection:
+        return
+    import_vectors.record_import(store, export)
+    logger.info("Recorded the import in the Qdrant collections: a later run that writes needs --force")
 
 
 def _report_orphans(store: QdrantStore, scopes: list[str], names: list[str], args: argparse.Namespace) -> int:

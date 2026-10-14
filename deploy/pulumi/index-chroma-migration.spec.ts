@@ -8,12 +8,12 @@ import { DependencyGraph } from "./src/test-support/dependency-graph";
  * `chromaMigration` on: the whole program built once and the Job held to the
  * contract its two scripts were written against.
  *
- * Every value here plans clean and fails only on a cluster: a claim mounted
- * read-write is a Job that can damage the one copy of the Chroma data, a step
- * pointed at another path finds no export, a scratch emptyDir fills the node
- * and evicts its neighbours, an importer missing from `allow-app-to-qdrant`
- * times out on every call, and a Job created before the backend tiers rolled
- * reads a store an old pod is still writing.
+ * Every value here plans clean and fails only on a cluster: a step pointed at
+ * another path finds no export, a scratch emptyDir fills the node and evicts
+ * its neighbours, an importer missing from `allow-app-to-qdrant` times out on
+ * every call, and a backend tier that rolls before the Job completes serves
+ * an empty Qdrant to every user and writes points the import's `--verify`
+ * then counts as extra.
  */
 
 // The exporter is another change's file (`deploy/migration/chroma_export.py`);
@@ -49,7 +49,7 @@ type PodSpec = {
 };
 type JobInputs = {
   metadata: { name: string; annotations?: Record<string, string> };
-  spec: { backoffLimit: number; ttlSecondsAfterFinished: number; template: { spec: PodSpec } };
+  spec: { backoffLimit: number; ttlSecondsAfterFinished?: number; template: { spec: PodSpec } };
 };
 type PolicyPeer = { podSelector: { matchLabels: Record<string, string> } };
 
@@ -103,23 +103,26 @@ describe("the Chroma migration Job, switched on", () => {
     expect(cm.data).toEqual({ "chroma_export.py": EXPORTER });
   });
 
-  it("reads the retained claim and never manages it", () => {
-    // A read: Pulumi drops it from state without touching the object, so no
-    // later `up` can delete the claim. A managed claim resource could be.
-    const claim = find("kubernetes:core/v1:PersistentVolumeClaim", "chroma-migration-claim");
-    expect(claim.id).toBe("grid/data-chroma-0");
+  // It reads the running server over HTTP. Mounting `data-chroma-0` instead
+  // could only start once the server was gone, which is after the backends
+  // rolled; and a Job holding the claim keeps a reverted Chroma in
+  // Multi-Attach.
+  it("never mounts, reads or manages the old Chroma claim", () => {
+    expect(RESOURCES.filter((r) => r.type === "kubernetes:core/v1:PersistentVolumeClaim")).toEqual([]);
+    const claims = pod().volumes.filter((v) => (v as { persistentVolumeClaim?: unknown }).persistentVolumeClaim);
+    expect(claims).toEqual([]);
+    expect((pod() as PodSpec & { affinity?: unknown }).affinity).toBeUndefined();
   });
 
-  it("mounts the old Chroma claim read-only, and nothing else of it", () => {
-    expect(pod().volumes).toContainEqual({
-      name: "chroma",
-      persistentVolumeClaim: { claimName: "data-chroma-0", readOnly: true },
-    });
-    const mounting = [...pod().initContainers, ...pod().containers].filter((c) =>
-      (c.volumeMounts ?? []).some((m) => m.name === "chroma"),
-    );
-    expect(mounting.map((c) => c.name)).toEqual(["export"]);
-    expect(step("export").volumeMounts).toContainEqual({ name: "chroma", mountPath: "/chroma", readOnly: true });
+  // Chroma is not one of the pods rule 2 withholds, so the Job's pod may
+  // reach it; withholding it would time the export out with a green plan.
+  it("reaches the Chroma server through the same-namespace allow", () => {
+    const intra = find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-same-namespace").inputs as {
+      spec: { podSelector: { matchExpressions: Array<{ key: string; operator: string; values: string[] }> } };
+    };
+    const [withheld] = intra.spec.podSelector.matchExpressions;
+    expect(withheld).toMatchObject({ key: "app.kubernetes.io/name", operator: "NotIn" });
+    expect(withheld.values).not.toContain("chroma");
   });
 
   it("shares a scratch claim on the stack's StorageClass, sized by the knob, not the node's disk", () => {
@@ -141,13 +144,13 @@ describe("the Chroma migration Job, switched on", () => {
     }
   });
 
-  it("exports first, through uv so the chromadb the script pins is the one installed", () => {
+  it("exports first, from the running Chroma Service, through uv so the chromadb the script pins is installed", () => {
     expect(pod().initContainers.map((c) => c.name)).toEqual(["export"]);
     const exporter = step("export");
     expect(exporter.image).toBe("ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim");
     expect(exporter.command.slice(0, 2)).toEqual(["sh", "-c"]);
     expect(exporter.command[2].split("\n").at(-1)).toBe(
-      "exec uv run --script /migration/chroma_export.py --persist-dir /chroma --out /exchange/export",
+      "exec uv run --script /migration/chroma_export.py --url http://chroma:8000 --out /exchange/export",
     );
     expect(exporter.volumeMounts).toContainEqual({ name: "migration", mountPath: "/migration", readOnly: true });
     // The root is read-only, so nothing the exporter or uv writes may land there.
@@ -189,46 +192,77 @@ describe("the Chroma migration Job, switched on", () => {
     expect(step("export").securityContext).toMatchObject({ readOnlyRootFilesystem: true });
   });
 
-  it("never lands beside a Chroma pod, so the claim cannot be read while a server holds it", () => {
-    expect((pod() as PodSpec & { affinity: unknown }).affinity).toEqual({
-      podAntiAffinity: {
-        requiredDuringSchedulingIgnoredDuringExecution: [
-          {
-            labelSelector: { matchLabels: { "app.kubernetes.io/name": "chroma" } },
-            topologyKey: "kubernetes.io/hostname",
-          },
-        ],
-      },
-    });
-  });
-
   // A later backend image would otherwise replace the Job and import again over
   // a store that has moved on, bringing deleted documents' chunks back.
   it("runs once: a later deploy never replaces it", () => {
     expect(graph.find(JOB, "chroma-migration").ignoreChanges).toEqual(["spec"]);
   });
 
-  it("retries inside one pod, keeps its log for a week, and is not awaited by the deploy", () => {
-    expect(pod().restartPolicy).toBe("OnFailure");
-    expect(job().spec.backoffLimit).toBe(3);
-    expect(job().spec.ttlSecondsAfterFinished).toBe(7 * 24 * 3600);
-    expect(job().metadata.annotations).toEqual({ "pulumi.com/skipAwait": "true" });
+  // Under OnFailure the Job controller deletes a pod that exhausts its
+  // retries, and with it the log and the ephemeral claim holding the export.
+  it("never retries, so a failed pod keeps its log and the export for inspection", () => {
+    expect(pod().restartPolicy).toBe("Never");
+    expect(job().spec.backoffLimit).toBe(0);
   });
 
-  it("starts only after every backend tier has rolled and Qdrant is up", () => {
+  // After a TTL Kubernetes deletes the Job, a `pulumi refresh` drops it from
+  // the state, and the next `up` creates it again: a second import of an old
+  // export, bringing back the chunks of every document deleted since.
+  it("stays until the flag is switched off: no TTL a refresh could turn into a second import", () => {
+    expect(job().spec).not.toHaveProperty("ttlSecondsAfterFinished");
+  });
+
+  // Pulumi waits for the Job to complete; `skipAwait` would let the backends
+  // roll onto an empty Qdrant while it runs. Bounded inside the staging
+  // pipeline's 60 minutes: a runner killed mid-`up` leaves pending operations.
+  it("is awaited by the deploy, for at most 40 minutes", () => {
+    expect(job().metadata.annotations?.["pulumi.com/skipAwait"]).toBeUndefined();
+    expect(graph.find(JOB, "chroma-migration").customTimeouts).toMatchObject({ create: "40m", update: "40m" });
+  });
+
+  it("starts once Qdrant is up and the metadata store is reachable", () => {
     for (const [type, name] of [
+      ["kubernetes:apps/v1:StatefulSet", "qdrant"],
+      ["kubernetes:core/v1:Service", "qdrant"],
+      ["kubernetes:core/v1:ConfigMap", "chroma-migration-exporter"],
+      ["kubernetes:core/v1:Secret", "grid-secrets"],
+    ]) {
+      expect(graph.waitsOn(JOB, "chroma-migration", type, name), name).toBe(true);
+    }
+  });
+
+  // Qdrant ready → export, import, verify → backends roll → Chroma deleted
+  // (last, by Pulumi). The old backends serve from Chroma until the Job has
+  // completed, nothing new writes Qdrant while the import runs, and a failed
+  // Job stops the deploy before any tier rolled.
+  it("rolls every tier that reads or writes Qdrant only after the Job, and waits on none of them", () => {
+    const tiers: Array<[string, string]> = [
       ["kubernetes:apps/v1:Deployment", "aiq-api"],
       ["kubernetes:apps/v1:StatefulSet", "aiq-agent"],
       ["kubernetes:apps/v1:Deployment", "agent-worker"],
       ["kubernetes:apps/v1:Deployment", "ingest-worker"],
-      ["kubernetes:core/v1:Service", "qdrant"],
-      ["kubernetes:core/v1:ConfigMap", "chroma-migration-exporter"],
-    ]) {
-      expect(graph.waitsOn(JOB, "chroma-migration", type, name), name).toBe(true);
+      ["kubernetes:apps/v1:Deployment", "frontend"],
+    ];
+    for (const [type, name] of tiers) {
+      expect(graph.waitsOn(type, name, JOB, "chroma-migration"), `${name} after the Job`).toBe(true);
+      expect(graph.waitsOn(JOB, "chroma-migration", type, name), `the Job not after ${name}`).toBe(false);
     }
-    expect(graph.find(JOB, "chroma-migration").dependencies).toContain(
-      "urn:pulumi:test::grid-oib::kubernetes:core/v1:PersistentVolumeClaim::chroma-migration-claim",
+  });
+
+  // A sync cycle that finds the corpus collection empty while the table lists
+  // ingested files queues the whole corpus for a paid re-embedding, and its
+  // new points fail the import's `--verify` as extra. The vector reconcile,
+  // run against collections not imported yet, forgets their documents'
+  // metadata rows (summaries, tags, Dokumentart, folders).
+  it("suspends the base-corpus sync and the vector reconcile, and only those, before the export starts", () => {
+    const CRON = "kubernetes:batch/v1:CronJob";
+    const suspended = RESOURCES.filter(
+      (r) => r.type === CRON && (r.inputs as { spec: { suspend?: boolean } }).spec.suspend === true,
     );
+    expect(suspended.map((r) => r.name).sort()).toEqual(["housekeeping-base-corpus", "vector-reconcile"]);
+    for (const name of ["housekeeping-base-corpus", "vector-reconcile"]) {
+      expect(graph.waitsOn(JOB, "chroma-migration", CRON, name), name).toBe(true);
+    }
   });
 
   it("is a named caller of Qdrant's client ports", () => {

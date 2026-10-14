@@ -31,7 +31,7 @@ their own namespaces.
 | `dragonfly` (Redis-proto cache) | Deployment | 1 | — (cache) | — |
 | `gotenberg` (office → PDF, ADR-0070; required to index Word, presentation, `.xls` and `.ods` files, ADR-0071; `gotenbergEnabled`, default on) | Deployment | `gotenbergReplicas` (sized to the `bff-jobs` pool's conversion ceiling, prod 2; §6.3c) | — | n/a (stateless. A conversion it drops fails that ingest retryably, so a rollout drains for up to 120s) |
 | `qdrant` (the vector store, ADR-0111; always deployed) | StatefulSet (`Parallel`) + PDB + `qdrant-snapshot` CronJob | `qdrantReplicas` (default 3, one per node; 1 runs without cluster mode) | RWO PVC `/qdrant/storage` per peer, `Retain` | Peers by hand, shards moved by the runbook ([`qdrant-runbook.md`](qdrant-runbook.md)) |
-| `chroma-migration` (one-shot copy of the retired Chroma store into Qdrant; `chromaMigration`, default off) | Job | 1 pod | reads the retained `data-chroma-0` read-only; scratch is a generic ephemeral claim | n/a ([runbook](qdrant-runbook.md#migrating-from-chroma-on-kubernetes)) |
+| `chroma-migration` (one-shot copy of the retired Chroma store into Qdrant; `chromaMigration`, default off) | Job | 1 pod | exports from the still-running `chroma` Service over HTTP, awaited before the backend tiers roll; scratch is a generic ephemeral claim | n/a ([runbook](qdrant-runbook.md#migrating-from-chroma-on-kubernetes)) |
 | `seaweedfs` (filer + S3 gateway) | StatefulSet | 1 (`single`) / N (`split`) | RWO PVC `/data` (unused under the Postgres filer store) | See §4 |
 | `seaweedfs-master` (`split` only) | StatefulSet | 1 (3 = HA, untested) | RWO PVC `/data` (raft + volume-id sequence) | Odd replica counts only |
 | `seaweedfs-volume` (`split` only) | StatefulSet | N | RWO PVC `/data` per replica | `seaweedfsVolumeReplicas` — this is the object-capacity knob |
@@ -2048,6 +2048,11 @@ peer's series, and the alert rules for them ship in the `qdrant-alert-rules`
 ConfigMap; until one exists, `kubectl port-forward svc/otel-collector 8889`
 reads them by hand ([`qdrant-runbook.md`](qdrant-runbook.md)). A scraper in
 another namespace needs a NetworkPolicy rule admitting it to port 8889.
+**Qdrant alerting is therefore not active on any stack, staging included, and
+connecting it is a precondition for prod**: point the provider's metrics stack
+(or a `vmalert` beside it) at `otel-collector:8889` and load
+`qdrant.rules.yaml` from `qdrant-alert-rules`. The runbook's "Alerts" says how
+and how to prove it pages someone.
 
 ```text
 grid-ui / grid-aiq-agent / grid-agent-worker / grid-skill-scheduler / grid-purger

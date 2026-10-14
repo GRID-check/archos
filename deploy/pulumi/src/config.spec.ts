@@ -117,23 +117,24 @@ describe("the retired Chroma tier and vector switch (ADR-0111)", () => {
 });
 
 describe("the Chroma migration Job's knobs", () => {
-  it("is off by default and reads the claim the old StatefulSet left", () => {
+  it("is off by default, and waits 40 minutes for the Job: inside the pipeline's hour", () => {
     pulumi.runtime.setAllConfig(baseStackConfig());
-    expect(loadConfig().chromaMigration).toEqual({ enabled: false, claim: "data-chroma-0", scratchSize: "50Gi" });
+    expect(loadConfig().chromaMigration).toEqual({ enabled: false, scratchSize: "50Gi", timeoutMinutes: 40 });
   });
 
-  it("takes another claim and scratch size from the stack", () => {
+  it("takes another scratch size and timeout from the stack", () => {
     pulumi.runtime.setAllConfig({
       ...baseStackConfig(),
       "grid-oib:chromaMigration": "true",
-      "grid-oib:chromaMigrationClaim": "data-chroma-restored",
       "grid-oib:chromaMigrationScratchSize": "80Gi",
+      "grid-oib:chromaMigrationTimeoutMinutes": "120",
     });
-    expect(loadConfig().chromaMigration).toEqual({
-      enabled: true,
-      claim: "data-chroma-restored",
-      scratchSize: "80Gi",
-    });
+    expect(loadConfig().chromaMigration).toEqual({ enabled: true, scratchSize: "80Gi", timeoutMinutes: 120 });
+  });
+
+  it("refuses a timeout that is not a whole number of minutes", () => {
+    pulumi.runtime.setAllConfig({ ...baseStackConfig(), "grid-oib:chromaMigrationTimeoutMinutes": "0" });
+    expect(() => loadConfig()).toThrow(/chromaMigrationTimeoutMinutes must be a whole number/);
   });
 });
 

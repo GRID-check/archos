@@ -176,8 +176,9 @@ const rateLimitStore = cfg.rateLimit.enabled
   ? installRateLimitStore(cfg, provider, namespace)
   : undefined;
 // The vector store (ADR-0111). Its snapshot CronJob waits on the bucket it
-// uploads into. Chroma is gone: its StatefulSet kept its claim on delete
-// (`whenDeleted: Retain`), which `chromaMigration` reads below.
+// uploads into. Chroma is gone from this program: on the deploy that removes it,
+// `chromaMigration` (below) copies it over before Pulumi deletes the server, and
+// its claim `data-chroma-0` is kept (`whenDeleted: Retain`) as the way back.
 const qdrant = installQdrant(cfg, provider, namespace, seaweed.internalEndpoint, [seaweed.bucketInitJob]);
 // Office → PDF converter for the document viewer (ADR-0070). Stateless and
 // fail-open, so nothing waits on it; its NetworkPolicies admit the frontend
@@ -230,6 +231,34 @@ if (cfg.auth.requireAuth) {
   reconcileAuditSchemas(wiring, cfg, secrets, [ns]);
 }
 
+// The purger, the scheduler and the sweep and housekeeping CronJobs. Ahead of
+// the tiers below only because the Chroma migration waits on two of them.
+const workers = installWorkers(wiring, cfg, secrets, [migrations]);
+
+// The retired Chroma store, carried into Qdrant once (ADR-0111), on the deploy
+// that removes Chroma. The Job exports from the Chroma server the previous
+// release still runs (Pulumi deletes what this program dropped last, and only
+// on a deploy that succeeded), and Pulumi awaits it. Every tier that reads or
+// writes Qdrant waits for it in turn, so the order is: Qdrant ready → export,
+// import, verify → backend tiers roll → Chroma deleted. The old backends serve
+// retrieval from Chroma until then, nothing new writes Qdrant during the
+// import, and a failed Job stops the deploy before anything rolled. It also
+// waits for the base-corpus clock and the vector reconcile to be suspended, so
+// neither takes a collection the import has not filled yet for one the store
+// lost.
+const chromaMigration = cfg.chromaMigration.enabled
+  ? migrateChromaToQdrant(wiring, cfg, secrets, [
+      postgres.initJob,
+      postgres.pooler,
+      qdrant.statefulSet,
+      qdrant.service,
+      workers.baseCorpusSync,
+      ...(workers.vectorReconcile ? [workers.vectorReconcile] : []),
+    ])
+  : undefined;
+/** What every tier that reads or writes Qdrant waits for: the migration Job, when one runs. */
+const afterChromaMigration = chromaMigration ? [chromaMigration] : [];
+
 // ── App workloads ──────────────────────────────────────────────────────────
 //
 // Rollout order (ADR-0082 step B): the api tier, then the frontend, then the
@@ -247,6 +276,7 @@ const api = installApi(wiring, cfg, secrets, [
   seaweed.bucketInitJob,
   dragonfly.service,
   qdrant.service,
+  ...afterChromaMigration,
 ]);
 
 // Not after `aiq-agent`: the chat tier waits on the frontend (above), so the
@@ -268,6 +298,7 @@ const backend = installBackend(wiring, cfg, secrets, [
   dragonfly.service,
   qdrant.service,
   frontend.deployment,
+  ...afterChromaMigration,
 ]);
 
 // The pre-A2 base corpus, carried off the old backend data volume once
@@ -279,7 +310,6 @@ if (cfg.storage.legacyCorpusClaim) {
   ]);
 }
 
-const workers = installWorkers(wiring, cfg, secrets, [migrations]);
 // Landing site + blog (Astro, frontends/web) — static-first, no app secrets,
 // but it pulls from the same registry, so it gets the pull Secret too.
 const web = installWeb(cfg, provider, namespace, wiring.imagePullSecrets, [
@@ -315,6 +345,7 @@ const agentWorker = installAgentWorker(wiring, cfg, secrets, [
   seaweed.bucketInitJob,
   qdrant.service,
   ...queueScalerDeps,
+  ...afterChromaMigration,
 ]);
 
 // Ingestion tier (ADR-0076) — the only process that claims the durable ingest
@@ -326,20 +357,8 @@ const ingestWorker = installIngestWorker(wiring, cfg, secrets, [
   seaweed.bucketInitJob,
   qdrant.service,
   ...queueScalerDeps,
+  ...afterChromaMigration,
 ]);
-
-// The retired Chroma store, carried into Qdrant once (ADR-0111). Opt-in, on a
-// deploy after the one that removed Chroma. After every backend tier, so none
-// still writes Chroma while the export reads it.
-if (cfg.chromaMigration.enabled) {
-  migrateChromaToQdrant(wiring, cfg, secrets, [
-    qdrant.service,
-    api.deployment,
-    backend.statefulSet,
-    agentWorker.deployment,
-    ingestWorker.deployment,
-  ]);
-}
 
 // BFF background pool (ADR-0079) — claims bff_job_queue fairly across
 // organisations and runs project reindex and rescan jobs in its own BFF,

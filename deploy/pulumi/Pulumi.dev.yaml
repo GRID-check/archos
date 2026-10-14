@@ -34,6 +34,11 @@
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:otelPrimaryApiKey     "$(openssl rand -hex 32)" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:otelOidcClientSecret  "<WorkOS Connect secret>" --secret
 #   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:err2issueGithubToken  "ghp_..." --secret
+#   # Qdrant (ADR-0111), always deployed: the read-write and read-only API keys
+#   # and the snapshot S3 identity's secret. REQUIRED, each its own value.
+#   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:qdrantApiKey          "$(openssl rand -base64 32)" --secret
+#   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:qdrantReadOnlyApiKey  "$(openssl rand -base64 32)" --secret
+#   esc env set matthiasbigl/grid-oib/dev pulumiConfig.grid-oib:qdrantS3SecretKey     "$(openssl rand -base64 32)" --secret
 #
 # Staging is intentionally lighter than prod (single replicas, smaller volumes).
 environment:
@@ -125,10 +130,12 @@ config:
   grid-oib:qdrantCpu: "1"
   grid-oib:qdrantMemory: 4Gi
   grid-oib:qdrantStorageSize: 20Gi
-  # Copies the retired Chroma's `data-chroma-0` into Qdrant on the deploy that
-  # removes Chroma, once. Switch it off (`pulumi config rm`) once the Job's log
-  # ends in step, and before deleting the claim: docs/deployment/qdrant-runbook.md,
-  # "Migrating from Chroma on Kubernetes".
+  # Copies the retired Chroma into Qdrant on the deploy that removes it, once:
+  # the Job reads the still-running server, and the backend tiers roll after it.
+  # Switch it off (`pulumi config rm`) once the import verified and retrieval
+  # checks out in the product: docs/deployment/qdrant-runbook.md, "Migrating from
+  # Chroma on Kubernetes". It also suspends the base-corpus sync and the vector
+  # reconcile until then.
   grid-oib:chromaMigration: "true"
   # ── Agent (smaller on staging) ──
   grid-oib:backendRequestsCpu: "500m"

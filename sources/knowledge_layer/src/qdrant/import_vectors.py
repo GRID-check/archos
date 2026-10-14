@@ -15,13 +15,18 @@ document ids the export cannot know, and only the fields the chunk alone
 decides are merged onto it. A run that stopped halfway is finished by running
 it again.
 
-* :func:`import_scope` copies one collection, then merges the person-set facts
-  from the metadata store (:func:`apply_facts`), never replacing a payload whole;
+* :func:`import_scope` copies one collection, leaving out every file ingestion
+  wrote again after the export was taken (:func:`ingested_since_export`), then
+  merges the person-set facts from the metadata store as they are at its end
+  (:func:`apply_facts`), never replacing a payload whole;
 * :func:`prune_scope` deletes points whose chunk the export does not hold;
 * :func:`orphan_scopes` finds scopes Qdrant holds and the export does not;
 * :func:`verify_scope` compares the id sets, not only their sizes;
 * :func:`identity_refusals` refuses a collection whose vectors come from
-  another embedder than the Qdrant collection it would land in.
+  another embedder than the Qdrant collection it would land in;
+* :func:`record_import` marks the Qdrant collections once an import verified,
+  and :func:`recorded_import` reads the mark, so a second import of an old
+  export is refused instead of bringing back what was deleted since.
 
 ``scripts/import_vectors.py`` is the command line around it.
 """
@@ -29,6 +34,7 @@ it again.
 from __future__ import annotations
 
 import base64
+import datetime as dt
 import gzip
 import hashlib
 import json
@@ -46,9 +52,12 @@ from dataclasses import field
 from pathlib import Path
 from typing import Any
 
+from qdrant_client import models
+
 from .payload import ChunkRecord
 from .payload import document_facts
 from .schema import ALIASES
+from .schema import CHUNK_ID_FIELD
 from .schema import EMBED_IDENTITY_KEYS
 from .schema import INDEXED_AT_FIELD
 from .schema import Physical
@@ -71,6 +80,10 @@ VERIFY_FULL_LIMIT = 200_000
 VERIFY_SAMPLE = 4096
 #: Stale chunk ids per delete request in :func:`prune_scope`.
 PRUNE_BATCH = 512
+#: Collection metadata key an import that verified in step leaves on both
+#: physical collections (:func:`record_import`); its value says which export
+#: and when.
+IMPORT_MARKER_KEY = "aiq:vector_import"
 
 
 class InvalidExport(ValueError):
@@ -223,6 +236,25 @@ class Export:
         """Every chunk id of one collection, checked against the manifest."""
         return {record.chunk_id for batch in self.batches(name) for record in batch}
 
+    def ids_by_file(self, name: str) -> dict[str, set[str]]:
+        """One collection's chunk ids by ``file_name``, read without decoding a vector or checking the manifest."""
+        by_file: dict[str, set[str]] = {}
+        for path in self.batch_paths(name):
+            for line in _lines(path):
+                raw = json.loads(line)
+                file_name = str((raw.get("metadata") or {}).get("file_name") or "")
+                by_file.setdefault(file_name, set()).add(str(raw["id"]))
+        return by_file
+
+    @property
+    def created_epoch(self) -> int | None:
+        """When the export was taken, in epoch seconds like ``indexed_at``; None when the manifest does not say."""
+        try:
+            created = dt.datetime.fromisoformat(self.created_at)
+        except ValueError:
+            return None
+        return int(created.replace(tzinfo=created.tzinfo or dt.UTC).timestamp())
+
 
 def _lines(path: Path) -> Iterator[str]:
     try:
@@ -335,6 +367,42 @@ def identity_refusals(
     return refusals
 
 
+def ingested_since_export(export: Export, name: str, store: QdrantStore) -> dict[str, set[str]]:
+    """The files of ``name`` ingestion wrote again after the export was taken, with the chunk ids it wrote.
+
+    A file the export holds whose Qdrant points include chunks the export
+    lacks, indexed after the export's ``created_at``, was re-uploaded or
+    re-indexed since: Qdrant holds the newer Fassung. Inserting the export's
+    chunks beside it would leave both live under one file name, and a
+    ``--prune`` against the export would then delete the newer one. Read
+    before anything is written, so the points this import writes (whose ids
+    the export holds) never count. A manifest without ``created_at`` finds
+    nothing.
+    """
+    since = export.created_epoch
+    if since is None:
+        return {}
+    recent: dict[str, set[str]] = {}
+    newer_than_export = models.FieldCondition(key=INDEXED_AT_FIELD, range=models.Range(gt=since))
+    for point in store.scroll(name, None, newer_than_export, fields=[CHUNK_ID_FIELD, "file_name"]):
+        payload = point.payload or {}
+        recent.setdefault(str(payload.get("file_name") or ""), set()).add(str(payload.get(CHUNK_ID_FIELD) or point.id))
+    if not recent:
+        return {}
+    exported = export.ids_by_file(name)
+    newer = {file_name: ids - exported[file_name] for file_name, ids in recent.items() if file_name in exported}
+    return {file_name: ids for file_name, ids in newer.items() if ids}
+
+
+def expected_ids(export: Export, name: str, ids: set[str], newer: Mapping[str, set[str]]) -> set[str]:
+    """What Qdrant should hold of ``name``: the export's ids, a re-ingested file's new chunks for its exported ones."""
+    if not newer:
+        return ids
+    by_file = export.ids_by_file(name)
+    left_out = set().union(*(by_file.get(file_name, set()) for file_name in newer))
+    return (ids - left_out) | set().union(*newer.values())
+
+
 def import_scope(
     export: Export, name: str, store: QdrantStore, *, dry_run: bool = False
 ) -> tuple[ScopeReport, set[str]]:
@@ -343,28 +411,37 @@ def import_scope(
     Insert-only (``QdrantStore.upsert(insert_only=True)``): a point ingestion
     already wrote keeps its payload, including the office, project and BFF
     document ids the export cannot know; only the fields the chunk alone
-    decides are merged onto it. The person-set facts are then merged onto
-    every file (:func:`apply_facts`), so a full run leaves them in step too.
+    decides are merged onto it. A file ingestion wrote again after the export
+    was taken keeps what ingestion wrote (:func:`ingested_since_export`), and
+    the ids returned are then :func:`expected_ids`. The person-set facts are
+    read again once the collection is written and merged onto every file
+    (:func:`apply_facts`), so an edit made while it was copied is not
+    overwritten with what the metadata store said at its start.
     ``store`` must carry the collection's own identity (:meth:`CollectionEntry.identity`).
     """
     report = ScopeReport(name)
+    newer = ingested_since_export(export, name, store)
+    for file_name in sorted(newer):
+        logger.warning("%s: %s was ingested again after the export; its exported chunks are left out", name, file_name)
     facts = {} if dry_run else facts_by_file(name)
     base = scope_enrichment(name)
     ids: set[str] = set()
     for records in export.batches(name):
         report.read += len(records)
         ids.update(record.chunk_id for record in records)
-        if dry_run:
-            report.written += len(records)
-            continue
         by_file: dict[str, list[ChunkRecord]] = {}
         for record in records:
             by_file.setdefault(str(record.metadata.get("file_name") or ""), []).append(record)
         for file_name, file_records in by_file.items():
+            if file_name in newer:
+                continue
+            if dry_run:
+                report.written += len(file_records)
+                continue
             report.written += store.upsert(name, file_records, {**base, **facts.get(file_name, {})}, insert_only=True)
     if not dry_run:
-        apply_facts(name, store, facts)
-    return report, ids
+        apply_facts(name, store, facts_by_file(name))
+    return report, expected_ids(export, name, ids, newer)
 
 
 def prune_scope(export_ids: set[str], name: str, store: QdrantStore, *, dry_run: bool = False) -> int:
@@ -434,3 +511,34 @@ def orphan_scopes(export_names: Iterable[str], qdrant_held: Iterable[str]) -> li
 def qdrant_scopes(store: QdrantStore) -> list[str]:
     """Every scope with at least one point, over both physical collections."""
     return [scope for physical in Physical for scope in store.scopes(physical)]
+
+
+# ---------------------------------------------------------------------- once
+
+
+def _physical_collections(store: QdrantStore) -> list[str]:
+    """The aliases of the physical collections that exist."""
+    present = {alias.alias_name for alias in store.client.get_aliases().aliases}
+    return [ALIASES[physical] for physical in Physical if ALIASES[physical] in present]
+
+
+def recorded_import(store: QdrantStore) -> str | None:
+    """What an earlier import that verified in step recorded on either physical collection, or None."""
+    for alias in _physical_collections(store):
+        marker = (store.client.get_collection(alias).config.metadata or {}).get(IMPORT_MARKER_KEY)
+        if marker:
+            return str(marker)
+    return None
+
+
+def record_import(store: QdrantStore, export: Export) -> None:
+    """Mark both physical collections: an import of this export verified in step, now.
+
+    Collection metadata, which Qdrant merges with the embedder's fingerprint,
+    and which goes with the collection: a Qdrant rebuilt empty may be
+    imported into again.
+    """
+    verified = dt.datetime.now(dt.UTC).isoformat(timespec="seconds")
+    marker = f"export of {export.created_at or 'unknown'} verified {verified}"
+    for alias in _physical_collections(store):
+        store.client.update_collection(alias, metadata={IMPORT_MARKER_KEY: marker})

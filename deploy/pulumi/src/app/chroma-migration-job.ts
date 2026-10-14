@@ -16,19 +16,13 @@ export const EXPORTER_SOURCE = resolve(__dirname, "../../../migration/chroma_exp
 
 /** Mount points inside the pod. */
 const MOUNT = {
-  /** The retained Chroma claim, read-only: the exporter's `--persist-dir`. */
-  chroma: "/chroma",
   /** The scratch volume both steps share. */
   exchange: "/exchange",
   /** The exporter script from the ConfigMap. */
   migration: "/migration",
 } as const;
 
-/**
- * Paths on the scratch volume. The exporter also stages its copy of the
- * persist dir here (beside `--out`, its default): Chroma cannot open a
- * read-only directory.
- */
+/** Paths on the scratch volume. */
 const SCRATCH = {
   /** What the exporter writes and the importer reads (`--out` / `--in`). */
   export: `${MOUNT.exchange}/export`,
@@ -67,9 +61,8 @@ function exporterScript(): string {
 
 /**
  * Moves the retired Chroma store into Qdrant, once (ADR-0111). Opt-in
- * (`chromaMigration`), on the deploy that removes Chroma or any after it; the
- * order of operations is the Qdrant runbook's "Migrating from Chroma on
- * Kubernetes".
+ * (`chromaMigration`), on the deploy that removes Chroma; the order of
+ * operations is the Qdrant runbook's "Migrating from Chroma on Kubernetes".
  *
  * One pod, two steps over a scratch volume they share:
  *
@@ -77,24 +70,32 @@ function exporterScript(): string {
  *    `uv run --script`, which installs the `chromadb` the script pins (the
  *    release the Chroma server ran) in a pinned uv/Python image; the server
  *    image has no Python (see `CHROMA_MIGRATION.exporterImage`). It reads the
- *    old `data-chroma-0`, mounted read-only: nothing this Job does can change
- *    the one copy of the Chroma data.
+ *    Chroma server the previous release still runs, over HTTP
+ *    (`CHROMA_MIGRATION.sourceUrl`): Pulumi deletes the resources this program
+ *    dropped (the `chroma` StatefulSet and its Services) after every create
+ *    and update of the deploy, and only when the deploy succeeded. Reading
+ *    through the server, the Job never mounts the Chroma volume and cannot
+ *    change it.
  * 2. `import`, in the backend image with the backend's Qdrant URL and key,
  *    runs `scripts/import_vectors.py --verify`: 0 is in step, 1 is drift, 2 is
- *    Qdrant unreachable or the export invalid.
+ *    Qdrant unreachable, the export invalid, or an import that already
+ *    verified into this Qdrant (refused, nothing written).
+ *
+ * Awaited, and before the backend tiers. Pulumi waits for the Job to complete
+ * (up to `chromaMigration.timeoutMinutes`), and `index.ts` makes every backend
+ * tier wait for the Job, so the deploy runs: Qdrant ready → export from the
+ * running Chroma, import, verify → backend tiers roll onto Qdrant → Chroma
+ * deleted. Until then the old backends serve retrieval from Chroma, and
+ * nothing of the new release writes Qdrant while the import runs, so
+ * `--verify` compares the export with exactly what the import wrote. A failed
+ * or timed-out Job fails the deploy before any backend tier rolls and before
+ * Chroma is deleted.
  *
  * The scratch volume is a generic ephemeral claim on the stack's StorageClass,
  * not an emptyDir: an export of a large store would otherwise fill the node's
- * own disk and evict its neighbours. `restartPolicy: OnFailure` retries a step
- * inside the same pod, so a failed import reruns against the export already
- * on the volume.
- *
- * Not awaited by Pulumi (`skipAwait`): a large store runs for longer than the
- * deploy pipeline's timeout, and a timeout mid-`up` leaves the stack with
- * pending operations. The operator watches the Job. It waits for every
- * backend tier, so nothing that still writes Chroma is running when it reads,
- * and it never schedules beside a Chroma pod (below), so on the deploy that
- * removes Chroma it starts once the old server is gone.
+ * own disk and evict its neighbours. Nothing retries (`restartPolicy: Never`,
+ * `backoffLimit: 0`): a failed step leaves the pod, its log and the claim with
+ * the export in place for the operator (`CHROMA_MIGRATION.backoffLimit`).
  */
 export function migrateChromaToQdrant(
   w: AppWiring,
@@ -103,16 +104,7 @@ export function migrateChromaToQdrant(
   dependsOn: pulumi.Resource[],
 ): k8s.batch.v1.Job {
   const labels = commonLabels(CHROMA_MIGRATION.name);
-  const { claim, scratchSize } = cfg.chromaMigration;
-
-  // Read, never managed: a missing claim fails the plan here, instead of a
-  // pod that never schedules. Pulumi drops a read resource from its state
-  // without touching the object, so this cannot delete the claim either.
-  const retained = k8s.core.v1.PersistentVolumeClaim.get(
-    "chroma-migration-claim",
-    pulumi.interpolate`${w.namespace}/${claim}`,
-    { provider: w.provider },
-  );
+  const { scratchSize, timeoutMinutes } = cfg.chromaMigration;
 
   const script = new k8s.core.v1.ConfigMap(
     CHROMA_MIGRATION.exporterConfigMap,
@@ -126,51 +118,31 @@ export function migrateChromaToQdrant(
   const exchangeMount = { name: "exchange", mountPath: MOUNT.exchange };
   const readOnlyRoot = { ...hardenedContainerSecurityContext(), readOnlyRootFilesystem: true };
   const image = CHROMA_MIGRATION.exporterImage;
+  const timeout = `${timeoutMinutes}m`;
 
   return new k8s.batch.v1.Job(
     CHROMA_MIGRATION.name,
     {
-      metadata: {
-        name: CHROMA_MIGRATION.name,
-        namespace: w.namespace,
-        labels,
-        annotations: { "pulumi.com/skipAwait": "true" },
-      },
+      metadata: { name: CHROMA_MIGRATION.name, namespace: w.namespace, labels },
       spec: {
         backoffLimit: CHROMA_MIGRATION.backoffLimit,
-        ttlSecondsAfterFinished: CHROMA_MIGRATION.ttlSecondsAfterFinished,
+        // No ttlSecondsAfterFinished: CHROMA_MIGRATION.backoffLimit says why.
         template: {
           metadata: { labels },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,
-            restartPolicy: "OnFailure",
+            restartPolicy: "Never",
             securityContext: {
               runAsNonRoot: true,
               runAsUser: UID.backend,
               runAsGroup: UID.backend,
-              // Owns the fresh scratch volume; the read-only claim is left as it is.
+              // Owns the fresh scratch volume.
               fsGroup: UID.backend,
               fsGroupChangePolicy: "OnRootMismatch",
             },
             ...onNodeGroup(cfg.nodeGroups.batch),
-            // Never beside a Chroma pod. On the deploy that removes Chroma the
-            // Job is created before the old StatefulSet is deleted (Pulumi
-            // deletes last); on another node the ReadWriteOnce claim cannot
-            // attach until that pod is gone, so the export never reads a store
-            // a server still has open. Once Chroma is gone this matches nothing.
-            affinity: {
-              podAntiAffinity: {
-                requiredDuringSchedulingIgnoredDuringExecution: [
-                  {
-                    labelSelector: { matchLabels: { "app.kubernetes.io/name": "chroma" } },
-                    topologyKey: "kubernetes.io/hostname",
-                  },
-                ],
-              },
-            },
             volumes: [
-              { name: "chroma", persistentVolumeClaim: { claimName: claim, readOnly: true } },
               {
                 name: "exchange",
                 ephemeral: {
@@ -199,15 +171,11 @@ export function migrateChromaToQdrant(
                     "set -eu",
                     `mkdir -p ${SCRATCH.home} ${SCRATCH.tmp}`,
                     `exec uv run --script ${MOUNT.migration}/chroma_export.py ` +
-                      `--persist-dir ${MOUNT.chroma} --out ${SCRATCH.export}`,
+                      `--url ${CHROMA_MIGRATION.sourceUrl} --out ${SCRATCH.export}`,
                   ].join("\n"),
                 ],
                 env: exporterEnv(),
-                volumeMounts: [
-                  { name: "chroma", mountPath: MOUNT.chroma, readOnly: true },
-                  exchangeMount,
-                  { name: "migration", mountPath: MOUNT.migration, readOnly: true },
-                ],
+                volumeMounts: [exchangeMount, { name: "migration", mountPath: MOUNT.migration, readOnly: true }],
                 resources: CHROMA_MIGRATION.exporterResources,
               },
             ],
@@ -229,12 +197,16 @@ export function migrateChromaToQdrant(
     },
     {
       provider: w.provider,
-      dependsOn: [secrets.secret, script, retained, ...dependsOn],
+      dependsOn: [secrets.secret, script, ...dependsOn],
+      // The deploy waits for the Job, then rolls the backend tiers. Bounded
+      // well inside the pipeline's hour: a runner killed mid-`up` leaves the
+      // stack with pending operations, a timeout here only fails the deploy.
+      customTimeouts: { create: timeout, update: timeout },
       // Once, not once per deploy. A Job's spec is immutable, so the next
       // backend image would otherwise replace it and run the import again
       // over a store that has moved on, bringing back the chunks of every
-      // document deleted or re-indexed since. To run it again, switch the
-      // flag off for one deploy and on for the next.
+      // document deleted or re-indexed since. The importer refuses a second
+      // import too, by the mark a verified one leaves in the collections.
       ignoreChanges: ["spec"],
       // A fixed name: should it ever be replaced, the old Job goes first.
       deleteBeforeReplace: true,

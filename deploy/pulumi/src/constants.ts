@@ -712,9 +712,9 @@ export const QDRANT = {
 
 /**
  * The one-shot move of the retired Chroma store into Qdrant (ADR-0111,
- * `app/chroma-migration-job.ts`). Fixed parts only; whether it runs, which
- * claim it reads and how much scratch it gets are knobs (`config.ts` →
- * `chromaMigration`). Remove with the Job once every stack has run it.
+ * `app/chroma-migration-job.ts`). Fixed parts only; whether it runs, how much
+ * scratch it gets and how long the deploy waits for it are knobs (`config.ts`
+ * → `chromaMigration`). Remove with the Job once every stack has run it.
  */
 export const CHROMA_MIGRATION = {
   /** Job name and `app.kubernetes.io/name` of its pod: a named caller in `allow-app-to-qdrant`. */
@@ -722,11 +722,14 @@ export const CHROMA_MIGRATION = {
   /** The ConfigMap that carries `deploy/migration/chroma_export.py` into the pod. */
   exporterConfigMap: "chroma-migration-exporter",
   /**
-   * The claim the old Chroma StatefulSet left behind: its volumeClaimTemplate
-   * `data` on pod `chroma-0`, kept on delete (`whenDeleted: Retain`), so a
-   * program without Chroma deletes the StatefulSet and never the claim.
+   * What the exporter reads: the `chroma` Service of the server the previous
+   * release runs, in the same namespace. It still serves while the Job runs,
+   * because Pulumi deletes the resources a program dropped after every create
+   * and update, and only on a deploy that succeeded. Chroma is not withheld
+   * from rule 2 of the NetworkPolicies (`allow-same-namespace`), so the pod
+   * reaches it; egress is not restricted.
    */
-  retainedClaim: "data-chroma-0",
+  sourceUrl: "http://chroma:8000",
   /**
    * Where the exporter runs. Not the Chroma server image the deployment ran
    * (`chromadb/chroma:1.5.9`): since 1.0 that is the Rust binary on Debian with
@@ -737,12 +740,12 @@ export const CHROMA_MIGRATION = {
    */
   exporterImage: "ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim",
   /**
-   * Exporter: installing `chromadb`, then opening a copy of the persist dir,
-   * which loads the index Chroma served, so the envelope Chroma ran with.
+   * Exporter: installing `chromadb`, then one page of a collection at a time
+   * over HTTP (1,000 chunks, about 60 MB of JSON at 3072 dimensions).
    */
   exporterResources: {
-    requests: { cpu: "1", memory: "3Gi" },
-    limits: { cpu: "4", memory: "6Gi" },
+    requests: { cpu: "1", memory: "2Gi" },
+    limits: { cpu: "4", memory: "4Gi" },
   },
   /** Importer: reads the export in batches and upserts it over HTTP. */
   importerResources: {
@@ -750,14 +753,17 @@ export const CHROMA_MIGRATION = {
     limits: { cpu: "2", memory: "4Gi" },
   },
   /**
-   * Long enough for an operator to read the Job's log, which is the
-   * migration's evidence, after a deploy that ran on a Friday evening.
+   * No retry, in the pod or in a new one (with `restartPolicy: Never`). A
+   * failed step leaves its pod, its log and the scratch claim holding the
+   * export for the operator to read. Under `OnFailure` the Job controller
+   * deletes a pod that exhausts its retries, and with it the log and the
+   * ephemeral claim, so a failure kept no evidence of why.
+   *
+   * There is deliberately no `ttlSecondsAfterFinished` either. Kubernetes
+   * would delete the finished Job after it, a `pulumi refresh` would then drop
+   * it from the state, and the next `up` would create it again: a second
+   * import of an old export, bringing back the chunks of every document
+   * deleted since. The Job is removed when `chromaMigration` is switched off.
    */
-  ttlSecondsAfterFinished: 7 * 24 * 3600,
-  /**
-   * Retries inside the one pod (`restartPolicy: OnFailure`): a failed import
-   * reruns against the export already on the scratch volume rather than
-   * exporting again.
-   */
-  backoffLimit: 3,
+  backoffLimit: 0,
 } as const;
