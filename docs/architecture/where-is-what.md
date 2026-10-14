@@ -394,6 +394,7 @@ does not exist, so a moved file is caught; a missing row is not.
 |---|---|---|---|
 | Release notes | `releasenotes/notes`, started by `task release:note -- <slug>` | [`docs/contributing/release-notes.md`](../contributing/release-notes.md) | — |
 | Turn census, answer suite and startup probe | `scripts/turn_census/census.py`, `scripts/turn_census/suite.py`, `scripts/turn_census/startup_probe.py` (`task be:eval:turn-census`, `task be:eval:answer-suite`) | [`docs/contributing/testing-and-verification.md`](../contributing/testing-and-verification.md) | — |
+| Intake eval (the Erfassungs-Agent on a fixture project) | `scripts/intake_eval` (`task be:eval:intake`), fixture and answer key in `tests/fixtures/intake_eval` | [`docs/contributing/testing-and-verification.md`](../contributing/testing-and-verification.md#the-intake-eval) | ADR-0111 |
 | ADR directory and its index | `scripts/check_adrs.py` | [`docs/adr/README.md`](../adr/README.md) | ADR-0001 |
 | Agent guides and their bridges | `scripts/check_agent_docs.py` | [`docs/contributing/agent-onboarding-files.md`](../contributing/agent-onboarding-files.md) | ADR-0050 |
 | Paths in this file | `scripts/check_doc_paths.py` | this file | — |

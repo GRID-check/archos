@@ -354,6 +354,9 @@ Datei").
   recorded, refusals by reason, contradictions, decisive gaps.
 - A decided suggestion posts `piloti-decision` with `kind = intake_suggestion`
   on the run's trace: the reading's precision, per organization.
+- Before a change ships, `task be:eval:intake` runs the agent on a fixture
+  Wohnbau with planted traps and reports precision, recall, the traps and the
+  cost against floors ([the intake eval](../contributing/testing-and-verification.md#the-intake-eval)).
 
 ## Not built, and why
 
