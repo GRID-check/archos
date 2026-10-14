@@ -157,12 +157,23 @@ a pure function. The agent's `intake_needs` returns its result.
 
 ## The Gebäudeklasse derivation
 
-`lib/project-intake/derivations.ts`. Inputs per Bauwerk: `bauwerkstyp`,
-`gebaeudestellung`, `geschosse_oberirdisch`, `fluchtniveau_m`,
-`nutzungseinheiten`, `einheiten_ueber_400`, `bgf_oberirdisch`. Fundstelle:
-OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen". The
-worked examples in `src/aiq_agent/skills/builtin/oib/gebaeudeklasse/SKILL.md`
-are the test table; that skill and the Richtlinie stay the authority.
+`lib/project-intake/derivations.ts`. Nine inputs per Bauwerk: `bauwerkstyp`
+(only a Gebäude has a class), `gebaeudestellung`, `zugang_drei_seiten` (asked
+by the wizard's question `C9_zugang`, added for this), `geschosse_oberirdisch`,
+`fluchtniveau_m`, `bgf_oberirdisch`, `nutzungseinheiten`, `einheiten_ueber_400`
+and `nutzungen` (a reines Wohngebäude opens GK 2 up to 800 m²). Fundstelle:
+OIB-Richtlinien, Begriffsbestimmungen (Ausgabe Mai 2023), „Gebäudeklassen".
+
+The repository holds GK 4 verbatim and GK 1–3 and 5 only as the office's own
+published paraphrase (`frontends/web/src/data/landing/glossar.ts`); the
+Richtlinie is the authority, and the rules in code say which they quote and
+which they paraphrase. Where the wizard's questions are coarser than the
+definition, the code errs towards the higher class and says so: GK 1's
+„höchstens zwei Wohnungen oder eine Betriebseinheit" is read as at most two
+units, GK 4's per-unit Nutzfläche is read from the BGF question C8, and a
+Reihenhaus takes the Bauwerk's Fluchtniveau, not each unit's.
+`derivations.spec.ts` holds the test table, with the boundaries at 7, 11 and
+22 m, 400 and 800 m², and 3 and 4 Geschoße.
 
 When every input it needs has a value (confirmed or suggested), the intake
 writes `gebaeudeklasse@bwN` as an assumption, the class as a number 1..5 (as

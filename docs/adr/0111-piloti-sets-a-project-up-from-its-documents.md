@@ -58,9 +58,9 @@ the wizard, the chat's prompt view, the brief and the applicability panel
 already read.
 
 * **The Erfassungs-Agent** is an agent type on the research worker with its own
-  prompt and five tools of its own (`intake_needs`, `record_value`,
-  `mark_read`, `finish`, and the existing `list_files`, `knowledge_search`,
-  `read_passage` for reading). It acts as the person whose upload or click
+  prompt and four tools of its own (`intake_needs`, `record_values`,
+  `read_document`, `finish_intake`), beside the existing `list_files`,
+  `knowledge_search` and `read_passage`. It acts as the person whose upload or click
   started it, through the signed envelope (ADR-0108).
 * **One API.** Person routes under `/api/projects/[id]/intake` and Piloti's
   route `POST /api/internal/project-intake` call the same service
