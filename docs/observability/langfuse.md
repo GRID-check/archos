@@ -136,7 +136,7 @@ a name is written but not declared, or declared but not listed here.
 |---|---|---|---|
 | `user-feedback` | numeric 0–1 | BFF, on a vote | 1 helpful, 0 not. The mean is the helpful rate |
 | `user-feedback-reason` | categorical | BFF, on a down-vote | `inaccurate`, `wrong_source`, `too_slow`, `other` |
-| `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn. One score per decision, on the trace of the producing turn; metadata `subject` (`proposal`, `annotation`, `change`) and `subject_id`. The acceptance rate of Piloti's work |
+| `piloti-decision` | categorical | BFF, on a person's decision | `accepted`, `dismissed`, `undone`: what a person did with a proposal, a proposed mark or an applied change Piloti made in this turn, or with a value a reading of the project's documents suggested (ADR-0111). One score per decision, on the trace of the producing turn (for an intake suggestion, the reading's `research-job` trace); metadata `subject` (`proposal`, `annotation`, `change`, `intake_suggestion`) and `subject_id`. The acceptance rate of Piloti's work |
 | `citation-health` | boolean | agent | nothing removed, patched or flagged on this turn |
 | `answer-grounded` | boolean | agent | false when sources were retrieved but no citation survived |
 | `citations-removed` | numeric | agent | citations verification dropped |

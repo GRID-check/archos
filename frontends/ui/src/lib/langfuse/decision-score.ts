@@ -11,8 +11,9 @@ import 'server-only'
  * declared in `aiq_agent.observability.langfuse_scores.SCORE_DEFINITIONS`.
  * Categorical because Langfuse charts it as a distribution, and the share of
  * `accepted` among the decisions is how often Piloti's work was right to
- * propose. `metadata` names the subject (`proposal`, `annotation`, `change`)
- * and its id, so a trace with several decisions is readable.
+ * propose. `metadata` names the subject (`proposal`, `annotation`, `change`,
+ * `intake_suggestion`) and its id, so a trace with several decisions is
+ * readable.
  *
  * The score id is derived from the subject, so a repeated call (a retried
  * request, a second replica) upserts instead of counting twice. A mark Piloti
@@ -50,7 +51,12 @@ import { findProposedChange } from '@/lib/proposals/repository'
 import { langfuseApiConfig } from './config'
 import { upsertScore } from './feedback-score'
 
-export type DecisionSubject = 'proposal' | 'annotation' | 'change'
+/**
+ * What was decided on. `intake_suggestion` is one value a reading of the
+ * project's documents suggested (ADR-0111), confirmed or dismissed on the
+ * review; it has no turn, so its caller passes the reading's trace id.
+ */
+export type DecisionSubject = 'proposal' | 'annotation' | 'change' | 'intake_suggestion'
 export type Decision = 'accepted' | 'dismissed' | 'undone'
 
 /** The score's name in Langfuse. A contract: dashboards and filters select it by name. */
@@ -68,6 +74,11 @@ export interface DecisionScoreInput {
   decidedBy: string
   /** The turn that produced it, when the caller knows; otherwise looked up (a mark's `create` change). */
   origin?: { conversationId: string; messageId: string } | null
+  /**
+   * The producing trace itself, for work that ran outside a turn (a reading of
+   * the project's documents, `research-job`). Wins over `origin`.
+   */
+  traceId?: string | null
 }
 
 /** The Langfuse score id for one subject. Stable, so a repeated decision upserts. */
@@ -124,7 +135,18 @@ async function originMessageId(input: DecisionScoreInput): Promise<string | null
       )
     case 'change':
       return changeOriginMessage(input.organizationId, and(org, eq(pilotiChanges.id, input.subjectId)))
+    case 'intake_suggestion':
+      // A reading is no turn: its trace comes with the input, or there is none.
+      return null
   }
+}
+
+/** The trace the score goes on: the caller's, else the producing turn's answer's. */
+async function producingTraceId(input: DecisionScoreInput): Promise<string | null> {
+  if (input.traceId) return input.traceId
+  const messageId = await originMessageId(input)
+  if (!messageId) return null
+  return withTenant({ organizationId: input.organizationId }, () => getAnswerTraceId(messageId, input.organizationId))
 }
 
 // ── Posting ─────────────────────────────────────────────────────────────────
@@ -138,11 +160,7 @@ export async function recordDecisionScore(input: DecisionScoreInput): Promise<vo
   const config = langfuseApiConfig()
   if (!config) return
   try {
-    const messageId = await originMessageId(input)
-    if (!messageId) return
-    const traceId = await withTenant({ organizationId: input.organizationId }, () =>
-      getAnswerTraceId(messageId, input.organizationId)
-    )
+    const traceId = await producingTraceId(input)
     if (!traceId) return
     // The feedback score's poster: one client, bounded, never rejecting.
     await upsertScore(config, decisionScoreId(input.subject, input.subjectId), toDecisionScore({ ...input, traceId }))

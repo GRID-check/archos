@@ -224,6 +224,8 @@ const projectTarget: InboxTargetDescriptor = {
         // A proposal without a chat to show it in waits in the project's chat,
         // where Piloti's cards live.
         if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/chat`
+        // A finished reading waits on the project's setup page, where it is reviewed (ADR-0111).
+        if (context.itemType === 'piloti.intake_ready') return `/app/projects/${resourceId}/setup`
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
         if (taskId) {

@@ -28,9 +28,9 @@ import { insertConversation } from '@/lib/conversations/repository'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { isProjectClosed, runsOnSchedule, SCHEDULE_SKIPPED_BECAUSE } from '@/lib/projects/project-status'
 import type { PlanDocuments } from '@/lib/runs/plan-documents'
-import { buildGridRequestContextWireHeaders, encodeGridBudgetHeader } from '@/lib/request-context'
 import { isOrgFeatureEnabled } from '@/lib/workos/feature-flags'
-import { resolveRunContext, runRequestContextInput, warnIfRunEnvelopeLarge } from './run-context'
+import { submitBackgroundRun } from './background-run'
+import { resolveRunContext } from './run-context'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type {
   DefinitionTrigger,
@@ -42,13 +42,7 @@ import type {
 import { resolveSkillSnapshot } from '@/lib/skills/service'
 import { snapshotOf, type SkillSnapshot } from '@/lib/skills/types'
 import { nextOccurrence, validateCron, validateDueAt, minIntervalMinutesFromEnv } from './schedule'
-import {
-  submitJob,
-  JobSubmitError,
-  JobSubmitSkippedError,
-  type JobPriority,
-  type JobSubmitPayload,
-} from './backend-client'
+import { JobSubmitError, JobSubmitSkippedError, type JobPriority } from './backend-client'
 import * as repository from '@/lib/tasks/repository'
 import { requireMaySeeSubject } from '@/lib/tasks/subject-access'
 import { previousDecisionsBlock } from '@/lib/tasks/service'
@@ -586,46 +580,22 @@ export async function submitAgentRun(spec: AgentRunSpec): Promise<SubmittedAgent
   const { organizationId, projectId, userId } = spec
   const subject = { organizationId, projectId, userId }
   const context = await resolveRunContext(subject, spec.prompt)
-  const budgetHeader = context.budget ? encodeGridBudgetHeader(context.budget) : null
   const conversationId = spec.conversationId
 
-  const payload: JobSubmitPayload = {
-    input: spec.prompt,
+  const { jobId, queued } = await submitBackgroundRun({
+    subject,
+    ownerEmail: spec.ownerEmail,
+    prompt: spec.prompt,
     skills: spec.skillSnapshot ? [spec.skillSnapshot.name] : [],
     output: spec.output,
-    ...(conversationId ? { conversation_id: conversationId } : {}),
-    // The run this job is, so the worker folds its ledger onto the run's own
-    // message instead of narrating into the void (ADR-0062).
-    run_id: spec.runId,
-    ...(spec.clarifierResult ? { clarifier_result: spec.clarifierResult } : {}),
-    ...(spec.documents ? { documents: spec.documents } : {}),
-    data_sources: withAlwaysOnSources(spec.dataSources ?? null),
-    collection_scope: context.collectionScope,
-    project_context: context.projectContext,
-    project_memory: context.projectMemory,
-    memory_reflection_enabled: context.memoryReflectionEnabled,
-    organization_id: organizationId,
-    user_id: userId,
-    project_id: projectId,
-    owner_email: spec.ownerEmail,
-    budget_header: budgetHeader,
-    model_overrides: context.modelOverrides,
+    conversationId,
+    runId: spec.runId,
+    clarifierResult: spec.clarifierResult,
+    documents: spec.documents,
+    dataSources: withAlwaysOnSources(spec.dataSources ?? null),
     priority: spec.priority ?? 'interactive',
-  }
-
-  // The worker keeps this envelope with the job and echoes it to the BFF from
-  // the run's tools, so a background run acts as the person who commissioned it
-  // (ADR-0108). It therefore carries what a chat turn's envelope carries for
-  // those tools: the thread the run writes into, and `issuedAt`. Past the
-  // renewal age the worker asks `POST /api/internal/runs/[runId]/envelope` for a
-  // fresh one, signed from the same `runRequestContextInput`.
-  const contextHeaders = buildGridRequestContextWireHeaders(
-    runRequestContextInput(subject, context, conversationId, Date.now()),
-    process.env.GRID_INTERNAL_API_TOKEN,
-  )
-  warnIfRunEnvelopeLarge(contextHeaders, spec.runId)
-
-  const { jobId, queued } = await submitJob(payload, contextHeaders)
+    context,
+  })
   const runMessageId = conversationId
     ? await mintRunMessage(conversationId, spec.runId, spec.title)
     : null

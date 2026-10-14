@@ -32,6 +32,9 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * transaction in which a person takes the mark back; it runs as the system:
  * the take-back was authorized when it was made, and a stop must still land
  * when the person who woke Piloti has left or their budget is spent.
+ * `project_intake_read` is one step that runs AS the person whose upload
+ * finished (ADR-0111): it starts a reading of the project's documents, which
+ * acts as them, and does nothing when they may not write the profile.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -49,6 +52,7 @@ export const BFF_JOB_KINDS = [
   'mail_import',
   'piloti_wake',
   'piloti_wake_stop',
+  'project_intake_read',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -330,6 +334,19 @@ export const pilotiWakeStopPayloadSchema = z.object({
   actorUserId: z.string().min(1),
 })
 export type PilotiWakeStopPayload = z.infer<typeof pilotiWakeStopPayloadSchema>
+
+/**
+ * `project_intake_read`: start a reading of the documents of a project with an
+ * intake, after an upload batch completed (ADR-0111). Queued by
+ * `settleUploadBatches` for the batch's uploader; a reading already running
+ * records a rerun instead. Ids only: the project's intake, rights and
+ * documents are read again when it runs.
+ */
+export const projectIntakeReadPayloadSchema = z.object({
+  projectId: z.string().uuid(),
+  requester: requesterSchema,
+})
+export type ProjectIntakeReadPayload = z.infer<typeof projectIntakeReadPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

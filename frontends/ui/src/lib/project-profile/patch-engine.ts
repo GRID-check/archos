@@ -115,8 +115,10 @@ function applyArrayOperation(
  * caller must be told so it can retry.
  *
  * Provenance instants are ignored: {@link normalizeProfilePatchOperations}
- * stamps `updatedAt` at apply time, so the same value re-applied is a different
- * object yet semantically a no-op.
+ * stamps `updatedAt` at apply time, and a decision on the intake's review
+ * stamps its `person` evidence (`at`) and an alternative (`recordedAt`) the
+ * same way (ADR-0111), so the same value re-applied is a different object yet
+ * semantically a no-op.
  */
 export function isPatchAlreadyApplied(
   profile: ProjectProfile,
@@ -131,6 +133,9 @@ export function isPatchAlreadyApplied(
   )
 }
 
+/** The keys that say WHEN something was written, never what: `updatedAt` on an entry, `at` on person evidence, `recordedAt` on an alternative. */
+const PROVENANCE_INSTANTS: ReadonlySet<string> = new Set(['updatedAt', 'at', 'recordedAt'])
+
 function equalIgnoringInstants(a: unknown, b: unknown): boolean {
   if (Array.isArray(a) || Array.isArray(b)) {
     return (
@@ -143,7 +148,7 @@ function equalIgnoringInstants(a: unknown, b: unknown): boolean {
   if (isPlainObject(a) && isPlainObject(b)) {
     const keysOf = (value: Record<string, unknown>) =>
       Object.keys(value)
-        .filter((key) => key !== 'updatedAt')
+        .filter((key) => !PROVENANCE_INSTANTS.has(key))
         .sort()
     const keys = keysOf(a)
     const otherKeys = keysOf(b)

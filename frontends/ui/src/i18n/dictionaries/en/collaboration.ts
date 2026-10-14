@@ -531,6 +531,15 @@ export const collaboration = {
         title: 'Piloti has a proposal for you',
         body: 'Apply it or dismiss it.',
       },
+      // Piloti read a project's documents and suggested values for its profile
+      // (ADR-0111). {subject} is the project's name, {related} the number of
+      // questions that decide the building class; absent when there are none,
+      // and `title` is read. Piloti's summary is the excerpt below.
+      pilotiIntakeReady: {
+        title: 'Piloti has read the documents of “{subject}”',
+        titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
+        body: 'Review the suggestions and confirm what is right.',
+      },
       unknown: {
         title: 'Something happened',
         body: 'in {subject}',

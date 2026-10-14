@@ -326,8 +326,10 @@ export const intakeDecisionResultSchema = z.object({
 })
 export type IntakeDecisionResult = z.infer<typeof intakeDecisionResultSchema>
 
+/** One result per decision, in request order, and the intake as it stands after them. */
 export const intakeDecisionsResponseSchema = z.object({
   results: z.array(intakeDecisionResultSchema).max(MAX_INTAKE_DECISIONS),
+  intake: intakeViewSchema,
 })
 export type IntakeDecisionsResponse = z.infer<typeof intakeDecisionsResponseSchema>
 

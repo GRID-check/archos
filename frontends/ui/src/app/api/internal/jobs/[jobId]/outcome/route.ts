@@ -13,15 +13,19 @@
  * single home (`uniq_task_runs_backend_job_id`). The lookup by backend id
  * genuinely has no tenant yet, so it runs under platform access, narrowly;
  * everything after is one organization's work and is done as that
- * organization, so row-level security still applies to it. A backend id the BFF
- * has no run for (an interactive deep-research job) is a 404, which the worker
- * treats as "nothing to notify", not as an error.
+ * organization, so row-level security still applies to it. A backend id with
+ * no run row may be a reading of a project's documents (ADR-0111), which has
+ * none: the intake whose `job_id` it is, in the body's organization, is
+ * settled instead (a failed or cancelled reading fails). Any other backend id
+ * the BFF has no run for (an interactive deep-research job) is a 404, which the
+ * worker treats as "nothing to notify", not as an error.
  */
 
 import { z } from 'zod'
 import { NotFoundError } from '@/lib/api/errors'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
+import { settleIntakeOutcome } from '@/lib/project-intake/service'
 import { loadRunForOutcome, recordRunOutcome } from '@/lib/tasks/service'
 
 type Params = { jobId: string }
@@ -52,6 +56,12 @@ export const POST = internalApiRoute<Params>(
       'job outcome: the worker identifies a run by backend job id, before any organization is known',
       () => loadRunForOutcome(params.jobId)
     )
+    if (!run) {
+      // A reading of a project's documents has no run row (ADR-0111): its job
+      // is the intake's. A failed or cancelled one fails the reading.
+      const intake = await withTenant({ organizationId }, () => settleIntakeOutcome(organizationId, params.jobId, status))
+      if (intake) return { intake: { projectId: intake.projectId, status: intake.status } }
+    }
     if (!run || run.organizationId !== organizationId) throw new NotFoundError('Unknown job run')
 
     const outcome = { status, error: error ?? null, report: report ?? null, cards: cards ?? null }
