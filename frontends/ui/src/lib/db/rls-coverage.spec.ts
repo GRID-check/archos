@@ -154,6 +154,13 @@ const BOUNDARY_MIGRATIONS = [
   // Adds piloti_changes — every change Piloti applied, with the turn that made
   // it (ADR-0109). Keyed by its organization AND its document's.
   '0142_piloti_changes.sql',
+  // Adds project_intakes — a project's reading of its own documents, one row
+  // per project (ADR-0111). Keyed by its organization AND the project's.
+  '0144_project_intakes.sql',
+  // Re-secures proposed_changes with a NULL arm for the project: a Büroablage
+  // proposal has no project to join, and is the organization's alone, as a
+  // Büroablage folder is (0102). No table is added or removed.
+  '0146_proposal_shelves.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

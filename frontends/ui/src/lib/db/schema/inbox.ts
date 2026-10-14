@@ -156,6 +156,14 @@ export const INBOX_ITEM_TYPES = [
    * or dismissed, by whoever decides it.
    */
   'piloti.proposal_waiting',
+  /**
+   * Actionable, operational tier: a reading of the project's documents has
+   * finished and its suggestions wait for review (ADR-0111). Addressed to the
+   * person whose upload or click started it, pointing at the project and
+   * anchored on its intake, so a second reading folds into the same row.
+   * Resolved when somebody finishes the review.
+   */
+  'piloti.intake_ready',
 ] as const
 export type InboxItemType = (typeof INBOX_ITEM_TYPES)[number]
 

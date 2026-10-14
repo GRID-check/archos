@@ -627,7 +627,7 @@ erDiagram
 | `created_by` | `text` | (WorkOS `user_...`) | Owner |
 | `filename` | `text` | | |
 | `storage_key` | `text` | | `org/<orgId>/project/<projectId>/doc/<documentId>/<filename>` |
-| `collection_name` | `text` | | Server‑assigned collection (a payload field in Qdrant, ADR-0112) |
+| `collection_name` | `text` | | Server‑assigned collection (a payload field in Qdrant, ADR-0114) |
 | `status` | `text` | | `pending` / `embedded` / `failed` |
 | `created_at` | `timestamptz` | | |
 

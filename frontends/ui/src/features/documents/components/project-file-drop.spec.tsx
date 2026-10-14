@@ -37,7 +37,7 @@ describe('routesDropToFiles', () => {
   })
 
   it('leaves the sections that answer a drop themselves', () => {
-    for (const section of ['chat', 'files', 'intake', 'research']) {
+    for (const section of ['chat', 'files', 'intake', 'research', 'setup']) {
       expect(routesDropToFiles(`/app/projects/p1/${section}`, 'p1')).toBe(false)
     }
   })

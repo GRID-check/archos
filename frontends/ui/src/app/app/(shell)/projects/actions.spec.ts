@@ -44,7 +44,7 @@ describe('createProject (server action)', () => {
 
   it('creates an active project and lands in intake, as before', async () => {
     await expect(createProject({}, form({ name: ' Seestadt ' }))).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/intake')
-    expect(createProjectInOrg).toHaveBeenCalledWith(session, { name: 'Seestadt' })
+    expect(createProjectInOrg).toHaveBeenCalledWith(session, { name: 'Seestadt', setup: 'self' })
     expect(revalidatePath).toHaveBeenCalledWith('/app', 'layout')
   })
 
@@ -52,7 +52,7 @@ describe('createProject (server action)', () => {
     await expect(
       createProject({}, form({ name: 'Seestadt', state: 'archived', outcome: 'completed', endedOn: '2022-08' }))
     ).rejects.toThrow('/intake')
-    expect(createProjectInOrg).toHaveBeenCalledWith(session, { name: 'Seestadt' })
+    expect(createProjectInOrg).toHaveBeenCalledWith(session, { name: 'Seestadt', setup: 'self' })
   })
 
   it('creates a closed project with its outcome, Beginn and Abschluss, and lands on the overview', async () => {
@@ -61,9 +61,20 @@ describe('createProject (server action)', () => {
     ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/settings')
     expect(createProjectInOrg).toHaveBeenCalledWith(session, {
       name: 'Volksschule',
+      setup: 'self',
       closing: { outcome: 'completed', startedOn: '2019-03', endedOn: '2022-08' },
     })
     expect(revalidatePath).toHaveBeenCalledWith('/app', 'layout')
+  })
+
+  it('lands a project Piloti sets up on its setup page, with what the form said about it', async () => {
+    await expect(
+      createProject({}, form({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' }))
+    ).rejects.toThrow('NEXT_REDIRECT /app/projects/p1/setup')
+    expect(createProjectInOrg).toHaveBeenCalledWith(
+      session,
+      expect.objectContaining({ name: 'Seestadt', setup: 'piloti', description: 'Wohnbau mit Tiefgarage', bundesland: 'wien' })
+    )
   })
 
   it('reads an empty Beginn as none', async () => {
@@ -72,6 +83,7 @@ describe('createProject (server action)', () => {
     ).rejects.toThrow('/settings')
     expect(createProjectInOrg).toHaveBeenCalledWith(session, {
       name: 'Wettbewerb',
+      setup: 'self',
       closing: { outcome: 'cancelled', startedOn: null, endedOn: '2026-09' },
     })
   })

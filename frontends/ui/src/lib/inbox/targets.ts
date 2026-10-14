@@ -119,6 +119,8 @@ const ORGANIZATION_DESTINATIONS: Partial<Record<InboxItemType, string>> = {
   'storage.quota_warning': '/app/organization/storage',
   'document.quarantined': '/app/organization/quarantine',
   'document.release_requested': '/app/organization/quarantine',
+  // A filing suggestion on the Büroablage waits on its file row there.
+  'piloti.proposal_waiting': '/app/archiv',
 }
 
 function shareableTarget(type: ShareableResourceType): InboxTargetDescriptor {
@@ -221,9 +223,11 @@ const projectTarget: InboxTargetDescriptor = {
           const folder = anchor && !anchor.startsWith('import:') ? anchor : null
           return `/app/projects/${resourceId}/files${folder ? `?folder=${encodeURIComponent(folder)}` : ''}`
         }
-        // A proposal without a chat to show it in waits in the project's chat,
-        // where Piloti's cards live.
-        if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/chat`
+        // A proposal no chat made is a filing suggestion: it waits on its file
+        // row in the project's Dateien (`lib/filing`).
+        if (context.itemType === 'piloti.proposal_waiting') return `/app/projects/${resourceId}/files`
+        // A finished reading waits on the project's setup page, where it is reviewed (ADR-0111).
+        if (context.itemType === 'piloti.intake_ready') return `/app/projects/${resourceId}/setup`
         if (context.run) return runDeepLink(resourceId, context.run)
         const taskId = context.taskId?.trim() ? context.taskId.trim() : null
         if (taskId) {

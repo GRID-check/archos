@@ -139,6 +139,62 @@ describe('FileOperationProposalCard with a proposal_id — what it shows', () =>
     expect(screen.getByTestId('proposal-decided-by')).toHaveTextContent(/^Discarded by Anna Berger · /)
   })
 
+  it('names the folder a move creates, with what it is for, and says why per item', async () => {
+    serve(
+      proposal({
+        payload: {
+          operation: 'move',
+          operations: [
+            { document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief an die Behörde.' },
+            { document: 'Mail.pdf', source: 'projekt', target_folder: 'Korrespondenz' },
+          ],
+          new_folder: { path: 'Korrespondenz', description: 'Briefe und Mails mit Behörden' },
+        },
+      })
+    )
+    render(card)
+
+    const newFolder = await screen.findByTestId('file-operation-new-folder')
+    expect(newFolder).toHaveTextContent('New folder')
+    expect(newFolder).toHaveTextContent('Korrespondenz')
+    expect(screen.getByTestId('file-operation-new-folder-description')).toHaveTextContent('Briefe und Mails mit Behörden')
+    // The reason shows where there is one, and only there.
+    expect(screen.getAllByTestId('file-operation-row-reason')).toHaveLength(1)
+    expect(screen.getByTestId('file-operation-row-reason')).toHaveTextContent('Ein Brief an die Behörde.')
+    expect(screen.getAllByTestId('file-operation-row')).toHaveLength(2)
+  })
+
+  it('leaves the new-folder line and the reason out of a move into a folder that exists', async () => {
+    serve(proposal())
+    render(card)
+    expect(await screen.findByRole('button', { name: 'Apply' })).toBeInTheDocument()
+    expect(screen.queryByTestId('file-operation-new-folder')).toBeNull()
+    expect(screen.queryByTestId('file-operation-row-reason')).toBeNull()
+  })
+
+  it('still shows the new folder and the reasons once the move is decided', async () => {
+    serve(
+      proposal({
+        status: 'applied',
+        decidedBy: 'user_anna',
+        decidedByName: 'Anna Berger',
+        decidedAt: '2026-10-13T09:30:00.000Z',
+        canDecide: false,
+        results: [{ label: 'Brief.pdf', ok: true }],
+        payload: {
+          operation: 'move',
+          operations: [{ document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
+          new_folder: { path: 'Korrespondenz' },
+        },
+      })
+    )
+    render(card)
+
+    expect(await screen.findByTestId('file-operation-new-folder')).toHaveTextContent('Korrespondenz')
+    expect(screen.queryByTestId('file-operation-new-folder-description')).toBeNull()
+    expect(screen.getByTestId('file-operation-row-reason')).toHaveTextContent('Ein Brief.')
+  })
+
   it('hides the buttons and says why when the server says this reader may not decide', async () => {
     serve(proposal({ canDecide: false }))
     render(card)

@@ -250,10 +250,10 @@ def add_document_search_routes(router: APIRouter):
     async def search_across_collections(
         request: GroupedDocumentSearchRequest, http_request: Request
     ) -> DocumentSearchResponse:
-        """Rank every named collection's documents in one query (Qdrant, ADR-0112).
+        """Rank every named collection's documents in one query (Qdrant, ADR-0114).
 
         Every collection must be in the caller's signed scope, as for the
-        single-collection search. Qdrant is the only store (ADR-0111), so the
+        single-collection search. Qdrant is the only store (ADR-0113), so the
         BFF has nothing to fall back to: a failed search is a 500, as for the
         single-collection search, and the BFF surfaces it as an upstream error.
         """

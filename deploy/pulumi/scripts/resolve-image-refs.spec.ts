@@ -291,7 +291,7 @@ describe("resolve-image-refs.sh", () => {
 });
 
 /**
- * The vector-store floor (ADR-0111). A rollback by image tag deploys the
+ * The vector-store floor (ADR-0113). A rollback by image tag deploys the
  * CURRENT program with an OLD image: once Chroma is gone from the program, a
  * backend built before that falls back to an empty embedded Chroma per pod,
  * answers from nothing and loses every upload, with nothing reporting an

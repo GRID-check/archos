@@ -1,6 +1,6 @@
 # Moving the vectors from Chroma to Qdrant
 
-Qdrant replaced Chroma (ADR-0111), and the product no longer contains any
+Qdrant replaced Chroma (ADR-0113), and the product no longer contains any
 Chroma code. A deployment that still has its vectors in Chroma moves them in
 two steps that share a file format and nothing else:
 

@@ -308,6 +308,10 @@
     "de": "Eine erledigte Aufgabe, die kein Dokument abgelegt und keinen Chat geöffnet hat, öffnet jetzt den Bericht ihres Laufs, eine fehlgeschlagene ihre Überlegungen."
   },
   {
+    "en": "A folder can now say what belongs in it, in Dateien and in the Büroablage, and Piloti reads that when it works with your files.",
+    "de": "Ein Ordner kann jetzt angeben, welche Inhalte hineingehören – in Dateien und in der Büroablage – und Piloti berücksichtigt das bei der Arbeit mit Ihren Dateien."
+  },
+  {
     "en": "A folder deleted before this release stays deleted for good. A project folder can no longer be deleted while it holds a subfolder you may not edit; folders in the Archiv delete as before.",
     "de": "Ein vor diesem Release gelöschter Ordner bleibt endgültig gelöscht. Ein Projektordner lässt sich nicht mehr löschen, solange er einen Unterordner enthält, den Sie nicht bearbeiten dürfen; Ordner im Archiv werden wie bisher gelöscht."
   },
@@ -1552,6 +1556,10 @@
     "de": "In der Aufträge-Liste zeigt eine laufende Karte in einer Zeile, was der Auftrag gerade tut, etwa „Recherchieren · 3 Runden · 9 Dokumente“."
   },
   {
+    "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
+    "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
+  },
+  {
     "en": "Jobs and Skills now sit together in one Automation section, as two tabs instead of two places in the sidebar. Jobs comes first, since a job is the instruction this project runs on a timer, and Skills is one click away.",
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
   },
@@ -1836,6 +1844,10 @@
     "de": "Piloti kann einen Entwurf, den es zuvor im Gespräch erstellt hat, erneut öffnen. Bisher sagt Piloti oft, dass es das Dokument nicht lesen kann, und bittet Sie, den Text einzufügen, wenn Sie es bitten, einen Teil eines Aktenvermerks zu kürzen oder zu überarbeiten."
   },
   {
+    "en": "Piloti can set up a new project from its documents: give a name and the address, add the files, and Piloti suggests every value with the page it found it on and asks only what would change the Gebäudeklasse.",
+    "de": "Piloti kann anhand der Dokumente ein neues Projekt anlegen: Geben Sie einen Namen und die Adresse an, fügen Sie die Dateien hinzu, und Piloti schlägt alle Werte samt Fundseite vor und fragt nur nach Angaben, die die Gebäudeklasse ändern würden."
+  },
+  {
     "en": "Piloti checks its first search results faster, and searches again with other wording only when they fall short.",
     "de": "Piloti prüft seine ersten Suchergebnisse schneller und sucht nur dann mit anderen Formulierungen neu, wenn sie nicht ausreichen."
   },
@@ -2054,6 +2066,10 @@
   {
     "en": "Reloading the page while Piloti is still answering now shows the answer once, instead of leaving the unfinished start above the complete answer.",
     "de": "Wer die Seite neu lädt, während Piloti noch antwortet, sieht die Antwort jetzt nur einmal, statt den unfertigen Anfang über der vollständigen Antwort."
+  },
+  {
+    "en": "Renaming a folder in the Dateiablage grid view works again: clicking into the name field places the cursor there instead of opening the folder.",
+    "de": "Das Umbenennen eines Ordners in der Rasteransicht der Dateiablage funktioniert wieder: Wenn Sie in das Namensfeld klicken, wird der Cursor dort platziert, statt den Ordner zu öffnen."
   },
   {
     "en": "Renaming or moving a folder that has subfolders no longer fails with an error.",
@@ -2340,6 +2356,10 @@
     "de": "Der Filter „Schnitt“ im Archiv heißt jetzt „Schnitt / Ansicht“, wie in Dateien, weil er auch Ansichten findet."
   },
   {
+    "en": "The address field in the new project dialog suggests Austrian addresses as you type and fills in the Bundesland.",
+    "de": "Das Adressfeld im Dialog für ein neues Projekt schlägt während der Eingabe österreichische Adressen vor und füllt das Bundesland automatisch aus."
+  },
+  {
     "en": "The answer details now open by themselves when an answer carries something that must not be missed: research that was cut short, removed evidence or low confidence.",
     "de": "Die Antwortdetails öffnen sich jetzt von selbst, wenn eine Antwort etwas trägt, das nicht übersehen werden darf: eine abgebrochene Recherche, entfernte Belege oder geringe Sicherheit."
   },
@@ -2512,6 +2532,10 @@
     "de": "Die Zeile über jedem Ordner, die anzeigt, wie viel Piloti gelesen hat, klappt jetzt an Ort und Stelle auf: Sie bleibt dort, wo Sie sie angeklickt haben, und die Übersicht klappt darunter auf, statt dass die Zeile verschwindet und ein separates Feld erscheint."
   },
   {
+    "en": "The list of applicable OIB-Richtlinien now uses the Fluchtniveau, the Gebäudeklasse, the uses and the underground storeys entered in the project setup, instead of listing the generic six.",
+    "de": "Die Liste der anwendbaren OIB-Richtlinien richtet sich jetzt nach dem im Projektsetup eingetragenen Fluchtniveau, der Gebäudeklasse, den Nutzungen und den unterirdischen Geschossen, statt pauschal alle sechs aufzulisten."
+  },
+  {
     "en": "The list of references now always sits beside the document and shows which passage you are reading, and the toolbar shows the page you are on.",
     "de": "Die Fundstellenliste steht jetzt immer neben dem Dokument und zeigt, welche Stelle Sie gerade lesen, und die Werkzeugleiste zeigt die aktuelle Seite."
   },
@@ -2556,6 +2580,10 @@
     "de": "Der Hinweis unter dem Nachrichtenfeld zeigt jetzt, welche anderen Projekte einen Chat gerade einschränken. Bisher wurde ein Projekt auch nach dem Schließen weiterhin angezeigt, und ein eingeschränkter Ordner eines geschlossenen Projekts wurde nicht berücksichtigt."
   },
   {
+    "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended, with why when it gave up. Who undid one of Piloti's changes, and who took over or dismissed an Anmerkung it proposed, is in it too.",
+    "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, wie das ausging und, wenn es aufgegeben hat, warum. Auch wer eine Änderung von Piloti rückgängig gemacht oder eine von Piloti vorgeschlagene Anmerkung übernommen oder verworfen hat, steht darin."
+  },
+  {
     "en": "The page for setting up an organization is simpler: one field, one button and three lines on what happens next, with sign-out always at the top right.",
     "de": "Die Seite zum Einrichten der Organisation ist einfacher: ein Feld, ein Knopf und drei Zeilen dazu, wie es weitergeht, mit dem Abmelden immer oben rechts."
   },
@@ -2590,6 +2618,10 @@
   {
     "en": "The project list and the folder rows above the files now read as one connected list: only its top and bottom corners are rounded, and the rows are divided by a single line instead of separate boxes with gaps.",
     "de": "Die Projektliste und die Ordnerzeilen oberhalb der Dateien bilden jetzt eine zusammenhängende Liste: Nur die oberen und unteren Ecken sind abgerundet, und die Zeilen werden durch eine einzelne Linie statt durch separate Boxen mit Zwischenräumen getrennt."
+  },
+  {
+    "en": "The project setup asks for the Bundesland right away, before a country is chosen, and hides it only when the project is outside Austria.",
+    "de": "Bei der Projekteinrichtung wird sofort nach dem Bundesland gefragt, noch bevor ein Land ausgewählt wurde, und das Feld wird nur bei Projekten außerhalb Österreichs ausgeblendet."
   },
   {
     "en": "The project wizard lists all its modules by full name beside the questions, each with how many answers it already has, and you can jump to any of them.",
@@ -2852,6 +2884,10 @@
     "de": "Was im Gespräch schon geklärt wurde, etwa Ihre Antworten auf Pilotis Rückfragen, geht in die Recherche ein, statt noch einmal gefragt zu werden."
   },
   {
+    "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
+    "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
+  },
+  {
     "en": "When Piloti files a draft, creates a task, gathers documents or suggests something to remember, its cards now appear while the answer is still being checked, instead of all at the very end.",
     "de": "Legt Piloti einen Entwurf ab, erstellt eine Aufgabe, stellt Dokumente zusammen oder schlägt etwas zum Merken vor, erscheinen die Karten jetzt, während die Antwort noch geprüft wird, statt alle erst ganz am Schluss."
   },
@@ -3054,6 +3090,10 @@
   {
     "en": "When you share a chat that drew on a restricted folder, Piloti offers only colleagues who may read all of those folders, and shows the others greyed out with \"Has no access to a folder this chat draws on\". It never names the folder.",
     "de": "Wenn Sie einen Chat teilen, der aus einem eingeschränkten Ordner geschöpft hat, bietet Piloti nur Kolleginnen und Kollegen an, die alle diese Ordner lesen dürfen, und zeigt die anderen ausgegraut mit „Hat keinen Zugriff auf einen Ordner, aus dem dieser Chat stammt“. Den Ordner nennt es nie."
+  },
+  {
+    "en": "When you upload a file that belongs in another folder, Piloti suggests that folder with a small chip on the file, and a bar above the folder moves several files into one folder together. Nothing moves until you confirm, and the suggestion shows the move and the reason first.",
+    "de": "Wenn Sie eine Datei hochladen, die in einen anderen Ordner gehört, schlägt Piloti diesen Ordner mit einem kleinen Chip auf der Datei vor. Über eine Leiste oberhalb des Ordners können Sie mehrere Dateien gemeinsam in einen Ordner verschieben. Es wird nichts verschoben, bevor Sie bestätigen. Der Vorschlag zeigt zuerst an, wohin die Dateien verschoben werden und warum."
   },
   {
     "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",

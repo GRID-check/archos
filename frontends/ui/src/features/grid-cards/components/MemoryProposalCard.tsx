@@ -8,7 +8,7 @@ import { useChatStore } from '@/features/chat/store'
 import { useCardDecision } from '../hooks/use-card-decision'
 import { MemoryReceipt } from './ProposalReceipts'
 import { ProposalShell } from './ProposalShell'
-import { StackedLabel } from './StackedLabel'
+import { StackedLabel } from '@/components/ui/stacked-label'
 
 type MemoryKind = 'decision' | 'constraint' | 'open_question' | 'derived_fact' | 'preference'
 type MemoryConfidence = 'low' | 'medium' | 'high'

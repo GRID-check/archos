@@ -11,7 +11,7 @@ Everything here builds the production objects rather than lookalikes:
   pre-filled, so ``_retrieve_sync`` runs the store path with no embedding call in
   it.
 
-Chroma left the stack in one change (ADR-0111), so there is no second store to
+Chroma left the stack in one change (ADR-0113), so there is no second store to
 fill: what the Chroma path measured is the fixed reference in ``baseline.py``.
 """
 

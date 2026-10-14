@@ -36,7 +36,7 @@ async def require_collection(ingestor: BaseIngestor, name: str) -> CollectionInf
     document route and, in the OIB sync, as a wiped index (a full re-ingest of
     the corpus). The two answers mean different things to a caller: retry later,
     or the collection is gone. On Qdrant every name is a collection (a scope on
-    the points, ADR-0112), so only an ingestor that keeps collections of its
+    the points, ADR-0114), so only an ingestor that keeps collections of its
     own answers None.
     """
     try:

@@ -139,6 +139,21 @@ async def test_a_call_becomes_one_root_generation_with_usage_cost_and_content(ex
     assert span.status.status_code is not StatusCode.ERROR
 
 
+async def test_the_generation_names_its_trace_for_a_later_score(exporter):
+    async with direct_trace.observed_generation("filing-fit", model="m", messages=_MESSAGES) as generation:
+        trace_id = generation.trace_id
+        generation.finish({"choices": [{"message": {"content": "{}"}}]})
+
+    (span,) = _spans(exporter)
+    assert trace_id == format(span.context.trace_id, "032x")
+    assert len(trace_id) == 32
+
+
+async def test_without_a_collector_there_is_no_trace_to_name():
+    async with direct_trace.observed_generation("filing-fit", model="m", messages=_MESSAGES) as generation:
+        assert generation.trace_id is None
+
+
 async def test_no_session_is_claimed_without_a_conversation(exporter):
     async with direct_trace.observed_generation("project-summary", model="m", messages=_MESSAGES) as generation:
         generation.finish({"choices": [{"message": {"content": "x"}}]})

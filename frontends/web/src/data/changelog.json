@@ -39,6 +39,14 @@
           "key": "features",
           "notes": [
             {
+              "en": "A folder can now say what belongs in it, in Dateien and in the Büroablage, and Piloti reads that when it works with your files.",
+              "de": "Ein Ordner kann jetzt angeben, welche Inhalte hineingehören – in Dateien und in der Büroablage – und Piloti berücksichtigt das bei der Arbeit mit Ihren Dateien."
+            },
+            {
+              "en": "When you upload a file that belongs in another folder, Piloti suggests that folder with a small chip on the file, and a bar above the folder moves several files into one folder together. Nothing moves until you confirm, and the suggestion shows the move and the reason first.",
+              "de": "Wenn Sie eine Datei hochladen, die in einen anderen Ordner gehört, schlägt Piloti diesen Ordner mit einem kleinen Chip auf der Datei vor. Über eine Leiste oberhalb des Ordners können Sie mehrere Dateien gemeinsam in einen Ordner verschieben. Es wird nichts verschoben, bevor Sie bestätigen. Der Vorschlag zeigt zuerst an, wohin die Dateien verschoben werden und warum."
+            },
+            {
               "en": "Export a document's annotations from the review as minutes for a site meeting or the client, as PDF, Word or Markdown: each one by number, with its page, status, who is responsible, the due date and its thread. Choose open ones or all, and add Piloti's unreviewed proposals under their own heading if you want them.",
               "de": "Exportieren Sie die Anmerkungen eines Dokuments aus der Prüfung als Protokoll für eine Baustellenbesprechung oder den Auftraggeber – als PDF, Word oder Markdown: nummeriert, jeweils mit Seite, Status, Zuständigkeit, Fälligkeitsdatum und Thread. Wählen Sie offene Anmerkungen oder alle aus und fügen Sie bei Bedarf Piloti’s ungeprüfte Vorschläge unter einer eigenen Überschrift hinzu."
             },
@@ -83,6 +91,10 @@
               "de": "Ihr Büro entscheidet, ob Piloti Anmerkungen ändern darf, wenn Sie es dazu auffordern. Bis die Funktion für Ihre Organisation aktiviert ist, macht Piloti nur Vorschläge: Eine von Ihnen angeforderte Anmerkung wird als Vorschlag angezeigt, den Sie übernehmen können; Änderungen oder Löschungen im Dokument nehmen Sie selbst vor."
             },
             {
+              "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended, with why when it gave up. Who undid one of Piloti's changes, and who took over or dismissed an Anmerkung it proposed, is in it too.",
+              "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, wie das ausging und, wenn es aufgegeben hat, warum. Auch wer eine Änderung von Piloti rückgängig gemacht oder eine von Piloti vorgeschlagene Anmerkung übernommen oder verworfen hat, steht darin."
+            },
+            {
               "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
               "de": "Während Piloti an Ihrer Frage arbeitet, können Sie es im Chat oder über seine Karte in einem Dokument („nicht die Tür, die Treppe“) lenken. Ihre Anmerkung berücksichtigt es im nächsten Schritt, statt von vorne anzufangen. Eine Markierung oder Antwort, die Piloti bereits ausgewählt hat, wartet auf Ihre Anmerkung. Kommt diese erst nach der Antwort, wird sie als Ihre nächste Frage behandelt."
             },
@@ -97,6 +109,14 @@
             {
               "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
               "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
+            },
+            {
+              "en": "Piloti can set up a new project from its documents: give a name and the address, add the files, and Piloti suggests every value with the page it found it on and asks only what would change the Gebäudeklasse.",
+              "de": "Piloti kann anhand der Dokumente ein neues Projekt anlegen: Geben Sie einen Namen und die Adresse an, fügen Sie die Dateien hinzu, und Piloti schlägt alle Werte samt Fundseite vor und fragt nur nach Angaben, die die Gebäudeklasse ändern würden."
+            },
+            {
+              "en": "The address field in the new project dialog suggests Austrian addresses as you type and fills in the Bundesland.",
+              "de": "Das Adressfeld im Dialog für ein neues Projekt schlägt während der Eingabe österreichische Adressen vor und füllt das Bundesland automatisch aus."
             },
             {
               "en": "Reviewers can now allow or delete a held file right from its preview, at the page where the content check found it. Every page with a finding is listed, not just the first ten.",
@@ -160,6 +180,10 @@
               "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
             },
             {
+              "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
+              "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
+            },
+            {
               "en": "A suggested change to a project's facts is shown field by field, as Vorher and Nachher, so you see what would change before you accept it.",
               "de": "Eine vorgeschlagene Änderung an den Fakten eines Projekts wird Feld für Feld als Vorher und Nachher gezeigt, damit Sie vor dem Übernehmen sehen, was sich ändern würde."
             }
@@ -201,6 +225,10 @@
               "de": "Eine Datei, die aus einem dauerhaften Grund nicht gelesen werden kann, etwa ein verschlüsseltes oder leeres PDF, wird bei „Erneut lesen“ oder einem erneuten Scan nicht jedes Mal erneut gelesen, sondern erst, wenn sich ihre Bytes ändern oder sich die Lesefunktion von Piloti verbessert. Ein vorübergehender Fehler wie ein Timeout lässt sich weiterhin sofort erneut versuchen."
             },
             {
+              "en": "Renaming a folder in the Dateiablage grid view works again: clicking into the name field places the cursor there instead of opening the folder.",
+              "de": "Das Umbenennen eines Ordners in der Rasteransicht der Dateiablage funktioniert wieder: Wenn Sie in das Namensfeld klicken, wird der Cursor dort platziert, statt den Ordner zu öffnen."
+            },
+            {
               "en": "An upload the content check holds back now always waits for review instead of showing as failed, and a file that cannot be read keeps its real reason.",
               "de": "Ein von der Inhaltsprüfung zurückgehaltener Upload wartet jetzt immer auf Prüfung, statt als fehlgeschlagen angezeigt zu werden, und bei einer nicht lesbaren Datei bleibt der tatsächliche Grund erhalten."
             },
@@ -217,8 +245,20 @@
               "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
             },
             {
+              "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
+              "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
+            },
+            {
               "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
               "de": "„Projekt abschließen“ schlägt nicht mehr fehl, wenn das Projektbriefing nie ausgefüllt wurde."
+            },
+            {
+              "en": "The list of applicable OIB-Richtlinien now uses the Fluchtniveau, the Gebäudeklasse, the uses and the underground storeys entered in the project setup, instead of listing the generic six.",
+              "de": "Die Liste der anwendbaren OIB-Richtlinien richtet sich jetzt nach dem im Projektsetup eingetragenen Fluchtniveau, der Gebäudeklasse, den Nutzungen und den unterirdischen Geschossen, statt pauschal alle sechs aufzulisten."
+            },
+            {
+              "en": "The project setup asks for the Bundesland right away, before a country is chosen, and hides it only when the project is outside Austria.",
+              "de": "Bei der Projekteinrichtung wird sofort nach dem Bundesland gefragt, noch bevor ein Land ausgewählt wurde, und das Feld wird nur bei Projekten außerhalb Österreichs ausgeblendet."
             },
             {
               "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",

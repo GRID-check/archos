@@ -2,6 +2,7 @@ import { boolean, check, foreignKey, index, pgTable, text, timestamp, unique, uu
 import { relations, sql } from 'drizzle-orm'
 import { projects } from './projects'
 import { documents } from './documents'
+import { FOLDER_DESCRIPTION_MAX_LENGTH } from '@/lib/projects/folders'
 
 /**
  * The shelves a folder can live on — the folder-carrying subset of
@@ -65,6 +66,14 @@ export const projectFolders = pgTable('project_folders', {
    */
   name: varchar('name', { length: 255 }).notNull(),
   path: varchar('path', { length: 1024 }).notNull(),
+  /**
+   * What belongs in this folder, in a person's words (migration 0145): shown
+   * under its name in the Files workspace, handed to the agents with the folder
+   * tree, and what Piloti reads when it suggests where an upload belongs. NULL
+   * is „nobody described it"; never empty, at most
+   * {@link FOLDER_DESCRIPTION_MAX_LENGTH} characters (`project_folders_description_length`).
+   */
+  description: text('description'),
   /**
    * Whether the folder inherits its parent's access (`inherit`, the default; a
    * root folder inherits the project) or has its own access list (`custom`),
@@ -130,6 +139,10 @@ export const projectFolders = pgTable('project_folders', {
     table.scope,
   ),
   scopeCheck: check('project_folders_scope_check', sql`${table.scope} IN ('project', 'archiv')`),
+  descriptionLength: check(
+    'project_folders_description_length',
+    sql`${table.description} IS NULL OR (char_length(${table.description}) <= ${sql.raw(String(FOLDER_DESCRIPTION_MAX_LENGTH))} AND btrim(${table.description}) <> '')`,
+  ),
   /** The three columns tell one story: a project folder has a project, an Archiv folder none. */
   scopeOwnerCheck: check(
     'project_folders_scope_owner_check',

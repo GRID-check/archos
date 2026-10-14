@@ -9,6 +9,7 @@ import {
 import { ANY_MEMBER, clearanceOfMember, readableFolderIdsFor } from '@/lib/authz/folder-access'
 import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
+import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
 import { admitSourceFolders } from '@/lib/conversations/restricted-use'
 
 /**
@@ -148,9 +149,12 @@ export const GET = internalApiRoute(
       const reviewDecisions = conversationId
         ? await buildReviewDecisionsBlock(conversationId, tenant).catch(() => null)
         : null
+      // What a person wrote each folder holds; only folders every member reads.
+      // Same failure posture: it costs the block, never the turn's memory.
+      const folders = await buildFolderDescriptionsBlock(tenant, projectId ?? null).catch(() => null)
       // Which restricted folders the served notes drew on: the agent counts them
       // as this turn's use (memory restriction, ADR-0087); ids, opaque to it.
-      return { digest: composeMemoryContext(digest, decisions, reviewDecisions), restrictedFoldersServed }
+      return { digest: composeMemoryContext(digest, decisions, reviewDecisions, folders), restrictedFoldersServed }
     })
   },
   { tenancy: { fromPayload: '?organizationId, else resolved from the project row' } }

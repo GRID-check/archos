@@ -22,7 +22,11 @@
  *   - the same card of the same answer is one proposal: a second insert
  *     returns the first, unchanged, while another card, another answer or
  *     another organization is its own; a card index needs its answer and is
- *     never negative; the two newer kinds are stored, an unknown one is not.
+ *     never negative; the two newer kinds are stored, an unknown one is not;
+ *   - a Büroablage proposal (0146) has no project and moves only Büroablage
+ *     documents; its organization lists it on its shelf, another organization
+ *     sees none of it, and Piloti's withdrawal deletes an open one and never a
+ *     decided one.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -87,6 +91,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
       repo.insertProposedChange({
         organizationId: ORG,
         projectId: ids.project,
+        scope: 'project',
         kind: 'file_operation',
         payload: PAYLOAD,
         proposedByKind: 'piloti',
@@ -118,6 +123,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     if (!db) return
     await withPlatformAccess('test teardown', async () => {
       for (const organizationId of [ORG, OTHER_ORG]) {
+        await db.execute(sql`delete from proposed_changes where organization_id = ${organizationId}`)
         await db.execute(sql`delete from conversations where organization_id = ${organizationId}`)
         await db.execute(sql`delete from projects where organization_id = ${organizationId}`)
       }
@@ -327,6 +333,72 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
         payload: PROFILE,
       })
       await expect(propose({ kind: 'steckbrief' as never })).rejects.toThrow()
+    })
+  })
+
+  describe('the Büroablage (0146)', () => {
+    const ARCHIV_MOVE: FileOperationPayload = {
+      operation: 'move',
+      operations: [{ document: 'ÖNORM B 1800.pdf', source: 'buero', target_folder: 'Normen', reason: 'Eine Norm.' }],
+      basis: 'name',
+    }
+    const shelved = (organizationId: string, payload: FileOperationPayload = ARCHIV_MOVE) =>
+      inOrg(organizationId, () =>
+        repo.insertProposedChange({
+          organizationId,
+          projectId: null,
+          scope: 'archiv',
+          kind: 'file_operation',
+          payload,
+          proposedByKind: 'piloti',
+          onBehalfOf: USER,
+          originConversationId: null,
+          originMessageId: null,
+          originTraceId: 'abcdef0123456789abcdef0123456789',
+        })
+      )
+
+    it('stores a move of Büroablage documents without a project, and lists it on its shelf only', async () => {
+      const { row } = await shelved(ORG)
+      expect(row).toMatchObject({ projectId: null, scope: 'archiv', originTraceId: 'abcdef0123456789abcdef0123456789' })
+      const archiv = await repo.listShelfProposals(ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
+      expect(archiv.map((entry) => entry.id)).toContain(row.id)
+      const project = await repo.listShelfProposals(
+        ORG,
+        { scope: 'project', projectId: ids.project },
+        { statuses: ['proposed'], limit: 50 }
+      )
+      expect(project.map((entry) => entry.id)).not.toContain(row.id)
+    })
+
+    it('refuses a Büroablage proposal that would reach into a project', async () => {
+      await expect(
+        shelved(ORG, { operation: 'move', operations: [{ document: 'a.pdf', source: 'projekt', target_folder: 'X' }] })
+      ).rejects.toThrow()
+      await expect(
+        shelved(ORG, { operation: 'create_folder', operations: [{ folder_name: 'X' }] })
+      ).rejects.toThrow()
+    })
+
+    it('shows another organization none of it', async () => {
+      const { row } = await shelved(ORG)
+      expect(await repo.findProposedChange(OTHER_ORG, row.id)).toBeNull()
+      const seen = await inOrg(OTHER_ORG, () =>
+        db.execute<{ id: string }>(sql`select id from proposed_changes where id = ${row.id}::uuid`)
+      )
+      expect(Array.from(seen)).toHaveLength(0)
+      const theirs = await repo.listShelfProposals(OTHER_ORG, { scope: 'archiv' }, { statuses: ['proposed'], limit: 50 })
+      expect(theirs.map((entry) => entry.id)).not.toContain(row.id)
+    })
+
+    it('withdraws an open proposal and never a decided one', async () => {
+      const open = (await shelved(ORG)).row
+      expect(await repo.deleteUndecidedProposedChange(ORG, open.id, stale())).toBe(true)
+      expect(await repo.findProposedChange(ORG, open.id)).toBeNull()
+      const decided = (await shelved(ORG)).row
+      await repo.dismissProposedChange(ORG, decided.id, USER, stale())
+      expect(await repo.deleteUndecidedProposedChange(ORG, decided.id, stale())).toBe(false)
+      expect(await repo.findProposedChange(ORG, decided.id)).toMatchObject({ status: 'dismissed' })
     })
   })
 })

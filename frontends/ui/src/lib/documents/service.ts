@@ -756,14 +756,14 @@ export async function fetchSemanticHits(
 
 /**
  * One ranking across many collections, from the backend's grouped search
- * (`POST /v1/collections/search`, ADR-0112): every collection named is ranked
+ * (`POST /v1/collections/search`, ADR-0114): every collection named is ranked
  * in ONE query, and the documents come back in that ranking's order across
  * collections (at most `filesPerCollection` from any one), each hit carrying
  * its position as `rank`. Scores from separate searches are not comparable;
  * this order is. `options` narrow the search and lift similar projects inside
  * the same query.
  *
- * Qdrant is the only store (ADR-0111), so there is nothing to fall back to: a
+ * Qdrant is the only store (ADR-0113), so there is nothing to fall back to: a
  * backend that refuses, cannot be reached or answers something unreadable is
  * an {@link UpstreamError}, never an empty result a caller would read as
  * "nothing found". The envelope is signed for exactly these collections, every

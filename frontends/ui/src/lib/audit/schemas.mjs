@@ -709,16 +709,139 @@ export const AUDIT_SCHEMAS = /** @type {const} */ ({
     targets: [{ type: 'conversation' }],
     metadata: { previousRole: 'string', via: 'string' },
   },
-  // A wake of Piloti that came to nothing (ADR-0106): one that started no turn
-  // (a cap held it, the organization's switch was off by the time it ran, the
-  // person lost the right to write the document, their budget refused it, or
-  // no server took it: `stage` enqueue or claim, no model call, no Langfuse
-  // trace), or one whose turn ran and failed (`stage: 'turn'`, migration
-  // 0141). This and its `piloti_wakes` row are its record. The actor is the
-  // person whose act woke, or would have woken, Piloti.
+  // A wake of Piloti held before Piloti was asked (ADR-0106): a cap held it,
+  // the organization's switch was off by the time it ran, the person lost the
+  // right to write the document or left, the mark or the reply is gone, or the
+  // delegation was taken back (`stage` enqueue or claim, `status` suppressed;
+  // no model call, no Langfuse trace). This and its `piloti_wakes` row are its
+  // record. The actor is the person whose act would have woken Piloti. Until
+  // 2026-10-14 a turn that ran and failed (`stage: 'turn'`), and a wake the job
+  // ended `refused` (a spent budget) or `failed` (gave up waiting, a rejected
+  // message) were recorded here too; they are now `piloti.wake.ended`.
   'piloti.wake.suppressed': {
     targets: [{ type: 'document_annotation' }],
     metadata: { documentId: 'string', trigger: 'string', status: 'string', reason: 'string', stage: 'string' },
+  },
+  // ---------------------------------------------------------------------------
+  // What Piloti did in the office, and what people did about it. Every action
+  // is `piloti.*`, so the viewer's action filter is "everything Piloti did".
+  //
+  // The actor is always a PERSON, never Piloti (`AuditActorType`, `service.ts`):
+  // Piloti acts in a person's session as that person (ADR-0105, ADR-0108), so
+  // the person it acted for is the actor of what it did, and the person who
+  // undid or decided is the actor of that. The audit-log filters by actor, so
+  // "what did Piloti do for Anna" is Anna's actor filter plus the `piloti.*`
+  // actions. The turn rides as the `conversation` target and `messageId` (the
+  // answer the turn wrote, the id its Langfuse trace and its change card carry).
+  //
+  // Ids, numbers, kinds and counts only: never a word of a mark, a note, a
+  // reply, a proposal or a document. So no action here names a document, and
+  // none needs `filedIn`.
+  // ---------------------------------------------------------------------------
+  // One change Piloti applied in the asker's name (ADR-0109): set (`create`,
+  // `status` proposed or open), changed (`update`, `fields` the names that
+  // moved), deleted a mark, or answered in its thread (`reply`). One event per
+  // `piloti_changes` row; `changeId` is the row, absent when it could not be
+  // written. Actor: the person the turn acted for.
+  'piloti.change.applied': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: {
+      op: 'string',
+      markNumber: 'number',
+      markKind: 'string',
+      status: 'string',
+      fields: 'string',
+      messageId: 'string',
+      changeId: 'string',
+    },
+  },
+  // A person undid one of those changes (`POST /api/piloti-changes/[id]/undo`).
+  // Actor: the person who undid it; `onBehalfOf` whom Piloti had made it for.
+  // `inverse` is what undoing did: dismiss, revert, recreate, delete,
+  // delete-reply.
+  'piloti.change.undone': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'conversation' }],
+    metadata: {
+      op: 'string',
+      inverse: 'string',
+      markNumber: 'number',
+      onBehalfOf: 'string',
+      messageId: 'string',
+      changeId: 'string',
+    },
+  },
+  // Piloti filed a proposed change (ADR-0105) in a person's name. Once per
+  // card: the same card again files nothing new and emits nothing. `kind` is
+  // file_operation, memory or project_profile; `operation` the file verb;
+  // `items` how many; `memoryScope` where a note would go.
+  'piloti.proposal.created': {
+    targets: [{ type: 'proposed_change' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: { kind: 'string', operation: 'string', items: 'number', memoryScope: 'string', messageId: 'string' },
+  },
+  // A person decided it: `decision` applied, partially_applied, failed or
+  // dismissed. Actor: the decider; `onBehalfOf` whose turn proposed it.
+  // `memoryScope` is where an applied note went (the decider may have narrowed
+  // it to the project), else where Piloti proposed it.
+  'piloti.proposal.decided': {
+    targets: [{ type: 'proposed_change' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: {
+      kind: 'string',
+      decision: 'string',
+      operation: 'string',
+      items: 'number',
+      appliedItems: 'number',
+      memoryScope: 'string',
+      onBehalfOf: 'string',
+      messageId: 'string',
+    },
+  },
+  // A person decided on a mark Piloti proposed, on the canvas: took it over
+  // (`decision` taken_over, the mark is open and theirs) or dismissed it
+  // (`dismissed`). One event per mark, for the move that left `proposed`; a
+  // colleague's earlier move (409) records nothing. Actor: the person who
+  // decided; `onBehalfOf` the person Piloti proposed it for (the mark's
+  // `created_by`). `markKind` defect, question, note…
+  'piloti.mark.decided': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }],
+    metadata: { decision: 'string', markNumber: 'number', markKind: 'string', onBehalfOf: 'string' },
+  },
+  // A wake started a turn (ADR-0106): the socket took it. Actor: the person
+  // whose act woke Piloti, as whom the turn runs; the conversation is their
+  // thread about the document. `waits` is how often it waited for a busy
+  // thread first.
+  'piloti.wake.started': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: { trigger: 'string', wakeId: 'string', markNumber: 'number', waits: 'number' },
+  },
+  // How a wake ended, once: its turn's end (`lib/turns/outcome.ts`; `outcome`
+  // answered, stopped or failed, `turnOutcome` what the socket reported), or
+  // the wake job's before a turn answered (`lib/annotations/wake-job.ts`;
+  // `outcome` refused for a spent budget or a refusal at the socket, failed for
+  // a give-up or a rejected message; no `turnOutcome`). `reason` is the stored
+  // reason (cut at 200), `reasonKind` its class as the person's inbox notice
+  // words it: budget, busy, access or error. `handedBack`: the delegation ended
+  // with it.
+  'piloti.wake.ended': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: {
+      trigger: 'string',
+      wakeId: 'string',
+      outcome: 'string',
+      turnOutcome: 'string',
+      reason: 'string',
+      reasonKind: 'string',
+      handedBack: 'boolean',
+      markNumber: 'number',
+    },
+  },
+  // A person took the mark back from Piloti, or deleted it, and that stopped
+  // its wake: still `queued` (it will start no turn) or `started` (its turn is
+  // being stopped, and ends with `piloti.wake.ended`, `outcome: 'stopped'`).
+  // Actor: who took it back; `wokenBy` whose delegation it was. `by` is
+  // `piloti` when Piloti closed the mark in a person's name.
+  'piloti.wake.stopped': {
+    targets: [{ type: 'document_annotation' }, { type: 'document' }, { type: 'project' }, { type: 'conversation' }],
+    metadata: { trigger: 'string', wakeId: 'string', wakeStatus: 'string', wokenBy: 'string', by: 'string' },
   },
   // Assignment is not access (ADR-0047). Who is on the hook for a file.
   'resource.assigned': {

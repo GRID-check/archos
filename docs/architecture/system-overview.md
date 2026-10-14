@@ -128,7 +128,7 @@ flowchart TB
 | **aiq-agent / aiq-api** | Python 3.14, FastAPI, NAT, LangGraph | Stateless AI orchestration, one image run as separate roles (ADR-0082): `aiq-agent` is the `chat` role (the chat socket), `aiq-api` the `api` role (every other HTTP route), beside the `agent-worker` and `ingest-worker`. Owns the vector store and the job/checkpoint DBs. |
 | **postgres** | PostgreSQL 16 | Three logical DBs: `grid_app` (app state), `aiq_jobs` (jobs/events/summaries), `aiq_checkpoints` (LangGraph state). |
 | **seaweedfs** | SeaweedFS (S3-compatible) | Object storage for OIB PDFs and uploaded documents (`grid-documents` bucket). |
-| **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0111). |
+| **Qdrant** | shared `qdrant` server (HTTP) | Vector store: two physical collections behind aliases, `piloti_corpus` and `piloti_office`, persisted to a volume and queried by every backend role (ADR-0113). |
 | **purger** | same image as frontend, `node purger/index.js` | Scheduled worker that hard-deletes soft-deleted projects after the grace period. |
 | **dragonfly** | Dragonfly (Redis protocol) | Shared cache (ADR-0020): read-through caches, WS-upgrade rate limiting, citation-registry snapshots. Cache-only; both tiers fail open to in-process fallbacks. |
 | *(one-shot)* | alpine / mc | `seaweedfs-init` (bucket create). |
@@ -371,7 +371,7 @@ marks it purged. Restore is possible only while the row is un-claimed.
 | **`aiq_jobs`** (Postgres) | backend | backend async-run info/access/events (deep research) — not the BFF `jobs` schedule table (§5.12), document summaries |
 | **`aiq_checkpoints`** (Postgres) | backend | LangGraph conversation checkpoints (thread state) |
 | **SeaweedFS** (`grid-documents`) | BFF writes, backend/purger read | OIB PDFs + uploaded documents, keyed by org/project |
-| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0112). Memory and lessons are not in Qdrant — they live in `grid_app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
+| **Qdrant** | backend | two physical collections, `piloti_corpus` (the legal corpus, `oib_knowledge`) and `piloti_office` (everything an office uploads). The logical collections `archiv_<org>`, `proj_<id>`, `<proj>_r<folder>` and `s_<conversation>` are payload fields, and a request's scope is one filter compiled in `scope_filter` (ADR-0114). Memory and lessons are not in Qdrant — they live in `grid_app`, with row-resident embeddings for recall ([semantic-notes.md](./semantic-notes.md)). |
 
 Schema evolves via Drizzle migrations (`frontends/ui/drizzle/`, applied on
 frontend start). → `docs/database/`.

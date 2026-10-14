@@ -14,6 +14,12 @@
  *
  * Piloti taking a mark back (resolving it in the asker's name) never stops a
  * turn: the turn that resolves it is usually the delegation's own, finishing.
+ *
+ * Each wake a take-back stops is one `piloti.wake.stopped` in the audit trail
+ * (`./wake-audit.ts`), after the commit, with the person who took the mark
+ * back as its actor: a queued wake once this call settled it, a started one
+ * once its stop is enqueued. Deleting the mark stops its wakes the same way
+ * ({@link auditDeletedWithMark}).
  */
 
 import 'server-only'
@@ -23,6 +29,7 @@ import type { PilotiWakeRow } from '@/lib/db/schema'
 import { enqueueJob } from '@/lib/jobs-queue/enqueue'
 import { BFF_JOB_PRIORITY, type PilotiWakeStopPayload } from '@/lib/jobs-queue/types'
 import { withTenant } from '@/lib/db/tenant-context'
+import { auditWakeStopped, type WakeStopper } from './wake-audit'
 import { delegationEventId } from './wake-ids'
 import { findLiveDelegationWake, settleWake } from './wake-repository'
 
@@ -44,7 +51,35 @@ export interface EndedDelegation {
 /** What the take-back found, to act on once it committed. */
 export interface TakeBack {
   /** The wake still waiting for its job, to settle after the commit. */
-  queuedWakeId: string | null
+  queuedWake: PilotiWakeRow | null
+  /** The started wake whose stop was enqueued in the take-back's transaction. */
+  stoppingWake: PilotiWakeRow | null
+}
+
+/** Who took the mark back, and what the trail says about the mark. */
+export interface TakeBackAudit extends WakeStopper {
+  projectId: string | null
+  markNumber: number | null
+}
+
+const NOTHING: TakeBack = { queuedWake: null, stoppingWake: null }
+
+/** One stopped wake into the trail. */
+function auditStopped(wake: PilotiWakeRow, status: 'queued' | 'started', by: TakeBackAudit): void {
+  auditWakeStopped(
+    {
+      organizationId: wake.organizationId,
+      wakeId: wake.id,
+      documentId: wake.documentId,
+      annotationId: wake.annotationId,
+      trigger: wake.triggerKind,
+      wokenBy: { userId: wake.actorUserId, email: null },
+      projectId: by.projectId,
+      markNumber: by.markNumber,
+    },
+    status,
+    by
+  )
 }
 
 const stopPayload = (wake: PilotiWakeRow): PilotiWakeStopPayload => ({
@@ -84,10 +119,11 @@ export async function readTakeBack(
     annotationId,
     delegationEventId(annotationId, delegation.delegatedAt)
   )
-  if (!wake) return { queuedWakeId: null }
-  if (wake.status === 'queued') return { queuedWakeId: wake.id }
-  if (stopTurn) await enqueueStop(tx, organizationId, wake)
-  return { queuedWakeId: null }
+  if (!wake) return NOTHING
+  if (wake.status === 'queued') return { queuedWake: wake, stoppingWake: null }
+  if (!stopTurn) return NOTHING
+  await enqueueStop(tx, organizationId, wake)
+  return { queuedWake: null, stoppingWake: wake }
 }
 
 /**
@@ -98,11 +134,17 @@ export async function readTakeBack(
 export async function settleTakenBack(
   delegation: EndedDelegation,
   takeBack: TakeBack,
-  { stopTurn }: { stopTurn: boolean }
+  { stopTurn }: { stopTurn: boolean },
+  by: TakeBackAudit
 ): Promise<void> {
-  if (!takeBack.queuedWakeId) return
+  if (takeBack.stoppingWake) auditStopped(takeBack.stoppingWake, 'started', by)
+  const queued = takeBack.queuedWake
+  if (!queued) return
   const { organizationId, annotationId } = delegation
-  if (await settleWake(organizationId, takeBack.queuedWakeId, { status: 'suppressed', reason: TAKEN_BACK })) return
+  if (await settleWake(organizationId, queued.id, { status: 'suppressed', reason: TAKEN_BACK })) {
+    auditStopped(queued, 'queued', by)
+    return
+  }
   if (!stopTurn) return
   await withTenant({ organizationId }, async () => {
     const db = getDb()
@@ -112,6 +154,18 @@ export async function settleTakenBack(
       annotationId,
       delegationEventId(annotationId, delegation.delegatedAt)
     )
-    if (wake?.status === 'started') await enqueueStop(db, organizationId, wake)
+    if (wake?.status !== 'started') return
+    await enqueueStop(db, organizationId, wake)
+    auditStopped(wake, 'started', by)
   })
+}
+
+/**
+ * After a delete committed: the mark took its wakes with it. A queued one's
+ * row is gone, so its job finds nothing and starts no turn; a started one's
+ * stop was enqueued in the delete's transaction (`readTakeBack`).
+ */
+export function auditDeletedWithMark(takeBack: TakeBack, by: TakeBackAudit): void {
+  if (takeBack.queuedWake) auditStopped(takeBack.queuedWake, 'queued', by)
+  if (takeBack.stoppingWake) auditStopped(takeBack.stoppingWake, 'started', by)
 }

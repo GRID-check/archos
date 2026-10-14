@@ -57,6 +57,8 @@ export interface CreateFolderInput {
   projectId: string
   parentId?: string | null
   name: string
+  /** What belongs in it (migration 0145); omitted or blank leaves it undescribed. */
+  description?: string | null
 }
 
 export interface UpdateFolderInput {
@@ -66,6 +68,8 @@ export interface UpdateFolderInput {
   name?: string
   /** New parent — `null` moves the folder to the project root. Omitted leaves it. */
   parentId?: string | null
+  /** What belongs in it; `null` or blank clears it, omitted leaves it (migration 0145). */
+  description?: string | null
 }
 
 export interface DeleteFolderInput {

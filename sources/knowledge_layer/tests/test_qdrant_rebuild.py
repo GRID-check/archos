@@ -1,4 +1,4 @@
-"""Rebuilding a collection as a new ``_vN`` and switching its alias, against a real Qdrant (ADR-0111).
+"""Rebuilding a collection as a new ``_vN`` and switching its alias, against a real Qdrant (ADR-0113).
 
 The copy must carry every point with both vectors and its payload into a
 collection of another shard count, the searches must keep working through the

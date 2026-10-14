@@ -1,6 +1,6 @@
 # Qdrant runbook
 
-How to operate the self-hosted Qdrant cluster (ADR-0111): see that it is
+How to operate the self-hosted Qdrant cluster (ADR-0113): see that it is
 healthy, get it back when it is not, change its shape, upgrade it, rotate its
 key, and move the vectors of a deployment that ran Chroma into it. The manifests are
 `deploy/pulumi/src/data/qdrant.ts`; the reasoning behind every setting is

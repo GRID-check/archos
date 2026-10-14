@@ -16,6 +16,8 @@ import { formatAbsoluteTime, formatBytes, formatRelativeTime } from '@/lib/forma
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { documentDragProps } from '../hooks/use-document-drag'
+import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
+import { HIGHLIGHT_OUTLINE_INSET } from '@/components/ui/highlight'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -329,6 +331,8 @@ const FileListRowItem = memo(function FileListRowItem({
     authoredBy: file.authoredBy ?? null,
   }
   const approvalState = documentBadgeState(approvalSubject)
+  // A filing decision in view would move this file: outlined inside the row, which the table's scroll box would clip outside it.
+  const lit = useFilingHighlighted(file.id)
   const row = (
     <TableRow
       data-file-row
@@ -343,6 +347,7 @@ const FileListRowItem = memo(function FileListRowItem({
       onKeyDown={(event) => onRowKeyDown(event, index)}
       className={cn(
         'cursor-pointer focus-visible:outline-none',
+        lit && HIGHLIGHT_OUTLINE_INSET,
         'transition-colors duration-snap ease-out motion-reduce:transition-none',
         isSelected ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
         'focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50'
@@ -369,6 +374,9 @@ const FileListRowItem = memo(function FileListRowItem({
                 {documentDisplayName(file)}
               </span>
               <FassungCount file={file} />
+              {/* Where Piloti would file it: the same chip as on the card,
+                  right after the name, so the row keeps its one height. */}
+              <FilingSuggestionSlot documentId={file.id} className="max-w-[45%] shrink-0 self-center" />
             </span>
             {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} />}
             {/* The summary earns its line here in a way it cannot on

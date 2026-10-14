@@ -119,7 +119,7 @@ import {
 } from '../lib/canvas-activity'
 import { matchChanges, standsAsChanged } from '../lib/canvas-changes'
 import { ProposalShell } from './ProposalShell'
-import { StackedLabel } from './StackedLabel'
+import { StackedLabel } from '@/components/ui/stacked-label'
 
 /**
  * A sheet's proportions when the picture has not told us: A-series landscape,

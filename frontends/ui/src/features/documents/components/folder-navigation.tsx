@@ -505,7 +505,7 @@ export function FolderCard({
       data-drop-over={drop.isOver ? '' : undefined}
       // Source as well as target: a folder is moved by dragging it onto
       // another, which is the same gesture that moves a document.
-      {...(onDropFolder && !readOnly ? folderDragProps(folder.id) : {})}
+      {...(onDropFolder && !readOnly && !editing ? folderDragProps(folder.id) : {})}
       {...drop.dropProps}
     >
       <div
@@ -517,11 +517,19 @@ export function FolderCard({
           <FolderActionsMenu folder={folder} onStartRename={() => setEditing(true)} onDeleteFolder={onDeleteFolder} />
         )}
       </div>
-      <button
-        type="button"
-        onClick={() => onOpen(folder.id)}
-        aria-label={openLabel}
-        className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+      {/*
+        THE NAME FIELD IS NEVER INSIDE THE OPEN BUTTON.
+
+        It was, and every click into the field to place the caret bubbled to
+        the button and opened the folder (#1055). An <input> inside a <button>
+        is invalid HTML besides. While renaming, the same body renders in a
+        plain wrapper and nothing on the tile opens the folder; the list row
+        swaps its whole content for the editor for the same reason.
+      */}
+      <FolderCardFrame
+        editing={editing}
+        onOpen={() => onOpen(folder.id)}
+        openLabel={openLabel}
       >
         <GridTileBody className="flex-1 p-0">
           <GridTileMedia className="flex h-[124px] items-center justify-center bg-muted/30">
@@ -563,6 +571,17 @@ export function FolderCard({
                 <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
               </div>
             )}
+            {/* What belongs in it, in the folder owner's words: one quiet line,
+                whole on hover. */}
+            {!editing && folder.description && (
+              <p
+                className="mt-1 truncate text-xs leading-tight text-muted-foreground"
+                title={folder.description}
+                data-testid={`folder-description-${folder.id}`}
+              >
+                {folder.description}
+              </p>
+            )}
           </div>
         </GridTileBody>
         <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
@@ -578,8 +597,33 @@ export function FolderCard({
             )}
           </span>
         </GridTileFooter>
-      </button>
+      </FolderCardFrame>
     </GridTileShell>
+  )
+}
+
+/** The tile's open button, or a plain box with the same layout while the name is being edited. */
+function FolderCardFrame({
+  editing,
+  onOpen,
+  openLabel,
+  children,
+}: {
+  editing: boolean
+  onOpen: () => void
+  openLabel: string
+  children: ReactNode
+}): JSX.Element {
+  if (editing) return <div className="flex h-full w-full flex-col text-left">{children}</div>
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      aria-label={openLabel}
+      className="flex h-full w-full flex-col text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+    >
+      {children}
+    </button>
   )
 }
 
@@ -683,7 +727,16 @@ export function FolderRow({
         <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
           <Folder className="text-muted-foreground size-3.5" aria-hidden />
         </span>
-        <span className="text-foreground truncate font-medium">{folder.name}</span>
+        <span className="text-foreground shrink-0 truncate font-medium">{folder.name}</span>
+        {folder.description && (
+          <span
+            className="text-muted-foreground hidden min-w-0 truncate text-xs sm:inline"
+            title={folder.description}
+            data-testid={`folder-description-${folder.id}`}
+          >
+            {folder.description}
+          </span>
+        )}
         {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
         {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
         {/* The kit's numeric pill, not a fourth hand-rolled one. */}

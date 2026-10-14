@@ -618,7 +618,7 @@ describe('searchAcrossProjects', () => {
   })
 })
 
-describe('searchAcrossProjects in one grouped query (ADR-0112)', () => {
+describe('searchAcrossProjects in one grouped query (ADR-0114)', () => {
   it('searches the whole page in ONE call and keeps its ranking, not the scores', async () => {
     const [one, two] = state.reachable
     state.hits.set(one.id, [hit('a', 0.9)])

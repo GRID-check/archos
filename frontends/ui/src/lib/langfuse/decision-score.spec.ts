@@ -139,6 +139,25 @@ describe('recordDecisionScore — finding the turn', () => {
     expect(api.create.mock.calls[0][0]).toMatchObject({ id: 'piloti-decision-change-chg-1', value: 'undone' })
   })
 
+  it('puts an intake suggestion’s decision on the reading’s own trace, without looking for a turn', async () => {
+    await decision({ subject: 'intake_suggestion', subjectId: 'intake-job-1-fluchtniveau_m@bw1', traceId: 'trace-reading' })
+
+    expect(getAnswerTraceId).not.toHaveBeenCalled()
+    expect(rows.select).not.toHaveBeenCalled()
+    expect(api.create.mock.calls[0][0]).toMatchObject({
+      id: 'piloti-decision-intake_suggestion-intake-job-1-fluchtniveau_m@bw1',
+      traceId: 'trace-reading',
+      metadata: { subject: 'intake_suggestion', subject_id: 'intake-job-1-fluchtniveau_m@bw1' },
+    })
+  })
+
+  it('posts nothing for an intake suggestion whose reading left no trace', async () => {
+    await expect(decision({ subject: 'intake_suggestion', subjectId: 's', traceId: null })).resolves.toBeUndefined()
+
+    expect(getAnswerTraceId).not.toHaveBeenCalled()
+    expect(api.create).not.toHaveBeenCalled()
+  })
+
   it('posts nothing when no row names the turn', async () => {
     await expect(decision({ subject: 'proposal' })).resolves.toBeUndefined()
     await expect(decision({ subject: 'annotation' })).resolves.toBeUndefined()

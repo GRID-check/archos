@@ -35,6 +35,8 @@ import { announceSettledVersions } from '@/lib/documents/fassung-notify'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
+import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
+import { queueFilingReviewsAfterSettle } from '@/lib/filing/trigger'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
@@ -87,7 +89,25 @@ export async function settleUploadBatches(organizationId: string, batchIds: read
     )
     throw error
   }
+  await startIntakeReadings(organizationId, completed)
+  // What ingestion read may sharpen or withdraw the filing suggestion the seal
+  // queued; never throws, so it cannot undo the completion either.
+  await queueFilingReviewsAfterSettle(organizationId, completed)
   return completed
+}
+
+/**
+ * A completed batch on a project whose intake is not finished starts a reading
+ * of what it brought (ADR-0111). After the uploader was told, and outside the
+ * reopen above: a reading that could not be queued must not undo a completion,
+ * and the next upload, or „Lesen starten", asks again.
+ */
+async function startIntakeReadings(organizationId: string, completed: readonly UploadBatch[]): Promise<void> {
+  try {
+    await queueIntakeReadsAfterUpload(organizationId, completed)
+  } catch (error) {
+    console.warn('[upload-batches] queueing the intake reading failed; the next upload or a click starts it:', error)
+  }
 }
 
 /** Where an upload went, as the row's subject: the project's name, or the shelf. */

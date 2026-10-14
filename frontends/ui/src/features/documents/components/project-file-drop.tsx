@@ -12,7 +12,8 @@
  *
  * The sections that answer a drop themselves are left to it, a drop beside
  * their zone included: the chat attaches to the conversation, research to its
- * run, the intake binds to a slot, and Dateien is the destination already.
+ * run, the intake binds to a slot, the setup page files into the project's
+ * root, and Dateien is the destination already.
  * Taking a near miss there to another page would lose what the reader was in
  * the middle of. Inner zones built on `useFileDragDrop` stop the event, so they
  * win wherever this one is active.
@@ -27,7 +28,7 @@ import { handOverDroppedFiles } from '../lib/dropped-file-handover'
 import { FileDropOverlay, useWindowDragGuard } from './file-drop-overlay'
 
 /** Project sections with a drop target of their own. */
-const SECTIONS_WITH_OWN_DROP = new Set(['chat', 'files', 'intake', 'research'])
+const SECTIONS_WITH_OWN_DROP = new Set(['chat', 'files', 'intake', 'research', 'setup'])
 
 /** Whether a drop on this path is the project's to route to Dateien. */
 export function routesDropToFiles(pathname: string, projectId: string): boolean {

@@ -5,7 +5,7 @@ import { baseStackConfig } from "./src/test-support/stack-config";
 import { DependencyGraph } from "./src/test-support/dependency-graph";
 
 /**
- * Qdrant, the one vector store (ADR-0111), with three peers and a data group:
+ * Qdrant, the one vector store (ADR-0113), with three peers and a data group:
  * the whole program built once and every manifest string the design (`qdrant-retrieval-design.md` §9) depends on checked.
  *
  * Each of these is a value that plans clean and fails only on a cluster: a

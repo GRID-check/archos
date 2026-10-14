@@ -345,9 +345,10 @@ export const collaboration = {
     /**
      * The BODY of a redacted row — a complete sentence, because the templated
      * "in {subject}" needs a real title and the placeholder read as nonsense inside
-     * it. Says the same thing the chip does, in the position the body occupies.
+     * it. Says the same thing the chip does, in the position the body occupies,
+     * for whatever the row points at: a chat, a document, a mark.
      */
-    bodyUnavailable: 'This conversation is no longer available to you.',
+    bodyUnavailable: 'This is no longer available to you.',
     inertHint: 'You no longer have access to this.',
     /**
      * The next move on a new revision filed under another name: see the two side
@@ -463,9 +464,11 @@ export const collaboration = {
         title: '{actor} asks you to review “{subject}”',
         body: 'The file is in quarantine. Look at it, then allow or delete it.',
       },
+      // The row lands on the run itself (its block in the thread, else the
+      // task), where the result and the reason are.
       jobCompleted: {
-        title: '"{subject}" is done',
-        body: 'Piloti ran the job. The result is in the project under Automation.',
+        title: 'Piloti finished “{subject}”',
+        body: 'Open it to see the result.',
       },
       // An Outlook archive was imported. {subject} is the archive's file name.
       mailImportCompleted: {
@@ -477,14 +480,14 @@ export const collaboration = {
         body: 'What was imported until then stays in the project. The import list under Files gives the reason.',
       },
       jobFailed: {
-        title: '"{subject}" failed',
-        body: 'The job could not be completed. The run history in the project names the reason.',
+        title: 'Piloti could not finish “{subject}”',
+        body: 'Open it to see what went wrong.',
       },
       // A run stopped to ask its requester something (ADR-0062, `wartet`). The
       // body says where the answer goes, because the run resumes nowhere else.
       jobWaiting: {
-        title: '"{subject}" is waiting for you',
-        body: 'Piloti has a question about this task. Answer it in the thread and the run carries on.',
+        title: 'Piloti has a question about “{subject}”',
+        body: 'Answer it in the thread and Piloti carries on.',
       },
       // A revision of a document is waiting for a decision (ADR-0054).
       // {subject} is the document, {actor} whoever submitted it.
@@ -502,34 +505,75 @@ export const collaboration = {
         titleNoActor: 'New revision of “{subject}”',
         bodyNoExcerpt: 'Open the revision to see what changed.',
       },
-      // Piloti worked an Anmerkung you delegated or mentioned it on (ADR-0106).
-      // {related} is the mark's running number, {subject} the document. No
-      // {actor}: that was Piloti.
+      // What Piloti did on an Anmerkung, told to the person whose act woke it:
+      // who delegated the mark, mentioned Piloti in it, or answered Piloti's
+      // Rückfrage (ADR-0106). {related} is the mark's running number,
+      // {subject} the document; the excerpt below is what the mark says. No
+      // {actor}: that was Piloti. `titleRelatedNoSubject` when the document
+      // could not be named. Same words as the review view: annotation, thread,
+      // delegate.
       pilotiWorkDone: {
-        title: 'Piloti is done with an annotation',
-        titleRelated: 'Piloti is done with annotation {related}',
-        body: 'The answer is in the annotation’s thread in {subject}.',
-        bodyNoSubject: 'The answer is in the annotation’s thread.',
+        title: 'Piloti worked on an annotation for you',
+        titleRelated: 'Piloti worked on annotation {related} in “{subject}” for you',
+        titleRelatedNoSubject: 'Piloti worked on annotation {related} for you',
+        body: 'Read the answer in the annotation’s thread.',
       },
+      // Piloti could not. `variants` say why, by the class of the wake's
+      // stored reason (`lib/annotations/wake-end-reason.ts`), and what the
+      // person can do about it; `body` is for a row stored before the reason
+      // was kept.
       pilotiWorkFailed: {
-        title: 'Piloti could not finish an annotation',
-        titleRelated: 'Piloti could not finish annotation {related}',
-        body: 'Open the annotation in {subject}: you can take it over yourself or ask Piloti again.',
-        bodyNoSubject: 'Open the annotation: you can take it over yourself or ask Piloti again.',
+        title: 'Piloti could not work on an annotation',
+        titleRelated: 'Piloti could not work on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: 'Piloti could not work on annotation {related}',
+        body: 'Open the annotation: ask Piloti again or work on it yourself.',
+        variants: {
+          budget: {
+            body: 'The usage budget is used up. Whoever manages your organization can raise it under Organization → Usage & budgets; then ask Piloti again.',
+          },
+          busy: {
+            body: 'Piloti did not get to it in time because too much was going on. Ask Piloti again later.',
+          },
+          access: {
+            body: 'Piloti could not sign in on your behalf. Ask Piloti again, or work on the annotation yourself.',
+          },
+          error: {
+            body: 'The work broke off before there was an answer. Ask Piloti again, or work on the annotation yourself.',
+          },
+        },
       },
-      // Piloti asked a question and waits for a person. The question is the
-      // excerpt below.
+      // Piloti asked a question and waits for a person: the mark's assignee,
+      // or the person it worked for. The question is the excerpt below.
       pilotiAsksYou: {
-        title: 'Piloti has a question on an annotation',
-        titleRelated: 'Piloti has a question on annotation {related}',
-        body: 'In {subject}. Answer in the annotation’s thread.',
-        bodyNoSubject: 'Answer in the annotation’s thread.',
+        title: 'Piloti has a question for you on an annotation',
+        titleRelated: 'Piloti has a question for you on annotation {related} in “{subject}”',
+        titleRelatedNoSubject: 'Piloti has a question for you on annotation {related}',
+        body: 'Piloti is waiting for your answer. Reply in the annotation’s thread.',
       },
-      // A proposal the server holds (ADR-0105). What it changes is the excerpt
-      // below.
+      // A proposal the server holds (ADR-0105), for the person Piloti made it
+      // for. `variants` name what it changes (a file operation by its verb,
+      // the rest by kind: `PROPOSAL_NOTICE_VARIANTS`); the excerpt below names
+      // the files, the note or the change. Words as on the card.
       pilotiProposalWaiting: {
         title: 'Piloti has a proposal for you',
-        body: 'Apply it or dismiss it.',
+        body: 'The proposal is in the chat. Apply or dismiss it there; nothing changes until then.',
+        variants: {
+          move: { title: 'Piloti suggests a new place for files' },
+          rename: { title: 'Piloti suggests a rename' },
+          create_folder: { title: 'Piloti suggests a new folder' },
+          assign: { title: 'Piloti suggests an assignment' },
+          memory: { title: 'Piloti would like to remember a note' },
+          project_profile: { title: 'Piloti suggests a change to the project context' },
+        },
+      },
+      // Piloti read a project's documents and suggested values for its profile
+      // (ADR-0111). {subject} is the project's name, {related} the number of
+      // questions that decide the building class; absent when there are none,
+      // and `title` is read. Piloti's summary is the excerpt below.
+      pilotiIntakeReady: {
+        title: 'Piloti has read the documents of “{subject}”',
+        titleRelated: 'Piloti has read the documents of “{subject}” – questions: {related}',
+        body: 'Review the suggestions and confirm what is right.',
       },
       unknown: {
         title: 'Something happened',

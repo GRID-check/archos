@@ -27,14 +27,14 @@ export function listArchivFolders(session: AuthorizedSession) {
 
 export function createArchivFolder(
   session: AuthorizedSession,
-  input: { parentId?: string | null; name: string },
+  input: { parentId?: string | null; name: string; description?: string | null },
 ) {
   return createShelfFolder(session, ARCHIV_SHELF, input)
 }
 
 export function updateArchivFolder(
   session: AuthorizedSession,
-  input: { folderId: string; name?: string; parentId?: string | null },
+  input: { folderId: string; name?: string; parentId?: string | null; description?: string | null },
 ) {
   return updateShelfFolder(session, ARCHIV_SHELF, input)
 }

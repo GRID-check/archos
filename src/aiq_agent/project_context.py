@@ -146,6 +146,16 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # project (an Archiv or session upload). The envelope is supplied as for
     # `file_draft` above; without one every canvas tool refuses.
     "document_canvas": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
+    # The Erfassungs-Agent (`agents/intake/`, ADR-0111): an agent, not a tool,
+    # keyed here because its tools (`intake_needs`, `record_values`,
+    # `finish_intake`, `read_document`) are built by the agent and have no NAT
+    # type of their own. Every one of them acts as the person whose upload or
+    # click started the run: the intake API takes the project and that person
+    # from the envelope, and `read_document` reads the collection scope signed
+    # into it. Only ever a background run, so the worker supplies it from the
+    # envelope the run carries (ADR-0108); a run without one ends before its
+    # first model call, having read and recorded nothing.
+    "project_intake_agent": (REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
 }
 
 

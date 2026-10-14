@@ -1,8 +1,10 @@
 import { sql } from 'drizzle-orm'
 import { check, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import {
+  PROPOSAL_SCOPES,
   PROPOSED_CHANGE_KINDS,
   PROPOSED_CHANGE_STATUSES,
+  type ProposalScope,
   type ProposedChangeKind,
   type ProposedChangeResult,
   type ProposedChangeStatus,
@@ -33,7 +35,17 @@ export const proposedChanges = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     organizationId: text('organization_id').notNull(),
-    projectId: uuid('project_id').notNull(),
+    /**
+     * The project the change is for; NULL for a Büroablage proposal (0146),
+     * exactly when `scope` is `archiv` (`proposed_changes_scope_owner`).
+     */
+    projectId: uuid('project_id'),
+    /**
+     * The shelf (0146), `project_folders.scope`'s vocabulary. A Büroablage
+     * proposal moves Büroablage documents and nothing else
+     * (`proposed_changes_archiv_move`).
+     */
+    scope: text('scope').$type<ProposalScope>().notNull().default('project'),
     kind: text('kind').$type<ProposedChangeKind>().notNull(),
     payload: jsonb('payload').$type<unknown>().notNull(),
     status: text('status').$type<ProposedChangeStatus>().notNull().default('proposed'),
@@ -51,6 +63,11 @@ export const proposedChanges = pgTable(
     /** The person applying it right now; cleared when the apply settles. */
     applyingBy: text('applying_by'),
     applyingSince: timestamp('applying_since', { withTimezone: true }),
+    /**
+     * The Langfuse trace of the judgement that proposed it (0146), for a
+     * proposal no chat turn made: the decision is scored on it.
+     */
+    originTraceId: text('origin_trace_id'),
   },
   (table) => ({
     projectFk: foreignKey({
@@ -66,6 +83,15 @@ export const proposedChanges = pgTable(
     organizationIdx: index('idx_proposed_changes_organization_id').on(table.organizationId),
     projectCreatedIdx: index('idx_proposed_changes_project_created').on(table.projectId, table.createdAt),
     conversationIdx: index('idx_proposed_changes_conversation').on(table.originConversationId),
+    openIdx: index('idx_proposed_changes_open')
+      .on(table.organizationId, table.scope, table.projectId)
+      .where(sql`${table.status} = 'proposed'`),
+    scopeKnown: check('proposed_changes_scope_known', sql`${table.scope} IN (${list(PROPOSAL_SCOPES)})`),
+    scopeOwner: check('proposed_changes_scope_owner', sql`(${table.scope} = 'project') = (${table.projectId} IS NOT NULL)`),
+    archivMove: check(
+      'proposed_changes_archiv_move',
+      sql`${table.scope} = 'project' OR COALESCE(${table.kind} = 'file_operation' AND ${table.payload}->>'operation' = 'move' AND jsonb_typeof(${table.payload}->'operations') = 'array' AND jsonb_path_exists(${table.payload}, '$.operations[0]') AND NOT jsonb_path_exists(${table.payload}, '$.operations[*] ? (!(@.source == "buero"))'), false)`
+    ),
     originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
       .on(table.organizationId, table.originMessageId, table.originCardIndex)
       .where(sql`${table.originCardIndex} IS NOT NULL`),

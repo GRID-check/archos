@@ -543,6 +543,8 @@ export const chat: typeof en.chat = {
         create_folder: 'Neuer Ordner',
         assign: 'Zuweisen',
       },
+      // Eine Verschiebung, die ihren Zielordner erst anlegt: Er steht vor den Zeilen.
+      newFolder: 'Neuer Ordner',
       // Die oberste Ebene hat keinen Pfad, aber einen Namen, den Menschen sagen.
       root: 'Oberste Ebene',
       applied: {

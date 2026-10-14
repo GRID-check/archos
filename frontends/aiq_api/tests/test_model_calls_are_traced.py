@@ -40,6 +40,7 @@ KNOWN = {
     "documents.py",
     "fassung_compare.py",
     "feedback_digest.py",
+    "filing_fit.py",
     "generate_conversation_title.py",
     "generate_summary.py",
     "lesson_distill.py",

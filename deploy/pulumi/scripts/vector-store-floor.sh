@@ -8,7 +8,7 @@
 # cannot be read (a tag that is not sha-<40 hex>, a commit this checkout lacks:
 # a warning says so); 1, with an ::error::, when they disagree.
 #
-# ADR-0111 removed Chroma, and with it `deploy/pulumi/src/data/chroma.ts`, the
+# ADR-0113 removed Chroma, and with it `deploy/pulumi/src/data/chroma.ts`, the
 # file that deployed the server. A backend image built while that file existed
 # reads AIQ_CHROMA_URL, which a program without it no longer sets, and falls
 # back to an embedded Chroma in each pod's /tmp: retrieval answers from nothing,
@@ -38,5 +38,5 @@ fi
 image="$(store_of "${BASH_REMATCH[1]}")"
 program="$(store_of "$DEPLOY_SHA")"
 [ "$image" = "$program" ] && exit 0
-log "::error::backend: refusing ${ref}. It was built for ${image}, and the program at ${DEPLOY_SHA} deploys ${program} (ADR-0111). An image from before Chroma's removal falls back to an empty per-pod store and loses every upload. Roll back across that change with a git revert on develop, not an older image tag: docs/deployment/qdrant-runbook.md, \"Rollback\"."
+log "::error::backend: refusing ${ref}. It was built for ${image}, and the program at ${DEPLOY_SHA} deploys ${program} (ADR-0113). An image from before Chroma's removal falls back to an empty per-pod store and loses every upload. Roll back across that change with a git revert on develop, not an older image tag: docs/deployment/qdrant-runbook.md, \"Rollback\"."
 exit 1

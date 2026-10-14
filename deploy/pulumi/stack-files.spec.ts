@@ -71,7 +71,7 @@ describe("committed stack files", () => {
   });
 
   // `loadConfig` refuses them at plan time, which is the deploy failing; this
-  // says so on the pull request instead (ADR-0111).
+  // says so on the pull request instead (ADR-0113).
   it("set none of the retired Chroma and vector-switch keys", () => {
     for (const stack of stacks()) {
       const retired = RETIRED_VECTOR_KEYS.filter((key) => `grid-oib:${key}` in stack.config);

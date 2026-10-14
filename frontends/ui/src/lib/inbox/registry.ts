@@ -348,6 +348,20 @@ export const INBOX_TYPE_DEFINITIONS: Record<InboxItemType, InboxTypeDefinition> 
     gate: 'operational',
     email: IN_APP_ONLY,
   },
+  /*
+    A reading of the project's documents is ready for review (ADR-0111).
+    Actionable: the suggestions count for nothing until a person confirms them,
+    and the badge is what says so. `per-anchor` on the intake: the next reading
+    of the same project folds into the row. Resolved by `completeIntake`, for
+    everyone, so it never sits there for good.
+  */
+  'piloti.intake_ready': {
+    actionable: true,
+    grouping: 'per-anchor',
+    retentionDays: 60,
+    gate: 'operational',
+    email: IN_APP_ONLY,
+  },
 }
 
 /**

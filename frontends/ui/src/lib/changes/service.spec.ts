@@ -34,6 +34,7 @@ vi.mock('@/lib/auth/require-auth', () => ({ requireAuthorizedSession: vi.fn(asyn
 vi.mock('@/lib/sharing/access', () => ({ requireResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/langfuse/decision-score', () => ({ recordDecisionScore: vi.fn(async () => undefined) }))
+vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/annotations/service', async (original) => ({
   ...(await original<typeof import('@/lib/annotations/service')>()),
   listAnnotations: vi.fn(),
@@ -55,6 +56,8 @@ import { createAnnotation, deleteAnnotation, deleteReply, listAnnotations, updat
 import type { AnnotationReplyView, AnnotationView, CreateAnnotationRequest, UpdateAnnotationRequest } from '@/lib/annotations/types'
 import type { PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
+import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
@@ -583,5 +586,86 @@ describe('POST /api/piloti-changes/[id]/undo', () => {
     await expect(undoChange(change(7))).rejects.toMatchObject({ status: 404 })
     await expect(undoChange('not-a-uuid')).rejects.toMatchObject({ status: 404 })
     expect(claimUndo).not.toHaveBeenCalled()
+  })
+})
+
+describe('an undo in the audit trail', () => {
+  const audited = (): AuditEventInput[] => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+
+  it('records one piloti.change.undone, as the person who undid it, naming whom Piloti had made it for', async () => {
+    put(row())
+
+    await undoChange(change(1))
+
+    expect(audited()).toEqual([
+      {
+        action: 'piloti.change.undone',
+        organizationId: 'org_1',
+        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        targetType: 'document_annotation',
+        targetId: MARK,
+        alsoTargets: [
+          { type: 'document', id: DOC },
+          { type: 'conversation', id: CONVERSATION },
+        ],
+        metadata: {
+          op: 'update',
+          inverse: 'revert',
+          markNumber: 4,
+          onBehalfOf: 'user_2',
+          messageId: ANSWER,
+          changeId: change(1),
+        },
+      },
+    ])
+  })
+
+  it('names a reply `reply`, and a deleted mark set again without a number', async () => {
+    documents.get(DOC)?.set(MARK, mark({ replies: [reply()] }))
+    put(row({ id: change(1), objectKind: 'annotation_reply', objectId: REPLY, op: 'create', before: null, after: { body: reply().body } }))
+    put(row({ id: change(2), op: 'delete', before: markState(mark()), after: null, annotationId: OTHER_MARK, objectId: OTHER_MARK }))
+
+    await undoChange(change(1))
+    await undoChange(change(2))
+
+    expect(audited().map((input) => [input.metadata?.op, input.metadata?.inverse, input.metadata?.markNumber])).toEqual([
+      ['reply', 'delete-reply', 4],
+      ['delete', 'recreate', null],
+    ])
+    expect(JSON.stringify(audited())).not.toContain(reply().body)
+  })
+
+  it('records nothing for an undo that was refused: already undone, moved on, or not the reader’s to make', async () => {
+    put(row())
+    await undoChange(change(1))
+    vi.mocked(recordAuditEvent).mockClear()
+
+    await expect(undoChange(change(1))).rejects.toMatchObject({ status: 409 })
+    put(row({ id: change(2), after: { status: 'dismissed' } }))
+    await expect(undoChange(change(2))).rejects.toMatchObject({ status: 409 })
+    put(row({ id: change(3), annotationId: OTHER_MARK, objectId: OTHER_MARK, op: 'delete', before: markState(mark()), after: null }))
+    vi.mocked(createAnnotation).mockRejectedValueOnce(new ConflictError('moved'))
+    await expect(undoChange(change(3))).rejects.toMatchObject({ status: 409 })
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('undoes the change when the trail fails', async () => {
+    put(row())
+    vi.mocked(recordAuditEvent).mockImplementationOnce(() => {
+      throw new Error('WorkOS down')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const { change: undone } = await undoChange(change(1))
+
+    expect(undone.undoneBy).toBe('user_1')
+    expect(current()?.status).toBe('open')
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('piloti.change.undone'), expect.any(Error))
+    warn.mockRestore()
   })
 })

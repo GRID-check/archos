@@ -9,17 +9,19 @@
  */
 
 import 'server-only'
-import { and, eq, isNull, lt, or, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import { proposedChanges, type ProposedChangeRow, type ProposerKind } from '@/lib/db/schema/proposed-changes'
 import { withTenant } from '@/lib/db/tenant-context'
-import type { ProposedChangeKind, ProposedChangeResult, ProposedChangeStatus } from './types'
+import type { ProposalScope, ProposedChangeKind, ProposedChangeResult, ProposedChangeStatus } from './types'
 
 export type { ProposedChangeRow }
 
 export interface NewProposedChange {
   organizationId: string
-  projectId: string
+  /** Null for a Büroablage proposal (0146); `scope` says which shelf. */
+  projectId: string | null
+  scope: ProposalScope
   kind: ProposedChangeKind
   /** The contract's payload for `kind`, parsed by the service before it gets here. */
   payload: unknown
@@ -29,6 +31,8 @@ export interface NewProposedChange {
   originMessageId: string | null
   /** Which card of the origin answer made it; needs `originMessageId` (0143's CHECK). */
   originCardIndex?: number | null
+  /** The Langfuse trace of the judgement that proposed it, for a proposal no turn made (0146). */
+  originTraceId?: string | null
 }
 
 /** What an insert came to: the row, and whether this call made it or found the card's earlier one. */
@@ -193,4 +197,69 @@ export async function dismissProposedChange(
       .returning()
   )
   return row ?? null
+}
+
+/** A shelf's proposals: a project's, or the Büroablage's (no project). */
+export type ProposalShelf = { scope: 'project'; projectId: string } | { scope: 'archiv' }
+
+const onShelf = (organizationId: string, shelf: ProposalShelf) =>
+  and(
+    eq(proposedChanges.organizationId, organizationId),
+    eq(proposedChanges.scope, shelf.scope),
+    shelf.scope === 'project' ? eq(proposedChanges.projectId, shelf.projectId) : isNull(proposedChanges.projectId)
+  )
+
+/**
+ * A shelf's proposals in the given statuses, newest first, at most `limit`
+ * (bounded here: a caller's number is clamped to {@link MAX_SHELF_PROPOSALS}).
+ * Optionally one kind, and optionally only those no conversation made (the
+ * filing suggestions, `lib/filing`).
+ */
+export const MAX_SHELF_PROPOSALS = 500
+
+export async function listShelfProposals(
+  organizationId: string,
+  shelf: ProposalShelf,
+  options: {
+    statuses: readonly ProposedChangeStatus[]
+    kind?: ProposedChangeKind
+    withoutConversation?: boolean
+    limit: number
+  }
+): Promise<ProposedChangeRow[]> {
+  const limit = Math.min(Math.max(1, Math.trunc(options.limit)), MAX_SHELF_PROPOSALS)
+  const db = getDb()
+  return withTenant({ organizationId }, () =>
+    db
+      .select()
+      .from(proposedChanges)
+      .where(
+        and(
+          onShelf(organizationId, shelf),
+          inArray(proposedChanges.status, [...options.statuses]),
+          options.kind ? eq(proposedChanges.kind, options.kind) : undefined,
+          options.withoutConversation ? isNull(proposedChanges.originConversationId) : undefined
+        )
+      )
+      .orderBy(desc(proposedChanges.createdAt))
+      .limit(limit)
+  )
+}
+
+/**
+ * Take back a proposal nobody has decided: delete it while it is still
+ * `proposed` and nobody is applying it. Piloti withdraws its own filing
+ * suggestion this way when a later reading no longer supports it; a decided
+ * proposal is a record and is never deleted. Whether a row went.
+ */
+export async function deleteUndecidedProposedChange(
+  organizationId: string,
+  id: string,
+  staleBefore: Date
+): Promise<boolean> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db.delete(proposedChanges).where(undecided(organizationId, id, staleBefore)).returning({ id: proposedChanges.id })
+  )
+  return rows.length > 0
 }

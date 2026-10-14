@@ -155,6 +155,30 @@ export function useFolderTree({
   )
 
   /**
+   * Say what belongs in a folder (migration 0145); `null` clears it. Patched
+   * from the server's answer, since a description moves no path.
+   */
+  const describe = useCallback(
+    async (folderId: string, description: string | null) => {
+      const response = await fetch(`${foldersUrl}/${folderId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ description }),
+      })
+      if (!response.ok) {
+        toast.error(t('folders.description.saveError'))
+        return false
+      }
+      const data = (await response.json()) as { folder?: Partial<FolderItem> }
+      setFolders((prev) =>
+        prev.map((f) => (f.id === folderId ? { ...f, description: data.folder?.description ?? description } : f))
+      )
+      return true
+    },
+    [foldersUrl, t]
+  )
+
+  /**
    * A folder dragged onto another folder — or onto „Alle Dateien", the way back
    * out to the root. Optimistic on the PARENT (the tile moves in the frame the
    * finger let go) and then re-read for the paths. The pane refuses a move into
@@ -264,5 +288,5 @@ export function useFolderTree({
   /** `isLoading` is any read in flight (the upload plan waits for it); this is only the first. */
   const isFirstLoad = isLoading && !hasAnswer
 
-  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, move, remove }
+  return { folders, rootAccess, isLoading, isFirstLoad, error, load, create, rename, describe, move, remove }
 }

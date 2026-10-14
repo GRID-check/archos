@@ -434,6 +434,84 @@ back, still being read, or not in the knowledge base is counted. Its tags,
 disciplines, content kinds and summary stay out of the brief. A document the
 content check has not released cannot reach the reader through the brief.
 
+## Folders that say what they hold, and Piloti's filing suggestion
+
+**Preview:** `/dev/filing-suggestions`
+
+A folder carries a short description of what belongs in it (migration 0145),
+on both shelves. It shows as one muted line on the folder's tile and row, and
+at the top of the folder („Bescheide und Stellungnahmen der Baubehörde …"). A
+reader who may write the folder edits it there („Beschreibung bearbeiten", or
+„Beschreiben, was hierher gehört" on an undescribed folder) and from the
+folder's menu („Beschreibung …"); a reader who may only read sees the text and
+no way to change it, and an undescribed folder shows them nothing. The dialog
+folds whitespace, clears the description when emptied and refuses more than
+500 characters before it asks the server.
+
+Piloti reads the descriptions when it suggests where an upload belongs
+([`proposed-changes.md`](../architecture/proposed-changes.md#filing-suggestions)).
+One proposal per target folder (`file_operation`, no conversation), so a person
+confirms per folder. Every control below is that proposal
+(`useServerProposal`): a decision anywhere is the same record, inbox item and
+Langfuse score. A decided entry says what happened („In „Bescheide“
+verschoben.“, „Bleibt, wo es ist.“) until the shelf re-reads it away.
+
+While an upload is on screen the shelf asks for its open suggestions every
+4 seconds (`useFilingSuggestions`); otherwise when the shelf is shown and after
+a change.
+
+**The chip, on the file.** The suggestion reaches the person where the file is:
+a small pill on the left of the card's footer, right after the name in the list
+view, and on the row of the upload tray. Piloti's glyph and „→ Bescheide“, the
+last segment of the target path, with a quiet „neu“ for a folder the move
+creates (`FilingChip`, `components/ui/filing-chip.tsx`). It is calm because a
+batch upload can put ten on one screen: the card's own surface, no fill colour
+of its own, a dashed edge in the strongest hairline that turns solid on hover
+and while open. It fades in (opacity only) and never moves anything.
+
+**A tile keeps its size.** The chip's margin box is one line of `text-xs`
+(24px tall, `-my-1`), so a card with a suggestion is exactly as tall as one
+without, the grid never jumps when a suggestion arrives or goes, and a list row
+or an upload row keeps its one height. The footer is the card button's sibling,
+because a button cannot hold a button; a click on the rest of it opens the file
+as the card does. On a narrow tile the chip's folder name ellipsizes first, then
+the relative time drops (a container query on the footer); the footer never
+wraps and the glyph is never cut. An earlier version added a grey block of its
+own under the footer and grew the card; the product owner rejected it as a
+second colour on the card.
+
+**The popover, the decision for this file.** The chip is a button
+(`aria-haspopup="dialog"`) that opens the kit's `Popover`: the move as two path
+lines, where it is now struck through and muted („Eingang“, or „Projektordner
+(oberste Ebene)“ / „Büroablage (oberste Ebene)“ for a file at the top of the
+shelf) and „→ Behörde/Bescheide“ with „neu“ where created (`PathChange`); the
+reason, up to three lines; and the answer, „Belassen“ (ghost) and
+„Verschieben“ or „Anlegen und verschieben“ (primary: in here it is the focal
+action). When the proposal moves more than this file the popover says so („mit
+1 weiteren Datei“), the button reads „Alle 2 verschieben“, and while it is open
+the other cards and rows it moves are outlined, so one file's control never
+moves a file the person cannot see. A reader the server says may not decide
+sees the path, the reason and „Verschieben dürfen nur Personen, die hier ablegen
+dürfen.“, and no buttons. Escape closes it and focus returns to the chip;
+clicks and keys inside never reach the card or row. The proposal is read when
+the popover opens, not when the chip mounts.
+
+**The filing bar, the decision for a folder.** Above the grid and the list of a
+folder (`FilingBar`, `features/documents/components/filing-bar.tsx`) when one
+target folder in view collects two files or more; then it lists every target
+folder of the view, one line each: the path in full and never cut, „neu“, the
+count („2 Dateien“), and „Belassen“ (ghost) and „Verschieben“ / „Anlegen und
+verschieben“ (outline), under „Piloti schlägt vor, 3 Dateien abzulegen“. With
+one file per folder the chip is the shorter way, so the bar stays away. It is
+quiet: the card surface, one hairline, no shadow. Hovering or focusing a line
+fills it and outlines the cards and rows it would move, a 2px strongest-hairline
+outline at offset 2 (inset in a table row and the tray), no fill change
+(`components/ui/highlight.ts`). The highlight is shared through one small
+context holding a store, so lighting two cards re-renders those two. The
+upload tray always shows the bar for its batch, even for one file, because
+filing is the job there; the setup page's „Ablage“ is the same bar with each
+line naming its files.
+
 ## Fassungen: a suggestion, then a person's link
 
 feld72 asked for „eine Logik wie bei Planfred“: only the newest state of a
@@ -573,6 +651,8 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | Concern | Module |
 |---|---|
 | Byte-level upload transport (the only XHR in the app) | `src/lib/http/xhr-upload.ts` |
+| A folder's description: the line, the dialog, the edit (`describe`) | `src/features/documents/components/folder-description-dialog.tsx`; `src/features/documents/hooks/use-folder-tree.ts` |
+| Piloti's filing suggestion: the chip and its popover, the highlight, the filing bar, the shelf's open suggestions | `src/features/documents/components/filing-suggestion.tsx`; `src/features/documents/components/filing-bar.tsx`; the kit: `src/components/ui/filing-chip.tsx`, `path-change.tsx`, `suggestion-panel.tsx`, `highlight.ts`; `src/features/documents/hooks/use-filing-suggestions.ts`; `src/features/documents/lib/filing-suggestions.ts` |
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
 | Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
 | The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |

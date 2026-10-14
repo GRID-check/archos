@@ -2,7 +2,7 @@ import { GridConfig } from "../config";
 import { QDRANT } from "../constants";
 
 /**
- * Prometheus alerting rules for the Qdrant cluster (ADR-0111), rendered
+ * Prometheus alerting rules for the Qdrant cluster (ADR-0113), rendered
  * against this stack's limits and shipped as the `qdrant-alert-rules`
  * ConfigMap (`qdrant.rules.yaml`).
  *

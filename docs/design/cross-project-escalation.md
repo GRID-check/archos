@@ -144,7 +144,7 @@ is the default; `closed` walks only the closed projects in the same
 most-alike order (what the turn's precedent prefetch searches), and `all`
 (newest first) and `named` remain available. One call covers a page of up to
 40 projects, and at most the backend's 500 collections, in one grouped query
-(ADR-0112), with a 900-character passage and per-project attribution; `offset`
+(ADR-0114), with a 900-character passage and per-project attribution; `offset`
 pages on.
 
 **Narrowing by project facts.** When the question names the kind of project

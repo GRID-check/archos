@@ -3,7 +3,7 @@
 Ingestion embeds a file's chunks once and writes them here (:func:`write_chunks`),
 with what the collection name used to only imply made explicit on every point
 (:func:`enrichment`) and the facts the metadata store already holds for the
-file. Qdrant is the only vector store (ADR-0111): a write that fails raises,
+file. Qdrant is the only vector store (ADR-0113): a write that fails raises,
 and the file fails where a person can see it.
 
 The facts a person sets (tags, Dokumentart, Fassung, folder) live in Postgres,

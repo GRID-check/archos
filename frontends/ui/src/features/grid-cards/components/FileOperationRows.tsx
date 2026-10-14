@@ -7,12 +7,14 @@
  * proposals, so the two cannot draw the same proposal differently.
  */
 
-import { Check, X } from 'lucide-react'
+import { Check, FolderPlus, X } from 'lucide-react'
 import { motion, useIconSwapTransition } from '@/components/motion'
+import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
 import {
   operationLabel,
   type FileOperationItem,
+  type FileOperationNewFolder,
   type FileOperationKind,
   type FileOperationResult,
 } from '../lib/file-operations'
@@ -53,33 +55,65 @@ function OperationRow({
   const from = operation === 'move' ? folderText(item.current, root) : ''
 
   return (
-    <li
-      className="card-caption text-foreground flex items-baseline gap-x-1.5"
-      data-testid="file-operation-row"
-    >
-      <RowStatus result={result} />
-      <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
-        <span className="min-w-0 truncate font-medium" title={subject}>
-          {subject}
+    <li className="card-caption text-foreground flex flex-col gap-0.5" data-testid="file-operation-row">
+      <div className="flex items-baseline gap-x-1.5">
+        <RowStatus result={result} />
+        <span className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2">
+          <span className="min-w-0 truncate font-medium" title={subject}>
+            {subject}
+          </span>
+          {from ? (
+            <span className="text-muted-foreground">
+              {from} <span aria-hidden>→</span>{' '}
+            </span>
+          ) : (
+            <span aria-hidden className="text-muted-foreground">
+              →
+            </span>
+          )}
+          <span className="text-muted-foreground min-w-0 truncate" title={target}>
+            {target}
+          </span>
+          {result && !result.ok && (
+            <span className="text-destructive" data-testid="file-operation-row-error">
+              {result.reason}
+            </span>
+          )}
         </span>
-        {from ? (
-          <span className="text-muted-foreground">
-            {from} <span aria-hidden>→</span>{' '}
-          </span>
-        ) : (
-          <span aria-hidden className="text-muted-foreground">
-            →
-          </span>
-        )}
-        <span className="text-muted-foreground min-w-0 truncate" title={target}>
-          {target}
+      </div>
+      {/* Why this one, under its row and clear of the status slot (size-3.5 + gap-1.5). */}
+      {item.reason && (
+        <p className="text-muted-foreground ml-5 min-w-0 truncate" title={item.reason} data-testid="file-operation-row-reason">
+          {item.reason}
+        </p>
+      )}
+    </li>
+  )
+}
+
+/**
+ * The folder a move creates before its first move: the person confirms the
+ * folder as well as the files, so it is named first, with what it is for.
+ */
+function NewFolderNote({ folder }: { folder: FileOperationNewFolder }) {
+  const t = useTranslations('chat')
+  return (
+    <li className="card-caption text-foreground flex flex-col gap-0.5" data-testid="file-operation-new-folder">
+      <div className="flex items-baseline gap-x-1.5">
+        <span className="inline-flex size-3.5 shrink-0 self-center" aria-hidden />
+        <Chip variant="muted" size="sm" className="self-center">
+          <FolderPlus aria-hidden />
+          {t('cards.fileOperationProposal.newFolder')}
+        </Chip>
+        <span className="min-w-0 truncate font-medium" title={folder.path}>
+          {folder.path}
         </span>
-        {result && !result.ok && (
-          <span className="text-destructive" data-testid="file-operation-row-error">
-            {result.reason}
-          </span>
-        )}
-      </span>
+      </div>
+      {folder.description && (
+        <p className="text-muted-foreground ml-5 min-w-0" data-testid="file-operation-new-folder-description">
+          {folder.description}
+        </p>
+      )}
     </li>
   )
 }
@@ -89,13 +123,17 @@ export function OperationList({
   operation,
   items,
   results,
+  newFolder,
 }: {
   operation: FileOperationKind
   items: readonly FileOperationItem[]
   results?: readonly FileOperationResult[] | null
+  /** The folder this move creates first; only a move has one. */
+  newFolder?: FileOperationNewFolder | null
 }) {
   return (
     <ul className="flex flex-col gap-1" data-testid="file-operation-rows">
+      {operation === 'move' && newFolder && <NewFolderNote folder={newFolder} />}
       {items.map((item, index) => (
         <OperationRow
           key={`${operationLabel(operation, item)}-${index}`}

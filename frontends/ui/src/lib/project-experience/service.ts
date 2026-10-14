@@ -2,8 +2,9 @@
  * What a closed project knows about itself (docs/design/closed-project-experience.md):
  * the closing extraction has the backend read the project's own documents once,
  * and writes what it finds as suggestions a person confirms. Fingerprint values
- * land as profile assumptions (`agent_suggested`, `unconfirmed`, the evidence as
- * the reason); decisions land as memory rows (`distillation`, `source_grounded`).
+ * land as profile assumptions (`agent_suggested`, `unconfirmed`, with the
+ * structured `evidence` and the first of it as the human reason); decisions land
+ * as memory rows (`distillation`, `source_grounded`).
  *
  * Authorization is the caller's `requireProjectAccess` (`project:memory:write` or `project:edit`),
  * which refuses a closed project: the write has to happen while it is active.
@@ -22,7 +23,8 @@ import { NotFoundError } from '@/lib/api/errors'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireProjectAccess } from '@/lib/authz/projects'
-import { maskChatText } from '@/lib/upload-screening/service'
+import { documentEvidence, reasonFromEvidence } from '@/lib/project-intake/evidence'
+import { MAX_PROFILE_EVIDENCE } from '@/lib/project-profile/evidence-schema'
 import { patchProjectProfile } from '@/lib/project-profile/profile-service'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
@@ -93,15 +95,22 @@ function entryOf(vocabulary: ExperienceVocabulary, key: string): ExperienceVocab
   return Object.entries(vocabulary).find(([name]) => name === key)?.[1]
 }
 
+/** The page as the backend reports it (`"3"`, or empty when the document has none), as a 1-based number. */
+function pageOf(page: string): number | null {
+  const first = Number.parseInt(page, 10)
+  return Number.isInteger(first) && first >= 1 ? first : null
+}
+
 /**
- * Where a value was read: `Datei, S. n: „quote"`, the page omitted when the
- * document has none. Masked against the office's „Sensible Daten" policy
- * (ADR-0086) like a memory note: the profile is read by every member and rides
- * every turn, and a Bescheid's quote can name its addressee.
+ * Where a value was read, as the profile stores it: the quote masked against the
+ * office's „Sensible Daten" policy (ADR-0086) like a memory note, since the
+ * profile is read by every member and rides every turn.
  */
-async function reasonOf(organizationId: string, evidence: ExperienceEvidence): Promise<string> {
-  const where = evidence.page ? `${evidence.fileName}, S. ${evidence.page}` : evidence.fileName
-  return (await maskChatText(organizationId, `${where}: „${evidence.quote}"`)).text
+async function evidenceOf(organizationId: string, evidence: ExperienceEvidence) {
+  return documentEvidence(
+    { fileName: evidence.fileName, page: pageOf(evidence.page), quote: evidence.quote },
+    { organizationId }
+  )
 }
 
 /**
@@ -119,19 +128,22 @@ async function fingerprintOperations(
   const operations = new Map<string, ProjectProfilePatchOperation>()
   for (const item of fingerprint) {
     const entry = entryOf(vocabulary, item.key)
-    const [evidence] = item.evidence
-    if (!entry || !evidence || knownKeys.has(item.key) || operations.has(item.key)) continue
+    if (!entry || item.evidence.length === 0 || knownKeys.has(item.key) || operations.has(item.key)) continue
     const value = storedValue(item.key, entry, item.value)
     if (value === null) continue
+    const evidence = await Promise.all(
+      item.evidence.slice(0, MAX_PROFILE_EVIDENCE).map((read) => evidenceOf(organizationId, read))
+    )
     operations.set(item.key, {
       op: 'add',
       path: `/assumptions/${item.key}`,
       value: {
         value,
         status: 'unconfirmed',
-        reason: await reasonOf(organizationId, evidence),
+        reason: reasonFromEvidence(evidence[0]),
         source: 'agent_suggested',
         updatedAt,
+        evidence,
       },
     })
   }

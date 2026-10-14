@@ -96,7 +96,7 @@ need no second store to stay true.
 * Neutral, because LlamaIndex stays for loaders and chunking (a
   `SentenceSplitter` per job, no `VectorStoreIndex`), and the
   `BaseRetriever`/`BaseIngestor` seam stays.
-* Neutral, because a collection is now a scope on the points (ADR-0112): every
+* Neutral, because a collection is now a scope on the points (ADR-0114): every
   name is a collection, an empty one has no chunks, and creating one stores
   nothing. A collection's `updated_at` is the newest `indexed_at` its points
   carry; points copied without one never expire through the 24-hour reaper of
@@ -166,7 +166,7 @@ need no second store to stay true.
 
 * The design this decision serves:
   [`qdrant-retrieval-design.md`](../architecture/qdrant-retrieval-design.md).
-* Companion decision: [ADR-0112](0112-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
+* Companion decision: [ADR-0114](0114-retrieval-scope-is-a-payload-filter-compiled-in-one-place.md)
   (scope as a payload filter).
 * On acceptance this supersedes
   [ADR-0072](0072-the-knowledge-layer-has-one-backend-llamaindex.md). The seam

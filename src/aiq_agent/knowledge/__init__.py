@@ -13,7 +13,7 @@ Architecture:
 
     sources/knowledge_layer/src/ # Backend implementations
     ├── llamaindex/              # LlamaIndex readers and chunking, OpenRouter embeddings
-    └── qdrant/                  # The vector store (ADR-0111): every chunk, every read
+    └── qdrant/                  # The vector store (ADR-0113): every chunk, every read
 
 Usage:
     from aiq_agent.knowledge import Chunk, BaseRetriever, get_retriever

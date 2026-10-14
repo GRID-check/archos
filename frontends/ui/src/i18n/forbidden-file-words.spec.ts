@@ -34,6 +34,7 @@ const FILE_NAMESPACES = [
   'knowledge',
   'onboarding',
   'projects',
+  'projectIntake',
   'bim',
   'common',
   'nav',

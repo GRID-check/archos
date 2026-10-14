@@ -11,7 +11,9 @@ not a card that executes itself (ADR-0105). Three kinds exist:
 | `project_profile` | a change to the project's facts, goals, unknowns or assumptions, as a JSON patch on the profile | `project_profile_patch` |
 
 All three share one lifecycle, one table, one set of routes and one receipt
-card. What differs between them is held in one file,
+card. A file operation may also be on the Büroablage, which has no project
+(0146), and Piloti files one of its own whenever an upload lands in the wrong
+folder ([Filing suggestions](#filing-suggestions)). What differs between them is held in one file,
 `frontends/ui/src/lib/proposals/kinds.ts`: the payload schema, who may decide,
 what is refused when it is proposed, the inbox line, and which applier runs.
 The lifecycle in `service.ts` is the same for every kind and asks `kinds.ts`
@@ -30,13 +32,13 @@ deciding person's session, and the decision is one row every reader sees.
 | Piece | Where |
 |---|---|
 | The contract (zod, shared by every slice) | `frontends/ui/src/lib/proposals/types.ts` |
-| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
+| The table and its CHECKs | `frontends/ui/drizzle/0140_proposed_changes.sql`, the kinds and the card index in `0143_proposal_kinds.sql`, the shelf and the trace in `0146_proposal_shelves.sql`; mirrored in `src/lib/db/schema/proposed-changes.ts` |
 | SQL | `src/lib/proposals/repository.ts` |
 | Rules: who may read, who may decide, how apply runs | `src/lib/proposals/service.ts` |
 | What differs per kind: payload, gate, refusal when proposed, summary, applier | `src/lib/proposals/kinds.ts` |
 | The appliers of a note and a profile change | `src/lib/proposals/appliers.ts` |
 | The four file verbs, ported to the server | `src/lib/proposals/executors.ts` |
-| Person routes | `GET /api/proposals/[id]`, `POST …/apply`, `POST …/dismiss` |
+| Person routes | `GET /api/proposals` (a shelf's open proposals), `GET /api/proposals/[id]`, `POST …/apply`, `POST …/dismiss` |
 | Typed client for those routes (the card, the specs) | `src/lib/proposals/client.ts` |
 | Piloti's route | `POST /api/internal/proposals` |
 | Piloti's client, for all three kinds | `src/aiq_agent/tools/proposals_client.py` (`add_card`); the callers are `propose_file_change` (`tools/files/cards.py`), `remember` (`memory/register.py`) and `register_envelope_card` (`cards/envelope.py`) |
@@ -46,17 +48,22 @@ deciding person's session, and the decision is one row every reader sees.
 | The decision score | `frontends/ui/src/lib/langfuse/decision-score.ts`, called from `frontends/ui/src/lib/proposals/service.ts` |
 | Decisions as Piloti reads them | `frontends/ui/src/lib/projects/proposal-decision-rows.ts` (the rows), `frontends/ui/src/lib/projects/proposal-decisions.ts` (the `PROPOSAL_DECISIONS` block) |
 | The receipt card | `frontends/ui/src/features/grid-cards/components/ProposalReceipt.tsx` (the frame), `ProposalReceipts.tsx` (the three bodies), `hooks/use-server-proposal.ts` (the hook) |
+| Piloti's filing suggestions: the trigger, the judgement, the gates, the row | `frontends/ui/src/lib/filing/` (`trigger.ts`, `service.ts`, `plan.ts`, `judge.ts`, `conventions.ts`); the model call `frontends/aiq_api/src/aiq_api/routes/filing_fit.py`; the row `frontends/ui/src/features/documents/components/filing-suggestion.tsx` |
 
 ## The data
 
-`proposed_changes` sits under `grid_secure_table` RLS: the organization, and the
-project's organization. Both foreign keys are composite with the organization
+`proposed_changes` sits under `grid_secure_table` RLS: the organization, and for
+a project's proposal the project's organization; a Büroablage proposal is the
+organization's alone, as a Büroablage folder is (0146). Both foreign keys are
+composite with the organization
 (`projects (id, organization_id)`, `conversations (id, organization_id)`), so a
 row cannot name another tenant's project or conversation.
 
 | Column | Holds |
 |---|---|
-| `project_id` | the project the change is for. Always the turn's, taken from the signed envelope |
+| `project_id` | the project the change is for: the turn's, taken from the signed envelope, or the upload's for a filing suggestion. NULL for a Büroablage proposal |
+| `scope` | the shelf, `project` or `archiv` (0146), `project_folders.scope`'s vocabulary: `project` exactly when there is a project |
+| `origin_trace_id` | the Langfuse trace of the judgement that proposed it, for a proposal no turn made (a filing suggestion); the decision score goes there |
 | `kind`, `payload` | one of the three kinds and its payload, below |
 | `status` | `proposed`, `applied`, `partially_applied`, `failed`, `dismissed` |
 | `proposed_by_kind`, `on_behalf_of` | `piloti` today, and the person whose turn proposed it |
@@ -78,6 +85,10 @@ The CHECKs hold the lifecycle, so no code path can break it:
   `proposed_by_kind` are known values; `payload` is an object.
 - `origin_card_index` is null or not negative, and needs an `origin_message_id`
   (a card index names a card of one answer).
+- `scope` is known and is `project` exactly when `project_id` is set; a
+  Büroablage proposal is a `file_operation` that moves one or more items, every
+  one with `source: buero` (`proposed_changes_archiv_move`, which reads a
+  missing key as a refusal, not as a pass).
 
 `scripts/rls-test-db.sh` refuses each CHECK and each cross-tenant foreign key
 against a real PostgreSQL, applies the down migrations, and re-applies the up
@@ -92,8 +103,14 @@ proposal.
 ### `file_operation`
 
 Payload (`fileOperationPayloadSchema`): `operation` (`move`, `rename`,
-`create_folder`, `assign`), `operations` (one to eight items) and an optional
-`note`. Documents are named by file NAME and folders by PATH, never by id: the
+`create_folder`, `assign`), `operations` (one to eight items, each with an
+optional one-line `reason`), an optional `note`, an optional `new_folder` and
+an optional `basis`. `new_folder` (`{ path, description? }`) is a move's target
+that does not exist yet: applying creates it with its description before the
+first move, so „create this folder and move these files into it" is one
+confirm. It must be the target of every item (422, `proposal-new-folder-mismatch`).
+`basis` (`name` or `content`) marks Piloti's filing suggestion and says what it
+was judged from. Documents are named by file NAME and folders by PATH, never by id: the
 agent's inventory has no ids, and the deciding person's session resolves the
 names when the change is applied. Every item must carry the fields its verb
 needs, or the proposal is refused when it is made (422,
@@ -235,8 +252,9 @@ operation the server did not store stays in the registry (below).
 
 | Act | Takes | Refused with |
 |---|---|---|
-| Read | `project:view` on the project, and `viewer` on the conversation the proposal was made in | 404, for "missing" and "not yours" alike |
-| Apply, dismiss | the read, plus the kind's right (table above) on the project | 403 (`proposal-decider-needs-write`, which names the kind); a closed project gets its own 403 |
+| Read | `project:view` on the project (any member for the Büroablage), and `viewer` on the conversation the proposal was made in; one made in no conversation needs every document it names to resolve for the reader on their shelf | 404, for "missing" and "not yours" alike |
+| Apply, dismiss | the read, plus the kind's right (table above) on the project, or `org:archiv:manage` for the Büroablage | 403 (`proposal-decider-needs-write`, which names the kind); a closed project gets its own 403 |
+| List (`GET /api/proposals?projectId=` or `?shelf=archiv`, optionally `&kind=`) | `project:view` on the project; each open proposal is listed only when the reader may read it, with the documents it names resolved to ids | 400 for a query naming no shelf or two; a proposal the reader may not read is left out |
 
 The conversation counts because the card in that conversation is the
 proposal's surface, and the payload names files, folders, notes or facts. A
@@ -270,7 +288,7 @@ item fails, and its reason says why.
 
    | Verb | Resolves | Calls |
    |---|---|---|
-   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders | `moveDocumentToFolder` |
+   | `move` | the document by name on its shelf (`source`), the folder by path among that shelf's folders; a missing folder the payload names as `new_folder` is made first through the shelf's folder walk (`ensureProjectFolderPaths`, `ensureArchivFolderPaths`) and given its description when this apply made it | `moveDocumentToFolder` |
    | `rename` | the document by name | `renameDocument` |
    | `create_folder` | the parent by path among the project's folders | `createProjectFolder` |
    | `assign` | the document by name, the person by name or email among the assignment candidates and the decider | `addResourceAssignment` |
@@ -410,19 +428,87 @@ it finds the decision on reload, or on the 409 of their click.
   [`langfuse.md`](../observability/langfuse.md)). It is `accepted` when the
   proposal was applied or partly applied, `dismissed` when it was dismissed,
   and nothing when every item failed. It names the proposal and never the
-  decider. The trace is found through the proposal's origin message; no trace
-  id, no score.
+  decider. The trace is the proposal's `origin_trace_id` when it has one (a
+  filing suggestion's `filing-fit` generation), else it is found through the
+  proposal's origin message; no trace id, no score.
 - **The inbox.** A stored proposal makes `piloti.proposal_waiting` for the
   person whose turn proposed it, anchored on the proposal and pointing at the
-  chat it was made in, or at the project when it had none. The line names what
+  chat it was made in. One made in no chat is a filing suggestion: it points at
+  the project's Dateien, or at the Büroablage (`organization`) when it has no
+  project. The line names what
   the proposal touches (`summaryOf` in `kinds.ts`: the first file names and how
   many more, a note's first words, a profile change's title). The item is
   actionable and in the app only. Whoever decides the proposal, that person or
   a colleague who may decide that kind in the project, settles it for everyone
   (`frontends/ui/src/lib/proposals/attention.ts`).
+- **The audit trail.** Filing a proposal is `piloti.proposal.created` (once per
+  card, as the person Piloti acted for), and deciding it `piloti.proposal.decided`
+  (as the decider: how it went, the item counts, a note's memory scope), in the
+  organization's WorkOS audit log; the kind and counts only, never a name or a
+  word of the payload (`frontends/ui/src/lib/proposals/audit.ts`,
+  [the trail](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product)).
+
+## Filing suggestions
+
+Piloti files the office's uploads into well-described folders, and proposes it
+rather than doing it. A folder carries a description (`project_folders.description`,
+0145): what belongs in it. When an upload lands in a folder its description
+says it does not belong in, or at a shelf's root while a folder clearly fits,
+Piloti proposes the folder it belongs in. When nothing fits better it proposes
+nothing: a wrong suggestion costs trust.
+
+**Two moments, one mechanism, one record.** The BFF job `filing_review` runs as
+the uploader:
+
+| When | Basis | Reads | Queued |
+|---|---|---|---|
+| The batch is sealed (`sealOwnUploadBatch`) | `name` | the file names (which passed the name gate, ADR-0086) and the folders' descriptions | `interactive`: the person is still at the upload |
+| The batch is settled (`settleUploadBatches`) | `content` | for documents whose screening passed, what ingestion produced: the Dokumentart (the type tag a person set or ingestion read, which beats the file name), the discipline tags, the summary. Never the bytes | `bulk` |
+
+Each is one bounded call (`POST /v1/filing-fit`, at most 60 documents) on the
+summary model, traced as a `filing-fit` generation with the batch, project,
+shelf and basis. The content basis may withdraw or sharpen what the name basis
+proposed: an open suggestion it no longer supports for every file is deleted
+(`withdrawProposal`, never a decided one, never a chat's) and its files judged
+afresh. **Latency from drop to suggestion:** the runner's poll
+(`GRID_BFF_JOBS_POLL_MS`, 2 s) plus one model call, and the browser asks every
+4 s while an upload is on screen; the service logs the measured time from the
+seal to the stored proposals (`[filing] … ms after the seal`). Not measured
+against a live model in this change.
+
+**What is sent.** The shelf's folders every member may read, with their
+descriptions and the Dokumentarten already filed there; the office's
+conventions for a project shelf: the folder paths and descriptions of up to 20
+of its recent projects the uploader may open (folders under an own access list
+left out), with an Austrian default (Grundlagen, Bestand, Behörde und Bescheide,
+Einreichung, Fachplaner, Ausführung) only when the office has none; and the
+batch's documents. The Büroablage has no conventions: its own folders are the
+structure.
+
+**The gates** (`lib/filing/plan.ts`, pure): nothing on a closed project; nothing
+into or out of a folder not every member may read (ADR-0087, ADR-0088), which is
+never sent either; nothing for a document and target a person dismissed;
+nothing for a document an open proposal already names. The answer is checked
+twice, in the route and in the BFF: a document or folder the input did not name
+is dropped, and so is a move into the folder a document is in.
+
+**One proposal per target folder**, with no conversation, at most eight files
+each, so a person confirms per folder. A convention the shelf does not have is
+proposed as `new_folder`. It shows as a chip on the file's card, list row and
+upload row in Dateien and the Büroablage („→ Bescheide“), whose popover holds
+the move, the reason and „Verschieben" / „Alle 2 verschieben" / „Anlegen und
+verschieben" and „Belassen"; per folder in the filing bar above a folder, in the
+upload tray and on the setup page; all through `useServerProposal`
+([the UI](../ux/file-upload-and-explorer.md#folders-that-say-what-they-hold-and-pilotis-filing-suggestion));
+and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches it off. The receipt card
+(`FileOperationReceipt`) draws a move's `new_folder` („Neuer Ordner“, its path
+and description) above the rows and each item's `reason` under its row, so a
+proposal that carries them reads the same wherever it is shown.
 
 ## What is not done yet
 
-- No route lists a project's open proposals; the card reads its own by id.
+- The agent's `propose_file_change` cannot yet move into a folder its inventory
+  has not seen a document in; `FOLDER_DESCRIPTIONS v1` names described empty
+  folders, `resolve.known_folders()` does not read it.
 - Only Piloti proposes (`proposed_by_kind` is `piloti`). The column and the
   nullable card index exist so a person's proposal needs no migration.

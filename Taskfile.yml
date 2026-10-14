@@ -448,7 +448,7 @@ tasks:
   be:test:migration:
     desc: The Chroma exporter and the whole move (exporter, importer, Qdrant), in a throwaway chromadb environment
     cmds:
-      # chromadb is not a dependency of this repo (ADR-0111): the exporter's own
+      # chromadb is not a dependency of this repo (ADR-0113): the exporter's own
       # PEP 723 pin decides the environment, and pytest's testpaths never reach
       # deploy/, so no other task imports chromadb. The end-to-end test runs the
       # importer in .venv and needs AIQ_QDRANT_TEST_URL (skipped locally without it).
@@ -536,7 +536,7 @@ tasks:
       # Embeds the corpus once with the production model through make_embed_model
       # (cached under .cache/qdrant_parity, about $0.12 cold), writes it into Qdrant
       # through ingestion's write_chunks and reads it through the production
-      # retriever. Chroma is gone (ADR-0111): its numbers from the gate run are the
+      # retriever. Chroma is gone (ADR-0113): its numbers from the gate run are the
       # fixed reference (qdrant_parity/baseline.py). `-- --embedder hashed` runs it
       # keyless as a wiring check only; `-- --variants all` adds the ranking sweep;
       # `-- --qdrant-url URL` points at another server (default $AIQ_QDRANT_TEST_URL
@@ -571,6 +571,19 @@ tasks:
       # Exit 0 = every floor holds; the floors sit just under the last result
       # so a regression fails.
       - '{{.PY}} scripts/decision_eval_holdout.py {{.CLI_ARGS}}'
+
+  be:eval:intake:
+    desc: 'Erfassungs-Agent eval — the real intake agent reads a fixture Wohnbau with planted traps; precision, recall, traps, cost (NEEDS OPENROUTER_API_KEY and bun; skips without the key; no backend)'
+    cmds:
+      # The agent graph as the research worker runs it, a live model through
+      # common/openrouter.py, the fixture behind the reading tools and the BFF's
+      # own needs/record logic under bun (scripts/intake_eval/gate.ts). Exit 1 =
+      # a run missed a floor. A run of the boot model costs about a cent.
+      #   task be:eval:intake -- --runs 3 --out /tmp/intake_eval/before
+      #   task be:eval:intake -- --model anthropic/claude-sonnet-5.5
+      #   task be:eval:intake -- --report /tmp/intake_eval/before/report.json
+      # docs/contributing/testing-and-verification.md, "The intake eval".
+      - '{{.PY}} -m scripts.intake_eval.run {{.CLI_ARGS}}'
 
   be:eval:turn-census:
     desc: 'Turn census — run a chat question through the real agent and count every model call, token and second it cost; writes to /tmp/turn_census unless --out, takes --override KEY VALUE (NEEDS OPENROUTER_API_KEY and the corpus ingested locally)'

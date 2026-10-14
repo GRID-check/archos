@@ -719,8 +719,9 @@ pool; `lib/turns/headless-turn.ts` is the socket client, the store-free
   `duplicate_turn`: done. `RUN_FINISHED{refused}`: recorded `refused`.
   `auth_expired` / `conversation_mismatch`: the job throws, the queue retries
   with a fresh envelope, and the last attempt records `failed`. Each outcome
-  is on the `piloti_wakes` row; one without a turn is also audited as
-  `piloti.wake.suppressed`.
+  is on the `piloti_wakes` row and in the audit trail: one that started as
+  `piloti.wake.started`, one the job refused or gave up on as
+  `piloti.wake.ended`, one held before it was sent as `piloti.wake.suppressed`.
 
 ### `user_message.posthog_session_id`
 

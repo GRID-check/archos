@@ -1,4 +1,4 @@
-"""``knowledge_search``'s narrowing, pushed into the Qdrant query instead of run after it (ADR-0112).
+"""``knowledge_search``'s narrowing, pushed into the Qdrant query instead of run after it (ADR-0114).
 
 On the store this replaced, the human-set facts lived only in Postgres, so
 ``register.search`` fetched three times ``top_k`` and dropped what did not

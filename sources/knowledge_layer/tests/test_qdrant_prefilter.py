@@ -1,4 +1,4 @@
-"""knowledge_search's narrowing as pre-filters inside the Qdrant query (ADR-0112).
+"""knowledge_search's narrowing as pre-filters inside the Qdrant query (ADR-0114).
 
 Pure units pin the translation; the rest run against a real Qdrant (see
 ``test_qdrant_store.py`` for why and how) and drive ``knowledge_search`` itself

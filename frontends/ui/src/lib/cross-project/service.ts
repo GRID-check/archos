@@ -39,7 +39,7 @@
  *
  * ## Cost
  *
- * Qdrant is the one store (ADR-0111), with one shared index (ADR-0112), so a
+ * Qdrant is the one store (ADR-0113), with one shared index (ADR-0114), so a
  * page of up to {@link CROSS_PROJECT_PAGE_PROJECTS} projects, and at most
  * {@link BACKEND_SEARCH_MAX_COLLECTIONS} collections, is ONE search:
  * every collection the reader is cleared for, ranked together, so hits from
@@ -423,7 +423,7 @@ interface SearchedPage {
 }
 
 /**
- * A page of projects in ONE search (ADR-0112): each project is authorized and
+ * A page of projects in ONE search (ADR-0114): each project is authorized and
  * its cleared collections named exactly as its own search names them
  * (`planProjectSearch`), then every collection is ranked together and each
  * project's hits are joined to its screened rows. A shared chat does not even

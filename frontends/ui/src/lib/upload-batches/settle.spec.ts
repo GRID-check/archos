@@ -23,6 +23,8 @@ vi.mock('@/lib/authz/folder-access', () => ({ isFolderVisibleToMember: vi.fn().m
 vi.mock('@/lib/upload-screening/quarantine-audit', () => ({
   auditOwedQuarantines: vi.fn().mockResolvedValue(undefined),
 }))
+// Which projects get a reading is `project-intake/trigger.spec.ts`'s; here, settling hands the batches over.
+vi.mock('@/lib/project-intake/trigger', () => ({ queueIntakeReadsAfterUpload: vi.fn().mockResolvedValue([]) }))
 
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { orgRoleHoldsPermission } from '@/lib/authz/org-role-permissions'
@@ -33,6 +35,7 @@ import { findDocumentInOrg } from '@/lib/documents/repository'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
 import { makeDocument, makeProject } from '@/test-utils/db-fixtures'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
 import { onDocumentsSettled, settleUploadBatches } from './settle'
@@ -115,6 +118,38 @@ describe('settleUploadBatches', () => {
     vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
     await settleUploadBatches('org-1', ['batch-1'])
     expect(reopenCompletedBatches).not.toHaveBeenCalled()
+  })
+})
+
+describe('settleUploadBatches — the intake reads what arrived (ADR-0111)', () => {
+  it('hands the completed batches to the intake trigger after the uploader was told', async () => {
+    const completed = [batch()]
+    vi.mocked(completeSettledBatches).mockResolvedValue(completed)
+
+    await settleUploadBatches('org-1', ['batch-1'])
+
+    expect(queueIntakeReadsAfterUpload).toHaveBeenCalledWith('org-1', completed)
+    expect(vi.mocked(emitInboxItems).mock.invocationCallOrder[0]).toBeLessThan(
+      vi.mocked(queueIntakeReadsAfterUpload).mock.invocationCallOrder[0]
+    )
+  })
+
+  it('keeps the completion when the reading cannot be queued', async () => {
+    vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(queueIntakeReadsAfterUpload).mockRejectedValue(new Error('queue down'))
+
+    await expect(settleUploadBatches('org-1', ['batch-1'])).resolves.toHaveLength(1)
+    expect(reopenCompletedBatches).not.toHaveBeenCalled()
+  })
+
+  it('queues nothing when no batch completed, nor when the uploader could not be told', async () => {
+    await settleUploadBatches('org-1', ['batch-1'])
+    vi.mocked(completeSettledBatches).mockResolvedValue([batch()])
+    vi.mocked(emitInboxItems).mockRejectedValueOnce(new Error('inbox down'))
+    await expect(settleUploadBatches('org-1', ['batch-1'])).rejects.toThrow('inbox down')
+
+    expect(queueIntakeReadsAfterUpload).not.toHaveBeenCalled()
   })
 })
 

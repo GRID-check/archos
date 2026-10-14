@@ -55,6 +55,16 @@ The three answer modes of a project intake question. A Wert becomes a fact, a
 Schätzung an unconfirmed assumption, and noch offen an open question Piloti asks
 about when an answer depends on it.
 
+**Projekterfassung** (project setup from the documents):
+The way into a new project where Piloti reads the project's documents, suggests
+each value with the page it was found on (*Vorschlag*), and asks only the
+*Rückfragen* whose answer would change the Gebäudeklasse; a person confirms.
+The *Einrichtung* (the wizard) is the other way into the same profile. A value
+two documents state differently is a *Widerspruch*, shown, never decided by
+Piloti. A project created as abgeschlossen is set up the same way and closed
+when its Erfassung is finished.
+_Avoid_: wizard, for the Projekterfassung; „Plan" for any of the documents it reads.
+
 **Gebäudeklasse** (building class):
 The OIB classification of a building that many requirements depend on. Piloti
 asks for it when an answer turns on it.
@@ -129,7 +139,8 @@ in the *Prüfansicht*, the document opened full screen, together and live.
 A person can hand an open mark to Piloti (*an Piloti delegieren*): the mark
 keeps its *Zuständige*, and Piloti works it on behalf of the person who
 delegated („Piloti arbeitet daran · für Miriam“) and hands it back when that
-turn has ended, whatever its outcome; taking it back stops Piloti. An answer in
+turn has ended, whatever its outcome, or when Piloti could not start on it at
+all; taking it back stops Piloti. An answer in
 the thread that names Piloti (@Piloti), or answers Piloti's own open Rückfrage,
 *weckt* Piloti: it answers there even when nobody has the chat open (ADR-0106).
 Each change Piloti makes to a mark is recorded with its turn and can be undone

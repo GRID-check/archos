@@ -13,6 +13,7 @@ import { UnprocessableError } from '@/lib/api/errors'
 import { DOCUMENT_WRITE_PERMISSIONS } from '@/lib/authz/folder-access-rule'
 import type { ProjectPermission } from '@/lib/authz/projects'
 import { validateProfilePatchVocabulary } from '@/lib/project-profile/intake-definition'
+import { folderPathKey } from '@/lib/projects/folders'
 import { MEMORY_WRITE_PERMISSIONS } from '@/lib/projects/service'
 import { applyMemory, applyProjectProfile, noteLabel, type ApplyContext } from './appliers'
 import { applyFileOperations, operationLabel, REQUIRED_FIELDS } from './executors'
@@ -23,6 +24,8 @@ import {
   type FileOperationPayload,
   type MemoryPayload,
   type ProjectProfilePayload,
+  type ProposalScope,
+  type ProposalNoticeVariant,
   type ProposedChangeKind,
   type ProposedChangeResult,
 } from './types'
@@ -77,6 +80,44 @@ function requireItemFields(payload: FileOperationPayload): void {
   })
 }
 
+/**
+ * A new folder is the target of a move, and the only one: every item files
+ * into it (422 otherwise). „Create X and move these into it" is one confirm;
+ * a new folder beside moves into other folders would be a second proposal
+ * hidden in the first.
+ */
+function requireNewFolderTarget(payload: FileOperationPayload): void {
+  const folder = payload.new_folder
+  if (!folder) return
+  const wanted = folderPathKey(folder.path)
+  const fits =
+    payload.operation === 'move' &&
+    wanted.length > 0 &&
+    payload.operations.every((item) => folderPathKey(item.target_folder) === wanted)
+  if (!fits) {
+    throw new UnprocessableError('A new folder is the target of every item of a move', {
+      reason: 'proposal-new-folder-mismatch',
+    })
+  }
+}
+
+/**
+ * A Büroablage proposal moves Büroablage documents and nothing else (0146's
+ * `proposed_changes_archiv_move`, refused here first so the answer is a 422
+ * and not a constraint error).
+ */
+function requireArchivMove(typed: KindPayload): void {
+  const fits =
+    typed.kind === 'file_operation' &&
+    typed.payload.operation === 'move' &&
+    typed.payload.operations.every((item) => item.source === 'buero')
+  if (!fits) {
+    throw new UnprocessableError('A proposal on the Büroablage can only move its documents', {
+      reason: 'proposal-archiv-move-only',
+    })
+  }
+}
+
 /** A profile value outside the intake vocabulary is refused when proposed, not first when accepted (422). */
 function requireProfileVocabulary(payload: ProjectProfilePayload): void {
   try {
@@ -89,8 +130,12 @@ function requireProfileVocabulary(payload: ProjectProfilePayload): void {
 }
 
 /** Refuse, when it is proposed, what could only fail when it is applied. */
-export function requireProposable(typed: KindPayload): void {
-  if (typed.kind === 'file_operation') requireItemFields(typed.payload)
+export function requireProposable(typed: KindPayload, scope: ProposalScope = 'project'): void {
+  if (scope === 'archiv') requireArchivMove(typed)
+  if (typed.kind === 'file_operation') {
+    requireItemFields(typed.payload)
+    requireNewFolderTarget(typed.payload)
+  }
   if (typed.kind === 'project_profile') requireProfileVocabulary(typed.payload)
 }
 
@@ -108,7 +153,10 @@ export function summaryOf(typed: KindPayload): string {
       const { operation, operations } = typed.payload
       const names = operations.map((item) => operationLabel(operation, item)).filter(Boolean)
       const shown = names.slice(0, SUMMARY_NAMES).join(', ')
-      return names.length > SUMMARY_NAMES ? `${shown} +${names.length - SUMMARY_NAMES}` : shown
+      const files = names.length > SUMMARY_NAMES ? `${shown} +${names.length - SUMMARY_NAMES}` : shown
+      // A filing suggestion files into one folder: the row names it, as „a.pdf → Bescheide".
+      const target = typed.payload.basis ? operations[0]?.target_folder : null
+      return target ? `${files} → ${target}` : files
     }
     case 'memory':
       return noteLabel(typed.payload.content)
@@ -117,14 +165,28 @@ export function summaryOf(typed: KindPayload): string {
   }
 }
 
+/** The context an apply runs in; a Büroablage proposal has no project (0146). */
+export type KindApplyContext = Omit<ApplyContext, 'projectId'> & { projectId: string | null }
+
+/** The project of a kind that always has one; the CHECKs make a miss a bug, not an outcome. */
+function inProject(context: KindApplyContext): ApplyContext {
+  if (!context.projectId) throw new Error('A memory note or a profile change is always made in a project')
+  return { ...context, projectId: context.projectId }
+}
+
+/** What the proposal changes, as the inbox row words it: a file operation by its verb, the rest by kind. */
+export function noticeVariantOf(typed: KindPayload): ProposalNoticeVariant {
+  return typed.kind === 'file_operation' ? typed.payload.operation : typed.kind
+}
+
 /** Run the kind's applier. Item outcomes are results; a refusal of the decider is thrown. */
-export function applyKind(typed: KindPayload, context: ApplyContext): Promise<ProposedChangeResult[]> {
+export function applyKind(typed: KindPayload, context: KindApplyContext): Promise<ProposedChangeResult[]> {
   switch (typed.kind) {
     case 'file_operation':
-      return applyFileOperations(typed.payload.operation, typed.payload.operations, context)
+      return applyFileOperations(typed.payload, context)
     case 'memory':
-      return applyMemory(typed.payload, context)
+      return applyMemory(typed.payload, inProject(context))
     case 'project_profile':
-      return applyProjectProfile(typed.payload, context)
+      return applyProjectProfile(typed.payload, inProject(context))
   }
 }
