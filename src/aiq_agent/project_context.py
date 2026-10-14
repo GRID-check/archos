@@ -113,9 +113,11 @@ TOOL_CONTEXT_REQUIREMENTS: dict[str, tuple[str, ...]] = {
     # PROJECT's workspace — folders are project-scoped, and the reader's session
     # applies the change against a project — so a run without the project
     # header can only refuse, and refusing on every unattended run is the
-    # failure this table was written for. It echoes no envelope: accepting the
-    # card is the reader's own act, in their own session.
-    "propose_file_change": (PROJECT_ID_HEADER,),
+    # failure this table was written for. The envelope names the person the
+    # proposal is filed for: the BFF stores it as a server proposal under that
+    # person (ADR-0105, `tools/proposals_client.py`), and without one the tool
+    # can offer nothing and says so. Supplied as for `file_draft` below.
+    "propose_file_change": (PROJECT_ID_HEADER, REQUEST_CONTEXT_ENVELOPE_HEADER, REQUEST_CONTEXT_ENVELOPE_SIG_HEADER),
     # Filing a draft into the project, and with `submit` sending it for review
     # (`tools/documents/register.py`). The project header is what makes a filing ADDRESSABLE — a draft is filed INTO
     # a project — so a run without it can only refuse.

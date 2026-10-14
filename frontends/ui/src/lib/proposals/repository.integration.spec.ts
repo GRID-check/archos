@@ -1,7 +1,7 @@
 /**
  * @vitest-environment node
  *
- * Proposed changes (migration 0140) against a REAL Postgres through the
+ * Proposed changes (migrations 0140, 0143) against a REAL Postgres through the
  * restricted runtime role:
  *
  *   GRID_TEST_DATABASE_URL=postgres://grid_app_rw@host:port/grid_app \
@@ -18,7 +18,11 @@
  *   - a settle whose claim was taken over finds nothing;
  *   - another organization reads none of them, and cannot plant one on this
  *     organization's project or conversation;
- *   - a proposal goes with its project, and with its conversation.
+ *   - a proposal goes with its project, and with its conversation;
+ *   - the same card of the same answer is one proposal: a second insert
+ *     returns the first, unchanged, while another card, another answer or
+ *     another organization is its own; a card index needs its answer and is
+ *     never negative; the two newer kinds are stored, an unknown one is not.
  *
  * `task db:test:rls` (scripts/rls-test-db.sh) runs it with the other suites.
  */
@@ -78,7 +82,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     return id
   }
 
-  const propose = (extra: Partial<import('./repository').NewProposedChange> = {}) =>
+  const insert = (extra: Partial<import('./repository').NewProposedChange> = {}) =>
     inOrg(extra.organizationId ?? ORG, () =>
       repo.insertProposedChange({
         organizationId: ORG,
@@ -92,6 +96,7 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
         ...extra,
       })
     )
+  const propose = async (extra: Partial<import('./repository').NewProposedChange> = {}) => (await insert(extra)).row
 
   /** The service's stale line: a claim older than five minutes no longer counts. */
   const stale = () => new Date(Date.now() - 5 * 60 * 1000)
@@ -261,5 +266,67 @@ describe.skipIf(!url)('proposed changes against live Postgres', () => {
     const inDoomed = await propose({ projectId: doomed, originConversationId: null })
     await inOrg(ORG, () => db.execute(sql`delete from projects where id = ${doomed}::uuid`))
     expect(await inOrg(ORG, () => repo.findProposedChange(ORG, inDoomed.id))).toBeNull()
+  })
+
+  describe('one card, one proposal (0143)', () => {
+    const ANSWER = '7d6e5f4a-3b2c-4d1e-8f0a-1b2c3d4e5f60'
+    const MEMORY = { scope: 'project', kind: 'decision', content: 'Flachdach, extensiv begrünt', confidence: 'high' }
+    const PROFILE = { title: 'Geschoße', patch: [{ op: 'replace', path: '/facts/geschosse', value: 4 }] }
+
+    it('returns the first proposal for the same card, unchanged, and tells the caller it made nothing', async () => {
+      const first = await insert({ originMessageId: ANSWER, originCardIndex: 0 })
+      expect(first.created).toBe(true)
+      expect(first.row.originCardIndex).toBe(0)
+      const dismissed = await inOrg(ORG, () => repo.dismissProposedChange(ORG, first.row.id, USER, stale()))
+      expect(dismissed?.status).toBe('dismissed')
+
+      const again = await insert({ originMessageId: ANSWER, originCardIndex: 0, kind: 'memory', payload: MEMORY })
+      expect(again.created).toBe(false)
+      expect(again.row).toMatchObject({ id: first.row.id, kind: 'file_operation', status: 'dismissed', payload: PAYLOAD })
+    })
+
+    it('keeps another card, another answer and a proposal without a card apart', async () => {
+      const a = await insert({ originMessageId: ANSWER, originCardIndex: 1 })
+      const b = await insert({ originMessageId: ANSWER, originCardIndex: 2 })
+      const c = await insert({ originMessageId: '7d6e5f4a-3b2c-4d1e-8f0a-1b2c3d4e5f61', originCardIndex: 1 })
+      const d = await insert({ originMessageId: ANSWER })
+      const e = await insert({ originMessageId: ANSWER })
+      expect(new Set([a, b, c, d, e].map((made) => made.row.id)).size).toBe(5)
+      expect([a, b, c, d, e].every((made) => made.created)).toBe(true)
+    })
+
+    it('lets another organization use the same answer and card', async () => {
+      const ours = await insert({ originMessageId: ANSWER, originCardIndex: 3 })
+      const theirs = await insert({
+        organizationId: OTHER_ORG,
+        projectId: ids.otherProject,
+        originConversationId: ids.otherConversation,
+        originMessageId: ANSWER,
+        originCardIndex: 3,
+      })
+      expect(theirs.created).toBe(true)
+      expect(theirs.row.id).not.toBe(ours.row.id)
+    })
+
+    it('refuses a negative card index and one without its answer, in SQL', async () => {
+      const row = await propose({ originMessageId: ANSWER, originCardIndex: 4 })
+      const update = (set: ReturnType<typeof sql>) =>
+        inOrg(ORG, () => db.execute(sql`update proposed_changes set ${set} where id = ${row.id}::uuid`))
+      await expect(update(sql`origin_card_index = -1`)).rejects.toThrow()
+      await expect(update(sql`origin_message_id = null`)).rejects.toThrow()
+      const other = await propose({ originMessageId: ANSWER, originCardIndex: 5 })
+      await expect(
+        inOrg(ORG, () => db.execute(sql`update proposed_changes set origin_card_index = 4 where id = ${other.id}::uuid`))
+      ).rejects.toThrow()
+    })
+
+    it('stores a memory note and a profile change, and still refuses an unknown kind', async () => {
+      expect(await propose({ kind: 'memory', payload: MEMORY })).toMatchObject({ kind: 'memory', payload: MEMORY })
+      expect(await propose({ kind: 'project_profile', payload: PROFILE })).toMatchObject({
+        kind: 'project_profile',
+        payload: PROFILE,
+      })
+      await expect(propose({ kind: 'steckbrief' as never })).rejects.toThrow()
+    })
   })
 })

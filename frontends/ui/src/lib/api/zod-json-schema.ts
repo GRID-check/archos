@@ -138,6 +138,11 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
           propertyName: (schema as z.ZodDiscriminatedUnion<string, never[]>).discriminator,
         },
       }
+    case z.ZodFirstPartyTypeKind.ZodUnknown:
+      // Any JSON value: the empty schema. Used where the contract deliberately
+      // leaves a value open (a profile patch's `value`, checked by the profile
+      // vocabulary when it is applied, not by its shape).
+      return {}
     default:
       throw new UnsupportedSchemaNodeError(definition.typeName)
   }

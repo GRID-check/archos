@@ -56,6 +56,7 @@ import {
   deleteProjectMemoryItem,
   listProjectMemory,
   updateProjectMemoryItem,
+  type CreateMemoryOptions,
 } from './memory-service'
 import {
   deleteProjectRow,
@@ -651,30 +652,65 @@ export async function getProjectMemory(
   return labelRestrictions(session, projectId, items)
 }
 
-/** Manually add a memory item — user-authored and user-confirmed by definition. */
+/**
+ * The rights that write a project's memory: the panel's add, edit and delete,
+ * and the decision on a memory proposal (`lib/proposals/appliers.ts`), which
+ * must not pass a gate this service then refuses.
+ */
+export const MEMORY_WRITE_PERMISSIONS: readonly ProjectPermission[] = ['project:memory:write', 'project:edit']
+
+/** A note a person writes, or accepts from Piloti: user-authored and user-confirmed by definition. */
+export interface PersonMemoryInput {
+  kind: ProjectMemoryKind
+  content: string
+  confidence?: ProjectMemoryConfidence
+  pinned?: boolean
+  /**
+   * The conversation the note was learned in, when it came from a proposal.
+   * Purging a folder that conversation drew on deletes the note with it
+   * (`deleteMemoryDrawnFrom`), so the link is not decoration.
+   */
+  sourceConversationId?: string | null
+}
+
+const personNote = (session: AuthorizedSession, input: PersonMemoryInput) => ({
+  organizationId: session.organizationId,
+  kind: input.kind,
+  content: input.content,
+  confidence: input.confidence ?? 'medium',
+  pinned: input.pinned ?? false,
+  provenanceType: 'user' as const,
+  verification: 'user_confirmed' as const,
+  createdBy: session.userId,
+  ...(input.sourceConversationId ? { sourceConversationId: input.sourceConversationId } : {}),
+})
+
+/**
+ * Manually add a memory item to a project. `options.supersedesContent` names
+ * the note this one corrects (an accepted memory proposal's `supersedes`).
+ */
 export async function addProjectMemoryItem(
   session: AuthorizedSession,
   projectId: string,
-  input: {
-    kind: ProjectMemoryKind
-    content: string
-    confidence?: ProjectMemoryConfidence
-    pinned?: boolean
-  }
+  input: PersonMemoryInput,
+  options: Pick<CreateMemoryOptions, 'supersedesContent'> = {}
 ): Promise<ProjectMemoryItem> {
-  await requireProjectAccess(session, projectId, ['project:memory:write', 'project:edit'])
-  return createProjectMemoryItem({
-    scope: 'project',
-    projectId,
-    organizationId: session.organizationId,
-    kind: input.kind,
-    content: input.content,
-    confidence: input.confidence ?? 'medium',
-    pinned: input.pinned ?? false,
-    provenanceType: 'user',
-    verification: 'user_confirmed',
-    createdBy: session.userId,
-  })
+  await requireProjectAccess(session, projectId, MEMORY_WRITE_PERMISSIONS)
+  return createProjectMemoryItem({ scope: 'project', projectId, ...personNote(session, input) }, options)
+}
+
+/**
+ * Add a note to the organization's memory, which every project of the tenant
+ * reads. Any member may (the organization memory panel is deliberately not
+ * admin-gated); the tenant is the session's. The panel's route and an accepted
+ * organization memory proposal both write through here.
+ */
+export async function createOrganizationMemoryItem(
+  session: AuthorizedSession,
+  input: PersonMemoryInput,
+  options: Pick<CreateMemoryOptions, 'supersedesContent'> = {}
+): Promise<ProjectMemoryItem> {
+  return createProjectMemoryItem({ scope: 'organization', projectId: null, ...personNote(session, input) }, options)
 }
 
 export async function editProjectMemoryItem(

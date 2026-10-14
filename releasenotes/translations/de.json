@@ -560,6 +560,10 @@
     "de": "Ein Unterordner kann nur einschränken, was sein übergeordneter Ordner erlaubt, und wer einen Ordner nur lesen darf, sieht ihn als „Nur lesen“ markiert, ohne Hochladen, Umbenennen, Verschieben oder Löschen. Nur ein Projekt-Admin, der einen Ordner bearbeiten darf, kann ändern, wer ihn lesen oder bearbeiten darf."
   },
   {
+    "en": "A suggested change to a project's facts is shown field by field, as Vorher and Nachher, so you see what would change before you accept it.",
+    "de": "Eine vorgeschlagene Änderung an den Fakten eines Projekts wird Feld für Feld als Vorher und Nachher gezeigt, damit Sie vor dem Übernehmen sehen, was sich ändern würde."
+  },
+  {
     "en": "A task Piloti starts in a conversation, and a connection message, now appear in that conversation even if you have opened another one in the meantime.",
     "de": "Ein Auftrag, den Piloti in einer Unterhaltung startet, und eine Verbindungsmeldung erscheinen jetzt in dieser Unterhaltung, auch wenn Sie inzwischen eine andere geöffnet haben."
   },
@@ -2898,6 +2902,10 @@
   {
     "en": "When Piloti states another project's facts from its brief (address, start, Bauweise), the answer cites them as \"Projektdaten\" of that project. Before, that citation was removed and the answer said a source could not be verified.",
     "de": "Wenn Piloti Fakten aus dem Briefing eines anderen Projekts nennt (Adresse, Start, Bauweise), weist die Antwort sie als „Projektdaten“ dieses Projekts aus. Bislang entfernt die Antwort diesen Verweis und erklärt, dass keine Quelle verifiziert werden kann."
+  },
+  {
+    "en": "When Piloti suggests a note for the office's memory or a change to a project's facts, the suggestion is now decided once for everyone, and the card shows who decided and when, live for every reader. An office note can be kept for the project only, with „Nur im Projekt merken“.",
+    "de": "Wenn Piloti eine Notiz für das Gedächtnis des Büros oder eine Änderung an den Fakten eines Projekts vorschlägt, wird der Vorschlag jetzt einmal für alle entschieden, und die Karte zeigt live für alle, wer wann entschieden hat. Eine Büronotiz lässt sich mit „Nur im Projekt merken“ nur für das Projekt behalten."
   },
   {
     "en": "When Piloti was updated while your page was open, it now asks you to reload instead of asking you to check your network.",

@@ -9,10 +9,11 @@
  * The repository is an in-memory fake that keeps the compare-and-swap honest
  * (a transition from anything but `proposed`, or past a live claim, finds no
  * row) and checks every row against the CHECKs of migration 0140. The
- * document, folder and assignment services are mocked at their seams; what is
- * under test is that applying calls THEM, with the deciding person's session,
- * in order, resolving names and paths the way the browser did, and records
- * each item's outcome.
+ * document, folder, assignment, memory and profile services are mocked at
+ * their seams; what is under test is that applying calls THEM, with the
+ * deciding person's session, in order, resolving names and paths the way the
+ * browser did, and records each item's outcome; and that each kind is decided
+ * with the right its own service writes with.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -53,6 +54,20 @@ vi.mock('@/lib/proposals/attention', () => ({
   onProposalDecided: vi.fn(async () => undefined),
 }))
 vi.mock('@/lib/langfuse/decision-score', () => ({ recordDecisionScore: vi.fn(async () => undefined) }))
+vi.mock('@/lib/projects/service', () => ({
+  MEMORY_WRITE_PERMISSIONS: ['project:memory:write', 'project:edit'],
+  addProjectMemoryItem: vi.fn(),
+  createOrganizationMemoryItem: vi.fn(),
+}))
+vi.mock('@/lib/project-profile/profile-service', () => ({ patchProjectProfile: vi.fn() }))
+vi.mock('@/lib/conversations/cross-project-use', () => ({ requireMayRememberFrom: vi.fn(async () => undefined) }))
+vi.mock('@/lib/conversations/restricted-egress', () => ({ requireMayLeaveConversation: vi.fn(async () => undefined) }))
+vi.mock('@/i18n/server', () => ({ getLocale: vi.fn(async () => 'de') }))
+// Every spec here clicks as the same person; the mutation budget is not under test.
+vi.mock('@/lib/limits/enforce', async (original) => ({
+  ...(await original<typeof import('@/lib/limits/enforce')>()),
+  enforceLimit: vi.fn(async () => undefined),
+}))
 vi.mock('@/lib/proposals/repository', () => ({
   insertProposedChange: vi.fn(),
   findProposedChange: vi.fn(),
@@ -62,12 +77,26 @@ vi.mock('@/lib/proposals/repository', () => ({
   dismissProposedChange: vi.fn(),
 }))
 
-import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
+import {
+  BadRequestError,
+  ConflictError,
+  ConversationConfinedError,
+  CrossProjectMemoryError,
+  ForbiddenError,
+  NotFoundError,
+} from '@/lib/api/errors'
 import { addResourceAssignment, listAssignmentCandidates } from '@/lib/assignments/service'
 import { listArchivFolders } from '@/lib/archiv/folder-service'
 import { resolveArchivDocumentsByName } from '@/lib/archiv/service'
 import { requireProjectAccess } from '@/lib/authz/projects'
+import { requireMayRememberFrom } from '@/lib/conversations/cross-project-use'
+import { findConversationInOrg } from '@/lib/conversations/repository'
+import type { Conversation } from '@/lib/db/schema'
+import { requireMayLeaveConversation } from '@/lib/conversations/restricted-egress'
+import type { ProjectMemoryItem } from '@/lib/db/schema'
 import type { ProposedChangeRow } from '@/lib/db/schema/proposed-changes'
+import { patchProjectProfile, type PatchedProjectProfile } from '@/lib/project-profile/profile-service'
+import { addProjectMemoryItem, createOrganizationMemoryItem } from '@/lib/projects/service'
 import { moveDocumentToFolder } from '@/lib/documents/move-to-folder'
 import { renameDocument, resolveProjectDocumentsByName } from '@/lib/documents/service'
 import type { ListedDocument } from '@/lib/documents/shelf-listing'
@@ -85,7 +114,7 @@ import {
   settleProposedChange,
 } from '@/lib/proposals/repository'
 import { createProposal } from '@/lib/proposals/service'
-import type { FileOperationPayload } from '@/lib/proposals/types'
+import type { FileOperationPayload, MemoryPayload, ProjectProfilePayload } from '@/lib/proposals/types'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import type { DirectoryPerson } from '@/lib/sharing/types'
@@ -134,6 +163,7 @@ const row = (extra: Partial<ProposedChangeRow> = {}): ProposedChangeRow => ({
   onBehalfOf: 'user_2',
   originConversationId: CONVERSATION,
   originMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d',
+  originCardIndex: null,
   createdAt: new Date('2026-10-13T08:00:00Z'),
   decidedBy: null,
   decidedAt: null,
@@ -616,7 +646,7 @@ describe('what follows a decision (live card, inbox, Langfuse)', () => {
 
 describe('createProposal — the inbox is told', () => {
   it('tells the attention slice, with a line naming the files', async () => {
-    vi.mocked(insertProposedChange).mockResolvedValue(row())
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: row(), created: true })
 
     await createProposal(SESSION as never, {
       projectId: PROJECT,
@@ -639,7 +669,7 @@ describe('createProposal — the inbox is told', () => {
 
   it('does not fail the proposal when the inbox write fails', async () => {
     const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
-    vi.mocked(insertProposedChange).mockResolvedValue(row())
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: row(), created: true })
     vi.mocked(onProposalCreated).mockRejectedValueOnce(new Error('inbox down'))
 
     await expect(
@@ -653,5 +683,337 @@ describe('createProposal — the inbox is told', () => {
     ).resolves.toMatchObject({ id: ID })
     await vi.waitFor(() => expect(warn).toHaveBeenCalled())
     warn.mockRestore()
+  })
+})
+
+const NOTE: MemoryPayload = {
+  scope: 'project',
+  kind: 'decision',
+  content: 'Das Dach wird als extensiv begrüntes Flachdach ausgeführt, mit Attika und innenliegender Entwässerung über zwei Gullys',
+  confidence: 'high',
+  supersedes: 'Das Dach wird als Satteldach ausgeführt',
+}
+
+const PROFILE: ProjectProfilePayload = {
+  title: 'Bundesland: Tirol',
+  rationale: 'Laut Lageplan liegt das Grundstück in Innsbruck.',
+  patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'tirol' }],
+}
+
+const memoryRow = (payload: Partial<MemoryPayload> = {}, extra: Partial<ProposedChangeRow> = {}) =>
+  row({ kind: 'memory', payload: { ...NOTE, ...payload }, ...extra })
+const profileRow = (extra: Partial<ProposedChangeRow> = {}) => row({ kind: 'project_profile', payload: PROFILE, ...extra })
+
+const memoryItem = (id: string) => ({ id }) as Partial<ProjectMemoryItem> as ProjectMemoryItem
+const patched = (extra: Partial<PatchedProjectProfile> = {}) => ({ ...extra }) as PatchedProjectProfile
+
+/** The reader holds `project:view` and exactly these rights; any-of lists pass on one of them. */
+const holding = (...held: string[]) =>
+  vi.mocked(requireProjectAccess).mockImplementation(async (_session, _project, permission) => {
+    const wanted: readonly string[] = Array.isArray(permission) ? permission : [permission]
+    if (wanted.includes('project:view') || wanted.some((slug) => held.includes(slug))) {
+      return { role: 'project-editor', closed: false, readsBecauseClosed: false }
+    }
+    throw new NotFoundError()
+  })
+
+describe('one gate per kind', () => {
+  it('lets a documents-only member decide a file operation, and neither a note nor a profile change', async () => {
+    holding('project:documents:write')
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(true)
+
+    store.set(ID, memoryRow())
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(false)
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    await expect(dismissProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+
+    store.set(ID, profileRow())
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(false)
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    expect(claimProposedChange).not.toHaveBeenCalled()
+    expect(addProjectMemoryItem).not.toHaveBeenCalled()
+    expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+
+  it('lets a memory-only member decide a note and a profile change, and not a file operation', async () => {
+    holding('project:memory:write')
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(false)
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    expect(moveDocumentToFolder).not.toHaveBeenCalled()
+
+    store.set(ID, memoryRow())
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(true)
+    store.set(ID, profileRow())
+    expect((await getProposal(ID, run)).proposal.canDecide).toBe(true)
+    await expect(dismissProposal(ID, run)).resolves.toMatchObject({ proposal: { status: 'dismissed' } })
+  })
+
+  it('asks for the right the memory and profile services write with', async () => {
+    store.set(ID, memoryRow())
+    await getProposal(ID, run)
+    expect(requireProjectAccess).toHaveBeenCalledWith(SESSION, PROJECT, ['project:memory:write', 'project:edit'])
+  })
+})
+
+describe('applying a memory note', () => {
+  beforeEach(() => {
+    vi.mocked(addProjectMemoryItem).mockResolvedValue(memoryItem('mem_project'))
+    vi.mocked(createOrganizationMemoryItem).mockResolvedValue(memoryItem('mem_org'))
+  })
+
+  it('reads as a typed note', async () => {
+    store.set(ID, memoryRow())
+    const { proposal } = await getProposal(ID, run)
+    expect(proposal).toMatchObject({ kind: 'memory', payload: NOTE, canDecide: true })
+  })
+
+  it('files a project note through the panel’s service, linked to its conversation, retiring the note it corrects', async () => {
+    store.set(ID, memoryRow())
+    const { proposal } = await applyProposal(ID, run)
+
+    expect(requireMayRememberFrom).toHaveBeenCalledWith(CONVERSATION, 'org_1')
+    expect(addProjectMemoryItem).toHaveBeenCalledWith(
+      SESSION,
+      PROJECT,
+      { kind: 'decision', content: NOTE.content, confidence: 'high', sourceConversationId: CONVERSATION },
+      { supersedesContent: 'Das Dach wird als Satteldach ausgeführt' }
+    )
+    expect(createOrganizationMemoryItem).not.toHaveBeenCalled()
+    expect(proposal).toMatchObject({
+      status: 'applied',
+      decidedBy: 'user_1',
+      results: [
+        {
+          label: 'Das Dach wird als extensiv begrüntes Flachdach ausgeführt, mit Attika und innenliegender …',
+          ok: true,
+          itemId: 'mem_project',
+          scope: 'project',
+        },
+      ],
+    })
+  })
+
+  it('files an organization note in the office’s memory', async () => {
+    store.set(ID, memoryRow({ scope: 'organization', supersedes: null, content: 'Wir runden Flächen auf zwei Stellen' }))
+    const { proposal } = await applyProposal(ID, run)
+
+    expect(createOrganizationMemoryItem).toHaveBeenCalledWith(
+      SESSION,
+      { kind: 'decision', content: 'Wir runden Flächen auf zwei Stellen', confidence: 'high', sourceConversationId: CONVERSATION },
+      { supersedesContent: null }
+    )
+    expect(addProjectMemoryItem).not.toHaveBeenCalled()
+    expect(proposal.results).toEqual([{ label: 'Wir runden Flächen auf zwei Stellen', ok: true, itemId: 'mem_org', scope: 'organization' }])
+  })
+
+  it('files an organization note in the project when the decider says so', async () => {
+    store.set(ID, memoryRow({ scope: 'organization' }))
+    const { proposal } = await applyProposal(ID, { memoryScope: 'project' }, run)
+
+    expect(addProjectMemoryItem).toHaveBeenCalledWith(SESSION, PROJECT, expect.objectContaining({ kind: 'decision' }), {
+      supersedesContent: NOTE.supersedes,
+    })
+    expect(createOrganizationMemoryItem).not.toHaveBeenCalled()
+    // The scope recorded is the one the decider chose, not the one Piloti asked for.
+    expect(proposal.results).toEqual([expect.objectContaining({ ok: true, itemId: 'mem_project', scope: 'project' })])
+  })
+
+  it('never widens a project note to the office, and refuses a body it does not know', async () => {
+    store.set(ID, memoryRow())
+    const widen = (body: string) => run(`/api/proposals/${ID}/apply`, { method: 'POST', body })
+    expect((await widen(JSON.stringify({ memoryScope: 'organization' }))).status).toBe(400)
+    expect((await widen(JSON.stringify({ memoryScope: 'project', extra: 1 }))).status).toBe(400)
+    expect((await widen('{not json')).status).toBe(400)
+    expect(claimProposedChange).not.toHaveBeenCalled()
+    expect((await widen('')).status).toBe(200)
+    expect(addProjectMemoryItem).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses a note from a conversation that drew on another project’s restricted content, and gives the claim back', async () => {
+    store.set(ID, memoryRow({ scope: 'organization' }))
+    vi.mocked(requireMayRememberFrom).mockRejectedValueOnce(new CrossProjectMemoryError('Nicht aus diesem Gespräch'))
+
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 409, code: 'CROSS_PROJECT_MEMORY' })
+    expect(addProjectMemoryItem).not.toHaveBeenCalled()
+    expect(createOrganizationMemoryItem).not.toHaveBeenCalled()
+    expect(store.get(ID)).toMatchObject({ status: 'proposed', applyingBy: null, applyingSince: null })
+  })
+
+  it('refuses a note from a conversation that drew on a restricted folder of this project: memory is read by everyone in it', async () => {
+    store.set(ID, memoryRow({ scope: 'project' }))
+    vi.mocked(requireMayLeaveConversation).mockRejectedValueOnce(
+      new ConversationConfinedError('memory', 'Nicht aus diesem Gespräch')
+    )
+
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    expect(requireMayLeaveConversation).toHaveBeenCalledWith(
+      { conversationId: CONVERSATION, locale: 'de' },
+      'org_1',
+      'memory'
+    )
+    expect(addProjectMemoryItem).not.toHaveBeenCalled()
+    expect(store.get(ID)).toMatchObject({ status: 'proposed', applyingBy: null, applyingSince: null })
+  })
+
+  it('gives the claim back when the memory service refuses the decider', async () => {
+    store.set(ID, memoryRow())
+    vi.mocked(addProjectMemoryItem).mockRejectedValueOnce(new ForbiddenError('closed'))
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    expect(store.get(ID)).toMatchObject({ status: 'proposed', applyingBy: null })
+  })
+})
+
+describe('applying a profile change', () => {
+  it('patches the profile with its conversation and the decider’s language as the origin', async () => {
+    store.set(ID, profileRow())
+    vi.mocked(patchProjectProfile).mockResolvedValue(patched())
+
+    const { proposal } = await applyProposal(ID, run)
+
+    expect(patchProjectProfile).toHaveBeenCalledWith(SESSION, PROJECT, PROFILE.patch, {
+      conversationId: CONVERSATION,
+      locale: 'de',
+    })
+    expect(proposal).toMatchObject({
+      kind: 'project_profile',
+      status: 'applied',
+      results: [{ label: 'Bundesland: Tirol', ok: true }],
+    })
+  })
+
+  it('patches without an origin when the proposal has no conversation', async () => {
+    store.set(ID, profileRow({ originConversationId: null, originMessageId: null }))
+    vi.mocked(patchProjectProfile).mockResolvedValue(patched())
+    await applyProposal(ID, run)
+    expect(patchProjectProfile).toHaveBeenCalledWith(SESSION, PROJECT, PROFILE.patch, undefined)
+  })
+
+  it('counts a colleague’s concurrent accept of the same change as applied', async () => {
+    store.set(ID, profileRow())
+    vi.mocked(patchProjectProfile).mockResolvedValue(patched({ alreadyApplied: true }))
+    const { proposal } = await applyProposal(ID, run)
+    expect(proposal).toMatchObject({ status: 'applied', results: [{ label: 'Bundesland: Tirol', ok: true }] })
+  })
+
+  it('fails on a version conflict and on a value outside the vocabulary, with the service’s reason', async () => {
+    store.set(ID, profileRow())
+    vi.mocked(patchProjectProfile).mockRejectedValueOnce(new ConflictError('Conflict: profile was modified by another request'))
+    expect((await applyProposal(ID, run)).proposal).toMatchObject({
+      status: 'failed',
+      results: [{ label: 'Bundesland: Tirol', ok: false, reason: 'Conflict: profile was modified by another request' }],
+    })
+
+    store.set(ID, profileRow())
+    vi.mocked(patchProjectProfile).mockRejectedValueOnce(new BadRequestError('Invalid value for "Bundesland"'))
+    expect((await applyProposal(ID, run)).proposal).toMatchObject({
+      status: 'failed',
+      results: [{ ok: false, reason: 'Invalid value for "Bundesland"' }],
+    })
+  })
+
+  it('gives the claim back on a 403, the decider’s or the confined conversation’s, and writes no result', async () => {
+    for (const refusal of [
+      new ForbiddenError('This project is closed and can only be read. Reopen it to change it.'),
+      new ConversationConfinedError('profilePatch', 'Dieses Gespräch bleibt bei seinen Ordnern'),
+    ]) {
+      store.set(ID, profileRow())
+      vi.mocked(patchProjectProfile).mockRejectedValueOnce(refusal)
+      await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+      expect(store.get(ID)).toMatchObject({ status: 'proposed', applyingBy: null, results: null })
+    }
+    expect(releaseProposedChange).toHaveBeenCalledTimes(2)
+  })
+
+  it('ignores a memory scope in the body', async () => {
+    store.set(ID, profileRow())
+    vi.mocked(patchProjectProfile).mockResolvedValue(patched())
+    await expect(applyProposal(ID, { memoryScope: 'project' }, run)).resolves.toMatchObject({
+      proposal: { status: 'applied' },
+    })
+    expect(addProjectMemoryItem).not.toHaveBeenCalled()
+  })
+})
+
+describe('createProposal — every kind, once per card', () => {
+  const create = (input: Partial<Parameters<typeof createProposal>[1]>) =>
+    createProposal(SESSION as never, {
+      projectId: PROJECT,
+      kind: 'file_operation',
+      payload: MOVE,
+      conversationId: null,
+      answerMessageId: null,
+      ...input,
+    })
+
+  it('files a note and a profile change, each with its own inbox line', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: memoryRow(), created: true })
+    await create({ kind: 'memory', payload: NOTE })
+    expect(insertProposedChange).toHaveBeenLastCalledWith(expect.objectContaining({ kind: 'memory', payload: NOTE }))
+    await vi.waitFor(() =>
+      expect(onProposalCreated).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          summary: 'Das Dach wird als extensiv begrüntes Flachdach ausgeführt, mit Attika und innenliegender …',
+        })
+      )
+    )
+
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: profileRow(), created: true })
+    await create({ kind: 'project_profile', payload: PROFILE })
+    expect(insertProposedChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ kind: 'project_profile', payload: PROFILE })
+    )
+    await vi.waitFor(() =>
+      expect(onProposalCreated).toHaveBeenLastCalledWith(expect.objectContaining({ summary: 'Bundesland: Tirol' }))
+    )
+  })
+
+  it('refuses a profile value outside the intake vocabulary when it is proposed', async () => {
+    await expect(
+      create({
+        kind: 'project_profile',
+        payload: { ...PROFILE, patch: [{ op: 'replace', path: '/facts/bundesland/value', value: 'atlantis' }] },
+      })
+    ).rejects.toMatchObject({ status: 422, details: { reason: 'proposal-profile-vocabulary' } })
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('refuses a payload of another kind than it names', async () => {
+    await expect(create({ kind: 'memory', payload: MOVE })).rejects.toThrow()
+    expect(insertProposedChange).not.toHaveBeenCalled()
+  })
+
+  it('passes the card index with its answer, and drops one without an answer', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: row(), created: true })
+    await create({ answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 2 })
+    expect(insertProposedChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({ originMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 2 })
+    )
+    await create({ originCardIndex: 2 })
+    expect(insertProposedChange).toHaveBeenLastCalledWith(expect.objectContaining({ originCardIndex: null }))
+  })
+
+  it('returns the first proposal for the same card, as it stands, and tells the inbox nothing again', async () => {
+    vi.mocked(findConversationInOrg).mockResolvedValue({ id: CONVERSATION } as Partial<Conversation> as Conversation)
+    const first = row({ status: 'dismissed', decidedBy: 'user_2', decidedAt: new Date(), originCardIndex: 0 })
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: first, created: false })
+
+    await expect(
+      create({ conversationId: CONVERSATION, answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
+    ).resolves.toMatchObject({ id: ID, status: 'dismissed' })
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(onProposalCreated).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['another project', { projectId: 'project-other' }],
+    ['another conversation', { originConversationId: 'conversation-other' }],
+    ['another kind', { kind: 'memory' as const, payload: NOTE }],
+  ])('never hands back a first proposal filed for %s under the same card', async (_, foreign) => {
+    vi.mocked(findConversationInOrg).mockResolvedValue({ id: CONVERSATION } as Partial<Conversation> as Conversation)
+    vi.mocked(insertProposedChange).mockResolvedValue({ row: row({ originCardIndex: 0, ...foreign }), created: false })
+
+    await expect(
+      create({ conversationId: CONVERSATION, answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
+    ).rejects.toMatchObject({ details: { reason: 'proposal-card-taken' } })
   })
 })

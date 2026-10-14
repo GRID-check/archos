@@ -6,6 +6,7 @@ import { Chip } from '@/components/ui/chip'
 import { useTranslations } from '@/i18n'
 import { useChatStore } from '@/features/chat/store'
 import { useCardDecision } from '../hooks/use-card-decision'
+import { MemoryReceipt } from './ProposalReceipts'
 import { ProposalShell } from './ProposalShell'
 import { StackedLabel } from './StackedLabel'
 
@@ -27,6 +28,10 @@ interface MemoryProposalCardProps {
    * `GridCards.decisionsMustPersist`.
    */
   decisionsMustPersist?: boolean
+  /** The earlier note this one corrects, quoted; accepting the proposal retires it. */
+  supersedes?: string | null
+  /** The stored proposal this card is a receipt of (ADR-0105). Absent: the fallback below. */
+  proposalId?: string | null
 }
 
 /**
@@ -37,12 +42,35 @@ interface MemoryProposalCardProps {
  * member) or scoped to just this project. Mirrors ProjectProfilePatchCard:
  * propose, never auto-apply.
  *
- * The answer is recorded on the owning message (`useCardDecision`), not in
- * local state: `/api/organization/memory` has no idempotency key, so a card
- * that forgot it had been saved would write the same memory again on the next
- * click after a reload.
+ * A card with a `proposal_id` is the receipt of a stored `memory` proposal
+ * (ADR-0105) and is drawn by {@link MemoryReceipt}: the server files the note in
+ * the deciding person's session and records who decided and when. Without one
+ * it is the fallback below.
  */
-export function MemoryProposalCard({
+export function MemoryProposalCard({ proposalId, ...props }: MemoryProposalCardProps) {
+  return proposalId ? (
+    <MemoryReceipt
+      proposalId={proposalId}
+      title={props.title}
+      content={props.content}
+      kind={props.kind}
+      confidence={props.confidence ?? 'medium'}
+      supersedes={props.supersedes}
+    />
+  ) : (
+    <BrowserWrittenMemoryCard {...props} />
+  )
+}
+
+/**
+ * FALLBACK for answers older than server proposals (and for a proposal the
+ * agent could not store): the browser writes the note through the reader's own
+ * session, and the answer is recorded on the owning message
+ * (`useCardDecision`), not in local state. A card that forgot it had been saved
+ * would ask again after a reload. Kept as it was for those answers; a new
+ * proposal never reaches it when the server could store it.
+ */
+function BrowserWrittenMemoryCard({
   title,
   content,
   kind,
@@ -50,7 +78,7 @@ export function MemoryProposalCard({
   messageId,
   cardKey,
   decisionsMustPersist,
-}: MemoryProposalCardProps) {
+}: Omit<MemoryProposalCardProps, 'proposalId' | 'supersedes'>) {
   const t = useTranslations('chat')
   // Same source as ProjectProfilePatchCard's projectId: the active chat store.
   const projectId = useChatStore((s) => s.projectId)
@@ -132,9 +160,11 @@ export function MemoryProposalCard({
 
       {/* NOTHING TO PRESS when the answer could not be kept (`canDecide`): the
           proposal still reads — this is what the run wants remembered — but a
-          Yes here would POST a memory row and then forget it had, and
-          `/api/organization/memory` inserts unconditionally. The card is asked
-          again where the answer has a home, which is the thread. */}
+          Yes here would write the note and then forget it had. The write
+          de-duplicates (`createProjectMemoryItem` refreshes an existing note
+          instead of adding a second), so a repeat is not a second row, but the
+          card would still ask again after a reload. It is asked again where
+          the answer has a home, which is the thread. */}
       {canDecide && (
         <>
           {/* Project action is its own row so its target scope reads distinctly

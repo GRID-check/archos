@@ -1002,6 +1002,13 @@
       "when": 1792454400028,
       "tag": "0142_piloti_changes",
       "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1792454400029,
+      "tag": "0143_proposal_kinds",
+      "breakpoints": true
     }
   ]
 }

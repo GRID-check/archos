@@ -508,11 +508,18 @@ The agent keeps the brief current by emitting a `project_profile_patch` card
 Piloti's prompt has an explicit "Keeping the Project Brief
 current" policy, and the card model carries the canonical fact-key vocabulary
 (`PROFILE_FACT_VOCABULARY` in `cards/models.py`, mirroring the intake
-definition). The card only proposes: the user's Accept posts the JSON-Patch to
-`POST /api/projects/{id}/profile/patches`, which normalizes bare values into
-full fact objects (`source: 'user_confirmed'` — accepting IS the confirmation),
-applies them through the shared patch engine, and prunes unknowns the patch
-just answered. `GridCards` receives the chat store's `projectId` in both the
+definition). The card only proposes. At the end of the turn the patch is
+stored as a `project_profile` proposal (`register_envelope_card`,
+[`proposed-changes.md`](proposed-changes.md), ADR-0105) and the card carries its
+`proposal_id`; the user's Accept asks the server to apply it, in their session,
+through `patchProjectProfile`, the service behind
+`POST /api/projects/{id}/profile/patches`. That service normalizes bare values
+into full fact objects (`source: 'user_confirmed'` — accepting IS the
+confirmation), applies them through the shared patch engine, and prunes unknowns
+the patch just answered. The proposal records who decided and when, and every
+reader of the thread sees it. A card without a `proposal_id` (an older answer, or
+a run that could not store it) posts the patch to the same route from the
+browser, as before. `GridCards` receives the chat store's `projectId` in both the
 chat bubble and the run block's report (both `AgentResponse.tsx`), so
 Accept is live wherever the card renders.
 

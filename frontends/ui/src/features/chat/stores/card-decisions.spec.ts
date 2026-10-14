@@ -64,6 +64,8 @@ const conversationWithCardMessage = (id: string, messageId: string): Conversatio
           content: 'REI 90',
           kind: 'preference',
           confidence: 'high',
+          supersedes: null,
+          proposal_id: null,
         },
       ],
     },

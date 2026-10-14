@@ -112,6 +112,13 @@ Its own findings, made without being asked for each one, arrive as proposals.
   state on the object, or one generic proposed change applied through the
   object's API) as the next step; the act-or-ask setting then becomes whether
   Piloti's output is born applied with undo or born proposed.
+  *Amended 2026-10-13:* all three have moved. They are the kinds
+  `file_operation`, `memory` and `project_profile` of one proposed change
+  (`proposed_changes`), decided on the server, and a card that carries a
+  `proposal_id` writes no `cardInteractions`. A memory or profile card without
+  one (an older answer) keeps the browser path; a file card without one is
+  read-only. See
+  [`proposed-changes.md`](../architecture/proposed-changes.md).
 
 ### Confirmation
 

@@ -91,6 +91,10 @@
               "de": "Wenn Sie Piloti im Thread einer Anmerkung erwähnen oder Piloti eine offene Anmerkung übergeben, informiert Sie Ihre Inbox, sobald die Aufgabe erledigt ist oder Piloti eine Rückfrage hat. Wenn Sie eine Anmerkung von Piloti zurücknehmen, wird die Arbeit gestoppt."
             },
             {
+              "en": "When Piloti suggests a note for the office's memory or a change to a project's facts, the suggestion is now decided once for everyone, and the card shows who decided and when, live for every reader. An office note can be kept for the project only, with „Nur im Projekt merken“.",
+              "de": "Wenn Piloti eine Notiz für das Gedächtnis des Büros oder eine Änderung an den Fakten eines Projekts vorschlägt, wird der Vorschlag jetzt einmal für alle entschieden, und die Karte zeigt live für alle, wer wann entschieden hat. Eine Büronotiz lässt sich mit „Nur im Projekt merken“ nur für das Projekt behalten."
+            },
+            {
               "en": "A new project can now be created as already closed, so a past project can join the office as a reference in one step. The dialog for creating a project was redesigned: it asks whether the project is still running or already finished, and for a finished one how it ended and when.",
               "de": "Ein neues Projekt kann jetzt bereits als abgeschlossen angelegt werden, sodass ein früheres Projekt in einem Schritt als Referenz ins Büro aufgenommen werden kann. Der Dialog zur Projekterstellung wurde überarbeitet: Er fragt, ob das Projekt noch läuft oder bereits abgeschlossen ist und bei abgeschlossenen Projekten, wie und wann es beendet wurde."
             },
@@ -154,6 +158,10 @@
             {
               "en": "A password-protected PDF asks for its password instead of failing. A PDF that cannot be opened offers to try again, or to open it in the browser.",
               "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
+            },
+            {
+              "en": "A suggested change to a project's facts is shown field by field, as Vorher and Nachher, so you see what would change before you accept it.",
+              "de": "Eine vorgeschlagene Änderung an den Fakten eines Projekts wird Feld für Feld als Vorher und Nachher gezeigt, damit Sie vor dem Übernehmen sehen, was sich ändern würde."
             }
           ]
         },

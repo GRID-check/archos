@@ -1756,3 +1756,65 @@ apply_in grid_chg 0142_piloti_changes.sql
 apply_in grid_chg 0142_piloti_changes.sql
 check_in grid_chg "SELECT count(*) FROM piloti_changes" "0" "0142 re-applies, twice, empty"
 echo "==> 0142 change record and down migration verified"
+
+
+# ---------------------------------------------------------------------------
+# Migration 0143: two more proposal kinds, the card index, and the DOWN.
+#
+# On a database of its own, migrated to 0142. A memory note and a profile
+# change are stored, an unknown kind is not; a card index is never negative and
+# names a card of an answer, so it needs the answer; one card of one answer is
+# one proposal per organization, while another card, another answer, another
+# organization or no card at all is its own. The down deletes the new kinds,
+# forgets the card index, and the up re-applies twice.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0143 proposal kinds and their down migration on grid_kinds"
+migrate_until grid_kinds 0142_piloti_changes
+apply_in grid_kinds 0143_proposal_kinds.sql
+sql_in grid_kinds <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000140', 'org_0140', 'Vorschläge 0143', 'user_1', 'proj_0140'),
+       ('bbbbbbbb-0000-4000-8000-000000000140', 'org_other', 'Fremd 0143', 'user_9', 'proj_other_0140');
+INSERT INTO proposed_changes (id, organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_message_id, origin_card_index)
+VALUES ('c1c1c1c1-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'file_operation',
+        '{"operation":"create_folder","operations":[{"folder_name":"Statik"}]}', 'piloti', 'user_1', NULL, NULL),
+       ('c2c2c2c2-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Flachdach","confidence":"high"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', 0),
+       ('c3c3c3c3-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'project_profile',
+        '{"title":"Bundesland","patch":[{"op":"replace","path":"/facts/bundesland/value","value":"tirol"}]}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', 1),
+       ('c4c4c4c4-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"organization","kind":"preference","content":"1:100","confidence":"medium"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', NULL),
+       ('c5c5c5c5-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"organization","kind":"preference","content":"1:50","confidence":"medium"}', 'piloti', 'user_1',
+        'dddddddd-0000-4000-8000-000000000140', NULL),
+       ('c6c6c6c6-0000-4000-8000-000000000140', 'org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Holzbau","confidence":"high"}', 'piloti', 'user_1',
+        'eeeeeeee-0000-4000-8000-000000000140', 0),
+       ('c7c7c7c7-0000-4000-8000-000000000140', 'org_other', 'bbbbbbbb-0000-4000-8000-000000000140', 'memory',
+        '{"scope":"project","kind":"decision","content":"Fremd","confidence":"low"}', 'piloti', 'user_9',
+        'dddddddd-0000-4000-8000-000000000140', 0);
+SQL
+check_in grid_kinds "SELECT string_agg(kind, ',' ORDER BY id) FROM proposed_changes" "file_operation,memory,project_profile,memory,memory,memory,memory" "0143 stores both new kinds, a card on another answer, two without a card, and the same card in another organization"
+P140="INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of, origin_message_id, origin_card_index) VALUES ('org_0140', 'aaaaaaaa-0000-4000-8000-000000000140'"
+refused_in grid_kinds "$P140, 'steckbrief', '{}', 'piloti', 'user_1', NULL, NULL)" "proposed_changes_kind_known" "an unknown kind was accepted"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', -1)" "proposed_changes_card_index_nonnegative" "a negative card index was accepted"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', NULL, 2)" "proposed_changes_card_index_needs_message" "a card index without its answer was accepted"
+refused_in grid_kinds "$P140, 'project_profile', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)" "uniq_proposed_changes_origin_card" "the same card of the same answer was accepted twice"
+refused_in grid_kinds "UPDATE proposed_changes SET origin_card_index = 1 WHERE id = 'c2c2c2c2-0000-4000-8000-000000000140'" "uniq_proposed_changes_origin_card" "a proposal was moved onto another proposal's card"
+# The service's idempotent insert: the same card is no row, and the first one reads back.
+sql_in grid_kinds <<<"$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0) ON CONFLICT (organization_id, origin_message_id, origin_card_index) WHERE origin_card_index IS NOT NULL DO NOTHING"
+check_in grid_kinds "SELECT count(*) FROM proposed_changes WHERE organization_id = 'org_0140'" "6" "an insert of a card already proposed added a row"
+apply_in grid_kinds 0143_proposal_kinds.down.sql
+check_in grid_kinds "SELECT string_agg(kind, ',') FROM proposed_changes" "file_operation" "down deleted the proposals of the new kinds, and only those"
+check_in grid_kinds "SELECT count(*) FROM information_schema.columns WHERE table_name = 'proposed_changes' AND column_name = 'origin_card_index'" "0" "down dropped the card index"
+check_in grid_kinds "SELECT count(*) FROM pg_indexes WHERE indexname = 'uniq_proposed_changes_origin_card'" "0" "down dropped the card's unique index"
+refused_in grid_kinds "INSERT INTO proposed_changes (organization_id, project_id, kind, payload, proposed_by_kind, on_behalf_of) VALUES ('org_0140', 'aaaaaaaa-0000-4000-8000-000000000140', 'memory', '{}', 'piloti', 'user_1')" "proposed_changes_kind_known" "down left the new kinds allowed"
+apply_in grid_kinds 0143_proposal_kinds.sql
+apply_in grid_kinds 0143_proposal_kinds.sql
+check_in grid_kinds "SELECT count(*) FROM proposed_changes" "1" "0143 re-applies, twice, keeping the file operation"
+sql_in grid_kinds <<<"$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)"
+refused_in grid_kinds "$P140, 'memory', '{}', 'piloti', 'user_1', 'dddddddd-0000-4000-8000-000000000140', 0)" "uniq_proposed_changes_origin_card" "the re-applied 0143 lost the card's unique index"
+echo "==> 0143 proposal kinds and down migration verified"

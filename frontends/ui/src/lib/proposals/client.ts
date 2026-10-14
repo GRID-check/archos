@@ -10,7 +10,7 @@
  * No `server-only` and no drizzle: the browser imports this.
  */
 
-import { proposalResponseSchema, type ProposalResponse } from './types'
+import { proposalResponseSchema, type ApplyProposalRequest, type ProposalResponse } from './types'
 
 /** How a request is made: `fetch` in a browser, the real handler in a route spec. */
 export type ProposalFetch = (path: string, init?: RequestInit) => Promise<Response>
@@ -31,8 +31,17 @@ export class ProposalRequestError extends Error {
 
 export const proposalPath = (id: string) => `/api/proposals/${encodeURIComponent(id)}`
 
-async function request(run: ProposalFetch, path: string, method: 'GET' | 'POST'): Promise<ProposalResponse> {
-  const response = await run(path, { method })
+async function request(
+  run: ProposalFetch,
+  path: string,
+  method: 'GET' | 'POST',
+  payload?: unknown
+): Promise<ProposalResponse> {
+  const init: RequestInit =
+    payload === undefined
+      ? { method }
+      : { method, headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }
+  const response = await run(path, init)
   const body: unknown = await response.json().catch(() => null)
   if (!response.ok) {
     const error = (body ?? {}) as { error?: string; code?: string }
@@ -50,9 +59,22 @@ export function getProposal(id: string, run: ProposalFetch = defaultFetch): Prom
   return request(run, proposalPath(id), 'GET')
 }
 
-/** Apply it in the reader's session; the answer carries one result per item. 409 unless it is `proposed`. */
-export function applyProposal(id: string, run: ProposalFetch = defaultFetch): Promise<ProposalResponse> {
-  return request(run, `${proposalPath(id)}/apply`, 'POST')
+/**
+ * Apply it in the reader's session; the answer carries one result per item.
+ * 409 unless it is `proposed`. `body.memoryScope: 'project'` files an
+ * organization note in the project's memory instead. `applyProposal(id, run)`
+ * still works: a function in second place is the fetch.
+ */
+export function applyProposal(id: string, run?: ProposalFetch): Promise<ProposalResponse>
+export function applyProposal(id: string, body: ApplyProposalRequest, run?: ProposalFetch): Promise<ProposalResponse>
+export function applyProposal(
+  id: string,
+  bodyOrRun?: ApplyProposalRequest | ProposalFetch,
+  maybeRun?: ProposalFetch
+): Promise<ProposalResponse> {
+  const body = typeof bodyOrRun === 'function' ? undefined : bodyOrRun
+  const run = (typeof bodyOrRun === 'function' ? bodyOrRun : maybeRun) ?? defaultFetch
+  return request(run, `${proposalPath(id)}/apply`, 'POST', body)
 }
 
 /** Dismiss it. 409 unless it is `proposed`. */

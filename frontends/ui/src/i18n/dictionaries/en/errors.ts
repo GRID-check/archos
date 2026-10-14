@@ -47,6 +47,8 @@ export const errors = {
     deepResearch:
       'This conversation draws on a folder with restricted access or on another project, so it cannot start a deep research run: the run, its title and its report would be visible to everyone in the project, including people who may not read that folder or project.',
     task: 'This conversation draws on a folder with restricted access or on another project, so it cannot create a task: tasks are visible to everyone in the project, including people who may not read that folder or project.',
+    memory:
+      'This conversation draws on a folder with restricted access or on another project, so nothing from it can be kept in memory: memory is read by everyone in the project or the office, including people who may not read that folder or project.',
     profilePatch:
       'This conversation draws on a folder with restricted access or on another project, so it cannot change the project context: the project context is visible to everyone in the project, including people who may not read that folder or project.',
     filing:

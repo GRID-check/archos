@@ -1,8 +1,10 @@
 /**
- * INTERNAL — Piloti proposes a change to the workspace (ADR-0105). The agent's
- * file tool (`propose_file_change`) is the caller; the card it emits carries
- * the id this returns, and a person applies or dismisses it through
- * `/api/proposals/[id]`.
+ * INTERNAL — Piloti proposes a change to the workspace (ADR-0105): a file
+ * operation, a memory note, or a change to the project's profile, by `kind`.
+ * The agent's tools are the callers; the card they emit carries the id this
+ * returns, and a person applies or dismisses it through `/api/proposals/[id]`.
+ * With `answerMessageId` and `originCardIndex` the create is idempotent: the
+ * same card again returns the first proposal.
  *
  * The acting person is the one the turn's signed envelope names, as a pinned
  * session (ADR-0054 §4): the tool echoes the envelope, never signs one. The
@@ -42,6 +44,7 @@ export const POST = internalApiRoute(
         payload: body.payload,
         conversationId: context.conversationId,
         answerMessageId: body.answerMessageId ?? null,
+        originCardIndex: body.originCardIndex ?? null,
       })
       return { id: row.id, status: row.status }
     })
