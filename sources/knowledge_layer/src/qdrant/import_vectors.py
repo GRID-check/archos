@@ -418,6 +418,12 @@ def import_scope(
     (:func:`apply_facts`), so an edit made while it was copied is not
     overwritten with what the metadata store said at its start.
     ``store`` must carry the collection's own identity (:meth:`CollectionEntry.identity`).
+
+    Each chunk gets its place in its file (``chunk_ordinal``) from the export's
+    order: the exporter pages ``collection.get``, which returns Chroma's
+    insertion order, and ingestion inserted a file's chunks as the chunker cut
+    them. ``_node_content``'s ``start_char_idx`` cannot stand in: it counts
+    within one LlamaIndex Document, and was 0 for most chunks of a real store.
     """
     report = ScopeReport(name)
     newer = ingested_since_export(export, name, store)
@@ -426,12 +432,16 @@ def import_scope(
     facts = {} if dry_run else facts_by_file(name)
     base = scope_enrichment(name)
     ids: set[str] = set()
+    ordinals: dict[str, int] = {}
     for records in export.batches(name):
         report.read += len(records)
         ids.update(record.chunk_id for record in records)
         by_file: dict[str, list[ChunkRecord]] = {}
         for record in records:
-            by_file.setdefault(str(record.metadata.get("file_name") or ""), []).append(record)
+            file_name = str(record.metadata.get("file_name") or "")
+            record.ordinal = ordinals.get(file_name, 0)
+            ordinals[file_name] = record.ordinal + 1
+            by_file.setdefault(file_name, []).append(record)
         for file_name, file_records in by_file.items():
             if file_name in newer:
                 continue

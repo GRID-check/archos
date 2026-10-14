@@ -125,7 +125,7 @@ async def test_a_tracked_file_in_any_status_keeps_its_summary(world):
 async def test_a_file_whose_ingest_is_in_flight_is_not_judged(world):
     """The summary can land before the chunks do; the ingest-status store says a file is coming."""
     world.summaries["proj_a"] = ["uploading.pdf"]
-    world.ingestor = _Ingestor({"proj_a": 0}, {"proj_a": []})
+    world.ingestor = _Ingestor({"proj_a": 3}, {"proj_a": [("other.pdf", FileStatus.SUCCESS)]})
     world.in_flight["proj_a"] = ["uploading.pdf"]
 
     result = await reconcile_orphaned_summaries(None, dry_run=False)
@@ -158,15 +158,76 @@ async def test_forgets_an_encoded_row_under_its_stored_spelling(world):
 
 
 @pytest.mark.asyncio
-async def test_a_collection_the_store_holds_no_chunk_of_loses_every_summary(world):
-    """Same verdict the purge route reaches: no collection, no chunks, no inventory."""
+async def test_a_collection_the_store_holds_no_chunk_of_keeps_every_summary(world):
+    """Absent is not proof of deletion: Qdrant lists no collection without points.
+
+    During the move from Chroma, every collection the import has not reached
+    yet is absent, and so is one a restore has not brought back. Forgetting its
+    rows would wipe summaries, tags, Dokumentart and folders the vectors cannot
+    give back. Deleting a whole collection is the purge route's job, which
+    clears the rows itself (``clear_collection_summaries``).
+    """
     world.summaries["proj_gone"] = ["a.pdf", "b.pdf"]
     world.ingestor = _Ingestor({"proj_other": 5}, {})
 
     result = await reconcile_orphaned_summaries(None, dry_run=False)
 
-    assert sorted(f["file_name"] for f in result["forgotten"]) == ["a.pdf", "b.pdf"]
+    assert result["forgotten"] == []
     assert result["failures"] == []
+    assert result["collections_absent"] == ["proj_gone"]
+    assert world.unregistered == []
+    assert world.summaries["proj_gone"] == ["a.pdf", "b.pdf"]
+
+
+@pytest.mark.asyncio
+async def test_a_collection_listed_with_zero_chunks_is_absent_too(world):
+    world.summaries["proj_empty"] = ["a.pdf"]
+    world.ingestor = _Ingestor({"proj_empty": 0, "proj_other": 5}, {"proj_empty": []})
+
+    result = await reconcile_orphaned_summaries(None, dry_run=False)
+
+    assert result["forgotten"] == []
+    assert result["collections_absent"] == ["proj_empty"]
+    assert world.unregistered == []
+
+
+@pytest.mark.asyncio
+async def test_a_store_that_holds_no_point_at_all_is_a_503(world):
+    """A fresh or not yet imported store lists nothing. Nothing can be judged against it."""
+    world.summaries["proj_a"] = ["a.pdf"]
+    world.summaries["proj_b"] = ["b.pdf"]
+    world.ingestor = _Ingestor({}, {})
+
+    with pytest.raises(HTTPException) as exc:
+        await reconcile_orphaned_summaries(None, dry_run=False)
+
+    assert exc.value.status_code == 503
+    assert world.unregistered == []
+
+
+@pytest.mark.asyncio
+async def test_a_store_whose_collections_all_count_zero_is_a_503(world):
+    world.summaries["proj_a"] = ["a.pdf"]
+    world.ingestor = _Ingestor({"proj_a": 0}, {"proj_a": []})
+
+    with pytest.raises(HTTPException) as exc:
+        await reconcile_orphaned_summaries(None, dry_run=True)
+
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_inside_a_held_collection_only_files_the_store_lacks_are_forgotten(world):
+    """Partly imported store: proj_a is in, proj_b is not. Only proj_a is judged."""
+    world.summaries["proj_a"] = ["live.pdf", "ghost.pdf"]
+    world.summaries["proj_b"] = ["waiting.pdf"]
+    world.ingestor = _Ingestor({"proj_a": 7}, {"proj_a": [("live.pdf", FileStatus.SUCCESS)]})
+
+    result = await reconcile_orphaned_summaries(None, dry_run=False)
+
+    assert result["forgotten"] == [{"collection": "proj_a", "file_name": "ghost.pdf"}]
+    assert result["collections_absent"] == ["proj_b"]
+    assert world.unregistered == [("proj_a", "ghost.pdf")]
 
 
 @pytest.mark.asyncio

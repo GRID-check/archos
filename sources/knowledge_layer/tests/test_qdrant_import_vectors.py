@@ -327,6 +327,41 @@ def test_import_leaves_the_ids_ingestion_wrote_and_merges_the_rest(qdrant, tmp_p
     assert point.payload["paragraph_refs"] == [] and point.payload["project_id"] == "p1"
 
 
+def _ordinals(store: store_module.QdrantStore, scope: str) -> dict[str, int | None]:
+    return {
+        point.payload["chunk_id"]: point.payload.get(schema.CHUNK_ORDINAL_FIELD) for point in store.scroll(scope, None)
+    }
+
+
+def test_each_chunk_gets_its_place_in_its_file_from_the_export_order(qdrant, tmp_path):
+    """The export is Chroma's insertion order, which is the chunker's: the only order a page's chunks have.
+
+    Ten chunks of two files, interleaved, all on page 1, over three batch files.
+    """
+    records = _records(10)
+    for record in records:
+        record["metadata"]["page_label"] = "1"
+
+    assert _load_script().main(["--in", str(_export(tmp_path, {"proj_alpha": records}))]) == 0
+
+    expected = {}
+    for file_name in ("b.pdf", "a.pdf"):
+        in_file = [record["id"] for record in records if record["metadata"]["file_name"] == file_name]
+        expected.update({chunk_id: ordinal for ordinal, chunk_id in enumerate(in_file)})
+    assert _ordinals(_store(), "proj_alpha") == expected
+
+
+def test_a_rerun_numbers_the_points_an_earlier_import_left_without_an_ordinal(qdrant, tmp_path):
+    records = _records(4)
+    store = _store()
+    store.upsert("proj_alpha", [ChunkRecord(r["id"], r["document"], r["embedding"], r["metadata"]) for r in records])
+    assert set(_ordinals(store, "proj_alpha").values()) == {None}
+
+    assert _load_script().main(["--in", str(_export(tmp_path, {"proj_alpha": records}))]) == 0
+
+    assert sorted(_ordinals(store, "proj_alpha").values()) == [0, 0, 1, 1]
+
+
 def test_a_buero_scope_gets_its_office_from_its_name(qdrant, tmp_path):
     assert _load_script().main(["--in", str(_export(tmp_path, {"archiv_org_7": _records(3)}))]) == 0
     assert _store().count("archiv_org_7", {"office_id": "org_7"}) == 3

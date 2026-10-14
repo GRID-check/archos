@@ -91,11 +91,13 @@ def _sleep(seconds: float) -> None:
 
 
 def with_retry(label: str, work: Callable[[], T]) -> T:
-    """Run one write, retrying a transient failure after each pause in :data:`RETRY_BACKOFF_SECONDS`.
+    """Run one write, or a read whose answer decides one, retrying a transient failure after each pause.
 
     Every write this store makes is idempotent (an upsert or set by point id
     or filter, a delete by filter), so a retry after a timeout whose request
-    did land changes nothing.
+    did land changes nothing; a read changes nothing at all. ``work`` must
+    return the whole answer (a list, not a lazy scroll), so a retry starts
+    over. The pauses are :data:`RETRY_BACKOFF_SECONDS`.
     """
     for pause in RETRY_BACKOFF_SECONDS:
         try:

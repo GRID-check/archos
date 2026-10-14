@@ -491,15 +491,6 @@ def _punkt_sort_key(chunk: Any) -> tuple:
     )
 
 
-def _int_metadata(chunk: Any, key: str) -> int:
-    """An integer chunk-metadata field, ``0`` when absent or not a number."""
-    raw = (getattr(chunk, "metadata", None) or {}).get(key)
-    try:
-        return int(str(raw).strip())
-    except ValueError:
-        return 0
-
-
 def _document_order(chunk: Any) -> tuple[int, int]:
     """Where a tenant section sits in its document: section ordinal, then first line.
 
@@ -508,12 +499,16 @@ def _document_order(chunk: Any) -> tuple[int, int]:
     came back in alphabetical order of their headings. ``(0, 0)`` for an OIB chunk,
     which carries neither, so their order is unchanged.
     """
-    return (_int_metadata(chunk, "section_order"), _int_metadata(chunk, "line_start"))
+    from aiq_agent.knowledge.base import section_position
+
+    return section_position(getattr(chunk, "metadata", None))[:2]
 
 
 def _table_part(chunk: Any) -> int:
     """A row group's or section chunk's 1-based position, ``0`` for anything that is not one."""
-    return _int_metadata(chunk, "table_part") or _int_metadata(chunk, "section_part")
+    from aiq_agent.knowledge.base import section_position
+
+    return section_position(getattr(chunk, "metadata", None))[2]
 
 
 def _punkt_depth(chunk: Any) -> int | None:

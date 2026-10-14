@@ -164,8 +164,9 @@ def make_chunk_text_fetcher() -> ChunkTextFetcher | None:
     """Build a best-effort per-file chunk-text fetcher over the Qdrant store.
 
     Returns ``None`` (so callers fall back to summaries throughout) when no
-    store is configured (``AIQ_QDRANT_URL`` unset). The returned callable is
-    itself fail-soft per document.
+    store is configured (``AIQ_QDRANT_URL`` unset). The returned callable
+    answers None for a file with no indexed text and raises when the store
+    cannot be read, which fails that row (``process_row``).
     """
     if not os.environ.get("AIQ_QDRANT_URL", "").strip():
         logger.info("AIQ_QDRANT_URL is not set; classifying from stored summaries only.")
@@ -245,7 +246,11 @@ def process_row(
     # Preferred: indexed chunk text; fallback: the always-present summary.
     text = None
     if text_fetcher is not None:
-        text = text_fetcher(collection, file_name)
+        try:
+            text = text_fetcher(collection, file_name)
+        except Exception as e:  # noqa: BLE001 - an outage is not "no text": never classify from the summary over it
+            logger.warning("[fail] %s/%s the vector store could not be read: %s", collection, file_name, e)
+            return FAILED
     source = "chunks"
     if not text:
         text = doc.summary

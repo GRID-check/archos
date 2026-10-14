@@ -2349,6 +2349,21 @@ class _PreviousVersion:
     preserved: dict[str, str] = field(default_factory=dict)
 
 
+def _tmp_upload_names(collection_name: str, spellings: list[str]) -> list[str]:
+    """The legacy ``tmp…_`` names the metadata rows know for ``spellings``; none when that store fails (logged)."""
+    from aiq_agent.knowledge import find_tmp_upload_names
+
+    try:
+        return list(find_tmp_upload_names(collection_name, spellings))
+    except Exception:  # noqa: BLE001 — it only adds legacy spellings; their version stays beside the re-upload
+        logger.warning(
+            "Could not read the tmp-prefixed names in %s; a legacy version may stay beside its re-upload",
+            collection_name,
+            exc_info=True,
+        )
+        return []
+
+
 def _read_human_set_fields(collection_name: str, found: dict[str, _PreviousVersion]) -> None:
     """Copy what people set on each previous version's row onto its entry. Fail-open.
 
@@ -3310,9 +3325,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     def list_collections(self) -> list[CollectionInfo]:
         """Every collection with at least one chunk, from one facet per physical collection.
 
-        Raises when the store cannot be read. An empty list is a claim that
-        nothing is indexed, and the summary reconcile forgets every row of a
-        collection missing from it (``routes/maintenance.py``).
+        Raises when the store cannot be read. A collection with no point is
+        absent, which cannot tell "deleted" from "not imported yet", so the
+        summary reconcile never judges a collection missing from it, and
+        refuses outright when the list is empty (``routes/maintenance.py``).
         """
         from ..qdrant.schema import Physical
 
@@ -3773,9 +3789,14 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         chunks of the files being replaced, not the collection: it used to read
         every chunk's metadata, which on the OIB corpus was one full scan per
         PDF. A legacy tmp-prefixed version with no metadata row is not found,
-        and stays beside its re-upload as it always did. Defensive: the lookup
-        failing must never fail the ingest — worst case is the pre-existing
-        duplicate behavior, logged.
+        and stays beside its re-upload as it always did, and so is one whose
+        row the metadata store could not be asked about (logged).
+
+        Raises when Qdrant cannot answer after the store's retries
+        (``store.with_retry``). "No predecessor" would let the write go on and
+        leave both versions answering every search; the write needs Qdrant
+        anyway, so the file fails before anything is written, where a person
+        sees it and the previous version stays whole.
 
         The caller holds :func:`_replacement_lock_key`'s lock from here until
         the file has been retired or discarded: two jobs for one name would
@@ -3794,29 +3815,27 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         percent-encoding) is dropped at retirement, and the new row takes them
         over from here.
         """
-        found: dict[str, _PreviousVersion] = {}
-        try:
-            normalize = _normalized_file_name
-            targets = {normalize(name) for name in incoming_names if name}
-            targets.discard("")
-            if not targets:
-                return found
-            from aiq_agent.knowledge import find_tmp_upload_names
+        from ..qdrant.store import with_retry
 
-            spellings = {spelling for name in incoming_names if name for spelling in _stored_spellings(name)}
-            spellings.update(find_tmp_upload_names(collection_name, sorted(spellings)))
-            for chunk_id, stored in self._chunk_ids_of(collection_name, sorted(spellings)):
-                if normalize(stored) not in targets:
-                    continue
-                version = found.setdefault(normalize(stored), _PreviousVersion())
-                version.chunk_ids.append(chunk_id)
-                if stored not in version.stored_names:
-                    version.stored_names.append(stored)
-        except Exception:  # noqa: BLE001 — replacement must never break ingestion
-            logger.warning(
-                "Could not look up previous versions before ingest; duplicate chunks may remain", exc_info=True
-            )
-            return {}
+        found: dict[str, _PreviousVersion] = {}
+        normalize = _normalized_file_name
+        targets = {normalize(name) for name in incoming_names if name}
+        targets.discard("")
+        if not targets:
+            return found
+        spellings = {spelling for name in incoming_names if name for spelling in _stored_spellings(name)}
+        spellings.update(_tmp_upload_names(collection_name, sorted(spellings)))
+        chunks = with_retry(
+            f"read the previous versions in {collection_name}",
+            lambda: self._chunk_ids_of(collection_name, sorted(spellings)),
+        )
+        for chunk_id, stored in chunks:
+            if normalize(stored) not in targets:
+                continue
+            version = found.setdefault(normalize(stored), _PreviousVersion())
+            version.chunk_ids.append(chunk_id)
+            if stored not in version.stored_names:
+                version.stored_names.append(stored)
         if found:
             _read_human_set_fields(collection_name, found)
         return found
@@ -3931,6 +3950,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
         chunk's EMBED rendering (its metadata header, minus the keys
         ``_stamp_chunk_metadata`` excluded, then its text); what is stored is
         the bare text. The model is passed explicitly, never read off a global.
+        ``documents`` are one file's, so a record's ``ordinal`` (its index in
+        the chunker's output) is its place in the file: what orders the chunks
+        of one page, whose node ids are random.
         """
         from llama_index.core.node_parser import SentenceSplitter
         from llama_index.core.schema import MetadataMode
@@ -3949,8 +3971,9 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
                 text=node.get_content(metadata_mode=MetadataMode.NONE),
                 embedding=[float(value) for value in vector],
                 metadata=dict(node.metadata),
+                ordinal=ordinal,
             )
-            for node, vector in zip(nodes, vectors, strict=True)
+            for ordinal, (node, vector) in enumerate(zip(nodes, vectors, strict=True))
         ]
 
     @staticmethod

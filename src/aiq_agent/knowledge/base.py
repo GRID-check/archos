@@ -12,6 +12,7 @@ import time
 from abc import ABC
 from abc import abstractmethod
 from collections.abc import Callable
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC
 from datetime import datetime
@@ -53,6 +54,29 @@ def reading_order(page_label: Any) -> int:
     except (TypeError, ValueError):
         return 0
     return page if page >= 1 else 0
+
+
+def metadata_int(metadata: Mapping[str, Any] | None, key: str) -> int:
+    """An integer chunk-metadata field, ``0`` when absent or not a number (an int, or the string a store hands back)."""
+    raw = (metadata or {}).get(key)
+    try:
+        return int(str(raw).strip())
+    except ValueError:
+        return 0
+
+
+def section_position(metadata: Mapping[str, Any] | None) -> tuple[int, int, int]:
+    """Where a chunk sits inside its page by the structure its chunker stamped: section, first line, part.
+
+    ``section_order`` and ``line_start`` place a tenant section („Geschoße“,
+    „Zeilen 12-30“); the part is a table's row group or a long section's piece
+    (``table_part``, else ``section_part``). ``(0, 0, 0)`` for a chunk with none
+    of them, such as every chunk the ``SentenceSplitter`` cuts from a PDF page:
+    those need their place in the file to be ordered (``chunk_ordinal`` in the
+    Qdrant payload). ``read_passage`` sorts by the same terms.
+    """
+    part = metadata_int(metadata, "table_part") or metadata_int(metadata, "section_part")
+    return (metadata_int(metadata, "section_order"), metadata_int(metadata, "line_start"), part)
 
 
 #: ``Chunk.metadata`` key under which :meth:`BaseRetriever.search_grouped` puts

@@ -14,6 +14,12 @@ whole set. Qdrant orders by an indexed integer field server-side; a point
 written before the field existed has no value, and ``order_by`` would skip it,
 so a set holding such a point is ordered here instead, from the ``page_label``
 the field is derived from.
+
+A reader of a whole document (the Fassung compare, the page reads) needs the
+order WITHIN a page too, which no server-side order gives: point ids are the
+chunker's random node ids. :func:`in_document_order` sorts by page, then by
+the section structure ``read_passage`` sorts by, then by ``chunk_ordinal``,
+the chunk's place in its file.
 """
 
 from __future__ import annotations
@@ -26,8 +32,10 @@ from typing import Any
 from qdrant_client import models
 
 from aiq_agent.knowledge.base import reading_order
+from aiq_agent.knowledge.base import section_position
 
 from .schema import CHUNK_ID_FIELD
+from .schema import CHUNK_ORDINAL_FIELD
 from .schema import READING_ORDER_FIELD
 from .schema import TEXT_FIELD
 from .search import Hit
@@ -61,6 +69,36 @@ def fetch(scope: str, filters: dict[str, Any] | None, limit: int, order_by: str 
     else:
         records = _ordered_here(store, scope, filters, limit)
     return [_hit(record) for record in records]
+
+
+def in_document_order(hits: Sequence[Hit]) -> list[Hit]:
+    """One document's ``hits`` in reading order: page, section structure, then place in the file.
+
+    The page is ``reading_order`` as derived from ``page_label``, so a point
+    written before that field sorts alike. The section structure is
+    ``base.section_position`` (section, first line, part), the terms
+    ``read_passage`` sorts a document by; a ``SentenceSplitter`` chunk of a PDF
+    page carries none of them, so its ``chunk_ordinal`` decides. A point
+    without ``chunk_ordinal`` (written before the field existed, and neither
+    re-ingested nor re-imported since) sorts after the numbered chunks of its
+    place, by chunk id: the same
+    order on every read, though not necessarily the chunker's. Sorted here, not
+    by Qdrant, which orders by one field only; a document's chunks stay within
+    :data:`WHOLE_SET_CAP`.
+    """
+    return sorted(hits, key=_document_key)
+
+
+def _document_key(hit: Hit) -> tuple[Any, ...]:
+    ordinal = hit.payload.get(CHUNK_ORDINAL_FIELD)
+    numbered = isinstance(ordinal, int)
+    return (
+        reading_order(hit.payload.get("page_label")),
+        *section_position(hit.payload),
+        not numbered,
+        ordinal if numbered else 0,
+        hit.chunk_id,
+    )
 
 
 def _orders_server_side(store: QdrantStore, scope: str, filters: dict[str, Any] | None) -> bool:
