@@ -46,17 +46,16 @@ class Gate:
             cwd=REPO_ROOT,
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
-            text=True,
-            encoding="utf-8",
         )
         self._lock = threading.Lock()
 
     def ask(self, request: dict[str, Any]) -> dict[str, Any]:
         with self._lock:
             assert self._process.stdin is not None and self._process.stdout is not None
-            self._process.stdin.write(json.dumps(request, ensure_ascii=False) + "\n")
+            # Bytes on the pipes, UTF-8 by hand: the locale's encoding is not the gate's.
+            self._process.stdin.write((json.dumps(request, ensure_ascii=False) + "\n").encode("utf-8"))
             self._process.stdin.flush()
-            line = self._process.stdout.readline()
+            line = self._process.stdout.readline().decode("utf-8")
         if not line:
             raise GateError("the gate process ended")
         return json.loads(line)
