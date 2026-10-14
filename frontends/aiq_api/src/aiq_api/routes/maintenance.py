@@ -9,7 +9,8 @@ Also reconciles the summaries table against the vector store
 (``reconcile-summaries``): the agent's document inventory is built from
 summary rows alone, so a row whose chunks are gone lists a file nobody can
 retrieve. ``delete_file`` now forgets both together; this sweep catches the
-rows orphaned before it did.
+rows orphaned before it did. It judges files inside collections the store
+holds, never a collection the store lacks (see ``reconcile_orphaned_summaries``).
 """
 
 import asyncio
@@ -119,11 +120,11 @@ def _reconcile_one_collection(
     ingestor: Any,
     collection: str,
     *,
-    live_chunk_counts: dict[str, int],
     dry_run: bool,
 ) -> list[str]:
     """Return the summary filenames in ``collection`` that own no chunks, forgetting them unless ``dry_run``.
 
+    Called only for a collection the store holds chunks of.
     Raises on anything that would make the verdict unsafe. The caller records
     the raise as a per-collection failure and moves on.
     """
@@ -134,21 +135,17 @@ def _reconcile_one_collection(
     if not summaries:
         return []
 
-    held: set[str] = set()
-    if collection in live_chunk_counts:
-        files = ingestor.list_files(collection)
-        # ``list_files`` answers ``[]`` for a collection it could not reach as
-        # well as for an empty one. The store reported chunks a moment ago, so an
-        # empty listing here is a failed read, not an empty collection — and
-        # a failed read must not forget every summary the collection has.
-        if not files and live_chunk_counts[collection] > 0:
-            raise RuntimeError("file listing came back empty for a collection that holds chunks")
-        # ANY tracked status keeps a summary: a file that failed or is still
-        # ingesting has no chunks yet and is not an orphan.
-        held = {_normalized_name(f.file_name) for f in files}
-    # A collection the store holds no chunk of: every summary in it is an orphan
-    # (the purge route clears them the same way). Either way, a file whose
-    # ingest is still running is not judged this sweep.
+    files = ingestor.list_files(collection)
+    # ``list_files`` answers ``[]`` for a collection it could not reach as
+    # well as for an empty one. The store reported chunks a moment ago, so an
+    # empty listing here is a failed read, not an empty collection — and
+    # a failed read must not forget every summary the collection has.
+    if not files:
+        raise RuntimeError("file listing came back empty for a collection that holds chunks")
+    # ANY tracked status keeps a summary: a file that failed or is still
+    # ingesting has no chunks yet and is not an orphan. Neither is a file
+    # whose ingest is still running.
+    held = {_normalized_name(f.file_name) for f in files}
     for name in in_flight_files([collection]).get(collection, []):
         held.add(_normalized_name(name))
 
@@ -161,11 +158,18 @@ def _reconcile_one_collection(
 
 
 async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run: bool) -> dict[str, Any]:
-    """Forget summary rows whose file holds no chunks in the vector store.
+    """Forget summary rows whose file holds no chunks, inside collections the vector store holds.
+
+    A collection with no point in the store is never judged: Qdrant lists no
+    empty collection, so absence is what a collection the import from Chroma
+    has not reached yet looks like, and what one a restore has not brought back
+    looks like. Its rows (summaries, tags, Dokumentart, titles, folders) stay;
+    deleting a whole collection is the purge route's job, which clears them
+    itself. Those collections are reported in ``collections_absent``.
 
     Fails per collection, never as a whole: one unreachable collection is
-    reported in ``failures`` and the others are still swept. The one
-    whole-request failure is a vector store that cannot be listed at all,
+    reported in ``failures`` and the others are still swept. The request fails
+    whole (503) when the store cannot be listed, or holds no point at all,
     because then nothing can be judged.
     """
     from aiq_agent.knowledge import factory as knowledge_factory
@@ -180,18 +184,26 @@ async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run
     except Exception as exc:
         logger.warning("reconcile-summaries: could not list vector-store collections: %s", exc)
         raise HTTPException(status_code=503, detail="Vector store unavailable; nothing reconciled") from exc
+    if not any(count > 0 for count in live_chunk_counts.values()):
+        # An empty store is a fresh or not yet imported one far more often than
+        # an office that deleted everything; refusing costs nothing either way.
+        logger.warning("reconcile-summaries: the vector store holds no point; nothing reconciled")
+        raise HTTPException(status_code=503, detail="Vector store holds no point; nothing reconciled")
 
     targets = collections if collections is not None else knowledge_factory.list_summary_collections()
 
     forgotten: list[dict[str, str]] = []
     failures: list[dict[str, str]] = []
+    absent: list[str] = []
     for collection in targets:
+        if live_chunk_counts.get(collection, 0) <= 0:
+            absent.append(collection)
+            continue
         try:
             orphans = await asyncio.to_thread(
                 _reconcile_one_collection,
                 ingestor,
                 collection,
-                live_chunk_counts=live_chunk_counts,
                 dry_run=dry_run,
             )
         except Exception as exc:
@@ -216,6 +228,7 @@ async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run
         "orphans_forgotten": 0 if dry_run else len(forgotten),
         "forgotten": forgotten,
         "failures": failures,
+        "collections_absent": absent,
     }
 
 

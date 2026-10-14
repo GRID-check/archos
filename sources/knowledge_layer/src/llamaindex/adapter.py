@@ -3310,9 +3310,10 @@ class LlamaIndexIngestor(TTLCleanupMixin, BaseIngestor):
     def list_collections(self) -> list[CollectionInfo]:
         """Every collection with at least one chunk, from one facet per physical collection.
 
-        Raises when the store cannot be read. An empty list is a claim that
-        nothing is indexed, and the summary reconcile forgets every row of a
-        collection missing from it (``routes/maintenance.py``).
+        Raises when the store cannot be read. A collection with no point is
+        absent, which cannot tell "deleted" from "not imported yet", so the
+        summary reconcile never judges a collection missing from it, and
+        refuses outright when the list is empty (``routes/maintenance.py``).
         """
         from ..qdrant.schema import Physical
 
