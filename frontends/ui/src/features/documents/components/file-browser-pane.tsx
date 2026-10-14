@@ -21,6 +21,7 @@ import { FileCard, type FileCardProps } from './file-card'
 import { FileGrid, FileCardSkeleton } from './file-grid'
 import { FileListSkeleton, FileListView } from './file-list-view'
 import { FolderActionsTrigger, FolderObjectMenu } from './folder-object-menu'
+import { FolderDescriptionLine } from './folder-description-dialog'
 import { listingActionEntries } from './listing-action-entries'
 import { NewFolderDialog } from './new-folder-dialog'
 import { DEFAULT_FILE_SORT, sortFiles, type FileSort } from '../lib/file-sort'
@@ -57,6 +58,12 @@ export interface FolderNavigation {
    * project's folders only: the Archiv's are governed by who manages it.
    */
   onEditFolderAccess?: (folderId: string) => void
+  /**
+   * Open the folder's description (migration 0145): „Beschreibung …" in its
+   * menu and the edit on the line at the top of the folder. Absent for a
+   * reader who may not write the shelf.
+   */
+  onDescribeFolder?: (folderId: string) => void
   /**
    * What the reader may do at the project root (ADR-0088): `read` hides the
    * root's upload and new-folder affordances. Absent reads as `write`; each
@@ -414,6 +421,11 @@ export function FileBrowserPane({
         onOpen={() => folderNav.onNavigate(folder.id)}
         onNewInside={() => setCreateFolderIn(folder.id)}
         onRename={() => setEditingFolderId(folder.id)}
+        onDescribe={
+          folderNav.onDescribeFolder && folder.access !== 'read'
+            ? () => folderNav.onDescribeFolder?.(folder.id)
+            : undefined
+        }
         onMove={
           onDropFolderInFolder
             ? (parentId) => void onDropFolderInFolder(folder.id, parentId)
@@ -584,6 +596,8 @@ export function FileBrowserPane({
   }
 
   const searching = query.trim() !== ''
+  const currentFolder =
+    folderNav && currentFolderId ? (folderNav.folders.find((folder) => folder.id === currentFolderId) ?? null) : null
   const levelEmpty = files.length === 0 && childFolders.length === 0 && !paging?.hasMore
 
   // The end of a paged level or search: the next page when the reader gets there.
@@ -629,6 +643,15 @@ export function FileBrowserPane({
       {/* What Piloti knows about the level's whole subtree. Hidden while a
           query runs for the same reason the breadcrumb is: the query is the
           context then, and its results span the corpus. */}
+      {currentFolder && !semantic.active && !searching && (
+        <div className={`${CONTENT_MAX} px-4 pt-3`}>
+          <FolderDescriptionLine
+            folder={currentFolder}
+            canEdit={Boolean(folderNav?.onDescribeFolder) && writableHere}
+            onEdit={() => folderNav?.onDescribeFolder?.(currentFolder.id)}
+          />
+        </div>
+      )}
       {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4`}>{brief}</div>}
 
       <ActionMenu mode="context" entries={listingEntries}>

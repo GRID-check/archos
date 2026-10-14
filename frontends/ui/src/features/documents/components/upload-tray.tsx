@@ -24,6 +24,7 @@ import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes, formatDurationShort, formatTransferRate } from '@/lib/format'
 import { cn } from '@/lib/utils'
+import { FilingSuggestionSlot } from './filing-suggestion'
 
 /**
  * The upload surface.
@@ -568,6 +569,9 @@ function UploadRow({
       {isDeterminate(phase) && (
         <TrackBar percent={percent} sweeping={false} className="absolute inset-x-4 bottom-0 h-0.5 w-auto rounded-full" />
       )}
+
+      {/* Where Piloti would file it, while the person is still at the upload. */}
+      {!isFailed && !isHeldBack && <FilingSuggestionSlot documentId={file.serverFileId} className="mx-4 mb-2 ml-[50px]" />}
 
       <AnimatePresence initial={false}>
         {(isFailed && file.errorMessage) || isHeldBack ? (

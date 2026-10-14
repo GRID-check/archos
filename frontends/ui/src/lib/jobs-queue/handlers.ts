@@ -14,8 +14,9 @@
  * in the meantime must not have it carry on with the rights they had when they
  * clicked. The services the handlers call then check access per document
  * exactly as they do for a request. `purge_binned_chunks` and
- * `placement_reingest` walk as the system, `project_intake_read` is one step
- * as the uploader, and the other kinds are single steps run as the system
+ * `placement_reingest` walk as the system, `project_intake_read` and
+ * `filing_review` are one step as the uploader, and the other kinds are single
+ * steps run as the system
  * (see `./types.ts`).
  */
 
@@ -36,10 +37,12 @@ import { runReportFilingJob } from '@/lib/tasks/service'
 import { runPilotiWake } from '@/lib/annotations/wake-job'
 import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
+import { runFilingReviewSlice } from '@/lib/filing/job'
 import { isLastAttempt } from './attempts'
 import {
   bimExtractPayloadSchema,
   fileResearchReportPayloadSchema,
+  filingReviewPayloadSchema,
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
   pilotiWakePayloadSchema,
@@ -158,4 +161,5 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   piloti_wake: pilotiWakeHandler,
   piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
   project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
+  filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
 }

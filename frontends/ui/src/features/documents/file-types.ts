@@ -12,6 +12,8 @@ export interface FolderItem {
   parentId: string | null
   name: string
   path: string
+  /** What belongs in it, in a person's words (migration 0145); null or absent when nobody described it. */
+  description?: string | null
   createdAt?: string
   updatedAt?: string
   /**

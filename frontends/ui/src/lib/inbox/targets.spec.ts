@@ -66,6 +66,12 @@ describe('the organization target', () => {
     )
   })
 
+  it('deep-links a Büroablage filing suggestion to the Büroablage, where its file row carries it', async () => {
+    const access = await organizationTarget.resolve(makeSession(), 'org_1')
+
+    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/archiv')
+  })
+
   it('falls back to the organization overview for a type with no destination', async () => {
     const access = await organizationTarget.resolve(makeSession(), 'org_1')
 
@@ -254,10 +260,10 @@ describe('where an anchor lands (marks, proposals and Fassungen anchor rows too)
     expect(await INBOX_TARGET_REGISTRY.document.resolve(makeSession(), 'res_1')).toBeNull()
   })
 
-  it('sends a proposal with no chat to the project chat, and redacts it for a reader who cannot view the project', async () => {
+  it('sends a proposal with no chat (a filing suggestion) to the project files, and redacts it for a reader who cannot view the project', async () => {
     vi.mocked(requireProjectAccess).mockResolvedValueOnce({ role: 'project-viewer', closed: false, readsBecauseClosed: false })
     const access = await INBOX_TARGET_REGISTRY.project.resolve(makeSession(), 'proj_1')
-    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/projects/proj_1/chat')
+    expect(access!.deepLink({ itemType: 'piloti.proposal_waiting', anchorId: 'prop-1' })).toBe('/app/projects/proj_1/files')
 
     vi.mocked(requireProjectAccess).mockRejectedValueOnce(new Error('forbidden'))
     expect(await INBOX_TARGET_REGISTRY.project.resolve(makeSession(), 'proj_1')).toBeNull()

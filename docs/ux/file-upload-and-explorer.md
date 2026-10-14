@@ -434,6 +434,41 @@ back, still being read, or not in the knowledge base is counted. Its tags,
 disciplines, content kinds and summary stay out of the brief. A document the
 content check has not released cannot reach the reader through the brief.
 
+## Folders that say what they hold, and Piloti's filing suggestion
+
+**Preview:** `/dev/filing-suggestions`
+
+A folder carries a short description of what belongs in it (migration 0145),
+on both shelves. It shows as one muted line on the folder's tile and row, and
+at the top of the folder („Bescheide und Stellungnahmen der Baubehörde …"). A
+reader who may write the folder edits it there („Beschreibung bearbeiten", or
+„Beschreiben, was hierher gehört" on an undescribed folder) and from the
+folder's menu („Beschreibung …"); a reader who may only read sees the text and
+no way to change it, and an undescribed folder shows them nothing. The dialog
+folds whitespace, clears the description when emptied and refuses more than
+500 characters before it asks the server.
+
+Piloti reads the descriptions when it suggests where an upload belongs
+([`proposed-changes.md`](../architecture/proposed-changes.md#filing-suggestions)).
+The suggestion reaches the person **where they are**: on the row of the file
+in the upload tray, seconds after the last byte, and later on the file's row in
+the list view and on its card. It is one quiet line, not a card: Piloti's
+glyph, „Passt eher in „Bescheide““ (or „Passt in einen neuen Ordner „…““),
+the reason in one muted line („… · mit 1 weiteren Datei" when the same folder
+gets more files), and the answer: „Verschieben", „Alle 2 verschieben" or
+„Anlegen und verschieben", and „Belassen". One proposal per target folder, so
+one click moves every file Piloti would put there. The line is the proposal
+itself (`useServerProposal`): a decision here is the same record, inbox item
+and Langfuse score as anywhere. After a decision the line says what happened
+(„In „Bescheide“ verschoben.", „Bleibt, wo es ist.") until the shelf re-reads
+it away. A reader the server says may not decide sees the suggestion with
+„Verschieben dürfen nur Personen, die hier ablegen dürfen." and no buttons.
+
+While an upload is on screen the shelf asks for its open suggestions every
+4 seconds (`useFilingSuggestions`); otherwise when the shelf is shown and after
+a change. On a narrow row the answer wraps under the text, and a long button
+label wraps inside the button rather than out of the card.
+
 ## Fassungen: a suggestion, then a person's link
 
 feld72 asked for „eine Logik wie bei Planfred“: only the newest state of a
@@ -573,6 +608,8 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | Concern | Module |
 |---|---|
 | Byte-level upload transport (the only XHR in the app) | `src/lib/http/xhr-upload.ts` |
+| A folder's description: the line, the dialog, the edit (`describe`) | `src/features/documents/components/folder-description-dialog.tsx`; `src/features/documents/hooks/use-folder-tree.ts` |
+| Piloti's filing suggestion on a row: the slot, the line, the shelf's open suggestions | `src/features/documents/components/filing-suggestion.tsx`; `src/components/ui/inline-suggestion.tsx` (the atom); `src/features/documents/hooks/use-filing-suggestions.ts`; `src/features/documents/lib/filing-suggestions.ts` |
 | The folder brief: a folder's subtree tally, the brief, what each count selects | `src/features/documents/lib/folder-knowledge.ts`; `src/features/documents/components/folder-brief.tsx` |
 | Revision series read from file names (TS twin of `sources/knowledge_layer/src/revision_series.py`) | `src/lib/documents/revision-series.ts` |
 | The preview's Fassungen und Freigabe section; the timeline rule; the lifecycle data; the link request | `src/features/documents/components/document-fassungen.tsx`; `src/features/documents/lib/fassung-timeline.ts`; `src/features/documents/hooks/use-document-lifecycle.ts`; `src/features/documents/lib/fassung-request.ts` |

@@ -303,8 +303,9 @@ export async function buildProposalDecisionsBlock(
 
 /**
  * The memory channel, as one header value: the digest, what the project decided
- * about the agent's own proposals, and what a reviewer decided about the drafts
- * this conversation filed (`lib/documents/review-decisions.ts`).
+ * about the agent's own proposals, what a reviewer decided about the drafts
+ * this conversation filed (`lib/documents/review-decisions.ts`), and what a
+ * person wrote each folder holds (`lib/filing/folder-descriptions-block.ts`).
  *
  * Three blocks on one channel rather than three headers, for the reason the
  * second one is here at all: `x-grid-project-memory` already reaches every
@@ -318,8 +319,9 @@ export function composeMemoryContext(
   digest: string | null,
   decisions: string | null,
   reviewDecisions: string | null = null,
+  folderDescriptions: string | null = null,
 ): string | null {
-  const parts = [digest, decisions, reviewDecisions].filter((part): part is string =>
+  const parts = [digest, decisions, reviewDecisions, folderDescriptions].filter((part): part is string =>
     Boolean(part && part.trim()),
   )
   return parts.length > 0 ? parts.join('\n\n') : null

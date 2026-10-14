@@ -13,6 +13,7 @@ import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
+import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
 
@@ -46,7 +47,7 @@ export async function loadTurnContext(
     }
   }
 
-  const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects] = await Promise.all([
+  const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders] = await Promise.all([
     projectId ? loadProjectPromptView(projectId, organizationId) : Promise.resolve(null),
     resolveOrgInstructions(organizationId),
     buildProjectMemoryDigest(projectId ?? undefined, organizationId, { query: input.query || undefined }),
@@ -62,10 +63,12 @@ export async function loadTurnContext(
     conversationId ? drewOnOtherProjects(conversationId, organizationId) : Promise.resolve(false),
     // The office's closed projects, most like this one first: what the agent may look into on its own.
     advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null)),
+    // What a person wrote each folder holds, beside the tree the inventory shows.
+    advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
   ])
   return {
     projectContext,
-    projectMemory: composeMemoryContext(digest, decisions, reviewDecisions),
+    projectMemory: composeMemoryContext(digest, decisions, reviewDecisions, folders),
     orgInstructions,
     drewOnOtherProjects: drewOnOthers,
     referenceProjects,

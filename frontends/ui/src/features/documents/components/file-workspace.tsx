@@ -83,6 +83,10 @@ import { withoutOlderFassungen } from '../lib/fassung-chain'
 import { sortedFolderDestinations } from '../lib/folder-path-label'
 import { FileSearchField } from './file-search-bar'
 import { FolderAccessDialog } from './folder-access-dialog'
+import { FolderDescriptionDialog } from './folder-description-dialog'
+import { FilingSuggestionsProvider } from './filing-suggestion'
+import { useFilingSuggestions } from '../hooks/use-filing-suggestions'
+import type { ProposalListQuery } from '@/lib/proposals/types'
 import { FolderUploadDialog } from './folder-upload-dialog'
 import { ProjectUppyUpload } from './project-uppy-upload'
 import { UploadTray } from './upload-tray'
@@ -476,6 +480,22 @@ export function FileWorkspace({
   // office file read from its PDF rendition).
   useSettleTrackedUploads(paneFiles, activeUploads)
 
+  // Piloti's filing suggestions for this shelf, on the file rows and the tray's
+  // rows. Asked again every few seconds while an upload is on screen: the
+  // judgement from the names runs as soon as the batch is sealed.
+  const filingQuery = useMemo<ProposalListQuery>(
+    () => (shelf.projectId ? { projectId: shelf.projectId } : { shelf: 'archiv' }),
+    [shelf.projectId]
+  )
+  const filing = useFilingSuggestions({ query: filingQuery, refreshKey: files.length, watching: activeUploads.length > 0 })
+  const { reload: reloadFiling } = filing
+  const onFilingSettled = useCallback(() => {
+    void reloadAll()
+    reloadFiling()
+  }, [reloadAll, reloadFiling])
+  /** The folder whose description is being written (migration 0145). */
+  const [describingFolderId, setDescribingFolderId] = useState<string | null>(null)
+
   // A level the reader may only read (ADR-0088) takes no dropped files. The
   // server refuses either way; this keeps the surface from offering it.
   const { isDragging, isUnsupportedDrag, dragHandlers } = useFileDragDrop({
@@ -694,6 +714,7 @@ export function FileWorkspace({
   const wrapFileRow = useCallback((file: FileItem, row: ReactNode) => objectMenu(file, row, true), [objectMenu])
 
   return (
+    <FilingSuggestionsProvider byDocument={filing.byDocument} onSettled={onFilingSettled}>
     <div className="relative flex h-full flex-col" {...(canManage ? dragHandlers : {})} data-testid="workspace-dropzone">
       {canManage && isDragging && (
         <FileDropOverlay
@@ -806,6 +827,7 @@ export function FileWorkspace({
                       onRenameFolder: tree.rename,
                       onDeleteFolder: tree.remove,
                       readOnly: !canManage,
+                      onDescribeFolder: canManage ? setDescribingFolderId : undefined,
                       ...access.folderNav,
                     },
                   })}
@@ -837,6 +859,13 @@ export function FileWorkspace({
         kind={shelfUpload.decision.kind}
         onReleaseChange={shelfUpload.onReleaseChange}
         onFassungChange={shelfUpload.onFassungChange}
+      />
+
+      {/* What belongs in a folder (migration 0145), on both shelves. */}
+      <FolderDescriptionDialog
+        folder={folders.find((folder) => folder.id === describingFolderId) ?? null}
+        onOpenChange={(next) => !next && setDescribingFolderId(null)}
+        onSave={tree.describe}
       />
 
       {/* Who may read and write a folder (ADR-0088), a project's only. Saving
@@ -891,6 +920,7 @@ export function FileWorkspace({
 
       {compareElement}
     </div>
+    </FilingSuggestionsProvider>
   )
 }
 

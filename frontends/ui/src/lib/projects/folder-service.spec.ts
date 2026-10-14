@@ -56,6 +56,7 @@ const row = (id: string) => ({
   parentId: null,
   name: 'Berichte',
   path: 'Berichte',
+  description: null,
   accessMode: 'inherit' as const,
   createdAt: new Date('2026-08-20T00:00:00Z'),
   updatedAt: new Date('2026-08-20T00:00:00Z'),
