@@ -545,6 +545,8 @@ export const chat = {
         create_folder: 'New folder',
         assign: 'Assign',
       },
+      // A move that creates its target folder first: it is named before the rows.
+      newFolder: 'New folder',
       // The project root has a path of nothing; it needs a name a person uses.
       root: 'Top level',
       applied: {

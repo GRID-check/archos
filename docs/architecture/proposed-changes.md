@@ -498,14 +498,13 @@ proposed as `new_folder`. It shows on the file row in Dateien and the
 Büroablage, on the card, and in the upload tray („Passt eher in „Bescheide““,
 the reason, „Verschieben" / „Alle 2 verschieben" / „Anlegen und verschieben" and
 „Belassen"), through `useServerProposal`; and in the inbox, pointing at the
-shelf. `GRID_FILING_SUGGESTIONS=off` switches it off.
+shelf. `GRID_FILING_SUGGESTIONS=off` switches it off. The receipt card
+(`FileOperationReceipt`) draws a move's `new_folder` („Neuer Ordner“, its path
+and description) above the rows and each item's `reason` under its row, so a
+proposal that carries them reads the same wherever it is shown.
 
 ## What is not done yet
 
-- The chat's receipt card (`FileOperationReceipt`) does not show a payload's
-  `new_folder` or its items' `reason`; a filing suggestion is not shown in a
-  chat, but a chat proposal that carried them would show them only on the file
-  row.
 - The agent's `propose_file_change` cannot yet move into a folder its inventory
   has not seen a document in; `FOLDER_DESCRIPTIONS v1` names described empty
   folders, `resolve.known_folders()` does not read it.
