@@ -78,6 +78,12 @@ Chosen option: "A few collections, scope compiled by one function".
   confirmation below exists for that.
 * Bad, because the mirrored facts can drift from Postgres. They need a version
   guard and the reconcile sweep.
+* Bad, because "superseded" is one of the mirrored facts: the payload's
+  `superseded` flag is derived from `document_metadata.superseded_by`
+  (`qdrant/payload.py`) and read by the pre-filter and by „Im Büro behandelt"
+  (`prefilter.py`, `similar.py`). ADR-0104's slice 6 removes `superseded_by`;
+  that slice derives the flag from the Fassung timeline in the same change, or
+  every older Fassung comes back into search.
 * Neutral, because the signed envelope keeps its shape but carries ids instead
   of collection names. The BFF and Python contract fixture
   (`tests/fixtures/collection_scope/scope_header.json`) changes once.

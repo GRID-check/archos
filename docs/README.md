@@ -113,7 +113,7 @@ Index: [`contributing/README.md`](contributing/README.md).
 | [Chat Flow](technical-reference/chat-flow.md) | WebSocket chat, chat store, message streaming |
 | [Collection Scoping](technical-reference/collection-scoping.md) | How `X-Grid-Collection-Scope` is computed and consumed |
 | [Conversation Persistence](technical-reference/conversation-persistence.md) | Drizzle schema, CRUD routes, store hydration |
-| [Document Ingestion](technical-reference/document-ingestion.md) | SeaweedFS upload, `/v1/ingest`, chunking, embedding, ChromaDB |
+| [Document Ingestion](technical-reference/document-ingestion.md) | SeaweedFS upload, `/v1/ingest`, chunking, embedding, Qdrant |
 | [OIB Sync](technical-reference/oib-sync.md) | Incremental OIB PDF ingestion with a SHA-256 hash registry |
 | [WebSocket Gateway](technical-reference/websocket-gateway.md) | Gateway proxy, scope resolution, auth forwarding |
 | [Answer-feedback export](technical-reference/answer-feedback-export.md) | The votes workbook and CSV: scope, sheets, every column and where it comes from |
