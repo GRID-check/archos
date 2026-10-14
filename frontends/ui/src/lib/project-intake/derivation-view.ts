@@ -2,11 +2,11 @@
  * The Gebäudeklasse per Bauwerk, as the review shows it and as a reading
  * writes it (ADR-0111, „The Gebäudeklasse derivation"). Pure.
  *
- * The inputs are read the way `computeNeeds` reads them: through the wizard's
- * answers (`answersFromProfile`), facts first and suggestions under them, so
- * the wizard's legacy bridges reach the derivation and the class the review
- * shows is the class the needs were computed against. Each input says whether
- * it is only suggested.
+ * The inputs are read by the reader `computeNeeds` weighs decisive needs
+ * with (`gebaeudeklasseInputsFor`): through the wizard's answers, facts first
+ * and suggestions under them, so the wizard's legacy bridges reach the
+ * derivation and the class the review shows is the class the needs were
+ * computed against. Each input says whether it is only suggested.
  *
  * Writing: when every input that matters has a value, the class is written as
  * the suggestion `gebaeudeklasse@bwN` with `derivation` evidence. It is never
@@ -15,15 +15,11 @@
  * Gebäude, gets nothing.
  */
 
-import {
-  answerKeyFor,
-  answersFromProfile,
-  modeKeyFor,
-  type ProjectIntakeDefinition,
-} from '@/lib/project-profile/intake-definition'
+import { answersFromProfile, type ProjectIntakeDefinition } from '@/lib/project-profile/intake-definition'
 import type { DerivationEvidence, DerivationInput, ProfileAlternative } from '@/lib/project-profile/evidence-schema'
-import type { ProjectFact, ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
+import type { ProjectProfile } from '@/lib/project-profile/types'
 import { deriveGebaeudeklasse, GEBAEUDEKLASSE_DERIVATION } from './derivations'
+import { gebaeudeklasseInputsFor } from './needs'
 import { sameProfileValue, suggestedAssumption, withAlternative } from './profile-edits'
 import type { DerivationView } from './types'
 
@@ -32,31 +28,6 @@ export const gebaeudeklasseKey = (bauwerkId: string): string => `gebaeudeklasse@
 
 /** The reason a derived suggestion carries, beside its evidence. Read by a person and by the agent's prompt view. */
 export const DERIVED_REASON = `Abgeleitet: ${GEBAEUDEKLASSE_DERIVATION.citation}`
-
-/** Every suggestion read as if it were answered, under the facts (as `computeNeeds` reads them). */
-function knownProfile(profile: ProjectProfile): ProjectProfile {
-  const suggested: Record<string, ProjectFact> = {}
-  for (const [key, assumption] of Object.entries(profile.assumptions)) {
-    suggested[key] = { value: assumption.value, confidence: 'confirmed', source: 'onboarding', updatedAt: assumption.updatedAt }
-  }
-  return { ...profile, facts: { ...suggested, ...profile.facts } }
-}
-
-/** Which Bauwerk question writes each derivation input: `[questionId, baseKey]`. */
-function inputQuestions(definition: ProjectIntakeDefinition): Array<{ questionId: string; input: string }> {
-  const inputs: readonly string[] = GEBAEUDEKLASSE_DERIVATION.inputs
-  return definition.stages
-    .filter((stage) => stage.scope === 'bauwerk')
-    .flatMap((stage) => stage.questions)
-    .map((question) => ({ questionId: question.id, input: /^\/(?:facts|goals)\/([^/]+)/.exec(question.writesTo ?? '')?.[1] ?? '' }))
-    .filter(({ input }) => inputs.includes(input))
-}
-
-function knownAnswer(answers: Record<string, ProjectPrimitiveValue>, answerKey: string): ProjectPrimitiveValue | undefined {
-  if (answers[modeKeyFor(answerKey)] === 'offen') return undefined
-  const value = answers[answerKey]
-  return value === 'offen' ? undefined : value
-}
 
 /** The Bauwerke the profile describes, in order (`bw1` when it names none). */
 export function bauwerkIdsOf(profile: ProjectProfile, definition: ProjectIntakeDefinition): string[] {
@@ -69,12 +40,9 @@ export function deriveForBauwerk(
   definition: ProjectIntakeDefinition,
   bauwerkId: string
 ): DerivationView {
-  const { answers } = answersFromProfile(knownProfile(profile), definition)
-  const known: Record<string, ProjectPrimitiveValue | undefined> = {}
+  const known = gebaeudeklasseInputsFor(profile, definition, bauwerkId)
   const inputs: DerivationInput[] = []
-  for (const { questionId, input } of inputQuestions(definition)) {
-    const value = knownAnswer(answers, answerKeyFor(questionId, bauwerkId))
-    known[input] = value
+  for (const [input, value] of Object.entries(known)) {
     if (value === undefined) continue
     const key = `${input}@${bauwerkId}`
     inputs.push({ key, value, suggested: !(key in profile.facts) })

@@ -56,6 +56,23 @@ class TestContains:
         assert _log().contains("Baubeschreibung.pdf", "   ") is NOT_FOUND
 
 
+class TestClosest:
+    def test_it_offers_the_words_read_that_come_closest_with_their_page(self):
+        closest = _log().closest("Baubeschreibung.pdf", "vier oberirdische Geschoße")
+        assert closest is not None and closest.page == 3
+        assert "drei oberirdische Geschoße" in closest.text
+        assert _log().contains("Baubeschreibung.pdf", closest.text) == 3, "the offer is itself a quote that passes"
+
+    def test_it_offers_nothing_when_nothing_read_comes_close_or_the_file_was_not_read(self):
+        assert _log().closest("Baubeschreibung.pdf", "Bundesland laut Grundbuch") is None
+        assert _log().closest("Einreichplan.pdf", "drei oberirdische Geschoße") is None
+
+    def test_the_page_the_model_named_wins_a_tie(self):
+        log = _log()
+        log.log("Baubeschreibung.pdf", 7, "Das Gebäude hat drei oberirdische Geschoße.")
+        assert log.closest("Baubeschreibung.pdf", "vier oberirdische Geschoße", page=7).page == 7
+
+
 class TestWhatWasRead:
     def test_opened_files_are_the_documents_read_and_a_search_hit_is_only_seen(self):
         log = _log()

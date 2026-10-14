@@ -54,7 +54,7 @@ vi.mock('./attention', () => ({
 }))
 vi.mock('./run', () => ({ mintIntakeJobId: vi.fn(() => 'intake-job-2'), submitIntakeRun: vi.fn() }))
 vi.mock('./trigger', () => ({ enqueueIntakeRead: vi.fn(async () => true) }))
-vi.mock('./needs', () => ({ computeNeeds: vi.fn() }))
+vi.mock('./needs', async (importOriginal) => ({ ...(await importOriginal<typeof import('./needs')>()), computeNeeds: vi.fn() }))
 vi.mock('./derivations', async (original) => ({
   ...(await original<typeof import('./derivations')>()),
   deriveGebaeudeklasse: vi.fn(),
@@ -226,25 +226,68 @@ describe('recordIntakeValues — what a value becomes', () => {
     expect(patchProjectProfile).not.toHaveBeenCalled()
   })
 
-  it('refuses outside the vocabulary, a dismissed value, a file outside the main collection and a key that is no need', async () => {
+  it('refuses outside the vocabulary, a dismissed value, a file outside the main collection and a key no question writes', async () => {
     vi.mocked(findProjectIntake).mockResolvedValue(intake({ dismissed: [{ key: 'gebaeudestellung@bw1', value: 'angebaut' }] }))
 
     const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
       value('bauwerkstyp@bw1', 'hochhaus'),
       value('gebaeudestellung@bw1', 'angebaut'),
       value('bauwerkstyp@bw1', 'gebaeude', { fileName: 'Vertraulich/Honorar.pdf' }),
-      value('fluchtniveau_m@bw1', 7.2),
+      value('nicht_im_assistenten', 'x'),
       value('bauwerkstyp@bw1', ''),
+      value('bauwerkstyp@bw1', 'noch_offen'),
     ])
 
     expect(results).toEqual([
       { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
       { key: 'gebaeudestellung@bw1', outcome: 'refused', reason: 'dismissed' },
       { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'unreadable-file' },
-      { key: 'fluchtniveau_m@bw1', outcome: 'refused', reason: 'not-a-need' },
+      { key: 'nicht_im_assistenten', outcome: 'refused', reason: 'unknown-key' },
+      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
       { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'vocabulary' },
     ])
     expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+
+  it('refuses a key in a scope its question is not asked in, or on a Bauwerk the profile does not describe', async () => {
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
+      value('bundesland@bw1', 'wien'),
+      value('geschosse_oberirdisch', 3),
+      value('geschosse_oberirdisch@bw2', 3),
+      value('wohneinheiten@bw1@buero', 4),
+      value('gebaeudeklasse@bw1', 3),
+    ])
+
+    expect(results.map((result) => result.reason)).toEqual(['unknown-key', 'unknown-key', 'unknown-key', 'unknown-key', 'unknown-key'])
+    expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+
+  it('takes a value whose question is not asked yet: the Wohnungen before the Nutzungen that open them, in any order', async () => {
+    // computeNeeds (mocked) lists neither: no answer opens their questions yet.
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [
+      value('wohneinheiten@bw1@wohnen', 12),
+      value('nutzungen@bw1', ['wohnen']),
+      value('fluchtniveau_m@bw1', 7.2),
+    ])
+
+    expect(results).toEqual([
+      { key: 'wohneinheiten@bw1@wohnen', outcome: 'suggested' },
+      { key: 'nutzungen@bw1', outcome: 'suggested' },
+      { key: 'fluchtniveau_m@bw1', outcome: 'suggested' },
+    ])
+    expect(op('/assumptions/wohneinheiten@bw1@wohnen')?.value).toMatchObject({ value: 12, source: 'agent_suggested' })
+  })
+
+  it('records on every Bauwerk the profile describes, and adds none', async () => {
+    const fact = { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } as const
+    useProfile({ ...emptyProfile(), facts: { 'bauwerkstyp@bw1': fact, 'bauwerkstyp@bw2': fact } })
+
+    const { results } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('geschosse_oberirdisch@bw2', 3), value('geschosse_oberirdisch@bw3', 2)])
+
+    expect(results).toEqual([
+      { key: 'geschosse_oberirdisch@bw2', outcome: 'suggested' },
+      { key: 'geschosse_oberirdisch@bw3', outcome: 'refused', reason: 'unknown-key' },
+    ])
   })
 
   it('writes a new value as a suggestion with its evidence, the quote masked before it is stored', async () => {
@@ -360,8 +403,8 @@ describe('recordIntakeValues — what a value becomes', () => {
 
     expect(results).toEqual([{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }])
     expect(patchProjectProfile).toHaveBeenCalledTimes(2)
-    // The profile was read again for the second plan (once for the screen, once per attempt).
-    expect(findProjectProfileInOrg).toHaveBeenCalledTimes(3)
+    // The profile was read again for the second plan (once per attempt; the screen does not read it).
+    expect(findProjectProfileInOrg).toHaveBeenCalledTimes(2)
   })
 
   it(`gives up after ${MAX_WRITE_ATTEMPTS} lost locks and says so`, async () => {
@@ -386,7 +429,12 @@ describe('intakeNeeds', () => {
 
     expect(answer.unreadFiles).toEqual(['Baubeschreibung.pdf'])
     expect(answer.needs.map((entry) => entry.key)).toContain('bauwerkstyp@bw1')
-    expect(answer).toMatchObject({ description: 'Wohnhausanlage, Zubau', location: null, mode: 'active' })
+    expect(answer).toMatchObject({ description: 'Wohnhausanlage, Zubau', location: null, mode: 'active', previousSummary: null })
+  })
+
+  it('hands the last reading its own summary back, as stored', async () => {
+    vi.mocked(findProjectIntake).mockResolvedValue(intake({ summary: 'Einreichplan gelesen; Fluchtniveau offen.' }))
+    expect((await intakeNeeds(SESSION, PROJECT, JOB)).previousSummary).toBe('Einreichplan gelesen; Fluchtniveau offen.')
   })
 
   it('reads a document again when its bytes changed (a new Fassung)', async () => {

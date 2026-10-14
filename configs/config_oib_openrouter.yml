@@ -1112,6 +1112,10 @@ functions:
       - list_files
       - knowledge_search
       - read_passage
+    # The reading's budgets, stated to the model as information. The run ends
+    # itself before the BFF reconciles a reading older than 30 minutes.
+    max_tool_steps: 80
+    max_run_seconds: 1200
 
 workflow:
   _type: chat_deepresearcher_agent

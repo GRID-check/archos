@@ -11,10 +11,15 @@
  *  2. refused `dismissed`: a value a person dismissed for that key;
  *  3. refused `unreadable-file`: evidence from a file outside the project's
  *     main collection (`extractableFileNames`);
- *  4. refused `not-a-need`: a key the project does not need (not asked, a
- *     person marked it unknown). A key with a confirmed fact is not refused:
- *     the reading may corroborate or contradict it. Checked against the
- *     profile at the write, the first three before (they do not move);
+ *  4. refused `unknown-key`: a key no wizard question writes, in the scope
+ *     that question is asked in (`questionForKey`), or on a Bauwerk the
+ *     profile does not describe. Whether the question is asked yet is not
+ *     consulted: a reading may find the Wohnungen before the Nutzungen that
+ *     open their question, and the values of one batch do not depend on their
+ *     order. A key with a confirmed fact is never refused here: the reading
+ *     may corroborate or contradict it (the derived `gebaeudeklasse@bwN`
+ *     included). Checked against the profile at the write, the first three
+ *     before (they do not move);
  *  5. equal to the confirmed fact: `corroborated`, its evidence grows;
  *     different: `contradiction`, an alternative on the FACT, which is never
  *     overwritten;
@@ -41,17 +46,22 @@ import {
   withAlternative,
   withEvidence,
 } from './profile-edits'
-import type { DismissedValue, Need, RecordRefusalReason, RecordResult, RecordValue } from './types'
+import { needOptionsFor, questionForKey, recordableKey } from './needs'
+import type { DismissedValue, RecordRefusalReason, RecordResult, RecordValue } from './types'
 
 /** What the screen of one value needs to know besides the value. */
 export interface RecordScreen {
-  needs: ReadonlyMap<string, Need>
+  definition: ProjectIntakeDefinition
   dismissed: readonly DismissedValue[]
   readableFiles: ReadonlySet<string>
 }
 
-/** The question's vocabulary, as the profile's one door checks it, and the need's option tokens. */
-function outsideVocabulary(value: RecordValue, need: Need | undefined): boolean {
+/**
+ * The question's vocabulary, as the profile's one door checks it, and the
+ * tokens a reading may record for it (never „noch offen", which defers an
+ * answer and is no value a document states).
+ */
+function outsideVocabulary(value: RecordValue, definition: ProjectIntakeDefinition): boolean {
   if (!isMeaningfulValue(value.value)) return true
   try {
     validateProfilePatchVocabulary([
@@ -60,8 +70,10 @@ function outsideVocabulary(value: RecordValue, need: Need | undefined): boolean 
   } catch {
     return true
   }
-  if (!need?.options || need.options.length === 0) return false
-  const tokens = new Set(need.options.map((option) => option.token))
+  const found = questionForKey(definition, value.key)
+  const options = found ? needOptionsFor(found.question, value.key, []) : undefined
+  if (!options || options.length === 0) return false
+  const tokens = new Set(options.map((option) => option.token))
   const given = Array.isArray(value.value) ? value.value : [value.value]
   return !given.every((token) => typeof token === 'string' && tokens.has(token))
 }
@@ -71,7 +83,7 @@ function outsideVocabulary(value: RecordValue, need: Need | undefined): boolean 
  * vocabulary, dismissed, unreadable file. Null when none applies.
  */
 export function staticRefusal(value: RecordValue, screen: RecordScreen): RecordRefusalReason | null {
-  if (outsideVocabulary(value, screen.needs.get(value.key))) return 'vocabulary'
+  if (outsideVocabulary(value, screen.definition)) return 'vocabulary'
   const dismissed = screen.dismissed.some(
     (entry) => entry.key === value.key && sameProfileValue(entry.value, value.value)
   )
@@ -92,7 +104,7 @@ export interface ScreenedValue {
 function applyValue(
   profile: ProjectProfile,
   item: ScreenedValue,
-  needs: ReadonlyMap<string, Need>,
+  recordable: (key: string) => boolean,
   now: string
 ): { profile: ProjectProfile; result: RecordResult } {
   const { key, value, evidence } = item
@@ -107,7 +119,7 @@ function applyValue(
       result: { key, outcome: corroborates ? 'corroborated' : 'contradiction' },
     }
   }
-  if (!needs.has(key)) return { profile, result: { key, outcome: 'refused', reason: 'not-a-need' } }
+  if (!recordable(key)) return { profile, result: { key, outcome: 'refused', reason: 'unknown-key' } }
 
   const assumption = profile.assumptions[key]
   if (assumption) {
@@ -144,9 +156,11 @@ export function planRecord(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
   values: ReadonlyArray<{ key: string; screened: ScreenedValue | null; refusal: RecordRefusalReason | null }>,
-  needs: ReadonlyMap<string, Need>,
   now: string
 ): RecordPlan {
+  // The Bauwerke as the profile describes them before the batch: no value of it can add one.
+  const bauwerkIds = bauwerkIdsOf(profile, definition)
+  const recordable = (key: string) => recordableKey(definition, key, bauwerkIds) !== null
   let current = profile
   const results: RecordResult[] = []
   const changed = new Set<string>()
@@ -155,7 +169,7 @@ export function planRecord(
       results.push({ key: entry.key, outcome: 'refused', reason: entry.refusal ?? 'vocabulary' })
       continue
     }
-    const applied = applyValue(current, entry.screened, needs, now)
+    const applied = applyValue(current, entry.screened, recordable, now)
     current = applied.profile
     results.push(applied.result)
     if (applied.result.outcome !== 'refused') changed.add(entry.key)

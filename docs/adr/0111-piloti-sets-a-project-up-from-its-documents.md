@@ -150,3 +150,17 @@ already read.
 Design and wire contract:
 [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md).
 The ticket's requirements, and where this deviates from them, are tabled there.
+
+### Amendment, 2026-10-14: tools, not a procedure
+
+The product owner's direction: do not hobble the model; give it tools rather
+than a graph or an approach to follow. The intake's prompt no longer prescribes
+a numbered loop. It states the goal, why the values matter, the rules a value
+must meet and the budget; the model chooses its own order of work, and every
+rule about how a tool is used lives in that tool's description (ADR-0060). Two
+consequences reach the contract: the `record` gate refuses only a key no wizard
+question writes (`unknown-key`, which replaced `not-a-need`), so a value found
+before the answer that opens its question is kept; and `needs` lists a
+confirmed Gebäudeklasse input as `confirmed` and carries the last reading's
+summary (`previousSummary`), so a delta reading can corroborate or contradict
+from a newer Stand and does not start blind. The design doc has the details.

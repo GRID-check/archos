@@ -1943,6 +1943,19 @@ def _create_agent_instance(
     2. llm + tools pattern (simpler agents)
     """
     from aiq_agent.agents.deep_researcher.register import DeepResearchAgentConfig
+    from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+
+    if isinstance(fn_config, ProjectIntakeAgentConfig):
+        # The reading's budgets are config, so a deployment moves them without a release.
+        return agent_cls(
+            llm_provider=llm_provider,
+            tools=tools,
+            verbose=verbose,
+            callbacks=callbacks,
+            max_tool_steps=fn_config.max_tool_steps,
+            max_run_seconds=fn_config.max_run_seconds,
+            job_id=job_id,
+        )
 
     if isinstance(fn_config, DeepResearchAgentConfig):
         return agent_cls(

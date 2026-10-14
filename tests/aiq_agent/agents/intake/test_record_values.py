@@ -42,9 +42,50 @@ class TestTheQuoteMustHaveBeenRead:
         fake = route(record=recorded_all())
         text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 4, "vier oberirdische Geschoße")])
 
-        assert "read_document" in text and "exact words" in text
+        assert "does not stand in what you read" in text
+        assert "Closest passage you read on page 3: „Gebäude hat drei oberirdische Geschoße“" in text
         assert fake.bodies("record") == []
         assert session.refusals == {"local:quote-not-read": 1}
+
+    async def test_a_quote_nothing_read_comes_close_to_says_to_read_the_page(
+        self, signed_run, route, session, pages_read
+    ):
+        route(record=recorded_all())
+        text = await record_values(session, [_value("bundesland", "wien", "Bundesland Wien laut Grundbuch", page=1)])
+        assert "Closest passage" not in text and "read_document" in text and "exact words" in text
+
+    async def test_the_closest_passage_offered_is_itself_a_quote_that_passes(
+        self, signed_run, route, session, pages_read
+    ):
+        route(record=recorded_all())
+        refused = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdischen Geschosse")])
+        offered = refused.split("„")[-1].split("“")[0]
+        accepted = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, offered)])
+        assert "suggested" in accepted
+
+    async def test_the_citation_a_reading_tool_printed_names_the_file_and_page(
+        self, signed_run, route, session, pages_read
+    ):
+        fake = route(record=recorded_all())
+        for citation in (
+            "Baubeschreibung.pdf, p.3",
+            "Baubeschreibung.pdf, S. 3",
+            "Baubeschreibung.pdf (Projektwissen), Seite 3",
+        ):
+            item = RecordedValue(
+                key="geschosse_oberirdisch@bw1", value=3, citation=citation, quote="drei oberirdische Geschoße"
+            )
+            text = await record_values(session, [item])
+            assert "suggested" in text, citation
+        assert [body["values"][0]["evidence"] for body in fake.bodies("record")] == [
+            {"fileName": "Baubeschreibung.pdf", "page": 3, "quote": "drei oberirdische Geschoße"}
+        ] * 3
+
+    async def test_a_value_that_names_no_file_is_not_sent(self, signed_run, route, session, pages_read):
+        fake = route(record=recorded_all())
+        item = RecordedValue(key="geschosse_oberirdisch@bw1", value=3, quote="drei oberirdische Geschoße")
+        text = await record_values(session, [item])
+        assert "citation or file_name" in text and fake.bodies("record") == []
 
     async def test_a_file_nobody_opened_is_refused_with_the_way_to_read_it(
         self, signed_run, route, session, pages_read
@@ -159,6 +200,19 @@ class TestTheBffDecides:
         assert session.outcomes == {"contradiction": 1}
         assert session.refusals["refused:dismissed"] == 1
 
+    async def test_a_key_no_question_writes_is_refused_with_the_closest_keys_it_knows(
+        self, signed_run, route, session, pages_read
+    ):
+        route(
+            record=lambda body: {
+                "results": [{"key": v["key"], "outcome": "refused", "reason": "unknown-key"} for v in body["values"]]
+            }
+        )
+        text = await record_values(session, [_value("geschosse_oberirdish@bw1", 3, "drei oberirdische Geschoße")])
+        assert "no question of the intake writes this key" in text
+        assert "closest keys intake_needs listed: geschosse_oberirdisch@bw1" in text
+        assert session.refusals["refused:unknown-key"] == 1
+
     async def test_a_stale_reading_stops_every_later_record(self, signed_run, route, session, pages_read):
         fake = route(record=409)
         first = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
@@ -173,3 +227,62 @@ class TestTheBffDecides:
         text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
         assert "no signed identity" in text
         assert fake.requests == []
+
+
+class TestTheNeedsAnswer:
+    def test_a_confirmed_input_is_shown_as_confirmed_after_the_open_ones(self):
+        from aiq_agent.agents.intake.tools import render_needs
+
+        confirmed = {**NEEDS_BODY["needs"][0], "key": "bauwerkstyp@bw1", "decisive": False, "state": "confirmed"}
+        text = render_needs({**NEEDS_BODY, "needs": [confirmed, *NEEDS_BODY["needs"]]})
+        assert "(2 open, 1 suggested so far, 1 confirmed by a person)" in text
+        lines = [line for line in text.splitlines() if line.startswith("- ") and "—" in line]
+        assert lines[-1].startswith("- bauwerkstyp@bw1") and lines[-1].endswith(
+            "· confirmed · found in: Einreichplan, Schnitte"
+        )
+
+    def test_a_bounded_answer_names_the_call_that_shows_the_rest(self):
+        from aiq_agent.agents.intake.tools import MAX_RENDERED_NEEDS
+        from aiq_agent.agents.intake.tools import render_needs
+
+        many = [
+            {**NEEDS_BODY["needs"][1], "key": f"k{index}", "decisive": False} for index in range(MAX_RENDERED_NEEDS + 5)
+        ]
+        first = render_needs({**NEEDS_BODY, "needs": many})
+        assert f"intake_needs(start={MAX_RENDERED_NEEDS}) lists them" in first
+        rest = render_needs({**NEEDS_BODY, "needs": many}, start=MAX_RENDERED_NEEDS)
+        assert f"[Needs {MAX_RENDERED_NEEDS + 1}–{MAX_RENDERED_NEEDS + 5} of {MAX_RENDERED_NEEDS + 5}.]" in rest
+        assert "more needs not listed" not in rest
+
+
+class TestTheDescriptionsCarryTheRules:
+    """The prompt prescribes no procedure, so each tool's description says how it is used (ADR-0060)."""
+
+    def test_record_values_says_how_a_value_is_written_and_what_each_outcome_means(self):
+        from aiq_agent.agents.intake.tools import RECORD_VALUES_DESCRIPTION
+
+        for phrase in (
+            "option token exactly",
+            "plain number in the question's unit",
+            "true or false",
+            "the document's own words",
+            "never paraphrased",
+            "Zielzustand",
+            "Example:",
+            "suggested (",
+            "corroborated (",
+            "contradiction (",
+            "refused, with the reason",
+        ):
+            assert phrase in RECORD_VALUES_DESCRIPTION, phrase
+
+    def test_intake_needs_says_what_each_state_means(self):
+        from aiq_agent.agents.intake.tools import INTAKE_NEEDS_DESCRIPTION
+
+        for phrase in ("`open`", "`suggested`", "`confirmed`", "contradiction a person decides", "`start`"):
+            assert phrase in INTAKE_NEEDS_DESCRIPTION, phrase
+
+    def test_finish_intake_says_the_summary_is_grounded(self):
+        from aiq_agent.agents.intake.tools import FINISH_INTAKE_DESCRIPTION
+
+        assert "rests on something a tool returned in this run" in FINISH_INTAKE_DESCRIPTION

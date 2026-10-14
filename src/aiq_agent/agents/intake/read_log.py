@@ -21,6 +21,7 @@ other's text.
 from __future__ import annotations
 
 import bisect
+import re
 from contextvars import ContextVar
 from contextvars import Token
 from dataclasses import dataclass
@@ -30,6 +31,20 @@ from aiq_agent.knowledge.project_experience import folded_for_quote
 
 #: What :meth:`IntakeReadLog.contains` answers when the quote is not in the file's text.
 NOT_FOUND: Literal[False] = False
+#: The longest passage :meth:`IntakeReadLog.closest` offers back.
+MAX_CLOSEST_CHARS = 200
+#: The share of the quote's words a passage must hold to be offered as the closest.
+MIN_CLOSEST_OVERLAP = 0.4
+
+_WORD = re.compile(r"\w+")
+
+
+@dataclass(frozen=True)
+class Closest:
+    """The passage of what was read that comes closest to a quote that was not found: its page and words."""
+
+    page: int | None
+    text: str
 
 
 @dataclass(frozen=True)
@@ -112,6 +127,31 @@ class IntakeReadLog:
             return (named or hits[0]).page
         return _across_pages(entries, wanted)
 
+    def closest(self, file_name: str, quote: str, page: int | None = None) -> Closest | None:
+        """The run of words read of ``file_name`` that shares most words with ``quote``; None when none comes close.
+
+        For a refusal the model can act on: what WAS read there, as words it can
+        copy (the passage's own words joined by single spaces, which the quote
+        check accepts), at most :data:`MAX_CLOSEST_CHARS`. The page the model
+        named wins a tie.
+        """
+        wanted = {word.casefold() for word in _WORD.findall(folded_for_quote(quote or ""))}
+        entries = self._texts.get(_name_key(file_name or ""))
+        if not wanted or not entries:
+            return None
+        best: tuple[float, bool, int | None, str] | None = None
+        for entry in entries:
+            found = _best_window(entry.text, wanted, len(_WORD.findall(quote or "")))
+            if found is None:
+                continue
+            score, text = found
+            candidate = (score, entry.page == page and page is not None, entry.page, text)
+            if best is None or candidate[:2] > best[:2]:
+                best = candidate
+        if best is None or best[0] < MIN_CLOSEST_OVERLAP:
+            return None
+        return Closest(page=best[2], text=best[3])
+
 
 def _across_pages(entries: list[LoggedText], wanted: str) -> int | None | Literal[False]:
     ordered = sorted(entries, key=lambda entry: (entry.page is None, entry.page or 0))
@@ -126,6 +166,24 @@ def _across_pages(entries: list[LoggedText], wanted: str) -> int | None | Litera
     if found < 0:
         return NOT_FOUND
     return ordered[bisect.bisect_right(starts, found) - 1].page
+
+
+def _best_window(text: str, wanted: set[str], length: int) -> tuple[float, str] | None:
+    """The window of ``length`` words of ``text`` holding most of ``wanted``: (share of wanted, its words)."""
+    words = text.split()
+    if not words:
+        return None
+    # A few words of context either side of the quote's length, so the passage reads as a sentence.
+    size = max(1, min(length + max(2, length // 2), len(words)))
+    keys = [{token.casefold() for token in _WORD.findall(word)} for word in words]
+    best_score, best_start = -1.0, 0
+    for start in range(0, len(words) - size + 1):
+        held = set().union(*keys[start : start + size]) & wanted
+        score = len(held) / len(wanted)
+        if score > best_score:
+            best_score, best_start = score, start
+    passage = " ".join(words[best_start : best_start + size])
+    return best_score, passage[:MAX_CLOSEST_CHARS].rstrip()
 
 
 _READ_LOG: ContextVar[IntakeReadLog | None] = ContextVar("grid_intake_read_log", default=None)

@@ -2,9 +2,10 @@
  * The review's shape (ADR-0111), from the real intake definition: every value
  * under a key a question writes, in that question's module and with its
  * label and display; a value with alternatives listed again as a
- * contradiction; the derived class shown as „GK n" under the module that
- * derives it; the questions are the decisive needs nothing filled; and a key
- * no question writes is not shown.
+ * contradiction; the derived class shown once, in the derivations, not again
+ * in its module (but among the contradictions when contested); the questions
+ * are the decisive needs nothing filled; and a key no question writes is not
+ * shown.
  */
 
 import { describe, expect, it } from 'vitest'
@@ -74,16 +75,17 @@ const need = (key: string, decisive: boolean, state: Need['state'] = 'open'): Ne
   state,
 })
 
-const view = () =>
-  buildIntakeView({
-    row,
-    profile,
-    definition: projectIntakeDefinitionV1,
-    needs: [need('fluchtniveau_m@bw1', true), need('bgf_oberirdisch@bw1', false), need('bauwerkstyp@bw1', true, 'suggested')],
-    unreadDocuments: 3,
-    canDecide: true,
-    canComplete: false,
-  })
+const input = () => ({
+  row,
+  profile,
+  definition: projectIntakeDefinitionV1,
+  needs: [need('fluchtniveau_m@bw1', true), need('bgf_oberirdisch@bw1', false), need('bauwerkstyp@bw1', true, 'suggested')],
+  unreadDocuments: 3,
+  canDecide: true,
+  canComplete: false,
+})
+
+const view = () => buildIntakeView(input())
 
 describe('buildIntakeView', () => {
   it('groups every value by its module, labelled and displayed as the wizard does', () => {
@@ -106,10 +108,46 @@ describe('buildIntakeView', () => {
           evidence: [DOCUMENT],
           decisive: true,
         }),
-        expect.objectContaining({ key: 'gebaeudeklasse@bw1', label: 'Gebäudeklasse', display: 'GK 3' }),
       ])
     )
     expect(JSON.stringify(groups)).not.toContain('nicht_im_assistenten')
+  })
+
+  it('shows the derived class only in the derivations, never again in its module', () => {
+    const result = view()
+    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('gebaeudeklasse@bw1')
+    expect(result.derivations.map((derivation) => derivation.bauwerkId)).toEqual(['bw1'])
+  })
+
+  it('still lists a contested derived class among the contradictions', () => {
+    const contested: ProjectProfile = {
+      ...profile,
+      facts: {
+        ...profile.facts,
+        'gebaeudeklasse@bw1': {
+          value: 2,
+          confidence: 'confirmed',
+          source: 'user_confirmed',
+          updatedAt: NOW,
+          alternatives: [{ value: 3, evidence: [DOCUMENT], recordedAt: NOW }],
+        },
+      },
+    }
+    const result = buildIntakeView({ ...input(), profile: contested })
+    expect(result.contradictions).toEqual(
+      expect.arrayContaining([expect.objectContaining({ key: 'gebaeudeklasse@bw1', display: 'GK 2', state: 'contested' })])
+    )
+    expect(result.counts.contradictions).toBe(2)
+    expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('gebaeudeklasse@bw1')
+  })
+
+  it('asks only the decisive OPEN needs: a suggested or confirmed one is no question', () => {
+    const result = buildIntakeView({
+      ...input(),
+      needs: [need('fluchtniveau_m@bw1', true), need('bauwerkstyp@bw1', true, 'suggested'), need('geschosse_oberirdisch@bw1', false, 'confirmed')],
+    })
+    expect(result.questions.map((question) => question.key)).toEqual(['fluchtniveau_m@bw1'])
+    expect(result.counts.decisiveOpen).toBe(1)
   })
 
   it('lists contradictions first, the decisive open needs as questions, and counts', () => {

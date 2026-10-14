@@ -58,7 +58,8 @@ MAX_PAGES_PER_CALL = 30
 #: Page numbers a truncated read offers as the next call.
 NEXT_PAGES_OFFERED = 10
 
-_KEY_PAGE = re.compile(r"^(?P<name>.*?), p\.(?P<page>\d+)$")
+#: A citation as the tools print it: ``Plan.pdf, p.3`` (a grounding key), or ``Plan.pdf, S. 3`` / ``Seite 3``.
+_KEY_PAGE = re.compile(r"^(?P<name>.*?),\s*(?:p\.|S\.|Seite)\s*(?P<page>\d+)$", re.IGNORECASE)
 
 
 @dataclass
@@ -303,11 +304,17 @@ def _strip_qualifier(name: str) -> str:
     return name
 
 
-def _key_parts(citation_key: str) -> tuple[str, int | None]:
-    match = _KEY_PAGE.match(citation_key.strip())
+def citation_parts(citation: str) -> tuple[str, int | None]:
+    """``(file name, page)`` of a citation as a reading tool printed it.
+
+    ``Plan.pdf, p.3`` (a grounding key) or ``Plan.pdf (Projektwissen), S. 3``.
+    A citation without a page is the file name alone. ``record_values`` takes
+    the citation as the model copied it, so the model does not re-assemble it.
+    """
+    match = _KEY_PAGE.match((citation or "").strip())
     if match is None:
-        return _strip_qualifier(citation_key.strip()), None
-    return _strip_qualifier(match.group("name")), int(match.group("page"))
+        return _strip_qualifier((citation or "").strip()), None
+    return _strip_qualifier(match.group("name").strip()), int(match.group("page"))
 
 
 def passages_in(tool_name: str, text: str) -> list[tuple[str, int | None, str, str | None]]:
@@ -330,7 +337,7 @@ def passages_in(tool_name: str, text: str) -> list[tuple[str, int | None, str, s
     for entry in extract_sources_from_tool_result(tool_name, text):
         if not entry.citation_key or not entry.chunk_text:
             continue
-        file_name, page = _key_parts(entry.citation_key)
+        file_name, page = citation_parts(entry.citation_key)
         passages.append((file_name, page, entry.chunk_text, entry.shelf))
     return passages
 

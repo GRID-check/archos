@@ -82,11 +82,24 @@ the envelope injected at claim (ADR-0108), and a `research-job` trace in
 Langfuse. A BFF job calling a synchronous Python loop would rebuild all of that
 on the `api` role, which ADR-0082 does not size for long work.
 
-The agent is not a pipeline. Which keys are asked depends on what is found (a
-Wohnbau asks for the Wohnungen, a Garage for its area), so the agent asks the
-API what is still needed, reads, records, and asks again. Its main reading tool
-reads a document's pages in full (`read_document`); the search tools find where
-a value is.
+The agent is not a pipeline, and its prompt prescribes no procedure (the
+product owner, 2026-10-14: "provide tools rather than explicitly stating a
+graph or an approach it should take"). The prompt (`prompts/system.j2`) says
+who Piloti is, why the values matter, the goal (a profile a person can confirm
+page by page; an open value is a correct result), the rules a value must meet,
+what each tool is for in one line, and the budget as information; the model
+chooses its own way through the documents. How each tool is used, what its
+answer means and what to do on a refusal live in the tool's description
+(ADR-0060). The opening message is the project's state, the `needs` answer
+with the last reading's summary beside it, given as context to save a first
+call. Its main reading tool reads a document's pages in full
+(`read_document`); the search tools find where a value is.
+
+The run's budgets are `max_tool_steps` (80) and `max_run_seconds` (1200) on
+`ProjectIntakeAgentConfig`, handed to the agent by the runner
+(`_create_agent_instance`). The finish is guaranteed in code: past the step
+budget only `finish_intake` runs, and a run that stops, times out or fails is
+finished with a summary written in code.
 
 ### Why the profile, not a ledger of its own
 
@@ -150,7 +163,10 @@ a pure function. The agent's `intake_needs` returns its result.
    key, scoped per Bauwerk as the wizard scopes it (`key@bwN`).
 2. Minus what is confirmed, and minus keys a person marked unknown. A key with
    only a suggestion stays, as `state: 'suggested'`, so the agent can corroborate
-   it or find a contradiction.
+   it or find a contradiction. A confirmed Gebäudeklasse input stays too, as
+   `state: 'confirmed'`, never decisive and listed last, so a reading of a newer
+   Stand can corroborate it or bring a contradiction a person decides. The
+   review's `questions` stay the decisive `open` needs only.
 3. Each need carries the label, the type and the option tokens, the unit, the
    `why`, `foundIn`, and `decisive`.
 4. In `mode: 'closing'` nothing is decisive: what matters is what the documents say.
@@ -261,13 +277,17 @@ envelope, `withTenant`. Discriminated on `op`, each branch strict, each with
 
 | op | Body | Answer |
 |---|---|---|
-| `needs` | `{ jobId }` | `{ needs: Need[], unreadFiles: string[] (≤ 200), description, location, mode }` |
-| `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'not-a-need' \| 'dismissed' \| 'unreadable-file' }] }` |
+| `needs` | `{ jobId }` | `{ needs: Need[], unreadFiles: string[] (≤ 200), description, location, mode, previousSummary }` (`previousSummary`: the last finished reading's stored, masked summary, or null) |
+| `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'unknown-key' \| 'dismissed' \| 'unreadable-file' }] }` |
 | `finish` | `{ jobId, summary (≤ 2000), documentsRead: string[] (≤ 500), traceId: string \| null }` | `{ status }` |
 
 A stale `jobId` answers 409 `stale-reading`. The BFF decides what a value
-becomes: a token outside the question's vocabulary is refused; a key that is
-not a need is refused; a value a person dismissed is refused; evidence from a
+becomes: a token outside the question's vocabulary is refused; a key no wizard
+question writes, in the scope that question is asked in, or on a Bauwerk the
+profile does not describe, is refused (`unknown-key`; `questionForKey` in
+`needs.ts`), while a key whose question is not asked yet is taken, so the
+Wohnungen found before the Nutzungen that open them are kept and a batch has no
+order dependency; a value a person dismissed is refused; evidence from a
 file outside `extractableFileNames` is refused; a value equal to a confirmed
 fact corroborates it (its evidence is added); a different one becomes an
 alternative on the fact (a contradiction); a different suggestion already
@@ -276,7 +296,12 @@ is stored. After each `record`, the derivation runs and writes or refreshes
 `gebaeudeklasse@bwN`.
 
 The Python tool checks first: a quote it cannot find (NFC, folded whitespace and
-case) in text it read in this run, in that file, is refused before any request.
+case) in text it read in this run, in that file, is refused before any request,
+and the refusal shows the closest passage it did read there, with its page, so
+the next call can quote it. The tool takes the citation as a reading tool
+printed it (`Baubeschreibung.pdf, p.3`) or `fileName` and `page`; the wire
+body is always `{ fileName, page, quote }`. An `unknown-key` refusal names the
+closest keys `intake_needs` listed.
 For select keys, `knowledge/fingerprint_verify.verify_fingerprint` asks whether
 the quote states the value, as ADR-0096 does.
 

@@ -84,8 +84,13 @@ export const INTAKE_NEED_TYPES = [
 ] as const satisfies readonly ProjectIntakeQuestionType[]
 export type IntakeNeedType = (typeof INTAKE_NEED_TYPES)[number]
 
-/** `open`: nothing on the profile. `suggested`: only a suggestion, which a reading may corroborate or contradict. */
-export const NEED_STATES = ['open', 'suggested'] as const
+/**
+ * `open`: nothing on the profile. `suggested`: only a suggestion, which a
+ * reading may corroborate or contradict. `confirmed`: a person confirmed it;
+ * listed only for a Gebäudeklasse input, never decisive, so a reading of a
+ * newer Stand can corroborate it or bring a contradiction a person decides.
+ */
+export const NEED_STATES = ['open', 'suggested', 'confirmed'] as const
 export type NeedState = (typeof NEED_STATES)[number]
 
 /** `contested`: a different value was found beside it (`alternatives` is not empty). */
@@ -102,10 +107,13 @@ export type RecordOutcome = (typeof RECORD_OUTCOMES)[number]
 
 /**
  * Why a recorded value was refused: a token outside the question's options,
- * a key that is not a need, a value a person dismissed, or evidence from a
- * file outside the project's main collection (`extractableFileNames`).
+ * a key no wizard question writes (or a scope suffix that question is not
+ * asked in, or a Bauwerk the profile does not describe), a value a person
+ * dismissed, or evidence from a file outside the project's main collection
+ * (`extractableFileNames`). A key whose question is not asked yet is not
+ * refused: a reading may find a value before the answer that opens it.
  */
-export const RECORD_REFUSAL_REASONS = ['vocabulary', 'not-a-need', 'dismissed', 'unreadable-file'] as const
+export const RECORD_REFUSAL_REASONS = ['vocabulary', 'unknown-key', 'dismissed', 'unreadable-file'] as const
 export type RecordRefusalReason = (typeof RECORD_REFUSAL_REASONS)[number]
 
 /** The 409 reason when an internal op names a `jobId` that is not the intake's current reading. */
@@ -190,7 +198,8 @@ export type NeedOption = z.infer<typeof needOptionSchema>
  * whose conditions hold and that writes a profile key, scoped per Bauwerk as
  * the wizard scopes it. `key` is the profile key (`geschosse_oberirdisch@bw1`),
  * `baseKey` the part before `@`, `bauwerkId` the `bwN` or null for a project
- * key. `decisive`: filling it could change the Gebäudeklasse.
+ * key. `decisive`: filling it could change the Gebäudeklasse (never for a
+ * `confirmed` one).
  */
 export const needSchema = z.object({
   key,
@@ -387,13 +396,19 @@ export const internalIntakeRequestSchema = z.discriminatedUnion('op', [
 export type InternalIntakeRequest = z.infer<typeof internalIntakeRequestSchema>
 export type InternalIntakeOp = InternalIntakeRequest['op']
 
-/** `needs`: what the project still needs, and what has not been read yet. */
+/** `needs`: what the project still needs, what has not been read yet, and what the last reading said. */
 export const internalIntakeNeedsResponseSchema = z.object({
   needs: z.array(needSchema).max(MAX_INTAKE_NEEDS),
   unreadFiles: z.array(z.string()).max(MAX_UNREAD_FILES),
   description: z.string().max(MAX_INTAKE_DESCRIPTION_LENGTH).nullable(),
   location: geocodeResultSchema.nullable(),
   mode: z.enum(INTAKE_MODES),
+  /**
+   * The last finished reading's summary, as stored (masked): the agent's note
+   * from its previous run, so a reading of new documents does not start blind.
+   * Null before the first reading finished.
+   */
+  previousSummary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH).nullable(),
 })
 export type InternalIntakeNeedsResponse = z.infer<typeof internalIntakeNeedsResponseSchema>
 

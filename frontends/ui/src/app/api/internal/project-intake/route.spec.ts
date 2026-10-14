@@ -72,7 +72,7 @@ beforeEach(() => {
   process.env.GRID_INTERNAL_API_TOKEN = SECRET
   vi.mocked(requireVerifiedContext).mockReturnValue(CONTEXT)
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
-  vi.mocked(intakeNeeds).mockResolvedValue({ needs: [], unreadFiles: ['Einreichplan.pdf'], description: null, location: null, mode: 'active' })
+  vi.mocked(intakeNeeds).mockResolvedValue({ needs: [], unreadFiles: ['Einreichplan.pdf'], description: null, location: null, mode: 'active', previousSummary: null })
   vi.mocked(recordIntakeValues).mockResolvedValue({ results: [{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }] })
   vi.mocked(finishIntakeReading).mockResolvedValue({ status: 'ready' })
 })

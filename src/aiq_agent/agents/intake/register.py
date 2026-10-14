@@ -4,7 +4,9 @@ The agent never runs as a NAT function. The research worker reads this config
 by name (``builder.get_function_config("project_intake_agent")``), builds the
 model from ``llm`` and the reading tools from ``tools``, and constructs
 :class:`~aiq_agent.agents.intake.agent.ProjectIntakeAgent` itself
-(``aiq_api/jobs/runner.py``). NAT still builds every function the YAML names for
+(``aiq_api/jobs/runner.py``), handing it the run's budgets from this config
+(``_create_agent_instance``, as it hands deep research its own). NAT still
+builds every function the YAML names for
 every workflow, so the function yields a no-op, as the deep researcher's
 config-only functions do.
 
@@ -24,6 +26,9 @@ from nat.plugin_api import LLMFrameworkEnum
 from nat.plugin_api import LLMRef
 from nat.plugin_api import register_function
 
+from .agent import DEFAULT_MAX_RUN_SECONDS
+from .agent import DEFAULT_MAX_TOOL_STEPS
+
 
 class ProjectIntakeAgentConfig(FunctionBaseConfig, name="project_intake_agent"):
     """The Erfassungs-Agent: its model and the shared reading tools it binds."""
@@ -39,6 +44,22 @@ class ProjectIntakeAgentConfig(FunctionBaseConfig, name="project_intake_agent"):
         ),
     )
     verbose: bool = Field(default=False)
+    max_tool_steps: int = Field(
+        default=DEFAULT_MAX_TOOL_STEPS,
+        ge=1,
+        description=(
+            "Tool calls one reading may make; after them only finish_intake runs. The prompt states it to the model "
+            "as information, not as a plan."
+        ),
+    )
+    max_run_seconds: int = Field(
+        default=DEFAULT_MAX_RUN_SECONDS,
+        ge=1,
+        description=(
+            "Wall clock for one reading, in seconds. Below the BFF's 30-minute reconciliation of a reading "
+            "(STALE_READING_AFTER_MS), so a run finishes itself before the BFF gives up on it."
+        ),
+    )
 
 
 @register_function(config_type=ProjectIntakeAgentConfig, framework_wrappers=[LLMFrameworkEnum.LANGCHAIN])

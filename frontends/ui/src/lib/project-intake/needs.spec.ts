@@ -5,7 +5,13 @@ import { describe, expect, it } from 'vitest'
 import { projectIntakeDefinitionV1 } from '@/lib/project-profile/intake-definition'
 import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profile/types'
-import { computeNeeds, type ComputeNeedsOptions } from './needs'
+import {
+  computeNeeds,
+  gebaeudeklasseInputsFor,
+  questionForKey,
+  recordableKey,
+  type ComputeNeedsOptions,
+} from './needs'
 import { needSchema, type Need } from './types'
 
 const at = '2026-10-14T08:00:00.000Z'
@@ -99,13 +105,26 @@ describe('computeNeeds', () => {
   it('drops a confirmed key, keeps a suggested one as suggested', () => {
     const found = byKey(
       needs(
-        profileWith({ ...gebaeude, 'geschosse_oberirdisch@bw1': 3 }, { 'fluchtniveau_m@bw1': 6.5 })
+        profileWith(
+          { ...gebaeude, 'geschosse_oberirdisch@bw1': 3, 'bauweise@bw1': ['holzbau'] },
+          { 'fluchtniveau_m@bw1': 6.5 }
+        )
       )
     )
-    expect(found.has('geschosse_oberirdisch@bw1')).toBe(false)
-    expect(found.has('bauwerkstyp@bw1')).toBe(false)
+    expect(found.has('bauweise@bw1')).toBe(false)
     expect(found.get('fluchtniveau_m@bw1')?.state).toBe('suggested')
     expect(found.get('bgf_oberirdisch@bw1')?.state).toBe('open')
+  })
+
+  it('keeps a confirmed Gebäudeklasse input as confirmed, never decisive, after every other need', () => {
+    const list = needs(profileWith({ ...gebaeude, 'geschosse_oberirdisch@bw1': 3 }))
+    const found = byKey(list)
+    expect(found.get('geschosse_oberirdisch@bw1')).toMatchObject({ state: 'confirmed', decisive: false })
+    expect(found.get('bauwerkstyp@bw1')).toMatchObject({ state: 'confirmed', decisive: false })
+    const confirmed = list.filter((need) => need.state === 'confirmed').map((need) => need.key)
+    expect(confirmed).toEqual(['bauwerkstyp@bw1', 'geschosse_oberirdisch@bw1'])
+    expect(list.slice(-confirmed.length).map((need) => need.key)).toEqual(confirmed)
+    for (const need of list) expect(() => needSchema.parse(need), need.key).not.toThrow()
   })
 
   it('opens follow-up questions on a suggested answer, as on a confirmed one', () => {
@@ -241,5 +260,62 @@ describe('computeNeeds', () => {
     expect(list.filter((need) => need.bauwerkId === 'bw2').every((need) => !need.decisive)).toBe(
       true
     )
+  })
+})
+
+describe('questionForKey', () => {
+  const question = (key: string) => questionForKey(projectIntakeDefinitionV1, key)
+
+  it('resolves a key to the question that writes it, in the scope it is asked in', () => {
+    expect(question('bundesland')).toMatchObject({ baseKey: 'bundesland', bauwerkId: null, zone: null, type: 'single_select' })
+    expect(question('geschosse_oberirdisch@bw2')).toMatchObject({ bauwerkId: 'bw2', zone: null, type: 'number_tri' })
+    expect(question('zone_flaeche@bw1@garage')).toMatchObject({ bauwerkId: 'bw1', zone: 'garage' })
+    expect(question('wohneinheiten@bw1@wohnen')).toMatchObject({ baseKey: 'wohneinheiten', zone: 'wohnen' })
+  })
+
+  it('knows no key outside the questions or the scope they are asked in', () => {
+    for (const key of [
+      'nicht_im_assistenten',
+      'gebaeudeklasse@bw1',
+      'bauwerk_name@bw1',
+      'bundesland@bw1',
+      'geschosse_oberirdisch',
+      'geschosse_oberirdisch@bw1@wohnen',
+      'geschosse_oberirdisch@haus',
+      'wohneinheiten@bw1@buero',
+      'zone_flaeche@bw1@keine_nutzung',
+      'wohneinheiten@bw1',
+    ]) {
+      expect(question(key), key).toBeNull()
+    }
+  })
+
+  it('writes each key from one question only, so a key has one question', () => {
+    const keys = projectIntakeDefinitionV1.stages.flatMap((stage) =>
+      [...stage.questions, ...(stage.zoneCommon ?? []), ...Object.values(stage.zoneDefinitions ?? {}).flatMap((zone) => zone.questions)]
+        .map((entry) => /^\/(?:facts|goals)\/([^/]+)/.exec(entry.writesTo ?? '')?.[1])
+        .filter((key): key is string => Boolean(key))
+    )
+    expect(new Set(keys).size).toBe(keys.length)
+  })
+})
+
+describe('recordableKey', () => {
+  it('takes a Bauwerk the profile describes and no other', () => {
+    expect(recordableKey(projectIntakeDefinitionV1, 'geschosse_oberirdisch@bw1', ['bw1'])).not.toBeNull()
+    expect(recordableKey(projectIntakeDefinitionV1, 'geschosse_oberirdisch@bw2', ['bw1'])).toBeNull()
+    expect(recordableKey(projectIntakeDefinitionV1, 'bundesland', [])).not.toBeNull()
+  })
+})
+
+describe('gebaeudeklasseInputsFor', () => {
+  it('reads one Bauwerk’s inputs, facts over suggestions, every input a key', () => {
+    const profile = profileWith(
+      { ...gebaeude, 'geschosse_oberirdisch@bw1': 3 },
+      { 'geschosse_oberirdisch@bw1': 9, 'fluchtniveau_m@bw1': 6.5 }
+    )
+    const inputs = gebaeudeklasseInputsFor(profile, projectIntakeDefinitionV1, 'bw1')
+    expect(inputs).toMatchObject({ bauwerkstyp: 'gebaeude', geschosse_oberirdisch: 3, fluchtniveau_m: 6.5 })
+    expect('bgf_oberirdisch' in inputs && inputs.bgf_oberirdisch === undefined).toBe(true)
   })
 })

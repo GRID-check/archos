@@ -104,6 +104,26 @@ class TestTheRunnerContract:
         )
         assert isinstance(agent, ProjectIntakeAgent)
 
+    def test_the_runner_hands_it_the_budgets_its_config_names(self):
+        from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+        from aiq_api.jobs.runner import _create_agent_instance
+
+        config = ProjectIntakeAgentConfig(llm="research_llm", max_tool_steps=12, max_run_seconds=90)
+        agent = _create_agent_instance(
+            ProjectIntakeAgent, LLMProvider(), None, [], config, verbose=False, callbacks=[], job_id=JOB
+        )
+        assert (agent.max_tool_steps, agent.max_run_seconds, agent._job_id) == (12, 90, JOB)
+
+    def test_the_config_defaults_are_the_agents(self):
+        from aiq_agent.agents.intake.agent import DEFAULT_MAX_RUN_SECONDS
+        from aiq_agent.agents.intake.agent import DEFAULT_MAX_TOOL_STEPS
+        from aiq_agent.agents.intake.register import ProjectIntakeAgentConfig
+
+        config = ProjectIntakeAgentConfig(llm="research_llm")
+        assert (config.max_tool_steps, config.max_run_seconds) == (DEFAULT_MAX_TOOL_STEPS, DEFAULT_MAX_RUN_SECONDS)
+        assert (DEFAULT_MAX_TOOL_STEPS, DEFAULT_MAX_RUN_SECONDS) == (80, 1200)
+        assert DEFAULT_MAX_RUN_SECONDS < 30 * 60, "a run ends before the BFF reconciles a reading (30 minutes)"
+
     async def test_the_result_is_the_summary_the_runner_reports(self, signed_run, route, project):
         from aiq_api.jobs.runner import _extract_result
 
@@ -126,6 +146,7 @@ class TestTheLoop:
         first = model.seen[0]
         opening = next(message for message in first if isinstance(message, HumanMessage)).content
         assert "geschosse_oberirdisch@bw1" in opening and "Occasion: Neue Dokumente hochgeladen" in opening
+        assert "What the last reading found" not in opening, "no note before a first reading finished"
         assert [body["op"] for body in fake.bodies()] == ["needs", "record", "finish"]
         for body in fake.bodies():
             assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
@@ -209,6 +230,19 @@ class TestWhenNothingCanBeRecorded:
         assert result.outcome["ended"] == "refused" and not result.outcome["finished"]
 
 
+class TestTheOpening:
+    def test_it_is_the_projects_state_with_the_last_readings_note(self):
+        from aiq_agent.agents.intake.agent import first_message
+        from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
+
+        opening = first_message(
+            "Neue Dokumente hochgeladen", {**NEEDS_BODY, "previousSummary": "Einreichplan gelesen; Fluchtniveau offen."}
+        )
+        assert "as it stands" in opening
+        assert "What the last reading found (its own summary): Einreichplan gelesen; Fluchtniveau offen." in opening
+        assert "geschosse_oberirdisch@bw1" in opening and "Baubeschreibung.pdf" in opening
+
+
 class TestThePrompt:
     def test_the_product_framing_scan_reads_this_prompt(self):
         """``tests/aiq_agent/test_product_framing.py`` holds every prompt to VISION.md and CONTEXT.md."""
@@ -228,3 +262,37 @@ class TestThePrompt:
         from aiq_agent.agents.intake.agent import system_prompt
 
         assert phrase in system_prompt()
+
+    def test_it_prescribes_no_procedure(self):
+        """Goal, rules, tools and budget; the model chooses its way (the product owner's direction)."""
+        import re
+
+        from aiq_agent.agents.intake.agent import system_prompt
+
+        rendered = system_prompt()
+        assert "<loop>" not in rendered
+        assert not re.search(r"^\s*\d+\.\s", rendered, re.MULTILINE), "no numbered steps"
+        assert "yours to choose" in rendered
+
+    def test_it_names_every_tool_once_and_states_the_budget_as_information(self):
+        from aiq_agent.agents.intake.agent import system_prompt
+
+        rendered = system_prompt(max_steps=80, max_run_seconds=1200)
+        assert "About 80 tool calls and 20 minutes" in rendered
+        for tool in (
+            "intake_needs",
+            "list_files",
+            "knowledge_search",
+            "read_document",
+            "read_passage",
+            "record_values",
+            "finish_intake",
+        ):
+            assert f"`{tool}`" in rendered, tool
+
+    def test_it_says_the_run_is_unattended_and_the_summary_is_grounded(self):
+        from aiq_agent.agents.intake.agent import system_prompt
+
+        rendered = system_prompt()
+        assert "nobody can answer" in rendered and "Do not end a turn with a plan" in rendered
+        assert "rests on something a tool returned in this run" in rendered

@@ -6,21 +6,27 @@ on a project with an intake, or by a person's click. It acts as that person
 through the signed envelope the run carries (ADR-0108), and reads only the
 project's main collection, the scope the BFF signed.
 
-The work is a loop, not a pipeline, because what is asked depends on what is
-found: ask the intake API what the profile still needs, find where a value is,
-read the page, record the value with its quote, ask again. The model drives
-that loop through a LangChain ``create_agent`` graph (the ReAct agent the deep
-researcher's workers are built on) with the three intake tools
-(``tools.py``), ``read_document`` (``reading.py``) and the shared ``list_files``,
+The model is given a goal, the rules a value must meet, the tools and its
+budget, and chooses its own way through the documents: the prompt prescribes
+no sequence (the product owner's direction for this agent: tools, not a
+graph). It runs as a LangChain ``create_agent`` graph (the ReAct agent the deep
+researcher's workers are built on) with the three intake tools (``tools.py``),
+``read_document`` (``reading.py``) and the shared ``list_files``,
 ``knowledge_search`` and ``read_passage`` the runner resolves from the config.
+How each tool is used lives in its description (ADR-0060). The opening message
+is the project's state (its needs, unread files, description and the last
+reading's summary), given as context to save a first call, not as an order of
+work.
 
 Three guarantees hold in code, not in the prompt:
 
 * **Every quote was read.** The run's read log (``read_log.py``) is bound for
   the run; ``record_values`` refuses a quote that does not stand in it.
-* **The run is bounded**: :data:`DEFAULT_MAX_TOOL_STEPS` tool calls (then only
-  ``finish_intake`` runs), a recursion limit behind it, and
-  :data:`DEFAULT_MAX_RUN_SECONDS` of wall clock.
+* **The run is bounded**: ``max_tool_steps`` tool calls (then only
+  ``finish_intake`` runs), a recursion limit behind it, and ``max_run_seconds``
+  of wall clock. Both are fields of ``ProjectIntakeAgentConfig``
+  (``register.py``), which the runner hands to the constructor; the defaults
+  below are the config's.
 * **The run always finishes.** When the model stops without ``finish_intake``,
   runs out of budget or fails, the run finishes in code with a short summary, so
   the intake leaves ``reading`` on the BFF without waiting for its reconciler.
@@ -61,9 +67,9 @@ logger = logging.getLogger(__name__)
 PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 #: Tool calls one run may make before only ``finish_intake`` still runs.
-DEFAULT_MAX_TOOL_STEPS = 40
+DEFAULT_MAX_TOOL_STEPS = 80
 #: Wall clock for one run. The BFF reconciles a reading older than 30 minutes; this ends well before.
-DEFAULT_MAX_RUN_SECONDS = 15 * 60
+DEFAULT_MAX_RUN_SECONDS = 20 * 60
 #: The BFF's instruction text, carried into the first message, bounded.
 MAX_INSTRUCTION_CHARS = 500
 
@@ -79,16 +85,31 @@ def _context_job_id() -> str | None:
     return str(value) if value else None
 
 
-def system_prompt(max_steps: int = DEFAULT_MAX_TOOL_STEPS) -> str:
-    return render_prompt_template(load_prompt(PROMPTS_DIR, "system.j2"), max_steps=max_steps, document_inventory="")
+def system_prompt(max_steps: int = DEFAULT_MAX_TOOL_STEPS, max_run_seconds: float = DEFAULT_MAX_RUN_SECONDS) -> str:
+    """The prompt: who Piloti is, the goal, the rules, the tools and the budget. No procedure."""
+    return render_prompt_template(
+        load_prompt(PROMPTS_DIR, "system.j2"),
+        max_steps=max_steps,
+        max_minutes=max(1, round(max_run_seconds / 60)),
+        document_inventory="",
+    )
 
 
 def first_message(instruction: str, needs_body: dict[str, Any]) -> str:
-    """What the run starts from: the job, the BFF's instruction, and the needs as they stand."""
-    lines = ["Set up this project's profile from its documents. Here is what it still needs."]
+    """The project's state as the run starts: why it runs, the last reading's note, the needs and unread files.
+
+    Context, not instructions: it is the ``intake_needs`` answer the model would
+    otherwise ask for first, with the BFF's occasion and the previous reading's
+    own summary (``previousSummary``) beside it, so a reading of new documents
+    does not start blind.
+    """
+    lines = ["The project as it stands now (the same answer intake_needs gives, so you need not ask for it first)."]
     instruction = " ".join((instruction or "").split())[:MAX_INSTRUCTION_CHARS]
     if instruction:
         lines.append(f"Occasion: {instruction}")
+    previous = " ".join(str(needs_body.get("previousSummary") or "").split())[: client.MAX_SUMMARY_CHARS]
+    if previous:
+        lines.append(f"What the last reading found (its own summary): {previous}")
     lines.append("")
     lines.append(render_needs(needs_body))
     return "\n".join(lines)
@@ -178,7 +199,7 @@ class ProjectIntakeAgent:
         return create_agent(
             model=model,
             tools=[*own, *shared],
-            system_prompt=system_prompt(self.max_tool_steps),
+            system_prompt=system_prompt(self.max_tool_steps, self.max_run_seconds),
             middleware=[IntakeToolMiddleware(max_steps=self.max_tool_steps, finish_tool=FINISH_INTAKE_TOOL)],
             name="project_intake",
         )

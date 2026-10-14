@@ -436,6 +436,7 @@ export async function intakeNeeds(
     description: row.description ?? null,
     location: row.location ?? null,
     mode: row.mode,
+    previousSummary: row.summary ?? null,
   }
 }
 
@@ -448,13 +449,11 @@ async function screenValues(
   organizationId: string,
   row: ProjectIntakeRow,
   values: readonly RecordValue[],
-  profile: ProjectProfile,
   readableFiles: ReadonlySet<string>
 ): Promise<Array<{ key: string; screened: ScreenedValue | null; refusal: RecordRefusalReason | null }>> {
-  const needs = new Map(needsOf(profile, row).map((need) => [need.key, need]))
   return Promise.all(
     values.map(async (value) => {
-      const refusal = staticRefusal(value, { needs, dismissed: row.dismissed, readableFiles })
+      const refusal = staticRefusal(value, { definition, dismissed: row.dismissed, readableFiles })
       if (refusal) return { key: value.key, screened: null, refusal }
       const evidence = await documentEvidence(value.evidence, { organizationId })
       return { key: value.key, screened: { key: value.key, value: value.value, evidence, reason: reasonFromEvidence(evidence) }, refusal: null }
@@ -474,15 +473,11 @@ export async function recordIntakeValues(
 ): Promise<{ results: RecordResult[] }> {
   const { organizationId } = session
   const row = await requireCurrentReading(session, projectId, jobId)
-  const [profile, documents] = await Promise.all([
-    loadProfile(organizationId, projectId),
-    readableDocuments(organizationId, projectId),
-  ])
+  const documents = await readableDocuments(organizationId, projectId)
   const readableFiles = new Set(documents.map((document) => document.fileName))
-  const screened = await screenValues(organizationId, row, values, profile, readableFiles)
+  const screened = await screenValues(organizationId, row, values, readableFiles)
   const results = await writeProfile(session, projectId, (current) => {
-    const needs = new Map(needsOf(current, row).map((need) => [need.key, need]))
-    const plan = planRecord(current, definition, screened, needs, new Date().toISOString())
+    const plan = planRecord(current, definition, screened, new Date().toISOString())
     return { value: plan.results, before: current, after: plan.profile, keys: plan.changedKeys }
   })
   return { results }

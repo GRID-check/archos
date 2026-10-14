@@ -6,8 +6,11 @@
  * Every fact and suggestion under a key one of the wizard's questions writes
  * is shown in that question's module, with where it was found and what else
  * was found for it. A value with alternatives is a contradiction, listed again
- * on top. The questions are the decisive needs nothing has filled. The class
- * of each Bauwerk is shown with the inputs it read and the ones it lacks.
+ * on top. The questions are the decisive needs nothing has filled (a
+ * `suggested` or `confirmed` need is not a question). The class of each
+ * Bauwerk is shown once, in `derivations`, with the inputs it read and the
+ * ones it lacks, never again in the modules; a contested class is still listed
+ * among the contradictions.
  */
 
 import {
@@ -96,29 +99,56 @@ function suggestionOf(
   }
 }
 
-/** Every value on the profile under a key the definition knows, grouped by module in the wizard's order. */
-export function suggestionGroups(
+/** Every value on the profile under a key the definition knows, with the module it belongs to, facts first. */
+function profileItems(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
   needs: readonly Need[]
-): SuggestionGroup[] {
+): Array<{ stage: string; item: Suggestion }> {
   const homes = keyHomes(definition)
   const decisive = new Set(needs.filter((need) => need.decisive).map((need) => need.key))
-  const byStage = new Map<string, Suggestion[]>()
+  const items: Array<{ stage: string; item: Suggestion }> = []
   const add = (key: string, entry: ProjectFact | ProjectAssumption, confirmed: boolean) => {
     const home = homes.get(profileKeyParts(key).baseKey)
-    if (!home) return
-    const items = byStage.get(home.stage.id) ?? []
-    items.push(suggestionOf(key, entry, confirmed, home, definition, decisive))
-    byStage.set(home.stage.id, items)
+    if (home) items.push({ stage: home.stage.id, item: suggestionOf(key, entry, confirmed, home, definition, decisive) })
   }
   for (const [key, fact] of Object.entries(profile.facts)) add(key, fact, true)
   for (const [key, assumption] of Object.entries(profile.assumptions)) {
     if (!(key in profile.facts)) add(key, assumption, false)
   }
+  return items
+}
+
+/** The derived class: shown and decided in `derivations`, so not again in its module. */
+const isDerivedClass = (item: Suggestion) => item.baseKey === GEBAEUDEKLASSE_DERIVATION.rule
+
+/** Every value on the profile under a key the definition knows, grouped by module in the wizard's order; the derived class is not among them. */
+export function suggestionGroups(
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition,
+  needs: readonly Need[]
+): SuggestionGroup[] {
+  const byStage = new Map<string, Suggestion[]>()
+  for (const { stage, item } of profileItems(profile, definition, needs)) {
+    if (isDerivedClass(item)) continue
+    byStage.set(stage, [...(byStage.get(stage) ?? []), item])
+  }
   return definition.stages
     .filter((stage) => byStage.has(stage.id))
     .map((stage) => ({ stage: stage.id, title: stage.title, items: byStage.get(stage.id) ?? [] }))
+}
+
+/** The values with a different value found beside them, in the modules' order, the derived class included. */
+function contestedItems(
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition,
+  needs: readonly Need[]
+): Suggestion[] {
+  const order = new Map(definition.stages.map((stage, index) => [stage.id, index]))
+  return profileItems(profile, definition, needs)
+    .filter(({ item }) => item.state === 'contested')
+    .sort((a, b) => (order.get(a.stage) ?? 0) - (order.get(b.stage) ?? 0))
+    .map(({ item }) => item)
 }
 
 /** What a reading leaves to review, counted as the row stores it at the end of a reading. */
@@ -128,12 +158,10 @@ export function intakeCounts(
   needs: readonly Need[],
   documentsRead: number
 ): IntakeCounts {
-  const groups = suggestionGroups(profile, definition, needs)
-  const items = groups.flatMap((group) => group.items)
   return {
     documentsRead,
     suggested: Object.values(profile.assumptions).filter((entry) => entry.source === 'agent_suggested').length,
-    contradictions: items.filter((item) => item.state === 'contested').length,
+    contradictions: contestedItems(profile, definition, needs).length,
     decisiveOpen: needs.filter((need) => need.decisive && need.state === 'open').length,
   }
 }
@@ -155,7 +183,7 @@ const iso = (value: Date | string | null | undefined): string | null =>
 export function buildIntakeView(input: IntakeViewInput): IntakeView {
   const { row, profile, definition, needs } = input
   const groups = suggestionGroups(profile, definition, needs)
-  const contradictions = groups.flatMap((group) => group.items).filter((item) => item.state === 'contested')
+  const contradictions = contestedItems(profile, definition, needs)
   const questions = needs.filter((need) => need.decisive && need.state === 'open').slice(0, MAX_INTAKE_NEEDS)
   const counts = intakeCounts(profile, definition, needs, row.documentsRead.length)
   return {

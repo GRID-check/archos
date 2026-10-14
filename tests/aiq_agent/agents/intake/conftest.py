@@ -74,6 +74,7 @@ NEEDS_BODY = {
     "description": "Zubau eines Wohnhauses",
     "location": None,
     "mode": "active",
+    "previousSummary": None,
 }
 
 PAGES = {

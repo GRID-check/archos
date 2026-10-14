@@ -15,6 +15,7 @@ for a select question, whether the quote says the value at all
 from __future__ import annotations
 
 import asyncio
+import difflib
 import logging
 import re
 from collections import Counter
@@ -29,6 +30,7 @@ from pydantic import Field
 from . import client
 from .read_log import NOT_FOUND
 from .read_log import current_read_log
+from .reading import citation_parts
 
 logger = logging.getLogger(__name__)
 
@@ -54,11 +56,19 @@ _OUTCOME_TEXT = {
     "contradiction": "contradiction — differs from the value already on the profile; kept beside it for a person",
 }
 _REFUSAL_TEXT = {
-    "vocabulary": "refused: the value is not one of the question's options (use the option tokens exactly)",
-    "not-a-need": "refused: not an open need (check the key and its @bwN suffix with intake_needs)",
+    "vocabulary": (
+        "refused: not a value this question takes (select: its option tokens exactly; number: a plain number in "
+        "the question's unit; yes/no: true or false)"
+    ),
+    "unknown-key": (
+        "refused: no question of the intake writes this key, or not with this @bwN/@bwN@use suffix, or the "
+        "Bauwerk is not on the profile"
+    ),
     "dismissed": "refused: a person dismissed this value before; do not record it again",
     "unreadable-file": "refused: this file may not feed the profile; take the value from another document",
 }
+#: Keys one ``unknown-key`` refusal names as the closest it knows.
+CLOSEST_KEYS = 3
 
 
 @dataclass
@@ -82,6 +92,10 @@ class IntakeSession:
         self.needs = {str(need["key"]): need for need in needs}
         self.mode = str(body.get("mode") or self.mode)
         self.decisive_open = sum(1 for need in needs if need.get("decisive") and need.get("state") == "open")
+
+    def closest_keys(self, key: str) -> list[str]:
+        """The keys intake_needs listed that come closest to ``key``: for a refusal the model can act on."""
+        return difflib.get_close_matches(key, list(self.needs), n=CLOSEST_KEYS, cutoff=0.5)
 
 
 # ── intake_needs ─────────────────────────────────────────────────────────────
@@ -112,12 +126,19 @@ def render_need(need: dict[str, Any]) -> str:
     return "".join(parts)
 
 
+_STATE_ORDER = {"open": 0, "suggested": 1, "confirmed": 2}
+
+
 def _need_order(need: dict[str, Any]) -> tuple[int, int]:
-    return (0 if need.get("decisive") else 1, 0 if need.get("state") == "open" else 1)
+    return (0 if need.get("decisive") else 1, _STATE_ORDER.get(str(need.get("state")), 1))
 
 
-def render_needs(body: dict[str, Any]) -> str:
-    """The ``needs`` answer as the model reads it: bounded, decisive and open needs first, and says it is bounded."""
+def render_needs(body: dict[str, Any], start: int = 0) -> str:
+    """The ``needs`` answer as the model reads it: bounded, decisive first, then open, suggested, confirmed.
+
+    ``start`` pages past the first :data:`MAX_RENDERED_NEEDS`; the answer says
+    when it is bounded and which call shows the rest.
+    """
     needs = sorted((need for need in body.get("needs") or [] if isinstance(need, dict)), key=_need_order)
     unread = [str(name) for name in body.get("unreadFiles") or []]
     lines = [f"Mode: {body.get('mode') or 'active'}"]
@@ -126,13 +147,21 @@ def render_needs(body: dict[str, Any]) -> str:
     location = body.get("location")
     if isinstance(location, dict) and location.get("label"):
         lines.append(f"Address chosen at creation: {location['label']}")
-    open_count = sum(1 for need in needs if need.get("state") == "open")
-    lines.append(f"\nNeeds: {len(needs)} ({open_count} open, {len(needs) - open_count} only suggested so far)")
-    lines.extend(render_need(need) for need in needs[:MAX_RENDERED_NEEDS])
-    if len(needs) > MAX_RENDERED_NEEDS:
+    states = Counter(str(need.get("state")) for need in needs)
+    lines.append(
+        f"\nNeeds: {len(needs)} ({states['open']} open, {states['suggested']} suggested so far, "
+        f"{states['confirmed']} confirmed by a person)"
+    )
+    start = max(0, min(start, len(needs)))
+    shown = needs[start : start + MAX_RENDERED_NEEDS]
+    if start:
+        lines.append(f"[Needs {start + 1}–{start + len(shown)} of {len(needs)}.]")
+    lines.extend(render_need(need) for need in shown)
+    rest = len(needs) - start - len(shown)
+    if rest > 0:
         lines.append(
-            f"[{len(needs) - MAX_RENDERED_NEEDS} more needs not listed (bounded at {MAX_RENDERED_NEEDS}). "
-            "Call intake_needs again after recording: covered needs drop out and the rest move up.]"
+            f"[{rest} more needs not listed (bounded at {MAX_RENDERED_NEEDS}): intake_needs(start="
+            f"{start + len(shown)}) lists them. Recording moves an open need behind the open ones.]"
         )
     if not needs:
         lines.append("Nothing is needed any more: finish the intake.")
@@ -144,24 +173,37 @@ def render_needs(body: dict[str, Any]) -> str:
 
 
 INTAKE_NEEDS_DESCRIPTION = (
-    "What the project's profile still needs, from the intake API: every open question the wizard would ask now "
-    "(key, label, type, option tokens, unit, where the value is usually found, why it is asked), decisive needs "
-    "first (filling one could change the Gebäudeklasse), and the files no reading has read yet. A need marked "
-    "`suggested` already has a value from a document: record it again only to corroborate it from another "
-    "document or to report a different value. Call it again after recording values: what you covered drops out, "
-    "and new needs can appear (a Wohnbau asks for its Wohnungen)."
+    "What the project's profile still needs, from the intake API, as it stands now: every question the wizard "
+    "would ask for what is known (key, label, type, option tokens, unit, where the value is usually found, why it "
+    "is asked), and the files no reading has read yet. `decisive`: filling it could change a Bauwerk's "
+    "Gebäudeklasse. State `open`: nothing on the profile. `suggested`: a document's value is there, unconfirmed; "
+    "record it again only from another document, which corroborates it or, if different, is kept beside it for "
+    "a person. `confirmed`: a person confirmed a Gebäudeklasse input; record it only from a document that states "
+    "it (a newer Stand, say): the same value corroborates it, a different one becomes a contradiction a person "
+    "decides, and the confirmed value is never overwritten. Answers change as values are recorded: a recorded "
+    "value can open new questions (Nutzungen open the Wohnungen of a Wohnbau). A key you know from the "
+    "documents need not be listed yet to be recorded: any key a wizard question writes is taken. Bounded at "
+    f"{MAX_RENDERED_NEEDS} needs per answer; `start` pages on."
 )
 
 
-class _NoArguments(BaseModel):
-    pass
+class NeedsInput(BaseModel):
+    start: int = Field(
+        default=0, ge=0, description="Skip this many needs: the answer names the next start when bounded."
+    )
 
 
 # ── record_values ────────────────────────────────────────────────────────────
 
 
 class RecordedValue(BaseModel):
-    key: str = Field(description="The need's key exactly as intake_needs lists it, with its @bwN suffix if it has one.")
+    key: str = Field(
+        description=(
+            "The profile key exactly as intake_needs lists it, with its @bwN (Bauwerk) or @bwN@use (Nutzungszone) "
+            "suffix. A key not listed yet is taken when a wizard question writes it (wohneinheiten@bw1@wohnen "
+            "before the Nutzungen are recorded)."
+        )
+    )
     value: bool | int | float | str | list[str] = Field(
         description=(
             "The value the document states for THIS project. Select: the option token exactly (multi_select: a "
@@ -169,7 +211,16 @@ class RecordedValue(BaseModel):
             "Text: the words as written."
         )
     )
-    file_name: str = Field(description="The file the quote stands in, exactly as the reading tool named it.")
+    citation: str | None = Field(
+        default=None,
+        description=(
+            "Where the quote stands, as the reading tool printed it: `Baubeschreibung.pdf, p.3` from a search hit, "
+            "or `Baubeschreibung.pdf, S. 3`. Give this or file_name."
+        ),
+    )
+    file_name: str | None = Field(
+        default=None, description="The file the quote stands in, exactly as the reading tool named it."
+    )
     page: int | None = Field(default=None, description="The page from the [Seite N] marker or the hit; null if none.")
     quote: str = Field(
         description=(
@@ -186,14 +237,24 @@ class RecordValuesInput(BaseModel):
 
 
 RECORD_VALUES_DESCRIPTION = (
-    "Record values the project's documents state, each with the file, the page and the verbatim quote that "
-    f"states it. Up to {client.MAX_RECORD_VALUES} per call. Nothing you record becomes a fact: each value is a "
-    "suggestion a person confirms, so record only what a document states for THIS project, never a guess, an "
-    "average or something you worked out. The Gebäudeklasse is derived by the system from the values you record; "
-    "never compute it. Checked before anything is sent: the quote must stand in text you read in this run in "
-    "that file (read the page with read_document first), a select value must be one of the option tokens, and "
-    "the quote must say the value. The answer gives one outcome per key: suggested, corroborated, contradiction "
-    "(a different value is already on the profile; yours is kept beside it), or refused with the reason."
+    "Record values the project's documents state, each with where it stands (citation, or file_name and page) "
+    f"and the verbatim quote that states it. Up to {client.MAX_RECORD_VALUES} per call, several keys at once. "
+    "Nothing you record becomes a fact: each value is a suggestion a person confirms against the quote, so "
+    "record only what a document states for THIS project, as its Zielzustand (a Bestand key: the existing "
+    "building), never a guess, a typical value or something you worked out; the Gebäudeklasse is derived from "
+    "what you record, never record it unless a document states the class itself. Value: select, the option "
+    "token exactly (multi_select: a list); number, "
+    "a plain number in the question's unit, no unit text (`7,2 m` is 7.2); yes/no, true or false; text, the "
+    "words as written. Quote: the document's own words, copied from text a tool showed you in this run in that "
+    f"file, at most {MAX_QUOTE_CHARS} characters, the sentence, table row or title-block line, never paraphrased "
+    "or joined from two places. Checked before anything is sent: the quote stands in what you read of that file "
+    "(when it does not, the answer shows the closest passage you did read), a select value is one of the option "
+    'tokens and its quote says it. Example: {"values": [{"key": "geschosse_oberirdisch@bw1", '
+    '"value": 3, "citation": "Baubeschreibung.pdf, S. 3", "quote": "Das Gebäude hat drei '
+    'oberirdische Geschoße"}]}. Outcomes, one per value: suggested (new on the profile, a person will check '
+    "it); corroborated (the profile holds the same value; your evidence was added); contradiction (the profile "
+    "holds a different value; yours is kept beside it for a person to decide); refused, with the reason and "
+    "what to do instead."
 )
 
 
@@ -274,19 +335,19 @@ def _checked(index: int, item: RecordedValue, session: IntakeSession) -> _Candid
         return _NotSent("empty", "not sent: an empty value records nothing; leave the need open instead")
     if not quote:
         return _NotSent("no-quote", "not sent: a value needs the quote that states it")
-    file_name = log.canonical_name(item.file_name)
+    named, cited_page = _where(item)
+    if not named:
+        return _NotSent("no-file", "not sent: say where the quote stands, as citation or file_name")
+    asked_page = item.page if item.page is not None else cited_page
+    file_name = log.canonical_name(named)
     if file_name is None or not log.has_text(file_name):
         return _NotSent(
             "not-read",
-            f"not sent: you have not read „{item.file_name}“ in this run; read the page with read_document first",
+            f"not sent: you have not read „{named}“ in this run; read the page with read_document first",
         )
-    found = log.contains(file_name, quote, item.page)
+    found = log.contains(file_name, quote, asked_page)
     if found is NOT_FOUND:
-        return _NotSent(
-            "quote-not-read",
-            f"not sent: the quote does not stand in what you read of „{file_name}“. Read the page with "
-            "read_document first and copy the document's exact words",
-        )
+        return _NotSent("quote-not-read", _not_read_text(log, file_name, quote, asked_page))
     need = session.needs.get(item.key)
     value = _coerce(item.value, need)
     outside = _outside_options(value, need)
@@ -296,8 +357,33 @@ def _checked(index: int, item: RecordedValue, session: IntakeSession) -> _Candid
         return _NotSent(
             "not-an-option", f"not sent: {listed} is not an option of this question; the tokens are: {tokens}"
         )
-    page = found if isinstance(found, int) else (item.page if item.page and item.page >= 1 else None)
+    page = found if isinstance(found, int) else (asked_page if asked_page and asked_page >= 1 else None)
     return _Candidate(index, item.key, value, file_name, page, quote, need)
+
+
+def _where(item: RecordedValue) -> tuple[str, int | None]:
+    """The file and page a value names: ``file_name`` and ``page`` when given, else parsed from its citation."""
+    if item.file_name and item.file_name.strip():
+        name = item.file_name.strip()
+        # A model that put the whole citation in file_name: read it as one.
+        parsed, page = citation_parts(name)
+        return (name, None) if page is None else (parsed, page)
+    if item.citation and item.citation.strip():
+        return citation_parts(item.citation)
+    return "", None
+
+
+def _not_read_text(log: Any, file_name: str, quote: str, page: int | None) -> str:
+    """Why a quote was not sent, with the closest passage that WAS read there, so the next call can succeed."""
+    text = f"not sent: the quote does not stand in what you read of „{file_name}“."
+    closest = log.closest(file_name, quote, page)
+    if closest is None:
+        return f"{text} Read the page with read_document and copy the document's exact words."
+    where = f" on page {closest.page}" if closest.page else ""
+    return (
+        f"{text} Closest passage you read{where}: „{closest.text}“. If it states the value, quote it exactly; "
+        "otherwise read the page that does."
+    )
 
 
 def _verify_selects(candidates: list[_Candidate], session: IntakeSession) -> dict[int, str]:
@@ -347,11 +433,15 @@ def _verify_selects(candidates: list[_Candidate], session: IntakeSession) -> dic
     return refused
 
 
-def _outcome_line(key: str, result: dict[str, Any]) -> tuple[str, str]:
+def _outcome_line(key: str, result: dict[str, Any], session: IntakeSession) -> tuple[str, str]:
     outcome = str(result.get("outcome") or "")
     if outcome == "refused":
         reason = str(result.get("reason") or "")
-        return f"refused:{reason or 'unknown'}", _REFUSAL_TEXT.get(reason, f"refused ({reason or 'no reason given'})")
+        text = _REFUSAL_TEXT.get(reason, f"refused ({reason or 'no reason given'})")
+        close = session.closest_keys(key) if reason == "unknown-key" else []
+        if close:
+            text = f"{text}; closest keys intake_needs listed: {', '.join(close)}"
+        return f"refused:{reason or 'unknown'}", text
     return outcome, _OUTCOME_TEXT.get(outcome, outcome or "no outcome")
 
 
@@ -390,7 +480,7 @@ async def record_values(session: IntakeSession, values: list[RecordedValue]) -> 
             if not isinstance(result, dict):
                 lines[candidate.index] = f"- {candidate.key}: not recorded — {reply.refusal or 'no result returned'}"
                 continue
-            counted, text = _outcome_line(candidate.key, result)
+            counted, text = _outcome_line(candidate.key, result, session)
             (session.refusals if counted.startswith("refused") else session.outcomes)[counted] += 1
             lines[candidate.index] = f"- {candidate.key} = {candidate.value!r}: {text}"
     out = [lines[index] for index in sorted(lines)]
@@ -413,8 +503,10 @@ class FinishInput(BaseModel):
 
 FINISH_INTAKE_DESCRIPTION = (
     "End the reading: tell the intake API it is done, with your summary, and stop. Call it once, when the needs "
-    "are covered, when the documents hold nothing more for them, or when the step budget is spent. Nothing runs "
-    "after it."
+    "are covered, when the documents hold nothing more for them, or when the budget is spent. Nothing runs after "
+    "it. The summary is shown to the person who checks the reading and is handed to the next reading of this "
+    "project as its starting note: every claim in it rests on something a tool returned in this run (files read, "
+    "values recorded, refusals), and it says plainly what stays open and which document would answer it."
 )
 
 
@@ -441,13 +533,13 @@ async def finish_intake(session: IntakeSession, summary: str) -> str:
 def make_intake_tools(session: IntakeSession) -> list[StructuredTool]:
     """The three intake tools, bound to this run's session."""
 
-    async def _needs() -> str:
+    async def _needs(start: int = 0) -> str:
         reply = await client.call_intake("needs", client.needs_request(session.job_id))
         if not reply.ok:
             session.stale = session.stale or reply.stale
             return reply.refusal
         session.remember_needs(reply.body)
-        return render_needs(reply.body)
+        return render_needs(reply.body, start)
 
     async def _record(values: list[RecordedValue]) -> str:
         return await record_values(session, values)
@@ -457,7 +549,7 @@ def make_intake_tools(session: IntakeSession) -> list[StructuredTool]:
 
     return [
         StructuredTool.from_function(
-            coroutine=_needs, name=INTAKE_NEEDS_TOOL, description=INTAKE_NEEDS_DESCRIPTION, args_schema=_NoArguments
+            coroutine=_needs, name=INTAKE_NEEDS_TOOL, description=INTAKE_NEEDS_DESCRIPTION, args_schema=NeedsInput
         ),
         StructuredTool.from_function(
             coroutine=_record,
