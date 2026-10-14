@@ -710,7 +710,11 @@ In order, per stack:
      true`, in place before the Job starts): a cycle that found the corpus
      collection empty would take Qdrant for reset and queue the whole corpus
      to be embedded again, and the new points would fail `--verify` as extra.
-     Step 5 resumes it.
+     The weekly `vector-reconcile` CronJob is suspended for the same reason:
+     against collections not imported yet it reads "the store holds no chunk"
+     and forgets those documents' metadata rows (summaries, tags,
+     Dokumentart, folders). **Do not press Platform → Vector maintenance**
+     until step 5: it runs the same reconcile by hand. Step 5 resumes both.
    - Pause ingestion, so nothing lands in Qdrant that the export does not
      hold before `--verify` compares the two (an upload waits in the queue,
      it is not lost): `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas=0`.
@@ -744,9 +748,9 @@ In order, per stack:
    one that cites the corpus, from an office that existed before. Then resume
    ingestion: `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas-`.
 5. **Switch the Job off**: `pulumi config rm grid-oib:chromaMigration`, deploy.
-   The Job and its ConfigMap are deleted and the base-corpus sync resumes
-   (`kubectl -n grid get cronjob housekeeping-base-corpus -o jsonpath='{.spec.suspend}'`
-   prints `false`). Until this deploy, a corpus file uploaded in the admin UI
+   The Job and its ConfigMap are deleted and the base-corpus sync and the vector reconcile resume
+   (`kubectl -n grid get cronjob housekeeping-base-corpus vector-reconcile -o jsonpath='{range .items[*]}{.metadata.name}={.spec.suspend}{"\n"}{end}'`
+   prints `false` for each). Until this deploy, a corpus file uploaded in the admin UI
    is never queued. To run it again instead, switch it
    off for one deploy and on for the next; never after uploads have resumed,
    since it re-inserts what the export holds.

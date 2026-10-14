@@ -244,14 +244,18 @@ describe("the Chroma migration Job, switched on", () => {
 
   // A sync cycle that finds the corpus collection empty while the table lists
   // ingested files queues the whole corpus for a paid re-embedding, and its
-  // new points fail the import's `--verify` as extra.
-  it("suspends the base-corpus sync, and only that clock, before the export starts", () => {
+  // new points fail the import's `--verify` as extra. The vector reconcile,
+  // run against collections not imported yet, forgets their documents'
+  // metadata rows (summaries, tags, Dokumentart, folders).
+  it("suspends the base-corpus sync and the vector reconcile, and only those, before the export starts", () => {
     const CRON = "kubernetes:batch/v1:CronJob";
     const suspended = RESOURCES.filter(
       (r) => r.type === CRON && (r.inputs as { spec: { suspend?: boolean } }).spec.suspend === true,
     );
-    expect(suspended.map((r) => r.name)).toEqual(["housekeeping-base-corpus"]);
-    expect(graph.waitsOn(JOB, "chroma-migration", CRON, "housekeeping-base-corpus")).toBe(true);
+    expect(suspended.map((r) => r.name).sort()).toEqual(["housekeeping-base-corpus", "vector-reconcile"]);
+    for (const name of ["housekeeping-base-corpus", "vector-reconcile"]) {
+      expect(graph.waitsOn(JOB, "chroma-migration", CRON, name), name).toBe(true);
+    }
   });
 
   it("is a named caller of Qdrant's client ports", () => {

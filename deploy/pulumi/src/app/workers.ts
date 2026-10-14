@@ -19,6 +19,9 @@ const FRONTEND_URL = `http://frontend:${PORT.frontend}`;
 /** The CronJob that drives the base-corpus sync, suspended while `chromaMigration` is on. */
 export const BASE_CORPUS_SYNC = "housekeeping-base-corpus";
 
+/** The weekly orphaned-vector sweep, suspended while `chromaMigration` is on. */
+export const VECTOR_RECONCILE = "vector-reconcile";
+
 /** One backend housekeeping route on a schedule (`installWorkers`). */
 type HousekeepingSweep = {
   name: string;
@@ -296,13 +299,20 @@ export function installWorkers(
    * BFF lists and diffs every live collection, and the backend then walks the
    * same collections' summaries, each with its own 15-second per-call timeout,
    * so a deployment of a few hundred projects is minutes, not tens of them.
+   *
+   * Suspended while `chromaMigration` is on. Against a Qdrant the import has
+   * not filled yet, every collection still to come reads as "the store holds
+   * no chunk", and the reconcile forgets those documents' metadata rows
+   * (summaries, tags, Dokumentart, folders). The Platform → Vector maintenance
+   * button calls the same route by hand: the runbook says not to press it.
    */
   const vectorReconcile = cfg.vectorReconcile.enabled
     ? internalSweepCronJob(w, cfg, secrets, dependsOn, {
-        name: "vector-reconcile",
+        name: VECTOR_RECONCILE,
         schedule: cfg.vectorReconcile.schedule,
         url: `${FRONTEND_URL}/api/internal/maintenance/reconcile-vectors`,
         timeoutMs: 1_800_000,
+        suspend: cfg.chromaMigration.enabled,
       })
     : undefined;
 

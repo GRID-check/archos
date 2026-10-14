@@ -129,6 +129,8 @@ describe("the program constructs in the split topology", () => {
     // written as false otherwise, so switching the flag off resumes the clock.
     const baseCorpus = housekeeping.find((r) => r.name === "housekeeping-base-corpus");
     expect((baseCorpus?.inputs.spec as { suspend?: boolean }).suspend).toBe(false);
+    const reconcile = cronJobs.find((r) => r.name === "vector-reconcile");
+    expect((reconcile?.inputs.spec as { suspend?: boolean }).suspend).toBe(false);
   });
 
   it("keeps no files on the web role: no volume claim, nothing mounted at /app/data", () => {
