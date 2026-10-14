@@ -69,6 +69,7 @@ vi.mock('@/lib/db/tenant-context', async (original) => ({
 }))
 // The change record (ADR-0109) and the attention a write asks for, at their seams.
 vi.mock('@/lib/changes/repository', () => ({ insertPilotiChanges: vi.fn(async () => []) }))
+vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/annotations/attention', () => ({
   onPilotiWrote: vi.fn(async () => undefined),
   onMarkSettledByPerson: vi.fn(async () => undefined),
@@ -102,6 +103,9 @@ import type { DocumentAnnotationReplyRow, DocumentAnnotationRow } from '@/lib/db
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { onPilotiWrote } from '@/lib/annotations/attention'
 import { insertPilotiChanges } from '@/lib/changes/repository'
+import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
+import type { PilotiChangeRow } from '@/lib/db/schema/piloti-changes'
 import { POST } from './route'
 
 const SECRET = 'test-internal-token-annotations'
@@ -888,6 +892,135 @@ describe('POST /api/internal/document-annotations — what a turn changed is rec
     expect(stored().status).toBe('resolved')
     expect(error).toHaveBeenCalled()
     error.mockRestore()
+  })
+})
+
+describe('POST /api/internal/document-annotations — what a turn changed is in the audit trail', () => {
+  const audited = (): AuditEventInput[] => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+  const TARGETS = [
+    { type: 'document', id: DOC_ID },
+    { type: 'project', id: 'proj_1' },
+    { type: 'conversation', id: 'conv_1' },
+  ]
+
+  beforeEach(() => {
+    marks = new Map([[MARK_ID, record()]])
+    fakeRepository()
+    vi.mocked(getAccessibleDocument).mockResolvedValue(DOC_ROW)
+    vi.mocked(canUserAccessProject).mockResolvedValue(true)
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(
+      new Map([['user_anna', { userId: 'user_anna', email: 'anna@buero.at', name: 'Anna Berger', profilePictureUrl: null }]])
+    )
+  })
+
+  it('records a change once, as the person the turn acted for, with the turn and the field names that moved', async () => {
+    vi.mocked(insertPilotiChanges).mockImplementationOnce(async (_org, rows) =>
+      rows.map((row) => ({ ...row, id: 'c0000000-0000-4000-8000-000000000001' }) as PilotiChangeRow)
+    )
+
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', assignee: 'Anna Berger', note: NOTE })
+
+    expect(audited()).toEqual([
+      {
+        action: 'piloti.change.applied',
+        organizationId: 'org_1',
+        actor: { userId: 'user_1', email: null },
+        targetType: 'document_annotation',
+        targetId: MARK_ID,
+        alsoTargets: TARGETS,
+        metadata: {
+          op: 'update',
+          markNumber: 4,
+          markKind: null,
+          status: 'resolved',
+          fields: 'status,assigneeUserId',
+          messageId: ANSWER,
+          changeId: 'c0000000-0000-4000-8000-000000000001',
+        },
+      },
+    ])
+  })
+
+  it('records a set mark with its status and kind, and never a word of it', async () => {
+    const response = await post({ op: 'create', answerMessageId: ANSWER, marks: [{ ...PROPOSAL, kind: 'question' }] })
+    const { created } = await response.json()
+
+    expect(audited()).toHaveLength(1)
+    expect(audited()[0]).toMatchObject({
+      targetId: created[0].id,
+      metadata: { op: 'create', markNumber: 10, markKind: 'question', status: 'open', fields: null, changeId: null },
+    })
+    expect(JSON.stringify(audited())).not.toContain(PROPOSAL.body)
+  })
+
+  it('records each proposed mark, a delete, and a reply as `reply`, none with what it says', async () => {
+    vi.mocked(proposeAnnotations).mockResolvedValue({
+      annotations: [record({ id: 'ann_1', number: 11, status: 'proposed', authorKind: 'piloti' }), record({ id: 'ann_2', number: 12, status: 'proposed', authorKind: 'piloti' })] as never,
+    })
+    await post({ op: 'propose', answerMessageId: ANSWER, proposals: [PROPOSAL, PROPOSAL] })
+    marks.set(MARK_ID, record({ createdBy: 'user_1' }))
+    await post({ op: 'delete', answerMessageId: ANSWER, annotationId: MARK_ID })
+    const replyId = '77777777-7777-4777-8777-777777777777'
+    vi.mocked(replyToAnnotation).mockResolvedValue({
+      annotation: { ...record(), replies: [{ id: replyId, body: 'Die Breite ist im Schnitt B-B kotiert.' }] } as never,
+      replyId,
+      wake: 'none',
+    })
+    await post({ op: 'reply', answerMessageId: ANSWER, annotationId: MARK_ID, body: 'Die Breite ist im Schnitt B-B kotiert.' })
+
+    expect(audited().map((input) => [input.targetId, input.metadata?.op, input.metadata?.status])).toEqual([
+      ['ann_1', 'create', 'proposed'],
+      ['ann_2', 'create', 'proposed'],
+      [MARK_ID, 'delete', 'open'],
+      [MARK_ID, 'reply', null],
+    ])
+    expect(JSON.stringify(audited())).not.toMatch(/Laufbreite|Schnitt B-B/)
+  })
+
+  it('records nothing for a change that moved nothing, a refused one, or a read', async () => {
+    vi.mocked(roomSnapshot).mockResolvedValue([])
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, kind: 'defect', note: NOTE })
+    marks.set(MARK_ID, record({ status: 'resolved', closedBy: 'user_2', closedAt: NOW }))
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'open', expectedStatus: 'open', note: NOTE })
+    await post({ op: 'list', answerMessageId: ANSWER })
+    await post({ op: 'room', answerMessageId: ANSWER })
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('records a change the ledger could not keep, without a change id: the change stands either way', async () => {
+    vi.mocked(insertPilotiChanges).mockRejectedValueOnce(new Error('connection reset'))
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', note: NOTE })
+    await post({ op: 'update', annotationId: MARK_ID, status: 'open', note: NOTE })
+
+    expect(audited().map((input) => [input.metadata?.changeId, input.metadata?.messageId])).toEqual([
+      [null, ANSWER],
+      [null, null],
+    ])
+    error.mockRestore()
+    warn.mockRestore()
+  })
+
+  it('applies the change when the trail fails', async () => {
+    vi.mocked(recordAuditEvent).mockImplementationOnce(() => {
+      throw new Error('WorkOS down')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const response = await post({ op: 'update', answerMessageId: ANSWER, annotationId: MARK_ID, status: 'resolved', note: NOTE })
+
+    expect(response.status).toBe(200)
+    expect(stored().status).toBe('resolved')
+    expect(insertPilotiChanges).toHaveBeenCalledTimes(1)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('piloti.change.applied'), expect.any(Error))
+    warn.mockRestore()
   })
 })
 

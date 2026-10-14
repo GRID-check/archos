@@ -131,6 +131,14 @@ interface AuditEventFields {
   actor: AuditActor
   targetType: string
   targetId?: string | null
+  /**
+   * Further things the event is about, after the subject: the document a mark
+   * is on, its project, the conversation a turn ran in. Each is a target, so an
+   * admin filters the viewer by it; one without an id is left out. Every type
+   * must be registered among the action's targets in `schemas.mjs`, or WorkOS
+   * rejects the event like an unregistered action.
+   */
+  alsoTargets?: readonly { type: string; id: string | null | undefined }[]
   metadata?: Record<string, string | number | boolean | null | undefined>
   /** Source request, for actor IP + user agent in the event context. */
   request?: Request
@@ -225,8 +233,9 @@ function compactMetadata(metadata: AuditEventInput['metadata']): AuditMetadata {
  */
 function eventTargets(input: AuditEventInput): AuditTarget[] {
   const subject: AuditTarget = { type: input.targetType, id: input.targetId ?? input.organizationId }
-  if (input.actor.type !== 'agent') return [subject]
-  return [subject, { type: input.actor.ref.kind, id: input.actor.ref.id }]
+  const also = (input.alsoTargets ?? []).flatMap((target) => (target.id ? [{ type: target.type, id: target.id }] : []))
+  if (input.actor.type !== 'agent') return [subject, ...also]
+  return [subject, ...also, { type: input.actor.ref.kind, id: input.actor.ref.id }]
 }
 
 /** A WorkOS emit that failed, with the event it was carrying. */

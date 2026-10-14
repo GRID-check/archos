@@ -35,6 +35,11 @@ vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn()
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn().mockResolvedValue(new Map()) }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
+// Every write here is one person's; the shared limiter would refuse them as a burst.
+vi.mock('@/lib/limits/enforce', async (original) => ({
+  ...(await original<typeof import('@/lib/limits/enforce')>()),
+  enforceLimit: vi.fn(async () => undefined),
+}))
 vi.mock('@/lib/jobs-queue/enqueue', () => ({ enqueueJob: vi.fn() }))
 vi.mock('@/lib/annotations/wake-repository', () => ({
   countWakes: vi.fn(),
@@ -81,8 +86,9 @@ import {
 } from '@/lib/annotations/repository'
 import { PILOTI, replyToAnnotation as replyAs, updateAnnotation as updateAs } from '@/lib/annotations/service'
 import { countWakes, findLiveDelegationWake, insertWake, settleWake } from '@/lib/annotations/wake-repository'
-import { delegationEventId, wakeTurnId } from '@/lib/annotations/wake-ids'
+import { delegationEventId, documentThreadConversationId, wakeTurnId } from '@/lib/annotations/wake-ids'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import type { DbTransaction } from '@/lib/db/executor'
 import type { Document, DocumentAnnotationReplyRow, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -605,5 +611,107 @@ describe('what a person’s decision leaves behind', () => {
 
     expect(recordDecisionScore).not.toHaveBeenCalled()
     expect(onMarkSettledByPerson).not.toHaveBeenCalled()
+  })
+})
+
+describe('the audit trail of a wake taken back', () => {
+  const stopped = () =>
+    vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input).filter((input) => input.action === 'piloti.wake.stopped')
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+
+  beforeEach(() => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue(DELEGATED)
+  })
+
+  it('records one piloti.wake.stopped for a queued wake, as the person who took it back', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued', 'user_3'))
+
+    await updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run })
+
+    expect(stopped()).toEqual([
+      {
+        action: 'piloti.wake.stopped',
+        organizationId: 'org_1',
+        actor: { userId: 'user_1', email: 'a@grid.test' },
+        targetType: 'document_annotation',
+        targetId: MARK_ID,
+        alsoTargets: [
+          { type: 'document', id: DOC_ID },
+          { type: 'project', id: 'proj_1' },
+          { type: 'conversation', id: documentThreadConversationId(DOC_ID, 'user_3') },
+        ],
+        metadata: { trigger: 'assigned', wakeId: WAKE_ID, wakeStatus: 'queued', wokenBy: 'user_3', by: 'person' },
+      },
+    ])
+  })
+
+  it('records one for a started wake whose stop the take-back enqueued', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
+
+    await updateAnnotation(DOC_ID, MARK_ID, { status: 'resolved' }, { run })
+
+    expect(stopped()).toHaveLength(1)
+    expect(stopped()[0].metadata).toMatchObject({ wakeStatus: 'started' })
+  })
+
+  it('records one for a wake that started between the read and the settle, and none for the settle that lost', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValueOnce(liveWake('queued')).mockResolvedValueOnce(liveWake('started'))
+    vi.mocked(settleWake).mockResolvedValue(false)
+
+    await updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run })
+
+    expect(stopped()).toHaveLength(1)
+    expect(stopped()[0].metadata).toMatchObject({ wakeStatus: 'started' })
+  })
+
+  it('records nothing when there is no live wake, or the wake ended before the settle', async () => {
+    await updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run })
+    vi.mocked(findLiveDelegationWake).mockResolvedValueOnce(liveWake('queued')).mockResolvedValueOnce(null)
+    vi.mocked(settleWake).mockResolvedValue(false)
+    await updateAnnotation(DOC_ID, MARK_ID, { delegateToPiloti: false }, { run })
+
+    expect(stopped()).toEqual([])
+  })
+
+  it('records the wakes a deleted mark took with it', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...DELEGATED, createdBy: 'user_1' })
+    vi.mocked(findLiveDelegationWake).mockResolvedValueOnce(liveWake('started'))
+    await deleteAnnotation(DOC_ID, MARK_ID, { run })
+    vi.mocked(findLiveDelegationWake).mockResolvedValueOnce(liveWake('queued'))
+    await deleteAnnotation(DOC_ID, MARK_ID, { run })
+
+    expect(stopped().map((input) => input.metadata?.wakeStatus)).toEqual(['started', 'queued'])
+  })
+
+  it('says Piloti took it back when Piloti closed the mark, and records no stop of the turn it does not stop', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    expect(stopped().map((input) => input.metadata?.by)).toEqual(['piloti'])
+
+    vi.mocked(recordAuditEvent).mockClear()
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('started'))
+    await updateAs(session as unknown as AuthorizedSession, DOC_ID, MARK_ID, { status: 'resolved' }, PILOTI)
+    expect(stopped()).toEqual([])
+  })
+
+  it('takes the mark back when the trail fails', async () => {
+    vi.mocked(findLiveDelegationWake).mockResolvedValue(liveWake('queued'))
+    vi.mocked(recordAuditEvent).mockImplementationOnce(() => {
+      throw new Error('WorkOS down')
+    })
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    const response = await run(`/api/documents/${DOC_ID}/annotations/${MARK_ID}`, {
+      method: 'PATCH',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ delegateToPiloti: false }),
+    })
+
+    expect(response.status).toBe(200)
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining('piloti.wake.stopped'), expect.any(Error))
+    warn.mockRestore()
   })
 })

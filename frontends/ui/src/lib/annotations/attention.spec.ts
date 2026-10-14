@@ -86,6 +86,33 @@ describe('onWakeEnded', () => {
     expect(emitted()).toMatchObject({ type: 'piloti.work_failed', recipientUserId: 'user_me', anchorId: 'ann_1' })
   })
 
+  it('quotes what the mark says, on one line, so the person knows which one it was', async () => {
+    await onWakeEnded({ ...wake, trigger: 'assigned', outcome: 'answered', markText: '  Türbreite\n prüfen ' })
+
+    expect(emitted().payload).toEqual({ subject: 'Grundriss EG.pdf', related: '4', excerpt: 'Türbreite prüfen' })
+  })
+
+  it.each([
+    ['budget: The user LLM budget is exhausted. An org admin can raise limits under Organization → Usage & budgets.', 'budget'],
+    ['The assistant is busy right now. Please send your message again in a moment.', 'busy'],
+    ['token_expired', 'access'],
+    ['the turn ended without an answer', 'error'],
+    [null, 'error'],
+  ] as const)('names why it failed („%s“ is %s), never the stored reason itself', async (reason, variant) => {
+    await onWakeEnded({ ...wake, trigger: 'thread_mention', outcome: 'failed', reason })
+
+    const payload = emitted().payload
+    expect(payload).toMatchObject({ variant })
+    expect(JSON.stringify(payload)).not.toContain('token_expired')
+    expect(JSON.stringify(payload)).not.toContain('budget is exhausted')
+  })
+
+  it('names no cause on work that was done', async () => {
+    await onWakeEnded({ ...wake, trigger: 'assigned', outcome: 'answered', reason: 'ignored' })
+
+    expect(emitted().payload).not.toHaveProperty('variant')
+  })
+
   it.each(['thread_mention', 'thread_reply'] as const)('tells who asked (%s) when Piloti answered', async (trigger) => {
     await onWakeEnded({ ...wake, trigger, outcome: 'answered' })
 
@@ -103,7 +130,7 @@ describe('onWakeEnded', () => {
         anchorId: 'ann_1',
         actorUserId: null,
         groupKey: 'piloti.work_failed:document:doc_1:ann_1',
-        payload: { subject: 'Grundriss EG.pdf', related: '4' },
+        payload: { subject: 'Grundriss EG.pdf', related: '4', variant: 'error' },
       })
     },
   )

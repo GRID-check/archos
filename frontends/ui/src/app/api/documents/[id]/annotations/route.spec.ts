@@ -16,7 +16,7 @@
  * reply was posted for deletes that, and every write tells the room.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@/lib/auth/require-auth', () => ({
   requireAuthorizedSession: vi.fn().mockResolvedValue({
@@ -33,6 +33,7 @@ vi.mock('@/lib/documents/access', () => ({ getAccessibleDocument: vi.fn() }))
 vi.mock('@/lib/authz/project-membership', () => ({ canUserAccessProject: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ loadOrganizationDirectory: vi.fn() }))
 vi.mock('@/lib/realtime/document-channel', () => ({ publishToDocumentRoom: vi.fn().mockResolvedValue(undefined) }))
+vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/annotations/repository', () => ({
   AnnotationLimitReachedError: class AnnotationLimitReachedError extends Error {},
   ReplyLimitReachedError: class ReplyLimitReachedError extends Error {},
@@ -71,6 +72,8 @@ import { canUserAccessProject } from '@/lib/authz/project-membership'
 import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
+import { recordAuditEvent } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 
 import { GET as list, POST as create } from './route'
 import { DELETE as remove, PATCH as patch } from './[annotationId]/route'
@@ -387,6 +390,55 @@ describe('PATCH /api/documents/[id]/annotations/[annotationId]', () => {
       status: 409,
     })
     expect(publishToDocumentRoom).not.toHaveBeenCalled()
+  })
+
+  describe("a decision on Piloti's proposed mark, in the audit trail", () => {
+    const decided = () =>
+      vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input).filter((input) => input.action === 'piloti.mark.decided')
+    afterEach(() => {
+      for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+    })
+
+    it.each([
+      ['open', 'taken_over'],
+      ['dismissed', 'dismissed'],
+    ] as const)('records %s once, as the person deciding, for the person it was proposed for', async (status, decision) => {
+      vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, createdBy: 'user_in', number: 7 })
+
+      await updateAnnotation('doc_1', 'ann_p', { status, expectedStatus: 'proposed' }, { run })
+
+      expect(decided()).toEqual([
+        {
+          action: 'piloti.mark.decided',
+          organizationId: 'org_1',
+          actor: { userId: 'user_1', email: 'a@grid.test' },
+          targetType: 'document_annotation',
+          targetId: 'ann_p',
+          alsoTargets: [
+            { type: 'document', id: 'doc_1' },
+            { type: 'project', id: 'proj_1' },
+          ],
+          metadata: { decision, markNumber: 7, markKind: 'defect', onBehalfOf: 'user_in' },
+        },
+      ])
+    })
+
+    it('records nothing when a colleague moved it first, or for a move that is not a decision', async () => {
+      vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...PROPOSAL, status: 'dismissed' })
+      await updateAnnotation('doc_1', 'ann_p', { status: 'open', expectedStatus: 'proposed' }, { run }).catch(() => null)
+
+      vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+      vi.mocked(updateDocumentAnnotation).mockResolvedValueOnce(null)
+      await updateAnnotation('doc_1', 'ann_p', { status: 'dismissed', expectedStatus: 'proposed' }, { run }).catch(() => null)
+
+      // A person's own mark, and a reword of a proposal: no decision on Piloti's work.
+      vi.mocked(findDocumentAnnotation).mockResolvedValue(RECORD)
+      await updateAnnotation('doc_1', 'ann_1', { status: 'resolved' }, { run })
+      vi.mocked(findDocumentAnnotation).mockResolvedValue(PROPOSAL)
+      await updateAnnotation('doc_1', 'ann_p', { body: 'Tür T30 fehlt' }, { run })
+
+      expect(decided()).toEqual([])
+    })
   })
 
   it('refuses an empty change and a change to the place', async () => {

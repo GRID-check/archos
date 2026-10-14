@@ -33,10 +33,12 @@
  * delegation's own turn ending hands a mark back, never a reply of Piloti's
  * (`lib/turns/outcome.ts`).
  *
- * A person's decisions leave two traces after the write committed, both
+ * A person's decisions leave traces after the write committed, all
  * best-effort: what Piloti asked on a mark is no longer waiting on them
  * (`./attention.ts`), and taking over or dismissing a mark Piloti proposed is
- * a score on the turn that proposed it (`lib/langfuse/decision-score.ts`).
+ * a line in the organization's audit trail (`piloti.mark.decided`,
+ * `./mark-audit.ts`) and a score on the turn that proposed it
+ * (`lib/langfuse/decision-score.ts`).
  *
  * Every write tells the document's room (the `doc:<id>` live channel,
  * `lib/realtime/document-channel.ts`), so everyone looking at the document
@@ -77,11 +79,19 @@ import {
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
 import { onMarkSettledByPerson } from './attention'
+import { auditMarkDecided } from './mark-audit'
 import type { AnnotationChange } from './room-types'
 import { auditSuppressedWake, enqueueWake, replyTrigger, wakeOutcomeOf, wakesEnabled, type EnqueuedWake } from './wake'
 import { delegationEventId } from './wake-ids'
 import { wakeOfReply, wakeSpansFor, type WakeSpan } from './wake-attribution'
-import { readTakeBack, settleTakenBack, type EndedDelegation, type TakeBack } from './take-back'
+import {
+  auditDeletedWithMark,
+  readTakeBack,
+  settleTakenBack,
+  type EndedDelegation,
+  type TakeBack,
+  type TakeBackAudit,
+} from './take-back'
 import {
   annotationBox,
   annotationProposalSchema,
@@ -485,17 +495,21 @@ function traceSettled(session: AuthorizedSession, annotationId: string, closed: 
 /**
  * What a person's move of status leaves behind, once it committed: a closed
  * mark settles what Piloti asked on it, and taking over or dismissing a mark
- * Piloti proposed is a score on the turn that proposed it.
+ * Piloti proposed is a decision on Piloti's work, in the audit trail
+ * (`piloti.mark.decided`, `./mark-audit.ts`) and as a score on the turn that
+ * proposed it.
  */
 function traceMove(
   session: AuthorizedSession,
+  doc: { id: string; projectId: string | null },
   annotationId: string,
-  existing: Pick<AnnotationRecord, 'authorKind' | 'status'>,
+  existing: Pick<AnnotationRecord, 'authorKind' | 'status' | 'number' | 'kind' | 'createdBy'>,
   to: 'open' | 'resolved' | 'dismissed' | undefined
 ): void {
   if (to === 'resolved' || to === 'dismissed') traceSettled(session, annotationId, true)
   const proposal = existing.authorKind === 'piloti' && existing.status === 'proposed'
   if (!proposal || (to !== 'open' && to !== 'dismissed')) return
+  auditMarkDecided(session, doc, { ...existing, id: annotationId }, to === 'open' ? 'taken_over' : 'dismissed')
   bestEffort('score the decision', () =>
     recordDecisionScore({
       subject: 'annotation',
@@ -620,14 +634,31 @@ export async function updateAnnotation(
   if (ended && enqueued.takeBack) {
     const { takeBack } = enqueued
     // The queued wake is the one thing a crash here can leave behind; its job would run a turn nobody wants.
-    await settleTakenBack(ended, takeBack, { stopTurn }).catch((error: unknown) =>
+    const by = takeBackAudit(session, doc, existing, actor)
+    await settleTakenBack(ended, takeBack, { stopTurn }, by).catch((error: unknown) =>
       console.warn('[annotations] could not keep a taken-back wake from starting:', error)
     )
   }
-  if (actor.kind === 'person' && moves) traceMove(session, annotationId, existing, parsed.status)
+  if (actor.kind === 'person' && moves) {
+    traceMove(session, { id: doc.id, projectId: doc.projectId ?? null }, annotationId, existing, parsed.status)
+  }
   const annotation = await viewOf(session, doc, annotationId)
   return delegating ? { annotation, wake: wakeOutcomeOf(enqueued.wake) } : { annotation }
 }
+
+/** Who took a mark back from Piloti, for the wakes it stops (`./take-back`). */
+const takeBackAudit = (
+  session: AuthorizedSession,
+  doc: { projectId: string | null },
+  mark: { number: number },
+  actor: AnnotationActor
+): TakeBackAudit => ({
+  userId: session.userId,
+  email: session.email || null,
+  piloti: actor.kind === 'piloti',
+  projectId: doc.projectId ?? null,
+  markNumber: mark.number,
+})
 
 /** A wake a cap held at enqueue goes into the audit trail, after its write committed. */
 function auditHeldWake(
@@ -668,6 +699,8 @@ export async function deleteAnnotation(
   }
   const ended = delegationOfMark(session, doc.id, existing)
   const stopTurn = actor.kind === 'person'
+  // Set in the delete's transaction; a holder, because a closure's assignment is not narrowed.
+  const found: { takeBack: TakeBack | null } = { takeBack: null }
   await deleteDocumentAnnotation(
     session.organizationId,
     doc.id,
@@ -676,11 +709,12 @@ export async function deleteAnnotation(
     // A wake still queued needs nothing: its job finds the mark gone.
     ended
       ? async (tx) => {
-          await readTakeBack(tx, ended, { stopTurn })
+          found.takeBack = await readTakeBack(tx, ended, { stopTurn })
         }
       : undefined
   )
   announce(session, doc.id, [annotationId], 'deleted', actor)
+  if (found.takeBack) auditDeletedWithMark(found.takeBack, takeBackAudit(session, doc, existing, actor))
   if (actor.kind === 'person') traceSettled(session, annotationId, true)
   return null
 }

@@ -25,6 +25,7 @@ import {
   type MemoryPayload,
   type ProjectProfilePayload,
   type ProposalScope,
+  type ProposalNoticeVariant,
   type ProposedChangeKind,
   type ProposedChangeResult,
 } from './types'
@@ -171,6 +172,11 @@ export type KindApplyContext = Omit<ApplyContext, 'projectId'> & { projectId: st
 function inProject(context: KindApplyContext): ApplyContext {
   if (!context.projectId) throw new Error('A memory note or a profile change is always made in a project')
   return { ...context, projectId: context.projectId }
+}
+
+/** What the proposal changes, as the inbox row words it: a file operation by its verb, the rest by kind. */
+export function noticeVariantOf(typed: KindPayload): ProposalNoticeVariant {
+  return typed.kind === 'file_operation' ? typed.payload.operation : typed.kind
 }
 
 /** Run the kind's applier. Item outcomes are results; a refusal of the decider is thrown. */

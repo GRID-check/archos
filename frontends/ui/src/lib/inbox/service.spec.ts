@@ -390,6 +390,29 @@ describe('listInbox — projection', () => {
     expect(byId.get('gone')!.related).toBeNull()
   })
 
+  it('carries which wording a row reads (why Piloti could not work a mark) only as a key segment, and withholds it when redacted', async () => {
+    vi.mocked(repository.listInboxItems).mockResolvedValue([
+      row({ id: 'ok', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { related: '4', variant: 'budget' } }),
+      row({ id: 'path', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { variant: 'budget.body' } }),
+      row({ id: 'junk', type: 'piloti.work_failed', resourceId: 'conv_ok', payload: { variant: 7 } }),
+      row({ id: 'inert', type: 'piloti.work_failed', inertAt: at, payload: { variant: 'budget' } }),
+      row({ id: 'gone', type: 'piloti.work_failed', resourceId: 'conv_gone', payload: { variant: 'budget' } }),
+    ])
+    vi.mocked(resolveResourceAccess).mockImplementation(async (_session, _type, resourceId) => {
+      if (resourceId === 'conv_gone') throw new NotFoundError()
+      return reachable
+    })
+
+    const { items } = await listInbox(session)
+    const byId = new Map(items.map((item) => [item.id, item]))
+
+    expect(byId.get('ok')!.variant).toBe('budget')
+    expect(byId.get('path')!.variant).toBeNull()
+    expect(byId.get('junk')!.variant).toBeNull()
+    expect(byId.get('inert')!.variant).toBeNull()
+    expect(byId.get('gone')!.variant).toBeNull()
+  })
+
   it('leaves an unresolvable actor nameless rather than showing a raw user id', async () => {
     vi.mocked(repository.listInboxItems).mockResolvedValue([row({ actorUserId: 'user_deactivated' })])
     vi.mocked(resolvePeople).mockResolvedValue(new Map())

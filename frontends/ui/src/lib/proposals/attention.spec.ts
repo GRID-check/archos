@@ -24,7 +24,8 @@ const created = {
   proposalId: 'prop_1',
   originConversationId: 'conv_1',
   onBehalfOf: 'user_me',
-  summary: '3 Dateien in „Pläne“ verschieben',
+  summary: 'Grundriss.pdf, Schnitt.pdf +1',
+  variant: 'move' as const,
 }
 
 function emitted(): InboxEmission {
@@ -54,7 +55,7 @@ describe('onProposalCreated', () => {
       resourceId: 'conv_1',
       anchorId: 'prop_1',
       groupKey: 'piloti.proposal_waiting:conversation:conv_1:prop_1',
-      payload: { excerpt: '3 Dateien in „Pläne“ verschieben' },
+      payload: { variant: 'move', excerpt: 'Grundriss.pdf, Schnitt.pdf +1' },
     })
   })
 
@@ -108,10 +109,16 @@ describe('onProposalCreated', () => {
     expect(excerpt.endsWith('…')).toBe(true)
   })
 
-  it('omits the excerpt for a blank summary', async () => {
+  it('omits the excerpt for a blank summary, and still says what kind of change it is', async () => {
     await onProposalCreated({ ...created, summary: '  ' })
 
-    expect(emitted().payload).toEqual({})
+    expect(emitted().payload).toEqual({ variant: 'move' })
+  })
+
+  it.each(['rename', 'memory', 'project_profile'] as const)('carries what it changes (%s) as the row’s wording', async (variant) => {
+    await onProposalCreated({ ...created, variant })
+
+    expect(emitted().payload).toMatchObject({ variant })
   })
 
   it('never throws into the write that stored the proposal', async () => {

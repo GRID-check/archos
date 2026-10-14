@@ -16,7 +16,7 @@
  * with the right its own service writes with.
  */
 
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
@@ -54,6 +54,7 @@ vi.mock('@/lib/proposals/attention', () => ({
   onProposalDecided: vi.fn(async () => undefined),
 }))
 vi.mock('@/lib/langfuse/decision-score', () => ({ recordDecisionScore: vi.fn(async () => undefined) }))
+vi.mock('@/lib/audit/service', () => ({ recordAuditEvent: vi.fn() }))
 vi.mock('@/lib/projects/service', () => ({
   MEMORY_WRITE_PERMISSIONS: ['project:memory:write', 'project:edit'],
   addProjectMemoryItem: vi.fn(),
@@ -103,6 +104,8 @@ import type { ListedDocument } from '@/lib/documents/shelf-listing'
 import { createProjectFolder, listProjectFolders, type ProjectFolderRow } from '@/lib/projects/folder-service'
 import { applyProposal, dismissProposal, getProposal, ProposalRequestError } from '@/lib/proposals/client'
 import { recordDecisionScore } from '@/lib/langfuse/decision-score'
+import { recordAuditEvent, type AuditEventInput } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import { onProposalCreated, onProposalDecided } from '@/lib/proposals/attention'
 import { publishProposalDecided } from '@/lib/proposals/live'
 import {
@@ -667,6 +670,8 @@ describe('createProposal — the inbox is told', () => {
       originConversationId: CONVERSATION,
       onBehalfOf: 'user_2',
       summary: 'Grundriss EG.pdf, Schnitt A-A.pdf +1',
+      // Which change it proposes, so the inbox titles it („Piloti schlägt einen neuen Ablageort vor").
+      variant: 'move',
     })
   })
 
@@ -1018,5 +1023,149 @@ describe('createProposal — every kind, once per card', () => {
     await expect(
       create({ conversationId: CONVERSATION, answerMessageId: '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d', originCardIndex: 0 })
     ).rejects.toMatchObject({ details: { reason: 'proposal-card-taken' } })
+  })
+})
+
+describe('the audit trail of a proposal', () => {
+  const MESSAGE = '9a0b1c2d-3e4f-4a5b-8c6d-7e8f9a0b1c2d'
+  const audited = (): AuditEventInput[] => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+  const TARGETS = [
+    { type: 'project', id: PROJECT },
+    { type: 'conversation', id: CONVERSATION },
+  ]
+
+  beforeEach(() => {
+    vi.mocked(addProjectMemoryItem).mockResolvedValue(memoryItem('mem_project'))
+    vi.mocked(createOrganizationMemoryItem).mockResolvedValue(memoryItem('mem_org'))
+    vi.mocked(findConversationInOrg).mockResolvedValue({ id: CONVERSATION } as Partial<Conversation> as Conversation)
+  })
+
+  it('records an apply once, as the decider, with how it went and for whom Piloti proposed it', async () => {
+    vi.mocked(resolveProjectDocumentsByName).mockImplementation(async (_s, _p, names) =>
+      names.includes('Schnitt A-A.pdf') ? [listed('doc_aa', 'Schnitt A-A.pdf')] : []
+    )
+
+    await applyProposal(ID, run)
+
+    expect(audited()).toEqual([
+      {
+        action: 'piloti.proposal.decided',
+        organizationId: 'org_1',
+        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        targetType: 'proposed_change',
+        targetId: ID,
+        alsoTargets: TARGETS,
+        metadata: {
+          kind: 'file_operation',
+          decision: 'partially_applied',
+          operation: 'move',
+          items: 2,
+          appliedItems: 1,
+          memoryScope: null,
+          onBehalfOf: 'user_2',
+          messageId: MESSAGE,
+        },
+      },
+    ])
+    // Names and paths of the payload stay out.
+    expect(JSON.stringify(audited())).not.toMatch(/Grundriss|Schnitt|Einreichung/)
+  })
+
+  it('records a dismissal, and the memory scope a note went into rather than the one proposed', async () => {
+    await dismissProposal(ID, run)
+    store.set(ID, memoryRow({ scope: 'organization' }))
+    await applyProposal(ID, { memoryScope: 'project' }, run)
+    store.set(ID, profileRow())
+    await dismissProposal(ID, run)
+
+    expect(audited().map((input) => input.metadata)).toEqual([
+      expect.objectContaining({ kind: 'file_operation', decision: 'dismissed', appliedItems: 0 }),
+      expect.objectContaining({ kind: 'memory', decision: 'applied', items: 1, appliedItems: 1, memoryScope: 'project' }),
+      expect.objectContaining({ kind: 'project_profile', decision: 'dismissed', items: 1, memoryScope: null }),
+    ])
+    expect(JSON.stringify(audited())).not.toMatch(/Flachdach|Tirol/)
+  })
+
+  it('records nothing for a decision that did not happen', async () => {
+    readOnly()
+    await expect(dismissProposal(ID, run)).rejects.toMatchObject({ status: 403 })
+    vi.mocked(requireProjectAccess).mockResolvedValue({ role: 'project-editor', closed: false, readsBecauseClosed: false })
+    store.set(ID, row({ applyingBy: 'user_2', applyingSince: new Date() }))
+    await expect(applyProposal(ID, run)).rejects.toMatchObject({ status: 409 })
+    store.set(ID, row({ status: 'dismissed', decidedBy: 'user_2', decidedAt: new Date() }))
+    await expect(dismissProposal(ID, run)).rejects.toMatchObject({ status: 409 })
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('records a filed proposal once, as the person Piloti acted for, and a repeated card not again', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValueOnce({ row: row({ onBehalfOf: 'user_1' }), created: true })
+    await createProposal(SESSION as never, {
+      projectId: PROJECT,
+      kind: 'file_operation',
+      payload: MOVE,
+      conversationId: CONVERSATION,
+      answerMessageId: MESSAGE,
+      originCardIndex: 0,
+    })
+    vi.mocked(insertProposedChange).mockResolvedValueOnce({ row: row({ onBehalfOf: 'user_1' }), created: false })
+    await createProposal(SESSION as never, {
+      projectId: PROJECT,
+      kind: 'file_operation',
+      payload: MOVE,
+      conversationId: CONVERSATION,
+      answerMessageId: MESSAGE,
+      originCardIndex: 0,
+    })
+
+    expect(audited()).toEqual([
+      {
+        action: 'piloti.proposal.created',
+        organizationId: 'org_1',
+        actor: { userId: 'user_1', email: 'anna@grid.test' },
+        targetType: 'proposed_change',
+        targetId: ID,
+        alsoTargets: TARGETS,
+        metadata: { kind: 'file_operation', operation: 'move', items: 2, memoryScope: null, messageId: MESSAGE },
+      },
+    ])
+  })
+
+  it('records where a proposed note would go', async () => {
+    vi.mocked(insertProposedChange).mockResolvedValueOnce({ row: memoryRow({ scope: 'organization' }), created: true })
+    await createProposal(SESSION as never, {
+      projectId: PROJECT,
+      kind: 'memory',
+      payload: { ...NOTE, scope: 'organization' },
+      conversationId: null,
+      answerMessageId: null,
+    })
+
+    expect(audited()[0].metadata).toMatchObject({ kind: 'memory', items: 1, memoryScope: 'organization' })
+    expect(JSON.stringify(audited())).not.toContain('Flachdach')
+  })
+
+  it('does not let a failing trail fail the decision or the filing', async () => {
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(recordAuditEvent).mockRejectedValueOnce(new Error('WorkOS down'))
+    vi.mocked(recordAuditEvent).mockImplementationOnce(() => {
+      throw new Error('WorkOS down')
+    })
+
+    const { proposal } = await applyProposal(ID, run)
+    vi.mocked(insertProposedChange).mockResolvedValueOnce({ row: row({ id: '1b7c8f5e-1d1e-4c39-9d2c-3f0f6c1a2b3c' }), created: true })
+    await expect(
+      createProposal(SESSION as never, { projectId: PROJECT, kind: 'file_operation', payload: MOVE, conversationId: null, answerMessageId: null })
+    ).resolves.toMatchObject({ id: '1b7c8f5e-1d1e-4c39-9d2c-3f0f6c1a2b3c' })
+
+    expect(proposal.status).toBe('applied')
+    await vi.waitFor(() =>
+      expect(warn.mock.calls.filter(([message]) => String(message).startsWith('[Audit]'))).toHaveLength(2)
+    )
+    warn.mockRestore()
   })
 })

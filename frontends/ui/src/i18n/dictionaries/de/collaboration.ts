@@ -228,7 +228,8 @@ export const collaboration: typeof en.collaboration = {
     archived: 'Archiviert',
     resolved: 'Beantwortet',
     inert: 'Nicht mehr verfügbar',
-    bodyUnavailable: 'Dieser Chat ist für Sie nicht mehr verfügbar.',
+    // Für jedes Ziel, auf das eine Zeile zeigt (Chat, Dokument, Anmerkung), nicht nur für Chats.
+    bodyUnavailable: 'Das ist für Sie nicht mehr verfügbar.',
     inertHint: 'Sie haben keinen Zugriff mehr darauf.',
     // Die nächste Handlung bei einer neuen Fassung unter anderem Namen: die
     // beiden nebeneinander sehen. Öffnet die Vorschau mit dem Vergleich.
@@ -302,9 +303,11 @@ export const collaboration: typeof en.collaboration = {
         title: '{actor} bittet Sie, „{subject}“ zu prüfen',
         body: 'Die Datei liegt in der Quarantäne. Sehen Sie sie an und lassen Sie sie zu oder löschen Sie sie.',
       },
+      // Die Zeile führt zum Lauf selbst (seinem Block im Verlauf, sonst der
+      // Aufgabe): dort stehen Ergebnis und Grund, nicht in einer „Laufhistorie“.
       jobCompleted: {
-        title: '„{subject}“ ist fertig',
-        body: 'Piloti hat den Auftrag ausgeführt. Das Ergebnis liegt im Projekt unter Automatisierung.',
+        title: 'Piloti hat „{subject}“ erledigt',
+        body: 'Öffnen Sie den Eintrag, um das Ergebnis zu sehen.',
       },
       // Ein Outlook-Archiv ist importiert. {subject} ist der Dateiname des Archivs.
       mailImportCompleted: {
@@ -316,12 +319,12 @@ export const collaboration: typeof en.collaboration = {
         body: 'Was bis dahin importiert war, bleibt im Projekt. Die Importliste unter Dateien nennt den Grund.',
       },
       jobFailed: {
-        title: '„{subject}“ ist fehlgeschlagen',
-        body: 'Der Auftrag konnte nicht abgeschlossen werden. Die Laufhistorie im Projekt nennt den Grund.',
+        title: 'Piloti konnte „{subject}“ nicht abschließen',
+        body: 'Öffnen Sie den Eintrag: Dort steht, woran es lag.',
       },
       jobWaiting: {
-        title: '„{subject}“ wartet auf Sie',
-        body: 'Piloti hat eine Rückfrage zu diesem Auftrag. Antworten Sie im Verlauf, dann läuft er weiter.',
+        title: 'Piloti hat eine Rückfrage zu „{subject}“',
+        body: 'Antworten Sie im Verlauf, dann arbeitet Piloti weiter.',
       },
       // Eine Fassung eines Dokuments wartet auf eine Entscheidung (ADR-0054).
       // {subject} ist das Dokument, {actor} wer sie eingereicht hat.
@@ -339,34 +342,67 @@ export const collaboration: typeof en.collaboration = {
         titleNoActor: 'Neue Fassung von „{subject}“',
         bodyNoExcerpt: 'Öffnen Sie die Fassung, um die Änderungen zu sehen.',
       },
-      // Piloti hat eine Anmerkung bearbeitet, die Sie delegiert oder bei der Sie es
-      // angesprochen haben (ADR-0106). {related} ist die laufende Nummer der
-      // Anmerkung, {subject} das Dokument. Kein {actor}: das war Piloti.
+      // Was Piloti an einer Anmerkung getan hat, für die Person, deren Handlung
+      // es geweckt hat: wer die Anmerkung delegiert, Piloti darin erwähnt oder
+      // auf seine Rückfrage geantwortet hat (ADR-0106). {related} ist die
+      // laufende Nummer der Anmerkung, {subject} das Dokument; der Auszug
+      // darunter ist, was die Anmerkung sagt. Kein {actor}: das war Piloti.
+      // `titleRelatedNoSubject`, wenn das Dokument nicht zu benennen war.
+      // Dieselben Wörter wie in der Prüfansicht: Anmerkung, Verlauf, delegieren.
       pilotiWorkDone: {
-        title: 'Piloti ist mit einer Anmerkung fertig',
-        titleRelated: 'Piloti ist mit Anmerkung {related} fertig',
-        body: 'Die Antwort steht im Verlauf der Anmerkung in {subject}.',
-        bodyNoSubject: 'Die Antwort steht im Verlauf der Anmerkung.',
+        title: 'Piloti hat eine Anmerkung für Sie bearbeitet',
+        titleRelated: 'Piloti hat Anmerkung {related} in „{subject}“ für Sie bearbeitet',
+        titleRelatedNoSubject: 'Piloti hat Anmerkung {related} für Sie bearbeitet',
+        body: 'Lesen Sie die Antwort im Verlauf der Anmerkung.',
       },
+      // Piloti konnte es nicht. `variants` sagen warum, nach der Klasse des
+      // gespeicherten Grundes (`lib/annotations/wake-end-reason.ts`), und was
+      // die Person tun kann; `body` gilt für einen Eintrag von davor.
       pilotiWorkFailed: {
-        title: 'Piloti konnte eine Anmerkung nicht abschließen',
-        titleRelated: 'Piloti konnte Anmerkung {related} nicht abschließen',
-        body: 'Öffnen Sie die Anmerkung in {subject}: Sie können sie selbst übernehmen oder Piloti noch einmal darum bitten.',
-        bodyNoSubject: 'Öffnen Sie die Anmerkung: Sie können sie selbst übernehmen oder Piloti noch einmal darum bitten.',
+        title: 'Piloti konnte eine Anmerkung nicht bearbeiten',
+        titleRelated: 'Piloti konnte Anmerkung {related} in „{subject}“ nicht bearbeiten',
+        titleRelatedNoSubject: 'Piloti konnte Anmerkung {related} nicht bearbeiten',
+        body: 'Öffnen Sie die Anmerkung: Bitten Sie Piloti noch einmal darum oder bearbeiten Sie sie selbst.',
+        variants: {
+          budget: {
+            body: 'Das Nutzungsbudget ist aufgebraucht. Wer Ihre Organisation verwaltet, kann es unter Organisation → Nutzung & Budgets erhöhen; danach können Sie Piloti noch einmal darum bitten.',
+          },
+          busy: {
+            body: 'Piloti kam nicht rechtzeitig dazu, weil gerade zu viel zu tun war. Bitten Sie Piloti später noch einmal darum.',
+          },
+          access: {
+            body: 'Piloti konnte sich nicht in Ihrem Namen anmelden. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+          },
+          error: {
+            body: 'Die Bearbeitung brach ab, bevor eine Antwort da war. Bitten Sie Piloti noch einmal darum oder bearbeiten Sie die Anmerkung selbst.',
+          },
+        },
       },
-      // Piloti hat eine Rückfrage gestellt und wartet auf eine Person. Die Frage
-      // steht als Auszug darunter.
+      // Piloti hat eine Rückfrage gestellt und wartet auf eine Person: die
+      // Zuständige der Anmerkung, sonst die, für die es gearbeitet hat. Die
+      // Frage steht als Auszug darunter.
       pilotiAsksYou: {
-        title: 'Piloti hat eine Rückfrage zu einer Anmerkung',
-        titleRelated: 'Piloti hat eine Rückfrage zu Anmerkung {related}',
-        body: 'In {subject}. Antworten Sie im Verlauf der Anmerkung.',
-        bodyNoSubject: 'Antworten Sie im Verlauf der Anmerkung.',
+        title: 'Piloti hat eine Rückfrage an Sie',
+        titleRelated: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related} in „{subject}“',
+        titleRelatedNoSubject: 'Piloti hat eine Rückfrage an Sie zu Anmerkung {related}',
+        body: 'Piloti wartet auf Ihre Antwort. Antworten Sie im Verlauf der Anmerkung.',
       },
-      // Ein Vorschlag, den der Server hält (ADR-0105). Was er ändert, steht als
-      // Auszug darunter.
+      // Ein Vorschlag, den der Server hält (ADR-0105), für die Person, für die
+      // Piloti ihn gemacht hat. `variants` nennen, was er ändert (eine
+      // Dateiänderung nach ihrem Verb, sonst nach Art:
+      // `PROPOSAL_NOTICE_VARIANTS`); der Auszug darunter nennt die Dateien, die
+      // Notiz oder die Änderung. Wörter wie auf der Karte.
       pilotiProposalWaiting: {
         title: 'Piloti hat einen Vorschlag für Sie',
-        body: 'Übernehmen oder verwerfen Sie ihn.',
+        body: 'Der Vorschlag steht im Chat. Übernehmen oder verwerfen Sie ihn dort; bis dahin ändert sich nichts.',
+        variants: {
+          move: { title: 'Piloti schlägt einen neuen Ablageort vor' },
+          rename: { title: 'Piloti schlägt eine Umbenennung vor' },
+          create_folder: { title: 'Piloti schlägt einen neuen Ordner vor' },
+          assign: { title: 'Piloti schlägt eine Zuweisung vor' },
+          memory: { title: 'Piloti möchte sich eine Notiz merken' },
+          project_profile: { title: 'Piloti schlägt eine Änderung am Projektkontext vor' },
+        },
       },
       // Piloti hat die Dokumente eines Projekts gelesen und Werte für das
       // Projektprofil vorgeschlagen (ADR-0111). {subject} ist der Projektname,

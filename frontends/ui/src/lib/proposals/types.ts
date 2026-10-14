@@ -42,6 +42,15 @@ export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
 export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as const
 export type FileOperation = (typeof FILE_OPERATIONS)[number]
 
+/**
+ * What a proposal changes, as the inbox row words it
+ * (`collaboration.inbox.types.pilotiProposalWaiting.variants.<variant>`): a
+ * file operation by its verb, every other kind by its kind. Stored on the
+ * `piloti.proposal_waiting` item as its `variant` (`./attention.ts`).
+ */
+export const PROPOSAL_NOTICE_VARIANTS = [...FILE_OPERATIONS, 'memory', 'project_profile'] as const
+export type ProposalNoticeVariant = (typeof PROPOSAL_NOTICE_VARIANTS)[number]
+
 /** Most items one proposal carries; mirrors `MAX_FILE_OPERATIONS` in `src/aiq_agent/cards/models.py`. */
 export const MAX_FILE_OPERATION_ITEMS = 8
 

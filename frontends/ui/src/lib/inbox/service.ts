@@ -376,6 +376,15 @@ const SUBJECT_MAX_LENGTH = 200
 const EXCERPT_MAX_LENGTH = 500
 
 /**
+ * A payload's `variant` is a segment of a dictionary path the row reads
+ * (`InboxItemView.variant`), so only a short lower-case token passes; anything
+ * else is absent and the row reads its type's general wording.
+ */
+function coerceVariant(value: unknown): string | null {
+  return typeof value === 'string' && /^[a-z][a-z_]{0,31}$/.test(value) ? value : null
+}
+
+/**
  * Re-derive, ONCE per distinct target in the page, whether the recipient can
  * still reach it (spec IB-13). This is the security core of the inbox read path:
  * an item is a pointer and never a grant, so the link and the snippet are earned
@@ -527,6 +536,7 @@ function toItemView(
     subject: access ? coerceText(payload.subject, SUBJECT_MAX_LENGTH) : null,
     related: access ? coerceText(payload.related, SUBJECT_MAX_LENGTH) : null,
     excerpt: access ? coerceText(payload.excerpt, EXCERPT_MAX_LENGTH) : null,
+    variant: access ? coerceVariant(payload.variant) : null,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   }

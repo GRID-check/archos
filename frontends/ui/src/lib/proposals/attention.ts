@@ -12,12 +12,15 @@ import 'server-only'
  * the shelf, the project's Dateien or, for one with no project, the
  * Büroablage (`organization`), where the file row carries it. Either way the
  * reader's access is re-derived when the row is read. It carries the one-line
- * summary and no actor: Piloti proposed it.
+ * summary as its excerpt, what the proposal changes as its `variant` (the
+ * row's wording: „Piloti schlägt vor, Dateien umzubenennen“), and no actor:
+ * Piloti proposed it.
  */
 
 import { bestEffortInbox } from '@/lib/inbox/best-effort'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, resolveInboxItemsAnchoredOn } from '@/lib/inbox/service'
+import type { ProposalNoticeVariant } from './types'
 
 const TYPE = 'piloti.proposal_waiting'
 
@@ -34,6 +37,8 @@ export async function onProposalCreated(input: {
   onBehalfOf: string
   /** One line naming the change, for the inbox row. */
   summary: string
+  /** What it changes, which picks the row's wording. */
+  variant: ProposalNoticeVariant
 }): Promise<void> {
   await bestEffortInbox(`${TYPE} for proposal ${input.proposalId}`, input.organizationId, () => {
     const [resourceType, resourceId] = input.originConversationId
@@ -53,6 +58,7 @@ export async function onProposalCreated(input: {
         actorUserId: null,
         groupKey: inboxGroupKey(TYPE, resourceType, resourceId, input.proposalId),
         payload: {
+          variant: input.variant,
           ...(summary
             ? { excerpt: summary.length > SUMMARY_LENGTH ? `${summary.slice(0, SUMMARY_LENGTH - 1)}…` : summary }
             : {}),
