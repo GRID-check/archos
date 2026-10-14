@@ -29,6 +29,8 @@ const state = vi.hoisted(() => ({
   /** Rows of a project's documents the backend did NOT hit: same-named siblings in other collections. */
   siblingRows: new Map<string, Array<Record<string, unknown>>>(),
   failing: new Set<string>(),
+  /** Per project, restricted collections the reader is cleared for beyond those its hits came from. */
+  cleared: new Map<string, string[]>(),
   recorded: [] as Array<{ projectIds: readonly string[]; folderIds: readonly string[] }>,
   recordedFor: [] as string[],
   /** What the decisions repository answers, and the scopes it was asked with. */
@@ -118,6 +120,8 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
       ...(state.siblingRows.get(projectId) ?? []),
     ] as unknown as Array<{ filename: string; collectionName: string; createdAt: Date; authoredBy: string }>
   return {
+    BACKEND_SEARCH_MAX_COLLECTIONS: actual.BACKEND_SEARCH_MAX_COLLECTIONS,
+    projectsWithinCollectionCap: actual.projectsWithinCollectionCap,
     planProjectSearch: vi.fn(async (_session: unknown, projectId: string) => {
       state.planned.push(projectId)
       if (state.failing.has(projectId)) throw new Error('access withdrawn')
@@ -134,7 +138,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
       return {
         project: found,
         access: { sourceFolderOf: (collection: string) => state.folders.get(collection) ?? null, hiddenFolderIds: new Set() },
-        collections: [found.collectionName, ...restricted],
+        collections: [found.collectionName, ...restricted, ...(state.cleared.get(projectId) ?? [])],
       }
     }),
     // What `POST /v1/collections/search` answers (`_ranked_group_hits`): the
@@ -218,6 +222,7 @@ import {
   crossProjectSearchRequestSchema,
 } from './types'
 import { SIMILARITY_WEIGHTS } from './similarity'
+import { BACKEND_SEARCH_MAX_COLLECTIONS } from '@/lib/documents/service'
 import { projectFactsOf } from './project-facts-mirror'
 
 const ORG = 'org_1'
@@ -276,6 +281,7 @@ beforeEach(() => {
   state.hits = new Map()
   state.siblingRows = new Map()
   state.failing = new Set()
+  state.cleared = new Map()
   state.hydrated = []
   state.recorded = []
   state.recordedFor = []
@@ -653,6 +659,40 @@ describe('searchAcrossProjects in one grouped query (ADR-0112)', () => {
 
     expect(state.hydratePeak).toBeGreaterThan(0)
     expect(state.hydratePeak).toBeLessThanOrEqual(SEARCH_CONCURRENCY)
+  })
+
+  it('stops adding projects before the collections pass the backend’s cap, and pages the rest', async () => {
+    // Each project brings its own collection and 19 restricted folders: 40 of them would be 800.
+    state.reachable = Array.from({ length: CROSS_PROJECT_PAGE_PROJECTS }, (_, index) => project(index + 1))
+    for (const one of state.reachable) {
+      state.cleared.set(one.id, Array.from({ length: 19 }, (_, n) => `${one.collectionName}_r${String(n).padStart(12, '0')}`))
+    }
+    const fitting = Math.floor(BACKEND_SEARCH_MAX_COLLECTIONS / 20)
+
+    const first = await searchAcrossProjects(caller(), search({}))
+
+    expect(BACKEND_SEARCH_MAX_COLLECTIONS).toBe(500)
+    expect(state.groupedCalls[0].collections).toHaveLength(fitting * 20)
+    expect(first).toMatchObject({ projectsSearched: fitting, nextOffset: fitting, projectsInScope: CROSS_PROJECT_PAGE_PROJECTS })
+    // Decisions and permits are read over the projects searched, so a deferred one is not answered twice.
+    expect(state.decisionScopes.map((scope) => scope.projectId)).toEqual(state.reachable.slice(0, fitting).map((one) => one.id))
+
+    state.groupedCalls = []
+    const second = await searchAcrossProjects(caller(), search({ offset: first.nextOffset }))
+    expect(state.groupedCalls[0].collections).toHaveLength((CROSS_PROJECT_PAGE_PROJECTS - fitting) * 20)
+    expect(second).toMatchObject({ projectsSearched: CROSS_PROJECT_PAGE_PROJECTS - fitting, nextOffset: null })
+  })
+
+  it('searches a project cleared for more folders than the cap allows alone, cut to the cap, so a page never stalls', async () => {
+    const [one, two] = state.reachable
+    state.cleared.set(one.id, Array.from({ length: BACKEND_SEARCH_MAX_COLLECTIONS + 10 }, (_, n) => `proj_1_r${String(n).padStart(12, '0')}`))
+
+    const result = await searchAcrossProjects(caller(), search({}))
+
+    expect(state.groupedCalls[0].collections).toHaveLength(BACKEND_SEARCH_MAX_COLLECTIONS)
+    expect(state.groupedCalls[0].collections[0]).toBe('proj_1')
+    expect(state.groupedCalls[0].collections).not.toContain(two.collectionName)
+    expect(result).toMatchObject({ projectsSearched: 1, nextOffset: 1 })
   })
 
   it('does not even search a restricted folder from a shared chat', async () => {

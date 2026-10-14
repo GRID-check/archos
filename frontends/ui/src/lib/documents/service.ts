@@ -816,6 +816,32 @@ export async function fetchGroupedSemanticHits(
 const GROUPED_SEARCH_MAX_GROUPS = 200
 const GROUPED_SEARCH_MAX_FILES_PER_GROUP = 20
 
+/**
+ * The most collections one backend search may name: `collections` is
+ * `max_length=500` on both `GroupedDocumentSearchRequest`
+ * (`aiq_api/models/requests.py`) and `SimilarPassagesRequest`
+ * (`aiq_api/models/similar.py`). Past it the backend answers 422. A project
+ * brings its own collection and every restricted folder's the reader is
+ * cleared for, so a page of projects can pass it.
+ */
+export const BACKEND_SEARCH_MAX_COLLECTIONS = 500
+
+/**
+ * How many of a walk's projects, by their collection counts in walk order,
+ * one search can name together within `cap`. The project that would pass it,
+ * and every one after it, waits. The first always counts, so a walk never
+ * stalls on a project cleared for more folders than the cap: the caller cuts
+ * its collections to the cap.
+ */
+export function projectsWithinCollectionCap(sizes: readonly number[], cap = BACKEND_SEARCH_MAX_COLLECTIONS): number {
+  let total = 0
+  for (const [index, size] of sizes.entries()) {
+    total += size
+    if (total > cap) return Math.max(index, 1)
+  }
+  return sizes.length
+}
+
 /** The grouped search's pre-filters (`GroupedSearchFilters`): within a list any of, across lists all of. */
 export interface GroupedSearchFilters {
   document_types?: string[]

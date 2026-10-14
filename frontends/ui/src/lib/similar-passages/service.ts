@@ -33,17 +33,22 @@
  * ## Cost
  *
  * One backend call: a nearest-neighbour query over at most
- * {@link SIMILAR_MAX_PROJECTS} projects' collections and the Büroablage. A
- * cited passage is matched to its stored chunk there and costs no embedding.
+ * {@link SIMILAR_MAX_PROJECTS} projects' collections and the Büroablage, and
+ * never more than the backend's {@link BACKEND_SEARCH_MAX_COLLECTIONS}: the
+ * projects most like the reader's are walked first, and the walk stops at the
+ * one whose collections would pass it. A cited passage is matched to its
+ * stored chunk there and costs no embedding.
  */
 
 import 'server-only'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { hasPassedScreening, SCREENED_ONLY } from '@/lib/documents/document-reader'
 import {
+  BACKEND_SEARCH_MAX_COLLECTIONS,
   hydrateProjectHits,
   joinHitsToFiles,
   planProjectSearch,
+  projectsWithinCollectionCap,
   type BackendSearchHit,
   type ProjectSearchPlan,
   type SearchedDocument,
@@ -275,9 +280,20 @@ export async function findSimilarPassages(
     PLAN_CONCURRENCY,
     (project) => planProjectSearch(session, project.id).catch(() => null)
   )
-  const plans = [currentPlan, ...planned].filter((plan): plan is ProjectSearchPlan => plan !== null)
+  const candidates = [currentPlan, ...planned].filter((plan): plan is ProjectSearchPlan => plan !== null)
+  // One search names at most BACKEND_SEARCH_MAX_COLLECTIONS, the Büroablage's
+  // among them. There is no next page here: the projects past the cap are not
+  // searched, and the reader's own, walked first, always is (cut to the cap).
+  const projectCap = BACKEND_SEARCH_MAX_COLLECTIONS - 1
+  const plans = candidates.slice(
+    0,
+    projectsWithinCollectionCap(
+      candidates.map((plan) => plan.collections.length),
+      projectCap
+    )
+  )
   const archiv = archivCollectionName(session.organizationId)
-  const collections = [...new Set([...plans.flatMap((plan) => plan.collections), archiv])]
+  const collections = [...new Set([...plans.flatMap((plan) => plan.collections).slice(0, projectCap), archiv])]
 
   const backend = await fetchSimilarFromBackend(source, request.passage, collections)
   const hits = asSearchHits(backend.documents)
