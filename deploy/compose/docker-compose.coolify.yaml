@@ -136,6 +136,10 @@ services:
       # Chroma migration in docs/deployment/qdrant-runbook.md.
       - AIQ_QDRANT_URL=http://qdrant:6333
       - AIQ_QDRANT_API_KEY=${SERVICE_PASSWORD_QDRANT}
+      # `true` only while an old store is imported into this Qdrant: the
+      # base-corpus sync then does not take the empty corpus collection for a
+      # reset (docs/deployment/qdrant-runbook.md, "On Coolify").
+      - AIQ_VECTOR_IMPORT_PENDING=${AIQ_VECTOR_IMPORT_PENDING:-}
       - COLLECTION_NAME=${COLLECTION_NAME:-oib_knowledge}
       - CONFIG_FILE=${BACKEND_CONFIG:-/app/configs/config_oib_openrouter.yml}
       # Allow the browser-facing frontend origin through the API's CORS filter.
@@ -236,6 +240,9 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
+      # Loading large collections from disk on start (WAL replay, segments)
+      # takes minutes; failures in this window do not count against retries.
+      start_period: 300s
     restart: unless-stopped
 
   # ── Deep-research worker tier (ADR-0021), the docker-compose mirror of the

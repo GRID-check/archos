@@ -115,6 +115,10 @@ services:
       # see the Chroma migration in docs/deployment/qdrant-runbook.md.
       AIQ_QDRANT_URL: ${AIQ_QDRANT_URL:-http://qdrant:6333}
       AIQ_QDRANT_API_KEY: ${AIQ_QDRANT_API_KEY:-}
+      # `true` only while an old store is imported into a Qdrant this release
+      # already runs against: the base-corpus sync then does not take the empty
+      # corpus collection for a reset (docs/deployment/qdrant-runbook.md).
+      AIQ_VECTOR_IMPORT_PENDING: ${AIQ_VECTOR_IMPORT_PENDING:-}
       # Research jobs (ADR-0021) are claimed from Postgres by the `agent-worker`
       # service below: the chat role submits one, the api role streams and cancels it.
       # Encrypts DB-claimed job payloads at rest (AES-256-GCM). Empty = plaintext
@@ -363,6 +367,9 @@ services:
       interval: 10s
       timeout: 10s
       retries: 12
+      # Loading large collections from disk on start (WAL replay, segments)
+      # takes minutes; failures in this window do not count against retries.
+      start_period: 300s
     restart: unless-stopped
 
   seaweedfs:

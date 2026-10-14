@@ -125,6 +125,14 @@ describe.each(COMPOSE_FILES)("%s", (file) => {
     expect(qdrant.QDRANT__STORAGE__QUOTAS__MAX_RESIDENT_MEMORY_PERCENT).toBe("${QDRANT_QUOTA_MEMORY_PERCENT:-90}");
     expect(qdrant.QDRANT__STORAGE__QUOTAS__MAX_DISK_USAGE_PERCENT).toBe("${QDRANT_QUOTA_DISK_PERCENT:-85}");
   });
+
+  // A store loading large collections answers /readyz late. Without a grace
+  // period its two minutes of retries run out, the container reads unhealthy,
+  // and every backend role that waits on `service_healthy` never starts.
+  it("gives Qdrant five minutes to load before its health check counts", () => {
+    const check = (compose(file).services.qdrant as { healthcheck?: { start_period?: string } }).healthcheck;
+    expect(check?.start_period).toBe("300s");
+  });
 });
 
 /** The removed names must not come back through a file nobody greps. */

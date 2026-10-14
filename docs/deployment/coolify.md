@@ -364,10 +364,14 @@ volume for it (ADR-0082 step A2):
 > removes it, but deleting the Coolify resource may offer to delete its volumes,
 > so do neither before the move. The new release answers nothing from
 > what Chroma held until the vectors are moved once with the exporter and
-> importer: stop the stack, run the export against that volume, start the new
-> release's `qdrant`, import ([`qdrant-runbook.md`](qdrant-runbook.md),
-> "Migrating from Chroma", the Compose procedure, with Coolify's volume name
-> and network). Delete the volume once the new release has served for a while.
+> importer. Coolify starts every service on a deploy, the housekeeping clock
+> included, so the order is: stop, export from `<uuid>_chroma_data`, set
+> `AIQ_VECTOR_IMPORT_PENDING=true`, deploy, stop the app services at once,
+> import on the `<uuid>` network with `aiq-api`'s environment, remove the
+> variable, restart ([`qdrant-runbook.md`](qdrant-runbook.md), "Migrating from
+> Chroma", "On Coolify"). Without the variable, the first base-corpus sync
+> takes the empty store for a reset and re-embeds the whole corpus. Delete the
+> volume once the new release has served for a while.
 
 > **Upgrading from a stack that kept the corpus on the `aiq-data` volume.** The
 > backend no longer mounts it. The one-shot `legacy-corpus-import` service reads

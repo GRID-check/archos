@@ -249,6 +249,21 @@ class TestSync:
         run_worker()
         assert oib_sync.sync().ingested_recorded == 1
 
+    def test_an_empty_store_waiting_for_its_import_is_not_taken_for_a_reset(self, ingestor, monkeypatch):
+        """Compose and Coolify start the new release before the import: no re-embedding of the corpus meanwhile."""
+        corpus_store.put("a.pdf", b"a")
+        oib_sync.sync()
+        run_worker()
+        oib_sync.sync()
+        ingestor.collection = None  # the new Qdrant, still empty
+        monkeypatch.setenv("AIQ_VECTOR_IMPORT_PENDING", "true")
+
+        assert oib_sync.sync().enqueued == 0
+        assert _row("a.pdf").ingested_sha256 == _sha(b"a")
+
+        monkeypatch.delenv("AIQ_VECTOR_IMPORT_PENDING")
+        assert oib_sync.sync().enqueued == 1  # without it, an empty store is a reset as before
+
     def test_a_vector_store_that_cannot_be_probed_does_not_discard_what_the_table_knows(self, ingestor, monkeypatch):
         corpus_store.put("a.pdf", b"a")
         oib_sync.sync()

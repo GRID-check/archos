@@ -153,14 +153,17 @@ and runs without an API key. Its data is the `qdrant_data` volume at
 |---------|-------|
 | Metrics | `/metrics` without the key on port 6336 (`QDRANT__SERVICE__METRICS_PORT`), as on the Pulumi peers; nothing in Compose scrapes it |
 | Quotas | writes refused with HTTP 507 above 90% of memory or 85% of the volume (`QDRANT_QUOTA_MEMORY_PERCENT`, `QDRANT_QUOTA_DISK_PERCENT`), seeded on the first start only |
-| Healthcheck | `GET /readyz` over bash's `/dev/tcp` (the image has no curl) — interval 10s, timeout 10s, retries 12 |
+| Healthcheck | `GET /readyz` over bash's `/dev/tcp` (the image has no curl) — interval 10s, timeout 10s, retries 12, `start_period` 300s (loading large collections takes minutes) |
 
 **An installation that ran Chroma** keeps its vectors in the old `chroma_data`
 volume (`compose_chroma_data` with the default project name). The file no longer
 declares it, so neither `up` nor `down -v` touches it. Move them into Qdrant
 once with the exporter and importer: the Compose procedure in
-[`qdrant-runbook.md`](qdrant-runbook.md), "Migrating from Chroma". Until then
-the stack answers nothing from what Chroma held. Remove the volume by hand
+[`qdrant-runbook.md`](qdrant-runbook.md), "Migrating from Chroma". Stop,
+export, import, then `up`: never `up -d` the new release before the import has
+verified, or its first base-corpus sync takes the empty store for a reset and
+re-embeds the whole corpus. Until then the stack answers nothing from what
+Chroma held. Remove the volume by hand
 once the new release has served for a while.
 
 ### seaweedfs

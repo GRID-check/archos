@@ -577,6 +577,8 @@ step, exit 0; the HTTP-mode export imported over it with `--prune --verify`
 in 6 s, nothing pruned, exit 0. The Compose commands below (`stop`, `run`)
 are **undrilled** as a sequence.
 
+### With Docker Compose
+
 From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-compose.yaml"`:
 
 > **Stop, export, import, then `up`. Never `$DC up -d` the new release before
@@ -586,7 +588,9 @@ From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-com
 > every corpus file to be embedded again, at the embedding provider's price,
 > and the new points make the import's `--verify` report them as extra. The
 > app tiers would also answer from an empty store meanwhile. `$DC run` in
-> step 4 starts only what the import needs, never the clock.
+> step 4 starts only what the import needs, never the clock. If the new
+> release must run before the import (as on Coolify, below), set
+> `AIQ_VECTOR_IMPORT_PENDING=true` in `../.env` first, and remove it after.
 
 1. **Stop every writer**, on the release that still runs Chroma. Stopping the
    whole stack is the simple way to be sure nothing uploads, deletes or
@@ -661,6 +665,67 @@ default `/tmp/chroma_data`):
 uv run --script deploy/migration/chroma_export.py --persist-dir /tmp/chroma_data --out vector-export/export
 AIQ_QDRANT_URL=http://localhost:6333 .venv/bin/python scripts/import_vectors.py --in vector-export/export --verify
 ```
+
+### On Coolify
+
+**Undrilled.** Coolify builds the backend image at deploy and has no "start
+some services" step, so the new release's Qdrant and image exist only once it
+is deployed, and a deploy starts every service, the `housekeeping` clock
+included, which calls the base-corpus sync the moment `aiq-api` is healthy.
+The procedure therefore takes the application offline for the import (a
+maintenance window: announce it; users get no answers until step 6) and sets
+`AIQ_VECTOR_IMPORT_PENDING` so that first sync does not queue the corpus for
+re-embedding. Coolify names everything after the resource's UUID (in its URL
+and in `docker ps`); `<uuid>` below is that.
+
+1. **Stop** the resource in Coolify (on the release that still runs Chroma).
+2. **Export** from the Chroma volume, `<uuid>_chroma_data`, on the Coolify
+   host, as in step 2 above (a checkout of the repository on the host gives
+   `deploy/migration`):
+
+   ```bash
+   docker volume ls --format '{{.Name}}' | grep chroma_data      # <uuid>_chroma_data
+   docker run --rm -v <uuid>_chroma_data:/chroma:ro -v "$PWD/deploy/migration:/migration:ro" \
+     -v /root/vector-export:/exchange ghcr.io/astral-sh/uv:0.11.32-python3.12-trixie-slim \
+     uv run --script /migration/chroma_export.py --persist-dir /chroma --out /exchange/export
+   ```
+
+3. **Set `AIQ_VECTOR_IMPORT_PENDING=true`** in the resource's Environment
+   Variables, then point the resource at the release with Qdrant and
+   **deploy**. Coolify generates `SERVICE_PASSWORD_QDRANT` for it.
+4. **Take the application offline** at once: stop every service that serves
+   users or writes, and leave `qdrant`, `postgres`, `pgbouncer` and `aiq-api`
+   running:
+
+   ```bash
+   docker ps --format '{{.Names}}' | grep '<uuid>'
+   docker stop frontend-<uuid> bff-jobs-<uuid> ingest-worker-<uuid> agent-worker-<uuid> \
+     aiq-agent-<uuid> purger-<uuid> skill-scheduler-<uuid> housekeeping-<uuid>
+   ```
+
+5. **Import** in the image the deploy built, with `aiq-api`'s own
+   environment, on the stack's network (Coolify's managed network is named
+   `<uuid>`). That environment carries what the importer reads:
+   `AIQ_QDRANT_URL=http://qdrant:6333`, `AIQ_QDRANT_API_KEY` (the value of
+   `SERVICE_PASSWORD_QDRANT`), and the metadata store's DSN
+   (`AIQ_SUMMARY_DB`, `NAT_JOB_STORE_DB_URL`, on `pgbouncer`, with
+   `SERVICE_PASSWORD_POSTGRES`):
+
+   ```bash
+   IMAGE=$(docker inspect aiq-api-<uuid> --format '{{.Config.Image}}')
+   docker inspect aiq-api-<uuid> --format '{{range .Config.Env}}{{println .}}{{end}}' > /root/aiq-api.env
+   docker run --rm --network <uuid> --env-file /root/aiq-api.env -v /root/vector-export:/exchange:ro \
+     "$IMAGE" python scripts/import_vectors.py --in /exchange/export --dry-run
+   docker run --rm --network <uuid> --env-file /root/aiq-api.env -v /root/vector-export:/exchange:ro \
+     "$IMAGE" python scripts/import_vectors.py --in /exchange/export --verify
+   rm /root/aiq-api.env        # it holds every secret of the backend
+   ```
+
+   The exit codes are step 4's above.
+6. **Remove `AIQ_VECTOR_IMPORT_PENDING`** from the Environment Variables and
+   **restart** the resource, which starts everything again. Then verify in
+   the product as in step 5 above. Leaving the variable set would stop a
+   store that really is reset from ever being refilled.
 
 ## Migrating from Chroma on Kubernetes
 

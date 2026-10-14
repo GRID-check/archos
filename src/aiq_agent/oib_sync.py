@@ -384,9 +384,23 @@ def mark_for_reingest(name: str) -> bool:
 # ----------------------------------------------------------------------------
 
 
+#: Set while an operator moves an old vector store into a new, still empty one
+#: (the Chroma import, docs/deployment/qdrant-runbook.md). The empty corpus
+#: collection is then expected, not a reset to re-embed the corpus for.
+IMPORT_PENDING_ENV = "AIQ_VECTOR_IMPORT_PENDING"
+
+
 def _forget_everything_if_the_index_was_reset(rows: dict[str, corpus_store.FileRow]) -> dict[str, corpus_store.FileRow]:
     """The rows, after forgetting every ingested hash when the table claims files the index no longer holds."""
     if not any(row.ingested_sha256 for row in rows.values()) or not _collection_is_empty(_get_oib_ingestor()):
+        return rows
+    if os.environ.get(IMPORT_PENDING_ENV, "").strip().lower() in ("1", "true", "yes"):
+        logger.warning(
+            "OIB sync: collection %s is empty while the table lists ingested files, and %s is set: "
+            "an import is pending, so nothing is re-ingested. Unset it once the import has verified",
+            COLLECTION_NAME,
+            IMPORT_PENDING_ENV,
+        )
         return rows
     logger.warning(
         "OIB sync: the table lists ingested files but collection %s is empty/missing "
