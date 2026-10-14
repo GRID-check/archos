@@ -91,6 +91,12 @@ export const projectIntake: typeof en.projectIntake = {
     decisiveHint: 'Entscheidet über die Gebäudeklasse',
     empty: 'Noch nichts gefunden. Piloti listet seine Vorschläge hier auf, sobald es ein Dokument gelesen hat.',
   },
+  // Ablage: die offenen Ablagevorschläge des Projekts, dieselben wie in Dateien.
+  filing: {
+    heading: 'Ablage',
+    description:
+      "Piloti würde diese Dokumente in beschriebene Ordner des Projekts legen. Jeder Vorschlag verschiebt alle Dateien, die dorthin gehören.",
+  },
   derivations: {
     heading: 'Ableitungen',
     description: 'Aus den Werten oben folgt die Gebäudeklasse jedes Bauwerks.',

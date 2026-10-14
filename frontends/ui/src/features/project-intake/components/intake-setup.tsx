@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { FolderUploadDialog } from '@/features/documents/components/folder-upload-dialog'
 import { UploadTray } from '@/features/documents/components/upload-tray'
+import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import { useTranslations } from '@/i18n'
 import type { ProjectIntakeClient } from '@/lib/project-intake/client'
 import type { IntakeView } from '@/lib/project-intake/types'
@@ -76,6 +77,16 @@ function ConnectedSetup({
       void refresh()
     },
   })
+  // Piloti's open filing suggestions for the project, read when the page is
+  // shown and again after a document lands or a suggestion is decided; asked
+  // every few seconds while documents are arriving or being read, because the
+  // judgement from their names follows the upload.
+  const filingQuery = useMemo(() => ({ projectId }), [projectId])
+  const filing = useFilingSuggestions({
+    query: filingQuery,
+    refreshKey: view.counts.documentsRead + view.counts.unreadDocuments,
+    watching: upload.isUploading || view.status === 'reading',
+  })
   const files = useMemo(
     () => upload.trackedFiles.filter((file) => file.collectionName === collectionName),
     [upload.trackedFiles, collectionName]
@@ -94,6 +105,7 @@ function ConnectedSetup({
       onReread={() => void intake.reread()}
       onComplete={intake.complete}
       onRetry={() => void intake.refresh()}
+      filing={{ entries: filing.byFolder, onSettled: filing.reload }}
     >
       {files.length > 0 && (
         <UploadTray

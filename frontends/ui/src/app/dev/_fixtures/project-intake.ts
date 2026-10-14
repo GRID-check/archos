@@ -8,6 +8,7 @@
  */
 
 import type { GeocodeResult } from '@/lib/geocoding/types'
+import type { ListedProposal, ProposedChangeView } from '@/lib/proposals/types'
 import type {
   DerivationReview,
   IntakeView,
@@ -323,3 +324,80 @@ export const INTAKE_FIXTURES = {
 } as const
 
 export type IntakeFixtureName = keyof typeof INTAKE_FIXTURES
+
+type FilingProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
+
+const filingProposal = (id: string, patch: Pick<FilingProposal, 'payload'>): FilingProposal => ({
+  id,
+  projectId: FIXTURE_PROJECT_ID,
+  status: 'proposed',
+  proposedByKind: 'piloti',
+  onBehalfOf: 'user_me',
+  onBehalfOfName: 'Mia Huber',
+  originConversationId: null,
+  originMessageId: null,
+  createdAt: AT,
+  decidedBy: null,
+  decidedByName: null,
+  decidedAt: null,
+  results: null,
+  canDecide: true,
+  kind: 'file_operation',
+  ...patch,
+})
+
+/**
+ * Piloti's two open filing suggestions for the project, one per target folder:
+ * two files into a folder that exists, and one into a folder it would create.
+ * What `GET /api/proposals?projectId=…&kind=file_operation` answers, so the
+ * setup page's „Ablage“ section and its specs read the real shape.
+ */
+export const INTAKE_FILING: ListedProposal[] = [
+  {
+    proposal: filingProposal('00000000-0000-4000-8000-0000000000b1', {
+      payload: {
+        operation: 'move',
+        operations: [
+          {
+            document: 'Bescheid_MA37_Aufstockung.pdf',
+            source: 'projekt',
+            target_folder: 'Behörde/Bescheide',
+            reason: 'Ein Bescheid der MA 37; „Bescheide“ hält laut Beschreibung Bescheide und Stellungnahmen.',
+          },
+          {
+            document: 'Stellungnahme_MA19_Ortsbild.pdf',
+            source: 'projekt',
+            target_folder: 'Behörde/Bescheide',
+            reason: 'Eine Stellungnahme der MA 19 zum Ortsbild.',
+          },
+        ],
+        basis: 'name',
+      },
+    }),
+    documents: [
+      { id: 'doc-bescheid', name: 'Bescheid_MA37_Aufstockung.pdf' },
+      { id: 'doc-ortsbild', name: 'Stellungnahme_MA19_Ortsbild.pdf' },
+    ],
+  },
+  {
+    proposal: filingProposal('00000000-0000-4000-8000-0000000000b2', {
+      payload: {
+        operation: 'move',
+        operations: [
+          {
+            document: 'Statik_Gutachten_Dachstuhl.pdf',
+            source: 'projekt',
+            target_folder: 'Gutachten',
+            reason: 'Ein statisches Gutachten zum Dachstuhl; das Büro legt Gutachten in vier Projekten unter „Gutachten“ ab.',
+          },
+        ],
+        basis: 'content',
+        new_folder: { path: 'Gutachten', description: 'Statische, bauphysikalische und brandschutztechnische Gutachten' },
+      },
+    }),
+    documents: [{ id: 'doc-statik', name: 'Statik_Gutachten_Dachstuhl.pdf' }],
+  },
+]
+
+/** The states that have open filing suggestions: a project with documents read and not yet finished. */
+export const INTAKE_FILING_STATES: readonly IntakeFixtureName[] = ['ready', 'closing']

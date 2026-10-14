@@ -4,11 +4,16 @@
  */
 import { fireEvent, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { http, HttpResponse } from 'msw'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { server } from '@/mocks/server'
+import { resetKit, useFakeStream } from '@/features/grid-cards/components/proposal-test-kit'
+import { suggestionsByFolder } from '@/features/documents/lib/filing-suggestions'
 import {
   INTAKE_CLOSING,
   INTAKE_COMPLETED,
   INTAKE_FAILED,
+  INTAKE_FILING,
   INTAKE_FIXTURES,
   INTAKE_READING,
   INTAKE_READY,
@@ -501,6 +506,68 @@ describe('IntakeSetupView', () => {
       fireEvent.drop(screen.getByTestId('intake-setup'), { dataTransfer: { types: ['Files'], files: [file], items: [] } })
 
       expect(onFiles).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('Ablage: Piloti\'s open filing suggestions', () => {
+    const [bescheide] = INTAKE_FILING
+    const onSettled = vi.fn()
+    const filing = (entries = suggestionsByFolder(INTAKE_FILING)) => ({ filing: { entries, onSettled } })
+    let current = bescheide.proposal
+
+    beforeEach(() => {
+      useFakeStream()
+      current = bescheide.proposal
+      server.use(
+        http.get('/api/proposals/:id', ({ params }) =>
+          HttpResponse.json({ proposal: INTAKE_FILING.find((entry) => entry.proposal.id === params.id)?.proposal ?? current })
+        ),
+        http.post(`/api/proposals/${bescheide.proposal.id}/apply`, () => {
+          current = { ...bescheide.proposal, status: 'applied', canDecide: false, results: [] }
+          return HttpResponse.json({ proposal: current })
+        })
+      )
+    })
+    afterEach(resetKit)
+
+    it('lists one suggestion per target folder, with the files that go there, after Prüfen and before Ableitungen', async () => {
+      setup(INTAKE_READY, filing())
+
+      const section = screen.getByTestId('intake-filing')
+      expect(within(section).getByRole('heading', { name: 'Filing' })).toBeInTheDocument()
+      const entries = within(section).getAllByTestId('intake-filing-entry')
+      expect(entries).toHaveLength(2)
+      expect(entries[0]).toHaveTextContent('Bescheid_MA37_Aufstockung.pdf, Stellungnahme_MA19_Ortsbild.pdf')
+      expect(await within(entries[0]).findByText('Belongs in “Behörde/Bescheide”')).toBeInTheDocument()
+      expect(await within(entries[1]).findByText('Belongs in a new folder “Gutachten”')).toBeInTheDocument()
+      const follows = (a: HTMLElement, b: HTMLElement) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
+      expect(follows(screen.getByTestId('intake-review'), section)).toBeTruthy()
+      expect(follows(section, screen.getByTestId('intake-derivations'))).toBeTruthy()
+    })
+
+    it('applies through the proposals service and tells the page to re-read', async () => {
+      const user = userEvent.setup()
+      setup(INTAKE_READY, filing())
+
+      await user.click(await screen.findByRole('button', { name: 'Move all 2' }))
+
+      expect(await screen.findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
+      await vi.waitFor(() => expect(onSettled).toHaveBeenCalled())
+    })
+
+    it('draws nothing when there is no open suggestion', () => {
+      setup(INTAKE_READY, filing([]))
+      expect(screen.queryByTestId('intake-filing')).toBeNull()
+    })
+
+    it('draws nothing when the page is given no suggestions', () => {
+      setup(INTAKE_READY)
+      expect(screen.queryByTestId('intake-filing')).toBeNull()
+    })
+
+    it('draws nothing in the completed state', () => {
+      setup(INTAKE_COMPLETED, filing())
+      expect(screen.queryByTestId('intake-filing')).toBeNull()
     })
   })
 

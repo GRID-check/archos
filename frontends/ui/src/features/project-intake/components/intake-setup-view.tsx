@@ -10,6 +10,7 @@ import {
   useWindowDragGuard,
 } from '@/features/documents/components/file-drop-overlay'
 import { useFileDragDrop } from '@/features/documents/hooks/use-file-drag-drop'
+import type { FilingFolderSuggestion } from '@/features/documents/lib/filing-suggestions'
 import { useTranslations } from '@/i18n'
 import type { IntakeDecision, IntakeView } from '@/lib/project-intake/types'
 import { usePressed } from '../hooks/use-pressed'
@@ -17,6 +18,7 @@ import { CompleteFooter, CompletedNote } from './complete-footer'
 import { ContradictionSection } from './contradiction-section'
 import { DerivationSection } from './derivation-section'
 import { EvidenceProjectContext } from './evidence-chips'
+import { FilingSection } from './filing-section'
 import { IntakeHeader } from './intake-header'
 import { IntakeUploadZone } from './intake-upload-zone'
 import { QuestionSection } from './question-section'
@@ -38,6 +40,11 @@ export interface IntakeSetupViewProps {
   onReread: () => void | Promise<void>
   onComplete: () => Promise<boolean>
   onRetry: () => void
+  /**
+   * The project's open filing suggestions, one per target folder, and the call
+   * that re-reads them after one is decided. Absent: the section is not drawn.
+   */
+  filing?: { entries: readonly FilingFolderSuggestion[]; onSettled: () => void }
   /** The upload's tray and plan dialog, which the connected page owns. */
   children?: ReactNode
 }
@@ -48,7 +55,8 @@ export interface IntakeSetupViewProps {
  * draws it from fixtures.
  *
  * In order: the status and what a person may do, the drop zone while there are
- * no documents, Widersprüche, Rückfragen, Prüfen, Ableitungen, and the way to
+ * no documents, Widersprüche, Rückfragen, Prüfen, Ablage (Piloti's open filing
+ * suggestions, while the page is not finished), Ableitungen, and the way to
  * finish. A folder dropped anywhere on the page is filed in the project.
  */
 export function IntakeSetupView({
@@ -63,6 +71,7 @@ export function IntakeSetupView({
   onReread,
   onComplete,
   onRetry,
+  filing,
   children,
 }: IntakeSetupViewProps): JSX.Element {
   const t = useTranslations('projectIntake')
@@ -138,6 +147,7 @@ export function IntakeSetupView({
         <ContradictionSection items={view.contradictions} {...decideProps} />
         <QuestionSection questions={view.questions} {...decideProps} onFiles={onFiles} />
         {reviewing && <ReviewSection groups={view.groups} {...decideProps} />}
+        {filing && !finished && <FilingSection entries={filing.entries} onSettled={filing.onSettled} />}
         <DerivationSection derivations={view.derivations} {...decideProps} />
         {view.status === 'reading' && <ReadingSkeleton />}
         <CompleteFooter view={view} busy={busy} onComplete={onComplete} />

@@ -89,6 +89,12 @@ export const projectIntake = {
     decisiveHint: 'Decides the Gebäudeklasse',
     empty: 'Nothing found yet. Piloti lists its suggestions here once it has read a document.',
   },
+  // Filing: the project's open filing suggestions, the same ones Files shows.
+  filing: {
+    heading: 'Filing',
+    description:
+      "Piloti would file these documents in the project's described folders. Each suggestion moves every file that belongs there.",
+  },
   derivations: {
     heading: 'Derivations',
     description: 'The Gebäudeklasse of each building follows from the values above.',

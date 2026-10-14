@@ -23,28 +23,68 @@ export interface FilingSuggestionView {
   canDecide: boolean
 }
 
+/** Whether a listed proposal is an open filing suggestion, and the folder it files into. */
+function filingFolderOf(proposal: ListedProposal['proposal']): { folder: string; basis: FilingBasis } | null {
+  if (proposal.kind !== 'file_operation' || proposal.status !== 'proposed') return null
+  const { payload } = proposal
+  if (!payload.basis || proposal.originConversationId !== null || payload.operation !== 'move') return null
+  const folder = payload.operations[0]?.target_folder ?? ''
+  return folder ? { folder, basis: payload.basis } : null
+}
+
 /** Every open filing suggestion of a listing, keyed by the id of each document it names. */
 export function suggestionsByDocument(listed: readonly ListedProposal[]): Map<string, FilingSuggestionView> {
   const byDocument = new Map<string, FilingSuggestionView>()
   for (const { proposal, documents } of listed) {
-    if (proposal.kind !== 'file_operation' || proposal.status !== 'proposed') continue
+    const filing = filingFolderOf(proposal)
+    if (!filing || proposal.kind !== 'file_operation') continue
     const { payload } = proposal
-    if (!payload.basis || proposal.originConversationId !== null || payload.operation !== 'move') continue
-    const folder = payload.operations[0]?.target_folder ?? ''
-    if (!folder) continue
     for (const document of documents) {
       if (byDocument.has(document.id)) continue
       const item = payload.operations.find((entry) => entry.document === document.name)
       byDocument.set(document.id, {
         proposalId: proposal.id,
-        folder,
+        folder: filing.folder,
         reason: item?.reason ?? null,
         isNew: Boolean(payload.new_folder),
-        basis: payload.basis,
+        basis: filing.basis,
         fileCount: payload.operations.length,
         canDecide: proposal.canDecide,
       })
     }
   }
   return byDocument
+}
+
+/** One open filing suggestion as a page without the files in view lists it: the folder, and which files go there. */
+export interface FilingFolderSuggestion {
+  suggestion: FilingSuggestionView
+  documents: readonly { id: string; name: string }[]
+}
+
+/**
+ * Every open filing suggestion of a listing, one per target folder, for a place
+ * that lists them rather than hanging them on file rows (the setup page). The
+ * reason is the first file's; the others are counted in the line.
+ */
+export function suggestionsByFolder(listed: readonly ListedProposal[]): FilingFolderSuggestion[] {
+  const entries: FilingFolderSuggestion[] = []
+  for (const { proposal, documents } of listed) {
+    const filing = filingFolderOf(proposal)
+    if (!filing || proposal.kind !== 'file_operation' || documents.length === 0) continue
+    const { payload } = proposal
+    entries.push({
+      suggestion: {
+        proposalId: proposal.id,
+        folder: filing.folder,
+        reason: payload.operations.find((entry) => entry.document === documents[0].name)?.reason ?? null,
+        isNew: Boolean(payload.new_folder),
+        basis: filing.basis,
+        fileCount: payload.operations.length,
+        canDecide: proposal.canDecide,
+      },
+      documents,
+    })
+  }
+  return entries
 }

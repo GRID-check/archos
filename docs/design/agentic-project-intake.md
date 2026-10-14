@@ -67,9 +67,17 @@ startIntakeRun ─▶ submitBackgroundRun ─▶ research worker, agent type `pr
 profile: assumptions (agent_suggested) with evidence; alternatives on assumption or fact
 project_intakes: status, documents read, dismissed, counts, job
                     ▼
-/app/projects/{id}/setup: Widersprüche · Rückfragen · Prüfen · Ableitungen · Abschließen
+/app/projects/{id}/setup: Widersprüche · Rückfragen · Prüfen · Ablage · Ableitungen · Abschließen
   decisions ─▶ POST /api/projects/{id}/intake/decisions ─▶ patchProjectProfile
+  Ablage    ─▶ the project's open filing suggestions, applied or dismissed through /api/proposals
 ```
+
+Ablage is not part of the review. It lists the project's open `file_operation`
+filing suggestions (`listOpenProposals({ projectId, kind: 'file_operation' })`),
+one per target folder with the files that go there, and draws each with the
+`FilingSuggestion` Dateien uses, so a decision here is the same proposal, inbox
+item and score as there. It is a quiet secondary section: nothing when there is
+no open suggestion, and nothing once the setup is finished.
 
 ### Why an agent of its own, on the research worker
 

@@ -13,7 +13,7 @@ import type { ProposedChangeView } from '@/lib/proposals/types'
 import { FilingSuggestionsProvider, FilingSuggestionSlot } from './filing-suggestion'
 import { FileListView } from './file-list-view'
 import type { FileItem } from './project-file-workspace'
-import { suggestionsByDocument, type FilingSuggestionView } from '../lib/filing-suggestions'
+import { suggestionsByDocument, suggestionsByFolder, type FilingSuggestionView } from '../lib/filing-suggestions'
 
 type FileProposal = Extract<ProposedChangeView, { kind: 'file_operation' }>
 
@@ -199,5 +199,30 @@ describe('suggestionsByDocument', () => {
         { proposal: withoutBasis, documents: DOCUMENTS },
       ]).size
     ).toBe(0)
+  })
+})
+
+describe('suggestionsByFolder', () => {
+  it('lists one entry per target folder with the files that go there, and applies the same rules as the rows', () => {
+    const second = proposal({
+      id: '00000000-0000-4000-8000-0000000000a2',
+      payload: {
+        operation: 'move',
+        operations: [{ document: 'Brief.pdf', source: 'projekt', target_folder: 'Korrespondenz', reason: 'Ein Brief.' }],
+        basis: 'content',
+        new_folder: { path: 'Korrespondenz', description: 'Briefe' },
+      },
+    })
+    const fromChat = proposal({ id: '00000000-0000-4000-8000-0000000000a3', originConversationId: 'conv-1' })
+    const entries = suggestionsByFolder([
+      { proposal: proposal(), documents: DOCUMENTS },
+      { proposal: second, documents: [{ id: 'doc_3', name: 'Brief.pdf' }] },
+      { proposal: fromChat, documents: DOCUMENTS },
+    ])
+    expect(entries.map((entry) => [entry.suggestion.folder, entry.suggestion.isNew, entry.documents.map((d) => d.name)])).toEqual([
+      ['Bescheide', false, ['MA37_Bescheid.pdf', 'Stellungnahme.pdf']],
+      ['Korrespondenz', true, ['Brief.pdf']],
+    ])
+    expect(entries[0].suggestion).toMatchObject({ fileCount: 2, reason: 'Ein Bescheid der MA 37.', proposalId: PROPOSAL_ID })
   })
 })

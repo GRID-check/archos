@@ -10,16 +10,24 @@
  * Decisions call back into the page, which shows the last payload it was given
  * instead of changing the fixture: what a button sends is the thing to review.
  * Uploads go nowhere here.
+ *
+ * `ready` and `closing` carry Piloti's two open filing suggestions („Ablage“).
+ * Their apply and dismiss go to a faked proposals API (`fake-proposals.ts`), so
+ * the buttons can be pressed; a decided suggestion leaves the section.
  */
 
 import { use, useState } from 'react'
 import { ProjectSectionHeader } from './section-header'
+import { useFakeProposalClient } from '@/app/dev/_fixtures/fake-proposals'
 import {
+  INTAKE_FILING,
+  INTAKE_FILING_STATES,
   INTAKE_FIXTURES,
   type IntakeFixtureName,
 } from '@/app/dev/_fixtures/project-intake'
 import { installFixtureDocuments } from './fixture-documents'
 import { IntakeSetupView } from '@/features/project-intake/components/intake-setup-view'
+import { useFilingSuggestions } from '@/features/documents/hooks/use-filing-suggestions'
 import type { IntakeDecision } from '@/lib/project-intake/types'
 
 installFixtureDocuments(INTAKE_FIXTURES.ready)
@@ -39,6 +47,13 @@ export default function ProjectSetupPreviewPage({
   const busy = params.busy === '1'
   const view = INTAKE_FIXTURES[name]
   const [sent, setSent] = useState<string | null>(null)
+  // The connected page's own hook, against a faked proposals API: a decided
+  // suggestion is read away, as it is there.
+  const proposalsReady = useFakeProposalClient(INTAKE_FILING)
+  const filing = useFilingSuggestions({
+    query: proposalsReady && INTAKE_FILING_STATES.includes(name) ? { projectId: view.projectId } : null,
+    watching: false,
+  })
 
   return (
     <main className="bg-background min-h-dvh" data-testid="project-setup-preview">
@@ -61,6 +76,7 @@ export default function ProjectSetupPreviewPage({
           return true
         }}
         onRetry={() => setSent('get')}
+        filing={{ entries: filing.byFolder, onSettled: filing.reload }}
       />
       {sent && (
         <pre className="text-muted-foreground mx-auto max-w-5xl px-4 pb-8 font-mono text-xs break-all whitespace-pre-wrap md:px-8">

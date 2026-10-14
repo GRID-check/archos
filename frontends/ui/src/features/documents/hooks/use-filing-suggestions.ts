@@ -12,20 +12,28 @@
  * keeps what was shown; a suggestion is never worth an error on the page.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { listOpenProposals } from '@/lib/proposals/client'
-import type { ProposalListQuery } from '@/lib/proposals/types'
-import { suggestionsByDocument, type FilingSuggestionView } from '../lib/filing-suggestions'
+import type { ListedProposal, ProposalListQuery } from '@/lib/proposals/types'
+import {
+  suggestionsByDocument,
+  suggestionsByFolder,
+  type FilingFolderSuggestion,
+  type FilingSuggestionView,
+} from '../lib/filing-suggestions'
 
 /** How often an upload on screen asks again: the runner's poll plus one model call fit in two rounds. */
 export const FILING_POLL_MS = 4000
 
 export interface FilingSuggestions {
+  /** For a file row: by the id of each document a suggestion names. */
   byDocument: ReadonlyMap<string, FilingSuggestionView>
+  /** For a page that lists them: one per target folder. */
+  byFolder: readonly FilingFolderSuggestion[]
   reload: () => void
 }
 
-const EMPTY: ReadonlyMap<string, FilingSuggestionView> = new Map()
+const EMPTY: readonly ListedProposal[] = []
 
 export function useFilingSuggestions({
   query,
@@ -37,7 +45,7 @@ export function useFilingSuggestions({
   refreshKey?: unknown
   watching: boolean
 }): FilingSuggestions {
-  const [byDocument, setByDocument] = useState<ReadonlyMap<string, FilingSuggestionView>>(EMPTY)
+  const [listed, setListed] = useState<readonly ListedProposal[]>(EMPTY)
   const projectId = query?.projectId
   const archiv = query?.shelf === 'archiv'
   const asked = query !== null
@@ -49,7 +57,7 @@ export function useFilingSuggestions({
     const shelf: ProposalListQuery = projectId ? { projectId, kind: 'file_operation' } : { shelf: 'archiv', kind: 'file_operation' }
     listOpenProposals(shelf).then(
       ({ proposals }) => {
-        if (mine === generation.current) setByDocument(suggestionsByDocument(proposals))
+        if (mine === generation.current) setListed(proposals)
       },
       () => undefined
     )
@@ -65,5 +73,7 @@ export function useFilingSuggestions({
     return () => clearInterval(timer)
   }, [watching, asked, reload])
 
-  return { byDocument, reload }
+  const byDocument = useMemo(() => suggestionsByDocument(listed), [listed])
+  const byFolder = useMemo(() => suggestionsByFolder(listed), [listed])
+  return { byDocument, byFolder, reload }
 }
