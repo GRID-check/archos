@@ -23,7 +23,9 @@ no chunks at all. The end-to-end tests at the bottom pin exactly that.
   drops the metadata row only under a stored spelling other than the new name
   (the row under the new name is the new version's row, and keeps what people
   set);
-- a failure in either step never fails the ingest;
+- a retirement failure never fails the ingest; a find Qdrant cannot answer,
+  after the store's retries, fails the file before anything is written,
+  because writing then would leave both versions answering;
 - a file that fails after some of its chunks went in takes exactly those chunks
   back out, and the previous version stays whole;
 - two jobs for one name replace one after the other: the one that finishes last
@@ -165,12 +167,50 @@ def test_empty_and_blank_names_are_ignored(ingestor, registries, monkeypatch):
     assert ingestor._find_previous_versions("proj_1", ["", None]) == {}
 
 
-def test_a_failed_lookup_finds_nothing_and_never_fails_the_ingest(ingestor, registries, monkeypatch):
+def test_a_lookup_qdrant_cannot_answer_raises_after_the_stores_retries(ingestor, registries, monkeypatch):
+    """Answered as "no predecessor", the write would go on and leave both versions answering searches."""
+    calls = []
+
     def down(*args, **kwargs):
+        calls.append(1)
         raise ConnectionError("qdrant down")
 
     monkeypatch.setattr(store_module.QdrantStore, "scroll", down)
-    assert ingestor._find_previous_versions("proj_1", ["statik.pdf"]) == {}
+    monkeypatch.setattr(store_module, "_sleep", lambda seconds: None)
+
+    with pytest.raises(ConnectionError):
+        ingestor._find_previous_versions("proj_1", ["statik.pdf"])
+    assert len(calls) == len(store_module.RETRY_BACKOFF_SECONDS) + 1
+
+
+def test_a_transient_failure_of_the_lookup_is_retried(ingestor, registries, monkeypatch):
+    _collection("proj_1", {"c1": "statik.pdf"})
+    real = store_module.QdrantStore.scroll
+    failures = [ConnectionError("peer restarting")]
+
+    def flaky(self, *args, **kwargs):
+        if failures:
+            raise failures.pop()
+        return real(self, *args, **kwargs)
+
+    monkeypatch.setattr(store_module.QdrantStore, "scroll", flaky)
+    monkeypatch.setattr(store_module, "_sleep", lambda seconds: None)
+
+    assert ingestor._find_previous_versions("proj_1", ["statik.pdf"])["statik.pdf"].chunk_ids == ["c1"]
+
+
+def test_a_failed_tmp_name_lookup_still_finds_the_chunks_under_the_plain_name(ingestor, registries, monkeypatch):
+    """The metadata store only adds legacy ``tmp…_`` spellings; its outage costs those, not the replacement."""
+    from aiq_agent import knowledge
+
+    _collection("proj_1", {"c1": "statik.pdf"})
+
+    def down(collection, names):
+        raise RuntimeError("metadata store down")
+
+    monkeypatch.setattr(knowledge, "find_tmp_upload_names", down)
+
+    assert ingestor._find_previous_versions("proj_1", ["statik.pdf"])["statik.pdf"].chunk_ids == ["c1"]
 
 
 def test_what_people_set_on_the_previous_version_is_carried(ingestor, registries):
@@ -371,6 +411,29 @@ def test_a_reupload_that_fails_keeps_the_previous_version(tmp_path, monkeypatch,
     assert sorted(_chunks(live_ingestor, "proj_fail")) == ["old-1", "old-2"]
     assert get_document_doc_class("proj_fail", "statik.pdf") == "tragwerk"
     assert [doc.summary for doc in get_available_documents("proj_fail")] == ["Die alte Statik."]
+
+
+def test_a_reupload_whose_predecessor_cannot_be_read_fails_and_writes_nothing(
+    tmp_path, monkeypatch, live_ingestor, stores
+):
+    from aiq_agent.knowledge import get_available_documents
+
+    _seed_previous_version(live_ingestor, stores, "proj_down", "statik.txt")
+
+    def down(self, collection_name, stored_names):
+        raise ConnectionError("qdrant down")
+
+    monkeypatch.setattr(LlamaIndexIngestor, "_chunk_ids_of", down)
+    monkeypatch.setattr(store_module, "_sleep", lambda seconds: None)
+    upload = tmp_path / "tmp_upload.txt"
+    upload.write_text("Neue Fassung der Statik.", encoding="utf-8")
+
+    job_id = live_ingestor.submit_job([str(upload)], "proj_down", config={"original_filenames": ["statik.txt"]})
+    status = _wait_terminal(live_ingestor, job_id)
+
+    assert status.file_details[0].status.value == "failed"
+    assert sorted(_chunks(live_ingestor, "proj_down")) == ["old-1", "old-2"]
+    assert [doc.summary for doc in get_available_documents("proj_down")] == ["Die alte Statik."]
 
 
 def test_a_reupload_with_no_vlm_key_keeps_the_previous_image(tmp_path, monkeypatch, live_ingestor, stores):
