@@ -71,15 +71,36 @@ export interface SearchBoostWire {
 
 type Profile = Project['profile'] | null
 
-/** What the similarity reads of a profile, as the wire carries it. */
+/**
+ * The bounds of `ProjectFacts` in `models/requests.py`: a token's length, and
+ * each list's. The model forbids anything past them, and a refusal fails every
+ * upload of the project and every boosted search with a 422, so the wire
+ * leaves out what would not fit instead. The Gebäudeklasse's 1..5 is held by
+ * `similarityFacts`.
+ */
+export const PROJECT_FACTS_LIMITS = {
+  token: 80,
+  gebaeudeklasse: 20,
+  bauweise: 20,
+  nutzungen: 40,
+  vorhabensart: 20,
+} as const
+
+/** Tokens the Python tier takes: none longer than it allows, no more of them than the list holds. */
+function wireTokens(values: readonly string[], max: number): string[] {
+  return values.filter((value) => value.length <= PROJECT_FACTS_LIMITS.token).slice(0, max)
+}
+
+/** What the similarity reads of a profile, as the wire carries it: within what the Python tier accepts. */
 export function projectFactsOf(profile: Profile): ProjectFactsWire {
   const facts = similarityFacts(profile)
+  const limits = PROJECT_FACTS_LIMITS
   return {
-    bundesland: facts.bundesland,
-    gebaeudeklasse: [...facts.gebaeudeklasse],
-    bauweise: [...facts.bauweise],
-    nutzungen: [...facts.nutzungen],
-    vorhabensart: [...facts.vorhabensart],
+    bundesland: facts.bundesland && facts.bundesland.length <= limits.token ? facts.bundesland : null,
+    gebaeudeklasse: facts.gebaeudeklasse.slice(0, limits.gebaeudeklasse),
+    bauweise: wireTokens(facts.bauweise, limits.bauweise),
+    nutzungen: wireTokens(facts.nutzungen, limits.nutzungen),
+    vorhabensart: wireTokens(facts.vorhabensart, limits.vorhabensart),
   }
 }
 

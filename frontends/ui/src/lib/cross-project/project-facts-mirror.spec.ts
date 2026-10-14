@@ -25,6 +25,7 @@ vi.mock('@/lib/authz/folder-access', () => ({
 }))
 
 import {
+  PROJECT_FACTS_LIMITS,
   projectFactsForIngest,
   projectFactsOf,
   similarityBoostOf,
@@ -74,6 +75,36 @@ describe('what is copied', () => {
   it('takes the agent’s suggestion where no fact is confirmed, as the similarity does', () => {
     const suggested = profile({}, { bauweise: { value: ['massivbau'], source: 'agent_suggested' } })
     expect(projectFactsOf(suggested).bauweise).toEqual(['massivbau'])
+  })
+})
+
+describe('what the Python tier accepts (`ProjectFacts` in `models/requests.py`)', () => {
+  // A value it refuses is a 422 on every upload of the project and on every
+  // boosted search, so the wire carries only what it accepts.
+  const MALFORMED = profile({
+    bundesland: 'x'.repeat(81),
+    'gebaeudeklasse@bw1': 'Fluchtniveau 8 m → GK4',
+    'gebaeudeklasse@bw2': 0,
+    'gebaeudeklasse@bw3': 6,
+    bauweise: Array.from({ length: 25 }, (_, n) => `bauweise${n}`),
+    nutzungen: [...Array.from({ length: 45 }, (_, n) => `nutzung${n}`), 'y'.repeat(81)],
+    vorhabensart: ['neubau', 'z'.repeat(81)],
+  })
+
+  it('keeps a Gebäudeklasse of 1 to 5 only, tokens of at most 80 characters, and lists the Python tier’s length', () => {
+    const facts = projectFactsOf(MALFORMED)
+    expect(facts.bundesland).toBeNull()
+    expect(facts.gebaeudeklasse).toEqual([4])
+    expect(facts.bauweise).toHaveLength(PROJECT_FACTS_LIMITS.bauweise)
+    expect(facts.nutzungen).toHaveLength(PROJECT_FACTS_LIMITS.nutzungen)
+    expect(facts.nutzungen).not.toContain('y'.repeat(81))
+    expect(facts.vorhabensart).toEqual(['neubau'])
+    expect(PROJECT_FACTS_LIMITS).toEqual({ token: 80, gebaeudeklasse: 20, bauweise: 20, nutzungen: 40, vorhabensart: 20 })
+  })
+
+  it('sends the same bounded facts as the boost, and no boost when nothing valid is left', () => {
+    expect(similarityBoostOf(MALFORMED)?.facts).toEqual(projectFactsOf(MALFORMED))
+    expect(similarityBoostOf(profile({ gebaeudeklasse: 7, bundesland: 'x'.repeat(90) }))).toBeNull()
   })
 })
 
