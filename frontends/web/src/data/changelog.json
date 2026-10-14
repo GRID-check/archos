@@ -83,6 +83,10 @@
               "de": "Ihr Büro entscheidet, ob Piloti Anmerkungen ändern darf, wenn Sie es dazu auffordern. Bis die Funktion für Ihre Organisation aktiviert ist, macht Piloti nur Vorschläge: Eine von Ihnen angeforderte Anmerkung wird als Vorschlag angezeigt, den Sie übernehmen können; Änderungen oder Löschungen im Dokument nehmen Sie selbst vor."
             },
             {
+              "en": "The organization's audit log now shows what Piloti did and for whom: the Anmerkungen it set, changed or deleted, its proposals and who decided them, and every time it was woken and how that ended, with why when it gave up. Who undid one of Piloti's changes, and who took over or dismissed an Anmerkung it proposed, is in it too.",
+              "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, wie das ausging und, wenn es aufgegeben hat, warum. Auch wer eine Änderung von Piloti rückgängig gemacht oder eine von Piloti vorgeschlagene Anmerkung übernommen oder verworfen hat, steht darin."
+            },
+            {
               "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
               "de": "Während Piloti an Ihrer Frage arbeitet, können Sie es im Chat oder über seine Karte in einem Dokument („nicht die Tür, die Treppe“) lenken. Ihre Anmerkung berücksichtigt es im nächsten Schritt, statt von vorne anzufangen. Eine Markierung oder Antwort, die Piloti bereits ausgewählt hat, wartet auf Ihre Anmerkung. Kommt diese erst nach der Antwort, wird sie als Ihre nächste Frage behandelt."
             },
