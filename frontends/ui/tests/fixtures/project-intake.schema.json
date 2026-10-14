@@ -119,6 +119,34 @@
           "type": "object",
           "properties": {
             "op": {
+              "const": "withdraw"
+            },
+            "jobId": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 128
+            },
+            "keys": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "maxItems": 20
+            }
+          },
+          "required": [
+            "op",
+            "jobId",
+            "keys"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "op": {
               "const": "finish"
             },
             "jobId": {
@@ -442,6 +470,72 @@
                   "unknown-key",
                   "dismissed",
                   "unreadable-file"
+                ]
+              }
+            },
+            "required": [
+              "key",
+              "outcome"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 20
+        },
+        "opened": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "decisive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "key",
+              "decisive"
+            ],
+            "additionalProperties": true
+          },
+          "maxItems": 500
+        }
+      },
+      "required": [
+        "results",
+        "opened"
+      ],
+      "additionalProperties": true
+    },
+    "InternalIntakeWithdrawResponse": {
+      "type": "object",
+      "properties": {
+        "results": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "key": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 200
+              },
+              "outcome": {
+                "type": "string",
+                "enum": [
+                  "withdrawn",
+                  "refused"
+                ]
+              },
+              "reason": {
+                "type": "string",
+                "enum": [
+                  "nothing-suggested",
+                  "confirmed",
+                  "not-this-reading"
                 ]
               }
             },

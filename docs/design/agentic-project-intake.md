@@ -58,8 +58,11 @@ startIntakeRun ─▶ submitBackgroundRun ─▶ research worker, agent type `pr
    Erfassungs-Agent (LangGraph ReAct, own prompt)
      intake_needs   ─────────────▶ POST /api/internal/project-intake {op:'needs'}
      read_document / knowledge_search / read_passage / list_files  (every read is logged)
-     record_values  ─────────────▶ {op:'record'}   quote checked against the read log first
-     finish_intake  ─────────────▶ {op:'finish'}
+     record_values  ─────────────▶ {op:'record'}   quote checked against the read log first;
+                                                   answers what each became and the needs it opened
+     withdraw_values ────────────▶ {op:'withdraw'} only this reading's own suggestions
+     finish_intake  ─────────────▶ {op:'needs'}, then {op:'finish'}; held once while decisive
+                                                   needs are open and files unread
                     ▼
 profile: assumptions (agent_suggested) with evidence; alternatives on assumption or fact
 project_intakes: status, documents read, dismissed, counts, job
@@ -100,6 +103,28 @@ The run's budgets are `max_tool_steps` (80) and `max_run_seconds` (1200) on
 (`_create_agent_instance`). The finish is guaranteed in code: past the step
 budget only `finish_intake` runs, and a run that stops, times out or fails is
 finished with a summary written in code.
+
+Two answers let the model see what its own work changed. A `record` answer
+names the needs the values opened (`bauwerkstyp = gebaeude` opens the
+Gebäude's Geschoße, Fluchtniveau and areas, decisive ones marked), computed
+from the needs before and after the same write; a model that read the opening
+needs once and never asked again finished with them unseen. And
+`finish_intake` holds the model's first call once, naming the decisive needs
+still open and the files no reading has opened, when there are both; a
+second call finishes. Past the step budget it never holds, and the finish in
+code calls the tool's function past that check. `finish_intake` is therefore
+not `return_direct`: the run ends before the next model call once the intake
+is finished (`IntakeToolMiddleware.abefore_model`).
+
+A reading may take back a suggestion it recorded itself (`withdraw_values`):
+the eval's boot model recorded a Wärmeversorgung the Baubeschreibung calls
+undecided, said so in its own summary, and had no way to undo it. Only an
+`agent_suggested` value no person confirmed, carrying this reading's id
+(`readingId` on the assumption), may go; a person's value, a confirmed fact,
+the derived class and an earlier reading's suggestion stay. A withdrawal is
+not a dismissal: no person said no, so nothing is added to `dismissed` and a
+later reading may suggest the value again, where a dismissed one stays
+refused.
 
 ### Why the profile, not a ledger of its own
 
@@ -237,6 +262,7 @@ ProfileEvidence =
   | { kind: 'derivation', rule: 'gebaeudeklasse', citation, inputs: [{ key, value, suggested }] }
   | { kind: 'person', userId, at }
 ProfileAlternative = { value, evidence: ProfileEvidence[], recordedAt }
+readingId?: string                  // on ProjectAssumptionSchema: the reading (job id) that suggested it
 ```
 
 ## Wire contracts
@@ -280,7 +306,8 @@ envelope, `withTenant`. Discriminated on `op`, each branch strict, each with
 | op | Body | Answer |
 |---|---|---|
 | `needs` | `{ jobId }` | `{ needs: Need[], unreadFiles: string[] (≤ 200), description, location, mode, previousSummary }` (`previousSummary`: the last finished reading's stored, masked summary, or null) |
-| `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'unknown-key' \| 'dismissed' \| 'unreadable-file' }] }` |
+| `record` | `{ jobId, values: [{ key, value, evidence: { fileName, page, quote } }] }` (1..20) | `{ results: [{ key, outcome: 'suggested' \| 'corroborated' \| 'contradiction' \| 'refused', reason?: 'vocabulary' \| 'unknown-key' \| 'dismissed' \| 'unreadable-file' }], opened: [{ key, decisive }] }` |
+| `withdraw` | `{ jobId, keys: string[] }` (1..20) | `{ results: [{ key, outcome: 'withdrawn' \| 'refused', reason?: 'nothing-suggested' \| 'confirmed' \| 'not-this-reading' }] }` |
 | `finish` | `{ jobId, summary (≤ 2000), documentsRead: string[] (≤ 500), traceId: string \| null }` | `{ status }` |
 
 A stale `jobId` answers 409 `stale-reading`. The BFF decides what a value
@@ -296,8 +323,9 @@ file outside `extractableFileNames` is refused; a value equal to a confirmed
 fact corroborates it (its evidence is added); a different one becomes an
 alternative on the fact (a contradiction); a different suggestion already
 present becomes an alternative on the assumption; the quote is masked before it
-is stored. After each `record`, the derivation runs and writes or refreshes
-`gebaeudeklasse@bwN`.
+is stored. After each `record` and `withdraw`, the derivation runs and writes
+or refreshes `gebaeudeklasse@bwN`, and removes a derived class whose inputs
+are gone.
 
 The Python tool checks first: a quote it cannot find (NFC, folded whitespace and
 case) in text it read in this run, in that file, is refused before any request,

@@ -30,6 +30,7 @@ from dataclasses import field
 from typing import Any
 
 from langchain.agents.middleware import AgentMiddleware
+from langchain.agents.middleware import hook_config
 from langchain_core.messages import ToolMessage
 from langchain_core.tools import StructuredTool
 from pydantic import BaseModel
@@ -372,14 +373,25 @@ class IntakeToolMiddleware(AgentMiddleware):
 
     A tool that raises ends a LangGraph run; here it becomes a message the model
     can act on, as every tool in this repo answers. After ``max_steps`` calls
-    only ``finish_intake`` still runs.
+    only ``finish_intake`` still runs. Once ``finished`` says the intake was
+    finished, the run ends before the next model call: ``finish_intake`` is not
+    ``return_direct``, because a first call it holds must reach the model.
     """
 
-    def __init__(self, *, max_steps: int, finish_tool: str) -> None:
+    def __init__(self, *, max_steps: int, finish_tool: str, finished: Callable[[], bool] = lambda: False) -> None:
         super().__init__()
         self.max_steps = max_steps
         self.finish_tool = finish_tool
+        self.finished = finished
         self.steps = 0
+
+    @property
+    def budget_spent(self) -> bool:
+        return self.steps >= self.max_steps
+
+    @hook_config(can_jump_to=["end"])
+    async def abefore_model(self, state: Any, runtime: Any) -> dict[str, Any] | None:
+        return {"jump_to": "end"} if self.finished() else None
 
     async def awrap_tool_call(
         self, request: Any, handler: Callable[[Any], Awaitable[ToolMessage | Any]]
@@ -387,7 +399,7 @@ class IntakeToolMiddleware(AgentMiddleware):
         call = request.tool_call
         name = str(call.get("name") or "")
         if name != self.finish_tool:
-            if self.steps >= self.max_steps:
+            if self.budget_spent:
                 return ToolMessage(content=_budget_text(self.max_steps), tool_call_id=call["id"], name=name)
             self.steps += 1
         try:

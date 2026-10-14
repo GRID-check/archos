@@ -86,9 +86,20 @@ function derivationEvidence(view: DerivationView): DerivationEvidence {
 
 const isDerived = (alternative: ProfileAlternative) => alternative.evidence.some((entry) => entry.kind === 'derivation')
 
+function withoutDerivedSuggestion(profile: ProjectProfile, key: string): { profile: ProjectProfile; changed: boolean } {
+  const current = profile.assumptions[key]
+  const derived = current?.source === 'agent_suggested' && (current.evidence ?? []).some((entry) => entry.kind === 'derivation')
+  if (!derived) return { profile, changed: false }
+  const assumptions = { ...profile.assumptions }
+  delete assumptions[key]
+  return { profile: { ...profile, assumptions }, changed: true }
+}
+
 /**
  * The profile with the class of `bauwerkId` written as the derivation says,
- * and whether it changed. Nothing changes while the class is unknown.
+ * and whether it changed. While the class is unknown, a class an earlier
+ * derivation suggested goes with the inputs it was derived from (a reading
+ * withdrew one); a confirmed class, or one a document stated, stays.
  */
 export function withDerivedClass(
   profile: ProjectProfile,
@@ -97,8 +108,8 @@ export function withDerivedClass(
   now: string
 ): { profile: ProjectProfile; changed: boolean } {
   const view = deriveForBauwerk(profile, definition, bauwerkId)
-  if (view.value === null) return { profile, changed: false }
   const key = gebaeudeklasseKey(bauwerkId)
+  if (view.value === null) return withoutDerivedSuggestion(profile, key)
   const evidence = derivationEvidence(view)
 
   const fact = profile.facts[key]

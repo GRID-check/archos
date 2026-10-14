@@ -8,6 +8,7 @@ import type { ProjectPrimitiveValue, ProjectProfile } from '@/lib/project-profil
 import {
   computeNeeds,
   gebaeudeklasseInputsFor,
+  openedNeeds,
   questionForKey,
   recordableKey,
   type ComputeNeedsOptions,
@@ -80,6 +81,17 @@ describe('computeNeeds', () => {
     expect(byKey(needs(profileWith({}, { country: 'at' }))).has('bundesland')).toBe(true)
     expect(byKey(needs(profileWith({ country: 'de' }))).has('bundesland')).toBe(false)
     expect(byKey(needs(profileWith({ country: 'other' }))).has('bundesland')).toBe(false)
+  })
+
+  it('says what a recorded Gebäude opened: its Gebäudeklasse inputs, decisive', () => {
+    const opened = openedNeeds(needs(emptyProjectProfile()), needs(profileWith({}, gebaeude)))
+    const keys = new Map(opened.map((need) => [need.key, need.decisive]))
+    expect(keys.get('geschosse_oberirdisch@bw1')).toBe(true)
+    expect(keys.get('fluchtniveau_m@bw1')).toBe(true)
+    // Listed before, so not opened by it; and nothing opened twice.
+    expect(keys.has('bauwerkstyp@bw1')).toBe(false)
+    expect(new Set(opened.map((need) => need.key)).size).toBe(opened.length)
+    expect(opened.findIndex((need) => !need.decisive)).toBeGreaterThan(opened.findLastIndex((need) => need.decisive))
   })
 
   it('names the documents a value is usually in', () => {

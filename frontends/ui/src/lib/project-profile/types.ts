@@ -27,6 +27,11 @@ export const ProjectAssumptionSchema = z.object({
   evidence: profileEvidenceFields.evidence,
   /** A different value found for the same key while it is still a suggestion. */
   alternatives: profileEvidenceFields.alternatives,
+  /**
+   * The reading (its job id) that suggested this value (ADR-0111): only that
+   * reading may withdraw it. Dropped, not fatal, when malformed.
+   */
+  readingId: z.string().min(1).max(128).optional().catch(undefined),
 })
 
 export const ProjectProfileSchema = z.object({

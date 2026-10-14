@@ -27,10 +27,17 @@
  *     overwritten;
  *  6. equal to the suggestion there: `corroborated`; different: `contradiction`,
  *     an alternative on the suggestion;
- *  7. otherwise a new suggestion (`agent_suggested`), with its evidence.
+ *  7. otherwise a new suggestion (`agent_suggested`), with its evidence and
+ *     the reading that suggested it (`readingId`).
  *
  * Then the class of every Bauwerk whose inputs moved is derived again and
- * written (`withDerivedClass`).
+ * written (`withDerivedClass`), and the answer names the needs the batch
+ * opened (`openedNeeds`: listed after it, not before).
+ *
+ * A reading may also take back a suggestion of its own (`planWithdraw`): only
+ * an `agent_suggested` value no person confirmed, carrying this reading's id.
+ * It is removed, not dismissed: no person said no, so a later reading may
+ * suggest it again, where a dismissed value stays refused.
  */
 
 import {
@@ -54,8 +61,16 @@ import {
   withAlternative,
   withEvidence,
 } from './profile-edits'
-import { needOptionsFor, questionForKey, recordableKey } from './needs'
-import type { DismissedValue, RecordRefusalReason, RecordResult, RecordValue } from './types'
+import { computeNeeds, needOptionsFor, openedNeeds, questionForKey, recordableKey, type ComputeNeedsOptions } from './needs'
+import type {
+  DismissedValue,
+  OpenedNeed,
+  RecordRefusalReason,
+  RecordResult,
+  RecordValue,
+  WithdrawRefusalReason,
+  WithdrawResult,
+} from './types'
 
 /** What the screen of one value needs to know besides the value. */
 export interface RecordScreen {
@@ -108,13 +123,22 @@ export interface ScreenedValue {
   reason: string
 }
 
+/** When and by which reading a write happens, and how the needs are computed around it. */
+export interface RecordContext {
+  now: string
+  /** The reading's job id: a suggestion it creates carries it, and only it may withdraw that suggestion. */
+  readingId: string
+  needs: ComputeNeedsOptions
+}
+
 /** Write one value onto the profile, or say why not. */
 function applyValue(
   profile: ProjectProfile,
   item: ScreenedValue,
   recordable: (key: string) => boolean,
-  now: string
+  context: RecordContext
 ): { profile: ProjectProfile; result: RecordResult } {
+  const { now } = context
   const { key, value, evidence } = item
   if (isGebaeudeklasseKey(key)) return { profile, result: { key, outcome: 'refused', reason: 'unknown-key' } }
   const fact = profile.facts[key]
@@ -141,7 +165,7 @@ function applyValue(
       result: { key, outcome: corroborates ? 'corroborated' : 'contradiction' },
     }
   }
-  const created = suggestedAssumption(value, item.reason, [evidence], now)
+  const created = { ...suggestedAssumption(value, item.reason, [evidence], now), readingId: context.readingId }
   return {
     profile: { ...profile, assumptions: { ...profile.assumptions, [key]: created } },
     result: { key, outcome: 'suggested' },
@@ -154,18 +178,36 @@ export interface RecordPlan {
   profile: ProjectProfile
   /** The keys whose entries changed, the derived classes included. */
   changedKeys: string[]
+  /** The needs these values opened, decisive first. */
+  opened: OpenedNeed[]
+}
+
+/** The profile with the class of every Bauwerk whose inputs changed derived again; the class keys that moved join `changed`. */
+function withClassesDerived(
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition,
+  changed: Set<string>,
+  now: string
+): ProjectProfile {
+  let current = profile
+  for (const bauwerkId of bauwerkeTouchedBy(changed, bauwerkIdsOf(current, definition))) {
+    const derived = withDerivedClass(current, definition, bauwerkId, now)
+    current = derived.profile
+    if (derived.changed) changed.add(gebaeudeklasseKey(bauwerkId))
+  }
+  return current
 }
 
 /**
- * The profile after these values, and what each became. `refusals` holds the
- * static refusals the service already found, by the value's position; those
- * values are not applied.
+ * The profile after these values, what each became, and the needs they
+ * opened. `refusals` holds the static refusals the service already found, by
+ * the value's position; those values are not applied.
  */
 export function planRecord(
   profile: ProjectProfile,
   definition: ProjectIntakeDefinition,
   values: ReadonlyArray<{ key: string; screened: ScreenedValue | null; refusal: RecordRefusalReason | null }>,
-  now: string
+  context: RecordContext
 ): RecordPlan {
   // The Bauwerke as the profile describes them before the batch: no value of it can add one.
   const bauwerkIds = bauwerkIdsOf(profile, definition)
@@ -178,15 +220,64 @@ export function planRecord(
       results.push({ key: entry.key, outcome: 'refused', reason: entry.refusal ?? 'vocabulary' })
       continue
     }
-    const applied = applyValue(current, entry.screened, recordable, now)
+    const applied = applyValue(current, entry.screened, recordable, context)
     current = applied.profile
     results.push(applied.result)
     if (applied.result.outcome !== 'refused') changed.add(entry.key)
   }
-  for (const bauwerkId of bauwerkeTouchedBy(changed, bauwerkIdsOf(current, definition))) {
-    const derived = withDerivedClass(current, definition, bauwerkId, now)
-    current = derived.profile
-    if (derived.changed) changed.add(gebaeudeklasseKey(bauwerkId))
+  current = withClassesDerived(current, definition, changed, context.now)
+  const opened = openedNeeds(
+    computeNeeds(profile, definition, context.needs),
+    computeNeeds(current, definition, context.needs)
+  )
+  return { results, profile: current, changedKeys: [...changed], opened }
+}
+
+/** Why `readingId` may not withdraw the suggestion under `key`; null when it may. */
+export function withdrawRefusal(profile: ProjectProfile, key: string, readingId: string): WithdrawRefusalReason | null {
+  if (profile.facts[key]) return 'confirmed'
+  const assumption = profile.assumptions[key]
+  if (!assumption) return 'nothing-suggested'
+  if (assumption.source !== 'agent_suggested' || assumption.readingId !== readingId) return 'not-this-reading'
+  return null
+}
+
+export interface WithdrawPlan {
+  /** One per key, in request order. */
+  results: WithdrawResult[]
+  profile: ProjectProfile
+  /** The keys whose entries changed, the derived classes included. */
+  changedKeys: string[]
+}
+
+/**
+ * The profile without the suggestions this reading takes back, and what became
+ * of each key. A withdrawn suggestion goes with the alternatives found beside
+ * it in the same reading; the class of a Bauwerk whose input went is derived
+ * again (and goes, when it can no longer be derived). Nothing is remembered as
+ * dismissed.
+ */
+export function planWithdraw(
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition,
+  keys: readonly string[],
+  context: Pick<RecordContext, 'now' | 'readingId'>
+): WithdrawPlan {
+  let current = profile
+  const results: WithdrawResult[] = []
+  const changed = new Set<string>()
+  for (const key of keys) {
+    const reason = withdrawRefusal(current, key, context.readingId)
+    if (reason) {
+      results.push({ key, outcome: 'refused', reason })
+      continue
+    }
+    const assumptions = { ...current.assumptions }
+    delete assumptions[key]
+    current = { ...current, assumptions }
+    results.push({ key, outcome: 'withdrawn' })
+    changed.add(key)
   }
+  current = withClassesDerived(current, definition, changed, context.now)
   return { results, profile: current, changedKeys: [...changed] }
 }

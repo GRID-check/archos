@@ -13,6 +13,7 @@ import pytest
 from aiq_agent.agents.intake.tools import IntakeSession
 from aiq_agent.agents.intake.tools import RecordedValue
 from aiq_agent.agents.intake.tools import record_values
+from aiq_agent.agents.intake.tools import withdraw_values
 from tests.aiq_agent.agents.intake.conftest import JOB
 from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
 from tests.aiq_agent.agents.intake.conftest import recorded_all
@@ -239,6 +240,65 @@ class TestTheBffDecides:
         assert fake.requests == []
 
 
+class TestWhatARecordOpened:
+    async def test_the_answer_names_the_needs_the_values_opened_decisive_marked(
+        self, signed_run, route, session, pages_read, intake_schema
+    ):
+        answer = {
+            "results": [{"key": "bauwerkstyp@bw1", "outcome": "suggested"}],
+            "opened": [
+                {"key": "fluchtniveau_m@bw1", "decisive": True},
+                {"key": "gebaeudestellung@bw1", "decisive": False},
+            ],
+        }
+        assert not list(validator(intake_schema, "InternalIntakeRecordResponse").iter_errors(answer))
+        route(record=answer)
+        text = await record_values(session, [_value("bauwerkstyp@bw1", "gebaeude", "Das Gebäude hat drei")])
+        assert text.splitlines()[-1].startswith("opened: fluchtniveau_m@bw1 [decisive], gebaeudestellung@bw1 (")
+
+    async def test_nothing_opened_adds_no_line(self, signed_run, route, session, pages_read):
+        route(record=lambda body: {**recorded_all()(body), "opened": []})
+        text = await record_values(session, [_value("geschosse_oberirdisch@bw1", 3, "drei oberirdische Geschoße")])
+        assert "opened" not in text
+
+
+class TestWithdrawingOwnSuggestions:
+    async def test_each_key_says_what_became_of_it_and_is_counted(self, signed_run, route, session, intake_schema):
+        answer = {
+            "results": [
+                {"key": "projektphase", "outcome": "withdrawn"},
+                {"key": "bundesland", "outcome": "refused", "reason": "not-this-reading"},
+                {"key": "bauweise", "outcome": "refused", "reason": "confirmed"},
+            ]
+        }
+        assert not list(validator(intake_schema, "InternalIntakeWithdrawResponse").iter_errors(answer))
+        fake = route(withdraw=answer)
+
+        text = await withdraw_values(session, ["projektphase", "bundesland", "bauweise", "projektphase"])
+
+        (body,) = fake.bodies("withdraw")
+        assert body == {"op": "withdraw", "jobId": JOB, "keys": ["projektphase", "bundesland", "bauweise"]}
+        assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
+        lines = text.splitlines()
+        assert "withdrawn" in lines[0] and "a later reading may record it again" in lines[0]
+        assert "not a suggestion of this reading" in lines[1]
+        assert "a person confirmed this value" in lines[2]
+        assert session.outcomes["withdrawn"] == 1
+        assert session.refusals["withdraw:not-this-reading"] == 1
+
+    async def test_a_stale_reading_withdraws_nothing(self, signed_run, route, session):
+        fake = route(withdraw=409)
+        first = await withdraw_values(session, ["projektphase"])
+        second = await withdraw_values(session, ["projektphase"])
+        assert "stale-reading" in first and "no longer the project's current one" in second
+        assert len(fake.bodies("withdraw")) == 1
+
+    async def test_no_key_sends_nothing(self, signed_run, route, session):
+        fake = route()
+        assert await withdraw_values(session, ["", "  "]) == "Nothing to withdraw."
+        assert fake.requests == []
+
+
 class TestTheNeedsAnswer:
     def test_a_confirmed_input_is_shown_as_confirmed_after_the_open_ones(self):
         from aiq_agent.agents.intake.tools import render_needs
@@ -294,6 +354,12 @@ class TestTheDescriptionsCarryTheRules:
         # The route refuses the class: the description says never, and why.
         assert "Never record the Gebäudeklasse, even where a document states one" in RECORD_VALUES_DESCRIPTION
         assert "unless a document states the class" not in RECORD_VALUES_DESCRIPTION
+
+    def test_withdraw_values_says_whose_values_go_and_that_none_is_refused_later(self):
+        from aiq_agent.agents.intake.tools import WITHDRAW_VALUES_DESCRIPTION
+
+        for phrase in ("recorded in this run", "derived Gebäudeklasse", "not refused", "a later reading may record"):
+            assert phrase in WITHDRAW_VALUES_DESCRIPTION, phrase
 
     def test_intake_needs_says_what_each_state_means(self):
         from aiq_agent.agents.intake.tools import INTAKE_NEEDS_DESCRIPTION

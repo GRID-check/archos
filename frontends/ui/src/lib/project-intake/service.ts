@@ -42,7 +42,7 @@ import { onIntakeCompleted, onIntakeReady } from './attention'
 import { planDecisions } from './decisions'
 import { documentEvidence, reasonFromEvidence } from './evidence'
 import { computeNeeds } from './needs'
-import { planRecord, staticRefusal, type ScreenedValue } from './record'
+import { planRecord, planWithdraw, staticRefusal, type ScreenedValue } from './record'
 import { patchForKeys } from './profile-edits'
 import {
   addIntakeDismissed,
@@ -65,9 +65,10 @@ import {
   type IntakeStatus,
   type IntakeView,
   type InternalIntakeNeedsResponse,
+  type InternalIntakeRecordResponse,
+  type InternalIntakeWithdrawResponse,
   type Need,
   type RecordRefusalReason,
-  type RecordResult,
   type RecordValue,
   type StartIntakeRequest,
 } from './types'
@@ -462,22 +463,47 @@ async function screenValues(
 }
 
 /**
- * `record`: what each value became (`./record.ts`). One profile write for the
- * batch, the derived Gebäudeklasse of every Bauwerk whose inputs moved with it.
+ * `record`: what each value became (`./record.ts`), and the needs the batch
+ * opened, both planned on the profile the write applies to. One profile write
+ * for the batch, the derived Gebäudeklasse of every Bauwerk whose inputs moved
+ * with it.
  */
 export async function recordIntakeValues(
   session: AuthorizedSession,
   projectId: string,
   jobId: string,
   values: readonly RecordValue[]
-): Promise<{ results: RecordResult[] }> {
+): Promise<InternalIntakeRecordResponse> {
   const { organizationId } = session
   const row = await requireCurrentReading(session, projectId, jobId)
   const documents = await readableDocuments(organizationId, projectId)
   const readableFiles = new Set(documents.map((document) => document.fileName))
   const screened = await screenValues(organizationId, row, values, readableFiles)
+  return writeProfile(session, projectId, (current) => {
+    const plan = planRecord(current, definition, screened, {
+      now: new Date().toISOString(),
+      readingId: jobId,
+      needs: { mode: row.mode, dismissed: row.dismissed },
+    })
+    const value = { results: plan.results, opened: plan.opened.slice(0, MAX_INTAKE_NEEDS) }
+    return { value, before: current, after: plan.profile, keys: plan.changedKeys }
+  })
+}
+
+/**
+ * `withdraw`: the reading takes back suggestions of its own (`planWithdraw`).
+ * Removed, never added to `dismissed`: no person said no, so a later reading
+ * may suggest the value again.
+ */
+export async function withdrawIntakeValues(
+  session: AuthorizedSession,
+  projectId: string,
+  jobId: string,
+  keys: readonly string[]
+): Promise<InternalIntakeWithdrawResponse> {
+  await requireCurrentReading(session, projectId, jobId)
   const results = await writeProfile(session, projectId, (current) => {
-    const plan = planRecord(current, definition, screened, new Date().toISOString())
+    const plan = planWithdraw(current, definition, keys, { now: new Date().toISOString(), readingId: jobId })
     return { value: plan.results, before: current, after: plan.profile, keys: plan.changedKeys }
   })
   return { results }

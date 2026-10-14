@@ -117,8 +117,28 @@ class TestMetrics:
         assert share == 0.5
         assert filled == ["projektphase"]
 
+    def test_a_value_the_run_withdrew_is_not_on_the_profile_unless_recorded_again(self):
+        records = [
+            _record("projektphase", "einreichplanung"),
+            _record("geschosse_oberirdisch@bw1", 3),
+            {"key": "projektphase", "outcome": "withdrawn"},
+            {"key": "geschosse_oberirdisch@bw1", "outcome": "withdrawn"},
+            _record("geschosse_oberirdisch@bw1", 4),
+            {"key": "aufzug@bw1", "outcome": "refused", "reason": "nothing-suggested"},
+        ]
+        assert [(r["key"], r["value"]) for r in scoring.landed(records)] == [("geschosse_oberirdisch@bw1", 4)]
+        assert scoring.stayed_open(records, KEY) == (1.0, [])
+        assert scoring.precision(scoring.judged_values(records, KEY)) == 1.0
+        assert scoring.withdrawn(records) == ["projektphase", "geschosse_oberirdisch@bw1"]
+
 
 class TestTraps:
+    def test_a_withdrawn_trap_value_did_not_land_but_was_still_tried(self):
+        records = [_record("fluchtniveau_m@bw1", 13.8), {"key": "fluchtniveau_m@bw1", "outcome": "withdrawn"}]
+        attempts = [{"key": "fluchtniveau_m@bw1", "value": 13.8}]
+        neighbour, _ = scoring.trap_results(records, attempts, [], KEY)
+        assert not neighbour["fell_for"] and not neighbour["resisted"]
+
     def test_a_trap_falls_only_when_its_value_landed(self):
         records = [_record("fluchtniveau_m@bw1", 13.8, "refused", reason="unknown-key")]
         attempts = [{"key": "fluchtniveau_m@bw1", "value": 13.8}]
@@ -279,7 +299,7 @@ class TestTheFixture:
             bff = FakeIntakeBff(load_fixture(), gate)
             stated = [(k, s["value"] if "value" in s else s.get("accept", [None])[0]) for k, s in key["values"].items()]
             stated = [(k, "Hubergasse 14, 1160 Wien" if v is None else v) for k, v in stated]
-            stated.append(("country", "at"))  # an `either` key, and the one that opens the Bundesland
+            stated.append(("country", "at"))  # an `either` key
             for start in range(0, len(stated), 20):
                 values = [
                     {"key": k, "value": v, "evidence": {"fileName": bff.fixture.names[0], "page": 1, "quote": "x"}}
@@ -326,6 +346,35 @@ class TestTheRoute:
             ("contradiction", None),
         ]
         assert stale == 409
+
+    @pytest.mark.skipif(shutil.which("bun") is None, reason="the intake route's logic runs under bun")
+    def test_the_fake_route_says_what_a_record_opened_and_takes_back_a_withdrawal(self):
+        from scripts.intake_eval.bff import JOB_ID
+        from scripts.intake_eval.bff import FakeIntakeBff
+        from scripts.intake_eval.bff import Gate
+
+        gate = Gate()
+        try:
+            bff = FakeIntakeBff(load_fixture(), gate)
+            evidence = {"fileName": bff.fixture.names[0], "page": 1, "quote": "x"}
+            recorded = bff.record(
+                {
+                    "op": "record",
+                    "jobId": JOB_ID,
+                    "values": [{"key": "bauwerkstyp@bw1", "value": "gebaeude", "evidence": evidence}],
+                }
+            )
+            withdrawn = bff.withdraw({"op": "withdraw", "jobId": JOB_ID, "keys": ["bauwerkstyp@bw1", "country"]})
+            needs = {need["key"] for need in bff.needs({"jobId": JOB_ID})["needs"]}
+        finally:
+            gate.close()
+        assert {"key": "geschosse_oberirdisch@bw1", "decisive": True} in recorded["opened"]
+        assert [(r["outcome"], r.get("reason")) for r in withdrawn["results"]] == [
+            ("withdrawn", None),
+            ("refused", "nothing-suggested"),
+        ]
+        assert "geschosse_oberirdisch@bw1" not in needs, "the Gebäude's questions close with it"
+        assert scoring.landed(bff.records) == []
 
 
 class TestTheReadingTools:

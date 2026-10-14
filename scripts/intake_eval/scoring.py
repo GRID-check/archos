@@ -9,9 +9,10 @@ answer key is ``tests/fixtures/intake_eval/answer_key.yaml``.
 What counts, and why:
 
 * A value **landed** when the intake route took it (suggested, corroborated or
-  a contradiction). A value refused by the route, or never sent because the
-  tool's own quote check stopped it, wrote nothing a person would see, so it
-  counts for nothing but the transcript.
+  a contradiction) and the run did not withdraw it later. A value refused by
+  the route, never sent because the tool's own quote check stopped it, or
+  withdrawn before the run ended, leaves nothing a person would see, so it
+  counts for nothing but the transcript (and the run's ``withdrawn`` list).
 * **Precision** is over the distinct landed ``(key, value)`` pairs the key can
   judge: right for a stated key whose value matches, wrong for a value under an
   ``open`` key, a trap value, a mismatch, or a key the fixture has no question
@@ -101,8 +102,24 @@ def judge(key: str, value: Any, answer_key: Mapping[str, Any]) -> str:
 # ── What a run recorded ──────────────────────────────────────────────────────
 
 
+def standing(records: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
+    """The records in order, each withdrawal taking back every earlier value of its key."""
+    kept: list[Mapping[str, Any]] = []
+    for record in records:
+        if record.get("outcome") == "withdrawn":
+            kept = [earlier for earlier in kept if earlier.get("key") != record.get("key")]
+        else:
+            kept.append(record)
+    return kept
+
+
 def landed(records: Iterable[Mapping[str, Any]]) -> list[Mapping[str, Any]]:
-    return [record for record in records if record.get("outcome") in LANDED]
+    return [record for record in standing(records) if record.get("outcome") in LANDED]
+
+
+def withdrawn(records: Iterable[Mapping[str, Any]]) -> list[str]:
+    """The keys the run withdrew a value of, in order."""
+    return [str(record.get("key")) for record in records if record.get("outcome") == "withdrawn"]
 
 
 def _value_id(value: Any) -> str:
@@ -384,6 +401,7 @@ def score_run(
         "summary": summary,
         "summary_check": summary_check(summary, records, counts, question_texts),
         "outcomes": dict(outcomes),
+        "withdrawn": withdrawn(records),
         "tool_calls": dict(Counter(str(call.get("name")) for call in tool_calls)),
         "documents_read": documents_read,
     }
@@ -454,6 +472,8 @@ def markdown_table(runs: Iterable[Mapping[str, Any]]) -> str:
             for trap in run["metrics"]["traps"]
             if trap["fell_for"]
         ]
+        if run["metrics"].get("withdrawn"):
+            notes.append(f"- withdrawn by the run itself: {', '.join(run['metrics']['withdrawn'])}")
         notes += [f"- floor: {failure}" for failure in run.get("failures", [])]
         if notes:
             lines += ["", f"Run {run.get('run')} ({run.get('model')}):", *notes]

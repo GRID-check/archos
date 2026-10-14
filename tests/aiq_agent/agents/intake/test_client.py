@@ -28,7 +28,13 @@ VALUE = {
 class TestTheWireContract:
     @pytest.mark.parametrize(
         "name",
-        [REQUEST, "InternalIntakeNeedsResponse", "InternalIntakeRecordResponse", "InternalIntakeFinishResponse"],
+        [
+            REQUEST,
+            "InternalIntakeNeedsResponse",
+            "InternalIntakeRecordResponse",
+            "InternalIntakeWithdrawResponse",
+            "InternalIntakeFinishResponse",
+        ],
     )
     def test_the_fixture_is_where_the_contract_lives(self, intake_schema, name):
         assert name in intake_schema["$defs"]
@@ -40,10 +46,21 @@ class TestTheWireContract:
             client.record_request(JOB, [VALUE]),
             client.record_request(JOB, [{**VALUE, "value": ["holzbau", "massivbau"]}]),
             client.record_request(JOB, [{**VALUE, "evidence": {**VALUE["evidence"], "page": None}}]),
+            client.withdraw_request(JOB, ["projektphase", "waermeversorgung@bw1"]),
+            client.withdraw_request(JOB, [f"k{n}" for n in range(25)]),
             client.finish_request(JOB, "Drei Dokumente gelesen.", ["Baubeschreibung.pdf"], "a" * 32),
             client.finish_request(JOB, "", [], None),
         ],
-        ids=["needs", "record", "record-multi", "record-no-page", "finish", "finish-empty"],
+        ids=[
+            "needs",
+            "record",
+            "record-multi",
+            "record-no-page",
+            "withdraw",
+            "withdraw-bounded",
+            "finish",
+            "finish-empty",
+        ],
     )
     def test_every_body_the_client_builds_is_one_the_route_accepts(self, intake_schema, body):
         errors = sorted(validator(intake_schema, REQUEST).iter_errors(body), key=str)

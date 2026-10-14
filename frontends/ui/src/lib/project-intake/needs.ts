@@ -40,6 +40,7 @@ import {
   type Need,
   type NeedOption,
   type NeedState,
+  type OpenedNeed,
 } from './types'
 
 export interface ComputeNeedsOptions {
@@ -295,6 +296,18 @@ export function computeNeeds(
     ...needs.filter((need) => need.state === 'confirmed'),
   ]
   return ordered.slice(0, MAX_INTAKE_NEEDS)
+}
+
+/**
+ * The needs `after` lists that `before` did not, still open: what a write
+ * opened (`bauwerkstyp = gebaeude` opens the Gebäude's questions), decisive
+ * first as {@link computeNeeds} orders them.
+ */
+export function openedNeeds(before: readonly Need[], after: readonly Need[]): OpenedNeed[] {
+  const listed = new Set(before.map((need) => need.key))
+  return after
+    .filter((need) => need.state === 'open' && !listed.has(need.key))
+    .map((need) => ({ key: need.key, decisive: need.decisive }))
 }
 
 function toNeed(

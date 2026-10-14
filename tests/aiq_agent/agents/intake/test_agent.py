@@ -22,6 +22,8 @@ from aiq_agent.agents.intake.models import IntakeAgentState
 from aiq_agent.agents.intake.read_log import current_read_log
 from aiq_agent.common import LLMProvider
 from tests.aiq_agent.agents.intake.conftest import JOB
+from tests.aiq_agent.agents.intake.conftest import NEEDS
+from tests.aiq_agent.agents.intake.conftest import NEEDS_BODY
 from tests.aiq_agent.agents.intake.conftest import recorded_all
 from tests.aiq_agent.agents.intake.conftest import validator
 
@@ -87,6 +89,20 @@ READ_AND_RECORD = [
 ]
 
 
+@pytest.fixture
+def needs_covered_after_record():
+    """``needs`` as the BFF answers it: first as the run starts, then with the decisive Geschoße suggested."""
+    calls: list[dict[str, Any]] = []
+
+    def answer(body: dict[str, Any]) -> dict[str, Any]:
+        calls.append(body)
+        if len(calls) == 1:
+            return NEEDS_BODY
+        return {**NEEDS_BODY, "needs": [{**NEEDS[0], "state": "suggested", "decisive": False}, *NEEDS[1:]]}
+
+    return answer
+
+
 class TestTheRunnerContract:
     def test_it_declares_its_state_and_writes_no_report(self):
         from aiq_api.jobs.runner import _get_agent_state_class
@@ -124,10 +140,12 @@ class TestTheRunnerContract:
         assert (DEFAULT_MAX_TOOL_STEPS, DEFAULT_MAX_RUN_SECONDS) == (80, 1200)
         assert DEFAULT_MAX_RUN_SECONDS < 30 * 60, "a run ends before the BFF reconciles a reading (30 minutes)"
 
-    async def test_the_result_is_the_summary_the_runner_reports(self, signed_run, route, project):
+    async def test_the_result_is_the_summary_the_runner_reports(
+        self, signed_run, route, project, needs_covered_after_record
+    ):
         from aiq_api.jobs.runner import _extract_result
 
-        route(record=recorded_all())
+        route(record=recorded_all(), needs=needs_covered_after_record)
         result = await _agent(
             ScriptedModel([*READ_AND_RECORD, _call("finish_intake", summary="Drei Geschoße gefunden.")])
         ).run(_state())
@@ -136,9 +154,9 @@ class TestTheRunnerContract:
 
 class TestTheLoop:
     async def test_it_starts_from_the_needs_reads_records_and_finishes_once(
-        self, signed_run, route, project, intake_schema
+        self, signed_run, route, project, intake_schema, needs_covered_after_record
     ):
-        fake = route(record=recorded_all())
+        fake = route(record=recorded_all(), needs=needs_covered_after_record)
         model = ScriptedModel([*READ_AND_RECORD, _call("finish_intake", summary="Drei Geschoße gefunden.")])
 
         result = await _agent(model).run(_state())
@@ -147,7 +165,8 @@ class TestTheLoop:
         opening = next(message for message in first if isinstance(message, HumanMessage)).content
         assert "geschosse_oberirdisch@bw1" in opening and "Occasion: Neue Dokumente hochgeladen" in opening
         assert "What the last reading found" not in opening, "no note before a first reading finished"
-        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "finish"]
+        # The finish reads the needs first: nothing decisive is open, so it finishes.
+        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "needs", "finish"]
         for body in fake.bodies():
             assert not list(validator(intake_schema, "InternalIntakeRequest").iter_errors(body))
         (finish,) = fake.bodies("finish")
@@ -200,6 +219,45 @@ class TestTheLoop:
 
         assert len(fake.bodies("finish")) == 1
         assert result.outcome["ended"] == "error"
+
+
+class TestTheFinishHold:
+    async def test_a_first_finish_with_decisive_needs_open_and_files_unread_is_held_once(
+        self, signed_run, route, project
+    ):
+        fake = route(record=recorded_all())
+        model = ScriptedModel([*READ_AND_RECORD, _call("finish_intake", summary="Drei Geschoße gefunden.")])
+
+        result = await _agent(model).run(_state())
+
+        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "needs", "finish"]
+        held = model.seen[3][-1].content
+        assert held.startswith("Not finished yet.") and "geschosse_oberirdisch@bw1" in held
+        # The file this run read is not named; the one nobody opened is.
+        assert "Einreichplan.pdf" in held and "Baubeschreibung.pdf" not in held
+        assert len(model.seen) == 4, "the second call finishes, and nothing runs after it"
+        assert result.outcome["ended"] == "model" and result.outcome["finish_held"] is True
+
+    async def test_past_the_step_budget_the_finish_is_never_held(self, signed_run, route, project):
+        fake = route(record=recorded_all())
+        model = ScriptedModel([*READ_AND_RECORD, _call("finish_intake", summary="Budget aufgebraucht.")])
+
+        result = await _agent(model, max_tool_steps=2).run(_state())
+
+        assert [body["op"] for body in fake.bodies()] == ["needs", "record", "finish"]
+        assert result.outcome["ended"] == "model" and result.outcome["finish_held"] is False
+
+    async def test_a_model_that_never_finishes_after_a_hold_is_still_finished_in_code(self, signed_run, route, project):
+        fake = route(record=recorded_all())
+        model = ScriptedModel(
+            [*READ_AND_RECORD, _call("finish_intake", summary="Fertig."), AIMessage(content="Ich höre hier auf.")]
+        )
+
+        result = await _agent(model).run(_state())
+
+        (finish,) = fake.bodies("finish")
+        assert finish["summary"] == "Ich höre hier auf."
+        assert result.outcome["ended"] == "model_without_finish" and result.outcome["finished"]
 
 
 class TestWhenNothingCanBeRecorded:
@@ -286,6 +344,7 @@ class TestThePrompt:
             "read_document",
             "read_passage",
             "record_values",
+            "withdraw_values",
             "finish_intake",
         ):
             assert f"`{tool}`" in rendered, tool

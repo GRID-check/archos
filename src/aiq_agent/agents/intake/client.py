@@ -1,8 +1,9 @@
 """The intake API's Python client: ``POST /api/internal/project-intake`` (ADR-0111, ADR-0055).
 
 The Erfassungs-Agent writes nothing itself. It asks the BFF what the project
-still needs (``needs``), hands it values with their evidence (``record``), and
-says when it is done (``finish``); the BFF decides what a value becomes
+still needs (``needs``), hands it values with their evidence (``record``),
+takes back a suggestion of its own (``withdraw``), and says when it is done
+(``finish``); the BFF decides what a value becomes
 (suggestion, corroboration, contradiction, refusal) and is the single writer of
 the profile (ADR-0003). The body is ``internalIntakeRequestSchema`` in
 ``frontends/ui/src/lib/project-intake/types.ts``, exported as
@@ -65,7 +66,7 @@ MAX_QUOTE_CHARS = 400
 #: The 409 reason the BFF answers when the run is no longer the intake's current reading.
 STALE_READING = "stale-reading"
 
-IntakeOp = Literal["needs", "record", "finish"]
+IntakeOp = Literal["needs", "record", "withdraw", "finish"]
 
 _opener = urllib.request.build_opener(_NoRedirectHandler)
 
@@ -102,6 +103,11 @@ def needs_request(job_id: str) -> dict[str, Any]:
 def record_request(job_id: str, values: list[dict[str, Any]]) -> dict[str, Any]:
     """``values`` are ``{key, value, evidence: {fileName, page, quote}}``; at most :data:`MAX_RECORD_VALUES`."""
     return {"op": "record", "jobId": job_id, "values": values[:MAX_RECORD_VALUES]}
+
+
+def withdraw_request(job_id: str, keys: list[str]) -> dict[str, Any]:
+    """The keys of suggestions this reading takes back; at most :data:`MAX_RECORD_VALUES`."""
+    return {"op": "withdraw", "jobId": job_id, "keys": keys[:MAX_RECORD_VALUES]}
 
 
 def finish_request(job_id: str, summary: str, documents_read: list[str], trace_id: str | None) -> dict[str, Any]:
@@ -179,6 +185,8 @@ async def call_intake(op: IntakeOp, payload: dict[str, Any]) -> IntakeReply:
     observed = {"op": op, "job_id": payload.get("jobId")}
     if op == "record":
         observed["values"] = len(payload.get("values") or [])
+    if op == "withdraw":
+        observed["keys"] = len(payload.get("keys") or [])
     header, signature = project_context.get_request_envelope_from_context()
     if not header or not signature:
         emit_step_span(f"project_intake.{op}", observed, {"outcome": "refused", "reason": "no_envelope"})

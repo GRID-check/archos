@@ -128,7 +128,9 @@ writes its facts once, when it ends, in `_record_trace`
 | `intake_suggested` | values recorded as suggestions, which a person will check |
 | `intake_corroborated` | values the profile already held, where the run added its evidence |
 | `intake_contradictions` | values that differ from the one on the profile, kept beside it for a person |
-| `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`); absent when there were none |
+| `intake_withdrawn` | suggestions the run recorded and then took back itself (`withdraw_values`); a refused withdrawal is counted under `intake_refusals` as `withdraw:<reason>` |
+| `intake_finish_held` | whether `finish_intake` held the model's first call once, because decisive needs were open and files unread |
+| `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`, `refused:<reason>`, `withdraw:<reason>`); absent when there were none |
 | `intake_decisive_open` | how many decisive needs were still open when the run ended |
 
 A suggestion a person accepts or dismisses is scored `piloti-decision` on this

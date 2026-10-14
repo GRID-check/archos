@@ -97,6 +97,7 @@ import {
   runIntakeReadSlice,
   settleIntakeOutcome,
   startIntakeRun,
+  withdrawIntakeValues,
 } from './service'
 import { enqueueIntakeRead } from './trigger'
 import type { Need, RecordValue } from './types'
@@ -409,6 +410,31 @@ describe('recordIntakeValues — what a value becomes', () => {
     })
   })
 
+  it('marks a suggestion with the reading that made it', async () => {
+    await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+    expect(op('/assumptions/bauwerkstyp@bw1')?.value).toMatchObject({ readingId: JOB })
+  })
+
+  it('names the needs the values opened, decisive first, from the needs before and after the same write', async () => {
+    vi.mocked(computeNeeds).mockImplementation((current) =>
+      current.assumptions['bauwerkstyp@bw1']
+        ? [
+            need('geschosse_oberirdisch@bw1', { decisive: true }),
+            need('bauwerkstyp@bw1', { state: 'suggested' }),
+            need('gebaeudestellung@bw1'),
+          ]
+        : [need('bauwerkstyp@bw1', { decisive: true })]
+    )
+
+    const { opened } = await recordIntakeValues(SESSION, PROJECT, JOB, [value('bauwerkstyp@bw1', 'gebaeude')])
+
+    expect(opened).toEqual([
+      { key: 'geschosse_oberirdisch@bw1', decisive: true },
+      { key: 'gebaeudestellung@bw1', decisive: false },
+    ])
+    expect(computeNeeds).toHaveBeenCalledWith(expect.anything(), expect.anything(), { mode: 'active', dismissed: [] })
+  })
+
   it('plans again on the fresh profile after a lost optimistic lock', async () => {
     vi.mocked(patchProjectProfile)
       .mockRejectedValueOnce(new ConflictError('Conflict: profile was modified by another request'))
@@ -433,6 +459,108 @@ describe('recordIntakeValues — what a value becomes', () => {
 })
 
 // ---------------------------------------------------------------------------
+
+describe('withdrawIntakeValues — a reading takes back its own suggestion', () => {
+  const suggested = (readingId?: string) => ({
+    value: 'einreichplanung',
+    status: 'unconfirmed' as const,
+    reason: 'x',
+    source: 'agent_suggested' as const,
+    updatedAt: NOW,
+    ...(readingId ? { readingId } : {}),
+  })
+
+  it('removes this reading’s suggestion with what was found beside it, and remembers nothing as dismissed', async () => {
+    useProfile({
+      ...emptyProfile(),
+      assumptions: { projektphase: { ...suggested(JOB), alternatives: [{ value: 'entwurf', evidence: [], recordedAt: NOW }] } },
+    })
+
+    const { results } = await withdrawIntakeValues(SESSION, PROJECT, JOB, ['projektphase'])
+
+    expect(results).toEqual([{ key: 'projektphase', outcome: 'withdrawn' }])
+    expect(written()).toEqual([{ op: 'remove', path: '/assumptions/projektphase' }])
+    expect(addIntakeDismissed).not.toHaveBeenCalled()
+  })
+
+  it('refuses a confirmed value, another reading’s suggestion, the derived class and a key with nothing suggested', async () => {
+    useProfile({
+      ...emptyProfile(),
+      facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'user_confirmed', updatedAt: NOW } },
+      assumptions: {
+        projektphase: suggested('intake-job-0'),
+        'gebaeudeklasse@bw1': { ...suggested(), value: 3 },
+        bundesland: { ...suggested(JOB), value: 'wien', source: 'onboarding_default' },
+      },
+    })
+
+    const { results } = await withdrawIntakeValues(SESSION, PROJECT, JOB, [
+      'bauwerkstyp@bw1',
+      'projektphase',
+      'gebaeudeklasse@bw1',
+      'bundesland',
+      'waermeversorgung@bw1',
+    ])
+
+    expect(results).toEqual([
+      { key: 'bauwerkstyp@bw1', outcome: 'refused', reason: 'confirmed' },
+      { key: 'projektphase', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'gebaeudeklasse@bw1', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'bundesland', outcome: 'refused', reason: 'not-this-reading' },
+      { key: 'waermeversorgung@bw1', outcome: 'refused', reason: 'nothing-suggested' },
+    ])
+    expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+
+  it('takes the derived class with a withdrawn input it was derived from', async () => {
+    useProfile({
+      ...emptyProfile(),
+      facts: { 'bauwerkstyp@bw1': { value: 'gebaeude', confidence: 'confirmed', source: 'onboarding', updatedAt: NOW } },
+      assumptions: {
+        'geschosse_oberirdisch@bw1': { ...suggested(JOB), value: 3 },
+        'gebaeudeklasse@bw1': {
+          ...suggested(),
+          value: 3,
+          evidence: [{ kind: 'derivation', rule: 'gebaeudeklasse', citation: 'OIB', inputs: [] }],
+        },
+      },
+    })
+
+    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['geschosse_oberirdisch@bw1'])
+
+    expect(op('/assumptions/geschosse_oberirdisch@bw1')).toEqual({ op: 'remove', path: '/assumptions/geschosse_oberirdisch@bw1' })
+    expect(op('/assumptions/gebaeudeklasse@bw1')).toEqual({ op: 'remove', path: '/assumptions/gebaeudeklasse@bw1' })
+  })
+
+  it('leaves a withdrawn value free for a later reading, where a dismissed one stays refused', async () => {
+    useProfile({ ...emptyProfile(), assumptions: { 'bauwerkstyp@bw1': { ...suggested(JOB), value: 'gebaeude' } } })
+    await withdrawIntakeValues(SESSION, PROJECT, JOB, ['bauwerkstyp@bw1'])
+    expect(addIntakeDismissed).not.toHaveBeenCalled()
+
+    // The next reading, on the profile the withdrawal left; a person dismissed another value meanwhile.
+    useProfile(emptyProfile())
+    vi.mocked(findProjectIntake).mockResolvedValue(
+      intake({ jobId: 'intake-job-2', dismissed: [{ key: 'gebaeudestellung@bw1', value: 'angebaut' }] })
+    )
+    const { results } = await recordIntakeValues(SESSION, PROJECT, 'intake-job-2', [
+      value('bauwerkstyp@bw1', 'gebaeude'),
+      value('gebaeudestellung@bw1', 'angebaut'),
+    ])
+
+    expect(results).toEqual([
+      { key: 'bauwerkstyp@bw1', outcome: 'suggested' },
+      { key: 'gebaeudestellung@bw1', outcome: 'refused', reason: 'dismissed' },
+    ])
+  })
+
+  it('refuses a job that is not the current reading', async () => {
+    vi.mocked(findProjectIntake).mockResolvedValue(intake({ jobId: 'intake-job-9' }))
+    await expect(withdrawIntakeValues(SESSION, PROJECT, JOB, ['projektphase'])).rejects.toMatchObject({
+      details: { reason: 'stale-reading' },
+    })
+    expect(patchProjectProfile).not.toHaveBeenCalled()
+  })
+})
 
 describe('intakeNeeds', () => {
   it('answers the needs and the readable files not read in the bytes they hold now', async () => {

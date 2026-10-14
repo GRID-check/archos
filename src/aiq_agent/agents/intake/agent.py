@@ -10,7 +10,7 @@ The model is given a goal, the rules a value must meet, the tools and its
 budget, and chooses its own way through the documents: the prompt prescribes
 no sequence (the product owner's direction for this agent: tools, not a
 graph). It runs as a LangChain ``create_agent`` graph (the ReAct agent the deep
-researcher's workers are built on) with the three intake tools (``tools.py``),
+researcher's workers are built on) with the four intake tools (``tools.py``),
 ``read_document`` (``reading.py``) and the shared ``list_files``,
 ``knowledge_search`` and ``read_passage`` the runner resolves from the config.
 How each tool is used lives in its description (ADR-0060). The opening message
@@ -30,6 +30,9 @@ Three guarantees hold in code, not in the prompt:
 * **The run always finishes.** When the model stops without ``finish_intake``,
   runs out of budget or fails, the run finishes in code with a short summary, so
   the intake leaves ``reading`` on the BFF without waiting for its reconciler.
+  The tool may hold the model's first call once (decisive needs open, files
+  unread); past the step budget it never holds, and the finish in code calls
+  ``finish_intake`` itself, past the tool.
 
 The run writes no report (``produces_report = False``): its output is values on
 the profile, and the job's output is the summary.
@@ -146,7 +149,8 @@ def fallback_summary(ended: str, session: IntakeSession, documents_read: int, la
     """The summary the run finishes with when the model did not write one. German: a person reads it."""
     if ended == "model" and last_words:
         return last_words[: client.MAX_SUMMARY_CHARS]
-    proposed = sum(session.outcomes.values())
+    withdrawn = session.outcomes.get("withdrawn", 0)
+    proposed = max(0, sum(session.outcomes.values()) - 2 * withdrawn)
     return (
         f"{_ENDINGS.get(ended, _ENDINGS['error'])} {documents_read} Dokument(e) gelesen, "
         f"{proposed} Wert(e) vorgeschlagen; was offen ist, steht in der Prüfung."
@@ -193,14 +197,17 @@ class ProjectIntakeAgent:
     def _graph(self, model: Any, session: IntakeSession) -> Any:
         from langchain.agents import create_agent
 
-        own = [*make_intake_tools(session), make_read_document_tool()]
+        middleware = IntakeToolMiddleware(
+            max_steps=self.max_tool_steps, finish_tool=FINISH_INTAKE_TOOL, finished=lambda: session.finished
+        )
+        own = [*make_intake_tools(session, budget_spent=lambda: middleware.budget_spent), make_read_document_tool()]
         names = {tool.name for tool in own}
         shared = [tool for tool in self.tools if getattr(tool, "name", "") not in names]
         return create_agent(
             model=model,
             tools=[*own, *shared],
             system_prompt=system_prompt(self.max_tool_steps, self.max_run_seconds),
-            middleware=[IntakeToolMiddleware(max_steps=self.max_tool_steps, finish_tool=FINISH_INTAKE_TOOL)],
+            middleware=[middleware],
             name="project_intake",
         )
 
@@ -285,6 +292,8 @@ def _outcome(ended: str, session: IntakeSession, documents_read: list[str]) -> d
         "suggested": session.outcomes.get("suggested", 0),
         "corroborated": session.outcomes.get("corroborated", 0),
         "contradictions": session.outcomes.get("contradiction", 0),
+        "withdrawn": session.outcomes.get("withdrawn", 0),
+        "finish_held": session.finish_held,
         "refusals": dict(session.refusals),
         "decisive_open": session.decisive_open,
     }
@@ -302,6 +311,8 @@ def _record_trace(outcome: dict[str, Any]) -> None:
         intake_suggested=outcome["suggested"],
         intake_corroborated=outcome["corroborated"],
         intake_contradictions=outcome["contradictions"],
+        intake_withdrawn=outcome["withdrawn"],
+        intake_finish_held=outcome["finish_held"],
         intake_refusals=refusals or None,
         intake_decisive_open=outcome["decisive_open"],
     )

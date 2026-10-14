@@ -23,6 +23,7 @@ vi.mock('@/lib/api/internal-envelope', () => ({
 vi.mock('@/lib/project-intake/service', () => ({
   intakeNeeds: vi.fn(),
   recordIntakeValues: vi.fn(),
+  withdrawIntakeValues: vi.fn(),
   finishIntakeReading: vi.fn(),
 }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
@@ -34,7 +35,12 @@ import { ConflictError } from '@/lib/api/errors'
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { withTenant } from '@/lib/db/tenant-context'
-import { finishIntakeReading, intakeNeeds, recordIntakeValues } from '@/lib/project-intake/service'
+import {
+  finishIntakeReading,
+  intakeNeeds,
+  recordIntakeValues,
+  withdrawIntakeValues,
+} from '@/lib/project-intake/service'
 import { INTERNAL_INTAKE_RESPONSE_SCHEMAS, type InternalIntakeRequest } from '@/lib/project-intake/types'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
 import { POST } from './route'
@@ -73,7 +79,11 @@ beforeEach(() => {
   vi.mocked(requireVerifiedContext).mockReturnValue(CONTEXT)
   vi.mocked(requirePinnedSession).mockResolvedValue(SESSION)
   vi.mocked(intakeNeeds).mockResolvedValue({ needs: [], unreadFiles: ['Einreichplan.pdf'], description: null, location: null, mode: 'active', previousSummary: null })
-  vi.mocked(recordIntakeValues).mockResolvedValue({ results: [{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }] })
+  vi.mocked(recordIntakeValues).mockResolvedValue({
+    results: [{ key: 'bauwerkstyp@bw1', outcome: 'suggested' }],
+    opened: [{ key: 'geschosse_oberirdisch@bw1', decisive: true }],
+  })
+  vi.mocked(withdrawIntakeValues).mockResolvedValue({ results: [{ key: 'projektphase', outcome: 'withdrawn' }] })
   vi.mocked(finishIntakeReading).mockResolvedValue({ status: 'ready' })
 })
 
@@ -109,6 +119,13 @@ describe('POST /api/internal/project-intake', () => {
       documentsRead: ['Einreichplan.pdf'],
       traceId: 't-1',
     })
+  })
+
+  it('withdraws the reading’s own suggestions by key', async () => {
+    const withdrawn = await post({ op: 'withdraw', jobId: JOB, keys: ['projektphase'] })
+    INTERNAL_INTAKE_RESPONSE_SCHEMAS.withdraw.parse(await withdrawn.json())
+    expect(withdrawIntakeValues).toHaveBeenCalledWith(SESSION, PROJECT, JOB, ['projektphase'])
+    expect((await post({ op: 'withdraw', jobId: JOB, keys: [] })).status).toBe(400)
   })
 
   it('refuses a body that names a project, an unknown op, and a record without values', async () => {

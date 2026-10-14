@@ -116,12 +116,29 @@ export type RecordOutcome = (typeof RECORD_OUTCOMES)[number]
 export const RECORD_REFUSAL_REASONS = ['vocabulary', 'unknown-key', 'dismissed', 'unreadable-file'] as const
 export type RecordRefusalReason = (typeof RECORD_REFUSAL_REASONS)[number]
 
+/**
+ * What became of one withdrawal. `withdrawn`: the reading's own suggestion is
+ * gone, with any alternative found beside it, and is not remembered as
+ * dismissed (no person said no), so a later reading may suggest it again.
+ */
+export const WITHDRAW_OUTCOMES = ['withdrawn', 'refused'] as const
+export type WithdrawOutcome = (typeof WITHDRAW_OUTCOMES)[number]
+
+/**
+ * Why a withdrawal was refused: nothing is suggested under the key, a person
+ * confirmed it (a fact), or the suggestion is not this reading's own (an
+ * earlier reading's, the derived Gebäudeklasse, a default). A reading takes
+ * back only what it suggested itself.
+ */
+export const WITHDRAW_REFUSAL_REASONS = ['nothing-suggested', 'confirmed', 'not-this-reading'] as const
+export type WithdrawRefusalReason = (typeof WITHDRAW_REFUSAL_REASONS)[number]
+
 /** The 409 reason when an internal op names a `jobId` that is not the intake's current reading. */
 export const STALE_READING_REASON = 'stale-reading'
 
 export const MAX_INTAKE_DESCRIPTION_LENGTH = 500
 export const MAX_INTAKE_SUMMARY_LENGTH = 2000
-/** Most values one `record` carries. */
+/** Most values one `record` carries, and most keys one `withdraw` names. */
 export const MAX_RECORD_VALUES = 20
 /** Most decisions one request carries. */
 export const MAX_INTAKE_DECISIONS = 60
@@ -393,6 +410,13 @@ export const internalIntakeRequestSchema = z.discriminatedUnion('op', [
     .strict(),
   z
     .object({
+      op: z.literal('withdraw'),
+      jobId,
+      keys: z.array(key).min(1).max(MAX_RECORD_VALUES),
+    })
+    .strict(),
+  z
+    .object({
       op: z.literal('finish'),
       jobId,
       summary: z.string().max(MAX_INTAKE_SUMMARY_LENGTH),
@@ -428,11 +452,34 @@ export const recordResultSchema = z.object({
 })
 export type RecordResult = z.infer<typeof recordResultSchema>
 
-/** `record`: one result per value, in request order. */
+/** A need the values of one `record` opened: not listed before it, open after it. */
+export const openedNeedSchema = needSchema.pick({ key: true, decisive: true })
+export type OpenedNeed = z.infer<typeof openedNeedSchema>
+
+/**
+ * `record`: one result per value, in request order, and the needs the values
+ * opened (`bauwerkstyp = gebaeude` opens the Gebäude's questions), decisive
+ * ones first, so the reading learns what its own record asked for next.
+ */
 export const internalIntakeRecordResponseSchema = z.object({
   results: z.array(recordResultSchema).max(MAX_RECORD_VALUES),
+  opened: z.array(openedNeedSchema).max(MAX_INTAKE_NEEDS),
 })
 export type InternalIntakeRecordResponse = z.infer<typeof internalIntakeRecordResponseSchema>
+
+export const withdrawResultSchema = z.object({
+  key,
+  outcome: z.enum(WITHDRAW_OUTCOMES),
+  /** Set exactly when `outcome` is `refused`. */
+  reason: z.enum(WITHDRAW_REFUSAL_REASONS).optional(),
+})
+export type WithdrawResult = z.infer<typeof withdrawResultSchema>
+
+/** `withdraw`: one result per key, in request order. */
+export const internalIntakeWithdrawResponseSchema = z.object({
+  results: z.array(withdrawResultSchema).max(MAX_RECORD_VALUES),
+})
+export type InternalIntakeWithdrawResponse = z.infer<typeof internalIntakeWithdrawResponseSchema>
 
 /** `finish`: the status the intake is in afterwards. */
 export const internalIntakeFinishResponseSchema = z.object({
@@ -444,6 +491,7 @@ export type InternalIntakeFinishResponse = z.infer<typeof internalIntakeFinishRe
 export const INTERNAL_INTAKE_RESPONSE_SCHEMAS = {
   needs: internalIntakeNeedsResponseSchema,
   record: internalIntakeRecordResponseSchema,
+  withdraw: internalIntakeWithdrawResponseSchema,
   finish: internalIntakeFinishResponseSchema,
 } as const satisfies Record<InternalIntakeOp, z.ZodTypeAny>
 

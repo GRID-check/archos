@@ -11,12 +11,15 @@
  *   {"op":"empty"}                                   → {"profile"}
  *   {"op":"needs","profile","mode","dismissed"}      → {"needs"}
  *   {"op":"record","profile","body","readableFiles","dismissed"}
- *                                                    → {"status", "results"?, "profile"?, "error"?}
+ *                                                    → {"status", "results"?, "opened"?, "profile"?, "error"?}
+ *   {"op":"withdraw","profile","body"}               → {"status", "results"?, "profile"?, "error"?}
  *
  * `record` runs what `recordIntakeValues` in `service.ts` runs: the body
  * through `internalIntakeRequestSchema` (a malformed one answers 400), the
  * static screen of each value (`staticRefusal`), then `planRecord`, which
- * applies the values and derives the Gebäudeklasse. Two service steps are not
+ * applies the values, derives the Gebäudeklasse and names the needs the batch
+ * opened. `withdraw` runs `planWithdraw`, as `withdrawIntakeValues` does, with
+ * the body's `jobId` as the reading. Two service steps are not
  * here: the quote is not masked (`documentEvidence` needs the organization's
  * screening policy, and the fixture holds no personal data), and the profile
  * write is the harness keeping the returned profile.
@@ -30,7 +33,12 @@ import type { DocumentEvidence } from '../../frontends/ui/src/lib/project-profil
 import { emptyProjectProfile } from '../../frontends/ui/src/lib/project-profile/patch-engine'
 import { ProjectProfileSchema, type ProjectProfile } from '../../frontends/ui/src/lib/project-profile/types'
 import { computeNeeds } from '../../frontends/ui/src/lib/project-intake/needs'
-import { planRecord, staticRefusal, type ScreenedValue } from '../../frontends/ui/src/lib/project-intake/record'
+import {
+  planRecord,
+  planWithdraw,
+  staticRefusal,
+  type ScreenedValue,
+} from '../../frontends/ui/src/lib/project-intake/record'
 import {
   internalIntakeRequestSchema,
   type DismissedValue,
@@ -39,7 +47,7 @@ import {
 } from '../../frontends/ui/src/lib/project-intake/types'
 
 interface GateRequest {
-  op: 'empty' | 'needs' | 'record'
+  op: 'empty' | 'needs' | 'record' | 'withdraw'
   profile?: unknown
   mode?: IntakeMode
   dismissed?: DismissedValue[]
@@ -78,7 +86,24 @@ function record(request: GateRequest) {
     const reason = reasonFromEvidence(evidence)
     return { key: value.key, screened: { key: value.key, value: value.value, evidence, reason }, refusal: null }
   })
-  const plan = planRecord(profile, definition, screened, new Date().toISOString())
+  const plan = planRecord(profile, definition, screened, {
+    now: new Date().toISOString(),
+    readingId: parsed.data.jobId,
+    needs: { mode: request.mode ?? 'active', dismissed },
+  })
+  return { status: 200, results: plan.results, opened: plan.opened, profile: plan.profile }
+}
+
+function withdraw(request: GateRequest) {
+  const parsed = internalIntakeRequestSchema.safeParse(request.body)
+  if (!parsed.success || parsed.data.op !== 'withdraw') {
+    return { status: 400, error: parsed.success ? 'not a withdraw body' : parsed.error.issues[0]?.message }
+  }
+  const profile: ProjectProfile = ProjectProfileSchema.parse(request.profile ?? {})
+  const plan = planWithdraw(profile, definition, parsed.data.keys, {
+    now: new Date().toISOString(),
+    readingId: parsed.data.jobId,
+  })
   return { status: 200, results: plan.results, profile: plan.profile }
 }
 
@@ -86,6 +111,7 @@ function answer(request: GateRequest): unknown {
   if (request.op === 'empty') return { profile: emptyProjectProfile() }
   if (request.op === 'needs') return needs(request)
   if (request.op === 'record') return record(request)
+  if (request.op === 'withdraw') return withdraw(request)
   return { status: 400, error: `unknown op ${String(request.op)}` }
 }
 

@@ -1,7 +1,8 @@
 /**
  * INTERNAL — the project intake's reading talks to the BFF (ADR-0111): what
- * the project still needs (`needs`), the values it found (`record`), and that
- * it has finished (`finish`). The Erfassungs-Agent's tools are the callers.
+ * the project still needs (`needs`), the values it found (`record`), a
+ * suggestion of its own it takes back (`withdraw`), and that it has finished
+ * (`finish`). The Erfassungs-Agent's tools are the callers.
  *
  * The acting person is the one the run's signed envelope names, as a pinned
  * session (ADR-0054 §4, ADR-0108): whoever's upload or click started the
@@ -19,7 +20,12 @@ import { UnprocessableError } from '@/lib/api/errors'
 import { internalApiRoute, parseJsonBody } from '@/lib/api/handler'
 import { requirePinnedSession, requireVerifiedContext } from '@/lib/api/internal-envelope'
 import { withTenant } from '@/lib/db/tenant-context'
-import { finishIntakeReading, intakeNeeds, recordIntakeValues } from '@/lib/project-intake/service'
+import {
+  finishIntakeReading,
+  intakeNeeds,
+  recordIntakeValues,
+  withdrawIntakeValues,
+} from '@/lib/project-intake/service'
 import { internalIntakeRequestSchema, type InternalIntakeResponse } from '@/lib/project-intake/types'
 
 export const POST = internalApiRoute(
@@ -38,6 +44,8 @@ export const POST = internalApiRoute(
           return intakeNeeds(session, projectId, body.jobId)
         case 'record':
           return recordIntakeValues(session, projectId, body.jobId, body.values)
+        case 'withdraw':
+          return withdrawIntakeValues(session, projectId, body.jobId, body.keys)
         case 'finish':
           return finishIntakeReading(session, projectId, body.jobId, {
             summary: body.summary,

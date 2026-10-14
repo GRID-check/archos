@@ -43,6 +43,7 @@ describe('project intake JSON Schema', () => {
     expect(request.oneOf?.map((option) => (option.properties?.op as { const?: string }).const)).toEqual([
       'needs',
       'record',
+      'withdraw',
       'finish',
     ])
     for (const option of request.oneOf ?? []) {

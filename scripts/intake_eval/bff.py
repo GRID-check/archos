@@ -4,12 +4,13 @@
 agent's suite uses (``FakeIntakeRoute`` in
 ``tests/aiq_agent/agents/intake/conftest.py``, installed on
 ``client._opener.open``), so every body the agent sends is the one
-``post_intake`` really built. Behind it, ``needs`` and ``record`` run the
-TypeScript the route runs (``computeNeeds``, ``staticRefusal`` and
-``planRecord``, through ``gate.ts`` under bun), against a profile this module
-keeps in memory: the vocabulary, unknown-key, dismissed and unreadable-file
-refusals, corroboration and contradiction, and the derived Gebäudeklasse all
-behave as they do in production. Not reproduced: masking the quote (the
+``post_intake`` really built. Behind it, ``needs``, ``record`` and ``withdraw``
+run the TypeScript the route runs (``computeNeeds``, ``staticRefusal``,
+``planRecord`` and ``planWithdraw``, through ``gate.ts`` under bun), against a
+profile this module keeps in memory: the vocabulary, unknown-key, dismissed and
+unreadable-file refusals, corroboration and contradiction, the needs a record
+opened, a withdrawal, and the derived Gebäudeklasse all behave as they do in
+production. Not reproduced: masking the quote (the
 fixture holds no personal data) and the job's database row (a stale ``jobId``
 still answers 409, as the route does).
 """
@@ -73,7 +74,8 @@ class FakeIntakeBff:
         self.fixture = fixture
         self.gate = gate
         self.profile: dict[str, Any] = gate.ask({"op": "empty"})["profile"]
-        #: Every value the route answered, in order: the value, its evidence and what it became.
+        #: Every value the route answered, in order: the value, its evidence and what it became; a
+        #: withdrawal is an entry of its own (``outcome: withdrawn``), so the scoring sees the order.
         self.records: list[dict[str, Any]] = []
         self.finish_body: dict[str, Any] | None = None
         #: The label of every need the route listed, for the summary check (a threshold is not a value).
@@ -82,7 +84,7 @@ class FakeIntakeBff:
 
     def answers(self) -> dict[str, Any]:
         """The per-op answers ``FakeIntakeRoute`` takes."""
-        return {"needs": self.needs, "record": self.record, "finish": self.finish}
+        return {"needs": self.needs, "record": self.record, "withdraw": self.withdraw, "finish": self.finish}
 
     def needs(self, body: dict[str, Any]) -> dict[str, Any] | int:
         if body.get("jobId") != JOB_ID:
@@ -111,6 +113,17 @@ class FakeIntakeBff:
             self.profile = answer["profile"]
             for value, result in zip(body["values"], answer["results"], strict=True):
                 self.records.append({**result, "value": value["value"], **value["evidence"]})
+        return {"results": answer["results"], "opened": answer["opened"]}
+
+    def withdraw(self, body: dict[str, Any]) -> dict[str, Any] | int:
+        if body.get("jobId") != JOB_ID:
+            return 409
+        with self._lock:
+            answer = self.gate.ask({"op": "withdraw", "profile": self.profile, "body": body})
+            if answer.get("status") != 200:
+                return int(answer.get("status") or 500)
+            self.profile = answer["profile"]
+            self.records.extend(dict(result) for result in answer["results"])
         return {"results": answer["results"]}
 
     def finish(self, body: dict[str, Any]) -> dict[str, Any] | int:
