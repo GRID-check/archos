@@ -166,7 +166,11 @@ def process_row(
     if document_ids and document_id is None and not dry_run:
         logger.warning("[fail] %s/%s has no entry in --document-ids", collection, file_name)
         return FAILED
-    pages = page_fetcher(collection, file_name)
+    try:
+        pages = page_fetcher(collection, file_name)
+    except Exception as e:  # noqa: BLE001 - an outage fails this document, never the batch
+        logger.warning("[fail] %s/%s the vector store could not be read: %s", collection, file_name, e)
+        return FAILED
     if not pages:
         logger.warning("[fail] %s/%s has no indexed text", collection, file_name)
         return FAILED

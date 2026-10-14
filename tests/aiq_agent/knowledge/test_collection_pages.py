@@ -13,6 +13,8 @@ sorts after the numbered ones of its page, by chunk id: stable, never random.
 
 from __future__ import annotations
 
+import pytest
+
 from aiq_agent.knowledge.collection_pages import read_chunks
 from aiq_agent.knowledge.collection_pages import read_pages
 from aiq_agent.knowledge.fassung_diff import chunk_from_store
@@ -120,3 +122,18 @@ def test_a_file_the_store_holds_no_chunk_of_reads_as_none(qdrant_store):  # noqa
 
     assert read_chunks("proj_some", "weg.pdf") is None
     assert read_pages("proj_some", "weg.pdf") is None
+
+
+@pytest.mark.parametrize("reader", [read_chunks, read_pages])
+def test_an_unreachable_store_raises_rather_than_reading_as_no_chunks(reader, qdrant_store, monkeypatch):  # noqa: ARG001
+    """„Nicht im Index“ is a claim about the document; an outage is not evidence for it (read_passage does the same)."""
+    from knowledge_layer.qdrant import store as store_module
+
+    qt.write("proj_down", _ingested_records("da.pdf", LINES[:1]))
+
+    def down(*_args, **_kwargs):
+        raise ConnectionError("qdrant down")
+
+    monkeypatch.setattr(store_module.QdrantStore, "scroll", down)
+    with pytest.raises(ConnectionError):
+        reader("proj_down", "da.pdf")

@@ -478,6 +478,23 @@ class TestComparing:
         assert "Seiten: 1 → 1; 1 unverändert, 0 geändert." in text
         assert "Im gelesenen Inhalt unterscheiden sich die beiden Dateien nicht." in text
 
+    async def test_an_unreachable_index_is_said_as_one_never_as_not_in_the_index(self, scope, stored, monkeypatch):
+        from knowledge_layer.qdrant import store as store_module
+
+        from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
+
+        def down(*_args, **_kwargs):
+            raise ConnectionError("qdrant down")
+
+        monkeypatch.setattr(store_module.QdrantStore, "scroll", down)
+
+        text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
+
+        assert text.startswith(FETCH_FAILED_MARKER)
+        assert "nicht erreichbar" in text
+        assert "nicht im Index" not in text
+        assert stored == []
+
     async def test_a_file_the_index_does_not_hold_is_said_not_compared(self, scope, qdrant_store):  # noqa: ARG002
         text = await self._call(fassungen_of="Plan_Index_B.pdf", compare_to="vorige", shelf="project")
         assert "nicht im Index" in text

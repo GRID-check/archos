@@ -986,7 +986,10 @@ def _change_line_between(older: FileRow, newer: FileRow) -> str | None:
 
 
 def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
-    """Both Fassungen are read from what the index holds: blocking, so the tool runs it on a thread."""
+    """Both Fassungen are read from what the index holds: blocking, so the tool runs it on a thread.
+
+    None when the index holds no chunk of the file; raises when the store cannot be read.
+    """
     from aiq_agent.knowledge.collection_pages import read_chunks
     from aiq_agent.knowledge.fassung_diff import chunk_from_store
 
@@ -998,14 +1001,24 @@ def _stored_chunks(collection: str, file_name: str) -> list[Any] | None:
 
 async def compare_fassungen(older: FileRow, newer: FileRow) -> str:
     """The compare of two Fassungen the turn may list, from their stored chunks and title blocks (ADR-0104)."""
+    from aiq_agent.common.turn_status import FETCH_FAILED_MARKER
     from aiq_agent.knowledge.fassung_diff import diff_fassungen
     from aiq_agent.knowledge.fassung_diff import render_diff
     from aiq_agent.knowledge.restricted_use import note_collections_read
 
-    older_chunks, newer_chunks = await asyncio.gather(
-        asyncio.to_thread(_stored_chunks, older.collection, older.file_name),
-        asyncio.to_thread(_stored_chunks, newer.collection, newer.file_name),
-    )
+    try:
+        older_chunks, newer_chunks = await asyncio.gather(
+            asyncio.to_thread(_stored_chunks, older.collection, older.file_name),
+            asyncio.to_thread(_stored_chunks, newer.collection, newer.file_name),
+        )
+    except Exception:  # noqa: BLE001 - an outage is said as one, never as "not in the index"
+        logger.warning("compare_fassungen: the index did not answer", exc_info=True)
+        # Marked like read_passage's failed fetch, so a retry is not refused as a repeat.
+        return (
+            f"{FETCH_FAILED_MARKER} Der Index ist gerade nicht erreichbar, „{older.file_name}“ und "
+            f"„{newer.file_name}“ wurden nicht verglichen. Einmal erneut versuchen; schlägt es wieder fehl, "
+            "das so sagen und keinen Unterschied behaupten."
+        )
     missing = [row.file_name for row, chunks in ((older, older_chunks), (newer, newer_chunks)) if chunks is None]
     if missing:
         return (

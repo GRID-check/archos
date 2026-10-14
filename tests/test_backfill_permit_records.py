@@ -160,6 +160,19 @@ def test_a_document_with_no_indexed_text_fails_and_the_batch_goes_on():
     assert len(store.calls) == 1
 
 
+def test_an_unreachable_store_fails_that_document_and_the_batch_goes_on(caplog):
+    def fetch(collection, file_name):
+        if file_name == "down.pdf":
+            raise ConnectionError("qdrant down")
+        return _fetch(collection, file_name)
+
+    with caplog.at_level("WARNING"):
+        stats, store = _run([_doc("down.pdf"), _doc()], fetch=fetch, ids={"ma37.pdf": "d1", "down.pdf": "d2"})
+
+    assert (stats.failed, stats.stored) == (1, 1)
+    assert "could not be read" in caplog.text and "no indexed text" not in caplog.text
+
+
 def test_no_record_from_the_model_is_not_a_failure_and_is_not_stored():
     stats, store = _run([_doc()], llm=FakeLLM({"record": None}))
     assert (stats.no_record, stats.failed) == (1, 0)
