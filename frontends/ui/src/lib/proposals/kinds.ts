@@ -23,6 +23,7 @@ import {
   type FileOperationPayload,
   type MemoryPayload,
   type ProjectProfilePayload,
+  type ProposalNoticeVariant,
   type ProposedChangeKind,
   type ProposedChangeResult,
 } from './types'
@@ -115,6 +116,11 @@ export function summaryOf(typed: KindPayload): string {
     case 'project_profile':
       return typed.payload.title
   }
+}
+
+/** What the proposal changes, as the inbox row words it: a file operation by its verb, the rest by kind. */
+export function noticeVariantOf(typed: KindPayload): ProposalNoticeVariant {
+  return typed.kind === 'file_operation' ? typed.payload.operation : typed.kind
 }
 
 /** Run the kind's applier. Item outcomes are results; a refusal of the decider is thrown. */

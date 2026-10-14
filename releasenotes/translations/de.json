@@ -1552,6 +1552,10 @@
     "de": "In der Aufträge-Liste zeigt eine laufende Karte in einer Zeile, was der Auftrag gerade tut, etwa „Recherchieren · 3 Runden · 9 Dokumente“."
   },
   {
+    "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
+    "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
+  },
+  {
     "en": "Jobs and Skills now sit together in one Automation section, as two tabs instead of two places in the sidebar. Jobs comes first, since a job is the instruction this project runs on a timer, and Skills is one click away.",
     "de": "Jobs und Skills liegen jetzt gemeinsam im Bereich Automation, als zwei Tabs statt an zwei Stellen in der Seitenleiste. Jobs steht vorn, weil ein Job die Anweisung ist, die dieses Projekt zeitgesteuert ausführt, und Skills ist mit einem Klick erreichbar."
   },
@@ -2850,6 +2854,10 @@
   {
     "en": "What the conversation has already settled, such as your answers to Piloti's questions, goes into the research instead of being asked again.",
     "de": "Was im Gespräch schon geklärt wurde, etwa Ihre Antworten auf Pilotis Rückfragen, geht in die Recherche ein, statt noch einmal gefragt zu werden."
+  },
+  {
+    "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
+    "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
   },
   {
     "en": "When Piloti files a draft, creates a task, gathers documents or suggests something to remember, its cards now appear while the answer is still being checked, instead of all at the very end.",

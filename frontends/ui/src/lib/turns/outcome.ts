@@ -73,7 +73,7 @@ const NOT_SETTLED: TurnOutcomeResponse = { settled: false }
 async function endInTransaction(
   wake: PilotiWakeRow,
   end: WakeEnd
-): Promise<{ ended: PilotiWakeRow; markNumber: number | null; handedBack: boolean } | null> {
+): Promise<{ ended: PilotiWakeRow; markNumber: number | null; markText: string | null; handedBack: boolean } | null> {
   const mark = await findDocumentAnnotation(wake.organizationId, wake.documentId, wake.annotationId)
   const delegatedAt = mark?.delegatedAt ? new Date(mark.delegatedAt) : null
   const ownsDelegation =
@@ -89,7 +89,7 @@ async function endInTransaction(
         ownsDelegation && delegatedAt
           ? await handBackDelegation(tx, wake.organizationId, wake.annotationId, delegatedAt)
           : false
-      return { ended, markNumber: mark?.number ?? null, handedBack }
+      return { ended, markNumber: mark?.number ?? null, markText: mark?.body ?? null, handedBack }
     })
   )
 }
@@ -98,7 +98,7 @@ async function endInTransaction(
 async function afterEnd(
   wake: PilotiWakeRow,
   end: WakeEnd,
-  done: { markNumber: number | null; handedBack: boolean }
+  done: { markNumber: number | null; markText: string | null; handedBack: boolean }
 ): Promise<void> {
   if (done.handedBack) {
     await publishToDocumentRoom(wake.documentId, {
@@ -134,6 +134,8 @@ async function afterEnd(
       actorUserId: wake.actorUserId,
       trigger: wake.triggerKind,
       outcome: end.status,
+      reason: end.status === 'failed' ? end.reason : null,
+      markText: done.markText,
     })
   } catch (error) {
     console.error('[turns/outcome] attention failed after a wake ended:', error)

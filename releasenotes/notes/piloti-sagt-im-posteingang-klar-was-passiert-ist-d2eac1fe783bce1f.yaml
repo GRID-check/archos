@@ -1,0 +1,12 @@
+---
+improvements:
+  - >
+    Inbox notices about Piloti now say what it did, on which annotation in
+    which document, and what you can do next. When Piloti could not work on an
+    annotation, the notice says why, such as a used-up usage budget, instead
+    of only that it did not finish.
+fixes:
+  - >
+    When Piloti could not start on an annotation you delegated, for example
+    because the budget was used up, you now hear about it in the inbox, and the
+    annotation no longer keeps showing „Piloti arbeitet daran“.
