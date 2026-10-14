@@ -259,6 +259,15 @@ export function foldDocuments(
   return [...byId.values()].sort((a, b) => a.rank - b.rank)
 }
 
+/**
+ * A join of the hits to their rows that failed: the error state, never an
+ * empty answer the panel would read as „Im Büro noch nicht behandelt".
+ */
+function joinFailed(error: unknown): never {
+  console.warn('[SimilarPassages] could not join the hits to their documents', error)
+  throw new ServiceUnavailableError('Similar passages could not be searched')
+}
+
 /** The group's place: its best document's. */
 const bestRank = (documents: readonly RankedDocument[]): number =>
   documents.reduce((best, entry) => Math.min(best, entry.rank), Number.MAX_SAFE_INTEGER)
@@ -307,7 +316,7 @@ export async function findSimilarPassages(
     const projectHits = hits.filter((hit) => own.has(hit.collection))
     if (projectHits.length === 0) return null
     // `forModel` selects the SCREENED_ONLY reader: no held document, whoever asks.
-    const found = await hydrateProjectHits(session, plan, projectHits, { forModel: true }).catch(() => [])
+    const found = await hydrateProjectHits(session, plan, projectHits, { forModel: true }).catch(joinFailed)
     const documents = foldDocuments(found, source.documentId)
     if (documents.length === 0) return null
     return { plan, documents }
@@ -316,7 +325,7 @@ export async function findSimilarPassages(
     await hydrateArchivHits(
       session,
       hits.filter((hit) => hit.collection === archiv)
-    ).catch(() => []),
+    ).catch(joinFailed),
     source.documentId
   )
 

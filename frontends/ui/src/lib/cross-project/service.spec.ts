@@ -45,6 +45,8 @@ const state = vi.hoisted(() => ({
   folders: new Map<string, string>(),
   /** Whether the grouped search fails upstream (Qdrant down): the real client throws an UpstreamError. */
   groupedFails: false,
+  /** Projects whose hits cannot be joined to their rows (Postgres down). */
+  hydrateFails: new Set<string>(),
   /** The grouped search's ranking, as hit ids best first; unset ranks by score. */
   ranking: null as string[] | null,
   groupedCalls: [] as Array<{
@@ -192,6 +194,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
         hits: Array<{ collection: string; file_name: string; score: number; snippet: string; page_number: number | null; rank?: number }>,
         options: { snippetMaxChars?: number; forModel?: boolean }
       ) => {
+        if (state.hydrateFails.has(plan.project.id)) throw new Error('connection terminated')
         state.hydrated.push({ projectId: plan.project.id, snippetMaxChars: options.snippetMaxChars, forModel: options.forModel })
         state.hydrating += 1
         state.hydratePeak = Math.max(state.hydratePeak, state.hydrating)
@@ -292,6 +295,7 @@ beforeEach(() => {
   state.readable = new Map()
   state.folders = new Map()
   state.groupedFails = false
+  state.hydrateFails = new Set()
   state.ranking = null
   state.groupedCalls = []
   state.planned = []
@@ -745,6 +749,16 @@ describe('searchAcrossProjects in one grouped query (ADR-0112)', () => {
   it('surfaces a failed search as an upstream error, never as "nothing found", and records nothing', async () => {
     state.hits.set(state.reachable[0].id, [hit('a', 0.9)])
     state.groupedFails = true
+
+    await expect(searchAcrossProjects(caller(), search({}))).rejects.toBeInstanceOf(UpstreamError)
+    expect(state.recorded).toEqual([])
+  })
+
+  it('surfaces hits it cannot join to their documents as an upstream error, not as "nothing found", and records nothing', async () => {
+    const [one, two] = state.reachable
+    state.hits.set(one.id, [hit('a', 0.9)])
+    state.hits.set(two.id, [hit('b', 0.8, { collectionName: 'proj_2' })])
+    state.hydrateFails.add(two.id)
 
     await expect(searchAcrossProjects(caller(), search({}))).rejects.toBeInstanceOf(UpstreamError)
     expect(state.recorded).toEqual([])

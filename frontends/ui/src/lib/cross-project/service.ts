@@ -469,10 +469,16 @@ async function searchPage(
     const own = new Set(collectionsOf(plan))
     const projectHits = hits.filter((hit) => own.has(hit.collection))
     if (projectHits.length === 0) return []
+    // A join that fails is a failed search, never a project with nothing found.
     const found = await hydrateProjectHits(session, plan, projectHits, {
       snippetMaxChars: CROSS_PROJECT_SNIPPET_CHARS,
       forModel: true,
-    }).catch(() => [])
+    }).catch((error: unknown) => {
+      throw new UpstreamError(
+        'The hits could not be joined to their documents',
+        error instanceof Error ? error.message : undefined
+      )
+    })
     return foundHitsOf(plan.project, found, request, reach, async () => plan.access)
   })
   return { found: perProject.flat(), searched }

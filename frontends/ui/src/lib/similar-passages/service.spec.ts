@@ -56,7 +56,9 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
   }
 })
 
-import { BACKEND_SEARCH_MAX_COLLECTIONS } from '@/lib/documents/service'
+import { ServiceUnavailableError } from '@/lib/api/errors'
+import { findArchivDocumentsByFilenames } from '@/lib/archiv/repository'
+import { BACKEND_SEARCH_MAX_COLLECTIONS, hydrateProjectHits } from '@/lib/documents/service'
 import { findSimilarPassages, foldDocuments } from './service'
 
 const session = { userId: 'u1', organizationId: 'org_1', role: 'member', permissions: [] } as unknown as AuthorizedSession
@@ -109,6 +111,37 @@ describe('the backend’s collection cap', () => {
     expect(collections[0]).toBe('proj_1')
     expect(collections).toContain('archiv_org_1')
     expect(response.projectsSearched).toBe(0)
+  })
+})
+
+describe('a failed join to the documents', () => {
+  const answering = (collection: string, fileName: string) =>
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              documents: [{ collection, file_name: fileName, passages: [{ chunk_id: 'c1', snippet: 'Treppe', page_number: 1, score: 0.9 }] }],
+              origin: 'point',
+            }),
+            { status: 200 }
+          )
+      )
+    )
+
+  it('is the error state for a project’s hits, never "not dealt with in the office"', async () => {
+    answering('proj_2', 'treppe.pdf')
+    vi.mocked(hydrateProjectHits).mockRejectedValueOnce(new Error('connection terminated'))
+
+    await expect(findSimilarPassages(session, request)).rejects.toBeInstanceOf(ServiceUnavailableError)
+  })
+
+  it('is the error state for the Büroablage’s hits too', async () => {
+    answering('archiv_org_1', 'musterdetail.pdf')
+    vi.mocked(findArchivDocumentsByFilenames).mockRejectedValueOnce(new Error('connection terminated'))
+
+    await expect(findSimilarPassages(session, request)).rejects.toBeInstanceOf(ServiceUnavailableError)
   })
 })
 
