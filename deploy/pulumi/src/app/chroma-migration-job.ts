@@ -85,9 +85,9 @@ function exporterScript(): string {
  *
  * The scratch volume is a generic ephemeral claim on the stack's StorageClass,
  * not an emptyDir: an export of a large store would otherwise fill the node's
- * own disk and evict its neighbours. `restartPolicy: OnFailure` retries a step
- * inside the same pod, so a failed import reruns against the export already
- * on the volume.
+ * own disk and evict its neighbours. Nothing retries (`restartPolicy: Never`,
+ * `backoffLimit: 0`): a failed step leaves the pod, its log and the claim with
+ * the export in place for the operator (`CHROMA_MIGRATION.backoffLimit`).
  *
  * Not awaited by Pulumi (`skipAwait`): a large store runs for longer than the
  * deploy pipeline's timeout, and a timeout mid-`up` leaves the stack with
@@ -138,13 +138,13 @@ export function migrateChromaToQdrant(
       },
       spec: {
         backoffLimit: CHROMA_MIGRATION.backoffLimit,
-        ttlSecondsAfterFinished: CHROMA_MIGRATION.ttlSecondsAfterFinished,
+        // No ttlSecondsAfterFinished: CHROMA_MIGRATION.backoffLimit says why.
         template: {
           metadata: { labels },
           spec: {
             enableServiceLinks: false, // see platform/security.ts — service-link env collisions
             imagePullSecrets: w.imagePullSecrets,
-            restartPolicy: "OnFailure",
+            restartPolicy: "Never",
             securityContext: {
               runAsNonRoot: true,
               runAsUser: UID.backend,

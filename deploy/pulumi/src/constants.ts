@@ -750,14 +750,17 @@ export const CHROMA_MIGRATION = {
     limits: { cpu: "2", memory: "4Gi" },
   },
   /**
-   * Long enough for an operator to read the Job's log, which is the
-   * migration's evidence, after a deploy that ran on a Friday evening.
+   * No retry, in the pod or in a new one (with `restartPolicy: Never`). A
+   * failed step leaves its pod, its log and the scratch claim holding the
+   * export for the operator to read. Under `OnFailure` the Job controller
+   * deletes a pod that exhausts its retries, and with it the log and the
+   * ephemeral claim, so a failure kept no evidence of why.
+   *
+   * There is deliberately no `ttlSecondsAfterFinished` either. Kubernetes
+   * would delete the finished Job after it, a `pulumi refresh` would then drop
+   * it from the state, and the next `up` would create it again: a second
+   * import of an old export, bringing back the chunks of every document
+   * deleted since. The Job is removed when `chromaMigration` is switched off.
    */
-  ttlSecondsAfterFinished: 7 * 24 * 3600,
-  /**
-   * Retries inside the one pod (`restartPolicy: OnFailure`): a failed import
-   * reruns against the export already on the scratch volume rather than
-   * exporting again.
-   */
-  backoffLimit: 3,
+  backoffLimit: 0,
 } as const;

@@ -49,7 +49,7 @@ type PodSpec = {
 };
 type JobInputs = {
   metadata: { name: string; annotations?: Record<string, string> };
-  spec: { backoffLimit: number; ttlSecondsAfterFinished: number; template: { spec: PodSpec } };
+  spec: { backoffLimit: number; ttlSecondsAfterFinished?: number; template: { spec: PodSpec } };
 };
 type PolicyPeer = { podSelector: { matchLabels: Record<string, string> } };
 
@@ -208,10 +208,21 @@ describe("the Chroma migration Job, switched on", () => {
     expect(graph.find(JOB, "chroma-migration").ignoreChanges).toEqual(["spec"]);
   });
 
-  it("retries inside one pod, keeps its log for a week, and is not awaited by the deploy", () => {
-    expect(pod().restartPolicy).toBe("OnFailure");
-    expect(job().spec.backoffLimit).toBe(3);
-    expect(job().spec.ttlSecondsAfterFinished).toBe(7 * 24 * 3600);
+  // Under OnFailure the Job controller deletes a pod that exhausts its
+  // retries, and with it the log and the ephemeral claim holding the export.
+  it("never retries, so a failed pod keeps its log and the export for inspection", () => {
+    expect(pod().restartPolicy).toBe("Never");
+    expect(job().spec.backoffLimit).toBe(0);
+  });
+
+  // After a TTL Kubernetes deletes the Job, a `pulumi refresh` drops it from
+  // the state, and the next `up` creates it again: a second import of an old
+  // export, bringing back the chunks of every document deleted since.
+  it("stays until the flag is switched off: no TTL a refresh could turn into a second import", () => {
+    expect(job().spec).not.toHaveProperty("ttlSecondsAfterFinished");
+  });
+
+  it("is not awaited by the deploy", () => {
     expect(job().metadata.annotations).toEqual({ "pulumi.com/skipAwait": "true" });
   });
 

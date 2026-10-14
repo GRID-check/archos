@@ -731,10 +731,15 @@ In order, per stack:
    A pod held in `ContainerCreating` with `Multi-Attach error` is waiting for
    the Chroma pod to let go of the claim; it starts once that pod is deleted.
    The export ends with `Done: N collection(s), M chunk(s)`. The import exits
-   0 with every collection in step; 1 is a collection that failed or differs
-   and the pod retries the import against the same export (three times); 2
-   is Qdrant unreachable, an incomplete export or an embedder mismatch
-   (`[refused]` names it, nothing was written). The log stays for seven days.
+   0 with every collection in step; 1 is a collection that failed or differs;
+   2 is Qdrant unreachable, an incomplete export or an embedder mismatch
+   (`[refused]` names it, nothing was written). Nothing retries
+   (`restartPolicy: Never`, `backoffLimit: 0`): a failed pod stays, with its
+   logs (`kubectl -n grid logs <pod> -c export`, `-c import`) and its scratch
+   claim holding the export, until you delete the Job. A Job that succeeded
+   stays too, with its log, until step 5 deletes it; it has no TTL, because a
+   Job Kubernetes reaped would be created and run again by the next `up`
+   after a `pulumi refresh`.
 4. **Verify** in the product: a question that cites a project document and
    one that cites the corpus, from an office that existed before. Then resume
    ingestion: `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas-`.
