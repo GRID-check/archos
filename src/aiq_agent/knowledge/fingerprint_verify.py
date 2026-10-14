@@ -87,9 +87,9 @@ def _label(entry: VocabularyEntry, token: str) -> str:
     return next((option.label for option in entry.options if option.token == token), token)
 
 
-def token_state(key: str, label: str, quotes: Sequence[str]) -> dict[str, Any]:
+def token_state(key: str, label: str, quotes: Sequence[str], *, fact: str | None = None) -> dict[str, Any]:
     return {
-        "fact": FACT_LABELS.get(key, key),
+        "fact": fact or FACT_LABELS.get(key, key),
         "value": label,
         "quotes": [quote[:300] for quote in quotes[:MAX_QUOTES]],
         "language": "de",
@@ -105,8 +105,14 @@ def verify_fingerprint(
     vocabulary: Mapping[str, VocabularyEntry],
     *,
     organization_id: str | None = None,
+    fact_labels: Mapping[str, str] | None = None,
 ) -> list[FingerprintValue]:
-    """The values whose quotes state them; unchecked keys and undecided tokens kept. Never raises."""
+    """The values whose quotes state them; unchecked keys and undecided tokens kept. Never raises.
+
+    ``fact_labels`` names a key's fact as a German reader would, for keys
+    :data:`FACT_LABELS` does not know: the project intake checks any select
+    question of the wizard, and hands over the question's own label.
+    """
     asked: list[tuple[int, str]] = []
     states: list[dict[str, Any]] = []
     for index, value in enumerate(values):
@@ -116,7 +122,8 @@ def verify_fingerprint(
         quotes = [evidence.quote for evidence in value.evidence]
         for token in _tokens(value):
             asked.append((index, token))
-            states.append(token_state(value.key, _label(entry, token), quotes))
+            fact = (fact_labels or {}).get(value.key)
+            states.append(token_state(value.key, _label(entry, token), quotes, fact=fact))
     if not states:
         return list(values)
     try:

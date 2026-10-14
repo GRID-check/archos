@@ -1096,6 +1096,23 @@ functions:
     # at a writable volume path or a Postgres DSN to enable resume-by-job_id.
     checkpoint_db: ${AIQ_DEEP_CHECKPOINT_DB:-}
 
+  # The Erfassungs-Agent (ADR-0111, docs/design/agentic-project-intake.md):
+  # Piloti sets a new project's profile up from its documents, as a background
+  # run on the research worker (agent type `project_intake`). It runs on the
+  # chat model's agent group (`research_llm`; the runner maps this type to
+  # AgentGroup.RESEARCH), so an organization's model choice for chat applies.
+  # Its own tools (intake_needs, record_values, finish_intake, read_document)
+  # are built by the agent; the list below is the shared reading tools, pinned
+  # because an empty list would inherit every data source, the web and RIS
+  # among them, and a profile value comes from the project's documents only.
+  project_intake_agent:
+    _type: project_intake_agent
+    llm: research_llm
+    tools:
+      - list_files
+      - knowledge_search
+      - read_passage
+
 workflow:
   _type: chat_deepresearcher_agent
   verbose: true
