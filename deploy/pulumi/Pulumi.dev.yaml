@@ -125,10 +125,12 @@ config:
   grid-oib:qdrantCpu: "1"
   grid-oib:qdrantMemory: 4Gi
   grid-oib:qdrantStorageSize: 20Gi
-  # Copies the retired Chroma's `data-chroma-0` into Qdrant on the deploy that
-  # removes Chroma, once. Switch it off (`pulumi config rm`) once the Job's log
-  # ends in step, and before deleting the claim: docs/deployment/qdrant-runbook.md,
-  # "Migrating from Chroma on Kubernetes".
+  # Copies the retired Chroma into Qdrant on the deploy that removes it, once:
+  # the Job reads the still-running server, and the backend tiers roll after it.
+  # Switch it off (`pulumi config rm`) once the import verified and retrieval
+  # checks out in the product: docs/deployment/qdrant-runbook.md, "Migrating from
+  # Chroma on Kubernetes". It also suspends the base-corpus sync and the vector
+  # reconcile until then.
   grid-oib:chromaMigration: "true"
   # ── Agent (smaller on staging) ──
   grid-oib:backendRequestsCpu: "500m"

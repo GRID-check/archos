@@ -2,7 +2,6 @@ import * as pulumi from "@pulumi/pulumi";
 import { createHmac } from "node:crypto";
 import { hostsOutsideZone, managedHosts } from "./platform/dns";
 import {
-  CHROMA_MIGRATION,
   KEDA_SCALER_CONNECTION_LIMIT,
   LANGFUSE,
   QDRANT,
@@ -571,22 +570,27 @@ export interface GridConfig {
    */
   chromaMigration: {
     /**
-     * Run the Job. OFF by default. On for the deploy that removes Chroma or
-     * any after it (the pod waits for the old server to let go of the claim);
-     * it runs once while on, and is switched off before the claim is deleted.
+     * Run the Job. OFF by default. On for the deploy that removes Chroma: the
+     * Job reads the Chroma server that deploy still runs, and the backend
+     * tiers roll only once it has completed. It runs once while on.
      */
     enabled: boolean;
-    /** The claim the Job mounts read-only: the old StatefulSet's `data-chroma-0` unless set. */
-    claim: string;
     /**
      * The scratch volume the exporter writes and the importer reads, a
-     * generic ephemeral claim that lives and dies with the pod. It holds the
-     * exporter's copy of the persist dir (Chroma cannot open a read-only one),
-     * so the Chroma volume's used size; the export, about 16 KB per chunk at
-     * 3072 dimensions (12 KB of float32 vector, the text and its metadata);
-     * and about 2 GiB for the `chromadb` environment uv installs.
+     * generic ephemeral claim that stays with the pod. It holds the export,
+     * about 16 KB per chunk at 3072 dimensions (12 KB of float32 vector, the
+     * text and its metadata), and about 2 GiB for the `chromadb` environment
+     * uv installs.
      */
     scratchSize: string;
+    /**
+     * How long `pulumi up` waits for the Job before it fails the deploy (the
+     * backend tiers have not rolled then, and Chroma is not deleted). 40 by
+     * default: the staging pipeline stops at 60 minutes, and the rest of a
+     * deploy takes about 6. Raise it only for an `up` run outside that
+     * pipeline.
+     */
+    timeoutMinutes: number;
   };
 
   /**
@@ -1534,8 +1538,8 @@ function refuseRetiredVectorKeys(cfg: pulumi.Config): void {
 function chromaMigrationConfig(cfg: pulumi.Config): GridConfig["chromaMigration"] {
   return {
     enabled: bool(cfg, "chromaMigration", false),
-    claim: cfg.get("chromaMigrationClaim")?.trim() || CHROMA_MIGRATION.retainedClaim,
     scratchSize: cfg.get("chromaMigrationScratchSize") ?? "50Gi",
+    timeoutMinutes: positiveInt(cfg, "chromaMigrationTimeoutMinutes", 40),
   };
 }
 

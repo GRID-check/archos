@@ -15,6 +15,8 @@ export interface RecordedResource {
   dependencies: string[];
   /** Its `ignoreChanges` option: property paths a later update never writes. */
   ignoreChanges: string[];
+  /** Its `customTimeouts` option, empty strings where unset. */
+  customTimeouts: { create: string; update: string; delete: string };
 }
 
 const urnOf = (type: string, name: string) =>
@@ -30,6 +32,7 @@ export class DependencyGraph {
       getName(): string;
       getDependenciesList(): string[];
       getIgnorechangesList(): string[];
+      getCustomtimeouts(): { getCreate(): string; getUpdate(): string; getDelete(): string } | undefined;
     };
     const monitor = pulumi.runtime.getMonitor() as unknown as {
       registerResource: (req: Req, ...rest: unknown[]) => unknown;
@@ -43,6 +46,11 @@ export class DependencyGraph {
         name,
         dependencies: [...req.getDependenciesList()],
         ignoreChanges: [...req.getIgnorechangesList()],
+        customTimeouts: {
+          create: req.getCustomtimeouts()?.getCreate() ?? "",
+          update: req.getCustomtimeouts()?.getUpdate() ?? "",
+          delete: req.getCustomtimeouts()?.getDelete() ?? "",
+        },
       });
       return register(req, ...rest);
     };
