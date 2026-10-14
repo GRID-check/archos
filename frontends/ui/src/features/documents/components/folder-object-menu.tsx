@@ -24,6 +24,8 @@ export interface FolderObjectMenuProps {
   onOpen: () => void
   onNewInside?: () => void
   onRename: () => void
+  /** „Beschreibung …" (migration 0145); absent for a reader who may not write the shelf. */
+  onDescribe?: () => void
   onMove?: (parentId: string | null, parentName: string) => void
   /** „Zugriff…" (ADR-0088); absent for a reader who may not manage the project. */
   onAccess?: () => void
@@ -40,6 +42,7 @@ export function FolderObjectMenu({
   onOpen,
   onNewInside,
   onRename,
+  onDescribe,
   onMove,
   onAccess,
   onDelete,
@@ -59,6 +62,7 @@ export function FolderObjectMenu({
           delete: t('folders.delete'),
           allFiles: t('folders.allFiles'),
           access: t('folders.access.menu'),
+          describe: t('folders.describe'),
           readOnly: t('folders.access.readOnlyMenu'),
         },
         folders,
@@ -66,6 +70,7 @@ export function FolderObjectMenu({
         onOpen,
         onNewInside,
         onRename,
+        onDescribe,
         onMove,
         onAccess,
         onDelete,
@@ -79,6 +84,7 @@ export function FolderObjectMenu({
       onOpen,
       onNewInside,
       onRename,
+      onDescribe,
       onMove,
       onAccess,
       onDelete,

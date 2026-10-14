@@ -24,6 +24,7 @@ import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './docume
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
+import { FilingSuggestionSlot } from './filing-suggestion'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
@@ -466,6 +467,8 @@ export const FileCard = memo(function FileCard({
           </GridTileFooter>
         )}
       </button>
+      {/* Beside the card's button, not in it: the suggestion has buttons of its own. */}
+      <FilingSuggestionSlot documentId={file.id} className="mx-2 mb-2" />
     </GridTileShell>
   )
 })

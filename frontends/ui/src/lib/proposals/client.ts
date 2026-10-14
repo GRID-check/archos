@@ -1,6 +1,7 @@
 /**
  * The typed client for proposed changes (ADR-0055, ADR-0105): the person
- * routes under `/api/proposals/[id]`.
+ * routes under `/api/proposals` (a shelf's open proposals) and
+ * `/api/proposals/[id]`.
  *
  * The paths, the verbs and the response shapes are written once, here; the
  * file-operation card and the route specs both go through it, so a second
@@ -10,7 +11,15 @@
  * No `server-only` and no drizzle: the browser imports this.
  */
 
-import { proposalResponseSchema, type ApplyProposalRequest, type ProposalResponse } from './types'
+import type { ZodType, ZodTypeDef } from 'zod'
+import {
+  proposalListResponseSchema,
+  proposalResponseSchema,
+  type ApplyProposalRequest,
+  type ProposalListQuery,
+  type ProposalListResponse,
+  type ProposalResponse,
+} from './types'
 
 /** How a request is made: `fetch` in a browser, the real handler in a route spec. */
 export type ProposalFetch = (path: string, init?: RequestInit) => Promise<Response>
@@ -37,6 +46,16 @@ async function request(
   method: 'GET' | 'POST',
   payload?: unknown
 ): Promise<ProposalResponse> {
+  return requestAs(proposalResponseSchema, run, path, method, payload)
+}
+
+async function requestAs<T>(
+  schema: ZodType<T, ZodTypeDef, unknown>,
+  run: ProposalFetch,
+  path: string,
+  method: 'GET' | 'POST',
+  payload?: unknown
+): Promise<T> {
   const init: RequestInit =
     payload === undefined
       ? { method }
@@ -51,7 +70,28 @@ async function request(
       error.error ?? `Request failed with ${response.status}`
     )
   }
-  return proposalResponseSchema.parse(body)
+  return schema.parse(body)
+}
+
+/** `/api/proposals` with the shelf (and the kind) as its query. */
+export function proposalListPath(query: ProposalListQuery): string {
+  const params = new URLSearchParams()
+  if (query.projectId) params.set('projectId', query.projectId)
+  else params.set('shelf', 'archiv')
+  if (query.kind) params.set('kind', query.kind)
+  return `/api/proposals?${params.toString()}`
+}
+
+/**
+ * The open proposals of a shelf this reader may read, each with the documents
+ * it names resolved to ids (a project's with `projectId`, the Büroablage's with
+ * `shelf: 'archiv'`).
+ */
+export function listOpenProposals(
+  query: ProposalListQuery,
+  run: ProposalFetch = defaultFetch
+): Promise<ProposalListResponse> {
+  return requestAs(proposalListResponseSchema, run, proposalListPath(query), 'GET')
 }
 
 /** The proposal as the reader may see it, with `canDecide`. */

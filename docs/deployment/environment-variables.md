@@ -347,6 +347,14 @@ Read by `frontends/ui/workers/jobs/index.js`, the entry point of the `bff-jobs` 
 | `GRID_BFF_JOBS_MAX_PER_ORG` | No | `0` | Most jobs one organisation may run **across the whole fleet**; 0 for no cap. The claim is fair without it. Hard: a claim that raced past the cap gives its job back. Pulumi `bffJobsMaxPerOrg`. |
 | `GRID_BFF_JOBS_SLICE_TIMEOUT_MS` | No | `300000` | Ceiling on one slice's request to the BFF; a slice that outlives it is a failed attempt. |
 
+### Filing suggestions
+
+Read by the BFF where an upload batch is sealed and settled (`frontends/ui/src/lib/filing/trigger.ts`).
+
+| Variable | Required | Default | Description |
+|----------|----------|---------|-------------|
+| `GRID_FILING_SUGGESTIONS` | No | on | `off` stops Piloti from judging where an upload belongs: no `filing_review` job is queued and no model call is made. Open suggestions stay until decided. |
+
 ### Wakes of Piloti (ADR-0106)
 
 An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own open question, a delegation to Piloti) wakes Piloti through the `piloti_wake` job, which opens the chat socket as the person who acted. Only for an organization with the WorkOS flag `piloti-wakes` (off by default). The job dials the backend's chat role exactly as the gateway does, so the `bff-jobs` pod reads `BACKEND_CHAT_URL`, `BACKEND_REPLICAS`, `BACKEND_POD_WS_TEMPLATE` and `GRID_CHAT_AFFINITY` ([Frontend](#frontend)) and signs with `GRID_INTERNAL_API_TOKEN`. The caps are read by the BFF that takes the reply (at enqueue) and by the `bff-jobs` BFF (at claim), so set them on both.
