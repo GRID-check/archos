@@ -226,7 +226,12 @@ interface RankedDocument {
 
 /**
  * Fold one group's joined rows (one per passage) into documents, the source
- * document left out, in ranking order.
+ * document and every superseded Fassung left out, in ranking order.
+ *
+ * The backend already leaves out points marked superseded, but that mark is
+ * Qdrant's copy and can lag a person's confirmation. The row is Postgres, the
+ * authority, so a replaced Fassung is dropped here too, as `knowledge_search`'s
+ * post-check does (ADR-0099).
  */
 export function foldDocuments(
   found: ReadonlyArray<SearchedDocument<ListedDocument>>,
@@ -234,7 +239,7 @@ export function foldDocuments(
 ): RankedDocument[] {
   const byId = new Map<string, RankedDocument>()
   for (const row of found) {
-    if (row.id === excludedDocumentId) continue
+    if (row.id === excludedDocumentId || row.fassung?.supersededBy) continue
     const entry =
       byId.get(row.id) ??
       ({
@@ -245,7 +250,6 @@ export function foldDocuments(
           displayName: row.displayName && row.displayName !== row.filename ? row.displayName : null,
           contentType: row.contentType,
           stand: fassungTag(row.filename, row.revisionFacts ?? null),
-          superseded: Boolean(row.fassung?.supersededBy),
           passages: [],
         },
       } satisfies RankedDocument)

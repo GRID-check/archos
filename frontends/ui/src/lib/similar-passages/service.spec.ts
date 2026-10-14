@@ -57,7 +57,7 @@ vi.mock('@/lib/documents/service', async (importOriginal) => {
 })
 
 import { BACKEND_SEARCH_MAX_COLLECTIONS } from '@/lib/documents/service'
-import { findSimilarPassages } from './service'
+import { findSimilarPassages, foldDocuments } from './service'
 
 const session = { userId: 'u1', organizationId: 'org_1', role: 'member', permissions: [] } as unknown as AuthorizedSession
 const request = {
@@ -109,5 +109,31 @@ describe('the backend’s collection cap', () => {
     expect(collections[0]).toBe('proj_1')
     expect(collections).toContain('archiv_org_1')
     expect(response.projectsSearched).toBe(0)
+  })
+})
+
+describe('foldDocuments', () => {
+  const row = (id: string, extra: Record<string, unknown> = {}) =>
+    ({
+      id,
+      filename: `${id}.pdf`,
+      displayName: null,
+      contentType: 'application/pdf',
+      revisionFacts: null,
+      fassung: null,
+      page: 2,
+      snippet: `Auszug aus ${id}`,
+      score: 0.8,
+      rank: 0,
+      ...extra,
+    }) as unknown as Parameters<typeof foldDocuments>[0][number]
+
+  it('leaves out a Fassung a person confirmed a newer one replaces, as knowledge_search does: the vector copy can lag', () => {
+    const folded = foldDocuments(
+      [row('aktuell'), row('alt', { fassung: { supersededBy: { id: 'aktuell', filename: 'aktuell.pdf' } } })],
+      null
+    )
+
+    expect(folded.map((entry) => entry.document.documentId)).toEqual(['aktuell'])
   })
 })
