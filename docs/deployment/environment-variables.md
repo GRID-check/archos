@@ -408,6 +408,7 @@ The submit path persists a deep-research job as a `research_job_queue` row; dedi
 | `LANGCHAIN_PROJECT` | No | `aiq-research` | LangSmith project name. |
 | `LANGCHAIN_TRACING_V2` | No | — | Set to `true` to enable LangSmith tracing. |
 | `WANDB_API_KEY` | No | — | Weights & Biases API key for experiment tracking. |
+| `GRID_GEOCODER_URL` | No | _(unset)_ | Base URL of a [Photon](https://github.com/komoot/photon) (OSM) geocoder, e.g. `https://photon.komoot.io` or a self-hosted instance (`frontends/ui/src/lib/geocoding`). Behind `GET /api/geocode`, the address search of the project creation dialog: Austrian addresses and places in, coordinates, Bundesland (the intake `A2_land` token) and Gemeinde out. Unset (or not an http(s) URL), the route answers `{ enabled: false, results: [] }` and the dialog falls back to choosing the Bundesland by hand. An address is client data and every keystroke-driven search is sent to this host, so the provider is a deployment choice: the public komoot instance is for trials, production should self-host. Only same-origin redirects are followed; a search that fails or takes over 4 s answers no results. Read per request. Frontend service. |
 
 ## Observability (OTel collector, Kubernetes/Pulumi-injected)
 
