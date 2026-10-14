@@ -75,7 +75,7 @@ class TestReadDocument:
 
     async def test_a_failing_store_is_text_not_an_exception(self, project, read_log, monkeypatch):
         def broken(collection, name):
-            raise RuntimeError("chroma down")
+            raise RuntimeError("vector store down")
 
         monkeypatch.setattr(reading, "fetch_document_pages", broken)
         text = await _read(file_name="Baubeschreibung.pdf")
