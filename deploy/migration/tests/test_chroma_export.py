@@ -271,6 +271,7 @@ _DRIVER = textwrap.dedent(
             points[record.payload["chunk_id"]] = {
                 "text": record.payload["text"], "file_name": record.payload["file_name"],
                 "page_label": record.payload["page_label"], "dense": point.vector["dense"],
+                "ordinal": record.payload.get("chunk_ordinal"),
             }
         seen[scope] = {
             "points": points,
@@ -334,3 +335,8 @@ def test_exported_vectors_arrive_in_qdrant_unchanged(chroma_dir, tmp_path):
             # Qdrant stores cosine vectors normalised: the same direction, unit length.
             norm = sum(value * value for value in chunk["embedding"]) ** 0.5
             assert point["dense"] == pytest.approx([value / norm for value in chunk["embedding"]], abs=1e-5)
+        # Each file's chunks are numbered in the order Chroma was given them (the chunker's, at
+        # ingest), read back through pages of four: the order the readers sort a page by.
+        for file_name in ("a.pdf", "b.pdf"):
+            inserted = [chunk_id for chunk_id, chunk in chunks.items() if chunk["metadata"]["file_name"] == file_name]
+            assert [points[chunk_id]["ordinal"] for chunk_id in inserted] == list(range(len(inserted)))
