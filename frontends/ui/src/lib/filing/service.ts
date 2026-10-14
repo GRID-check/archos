@@ -276,7 +276,7 @@ export async function reviewUploadFiling(
     })
   }
   const sinceSealMs = batch.sealedAt ? Date.now() - new Date(batch.sealedAt).getTime() : null
-  console.info(
+  console.debug(
     `[filing] batch ${batch.id} (${basis}): ${plan.create.length} proposed, ${withdrawn} withdrawn, ` +
       `${judgedDocuments.length} judged, ${sinceSealMs ?? '?'} ms after the seal`
   )
