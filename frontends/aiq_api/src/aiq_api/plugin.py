@@ -80,8 +80,8 @@ from .routes.document_search import add_document_search_routes
 from .routes.documents import add_document_routes
 from .routes.drafts import add_draft_routes
 from .routes.fassung_compare import add_fassung_compare_routes
-from .routes.filing_fit import add_filing_fit_routes
 from .routes.feedback_digest import add_feedback_digest_routes
+from .routes.filing_fit import add_filing_fit_routes
 from .routes.generate_conversation_title import add_generate_conversation_title_routes
 from .routes.generate_summary import add_generate_summary_routes
 from .routes.ingest import add_ingest_routes

@@ -39,7 +39,9 @@ def _request(**changes) -> FilingFitRequest:
 
 
 def test_keeps_a_move_into_a_known_folder_in_its_own_spelling():
-    moves = parse_moves({"moves": [{"id": "d1", "folder": "bescheide", "reason": "Ein Bescheid der MA 37."}]}, _request())
+    moves = parse_moves(
+        {"moves": [{"id": "d1", "folder": "bescheide", "reason": "Ein Bescheid der MA 37."}]}, _request()
+    )
     assert moves is not None
     assert [(move.id, move.folder, move.new) for move in moves] == [("d1", "Bescheide", False)]
 

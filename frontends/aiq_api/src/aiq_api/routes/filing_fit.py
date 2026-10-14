@@ -85,7 +85,7 @@ SYSTEM_PROMPT = (
     "says what it is about.\n"
     "Silence is the default. Propose a move only when you are confident a person in the office would "
     "agree at a glance. A document that fits where it is, a folder that is only vaguely closer, a "
-    "document you cannot place: propose nothing. A document at the shelf root (folder \"\") gets a "
+    'document you cannot place: propose nothing. A document at the shelf root (folder "") gets a '
     "proposal only when one folder clearly fits.\n"
     "Use only folder paths from FOLDERS or CONVENTIONS, spelled exactly as given. Prefer an existing "
     "folder; name a CONVENTIONS folder only when no existing folder fits and the office clearly files such "
@@ -184,7 +184,9 @@ def build_user_content(request: FilingFitRequest) -> str:
     lines = [f"Write each reason in {language}.", "", "FOLDERS"]
     lines += [json.dumps(_without_empty(folder.model_dump()), ensure_ascii=False) for folder in request.folders]
     lines += ["", "CONVENTIONS"]
-    lines += [json.dumps(_without_empty(convention.model_dump()), ensure_ascii=False) for convention in request.conventions]
+    lines += [
+        json.dumps(_without_empty(convention.model_dump()), ensure_ascii=False) for convention in request.conventions
+    ]
     lines += ["", "DOCUMENTS"]
     for document in request.documents:
         fields = _without_empty(document.model_dump())
