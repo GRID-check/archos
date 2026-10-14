@@ -329,7 +329,7 @@ export const projects: typeof en.projects = {
     nameLabel: 'Projektname',
     namePlaceholder: 'z. B. Wohnhaus Hauptstraße 12',
     state: {
-      label: 'Stand',
+      label: 'Projektstatus',
       active: 'Laufend',
       activeHint: 'Wir arbeiten gerade daran.',
       closed: 'Abgeschlossen',
