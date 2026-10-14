@@ -547,13 +547,22 @@ export const files = {
     },
   },
   /**
-   * Piloti's filing suggestion on a file row and an upload row: where the file
-   * belongs, why, and one click to move it there or leave it.
+   * Piloti's filing suggestion: the chip on a card, a list row and an upload
+   * row, the popover it opens, and the filing bar that decides per folder.
    */
   filing: {
     label: 'Filing suggestion from Piloti',
-    suggestion: 'Belongs in “{folder}”',
-    suggestionNew: 'Belongs in a new folder “{folder}”',
+    /** The chip's accessible name; it shows only the folder's last segment. */
+    chip: 'Filing suggestion: {folder}',
+    new: 'new',
+    /** Where a file at the top level of a shelf is now, struck through in the popover. */
+    rootProject: 'Project folder (top level)',
+    rootOffice: 'Office filing (top level)',
+    /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
+    from: 'Now in',
+    to: 'Would move to',
+    barHeading: '{count, plural, one {Piloti suggests filing # file} other {Piloti suggests filing # files}}',
+    fileCount: '{count, plural, one {# file} other {# files}}',
     others: '{count, plural, one {with # more file} other {with # more files}}',
     move: 'Move',
     moveAll: 'Move all {count}',

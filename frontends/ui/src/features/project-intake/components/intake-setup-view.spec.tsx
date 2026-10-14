@@ -530,16 +530,22 @@ describe('IntakeSetupView', () => {
     })
     afterEach(resetKit)
 
-    it('lists one suggestion per target folder, with the files that go there, after Prüfen and before Ableitungen', async () => {
+    it('renders the filing bar, one line per target folder with the files that go there, after Prüfen and before Ableitungen', async () => {
       setup(INTAKE_READY, filing())
 
       const section = screen.getByTestId('intake-filing')
       expect(within(section).getByRole('heading', { name: 'Filing' })).toBeInTheDocument()
-      const entries = within(section).getAllByTestId('intake-filing-entry')
-      expect(entries).toHaveLength(2)
-      expect(entries[0]).toHaveTextContent('Bescheid_MA37_Aufstockung.pdf, Stellungnahme_MA19_Ortsbild.pdf')
-      expect(await within(entries[0]).findByText('Belongs in “Behörde/Bescheide”')).toBeInTheDocument()
-      expect(await within(entries[1]).findByText('Belongs in a new folder “Gutachten”')).toBeInTheDocument()
+      // The same FilingBar as above a folder in Files, not a lookalike.
+      const bar = within(section).getByTestId('filing-bar')
+      expect(bar).toHaveAttribute('role', 'group')
+      const lines = within(bar).getAllByTestId('filing-bar-line')
+      expect(lines).toHaveLength(2)
+      expect(lines[0]).toHaveTextContent('Behörde/Bescheide')
+      expect(lines[0]).toHaveTextContent('2 files')
+      expect(lines[0]).toHaveTextContent('Bescheid_MA37_Aufstockung.pdf, Stellungnahme_MA19_Ortsbild.pdf')
+      expect(lines[1]).toHaveTextContent('Gutachten')
+      expect(within(lines[1]).getByText('new')).toBeInTheDocument()
+      expect(await within(lines[1]).findByRole('button', { name: 'Create and move' })).toBeInTheDocument()
       const follows = (a: HTMLElement, b: HTMLElement) => a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING
       expect(follows(screen.getByTestId('intake-review'), section)).toBeTruthy()
       expect(follows(section, screen.getByTestId('intake-derivations'))).toBeTruthy()
@@ -549,7 +555,8 @@ describe('IntakeSetupView', () => {
       const user = userEvent.setup()
       setup(INTAKE_READY, filing())
 
-      await user.click(await screen.findByRole('button', { name: 'Move all 2' }))
+      const [bescheideLine] = screen.getAllByTestId('filing-bar-line')
+      await user.click(await within(bescheideLine).findByRole('button', { name: 'Move' }))
 
       expect(await screen.findByText('Moved to “Behörde/Bescheide”.')).toBeInTheDocument()
       await vi.waitFor(() => expect(onSettled).toHaveBeenCalled())

@@ -16,8 +16,8 @@ import { formatAbsoluteTime, formatBytes, formatRelativeTime } from '@/lib/forma
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { documentDragProps } from '../hooks/use-document-drag'
-import { FilingSuggestionSlot, useHasFilingSuggestion } from './filing-suggestion'
-import { useMediaQuery } from '@/hooks/use-media-query'
+import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
+import { HIGHLIGHT_OUTLINE_INSET } from '@/components/ui/highlight'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -87,28 +87,6 @@ const percentOf = (score: number | undefined): number =>
 /** Dense explorer cells — tighter than the admin Table default. */
 const CELL = 'px-2 py-1.5 pointer-coarse:py-3'
 
-/**
- * The name cell's left padding (`px-2`) plus the extension chip (`size-6`) and
- * its gap (`gap-2.5`): where a file's name starts, so what hangs under the row
- * (Piloti's filing suggestion) starts under the name and reads as the file's own.
- */
-const UNDER_NAME = 'pl-[calc(0.5rem+1.5rem+0.625rem)]'
-
-/**
- * How many columns the table shows at this width, for a row that spans them all.
- * A column hidden at a breakpoint is not in the table, and a span wider than
- * the table adds empty columns that take a share of its width, so the count is
- * the real one: name and status always; the approval and size columns (and
- * relevance, in a ranked list) from `sm`; added from `md`; pages from `lg`;
- * and the actions column where there is one. The breakpoints are the header's.
- */
-function useColumnCount({ semantic, hasActions }: { semantic: boolean; hasActions: boolean }): number {
-  const sm = useMediaQuery('(min-width: 40rem)')
-  const md = useMediaQuery('(min-width: 48rem)')
-  const lg = useMediaQuery('(min-width: 64rem)')
-  return 2 + (hasActions ? 1 : 0) + (sm ? 2 + (semantic ? 1 : 0) : 0) + (md ? 1 : 0) + (lg ? 1 : 0)
-}
-
 export function FileListView({
   files,
   selectedFileId,
@@ -131,7 +109,6 @@ export function FileListView({
   const sort = semantic || !controlledSort ? uncontrolledSort : controlledSort
   const setSort = semantic || !onSortChange ? setUncontrolledSort : onSortChange
   const bodyRef = useRef<HTMLTableSectionElement>(null)
-  const columnCount = useColumnCount({ semantic, hasActions: Boolean(renderActions) })
 
   const rows = useMemo(() => sortFiles(files, sort, locale), [files, sort, locale])
 
@@ -294,7 +271,6 @@ export function FileListView({
               isSelected={selectedFileId === file.id}
               isTabStop={index === tabStop}
               semantic={semantic}
-              columnCount={columnCount}
               draggable={draggable}
               onSelectFile={onSelectFile}
               onFocusIndex={setFocusedIndex}
@@ -316,8 +292,6 @@ interface FileListRowItemProps {
   /** Whether this row holds the list's one tab stop (roving tabindex). */
   isTabStop: boolean
   semantic: boolean
-  /** Columns the table shows now: what a row that spans them all spans. */
-  columnCount: number
   draggable: boolean
   onSelectFile: (id: string | null) => void
   onFocusIndex: (index: number) => void
@@ -337,7 +311,6 @@ const FileListRowItem = memo(function FileListRowItem({
   isSelected,
   isTabStop,
   semantic,
-  columnCount,
   draggable,
   onSelectFile,
   onFocusIndex,
@@ -358,7 +331,8 @@ const FileListRowItem = memo(function FileListRowItem({
     authoredBy: file.authoredBy ?? null,
   }
   const approvalState = documentBadgeState(approvalSubject)
-  const hasSuggestion = useHasFilingSuggestion(file.id)
+  // A filing decision in view would move this file: outlined inside the row, which the table's scroll box would clip outside it.
+  const lit = useFilingHighlighted(file.id)
   const row = (
     <TableRow
       data-file-row
@@ -373,8 +347,7 @@ const FileListRowItem = memo(function FileListRowItem({
       onKeyDown={(event) => onRowKeyDown(event, index)}
       className={cn(
         'cursor-pointer focus-visible:outline-none',
-        // The suggestion row under it closes the pair with the one hairline.
-        hasSuggestion && 'border-b-0',
+        lit && HIGHLIGHT_OUTLINE_INSET,
         'transition-colors duration-snap ease-out motion-reduce:transition-none',
         isSelected ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
         'focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50'
@@ -401,6 +374,9 @@ const FileListRowItem = memo(function FileListRowItem({
                 {documentDisplayName(file)}
               </span>
               <FassungCount file={file} />
+              {/* Where Piloti would file it: the same chip as on the card,
+                  right after the name, so the row keeps its one height. */}
+              <FilingSuggestionSlot documentId={file.id} className="max-w-[45%] shrink-0 self-center" />
             </span>
             {file.sourceDeletedAt && <SourceDeletedNote at={file.sourceDeletedAt} />}
             {/* The summary earns its line here in a way it cannot on
@@ -536,29 +512,7 @@ const FileListRowItem = memo(function FileListRowItem({
       )}
     </TableRow>
   )
-  const fileRow = wrapRow ? wrapRow(file, row) : row
-  if (!hasSuggestion) return fileRow
-  return (
-    <>
-      {fileRow}
-      {/* Piloti's suggestion of where this file belongs, with its answer: a
-          row of its own across every column, so the folder it names is read in
-          full, and indented under the name so it stays the file's. */}
-      <TableRow
-        data-testid="file-list-suggestion-row"
-        className={cn('hover:bg-transparent', isSelected && 'bg-accent hover:bg-accent')}
-      >
-        <TableCell colSpan={columnCount} className={cn('pr-2 pt-0 pb-1.5', UNDER_NAME)}>
-          {/* `w-0 min-w-full`: the cell is as wide as the table and no wider.
-              Its text has no say in how wide the columns of the rows above are
-              (a long folder name would otherwise take the Name column's room). */}
-          <div className="w-0 min-w-full">
-            <FilingSuggestionSlot documentId={file.id} />
-          </div>
-        </TableCell>
-      </TableRow>
-    </>
-  )
+  return wrapRow ? wrapRow(file, row) : row
 })
 
 /**

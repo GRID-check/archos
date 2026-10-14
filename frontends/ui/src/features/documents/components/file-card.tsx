@@ -24,7 +24,8 @@ import { DocumentStatusBadge, isCitableStatus, isSettlingStatus } from './docume
 import { SemanticMatch } from './semantic-match'
 import { useIngestFailureText } from './ingest-failure-notice'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
-import { FilingSuggestionSlot } from './filing-suggestion'
+import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
+import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
 import { Skeleton } from '@/components/ui/skeleton'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
@@ -299,6 +300,8 @@ export const FileCard = memo(function FileCard({
   // the same promise the thumbnail well makes while its request is in flight.
   const isAwaitingSummary = !match && !isFailed && !file.summary && isSettlingStatus(file.status)
   const [mediaRef, seen] = useSeenOnce<HTMLDivElement>()
+  // A filing decision in view would move this file: outlined, nothing else, so the tile keeps its size.
+  const lit = useFilingHighlighted(file.id)
 
   return (
     <GridTileShell
@@ -307,7 +310,8 @@ export const FileCard = memo(function FileCard({
         'group/card',
         isSelected && 'ring-2 ring-ring shadow-md',
         isBusy && 'cursor-progress opacity-70',
-        !isSelected && 'hover:border-border/80'
+        !isSelected && 'hover:border-border/80',
+        lit && HIGHLIGHT_OUTLINE
       )}
       // Dragging is opt-in per surface: the Archiv has no folders to drop into,
       // and a card that lifts under the finger where nothing can receive it is
@@ -337,7 +341,7 @@ export const FileCard = memo(function FileCard({
         aria-label={ariaLabel}
         aria-busy={isBusy}
         data-testid={testId}
-        className="group relative flex h-full w-full min-w-0 flex-col overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="group relative flex w-full min-w-0 flex-1 flex-col overflow-hidden text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
       >
         {/* Raised inner block — white surface, rounded bottom, soft divider shadow.
             `flex-1` because a grid row is only as tall as its tallest card and
@@ -455,22 +459,36 @@ export const FileCard = memo(function FileCard({
             )}
           </div>
         </GridTileBody>
-
-        {!hideFooter && (
-          <GridTileFooter className="gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
-            {footerLead ?? <span className="flex-1" />}
-            <span className="shrink-0 tabular-nums">{formatBytes(file.fileSize, locale)}</span>
-            <span aria-hidden className="text-muted-foreground/40">
-              ·
-            </span>
-            <TimeAgo date={file.createdAt} locale={locale} className="shrink-0 tabular-nums" />
-          </GridTileFooter>
-        )}
       </button>
-      {/* Beside the card's button, not in it: the suggestion has buttons of its
-          own. The card's full width, edge to edge in the footer, so the folder
-          it names is read in full; it wraps rather than being cut. */}
-      <FilingSuggestionSlot documentId={file.id} className="rounded-none px-2.5 py-2" />
+      {/* The footer is the button's sibling, not its child: it carries
+          Piloti's filing chip, a button of its own, on the left, and a button
+          cannot hold a button. A click on the rest of it opens the file as the
+          card does; the keyboard opens it through the card's button.
+          Its height is the same with a chip or without one (the chip's margin
+          box is a line of text), so a row of tiles stays even when a
+          suggestion arrives or goes. On a narrow tile the chip's folder name
+          ellipsizes first, then the relative time drops; it never wraps. */}
+      {!hideFooter && (
+        <GridTileFooter
+          onClick={onSelect}
+          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80"
+          data-testid="file-card-footer"
+        >
+          <span className="flex min-w-0 flex-1 items-center gap-1.5">
+            <FilingSuggestionSlot documentId={file.id} className="min-w-[4.5rem]" />
+            {footerLead}
+          </span>
+          <span className="flex shrink-0 items-center gap-1.5">
+            <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
+            <span className="flex items-center gap-1.5 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
+              <span aria-hidden className="text-muted-foreground/40">
+                ·
+              </span>
+              <TimeAgo date={file.createdAt} locale={locale} className="tabular-nums" />
+            </span>
+          </span>
+        </GridTileFooter>
+      )}
     </GridTileShell>
   )
 })

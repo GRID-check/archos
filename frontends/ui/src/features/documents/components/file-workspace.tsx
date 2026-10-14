@@ -493,6 +493,17 @@ export function FileWorkspace({
     void reloadAll()
     reloadFiling()
   }, [reloadAll, reloadFiling])
+  // Where a document is now, for the before line of a suggestion's popover:
+  // its folder's path, '' at the top level, unknown for a row no page holds.
+  const folderPathOf = useMemo(() => {
+    const folderOf = new Map(files.map((file) => [file.id, file.folderId ?? null]))
+    const pathOf = new Map(folders.map((folder) => [folder.id, folder.path]))
+    return (documentId: string): string | undefined => {
+      const folderId = folderOf.get(documentId)
+      if (folderId === undefined) return undefined
+      return folderId === null ? '' : pathOf.get(folderId)
+    }
+  }, [files, folders])
   /** The folder whose description is being written (migration 0145). */
   const [describingFolderId, setDescribingFolderId] = useState<string | null>(null)
 
@@ -714,7 +725,12 @@ export function FileWorkspace({
   const wrapFileRow = useCallback((file: FileItem, row: ReactNode) => objectMenu(file, row, true), [objectMenu])
 
   return (
-    <FilingSuggestionsProvider byDocument={filing.byDocument} onSettled={onFilingSettled}>
+    <FilingSuggestionsProvider
+      byDocument={filing.byDocument}
+      byFolder={filing.byFolder}
+      onSettled={onFilingSettled}
+      folderPathOf={folderPathOf}
+    >
     <div className="relative flex h-full flex-col" {...(canManage ? dragHandlers : {})} data-testid="workspace-dropzone">
       {canManage && isDragging && (
         <FileDropOverlay

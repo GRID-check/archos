@@ -524,13 +524,22 @@ export const files: typeof en.files = {
     },
   },
   /**
-   * Piloti's filing suggestion on a file row and an upload row: where the file
-   * belongs, why, and one click to move it there or leave it.
+   * Piloti's filing suggestion: the chip on a card, a list row and an upload
+   * row, the popover it opens, and the filing bar that decides per folder.
    */
   filing: {
     label: 'Ablagevorschlag von Piloti',
-    suggestion: 'Passt eher in „{folder}“',
-    suggestionNew: 'Passt in einen neuen Ordner „{folder}“',
+    /** The chip's accessible name; it shows only the folder's last segment. */
+    chip: 'Ablagevorschlag: {folder}',
+    new: 'neu',
+    /** Where a file at the top level of a shelf is now, struck through in the popover. */
+    rootProject: 'Projektordner (oberste Ebene)',
+    rootOffice: 'Büroablage (oberste Ebene)',
+    /** Spoken before the two paths of the popover, which a screen reader cannot see struck through. */
+    from: 'Liegt jetzt in',
+    to: 'Würde verschoben nach',
+    barHeading: '{count, plural, one {Piloti schlägt vor, # Datei abzulegen} other {Piloti schlägt vor, # Dateien abzulegen}}',
+    fileCount: '{count, plural, one {# Datei} other {# Dateien}}',
     others: '{count, plural, one {mit # weiteren Datei} other {mit # weiteren Dateien}}',
     move: 'Verschieben',
     moveAll: 'Alle {count} verschieben',

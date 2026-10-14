@@ -24,7 +24,9 @@ import { AnimatePresence, iconSwapTransition, motion, motionBase, useMotionToken
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes, formatDurationShort, formatTransferRate } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { FilingSuggestionSlot } from './filing-suggestion'
+import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
+import { FilingViewBar } from './filing-bar'
+import { HIGHLIGHT_OUTLINE_INSET } from '@/components/ui/highlight'
 
 /**
  * The upload surface.
@@ -90,6 +92,12 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
 
   const visible = useMemo(() => files.filter((file) => VISIBLE_PHASES.has(uploadPhase(file))), [files])
   const summary = useMemo(() => summarizeTransfer(visible), [visible])
+  // The batch's documents, for the filing bar: filing is the job here, so it
+  // shows even for one file.
+  const documentIds = useMemo(
+    () => visible.flatMap((file) => (file.serverFileId ? [file.serverFileId] : [])),
+    [visible]
+  )
 
   const isTransferring = summary.stage === 'transferring'
   const { bytesPerSecond, etaSeconds } = useTransferRate(summary.uploadedBytes, summary.remainingBytes, isTransferring)
@@ -283,6 +291,10 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
         testId="upload-tray-track"
       />
 
+      {/* Where Piloti would file the batch, one line per target folder. Not
+          inside the fold: collapsing the rows does not answer the question. */}
+      <FilingViewBar documentIds={documentIds} minFiles={1} className="px-4 pb-1 pt-2.5" />
+
       <AnimatePresence initial={false}>
         {isExpanded && (
           // eslint-disable-next-line grid/motion-vocabulary -- the tray's own fold, opened by the reader below its header; instant under reduced motion
@@ -472,6 +484,8 @@ function UploadRow({
   const isHeldBack = phase === 'held'
   const unchanged = file.unchanged === true && phase === 'ready'
   const canDismiss = (phase === 'canceled' || isFailed || isHeldBack) && onDismiss !== undefined
+  // A line of the tray's filing bar would move this file.
+  const lit = useFilingHighlighted(file.serverFileId)
 
   return (
     // NOT `layout`. A layout animation runs as a scale transform, so a row
@@ -489,7 +503,7 @@ function UploadRow({
       transition={landing}
       data-testid="upload-row"
       data-phase={phase}
-      className="relative overflow-hidden border-t first:border-t-0"
+      className={cn('relative overflow-hidden border-t first:border-t-0', lit && HIGHLIGHT_OUTLINE_INSET)}
     >
       {/* One fixed-height line in every phase. The size, the status word and
           the actions each own a column of fixed width, so a row gaining or
@@ -511,9 +525,16 @@ function UploadRow({
         {/* On a phone the status word sits under the name, so the name keeps
             the width; from `sm` up they share the line in fixed columns. */}
         <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2.5">
-        <p className="min-w-0 truncate text-xs text-foreground sm:flex-1" title={file.fileName}>
-          {file.fileName}
-        </p>
+        <div className="flex min-w-0 items-center gap-2 sm:flex-1">
+          <p className="min-w-0 truncate text-xs text-foreground" title={file.fileName}>
+            {file.fileName}
+          </p>
+          {/* Where Piloti would file it, while the person is still at the
+              upload: the chip, as on the card, on the row's one line. */}
+          {!isFailed && !isHeldBack && (
+            <FilingSuggestionSlot documentId={file.serverFileId} className="max-w-[60%] shrink-0" />
+          )}
+        </div>
 
         {/* Off on a phone: the name is what tells two rows apart, and the
             fixed columns beside it would leave it a few characters. */}
@@ -569,9 +590,6 @@ function UploadRow({
       {isDeterminate(phase) && (
         <TrackBar percent={percent} sweeping={false} className="absolute inset-x-4 bottom-0 h-0.5 w-auto rounded-full" />
       )}
-
-      {/* Where Piloti would file it, while the person is still at the upload. */}
-      {!isFailed && !isHeldBack && <FilingSuggestionSlot documentId={file.serverFileId} className="mx-4 mb-2 ml-[50px]" />}
 
       <AnimatePresence initial={false}>
         {(isFailed && file.errorMessage) || isHeldBack ? (

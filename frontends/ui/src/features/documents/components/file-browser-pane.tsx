@@ -18,6 +18,7 @@ import { useLevelDirection } from '../hooks/use-level-direction'
 import { motion, motionEntrance } from '@/components/motion'
 import { ActionMenu } from '@/components/ui/action-menu'
 import { FileCard, type FileCardProps } from './file-card'
+import { FilingViewBar } from './filing-bar'
 import { FileGrid, FileCardSkeleton } from './file-grid'
 import { FileListSkeleton, FileListView } from './file-list-view'
 import { FolderActionsTrigger, FolderObjectMenu } from './folder-object-menu'
@@ -307,6 +308,7 @@ export function FileBrowserPane({
   // it is handed — a no-op, and cheaper than teaching every branch below which
   // of the two views it is about to render into.
   const orderedFiles = useMemo(() => sortFiles(files, sort, locale), [files, sort, locale])
+  const levelDocumentIds = useMemo(() => files.map((file) => file.id), [files])
   const orderedSlice = useMemo(() => (slice ? sortFiles(slice.files, sort, locale) : []), [slice, sort, locale])
 
   // Client-side filter: name, plus AI tags, topics and summary when the backend
@@ -653,6 +655,12 @@ export function FileBrowserPane({
         </div>
       )}
       {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4`}>{brief}</div>}
+      {/* Piloti's filing suggestions for the documents of this level, one line
+          per target folder, when one folder would collect two or more: the
+          decision that moves several files, made where they are all in view. */}
+      {!semantic.active && !searching && !slice && (
+        <FilingViewBar documentIds={levelDocumentIds} className={`${CONTENT_MAX} px-4 pt-4`} />
+      )}
 
       <ActionMenu mode="context" entries={listingEntries}>
       {semantic.active ? (
