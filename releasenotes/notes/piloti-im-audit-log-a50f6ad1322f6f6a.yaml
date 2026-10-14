@@ -3,10 +3,11 @@ features:
   - >
     The organization's audit log now shows what Piloti did and for whom: the
     Anmerkungen it set, changed or deleted, its proposals and who decided them,
-    and every time it was woken and how that ended. Who undid one of Piloti's
-    changes is in it too.
+    and every time it was woken and how that ended, with why when it gave up.
+    Who undid one of Piloti's changes, and who took over or dismissed an
+    Anmerkung it proposed, is in it too.
 operators:
   - >
-    Seven Piloti audit actions are new. The deploy's schema job registers them;
+    Eight Piloti audit actions are new. The deploy's schema job registers them;
     an environment reconciled by hand needs the audit schema provisioning run
     with apply before this release, or those events are rejected.
