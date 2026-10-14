@@ -25,7 +25,7 @@ this design says so and builds the version that fits.
 | Geocoder for AT and DE, address autocomplete | Built for Austria only, behind one BFF route, with Photon (OSM) as the adapter; off unless `GRID_GEOCODER_URL` is set, then the Bundesland is chosen by hand as today | Piloti supports Austria only. Buy, don't build. An address is client data, so the provider is the deployment's choice (a self-hosted Photon in production). A second country is a filter and a state mapping in the adapter |
 | A point on a map when there is no address (competitions) | The place or Gemeinde name through the same search | A map needs a map library and tiles; what the address decides (Land, Gemeinde) a place name decides too |
 | Projektbeteiligte with roles at creation | Not at creation. The Steckbrief already holds people (ADR-0091, ADR-0101) | People are kept apart from the profile and the prompt on purpose, and a step at creation breaks the one-minute target |
-| Ablage-Onboarding: folder tree, blacklist, role permissions | Upload, folder access per role and the content check stay as they are. Piloti proposes a folder plan learned from the office's other projects, each folder with a description, confirmed folder by folder (see „Ablage" below) | Upload and access are built (ADR-0078, ADR-0087, ADR-0088, ADR-0086). What was missing is the sorting, and a folder that says what it holds |
+| Ablage-Onboarding: folder tree, blacklist, role permissions | Upload, folder access per role and the content check stay as they are. Each folder says what belongs in it, and on every upload Piloti proposes the folder a file belongs in, learned from the office's other projects, confirmed folder by folder (see „Ablage" below) | Upload and access are built (ADR-0078, ADR-0087, ADR-0088, ADR-0086). What was missing is the sorting, and a folder that says what it holds |
 | Create a project as „abgeschlossen" and fill it from its documents | The project is created **active with a closing intent** (outcome and period), read, and closed when the person finishes the review | A closed project is read-only (ADR-0090) and refuses profile writes. ADR-0096 reads a closed project the same way: reopen, read, close |
 | Historical editions of the law per Stichtag | The intake records the OIB edition the project's documents name (`oib_ausgabe`); the corpus holds one edition today | Keeping every edition of the law is corpus work, not intake work. It stays open, as the ticket says |
 | Delta review when a new Stand arrives | A finished upload batch on a project with an intake starts a reading of the documents not read yet (by content hash, so a new Fassung counts). A value that differs from a confirmed one is shown as a contradiction, never written over it | `settleUploadBatches` is where "these documents are read" first becomes true on the server |
@@ -295,32 +295,34 @@ the quote states the value, as ADR-0096 does.
 
 ## Ablage: the files into documented folders
 
-Product decision (2026-10-14): Piloti files a project's uploaded documents into
-folders the office would recognise, each folder says what belongs in it, and a
-person confirms folder by folder (the ticket's „bestätigt pro Ordner, nicht pro
-Datei").
+Product decision (2026-10-14), revised the same day: filing belongs to the
+Files workspace, for every upload on either shelf (Dateien and the
+Büroablage), whether or not a project has an intake. The intake is one reader
+of the result, not its home. The design is in
+[`proposed-changes.md`](../architecture/proposed-changes.md#filing-suggestions);
+what it means for the intake:
 
 - **A folder has a description.** `project_folders.description` (≤ 500
-  characters, migration 0145), shown in Dateien under the folder's name, edited
-  where the folder is renamed, and handed to Piloti with the folder, so later
-  uploads and chat proposals file the same way.
-- **The structure is learned from the office.** The intake's needs answer
-  carries the office's folder conventions: the folder paths and descriptions of
-  the other projects the requester may open, with how many projects use each.
-  With nothing to learn from, the agent falls back to an Austrian default
-  (Grundlagen, Bestand, Behörde und Bescheide, Einreichung, Fachplaner,
-  Ausführung). The model chooses; code only checks.
-- **A filing plan is a proposed state on the intake.** The agent's
-  `propose_filing` tool sends folders, each with a path, a description, the
-  files it would hold (only files at the project root, never one in a folder
-  the upload brought or in a restricted folder) and a one-line reason; for a
-  folder that already exists it may propose only a description. The BFF stores
-  the plan on `project_intakes.filing_plan` with a state per folder.
-- **Confirmed per folder.** The setup page's „Ablage" section shows the tree.
-  Confirming a folder (its name and description editable first) creates it and
-  moves its files through the services Dateien uses (`createProjectFolder`,
-  `moveDocumentToFolder`), so permissions, audit and Fassungen behave as for a
-  person's own move; dismissing it drops it from the plan.
+  characters, migration 0145), on both shelves, written in Dateien and the
+  Büroablage, and handed to the agents with the folder tree
+  (`FOLDER_DESCRIPTIONS v1`).
+- **Piloti proposes, folder by folder.** Every upload batch is judged twice as
+  its uploader (`filing_review`): from the names at the seal, from what
+  ingestion read at the settle. Each target folder is one `file_operation`
+  proposal with no conversation, so a person confirms per folder („bestätigt
+  pro Ordner, nicht pro Datei") with the proposals' own apply and dismiss. A
+  folder the project does not have yet is proposed as the move's `new_folder`:
+  one confirm creates it with its description and files into it.
+- **The structure is learned from the office**: the folder paths and
+  descriptions of the projects the uploader may open, and the Dokumentarten
+  filed in them, with an Austrian default (Grundlagen, Bestand, Behörde und
+  Bescheide, Einreichung, Fachplaner, Ausführung) only when the office has
+  none. The model chooses; code only checks.
+- **What the setup page shows** is the project's open proposals
+  (`GET /api/proposals?projectId=…&kind=file_operation`), not a plan of its
+  own. The earlier plan here (a `project_intakes.filing_plan` column and a
+  `propose_filing` intake tool) is dropped: it would have been a second record
+  and a second confirm for the same decision.
 
 ## Observability (ADR-0089)
 
