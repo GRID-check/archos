@@ -43,7 +43,10 @@ Piloti“):
 
 Migration `0142_piloti_changes.sql` adds the change record: every change Piloti
 applied to a mark or a thread, with the turn that made it. The chat card reads
-it, and undo runs from it (below, „In the chat“).
+it, and undo runs from it (below, „In the chat“). Each change is also one
+`piloti.change.applied`, and each undo one `piloti.change.undone`, in the
+organization's WorkOS audit log, where an admin reads what Piloti did and for
+whom ([the trail](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product)).
 
 Numbers are allocated under an advisory lock per document, so two people
 setting a mark at the same moment never share a number. Status moves are
@@ -259,9 +262,14 @@ the document can reply, so only they can wake it. At most
 `GRID_WAKE_MAX_PER_MARK_HOUR` wakes per mark an hour (6) and
 `GRID_WAKE_MAX_PER_PERSON_DAY` per person a day (50), counted over the
 `piloti_wakes` rows at enqueue and again at claim. The WorkOS flag
-`piloti-wakes`, an entitlement off by default. A wake that started no turn has
-no trace, so it is on its row and in the audit trail as
-`piloti.wake.suppressed`.
+`piloti-wakes`, an entitlement off by default. A wake held before Piloti was
+asked (a cap, the switch, rights lost, the mark gone, the delegation taken
+back) has no trace, so it is on its row and in the audit trail as
+`piloti.wake.suppressed`. One that started is `piloti.wake.started` there, and
+every end, however it came, is one `piloti.wake.ended`: the turn's, or the
+job's when it was refused or gave up before a turn answered, with the class of
+its reason (`reasonKind`, the inbox's `variant` below)
+(`frontends/ui/src/lib/annotations/wake-audit.ts`).
 
 **With the switch off** the reply answers `wake: 'off'` and the browser asks
 Piloti itself, as before, under the turn id a server wake of the same reply
@@ -314,6 +322,9 @@ transaction):
   longer running is a stop already done.
 - Piloti's own change in the asker's name stops nothing. When the delegation's
   own turn closes the mark, that turn is finishing, not being taken back.
+
+Each wake a take-back (or a delete) stops is one `piloti.wake.stopped` in the
+audit trail, as the person who took the mark back.
 
 ### The thread always hears back
 
@@ -445,7 +456,11 @@ an answer older than the record. Its actions:
    trace of the turn that produced it (`frontends/ui/src/lib/langfuse/decision-score.ts`;
    the catalogue is in [`langfuse.md`](../observability/langfuse.md)): a proposed
    mark taken over (`accepted`) or dismissed (`dismissed`), and an applied change
-   undone (`undone`). The score says what was decided, never by whom.
+   undone (`undone`). The score says what was decided, never by whom; the
+   audit trail says who: who undid it (`piloti.change.undone`), and who took
+   over or dismissed a proposed mark (`piloti.mark.decided`,
+   `frontends/ui/src/lib/annotations/mark-audit.ts`, one per mark, the live
+   card's batch included, since it sends the same PATCH per mark).
 
 ## The Protokoll: Anmerkungen as a file
 

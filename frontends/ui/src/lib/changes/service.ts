@@ -39,6 +39,7 @@ import {
   type NewPilotiChange,
   type PilotiChangeRow,
 } from './repository'
+import { auditAppliedChanges, auditUndoneChange } from './audit'
 import { planUndo, type UndoPlan } from './undo'
 import type { ChangeState, PilotiChangeObject, PilotiChangeOp, PilotiChangeView, UndoRefusal } from './types'
 
@@ -55,6 +56,10 @@ export interface ChangeOrigin {
   answerMessageId: string | null
   /** The person the turn acted for. */
   onBehalfOf: string
+  /** Their email, the name the audit trail shows for them. */
+  onBehalfOfEmail?: string | null
+  /** The document's project; null on the Büroablage. */
+  projectId?: string | null
 }
 
 /** One change a call applied. */
@@ -65,22 +70,55 @@ export interface AppliedChange {
   op: PilotiChangeOp
   before: ChangeState | null
   after: ChangeState | null
+  /** The mark's running number, for the audit trail. */
+  annotationNumber?: number | null
 }
 
 let warnedWithoutAnswer = false
 
 /**
- * Record what one of Piloti's calls applied, after it committed. Never throws:
- * the change already stands.
+ * Record what one of Piloti's calls applied, after it committed: a
+ * `piloti_changes` row each, then a `piloti.change.applied` audit event each
+ * (`./audit`). Never throws: the change already stands.
  */
 export async function recordPilotiChanges(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<void> {
   if (changes.length === 0) return
+  const rows = await insertLedgerRows(origin, changes)
+  auditAppliedChanges(
+    {
+      organizationId: origin.organizationId,
+      documentId: origin.documentId,
+      projectId: origin.projectId ?? null,
+      conversationId: origin.conversationId,
+      answerMessageId: origin.answerMessageId,
+      onBehalfOf: origin.onBehalfOf,
+      onBehalfOfEmail: origin.onBehalfOfEmail ?? null,
+    },
+    changes.map((change) => ({
+      objectKind: change.objectKind,
+      op: change.op,
+      annotationId: change.annotationId,
+      annotationNumber: change.annotationNumber ?? null,
+      before: change.before,
+      after: change.after,
+      // One call changes each object once, so the object names its row.
+      changeId: rows.find((row) => row.objectId === change.objectId)?.id ?? null,
+    }))
+  )
+}
+
+/**
+ * The ledger rows written; none from an agent older than
+ * the record (no answer id), and none when the insert failed. The change was
+ * applied either way, so the audit trail still hears of it.
+ */
+async function insertLedgerRows(origin: ChangeOrigin, changes: readonly AppliedChange[]): Promise<PilotiChangeRow[]> {
   if (!origin.answerMessageId) {
     if (!warnedWithoutAnswer) {
       warnedWithoutAnswer = true
       console.warn('[changes] a write op arrived without answerMessageId; an agent older than ADR-0109 records nothing')
     }
-    return
+    return []
   }
   const rows: NewPilotiChange[] = changes.map((change) => ({
     organizationId: origin.organizationId,
@@ -96,9 +134,10 @@ export async function recordPilotiChanges(origin: ChangeOrigin, changes: readonl
     onBehalfOf: origin.onBehalfOf,
   }))
   try {
-    await insertPilotiChanges(origin.organizationId, rows)
+    return await insertPilotiChanges(origin.organizationId, rows)
   } catch (error) {
     console.error('[changes] could not record what the turn applied', origin.answerMessageId, error)
+    return []
   }
 }
 
@@ -269,6 +308,7 @@ export async function undoChange(session: AuthorizedSession, id: string): Promis
     if (movedUnderneath(error)) throw new UndoRefusedError('moved-on')
     throw error
   }
+  auditUndoneChange(session, row, outcome.plan, current?.number ?? null)
 
   // One decision, one score. Dismissing a proposal is the annotations service's
   // own decision, and it scores `annotation dismissed` on the same trace; a

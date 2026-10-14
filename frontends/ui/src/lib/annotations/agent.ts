@@ -241,6 +241,7 @@ const markChange = (mark: AnnotationView, change: Pick<AppliedChange, 'op' | 'be
   objectKind: 'annotation',
   objectId: mark.id,
   annotationId: mark.id,
+  annotationNumber: mark.number,
   ...change,
 })
 
@@ -305,6 +306,7 @@ async function reply(session: AuthorizedSession, turn: Turn, annotationId: strin
       objectKind: 'annotation_reply',
       objectId: replyId,
       annotationId: annotation.id,
+      annotationNumber: annotation.number,
       op: 'create',
       before: null,
       after: replyState(stored?.body ?? body.trim()),
@@ -337,6 +339,8 @@ export async function runAgentAnnotationRequest(
       conversationId: agent.conversationId,
       answerMessageId: request.answerMessageId ?? null,
       onBehalfOf: agent.onBehalfOf,
+      onBehalfOfEmail: session.email || null,
+      projectId: document.projectId,
     },
   }
   switch (request.op) {

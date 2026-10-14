@@ -23,11 +23,12 @@
  * answer is `busy`, and the job waits (`notBefore`) without spending an
  * attempt. `duplicate_turn` is a wake already answered. Every way it ends
  * without a turn is recorded on its `piloti_wakes` row and in the audit trail;
- * a turn that started has its trace in Langfuse. A wake that was refused or
- * gave up is then ended as a turn's end is (`lib/turns/outcome.ts`): a
- * delegated mark is handed back, and the person who woke Piloti hears why
- * (`piloti.work_failed`). A suppressed wake tells nobody: the person's own
- * act, a rule or a cap held it.
+ * a turn that started is in the trail as `piloti.wake.started` and has its
+ * trace in Langfuse. A wake that was refused or gave up is then ended as a
+ * turn's end is (`lib/turns/outcome.ts`): a delegated mark is handed back, the
+ * trail records the end (`piloti.wake.ended`), and the person who woke Piloti
+ * hears why (`piloti.work_failed`). A suppressed wake tells nobody: the
+ * person's own act, a rule or a cap held it (`piloti.wake.suppressed`).
  */
 
 import 'server-only'
@@ -51,6 +52,7 @@ import { ensureDocumentThread } from './document-thread'
 import { findDocumentAnnotation, type AnnotationRecord } from './repository'
 import { regionAround } from './types'
 import { auditSuppressedWake, capReached, wakesEnabled } from './wake'
+import { auditWakeEnded, auditWakeStarted, type AuditedWake } from './wake-audit'
 import { delegationEventId } from './wake-ids'
 import { findWake, handBackDelegation, settleWake } from './wake-repository'
 
@@ -140,30 +142,33 @@ async function recordTrigger(
   ])
 }
 
-/**
- * A wake the job ended without an answer (`refused`, or `failed` after its
- * waits or a rejected message): afterwards the same as a turn's end
- * (`lib/turns/outcome.ts`). A delegation still this wake's is handed back, so
- * the mark stops reading „Piloti arbeitet daran", and the person who woke
- * Piloti is told why (`onWakeEnded`). The row is settled and audited already;
- * nothing here fails the job.
- */
-async function afterEndWithoutAnswer(input: {
-  organizationId: string
-  payload: PilotiWakePayload
-  doc: Document
+/** The wake as the audit trail names it (`./wake-audit.ts`). */
+const auditedWake = (
+  organizationId: string,
+  payload: PilotiWakePayload,
+  doc: Document,
   mark: AnnotationRecord
-  reason: string
-}): Promise<void> {
-  const { organizationId, payload, doc, mark, reason } = input
+): AuditedWake => ({
+  organizationId,
+  wakeId: payload.wakeId,
+  documentId: doc.id,
+  annotationId: mark.id,
+  trigger: payload.trigger,
+  wokenBy: payload.actor,
+  projectId: doc.projectId ?? null,
+  markNumber: mark.number,
+})
+
+/** Hand a delegation still this wake's back, and tell the room; whether it was handed back. Never throws. */
+async function handBack(organizationId: string, payload: PilotiWakePayload, doc: Document, mark: AnnotationRecord) {
   const delegatedAt = mark.delegatedAt ? new Date(mark.delegatedAt) : null
   const ownsDelegation =
     payload.trigger === 'assigned' && delegatedAt !== null && delegationEventId(mark.id, delegatedAt) === payload.eventId
+  if (!ownsDelegation || !delegatedAt) return false
   try {
-    const handedBack =
-      ownsDelegation && delegatedAt
-        ? await withTenant({ organizationId }, () => handBackDelegation(getDb(), organizationId, mark.id, delegatedAt))
-        : false
+    const handedBack = await withTenant({ organizationId }, () =>
+      handBackDelegation(getDb(), organizationId, mark.id, delegatedAt)
+    )
     if (handedBack) {
       await publishToDocumentRoom(doc.id, {
         kind: 'annotations.changed',
@@ -172,9 +177,38 @@ async function afterEndWithoutAnswer(input: {
         actor: { peerId: null, userId: payload.actor.userId, name: 'Piloti', kind: 'piloti' },
       }).catch(() => undefined)
     }
+    return handedBack
   } catch (error) {
     console.error('[wake-job] the mark could not be handed back after the wake ended:', error)
+    return false
   }
+}
+
+/**
+ * A wake the job ended without an answer (`refused`, or `failed` after its
+ * waits or a rejected message), once this call settled it: afterwards the
+ * same as a turn's end (`lib/turns/outcome.ts`). A delegation still this
+ * wake's is handed back, so the mark stops reading „Piloti arbeitet daran",
+ * the audit trail records the end (`piloti.wake.ended`, without a turn
+ * outcome), and the person who woke Piloti is told why (`onWakeEnded`).
+ * Nothing here fails the job.
+ */
+async function afterEndWithoutAnswer(input: {
+  organizationId: string
+  payload: PilotiWakePayload
+  doc: Document
+  mark: AnnotationRecord
+  status: 'refused' | 'failed'
+  reason: string
+}): Promise<void> {
+  const { organizationId, payload, doc, mark, status, reason } = input
+  const handedBack = await handBack(organizationId, payload, doc, mark)
+  auditWakeEnded(auditedWake(organizationId, payload, doc, mark), {
+    outcome: status,
+    turnOutcome: null,
+    reason,
+    handedBack,
+  })
   await onWakeEnded({
     organizationId,
     documentId: doc.id,
@@ -209,9 +243,9 @@ export async function runPilotiWake(
   // Settled by an earlier run of this job, or gone with its mark.
   if (!wake || wake.status !== 'queued') return done
 
-  const settle = async (status: 'suppressed' | 'refused' | 'failed', reason: string): Promise<boolean> => {
-    const settled = await settleWake(organizationId, payload.wakeId, { status, reason })
-    if (settled) {
+  // Nothing to tell: the person's own act, a rule or a cap held it.
+  const end = async (status: 'suppressed', reason: string): Promise<Result> => {
+    if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
       auditSuppressedWake({
         organizationId,
         actor: payload.actor,
@@ -223,11 +257,6 @@ export async function runPilotiWake(
         stage: 'claim',
       })
     }
-    return settled
-  }
-  // Nothing to tell: the person's own act, a rule or a cap held it.
-  const end = async (status: 'suppressed', reason: string): Promise<Result> => {
-    await settle(status, reason)
     return done
   }
 
@@ -242,9 +271,12 @@ export async function runPilotiWake(
   if (!doc) return end('suppressed', 'the person may no longer write the document')
   const mark = await findDocumentAnnotation(organizationId, doc.id, payload.annotationId)
   if (!mark) return end('suppressed', 'the mark is gone')
-  // Piloti was asked and did not answer: the person hears why, as from a turn's end.
+  // Piloti was asked and did not answer: the person hears why, as from a turn's end. Only
+  // the settle that moved it from `queued` goes on: a turn that already reported its end adds nothing.
   const fail = async (status: 'refused' | 'failed', reason: string): Promise<Result> => {
-    if (await settle(status, reason)) await afterEndWithoutAnswer({ organizationId, payload, doc, mark, reason })
+    if (await settleWake(organizationId, payload.wakeId, { status, reason })) {
+      await afterEndWithoutAnswer({ organizationId, payload, doc, mark, status, reason })
+    }
     return done
   }
   const wait = (reason: string): Promise<Result> | Result => {
@@ -309,7 +341,11 @@ export async function runPilotiWake(
   switch (outcome.kind) {
     case 'started':
     case 'duplicate':
-      await settleWake(organizationId, payload.wakeId, { status: 'started' })
+      // Only the settle that moved it from `queued`: a second run of the job, or
+      // a turn that already reported its end, adds no line.
+      if (await settleWake(organizationId, payload.wakeId, { status: 'started' })) {
+        auditWakeStarted(auditedWake(organizationId, payload, doc, mark), payload.waits)
+      }
       return done
     case 'busy':
       return wait('another turn of the thread ran')

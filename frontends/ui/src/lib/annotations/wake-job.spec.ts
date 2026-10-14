@@ -42,6 +42,7 @@ import { ForbiddenError } from '@/lib/api/errors'
 import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { recordAuditEvent } from '@/lib/audit/service'
+import { expectRegistered } from '@/test-utils/audit'
 import { insertMessages } from '@/lib/conversations/repository'
 import type { Document, PilotiWakeRow } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
@@ -267,7 +268,7 @@ describe('what the socket answers', () => {
     await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toMatchObject({ done: true })
     expect(settleWake).toHaveBeenCalledWith('org_1', WAKE_ID, { status: 'refused', reason: 'Budget erschöpft.' })
     expect(recordAuditEvent).toHaveBeenCalledWith(
-      expect.objectContaining({ action: 'piloti.wake.suppressed', metadata: expect.objectContaining({ status: 'refused', stage: 'claim' }) })
+      expect.objectContaining({ action: 'piloti.wake.ended', metadata: expect.objectContaining({ outcome: 'refused' }) })
     )
   })
 
@@ -342,6 +343,58 @@ describe('asked again when the job runs', () => {
   })
 })
 
+describe('the audit trail of a wake that started', () => {
+  const started = () => vi.mocked(recordAuditEvent).mock.calls.filter(([input]) => input.action === 'piloti.wake.started')
+  // Whatever was emitted, WorkOS would accept: every target type and key is registered.
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+
+  it('records the start once, as the person whose act woke Piloti, on the mark, its document, project and thread', async () => {
+    await runPilotiWake('org_1', { ...PAYLOAD, waits: 2 }, NOT_LAST)
+
+    expect(recordAuditEvent).toHaveBeenCalledTimes(1)
+    expect(started()[0][0]).toEqual({
+      action: 'piloti.wake.started',
+      organizationId: 'org_1',
+      actor: { userId: 'user_anna', email: 'anna@example.at' },
+      targetType: 'document_annotation',
+      targetId: MARK_ID,
+      alsoTargets: [
+        { type: 'document', id: DOC_ID },
+        { type: 'project', id: 'proj_1' },
+        { type: 'conversation', id: THREAD },
+      ],
+      metadata: { trigger: 'thread_mention', wakeId: WAKE_ID, markNumber: 4, waits: 2 },
+    })
+  })
+
+  it('records nothing when another run, or the turn’s own end, settled the wake first', async () => {
+    vi.mocked(settleWake).mockResolvedValue(false)
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'duplicate' })
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('records nothing for a busy thread: the wake has not started', async () => {
+    vi.mocked(runHeadlessTurn).mockResolvedValue({ kind: 'busy' })
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('is done when the trail fails', async () => {
+    vi.mocked(recordAuditEvent).mockRejectedValueOnce(new Error('WorkOS down'))
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+
+    await expect(runPilotiWake('org_1', PAYLOAD, NOT_LAST)).resolves.toEqual({ done: true, payload: PAYLOAD })
+    await vi.waitFor(() => expect(warn).toHaveBeenCalled())
+    warn.mockRestore()
+  })
+})
+
 describe('a wake that ends without an answer', () => {
   const DELEGATED_AT = new Date('2026-10-13T09:59:00Z')
   const DELEGATION = { ...PAYLOAD, trigger: 'assigned' as const, eventId: delegationEventId(MARK_ID, DELEGATED_AT) }
@@ -413,5 +466,106 @@ describe('a wake that ends without an answer', () => {
     await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
 
     expect(onWakeEnded).not.toHaveBeenCalled()
+  })
+})
+
+describe('the audit trail of a wake the job ended', () => {
+  const DELEGATED_AT = new Date('2026-10-13T09:59:00Z')
+  const DELEGATION = { ...PAYLOAD, trigger: 'assigned' as const, eventId: delegationEventId(MARK_ID, DELEGATED_AT) }
+  const audited = () => vi.mocked(recordAuditEvent).mock.calls.map(([input]) => input)
+  afterEach(() => {
+    for (const [input] of vi.mocked(recordAuditEvent).mock.calls) expectRegistered(input)
+  })
+
+  it('records a refusal once as piloti.wake.ended, like a turn’s end, with the class of its reason', async () => {
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(audited()).toEqual([
+      {
+        action: 'piloti.wake.ended',
+        organizationId: 'org_1',
+        actor: { userId: 'user_anna', email: 'anna@example.at' },
+        targetType: 'document_annotation',
+        targetId: MARK_ID,
+        alsoTargets: [
+          { type: 'document', id: DOC_ID },
+          { type: 'project', id: 'proj_1' },
+          { type: 'conversation', id: THREAD },
+        ],
+        metadata: {
+          trigger: 'thread_mention',
+          wakeId: WAKE_ID,
+          outcome: 'refused',
+          turnOutcome: null,
+          reason: expect.stringMatching(/^budget: /),
+          reasonKind: 'budget',
+          handedBack: false,
+          markNumber: 4,
+        },
+      },
+    ])
+  })
+
+  it.each([
+    ['a give-up', { kind: 'busy' }, MAX_WAKE_WAITS, 'failed', 'busy'],
+    ['a refusal at the socket', { kind: 'refused', reason: 'Send your message again in a moment.' }, 0, 'refused', 'busy'],
+    ['a rejected message', { kind: 'rejected', code: 'bad_request', message: null }, 0, 'failed', 'error'],
+  ] as const)('records %s with its outcome and class', async (_case, outcome, waits, recorded, reasonKind) => {
+    vi.mocked(runHeadlessTurn).mockResolvedValue(outcome)
+
+    await runPilotiWake('org_1', { ...PAYLOAD, waits }, NOT_LAST)
+
+    expect(audited()).toHaveLength(1)
+    expect(audited()[0]).toMatchObject({ action: 'piloti.wake.ended', metadata: { outcome: recorded, reasonKind } })
+  })
+
+  it('says the delegation went back with it, and not when the hand-back failed', async () => {
+    vi.mocked(findDocumentAnnotation).mockResolvedValue({ ...MARK, delegatedBy: 'user_anna', delegatedAt: DELEGATED_AT })
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+    expect(audited()[0].metadata).toMatchObject({ trigger: 'assigned', handedBack: true })
+
+    vi.mocked(recordAuditEvent).mockClear()
+    vi.mocked(handBackDelegation).mockRejectedValue(new Error('database down'))
+    const log = vi.spyOn(console, 'error').mockImplementation(() => undefined)
+    await runPilotiWake('org_1', DELEGATION, NOT_LAST)
+    log.mockRestore()
+    expect(audited()).toHaveLength(1)
+    expect(audited()[0].metadata).toMatchObject({ handedBack: false })
+  })
+
+  it('records nothing when another end settled the wake first', async () => {
+    vi.mocked(settleWake).mockResolvedValue(false)
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(recordAuditEvent).not.toHaveBeenCalled()
+  })
+
+  it('keeps piloti.wake.suppressed for a wake held before Piloti was asked', async () => {
+    vi.mocked(getAccessibleDocument).mockRejectedValue(new ForbiddenError())
+
+    await runPilotiWake('org_1', PAYLOAD, NOT_LAST)
+
+    expect(audited().map((input) => input.action)).toEqual(['piloti.wake.suppressed'])
+    expect(audited()[0].metadata).toMatchObject({ status: 'suppressed', stage: 'claim' })
+  })
+
+  it('looks the person’s email up when the wake carries none, and names the id alone when nobody knows it', async () => {
+    vi.mocked(resolveTurnContext).mockRejectedValue(new TurnBudgetExhaustedError('user'))
+    const anonymous = { ...PAYLOAD, actor: { userId: 'user_anna', email: null } }
+
+    await runPilotiWake('org_1', anonymous, NOT_LAST)
+    await vi.waitFor(() => expect(recordAuditEvent).toHaveBeenCalledTimes(1))
+    expect(audited()[0].actor).toEqual({ userId: 'user_anna', email: 'anna@example.at' })
+
+    vi.mocked(recordAuditEvent).mockClear()
+    vi.mocked(loadOrganizationDirectory).mockResolvedValue(new Map())
+    await runPilotiWake('org_1', anonymous, NOT_LAST)
+    await vi.waitFor(() => expect(recordAuditEvent).toHaveBeenCalledTimes(1))
+    expect(audited()[0].actor).toEqual({ userId: 'user_anna', email: null })
   })
 })

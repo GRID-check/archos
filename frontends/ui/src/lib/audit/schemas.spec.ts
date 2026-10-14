@@ -35,7 +35,7 @@
  * `Object.keys(AUDIT_SCHEMAS)` — a set against itself, green for any registry
  * including one full of actions nobody emits. So the emitted side is now read
  * off the CALL SITES: the files that call `recordAuditEvent` (or the throwing
- * variant), and the action literals in them.
+ * variant, or `recordAuditEventAfterCommit`), and the action literals in them.
  *
  * That scan deliberately OVER-collects — it takes every quoted string in an
  * `action:` expression, so a ternary picking between two actions contributes
@@ -206,6 +206,19 @@ describe('audit schema coverage', () => {
     // not a reference kind, so it is the one member named here.
     const emittable = new Set<string>(['document', ...AUTHORED_REF_KINDS])
     expect(registered.filter((type) => !emittable.has(type))).toEqual([])
+  })
+
+  it('keeps every word anyone wrote out of what Piloti did: ids, numbers, kinds and counts only', () => {
+    // The `piloti.*` trail is read in the WorkOS viewer by roles that are not
+    // admins (`org:audit:view`), and the act it records is about marks, notes,
+    // replies and proposals, all tenant content. A key that could carry their
+    // text is refused here, before an emitter can fill it.
+    const CONTENT = /body|content|text|note|title|label|name|summary|payload|path|comment|value|rationale/i
+    const piloti = Object.entries(REGISTRY).filter(([action]) => action.startsWith('piloti.'))
+    expect(piloti.length).toBeGreaterThanOrEqual(9)
+    for (const [action, schema] of piloti) {
+      expect(Object.keys(schema.metadata ?? {}).filter((key) => CONTENT.test(key)), action).toEqual([])
+    }
   })
 
   it('names at least one target type per action — WorkOS requires one', () => {

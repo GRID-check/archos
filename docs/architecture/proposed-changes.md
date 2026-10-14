@@ -420,6 +420,12 @@ it finds the decision on reload, or on the 409 of their click.
   actionable and in the app only. Whoever decides the proposal, that person or
   a colleague who may decide that kind in the project, settles it for everyone
   (`frontends/ui/src/lib/proposals/attention.ts`).
+- **The audit trail.** Filing a proposal is `piloti.proposal.created` (once per
+  card, as the person Piloti acted for), and deciding it `piloti.proposal.decided`
+  (as the decider: how it went, the item counts, a note's memory scope), in the
+  organization's WorkOS audit log; the kind and counts only, never a name or a
+  word of the payload (`frontends/ui/src/lib/proposals/audit.ts`,
+  [the trail](../deployment/workos-provisioning.md#5-audit-logs-native-workos-product)).
 
 ## What is not done yet
 
