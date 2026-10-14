@@ -21,7 +21,7 @@ vi.mock('@/lib/cross-project/project-facts-mirror', () => ({
 
 import { getDb } from '@/lib/db'
 import { asDb } from '@/test-utils/db-fixtures'
-import { PROJECT_FACTS_FAILURE_NAME, reconcileOrphanedVectors } from './vector-reconcile'
+import { DOCUMENT_FACTS_BATCH, PROJECT_FACTS_FAILURE_NAME, reconcileOrphanedVectors } from './vector-reconcile'
 
 describe('reconcileOrphanedVectors: the project facts half', () => {
   const fetchFacts = vi.fn()
@@ -77,9 +77,17 @@ function summaryResponse(forgotten: { collection: string; file_name: string }[],
   }
 }
 
-/** The summary call is the LAST fetch of a run; everything before it is chunk work. */
+const DOCUMENT_FACTS_URL = 'http://backend:8000/v1/maintenance/refresh-document-facts'
+
+/** The fetches of the chunk and summary halves: everything before the document facts half. */
+function callsBeforeDocumentFacts() {
+  return fetchMock.mock.calls.filter((call) => call[0] !== DOCUMENT_FACTS_URL)
+}
+
+/** The summary call is the last fetch before the document facts half; everything before it is chunk work. */
 function summaryCall() {
-  const call = fetchMock.mock.calls[fetchMock.mock.calls.length - 1]
+  const calls = callsBeforeDocumentFacts()
+  const call = calls[calls.length - 1]
   return { url: call[0] as string, init: call[1] as RequestInit }
 }
 
@@ -142,7 +150,7 @@ describe('reconcileOrphanedVectors', () => {
 
     expect(result.orphansFound).toBe(0)
     // One list call, then the summary half; no DELETE in between.
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(callsBeforeDocumentFacts()).toHaveLength(2)
   })
 
   it('shields only `user`, so an author value nobody has added yet owns no chunks', async () => {
@@ -190,7 +198,7 @@ describe('reconcileOrphanedVectors', () => {
     expect(result.orphansFound).toBe(0)
     expect(result.orphansDeleted).toBe(0)
     // No DELETE was issued — the one list call, then the summary half.
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(callsBeforeDocumentFacts()).toHaveLength(2)
   })
 
   it('deletes an orphan stored under an encoded name (the historical leak)', async () => {
@@ -215,7 +223,7 @@ describe('reconcileOrphanedVectors', () => {
     expect(result.collectionsScanned).toBe(1)
     // Only proj_a was listed; the unrelated oib_knowledge collection was never
     // fetched, and the summary half was scoped to proj_a alone.
-    expect(fetchMock).toHaveBeenCalledTimes(2)
+    expect(callsBeforeDocumentFacts()).toHaveLength(2)
     expect(fetchMock.mock.calls[0][0]).toContain('/v1/collections/proj_a/documents')
     expect(JSON.parse(summaryCall().init.body as string)).toEqual({ collections: ['proj_a'], dry_run: false })
   })
@@ -254,7 +262,7 @@ describe('reconcileOrphanedVectors', () => {
     expect(init.method).toBe('POST')
     expect(JSON.parse(init.body as string)).toEqual({ collections: ['proj_a'], dry_run: false })
     // Third call: the chunk half (list, delete) ran first.
-    expect(fetchMock).toHaveBeenCalledTimes(3)
+    expect(callsBeforeDocumentFacts()).toHaveLength(3)
   })
 
   it('sends the internal token the maintenance route is guarded by', async () => {
@@ -310,5 +318,87 @@ describe('reconcileOrphanedVectors', () => {
     expect(result.collectionsScanned).toBe(0)
     expect(result.summariesForgotten).toBe(0)
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+})
+
+// The fourth half: a copy of a document's facts that failed after an edit
+// (`writes.refresh_facts` never raises) left the old tags or superseded mark
+// on its chunks, and the cross-project tag filters read them.
+describe('reconcileOrphanedVectors: the document facts half', () => {
+  const documentFactsCalls = () => fetchMock.mock.calls.filter((call) => call[0] === DOCUMENT_FACTS_URL)
+  const refreshed = (collections: number, files: number, failures: { collection: string; error: string }[] = []) => ({
+    ok: true,
+    status: 200,
+    json: () => Promise.resolve({ status: 'ok', collections_scanned: collections, files_refreshed: files, failures }),
+  })
+  const live = (count: number) =>
+    Array.from({ length: count }, (_, n) => ({ collectionName: `proj_${n}`, filename: 'a.pdf', authoredBy: 'user' }))
+
+  beforeEach(() => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockReset()
+    vi.stubEnv('GRID_INTERNAL_API_TOKEN', 'real-secret')
+  })
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.unstubAllEnvs()
+  })
+
+  it('copies every live collection’s document facts again, in bounded batches, with the internal token', async () => {
+    stubRows(live(DOCUMENT_FACTS_BATCH + 3))
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENT_FACTS_URL) return Promise.resolve(refreshed(0, 0))
+      if (url.endsWith('/documents')) return Promise.resolve(listResponse(['a.pdf']))
+      return Promise.resolve(summaryResponse([]))
+    })
+
+    await reconcileOrphanedVectors()
+
+    const calls = documentFactsCalls()
+    expect(calls.map((call) => JSON.parse(call[1].body).collections.length)).toEqual([DOCUMENT_FACTS_BATCH, 3])
+    expect(calls.flatMap((call) => JSON.parse(call[1].body).collections)).toEqual(live(DOCUMENT_FACTS_BATCH + 3).map((row) => row.collectionName))
+    expect(calls[0][1].headers['x-grid-internal-token']).toBe('real-secret')
+    expect(calls[0][1].signal).toBeInstanceOf(AbortSignal)
+  })
+
+  it('reports what it copied, and a collection the backend could not copy under its name', async () => {
+    stubRows(live(2))
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENT_FACTS_URL) return Promise.resolve(refreshed(2, 7, [{ collection: 'proj_1', error: 'timed out' }]))
+      if (url.endsWith('/documents')) return Promise.resolve(listResponse(['a.pdf']))
+      return Promise.resolve(summaryResponse([]))
+    })
+
+    const result = await reconcileOrphanedVectors()
+
+    expect(result.documentFacts).toEqual({ collections: 2, files: 7, unsupported: false })
+    expect(result.failures).toEqual([{ collectionName: 'proj_1', error: 'document facts: timed out' }])
+  })
+
+  it('records a refused batch under each of its collections, runs the next, and stops on a deployment without Qdrant', async () => {
+    stubRows(live(DOCUMENT_FACTS_BATCH + 1))
+    const answers = [{ ok: false, status: 503 }, refreshed(1, 2)]
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENT_FACTS_URL) return Promise.resolve(answers.shift())
+      if (url.endsWith('/documents')) return Promise.resolve(listResponse(['a.pdf']))
+      return Promise.resolve(summaryResponse([]))
+    })
+
+    const result = await reconcileOrphanedVectors()
+
+    expect(result.documentFacts).toEqual({ collections: 1, files: 2, unsupported: false })
+    expect(result.failures).toHaveLength(DOCUMENT_FACTS_BATCH)
+    expect(result.failures[0]).toEqual({ collectionName: 'proj_0', error: 'document facts: refresh-document-facts returned 503' })
+
+    fetchMock.mockClear()
+    fetchMock.mockImplementation((url: string) => {
+      if (url === DOCUMENT_FACTS_URL) return Promise.resolve({ ok: false, status: 409 })
+      if (url.endsWith('/documents')) return Promise.resolve(listResponse(['a.pdf']))
+      return Promise.resolve(summaryResponse([]))
+    })
+    const without = await reconcileOrphanedVectors()
+    expect(without.documentFacts).toEqual({ collections: 0, files: 0, unsupported: true })
+    expect(without.failures).toEqual([])
+    expect(documentFactsCalls()).toHaveLength(1)
   })
 })

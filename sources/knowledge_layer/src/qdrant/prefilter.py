@@ -25,8 +25,9 @@ drop documents the substring rule keeps, so it stays a post-filter.
 ``file_name`` likewise matches either name containing the other.
 
 **Postgres stays the authority.** A copied fact can lag the store by a failed
-copy (``writes.refresh_facts`` never raises) until the weekly reconcile
-repairs it. So the rules are:
+copy (``writes.refresh_facts`` never raises) until the weekly vector
+reconcile copies every live collection's facts again (``writes.copy_facts``,
+through ``POST /v1/maintenance/refresh-document-facts``). So the rules are:
 
 * A pre-filter only ever NARROWS: it is AND-ed onto the scope filter, never a
   replacement for one, and the Postgres post-filter still runs over what comes

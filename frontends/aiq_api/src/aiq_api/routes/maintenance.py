@@ -10,6 +10,9 @@ Also reconciles the summaries table against the vector store
 summary rows alone, so a row whose chunks are gone lists a file nobody can
 retrieve. ``delete_file`` now forgets both together; this sweep catches the
 rows orphaned before it did.
+
+And copies every document's person-set facts onto its points again
+(``refresh-document-facts``), repairing a copy that failed after an edit.
 """
 
 import asyncio
@@ -219,8 +222,72 @@ async def reconcile_orphaned_summaries(collections: list[str] | None, *, dry_run
     }
 
 
+#: Collections one ``refresh-document-facts`` call may name. The BFF's sweep
+#: sends its live collections in batches no larger, so one call stays well
+#: inside its timeout.
+REFRESH_FACTS_MAX_COLLECTIONS = 100
+
+
+class RefreshDocumentFactsRequest(BaseModel):
+    """The collections whose documents' facts the weekly vector reconcile copies onto their points again."""
+
+    collections: list[str] = Field(..., min_length=1, max_length=REFRESH_FACTS_MAX_COLLECTIONS)
+
+
+async def refresh_document_facts(collections: list[str]) -> dict[str, Any]:
+    """Copy every document's person-set facts onto its points again, collection by collection.
+
+    The repair behind ``knowledge_layer.qdrant.writes.refresh_facts``, which
+    never raises: a copy that failed after a person's edit (tags, Dokumentart,
+    a Fassung link, a folder) leaves the old value on the points, and the
+    pre-filters that read it (the cross-project search's tag filters, the
+    superseded exclusion) hide or show the document wrongly until something
+    copies it again. Fails per collection, never as a whole; 409 where this
+    process has no Qdrant store, which the BFF reads as nothing to repair.
+    """
+    try:
+        from knowledge_layer.qdrant import writes
+    except ImportError as exc:  # the knowledge layer's store extra is not installed here
+        raise HTTPException(status_code=409, detail="this deployment has no Qdrant store") from exc
+
+    targets = list(dict.fromkeys(collections))
+    files_refreshed = 0
+    failures: list[dict[str, str]] = []
+    for collection in targets:
+        try:
+            # Store reads and writes are synchronous; keep them off the event loop.
+            files_refreshed += await asyncio.to_thread(writes.copy_facts, collection)
+        except Exception as exc:
+            logger.warning("refresh-document-facts: %s failed: %s", collection, exc)
+            failures.append({"collection": collection, "error": str(exc)})
+    logger.info(
+        "refresh-document-facts: copied the facts of %d file(s) in %d collection(s), %d failed",
+        files_refreshed,
+        len(targets),
+        len(failures),
+    )
+    return {
+        "status": "ok",
+        "collections_scanned": len(targets),
+        "files_refreshed": files_refreshed,
+        "failures": failures,
+    }
+
+
 def add_maintenance_routes(router: APIRouter) -> None:
     """Add internal maintenance routes to the FastAPI app."""
+
+    @router.post(
+        "/v1/maintenance/refresh-document-facts",
+        tags=["maintenance"],
+        summary="Copy every document's facts onto its points again (internal)",
+    )
+    async def refresh_document_facts_route(
+        body: RefreshDocumentFactsRequest,
+        request: Request,
+    ) -> dict:
+        _require_internal_token(request)
+        return await refresh_document_facts(body.collections)
 
     @router.post(
         "/v1/maintenance/reconcile-summaries",

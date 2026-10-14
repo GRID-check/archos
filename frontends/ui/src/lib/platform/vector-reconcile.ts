@@ -20,6 +20,13 @@
  * the backend's own `reconcile-summaries` route — the summaries table is not
  * this tier's to read.
  *
+ * Two more halves repair the facts copied onto the chunks, whose authority is
+ * Postgres: every project's facts and status (`syncAllProjectFacts`), and every
+ * document's person-set facts (tags, Dokumentart, the superseded mark, the
+ * folder) through the backend's `refresh-document-facts` route. Both copies
+ * are made after each change and never fail the change, so this weekly pass is
+ * what puts right a copy that failed.
+ *
  * Cross-org and destructive — caller authorization (requirePlatformPermission)
  * happens in the route; this module is data-only and must never be exposed to a
  * tenant session.
@@ -57,12 +64,33 @@ export interface VectorReconcileResult {
   failures: { collectionName: string; error: string }[]
   /** The facts copy of every project onto its chunks (the third half); absent when it could not run. */
   projectFacts?: ProjectFactsSyncResult
+  /** The facts copy of every document onto its chunks (the fourth half). */
+  documentFacts?: DocumentFactsRefreshResult
+}
+
+/** What the document facts half did. */
+export interface DocumentFactsRefreshResult {
+  /** Collections whose documents' facts were copied again. */
+  collections: number
+  /** Files whose facts were copied. */
+  files: number
+  /** True when the deployment writes no Qdrant: the half stopped at the first answer saying so. */
+  unsupported: boolean
 }
 
 /** The `collectionName` a whole-sweep summary failure is filed under. */
 export const SUMMARY_SWEEP_FAILURE_NAME = '*'
 /** The `collectionName` a failure of the project facts half as a whole is filed under. */
 export const PROJECT_FACTS_FAILURE_NAME = '*project-facts'
+
+/**
+ * Collections per `refresh-document-facts` call. The backend accepts at most
+ * 100 (`REFRESH_FACTS_MAX_COLLECTIONS`); a smaller batch keeps one call well
+ * inside {@link DOCUMENT_FACTS_TIMEOUT_MS} for collections of many files.
+ */
+export const DOCUMENT_FACTS_BATCH = 25
+/** One batch's bound: each file's Dokumentart may cost the backend one read. */
+const DOCUMENT_FACTS_TIMEOUT_MS = 120_000
 
 /** The backend's `POST /v1/maintenance/reconcile-summaries` answer. */
 interface BackendSummaryReconcile {
@@ -231,6 +259,60 @@ async function reconcileOrphanedSummaries(
   }
 }
 
+/** The backend's `POST /v1/maintenance/refresh-document-facts` answer. */
+interface BackendDocumentFactsRefresh {
+  collections_scanned?: number
+  files_refreshed?: number
+  failures?: { collection: string; error: string }[]
+}
+
+/**
+ * Copy every document's person-set facts (tags, Dokumentart, the superseded
+ * mark, the folder) onto its chunks again, in bounded batches of the
+ * collections the chunk half walked. The copy after an edit
+ * (`writes.refresh_facts`) never raises, so one that failed left the old value
+ * on the points, and the pre-filters reading it (the cross-project search's
+ * tag filters, the superseded exclusion) hide or show the document wrongly
+ * until this runs. A batch that fails is recorded under each of its
+ * collections and the next batch still runs; a 409 (no Qdrant here) stops the
+ * half, as the project facts half stops.
+ */
+async function refreshDocumentFacts(
+  collectionNames: string[],
+): Promise<{ result: DocumentFactsRefreshResult; failures: VectorReconcileResult['failures'] }> {
+  const result: DocumentFactsRefreshResult = { collections: 0, files: 0, unsupported: false }
+  const failures: VectorReconcileResult['failures'] = []
+  for (let start = 0; start < collectionNames.length; start += DOCUMENT_FACTS_BATCH) {
+    const batch = collectionNames.slice(start, start + DOCUMENT_FACTS_BATCH)
+    try {
+      const res = await fetch(`${getBackendUrl()}/v1/maintenance/refresh-document-facts`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-grid-internal-token': process.env.GRID_INTERNAL_API_TOKEN ?? '',
+        },
+        body: JSON.stringify({ collections: batch }),
+        signal: AbortSignal.timeout(DOCUMENT_FACTS_TIMEOUT_MS),
+      })
+      if (res.status === 409) return { result: { ...result, unsupported: true }, failures }
+      if (!res.ok) throw new Error(`refresh-document-facts returned ${res.status}`)
+      const body = (await res.json().catch(() => ({}))) as BackendDocumentFactsRefresh
+      result.collections += typeof body.collections_scanned === 'number' ? body.collections_scanned : 0
+      result.files += typeof body.files_refreshed === 'number' ? body.files_refreshed : 0
+      failures.push(
+        ...(body.failures ?? []).map((failure) => ({
+          collectionName: failure.collection,
+          error: `document facts: ${failure.error}`,
+        })),
+      )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'unknown error'
+      failures.push(...batch.map((collectionName) => ({ collectionName, error: `document facts: ${message}` })))
+    }
+  }
+  return { result, failures }
+}
+
 /**
  * Scan every live collection and delete chunks whose owning document row is
  * gone, then forget the summary rows those collections hold for files with no
@@ -295,6 +377,12 @@ export async function reconcileOrphanedVectors(): Promise<VectorReconcileResult>
       error: `project facts: ${error instanceof Error ? error.message : 'unknown error'}`,
     })
   }
+
+  // Fourth half: every document's facts onto its chunks again, over the same
+  // live collections. Repairs a copy an edit failed to make; never throws.
+  const documentFacts = await refreshDocumentFacts([...live.keys()])
+  result.documentFacts = documentFacts.result
+  result.failures.push(...documentFacts.failures)
 
   return result
 }

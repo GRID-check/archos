@@ -210,8 +210,12 @@ project status and facts are all edited by people in Postgres. They are
 - The mirror carries a `meta_version`, and conditional updates (1.16) refuse to
   apply an older version over a newer one.
 - The existing weekly reconcile (`frontends/ui/src/lib/platform/vector-reconcile.ts`)
-  grows a payload check: it samples points per document, compares them with
-  Postgres and repairs drift.
+  repairs drift by copying again rather than by sampling and comparing: its
+  document facts half sends every live collection, in batches of 25, to
+  `POST /v1/maintenance/refresh-document-facts`, which runs
+  `writes.copy_facts(scope)` per collection (the same copy an edit makes,
+  raising instead of swallowing a failure) and reports the files copied and
+  the collections that failed.
 
 This removes the 3× over-fetch and the `$in`/`$nin` file lists. Each filter
 becomes a pre-filter inside the vector search. The post-filters in
@@ -705,6 +709,7 @@ itself.
 | `knowledge_search` pre-filters under `qdrant`: `doc_class = X` (the stored class over the chunk's guess, as `_hit_doc_class` resolves), `superseded != true` on user shelves unless `file_name=` names a file, `folder` as one match on `folder_ancestors` (case-folded paths, `/`-bounded). No 3× over-fetch and no `file_name $in/$nin` lists for them. The Postgres post-filters stay as a backstop, and the Postgres superseded list still drops hits a lagging mirror let through. The span carries `prefiltered: [fields]` | `qdrant/prefilter.py`; `register.py` — `search` |
 | Payload indexes added to an existing collection on first read or write (`ensure_payload_indexes`), so a new indexed field needs no rebuild | `qdrant/schema.py`, `store.py` — `exists`, `ensure` |
 | Structural reads by filter: `read_passage` (Punkt, page, outline, the whole-document fallback) and the family overview scroll by filter, ordered by `reading_order`, with no embedding and no ranking; Chroma keeps the embedded probe. `family_read` (`fetch` or `retrieve`) on the `retrieve.knowledge_search` span | `BaseRetriever.fetch`, `qdrant/reads.py`, `read_passage._structural_fetch` |
+| Document facts (tags, Dokumentart, superseded, folder) copied again weekly, every live collection, so a copy an edit failed to make (`refresh_facts` never raises) is repaired; counted per file, failed per collection | `POST /v1/maintenance/refresh-document-facts` (`routes/maintenance.py`), `qdrant/writes.py` — `copy_facts`; BFF `platform/vector-reconcile.ts` — `refreshDocumentFacts` |
 | Project facts and status on every chunk of a project, indexed; pushed on profile save, lifecycle move and ingest, swept weekly | `PUT /v1/collections/{c}/project-facts`, `qdrant/payload.py` — `project_payload`; BFF `cross-project/project-facts-mirror.ts` |
 | Cross-project tag pre-filters and the current project's likeness inside the one grouped query (§7 "As built") | `qdrant/boost.py`, `qdrant/search.py` — `grouped_search`; BFF `cross-project/service.ts` — `searchPage` |
 | Project-fact filters in the agent's cross-project contract (`project_facts` on `search` and `find`), judged on the Postgres profile before the page is cut; likeness still ranks | `tools/cross_project/register.py` — `project_facts_filter`; BFF `cross-project/types.ts` — `crossProjectFactsSchema`, `service.ts` — `holdsFacts`, `projectsInScope` |

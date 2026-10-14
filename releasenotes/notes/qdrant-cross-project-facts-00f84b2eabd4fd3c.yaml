@@ -9,8 +9,11 @@ operators:
   - >
     Each project's facts and status are copied onto its documents in Qdrant
     when the brief or the project's status changes and when a document is
-    filed. The weekly vector maintenance copies every project's facts again;
-    run it once after the Qdrant backfill, so the copied documents carry them.
+    filed. The weekly vector maintenance copies every project's facts again,
+    and every document's tags, Dokumentart and replaced-Fassung mark, so a
+    copy that failed after an edit no longer hides a document from a filtered
+    search; run it once after the Qdrant backfill, so the copied documents
+    carry them.
   - >
     On Chroma, a search across projects no longer checks access to 40 projects
     before falling back to searching 8 of them one by one.
