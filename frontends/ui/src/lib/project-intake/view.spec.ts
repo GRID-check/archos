@@ -117,6 +117,8 @@ describe('buildIntakeView', () => {
     const result = view()
     expect(result.groups.flatMap((group) => group.items).map((item) => item.key)).not.toContain('gebaeudeklasse@bw1')
     expect(result.derivations.map((derivation) => derivation.bauwerkId)).toEqual(['bw1'])
+    // …and carried there, so the review has a row to confirm it through.
+    expect(result.derivations[0]?.suggestion).toMatchObject({ key: 'gebaeudeklasse@bw1', state: 'suggested' })
   })
 
   it('still lists a contested derived class among the contradictions', () => {

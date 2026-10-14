@@ -85,7 +85,7 @@ import { DraftFileError, fileConversationDraft } from '../lib/document-draft-fil
 import { fetchConversationDraft } from '../lib/document-draft-preview'
 import { CARD_SHELL } from './card-chrome'
 import { DocumentDraftPreviewDialog } from './DocumentDraftPreviewDialog'
-import { StackedLabel } from './StackedLabel'
+import { StackedLabel } from '@/components/ui/stacked-label'
 
 interface DocumentDraftCardProps {
   /** The document's first heading, or its file name when it has none. */

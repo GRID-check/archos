@@ -2110,6 +2110,470 @@
                   "maxLength": 200
                 },
                 "maxItems": 20
+              },
+              "suggestion": {
+                "anyOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "key": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "baseKey": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "bauwerkId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 32
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "label": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 300
+                      },
+                      "value": {
+                        "anyOf": [
+                          {
+                            "type": "string"
+                          },
+                          {
+                            "type": "number"
+                          },
+                          {
+                            "type": "boolean"
+                          },
+                          {
+                            "type": "array",
+                            "items": {
+                              "type": "string"
+                            }
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "display": {
+                        "type": "string",
+                        "maxLength": 1000
+                      },
+                      "state": {
+                        "type": "string",
+                        "enum": [
+                          "suggested",
+                          "confirmed",
+                          "contested"
+                        ]
+                      },
+                      "evidence": {
+                        "type": "array",
+                        "items": {
+                          "oneOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "document"
+                                },
+                                "fileName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 512
+                                },
+                                "page": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer"
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "quote": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 400
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "fileName",
+                                "page",
+                                "quote"
+                              ],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "geocoder"
+                                },
+                                "provider": {
+                                  "const": "photon"
+                                },
+                                "label": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 300
+                                },
+                                "resolvedAt": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "provider",
+                                "label",
+                                "resolvedAt"
+                              ],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "derivation"
+                                },
+                                "rule": {
+                                  "type": "string",
+                                  "enum": [
+                                    "gebaeudeklasse"
+                                  ]
+                                },
+                                "citation": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 300
+                                },
+                                "inputs": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "key": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      },
+                                      "value": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string"
+                                          },
+                                          {
+                                            "type": "number"
+                                          },
+                                          {
+                                            "type": "boolean"
+                                          },
+                                          {
+                                            "type": "array",
+                                            "items": {
+                                              "type": "string"
+                                            }
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "suggested": {
+                                        "type": "boolean"
+                                      }
+                                    },
+                                    "required": [
+                                      "key",
+                                      "value",
+                                      "suggested"
+                                    ],
+                                    "additionalProperties": true
+                                  },
+                                  "maxItems": 20
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "rule",
+                                "citation",
+                                "inputs"
+                              ],
+                              "additionalProperties": true
+                            },
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "const": "person"
+                                },
+                                "userId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 256
+                                },
+                                "at": {
+                                  "type": "string",
+                                  "format": "date-time"
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "userId",
+                                "at"
+                              ],
+                              "additionalProperties": true
+                            }
+                          ],
+                          "discriminator": {
+                            "propertyName": "kind"
+                          }
+                        },
+                        "maxItems": 5
+                      },
+                      "alternatives": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "value": {
+                              "anyOf": [
+                                {
+                                  "type": "string"
+                                },
+                                {
+                                  "type": "number"
+                                },
+                                {
+                                  "type": "boolean"
+                                },
+                                {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "string"
+                                  }
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "evidence": {
+                              "type": "array",
+                              "items": {
+                                "oneOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "document"
+                                      },
+                                      "fileName": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 512
+                                      },
+                                      "page": {
+                                        "anyOf": [
+                                          {
+                                            "type": "integer"
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      },
+                                      "quote": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 400
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "fileName",
+                                      "page",
+                                      "quote"
+                                    ],
+                                    "additionalProperties": true
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "geocoder"
+                                      },
+                                      "provider": {
+                                        "const": "photon"
+                                      },
+                                      "label": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 300
+                                      },
+                                      "resolvedAt": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "provider",
+                                      "label",
+                                      "resolvedAt"
+                                    ],
+                                    "additionalProperties": true
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "derivation"
+                                      },
+                                      "rule": {
+                                        "type": "string",
+                                        "enum": [
+                                          "gebaeudeklasse"
+                                        ]
+                                      },
+                                      "citation": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 300
+                                      },
+                                      "inputs": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "key": {
+                                              "type": "string",
+                                              "minLength": 1,
+                                              "maxLength": 200
+                                            },
+                                            "value": {
+                                              "anyOf": [
+                                                {
+                                                  "type": "string"
+                                                },
+                                                {
+                                                  "type": "number"
+                                                },
+                                                {
+                                                  "type": "boolean"
+                                                },
+                                                {
+                                                  "type": "array",
+                                                  "items": {
+                                                    "type": "string"
+                                                  }
+                                                },
+                                                {
+                                                  "type": "null"
+                                                }
+                                              ]
+                                            },
+                                            "suggested": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "key",
+                                            "value",
+                                            "suggested"
+                                          ],
+                                          "additionalProperties": true
+                                        },
+                                        "maxItems": 20
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "rule",
+                                      "citation",
+                                      "inputs"
+                                    ],
+                                    "additionalProperties": true
+                                  },
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "kind": {
+                                        "const": "person"
+                                      },
+                                      "userId": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 256
+                                      },
+                                      "at": {
+                                        "type": "string",
+                                        "format": "date-time"
+                                      }
+                                    },
+                                    "required": [
+                                      "kind",
+                                      "userId",
+                                      "at"
+                                    ],
+                                    "additionalProperties": true
+                                  }
+                                ],
+                                "discriminator": {
+                                  "propertyName": "kind"
+                                }
+                              },
+                              "maxItems": 5
+                            },
+                            "recordedAt": {
+                              "type": "string",
+                              "format": "date-time"
+                            }
+                          },
+                          "required": [
+                            "value",
+                            "evidence",
+                            "recordedAt"
+                          ],
+                          "additionalProperties": true
+                        },
+                        "maxItems": 5
+                      },
+                      "decisive": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "key",
+                      "baseKey",
+                      "bauwerkId",
+                      "label",
+                      "value",
+                      "display",
+                      "state",
+                      "evidence",
+                      "alternatives",
+                      "decisive"
+                    ],
+                    "additionalProperties": true
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
               }
             },
             "required": [
@@ -2119,7 +2583,8 @@
               "value",
               "hochhaus",
               "inputs",
-              "missing"
+              "missing",
+              "suggestion"
             ],
             "additionalProperties": true
           }

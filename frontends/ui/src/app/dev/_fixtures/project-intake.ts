@@ -1,6 +1,6 @@
 /**
  * Review fixtures for the setup page (`/dev/project-setup`) and its specs: a
- * project that waits for documents, one being read, one ready with
+ * project that waits for documents, one being read, one whose reading failed, one ready with
  * contradictions, Rückfragen, suggestions and derivations, a past project the
  * review will close, and a finished one. Values, labels and keys are the
  * wizard's own (`lib/project-profile/intake-definition.ts`); the project is an
@@ -9,7 +9,7 @@
 
 import type { GeocodeResult } from '@/lib/geocoding/types'
 import type {
-  DerivationView,
+  DerivationReview,
   IntakeView,
   Need,
   ProfileEvidence,
@@ -153,7 +153,7 @@ const GROUP_BASE: SuggestionGroup = {
 const GROUP_BAUWERKE: SuggestionGroup = {
   stage: 'C',
   title: 'Bauwerke',
-  items: [SUGGESTION_TYPE, SUGGESTION_STOREYS, SUGGESTION_ESCAPE_LEVEL, SUGGESTION_POSITION, SUGGESTION_UNITS, SUGGESTION_CLASS],
+  items: [SUGGESTION_TYPE, SUGGESTION_STOREYS, SUGGESTION_ESCAPE_LEVEL, SUGGESTION_POSITION, SUGGESTION_UNITS],
 }
 
 export const QUESTION_AREA: Need = {
@@ -198,7 +198,8 @@ export const QUESTION_USE: Need = {
   state: 'open',
 }
 
-export const DERIVATION_READY: DerivationView = {
+/** The derived class is decided here, not among the review's modules. */
+export const DERIVATION_READY: DerivationReview = {
   bauwerkId: 'bw1',
   rule: 'gebaeudeklasse',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
@@ -212,9 +213,10 @@ export const DERIVATION_READY: DerivationView = {
     { key: 'gebaeudestellung@bw1', value: 'angebaut', suggested: false },
   ],
   missing: [],
+  suggestion: SUGGESTION_CLASS,
 }
 
-export const DERIVATION_OPEN: DerivationView = {
+export const DERIVATION_OPEN: DerivationReview = {
   bauwerkId: 'bw2',
   rule: 'gebaeudeklasse',
   citation: 'OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023), „Gebäudeklassen“',
@@ -222,6 +224,7 @@ export const DERIVATION_OPEN: DerivationView = {
   hochhaus: false,
   inputs: [{ key: 'bauwerkstyp@bw2', value: 'gebaeude', suggested: false }],
   missing: ['geschosse_oberirdisch', 'fluchtniveau_m', 'bgf_oberirdisch'],
+  suggestion: null,
 }
 
 const BASE: IntakeView = {
@@ -256,6 +259,13 @@ export const INTAKE_READING: IntakeView = {
     { ...GROUP_BASE, items: [SUGGESTION_ADDRESS, SUGGESTION_EDITION] },
     { ...GROUP_BAUWERKE, items: [SUGGESTION_TYPE, SUGGESTION_POSITION] },
   ],
+}
+
+/** The reading stopped part-way: what was found stays, the rest is unread, and another reading is the way on. */
+export const INTAKE_FAILED: IntakeView = {
+  ...INTAKE_READING,
+  status: 'failed',
+  readingFinishedAt: '2026-10-14T08:36:00.000Z',
 }
 
 /** The review: a contradiction, Rückfragen, suggestions by module, and two derivations. */
@@ -298,7 +308,7 @@ export const INTAKE_COMPLETED: IntakeView = {
     ...group,
     items: group.items.map((item) => ({ ...item, state: 'confirmed' as const, alternatives: [] })),
   })),
-  derivations: [DERIVATION_READY],
+  derivations: [{ ...DERIVATION_READY, suggestion: { ...SUGGESTION_CLASS, state: 'confirmed', alternatives: [] } }],
   canDecide: false,
   canComplete: false,
 }
@@ -306,6 +316,7 @@ export const INTAKE_COMPLETED: IntakeView = {
 export const INTAKE_FIXTURES = {
   waiting: INTAKE_WAITING,
   reading: INTAKE_READING,
+  failed: INTAKE_FAILED,
   ready: INTAKE_READY,
   closing: INTAKE_CLOSING,
   completed: INTAKE_COMPLETED,

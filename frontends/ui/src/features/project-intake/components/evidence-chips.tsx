@@ -1,19 +1,57 @@
 'use client'
 
 import type { JSX } from 'react'
-import { Calculator, FileText, MapPin, UserRound } from 'lucide-react'
+import { createContext, useContext, useMemo } from 'react'
+import { Calculator, MapPin, UserRound } from 'lucide-react'
 import { Chip, ChipLabel } from '@/components/ui/chip'
-import { HoverPeekPanel } from '@/components/ui/hover-peek-panel'
-import { useHoverPopover } from '@/hooks/use-hover-popover'
+import { SourcePreviewChip } from '@/features/chat/components/SourcePreview'
+import type { CitationRef } from '@/features/chat/lib/citations'
 import { useTranslations } from '@/i18n'
 import type { ProfileEvidence } from '@/lib/project-intake/types'
 import { cn } from '@/lib/utils'
 
 /**
- * Where a value was found, as chips: „Baubeschreibung.pdf, S. 3" with the quote
- * on hover or focus (a tap pins it), the address search, a derivation, or the
+ * The project whose documents the chips open. The page provides it once
+ * (`IntakeSetupView`), so no section passes it down to the chip.
+ */
+export const EvidenceProjectContext = createContext<string | undefined>(undefined)
+
+type DocumentEvidence = Extract<ProfileEvidence, { kind: 'document' }>
+
+/**
+ * A document's evidence as the citation the chat's source chips are made of:
+ * a project file, narrowed to the page and the quote. Nothing here is a
+ * second kind of chip; it is the same reference, so the same hover peek, the
+ * same viewer and the same provenance signal follow from it.
+ */
+export function citationOfEvidence(evidence: DocumentEvidence): CitationRef {
+  const locus = {
+    key: `${evidence.fileName}#${evidence.page ?? 'quote'}`,
+    ...(evidence.page === null ? {} : { page: evidence.page }),
+    snippet: evidence.quote,
+    isCited: true,
+  }
+  return {
+    document: {
+      id: `intake:${evidence.fileName}`,
+      title: evidence.fileName,
+      fileName: evidence.fileName,
+      shelf: 'project',
+      kind: 'projekt',
+      tint: 'project',
+      loci: [locus],
+    },
+    locus,
+  }
+}
+
+/**
+ * Where a value was found, as chips: „Baubeschreibung.pdf, S. 3", which shows
+ * the quote on hover or focus and opens the document at that page in the
+ * viewer the chat's citations open, the address search, a derivation, or the
  * person's own answer. A value with no evidence shows no chip, never an empty
- * one. Only a document has a passage to show, so only its chip is a control.
+ * one. Only a document is a source, so only its chip wears the project
+ * provenance signal; the others are neutral.
  */
 export function EvidenceChips({
   evidence,
@@ -61,33 +99,13 @@ function EvidenceChip({ evidence }: { evidence: ProfileEvidence }): JSX.Element 
   )
 }
 
-function DocumentChip({ evidence }: { evidence: Extract<ProfileEvidence, { kind: 'document' }> }): JSX.Element {
+function DocumentChip({ evidence }: { evidence: DocumentEvidence }): JSX.Element {
   const t = useTranslations('projectIntake')
-  const peek = useHoverPopover()
+  const projectId = useContext(EvidenceProjectContext)
+  const citation = useMemo(() => citationOfEvidence(evidence), [evidence])
   const label =
     evidence.page === null
       ? t('evidence.documentNoPage', { name: evidence.fileName })
       : t('evidence.document', { name: evidence.fileName, page: evidence.page })
-  return (
-    <>
-      <Chip asChild variant="muted" interactive>
-        <button
-          type="button"
-          {...peek.triggerProps}
-          aria-label={t('evidence.openQuote', { name: label })}
-          title={label}
-        >
-          <FileText aria-hidden />
-          <ChipLabel>{label}</ChipLabel>
-        </button>
-      </Chip>
-      <HoverPeekPanel peek={peek} className="w-80 p-3">
-        <p className="text-muted-foreground mb-1.5 text-xs">{t('evidence.quote')}</p>
-        <blockquote className="border-border border-l-2 pl-3 text-sm leading-relaxed italic">
-          {evidence.quote}
-        </blockquote>
-        <p className="text-muted-foreground mt-2 truncate text-xs">{label}</p>
-      </HoverPeekPanel>
-    </>
-  )
+  return <SourcePreviewChip citation={citation} label={label} projectId={projectId} className="sm:max-w-72" />
 }

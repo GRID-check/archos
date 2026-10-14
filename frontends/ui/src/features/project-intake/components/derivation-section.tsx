@@ -3,39 +3,35 @@
 import type { JSX } from 'react'
 import { Check } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
+import { BusyButton } from '@/components/ui/busy-button'
 import { Chip, ChipLabel } from '@/components/ui/chip'
 import { RaisedCard, RaisedCardBody, RaisedCardFooter } from '@/components/ui/raised-card'
 import { useTranslations } from '@/i18n'
-import type { DerivationView, IntakeDecision, SuggestionGroup } from '@/lib/project-intake/types'
+import type { DerivationReview, IntakeDecision } from '@/lib/project-intake/types'
 import { bauwerkNumber, displayValue, keyLabel } from '../lib/display'
+import { usePressed } from '../hooks/use-pressed'
 import { IntakeSection } from './intake-atoms'
-
-/** The profile key a Bauwerk's class is stored under, and so decided on. */
-export const gebaeudeklasseKeyOf = (bauwerkId: string): string => `gebaeudeklasse@${bauwerkId}`
 
 /**
  * Ableitungen: the Gebäudeklasse of each Bauwerk, with the inputs it was read
  * from (the ones only suggested are marked), its Fundstelle, and what it still
- * lacks. Confirming it is deciding on the suggestion `gebaeudeklasse@bwN`, the
- * same row the review lists, so there is one way to write it.
+ * lacks. Confirming it is deciding on the suggestion `gebaeudeklasse@bwN`,
+ * which the derivation carries: the review's modules leave the derived class
+ * out, so this is the one way to write it.
  */
 export function DerivationSection({
   derivations,
-  groups,
   canDecide,
   busy,
   onDecide,
 }: {
-  derivations: readonly DerivationView[]
-  groups: readonly SuggestionGroup[]
+  derivations: readonly DerivationReview[]
   canDecide: boolean
   busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
 }): JSX.Element | null {
   const t = useTranslations('projectIntake')
   if (derivations.length === 0) return null
-  const rows = groups.flatMap((group) => group.items)
   return (
     <IntakeSection
       label={t('derivations.heading')}
@@ -47,8 +43,9 @@ export function DerivationSection({
           <li key={derivation.bauwerkId} className="min-w-0">
             <DerivationCard
               derivation={derivation}
-              suggestion={rows.find((row) => row.key === gebaeudeklasseKeyOf(derivation.bauwerkId))}
-              locked={!canDecide || busy}
+              suggestion={derivation.suggestion}
+              canDecide={canDecide}
+              busy={busy}
               onDecide={onDecide}
             />
           </li>
@@ -59,7 +56,7 @@ export function DerivationSection({
 }
 
 /** „Anzahl oberirdischer Geschoße: 6 · vorgeschlagen": an input, and whether it is only suggested. */
-function inputText(input: DerivationView['inputs'][number], suggestedMark: string): string {
+function inputText(input: DerivationReview['inputs'][number], suggestedMark: string): string {
   const text = `${keyLabel(input.key)}: ${displayValue(input.key, input.value)}`
   return input.suggested ? `${text} · ${suggestedMark}` : text
 }
@@ -67,15 +64,18 @@ function inputText(input: DerivationView['inputs'][number], suggestedMark: strin
 function DerivationCard({
   derivation,
   suggestion,
-  locked,
+  canDecide,
+  busy,
   onDecide,
 }: {
-  derivation: DerivationView
-  suggestion: SuggestionGroup['items'][number] | undefined
-  locked: boolean
+  derivation: DerivationReview
+  suggestion: DerivationReview['suggestion']
+  canDecide: boolean
+  busy: boolean
   onDecide: (decisions: IntakeDecision[]) => Promise<boolean>
 }): JSX.Element {
   const t = useTranslations('projectIntake')
+  const [confirming, confirm] = usePressed()
   const bauwerk = t('derivations.bauwerk', { number: bauwerkNumber(derivation.bauwerkId) })
   const value = derivation.value === null ? null : t('derivations.value', { value: derivation.value })
 
@@ -93,17 +93,20 @@ function DerivationCard({
           </div>
           {suggestion?.state === 'confirmed' && <Badge variant="success">{t('derivations.confirmed')}</Badge>}
           {suggestion?.state === 'suggested' && (
-            <Button
+            <BusyButton
               type="button"
               size="sm"
               variant="outline"
-              disabled={locked}
+              icon={<Check aria-hidden />}
+              disabled={!canDecide}
+              busy={confirming}
+              blocked={busy}
+              busyLabel={t('busy.confirm')}
               aria-label={t('derivations.confirmAria', { value: value ?? '', bauwerk })}
-              onClick={() => void onDecide([{ key: suggestion.key, action: 'confirm' }])}
+              onClick={() => confirm(() => onDecide([{ key: suggestion.key, action: 'confirm' }]))}
             >
-              <Check aria-hidden />
               {t('derivations.confirm')}
-            </Button>
+            </BusyButton>
           )}
         </div>
 
@@ -120,7 +123,7 @@ function DerivationCard({
             <ul className="flex flex-wrap gap-1.5">
               {derivation.inputs.map((input) => (
                 <li key={input.key} className="min-w-0 max-w-full">
-                  <Chip variant={input.suggested ? 'warning' : 'muted'} title={inputText(input, t('derivations.suggestedMark'))}>
+                  <Chip variant="muted" title={inputText(input, t('derivations.suggestedMark'))}>
                     <ChipLabel>{inputText(input, t('derivations.suggestedMark'))}</ChipLabel>
                   </Chip>
                 </li>

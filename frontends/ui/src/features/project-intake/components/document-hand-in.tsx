@@ -12,7 +12,7 @@ import { useAppConfig } from '@/shared/context'
 import { cn } from '@/lib/utils'
 
 /**
- * „Dokument nachreichen": a small drop target on a Rückfrage. The question
+ * „Dokument nachreichen": a row on a Rückfrage. The question
  * names the document that would answer it (`foundIn`); dropping a file here, or
  * choosing one, files it through the page's one upload and Piloti reads it. The
  * question closes when the value is found, which the page notices when it
@@ -40,14 +40,16 @@ export function DocumentHandIn({
       data-testid="document-hand-in"
       data-dragging={isDragging || undefined}
       className={cn(
-        'flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border border-dashed px-3.5 py-2.5 transition-colors duration-quick ease-out motion-reduce:transition-none',
-        isDragging ? 'border-ring bg-primary/5' : 'border-border bg-muted/25'
+        // A row of the card, not a box in it: no border at rest, a ring only
+        // while a file is over it. `ring-inset` so the card's clip cannot cut it.
+        'flex items-center gap-3 rounded-md px-2 py-1.5 transition-shadow duration-quick ease-out motion-reduce:transition-none',
+        isDragging && 'bg-primary/5 ring-ring ring-2 ring-inset'
       )}
     >
       <FilePlus2 className="text-muted-foreground size-4 shrink-0" aria-hidden />
       <div className="min-w-0 flex-1">
         <p className="text-sm font-medium">{t('questions.dropTitle')}</p>
-        <p className="text-muted-foreground text-xs">{t('questions.dropHint')}</p>
+        <p className="text-muted-foreground text-xs hyphens-auto">{t('questions.dropHint')}</p>
       </div>
       <input
         ref={input}
@@ -66,8 +68,9 @@ export function DocumentHandIn({
       />
       <Button
         type="button"
-        variant="outline"
+        variant="ghost"
         size="sm"
+        className="shrink-0"
         disabled={disabled}
         aria-label={t('questions.pickAria', { label })}
         onClick={() => input.current?.click()}

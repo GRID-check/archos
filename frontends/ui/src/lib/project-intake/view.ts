@@ -27,6 +27,7 @@ import { GEBAEUDEKLASSE_DERIVATION } from './derivations'
 import { profileKeyParts } from './profile-edits'
 import {
   MAX_INTAKE_NEEDS,
+  type DerivationReview,
   type IntakeCounts,
   type IntakeView,
   type Need,
@@ -138,6 +139,23 @@ export function suggestionGroups(
     .map((stage) => ({ stage: stage.id, title: stage.title, items: byStage.get(stage.id) ?? [] }))
 }
 
+/** Each Bauwerk's derivation, with the suggestion of its class: the row the review confirms it through. */
+function derivationReviews(
+  profile: ProjectProfile,
+  definition: ProjectIntakeDefinition,
+  needs: readonly Need[]
+): DerivationReview[] {
+  const classes = new Map(
+    profileItems(profile, definition, needs)
+      .filter(({ item }) => isDerivedClass(item))
+      .map(({ item }) => [item.key, item])
+  )
+  return deriveAll(profile, definition).map((derivation) => ({
+    ...derivation,
+    suggestion: classes.get(`${GEBAEUDEKLASSE_DERIVATION.rule}@${derivation.bauwerkId}`) ?? null,
+  }))
+}
+
 /** The values with a different value found beside them, in the modules' order, the derived class included. */
 function contestedItems(
   profile: ProjectProfile,
@@ -200,7 +218,7 @@ export function buildIntakeView(input: IntakeViewInput): IntakeView {
     contradictions,
     questions,
     groups,
-    derivations: deriveAll(profile, definition),
+    derivations: derivationReviews(profile, definition, needs),
     canDecide: input.canDecide,
     canComplete: input.canComplete,
   }

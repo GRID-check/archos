@@ -251,6 +251,14 @@ export const derivationViewSchema = z.object({
 })
 export type DerivationView = z.infer<typeof derivationViewSchema>
 
+/**
+ * A derivation as the review shows it, with the class's own suggestion
+ * (`gebaeudeklasse@bwN`): the one place a person confirms the class, because
+ * the review's modules leave the derived class out.
+ */
+export const derivationReviewSchema = derivationViewSchema.extend({ suggestion: suggestionSchema.nullable() })
+export type DerivationReview = z.infer<typeof derivationReviewSchema>
+
 /** One module of the wizard on the review, by the definition's stage id. */
 export const suggestionGroupSchema = z.object({
   stage: z.string().min(1).max(8),
@@ -288,7 +296,7 @@ export const intakeViewSchema = z.object({
   contradictions: z.array(suggestionSchema),
   questions: z.array(needSchema).max(MAX_INTAKE_NEEDS),
   groups: z.array(suggestionGroupSchema),
-  derivations: z.array(derivationViewSchema),
+  derivations: z.array(derivationReviewSchema),
   /** The reader may decide (profile write: `project:memory:write` or `project:edit`) and start a reading. */
   canDecide: z.boolean(),
   /** The reader may finish the review: `project:manage` for a closing intent, else profile write. */

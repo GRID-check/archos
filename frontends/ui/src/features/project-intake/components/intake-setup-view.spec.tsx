@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import {
   INTAKE_CLOSING,
   INTAKE_COMPLETED,
+  INTAKE_FAILED,
   INTAKE_FIXTURES,
   INTAKE_READING,
   INTAKE_READY,
@@ -72,13 +73,53 @@ describe('IntakeSetupView', () => {
       expect(screen.queryByRole('button', { name: /Read the documents that have not been read yet/ })).toBeNull()
     })
 
+    it('shows ONE upload control while it waits for documents, and no finish button', () => {
+      setup(INTAKE_WAITING)
+
+      // The empty state's picker is the only one: the header's is hidden while it shows.
+      expect(within(screen.getByTestId('intake-header')).queryByRole('button', { name: 'Add documents' })).toBeNull()
+      expect(within(screen.getByTestId('intake-upload-zone')).getAllByRole('button').length).toBeGreaterThan(0)
+      expect(screen.queryByTestId('intake-complete')).toBeNull()
+    })
+
+    it('offers the header\'s upload once there are documents', () => {
+      setup(INTAKE_READY)
+      expect(within(screen.getByTestId('intake-header')).getByRole('button', { name: 'Add documents' })).toBeInTheDocument()
+    })
+
     it('says Piloti is reading, with the counts so far, and no drop zone', () => {
       setup(INTAKE_READING)
 
       expect(screen.getByText('Piloti is reading the documents …')).toBeInTheDocument()
       expect(screen.getByTestId('intake-status-line')).toHaveTextContent('9 documents read · 6 values · 0 contradictions · 0 questions')
       expect(screen.queryByTestId('intake-upload-zone')).toBeNull()
-      expect(screen.getByRole('button', { name: /Read the documents that have not been read yet/ })).toBeDisabled()
+      // Waiting, not disabled: a control that started this reading keeps its focus.
+      const reread = screen.getByRole('button', { name: /Read the documents that have not been read yet/ })
+      expect(reread).toHaveAttribute('aria-disabled', 'true')
+      expect(reread).not.toBeDisabled()
+    })
+
+    it('shows reading as progress and section-shaped skeletons, with nothing that spins', () => {
+      setup(INTAKE_READING)
+
+      expect(screen.getByRole('progressbar', { name: 'Reading progress: 9 of 23 documents' })).toBeInTheDocument()
+      expect(screen.getByTestId('intake-reading-skeleton')).toHaveAttribute('aria-hidden', 'true')
+      expect(screen.getByTestId('intake-status-line').querySelector('[data-slot="spinner"]')).toBeNull()
+    })
+
+    it('shows no skeleton once the reading is over', () => {
+      setup(INTAKE_READY)
+      expect(screen.queryByTestId('intake-reading-skeleton')).toBeNull()
+    })
+
+    it('keeps the finish button while reading with something to review, as a secondary', () => {
+      setup(INTAKE_READING)
+      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
+    })
+
+    it('hides the finish button while reading with nothing found yet', () => {
+      setup({ ...INTAKE_READING, counts: { ...INTAKE_READING.counts, suggested: 0 }, groups: [] })
+      expect(screen.queryByTestId('intake-complete')).toBeNull()
     })
 
     it('shows the review in order: contradictions, questions, review, derivations, finish', () => {
@@ -97,6 +138,13 @@ describe('IntakeSetupView', () => {
 
       const row = screen.getByTestId('intake-suggestion-fluchtniveau_m@bw1')
       expect(row).toHaveTextContent('Decisive')
+      // A property of the value, not an alarm: neutral, with a glyph; warning is for the contradiction.
+      const decisive = within(row).getByText('Decisive')
+      expect(decisive.className).not.toMatch(/warning/)
+      expect(decisive.querySelector('svg')).not.toBeNull()
+      expect(
+        within(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).getByText('Contradiction').className
+      ).toMatch(/warning/)
       expect(screen.getByTestId('intake-suggestion-standort_adresse')).toHaveTextContent('Confirmed')
       expect(screen.getByTestId('intake-suggestion-geschosse_oberirdisch@bw1')).toHaveTextContent('Contradiction')
     })
@@ -109,6 +157,9 @@ describe('IntakeSetupView', () => {
       expect(done).toHaveTextContent('Anzahl oberirdischer Geschoße (Zielzustand): 6 · suggested')
       expect(done).toHaveTextContent('Gebäudestellung: angebaut')
       expect(done).not.toHaveTextContent('Gebäudestellung: angebaut · suggested')
+      // Suggested inputs are muted chips whose words say so, never gold.
+      const suggested = within(done).getByText(/Anzahl oberirdischer Geschoße \(Zielzustand\): 6 · suggested/)
+      expect(suggested.closest('[data-slot="chip"]')?.className).not.toMatch(/warning/)
       expect(done).toHaveTextContent('OIB-Richtlinien, Begriffsbestimmungen (Ausgabe 2023)')
 
       const open = screen.getByTestId('intake-derivation-bw2')
@@ -125,9 +176,24 @@ describe('IntakeSetupView', () => {
       expect(screen.getByTestId('intake-derivation-bw3')).toHaveTextContent('High-rise')
     })
 
-    it('says the reading failed, and offers another', () => {
-      setup({ ...INTAKE_READY, status: 'failed' })
-      expect(screen.getByText('Piloti could not finish reading. You can try again.')).toBeInTheDocument()
+    it('says the reading failed in an error alert, keeps what was found, and offers another', async () => {
+      setup(INTAKE_FAILED)
+
+      const alert = screen.getByTestId('intake-failed')
+      expect(alert).toHaveAttribute('role', 'alert')
+      expect(alert).toHaveTextContent('Piloti could not finish reading')
+      expect(alert).toHaveTextContent('You can try again.')
+      expect(screen.getByTestId('intake-review')).toBeInTheDocument()
+
+      await userEvent.click(within(alert).getByRole('button', { name: 'Start reading again' }))
+      expect(onReread).toHaveBeenCalledTimes(1)
+      // One way to read again, not two.
+      expect(screen.getAllByRole('button', { name: /Read again|Start reading again/ })).toHaveLength(1)
+    })
+
+    it('offers no retry in the failed alert to a reader who may not decide', () => {
+      setup({ ...INTAKE_FAILED, canDecide: false, canComplete: false })
+      expect(within(screen.getByTestId('intake-failed')).queryByRole('button')).toBeNull()
     })
 
     it('offers to retry when the last refresh failed', async () => {
@@ -140,7 +206,7 @@ describe('IntakeSetupView', () => {
       setup(INTAKE_COMPLETED)
 
       expect(screen.getByTestId('intake-completed')).toHaveTextContent('The setup is finished.')
-      expect(screen.getByRole('link', { name: 'To the project' })).toHaveAttribute('href', `/app/projects/${INTAKE_COMPLETED.projectId}`)
+      expect(screen.getByRole('link', { name: 'To the overview' })).toHaveAttribute('href', `/app/projects/${INTAKE_COMPLETED.projectId}/settings`)
       expect(screen.queryByRole('button', { name: /Use/ })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Use all' })).toBeNull()
       expect(screen.queryByRole('button', { name: 'Add documents' })).toBeNull()
@@ -178,7 +244,7 @@ describe('IntakeSetupView', () => {
       setup(INTAKE_READY)
       const contradictions = screen.getByTestId('intake-contradictions')
 
-      const chip = within(contradictions).getByRole('button', { name: /Baubeschreibung\.pdf, p\. 3/ })
+      const chip = await within(contradictions).findByRole('button', { name: /Baubeschreibung\.pdf, p\. 3/ })
       expect(chip).toHaveTextContent('Baubeschreibung.pdf, p. 3')
       await userEvent.hover(chip)
 
@@ -265,6 +331,17 @@ describe('IntakeSetupView', () => {
       expect(onDecide).toHaveBeenCalledWith([{ key: 'bgf_oberirdisch@bw1', action: 'unknown' }])
     })
 
+    it('hands a document in as a row of the card, with a drop ring only while a file is over it', () => {
+      setup(INTAKE_READY)
+      const row = within(screen.getByTestId('intake-question-bgf_oberirdisch@bw1')).getByTestId('document-hand-in')
+
+      expect(row.className).not.toMatch(/\bborder\b/)
+      expect(row).not.toHaveAttribute('data-dragging')
+      fireEvent.dragEnter(row, { dataTransfer: { types: ['Files'], files: [], items: [] } })
+      expect(row).toHaveAttribute('data-dragging')
+      expect(row.className).toMatch(/ring-2/)
+    })
+
     it('hands a document in on a Rückfrage by choosing it', async () => {
       setup(INTAKE_READY)
       const card = screen.getByTestId('intake-question-bgf_oberirdisch@bw1')
@@ -299,7 +376,7 @@ describe('IntakeSetupView', () => {
     it('„Alle übernehmen“ confirms the group\'s suggestions in one call, not the confirmed or contested ones', async () => {
       setup(INTAKE_READY)
 
-      await userEvent.click(screen.getByRole('button', { name: 'Use all 5 suggestions in Bauwerke' }))
+      await userEvent.click(screen.getByRole('button', { name: 'Use all 4 suggestions in Bauwerke' }))
 
       expect(onDecide).toHaveBeenCalledTimes(1)
       expect(onDecide).toHaveBeenCalledWith([
@@ -307,21 +384,46 @@ describe('IntakeSetupView', () => {
         { key: 'fluchtniveau_m@bw1', action: 'confirm' },
         { key: 'gebaeudestellung@bw1', action: 'confirm' },
         { key: 'nutzungseinheiten@bw1', action: 'confirm' },
-        { key: 'gebaeudeklasse@bw1', action: 'confirm' },
       ])
     })
 
-    it('confirms the Gebäudeklasse through the suggestion row of its key', async () => {
+    it('confirms the Gebäudeklasse through the suggestion its derivation carries', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: /Use Gebäudeklasse GK 5 for Building 1/ }))
       expect(onDecide).toHaveBeenCalledWith([{ key: 'gebaeudeklasse@bw1', action: 'confirm' }])
     })
 
-    it('holds every control while a call is in flight', () => {
+    it('holds every control while a call is in flight, without ever disabling one', async () => {
       setup(INTAKE_READY, { busy: true })
-      expect(screen.getByRole('button', { name: /Use 6 for Anzahl/ })).toBeDisabled()
-      expect(screen.getByRole('button', { name: /Use all 5/ })).toBeDisabled()
-      expect(screen.getByRole('button', { name: 'Finish setup' })).toBeDisabled()
+      for (const name of [/Use 6 for Anzahl/, /Use all 4/, 'Finish setup']) {
+        const control = screen.getByRole('button', { name })
+        expect(control).toHaveAttribute('aria-disabled', 'true')
+        expect(control).not.toBeDisabled()
+      }
+
+      await userEvent.click(screen.getByRole('button', { name: /Use 6 for Anzahl/ }))
+      await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
+      expect(onDecide).not.toHaveBeenCalled()
+      expect(screen.queryByRole('dialog')).toBeNull()
+    })
+
+    it('shows the busy label on the control that was pressed, once the wait is noticeable, and keeps its focus', async () => {
+      let settle: (ok: boolean) => void = () => undefined
+      onDecide.mockReturnValue(new Promise<boolean>((resolve) => (settle = resolve)))
+      setup(INTAKE_READY)
+      const confirm = screen.getByRole('button', { name: /Use 6 for Anzahl/ })
+
+      confirm.focus()
+      await userEvent.click(confirm)
+      expect(confirm).toHaveAttribute('aria-busy', 'true')
+      expect(confirm).toHaveFocus()
+      // Another press while it is in flight is swallowed.
+      await userEvent.click(confirm)
+      expect(onDecide).toHaveBeenCalledTimes(1)
+
+      await vi.waitFor(() => expect(confirm).toHaveTextContent('Using …'))
+      settle(true)
+      await vi.waitFor(() => expect(confirm).not.toHaveAttribute('aria-busy'))
     })
 
     it('starts a reading of what is new', async () => {
@@ -332,6 +434,25 @@ describe('IntakeSetupView', () => {
   })
 
   describe('finishing', () => {
+    it('is the ink primary only when nothing is open', () => {
+      setup({ ...INTAKE_READY, contradictions: [], questions: [] })
+      expect(screen.getByTestId('intake-complete')).toHaveAttribute('data-primary')
+      expect(screen.queryByTestId('intake-open')).toBeNull()
+    })
+
+    it('is a secondary button and says what is still open while a contradiction or Rückfrage waits', () => {
+      setup(INTAKE_READY)
+
+      expect(screen.getByTestId('intake-complete')).not.toHaveAttribute('data-primary')
+      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 1 contradiction, 3 questions – you can finish anyway.')
+      expect(screen.getByRole('button', { name: 'Finish setup' }).className).toMatch(/bg-secondary/)
+    })
+
+    it('names only what is open', () => {
+      setup({ ...INTAKE_READY, contradictions: [] })
+      expect(screen.getByTestId('intake-open')).toHaveTextContent('Still open: 3 questions')
+    })
+
     it('asks before it finishes, then completes', async () => {
       setup(INTAKE_READY)
       await userEvent.click(screen.getByRole('button', { name: 'Finish setup' }))
@@ -384,6 +505,6 @@ describe('IntakeSetupView', () => {
   })
 
   it('has a fixture for every state', () => {
-    expect(Object.keys(INTAKE_FIXTURES).sort()).toEqual(['closing', 'completed', 'reading', 'ready', 'waiting'])
+    expect(Object.keys(INTAKE_FIXTURES).sort()).toEqual(['closing', 'completed', 'failed', 'reading', 'ready', 'waiting'])
   })
 })

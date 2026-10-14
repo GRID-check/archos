@@ -45,8 +45,11 @@ export function SameAddressNotice({
     <Alert role="status" data-testid="create-project-same-address">
       <Info aria-hidden />
       <AlertTitle className="line-clamp-none">{t('form.sameAddress.heading')}</AlertTitle>
-      <AlertDescription>
-        <ul className="flex flex-col gap-1">
+      <AlertDescription className="min-w-0">
+        {/* `max-w-full`: the description is a grid with `justify-items-start`, which sizes
+            its children to their content, so a long project name pushed the list (and the hint
+            under it) past the card at phone width instead of truncating. */}
+        <ul className="flex max-w-full min-w-0 flex-col gap-1">
           {found.map((project) => (
             <li key={project.id}>
               <a
@@ -65,7 +68,7 @@ export function SameAddressNotice({
             </li>
           ))}
         </ul>
-        <p className="text-xs">{t('form.sameAddress.hint')}</p>
+        <p className="max-w-full text-xs">{t('form.sameAddress.hint')}</p>
       </AlertDescription>
     </Alert>
   )

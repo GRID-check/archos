@@ -1,4 +1,5 @@
 import type { JSX, ReactNode } from 'react'
+import { Building2, TriangleAlert } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { CountPill } from '@/components/ui/count-pill'
 
@@ -35,10 +36,24 @@ export function IntakeSection({
   )
 }
 
-/** A value that decides the class of a building. Words, not a colour alone. */
+/**
+ * A value that decides the class of a building: a property of the value, not an
+ * alarm, so it is neutral. A glyph and the words, never a colour alone.
+ */
 export function DecisiveBadge({ label, title }: { label: string; title: string }): JSX.Element {
   return (
-    <Badge variant="warning" title={title}>
+    <Badge variant="outline" title={title}>
+      <Building2 aria-hidden />
+      {label}
+    </Badge>
+  )
+}
+
+/** A value the documents disagree on: the one badge on the page that asks for attention. */
+export function ContestedBadge({ label }: { label: string }): JSX.Element {
+  return (
+    <Badge variant="warning">
+      <TriangleAlert aria-hidden />
       {label}
     </Badge>
   )
