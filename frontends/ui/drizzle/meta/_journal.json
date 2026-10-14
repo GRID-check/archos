@@ -1016,6 +1016,13 @@
       "when": 1792454400030,
       "tag": "0144_project_intakes",
       "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1792454400031,
+      "tag": "0145_folder_descriptions",
+      "breakpoints": true
     }
   ]
 }

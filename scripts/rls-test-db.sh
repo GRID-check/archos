@@ -1876,3 +1876,34 @@ apply_in grid_intake 0144_project_intakes.sql
 apply_in grid_intake 0144_project_intakes.sql
 check_in grid_intake "SELECT count(*) FROM project_intakes" "0" "0144 re-applies, twice, empty"
 echo "==> 0144 project intakes and down migration verified"
+
+# ---------------------------------------------------------------------------
+# Migration 0145: a folder's description, and the DOWN.
+#
+# On a database of its own, migrated to 0144. A folder on either shelf may say
+# what belongs in it; a description is never blank and at most 500 characters.
+# ---------------------------------------------------------------------------
+echo "==> verifying the 0145 folder descriptions and their down migration on grid_fdesc"
+migrate_until grid_fdesc 0144_project_intakes
+sql_in grid_fdesc <<'SQL'
+INSERT INTO projects (id, organization_id, name, created_by, collection_name)
+VALUES ('aaaaaaaa-0000-4000-8000-000000000145', 'org_0145', 'Ablage 0145', 'user_1', 'proj_0145');
+INSERT INTO project_folders (id, organization_id, project_id, scope, name, path)
+VALUES ('f1f1f1f1-0000-4000-8000-000000000145', 'org_0145', 'aaaaaaaa-0000-4000-8000-000000000145', 'project', 'Bescheide', 'Bescheide'),
+       ('f2f2f2f2-0000-4000-8000-000000000145', 'org_0145', NULL, 'archiv', 'Normen', 'Normen');
+SQL
+apply_in grid_fdesc 0145_folder_descriptions.sql
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NULL" "2" "0145 leaves every folder undescribed"
+sql_in grid_fdesc <<<"UPDATE project_folders SET description = 'Bescheide und Stellungnahmen der Behörden' WHERE name = 'Bescheide'"
+sql_in grid_fdesc <<<"UPDATE project_folders SET description = 'ÖNORMEN, die das Büro gekauft hat' WHERE name = 'Normen'"
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NOT NULL" "2" "a project folder and a Büroablage folder each take a description"
+refused_in grid_fdesc "UPDATE project_folders SET description = '   ' WHERE name = 'Bescheide'" "project_folders_description_length" "a blank description was accepted"
+refused_in grid_fdesc "UPDATE project_folders SET description = '' WHERE name = 'Bescheide'" "project_folders_description_length" "an empty description was accepted"
+refused_in grid_fdesc "UPDATE project_folders SET description = repeat('x', 501) WHERE name = 'Bescheide'" "project_folders_description_length" "a description over 500 characters was accepted"
+apply_in grid_fdesc 0145_folder_descriptions.down.sql
+check_in grid_fdesc "SELECT count(*) FROM information_schema.columns WHERE table_name = 'project_folders' AND column_name = 'description'" "0" "down dropped the description"
+check_in grid_fdesc "SELECT count(*) FROM project_folders" "2" "down kept the folders"
+apply_in grid_fdesc 0145_folder_descriptions.sql
+apply_in grid_fdesc 0145_folder_descriptions.sql
+check_in grid_fdesc "SELECT count(*) FROM project_folders WHERE description IS NULL" "2" "0145 re-applies, twice"
+echo "==> 0145 folder descriptions and down migration verified"

@@ -31,7 +31,14 @@ import { getDb } from '@/lib/db'
 import { documents, projectFolders } from '@/lib/db/schema'
 import { getBackendUrl } from '@/lib/backend-proxy'
 import { listProjectDocumentCollections } from '@/lib/authz/folder-access-repository'
-import { validateFolderName, buildFolderPath, folderMatchKey, pathSegments } from '@/lib/projects/folders'
+import {
+  buildFolderPath,
+  FOLDER_DESCRIPTION_MAX_LENGTH,
+  folderMatchKey,
+  normalizeFolderDescription,
+  pathSegments,
+  validateFolderName,
+} from '@/lib/projects/folders'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { requireShelfRead, requireShelfWrite } from './shelf-authz'
 import { shelfCollectionName } from './shelf-collection'
@@ -74,6 +81,8 @@ export interface FolderRow {
   parentId: string | null
   name: string
   path: string
+  /** What belongs in the folder, in a person's words; null when nobody described it (migration 0145). */
+  description: string | null
   createdAt: Date
   updatedAt: Date
 }
@@ -85,6 +94,7 @@ export function toFolderRow(row: FolderRecord): FolderRow {
     parentId: row.parentId,
     name: row.name,
     path: row.path,
+    description: row.description ?? null,
     createdAt: row.createdAt,
     updatedAt: row.updatedAt,
   }
@@ -132,12 +142,14 @@ export async function listShelfFolders(
 export async function createShelfFolder(
   session: AuthorizedSession,
   shelf: DocumentShelf,
-  input: { parentId?: string | null; name: string },
+  input: { parentId?: string | null; name: string; description?: string | null },
 ): Promise<Outcome<{ folder: FolderRow }>> {
   await requireShelfWrite(session, shelf)
   const organizationId = session.organizationId
   const validation = validateFolderName(input.name)
   if (!validation.ok) return { ok: false, error: validation.error! }
+  const description = checkedDescription(input.description)
+  if (!description.ok) return { ok: false, error: description.error }
 
   let parentPath = ''
   if (input.parentId) {
@@ -150,6 +162,7 @@ export async function createShelfFolder(
     parentId: input.parentId ?? null,
     name: validation.name!,
     path: buildFolderPath(parentPath, validation.name!),
+    ...(description.value ? { description: description.value } : {}),
   })
   /**
    * A sibling folder already has this name.
@@ -179,7 +192,7 @@ async function insertFolderRow(
   db: Db,
   shelf: DocumentShelf,
   organizationId: string,
-  folder: { parentId: string | null; name: string; path: string },
+  folder: { parentId: string | null; name: string; path: string; description?: string | null },
 ): Promise<{ row: FolderRecord } | { conflict: unknown }> {
   try {
     const [row] = await db
@@ -566,6 +579,18 @@ export async function mirrorShelfFolderPathRewrite(
   }
 }
 
+/**
+ * A requested description, normalized ({@link normalizeFolderDescription}), or
+ * the refusal of one over the column's limit. Absent asks for nothing.
+ */
+function checkedDescription(raw: string | null | undefined): Outcome<{ value: string | null }> {
+  const value = normalizeFolderDescription(raw)
+  if (value && value.length > FOLDER_DESCRIPTION_MAX_LENGTH) {
+    return { ok: false, error: `A folder description may be at most ${FOLDER_DESCRIPTION_MAX_LENGTH} characters.` }
+  }
+  return { ok: true, value }
+}
+
 /** The new parent a rename/move resolves to: its id and its path (`''` at the root). */
 async function resolveNewParent(
   db: Db,
@@ -604,13 +629,17 @@ async function resolveNewParent(
 export async function updateShelfFolder(
   session: AuthorizedSession,
   shelf: DocumentShelf,
-  input: { folderId: string; name?: string; parentId?: string | null },
+  input: { folderId: string; name?: string; parentId?: string | null; description?: string | null },
 ): Promise<Outcome<{ folder: FolderRow }>> {
   await requireShelfWrite(session, shelf)
   const organizationId = session.organizationId
   const db = getDb()
   const folder = await findShelfFolder(shelf, organizationId, input.folderId, db)
   if (!folder) return { ok: false, error: 'Folder not found.' }
+  const description = checkedDescription(input.description)
+  if (!description.ok) return { ok: false, error: description.error }
+  // A description is the folder's own text: no path moves, nothing to mirror.
+  const nextDescription = input.description === undefined ? folder.description : description.value
 
   let name = folder.name
   if (input.name !== undefined) {
@@ -623,14 +652,23 @@ export async function updateShelfFolder(
   if (!target.ok) return target
 
   const path = buildFolderPath(target.parentPath, name)
-  if (path === folder.path && target.parentId === folder.parentId) {
+  const unmoved = path === folder.path && target.parentId === folder.parentId
+  if (unmoved && nextDescription === folder.description) {
     return { ok: true, folder: toFolderRow(folder) }
+  }
+  if (unmoved) {
+    const [row] = await db
+      .update(projectFolders)
+      .set({ description: nextDescription, updatedAt: new Date() })
+      .where(folderOnShelf(shelf, organizationId, folder.id))
+      .returning()
+    return { ok: true, folder: toFolderRow(row) }
   }
 
   const updated = await db.transaction(async (tx) => {
     const [row] = await tx
       .update(projectFolders)
-      .set({ name, parentId: target.parentId, path, updatedAt: new Date() })
+      .set({ name, parentId: target.parentId, path, description: nextDescription, updatedAt: new Date() })
       .where(folderOnShelf(shelf, organizationId, folder.id))
       .returning()
     await rewriteDescendantPaths(tx, shelf, organizationId, folder.path, path)
