@@ -65,7 +65,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: null,
           contentType: 'application/pdf',
           stand: null,
-          superseded: false,
           passages: [{ page: 3, snippet: 'Laufbreite 1,20 m', score: 0.9 }],
         },
       ],

@@ -53,7 +53,6 @@ const RESPONSE: SimilarPassagesResponse = {
           displayName: null,
           contentType: 'application/pdf',
           stand: { kind: 'index', text: 'Index C' },
-          superseded: false,
           passages: [{ page: 3, snippet: 'Außentreppe aus Stahlbeton', score: 0.91 }],
         },
       ],
