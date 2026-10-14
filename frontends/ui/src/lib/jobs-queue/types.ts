@@ -35,6 +35,8 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * `project_intake_read` is one step that runs AS the person whose upload
  * finished (ADR-0111): it starts a reading of the project's documents, which
  * acts as them, and does nothing when they may not write the profile.
+ * `filing_review` is one step AS the uploader: it judges where the batch's
+ * documents belong and files the proposals in their name (`lib/filing`).
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -53,6 +55,7 @@ export const BFF_JOB_KINDS = [
   'piloti_wake',
   'piloti_wake_stop',
   'project_intake_read',
+  'filing_review',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -347,6 +350,20 @@ export const projectIntakeReadPayloadSchema = z.object({
   requester: requesterSchema,
 })
 export type ProjectIntakeReadPayload = z.infer<typeof projectIntakeReadPayloadSchema>
+
+/**
+ * `filing_review`: judge where an upload batch's documents belong and propose
+ * it (`lib/filing/service.ts`). Queued at the seal with `basis: name` (the
+ * person is still looking at the upload) and at the settle with `basis:
+ * content` (ingestion read it). Ids only: the batch, its documents, the
+ * folders and the uploader's rights are read again when it runs.
+ */
+export const filingReviewPayloadSchema = z.object({
+  batchId: z.string().uuid(),
+  basis: z.enum(['name', 'content']),
+  requester: requesterSchema,
+})
+export type FilingReviewPayload = z.infer<typeof filingReviewPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

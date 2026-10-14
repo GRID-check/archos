@@ -256,6 +256,22 @@ class GenerationRecorder:
     def __init__(self, span: Any | None) -> None:
         self._span = span
 
+    @property
+    def trace_id(self) -> str | None:
+        """The generation's trace id as Langfuse names it (32 hex digits), or ``None`` when tracing is off.
+
+        For a caller that hands the trace on, so a later decision about what this
+        call produced can be scored on it (``piloti-decision``).
+        """
+        if self._span is None:
+            return None
+        try:
+            trace_id = self._span.get_span_context().trace_id
+        except Exception:
+            logger.debug("direct_trace: could not read a generation's trace id", exc_info=True)
+            return None
+        return format(trace_id, "032x") if isinstance(trace_id, int) and trace_id else None
+
     def finish(self, response: Any) -> None:
         """Record the parsed chat-completion body. Never raises."""
         if self._span is None:

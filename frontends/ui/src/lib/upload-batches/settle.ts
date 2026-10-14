@@ -36,6 +36,7 @@ import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems, type InboxEmission } from '@/lib/inbox/service'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { queueIntakeReadsAfterUpload } from '@/lib/project-intake/trigger'
+import { queueFilingReviewsAfterSettle } from '@/lib/filing/trigger'
 import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { auditOwedQuarantines } from '@/lib/upload-screening/quarantine-audit'
 import { batchIdsOfDocuments, completeSettledBatches, reopenCompletedBatches } from './repository'
@@ -89,6 +90,9 @@ export async function settleUploadBatches(organizationId: string, batchIds: read
     throw error
   }
   await startIntakeReadings(organizationId, completed)
+  // What ingestion read may sharpen or withdraw the filing suggestion the seal
+  // queued; never throws, so it cannot undo the completion either.
+  await queueFilingReviewsAfterSettle(organizationId, completed)
   return completed
 }
 
