@@ -200,6 +200,14 @@ class TestWhenNothingCanBeRecorded:
         assert fake.bodies("finish") == []
         assert result.outcome["ended"] == "refused"
 
+    @pytest.mark.parametrize("status", [401, 403])
+    async def test_an_identity_the_bff_refuses_is_not_finished(self, signed_run, route, project, status):
+        fake = route(needs=status)
+        result = await _agent(ScriptedModel([AIMessage(content="x")])).run(_state())
+
+        assert fake.bodies("finish") == []
+        assert result.outcome["ended"] == "refused" and not result.outcome["finished"]
+
 
 class TestThePrompt:
     def test_the_product_framing_scan_reads_this_prompt(self):

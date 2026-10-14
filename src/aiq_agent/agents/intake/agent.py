@@ -213,8 +213,9 @@ class ProjectIntakeAgent:
             return "no_job", "Die Erfassung konnte nicht starten: der Lauf hat keine Job-ID."
         reply = await client.call_intake("needs", client.needs_request(session.job_id))
         if not reply.ok:
-            # No identity, or no longer the current reading: nothing it sends would be taken.
-            if reply.reason == "no_envelope" or reply.stale:
+            # No identity, an identity the BFF refused, or no longer the current reading:
+            # nothing this run sends would be taken, finish included.
+            if reply.reason == "no_envelope" or reply.stale or reply.status in (401, 403):
                 session.stale = reply.stale
                 return "refused", reply.refusal
             await finish_intake(session, fallback_summary("error", session, 0))

@@ -429,7 +429,7 @@ async def finish_intake(session: IntakeSession, summary: str) -> str:
     log = current_read_log()
     documents = log.documents_read if log is not None else []
     reply = await client.call_intake(
-        "finish", client.finish_request(session.job_id, summary, documents, current_trace_id_hex())
+        "finish", client.finish_request(session.job_id, session.summary, documents, current_trace_id_hex())
     )
     if not reply.ok:
         session.stale = session.stale or reply.stale
