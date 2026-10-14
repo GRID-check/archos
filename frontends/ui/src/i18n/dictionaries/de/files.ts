@@ -508,6 +508,39 @@ export const files: typeof en.files = {
       saveError: 'Der Zugriff konnte nicht geändert werden. Bitte versuchen Sie es erneut.',
       forbidden: 'Nur Projekt-Admins können ändern, wer einen Ordner lesen und bearbeiten darf.',
     },
+    describe: 'Beschreibung …',
+    /** Was in einen Ordner gehört (Migration 0145): Piloti legt Uploads danach ab. */
+    description: {
+      title: 'Was gehört in „{name}“?',
+      hint: 'Ein, zwei Sätze, was in diesem Ordner liegt. Alle, die den Ordner öffnen, lesen sie, und Piloti schlägt danach vor, wohin ein Upload gehört.',
+      label: 'Beschreibung',
+      placeholder: 'z. B. Bescheide und Stellungnahmen der Baubehörde',
+      count: '{count} / {max} Zeichen',
+      tooLong: 'Höchstens {max} Zeichen.',
+      save: 'Speichern',
+      saveError: 'Die Beschreibung konnte nicht gespeichert werden. Bitte erneut versuchen.',
+      edit: 'Beschreibung bearbeiten',
+      empty: 'Beschreiben, was hierher gehört',
+    },
+  },
+  /**
+   * Piloti's filing suggestion on a file row and an upload row: where the file
+   * belongs, why, and one click to move it there or leave it.
+   */
+  filing: {
+    label: 'Ablagevorschlag von Piloti',
+    suggestion: 'Passt eher in „{folder}“',
+    suggestionNew: 'Passt in einen neuen Ordner „{folder}“',
+    others: '{count, plural, one {mit # weiteren Datei} other {mit # weiteren Dateien}}',
+    move: 'Verschieben',
+    moveAll: 'Alle {count} verschieben',
+    createAndMove: 'Anlegen und verschieben',
+    keep: 'Belassen',
+    moved: 'In „{folder}“ verschoben.',
+    kept: 'Bleibt, wo es ist.',
+    failed: 'Konnte nicht verschoben werden.',
+    error: 'Das hat nicht geklappt. Bitte erneut versuchen.',
+    readOnly: 'Verschieben dürfen nur Personen, die hier ablegen dürfen.',
   },
   /** The Papierkorb of a project (ADR-0088). */
   bin: {

@@ -16,6 +16,7 @@ import { formatAbsoluteTime, formatBytes, formatRelativeTime } from '@/lib/forma
 import { cn } from '@/lib/utils'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { documentDragProps } from '../hooks/use-document-drag'
+import { FilingSuggestionSlot } from './filing-suggestion'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
@@ -401,6 +402,8 @@ const FileListRowItem = memo(function FileListRowItem({
                 </span>
               )
             )}
+            {/* Piloti's suggestion of where this file belongs, with its answer. */}
+            <FilingSuggestionSlot documentId={file.id} className="mt-1.5" />
           </span>
         </div>
       </TableCell>

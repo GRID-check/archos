@@ -563,6 +563,17 @@ export function FolderCard({
                 <FolderReadState tally={knowledge} dotOnly className="ml-auto" />
               </div>
             )}
+            {/* What belongs in it, in the folder owner's words: one quiet line,
+                whole on hover. */}
+            {!editing && folder.description && (
+              <p
+                className="mt-1 truncate text-xs leading-tight text-muted-foreground"
+                title={folder.description}
+                data-testid={`folder-description-${folder.id}`}
+              >
+                {folder.description}
+              </p>
+            )}
           </div>
         </GridTileBody>
         <GridTileFooter className="min-w-0 gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80">
@@ -683,7 +694,16 @@ export function FolderRow({
         <span className="bg-muted flex size-7 shrink-0 items-center justify-center rounded-md">
           <Folder className="text-muted-foreground size-3.5" aria-hidden />
         </span>
-        <span className="text-foreground truncate font-medium">{folder.name}</span>
+        <span className="text-foreground shrink-0 truncate font-medium">{folder.name}</span>
+        {folder.description && (
+          <span
+            className="text-muted-foreground hidden min-w-0 truncate text-xs sm:inline"
+            title={folder.description}
+            data-testid={`folder-description-${folder.id}`}
+          >
+            {folder.description}
+          </span>
+        )}
         {lockLabel && <FolderAccessMark label={lockLabel} testId={`folder-lock-${folder.id}`} />}
         {readOnly && <FolderReadOnlyBadge testId={`folder-read-only-${folder.id}`} />}
         {/* The kit's numeric pill, not a fourth hand-rolled one. */}
