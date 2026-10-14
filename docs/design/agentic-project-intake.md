@@ -73,11 +73,14 @@ project_intakes: status, documents read, dismissed, counts, job
 ```
 
 Ablage is not part of the review. It lists the project's open `file_operation`
-filing suggestions (`listOpenProposals({ projectId, kind: 'file_operation' })`),
-one per target folder with the files that go there, and draws each with the
-`FilingSuggestion` Dateien uses, so a decision here is the same proposal, inbox
-item and score as there. It is a quiet secondary section: nothing when there is
-no open suggestion, and nothing once the setup is finished.
+filing suggestions (`listOpenProposals({ projectId, kind: 'file_operation' })`)
+in the `FilingBar` that sits above a folder in Dateien and in the upload tray:
+one line per target folder with its full path, „neu“ where the move creates it,
+the count, and „Belassen“ / „Verschieben“ (or „Anlegen und verschieben“). The
+page shows no cards to light, so each line also names its files. A decision here
+is the same proposal, inbox item and score as there. It is a quiet secondary
+section, the card surface with one hairline: nothing when there is no open
+suggestion, and nothing once the setup is finished.
 
 ### Why an agent of its own, on the research worker
 

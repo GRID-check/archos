@@ -3,4 +3,4 @@ features:
   - >
     A folder can now say what belongs in it, in Dateien and in the Büroablage, and Piloti reads that when it works with your files.
   - >
-    When you upload a file that belongs in another folder, Piloti suggests that folder on the file's row, with one click to move it there and one to leave it. Nothing moves until you confirm.
+    When you upload a file that belongs in another folder, Piloti suggests that folder with a small chip on the file. It opens the move and the reason, with one click to move it there and one to leave it. Where several files belong in one folder, a bar above the folder moves them together and shows which files it would move. Nothing moves until you confirm.

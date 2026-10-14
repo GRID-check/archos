@@ -494,11 +494,13 @@ is dropped, and so is a move into the folder a document is in.
 
 **One proposal per target folder**, with no conversation, at most eight files
 each, so a person confirms per folder. A convention the shelf does not have is
-proposed as `new_folder`. It shows on the file row in Dateien and the
-Büroablage, on the card, and in the upload tray („Passt eher in „Bescheide““,
-the reason, „Verschieben" / „Alle 2 verschieben" / „Anlegen und verschieben" and
-„Belassen"), through `useServerProposal`; and in the inbox, pointing at the
-shelf. `GRID_FILING_SUGGESTIONS=off` switches it off. The receipt card
+proposed as `new_folder`. It shows as a chip on the file's card, list row and
+upload row in Dateien and the Büroablage („→ Bescheide“), whose popover holds
+the move, the reason and „Verschieben" / „Alle 2 verschieben" / „Anlegen und
+verschieben" and „Belassen"; per folder in the filing bar above a folder, in the
+upload tray and on the setup page; all through `useServerProposal`
+([the UI](../ux/file-upload-and-explorer.md#folders-that-say-what-they-hold-and-pilotis-filing-suggestion));
+and in the inbox, pointing at the shelf. `GRID_FILING_SUGGESTIONS=off` switches it off. The receipt card
 (`FileOperationReceipt`) draws a move's `new_folder` („Neuer Ordner“, its path
 and description) above the rows and each item's `reason` under its row, so a
 proposal that carries them reads the same wherever it is shown.
