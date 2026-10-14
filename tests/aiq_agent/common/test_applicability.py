@@ -135,6 +135,47 @@ class TestFactsFromProjectContext:
     def test_empty_text(self):
         assert facts_from_project_context("") == {}
 
+    def test_suggestions_and_contested_sections_add_no_facts(self):
+        """The intake's suggestions ride the view (frontends/ui prompt-view.ts); only ``confirmed:`` is a fact.
+
+        An ``assumptions:`` line now ends in ``[Vorschlag: Datei, S. n]`` or ``[abgeleitet]``, and a
+        ``contested:`` section lists ``- key: value | alternativ: v2 (Datei, S. n)``. A file name may
+        itself contain ``=``; none of it may leak into the facts.
+        """
+        confirmed_only = (
+            "PROJECT_CONTEXT v1\n\n"
+            "confirmed:\n"
+            "- bauwerkstyp@bw1=gebaeude\n"
+            "- bundesland=wien\n"
+            "- geschosse_oberirdisch@bw1=3\n"
+            "- nutzungen@bw1=wohnen\n"
+        )
+        text = (
+            confirmed_only
+            + "\n"
+            + "goals:\n"
+            + "- primary=check_oib_requirements\n\n"
+            + "unknown:\n"
+            + "- fluchtniveau_m@bw1\n\n"
+            + "assumptions:\n"
+            + "- bgf_oberirdisch@bw1=412 [Vorschlag: Raumbuch=2026.xlsx]\n"
+            + "- fluchtniveau_m@bw1=9.5 [Vorschlag: Einreichplan Schnitt.pdf, S. 2]\n"
+            + "- gebaeudeklasse@bw1=2 [abgeleitet]\n"
+            + "- widmung=bauland\n\n"
+            + "contested:\n"
+            + "- fluchtniveau_m@bw1: 9.5 | alternativ: 11 (Brandschutzkonzept.pdf, S. 3)\n"
+            + "- geschosse_oberirdisch@bw1: 3 | alternativ: 4 (Plan=final.pdf, S. 2) | alternativ: 5\n"
+            + "- … und 3 weitere"
+        )
+
+        assert facts_from_project_context(text) == facts_from_project_context(confirmed_only)
+        assert facts_from_project_context(text) == {
+            "bauwerkstyp@bw1": "gebaeude",
+            "bundesland": "wien",
+            "geschosse_oberirdisch@bw1": 3,
+            "nutzungen@bw1": "wohnen",
+        }
+
 
 class TestRenderProjectBlock:
     def test_none_when_facts_empty(self):
