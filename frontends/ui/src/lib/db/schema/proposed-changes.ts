@@ -1,5 +1,5 @@
 import { sql } from 'drizzle-orm'
-import { check, foreignKey, index, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core'
+import { check, foreignKey, index, integer, jsonb, pgTable, text, timestamp, uniqueIndex, uuid } from 'drizzle-orm/pg-core'
 import {
   PROPOSED_CHANGE_KINDS,
   PROPOSED_CHANGE_STATUSES,
@@ -42,6 +42,8 @@ export const proposedChanges = pgTable(
     onBehalfOf: text('on_behalf_of').notNull(),
     originConversationId: text('origin_conversation_id'),
     originMessageId: uuid('origin_message_id'),
+    /** Which card of that answer made it (0143): one card, one proposal, however often the turn's finish runs. */
+    originCardIndex: integer('origin_card_index'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     decidedBy: text('decided_by'),
     decidedAt: timestamp('decided_at', { withTimezone: true }),
@@ -64,6 +66,17 @@ export const proposedChanges = pgTable(
     organizationIdx: index('idx_proposed_changes_organization_id').on(table.organizationId),
     projectCreatedIdx: index('idx_proposed_changes_project_created').on(table.projectId, table.createdAt),
     conversationIdx: index('idx_proposed_changes_conversation').on(table.originConversationId),
+    originCardUidx: uniqueIndex('uniq_proposed_changes_origin_card')
+      .on(table.organizationId, table.originMessageId, table.originCardIndex)
+      .where(sql`${table.originCardIndex} IS NOT NULL`),
+    cardIndexNonnegative: check(
+      'proposed_changes_card_index_nonnegative',
+      sql`${table.originCardIndex} IS NULL OR ${table.originCardIndex} >= 0`
+    ),
+    cardIndexNeedsMessage: check(
+      'proposed_changes_card_index_needs_message',
+      sql`${table.originCardIndex} IS NULL OR ${table.originMessageId} IS NOT NULL`
+    ),
     kindKnown: check('proposed_changes_kind_known', sql`${table.kind} IN (${list(PROPOSED_CHANGE_KINDS)})`),
     statusKnown: check('proposed_changes_status_known', sql`${table.status} IN (${list(PROPOSED_CHANGE_STATUSES)})`),
     proposerKnown: check('proposed_changes_proposer_known', sql`${table.proposedByKind} IN (${list(PROPOSER_KINDS)})`),

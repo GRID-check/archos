@@ -28,6 +28,7 @@ import { DaylightIncidenceCard } from '@/features/grid-cards/schematics/Daylight
 import { GuardrailCheckCard } from '@/features/grid-cards/schematics/GuardrailCheckCard'
 import { FireAccessPlanCard } from '@/features/grid-cards/schematics/FireAccessPlanCard'
 import { GridCards } from '@/features/grid-cards/components/GridCards'
+import { DEMO, DEMO_PROJECT_ID, useFakeProposalClient } from '../_fixtures/fake-proposals'
 import type { GridCard } from '@/shared/cards/schemas'
 
 const OIB2 = { document: 'OIB-Richtlinie 2', section: 'Pkt. 3.1', edition: 'Ausgabe Mai 2023' }
@@ -55,6 +56,10 @@ export default function CardsGalleryPage() {
 }
 
 function Gallery() {
+  // The three proposal cards are receipts of proposals the server holds
+  // (ADR-0105); `/dev` has no server, so the proposals API is faked for them.
+  // See `/dev/proposal-receipts` for every state.
+  const proposalsReady = useFakeProposalClient()
   return (
     <main className="mx-auto flex max-w-2xl flex-col gap-8 p-6">
       <h1 className="text-lg font-semibold">Grid card gallery</h1>
@@ -472,83 +477,88 @@ function Gallery() {
         />
       </Section>
 
-      {/* The two INTERACTIVE cards (ADR-0030) go through the GridCards
-          dispatcher rather than being rendered directly, so the gallery
-          exercises the same `cardKey` wiring the chat uses. With no owning
-          message they fall back to local state — clickable here, deliberately
-          not durable. */}
+      {/* The three proposal cards go through the GridCards dispatcher rather
+          than being rendered directly, so the gallery exercises the same
+          wiring the chat uses. Each carries a `proposal_id` and is a receipt of
+          a proposal the faked API holds: clickable here, and it moves the
+          proposal as the server would. */}
       <Section id="project_profile_patch">
-        <GridCards
-          cards={[
-            {
-              type: 'project_profile_patch',
-              title: 'Projektkontext aktualisieren: Fluchtniveau',
-              rationale:
-                'Sie haben angegeben, dass das oberste Fluchtniveau bei 25 m liegt — damit ist das Gebäude ein Hochhaus (> 22 m) und OIB-Richtlinie 2.3 wird anwendbar.',
-              patch: [{ op: 'add', path: '/facts/fluchtniveau', value: '>22m' }],
-            },
-          ] as GridCard[]}
-          projectId={null}
-        />
+        {proposalsReady && (
+          <GridCards
+            cards={[
+              {
+                type: 'project_profile_patch',
+                proposal_id: DEMO.profileOpen,
+                title: 'Projektkontext aktualisieren: Wärmeversorgung und Fluchtniveau',
+                rationale: 'Sie haben im Gespräch eine Wärmepumpe und ein oberstes Fluchtniveau von 25 m genannt.',
+                patch: [
+                  { op: 'add', path: '/facts/waermeversorgung', value: 'waermepumpe' },
+                  { op: 'add', path: '/facts/fluchtniveau_m', value: 25 },
+                ],
+              },
+            ] as GridCard[]}
+            projectId={DEMO_PROJECT_ID}
+          />
+        )}
       </Section>
 
       <Section id="memory_proposal">
-        <GridCards
-          cards={[
-            {
-              type: 'memory_proposal',
-              title: 'Diese Erkenntnis merken?',
-              content: 'Das Büro setzt bei GK 4 durchgängig REI 90 an, auch wo REI 60 genügen würde.',
-              kind: 'preference',
-              confidence: 'high',
-            },
-          ] as GridCard[]}
-          projectId={null}
-        />
+        {proposalsReady && (
+          <GridCards
+            cards={[
+              {
+                type: 'memory_proposal',
+                proposal_id: DEMO.memoryOpen,
+                title: 'Neue Erkenntnis merken',
+                content: 'Das Büro setzt bei GK 4 durchgängig REI 90 an, auch wo REI 60 genügen würde.',
+                kind: 'preference',
+                confidence: 'high',
+              },
+            ] as GridCard[]}
+            projectId={DEMO_PROJECT_ID}
+          />
+        )}
       </Section>
 
-      {/* The third interactive card, and a SYSTEM one: the five write-side
-          workspace tools push it and the model cannot author one. Several
-          operations of one kind land on ONE card, which is the shape a tidying
-          turn produces — so what this section shows is the list under one
-          question.
-
-          The gallery has no project in its store, and every route behind this
-          card is project-scoped: it therefore draws its reason line instead of
-          its buttons, which is a real product state. The buttons are judged on
-          `/dev/file-operation-proposal-card`, which sets a project. */}
+      {/* A SYSTEM card: the five write-side workspace tools push it and the
+          model cannot author one. Several operations of one kind land on ONE
+          card, which is the shape a tidying turn produces — so what this
+          section shows is the list under one question. */}
       <Section id="file_operation_proposal">
-        <GridCards
-          cards={[
-            {
-              type: 'file_operation_proposal',
-              title: 'Drei Dateien nach „Einreichung/Pläne“ verschieben',
-              operation: 'move',
-              operations: [
-                {
-                  document: 'Grundriss EG.pdf',
-                  source: 'projekt',
-                  current: 'Nachweise',
-                  target_folder: 'Einreichung/Pläne',
-                },
-                {
-                  document: 'Grundriss OG.pdf',
-                  source: 'projekt',
-                  current: '',
-                  target_folder: 'Einreichung/Pläne',
-                },
-                {
-                  document: 'Schnitt A-A.pdf',
-                  source: 'projekt',
-                  current: 'Nachweise',
-                  target_folder: 'Einreichung/Pläne',
-                },
-              ],
-              note: 'Vorschlag — es wurde noch nichts verschoben.',
-            },
-          ] as GridCard[]}
-          projectId={null}
-        />
+        {proposalsReady && (
+          <GridCards
+            cards={[
+              {
+                type: 'file_operation_proposal',
+                proposal_id: DEMO.filesOpen,
+                title: 'Drei Dateien nach „Einreichung/Pläne“ verschieben',
+                operation: 'move',
+                operations: [
+                  {
+                    document: 'Grundriss EG.pdf',
+                    source: 'projekt',
+                    current: 'Nachweise',
+                    target_folder: 'Einreichung/Pläne',
+                  },
+                  {
+                    document: 'Grundriss OG.pdf',
+                    source: 'projekt',
+                    current: '',
+                    target_folder: 'Einreichung/Pläne',
+                  },
+                  {
+                    document: 'Schnitt A-A – Bestand und Neubau (Revision 3).pdf',
+                    source: 'projekt',
+                    current: 'Nachweise',
+                    target_folder: 'Einreichung/Pläne',
+                  },
+                ],
+                note: 'Vorschlag — es wurde noch nichts verschoben.',
+              },
+            ] as GridCard[]}
+            projectId={DEMO_PROJECT_ID}
+          />
+        )}
       </Section>
 
       {/* A system card the annotations tool pushes: what Piloti did on a

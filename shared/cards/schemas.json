@@ -1530,7 +1530,7 @@
       "type": "object"
     },
     "FileOperationProposalCard": {
-      "description": "A workspace change the agent PROPOSES and a person applies.\n\nSystem-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``).\nEvery operation is a write, none of them writes: the tool's own result text\nsays plainly that nothing has changed yet. With ``proposal_id`` the card\nshows a proposal stored on the server (ADR-0105), which the server applies\nin the accepting person's session; it then carries the one operation of\nthe call that created it. Without one (an older BFF, a run with no\nenvelope) the reader's Accept runs the rows through the existing\ndocument/folder/assignment routes from the browser, and repeated calls of\none ``operation`` extend the card.",
+      "description": "A workspace change the agent PROPOSES and a person applies.\n\nSystem-emitted by ``propose_file_change`` (``src/aiq_agent/tools/files/``).\nEvery operation is a write, none of them writes: the tool's own result text\nsays plainly that nothing has changed yet. With ``proposal_id`` the card\nshows a proposal stored on the server (ADR-0105), which the server applies\nin the accepting person's session; it then carries the one operation of\nthe call that created it. Without one (an older BFF, a run with no\nenvelope, a refusal) the proposal was not stored: the UI draws the card\nread-only, saying so, and the browser executes nothing.",
       "properties": {
         "note": {
           "anyOf": [
@@ -1577,7 +1577,7 @@
             }
           ],
           "default": null,
-          "description": "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser executes the rows, as before proposals were server objects",
+          "description": "The server proposal this card shows (POST /api/internal/proposals). Absent: the proposal was not stored, and the card is a read-only notice that nothing was proposed",
           "title": "Proposal Id"
         },
         "title": {
@@ -2369,7 +2369,7 @@
       "type": "object"
     },
     "MemoryProposalCard": {
-      "description": "A proposal to save a finding to long-term memory, confirmed by the user.\n\nSystem-emitted by the `remember` tool when an org-scoped write needs human\nauthorization; the user chooses org-wide or project scope and the write goes\nthrough their authenticated session.",
+      "description": "A proposal to save a finding to long-term memory, confirmed by the user.\n\nSystem-emitted by the `remember` tool when an org-scoped write needs human\nauthorization. With `proposal_id` the note is a stored proposal (kind\n`memory`) the server files in the accepting person's session, org-wide or,\nif they choose, in the project; without one the browser writes it through the\nreader's own session.",
       "properties": {
         "confidence": {
           "default": "medium",
@@ -2397,6 +2397,34 @@
           ],
           "title": "Kind",
           "type": "string"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The server proposal this card shows (POST /api/internal/proposals). Absent: the browser writes the note through the reader's own session, as before proposals were server objects",
+          "title": "Proposal Id"
+        },
+        "supersedes": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The earlier note this one corrects, quoted verbatim; accepting the proposal retires it",
+          "title": "Supersedes"
         },
         "title": {
           "description": "Short title for the memory proposal",
@@ -2514,12 +2542,26 @@
           "type": "array"
         },
         "preview": {
-          "description": "Optional and not rendered. The card builds its before/after rows from the PATCH and the live profile (`buildPatchPreviewRows`), never from a model-supplied preview \u2014 what the user consents to has to be what is written. Kept as an optional field rather than removed so an older stored card still validates.",
+          "description": "Optional and not rendered or recorded. The card builds its before/after rows from the PATCH and the live profile (`buildPatchPreviewRows`), never from a model-supplied preview \u2014 what the user consents to has to be what is written. Kept as an optional field rather than removed so an older stored card still validates.",
           "items": {
             "$ref": "#/$defs/ProjectProfilePatchPreviewItem"
           },
           "title": "Preview",
           "type": "array"
+        },
+        "proposal_id": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The server proposal this card shows (POST /api/internal/proposals), set where the answer's cards become final and never by the model. Absent: the browser applies the patch, as before proposals were server objects",
+          "title": "Proposal Id"
         },
         "rationale": {
           "description": "One or two sentences: what was learned in this conversation and why it changes the brief",

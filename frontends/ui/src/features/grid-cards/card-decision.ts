@@ -76,13 +76,17 @@ export const CARD_INTERACTIVITY: Record<GridCard['type'], CardInteractivity> = {
   // same files a second time (or fail confusingly, because they are no longer
   // where the card says they are).
   //
-  // Still interactive, though a card that carries a `proposal_id` decides on
-  // the SERVER (ADR-0105): its Accept and Discard apply or dismiss the proposed
-  // change through `/api/proposals/[id]`, the object records who decided and
-  // when, and nothing is written to `cardInteractions`. The classification
-  // stays for the cards without one, stored before proposals were objects or
-  // emitted as the fallback, which still run in the browser and keep their
-  // answer on the message.
+  // Still classified `'interactive'`, though a card that carries a `proposal_id`
+  // decides on the SERVER (ADR-0105): its Accept and Discard apply or dismiss
+  // the proposed change through `/api/proposals/[id]`, the object records who
+  // decided and when, and nothing is written to `cardInteractions`. A card
+  // without one runs nothing in the browser any more: it is read-only and only
+  // replays a decision recorded before proposals were objects. The same holds
+  // for `memory_proposal` and `project_profile_patch` above, except that their
+  // card without a `proposal_id` still decides in the browser, for answers older
+  // than server proposals. A class for "decided on the server" (`'live'`) would
+  // describe all three better; see `DECIDED_ON_THE_SERVER` in
+  // `card-interactivity.spec.tsx`, which it would retire.
   file_operation_proposal: 'interactive',
   // Reports the marks Piloti set on a document and the threads it answered in,
   // and asks, per proposed mark, „übernehmen oder verwerfen?" (or all at once).

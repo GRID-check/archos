@@ -1,0 +1,11 @@
+---
+features:
+  - >
+    When Piloti suggests a note for the office's memory or a change to a
+    project's facts, the suggestion is now decided once for everyone, and the
+    card shows who decided and when, live for every reader. An office note can
+    be kept for the project only, with „Nur im Projekt merken“.
+improvements:
+  - >
+    A suggested change to a project's facts is shown field by field, as Vorher
+    and Nachher, so you see what would change before you accept it.

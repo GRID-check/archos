@@ -168,13 +168,22 @@ then newest-first; the current conversation always wins; and a memory entry is
 never a citable source for a legal requirement.
 
 **What the project decided about the agent's proposals travels with the
-digest.** A `project_profile_patch` or `memory_proposal` card is a proposal;
-the reader's Accept or Reject is persisted on the message (ADR-0030) and,
-until 2026-09, read by nothing the agent could see, so a declined patch came
-back next turn. `lib/projects/proposal-decisions.ts` renders the most recent
-verdicts as a bounded `PROPOSAL_DECISIONS v1` block (≤10 lines / ≤900 chars,
-newest first, in the card's own words) that is appended to the digest on the
-handshake and on the live per-turn fetch. The memory header cap is sized for
+digest.** A `project_profile_patch`, `memory_proposal` or
+`file_operation_proposal` card is a proposal, and a person's Accept or Reject of
+it used to be read by nothing the agent could see, so a declined patch came
+back next turn. Since ADR-0105 such a card carries a `proposal_id` and its
+decision is a row of `proposed_changes`
+([`proposed-changes.md`](proposed-changes.md)): the server applies a note or a
+patch in the deciding person's session and records who decided and when, and the
+browser saves nothing. `lib/projects/proposal-decisions.ts` renders the most
+recent verdicts as a bounded `PROPOSAL_DECISIONS v1` block (≤10 lines / ≤900
+chars, newest first) that is appended to the digest on the handshake and on the
+live per-turn fetch. It has two sources: the server rows
+(`proposal-decision-rows.ts`), described from what was applied and never from a
+card's preview, and, for a card without a `proposal_id` (an answer older than
+server proposals, or one the agent could not store), the browser's recorded
+decision (`cardInteractions`, ADR-0030), in the card's own words. A card with a
+`proposal_id` is stated once, from its row. The memory header cap is sized for
 both blocks (`MEMORY_HEADER_MAX_CHARS`), and `<project_record>` explains the
 block once, next to PROJECT_MEMORY: accepted means already in place, declined
 means not raised again without new evidence.
@@ -342,7 +351,10 @@ open, so it is the verdict the trail exists for. That includes a `remember`
 with scope organization that the deployment refuses
 (`GRID_ALLOW_AGENT_ORG_MEMORY` unset, the default): no item exists, but the
 "none" decided that the agent offers the finding as a card that writes it
-open, organization-wide at the widest. The BFF records that verdict against
+open, organization-wide at the widest: a `memory` proposal the accepting
+person's session applies on the server (ADR-0105,
+[`proposed-changes.md`](proposed-changes.md)), after the same cross-project and
+confinement checks the agent's own door makes. The BFF records that verdict against
 the organization (`outcome: refused`) before it refuses, when the organization
 is one it knows. Only that refusal offers the card (`_failure_result` in
 `memory/register.py`): an organization write that failed otherwise (a 500, a
@@ -399,8 +411,13 @@ nobody could be served.
   reader who may see it sees a lock naming the folders;
 - the digest marks a restricted line `restricted`;
 - `PROPOSAL_DECISIONS` leaves out every conversation that recorded a restricted
-  folder (`conversation_restricted_folders`): the block is project-wide and a
-  card's words can carry what a restricted folder said.
+  folder (`conversation_restricted_folders`) or drew on another project still
+  restricting its readers: the block is project-wide and a proposal's words can
+  carry what a restricted folder said. The server rows and the browser-recorded
+  decisions share one predicate (`conversationOpenToProjectReaders`), and a
+  proposal row with no origin conversation is left out, since there is nothing
+  to check it against. Accepting a memory proposal from such a conversation is
+  refused too (`applyMemory`), so a click is not a way around the memory door.
 
 A folder later opened to every member opens its notes; a folder narrowed shows
 them to fewer people; a deleted folder's tombstone keeps answering with the

@@ -17,13 +17,14 @@ as before.
 The reason is the invariant in ``src/aiq_agent/tools/AGENTS.md``: the BFF is
 the single writer of ``grid_app`` (ADR-0003), so this tier has no route to a
 document row and must not grow one. The proposal is a server object
-(``client.py``, ADR-0105): accepting the card asks the BFF to apply it through
-the same services the Files pane uses, in the accepting person's session, where
-``requireProjectAccess`` and the audit trail already are. Where the BFF cannot
-store it, the card falls back to running the change from the browser, as the
-reader, which is how it worked before (``cards.py``). A tool here that
-wrote directly would bypass all three in one call — and would do it on behalf
-of a user who never saw what was about to happen.
+(``proposals_client.py``, ADR-0105): accepting the card asks the BFF to apply it
+through the same services the Files pane uses, in the accepting person's
+session, where ``requireProjectAccess`` and the audit trail already are. The
+browser executes nothing. Where the BFF cannot store the proposal, the call
+reports failure and the model is told so (``_NOT_PROPOSED``); the card it
+leaves behind is a read-only notice (``cards.py``). A tool here that wrote
+directly would bypass all three in one call — and would do it on behalf of a
+user who never saw what was about to happen.
 
 The descriptions and the results are GERMAN, like the working directory's four
 verbs and unlike ``remember``: every argument these tools take is a name the
@@ -60,11 +61,14 @@ _PROPOSED = (
     "sage nicht, dass es erledigt ist; die Nutzerin entscheidet auf der Karte."
 )
 
-#: No card channel, no proposal. Never dressed up as success.
-_NO_CARD = (
-    "Fehler: In dieser Ausführung gibt es keinen Kartenkanal, der Vorschlag konnte also nicht "
-    "angezeigt werden. Es wurde nichts geändert. Sage der Nutzerin, dass sie den Vorgang selbst "
-    "in der Dateiablage vornehmen muss."
+#: No proposal, whether there was no card channel or the server did not take it.
+#: Never dressed up as success, and no promise either way: the reader has no
+#: card to decide on, so the model must not say one is waiting.
+_NOT_PROPOSED = (
+    "Fehler: Der Vorschlag konnte nicht angelegt werden (kein Kartenkanal oder vom Server nicht "
+    "angenommen), niemand kann etwas annehmen. Es wurde nichts geändert. Sage das; die Person kann "
+    "den Vorgang selbst in der Dateiablage vornehmen oder dich bitten, es noch einmal vorzuschlagen. "
+    "In diesem Zug nicht erneut versuchen."
 )
 
 #: Every operation acts on a project's workspace: folders are
@@ -111,7 +115,7 @@ async def _move(document: str, target_folder: str) -> str:
     }
     title = f"Verschieben nach „{folder}“" if folder else "Auf die oberste Ebene verschieben"
     if not await propose_file_operation(operation="move", title=title, item=item):
-        return _NO_CARD
+        return _NOT_PROPOSED
     return f"Vorgeschlagen: `{resolved.file_name}` → {folder or 'oberste Ebene'}. {_PROPOSED}"
 
 
@@ -141,7 +145,7 @@ async def _rename(document: str, new_name: str) -> str:
         "new_display_name": name,
     }
     if not await propose_file_operation(operation="rename", title="Datei umbenennen", item=item):
-        return _NO_CARD
+        return _NOT_PROPOSED
     return f"Vorgeschlagen: `{resolved.file_name}` → „{name}“. {_PROPOSED}"
 
 
@@ -172,7 +176,7 @@ async def _create_folder(name: str, parent: str) -> str:
 
     item = {"folder_name": folder_name, "parent_folder": parent_path, "current": full}
     if not await propose_file_operation(operation="create_folder", title="Neuen Ordner anlegen", item=item):
-        return _NO_CARD
+        return _NOT_PROPOSED
     return f"Vorgeschlagen: neuer Ordner „{full}“. {_PROPOSED}"
 
 
@@ -186,7 +190,7 @@ async def _assign(document: str, member: str) -> str:
 
     item = {"document": resolved.file_name, "source": resolved.source, "member": person}
     if not await propose_file_operation(operation="assign", title="Datei zuweisen", item=item):
-        return _NO_CARD
+        return _NOT_PROPOSED
     return f"Vorgeschlagen: `{resolved.file_name}` → {person}. {_PROPOSED}"
 
 

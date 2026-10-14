@@ -12,7 +12,7 @@
  */
 
 import 'server-only'
-import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql, type SQL } from 'drizzle-orm'
 import { getDb } from '@/lib/db'
 import type { DbExecutor } from '@/lib/db/executor'
 import { stripJsonNullBytes } from '@/lib/text/jsonb'
@@ -563,6 +563,24 @@ export async function deleteConversationInOrg(conversationId: string, organizati
 }
 
 /**
+ * The conversations whose cards and proposals a project-wide reader may be
+ * told about: none that drew on a restricted folder (ADR-0087), none that drew
+ * on another project still restricting its readers (ADR-0094; a project closed
+ * now is read by the whole office). A correlated predicate on the
+ * `conversations` row in scope.
+ *
+ * One definition for every block built from a conversation's own words
+ * (PROPOSAL_DECISIONS reads messages here and `proposed_changes` rows in
+ * `lib/projects/proposal-decision-rows.ts`), so the two paths cannot disagree
+ * about which conversation is private. A function, not a constant: a module
+ * that only imports this file must not touch the schema while it loads.
+ */
+export const conversationOpenToProjectReaders = (): SQL => sql`(
+  not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})
+  and not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))
+)`
+
+/**
  * A conversation's messages, oldest first, bounded to the most recent `limit`.
  *
  * The bound is taken from the NEWEST end and the page is then reversed, which
@@ -605,14 +623,11 @@ export async function listRecentMessagesWithCardDecisions(
         eq(conversations.organizationId, organizationId),
         isNull(conversations.deletedAt),
         sql`${messages.metadata} ? 'cardInteractions'`,
-        // A conversation that drew on a restricted folder (ADR-0087) keeps its
-        // proposals to itself: the block is read into every member's digest,
-        // and a card's words can carry what a restricted folder said.
-        sql`not exists (select 1 from ${conversationRestrictedFolders} r where r.organization_id = ${conversations.organizationId} and r.conversation_id = ${conversations.id})`,
-        // Nor does one that drew on another project still restricting its
-        // readers (ADR-0094): its cards can restate what that project's
-        // documents said. A project closed now is read by the whole office.
-        sql`not exists (select 1 from ${conversationSourceProjects} p where p.organization_id = ${conversations.organizationId} and p.conversation_id = ${conversations.id} and not exists (select 1 from ${projects} c where c.id = p.project_id and c.organization_id = p.organization_id and c.status = 'closed' and c.deleted_at is null))`,
+        // Neither one that drew on a restricted folder (ADR-0087) nor on another
+        // project still restricting its readers (ADR-0094) keeps its proposals
+        // to the block: it is read into every member's digest, and a card's
+        // words can carry what those documents said.
+        conversationOpenToProjectReaders(),
       ),
     )
     .orderBy(desc(messages.createdAt), desc(messages.id))

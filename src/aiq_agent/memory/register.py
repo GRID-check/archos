@@ -47,6 +47,7 @@ from aiq_agent.memory.restriction import restricted_digest_notes
 from aiq_agent.memory.restriction import restriction_decisions
 from aiq_agent.memory.restriction import restriction_evidence
 from aiq_agent.memory.shown_notes import turn_shown_notes
+from aiq_agent.tools.proposals_client import add_card
 from nat.plugin_api import Builder
 from nat.plugin_api import FunctionBaseConfig
 from nat.plugin_api import FunctionInfo
@@ -209,45 +210,89 @@ def _restricted_target(target: _Target, project_id: str | None) -> _Target | str
     return _Target("project", project_id, target.organization_id)
 
 
-def _emit_memory_proposal_card(*, content: str, kind: str, confidence: str) -> bool:
-    """Build and register a ``memory_proposal`` confirmation card.
+#: What a ``memory`` proposal and its card hold of a superseded note (the contract's cap).
+MAX_SUPERSEDES_CHARS = 500
+
+
+async def _emit_memory_proposal_card(*, content: str, kind: str, confidence: str, supersedes: str = "") -> bool:
+    """Build and register a ``memory_proposal`` confirmation card, with its server proposal.
 
     Returns True if the card was added to a bound conversation-scoped card
     registry, False when no card channel is available (so the caller can fall
     back to an honest error string). Mirrors ``emit_card``'s None handling.
+
+    The note is also stored as a ``memory`` proposal (``POST
+    /api/internal/proposals``, ADR-0105) and the card carries its id; accepting
+    it files the note in the accepting person's session, retiring ``supersedes``
+    when the call had one. Where the server cannot store it (an older BFF, a
+    run with no envelope) the card goes out without an id and the browser
+    writes the note, as it always did.
     """
     registry = get_card_registry()
     if registry is None:
         return False
 
+    if len(supersedes) > MAX_SUPERSEDES_CHARS:
+        # A quote cut short would match nothing, so the card proposes the note alone.
+        logger.warning("remember: the superseded note is too long for a proposal; proposing the note alone")
+        supersedes = ""
     card = {
         "type": "memory_proposal",
         "title": "Neue Erkenntnis merken",
         "content": content,
         "kind": kind,
         "confidence": confidence,
+        "supersedes": supersedes or None,
     }
     try:
         validated = grid_card_adapter.validate_python(card).model_dump(exclude_none=True)
     except ValidationError:
         logger.exception("Failed to build memory_proposal card")
         return False
-    registry.add(validated)
-    logger.info("Emitted memory_proposal card (kind=%s) for user-authorized memory write", kind)
+    payload = {"scope": "organization", "kind": kind, "content": content, "confidence": confidence}
+    if supersedes:
+        payload["supersedes"] = supersedes
+    proposal_id = await add_card(registry, validated, kind="memory", payload=payload)
+    logger.info(
+        "Emitted memory_proposal card (kind=%s, proposal=%s) for user-authorized memory write", kind, proposal_id
+    )
     return True
 
 
-def _failure_result(exc: Exception, *, kind: str, content: str, confidence: str, restricted: bool = False) -> str:
-    """Translate a failed write into a tool result, emitting a card when one helps.
+async def _write_failed(
+    exc: Exception, *, kind: str, content: str, confidence: str, supersedes: str = "", restricted: bool = False
+) -> str:
+    """The tool result for a failed write, after offering a confirmation card when one helps.
 
     An ORG-scoped write the agent's service token may not make is the one
-    failure with a sanctioned alternative: a confirmation card lets the user
-    complete the write through their OWN authenticated session (org-wide) or
-    save it to just this project. Only that refusal: the BFF audits the memory
-    judge's verdict before it refuses (``outcome: refused``), and a write that
-    failed otherwise (a 500, a timeout) reached no audit, so a card for it would
-    write open memory whose judge's "none" the trail never saw. Everything else
-    gets an honest error string.
+    failure with a sanctioned alternative: a confirmation card, backed by a
+    ``memory`` proposal, lets the user complete the write through their OWN
+    authenticated session (org-wide) or save it to just this project. Only that
+    refusal: the BFF audits the memory judge's verdict before it refuses
+    (``outcome: refused``), and a write that failed otherwise (a 500, a
+    timeout) reached no audit, so a card for it would write open memory whose
+    judge's "none" the trail never saw. Everything else gets an honest error
+    string (:func:`_failure_result`).
+    """
+    # Never a card for a restricted finding: accepting it writes open memory
+    # through the user's own session, which is the leak by another door.
+    # `org_denied` is only ever an organization-scoped write.
+    if (
+        not restricted
+        and isinstance(exc, memory_client.OrgMemoryDisabledError)
+        and await _emit_memory_proposal_card(content=content, kind=kind, confidence=confidence, supersedes=supersedes)
+    ):
+        logger.warning("Org-scoped remember denied by frontend policy (org memory disabled); proposed instead")
+        return _CARD_SHOWN_RESULT
+    return _failure_result(exc, kind=kind, content=content, confidence=confidence, restricted=restricted)
+
+
+def _failure_result(exc: Exception, *, kind: str, content: str, confidence: str, restricted: bool = False) -> str:
+    """The tool result for a failed write that gets no card.
+
+    ``kind``, ``content`` and ``confidence`` are what a card would be made of;
+    only :func:`_write_failed` makes one, and they stay in the signature the
+    callers and ``tests/aiq_agent/knowledge/test_cross_project_turn.py`` use.
     """
     if isinstance(exc, memory_client.CrossProjectMemoryRefusedError):
         # No card: accepting one would write the finding through the reader's
@@ -258,12 +303,6 @@ def _failure_result(exc: Exception, *, kind: str, content: str, confidence: str,
         logger.warning("Org-scoped remember denied by frontend policy (org memory disabled)")
     else:
         logger.error("Failed to record memory item", exc_info=exc)
-
-    # Never a card for a restricted finding: accepting it writes open memory
-    # through the user's own session, which is the leak by another door.
-    # `org_denied` is only ever an organization-scoped write.
-    if not restricted and org_denied and _emit_memory_proposal_card(content=content, kind=kind, confidence=confidence):
-        return _CARD_SHOWN_RESULT
     return _ORG_DISABLED_RESULT if org_denied else _UNAVAILABLE_RESULT
 
 
@@ -402,11 +441,12 @@ async def project_memory_remember(tool_config: ProjectMemoryRememberConfig, buil
                 restriction_judge=decision.judge.as_payload() if decision.judge else None,
             )
         except _WRITE_FAILURES as exc:
-            return _failure_result(
+            return await _write_failed(
                 exc,
                 kind=kind,
                 content=content,
                 confidence=confidence,
+                supersedes=supersedes,
                 restricted=restriction is not None,
             )
 

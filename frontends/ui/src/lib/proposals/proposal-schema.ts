@@ -7,7 +7,10 @@
 
 import { jsonSchemaDocument, type JsonSchemaNode } from '@/lib/api/zod-json-schema'
 import {
+  applyProposalRequestSchema,
   fileOperationPayloadSchema,
+  memoryPayloadSchema,
+  projectProfilePayloadSchema,
   internalProposalRequestSchema,
   internalProposalResponseSchema,
   proposalResponseSchema,
@@ -19,6 +22,9 @@ export const PROPOSAL_WIRE_SCHEMAS = {
   InternalProposalRequest: internalProposalRequestSchema,
   InternalProposalResponse: internalProposalResponseSchema,
   FileOperationPayload: fileOperationPayloadSchema,
+  MemoryPayload: memoryPayloadSchema,
+  ProjectProfilePayload: projectProfilePayloadSchema,
+  ApplyProposalRequest: applyProposalRequestSchema,
   ProposedChangeView: proposedChangeViewSchema,
   ProposalResponse: proposalResponseSchema,
 } as const

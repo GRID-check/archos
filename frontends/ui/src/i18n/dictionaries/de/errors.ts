@@ -44,6 +44,8 @@ export const errors: typeof en.errors = {
     deepResearch:
       'Diese Unterhaltung stützt sich auf einen Ordner mit eingeschränktem Zugriff oder auf ein anderes Projekt, deshalb lässt sich aus ihr keine Tiefenrecherche starten: Recherche, Titel und Bericht wären für alle im Projekt sichtbar, auch für Personen, die diesen Ordner oder dieses Projekt nicht lesen dürfen.',
     task: 'Diese Unterhaltung stützt sich auf einen Ordner mit eingeschränktem Zugriff oder auf ein anderes Projekt, deshalb lässt sich aus ihr kein Auftrag anlegen: Aufträge sind für alle im Projekt sichtbar, auch für Personen, die diesen Ordner oder dieses Projekt nicht lesen dürfen.',
+    memory:
+      'Diese Unterhaltung stützt sich auf einen Ordner mit eingeschränktem Zugriff oder auf ein anderes Projekt, deshalb lässt sich aus ihr nichts ins Gedächtnis übernehmen: Das Gedächtnis ist für alle im Projekt oder im Büro sichtbar, auch für Personen, die diesen Ordner oder dieses Projekt nicht lesen dürfen.',
     profilePatch:
       'Diese Unterhaltung stützt sich auf einen Ordner mit eingeschränktem Zugriff oder auf ein anderes Projekt, deshalb lässt sich aus ihr der Projektkontext nicht ändern: Er ist für alle im Projekt sichtbar, auch für Personen, die diesen Ordner oder dieses Projekt nicht lesen dürfen.',
     filing:

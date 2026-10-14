@@ -5,7 +5,11 @@ Drives the inner ``_remember`` function (the one yielded as a NAT
 result strings can be asserted without a real internal API.
 """
 
+import io
 import json
+import urllib.error
+import urllib.request
+from pathlib import Path
 from unittest.mock import MagicMock
 
 import pytest
@@ -482,3 +486,198 @@ async def test_a_restricted_note_an_earlier_turn_was_shown_still_restricts(monke
     finally:
         unbind_shown_notes(token)
     assert insert.call_args.kwargs["restricted_collections"] == (_RESTRICTED,)
+
+
+# ── The confirmation card is backed by a server proposal (ADR-0105) ──────────
+#
+# An org-denied note becomes a `memory` proposal the BFF stores and the
+# accepting person applies in their own session. Only the transport is faked, so
+# the body checked here is the one `post_proposal` really sends.
+
+_PROPOSALS_SCHEMA = Path(__file__).resolve().parents[3] / "frontends/ui/tests/fixtures/proposals.schema.json"
+_PROPOSAL_ID = "55555555-0000-4000-8000-000000000005"
+_HEADER, _SIGNATURE = "eyJzaWduZWQiOiJ0dXJuIn0", "c0ffee"
+
+
+class _Transport:
+    """``_opener.open`` with one queued answer: a dict is a 200 body, an int an HTTP error."""
+
+    def __init__(self, answer):
+        self.answer = answer
+        self.requests: list[urllib.request.Request] = []
+
+    def bodies(self):
+        return [json.loads(request.data) for request in self.requests]
+
+    def __call__(self, request, timeout):
+        self.requests.append(request)
+        if isinstance(self.answer, int):
+            raise urllib.error.HTTPError(request.full_url, self.answer, "refused", {}, io.BytesIO(b"{}"))
+        response = MagicMock()
+        response.__enter__.return_value.read.return_value = json.dumps(self.answer).encode("utf-8")
+        return response
+
+
+@pytest.fixture
+def proposals(monkeypatch):
+    """A turn with a signed envelope, a service token and a card registry; the installed transport."""
+    from aiq_agent.cards.registry import CardRegistry
+    from aiq_agent.cards.registry import reset_card_registry
+    from aiq_agent.cards.registry import set_card_registry
+    from aiq_agent.tools import proposals_client
+
+    _patch_context(monkeypatch)
+    monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (_HEADER, _SIGNATURE))
+    monkeypatch.setenv("GRID_INTERNAL_API_TOKEN", "internal-token")
+    monkeypatch.setenv("FRONTEND_INTERNAL_URL", "http://bff.test")
+    registry = CardRegistry()
+    token = set_card_registry(registry)
+
+    def install(answer):
+        transport = _Transport(answer)
+        monkeypatch.setattr(proposals_client._opener, "open", transport)
+        return transport
+
+    yield type("Proposals", (), {"registry": registry, "install": staticmethod(install)})
+    reset_card_registry(token)
+
+
+def _contract_errors(body):
+    from jsonschema import Draft202012Validator
+    from jsonschema import FormatChecker
+
+    schema = json.loads(_PROPOSALS_SCHEMA.read_text(encoding="utf-8"))
+    request = {**schema["$defs"]["InternalProposalRequest"], "$defs": schema["$defs"]}
+    return [error.message for error in Draft202012Validator(request, format_checker=FormatChecker()).iter_errors(body)]
+
+
+@pytest.mark.asyncio
+async def test_an_org_denied_note_becomes_a_memory_proposal_and_the_card_carries_its_id(monkeypatch, proposals):
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    result = await _remember(
+        monkeypatch,
+        insert,
+        scope="organization",
+        kind="decision",
+        content="Das Büro plant in Achsmaßen.",
+        confidence="high",
+        supersedes="Das Büro plant in Rohbaumaßen.",
+    )
+
+    (body,) = transport.bodies()
+    assert _contract_errors(body) == []
+    assert body["kind"] == "memory"
+    assert body["payload"] == {
+        "scope": "organization",
+        "kind": "decision",
+        "content": "Das Büro plant in Achsmaßen.",
+        "confidence": "high",
+        "supersedes": "Das Büro plant in Rohbaumaßen.",
+    }
+    assert body["originCardIndex"] == 0
+    (request,) = transport.requests
+    assert request.get_header("X-grid-request-context") == _HEADER  # echoed, never signed
+    assert request.get_header("X-grid-request-context-sig") == _SIGNATURE
+    (card,) = proposals.registry.snapshot()
+    assert card["type"] == "memory_proposal"
+    assert card["proposal_id"] == _PROPOSAL_ID
+    assert card["supersedes"] == "Das Büro plant in Rohbaumaßen."
+    # Nothing was saved yet, and the model is told so.
+    assert result == register._CARD_SHOWN_RESULT
+    assert "NOT been saved yet" in result
+
+
+@pytest.mark.asyncio
+async def test_a_note_that_corrects_nothing_sends_no_supersedes(monkeypatch, proposals):
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    await _remember(monkeypatch, insert, scope="organization")
+
+    (body,) = transport.bodies()
+    assert _contract_errors(body) == []
+    assert "supersedes" not in body["payload"]
+    (card,) = proposals.registry.snapshot()
+    assert "supersedes" not in card
+
+
+@pytest.mark.asyncio
+async def test_the_cards_index_is_its_position_among_the_turns_cards(monkeypatch, proposals):
+    proposals.registry.add({"type": "document_draft"})
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    await _remember(monkeypatch, insert, scope="organization")
+
+    assert [body["originCardIndex"] for body in transport.bodies()] == [1]
+    assert proposals.registry.snapshot()[1]["proposal_id"] == _PROPOSAL_ID
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure", [404, 500], ids=["older-bff", "server-error"])
+async def test_a_proposal_that_cannot_be_stored_leaves_the_legacy_card(monkeypatch, proposals, failure):
+    transport = proposals.install(failure)
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    result = await _remember(monkeypatch, insert, scope="organization", supersedes="Früher.")
+
+    assert len(transport.requests) == 1
+    (card,) = proposals.registry.snapshot()
+    assert card["type"] == "memory_proposal" and "proposal_id" not in card
+    assert result == register._CARD_SHOWN_RESULT
+
+
+@pytest.mark.asyncio
+async def test_a_turn_without_an_envelope_asks_nobody_and_shows_the_legacy_card(monkeypatch, proposals):
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    monkeypatch.setattr(pc, "get_request_envelope_from_context", lambda: (None, None))
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    result = await _remember(monkeypatch, insert, scope="organization")
+
+    assert transport.requests == []
+    (card,) = proposals.registry.snapshot()
+    assert "proposal_id" not in card
+    assert result == register._CARD_SHOWN_RESULT
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scope", ["project", "organization"])
+async def test_a_restricted_finding_stores_no_proposal_and_shows_no_card(monkeypatch, proposals, scope):
+    """A proposal would be accepted into open memory by the reader's session: the leak by another door."""
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    _patch_scope(monkeypatch, _RESTRICTED_SCOPE)
+    _patch_turn(monkeypatch, read=[_RESTRICTED])
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    result = await _remember(monkeypatch, insert, scope=scope)
+
+    assert "NOT saved" in result
+    assert transport.requests == []
+    assert proposals.registry.snapshot() == []
+
+
+@pytest.mark.asyncio
+async def test_a_failure_that_is_not_the_org_policy_stores_no_proposal(monkeypatch, proposals):
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    insert = MagicMock(side_effect=RuntimeError("boom"))
+
+    result = await _remember(monkeypatch, insert, scope="organization")
+
+    assert "NOT saved" in result
+    assert transport.requests == []
+    assert proposals.registry.snapshot() == []
+
+
+@pytest.mark.asyncio
+async def test_a_superseded_quote_too_long_for_a_proposal_is_dropped_not_sent(monkeypatch, proposals):
+    transport = proposals.install({"id": _PROPOSAL_ID, "status": "proposed"})
+    insert = MagicMock(side_effect=pm.OrgMemoryDisabledError("disabled"))
+
+    await _remember(monkeypatch, insert, scope="organization", supersedes="x" * 600)
+
+    (body,) = transport.bodies()
+    assert _contract_errors(body) == []
+    assert "supersedes" not in body["payload"]
