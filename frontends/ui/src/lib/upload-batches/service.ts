@@ -132,9 +132,11 @@ export async function sealOwnUploadBatch(
   const sealed = await sealUploadBatch(session.organizationId, batchId, session.userId, counts, new Date())
   if (!sealed) throw new ConflictError('The upload changed while it was being sealed')
   // The bytes are in and the person is still looking at the upload: Piloti
-  // judges where it belongs from the names now (`lib/filing`). Never throws.
-  const { queueFilingReview } = await import('@/lib/filing/trigger')
-  await queueFilingReview(session.organizationId, batch, 'name')
+  // judges where it belongs from the names now (`lib/filing`). Never throws,
+  // and neither does loading it: a seal is never refused over a suggestion.
+  await import('@/lib/filing/trigger')
+    .then(({ queueFilingReview }) => queueFilingReview(session.organizationId, batch, 'name'))
+    .catch((error: unknown) => console.warn(`[filing] the name review of batch ${batch.id} was not queued; the upload is unaffected:`, error))
   // A batch whose documents all finished before the seal arrived completes
   // here rather than waiting for a reader or the sweep.
   const { settleUploadBatches } = await import('./settle')

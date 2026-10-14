@@ -6,7 +6,7 @@ features:
     found it on and asks only what would change the Gebäudeklasse.
   - >
     The address field in the new project dialog suggests Austrian addresses
-    as you type and fills in the Bundesland and the Gemeinde.
+    as you type and fills in the Bundesland.
 fixes:
   - >
     The list of applicable OIB-Richtlinien now uses the Fluchtniveau, the

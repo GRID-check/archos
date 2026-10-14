@@ -99,11 +99,9 @@ export type SuggestionState = (typeof SUGGESTION_STATES)[number]
 
 /** What a person does with one key on the review. */
 export const INTAKE_DECISION_ACTIONS = ['confirm', 'dismiss', 'answer', 'unknown'] as const
-export type IntakeDecisionAction = (typeof INTAKE_DECISION_ACTIONS)[number]
 
 /** What the BFF made of one recorded value. */
 export const RECORD_OUTCOMES = ['suggested', 'corroborated', 'contradiction', 'refused'] as const
-export type RecordOutcome = (typeof RECORD_OUTCOMES)[number]
 
 /**
  * Why a recorded value was refused: a token outside the question's options,
@@ -122,7 +120,6 @@ export type RecordRefusalReason = (typeof RECORD_REFUSAL_REASONS)[number]
  * dismissed (no person said no), so a later reading may suggest it again.
  */
 export const WITHDRAW_OUTCOMES = ['withdrawn', 'refused'] as const
-export type WithdrawOutcome = (typeof WITHDRAW_OUTCOMES)[number]
 
 /**
  * Why a withdrawal was refused: nothing is suggested under the key, a person
@@ -350,7 +347,6 @@ export type IntakeDecision = z.infer<typeof intakeDecisionSchema>
 export const intakeDecisionsRequestSchema = z
   .object({ decisions: z.array(intakeDecisionSchema).min(1).max(MAX_INTAKE_DECISIONS) })
   .strict()
-export type IntakeDecisionsRequest = z.infer<typeof intakeDecisionsRequestSchema>
 
 /** What one decision did, in request order. `reason` says why it did not go through. */
 export const intakeDecisionResultSchema = z.object({
@@ -383,7 +379,6 @@ export const recordEvidenceSchema = z
     quote: z.string().min(1).max(MAX_EVIDENCE_QUOTE_LENGTH),
   })
   .strict()
-export type RecordEvidence = z.infer<typeof recordEvidenceSchema>
 
 export const recordValueSchema = z
   .object({

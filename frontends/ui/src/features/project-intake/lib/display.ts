@@ -12,7 +12,7 @@ import {
   type ProjectIntakeQuestion,
 } from '@/lib/project-profile/intake-definition'
 import type { ProjectPrimitiveValue } from '@/lib/project-profile/types'
-import type { Need, ProfileEvidence } from '@/lib/project-intake/types'
+import type { Need } from '@/lib/project-intake/types'
 
 const WRITTEN_KEY = /^\/(?:facts|goals)\/([^/]+)/
 
@@ -65,10 +65,4 @@ export function questionOfNeed(need: Need): ProjectIntakeQuestion {
     ...(need.unit ? { unit: need.unit } : {}),
     ...(need.options ? { options: need.options.map((option) => ({ value: option.token, label: option.label })) } : {}),
   }
-}
-
-export function isDocumentEvidence(
-  evidence: ProfileEvidence
-): evidence is Extract<ProfileEvidence, { kind: 'document' }> {
-  return evidence.kind === 'document'
 }
