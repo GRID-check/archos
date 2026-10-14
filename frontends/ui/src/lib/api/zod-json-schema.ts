@@ -17,8 +17,8 @@
  * upgraded or a schema grows a shape this cannot express. It is not in the
  * lockfile, and adding a dependency has to be worth the lockfile churn in the
  * image and in CI; the hundred lines below handle exactly the node kinds the
- * wire modules use — object, string, number, boolean, literal, enum, array,
- * optional, nullable, default, effects, discriminated union. The bound is
+ * wire modules use — object, string, number, boolean, null, literal, enum,
+ * array, optional, nullable, default, effects, union, discriminated union. The bound is
  * deliberate and enforced: an unsupported node THROWS rather than emitting
  * `{}`, so a schema this cannot describe fails a spec instead of silently
  * exporting a contract that permits anything. That failure is the signal to add
@@ -138,6 +138,15 @@ export function toJsonSchema(schema: ZodTypeAny): JsonSchemaNode {
           propertyName: (schema as z.ZodDiscriminatedUnion<string, never[]>).discriminator,
         },
       }
+    case z.ZodFirstPartyTypeKind.ZodUnion:
+      // `anyOf`, not `oneOf`: the options of a plain union may overlap, and a
+      // value matching two of them is valid to zod. The profile's primitive
+      // value (string | number | boolean | string[] | null) is the first caller.
+      return {
+        anyOf: (schema as z.ZodUnion<[ZodTypeAny, ...ZodTypeAny[]]>).options.map((option) => toJsonSchema(option)),
+      }
+    case z.ZodFirstPartyTypeKind.ZodNull:
+      return { type: 'null' }
     case z.ZodFirstPartyTypeKind.ZodUnknown:
       // Any JSON value: the empty schema. Used where the contract deliberately
       // leaves a value open (a profile patch's `value`, checked by the profile

@@ -1,18 +1,20 @@
 import { z } from 'zod'
+import { profileEvidenceFields } from './evidence-schema'
+import { ProjectPrimitiveValueSchema } from './primitive-value'
 
-export const ProjectPrimitiveValueSchema = z.union([
-  z.string(),
-  z.number(),
-  z.boolean(),
-  z.array(z.string()),
-  z.null(),
-])
+export { ProjectPrimitiveValueSchema } from './primitive-value'
+export type { ProjectPrimitiveValue } from './primitive-value'
+export type { ProfileAlternative, ProfileEvidence } from './evidence-schema'
 
 export const ProjectFactSchema = z.object({
   value: ProjectPrimitiveValueSchema,
   confidence: z.literal('confirmed'),
   source: z.enum(['onboarding', 'user_confirmed', 'admin_edit']),
   updatedAt: z.string(),
+  /** Where the value was found or who answered it (ADR-0111). Dropped, not fatal, when malformed. */
+  evidence: profileEvidenceFields.evidence,
+  /** A different value a document states; a contradiction, kept beside the confirmed value. */
+  alternatives: profileEvidenceFields.alternatives,
 })
 
 export const ProjectAssumptionSchema = z.object({
@@ -21,6 +23,10 @@ export const ProjectAssumptionSchema = z.object({
   reason: z.string(),
   source: z.enum(['agent_suggested', 'onboarding_default']),
   updatedAt: z.string(),
+  /** Where the suggestion was found (ADR-0111). Dropped, not fatal, when malformed. */
+  evidence: profileEvidenceFields.evidence,
+  /** A different value found for the same key while it is still a suggestion. */
+  alternatives: profileEvidenceFields.alternatives,
 })
 
 export const ProjectProfileSchema = z.object({
@@ -57,7 +63,6 @@ export const ProjectProfilePatchOperationSchema = z.object({
   value: z.unknown().optional(),
 })
 
-export type ProjectPrimitiveValue = z.infer<typeof ProjectPrimitiveValueSchema>
 export type ProjectFact = z.infer<typeof ProjectFactSchema>
 export type ProjectAssumption = z.infer<typeof ProjectAssumptionSchema>
 export type ProjectProfile = z.infer<typeof ProjectProfileSchema>

@@ -154,6 +154,9 @@ const BOUNDARY_MIGRATIONS = [
   // Adds piloti_changes — every change Piloti applied, with the turn that made
   // it (ADR-0109). Keyed by its organization AND its document's.
   '0142_piloti_changes.sql',
+  // Adds project_intakes — a project's reading of its own documents, one row
+  // per project (ADR-0111). Keyed by its organization AND the project's.
+  '0144_project_intakes.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>
