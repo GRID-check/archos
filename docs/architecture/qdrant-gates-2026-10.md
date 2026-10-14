@@ -726,6 +726,43 @@ AIQ_QDRANT_URL=http://localhost:6450 \
 was read by hand from both `results.json` files and the recordings beside
 them.
 
+### After the pre-merge review (2026-10-14)
+
+One more pass of the answer suite, after the pre-merge review fixes and
+develop's merges since G1. Same Qdrant storage, the same 29 questions, two
+runs each, at commit `2c7b50000`.
+
+| Pass | Checks held | envelope | kind | family cited | mentions | not | shape |
+|---|---|---|---|---|---|---|---|
+| Chroma B (baseline) | 180/192 | 57/58 | 47/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+| Qdrant B (G1) | 180/192 | 57/58 | 47/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+| **After review** | **174/192** | 56/58 | 42/58 | 46/46 | 18/18 | 8/8 | 4/4 |
+
+- **Content held.** Every `mentions`, `not`, `shape` and `family_cited` check
+  held, as on every pass.
+- **The drop is the answer's label, from model variance.** Chroma A scored the
+  same 42/58 on `kind`. The questions that moved are ones that already split
+  between passes, mostly between `ruling` and `walkthrough`, on Chroma as well.
+  `tragwerk-einwirkungen` lost its envelope in both runs: both answers name the
+  four action groups and cite OIB-RL 1 p. 4. Run 1 wrote prose, and run 2 put
+  the envelope's JSON in a code span.
+- **Retrieval did not change.**
+  - The turn's first search, the question verbatim, has a mean Jaccard of 0.83
+    against Qdrant B and the same top hit on 91% of questions.
+  - Two passes of one code score 0.85 and 88% (Qdrant A against B), and
+    0.83 and 86% (Chroma A against B).
+  - On `tragwerk-einwirkungen` the first three hits are identical.
+- **Seconds rose with the prompt.** Wall median 35.8 s against 30.8 s, and
+  first text 30.6 s against 26.1 s. Median input tokens a turn went from about
+  80k to 87k: develop added tools and prompt since G1 (proposals, the review
+  canvas, steering). The final call's output rate did not move: 105 tokens/s
+  against 108 and 112.
+
+The review's retrieval changes do not touch this path:
+- the grouped search's superseded filter is cross-project only;
+- the chunk ordinal orders reads of one document;
+- the reconciles are maintenance.
+
 ## Re-running
 
 ```bash
