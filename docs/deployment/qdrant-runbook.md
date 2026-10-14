@@ -871,7 +871,11 @@ deploys the current program, which has no Chroma, with a backend image from
 before the change, which has no Qdrant code. Without `AIQ_CHROMA_URL` that
 backend falls back to an embedded Chroma per pod under `/tmp/chroma_data`:
 every retrieval answers from nothing, without an error, and every upload is
-written into a pod's temporary directory and lost with the pod.
+written into a pod's temporary directory and lost with the pod. Both deploy
+jobs refuse such a tag (`deploy/pulumi/scripts/vector-store-floor.sh`: the
+backend image's commit and the deployed program must agree on whether
+`deploy/pulumi/src/data/chroma.ts` exists); a `pulumi up` from a terminal
+does not check.
 
 Since the Job reads Chroma over HTTP and never mounts `data-chroma-0`, a
 revert while the Job runs does not leave the recreated Chroma waiting on a
