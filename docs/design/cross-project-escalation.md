@@ -143,8 +143,9 @@ The model climbs when one of the catalog's triggers fires. `scope: similar`
 is the default; `closed` walks only the closed projects in the same
 most-alike order (what the turn's precedent prefetch searches), and `all`
 (newest first) and `named` remain available. One call covers a page of up to
-40 projects in one grouped query (ADR-0112), with a 900-character passage and
-per-project attribution; `offset` pages on.
+40 projects, and at most the backend's 500 collections, in one grouped query
+(ADR-0112), with a 900-character passage and per-project attribution; `offset`
+pages on.
 
 **Narrowing by project facts.** When the question names the kind of project
 („nur Projekte in Tirol", „Wohnbauten der GK 4", „unsere Holzbau-Neubauten"),

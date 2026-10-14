@@ -338,14 +338,17 @@ benefit yet.
 
 ## 7. Cross-project search
 
-### Today
+### Before Qdrant
 
-ADR-0094 search is a BFF loop (`frontends/ui/src/lib/cross-project/service.ts`):
-- It takes up to 8 projects in hand-weighted fingerprint-similarity order and
-  searches them in waves of 4.
-- Each project costs one HTTP search per collection, plus one file-listing call
+How ADR-0094 search ran before this design was built (`frontends/ui/src/lib/cross-project/service.ts`);
+"As built" below says what runs now: a page of up to 40 projects
+(`CROSS_PROJECT_PAGE_PROJECTS`) in one grouped query, at most 500 collections
+(`BACKEND_SEARCH_MAX_COLLECTIONS`, the backend's cap).
+- It took up to 8 projects in hand-weighted fingerprint-similarity order and
+  searched them in waves of 4.
+- Each project cost one HTTP search per collection, plus one file-listing call
   for tags.
-- The merged hits are sorted by **raw score**, although the knowledge layer's
+- The merged hits were sorted by **raw score**, although the knowledge layer's
   own merge states that scores are not comparable across collections
   (`register.py:703-722`).
 
@@ -353,7 +356,7 @@ The consequences:
 
 | Limitation | Caused by |
 |---|---|
-| "Which projects had X" means paging `offset` 8 projects at a time; there is no office-wide top-k | Collection per project |
+| "Which projects had X" meant paging `offset` 8 projects at a time; there was no office-wide top-k | Collection per project |
 | Cost grows linearly in projects; "sign every project into scope" was rejected for that reason (ADR-0094 l. 288) | Collection per project |
 | Raw-score merge across collections | Collection per project |
 | Tag and project-fact filters run after retrieval, with 3× over-fetch | Tags and facts are not on chunks |
@@ -385,14 +388,16 @@ This is the first sketch. Neither the formula over the fusion nor Qdrant's
 What this enables:
 
 1. **Office-wide ranking in one call.** "Wie haben wir das gelöst?" ranks every
-   reachable project by relevance. The 8-project page, the waves and offset
-   paging go away, and so does the cost argument against wide reach.
+   reachable project by relevance. The waves go away, and the page grows
+   from 8 projects to 40, bounded by the backend's 500 collections per search;
+   `offset` paging stays for an office with more. The cost argument against
+   wide reach goes away.
 2. **Comparable scores.** There is one index and one query, so the raw-score
    merge problem disappears rather than being worked around. The cross-encoder
    reranks the grouped top hits across projects, which today's path never does.
 3. **Similarity as a relevance boost, not a walk order.** The fingerprint
-   weights become formula terms on relevance. Today they decide which 8 projects
-   get searched at all. The weights are still hand-set, but a wrong weight now
+   weights become formula terms on relevance. Before, they decided which 8
+   projects got searched at all. The weights are still hand-set, but a wrong weight now
    nudges a ranking instead of hiding a project.
 4. **Real filters.** "Alle Dachdetails von Holzbauten in NÖ" is a pre-filter
    (`doc_class`, `project_facts.bauweise`, `project_facts.bundesland`) inside
