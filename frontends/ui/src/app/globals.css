@@ -513,6 +513,20 @@ body {
   --tw-ring-color: var(--border-color-brand);
 }
 
+/* The strongest hairline (32% ink), as an edge and as an outline: the dashed
+   edge of a suggestion chip and the highlight that marks what a decision would
+   touch (`components/ui/filing-chip.tsx`, `components/ui/highlight.ts`).
+   Named `strong`, not `brand`: `--color-brand` is a theme colour (the ink), and
+   Tailwind emits a theme colour's declaration AFTER an @utility of the same
+   name, so `border-brand` above resolves to `var(--primary)`, not to this. */
+@utility border-strong {
+  border-color: var(--border-color-brand);
+}
+
+@utility outline-strong {
+  outline-color: var(--border-color-brand);
+}
+
 @utility tracking-display {
   letter-spacing: -0.04em;
 }
