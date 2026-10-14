@@ -330,9 +330,11 @@ const ingestWorker = installIngestWorker(wiring, cfg, secrets, [
 
 // The retired Chroma store, carried into Qdrant once (ADR-0111). Opt-in, on a
 // deploy after the one that removed Chroma. After every backend tier, so none
-// still writes Chroma while the export reads it.
+// still writes Chroma while the export reads it, and after the base-corpus
+// clock is suspended, so no cycle takes the empty corpus collection for a reset.
 if (cfg.chromaMigration.enabled) {
   migrateChromaToQdrant(wiring, cfg, secrets, [
+    workers.baseCorpusSync,
     qdrant.service,
     api.deployment,
     backend.statefulSet,

@@ -579,6 +579,15 @@ are **undrilled** as a sequence.
 
 From `deploy/compose`, with `DC="docker compose --env-file ../.env -f docker-compose.yaml"`:
 
+> **Stop, export, import, then `up`. Never `$DC up -d` the new release before
+> the import has verified.** Its `housekeeping` clock calls the base-corpus
+> sync every ten minutes, and a sync that finds the corpus collection empty
+> while the table lists ingested files takes the store for reset: it queues
+> every corpus file to be embedded again, at the embedding provider's price,
+> and the new points make the import's `--verify` report them as extra. The
+> app tiers would also answer from an empty store meanwhile. `$DC run` in
+> step 4 starts only what the import needs, never the clock.
+
 1. **Stop every writer**, on the release that still runs Chroma. Stopping the
    whole stack is the simple way to be sure nothing uploads, deletes or
    re-tags while the export reads:
@@ -696,7 +705,12 @@ In order, per stack:
      Chroma StatefulSet, or the `up` refuses to delete it:
      `pulumi state unprotect 'urn:pulumi:<stack>::grid-oib::kubernetes:apps/v1:StatefulSet::chroma'`.
      This lifts it from the StatefulSet only; the claim was never Pulumi's.
-   - `pulumi config set grid-oib:chromaMigration true`.
+   - `pulumi config set grid-oib:chromaMigration true`. While it is on, the
+     base-corpus sync is suspended (`housekeeping-base-corpus`, `suspend:
+     true`, in place before the Job starts): a cycle that found the corpus
+     collection empty would take Qdrant for reset and queue the whole corpus
+     to be embedded again, and the new points would fail `--verify` as extra.
+     Step 5 resumes it.
    - Pause ingestion, so nothing lands in Qdrant that the export does not
      hold before `--verify` compares the two (an upload waits in the queue,
      it is not lost): `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas=0`.
@@ -725,7 +739,10 @@ In order, per stack:
    one that cites the corpus, from an office that existed before. Then resume
    ingestion: `kubectl -n grid annotate scaledobject ingest-worker autoscaling.keda.sh/paused-replicas-`.
 5. **Switch the Job off**: `pulumi config rm grid-oib:chromaMigration`, deploy.
-   The Job and its ConfigMap are deleted. To run it again instead, switch it
+   The Job and its ConfigMap are deleted and the base-corpus sync resumes
+   (`kubectl -n grid get cronjob housekeeping-base-corpus -o jsonpath='{.spec.suspend}'`
+   prints `false`). Until this deploy, a corpus file uploaded in the admin UI
+   is never queued. To run it again instead, switch it
    off for one deploy and on for the next; never after uploads have resumed,
    since it re-inserts what the export holds.
 6. **Delete the retained claim**, once the new release has served for a while.

@@ -231,6 +231,18 @@ describe("the Chroma migration Job, switched on", () => {
     );
   });
 
+  // A sync cycle that finds the corpus collection empty while the table lists
+  // ingested files queues the whole corpus for a paid re-embedding, and its
+  // new points fail the import's `--verify` as extra.
+  it("suspends the base-corpus sync, and only that clock, before the export starts", () => {
+    const CRON = "kubernetes:batch/v1:CronJob";
+    const suspended = RESOURCES.filter(
+      (r) => r.type === CRON && (r.inputs as { spec: { suspend?: boolean } }).spec.suspend === true,
+    );
+    expect(suspended.map((r) => r.name)).toEqual(["housekeeping-base-corpus"]);
+    expect(graph.waitsOn(JOB, "chroma-migration", CRON, "housekeeping-base-corpus")).toBe(true);
+  });
+
   it("is a named caller of Qdrant's client ports", () => {
     const policy = find("kubernetes:networking.k8s.io/v1:NetworkPolicy", "allow-app-to-qdrant").inputs as {
       spec: { ingress: Array<{ from: PolicyPeer[] }> };
