@@ -251,6 +251,19 @@ does not exist, so a moved file is caught; a missing row is not.
 | Memory tool and reflection (agent) | `src/aiq_agent/memory/register.py`, `src/aiq_agent/memory/reflection.py` | [`memory-system-audit-2026-07.md`](memory-system-audit-2026-07.md) | ADR-0008 |
 | Post-answer stages | `src/aiq_agent/stages/runner.py`, `src/aiq_agent/stages/registry.py` | [`post-answer-stages.md`](post-answer-stages.md) | — |
 
+## Project intake
+
+| Concept | Owning code | Doc of record | Decision |
+|---|---|---|---|
+| Projekterfassung, the work object and its API | `frontends/ui/src/lib/project-intake/service.ts` — `getIntakeView`, `startIntakeRun`, `applyIntakeDecisions`, `completeIntake`; contract `frontends/ui/src/lib/project-intake/types.ts`; table `frontends/ui/drizzle/0144_project_intakes.sql`; client `frontends/ui/src/lib/project-intake/client.ts`; person routes `frontends/ui/src/app/api/projects/[id]/intake/route.ts` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111, ADR-0055 |
+| Piloti's intake route (needs, record, finish) and what a recorded value becomes | `frontends/ui/src/app/api/internal/project-intake/route.ts`; `frontends/ui/src/lib/project-intake/record.ts` — `planRecord`; JSON Schema `frontends/ui/tests/fixtures/project-intake.schema.json` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111, ADR-0055 |
+| What a project still needs, and which gaps decide the Gebäudeklasse | `frontends/ui/src/lib/project-intake/needs.ts` — `computeNeeds`; the derivation `frontends/ui/src/lib/project-intake/derivations.ts` — `deriveGebaeudeklasse`, `decisiveInputs` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111 |
+| The reading's trigger after an upload batch, and the run it submits | `frontends/ui/src/lib/project-intake/trigger.ts`; `frontends/ui/src/lib/project-intake/run.ts`; `frontends/ui/src/lib/jobs/background-run.ts` — `submitBackgroundRun` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111, ADR-0108 |
+| The Erfassungs-Agent (agent type `project_intake` on the research worker) | `src/aiq_agent/agents/intake/agent.py` — `ProjectIntakeAgent`; tools `src/aiq_agent/agents/intake/tools.py`; read log `src/aiq_agent/agents/intake/read_log.py`; hosting `frontends/aiq_api/src/aiq_api/registry.py` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111, ADR-0108 |
+| Cited profile values (evidence, alternatives on facts and assumptions) | `frontends/ui/src/lib/project-profile/evidence-schema.ts`; masking `frontends/ui/src/lib/project-intake/evidence.ts` — `documentEvidence` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111 |
+| The setup page, its organisms, and the preview `/dev/project-setup` | `frontends/ui/src/app/app/(shell)/projects/[id]/setup/page.tsx`; organisms `frontends/ui/src/features/project-intake/components`; preview `frontends/ui/src/app/dev/project-setup/page.tsx` | [`docs/design/agentic-project-intake.md`](../design/agentic-project-intake.md) | ADR-0111 |
+| Address search in the project creation dialog, and the same-address hint | `frontends/ui/src/lib/geocoding/photon.ts`; `frontends/ui/src/lib/geocoding/service.ts`; route `frontends/ui/src/app/api/geocode/route.ts`; same-address hint `frontends/ui/src/lib/projects/same-address.ts` | [`docs/deployment/environment-variables.md`](../deployment/environment-variables.md) (`GRID_GEOCODER_URL`) | ADR-0111 |
+
 ## Agent surface
 
 | Concept | Owning code | Doc of record | Decision |

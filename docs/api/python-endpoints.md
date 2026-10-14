@@ -195,7 +195,7 @@ What NAT's front-end plugin still mounts on the `chat` role, none of which runs 
 
 ### Async Job details
 
-- **Agent types**: Registered via `register_agent()` in `aiq_api.registry`. Default agents: `deep_researcher`, `researcher`.
+- **Agent types**: Registered via `register_agent()` in `aiq_api.registry`. Default agents: `deep_researcher`, `researcher`, and `project_intake`, which reads a new project's documents and records cited values through `/api/internal/project-intake` (the BFF); it produces no report (`produces_report = False`, ADR-0111).
 - **Job orchestration**: Uses NAT's JobStore for metadata and the Postgres research queue for execution (ADR-0021). Requires `NAT_JOB_STORE_DB_URL`.
 - **Auth**: Every job endpoint calls `require_verified_principal()` for caller authentication. Job access is authorized via `authorize_job_access()`.
 - **Access** ([ADR-0084](../adr/0084-the-backend-authorizes-a-job-by-the-scope-the-bff-signed.md)): with `REQUIRE_AUTH=true` a caller reaches a job it owns, or a job whose `job_access.organization_id` equals the signed envelope's `organizationId` and whose `project_collection` equals the project collection derived from the envelope's `collectionScope` (reads and controls), or whose `conversation_id` equals the envelope's `conversationId` (reads only). Reads are status, stream, state and report; controls are cancel, write-now and documents. The envelope counts only when it is signed, carries `issuedAt` within six hours, and names the bearer's user. A row with no organization is its owner's alone. Anything else is `404`. These routes are exempt from the envelope middleware's presence check: a WorkOS-authenticated call without an envelope reaches only the jobs its caller owns.

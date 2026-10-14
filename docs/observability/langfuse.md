@@ -113,6 +113,27 @@ masked like the question. A write the model chose before the note arrived and
 the turn held back is the technical step `status:steered:<round>` beside
 `repeat`, `refused` and `width`.
 
+### The project intake run
+
+The reading of a new project's documents (ADR-0111) is a `research-job` trace of
+agent type `project_intake` (ADR-0108), not a trace of its own name. The run
+writes its facts once, when it ends, in `_record_trace`
+(`src/aiq_agent/agents/intake/agent.py`):
+
+| Key | Meaning |
+|---|---|
+| `intake_ended` | how the run ended: `model` (the model called `finish_intake`), `model_without_finish` (it stopped without that, and the run finished in code), `step_limit`, `time_budget`, `no_model`, `refused`, `error` or `no_job` |
+| `intake_mode` | the mode the intake was read in (`active` unless the intake's needs say otherwise) |
+| `intake_documents_read` | how many documents the run opened |
+| `intake_suggested` | values recorded as suggestions, which a person will check |
+| `intake_corroborated` | values the profile already held, where the run added its evidence |
+| `intake_contradictions` | values that differ from the one on the profile, kept beside it for a person |
+| `intake_refusals` | the refusals the run hit, as comma-joined `reason=count` pairs (`local:<code>`, `local:not-stated`); absent when there were none |
+| `intake_decisive_open` | how many decisive needs were still open when the run ended |
+
+A suggestion a person accepts or dismisses is scored `piloti-decision` on this
+same trace, with `subject` `intake_suggestion` (see [Scores](#scores)).
+
 ### The decision model
 
 Every call of the decision model (Jev, ADR-0064) is a generation named
