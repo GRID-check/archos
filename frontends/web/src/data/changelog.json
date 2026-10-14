@@ -160,6 +160,10 @@
               "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
             },
             {
+              "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
+              "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
+            },
+            {
               "en": "A suggested change to a project's facts is shown field by field, as Vorher and Nachher, so you see what would change before you accept it.",
               "de": "Eine vorgeschlagene Änderung an den Fakten eines Projekts wird Feld für Feld als Vorher und Nachher gezeigt, damit Sie vor dem Übernehmen sehen, was sich ändern würde."
             }
@@ -215,6 +219,10 @@
             {
               "en": "The upload panel and the chat now show a file the content check held back as held for review, with what was found, instead of as failed, and no longer offer to retry it. A file that was kept but not read is shown as filed rather than citable.",
               "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
+            },
+            {
+              "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
+              "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
             },
             {
               "en": "„Projekt abschließen“ no longer fails for a project whose brief was never filled in.",
