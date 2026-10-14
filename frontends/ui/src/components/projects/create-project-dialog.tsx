@@ -14,7 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { CreateProjectForm } from './create-project-form'
+import { CreateProjectForm, type CreateProjectFormProps } from './create-project-form'
 import { useTranslations } from '@/i18n'
 
 interface CreateProjectDialogProps {
@@ -25,6 +25,8 @@ interface CreateProjectDialogProps {
   size?: ButtonProps['size']
   /** Marks the trigger as a product-tour stop (`data-tour`). */
   tourAnchor?: string
+  /** The address lookups of the form; the `/dev` preview brings fixtures. */
+  addressClients?: CreateProjectFormProps['addressClients']
 }
 
 export function CreateProjectDialog({
@@ -33,6 +35,7 @@ export function CreateProjectDialog({
   variant = 'default',
   size = 'default',
   tourAnchor,
+  addressClients,
 }: CreateProjectDialogProps): JSX.Element {
   const t = useTranslations('projects')
   const router = useRouter()
@@ -64,7 +67,7 @@ export function CreateProjectDialog({
           <DialogTitle>{t('dialog.title')}</DialogTitle>
           <DialogDescription>{t('dialog.description')}</DialogDescription>
         </DialogHeader>
-        <CreateProjectForm onCancel={() => handleOpenChange(false)} />
+        <CreateProjectForm onCancel={() => handleOpenChange(false)} addressClients={addressClients} />
       </DialogContent>
     </Dialog>
   )

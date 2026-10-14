@@ -33,6 +33,8 @@ export const nav = {
     settings: 'Overview',
     // The intake wizard, labelled "Setup" in the product (⌘K palette only).
     intake: 'Setup',
+    // Piloti reads the project's documents; the person reviews (ADR-0111).
+    setup: 'Project setup',
   },
   sectionGroups: {
     work: 'Work',
@@ -45,6 +47,7 @@ export const nav = {
     knowledge: 'What the knowledge base currently contains.',
     settings: 'Where this project stands, and how it is set up.',
     intake: 'Guided briefing for this project.',
+    setup: 'Piloti reads the documents, you check what it found.',
   },
   /**
    * The back control on pages outside the project shell (`BackLink`): `{label}`
@@ -71,6 +74,7 @@ export const nav = {
    */
   tabTitle: {
     intake: 'Setup',
+    setup: 'Project setup',
     researchProgress: '{percent}% · {label} — Piloti',
     researchActive: '⏳ {label} — Piloti',
   },

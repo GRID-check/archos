@@ -22,7 +22,8 @@ import { isUuid } from '@/lib/ids'
 import { emptyProjectProfile } from '@/lib/project-profile/patch-engine'
 import { salvageProjectProfile } from '@/lib/project-profile/salvage'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { deletionQueue, projects, type Project } from '@/lib/db/schema'
+import { deletionQueue, projectIntakes, projects, type Project } from '@/lib/db/schema'
+import type { GeocodeResult } from '@/lib/geocoding/types'
 import type { DbTransaction } from '@/lib/storage/repository'
 import type { ProjectOutcome, ProjectStatus } from './project-status'
 
@@ -194,6 +195,67 @@ export async function insertProject(values: {
     db.insert(projects).values(values).returning()
   )
   return row
+}
+
+/**
+ * One transaction in the organization's tenant context, for a write that spans
+ * tables another repository owns (the intake row of a project being created).
+ */
+export async function inProjectTransaction<T>(
+  organizationId: string,
+  work: (tx: DbTransaction) => Promise<T>
+): Promise<T> {
+  const db = getDb()
+  return withTenant({ organizationId }, () => db.transaction(work))
+}
+
+/** A project's address as the same-address lookup compares it. */
+export interface ProjectAddressRow {
+  id: string
+  name: string
+  status: ProjectStatus
+  /** `standort_adresse` on the profile, as stored. */
+  address: string | null
+  /** The geocoder's hit kept with an intake, as stored. */
+  location: GeocodeResult | null
+}
+
+/**
+ * Every project of the organization that has an address on its profile or an
+ * intake location: what „An dieser Adresse gibt es schon ein Projekt" matches
+ * against. Bounded by {@link PROJECT_LIST_LIMIT}, the same cap as the list.
+ * The caller filters to what the person may open.
+ */
+export async function listProjectAddressesInOrg(organizationId: string): Promise<ProjectAddressRow[]> {
+  const db = getDb()
+  const rows = await withTenant({ organizationId }, () =>
+    db
+      .select({
+        id: projects.id,
+        name: projects.name,
+        status: projects.status,
+        address: sql<string | null>`${projects.profile} #>> '{facts,standort_adresse,value}'`,
+        location: projectIntakes.location,
+      })
+      .from(projects)
+      .leftJoin(projectIntakes, eq(projectIntakes.projectId, projects.id))
+      .where(
+        and(
+          eq(projects.organizationId, organizationId),
+          isNull(projects.deletedAt),
+          sql`(${projects.profile} #>> '{facts,standort_adresse,value}' IS NOT NULL OR ${projectIntakes.location} IS NOT NULL)`
+        )
+      )
+      .orderBy(desc(projects.createdAt))
+      .limit(PROJECT_LIST_LIMIT)
+  )
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    status: row.status,
+    address: typeof row.address === 'string' ? row.address : null,
+    location: row.location ?? null,
+  }))
 }
 
 export async function setProjectWorkosResourceId(

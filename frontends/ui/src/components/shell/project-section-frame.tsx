@@ -31,6 +31,7 @@ const PROJECT_SECTION_KEYS = [
   'settings',
   'knowledge',
   'intake',
+  'setup',
   'members',
   'model',
   'research',
@@ -48,6 +49,7 @@ const SUBTITLE_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set([
   'knowledge',
   'settings',
   'intake',
+  'setup',
 ])
 
 const RETURN_TARGET_SECTIONS: ReadonlySet<ProjectChromeSection> = new Set(['members', 'model'])
