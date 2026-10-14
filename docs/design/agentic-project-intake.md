@@ -160,7 +160,9 @@ a pure function. The agent's `intake_needs` returns its result.
 
 1. Every question whose conditions hold for the answers known so far (facts,
    then suggestions, through `answersFromProfile`) and that writes a profile
-   key, scoped per Bauwerk as the wizard scopes it (`key@bwN`).
+   key, scoped per Bauwerk as the wizard scopes it (`key@bwN`). The Bundesland
+   is asked unless another country was chosen (`excludes_any` on `A2_country`):
+   a reading finds „Bundesland: Wien“ long before any document names Austria.
 2. Minus what is confirmed, and minus keys a person marked unknown. A key with
    only a suggestion stays, as `state: 'suggested'`, so the agent can corroborate
    it or find a contradiction. A confirmed Gebäudeklasse input stays too, as

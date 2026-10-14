@@ -12,3 +12,6 @@ fixes:
     The list of applicable OIB-Richtlinien now uses the Fluchtniveau, the
     Gebäudeklasse, the uses and the underground storeys entered in the project
     setup, instead of listing the generic six.
+  - >
+    The project setup asks for the Bundesland right away, before a country is
+    chosen, and hides it only when the project is outside Austria.

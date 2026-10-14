@@ -607,6 +607,15 @@ describe('evaluateIntakeCondition', () => {
     )
   })
 
+  it('asks for the Bundesland while the country is open or Austria, never elsewhere', () => {
+    const land = findIntakeQuestion(definition, 'A2_land')!
+    expect(evaluateIntakeCondition(land, {})).toBe(true)
+    expect(evaluateIntakeCondition(land, { A2_country: 'at' })).toBe(true)
+    for (const country of ['de', 'ch', 'other']) {
+      expect(evaluateIntakeCondition(land, { A2_country: country })).toBe(false)
+    }
+  })
+
   it('resolves a bauwerk-scope param within the current instance', () => {
     const c3 = findIntakeQuestion(definition, 'C3')!
     expect(evaluateIntakeCondition(c3, { 'C1@bw1': 'gebaeude' }, 'bw1')).toBe(true)

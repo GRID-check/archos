@@ -70,8 +70,11 @@ export interface ProjectIntakeOption {
  */
 export interface ProjectIntakeCondition {
   param: string
-  /** `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'offen'. */
-  op: 'equals' | 'includes_any' | 'not_empty' | 'lte'
+  /**
+   * `lte` is numeric and only satisfied when a value exists AND its answer mode is not 'offen'.
+   * `excludes_any` holds when the answer holds none of the values, so an unanswered param holds it.
+   */
+  op: 'equals' | 'includes_any' | 'excludes_any' | 'not_empty' | 'lte'
   value?: string | string[] | number
 }
 
@@ -274,7 +277,10 @@ export const projectIntakeDefinitionV1: ProjectIntakeDefinition = {
           label: 'Bundesland',
           type: 'single_select',
           required: true,
-          conditions: [{ param: 'A2_country', op: 'equals', value: 'at' }],
+          // Asked unless another country was chosen: Piloti is Austria's, and a
+          // reading that finds „Bundesland: Wien“ before any document names the
+          // country must still be asked for it. Answering it derives `country`.
+          conditions: [{ param: 'A2_country', op: 'excludes_any', value: ['de', 'ch', 'other'] }],
           why: 'Bestimmt, welche landesspezifischen Rechtstexte für den Standort herangezogen werden.',
           options: [
             { value: 'wien', label: 'Wien' },
@@ -1441,6 +1447,15 @@ export function evaluateIntakeConditions(
   return conditions.every((cond) => evaluateSingleCondition(cond, answers, instanceId))
 }
 
+function answerIncludesAny(
+  answer: ProjectPrimitiveValue | undefined,
+  value: ProjectIntakeCondition['value']
+): boolean {
+  const needles = Array.isArray(value) ? value : value !== undefined ? [String(value)] : []
+  if (Array.isArray(answer)) return answer.some((v) => needles.includes(String(v)))
+  return typeof answer === 'string' && needles.includes(answer)
+}
+
 function evaluateSingleCondition(
   cond: ProjectIntakeCondition,
   answers: Record<string, ProjectPrimitiveValue>,
@@ -1455,15 +1470,10 @@ function evaluateSingleCondition(
   switch (cond.op) {
     case 'not_empty':
       return isIntakeAnswerProvided(answer)
-    case 'includes_any': {
-      const needles = Array.isArray(cond.value)
-        ? cond.value
-        : cond.value !== undefined
-          ? [cond.value]
-          : []
-      if (Array.isArray(answer)) return answer.some((v) => needles.includes(String(v)))
-      return typeof answer === 'string' && needles.includes(answer)
-    }
+    case 'includes_any':
+      return answerIncludesAny(answer, cond.value)
+    case 'excludes_any':
+      return !answerIncludesAny(answer, cond.value)
     case 'lte': {
       // Only a PRESENT, non-'offen' value can satisfy a numeric bound: a
       // question gated on "höchstens 4 Geschoße" must not appear while the

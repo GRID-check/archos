@@ -64,14 +64,22 @@ describe('computeNeeds', () => {
       bauwerkId: 'bw1',
       decisive: true,
     })
-    // The Gebäude questions wait for C1; A2_land waits for the country.
+    // The Gebäude questions wait for C1. The Bundesland does not wait for the
+    // country: Piloti is Austria's, and a document names the Land first.
     expect(found.has('geschosse_oberirdisch@bw1')).toBe(false)
-    expect(found.has('bundesland')).toBe(false)
+    expect(found.get('bundesland')).toMatchObject({ type: 'single_select', state: 'open' })
     // Only questions that write a value; every need is one the contract accepts.
     for (const need of list) expect(() => needSchema.parse(need), need.key).not.toThrow()
     expect(
       list.every((need) => !need.options?.some((option) => option.label.startsWith('noch offen')))
     ).toBe(true)
+  })
+
+  it('asks for the Bundesland unless another country was chosen', () => {
+    expect(byKey(needs(profileWith({ country: 'at' }))).has('bundesland')).toBe(true)
+    expect(byKey(needs(profileWith({}, { country: 'at' }))).has('bundesland')).toBe(true)
+    expect(byKey(needs(profileWith({ country: 'de' }))).has('bundesland')).toBe(false)
+    expect(byKey(needs(profileWith({ country: 'other' }))).has('bundesland')).toBe(false)
   })
 
   it('names the documents a value is usually in', () => {
