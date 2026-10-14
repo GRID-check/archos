@@ -31,6 +31,14 @@ export type ProposedChangeKind = (typeof PROPOSED_CHANGE_KINDS)[number]
 export const PROPOSED_CHANGE_STATUSES = ['proposed', 'applied', 'partially_applied', 'failed', 'dismissed'] as const
 export type ProposedChangeStatus = (typeof PROPOSED_CHANGE_STATUSES)[number]
 
+/**
+ * The shelf a proposal is on (0146), `project_folders.scope`'s vocabulary. A
+ * Büroablage (`archiv`) proposal has no project and can only move Büroablage
+ * documents (`proposed_changes_archiv_move`).
+ */
+export const PROPOSAL_SCOPES = ['project', 'archiv'] as const
+export type ProposalScope = (typeof PROPOSAL_SCOPES)[number]
+
 export const FILE_OPERATIONS = ['move', 'rename', 'create_folder', 'assign'] as const
 export type FileOperation = (typeof FILE_OPERATIONS)[number]
 
@@ -55,15 +63,38 @@ export const fileOperationItemSchema = z
     folder_name: text(256).nullish(),
     parent_folder: z.string().max(1024).nullish(),
     member: text(256).nullish(),
+    /** Why this item, in one line for the person deciding: a filing suggestion's reason per file. */
+    reason: z.string().trim().max(300).nullish(),
   })
   .strict()
 export type FileOperationItem = z.infer<typeof fileOperationItemSchema>
+
+/** What a filing suggestion was judged from: the file name and the folders' descriptions, or what ingestion read. */
+export const FILING_BASES = ['name', 'content'] as const
+export type FilingBasis = (typeof FILING_BASES)[number]
+
+/**
+ * The folder a move files into, when it does not exist yet. Applying the
+ * proposal creates it (with its description) before the first move, so
+ * „create this folder and move these files into it" is one confirm. Only on a
+ * `move`, and every item's `target_folder` is this path (refused otherwise).
+ */
+export const newFolderSchema = z
+  .object({
+    path: text(1024),
+    description: z.string().trim().max(500).nullish(),
+  })
+  .strict()
+export type NewFolder = z.infer<typeof newFolderSchema>
 
 export const fileOperationPayloadSchema = z
   .object({
     operation: z.enum(FILE_OPERATIONS),
     operations: z.array(fileOperationItemSchema).min(1).max(MAX_FILE_OPERATION_ITEMS),
     note: z.string().max(500).nullish(),
+    new_folder: newFolderSchema.nullish(),
+    /** Set on a filing suggestion (`lib/filing`), absent on a chat's proposal. */
+    basis: z.enum(FILING_BASES).nullish(),
   })
   .strict()
 export type FileOperationPayload = z.infer<typeof fileOperationPayloadSchema>
@@ -127,7 +158,11 @@ export type ProposedChangeResult = z.infer<typeof proposedChangeResultSchema>
 /** The fields every proposed change has, whatever its kind. */
 const proposedChangeBaseSchema = z.object({
   id: z.string().uuid(),
-  projectId: z.string(),
+  /**
+   * The project. Null only for a Büroablage file operation (0146), which has
+   * none; a memory note and a profile change are always made in a project.
+   */
+  projectId: z.string().nullable(),
   status: z.enum(PROPOSED_CHANGE_STATUSES),
   /** Always Piloti today; the column exists so a person's proposal needs no migration. */
   proposedByKind: z.enum(['piloti', 'person']),
@@ -203,6 +238,37 @@ export type InternalProposalResponse = z.infer<typeof internalProposalResponseSc
  * office's (never the other way: a project note does not become the office's
  * by a click on a proposal that did not ask for it). Ignored for other kinds.
  */
+/**
+ * `GET /api/proposals?projectId=<id>` (a project's shelf) or `?shelf=archiv`
+ * (the Büroablage), optionally with `kind`: the OPEN proposals of that shelf
+ * this reader may read, newest first, at most {@link MAX_LISTED_PROPOSALS}.
+ * Each carries the documents its items name, resolved to ids as this reader
+ * sees them (a file operation's; empty for the other kinds), so a file row and
+ * an upload row find their suggestion by document id. A file operation naming
+ * a document the reader cannot see is not listed.
+ */
+export const MAX_LISTED_PROPOSALS = 50
+
+export const listedProposalSchema = z.object({
+  proposal: proposedChangeViewSchema,
+  documents: z.array(z.object({ id: z.string(), name: z.string() })),
+})
+export type ListedProposal = z.infer<typeof listedProposalSchema>
+
+export const proposalListResponseSchema = z.object({ proposals: z.array(listedProposalSchema) })
+export type ProposalListResponse = z.infer<typeof proposalListResponseSchema>
+
+export const proposalListQuerySchema = z
+  .object({
+    projectId: z.string().uuid().optional(),
+    shelf: z.enum(PROPOSAL_SCOPES).optional(),
+    kind: z.enum(PROPOSED_CHANGE_KINDS).optional(),
+  })
+  .refine((query) => (query.shelf === 'archiv') !== Boolean(query.projectId), {
+    message: 'Name a project, or the Büroablage with shelf=archiv',
+  })
+export type ProposalListQuery = z.infer<typeof proposalListQuerySchema>
+
 export const applyProposalRequestSchema = z
   .object({ memoryScope: z.literal('project').optional() })
   .strict()

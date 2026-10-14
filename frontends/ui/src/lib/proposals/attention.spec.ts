@@ -58,6 +58,22 @@ describe('onProposalCreated', () => {
     })
   })
 
+  it('points a Büroablage filing suggestion, which has no project and no chat, at the organization', async () => {
+    await onProposalCreated({
+      ...created,
+      projectId: null,
+      originConversationId: null,
+      summary: 'ÖNORM B 1800.pdf → Normen',
+    })
+
+    expect(emitted()).toMatchObject({
+      resourceType: 'organization',
+      resourceId: 'org_1',
+      anchorId: 'prop_1',
+      payload: { excerpt: 'ÖNORM B 1800.pdf → Normen' },
+    })
+  })
+
   it('points at the project when the proposal was made outside a chat', async () => {
     await onProposalCreated({ ...created, originConversationId: null })
 

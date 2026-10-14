@@ -128,6 +128,7 @@ describe('POST /api/internal/proposals', () => {
     expect(insertProposedChange).toHaveBeenCalledWith({
       organizationId: 'org_1',
       projectId: PROJECT,
+      scope: 'project',
       kind: 'file_operation',
       payload: MOVE.payload,
       proposedByKind: 'piloti',
@@ -135,6 +136,7 @@ describe('POST /api/internal/proposals', () => {
       originConversationId: 'conv_1',
       originMessageId: ANSWER,
       originCardIndex: null,
+      originTraceId: null,
     })
   })
 

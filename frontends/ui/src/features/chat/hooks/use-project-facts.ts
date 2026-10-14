@@ -45,8 +45,9 @@ async function load(projectId: string): Promise<void> {
 }
 
 /** Drop the cached profile, so the next render of an answer reads the new one. */
-export function invalidateProjectFacts(projectId: string): void {
-  if (!entries.has(projectId)) return
+export function invalidateProjectFacts(projectId: string | null): void {
+  // A Büroablage proposal has no project, and no facts to re-read.
+  if (!projectId || !entries.has(projectId)) return
   void load(projectId)
 }
 
