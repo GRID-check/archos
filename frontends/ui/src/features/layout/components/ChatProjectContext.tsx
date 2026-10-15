@@ -50,11 +50,13 @@ export const ChatProjectContext: FC<ChatProjectContextProps> = ({ projectName, c
           label={label}
           expanded={sheetOpen}
           onOpen={() => setSheetOpen(true)}
-          className="pointer-events-auto"
+          // The pill takes the row, the search keeps its 44px: the project is the
+          // one thing this row says, so it reads whole.
+          className="pointer-events-auto max-w-none flex-1 sm:max-w-80 sm:flex-none"
         />
         <ShellSearchButton className="pointer-events-auto" />
       </div>
-      {isMobile && <ConnectionBand className="bg-card/80 mt-1 rounded-lg border backdrop-blur" />}
+      {isMobile && <ConnectionBand appearance="line" />}
     </div>
   )
 }

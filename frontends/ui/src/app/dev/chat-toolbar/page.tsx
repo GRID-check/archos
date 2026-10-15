@@ -179,6 +179,13 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       const match = /^\/api\/sharing\/conversation\/([^/?]+)$/.exec(url)
       const state = match ? STATES_BY_ID.get(decodeURIComponent(match[1])) : undefined
       if (state) return Response.json(state)
+      // The phone's connection line pings the health route. The preview has no
+      // backend, so it answers for it: healthy by default (the line stays out of
+      // sight, as in the product), unreachable with `?variant=offline` (the line).
+      if (url === '/api/health') {
+        const offline = new URLSearchParams(window.location.search).get('variant') === 'offline'
+        return Response.json({ ok: !offline }, { status: offline ? 503 : 200 })
+      }
       return real(input, init)
     }
 
@@ -260,7 +267,7 @@ export default function ChatToolbarPreviewPage(): JSX.Element {
                     does against the chat plane in MainLayout. On the phone shell the
                     toolbar is two rows (the project context above the pills) and a
                     third while the connection line speaks, so the block is taller. */}
-                <div className="relative h-20 rounded-lg border border-dashed border-base max-md:h-44">
+                <div className="relative h-20 rounded-lg border border-dashed border-base max-md:h-36">
                   <ChatToolbar
                     sessionTitle={row.sessionTitle}
                     projectName={row.projectName}

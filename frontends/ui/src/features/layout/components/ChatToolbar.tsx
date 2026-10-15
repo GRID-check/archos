@@ -177,11 +177,10 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
 
   // Does the status group have anything to say? A solo private thread has neither
   // form to show — with nothing running, the group would be a bare separator.
-  const hasStatus = Boolean(
-    isDeepResearchStreaming ||
-      showAccessChip ||
-      (showFaces && (sharingState?.entries.length ?? 0) > 1),
+  const hasPeople = Boolean(
+    showAccessChip || (showFaces && (sharingState?.entries.length ?? 0) > 1),
   )
+  const hasStatus = Boolean(isDeepResearchStreaming || hasPeople)
 
   const startEditingTitle = useCallback(() => {
     if (!canRename) return
@@ -339,14 +338,24 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             (the rail keeps its routed History; this doesn't duplicate it). */}
         <Button
           variant="ghost"
-          size="icon"
-          className="size-11 shrink-0 rounded-md sm:size-7"
+          size={isChatStarted ? 'icon' : 'default'}
+          className={cn(
+            'shrink-0 rounded-md sm:size-7',
+            // On a chat that has not started there is no title beside the icon,
+            // and a lone glyph under the project pill is a mystery: it says what
+            // it opens, on a phone, where there is no hover to say it. The default
+            // size, because `icon`'s square width cannot be overridden by a class.
+            isChatStarted ? 'size-11' : 'h-11 gap-1.5 px-3 sm:px-0 sm:py-0'
+          )}
           onClick={handleMenuClick}
           disabled={!isAuthenticated}
           aria-label={t('chatToolbar.toggleSessions')}
           title={!isAuthenticated ? t('chatToolbar.signInToView') : t('chatToolbar.toggleSessions')}
         >
           <MessageSquareText className="size-4" aria-hidden="true" />
+          {!isChatStarted && (
+            <span className="text-sm font-medium sm:hidden">{t('chatToolbar.toggleSessions')}</span>
+          )}
         </Button>
 
         {/* The session title (click-to-rename) — shown once a chat has started
@@ -360,6 +369,7 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             className="flex min-w-0 flex-1 flex-col justify-center pl-1 pr-1.5 text-sm sm:flex-none sm:flex-row sm:items-center sm:gap-1.5"
             aria-label={tChat('breadcrumb.ariaLabel')}
           >
+              <div className="flex min-w-0 flex-1 items-center gap-2 sm:contents">
               {sessionTitle ? (
                 isEditingTitle ? (
                   <input
@@ -404,44 +414,31 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                     disabled={!canRename}
                     aria-label={tChat('breadcrumb.renameAria')}
                     title={canRename ? tChat('breadcrumb.renameAria') : sessionTitle}
-                    className={cn(
-                      'flex max-w-[420px] items-center rounded-md px-1 py-0.5 text-left text-sm font-medium leading-snug text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50',
-                      // Alone, the name is the touch target the floor asks for. With
-                      // the status line under it the pill is as tall as the page
-                      // clears for the toolbar, so the name gives up the 44px (the
-                      // menu's Rename is the second way in, and is 44px).
-                      hasStatus ? 'min-h-8' : 'min-h-9 pointer-coarse:min-h-11'
-                    )}
+                    className="flex min-h-9 min-w-0 max-w-[420px] flex-1 items-center rounded-md px-1 py-0.5 text-left text-sm font-medium leading-snug text-foreground transition-colors duration-quick ease-out motion-reduce:transition-none enabled:cursor-text enabled:hover:bg-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:min-h-11 sm:flex-none"
                   >
-                    {/* Two lines on a phone (one when the status line is under it),
-                        one on a pointer device. A name is the first thing a reader
-                        checks in a thread; it is never cut to a stub to make room
-                        for chrome. */}
-                    <span
-                      className={cn(
-                        'break-words sm:line-clamp-1',
-                        hasStatus ? 'line-clamp-1' : 'line-clamp-2'
-                      )}
-                    >
-                      {sessionTitle}
-                    </span>
+                    {/* Two lines on a phone, one on a pointer device. A name is the
+                        first thing a reader checks in a thread; it is never cut to a
+                        stub to make room for chrome. */}
+                    <span className="line-clamp-2 break-words sm:line-clamp-1">{sessionTitle}</span>
                   </button>
                 )
               ) : null}
-            {/* Phone only: what is TRUE about the thread (who can read it, a run
-                in flight) as a line under its name. Beside the actions there is
-                no width for it below `sm`, and "Recherche läuft" is the one
-                signal that must survive a locked screen and a glance back. */}
-            {hasStatus && (
-              <ThreadStatus
-                surface="phone"
-                sharingState={sharingState}
-                currentUserId={currentUserId}
-                isResearching={isDeepResearchStreaming}
-                researchingLabel={t('chatToolbar.researching')}
-                className="flex items-center gap-1.5 px-1 pb-0.5 sm:hidden"
-              />
-            )}
+              {/* Phone only: what is true of the thread, at the end of the title's
+                  own row: who can read it (a small stack of faces, or the rule as
+                  a chip) and a spinner while a run is going. The title keeps the
+                  width and the pill stays one line of orientation; below `sm`
+                  there is no room beside the actions for it. */}
+              {hasStatus && (
+                <ThreadStatus
+                  surface="phone"
+                  sharingState={sharingState}
+                  currentUserId={currentUserId}
+                  isResearching={isDeepResearchStreaming}
+                  researchingLabel={t('chatToolbar.researching')}
+                  className="flex shrink-0 items-center gap-1.5 pr-0.5 sm:hidden"
+                />
+              )}
+              </div>
           </nav>
         )}
 
@@ -518,7 +515,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
         <Button
           variant="ghost"
           size="sm"
-          className="size-11 gap-1.5 rounded-md px-0 sm:h-7 sm:w-auto sm:px-2"
+          // On a phone it is the first entry of the ⋯ menu: the right pill is one
+          // 44px square, and the title keeps the rest of the row.
+          className="size-11 gap-1.5 rounded-md px-0 max-sm:hidden sm:h-7 sm:w-auto sm:px-2"
           onClick={handleNewSessionClick}
           disabled={!isAuthenticated || isNewSessionDisabled}
           aria-label={t('chatToolbar.createNewSession')}
@@ -542,9 +541,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
             drawer holding the rest, so the pill reads as three plain groups
             instead of a run of controls. Drawn only with the menu it precedes —
             a divider with nothing after it is a promise of something missing. */}
-        {(canRename || canShare) && (
+        {(canRename || canShare || isAuthenticated) && (
           <>
-          <div aria-hidden="true" className="mx-1 h-4 w-px bg-border" />
+          <div aria-hidden="true" className="mx-1 h-4 w-px bg-border max-sm:hidden" />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
@@ -555,7 +554,12 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                 // so any control that opts out of this pair makes one pill taller
                 // than the other and the row stops lining up.
                 size="sm"
-                className="size-11 rounded-md px-0 sm:size-7"
+                className={cn(
+                  'size-11 rounded-md px-0 sm:size-7',
+                  // Nothing to disclose on a desktop (New chat is in the open there):
+                  // the trigger is the phone's alone.
+                  !(canRename || canShare) && 'sm:hidden'
+                )}
                 aria-label={t('chatToolbar.moreActions')}
                 title={t('chatToolbar.moreActions')}
                 data-testid="thread-menu"
@@ -564,6 +568,17 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-56">
+              {/* New chat, on a phone only: a desktop keeps it in the open. */}
+              <DropdownMenuItem
+                onSelect={handleNewSessionClick}
+                disabled={!isAuthenticated || isNewSessionDisabled}
+                className="sm:hidden"
+                data-testid="new-chat-menu-item"
+              >
+                <SquarePen className="size-4" aria-hidden="true" />
+                {t('chatToolbar.newChat')}
+              </DropdownMenuItem>
+
               {/* Rename — the discoverable path to the same inline editor the
                   title's own click opens. The click stays as the shortcut; this is
                   how anyone finds out it exists. */}
@@ -648,9 +663,15 @@ const ThreadStatus: FC<ThreadStatusProps> = ({
           in this header and it is the menu item, so the faces can be read as
           what they are. */}
       {showFaces && sharingState && (
-        <ParticipantStrip entries={sharingState.entries} currentUserId={currentUserId} />
+        <ParticipantStrip
+          entries={sharingState.entries}
+          currentUserId={currentUserId}
+          maxVisible={surface === 'phone' ? 2 : undefined}
+        />
       )}
-      {showAccessChip && sharingState && <AccessChip visibility={sharingState.visibility} />}
+      {showAccessChip && sharingState && (
+        <AccessChip visibility={sharingState.visibility} />
+      )}
       {/* Live research is status too, and the one piece of it worth carrying in
           the header: the thread's own banner scrolls away, and this is then the
           only persistent "still working" signal. It states, it does not act
@@ -670,7 +691,7 @@ const ThreadStatus: FC<ThreadStatusProps> = ({
             data-testid="research-running"
           >
             <Spinner size="sm" label={researchingLabel} />
-            <span className={surface === 'phone' ? 'text-xs' : 'hidden lg:inline'}>
+            <span className={surface === 'phone' ? 'sr-only' : 'hidden lg:inline'}>
               {researchingLabel}
             </span>
           </motion.span>

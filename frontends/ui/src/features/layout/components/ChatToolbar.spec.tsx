@@ -180,9 +180,39 @@ describe('ChatToolbar', () => {
 
       render(<ChatToolbar />)
 
-      // With no rename and no sharing there is nothing occasional to disclose,
-      // so the trigger itself is gone. Research used to keep it alive on its own.
-      expect(screen.queryByTestId('thread-menu')).not.toBeInTheDocument()
+      // With no rename and no sharing there is nothing occasional to disclose on
+      // a desktop, so the trigger is gone there. It stays for a phone, where it
+      // holds New chat, because the phone's right pill is that one square.
+      expect(screen.getByTestId('thread-menu')).toHaveClass('sm:hidden')
+    })
+
+    test('a thread with something to disclose keeps the menu on every width', () => {
+      render(<ChatToolbar sessionTitle="My Session" />)
+
+      expect(screen.getByTestId('thread-menu')).not.toHaveClass('sm:hidden')
+    })
+  })
+
+  describe('thread row on a phone', () => {
+    test('New chat is the first entry of the ⋯ menu there, and still a button in the open on a desktop', async () => {
+      const user = userEvent.setup()
+      const onNewSession = vi.fn()
+      render(<ChatToolbar sessionTitle="My Session" onNewSession={onNewSession} />)
+
+      expect(screen.getByRole('button', { name: 'Create new session' })).toHaveClass('max-sm:hidden')
+      await openThreadMenu(user)
+      const item = screen.getByTestId('new-chat-menu-item')
+      expect(item).toHaveClass('sm:hidden')
+      await user.hover(item)
+      await user.click(item)
+
+      expect(onNewSession).toHaveBeenCalledTimes(1)
+    })
+
+    test('a chat that has not started names its history door, so the glyph is not a mystery', () => {
+      render(<ChatToolbar isChatStarted={false} />)
+
+      expect(within(screen.getByRole('button', { name: 'Chat history' })).getByText('Chat history')).toHaveClass('sm:hidden')
     })
   })
 
@@ -336,7 +366,7 @@ describe('ChatToolbar', () => {
       expect(title.closest('div[class*="max-w-[64%]"]')).toBeNull()
     })
 
-    test('a running research is on the phone too, under the title, not behind `hidden sm:flex`', () => {
+    test('a running research is on the phone too, at the end of the title row, not behind `hidden sm:flex`', () => {
       mockIsDeepResearchStreaming = true
 
       render(<ChatToolbar sessionTitle="Brandschutz" />)

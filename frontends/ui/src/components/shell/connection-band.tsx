@@ -21,7 +21,18 @@ import { useConnectionPresence } from '@/shared/hooks/use-connection-presence'
 import { cn } from '@/lib/utils'
 import { ConnectionPresenceIndicator } from './connection-presence-indicator'
 
-export function ConnectionBand({ className }: { className?: string }): JSX.Element {
+export function ConnectionBand({
+  className,
+  appearance = 'band',
+}: {
+  className?: string
+  /**
+   * `band`: a full-width strip under a header's rule. `line`: a thin line of
+   * text with no rule or fill, for a header that floats over content (the chat
+   * toolbar), where a bordered pill would be a third card in the stack.
+   */
+  appearance?: 'band' | 'line'
+}): JSX.Element {
   const presence = useConnectionPresence()
   const quiet = presence === 'connected'
   return (
@@ -31,7 +42,12 @@ export function ConnectionBand({ className }: { className?: string }): JSX.Eleme
       className={cn(
         quiet
           ? 'sr-only'
-          : 'border-border animate-in fade-in-0 duration-quick flex h-7 w-full items-center justify-center border-t px-4 motion-reduce:animate-none',
+          : cn(
+              'animate-in fade-in-0 duration-quick flex w-full items-center motion-reduce:animate-none',
+              appearance === 'band'
+                ? 'border-border h-7 justify-center border-t px-4'
+                : 'h-6 justify-start px-1'
+            ),
         className
       )}
     >
