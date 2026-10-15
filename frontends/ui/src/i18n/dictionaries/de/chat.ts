@@ -351,11 +351,22 @@ export const chat: typeof en.chat = {
     share: 'Antwort teilen',
     shareTitle: 'Antwort von Piloti',
   },
+  // Die Abschnittsliste einer langen Antwort (Bericht): auf dem Telefon der Weg zu
+  // einem Abschnitt, ohne bis nach oben zu scrollen.
+  outline: {
+    label: 'Abschnitte',
+    count: '{count, plural, one {# Abschnitt} other {# Abschnitte}}',
+    close: 'Schließen',
+    title: 'Abschnitte',
+    description: 'Zu einem Abschnitt dieser Antwort springen.',
+  },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {
     wholeDocument: 'Gesamtes Dokument',
     openAtPage: 'An dieser Stelle öffnen',
-    notOpenable: 'In Piloti nicht zu öffnen',
+    notOpenable: 'Zu dieser Quelle liegt in Piloti keine Datei vor.',
+    sheetTitle: 'Quelle {number}',
+    sheetDescription: 'Die Fundstelle im Wortlaut und der Weg ins Dokument.',
     // Das Dokument IST da — nur sein Format kann Piloti nicht zeichnen. Ohne
     // diesen Satz las sich das Fehlen der Öffnen-Schaltfläche als „die Datei
     // ist weg", und genau das wurde gemeldet.
@@ -444,6 +455,11 @@ export const chat: typeof en.chat = {
       more: 'Mehr dazu',
       less: 'Weniger',
     },
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Mehr anzeigen',
+      less: 'Weniger anzeigen',
+    },
     calculation: {
       eyebrow: 'Rechenweg',
       result: 'Ergebnis',
@@ -458,11 +474,6 @@ export const chat: typeof en.chat = {
       // hinzuschreiben ist genau der Fehler, den diese Karte ausschließt.
       undecidable: 'Mit den vorliegenden Angaben nicht berechenbar.',
       undefinedResult: 'Durch null geteilt — das Ergebnis ist nicht definiert.',
-    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
-    clamp: {
-      more: 'Mehr anzeigen',
-      less: 'Weniger anzeigen',
-    },
       sourcesMore: 'Woher die Zahlen kommen',
       sourcesLess: 'Weniger',
       // Steht in der Aufklappung, wo die Eingangswerte ohnehin geprüft werden:

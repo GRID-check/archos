@@ -355,12 +355,23 @@ export const chat = {
     share: 'Share answer',
     shareTitle: 'Answer from Piloti',
   },
+  // The section list of a long answer (a report): on a phone, the way to a
+  // section without scrolling back to the top.
+  outline: {
+    label: 'Sections',
+    count: '{count, plural, one {# section} other {# sections}}',
+    close: 'Close',
+    title: 'Sections',
+    description: 'Jump to a section of this answer.',
+  },
   // Thread-header breadcrumb (project / session title) with inline rename.
   // The citation peek: what a Fundstelle IS, before you open it.
   citationPeek: {
     wholeDocument: 'Whole document',
     openAtPage: 'Open at this passage',
-    notOpenable: 'Cannot be opened in Piloti',
+    notOpenable: 'No file for this source is available in Piloti.',
+    sheetTitle: 'Source {number}',
+    sheetDescription: 'The cited passage and the way into the document.',
     noInlineViewer:
       'This file format cannot be shown inside Piloti. Download the document and open it in your own application.',
     download: 'Download document',
@@ -448,6 +459,11 @@ export const chat = {
       more: 'More on this',
       less: 'Less',
     },
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Show more',
+      less: 'Show less',
+    },
     calculation: {
       eyebrow: 'Derivation',
       result: 'Result',
@@ -462,11 +478,6 @@ export const chat = {
       // the exact failure this card exists to make impossible.
       undecidable: 'Cannot be derived from the figures given.',
       undefinedResult: 'Divided by zero — the result is not defined.',
-    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
-    clamp: {
-      more: 'Show more',
-      less: 'Show less',
-    },
       sourcesMore: 'Where the figures come from',
       sourcesLess: 'Less',
       // Said inside the disclosure, where the reader is already checking the
