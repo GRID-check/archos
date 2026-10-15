@@ -419,7 +419,9 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
                     {/* Two lines on a phone, one on a pointer device. A name is the
                         first thing a reader checks in a thread; it is never cut to a
                         stub to make room for chrome. */}
-                    <span className="line-clamp-2 break-words sm:line-clamp-1">{sessionTitle}</span>
+                    {/* `hyphens-auto` (the page is `lang="de"`): a German compound breaks at a
+                        syllable, never mid-word. */}
+                    <span className="line-clamp-2 hyphens-auto break-words sm:line-clamp-1">{sessionTitle}</span>
                   </button>
                 )
               ) : null}
@@ -669,7 +671,10 @@ const ThreadStatus: FC<ThreadStatusProps> = ({
           maxVisible={surface === 'phone' ? 2 : undefined}
         />
       )}
-      {showAccessChip && sharingState && (
+      {/* On a phone, while a run is going the spinner is the news and the rule
+          steps aside, so the title keeps the width (the sharing surface still
+          states it). */}
+      {showAccessChip && sharingState && !(surface === 'phone' && isResearching) && (
         <AccessChip visibility={sharingState.visibility} />
       )}
       {/* Live research is status too, and the one piece of it worth carrying in

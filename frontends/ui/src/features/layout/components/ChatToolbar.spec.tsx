@@ -216,6 +216,24 @@ describe('ChatToolbar', () => {
     })
   })
 
+  describe('thread row on a phone — a run and a rule together', () => {
+    test('the title hyphenates at syllables, and the chip steps aside for the spinner', () => {
+      mockIsDeepResearchStreaming = true
+      mockSharingState = { ...SHARED_STATE, visibility: 'project' }
+
+      render(
+        <ChatToolbar sessionTitle="Brandschutzkonzept" conversationId="session-1" isCollaborationEnabled />
+      )
+
+      expect(screen.getByText('Brandschutzkonzept')).toHaveClass('hyphens-auto', 'break-words')
+      const phone = document.querySelector('[data-status-surface="phone"]')
+      expect(phone?.querySelector('[data-testid="research-running"]')).not.toBeNull()
+      expect(phone?.querySelector('[data-testid="access-chip"]')).toBeNull()
+      // The desktop pill still states the rule.
+      expect(document.querySelector('[data-status-surface="desktop"] [data-testid="access-chip"]')).not.toBeNull()
+    })
+  })
+
   describe('phone context row', () => {
     beforeEach(() => {
       useShellOverlays.setState({ paletteOpen: false, projectSheetOpen: false })
