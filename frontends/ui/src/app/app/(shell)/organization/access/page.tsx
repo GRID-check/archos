@@ -91,7 +91,7 @@ export default async function OrganizationAccessPage(): Promise<JSX.Element> {
         <Tabs defaultValue="people">
           {/* Four labels are wider than a phone: the strip scrolls sideways
               under an edge fade instead of pushing the page wider. */}
-          <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg">
+          <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg" cue>
             <TabsList>
               <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
               <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>

@@ -121,7 +121,7 @@ function Preview(): JSX.Element {
           reached. `value` is controlled here because the route, not a click,
           decides which one is captured. */}
       <Tabs value={view}>
-        <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg">
+        <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg" cue>
           <TabsList>
             <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
             <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>

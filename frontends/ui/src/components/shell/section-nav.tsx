@@ -150,7 +150,7 @@ export function SectionStrip({
 
   return (
     <div ref={stripRef} className={className}>
-      <HorizontalScroll aria-label={label} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+      <HorizontalScroll aria-label={label} cue className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         <ul className="flex gap-1 pb-2">
           {items.map((item) => (
             <li key={item.key} className="shrink-0">

@@ -43,6 +43,30 @@ describe('HorizontalScroll', () => {
   })
 })
 
+describe('HorizontalScroll, with an edge cue', () => {
+  it('draws a chevron only at the edge that hides content', () => {
+    layout(900, 300)
+    const { container } = render(
+      <HorizontalScroll aria-label="Reiter, seitlich scrollbar" cue>
+        <div />
+      </HorizontalScroll>
+    )
+    // At rest the strip is at its start: more lies to the right, nothing to the left.
+    expect(container.querySelectorAll('svg.lucide-chevron-right')).toHaveLength(1)
+    expect(container.querySelectorAll('svg.lucide-chevron-left')).toHaveLength(0)
+  })
+
+  it('draws none when everything fits', () => {
+    layout(300, 300)
+    const { container } = render(
+      <HorizontalScroll aria-label="Reiter, seitlich scrollbar" cue>
+        <div />
+      </HorizontalScroll>
+    )
+    expect(container.querySelector('svg')).toBeNull()
+  })
+})
+
 describe('HorizontalScroll, when its content is replaced', () => {
   it('notices a wider child that arrives after mount', () => {
     const observed: Element[] = []
