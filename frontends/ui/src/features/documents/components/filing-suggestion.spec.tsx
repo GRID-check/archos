@@ -324,7 +324,8 @@ describe('FilingChip in the list', () => {
     expect(document.querySelectorAll('tbody tr')).toHaveLength(2)
     const fileRow = rows.find((row) => row.textContent?.includes('MA37_Bescheid.pdf'))!
     const chipInRow = within(fileRow).getByTestId('filing-chip')
-    expect(within(fileRow).getByText('MA37_Bescheid.pdf').parentElement).toBe(chipInRow.parentElement)
+    // The name is a box of its own (`FileName` > `MiddleTruncate` > text): three levels up is the row's name line.
+    expect(within(fileRow).getByText('MA37_Bescheid.pdf').parentElement?.parentElement?.parentElement).toBe(chipInRow.parentElement)
     expect(screen.getAllByTestId('filing-chip')).toHaveLength(1)
   })
 

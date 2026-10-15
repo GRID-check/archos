@@ -628,7 +628,7 @@ export const files: typeof en.files = {
     all: 'Alle',
     move: 'Verschieben',
     column: 'Auswahl',
-    count: '{count, plural, =0 {Nichts ausgewählt} one {# ausgewählt} other {# ausgewählt}}',
+    count: '{count} ausgewählt',
     moved: '{count, plural, one {# Datei nach „{folder}“ verschoben.} other {# Dateien nach „{folder}“ verschoben.}}',
     moveFailed: '{count, plural, one {# Datei konnte} other {# Dateien konnten}} nicht verschoben werden. Bitte versuchen Sie es erneut.',
   },

@@ -6,6 +6,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type KeyboardE
 import { ArrowDown, ArrowUp } from 'lucide-react'
 import type { FileItem } from './project-file-workspace'
 import { DocumentStatusBadge } from './document-status'
+import { Checkbox } from '@/components/ui/checkbox'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
 import { documentBadgeState } from '../lib/document-lifecycle'
@@ -19,6 +20,7 @@ import { documentDragProps } from '../hooks/use-document-drag'
 import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
 import { HIGHLIGHT_OUTLINE_INSET } from '@/components/ui/highlight'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileName } from './file-name'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 
 /**
@@ -78,6 +80,12 @@ interface FileListViewProps {
    * flat Archiv) cannot make.
    */
   draggable?: boolean
+  /**
+   * Selection mode (`useDocumentSelection`): a leading checkbox per row, a
+   * press toggles the row instead of opening it, the ⋯ steps aside and nothing
+   * drags. Absent is the ordinary list.
+   */
+  selection?: { active: boolean; selectedIds: ReadonlySet<string>; onToggle: (id: string) => void }
 }
 
 /** A 0..1 backend score as the whole percent the reader sees. */
@@ -97,6 +105,7 @@ export function FileListView({
   sort: controlledSort,
   onSortChange,
   draggable = false,
+  selection,
 }: FileListViewProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -111,6 +120,19 @@ export function FileListView({
   const bodyRef = useRef<HTMLTableSectionElement>(null)
 
   const rows = useMemo(() => sortFiles(files, sort, locale), [files, sort, locale])
+
+  // A press means „open it" in the ordinary list and „pick it" in a selection.
+  // One function per mode, so the memoised rows are not re-rendered by a
+  // selection that did not change.
+  const picking = selection?.active === true
+  const onToggle = selection?.onToggle
+  const activate = useCallback(
+    (id: string | null) => {
+      if (picking && id !== null) onToggle?.(id)
+      else onSelectFile(id)
+    },
+    [picking, onToggle, onSelectFile]
+  )
 
   /**
    * Which row owns the list's single tab stop.
@@ -157,10 +179,10 @@ export function FileListView({
       if (event.key === 'Enter' || event.key === ' ') {
         event.preventDefault()
         const file = current[index]
-        if (file) onSelectFile(file.id)
+        if (file) activate(file.id)
       }
     },
-    [onSelectFile]
+    [activate]
   )
 
   return (
@@ -187,6 +209,7 @@ export function FileListView({
       >
         <TableHeader>
           <TableRow className="hover:bg-transparent">
+            {picking && <TableHead scope="col" className="h-auto w-11 p-0" aria-label={t('selection.column')} />}
             <SortHeader
               label={t('list.columns.name')}
               column="name"
@@ -271,8 +294,11 @@ export function FileListView({
               isSelected={selectedFileId === file.id}
               isTabStop={index === tabStop}
               semantic={semantic}
-              draggable={draggable}
-              onSelectFile={onSelectFile}
+              draggable={draggable && !picking}
+              picking={picking}
+              checked={picking && selection?.selectedIds.has(file.id) === true}
+              onSelectFile={activate}
+              onToggle={onToggle}
               onFocusIndex={setFocusedIndex}
               onRowKeyDown={handleKeyDown}
               renderActions={renderActions}
@@ -293,6 +319,11 @@ interface FileListRowItemProps {
   isTabStop: boolean
   semantic: boolean
   draggable: boolean
+  /** Selection mode: the leading checkbox, and no ⋯. */
+  picking: boolean
+  checked: boolean
+  /** What the checkbox calls; a row press goes through `onSelectFile`, which the list points at it in selection mode. */
+  onToggle?: (id: string) => void
   onSelectFile: (id: string | null) => void
   onFocusIndex: (index: number) => void
   onRowKeyDown: (event: KeyboardEvent<HTMLTableRowElement>, index: number) => void
@@ -312,6 +343,9 @@ const FileListRowItem = memo(function FileListRowItem({
   isTabStop,
   semantic,
   draggable,
+  picking,
+  checked,
+  onToggle,
   onSelectFile,
   onFocusIndex,
   onRowKeyDown,
@@ -338,10 +372,10 @@ const FileListRowItem = memo(function FileListRowItem({
       data-file-row
       data-testid="file-list-row"
       {...(draggable ? documentDragProps(file.id) : {})}
-      data-state={isSelected ? 'selected' : undefined}
+      data-state={isSelected || checked ? 'selected' : undefined}
       // Roving tabindex: one stop for the whole list, then arrows.
       tabIndex={isTabStop ? 0 : -1}
-      aria-selected={isSelected}
+      aria-selected={picking ? checked : isSelected}
       onClick={() => onSelectFile(file.id)}
       onFocus={() => onFocusIndex(index)}
       onKeyDown={(event) => onRowKeyDown(event, index)}
@@ -349,10 +383,20 @@ const FileListRowItem = memo(function FileListRowItem({
         'cursor-pointer focus-visible:outline-none',
         lit && HIGHLIGHT_OUTLINE_INSET,
         'transition-colors duration-snap ease-out motion-reduce:transition-none',
-        isSelected ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
+        isSelected || checked ? 'bg-accent hover:bg-accent data-[state=selected]:bg-accent' : 'hover:bg-muted',
         'focus-visible:bg-accent focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50'
       )}
     >
+      {picking && (
+        <TableCell className="w-11 p-0 text-center" onClick={(event) => event.stopPropagation()}>
+          <Checkbox
+            checked={checked}
+            onCheckedChange={() => onToggle?.(file.id)}
+            aria-label={documentDisplayName(file)}
+            data-testid="file-list-check"
+          />
+        </TableCell>
+      )}
       <TableCell className={CELL}>
         <div className="flex min-h-8 min-w-0 items-center gap-2.5">
           <span
@@ -370,9 +414,7 @@ const FileListRowItem = memo(function FileListRowItem({
                 history belongs to the document, not to the „Freigabe"
                 column, and here it never makes a row taller. */}
             <span className="flex min-w-0 items-baseline gap-1.5 text-xs font-medium leading-[1.4] text-foreground">
-              <span className="min-w-0 truncate" title={documentDisplayName(file)}>
-                {documentDisplayName(file)}
-              </span>
+              <FileName text={documentDisplayName(file)} />
               <FassungCount file={file} />
               {/* Where Piloti would file it: the same chip as on the card,
                   right after the name, so the row keeps its one height. */}
@@ -507,7 +549,7 @@ const FileListRowItem = memo(function FileListRowItem({
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
-          {renderActions(file)}
+          {picking ? null : renderActions(file)}
         </TableCell>
       )}
     </TableRow>

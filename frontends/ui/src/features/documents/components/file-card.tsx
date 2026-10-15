@@ -26,7 +26,9 @@ import { useIngestFailureText } from './ingest-failure-notice'
 import { GridTileBody, GridTileFooter, GridTileMedia, GridTileShell } from './grid-tile'
 import { FilingSuggestionSlot, useFilingHighlighted } from './filing-suggestion'
 import { HIGHLIGHT_OUTLINE } from '@/components/ui/highlight'
+import { Check } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
+import { FileName } from './file-name'
 
 /** Provenance tint per corpus, from the shared `--source-*` token family. */
 const SOURCE_TINT: Record<'projekt' | 'buero', CSSProperties> = {
@@ -251,6 +253,33 @@ export interface FileCardProps {
    * cannot make — the Archiv, for one, has no folders at all.
    */
   draggable?: boolean
+  /**
+   * The listing is in selection mode: the card is picked or not, a press
+   * toggles it (the caller's `onSelect`), the ⋯ steps aside and nothing drags.
+   * Absent is the ordinary card.
+   */
+  selection?: { checked: boolean }
+}
+
+/**
+ * The tick on a card in selection mode, where the ⋯ was. Ink when picked, a
+ * hollow ring when not: shape and fill, never colour alone, and the card is the
+ * target, so the mark is not a control of its own (`pointer-events-none`).
+ */
+function SelectionMark({ checked }: { checked: boolean }) {
+  return (
+    <span
+      aria-hidden
+      className={cn(
+        'pointer-events-none absolute right-2 top-2 z-[1] flex size-6 items-center justify-center rounded-full border shadow-2xs transition-colors duration-quick ease-out motion-reduce:transition-none',
+        checked ? 'border-primary bg-primary text-primary-foreground' : 'border-border bg-background/90'
+      )}
+      data-testid="file-card-check"
+      data-checked={checked ? '' : undefined}
+    >
+      {checked && <Check className="size-3.5" strokeWidth={3} />}
+    </span>
+  )
 }
 
 /**
@@ -280,6 +309,7 @@ export const FileCard = memo(function FileCard({
   testId = 'file-card',
   actions,
   draggable = false,
+  selection,
 }: FileCardProps) {
   const t = useTranslations('files')
   const name = documentDisplayName(file)
@@ -308,7 +338,7 @@ export const FileCard = memo(function FileCard({
       interactive
       className={cn(
         'group/card',
-        isSelected && 'ring-2 ring-ring shadow-md',
+        (isSelected || selection?.checked) && 'ring-2 ring-ring shadow-md',
         isBusy && 'cursor-progress opacity-70',
         !isSelected && 'hover:border-border/80',
         lit && HIGHLIGHT_OUTLINE
@@ -316,11 +346,12 @@ export const FileCard = memo(function FileCard({
       // Dragging is opt-in per surface: the Archiv has no folders to drop into,
       // and a card that lifts under the finger where nothing can receive it is
       // an affordance for a capability that is not there.
-      {...(draggable ? documentDragProps(file.id) : {})}
+      {...(draggable && !selection ? documentDragProps(file.id) : {})}
     >
-      {actions && (
+      {selection && <SelectionMark checked={selection.checked} />}
+      {actions && !selection && (
         <div
-          className="absolute right-1.5 top-1.5 z-[1] md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
+          className="absolute right-1.5 top-1.5 z-[1] pointer-coarse:opacity-100 md:opacity-0 md:group-hover/card:opacity-100 group-focus-within/card:opacity-100 has-[[data-state=open]]:opacity-100 transition-opacity duration-quick ease-out motion-reduce:transition-none"
           onClick={(event) => event.stopPropagation()}
           onPointerDown={(event) => event.stopPropagation()}
         >
@@ -337,7 +368,8 @@ export const FileCard = memo(function FileCard({
       <button
         type="button"
         onClick={onSelect}
-        aria-current={isSelected ? 'true' : undefined}
+        aria-current={isSelected && !selection ? 'true' : undefined}
+        aria-pressed={selection ? selection.checked : undefined}
         aria-label={ariaLabel}
         aria-busy={isBusy}
         data-testid={testId}
@@ -393,8 +425,9 @@ export const FileCard = memo(function FileCard({
             {/* The name the document goes by. The format chip beside it still
                 comes from the FILE name, because that is what the bytes are —
                 a rename changes the label, never the format. */}
-            <p className="mt-[10px] truncate text-xs font-medium leading-[1.4] text-foreground" title={name}>
-              {name}
+            {/* Cut in the MIDDLE: the revision and the drawing number are the end of the name, and a finger has no tooltip to read the rest. */}
+            <p className="mt-[10px] min-w-0 text-xs font-medium leading-[1.4] text-foreground">
+              <FileName text={name} />
             </p>
             {/* A byline, directly under the name — who WROTE this. It is not in
                 the footer, because the footer is where the faces and the word

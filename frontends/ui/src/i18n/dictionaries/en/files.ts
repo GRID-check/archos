@@ -649,7 +649,7 @@ export const files = {
     all: 'All',
     move: 'Move',
     column: 'Selected',
-    count: '{count, plural, =0 {Nothing selected} one {# selected} other {# selected}}',
+    count: '{count} selected',
     moved: '{count, plural, one {# file moved to “{folder}”.} other {# files moved to “{folder}”.}}',
     moveFailed: '{count, plural, one {# file could not be moved.} other {# files could not be moved.}} Please try again.',
   },
