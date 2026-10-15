@@ -351,6 +351,9 @@ export const chat = {
     untitledSource: 'Untitled source',
     downloadDocx: 'Download as Word document',
     downloadFailed: 'The Word document could not be created.',
+    // The system share sheet on a phone: the button's name and the shared message's title.
+    share: 'Share answer',
+    shareTitle: 'Answer from Piloti',
   },
   // Thread-header breadcrumb (project / session title) with inline rename.
   // The citation peek: what a Fundstelle IS, before you open it.

@@ -347,6 +347,9 @@ export const chat: typeof en.chat = {
     untitledSource: 'Quelle ohne Titel',
     downloadDocx: 'Als Word-Dokument herunterladen',
     downloadFailed: 'Das Word-Dokument konnte nicht erstellt werden.',
+    // Systemdialog „Teilen“ am Telefon: Beschriftung und Titel der geteilten Nachricht.
+    share: 'Antwort teilen',
+    shareTitle: 'Antwort von Piloti',
   },
   // Der Zitat-Peek: was diese Fundstelle IST, bevor man sie öffnet.
   citationPeek: {

@@ -47,12 +47,13 @@
  * along.
  */
 
-import { useCallback, useMemo, useState, type FC } from 'react'
-import { BookMarked, Check, Copy, FileDown } from 'lucide-react'
+import { useCallback, useMemo, useState, useSyncExternalStore, type FC } from 'react'
+import { BookMarked, Check, Copy, FileDown, Share } from 'lucide-react'
 import { toast } from 'sonner'
 import { AnimatePresence, motion, useIconSwapTransition } from '@/components/motion'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { useTransientFlag } from '@/hooks/use-transient-flag'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import { useTranslations } from '@/i18n'
@@ -68,6 +69,7 @@ import {
   hasCopyableSources,
 } from '../lib/answer-markdown'
 import type { CitedDocument } from '../lib/citations'
+import { answerShareUrl, canShareNatively, shareAnswer } from '../lib/share-answer'
 
 export interface AnswerActionsProps {
   /**
@@ -107,21 +109,38 @@ export interface AnswerActionsProps {
 type Copied = 'plain' | 'withSources' | null
 
 /**
- * The buttons. Same 24px glyph, muted ink and `touch-target` as the feedback
- * thumbs next to them — a footnote affordance that does not compete with the
- * answer above it.
+ * The buttons. Same 24px glyph and muted ink as the feedback thumbs next to
+ * them — a footnote affordance that does not compete with the answer above it.
+ *
+ * On a finger they GROW to 44px instead of borrowing a catchment
+ * (`touch-target`): the buttons sit two pixels apart, so two overhanging
+ * catchments overlap and the later one takes the tap of the earlier. A copy
+ * that opens a share sheet is a confidently wrong target.
  */
 const actionButton = cn(
-  'inline-flex size-6 items-center justify-center rounded-md',
+  'inline-flex size-6 items-center justify-center rounded-md pointer-coarse:size-11',
   // The shared press: its transition list carries the hover background too,
   // which this list used to leave out, so the fill snapped in under an
   // easing colour.
   'text-muted-foreground/70',
   PRESSABLE,
   'hover:bg-accent hover:text-foreground',
-  'touch-target',
   FOCUS_RING
 )
+
+const noopSubscribe = (): (() => void) => () => {}
+
+/**
+ * Whether the share sheet is the right way out: the browser has one AND a
+ * finger is driving. On a desktop the copy and the Word export are the way out,
+ * and a share sheet there is a menu of apps nobody pastes an answer into.
+ * Decided after hydration (the server has no `navigator`).
+ */
+function useNativeShare(): boolean {
+  const hasShare = useSyncExternalStore(noopSubscribe, () => canShareNatively(), () => false)
+  const touch = useMediaQuery('(pointer: coarse)')
+  return hasShare && touch
+}
 
 export const AnswerActions: FC<AnswerActionsProps> = ({
   content,
@@ -216,6 +235,33 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
   }, [copy, body, documents, t, strip])
 
   const withSources = hasCopyableSources(documents)
+  const nativeShare = useNativeShare()
+
+  const handleShare = useCallback(async (): Promise<void> => {
+    const text = withSources
+      ? answerMarkdownWithSources(body, documents, {
+          heading: t('answerActions.sourcesHeading'),
+          page: (page) => t('answerSources.page', { page }),
+          pages: (pages) => t('answerSources.pages', { pages: pages.join(', ') }),
+          untitled: t('answerActions.untitledSource'),
+        }, strip)
+      : answerMarkdown(content, strip)
+    if (!text.trim()) return
+    const outcome = await shareAnswer(
+      {
+        title: t('answerActions.shareTitle'),
+        text,
+        url: answerShareUrl(conversationId, window.location),
+      },
+      copyMarkdownToClipboard
+    )
+    if (outcome === 'copied') {
+      setCopiedWhich(withSources ? 'withSources' : 'plain')
+      raiseCopied()
+    } else if (outcome === 'failed') {
+      toast.error(t('answerActions.copyFailed'))
+    }
+  }, [withSources, body, documents, content, strip, t, conversationId, raiseCopied])
   const canExport = Boolean(conversationId && messageId)
   // The two copies are exclusive and exhaustive: sources decide WHICH, never
   // whether. The export is orthogonal and cannot stand in for either.
@@ -256,9 +302,9 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
                   aria-hidden="true"
                 >
                   {copied === 'plain' ? (
-                    <Check className="size-3.5" aria-hidden="true" />
+                    <Check className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
                   ) : (
-                    <Copy className="size-3.5" aria-hidden="true" />
+                    <Copy className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
                   )}
                 </motion.span>
               </AnimatePresence>
@@ -286,9 +332,9 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
                   aria-hidden="true"
                 >
                   {copied === 'withSources' ? (
-                    <Check className="size-3.5" aria-hidden="true" />
+                    <Check className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
                   ) : (
-                    <BookMarked className="size-3.5" aria-hidden="true" />
+                    <BookMarked className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
                   )}
                 </motion.span>
               </AnimatePresence>
@@ -296,6 +342,21 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
           </TooltipTrigger>
           <TooltipContent>{copyWithSourcesLabel}</TooltipContent>
         </Tooltip>
+      )}
+      {nativeShare && (
+        // The phone's way out: the system share sheet, with the answer as text
+        // and the thread's address when it has one. Present only where there is
+        // a sheet and a finger; the copy beside it stays the way out everywhere
+        // else, and the fallback when the sheet refuses.
+        <button
+          type="button"
+          onClick={() => void handleShare()}
+          aria-label={t('answerActions.share')}
+          data-testid="answer-share"
+          className={actionButton}
+        >
+          <Share className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
+        </button>
       )}
       {canExport && (
         <Tooltip>
@@ -308,7 +369,7 @@ export const AnswerActions: FC<AnswerActionsProps> = ({
               aria-label={downloadLabel}
               className={cn(actionButton, exporting && 'cursor-progress opacity-50')}
             >
-              <FileDown className="size-3.5" aria-hidden="true" />
+              <FileDown className="size-3.5 pointer-coarse:size-4" aria-hidden="true" />
             </button>
           </TooltipTrigger>
           <TooltipContent>{downloadLabel}</TooltipContent>
