@@ -141,6 +141,8 @@ export const organization: typeof en.organization = {
   },
   /** Personen & Zugriff: Mitgliederverzeichnis, Rollenkatalog, Berechtigungsübersicht. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Bereiche, seitlich scrollbar',
     people: {
       title: 'Personen',
       description: 'Alle Mitglieder der Organisation und die Rolle, die ihnen zugewiesen wurde.',
@@ -412,6 +414,9 @@ export const organization: typeof en.organization = {
     zdrHint:
       'Standardmäßig aktiv. Jede Anfrage, die Piloti für Ihre Organisation über OpenRouter an ein KI-Modell sendet, geht ausschließlich an Endpunkte, die weder Prompts noch Antworten speichern: Chat- und Rechercheantworten, Rückfragen, das Lesen von Dokumenten beim Hochladen (Beschreibungen von Zeichnungen, Texterkennung, Embeddings, Zusammenfassungen, Klassifizierung), das Reranking von Suchergebnissen, Titel und Zusammenfassungen von Unterhaltungen, Konsistenzprüfungen und Skill-Prüfungen. Kann die Einstellung nicht gelesen werden, gilt die Beschränkung trotzdem, und nur Modelle mit einem solchen Endpunkt sind auswählbar. Wo ein Modell in der EU betrieben wird, wird dieser Standort bevorzugt. Nicht erfasst: Websuchanfragen gehen an den Websuche-Anbieter (Tavily), der kein Modellanbieter ist.',
     zdrNotApplicable:
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Mehr anzeigen',
+    zdrHintLess: 'Weniger anzeigen',
       'Der eigene {provider}-Schlüssel Ihrer Organisation ist aktiv; Anfragen gehen daher direkt an diesen Anbieter und nicht über OpenRouter. Ob dort Daten gespeichert werden, regelt Ihr Vertrag mit {provider}; Piloti kann das nicht durchsetzen. Ihre gespeicherte Einstellung bleibt erhalten und gilt wieder, sobald Sie zum Plattformschlüssel oder zu einem OpenRouter-Schlüssel wechseln.',
     zdrEnabled: 'Zero Data Retention ist aktiviert',
     zdrDisabled: 'Zero Data Retention ist deaktiviert',

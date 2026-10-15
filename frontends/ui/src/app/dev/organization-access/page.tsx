@@ -36,6 +36,7 @@ import type { JSX } from 'react'
 import { useEffect, useState } from 'react'
 import { notFound } from 'next/navigation'
 
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { PeopleDirectory } from '@/features/organization/components/people-directory'
 import { PermissionReference } from '@/features/organization/components/permission-reference'
@@ -109,7 +110,7 @@ function Preview(): JSX.Element {
   return (
     <main
       data-testid="organization-access-preview"
-      className="text-foreground mx-auto flex w-full max-w-5xl flex-col gap-6 p-8"
+      className="text-foreground mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 sm:p-8"
     >
       <div>
         <h1 className="text-xl font-semibold tracking-tight">{t('sections.access.title')}</h1>
@@ -120,11 +121,14 @@ function Preview(): JSX.Element {
           reached. `value` is controlled here because the route, not a click,
           decides which one is captured. */}
       <Tabs value={view}>
-        <TabsList>
-          <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
-          <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>
-          <TabsTrigger value="permissions">{t('access.permissions.title')}</TabsTrigger>
-        </TabsList>
+        <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg">
+          <TabsList>
+            <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
+            <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>
+            <TabsTrigger value="custom-roles">{t('customRoles.title')}</TabsTrigger>
+            <TabsTrigger value="permissions">{t('access.permissions.title')}</TabsTrigger>
+          </TabsList>
+        </HorizontalScroll>
       </Tabs>
 
       {view === 'people' ? (

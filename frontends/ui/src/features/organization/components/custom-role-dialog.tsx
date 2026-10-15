@@ -284,7 +284,11 @@ const CustomRoleForm: FC<{
           </FieldGroup>
         </form>
 
-        <DialogFooter>
+        {/* Pinned to the bottom of the scrolling dialog on a phone: with ten
+            permission rows, Save and Cancel used to be a long scroll away. The
+            negative margins reach over the dialog's own padding so the bar is
+            edge to edge, and the bottom padding clears the home indicator. */}
+        <DialogFooter className="bg-popover max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-6 max-sm:-mb-6 max-sm:border-t max-sm:px-6 max-sm:pt-3 max-sm:pb-[max(1.5rem,env(safe-area-inset-bottom))]">
           <Button type="button" variant="outline" onClick={requestClose} disabled={saving}>
             {tc('actions.cancel')}
           </Button>

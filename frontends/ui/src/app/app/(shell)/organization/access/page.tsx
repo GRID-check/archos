@@ -28,6 +28,7 @@ import type { JSX } from 'react'
 import { ShieldAlert } from 'lucide-react'
 
 import { Card, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { PageHeader } from '@/components/ui/page-header'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { CustomRolesSection } from '@/features/organization/components/custom-roles-section'
@@ -88,12 +89,16 @@ export default async function OrganizationAccessPage(): Promise<JSX.Element> {
             strings: "People" heading the People card under a tab called anything
             else would be two names for one thing. */}
         <Tabs defaultValue="people">
-          <TabsList>
-            <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
-            <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>
-            <TabsTrigger value="custom-roles">{t('customRoles.title')}</TabsTrigger>
-            <TabsTrigger value="permissions">{t('access.permissions.title')}</TabsTrigger>
-          </TabsList>
+          {/* Four labels are wider than a phone: the strip scrolls sideways
+              under an edge fade instead of pushing the page wider. */}
+          <HorizontalScroll aria-label={t('access.tabsScrollable')} className="rounded-lg">
+            <TabsList>
+              <TabsTrigger value="people">{t('access.people.title')}</TabsTrigger>
+              <TabsTrigger value="roles">{t('access.roles.title')}</TabsTrigger>
+              <TabsTrigger value="custom-roles">{t('customRoles.title')}</TabsTrigger>
+              <TabsTrigger value="permissions">{t('access.permissions.title')}</TabsTrigger>
+            </TabsList>
+          </HorizontalScroll>
 
           <TabsContent value="people" className="mt-4">
             <PeopleDirectory members={members} error={membersError} />

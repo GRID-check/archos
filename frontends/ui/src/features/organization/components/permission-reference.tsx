@@ -103,8 +103,12 @@ export function PermissionReference({
               {t(`access.tiers.${tier}`)}
             </h3>
 
+            {/* From `sm` a two-column table. On a phone each row stacks (the
+                permission, then who grants it) and the header row steps out of
+                sight, because the description and the role badges cannot share
+                393px side by side. */}
             <Table>
-              <TableHeader>
+              <TableHeader className="max-sm:sr-only">
                 <TableRow>
                   <TableHead>{t('access.permissions.columnPermission')}</TableHead>
                   <TableHead>{t('access.permissions.grantedBy')}</TableHead>
@@ -114,8 +118,8 @@ export function PermissionReference({
                 {items.map((permission) => {
                   const grantedBy = granting.get(permission.slug) ?? []
                   return (
-                    <TableRow key={permission.slug}>
-                      <TableCell className="align-top">
+                    <TableRow key={permission.slug} className="max-sm:block max-sm:py-3">
+                      <TableCell className="align-top max-sm:block max-sm:p-0">
                         <div className="flex max-w-xl flex-col gap-1">
                           <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
                             <span className="font-medium">{permission.name}</span>
@@ -129,7 +133,10 @@ export function PermissionReference({
                           <p className="text-muted-foreground text-sm">{permission.description}</p>
                         </div>
                       </TableCell>
-                      <TableCell className="align-top">
+                      <TableCell className="align-top max-sm:mt-2 max-sm:block max-sm:p-0">
+                        <span className="text-muted-foreground mb-1 block text-xs sm:hidden">
+                          {t('access.permissions.grantedBy')}
+                        </span>
                         {grantedBy.length === 0 ? (
                           <span className="text-muted-foreground text-sm">
                             {t('access.permissions.noRoles')}

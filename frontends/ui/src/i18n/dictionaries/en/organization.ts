@@ -137,6 +137,8 @@ export const organization = {
   },
   /** People & access: the member directory, the role catalog, the permission map. */
   access: {
+    /** Accessible name of the sub-tab strip when it is wider than the screen. */
+    tabsScrollable: 'Sections, scrolls sideways',
     people: {
       title: 'People',
       description: 'Everyone in the organization and the role they were given.',
@@ -408,6 +410,9 @@ export const organization = {
     zdrHint:
       'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
     zdrNotApplicable:
+    /** Phone-only toggle on the long zero-data-retention paragraph. */
+    zdrHintMore: 'Show more',
+    zdrHintLess: 'Show less',
       'Your organization’s own {provider} key is active, so requests go directly to that provider, not through OpenRouter. Retention for those requests is governed by your contract with {provider}; Piloti cannot enforce it. Your saved setting is kept and applies again once you switch back to the platform key or an OpenRouter key.',
     zdrEnabled: 'Zero data retention is on',
     zdrDisabled: 'Zero data retention is off',
