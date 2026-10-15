@@ -36,7 +36,9 @@ import { useSharing } from '@/features/collaboration/hooks/use-sharing'
 import { cn } from '@/lib/utils'
 import { useTranslations } from '@/i18n'
 import type { ResourceSharingState } from '@/lib/sharing/types'
+import { useHeaderHeight } from '../hooks/use-header-height'
 import { useLayoutStore } from '../store'
+import { ChatProjectContext } from './ChatProjectContext'
 
 /**
  * How long after opening the editor from the menu a blur is treated as the menu
@@ -48,11 +50,11 @@ const MENU_FOCUS_GUARD_MS = 250
 interface ChatToolbarProps {
   sessionTitle?: string
   /**
-   * Accepted and unused: the project is named by the composer's scope chip,
-   * the rail and the URL, so the toolbar no longer repeats it. The prop stays
-   * so callers and specs need no change while this ruling settles.
+   * The active project. Named on a phone only, in the context row above the
+   * pills (the chat route has no phone header to carry it); on a desktop the
+   * composer's scope chip, the rail and the URL name it, so the pills do not.
    */
-  projectName?: string
+  projectName?: string | null
   onNewSession?: () => void
   isNewSessionDisabled?: boolean
   /**
@@ -78,18 +80,27 @@ interface ChatToolbarProps {
   isCollaborationEnabled?: boolean
   /** The signed-in user, so the roster can mark "you" and Leave knows its target. */
   currentUserId?: string | null
+  /**
+   * Called with the toolbar's height whenever it changes. The toolbar floats over
+   * the transcript, so whoever lays the transcript out needs to know how far down
+   * it ends (see `toolbar-clearance.ts`).
+   */
+  onHeightChange?: (heightPx: number) => void
 }
 
 export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
   sessionTitle = '',
+  projectName = null,
   onNewSession,
   isNewSessionDisabled = false,
   isChatStarted = true,
   conversationId = null,
   isCollaborationEnabled = false,
   currentUserId = null,
+  onHeightChange,
 }) {
   const { isAuthenticated } = useAuth()
+  const headerRef = useHeaderHeight(onHeightChange)
   const t = useTranslations('research')
   const tChat = useTranslations('chat')
   const tCollab = useTranslations('collaboration')
@@ -278,10 +289,17 @@ export const ChatToolbar: FC<ChatToolbarProps> = memo(function ChatToolbar({
     // The other half of the crowding was duplicate doors. This header does not
     // own the research report: a run is read in the thread that commissioned
     // it, in its run block (ADR-0062), so there is no report toggle here.
-    <header className="pointer-events-none absolute inset-x-0 top-0 z-20 min-h-12 pb-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+    <header ref={headerRef} className="pointer-events-none absolute inset-x-0 top-0 z-20 min-h-12 pb-2 max-md:landscape:flex max-md:landscape:items-start max-md:landscape:gap-2 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(0.5rem,env(safe-area-inset-top))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]">
+      {/* Phone shell: where the reader is, and search, above the pills. On a phone
+          on its side there is width for it beside them, so it stands left of the
+          row there instead of taking a line of 393px. */}
+      <ChatProjectContext
+        projectName={projectName}
+        className="mx-auto mb-1 w-full max-w-5xl max-md:landscape:mx-0 max-md:landscape:mb-0 max-md:landscape:w-auto max-md:landscape:max-w-[16rem] max-md:landscape:shrink-0"
+      />
       {/* The SAME wide column as the message list and composer (max-w-5xl,
           mx-auto), so the pills stay aligned with the chat window's edges. */}
-      <div className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3 max-sm:items-stretch">
+      <div className="mx-auto flex w-full max-w-5xl items-start justify-between gap-3 max-sm:items-stretch max-md:landscape:mx-0 max-md:landscape:min-w-0 max-md:landscape:flex-1">
       {/* LEFT pill: orientation only — the single history door + the current
           session title/rename, always visible (mobile included). On a phone it
           takes whatever width the right pill leaves, and the title may run to

@@ -16,7 +16,7 @@
 
 'use client'
 
-import { type FC, useCallback } from 'react'
+import { type CSSProperties, type FC, useCallback, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { ChatToolbar } from './ChatToolbar'
@@ -34,6 +34,7 @@ import { useComposerMetrics } from '../hooks/use-composer-metrics'
 import { useSessionRows } from '../hooks/use-session-rows'
 import { motion } from '@/components/motion'
 import { selectThreadPhase } from '../lib/thread-phase'
+import { TOOLBAR_CLEAR_VAR, toolbarClearance } from '../lib/toolbar-clearance'
 
 interface MainLayoutProps {
   /** Whether the user is authenticated */
@@ -116,6 +117,18 @@ export const MainLayout: FC<MainLayoutProps> = ({
   const { composerRef, columnVars, composerStyle, composerMotion } =
     useComposerMetrics(isThreadEmpty)
 
+  // The toolbar's measured height, so the transcript starts below it whatever
+  // the toolbar is made of right now (one row, two on a phone, three while the
+  // link is gone). Absent until measured: the old one-row values stand.
+  const [toolbarHeight, setToolbarHeight] = useState<number | null>(null)
+  const toolbarVars = useMemo<CSSProperties>(
+    () =>
+      toolbarHeight == null
+        ? {}
+        : { [TOOLBAR_CLEAR_VAR as string]: toolbarClearance(toolbarHeight) },
+    [toolbarHeight]
+  )
+
   // Sync session state with URL query parameters
   const { updateSessionUrl, clearSessionUrl } = useSessionUrl({ isAuthenticated })
 
@@ -184,6 +197,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
             // Published by useComposerMetrics; inherits into ChatArea (a
             // descendant), which reads both via calc().
             ...columnVars,
+            ...toolbarVars,
           }}
         >
           {/* Top fade scrim — a full-width gradient behind the floating pills
@@ -195,7 +209,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
               still reach the messages beneath. */}
           <div
             aria-hidden="true"
-            className="from-background pointer-events-none absolute inset-x-0 top-0 z-10 h-24 bg-gradient-to-b from-[3.25rem] to-transparent"
+            className="from-background pointer-events-none absolute inset-x-0 top-0 z-10 h-[max(6rem,calc(var(--chat-toolbar-clear,0px)+0.5rem))] bg-gradient-to-b from-[length:max(3.25rem,calc(var(--chat-toolbar-clear,0px)-4rem))] to-transparent"
           />
 
           {/* Floating toolbar — overlays the top of the chat plane as pills
@@ -214,6 +228,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
             conversationId={currentConversationId ?? null}
             isCollaborationEnabled={canCollaborate}
             currentUserId={currentUserId}
+            onHeightChange={setToolbarHeight}
           />
 
           {isMobile && peekedFile && previewMode !== 'modal' && previewMode !== 'expanded' && (
@@ -222,7 +237,7 @@ export const MainLayout: FC<MainLayoutProps> = ({
               onClick={expandFile}
               // Floating over the transcript: the alpha is what `backdrop-blur`
               // blurs, and the `supports-` step is the no-blur fallback.
-              className="border-base bg-card/70 shadow-xs supports-[backdrop-filter]:bg-card/60 absolute left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] top-[calc(max(0.5rem,env(safe-area-inset-top))+3.5rem)] z-20 flex min-h-11 items-center gap-2 rounded-lg border px-3 py-1.5 text-left backdrop-blur"
+              className="border-base bg-card/70 shadow-xs supports-[backdrop-filter]:bg-card/60 absolute left-[max(0.75rem,env(safe-area-inset-left))] right-[max(0.75rem,env(safe-area-inset-right))] top-[var(--chat-toolbar-clear,calc(max(0.5rem,env(safe-area-inset-top))+3.5rem))] z-20 flex min-h-11 items-center gap-2 rounded-lg border px-3 py-1.5 text-left backdrop-blur"
             >
               <span className="min-w-0 flex-1 truncate text-xs font-medium tracking-[-0.01em]">
                 {documentDisplayName(peekedFile)}

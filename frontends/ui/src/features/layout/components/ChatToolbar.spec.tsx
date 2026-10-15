@@ -1,8 +1,9 @@
-import { act, render, screen } from '@/test-utils'
+import { act, render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { vi, describe, test, expect, beforeEach } from 'vitest'
 import type { ResourceSharingState } from '@/lib/sharing/types'
 import { ChatToolbar } from './ChatToolbar'
+import { useShellOverlays } from '@/components/shell/shell-overlays'
 import type { ChatMessage } from '@/features/chat/types'
 import { emptyRunLedger, setRunStatus } from '@/lib/runs/run-ledger'
 import {
@@ -56,6 +57,14 @@ vi.mock('../store', () => ({
     const state = getLayoutState()
     return selector ? selector(state) : state
   }),
+}))
+
+// The phone shell's connection line asks `useIsMobile`; the context row itself is
+// CSS (`md:hidden`), so jsdom renders it either way.
+let mockIsMobile = false
+vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => mockIsMobile }))
+vi.mock('@/shared/hooks/use-connection-presence', () => ({
+  useConnectionPresence: () => 'connected',
 }))
 
 let mockIsAuthenticated = true
@@ -177,6 +186,62 @@ describe('ChatToolbar', () => {
     })
   })
 
+  describe('phone context row', () => {
+    beforeEach(() => {
+      useShellOverlays.setState({ paletteOpen: false, projectSheetOpen: false })
+      mockIsMobile = false
+    })
+
+    test('names the project and opens the switcher sheet — the chat route has no phone header', async () => {
+      const user = userEvent.setup()
+      render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
+
+      const row = screen.getByTestId('chat-project-context')
+      const pill = within(row).getByTestId('project-pill')
+      expect(pill).toHaveTextContent('Wohnbau Favoriten')
+      await user.click(pill)
+
+      expect(useShellOverlays.getState().projectSheetOpen).toBe(true)
+    })
+
+    test('carries the search that opens the command palette', async () => {
+      const user = userEvent.setup()
+      render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
+
+      await user.click(within(screen.getByTestId('chat-project-context')).getByTestId('shell-search'))
+
+      expect(useShellOverlays.getState().paletteOpen).toBe(true)
+    })
+
+    test('is there on a chat that has not started, where the reader most needs a way out', () => {
+      render(<ChatToolbar projectName="Wohnbau Favoriten" isChatStarted={false} />)
+
+      expect(screen.getByTestId('project-pill')).toBeInTheDocument()
+      expect(screen.getByTestId('shell-search')).toBeInTheDocument()
+    })
+
+    test('the connection line is mounted on the phone shell only', () => {
+      const { unmount } = render(<ChatToolbar projectName="Wohnbau Favoriten" />)
+      expect(document.querySelector('[data-slot="connection-band"]')).toBeNull()
+      unmount()
+
+      mockIsMobile = true
+      render(<ChatToolbar projectName="Wohnbau Favoriten" />)
+      expect(document.querySelector('[data-slot="connection-band"]')).not.toBeNull()
+    })
+
+    test('reports its height so the transcript can start below it', () => {
+      const onHeightChange = vi.fn()
+      const rect = vi
+        .spyOn(HTMLElement.prototype, 'getBoundingClientRect')
+        .mockReturnValue({ height: 163 } as DOMRect)
+      render(<ChatToolbar projectName="Wohnbau Favoriten" onHeightChange={onHeightChange} />)
+      rect.mockRestore()
+
+      expect(onHeightChange).toHaveBeenCalledWith(163)
+    })
+  })
+
   describe('chat-started gating', () => {
     test('hides New chat, the thread menu and the breadcrumb before a chat has started', () => {
       render(
@@ -195,7 +260,6 @@ describe('ChatToolbar', () => {
       expect(
         screen.queryByRole('button', { name: 'Create new session' })
       ).not.toBeInTheDocument()
-      expect(screen.queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
       expect(screen.queryByText('My Session')).not.toBeInTheDocument()
     })
 
@@ -325,11 +389,12 @@ describe('ChatToolbar', () => {
       expect(screen.getByText('My Session')).toBeInTheDocument()
     })
 
-    test('does not repeat the project name — the scope chip, rail and URL already carry it', () => {
+    test('does not repeat the project name in the breadcrumb — the context row above it carries it', () => {
       render(<ChatToolbar sessionTitle="My Session" projectName="Wohnbau Favoriten" />)
 
-      expect(screen.queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
-      expect(screen.getByText('My Session')).toBeInTheDocument()
+      const breadcrumb = screen.getByRole('navigation')
+      expect(within(breadcrumb).queryByText('Wohnbau Favoriten')).not.toBeInTheDocument()
+      expect(within(breadcrumb).getByText('My Session')).toBeInTheDocument()
     })
 
     test('clicking the title opens the editor — the shortcut, alongside the menu', async () => {

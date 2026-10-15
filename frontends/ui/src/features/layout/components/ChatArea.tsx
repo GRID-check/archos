@@ -92,6 +92,7 @@ import { useShowReasoningSkills } from '@/lib/user-preferences/use-show-reasonin
 import { WELCOME_OFFSET_FALLBACK } from '../hooks/use-composer-metrics'
 import { isDisplayableMessage, isTransientConnectionError, selectThreadPhase } from '../lib/thread-phase'
 import { readThreadPosition, rememberThreadPosition, type ThreadPosition } from '../lib/thread-positions'
+import { TOOLBAR_CLEAR_PADDING, TOOLBAR_CLEAR_SCROLL_MARGIN } from '../lib/toolbar-clearance'
 
 /** How much of an answer the settle announcement reads out. */
 const GIST_MAX_CHARS = 120
@@ -1544,7 +1545,10 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                   // of that cross-fade); otherwise it is simply there.
                   initial={listArrivesFromSkeleton ? { opacity: 0 } : false}
                   animate={{ opacity: 1, transition: rowEnter }}
-                  className="mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]"
+                  className={cn(
+                    'mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))]',
+                    TOOLBAR_CLEAR_PADDING
+                  )}
                   style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
                 >
                   {/* The observed list holds the messages and nothing else. The
@@ -1694,7 +1698,8 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                             id={`message-${message.id}`}
                             data-chat-anchor={isAnchorTarget ? 'true' : undefined}
                             className={cn(
-                              'flex scroll-mt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] flex-col gap-4 sm:scroll-mt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]',
+                              'flex flex-col gap-4',
+                              TOOLBAR_CLEAR_SCROLL_MARGIN,
                               // The arrival mark: says "this is the one" for a beat, then
                               // fades. A ring rather than a background, so it reads on the
                               // user bubble and the answer card alike. The transition is
@@ -2429,7 +2434,10 @@ const MessageListSkeleton: FC = () => {
   const t = useTranslations('research')
   return (
     <div
-      className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] sm:px-6 sm:pt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]"
+      className={cn(
+        'mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 sm:px-6',
+        TOOLBAR_CLEAR_PADDING
+      )}
       style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
       role="status"
       aria-label={t('chatArea.loading')}

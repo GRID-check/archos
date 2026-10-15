@@ -257,8 +257,10 @@ export default function ChatToolbarPreviewPage(): JSX.Element {
                   {row.caption}
                 </p>
                 {/* The toolbar positions itself against this block, exactly as it
-                    does against the chat plane in MainLayout. */}
-                <div className="relative h-20 rounded-lg border border-dashed border-base">
+                    does against the chat plane in MainLayout. On the phone shell the
+                    toolbar is two rows (the project context above the pills) and a
+                    third while the connection line speaks, so the block is taller. */}
+                <div className="relative h-20 rounded-lg border border-dashed border-base max-md:h-44">
                   <ChatToolbar
                     sessionTitle={row.sessionTitle}
                     projectName={row.projectName}
