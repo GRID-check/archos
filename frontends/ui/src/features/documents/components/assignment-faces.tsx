@@ -32,7 +32,24 @@ export function AssignmentFaces({
     )
   }
   if (!assignees || assignees.length === 0) {
-    return <span className={cn('truncate text-xs text-muted-foreground', className)}>{t('assignment.unassigned')}</span>
+    // On a phone the word does not fit a 2-up card's footer („Unv…"), and a cut
+    // word says nothing. There it is the dashed empty disc the preview uses,
+    // with the word kept for assistive technology and the long-press title.
+    return (
+      <span
+        className={cn('flex min-w-0 items-center text-xs text-muted-foreground', className)}
+        title={t('assignment.unassigned')}
+        data-testid="assignment-unassigned"
+      >
+        <span
+          aria-hidden
+          className="border-border text-muted-foreground/60 hidden size-5 shrink-0 items-center justify-center rounded-full border border-dashed phone:flex"
+        >
+          <UserRound className="size-3" />
+        </span>
+        <span className="truncate phone:sr-only">{t('assignment.unassigned')}</span>
+      </span>
+    )
   }
   const people = assignees.map((person) => ({
     userId: person.userId,

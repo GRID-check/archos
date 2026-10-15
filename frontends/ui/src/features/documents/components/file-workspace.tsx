@@ -833,7 +833,7 @@ export function FileWorkspace({
         )}
 
         {/* On a phone the Hochladen button floats over the foot of the list, so
-            the list ends a button's height above the screen's edge: the last
+            the list ends the button's height plus its 1rem offset and a 1rem gap (6rem) above the screen's edge: the last
             card is never under it. */}
         <div
           className={cn(
@@ -842,7 +842,7 @@ export function FileWorkspace({
             // edge, so its list ends above the home indicator. A project's
             // Dateien sits above the in-flow tab bar, which owns that inset.
             inSheet && !uploadFab && 'pb-[env(safe-area-inset-bottom)]',
-            uploadFab && (inSheet ? 'pb-[calc(5rem+env(safe-area-inset-bottom))]' : 'pb-20')
+            uploadFab && (inSheet ? 'pb-[calc(6rem+env(safe-area-inset-bottom))]' : 'pb-24')
           )}
         >
           {listingError ? (

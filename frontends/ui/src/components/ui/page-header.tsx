@@ -41,7 +41,7 @@ export interface PageHeaderProps extends Omit<React.HTMLAttributes<HTMLElement>,
  * child's `w-full` has a real width to resolve against.
  */
 const TITLE_ROW_CLASS =
-  'flex min-w-0 flex-col items-stretch gap-3 sm:flex-row sm:items-end sm:justify-between sm:gap-4'
+  'flex min-w-0 flex-col items-stretch gap-3 phone:gap-2 sm:flex-row sm:items-end sm:justify-between sm:gap-4'
 
 /**
  * The floor the title column refuses to go below, and the reason the action can
@@ -80,9 +80,13 @@ export function PageHeader({
   return (
     <header className={cn('min-w-0', TITLE_ROW_CLASS, className)} {...props}>
       <div className={TITLE_COLUMN_CLASS}>
-        <h1 className="text-balance text-xl font-semibold tracking-tight">{title}</h1>
+        {/* On a phone the title is one compact line and the description is
+            gone: the tab bar and the page already say where this is, and the
+            sentence cost two lines of a 393px-wide screen on every tab. A
+            ratchet in `page-header.spec.tsx` holds it. */}
+        <h1 className="text-balance text-xl font-semibold tracking-tight phone:text-base">{title}</h1>
         {subtitle && (
-          <p className="mt-1 text-pretty text-sm text-muted-foreground">{subtitle}</p>
+          <p className="mt-1 text-pretty text-sm text-muted-foreground phone:hidden">{subtitle}</p>
         )}
       </div>
       {action ? <div className="min-w-0">{action}</div> : null}

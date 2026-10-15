@@ -5,8 +5,8 @@
  *
  * WHAT IT IS. A row of four or five tabs, icon over label, pinned to the bottom
  * of the shell below `md`. Which tabs, and why those, is `phone-tabs.ts`. "Mehr"
- * opens the same drawer the rail becomes on a phone, so nothing the rail
- * offers is lost, only moved one tap further.
+ * opens a bottom sheet with the destinations the bar does not carry
+ * (`phone-more-sheet.tsx`), so nothing the rail offers is lost.
  *
  * WHY IN FLOW AND NOT FIXED. The bar is the last child of the shell column,
  * after `<main>`, not a `position: fixed` layer over it. `<main>` is the scroll
@@ -39,10 +39,10 @@ import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { InboxBadge } from '@/features/collaboration/components'
 import { useInboxBadge } from '@/features/collaboration/hooks/use-inbox'
-import { useLayoutStore } from '@/features/layout/store'
 import { useIsMobile } from '@/hooks/use-is-mobile'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { useShellOverlays } from './shell-overlays'
 import { orgPhoneTabs, projectPhoneTabs, type PhoneTab, type PhoneTabLabel } from './phone-tabs'
 
 export interface PhoneTabBarProps {
@@ -73,8 +73,8 @@ export function PhoneTabBar({
   // or the org header already holds one, and the bar is `display: none`.
   const isMobile = useIsMobile()
   const { pending } = useInboxBadge(canAccessInbox && isMobile)
-  const drawerOpen = useLayoutStore((s) => s.isMobileNavOpen)
-  const setDrawerOpen = useLayoutStore((s) => s.setMobileNavOpen)
+  const moreOpen = useShellOverlays((s) => s.moreSheetOpen)
+  const setMoreOpen = useShellOverlays((s) => s.setMoreSheetOpen)
   // One shared-layout id per mounted bar, never a module constant: the scopes
   // preview mounts two bars at once, and a constant would fly the chip
   // between them.
@@ -111,8 +111,8 @@ export function PhoneTabBar({
               label={label(tab.label)}
               pillId={pillId}
               badgeCount={tab.key === 'inbox' ? pending : 0}
-              expanded={tab.key === 'more' ? drawerOpen : undefined}
-              onOpenMore={() => setDrawerOpen(true)}
+              expanded={tab.key === 'more' ? moreOpen : undefined}
+              onOpenMore={() => setMoreOpen(true)}
             />
           </li>
         ))}

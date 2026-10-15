@@ -47,6 +47,7 @@ import { cn } from '@/lib/utils'
 import { AppSidebar } from './app-sidebar'
 import { OrgHeader } from './org-header'
 import { projectIdFromPathname } from './org-sections'
+import { PhoneMoreSheet } from './phone-more-sheet'
 import { PhoneTabBar } from './phone-tab-bar'
 import { phoneTabBarHiddenOnRoute } from './phone-tabs'
 import { ProjectSwitcherSheet } from './project-switcher-sheet'
@@ -166,6 +167,18 @@ export function AppShellChrome({
           projectId={projectId}
           canAccessArchiv={chrome.canAccessArchiv}
           canAccessInbox={chrome.canAccessInbox}
+        />
+      )}
+      {inProject && tabBarShown && (
+        <PhoneMoreSheet
+          projectId={projectId}
+          authRequired={chrome.authRequired}
+          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessInbox={chrome.canAccessInbox}
+          showSkills={chrome.showSkills}
+          canViewOrganization={chrome.canViewOrganization}
+          canManageOrganization={chrome.canManageOrganization}
+          canManagePlatform={chrome.canManagePlatform}
         />
       )}
       {inProject && <ProjectSwitcherSheet projects={chrome.projects} activeProjectId={projectId} />}

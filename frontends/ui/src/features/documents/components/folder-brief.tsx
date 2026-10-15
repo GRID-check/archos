@@ -13,6 +13,7 @@ import { formatDayRange } from '@/lib/format'
 import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { cn } from '@/lib/utils'
 import type { BulkReingestProgress } from '../hooks/use-bulk-reingest'
+import { usePhoneLayout } from '../hooks/use-phone-layout'
 import { FolderReadState } from './folder-read-state'
 import type { MissingDocument } from '@/lib/document-roles/prompt-loader'
 import {
@@ -130,7 +131,12 @@ export function FolderBrief({
 }: FolderBriefProps): JSX.Element | null {
   const t = useTranslations('files')
   const { tally } = brief
+  const phone = usePhoneLayout()
   if (tally.total === 0) return null
+  // Nothing to act on, and a phone has no room for a line that only reassures:
+  // when every document is read the disclosure is gone. One unread, failed or
+  // held document brings it back, folded to its one line.
+  if (phone && everythingRead(tally)) return null
 
   const scope = folderName
     ? t('brief.scopeFolder', { name: folderName })
@@ -225,6 +231,11 @@ export function FolderBrief({
 }
 
 type Translate = ReturnType<typeof useTranslations>
+
+/** Every document Piloti is meant to read has been read: nothing reading, failed or held. */
+export function everythingRead(tally: KnowledgeTally): boolean {
+  return tally.reading + tally.failed + tally.held === 0 && tally.readable === tally.total - tally.unindexed
+}
 
 function briefHeadline(tally: KnowledgeTally, t: Translate): string {
   const share = readShare(tally)
