@@ -47,3 +47,13 @@ describe('CodeBlock — clipboard copy', () => {
     expect(screen.queryByRole('button', { name: /copied/i })).not.toBeInTheDocument()
   })
 })
+
+describe('CodeBlock — finger-sized controls', () => {
+  it('grows the copy button to 44px under a coarse pointer, in a header that does not add padding on top of it', () => {
+    render(<CodeBlock value="const a = 1" language="ts" />)
+
+    const copy = screen.getByRole('button', { name: /copy code/i })
+    expect(copy).toHaveClass('pointer-coarse:min-h-11')
+    expect(copy.parentElement).toHaveClass('pointer-coarse:py-0')
+  })
+})
