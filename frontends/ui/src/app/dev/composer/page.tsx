@@ -31,6 +31,7 @@ import { AppConfigProvider, type AppConfig } from '@/shared/context'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
 import { InputArea } from '@/features/layout/components'
 import { useChatStore } from '@/features/chat'
+import { useLayoutStore } from '@/features/layout/store'
 import { publishThreadRole } from '@/shared/collaboration/thread-sharing'
 
 const config: AppConfig = {
@@ -99,6 +100,10 @@ export default function ComposerPreviewPage() {
       hasHydrated: true,
     })
     publishThreadRole(CONVERSATION_ID, 'viewer')
+    // Uploads are offered only where the knowledge layer answers, which this
+    // backend-free page cannot ask; without it the paperclip is disabled and
+    // the attach menu could never be captured.
+    useLayoutStore.setState({ knowledgeLayerAvailable: true })
     setReady(true)
   }, [hasHydrated])
 
