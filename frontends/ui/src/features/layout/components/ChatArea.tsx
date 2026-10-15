@@ -1544,7 +1544,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                   // of that cross-fade); otherwise it is simply there.
                   initial={listArrivesFromSkeleton ? { opacity: 0 } : false}
                   animate={{ opacity: 1, transition: rowEnter }}
-                  className="mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-20 sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-14"
+                  className="mx-auto flex w-full max-w-5xl flex-col gap-4 pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]"
                   style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
                 >
                   {/* The observed list holds the messages and nothing else. The
@@ -1694,7 +1694,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                             id={`message-${message.id}`}
                             data-chat-anchor={isAnchorTarget ? 'true' : undefined}
                             className={cn(
-                              'flex scroll-mt-20 flex-col gap-4 sm:scroll-mt-14',
+                              'flex scroll-mt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] flex-col gap-4 sm:scroll-mt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]',
                               // The arrival mark: says "this is the one" for a beat, then
                               // fades. A ring rather than a background, so it reads on the
                               // user bubble and the answer card alike. The transition is
@@ -2033,11 +2033,13 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
         {/* Floating "scroll to latest" button — appears when the user has scrolled
           up and newer content is below. Pinned to the wrapper (not the scroll
           content) so it stays put while the thread scrolls behind it. Above the
-          status dock while it speaks. */}
+          status dock while it speaks. On a phone it sits at the trailing edge,
+          where a right thumb rests above the composer, 44px; centred it landed on
+          the middle of the last line being read. */}
         <AnimatePresence>
           {showScrollButton && (
             <motion.div
-              className="pointer-events-none absolute inset-x-0 z-10 flex justify-center"
+              className="pointer-events-none absolute inset-x-0 z-10 flex justify-center max-sm:justify-end max-sm:pl-[max(1rem,env(safe-area-inset-left))] max-sm:pr-[max(1rem,env(safe-area-inset-right))]"
               style={{
                 bottom: `calc(var(--composer-h, 11rem) + ${connectionNote || (shared && typists.length > 0) ? '2.25rem' : '1rem'})`,
               }}
@@ -2050,7 +2052,7 @@ export const ChatArea: FC<ChatAreaProps> = memo(function ChatArea({
                 type="button"
                 onClick={handleScrollToLatest}
                 aria-label={t('chatArea.scrollToLatest')}
-                className="bg-card text-muted-foreground hover:text-foreground duration-snap pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md transition-colors ease-out motion-reduce:transition-none"
+                className="bg-card text-muted-foreground hover:text-foreground duration-snap pointer-events-auto flex size-9 items-center justify-center rounded-lg border shadow-md pointer-coarse:size-11 transition-colors ease-out motion-reduce:transition-none"
               >
                 <ArrowDown className="size-4" aria-hidden="true" />
               </button>
@@ -2427,7 +2429,7 @@ const MessageListSkeleton: FC = () => {
   const t = useTranslations('research')
   return (
     <div
-      className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-20 sm:px-6 sm:pt-14"
+      className="mx-auto flex w-full max-w-5xl flex-col gap-4 px-4 pt-[max(5rem,calc(env(safe-area-inset-top)+4rem))] sm:px-6 sm:pt-[max(3.5rem,calc(env(safe-area-inset-top)+3rem))]"
       style={{ paddingBottom: 'calc(var(--composer-h, 11rem) + 1.5rem)' }}
       role="status"
       aria-label={t('chatArea.loading')}
