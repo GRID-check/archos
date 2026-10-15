@@ -284,6 +284,17 @@ describe('on a phone', () => {
   })
 })
 
+describe('the filter row on a phone', () => {
+  test('lays its four segments out as a grid, so none sits off the card behind a hidden scroll', () => {
+    list()
+    const group = screen.getByTestId('task-filters')
+    expect(group.className).toMatch(/\bgrid\b/)
+    expect(group.className).toMatch(/\bgrid-cols-2\b/)
+    // From `sm` it is the one scrolling cluster again.
+    expect(group.className).toMatch(/\bsm:flex\b/)
+  })
+})
+
 describe('when a card says it was made', () => {
   const now = Date.parse('2026-10-15T12:00:00Z')
 

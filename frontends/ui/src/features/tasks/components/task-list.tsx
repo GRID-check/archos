@@ -120,7 +120,10 @@ export function TaskList({
         segmented
         size="sm"
         aria-label={t('filters.label')}
-        className="mb-4"
+        // Four German labels with counts do not fit one row on a phone, and a
+        // row that scrolls sideways hides "Fehlgeschlagen" with no cue. Below
+        // `sm` the segments sit in a 2x2 grid so all four are in view.
+        className="mb-4 grid w-full grid-cols-2 gap-0.5 sm:flex sm:w-fit sm:gap-0"
         data-testid="task-filters"
       >
         {TASK_FILTERS.map((option) => (
@@ -128,7 +131,7 @@ export function TaskList({
             key={option}
             value={option}
             data-testid={`task-filter-${option}`}
-            // The cluster scrolls sideways on a phone; a segment that may
+            // From `sm` the cluster scrolls sideways; a segment that may
             // shrink instead runs into its neighbour ("Ungeprüft" over
             // "Fehlgeschlagen"), so each one keeps its own width.
             className="shrink-0"
