@@ -201,16 +201,19 @@ export async function getOrganizationDisplayName(
   organizationId: string | null | undefined
 ): Promise<string | null> {
   if (!organizationId) return null
-  return getCached(orgNameCacheKey(organizationId), ORG_NAME_CACHE_TTL_MS, async () => {
-    try {
+  // Caught OUTSIDE `getCached`, as `lib/sharing/directory.ts` does: caught inside,
+  // one WorkOS timeout was cached as "no name" for five minutes and every
+  // platform surface labelled that organization by its id.
+  try {
+    return await getCached(orgNameCacheKey(organizationId), ORG_NAME_CACHE_TTL_MS, async () => {
       const { displayName } = await getOrgSettings(organizationId)
       if (displayName) return displayName
       const org = await getWorkOS().organizations.getOrganization(organizationId)
       return org.name || null
-    } catch {
-      return null
-    }
-  })
+    })
+  } catch {
+    return null
+  }
 }
 
 export interface OrgSettingsPatch {
