@@ -109,7 +109,9 @@ describe('a hover reveal always has a second way in', () => {
    *  - `pointer-coarse:opacity-100` — present where a finger drives the pointer,
    *    which is the escape `project-memory-panel` established; or
    *  - `md:opacity-0` — the mobile-first inversion, where the control is simply
-   *    visible below the breakpoint and only hides itself on a desktop.
+   *    visible below the breakpoint and only hides itself on a desktop. Only
+   *    half an escape: the rule below holds it to `pointer-coarse:opacity-100`
+   *    as well, for the touch tablet past `md`.
    *
    * `focus-visible:opacity-100` is NOT one of them: it answers for the keyboard,
    * and a touch device has neither hover nor a tab key.
@@ -128,6 +130,85 @@ describe('a hover reveal always has a second way in', () => {
       }
     }
     expect(offenders).toEqual([])
+  })
+
+  /**
+   * `md:opacity-0` is the mobile-first inversion, and on its own it is only half
+   * of one. It shows the control below `md` and hides it above, which assumes
+   * that everything past `md` has a hover to reveal it with. A touch TABLET is
+   * past `md` and has none (Tailwind's `group-hover` is itself behind
+   * `@media (hover: hover)`), so on an iPad the control was mounted, focusable
+   * and invisible: the file card's „…" menu, the folder row's actions, the
+   * sidebar's item actions. A phone on its side was the same until `md` learned
+   * to exclude it (`globals.css`).
+   */
+  it('never hides a control at rest on a screen that has no hover (a touch tablet past md)', () => {
+    const offenders: string[] = []
+    for (const file of SOURCE_FILES) {
+      for (const region of classRegions(readCode(file))) {
+        if (!/(?:^|[\s'"])md:opacity-0(?:[\s'"]|$)/.test(region)) continue
+        if (region.includes('pointer-coarse:opacity-100')) continue
+        offenders.push(`${relative(file)}: ${region.slice(0, 100).replace(/\s+/g, ' ')}`)
+      }
+    }
+    expect(offenders).toEqual([])
+  })
+})
+
+describe('no height is measured against the large viewport', () => {
+  /**
+   * `vh` on iOS Safari is the LARGE viewport: the height with the toolbars
+   * collapsed. While they show, `85vh` is taller than 85% of what is visible,
+   * so a dialog's footer or a list's last row sits under Safari's toolbar, and
+   * on a phone on its side (393px tall, ~330px visible) that is most of the
+   * screen. `dvh` follows the toolbars; `svh` is the stable small viewport, for
+   * a cap that must not move while the reader scrolls. `h-screen` is `100vh`.
+   *
+   * The primitives and the shell are converted. The files below belong to other
+   * areas and are listed with their owner; each leaves the list when it is fixed.
+   */
+  const VH = /(?<![\w-])\d+(?:\.\d+)?vh\b|\b(?:min-h|max-h|h)-screen\b/g
+  const VH_PENDING = new Map<string, string>([
+    ['components/shell/shortcuts-cheatsheet.tsx', 'shell: the cheatsheet body, max-h-[min(70vh,38rem)]'],
+    ['app/app/(shell)/platform/lessons/platform-lessons.tsx', 'platform admin: the lesson dialog, max-h-[80vh]'],
+    ['features/layout/components/source-basis/SourceBasisPicker.tsx', 'composer: the source picker, max-h-[min(70vh,460px)]'],
+    ['features/collaboration/components/ShareDialog.tsx', 'sharing: the scroll body, max-h-[min(72vh,42rem)]'],
+    ['features/onboarding/components/organization-setup.tsx', 'onboarding: the top offset, pt-[min(14vh,8rem)]'],
+    ['features/grid-cards/components/DocumentDraftPreviewDialog.tsx', 'cards: the draft preview, max-h-[85vh]'],
+    ['features/product-feedback/components/feedback-dialog.tsx', 'feedback: the screenshot, max-h-[40vh]'],
+    ['features/documents/components/review/piloti-answer-card.tsx', 'review: the answer body, max-h-[min(24rem,55vh)]'],
+    ['features/documents/components/review/thread-card.tsx', 'review: the thread body, max-h-[min(22rem,50vh)]'],
+    ['features/documents/components/file-preview-host.tsx', 'file viewing: the preview card, h-[85vh] and its measuring twin h-[80vh]'],
+  ])
+
+  // Previews (`app/dev`) are desk tooling, never on a phone.
+  const PRODUCT_FILES = SOURCE_FILES.filter(
+    (f) => !/\.(?:spec|test)\.tsx?$/.test(f) && !relative(f).startsWith('app/dev/')
+  )
+
+  const vhOffenders = (): Map<string, string[]> => {
+    const found = new Map<string, string[]>()
+    for (const file of PRODUCT_FILES) {
+      const hits = readCode(file).match(VH)
+      if (hits) found.set(relative(file), hits)
+    }
+    return found
+  }
+
+  it('sizes nothing in vh outside the listed files', () => {
+    const offenders = [...vhOffenders()].filter(([file]) => !VH_PENDING.has(file))
+    expect(offenders).toEqual([])
+  })
+
+  it('keeps the pending list honest: every listed file still has a vh', () => {
+    const found = vhOffenders()
+    expect([...VH_PENDING.keys()].filter((file) => !found.has(file))).toEqual([])
+  })
+
+  it('holds the stylesheet to the same rule', () => {
+    for (const sheet of ['app/globals.css', 'styles/tokens.css']) {
+      expect(readFileSync(join(SRC, ...sheet.split('/')), 'utf8').match(VH), sheet).toBeNull()
+    }
   })
 })
 
@@ -279,5 +360,36 @@ describe('the soft keyboard is told what the action key does', () => {
     const source = readCode(join(SRC, 'components', 'ui', 'search-field.tsx'))
     expect(source).toMatch(/autoCapitalize="off"/)
     expect(source).toMatch(/autoCorrect="off"/)
+  })
+})
+
+describe('every floating surface fits the screen it opens on', () => {
+  /**
+   * Radix measures the room between a menu's anchor and the screen edge and
+   * publishes it as `--radix-<primitive>-content-available-{width,height}`. A
+   * surface that ignores them is as big as its content: the Verschieben submenu
+   * (`overflow-hidden`, no height) listed every folder of the shelf off the
+   * bottom of the screen, unreachable, and a caller's desktop `w-96` popover ran
+   * off a 393px phone. The cap is the primitive's, so no caller has to know.
+   */
+  it.each([
+    ['dropdown-menu.tsx', 'dropdown-menu', 2],
+    ['context-menu.tsx', 'context-menu', 2],
+    ['select.tsx', 'select', 1],
+  ])('%s caps every menu, submenus included, to the room it has', (file, primitive, surfaces) => {
+    const source = readCode(join(SRC, 'components', 'ui', file))
+    for (const axis of ['height', 'width']) {
+      const cap = `max-${axis === 'height' ? 'h' : 'w'}-(--radix-${primitive}-content-available-${axis})`
+      expect(source.split(cap).length - 1, `${file}: ${cap}`).toBe(surfaces)
+    }
+  })
+
+  it.each([
+    ['popover.tsx', 'popover'],
+    ['tooltip.tsx', 'tooltip'],
+  ])('%s is never wider than the room it has', (file, primitive) => {
+    expect(readCode(join(SRC, 'components', 'ui', file))).toContain(
+      `max-w-(--radix-${primitive}-content-available-width)`
+    )
   })
 })

@@ -192,8 +192,19 @@ least the line box they sit in.
 
 **A hover reveal needs a second way in.** `opacity-0 group-hover:opacity-100`
 is an affordance a touch device cannot generate, so the control is present,
-focusable and permanently invisible. Add `pointer-coarse:opacity-100`, or invert
-to `md:opacity-0` and let it simply be visible below the breakpoint.
+focusable and permanently invisible. Add `pointer-coarse:opacity-100`. The
+mobile-first inversion `md:opacity-0` is only half an escape: a touch tablet is
+past `md` and has no hover either, so it carries `pointer-coarse:opacity-100`
+too.
+
+**A tooltip is a label for a pointer.** It never opens under a finger (a tap on
+a control is a press, not a question), so it may only say what a mouse user
+also gets another way: an icon-only control's name, a shortcut, the full text of
+a truncated name. Anything the reader needs on a phone is visible text. Where
+the information is the whole point of the trigger (an info glyph beside a term,
+a chart column whose value is the answer, why a control is unavailable), use
+`Toggletip` (`components/ui/tooltip.tsx`): the same bubble, opened and closed by
+a tap. Never on a control that does something; there the tap stays the action.
 
 **Nothing takes the page scroll.** A `touch-action` that refuses the vertical pan
 strands every finger that lands on it, and the browser intersects that value
@@ -208,11 +219,53 @@ not one, since a touch tablet past `md` drops to 14px and zooms as a phone would
 Enter does, and a field that matches strings turns off autocapitalize and
 autocorrect so the phone cannot edit a query on its way into a matcher.
 
-Held statically by `frontends/ui/src/components/ui/touch-target.spec.ts` and
-`frontends/ui/src/components/ui/mobile-affordances.spec.ts`. The browser
+**Heights are `dvh` or `svh`, never `vh`.** On iOS Safari `vh` is the large
+viewport, measured with the toolbars collapsed, so `85vh` is taller than 85% of
+what shows and a footer lands under the toolbar. `dvh` follows the toolbars;
+`svh` is the stable small viewport, for a cap that must not move mid-scroll.
+
+**Full-bleed surfaces pad the edges they touch.** `viewport-fit=cover` hands
+the insets to each surface: a sheet's top runs under the status bar, its bottom
+under the home indicator, and on a phone on its side the Dynamic Island sits on
+one long edge, about 59px deep. Pad with `max(<the padding>,
+env(safe-area-inset-*))` on the sides the surface touches, so the plain padding
+holds wherever there is no inset. The paper still bleeds to the glass; only the
+content steps in. A caller that replaces a primitive's padding (`p-0`) owns its
+insets too.
+
+Held statically by `frontends/ui/src/components/ui/touch-target.spec.ts`,
+`frontends/ui/src/components/ui/mobile-affordances.spec.ts` and
+`frontends/ui/src/components/ui/breakpoints.spec.ts`. The browser
 measurement that once backed these (`task fe:touch-audit`) went with the
 screenshot harness; capture a 390x844 viewport and look, until it is rewritten
 (`docs/contributing/testing-and-verification.md`).
+
+## Breakpoints: four axes, four questions
+
+A layout decision picks the axis whose question it is asking. Width is a proxy
+for most of these, and a proxy is wrong somewhere.
+
+| Axis | Spelled | Answers | Decides |
+|---|---|---|---|
+| Input | `pointer-coarse:` / `pointer-fine:` | What is driving the pointer? | Touch size (44px floor), 16px fields, whether a hover can reveal anything |
+| Phone | `phone:` (below `sm`, or a phone on its side) | Is this a phone-sized screen? | Overlay presentation: the Dialog's bottom sheet, its stacked footer |
+| Layout | `md:` / `max-md:`, and `useIsMobile()` in JavaScript | Is there room for the desktop chrome? | Phone shell or desktop shell: the rail, split panes, page-sheet margins |
+| Container | `@sm:`, `@md:` … under `@container` | How wide is THIS component's box? | A component's own arrangement, wherever it is mounted |
+
+`sm:` alone still answers "is there horizontal room for a row?" (a footer's
+buttons side by side, a two-column form), and a phone on its side, at 852px
+wide, has that room.
+
+**A phone on its side is still a phone.** An iPhone in landscape is 852 x 393.
+Tailwind's own `md` is "at least 768px wide", so it got the desktop shell in
+393px of height and every `md:opacity-0` reveal hid its control from a finger.
+`globals.css` redefines `md` and `max-md` to exclude a phone on its side (a
+coarse pointer, at most 500px tall, narrower than `lg`), and `useIsMobile()`
+reads the same query from `hooks/use-is-mobile.ts`, so a class and a hook can
+never disagree about one screen. `lg:` and up are Tailwind's own: no phone
+reaches them. A breakpoint question in JavaScript uses the exported queries,
+never a hand-written `(max-width: 767px)`; `breakpoints.spec.ts` holds the CSS
+and the TypeScript to one string and fails on a raw `md` width.
 
 ## Component layers (atomic design)
 
@@ -234,7 +287,7 @@ Three rules carry the weight:
 **An organism reaches for an atom, never for Tailwind.** If a control needs a
 shape the kit does not have, **the kit gains an atom** rather than the organism
 gaining a `<div className="…">`. `features/bim/components/viewer/index.ts` is a
-barrel that exists purely to enforce this: nine atoms, exported from one place,
+barrel that exists purely to enforce this: eleven atoms, exported from one place,
 and everything the model stage draws is built from them. The viewport before it
 had four floating panels in three different materials, all written inline, none
 testable.
@@ -280,6 +333,28 @@ question wants the page behind it to stop mattering. A `Sheet` full of fields
 with a Save footer is a form pretending to be a detail view, and it gets the
 one behaviour a form must not have: Escape and a scrim click discard the edit
 with nothing asked.
+
+**On a phone a `Dialog` is a bottom sheet.** Below `sm`, and on a phone on its
+side (`phone:`), `DialogContent` anchors to the bottom edge, rounds its top,
+caps itself in `dvh` under the status bar and scrolls inside. Its
+`DialogFooter` is pinned to the bottom edge with its paper running under the
+home indicator, and below `sm` its buttons stack full width in DOM order, so the
+primary action (last, as it is rightmost on a desktop) is the one nearest the
+thumb. A grabber says it pulls down, and it does: past 96px or on a flick, the
+same two numbers the page sheet commits on (`sheet-pull.ts`). It arrives on
+`--motion-deliberate` / `--ease-entrance` and leaves one step shorter; no
+spring, because its travel is its own height. From `sm` up on anything else it
+is the centred card, unchanged. `fullScreenOnMobile` (or
+`mobilePresentation="fullscreen"`) takes the whole screen instead, below the
+status bar, for an editor with several sections. A dialog that lays itself out
+(sets its own `top`, `bottom`, `inset`, `translate-y` or height) keeps its own
+geometry on a phone, and one that replaces the padding owns its safe area: the
+primitive never paints over a caller's explicit class on the screens nobody
+reviews on. `mobilePresentation="none"` says so outright.
+
+**Every overlay has a visible close on a phone.** The pull is a shortcut nobody
+is told about; the X is the way out everyone recognises. The page sheet shows
+its X on every viewport, and its grabber pill is a real 44px tap target too.
 
 **One viewer per kind of thing viewed.** Not "one viewer per surface that
 happens to show it". The same stored file opened from Files and from the Archiv
@@ -700,4 +775,5 @@ More than one ambient loop on screen. `ease-linear`. `transition-all`.
 - No nested cards (card-inside-card). Flatten with borders/dividers/spacing.
 - No status stripe down a card's edge, and no status tint across a whole card. Status is a 10px rounded swatch on the title line — see **Component patterns**.
 - No purple/generic-AI aesthetic. **Provenance signals are the only chroma** — no blue active states (actions and focus are ink app-wide), and a source color is never used outside its meaning or without its icon + label. No general accent token: one existed briefly and was withdrawn (see §"Accent pop" above). A control that wants to stand out wants contrast, not chroma.
-- No touch size on a `md:` breakpoint, no reveal that only hover can open, no `touch-action` that takes the page scroll from a surface that does not own the gesture. See [Touch](#touch).
+- No touch size on a `md:` breakpoint, no reveal that only hover can open, no `touch-action` that takes the page scroll from a surface that does not own the gesture, no `vh`, no meaning carried only by a tooltip. See [Touch](#touch).
+- No hand-written breakpoint width in JavaScript; ask `useIsMobile()` or pass a query from `hooks/use-is-mobile.ts`. See [Breakpoints](#breakpoints-four-axes-four-questions).
