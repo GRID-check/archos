@@ -660,12 +660,13 @@ export const DimChecksList: FC<DimChecksListProps> = ({ checks, className }) => 
           <li key={`${check.label}-${index}`} className="card-body flex flex-col gap-0.5">
             {/* The label WRAPS and is never clipped: it names the dimension, and
                 the row that decides a verdict is the row whose name a clip hid
-                („Lichteinfall 45° — Gegenüe…“). It takes a 12rem basis and the
-                free width, so on a wide card the figures sit beside it, and
-                where the card is narrow they drop to a line of their own under
-                the label, right-aligned like a column of numbers. Wrapped by
-                the box, not by a breakpoint, because the same legend sits in
-                the answer column, a side panel and a phone. */}
+                („Lichteinfall 45° — Gegenüberliegendes Gebäude“). It takes an 8rem
+                basis and the free width, so figures sit beside a short label
+                like a table row, a long label wraps over several lines, and
+                where the box is too narrow for both the figures drop to a line
+                of their own, right-aligned. Wrapped by the box, not by a
+                breakpoint, because the same legend sits in the answer column,
+                a side panel and a phone. */}
             <div className="flex items-start gap-2">
               <Icon
                 className="mt-[3px] size-3.5 shrink-0"
@@ -673,7 +674,7 @@ export const DimChecksList: FC<DimChecksListProps> = ({ checks, className }) => 
                 aria-label={statusLabel(check.status, t)}
               />
               <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
-                <span className="min-w-0 flex-1 basis-[12rem] text-muted-foreground [overflow-wrap:anywhere]">
+                <span className="min-w-0 flex-1 basis-[8rem] text-muted-foreground [overflow-wrap:anywhere]">
                   {check.label}
                 </span>
                 <span className="ml-auto flex flex-wrap items-baseline justify-end gap-x-2">
