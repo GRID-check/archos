@@ -21,10 +21,22 @@ export const turnContextResponseSchema = z.object({
    * look there unasked. Null when the office has none.
    */
   referenceProjects: z.string().nullable(),
+  /**
+   * The person whose turn it is, as WorkOS knows them (`requester.ts`), so the
+   * agent can address them by name. Null when WorkOS could not be read.
+   */
+  requester: z.object({
+    firstName: z.string().nullable(),
+    lastName: z.string().nullable(),
+    email: z.string().nullable(),
+  }).strict().nullable(),
+  /** The office's display name (`getOrganizationDisplayName`). Null when unknown. */
+  officeName: z.string().nullable(),
 }).strict()
 
 export const turnContextApiResponseSchema = z.object({ data: turnContextResponseSchema }).strict()
 
 export type TurnContextRequest = z.infer<typeof turnContextRequestSchema>
 export type TurnContextResponse = z.infer<typeof turnContextResponseSchema>
+export type TurnContextRequester = NonNullable<TurnContextResponse['requester']>
 export type TurnContextApiResponse = z.infer<typeof turnContextApiResponseSchema>
