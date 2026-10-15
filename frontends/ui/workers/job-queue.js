@@ -192,7 +192,7 @@ async function claimStatement(tx, worker, options) {
       LEFT JOIN running r ON r.lane = w.lane
       LEFT JOIN bff_job_lane_turns t ON t.lane = w.lane
       WHERE (${cap}::int = 0 OR COALESCE(r.n, 0) < ${cap}::int)
-      ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane
+      ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane COLLATE "C"
       LIMIT ${LANES_PER_CLAIM}
     ),
     candidate AS (
@@ -204,7 +204,7 @@ async function claimStatement(tx, worker, options) {
         FOR UPDATE SKIP LOCKED
         LIMIT 1
       ) pick
-      ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane
+      ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane COLLATE "C"
       LIMIT 1
     ),
     claimed AS (

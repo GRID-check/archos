@@ -25,6 +25,10 @@ The optional per-lane cap is hard: two claims racing past it both commit, then
 each checks again under a per-lane advisory lock, and a claim that finds the
 lane already holding its cap puts its job back (``_release_over_cap``).
 
+A claim still in flight (selected, not yet committed) is not counted as running, so a second
+claimer racing it can take the same lane's next job while a lane with nothing running waits. Only
+the per-lane cap bounds that. Only Postgres shows it; SQLite claims one at a time.
+
 A claim that cannot finish is given back, not lost:
 
 * ``release_claims`` requeues a worker's jobs WITHOUT consuming an attempt, for
@@ -351,7 +355,7 @@ lanes AS (
     LEFT JOIN running r ON r.lane = w.lane
     LEFT JOIN {turns} t ON t.lane = w.lane
     WHERE (:cap = 0 OR COALESCE(r.n, 0) < :cap)
-    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane
+    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane COLLATE "C"
     LIMIT {_PG_LANES_PER_CLAIM}
 ),
 candidate AS (
@@ -363,7 +367,7 @@ candidate AS (
         FOR UPDATE SKIP LOCKED
         LIMIT 1
     ) pick
-    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane
+    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane COLLATE "C"
     LIMIT 1
 ),
 claimed AS (
