@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, test, vi } from 'vitest'
 import userEvent from '@testing-library/user-event'
-import { render, screen, waitFor, within } from '@/test-utils'
+import { fireEvent, render, screen, waitFor, within } from '@/test-utils'
 
 import type {
   AccessReason,
@@ -635,5 +635,57 @@ describe('ShareDialog — the row menu states the current role', () => {
     expect(await screen.findByRole('menuitemradio', { name: 'Can contribute' })).toBeChecked()
     expect(screen.getByRole('menuitemradio', { name: 'Can view' })).not.toBeChecked()
     expect(screen.getByRole('menuitemradio', { name: 'Owner' })).not.toBeChecked()
+  })
+})
+
+describe('ShareDialog — passing the link on', () => {
+  const withLink = (): void => {
+    render(
+      <ShareDialog
+        open
+        onOpenChange={vi.fn()}
+        resourceId="c1"
+        currentUserId={ME}
+        sharing={sharing()}
+        shareUrl="https://piloti.example/app/projects/p1/chat?session=c1"
+      />,
+    )
+  }
+
+  test('offers a copy button where the browser has no share sheet, and says it opens only for people with access', async () => {
+    const writeText = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { clipboard: { writeText } })
+    withLink()
+
+    const button = await screen.findByTestId('share-link-button')
+    expect(button).toHaveTextContent('Copy link')
+    expect(screen.getByTestId('share-link')).toHaveTextContent(/only for people who have access/i)
+
+    // fireEvent: `userEvent.setup()` installs its own clipboard over the stub.
+    fireEvent.click(button)
+    await waitFor(() => expect(writeText).toHaveBeenCalled())
+    expect(writeText).toHaveBeenCalledWith('https://piloti.example/app/projects/p1/chat?session=c1')
+    await waitFor(() => expect(button).toHaveTextContent('Link copied'))
+    vi.unstubAllGlobals()
+  })
+
+  test('uses the phone’s own share sheet when there is one', async () => {
+    const share = vi.fn(async () => {})
+    vi.stubGlobal('navigator', { share, clipboard: { writeText: vi.fn() } })
+    withLink()
+
+    const button = await screen.findByTestId('share-link-button')
+    await waitFor(() => expect(button).toHaveTextContent('Share link'))
+    fireEvent.click(button)
+    await waitFor(() => expect(share).toHaveBeenCalled())
+    expect(share).toHaveBeenCalledWith(
+      expect.objectContaining({ url: 'https://piloti.example/app/projects/p1/chat?session=c1' }),
+    )
+    vi.unstubAllGlobals()
+  })
+
+  test('shows no link section where the resource has no address', () => {
+    renderDialog()
+    expect(screen.queryByTestId('share-link')).not.toBeInTheDocument()
   })
 })

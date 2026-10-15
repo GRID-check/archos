@@ -18,6 +18,16 @@ export const collaboration: typeof en.collaboration = {
     title: 'Teilen',
     action: 'Teilen',
     close: 'Schließen',
+    /** Der Link zum Chat: er öffnet nur für Personen, die ohnehin Zugriff haben. */
+    link: {
+      heading: 'Link',
+      share: 'Link teilen',
+      copy: 'Link kopieren',
+      copied: 'Link kopiert',
+      failed: 'Der Link konnte nicht kopiert werden.',
+      hint: 'Der Link öffnet den Chat nur für Personen, die Zugriff haben. Wer noch keinen hat, wird oben eingeladen.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Wer diesen Chat sehen kann',
     loading: 'Einstellungen zum Teilen werden geladen…',
     audienceHeading: 'Wer mitliest',
@@ -225,6 +235,9 @@ export const collaboration: typeof en.collaboration = {
     },
     markAllRead: 'Alle als gelesen markieren',
     archive: 'Archivieren',
+    undo: 'Rückgängig',
+    /** Die kurze Form für ein Telefon, wo die lange die Zeile sprengt. */
+    markAllReadShort: 'Alle gelesen',
     archived: 'Archiviert',
     resolved: 'Beantwortet',
     inert: 'Nicht mehr verfügbar',
