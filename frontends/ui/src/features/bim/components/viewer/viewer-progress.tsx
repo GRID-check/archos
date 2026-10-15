@@ -20,6 +20,7 @@
  */
 
 import type { JSX } from 'react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export interface ViewerProgressProps {
@@ -27,10 +28,29 @@ export interface ViewerProgressProps {
   label: string
   /** 0..100 for a determinate bar; null while there is nothing honest to show. */
   percent: number | null
+  /**
+   * What the number is OF — "37 von 120 MB". On a weak connection the size is
+   * what lets someone decide to wait or to stop, which a bare percentage does
+   * not give them.
+   */
+  detail?: string
+  /**
+   * A way out of the wait. The veil is `pointer-events-none` so the first
+   * triangles can be orbited while they arrive, which also meant the only way
+   * to abandon a 150 MB download on a bad connection was to close the whole
+   * dialog. This is the one part of the veil that takes the pointer.
+   */
+  cancel?: { label: string; onClick: () => void }
   className?: string
 }
 
-export function ViewerProgress({ label, percent, className }: ViewerProgressProps): JSX.Element {
+export function ViewerProgress({
+  label,
+  percent,
+  detail,
+  cancel,
+  className,
+}: ViewerProgressProps): JSX.Element {
   const determinate = percent !== null && Number.isFinite(percent)
   const clamped = determinate ? Math.min(100, Math.max(0, percent)) : 0
 
@@ -72,7 +92,20 @@ export function ViewerProgress({ label, percent, className }: ViewerProgressProp
       */}
       <p className="h-4 text-xs tabular-nums text-muted-foreground">
         {determinate ? `${Math.round(clamped)}%` : null}
+        {determinate && detail ? ' · ' : null}
+        {detail}
       </p>
+      {cancel && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="pointer-events-auto"
+          onClick={cancel.onClick}
+        >
+          {cancel.label}
+        </Button>
+      )}
     </div>
   )
 }
