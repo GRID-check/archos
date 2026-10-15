@@ -23,8 +23,11 @@ export function MiddleTruncate({ text, tail = DEFAULT_TAIL_LENGTH, className }: 
   const split = splitForMiddleTruncation(text, tail)
   return (
     <span className={cn('inline-flex min-w-0 max-w-full whitespace-nowrap', className)} title={text}>
-      {split.head && <span className="min-w-0 truncate">{split.head}</span>}
-      <span className="shrink-0">{split.tail}</span>
+      {/* `whitespace-pre` on both halves: they are flex items, and a flex
+          item's leading or trailing space collapses, so a cut that fell next
+          to a space ("Plan EG" → "Plan" + " EG") ran the words together. */}
+      {split.head && <span className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">{split.head}</span>}
+      <span className="shrink-0 whitespace-pre">{split.tail}</span>
     </span>
   )
 }
