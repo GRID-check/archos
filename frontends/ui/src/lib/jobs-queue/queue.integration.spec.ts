@@ -76,8 +76,8 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
 
   async function clearOurs() {
     await withPlatformScope(sql, async (tx) => {
-      await tx`DELETE FROM bff_job_queue WHERE lane IN ${tx(OURS)}`
-      await tx`DELETE FROM bff_job_lane_turns WHERE lane IN ${tx(OURS)}`
+      await tx`DELETE FROM bff_job_queue WHERE lane = ANY(${OURS}::text[])`
+      await tx`DELETE FROM bff_job_lane_turns WHERE lane = ANY(${OURS}::text[])`
     })
   }
 
