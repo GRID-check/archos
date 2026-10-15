@@ -156,9 +156,10 @@ calls the same definitions but schedules them differently, so a local pass is
 strong evidence rather than a guarantee. `task verify:fast` skips two production
 builds, `fe:build` and `web:build`.
 
-Two gates sit outside `task verify` and are still required: `task db:test:rls`
-whenever you touch the tenant boundary, and `task pkg:test` whenever you touch
-`packages/`. CI runs both (the Frontend job and the packages job), so a PR cannot merge without them; they stay
+Three gates sit outside `task verify` and are still required: `task db:test:rls`
+whenever you touch the tenant boundary, `task be:test:postgres` whenever you touch
+a claim queue's SQL, and `task pkg:test` whenever you touch `packages/`. CI runs
+all three (the Frontend, Backend and packages jobs), so a PR cannot merge without them; they stay
 out of `verify` because each needs something a per-commit gate should not pay
 for — PostgreSQL server binaries, and four minutes of IfcOpenShell.
 

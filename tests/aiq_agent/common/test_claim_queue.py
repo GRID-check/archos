@@ -22,6 +22,12 @@ _POSTGRES = os.environ.get("AIQ_TEST_POSTGRES_URL")
 _TABLES = ("research_claims", "research_claim_turns", "other_claims", "other_claim_turns")
 
 
+def test_the_postgres_branch_ran_where_it_is_required():
+    """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
+    if os.environ.get("AIQ_TEST_POSTGRES_REQUIRED"):
+        assert _POSTGRES, "AIQ_TEST_POSTGRES_URL is unset while AIQ_TEST_POSTGRES_REQUIRED is set"
+
+
 @pytest.fixture(
     params=[
         "sqlite",

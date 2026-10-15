@@ -24,6 +24,12 @@ from aiq_api.jobs.runner import _lost_claim
 _POSTGRES = os.environ.get("AIQ_TEST_POSTGRES_URL")
 
 
+def test_the_postgres_branch_ran_where_it_is_required():
+    """CI's ``task be:test:postgres`` sets the guard: there a missing database fails instead of skipping green."""
+    if os.environ.get("AIQ_TEST_POSTGRES_REQUIRED"):
+        assert _POSTGRES, "AIQ_TEST_POSTGRES_URL is unset while AIQ_TEST_POSTGRES_REQUIRED is set"
+
+
 @pytest.fixture(
     params=[
         "sqlite",

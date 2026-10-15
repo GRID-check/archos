@@ -305,6 +305,15 @@ jobs:
         run: task be:test:api:ci
       - name: sources/ package suites
         run: task be:test:sources
+      # The suites above run each claim queue on SQLite only: their Postgres
+      # parameter skips without AIQ_TEST_POSTGRES_URL, and production runs the
+      # Postgres SQL. ubuntu-latest ships the server binaries; the RLS script
+      # builds the throwaway cluster, as in the frontend job.
+      - name: Claim queues on real Postgres
+        run: task be:test:postgres
+        env:
+          # Turns "the Postgres branch skipped" into a failure for THIS step only.
+          AIQ_TEST_POSTGRES_REQUIRED: "1"
       - name: Coverage comment (backend)
         if: github.event_name == 'pull_request'
         continue-on-error: true # never fail CI on a comment hiccup
