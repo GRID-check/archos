@@ -21,7 +21,8 @@ import { PLATFORM_PERMISSIONS } from '@/lib/authz/permissions'
 import { requirePlatformPermission } from '@/lib/authz/platform'
 import type { ProductFeedback } from '@/lib/db/schema'
 import { withPlatformAccess } from '@/lib/db/tenant-context'
-import { findOrganization } from '@/lib/organizations/repository'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
+import { getOrganizationDisplayNames } from '@/lib/organizations/display-names'
 import { maskChatText } from '@/lib/upload-screening/service'
 import { announceProductFeedback } from './announce'
 import {
@@ -87,8 +88,7 @@ export async function submitProductFeedback(
     allowContact: input.allowContact,
   })
 
-  const organization = await findOrganization(session.organizationId).catch(() => null)
-  await announceProductFeedback(report, organization?.displayName ?? null)
+  await announceProductFeedback(report, await getOrganizationDisplayName(session.organizationId))
 
   return {
     id: report.id,
@@ -126,6 +126,18 @@ function toReportView(row: ProductFeedbackRow): ProductFeedbackReportView {
   }
 }
 
+/**
+ * `rows` with every organization named. The repository's join names only the
+ * organizations with a local row, which exists once an organization saved a
+ * setting; the rest are resolved (WorkOS, cached) rather than shown as unknown.
+ */
+async function withOrganizationNames(rows: ProductFeedbackRow[]): Promise<ProductFeedbackRow[]> {
+  const names = await getOrganizationDisplayNames(
+    rows.filter((row) => !row.organizationName).map((row) => row.organizationId)
+  )
+  return rows.map((row) => ({ ...row, organizationName: row.organizationName ?? names.get(row.organizationId) ?? null }))
+}
+
 /** `<createdAt ISO>|<id>` — opaque to the client, validated here. */
 export function encodeCursor(row: Pick<ProductFeedback, 'createdAt' | 'id'>): string {
   return `${new Date(row.createdAt).toISOString()}|${row.id}`
@@ -158,7 +170,7 @@ export async function listProductFeedbackForPlatform(
     ])
     const last = rows.at(-1)
     return {
-      reports: rows.map(toReportView),
+      reports: (await withOrganizationNames(rows)).map(toReportView),
       counts,
       nextCursor: rows.length === PRODUCT_FEEDBACK_LIST_LIMIT && last ? encodeCursor(last) : null,
     }
@@ -173,7 +185,8 @@ export async function getProductFeedbackForPlatform(
   await requirePlatformPermission(session, PLATFORM_PERMISSIONS.settingsView)
   const row = await withPlatformAccess('product feedback: one report', () => getProductFeedback(id))
   if (!row) throw new NotFoundError('Unknown feedback report.')
-  return toReportView(row)
+  const [named] = await withOrganizationNames([row])
+  return toReportView(named)
 }
 
 /** Move a report through triage, attributed to the caller. */
@@ -190,6 +203,7 @@ export async function triageProductFeedback(
     if (!updated) throw new NotFoundError('Unknown feedback report.')
     const row = await getProductFeedback(id)
     if (!row) throw new NotFoundError('Unknown feedback report.')
-    return toReportView(row)
+    const [named] = await withOrganizationNames([row])
+    return toReportView(named)
   })
 }
