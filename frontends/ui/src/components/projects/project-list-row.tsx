@@ -80,12 +80,12 @@ export function ProjectListRow({ project, docCount = 0, activityAt }: ProjectLis
       {/* The one meta column that survives to the narrowest screen: with the
           brief truncated and the tile gone, "when was I last in this" is what is
           left to choose a row by. */}
-      <ProjectActivity
-        project={project}
-        activityAt={activityAt}
-        showLabel={false}
-        className="w-[88px] shrink-0 text-right sm:w-[104px]"
-      />
+      <span className="flex w-[104px] min-w-0 shrink-0 items-center gap-1.5">
+        {/* The icon says whose clock this is (a speech bubble for the viewer's own
+            last message, a clock for the project's); the words go to assistive
+            tech and the tooltip, where a 393px row has no room for them. */}
+        <ProjectActivity project={project} activityAt={activityAt} compact />
+      </span>
 
       <ProjectOverviewLink project={project} className="-mr-1.5 shrink-0" />
     </Item>
