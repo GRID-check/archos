@@ -80,6 +80,16 @@ function conversationFor(run: JobRun, byJobId: Record<string, string>): string |
   return (run.jobId && byJobId[run.jobId]) || null
 }
 
+/** Runs older than this show their date, not "vor 12 Tagen": a date is what a person cross-checks. */
+const ABSOLUTE_AFTER_MS = 7 * 24 * 60 * 60 * 1000
+
+/** Relative for the recent past, the exact date once it stops being "just now". */
+export function runTimeLabel(iso: string, locale: string, now: number = Date.now()): string {
+  const at = new Date(iso).getTime()
+  if (Number.isNaN(at) || now - at <= ABSOLUTE_AFTER_MS) return formatRelativeTime(iso, locale)
+  return formatAbsoluteTime(iso, locale)
+}
+
 export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Element {
   const t = useTranslations('jobs')
   const { locale } = useLocale()
@@ -204,32 +214,44 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
 
         return (
           <Item as="li" key={run.id} className="flex-wrap justify-between py-2.5">
-            <ItemContent className="flex min-w-0 items-center gap-3">
-              <Badge variant="secondary" className="gap-1">
+            {/* Two lines on a phone: what happened (badges, when, and the reason
+                a run was skipped), then where to go. The row used to let the
+                badges and the link share one non-wrapping line, and the link
+                painted over the status. */}
+            <ItemContent className="flex flex-wrap items-center gap-x-3 gap-y-1.5 max-sm:basis-full">
+              <Badge variant="secondary" className="shrink-0 gap-1">
                 <TriggerIcon className="size-3" aria-hidden />
                 {t(`history.trigger.${run.trigger}`)}
               </Badge>
               {jobStatus ? (
-                <Badge variant={JOB_STATUS_VARIANT[jobStatus] ?? 'secondary'}>
+                <Badge variant={JOB_STATUS_VARIANT[jobStatus] ?? 'secondary'} className="shrink-0">
                   {/* An unrecognized backend status is shown verbatim rather
                       than as a missing translation key. */}
                   {jobStatus in JOB_STATUS_VARIANT ? t(`history.jobStatus.${jobStatus}`) : jobStatus}
                 </Badge>
               ) : (
-                <Badge variant={STATUS_VARIANT[run.status]} title={run.detail ?? undefined}>
+                <Badge variant={STATUS_VARIANT[run.status]} className="shrink-0">
                   {t(`history.status.${run.status}`)}
                 </Badge>
               )}
-              <span
-                className="text-xs text-muted-foreground"
+              <time
+                dateTime={run.createdAt}
+                className="text-xs text-muted-foreground whitespace-nowrap"
                 title={formatAbsoluteTime(run.createdAt, locale)}
               >
-                {formatRelativeTime(run.createdAt, locale)}
-              </span>
+                {runTimeLabel(run.createdAt, locale)}
+              </time>
+              {/* The reason is the part a person acts on, and a `title` does not
+                  exist on a touch screen. */}
+              {run.detail && (
+                <p className="text-muted-foreground basis-full text-xs" data-testid="run-detail">
+                  {run.detail}
+                </p>
+              )}
             </ItemContent>
             {link && (
-              <ItemActions>
-                <Button asChild size="sm" variant="ghost" className="shrink-0">
+              <ItemActions className="max-sm:w-full max-sm:justify-end">
+                <Button asChild size="sm" variant="ghost" className="shrink-0 max-sm:-mr-2">
                   <Link href={link}>
                     {linkLabel}
                     <ArrowRight className="size-3.5" aria-hidden />
