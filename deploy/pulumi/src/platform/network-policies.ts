@@ -449,6 +449,25 @@ export function installNetworkPolicies(
       })
     : undefined;
 
+  // 19. Edge → Qdrant's REST port, for the dashboard route
+  //     (`platform/qdrant-dashboard.ts`), only while `qdrantDashboardEnabled`.
+  //     Like rule 10 it only makes the route reachable; the SecurityPolicy on
+  //     that route authorizes the request and Qdrant's own key the call. 6333
+  //     alone: the dashboard and the REST API it calls share that listener,
+  //     and nothing at the edge speaks gRPC, p2p or the metrics port.
+  const edgeQdrant = cfg.qdrant.dashboard.enabled
+    ? mk("allow-edge-to-qdrant-dashboard", {
+        ...qdrantPod,
+        policyTypes: ["Ingress"],
+        ingress: [
+          {
+            from: [nsLabel("envoy-gateway-system")],
+            ports: [{ protocol: "TCP", port: PORT.qdrantHttp }],
+          },
+        ],
+      })
+    : undefined;
+
   return [
     deny,
     intra,
@@ -470,5 +489,6 @@ export function installNetworkPolicies(
     appToQdrant,
     qdrantPeers,
     ...(collectorToQdrant ? [collectorToQdrant] : []),
+    ...(edgeQdrant ? [edgeQdrant] : []),
   ];
 }

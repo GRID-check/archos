@@ -311,6 +311,22 @@ describe("the program constructs in the split topology", () => {
     }
   });
 
+  it("puts nothing of Qdrant's dashboard at the edge on a stack that does not ask for it", () => {
+    // `qdrantDashboardEnabled` defaults off, and off must render exactly what a
+    // stack rendered before the knob existed: a listener is a certificate
+    // request, a route without the flag is a public window onto the store.
+    // `index-qdrant-dashboard.spec.ts` builds the on side.
+    const gateway = RESOURCES.find((r) => r.name === "grid-gateway");
+    const listeners = (gateway?.inputs.spec as unknown as { listeners: Array<{ name: string }> }).listeners;
+    expect(listeners.map((l) => l.name)).toEqual(["http", "https-app", "https-s3", "https-web"]);
+    expect(RESOURCES.filter((r) => /qdrant-dashboard/.test(r.name)).map((r) => r.name)).toEqual([]);
+    expect(named("kubernetes:gateway.networking.k8s.io/v1:HTTPRoute")).not.toContain(
+      "grid-qdrant-dashboard-route",
+    );
+    expect(named("kubernetes:gateway.envoyproxy.io/v1alpha1:SecurityPolicy")).toEqual([]);
+    expect(named("kubernetes:networking.k8s.io/v1:NetworkPolicy")).not.toContain("allow-edge-to-qdrant-dashboard");
+  });
+
   it("manages no PersistentVolumeClaim, so removing Chroma cannot delete its volume", () => {
     // The old `data-chroma-0` was the StatefulSet's volumeClaimTemplate, kept
     // on delete (`whenDeleted: Retain`), never a resource of this program. A

@@ -673,6 +673,22 @@ export const QDRANT = {
    */
   opsLabel: "qdrant-ops",
   /**
+   * The built-in web dashboard at the edge (`qdrantDashboardEnabled`, off by
+   * default; `platform/qdrant-dashboard.ts`). The SecurityPolicy attaches to
+   * the route by name, and cert-manager names the certificate after the
+   * listener's `certificateRefs`, so each of these is one decision.
+   */
+  dashboard: {
+    routeName: "grid-qdrant-dashboard",
+    listenerName: "https-qdrant",
+    tlsSecret: "grid-qdrant-tls", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+    policyName: "grid-qdrant-dashboard-auth",
+    /** Holds the platform Connect application's client secret, key `client-secret`. */
+    oidcSecret: "qdrant-dashboard-oidc", // pragma: allowlist secret (Kubernetes Secret resource name, not a credential)
+    /** Where the Qdrant server serves the dashboard's static files. */
+    path: "/dashboard",
+  },
+  /**
    * The SeaweedFS bucket shard snapshots are uploaded to (`snapshots_config`
    * s3). A platform bucket: the init Job creates it, and it is withheld from
    * the general-purpose `grid` identity like the Langfuse one.

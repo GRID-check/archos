@@ -214,6 +214,66 @@ describe("Qdrant (ADR-0113)", () => {
   });
 });
 
+describe("Qdrant's dashboard at the edge", () => {
+  const connectApp = {
+    "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
+    "grid-oib:otelOidcClientId": "client_otel",
+    "grid-oib:otelOidcClientSecret": "otel-client-secret", // pragma: allowlist secret
+  };
+
+  it("is off by default, on the qdrant.<baseDomain> host", () => {
+    pulumi.runtime.setAllConfig(baseStackConfig());
+    const cfg = loadConfig();
+    expect(cfg.qdrant.dashboard).toEqual({ enabled: false, domain: "qdrant.example.test" });
+    expect(cfg.dns.hosts).not.toContain("qdrant.example.test");
+  });
+
+  it("joins the DNS host set when on, and takes an overridden host", () => {
+    pulumi.runtime.setAllConfig({
+      ...baseStackConfig(),
+      ...connectApp,
+      "grid-oib:qdrantDashboardEnabled": "true",
+      "grid-oib:qdrantDashboardDomain": "vectors.example.test",
+    });
+    const cfg = loadConfig();
+    expect(cfg.qdrant.dashboard).toEqual({ enabled: true, domain: "vectors.example.test" });
+    expect(cfg.dns.hosts).toContain("vectors.example.test");
+  });
+
+  // The zone check runs over the same host list, so a dashboard host outside
+  // the zone is caught before Cloudflare appends the zone to it.
+  it("is covered by the zone check when DNS is managed", () => {
+    const error = loadWith({
+      ...connectApp,
+      "grid-oib:qdrantDashboardEnabled": "true",
+      "grid-oib:qdrantDashboardDomain": "qdrant.elsewhere.test",
+      "grid-oib:loadBalancerIp": "203.0.113.10",
+      "grid-oib:dnsEnabled": "true",
+      "grid-oib:dnsZoneId": "zone-abc123",
+      "grid-oib:dnsZoneName": "example.test",
+      "grid-oib:cloudflareApiToken": "cf-token", // pragma: allowlist secret
+    });
+    expect(error?.message).toMatch(/qdrant\.elsewhere\.test is not inside it/);
+  });
+
+  it("refuses the template placeholder host", () => {
+    const error = loadWith({ "grid-oib:qdrantDashboardDomain": "qdrant.example.com" });
+    expect(error?.message).toMatch(/grid-oib:qdrantDashboardDomain is still the template placeholder/);
+  });
+
+  // The gate is the only thing between the public host and the store.
+  it("refuses to turn on without the Connect application, naming what is missing", () => {
+    const error = loadWith({
+      "grid-oib:qdrantDashboardEnabled": "true",
+      "grid-oib:otelOidcIssuer": "https://grid.authkit.app",
+    });
+    expect(error?.message).toMatch(
+      /qdrantDashboardEnabled needs the platform WorkOS Connect application .*missing grid-oib:otelOidcClientId, grid-oib:otelOidcClientSecret/,
+    );
+    expect(loadWith({ ...connectApp, "grid-oib:qdrantDashboardEnabled": "true" })).toBeNull();
+  });
+});
+
 describe("SeaweedFS topology", () => {
 
   it("refuses an even master count", () => {

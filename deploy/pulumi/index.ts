@@ -55,6 +55,7 @@ import { installHttpRoutes } from "./src/app/httproutes";
 import { installOtelCollector } from "./src/platform/otel-collector";
 import { installDns, managedRecordNames } from "./src/platform/dns";
 import { installLangfuse } from "./src/platform/langfuse";
+import { installQdrantDashboard } from "./src/platform/qdrant-dashboard";
 import { LANGFUSE, QDRANT } from "./src/constants";
 
 const cfg = loadConfig();
@@ -397,6 +398,11 @@ const routes = installHttpRoutes(cfg, provider, namespace, [
   // while enforcing nothing.
   ...(rateLimitStore ? [rateLimitStore.service] : []),
 ]);
+// Qdrant's dashboard on its own host, behind the platform-operator gate. Off
+// by default (`qdrantDashboardEnabled`); operators port-forward otherwise.
+if (cfg.qdrant.dashboard.enabled) {
+  installQdrantDashboard(cfg, provider, namespace, [gatewayResources.gateway, qdrant.service]);
+}
 
 // ── Observability (OTel Collector, ADR-0029) ─────────────────────────────────
 // Deployed when something consumes it (see config.ts): Langfuse for traces,

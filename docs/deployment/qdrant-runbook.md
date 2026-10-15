@@ -27,6 +27,7 @@ The commands use these names, which are the ones Pulumi creates:
 | Keys | Secret `qdrant-credentials`: `api-key`, `read-only-api-key`, `s3-secret-key` (and `alt-api-key` during a rotation) |
 | Snapshot bucket | `qdrant-snapshots` in the in-cluster SeaweedFS, identity `grid-qdrant` |
 | Collections | `piloti_office_v1` behind alias `piloti_office`, `piloti_corpus_v1` behind `piloti_corpus` |
+| Web dashboard | `http://localhost:6333/dashboard` through a port-forward, or `https://qdrant.<baseDomain>/dashboard` with `qdrantDashboardEnabled` ([Dashboard](#dashboard)) |
 
 **Reach the peers from inside the namespace.** The NetworkPolicies admit only
 named callers to Qdrant (`allow-app-to-qdrant`). `qdrant-ops` is the one
@@ -154,6 +155,119 @@ stopped, and cleared it about 60 s after it returned. A peer that is down
 while nothing writes leaves `collection_dead_replicas` at 0: a replica is
 marked Dead only when a write fails on it. **QdrantPeerDown is the alert that
 sees an outage first.**
+
+## Dashboard
+
+Qdrant serves its own web UI at `/dashboard` on the REST port, 6333: the
+collections, their points and payloads, a console for REST calls, and the
+cluster view. The UI calls the REST API on its own origin, so whatever reaches
+`/dashboard` must reach the whole port.
+
+### When it is off (the default)
+
+Port-forward to the Service and open it locally:
+
+```bash
+kubectl -n grid port-forward svc/qdrant 6333:6333
+# then http://localhost:6333/dashboard
+```
+
+A port-forward enters the pod through the kubelet, so the NetworkPolicies do
+not apply and no `qdrant-ops` pod is needed. It lands on one peer; on three
+peers that peer forwards what it does not hold, so the dashboard shows the
+whole cluster.
+
+**Compose** has no gateway and runs Qdrant without a key, on the internal
+network only. To look, publish the port on loopback for as long as you need it,
+from `deploy/compose`:
+
+```bash
+printf 'services:\n  qdrant:\n    ports: ["127.0.0.1:6333:6333"]\n' > /tmp/qdrant-port.yaml
+docker compose --env-file ../.env -f docker-compose.yaml -f /tmp/qdrant-port.yaml up -d qdrant
+# http://localhost:6333/dashboard, no key; afterwards, unpublish it again:
+docker compose --env-file ../.env -f docker-compose.yaml up -d qdrant
+```
+
+Never bind it to anything but `127.0.0.1`: without a key, anyone who reaches
+the port can read and delete every collection. Both `up -d qdrant` calls
+recreate the container, a few seconds of retrieval errors on the local stack.
+
+### On a public host
+
+`qdrantDashboardEnabled` puts the dashboard at `https://qdrant.<baseDomain>`
+(`qdrantDashboardDomain` overrides the host) behind the same edge gate as
+Langfuse: the platform WorkOS Connect application, and the
+`platform:organizations:view` permission only. Analysts holding
+`platform:observability:view` get Langfuse, not this. Turning it on, per
+environment:
+
+1. **WorkOS first.** Register `https://qdrant.<baseDomain>/oauth2/callback` as
+   a redirect URI on the platform Connect application, the one Langfuse uses
+   ([`kubernetes.md` §9](kubernetes.md#the-platform-connect-application)). Do
+   not create a second application. Skip it and the login dies at WorkOS with
+   `invalid_redirect_uri`.
+2. **Set the flag.** It needs the three `otelOidc*` keys; `pulumi preview`
+   refuses the flag without them.
+
+   ```bash
+   pulumi config set grid-oib:qdrantDashboardEnabled true
+   ```
+
+3. **DNS.** Nothing to do with `dnsEnabled`: the host's record follows the
+   listener. A stack that keeps records by hand adds `qdrant.<baseDomain>` →
+   the Envoy Gateway IP before the deploy, or the certificate never issues.
+4. **Deploy** (`pulumi up`). It adds the `https-qdrant` listener and its
+   `grid-qdrant-tls` certificate, the `grid-qdrant-dashboard` HTTPRoute, its
+   `grid-qdrant-dashboard-auth` SecurityPolicy with the `qdrant-dashboard-oidc`
+   Secret, and the `allow-edge-to-qdrant-dashboard` NetworkPolicy (the edge to
+   6333, nothing else). `pulumi config rm grid-oib:qdrantDashboardEnabled`
+   removes all of it again.
+
+`https://qdrant.<baseDomain>/` redirects to `/dashboard`, through the WorkOS
+login when there is no session.
+
+**Undrilled**: no stack has run with the flag on yet. The manifests are held by
+`deploy/pulumi/index-qdrant-dashboard.spec.ts`.
+
+**Check it once after the first deploy.** The route strips `Authorization` and
+`Cookie` before the request reaches Qdrant, so the WorkOS access token the
+gate forwards never arrives there. That rests on Envoy applying route header
+removal in its router filter, after the gate's filters, which was read in the
+Envoy and Envoy Gateway sources but not watched on a running Gateway
+(`deploy/pulumi/src/platform/qdrant-dashboard.ts` cites both). Signed in,
+before you paste a key, open the browser's network tab: the dashboard's first
+API call must answer `401` with `Must provide an API key or an Authorization
+bearer token`. `Invalid API key or JWT` instead means a bearer token reached
+Qdrant, and the strip is not working.
+
+Then sign in as a user who holds neither platform permission (a tenant user):
+the edge must answer `403 RBAC: access denied`. That is the open question
+[`kubernetes.md` §9b](kubernetes.md#giving-analysts-read-only-access) step 3
+records for the shared gate. If the user gets in, `pulumi config rm
+grid-oib:qdrantDashboardEnabled` and deploy: Qdrant's key would still refuse
+them every API call, but the host would be open to anyone with a WorkOS
+account.
+
+### Which key to paste
+
+The edge injects no Qdrant key: the gate decides who reaches the dashboard,
+and Qdrant's own key still decides what each call may do. The dashboard asks
+for a key on its first call and keeps it in the browser. (A key set at the edge
+would be a literal header value, in plaintext in the HTTPRoute and in Pulumi
+state, and would make every operator an admin.)
+
+- **To look, paste the read-only key.** Searches, scrolls, collection and
+  cluster info all work with it, and nothing can be changed by accident:
+
+  ```bash
+  kubectl -n grid get secret qdrant-credentials -o jsonpath='{.data.read-only-api-key}' | base64 -d
+  ```
+
+- **The read-write key (`api-key`) only for a write you mean to make**:
+  deleting or re-creating a collection, a snapshot, a shard move. Prefer the
+  procedures in this runbook for those, which run from `qdrant-ops`. If you do
+  paste it, clear it from the dashboard (or the site's storage in the browser)
+  when you are done, so the next look is read-only again.
 
 ## Restore from snapshots
 

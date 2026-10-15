@@ -661,6 +661,18 @@ export interface GridConfig {
       s3AccessKey: string;
       s3SecretKey: pulumi.Output<string>;
     };
+    /**
+     * Qdrant's built-in web dashboard on a public host, behind the platform
+     * operator gate (`platform/qdrant-dashboard.ts`). Off by default: with it
+     * off, no listener, certificate, DNS record, route, SecurityPolicy or
+     * NetworkPolicy exists for it, and operators port-forward instead.
+     */
+    dashboard: {
+      /** `qdrantDashboardEnabled`. Refused without the `otelOidc*` Connect application. */
+      enabled: boolean;
+      /** Public hostname. Derived: `qdrant.<baseDomain>` unless overridden. */
+      domain: string;
+    };
   };
 
   seaweedfs: {
@@ -1547,7 +1559,10 @@ function chromaMigrationConfig(cfg: pulumi.Config): GridConfig["chromaMigration"
  * The Qdrant tier (ADR-0113), validated together because each refusal below
  * would otherwise deploy cleanly and be wrong.
  */
-function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant"> {
+function qdrantConfig(
+  cfg: pulumi.Config,
+  dashboard: GridConfig["qdrant"]["dashboard"],
+): Pick<GridConfig, "qdrant"> {
   const replicas = positiveInt(cfg, "qdrantReplicas", 3);
   if (replicas === 2) {
     throw new Error(
@@ -1592,6 +1607,7 @@ function qdrantConfig(cfg: pulumi.Config): Pick<GridConfig, "qdrant"> {
         s3AccessKey: cfg.get("qdrantS3AccessKey") ?? QDRANT.s3Identity,
         s3SecretKey: cfg.getSecret("qdrantS3SecretKey") ?? pulumi.secret(""),
       },
+      dashboard,
     },
   };
 }
@@ -1686,6 +1702,7 @@ export function loadConfig(): GridConfig {
   // class this guard exists to kill).
   rejectPlaceholder("letsEncryptEmail", ["example.com"]);
   rejectPlaceholder("langfuseDomain", ["example.com"]);
+  rejectPlaceholder("qdrantDashboardDomain", ["example.com"]);
 
   // The BFF clamps a nonsense threshold back to 80 rather than switching the
   // warning off, which is the right runtime behaviour and a terrible deploy-time
@@ -2361,6 +2378,23 @@ export function loadConfig(): GridConfig {
     }
   }
 
+  // ── Qdrant dashboard at the edge (platform/qdrant-dashboard.ts) ────────────
+  // Off by default, and a hard failure rather than Langfuse's warn-and-skip
+  // when the Connect application is missing: nobody gets this by default, so a
+  // stack that sets the flag asked for it, and the gate is the only thing
+  // between the public host and every office's chunk text. Planning a route
+  // with an empty issuer would put that host on the internet ungated by
+  // anything that works.
+  const qdrantDashboardDomain = cfg.get("qdrantDashboardDomain") ?? `qdrant.${baseDomain}`;
+  const qdrantDashboardEnabled = bool(cfg, "qdrantDashboardEnabled", false);
+  if (qdrantDashboardEnabled && missingOidcDeps.length > 0) {
+    throw new Error(
+      "grid-oib:qdrantDashboardEnabled needs the platform WorkOS Connect application its route is gated " +
+        `by: missing ${missingOidcDeps.map((k) => `grid-oib:${k}`).join(", ")}. Set them ` +
+        "(docs/deployment/kubernetes.md §9), or set qdrantDashboardEnabled=false and port-forward instead.",
+    );
+  }
+
   // ── Public DNS (Cloudflare) ────────────────────────────────────────────────
   //
   // Everything below is validated eagerly rather than at `installDns`, because
@@ -2379,6 +2413,7 @@ export function loadConfig(): GridConfig {
     appDomain,
     s3Domain,
     langfuseDomain: langfuseEnabled ? langfuseDomain : undefined,
+    qdrantDashboardDomain: qdrantDashboardEnabled ? qdrantDashboardDomain : undefined,
   });
 
   if (dnsEnabled) {
@@ -2657,7 +2692,7 @@ export function loadConfig(): GridConfig {
 
     chromaMigration: chromaMigrationConfig(cfg),
 
-    ...qdrantConfig(cfg),
+    ...qdrantConfig(cfg, { enabled: qdrantDashboardEnabled, domain: qdrantDashboardDomain }),
 
     seaweedfs: {
       image: cfg.get("seaweedfsImage") ?? "chrislusf/seaweedfs:latest",
