@@ -33,6 +33,7 @@ import { useDocParamSync, usePreviewChannel, type PreviewHandlers } from '../hoo
 import { useDocumentMoves } from '../hooks/use-document-moves'
 import { useDocumentSelection } from '../hooks/use-document-selection'
 import { usePhoneLayout } from '../hooks/use-phone-layout'
+import { UploadFab } from './upload-fab'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import { useFileListing } from '../hooks/use-file-listing'
 import { useFileSearch } from '../hooks/use-file-search'
@@ -932,20 +933,7 @@ export function FileWorkspace({
           onDone={exitSelection}
         />
       )}
-      {uploadFab && (
-        // The uploader's own button, lifted to a floating action: the wrapper
-        // sizes it and lets only the button take touches, so the list under the
-        // rest of the strip still scrolls.
-        <div
-          className={cn(
-            'pointer-events-none absolute right-4 z-20 [&_button]:pointer-events-auto [&_button]:h-12 [&_button]:rounded-full [&_button]:px-5 [&_button]:shadow-lg',
-            inSheet ? 'bottom-[max(1rem,env(safe-area-inset-bottom))]' : 'bottom-4'
-          )}
-          data-testid="files-upload-fab"
-        >
-          {uploadFab}
-        </div>
-      )}
+      {uploadFab && <UploadFab inSheet={inSheet}>{uploadFab}</UploadFab>}
       <FolderPickerSheet
         open={moveSheetOpen}
         onOpenChange={setMoveSheetOpen}

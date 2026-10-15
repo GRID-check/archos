@@ -65,6 +65,8 @@ import { NO_FILE_FILTERS, type FileFilters } from '@/features/documents/lib/file
 import { DEFAULT_FILE_SORT, type FileSort } from '@/features/documents/lib/file-sort'
 import { FolderPickerSheet } from '@/features/documents/components/folder-picker-sheet'
 import { SelectionBar } from '@/features/documents/components/selection-bar'
+import { UploadFab } from '@/features/documents/components/upload-fab'
+import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-upload'
 import { sortedFolderDestinations } from '@/features/documents/lib/folder-path-label'
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
 import { projectSearchScope } from '@/features/documents/lib/file-shelf'
@@ -261,6 +263,7 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
   if (variant === 'fassungen') return <FassungenFixture />
+  if (variant === 'phone-fab') return <PhoneUploadFabFixture />
   if (variant === 'select') return <SelectionFixture view="cards" />
   if (variant === 'select-list') return <SelectionFixture view="list" />
   if (variant === 'move-sheet') return <SelectionFixture view="cards" sheetOpen />
@@ -322,6 +325,38 @@ function SelectionFixture({ view, sheetOpen = false }: { view: 'cards' | 'list';
         currentFolderId={folderNav.currentFolderId}
         onPick={() => setSheet(false)}
       />
+    </main>
+  )
+}
+
+/**
+ * The phone's floating Hochladen: the pane in a column that ends a button's
+ * height above the foot, with the workspace's own `UploadFab` over it. Scroll
+ * the list to its end to see that the last card is clear of the button.
+ */
+function PhoneUploadFabFixture(): JSX.Element {
+  const folderNav = useFixtureFolderNav()
+  const search = useFileSearch(projectSearchScope('proj-demo'))
+  const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
+  return (
+    <main className="flex h-dvh flex-col" data-testid="file-browser-phone-fab">
+      <div className="relative min-h-0 flex-1">
+        <div className="h-full overflow-y-auto pb-20">
+          <FileBrowserPane
+            files={levelFiles}
+            searchFiles={FILES}
+            selectedFileId={null}
+            onSelectFile={() => {}}
+            isLoading={false}
+            search={search}
+            view="cards"
+            folderNav={folderNav}
+          />
+        </div>
+        <UploadFab inSheet={false}>
+          <ProjectUppyUpload onUpload={() => {}} isUploading={false} allowFolders />
+        </UploadFab>
+      </div>
     </main>
   )
 }
