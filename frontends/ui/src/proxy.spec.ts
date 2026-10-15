@@ -59,6 +59,16 @@ describe('AuthKit v4 proxy', () => {
     expect(matcher.test('/app/projects')).toBe(true)
   })
 
+  // Unescaped and unanchored, `sw.js` let any path starting `sw`, one character,
+  // `js` past the session; the same held for every file name in the list.
+  test('lets only the exact public file names past, not paths that start like them', async () => {
+    const { config } = await import('./proxy')
+    const matcher = new RegExp(`^${config.matcher[0]}$`)
+    for (const path of ['/sw.jsx', '/swxjs', '/sw.js/x', '/robots.txt.bak', '/favicon.ico/x', '/faviconxico', '/manifest.webmanifest/x']) {
+      expect(matcher.test(path), path).toBe(true)
+    }
+  })
+
   // The SDK posts from signed-out pages and mid-expiry; AuthKit would answer a
   // beacon with a redirect to the WorkOS login page and lose the event.
   test('leaves the first-party PostHog relay outside the auth redirect', async () => {
