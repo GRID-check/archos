@@ -177,10 +177,14 @@ export function CommandPalette({
         close: t('hints.close'),
       }}
     >
-      <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14">
+      <div className="flex shrink-0 items-center md:contents max-md:border-b max-md:[&_[data-slot=command-input-wrapper]]:border-b-0 max-md:[&_[data-slot=command-input-wrapper]]:flex-1 max-md:[&_[data-slot=command-input-wrapper]]:h-14 max-md:[&_[data-slot=command-input-wrapper]]:bg-transparent!">
         <CommandInput
           placeholder={t('placeholder')}
-          className="pointer-coarse:text-base"
+          // The wrapper's wash is this field's focus signal (and on a phone,
+          // the keyboard is); the global `:focus-visible` outline is unlayered
+          // and outranks a plain `outline-none`, so it drew a box inside the
+          // band the moment the palette opened.
+          className="pointer-coarse:text-base outline-none!"
           enterKeyHint="go"
           autoCapitalize="off"
           autoCorrect="off"
@@ -238,7 +242,9 @@ export function CommandPalette({
           </>
         )}
 
-        <CommandSeparator />
+        {/* A rule between groups, not above the first one: with no project
+            list yet it doubled the field's own bottom edge. */}
+        {((projects !== null && projects.length > 0) || projectId) && <CommandSeparator />}
         <CommandGroup heading={t('groups.general')}>
           <CommandItem
             value={`new-project ${tNav('projectSwitcher.newProject')}`}
