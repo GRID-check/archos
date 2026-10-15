@@ -65,7 +65,7 @@
 import type { DiagramTheme } from './render-diagram'
 
 /** Mermaid's `themeVariables` bag — string-valued, plus its one boolean. */
-export type DiagramThemeVariables = Record<string, string | boolean>
+export type DiagramThemeVariables = Record<string, string | boolean | Record<string, string>>
 
 /**
  * The token behind each role in a drawing. Names only: the VALUES come from the
@@ -320,6 +320,15 @@ function build(theme: DiagramTheme): DiagramThemeVariables | null {
     pieTitleTextColor: ink,
     pieSectionTextColor: ink,
     pieLegendTextColor: ink,
+
+    // --- xychart ---------------------------------------------------------
+    // Mermaid's own palette starts at `#FFF4DD`, a pale cream that on the card
+    // is a bar nobody can see. The bars take the pie's ink steps instead: the
+    // first series is a clear mid grey, the second (a line over the bars) the
+    // full ink, so a line stays distinguishable from the bars it crosses.
+    xyChart: {
+      plotColorPalette: [mixHex(ink, surface, 0.45), ink, mixHex(ink, surface, 0.7)].join(','),
+    },
   }
 }
 
