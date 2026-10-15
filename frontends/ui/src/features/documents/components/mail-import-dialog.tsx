@@ -332,7 +332,7 @@ function ImportRow({
         {resumable && <p className="mt-1 text-xs text-muted-foreground">{t('mailImport.resumeHint', { name: row.filename })}</p>}
         <SkippedSamples row={row} t={t} />
       </ItemContent>
-      <ItemActions className="max-sm:ml-11 max-sm:basis-full max-sm:flex-wrap sm:ml-auto">
+      <ItemActions className="max-sm:ml-[1.875rem] max-sm:basis-full max-sm:flex-wrap sm:ml-auto">
         {row.folderId && (
           <Button asChild size="sm" variant="ghost" className="gap-1.5">
             <Link
