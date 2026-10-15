@@ -793,6 +793,22 @@ describe('PdfDocumentView touch gestures', () => {
     await waitFor(() => expect(content.style.transform).toBe(''))
   })
 
+  it('does not read a pinch whose fingers landed one after the other as a two-finger tap', async () => {
+    state.pages = [{ items: [] }]
+    render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)
+    await waitFor(() => expect(document.querySelectorAll('[data-page]')).toHaveLength(1))
+    const frame = screen.getByTestId('pdf-scroll')
+    // As a phone delivers it: one finger, then the second, then the spread.
+    fireEvent.touchStart(frame, { touches: fingers([100, 100]) })
+    fireEvent.touchStart(frame, { touches: fingers([100, 100], [200, 100]) })
+    fireEvent.touchMove(frame, { touches: fingers([50, 100], [250, 100]) })
+    fireEvent.touchEnd(frame, { touches: fingers([50, 100]) })
+    fireEvent.touchEnd(frame, { touches: [] })
+    expect(await screen.findByText('200%')).toBeTruthy()
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    expect(screen.getByText('200%')).toBeTruthy()
+  })
+
   it('zooms in one step on a double tap, and back to the fit from the ceiling', async () => {
     state.pages = [{ items: [] }]
     render(<PdfDocumentView src="/api/doc.pdf" title="doc.pdf" />)

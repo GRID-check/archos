@@ -222,7 +222,8 @@ export function useZoomGestures(
       press = null
       const tap = classifyTap(ended, lastTap, event.timeStamp)
       lastTap = tap.kind === 'single' ? { ...ended, time: event.timeStamp } : null
-      if (tap.kind === 'single') return
+      // A scroll, a hold or a lone tap asks nothing of the zoom.
+      if (tap.kind !== 'double' && tap.kind !== 'two-finger') return
       const held = hold(ended.x, ended.y)
       if (!held) return
       const target = tap.kind === 'double' ? doubleTapZoom(held.zoom, maxRef.current) : twoFingerTapZoom(held.zoom, maxRef.current)

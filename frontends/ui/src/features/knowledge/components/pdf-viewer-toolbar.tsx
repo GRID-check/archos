@@ -59,8 +59,10 @@ export interface PdfControlsProps {
   onToggleFit: () => void
   searchOpen: boolean
   onToggleSearch: () => void
-  /** Whether the page rail is open; undefined when the stage has no room for one. */
+  /** Whether the page rail is open. */
   railOpen: boolean
+  /** Whether the document has a rail at all: one page has none, and its toggle would switch nothing. */
+  hasRail?: boolean
   onToggleRail: () => void
   /** The caller's own controls, first in the pill (a review surface's tools). */
   lead?: ReactNode
@@ -81,6 +83,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   onToggleSearch,
   railOpen,
   onToggleRail,
+  hasRail = true,
   lead,
 }) => {
   const t = useTranslations('knowledge')
@@ -101,7 +104,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
       {/* The rail is a wide-stage affordance: below the width the rail needs,
           the toggle would switch nothing on. */}
       <ToolbarIconButton
-        className="@max-3xl:hidden"
+        className={cn('@max-3xl:hidden', !hasRail && 'hidden')}
         aria-pressed={railOpen}
         aria-label={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
         title={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
@@ -110,7 +113,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
       >
         <PanelLeft aria-hidden />
       </ToolbarIconButton>
-      <ToolbarDivider className="@max-3xl:hidden" />
+      <ToolbarDivider className={cn('@max-3xl:hidden', !hasRail && 'hidden')} />
 
       <ToolbarIconButton
         className="@max-sm:hidden"

@@ -67,6 +67,7 @@ import {
   DeleteDocumentDialog,
   DocumentActionsMenu,
   useDocumentActions,
+  useMoveInSheet,
   type DocumentActions,
   type DocumentScope,
 } from './document-actions'
@@ -297,6 +298,9 @@ export function FilePreviewPane({
    * opened. A phone on its side counts: 393px of height cannot spare a second
    * band for the actions, so they move up into the header.
    */
+  // On touch or a narrow screen „Verschieben" opens the searchable move sheet,
+  // not a dropdown submenu a phone clips.
+  const moveInSheet = useMoveInSheet()
   const onPhone = useMediaQuery(PHONE_QUERY)
   const sideways = useMediaQuery(PHONE_ON_ITS_SIDE_QUERY)
   const reader = onPhone && !peeking
@@ -827,6 +831,7 @@ export function FilePreviewPane({
                     actions={['download', 'rename', 'delete']}
                     canManage={canManage}
                     surface="toolbar"
+                    moveInSheet={moveInSheet}
                     onRenamed={onRenamed}
                     onDeleted={handleDeleted}
                   />
@@ -973,6 +978,7 @@ export function FilePreviewPane({
             actions={['rename', 'delete']}
             canManage={canManage}
             surface="toolbar"
+            moveInSheet={moveInSheet}
             onRenamed={onRenamed}
             onDeleted={handleDeleted}
           />
@@ -1770,6 +1776,7 @@ export function FilePreviewPane({
               actions={['download', 'rename', 'delete']}
               canManage={canManage}
               surface="toolbar"
+              moveInSheet={moveInSheet}
               side="top"
               onRenamed={onRenamed}
               onDeleted={handleDeleted}

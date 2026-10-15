@@ -470,7 +470,12 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
   const [password, setPassword] = useState<string | null>(null)
   const [frame, setFrame] = useState({ width: 0, height: 0 })
   const [zoom, setZoom] = useState(1)
-  const [fit, setFit] = useState<FitMode>('width')
+  // The reader's own choice of fit, once they have made one. Until then a
+  // sheet that is wider than tall (a plan) is fitted WHOLE, and a page that is
+  // taller than wide (a Bescheid) by its width: a plan fitted by its width on a
+  // phone on its side showed its top third, and a Bescheid fitted whole is
+  // a column of unreadable lines.
+  const [chosenFit, setFit] = useState<FitMode | null>(null)
   const [railOpen, setRailOpen] = useState(true)
   const [hit, setHit] = useState<PassageHit | null>(null)
   // Page 1's shape, used to reserve room for pages that have not rasterised.
@@ -616,6 +621,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
     return () => observer.disconnect()
   }, [doc])
 
+  const fit: FitMode = chosenFit ?? (defaultAspect !== null && defaultAspect < 1 ? 'page' : 'width')
   const baseWidth = fitWidth({
     mode: fit,
     frameWidth: frame.width,
@@ -1463,7 +1469,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
               onZoomStep={(direction) => zoomTo(stepZoom(zoomRef.current, direction, maxZoomRef.current))}
               onResetZoom={fitAgain}
               onToggleFit={() => {
-                setFit((current) => (current === 'width' ? 'page' : 'width'))
+                setFit(fit === 'width' ? 'page' : 'width')
                 stackTransform.finish()
                 zoomRef.current = 1
                 setZoom(1)
@@ -1471,6 +1477,7 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
               searchOpen={searchOpen}
               onToggleSearch={() => (searchOpen ? closeSearch() : openSearch())}
               railOpen={railOpen}
+              hasRail={doc ? doc.numPages > 1 : false}
               onToggleRail={() => setRailOpen((open) => !open)}
               lead={toolbarLead}
             />
