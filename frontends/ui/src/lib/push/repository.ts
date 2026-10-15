@@ -205,4 +205,3 @@ export async function recordFailure(id: string): Promise<number | null> {
 export async function deleteSubscriptionById(id: string): Promise<void> {
   await getDb().delete(pushSubscriptions).where(eq(pushSubscriptions.id, id))
 }
-
