@@ -157,6 +157,27 @@ describe('devices', () => {
     expect((await client.listDevices()).map((d) => d.endpoint)).toEqual([sub('new').endpoint])
   })
 
+  // The worker posts a rotation for whoever is signed in when the push service
+  // rotates. On a shared computer that may be B rotating A's subscription: B
+  // must not take the browser over, and A's row stays until its next send 410s.
+  it('refuses a rotation of an endpoint that is not one of the caller’s devices, and claims nothing', async () => {
+    await client.registerDevice(sub('old'))
+    as('user_2')
+    await expect(client.registerDevice({ ...sub('new'), replaces: sub('old').endpoint })).rejects.toMatchObject({
+      status: 409,
+    })
+    expect(await client.listDevices()).toEqual([])
+    as('user_1')
+    expect((await client.listDevices()).map((d) => d.endpoint)).toEqual([sub('old').endpoint])
+  })
+
+  it('refuses a rotation of an endpoint nobody holds', async () => {
+    await expect(
+      client.registerDevice({ ...sub('new'), replaces: sub('never-registered').endpoint })
+    ).rejects.toMatchObject({ status: 409 })
+    expect(await client.listDevices()).toEqual([])
+  })
+
   // `new URL` and the `url.parse` web-push sends with read these hosts differently.
   it.each([';', '{', '`', '"', "'"])('refuses a host the sender’s parser would read as another (%s)', async (char) => {
     const endpoint = `https://169.254.169.254${char}.fcm.googleapis.com/x`

@@ -261,7 +261,21 @@ describe('the registered worker', () => {
         url.endsWith('/config') ? { ok: true, json: async () => ({ enabled: true, publicKey: 'AQID' }) } : { ok: false },
     })
     refused.scope.registration.pushManager.subscribe.mockResolvedValue(created)
-    await refused.fire('pushsubscriptionchange', {})
+    await refused.fire('pushsubscriptionchange', { oldSubscription: { endpoint: 'https://fcm.googleapis.com/fcm/send/old' } })
     expect(created.unsubscribe).toHaveBeenCalled()
+  })
+
+  // Without the old address nothing proves the browser was the signed-in
+  // person's device; posting it would hand whoever is signed in the browser.
+  it('claims nothing for a change that names no old subscription, and drops the new one', async () => {
+    const fresh = { toJSON: () => ({ endpoint: 'https://fcm.googleapis.com/fcm/send/fresh', keys: {} }), unsubscribe: vi.fn(async () => true) }
+    const harness = boot({
+      fetchImpl: async (url) =>
+        url.endsWith('/config') ? { ok: true, json: async () => ({ enabled: true, publicKey: 'AQID' }) } : { ok: true },
+    })
+    await harness.fire('pushsubscriptionchange', { newSubscription: fresh })
+    expect(harness.fetchCalls.find((call) => call.url === '/api/notifications/push/devices')).toBeUndefined()
+    expect(harness.scope.registration.pushManager.subscribe).not.toHaveBeenCalled()
+    expect(fresh.unsubscribe).toHaveBeenCalled()
   })
 })

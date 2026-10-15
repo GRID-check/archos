@@ -79,10 +79,13 @@ the `web-push` library.
   forgets the device, so a shared computer does not show the previous person's
   inbox. Sign-out does the browser's part first and waits for it (close the
   shown notifications, clear the badge, unsubscribe); removing the server's row
-  follows, bounded, so a slow network cannot leave the browser subscribed.
-  Endpoints must be on a known push service's host, so the sender cannot
-  be pointed at an internal address. The host must be plain DNS labels and read
-  the same by WHATWG `URL` (the check) and Node's `url.parse` (what `web-push`
+  follows, bounded, so a slow network cannot leave the browser subscribed. A
+  rotation (`pushsubscriptionchange`) carries a device over only when its old
+  endpoint is one of the signed-in person's own rows; otherwise the server
+  refuses it (409) without claiming, and the worker drops the new subscription.
+  Endpoints must be on a known push service's host, so the sender cannot be
+  pointed at an internal address. The host must be plain DNS labels and read the
+  same by WHATWG `URL` (the check) and Node's `url.parse` (what `web-push`
   requests); the sender re-checks before each send, and the table's CHECK holds
   the shape.
 * **Failure.** 404 and 410 remove the device; final refusals count against it

@@ -8,7 +8,7 @@
  */
 
 import 'server-only'
-import { BadRequestError, NotFoundError } from '@/lib/api/errors'
+import { BadRequestError, ConflictError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import type { PushSubscriptionRow } from '@/lib/db/schema'
@@ -59,6 +59,14 @@ export function getPushConfig(): PushConfigResponse {
  * that does not exist rather than a configuration error a person cannot act on.
  * The endpoint is claimed first (`claimEndpoint`): whoever held this browser
  * before no longer does.
+ *
+ * A rotation (`replaces`, sent by the worker on `pushsubscriptionchange`) is
+ * only a rotation of the caller's OWN device. The worker posts with whoever is
+ * signed in when the push service rotates, which on a shared computer may be
+ * someone other than the person who turned notifications on. So the replaced
+ * endpoint must be one of the caller's rows, or nothing is claimed and the
+ * request is refused (409); the worker then unsubscribes the new address, and
+ * the old row is dropped on its next send (410).
  */
 export async function registerDevice(
   session: AuthorizedSession,
@@ -68,10 +76,11 @@ export async function registerDevice(
   if (!webPushConfig()) throw new NotFoundError()
   if (!isSendableEndpoint(body.endpoint)) throw new BadRequestError('Not a push service endpoint')
   const { organizationId, userId } = session
-  await claimEndpoint(organizationId, userId, body.endpoint)
-  if (body.replaces && body.replaces !== body.endpoint) {
-    await deleteSubscriptionByEndpoint(organizationId, userId, body.replaces)
+  if (body.replaces) {
+    const replacedOwn = await deleteSubscriptionByEndpoint(organizationId, userId, body.replaces)
+    if (!replacedOwn) throw new ConflictError('The replaced subscription is not one of your devices')
   }
+  await claimEndpoint(organizationId, userId, body.endpoint)
   const row = await upsertSubscription({
     organizationId,
     userId,

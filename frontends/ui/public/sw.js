@@ -164,11 +164,23 @@ async function openItem(scope, rawUrl) {
 
 /**
  * The push service rotated or expired the subscription. Subscribe again and
- * tell the server which address replaces which. If the person is signed out the
- * server answers 401 and nothing is stored; the page registers again when they
- * next open Piloti.
+ * tell the server which address replaces which.
+ *
+ * Only a rotation of a device the signed-in person owns is carried over. The
+ * worker posts with whoever is signed in NOW, which on a shared computer may
+ * not be the person who turned notifications on, so the server refuses (409) a
+ * `replaces` that is not one of the caller's own devices, and a change without
+ * an old address is not carried over at all: there is nothing to prove it is
+ * theirs. Either way the new subscription is dropped again, and the person turns
+ * notifications back on in the settings. Signed out, the server answers 401
+ * and the same happens.
  */
 async function resubscribe(scope, event) {
+  var oldEndpoint = event.oldSubscription && event.oldSubscription.endpoint
+  if (!isString(oldEndpoint)) {
+    if (event.newSubscription) await event.newSubscription.unsubscribe()
+    return
+  }
   var configResponse = await fetch(CONFIG_PATH, { credentials: 'same-origin', cache: 'no-store' })
   if (!configResponse.ok) return
   var config = await configResponse.json()
@@ -187,7 +199,7 @@ async function resubscribe(scope, event) {
     body: JSON.stringify({
       endpoint: json.endpoint,
       keys: json.keys,
-      replaces: event.oldSubscription ? event.oldSubscription.endpoint : undefined,
+      replaces: oldEndpoint,
     }),
   })
   if (!response.ok) await subscription.unsubscribe()
