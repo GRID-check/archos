@@ -34,6 +34,7 @@ import {
   Sparkles,
   type LucideIcon,
 } from 'lucide-react'
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 import { cn } from '@/lib/utils'
 import { SectionLabel } from '@/components/ui/section-label'
 import { useTranslations } from '@/i18n'
@@ -125,33 +126,35 @@ export function PlatformNav(): JSX.Element {
     <nav aria-label={t('nav.label')} data-testid="platform-nav">
       {/* Mobile / tablet: one scrolling strip. Wide content scrolls in its own
           container so the page body never scrolls horizontally. */}
-      <ul
-        ref={stripRef}
-        className="-mx-1 flex gap-1 overflow-x-auto px-1 pb-2 [scrollbar-width:none] lg:hidden"
+      <HorizontalScroll
+        aria-label={t('nav.scrollable')}
+        className="-mx-1 px-1 pb-2 [scrollbar-width:none] lg:hidden"
       >
-        {PLATFORM_SECTIONS.map(({ key, href, icon: Icon }) => {
-          const active = isActive(pathname, href)
-          return (
-            <li key={key} className="shrink-0">
-              <Link
-                href={href}
-                replace
-                aria-current={active ? 'page' : undefined}
-                className={cn(
-                  LINK_BASE,
-                  'pointer-coarse:min-h-11 gap-1.5 px-3 py-1.5',
-                  active
-                    ? 'bg-secondary text-secondary-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                )}
-              >
-                <Icon className="size-4 shrink-0" aria-hidden />
-                {t(`nav.${key}`)}
-              </Link>
-            </li>
-          )
-        })}
-      </ul>
+        <ul ref={stripRef} className="flex gap-1">
+          {PLATFORM_SECTIONS.map(({ key, href, icon: Icon }) => {
+            const active = isActive(pathname, href)
+            return (
+              <li key={key} className="shrink-0">
+                <Link
+                  href={href}
+                  replace
+                  aria-current={active ? 'page' : undefined}
+                  className={cn(
+                    LINK_BASE,
+                    'pointer-coarse:min-h-11 gap-1.5 px-3 py-1.5',
+                    active
+                      ? 'bg-secondary text-secondary-foreground font-medium'
+                      : 'text-muted-foreground hover:bg-accent hover:text-foreground'
+                  )}
+                >
+                  <Icon className="size-4 shrink-0" aria-hidden />
+                  {t(`nav.${key}`)}
+                </Link>
+              </li>
+            )
+          })}
+        </ul>
+      </HorizontalScroll>
 
       {/* Desktop: a sticky rail beside the content, grouped. */}
       <div className="hidden lg:sticky lg:top-24 lg:flex lg:flex-col lg:gap-5">

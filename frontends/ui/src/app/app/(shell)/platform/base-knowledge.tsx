@@ -703,7 +703,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="w-52"
+                      className="w-52 [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.bulkReclassify')}
                     >
                       <SelectValue placeholder={t('knowledgeAdmin.bulkReclassify')} />
@@ -751,7 +751,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="min-w-40 flex-1 sm:w-48 sm:flex-none"
+                      className="min-w-40 flex-1 sm:w-48 sm:flex-none [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.typeFilterLabel')}
                     >
                       <SelectValue />
@@ -856,7 +856,7 @@ export function BaseKnowledge(): JSX.Element {
                       {sortableHead('document', t('knowledgeAdmin.colDocument'))}
                       {sortableHead('class', t('knowledgeAdmin.colType'))}
                       {sortableHead('state', t('knowledgeAdmin.colState'))}
-                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right')}
+                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right max-sm:hidden')}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -884,7 +884,12 @@ export function BaseKnowledge(): JSX.Element {
                               />
                             </TableCell>
                           ) : null}
-                          <TableCell className="max-w-[22rem]">
+                          {/* `max-w-0` + `w-full` is what makes `truncate` bite in an
+                              auto-layout table: a plain `max-w` on a cell is ignored, so
+                              the title used to stretch the column past the card edge and
+                              push Dokumentart and Status out of sight. From `sm` the cap
+                              is the 22rem it always was. */}
+                          <TableCell className="w-full max-w-0 sm:w-auto sm:max-w-[22rem]">
                             <button
                               type="button"
                               className="pointer-coarse:min-h-11 focus-visible:ring-ring/60 block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2"
@@ -910,7 +915,7 @@ export function BaseKnowledge(): JSX.Element {
                           <TableCell>
                             <KnowledgeStateBadge state={file.state} hint="tooltip" />
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums">
+                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums max-sm:hidden">
                             {file.chunkCount > 0 ? file.chunkCount.toLocaleString(locale) : '–'}
                           </TableCell>
                         </TableRow>

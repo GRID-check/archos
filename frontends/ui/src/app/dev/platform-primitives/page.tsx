@@ -59,7 +59,7 @@ function Preview(): JSX.Element {
   const allOnPageSelected = page.length > 0 && page.every((row) => selected.includes(row.name))
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8">
+    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8">
       <div>
         <h1 className="text-lg font-semibold">Platform — admin primitives</h1>
         <p className="mt-1 text-sm text-muted-foreground">

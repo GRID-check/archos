@@ -567,6 +567,7 @@ export const platform = {
   },
   nav: {
     label: 'Platform sections',
+    scrollable: 'Platform sections, scrolls sideways',
     groups: {
       operate: 'Operate',
       quality: 'Quality',
@@ -1194,7 +1195,7 @@ export const platform = {
       'Per-conversation execution timeline — how long the agent spent on each step (graph node, LLM call, tool call), across every organization.',
     loadError: 'Could not load the profiler data.',
     retry: 'Retry',
-    search: 'Search by conversation or title…',
+    search: 'Search conversations…',
     empty: 'No profiled conversations in this period.',
     capped: 'Showing the {count} most recently active conversations.',
     listTitle: 'Conversations',

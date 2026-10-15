@@ -13,7 +13,7 @@ import { PlatformNav } from '@/features/platform/components/platform-nav'
 
 export default function PlatformNavDevPage(): JSX.Element {
   return (
-    <main className="mx-auto flex max-w-6xl flex-col gap-8 p-8">
+    <main className="mx-auto flex max-w-6xl flex-col gap-8 p-4 sm:p-8">
       <div>
         <h1 className="text-lg font-semibold">Platform — section nav</h1>
         <p className="text-muted-foreground mt-1 text-sm">
