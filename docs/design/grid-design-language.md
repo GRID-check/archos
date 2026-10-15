@@ -344,7 +344,9 @@ thumb. A grabber says it pulls down, and it does: past 96px or on a flick, the
 same two numbers the page sheet commits on (`sheet-pull.ts`). It arrives on
 `--motion-deliberate` / `--ease-entrance` and leaves one step shorter; no
 spring, because its travel is its own height. From `sm` up on anything else it
-is the centred card, unchanged. `fullScreenOnMobile` (or
+is the centred card, unchanged. Under a finger the dialog itself takes focus on
+open, not its first field: a focused field raises the keyboard over the sheet
+before the reader has read it. `fullScreenOnMobile` (or
 `mobilePresentation="fullscreen"`) takes the whole screen instead, below the
 status bar, for an editor with several sections. A dialog that lays itself out
 (sets its own `top`, `bottom`, `inset`, `translate-y` or height) keeps its own
