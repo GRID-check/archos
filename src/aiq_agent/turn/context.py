@@ -135,8 +135,8 @@ def with_requester(
     """``user_info`` completed with the names the BFF resolved for this turn.
 
     The access token rarely carries a name (WorkOS's default claims have none),
-    so the BFF's answer fills it: ``first_name`` and ``last_name`` on their own,
-    the joined ``name`` where the token had none, and the office. The BFF read
+    so the BFF's answer fills it: the ``name`` joined from first and last name,
+    the email, and the office. The BFF read
     them for the signed envelope's user, the same person as the principal, so
     its values win over the token's wherever it has one.
     """
@@ -144,10 +144,8 @@ def with_requester(
         return user_info
     merged: dict[str, Any] = dict(user_info or {})
     if requester:
-        first, last = requester.get("first_name"), requester.get("last_name")
-        merged["first_name"] = first
-        merged["last_name"] = last
-        merged["name"] = " ".join(part for part in (first, last) if part) or merged.get("name")
+        names = (requester.get("first_name"), requester.get("last_name"))
+        merged["name"] = " ".join(part for part in names if part) or merged.get("name")
         merged["email"] = requester.get("email") or merged.get("email")
     if office_name:
         merged["office"] = office_name

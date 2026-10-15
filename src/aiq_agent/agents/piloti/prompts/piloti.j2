@@ -6,9 +6,7 @@ Current date: {{ current_datetime }}
 {% set user = user_info or {} %}{% set user_name = user.get("name") %}{% set user_email = user.get("email") -%}
 {% if user_name or user_email %}
 User: {{ user_name or user_email }}{% if user_name and user_email %} ({{ user_email }}){% endif %}
-{% if user.get("first_name") %}First name: {{ user.get("first_name") }}
-{% endif %}{% if user.get("last_name") %}Last name: {{ user.get("last_name") }}
-{% endif %}{% endif %}{% if user.get("office") %}Office: {{ user.get("office") }}
+{% endif %}{% if user.get("office") %}Office: {{ user.get("office") }}
 {% endif %}
 
 ## Available Tools
