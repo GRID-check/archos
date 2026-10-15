@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { Kbd } from '@/components/ui/kbd'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -423,8 +424,12 @@ export function DocumentReviewMode({
           >
             <X className="size-4" aria-hidden />
           </Button>
-          <div className="min-w-0">
-            <DialogTitle className="text-foreground truncate text-sm font-semibold">{documentName}</DialogTitle>
+          <div className="min-w-0 flex-1">
+            {/* Cut in the middle: a phone's header leaves the name ~140px, and
+                the index at its end is what says which Fassung is under review. */}
+            <DialogTitle className="text-foreground flex text-sm font-semibold">
+              <MiddleTruncate text={documentName} tail={12} />
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground truncate text-xs">
               {[
                 fassungLabel,
@@ -436,7 +441,7 @@ export function DocumentReviewMode({
                 .join(' · ')}
             </DialogDescription>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3 max-sm:gap-2">
             {room.status === 'offline' && (
               <span
                 className="text-muted-foreground text-[11px] font-medium"
