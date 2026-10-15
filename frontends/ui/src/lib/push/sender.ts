@@ -11,9 +11,11 @@
  */
 
 import 'server-only'
+import { parse as legacyParse } from 'node:url'
 import webpush, { type PushSubscription } from 'web-push'
 import type { PushUrgency } from '@/lib/inbox/push-categories'
 import type { WebPushConfig } from './config'
+import { isPushServiceEndpoint } from './endpoint'
 
 export interface PushTarget {
   endpoint: string
@@ -61,10 +63,24 @@ function statusOf(error: unknown): number | null {
   return typeof status === 'number' ? status : null
 }
 
+/**
+ * Whether the library would request the host we checked. `isPushServiceEndpoint`
+ * reads the URL with WHATWG `URL`; `web-push` requests what Node's legacy
+ * `url.parse` makes of it. Both must name the same host, or the allow-list
+ * vouched for one address and the request goes to another (ADR-0112).
+ */
+export function isSendableEndpoint(endpoint: string): boolean {
+  if (!isPushServiceEndpoint(endpoint)) return false
+  // Deprecated, and exactly why: it is the parser web-push sends with.
+  return legacyParse(endpoint).hostname === new URL(endpoint).hostname
+}
+
 export function createWebPushSender(config: WebPushConfig, lib: typeof webpush = webpush): PushSender {
   const vapidDetails = { subject: config.subject, publicKey: config.publicKey, privateKey: config.privateKey }
   return {
     async send(target, payload, options) {
+      // A row the check would refuse today is never requested: it is dropped.
+      if (!isSendableEndpoint(target.endpoint)) return { kind: 'gone' }
       const subscription: PushSubscription = {
         endpoint: target.endpoint,
         keys: { p256dh: target.p256dh, auth: target.auth },

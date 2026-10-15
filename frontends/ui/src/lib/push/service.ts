@@ -8,7 +8,7 @@
  */
 
 import 'server-only'
-import { NotFoundError } from '@/lib/api/errors'
+import { BadRequestError, NotFoundError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import { captureServer } from '@/lib/analytics/posthog-server'
 import type { PushSubscriptionRow } from '@/lib/db/schema'
@@ -30,6 +30,7 @@ import {
   trimSubscriptions,
   upsertSubscription,
 } from './repository'
+import { isSendableEndpoint } from './sender'
 import type { PushConfigResponse, PushDeviceView, RegisterDeviceBody } from './types'
 
 /** The key under which a person's choices live in `user_preferences.prefs`. */
@@ -65,6 +66,7 @@ export async function registerDevice(
   userAgent: string | null
 ): Promise<PushDeviceView> {
   if (!webPushConfig()) throw new NotFoundError()
+  if (!isSendableEndpoint(body.endpoint)) throw new BadRequestError('Not a push service endpoint')
   const { organizationId, userId } = session
   await claimEndpoint(organizationId, userId, body.endpoint)
   if (body.replaces && body.replaces !== body.endpoint) {

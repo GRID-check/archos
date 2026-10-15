@@ -132,6 +132,14 @@ describe.skipIf(!url)('push subscriptions against Postgres', () => {
     await expect(
       as(ORG, () => repo.upsertSubscription({ ...values(ORG, ANNA, 'http'), endpoint: 'http://fcm.googleapis.com/x' }))
     ).rejects.toThrow()
+    // A host the sender's url.parse reads as 169.254.169.254, whatever wrote it.
+    for (const char of [';', '{', '`', '"', "'", '@', ':8443']) {
+      await expect(
+        as(ORG, () =>
+          repo.upsertSubscription({ ...values(ORG, ANNA, `host${char}`), endpoint: `https://169.254.169.254${char}.fcm.googleapis.com/x` })
+        )
+      ).rejects.toThrow()
+    }
     await expect(as(ORG, () => repo.upsertSubscription({ ...values(ORG, ANNA, 'big'), auth: 'x'.repeat(300) }))).rejects.toThrow()
     await expect(as(ORG, () => repo.upsertSubscription({ ...values(ORG, ANNA, 'label'), deviceLabel: '' }))).rejects.toThrow()
   })

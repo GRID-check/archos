@@ -823,7 +823,7 @@ organization's row for the endpoint (`claimEndpoint`, a platform-scope DELETE).
 |---|---|---|
 | `id` | `uuid` | primary key |
 | `organization_id`, `user_id` | `text` | who the device notifies; the organization is the RLS predicate |
-| `endpoint` | `text` | https URL, at most 2048; unique |
+| `endpoint` | `text` | https URL, at most 2048, host of DNS labels only (`push_subscriptions_endpoint_host`, the shape WHATWG `URL` and `url.parse` read alike); unique |
 | `p256dh`, `auth` | `text` | the subscription's encryption key and secret; with the endpoint, all a sender needs |
 | `device_label` | `text` | "Safari auf iPhone", from the user agent |
 | `created_at`, `last_success_at` | `timestamptz` | the last time the push service accepted a message |

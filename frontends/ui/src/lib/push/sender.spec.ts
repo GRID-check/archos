@@ -7,7 +7,7 @@ import { describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 
-import { createWebPushSender, outcomeForStatus } from './sender'
+import { createWebPushSender, isSendableEndpoint, outcomeForStatus } from './sender'
 
 describe('what a push service’s status means', () => {
   it.each([
@@ -58,6 +58,15 @@ describe('the sender over web-push', () => {
     expect(await createWebPushSender(config, busy).send(target, '{}', options)).toEqual({ kind: 'transient', status: 503 })
   })
 
+  // A row written before the host rule, or by a path that skipped it: the
+  // library would request what url.parse reads, 169.254.169.254.
+  it('never hands the library an address its parser reads as another host, and drops the row', async () => {
+    const lib = libReturning(async () => ({ statusCode: 201 }))
+    const smuggled = { ...target, endpoint: 'https://169.254.169.254;.fcm.googleapis.com/x' }
+    expect(await createWebPushSender(config, lib).send(smuggled, '{}', options)).toEqual({ kind: 'gone' })
+    expect(lib.sendNotification).not.toHaveBeenCalled()
+  })
+
   it('treats a network failure or timeout as worth another try', async () => {
     const lib = libReturning(() => Promise.reject(new Error('socket hang up')))
     expect(await createWebPushSender(config, lib).send(target, '{}', options)).toEqual({ kind: 'transient', status: null })
@@ -99,5 +108,15 @@ describe('the wire the library produces for our options (RFC 8030, 8188, 8291, 8
     })
     expect(decrypted.toString('utf8')).toBe(plaintext)
     expect((request.body as Buffer).toString('utf8')).not.toContain('Hallo')
+  })
+})
+
+describe('whether the library would request the host we checked', () => {
+  it.each([';', '{', '`', '"', "'"])('refuses a host url.parse cuts at %s', (char) => {
+    expect(isSendableEndpoint(`https://169.254.169.254${char}.fcm.googleapis.com/x`)).toBe(false)
+  })
+
+  it('accepts a push service’s address', () => {
+    expect(isSendableEndpoint(target.endpoint)).toBe(true)
   })
 })

@@ -12,8 +12,13 @@
 -- a sender needs to encrypt a payload for this browser. The row holds no
 -- notification content, only where to send and how to scramble it.
 --
--- The CHECKs bound what a request can store: the endpoint is an https URL, and
--- every text column has a length, so a client cannot park a megabyte in a row.
+-- The CHECKs bound what a request can store: the endpoint is an https URL whose
+-- host is plain DNS labels, and every text column has a length, so a client
+-- cannot park a megabyte in a row. The host shape is the one both URL parsers
+-- read alike: WHATWG `URL`, which the allow-list checks with, and Node's
+-- `url.parse`, which `web-push` sends with. `https://169.254.169.254;.fcm…` is an
+-- fcm host to one and the metadata service to the other (`lib/push/endpoint.ts`);
+-- the row cannot hold it whichever code path wrote it.
 -- A subscription is removed on the push service's 404 or 410, and after
 -- `failure_count` reaches the sender's limit (`lib/push/service.ts`).
 --
@@ -33,6 +38,8 @@ CREATE TABLE IF NOT EXISTS "push_subscriptions" (
   "failure_count" integer DEFAULT 0 NOT NULL,
   CONSTRAINT push_subscriptions_endpoint_https
     CHECK ("endpoint" LIKE 'https://%' AND char_length("endpoint") <= 2048),
+  CONSTRAINT push_subscriptions_endpoint_host
+    CHECK ("endpoint" ~* '^https://[a-z0-9-]+(\.[a-z0-9-]+)*/'),
   CONSTRAINT push_subscriptions_keys_length
     CHECK (char_length("p256dh") BETWEEN 1 AND 256 AND char_length("auth") BETWEEN 1 AND 256),
   CONSTRAINT push_subscriptions_label_length

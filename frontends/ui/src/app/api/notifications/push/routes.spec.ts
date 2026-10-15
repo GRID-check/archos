@@ -157,6 +157,13 @@ describe('devices', () => {
     expect((await client.listDevices()).map((d) => d.endpoint)).toEqual([sub('new').endpoint])
   })
 
+  // `new URL` and the `url.parse` web-push sends with read these hosts differently.
+  it.each([';', '{', '`', '"', "'"])('refuses a host the sender’s parser would read as another (%s)', async (char) => {
+    const endpoint = `https://169.254.169.254${char}.fcm.googleapis.com/x`
+    await expect(client.registerDevice({ ...sub('a'), endpoint })).rejects.toMatchObject({ status: 400 })
+    expect(await client.listDevices()).toEqual([])
+  })
+
   it('refuses an address that is not a push service’s', async () => {
     await expect(client.registerDevice({ ...sub('a'), endpoint: 'https://169.254.169.254/x' })).rejects.toMatchObject({
       status: 400,
