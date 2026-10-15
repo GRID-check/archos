@@ -252,6 +252,19 @@ tasks:
     cmds:
       - bash scripts/rls-test-db.sh
 
+  be:test:postgres:
+    desc: >-
+      The claim-queue suites' Postgres branch (production's SQL) against a
+      throwaway cluster. Needs PostgreSQL server binaries.
+    cmds:
+      # Serial, not -n logical: every test drops and recreates the same tables
+      # in the one scratch database.
+      - >-
+        bash scripts/rls-test-db.sh --exec "{{.PY}}" -X faulthandler -m pytest -q
+        tests/aiq_agent/common/test_claim_queue.py
+        tests/knowledge_layer_tests/test_ingest_queue.py
+        frontends/aiq_api/tests/test_research_queue_fair.py
+
   fe:test:shard:
     desc: 'One shard of the UI suite, as a blob report (CI: SHARD=1/4 task fe:test:shard)'
     dir: '{{.UI}}'

@@ -107,6 +107,9 @@ Variables set in `docker-compose.yaml` under `environment:` take precedence over
 | Variable | Required | Default | Description |
 |----------|----------|---------|-------------|
 | `BACKEND_CONFIG` | Yes | `/app/configs/config_oib_openrouter.yml` | Path to the NAT workflow YAML config file inside the container. The compose stack mounts `configs/` at `/app/configs`. |
+| `CONFIG_FILE` | No | `/app/configs/config_oib_openrouter.yml` | The NAT workflow config inside the backend container. Compose sets it from `BACKEND_CONFIG`, Pulumi from `backend.configFile`. The web roles' entrypoint (`deploy/start_web.py`) exports it as `NAT_CONFIG_FILE`; the ingest worker reads it first, then `NAT_CONFIG_FILE`, then the default. |
+| `NAT_CONFIG_FILE` | No | (set by `deploy/start_web.py` from `CONFIG_FILE`) | The config NAT's FastAPI app loads. A research job records it at submit (`jobs/submit.py`) as the config its worker runs; the ingest worker falls back to it when `CONFIG_FILE` is unset. Not set by hand. |
+| `NAT_FASTAPI_LOG_LEVEL` | No | `20` | Python logging level a research job runs at, recorded at submit (`jobs/submit.py`): 10 DEBUG, 20 INFO, 30 WARNING. |
 | `AIQ_CHROMA_DIR` | No | `/tmp/chroma_data` | Directory for the embedded ChromaDB store. Compose's default stack: `/app/data/chroma_data`, on its own `chroma_data` volume. Ignored once `AIQ_CHROMA_URL`/`AIQ_CHROMA_HOST` selects a shared server, which every Kubernetes and Coolify deployment does (the backend has no volume there). |
 | `AIQ_CHROMA_URL` | No | (unset — embedded client) | Full URL of a **shared** Chroma server (e.g. `http://chroma:8000`). Setting this (or `AIQ_CHROMA_HOST`) makes every backend replica and research worker talk to ONE Chroma over HTTP instead of each opening its own embedded `PersistentClient` on local disk — which is what otherwise pins the vector store to a single pod. A scheme-less value (`chroma:8000`) is accepted; `https://` implies TLS. Unset keeps today's embedded behaviour, so local dev and single-node are untouched. |
 | `AIQ_CHROMA_HOST` | No | (unset — embedded client) | Host of a shared Chroma server, as an alternative to `AIQ_CHROMA_URL`. |
@@ -384,6 +387,7 @@ An event on an Anmerkung (a reply that addresses Piloti, a reply on Piloti's own
 | `LOG_LEVEL` | No | `INFO` | Logging level: DEBUG, INFO, WARNING, ERROR. |
 | `PYTHONWARNINGS` | No | `ignore` | Python warnings filter. |
 | `PROJECT_PURGE_GRACE_DAYS` | No | see `docs/architecture/deletion-pipeline.md` | Grace period before soft-deleted projects are hard-purged (ADR-0011). |
+| `PURGER_POLL_INTERVAL_MS` | No | `60000` | How often the purger (`purger/index.js`) polls the deletion queue for its next claim, in milliseconds. Purger service. |
 | `FOLDER_PURGE_GRACE_DAYS` | No | `14` | Days a deleted folder stays in the project's Papierkorb, restorable, before the purger erases its documents and keeps it as a tombstone (ADR-0088). Capped at 23, like every grace period, so an erasure still finishes inside the GDPR's one month; empty or invalid means 14. Read by the BFF when a folder is deleted. |
 
 ---

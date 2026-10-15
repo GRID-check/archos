@@ -77,6 +77,18 @@ run_pg "'$PGBIN/pg_ctl' -D '$PGDATA' -o '-p $PORT -k $WORKDIR' -l '$PGDATA/serve
 export PGOPTIONS="-c client_min_messages=warning"
 PSQL="$PGBIN/psql -h $WORKDIR -p $PORT -U postgres"
 
+# `--exec <command…>`: the same throwaway cluster, without the migration chain or
+# the suites below, for the Python suites whose Postgres branch would otherwise
+# skip (`task be:test:postgres`). They create and drop their own tables, so they
+# get an empty scratch database as the superuser, in AIQ_TEST_POSTGRES_URL.
+if [ "${1:-}" = "--exec" ]; then
+  shift
+  $PSQL -q -v ON_ERROR_STOP=1 -c "CREATE DATABASE aiq_queues;"
+  echo "==> running: $*"
+  AIQ_TEST_POSTGRES_URL="postgresql://postgres@127.0.0.1:$PORT/aiq_queues" "$@"
+  exit 0
+fi
+
 # Reproduce the DEPLOYMENT topology, not a convenient one. Migrations run as a
 # plain non-superuser database owner with no CREATEROLE and no BYPASSRLS —
 # exactly what CloudNativePG hands the app. Running this chain as `postgres`
@@ -164,13 +176,15 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
-# in parallel they claim each other's seeded jobs. One file at a time.
-echo "==> running the job-queue suites one file at a time as grid_app_rw"
+# in parallel they claim each other's seeded jobs. One file at a time. The
+# scheduler's due-scan is the same shape over task_definitions, every tenant's.
+echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
-    workers/jobs/runner.integration.spec.mjs
+    workers/jobs/runner.integration.spec.mjs \
+    scheduler/db.integration.spec.mjs
 
 # ---------------------------------------------------------------------------
 # Migration 0086: the backfill, asserted per row shape, and its DOWN migration.

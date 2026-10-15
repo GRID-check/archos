@@ -27,6 +27,9 @@ const lane = (name: string) => `org_jobq_${name}_${STAMP}`
 const A = lane('a')
 const B = lane('b')
 const C = lane('c')
+/** More lanes than one claim ranks (`LANES_PER_CLAIM`), named in the order a tie serves them. */
+const TIED = ['t0', 't1', 't2', 't3', 't4', 't5'].map(lane)
+const OURS = [A, B, C, ...TIED]
 
 const OPTIONS = { staleSeconds: 180, maxAttempts: 3 }
 
@@ -73,8 +76,8 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
 
   async function clearOurs() {
     await withPlatformScope(sql, async (tx) => {
-      await tx`DELETE FROM bff_job_queue WHERE lane IN (${A}, ${B}, ${C})`
-      await tx`DELETE FROM bff_job_lane_turns WHERE lane IN (${A}, ${B}, ${C})`
+      await tx`DELETE FROM bff_job_queue WHERE lane = ANY(${OURS}::text[])`
+      await tx`DELETE FROM bff_job_lane_turns WHERE lane = ANY(${OURS}::text[])`
     })
   }
 
@@ -155,6 +158,25 @@ describe.skipIf(!url)('bff_job_queue claim against live Postgres (migration 0104
     const second = await claim('w2') // A now runs one: B's bulk job goes before A's second interactive
 
     expect([idOf(first), idOf(second)]).toEqual(['a-interactive-0', 'b-bulk'])
+  })
+
+  // The next two scenarios are the lane order every claim shares: the same two run
+  // in tests/knowledge_layer_tests/test_ingest_queue.py and
+  // tests/aiq_agent/common/test_claim_queue.py. Priority never picks the lane.
+  it('ranks a lane by its oldest job, not its best priority: an older bulk job beats a newer interactive one', async () => {
+    await seed('a-bulk', A, '2026-09-30T10:00:00Z', 1)
+    await seed('b-interactive', B, '2026-09-30T10:00:01Z', 0)
+
+    expect(idOf(await claim('w1'))).toBe('a-bulk')
+  })
+
+  it('serves tied lanes by name, past the lanes one claim ranks', async () => {
+    for (const [n, tied] of [...TIED].reverse().entries()) await seed(`j${n}`, tied, '2026-09-30T10:00:00Z')
+
+    const claimed = []
+    for (let i = 0; i < TIED.length; i++) claimed.push((await claim(`w${i}`))?.lane)
+
+    expect(claimed).toEqual(TIED)
   })
 
   it('holds an office at its cap', async () => {
