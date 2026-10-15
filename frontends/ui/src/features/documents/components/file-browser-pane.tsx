@@ -658,7 +658,11 @@ export function FileBrowserPane({
   ) : null
 
   return (
-    <div className="flex h-full flex-col">
+    // `phone:h-auto phone:min-h-full`: the breadcrumb row pins to the top of the
+    // scroll container on a phone, and a sticky box only sticks inside its
+    // parent. At `h-full` the parent is exactly one screen tall and the row
+    // would let go after one screenful.
+    <div className="flex h-full flex-col phone:h-auto phone:min-h-full">
       {/* No banner over the results. It restated in a tinted strip what the
           listing below it already shows — how many hits, for which query —
           and it moved the whole listing down a row the moment a search ran.
@@ -710,7 +714,7 @@ export function FileBrowserPane({
           />
         </div>
       )}
-      {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4`}>{brief}</div>}
+      {brief && !semantic.active && !searching && <div className={`${CONTENT_MAX} px-4 pt-4 phone:pt-2`}>{brief}</div>}
       {/* Piloti's filing suggestions for the documents of this level, one line
           per target folder, when one folder would collect two or more: the
           decision that moves several files, made where they are all in view. */}

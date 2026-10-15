@@ -19,15 +19,19 @@ import { create } from 'zustand'
 interface ShellOverlaysState {
   paletteOpen: boolean
   projectSheetOpen: boolean
+  moreSheetOpen: boolean
   setPaletteOpen: (open: boolean) => void
   togglePalette: () => void
   setProjectSheetOpen: (open: boolean) => void
+  setMoreSheetOpen: (open: boolean) => void
 }
 
 export const useShellOverlays = create<ShellOverlaysState>()((set) => ({
   paletteOpen: false,
   projectSheetOpen: false,
+  moreSheetOpen: false,
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   togglePalette: () => set((state) => ({ paletteOpen: !state.paletteOpen })),
   setProjectSheetOpen: (open) => set({ projectSheetOpen: open }),
+  setMoreSheetOpen: (open) => set({ moreSheetOpen: open }),
 }))

@@ -73,8 +73,16 @@ export const nav: typeof en.nav = {
   /** Die untere Tab-Leiste am Telefon (`components/shell/phone-tab-bar.tsx`). */
   tabBar: {
     label: 'Hauptnavigation',
-    /** Öffnet die Schublade mit allen weiteren Zielen. */
+    /** Öffnet das Blatt mit den Zielen, die die Leiste nicht trägt. */
     more: 'Mehr',
+    /** Das Blatt hinter „Mehr“ (`components/shell/phone-more-sheet.tsx`). */
+    moreSheet: {
+      title: 'Mehr',
+      description: 'Weitere Bereiche und das Konto.',
+      close: 'Schließen',
+      places: 'Bereiche',
+      account: 'Konto',
+    },
   },
   search: {
     /** Der Weg zur Befehlspalette per Finger, in beiden Kopfzeilen. */

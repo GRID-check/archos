@@ -132,7 +132,14 @@ export function FolderBreadcrumbRow({
   const parentLabel = parent ? parent.name : t('folders.allFiles')
 
   return (
-    <div className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm">
+    <div
+      // On a phone the row PINS to the top of the list. It is the list's first
+      // child, so it used to scroll with the cards, and the moment the list
+      // overflowed the short screen under the fixed header a swipe left it
+      // half-hidden under the controls. Pinned, it is whole or gone, never cut.
+      className="flex shrink-0 items-center justify-between gap-2 border-b bg-card/50 px-4 py-2.5 backdrop-blur-sm phone:sticky phone:top-0 phone:z-10 phone:bg-background phone:py-1.5"
+      data-testid="folder-breadcrumb-row"
+    >
       <div className="flex min-w-0 items-center gap-2">
         {/*
           Up one level, as its own control rather than as a breadcrumb segment.

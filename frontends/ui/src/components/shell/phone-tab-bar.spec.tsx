@@ -5,6 +5,7 @@ import { afterEach, describe, expect, test, vi } from 'vitest'
 
 import { useLayoutStore } from '@/features/layout/store'
 import { PhoneTabBar } from './phone-tab-bar'
+import { useShellOverlays } from './shell-overlays'
 
 let pathname = '/app/projects/p1/files'
 vi.mock('next/navigation', () => ({
@@ -43,6 +44,7 @@ afterEach(() => {
   mobile = true
   badge.mockClear()
   useLayoutStore.setState({ isMobileNavOpen: false })
+  useShellOverlays.setState({ moreSheetOpen: false })
 })
 
 const bar = (): HTMLElement => screen.getByRole('navigation', { name: 'Main navigation' })
@@ -68,7 +70,7 @@ describe('PhoneTabBar — inside a project', () => {
     expect(pills[0]!.closest('a')).toHaveTextContent('Files')
   })
 
-  test('"Mehr" opens the drawer the rail becomes on a phone', async () => {
+  test('"Mehr" opens the sheet of destinations the bar does not carry', async () => {
     const user = userEvent.setup()
     render(<PhoneTabBar projectId="p1" canAccessArchiv canAccessInbox />)
     const more = within(bar()).getByRole('button', { name: 'More' })
@@ -76,7 +78,7 @@ describe('PhoneTabBar — inside a project', () => {
 
     await user.click(more)
 
-    expect(useLayoutStore.getState().isMobileNavOpen).toBe(true)
+    expect(useShellOverlays.getState().moreSheetOpen).toBe(true)
     expect(more).toHaveAttribute('aria-expanded', 'true')
   })
 

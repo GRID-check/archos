@@ -24,6 +24,9 @@ vi.mock('./phone-tab-bar', () => ({
     <nav data-testid="tab-bar" data-project-id={projectId ?? 'org'} />
   ),
 }))
+vi.mock('./phone-more-sheet', () => ({
+  PhoneMoreSheet: () => <div data-testid="more-sheet" />,
+}))
 vi.mock('./project-switcher-sheet', () => ({
   ProjectSwitcherSheet: () => <div data-testid="switcher-sheet" />,
 }))

@@ -91,8 +91,16 @@ export const nav = {
   /** The phone's bottom tab bar (`components/shell/phone-tab-bar.tsx`). */
   tabBar: {
     label: 'Main navigation',
-    /** Opens the drawer with every other destination. */
+    /** Opens the sheet with the destinations the bar does not carry. */
     more: 'More',
+    /** The sheet behind "More" (`components/shell/phone-more-sheet.tsx`). */
+    moreSheet: {
+      title: 'More',
+      description: 'More areas and your account.',
+      close: 'Close',
+      places: 'Areas',
+      account: 'Account',
+    },
   },
   search: {
     /** The touch door into the command palette, in both headers. */
