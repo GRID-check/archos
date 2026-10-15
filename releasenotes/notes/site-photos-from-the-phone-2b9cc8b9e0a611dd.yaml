@@ -1,0 +1,19 @@
+---
+features:
+  - >
+    On a phone, the paperclip in the chat now offers "Foto aufnehmen", which
+    opens the camera directly, "Aus Mediathek" and "Datei auswählen", and says
+    that what you add stays in this chat. The upload menu under Dateien offers
+    the same two photo entries and files the photo in the folder you are in.
+    Each photo is named after the moment it was taken, so a second photo no
+    longer replaces the first. Where photos are not switched on, the menu says
+    why.
+  - >
+    Dictating on a phone shows a full-width bar while it records, with the time
+    against the 45-second limit; tap anywhere on it to insert the text. A
+    microphone that cannot be used says why when you tap it.
+fixes:
+  - >
+    Picking a name from the @ list on a phone no longer closes the keyboard.
+    The composer shows the project's name on a phone and keeps its buttons on
+    one row.

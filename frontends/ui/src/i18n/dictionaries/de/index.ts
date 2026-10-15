@@ -28,6 +28,7 @@ import { onboarding } from './onboarding'
 import { organization } from './organization'
 import { platform } from './platform'
 import { presence } from './presence'
+import { capture } from './capture'
 import { shortcuts } from './shortcuts'
 import { legal } from './legal'
 import { answerExport } from './answer-export'
@@ -43,6 +44,7 @@ export const de: Dictionary = {
   common,
   nav,
   presence,
+  capture,
   profile,
   shortcuts,
   settings,

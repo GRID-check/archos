@@ -1,20 +1,24 @@
 'use client'
 
 import { useEffect, useRef, type MutableRefObject } from 'react'
-import { ChevronDown, FolderUp, Upload } from 'lucide-react'
+import { Camera, ChevronDown, FolderUp, Images, Upload } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuItemText,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { Spinner } from '@/components/ui/spinner'
+import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatBytes } from '@/lib/format'
 import { useAppConfig } from '@/shared/context'
 import { DEFAULT_ACCEPTED_FILE_TYPES, DEFAULT_MAX_FILE_SIZE } from '../constants'
 import { withZipAccepted } from '../lib/zip-types'
+import { documentsOnlyAccept, photoIntake, prepareSitePhotos } from '../lib/site-photo'
 
 interface ProjectUppyUploadProps {
   /** Present for project corpus uploads; omitted for the org-wide Archiv. */
@@ -62,9 +66,16 @@ export function ProjectUppyUpload({
   pickFolderRef,
 }: ProjectUppyUploadProps) {
   const t = useTranslations('files')
+  const tCapture = useTranslations('capture')
   const { locale } = useLocale()
   const inputRef = useRef<HTMLInputElement>(null)
   const folderInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const libraryInputRef = useRef<HTMLInputElement>(null)
+  // The site photo, on a touch screen: the menu leads with the camera and the
+  // photo library, and „Dateien hochladen" then offers documents only (with
+  // image types in it, iOS would answer with its own Mediathek / Kamera sheet).
+  const touch = useCoarsePointer()
   useEffect(() => {
     if (pickFilesRef) pickFilesRef.current = () => inputRef.current?.click()
     if (pickFolderRef) pickFolderRef.current = () => folderInputRef.current?.click()
@@ -83,14 +94,32 @@ export function ProjectUppyUpload({
   // files inside) does not name it.
   const acceptedTypes = withZipAccepted(fileUpload?.acceptedTypes ?? DEFAULT_ACCEPTED_FILE_TYPES)
   const maxFileSize = fileUpload?.maxFileSize ?? DEFAULT_MAX_FILE_SIZE
+  const photos = photoIntake({
+    acceptedTypes: fileUpload?.acceptedTypes ?? DEFAULT_ACCEPTED_FILE_TYPES,
+    imageUploadBlockedReason: fileUpload?.imageUploadBlockedReason ?? null,
+  })
+  const photoEntries = allowFolders && touch
+  const filesAccept = photoEntries ? documentsOnlyAccept(acceptedTypes) : acceptedTypes
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const fileList = e.target.files
-    if (fileList && fileList.length > 0) {
-      onUpload(Array.from(fileList))
+  const handleChange =
+    (source: 'camera' | 'picker' = 'picker') =>
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const selected = Array.from(e.target.files ?? [])
+      e.target.value = ''
+      if (selected.length === 0) return
+      // A photo gets a name of its own: the filename is the document's
+      // identity, and iOS calls every capture `image.jpg` (`site-photo.ts`).
+      void prepareSitePhotos(selected, {
+        source,
+        prefix: tCapture('photos.fileNamePrefix'),
+        imagesAccepted: photos.available,
+      }).then(({ files, unconvertibleHeic }) => {
+        // An unconvertible HEIC goes on under its own name, so the upload's
+        // own validation reports it with every other refused file.
+        const rest = selected.filter((file) => unconvertibleHeic.includes(file.name))
+        if (files.length + rest.length > 0) onUpload([...files, ...rest])
+      })
     }
-    e.target.value = ''
-  }
 
   const input = (
     <>
@@ -98,9 +127,9 @@ export function ProjectUppyUpload({
         ref={inputRef}
         type="file"
         multiple
-        accept={acceptedTypes}
+        accept={filesAccept}
         className="hidden"
-        onChange={handleChange}
+        onChange={handleChange()}
         data-testid={
           variant === 'dropcard' ? 'project-upload-dropcard-input' : 'project-upload-input'
         }
@@ -120,9 +149,31 @@ export function ProjectUppyUpload({
           // and React only forwards these to the DOM when they are strings.
           {...({ webkitdirectory: '', directory: '' } as Record<string, string>)}
           className="hidden"
-          onChange={handleChange}
+          onChange={handleChange()}
           data-testid="project-upload-folder-input"
         />
+      )}
+      {photoEntries && photos.available && (
+        <>
+          <input
+            ref={libraryInputRef}
+            type="file"
+            multiple
+            accept={photos.accept}
+            className="hidden"
+            onChange={handleChange()}
+            data-testid="project-upload-library-input"
+          />
+          <input
+            ref={cameraInputRef}
+            type="file"
+            accept={photos.accept}
+            capture="environment"
+            className="hidden"
+            onChange={handleChange('camera')}
+            data-testid="project-upload-camera-input"
+          />
+        </>
       )}
     </>
   )
@@ -204,7 +255,49 @@ export function ProjectUppyUpload({
         <DropdownMenuTrigger asChild data-testid="project-upload-trigger">
           {trigger}
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent
+          align="end"
+          className={photoEntries ? 'w-72 max-w-[calc(100vw-2rem)]' : 'w-48'}
+        >
+          {photoEntries && (
+            <>
+              <DropdownMenuItem
+                disabled={!photos.available}
+                onSelect={() => cameraInputRef.current?.click()}
+                data-testid="project-upload-camera-item"
+              >
+                <Camera className="size-4" aria-hidden />
+                <DropdownMenuItemText
+                  title={tCapture('attach.takePhoto')}
+                  hint={tCapture('photos.folderDestination')}
+                />
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                disabled={!photos.available}
+                onSelect={() => libraryInputRef.current?.click()}
+                data-testid="project-upload-library-item"
+              >
+                <Images className="size-4" aria-hidden />
+                <DropdownMenuItemText
+                  title={tCapture('attach.photoLibrary')}
+                  hint={tCapture('attach.photoLibraryHint')}
+                />
+              </DropdownMenuItem>
+              {!photos.available && (
+                <p
+                  className="text-muted-foreground px-2.5 pb-1.5 pt-0.5 text-xs leading-snug"
+                  role="note"
+                >
+                  {tCapture(
+                    photos.reason === 'vlm-unavailable'
+                      ? 'photos.unavailableVision'
+                      : 'photos.unavailableNotEnabled'
+                  )}
+                </p>
+              )}
+              <DropdownMenuSeparator />
+            </>
+          )}
           <DropdownMenuItem
             onSelect={() => inputRef.current?.click()}
             data-testid="project-upload-files-item"
