@@ -14,6 +14,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileSearch } from '../hooks/use-file-search'
+import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 import { useLevelDirection } from '../hooks/use-level-direction'
 import { motion, motionEntrance } from '@/components/motion'
 import { ActionMenu } from '@/components/ui/action-menu'
@@ -369,6 +370,7 @@ export function FileBrowserPane({
   const [createFolderIn, setCreateFolderIn] = useState<string | null | undefined>(undefined)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
 
+  const touch = useCoarsePointer()
   const listingEntries = useMemo(
     () =>
       listingActionEntries({
@@ -390,7 +392,9 @@ export function FileBrowserPane({
             ? () => setCreateFolderIn(currentFolderId)
             : undefined,
         onUploadFiles: writableHere ? onPickFiles : undefined,
-        onUploadFolder: writableHere ? onPickFolder : undefined,
+        // iOS Safari cannot pick a folder: the entry would open a plain file
+        // picker, so a finger is not offered it.
+        onUploadFolder: writableHere && !touch ? onPickFolder : undefined,
         onViewChange,
         onSortChange,
       }),
@@ -405,6 +409,7 @@ export function FileBrowserPane({
       writableHere,
       onPickFiles,
       onPickFolder,
+      touch,
       onViewChange,
       onSortChange,
     ],

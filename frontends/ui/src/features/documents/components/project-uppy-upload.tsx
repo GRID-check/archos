@@ -305,13 +305,17 @@ export function ProjectUppyUpload({
             <Upload className="size-4" aria-hidden />
             {t('upload.uploadFiles')}
           </DropdownMenuItem>
-          <DropdownMenuItem
-            onSelect={() => folderInputRef.current?.click()}
-            data-testid="project-upload-folder-item"
-          >
-            <FolderUp className="size-4" aria-hidden />
-            {t('upload.uploadFolder')}
-          </DropdownMenuItem>
+          {/* iOS Safari has no folder picker (`webkitdirectory` opens the plain
+              file sheet), so a finger is not offered an entry that cannot work. */}
+          {!touch && (
+            <DropdownMenuItem
+              onSelect={() => folderInputRef.current?.click()}
+              data-testid="project-upload-folder-item"
+            >
+              <FolderUp className="size-4" aria-hidden />
+              {t('upload.uploadFolder')}
+            </DropdownMenuItem>
+          )}
         </DropdownMenuContent>
       </DropdownMenu>
     </>
