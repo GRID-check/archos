@@ -21,6 +21,15 @@ import { OVERLAY_MOTION, OVERLAY_EXIT, OVERLAY_REDUCED } from '@/components/ui/o
  * every control inline into each row, or throw a modal for a detail view.
  *
  * Full width under `sm` — a 24rem panel on a phone is a modal with extra steps.
+ *
+ * SAFE AREAS. A side sheet is full height, so on an iPhone its top runs under
+ * the status bar and the Dynamic Island, and its bottom under the home
+ * indicator; on a phone on its side the island sits on one long edge. Each side
+ * pads the edges it touches by `max(<its padding>, env(safe-area-inset-*))`,
+ * which is the plain padding wherever there is no inset (every desktop), and
+ * the close button moves down and in with it. A caller that sets its own
+ * padding (the mobile nav rail's `p-0`) replaces these through tailwind-merge
+ * and owns its insets, as `sidebar.tsx` does.
  */
 
 const Sheet = SheetPrimitive.Root
@@ -46,10 +55,17 @@ SheetOverlay.displayName = SheetPrimitive.Overlay.displayName
 
 const SIDE_CLASSES = {
   right:
-    'inset-y-0 right-0 h-full w-full border-l data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md',
-  left: 'inset-y-0 left-0 h-full w-full border-r data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-md',
+    'inset-y-0 right-0 h-full w-full border-l pt-[max(1.5rem,env(safe-area-inset-top))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-md',
+  left: 'inset-y-0 left-0 h-full w-full border-r pt-[max(1.5rem,env(safe-area-inset-top))] pl-[max(1.5rem,env(safe-area-inset-left))] pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-md',
   bottom:
-    'inset-x-0 bottom-0 max-h-[90dvh] border-t data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+    'inset-x-0 bottom-0 max-h-[90dvh] border-t pl-[max(1.5rem,env(safe-area-inset-left))] pr-[max(1.5rem,env(safe-area-inset-right))] pb-[max(1.5rem,env(safe-area-inset-bottom))] data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom',
+} as const
+
+/** The close button follows the insets of the edges it sits against. */
+const CLOSE_SIDE_CLASSES = {
+  right: 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))] right-[max(1rem,calc(env(safe-area-inset-right)+0.5rem))]',
+  left: 'top-[max(1rem,calc(env(safe-area-inset-top)+0.5rem))]',
+  bottom: 'right-[max(1rem,calc(env(safe-area-inset-right)+0.5rem))]',
 } as const
 
 export type SheetSide = keyof typeof SIDE_CLASSES
@@ -104,6 +120,7 @@ const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Con
         <SheetPrimitive.Close
           className={cn(
             'absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md text-muted-foreground outline-none transition-colors duration-quick ease-out hover:bg-accent hover:text-foreground disabled:pointer-events-none disabled:opacity-50 motion-reduce:transition-none touch-target',
+            CLOSE_SIDE_CLASSES[side],
             FOCUS_RING,
           )}
         >
@@ -121,8 +138,9 @@ const SheetHeader = ({ className, ...props }: React.HTMLAttributes<HTMLDivElemen
 )
 SheetHeader.displayName = 'SheetHeader'
 
+/** Stacked in DOM order below `sm`: the primary action, last, lands nearest the thumb (as `DialogFooter`). */
 const SheetFooter = ({ className, ...props }: React.HTMLAttributes<HTMLDivElement>): JSX.Element => (
-  <div className={cn('mt-auto flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)} {...props} />
+  <div className={cn('mt-auto flex flex-col gap-2 sm:flex-row sm:justify-end', className)} {...props} />
 )
 SheetFooter.displayName = 'SheetFooter'
 

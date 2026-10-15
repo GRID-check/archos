@@ -16,6 +16,7 @@ import {
   springGlide,
 } from '@/components/motion'
 import { useDragControls, type PanInfo } from 'motion/react'
+import { pullDismisses } from '@/components/ui/sheet-pull'
 
 /**
  * Page sheet — a near-fullscreen surface that rises OVER the current page
@@ -58,10 +59,18 @@ import { useDragControls, type PanInfo } from 'motion/react'
  * edge is what says "this is a sheet over your page, and it pulls down".
  * `border-b-0` because the bottom edge is the screen edge — a hairline there
  * reads as a gap.
+ *
+ * The left and right insets are the panel's: on a phone on its side the
+ * Dynamic Island sits on one long edge, about 59px deep, and the panel runs
+ * edge to edge there (the side margins start at `md`, which a phone never
+ * reaches). The paper still bleeds to the screen edge; only the content steps
+ * in. The bottom inset is the content's, because only the content knows
+ * whether its last row is a pinned bar that should run under the home
+ * indicator (the history sheet's) or a list that should scroll clear of it.
  */
 export const PAGE_SHEET_OVERLAY_CLASS = 'bg-overlay fixed inset-0 z-50 backdrop-blur-sm'
 export const PAGE_SHEET_PANEL_CLASS =
-  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto'
+  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto'
 
 /**
  * How wide the panel may grow from `md` up. One width: a page sheet is a whole
@@ -70,15 +79,6 @@ export const PAGE_SHEET_PANEL_CLASS =
  * `reading` width existed and lost its last consumer to that pattern.
  */
 const PANEL_WIDTH = 'md:max-w-[1400px]'
-
-/**
- * Committing a pull: past this many pixels of travel — or any flick faster
- * than the velocity gate — the release dismisses instead of snapping back.
- * ~2 grabber-band heights: far enough that a stray touch never commits,
- * close enough that the gesture feels obeyed.
- */
-const DRAG_DISMISS_DISTANCE_PX = 96
-const DRAG_DISMISS_VELOCITY_PX_S = 600
 
 interface PageSheetProps {
   open: boolean
@@ -130,15 +130,23 @@ export function PageSheet({
   children,
 }: PageSheetProps): JSX.Element {
   const dragControls = useDragControls()
+  // Whether the current press turned into a pull. The grabber's pill is a
+  // close button AND the most natural place to start a pull, and a pull that
+  // falls short still ends in a click on the pill (it rode along under the
+  // finger), which must not close the sheet the reader just chose to keep.
+  const pulledRef = React.useRef(false)
 
   // The drag hot zone is the grabber band plus (when present) the header —
   // matching where a hand naturally goes to move a sheet. Interactive children
   // (the close X, header actions) keep their clicks: a press that starts on
-  // one of them never becomes a pull.
+  // one of them never becomes a pull. The grabber's own pill is the exception:
+  // a press there may become either.
   const startDrag = React.useCallback(
     (event: React.PointerEvent) => {
       const target = event.target as HTMLElement
-      if (target.closest('button, a, input, select, textarea, [role="button"]')) return
+      pulledRef.current = false
+      const onGrabber = target.closest('[data-slot="page-sheet-grabber"]') !== null
+      if (!onGrabber && target.closest('button, a, input, select, textarea, [role="button"]')) return
       dragControls.start(event)
     },
     [dragControls]
@@ -146,12 +154,7 @@ export function PageSheet({
 
   const handleDragEnd = React.useCallback(
     (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
-      if (
-        info.offset.y > DRAG_DISMISS_DISTANCE_PX ||
-        info.velocity.y > DRAG_DISMISS_VELOCITY_PX_S
-      ) {
-        onOpenChange(false)
-      }
+      if (pullDismisses(info.offset.y, info.velocity.y)) onOpenChange(false)
     },
     [onOpenChange]
   )
@@ -174,7 +177,7 @@ export function PageSheet({
               forceMount
               // Focus lands on the panel itself unless the caller directs it
               // (the history sheet's search field). Radix's default — the first
-              // focusable — is now the grabber's pill, and a focus ring around
+              // focusable — is the grabber's pill, and a focus ring around
               // the grabber on every open reads as the sheet asking to be
               // closed. Tab still reaches every control in order.
               onOpenAutoFocus={(event) => {
@@ -201,9 +204,12 @@ export function PageSheet({
                   bounceStiffness: springGlide.stiffness,
                   bounceDamping: springGlide.damping,
                 }}
+                onDragStart={() => {
+                  pulledRef.current = true
+                }}
                 onDragEnd={handleDragEnd}
               >
-                <PageSheetGrabber label={closeLabel} onPointerDown={startDrag} />
+                <PageSheetGrabber label={closeLabel} onPointerDown={startDrag} pulledRef={pulledRef} />
                 {headerless ? (
                   <>
                     <DialogPrimitive.Title data-slot="page-sheet-title" className="sr-only">
@@ -215,7 +221,7 @@ export function PageSheet({
                   </>
                 ) : (
                   <header
-                    className="border-border flex shrink-0 cursor-grab touch-none items-start justify-between gap-4 border-b px-4 pb-4 pt-2 select-none active:cursor-grabbing md:px-8 md:pb-5 md:pt-3"
+                    className="border-border flex shrink-0 cursor-grab touch-none items-start justify-between gap-4 border-b px-4 pb-4 pt-2 select-none active:cursor-grabbing pointer-coarse:pt-0 md:px-8 md:pb-5 md:pt-3"
                     onPointerDown={startDrag}
                   >
                     <div className="flex min-w-0 flex-col gap-0.5">
@@ -226,7 +232,9 @@ export function PageSheet({
                         {title}
                       </DialogPrimitive.Title>
                       {subtitle ? (
-                        <DialogPrimitive.Description className="text-muted-foreground truncate text-sm">
+                        // Two lines on a phone, where one line of a 361px
+                        // header cut the sentence mid-word; one from `md`.
+                        <DialogPrimitive.Description className="text-muted-foreground line-clamp-2 text-sm text-pretty md:line-clamp-1">
                           {subtitle}
                         </DialogPrimitive.Description>
                       ) : (
@@ -256,32 +264,37 @@ export function PageSheet({
 /**
  * The grabber band: the sheet's universal handle, on every viewport.
  *
- * The pill is the affordance ("this pulls down"); the band around it is the
- * drag hot zone. The pill is ALSO a real close button, but for the KEYBOARD
- * only: `pointer-events-none` lets every press on it fall through to the band
- * beneath — a press on the pill's own pixels is the single most natural place
- * to start the pull, and a button there would swallow it. Tab still reaches
- * the button (focus ring and all), so on phones, where the header X is
- * hidden, the sheet keeps a close control that is not a gesture. `touch-none`
- * keeps the browser from turning the pull into a page scroll or
- * pull-to-refresh.
+ * The pill is the affordance ("this pulls down") and a real close button: a
+ * tap on it closes, the keyboard reaches it, and on a coarse pointer it is a
+ * 44px target. The band around it is the drag hot zone, and a press on the pill
+ * may become a pull too (`startDrag` lets it): it is the single most natural
+ * place to start one. A pull that falls short ends with a click on the pill
+ * that rode along under the finger, so the click is swallowed when the press
+ * became a pull. `touch-none` keeps the browser from turning the pull into a
+ * page scroll or pull-to-refresh.
  */
 function PageSheetGrabber({
   label,
   onPointerDown,
+  pulledRef,
 }: {
   label: string
   onPointerDown: (event: React.PointerEvent) => void
+  pulledRef: React.RefObject<boolean>
 }): JSX.Element {
   return (
     <div
       data-slot="page-sheet-grabber"
-      className="flex shrink-0 cursor-grab touch-none justify-center py-2 select-none active:cursor-grabbing"
+      className="flex shrink-0 cursor-grab touch-none justify-center py-2 select-none active:cursor-grabbing pointer-coarse:py-0"
       onPointerDown={onPointerDown}
     >
       <DialogPrimitive.Close
+        data-slot="page-sheet-grabber-close"
+        onClick={(event) => {
+          if (pulledRef.current) event.preventDefault()
+        }}
         className={cn(
-          'pointer-events-none flex h-4 w-14 items-center justify-center rounded-full outline-none',
+          'flex h-4 w-14 cursor-grab items-center justify-center rounded-full outline-none active:cursor-grabbing pointer-coarse:h-11 pointer-coarse:w-24',
           FOCUS_RING
         )}
       >
@@ -299,15 +312,19 @@ function PageSheetGrabber({
  * its content already owns (the Archiv workspace's identity row) instead of
  * floating a second control over it.
  *
- * Hidden below `md`: on phones the grabber is the close affordance, and an X
- * beside it would be two controls asking the same question. The grabber's pill
- * button keeps close reachable for keyboard and AT on every viewport.
+ * Visible on every viewport. It was hidden below `md` on the theory that the
+ * grabber was the phone's close, and an X beside it two controls asking one
+ * question; in practice the pull is a gesture nobody is told about, and a
+ * reader on a phone who did not know it had no visible way out. The X is the
+ * way out everyone recognises; the pull is the shortcut. Grown, not given a
+ * catchment, on a coarse pointer: header actions stand right beside it.
  */
 export function PageSheetClose({ label }: { label: string }): JSX.Element {
   return (
     <DialogPrimitive.Close
+      data-slot="page-sheet-close"
       className={cn(
-        'text-muted-foreground hover:bg-accent hover:text-foreground touch-target hidden size-9 items-center justify-center rounded-lg outline-none transition-colors duration-quick ease-out motion-reduce:transition-none md:flex',
+        'text-muted-foreground hover:bg-accent hover:text-foreground flex size-9 shrink-0 items-center justify-center rounded-lg outline-none transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:size-11',
         FOCUS_RING,
       )}
     >
