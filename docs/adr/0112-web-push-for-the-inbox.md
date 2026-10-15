@@ -66,7 +66,8 @@ the `web-push` library.
 * **Coupled to the inbox at its one write path.** `emitInboxItems` queues an
   `inbox_push` job for each stored row whose recipient holds a device. The job
   carries ids and a stamp, and decides again when it runs: the person is still a
-  member, the item is unread and not resolved, archived or inert, nothing newer
+  member (WorkOS answered so; a lookup that fails retries the job, and only an
+  answered "not a member" removes their devices), the item is unread and not resolved, archived or inert, nothing newer
   superseded it, the person's category is on, and the person could see the item
   in the inbox right now (`viewInboxItemAs`, the read path's own steps, as the
   recipient). Not visible means nothing is sent, never a vaguer notification.

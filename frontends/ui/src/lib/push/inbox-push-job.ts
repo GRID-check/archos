@@ -11,7 +11,8 @@
  * cannot be taken back once it is on a lock screen:
  *
  *   1. the person is still a member of the organization (today's role, from the
- *      identity provider). If not, their devices here are removed;
+ *      identity provider). If the identity provider says not, their devices
+ *      here are removed; if it could not be asked, the job throws and retries;
  *   2. the item is still theirs, unread and not resolved, archived or inert;
  *   3. nothing newer superseded it: a burst of occurrences folds into one row,
  *      and only the job carrying the row's latest stamp sends, so twenty
@@ -34,7 +35,7 @@
 
 import 'server-only'
 import { captureServer } from '@/lib/analytics/posthog-server'
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { Locale } from '@/i18n/config'
 import { resolvePushPreferences } from '@/lib/inbox/push-categories'
 import { isPushStillDue, isPushWanted, pushPolicyFor, PUSH_TTL_SECONDS } from '@/lib/inbox/push-policy'
@@ -113,7 +114,9 @@ export async function runInboxPush(
   if (!config) return { sent: false, reason: 'off' }
   const { recipientUserId: userId } = payload
 
-  const session = await resolvePinnedRequesterSession({ userId, email: null, organizationId })
+  // Strict: a WorkOS lookup that fails throws (the queue retries) instead of
+  // reading as "left the organization", which would remove every device.
+  const session = await resolvePinnedRequesterSessionStrict({ userId, email: null, organizationId })
   if (!session) {
     await deleteAllSubscriptionsOf(organizationId, userId)
     return { sent: false, reason: 'not-a-member' }

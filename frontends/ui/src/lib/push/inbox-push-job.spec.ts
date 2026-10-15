@@ -6,7 +6,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer: vi.fn() }))
-vi.mock('@/lib/auth/pinned-session', () => ({ resolvePinnedRequesterSession: vi.fn() }))
+vi.mock('@/lib/auth/pinned-session', () => ({
+  resolvePinnedRequesterSession: vi.fn(async () => null),
+  resolvePinnedRequesterSessionStrict: vi.fn(),
+}))
 vi.mock('@/lib/inbox/repository', () => ({ findInboxItemForRecipient: vi.fn() }))
 vi.mock('@/lib/inbox/service', () => ({ viewInboxItemAs: vi.fn() }))
 vi.mock('@/lib/user-preferences/repository', () => ({ findUserPreferences: vi.fn() }))
@@ -18,7 +21,7 @@ vi.mock('./repository', () => ({
   recordFailure: vi.fn(),
 }))
 
-import { resolvePinnedRequesterSession } from '@/lib/auth/pinned-session'
+import { resolvePinnedRequesterSessionStrict } from '@/lib/auth/pinned-session'
 import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem } from '@/lib/db/schema'
 import { findInboxItemForRecipient } from '@/lib/inbox/repository'
@@ -87,7 +90,7 @@ beforeEach(() => {
   vi.stubEnv('GRID_WEB_PUSH_VAPID_PUBLIC_KEY', keys.publicKey)
   vi.stubEnv('GRID_WEB_PUSH_VAPID_PRIVATE_KEY', keys.privateKey)
   vi.stubEnv('GRID_WEB_PUSH_SUBJECT', 'mailto:ops@example.org')
-  vi.mocked(resolvePinnedRequesterSession).mockResolvedValue({ userId: 'u1', organizationId: ORG } as AuthorizedSession)
+  vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue({ userId: 'u1', organizationId: ORG } as AuthorizedSession)
   vi.mocked(findInboxItemForRecipient).mockResolvedValue(row())
   vi.mocked(findUserPreferences).mockResolvedValue(null)
   vi.mocked(viewInboxItemAs).mockResolvedValue(view)
@@ -139,10 +142,20 @@ describe('it decides again, at the moment it sends', () => {
   })
 
   it('removes the devices of a person who is no longer a member and sends nothing', async () => {
-    vi.mocked(resolvePinnedRequesterSession).mockResolvedValue(null)
+    vi.mocked(resolvePinnedRequesterSessionStrict).mockResolvedValue(null)
     const { sender, send } = senderReturning({})
     expect(await runInboxPush(ORG, payload, first, sender)).toEqual({ sent: false, reason: 'not-a-member' })
     expect(deleteAllSubscriptionsOf).toHaveBeenCalledWith(ORG, 'u1')
+    expect(send).not.toHaveBeenCalled()
+  })
+
+  // The lenient resolver reads a failed WorkOS lookup as "not a member"; here
+  // that removed every device the person had over one 503.
+  it('keeps the devices and lets the queue retry when membership could not be looked up', async () => {
+    vi.mocked(resolvePinnedRequesterSessionStrict).mockRejectedValue(new Error('workos 503'))
+    const { sender, send } = senderReturning({})
+    await expect(runInboxPush(ORG, payload, first, sender)).rejects.toThrow('workos 503')
+    expect(deleteAllSubscriptionsOf).not.toHaveBeenCalled()
     expect(send).not.toHaveBeenCalled()
   })
 
