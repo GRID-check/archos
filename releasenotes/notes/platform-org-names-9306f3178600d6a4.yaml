@@ -1,0 +1,9 @@
+---
+operators:
+  - >
+    The platform view names every organization. The storage table and the
+    feedback triage showed most production organizations as their `org_…`
+    id or as "Unknown organization", because they read names only from
+    organizations that had saved a setting; they now resolve the rest from
+    WorkOS. A failed WorkOS lookup is no longer cached as "no name" for
+    five minutes across the platform pages.
