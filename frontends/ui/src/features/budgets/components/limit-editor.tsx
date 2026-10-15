@@ -1,10 +1,15 @@
 'use client'
 
 /**
- * Setting a scoped LLM limit (ADR-0015): the popover the organization's budget
+ * Setting a scoped LLM limit (ADR-0015): the dialog the organization's budget
  * card opens per member and per project, and the one a project's own usage
  * section opens for itself. One editor, so the rule about what a blank field
  * means is written once.
+ *
+ * A dialog, not a popover: two fields and a Save are a short form, and the
+ * design language gives a form a `Dialog`. That is also what makes it a
+ * bottom sheet with a full-width field and a reachable Save on a phone, where
+ * a 256px popover hung off a 32px icon button.
  */
 
 import { type FC, type ReactNode, useEffect, useState } from 'react'
@@ -13,7 +18,15 @@ import { toast } from 'sonner'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
 import { useLocale, useTranslations } from '@/i18n'
 import { parseDecimalInput } from '@/lib/text/parse-decimal'
 
@@ -43,7 +56,7 @@ export const readLimit = (value: string, locale: string): LimitInput => {
   return { ok: false }
 }
 
-/** Popover editor for one subject's daily/monthly limit (used per member row
+/** Dialog editor for one subject's daily/monthly limit (used per member row
  * and for existing project policies). */
 export const LimitEditor: FC<{
   scope: 'member' | 'project'
@@ -52,9 +65,11 @@ export const LimitEditor: FC<{
   current: Pick<PolicyDto, 'dailyLimit' | 'monthlyLimit'> | undefined
   /** The unit word for the field labels ("credits" / "tokens"). */
   unitWord: string
+  /** Who the limit is for (name or email), shown under the title. */
+  subjectLabel?: string
   onSaved: () => Promise<void>
   trigger: ReactNode
-}> = ({ scope, subjectId, current, unitWord, onSaved, trigger }) => {
+}> = ({ scope, subjectId, current, unitWord, subjectLabel, onSaved, trigger }) => {
   const t = useTranslations('organization')
   const tCommon = useTranslations('common')
   const { locale } = useLocale()
@@ -132,9 +147,17 @@ export const LimitEditor: FC<{
   }
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{trigger}</PopoverTrigger>
-      <PopoverContent align="end" className="w-64">
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent
+        className="sm:max-w-sm"
+        closeLabel={tCommon('actions.close')}
+        aria-describedby={subjectLabel ? undefined : null}
+      >
+        <DialogHeader>
+          <DialogTitle>{t('budgets.setLimit')}</DialogTitle>
+          {subjectLabel && <DialogDescription>{subjectLabel}</DialogDescription>}
+        </DialogHeader>
         <div className="flex flex-col gap-3">
           <Field>
             <FieldLabel htmlFor={`limit-daily-${subjectId}`}>
@@ -164,19 +187,19 @@ export const LimitEditor: FC<{
             />
             {!monthlyInput.ok && <FieldError>{t('budgets.limitInvalid')}</FieldError>}
           </Field>
-          <div className="flex items-center justify-between gap-2">
-            <Button size="sm" onClick={save} disabled={busy || !limitsValid}>
-              {tCommon('actions.save')}
-            </Button>
-            {current && (
-              <Button size="sm" variant="ghost" onClick={remove} disabled={busy}>
-                <Trash2 className="mr-1 size-3.5" aria-hidden />
-                {t('budgets.removePolicy')}
-              </Button>
-            )}
-          </div>
         </div>
-      </PopoverContent>
-    </Popover>
+        <DialogFooter>
+          <Button onClick={save} disabled={busy || !limitsValid}>
+            {tCommon('actions.save')}
+          </Button>
+          {current && (
+            <Button variant="ghost" onClick={remove} disabled={busy}>
+              <Trash2 className="mr-1 size-3.5" aria-hidden />
+              {t('budgets.removePolicy')}
+            </Button>
+          )}
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   )
 }
