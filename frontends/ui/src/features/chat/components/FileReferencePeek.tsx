@@ -59,7 +59,7 @@ export const FileReferencePeek: FC<{
       <div className="flex items-start gap-2">
         <span
           aria-hidden
-          className="mt-px rounded px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none"
+          className="mt-px rounded px-1.5 py-0.5 text-[0.65rem] font-semibold leading-none pointer-coarse:text-xs"
           style={{ backgroundColor: tint.background, color: tint.color }}
         >
           {ext || '—'}
