@@ -42,7 +42,8 @@ export const files: typeof en.files = {
       queued: '{count} in Warteschlange',
       processing: 'Wird gelesen. Die Dauer lässt sich nicht vorhersagen, Sie können weiterarbeiten.',
       // Der Browser meldet keine Verbindung, während Bytes unterwegs sein sollten.
-      offline: 'Keine Verbindung. Bitte die Seite geöffnet lassen.',
+      // Der Transport wartet dann auf das Netz und sendet erneut (`xhr-upload`).
+      offline: 'Keine Verbindung, wartet. Bitte die Seite geöffnet lassen.',
       elapsed: 'seit {time}',
       settled: '{total} übertragen',
     },
@@ -924,6 +925,13 @@ export const files: typeof en.files = {
   },
   errors: {
     projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es oben im Hinweis oder in der Übersicht wieder öffnen.',
+    // Die Meldungen des Transports sind englisch und für Logs; der Mensch auf der
+    // Baustelle liest diese. Fehlschlag ohne Antwort (Netz, Stillstand, Zeit) ist
+    // wiederholbar, die Zeile bietet es an.
+    uploadFailed: 'Das Hochladen ist fehlgeschlagen.',
+    uploadNetwork: 'Keine Verbindung beim Hochladen. Bitte erneut versuchen.',
+    uploadStalled: 'Die Verbindung hat nichts mehr übertragen, das Hochladen wurde abgebrochen.',
+    uploadTimeout: 'Das Hochladen hat zu lange gedauert.',
     // Vom Namensfilter des Büros zurückgehalten (ADR-0086), auf einem Weg ohne
     // Upload-Dialog, etwa im Chat.
     screenedOut: '{count} Datei(en) nicht hochgeladen, weil Ihr Büro sie als sensibel einstuft: {files}',

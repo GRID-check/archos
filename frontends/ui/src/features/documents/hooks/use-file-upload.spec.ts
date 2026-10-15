@@ -958,6 +958,26 @@ describe('useFileUpload — durable document uploads', () => {
     )
   })
 
+  test('an upload that ran out of time says so in the dictionary, not in the transport’s English', async () => {
+    const { result } = renderUpload()
+
+    let pending!: Promise<void>
+    await act(async () => {
+      pending = result.current.uploadFiles(makeFiles(1))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      xhr.requests[0].timeOut()
+      await pending
+    })
+
+    expect(mockDocumentsStoreState.updateTrackedFile).toHaveBeenCalledWith(
+      'mock-uuid',
+      expect.objectContaining({ status: 'failed', errorMessage: en.files.errors.uploadTimeout })
+    )
+    expect(en.files.errors.uploadTimeout).not.toMatch(/^Upload failed/)
+  })
+
   test('a file refused because it would replace a quarantined one is not offered again (ADR-0086)', async () => {
     const { result } = renderUpload()
 

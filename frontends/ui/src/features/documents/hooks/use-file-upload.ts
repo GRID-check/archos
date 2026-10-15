@@ -14,7 +14,7 @@ import { useLocale, useTranslations } from '@/i18n'
 import { isProjectClosedBody } from '@/lib/projects/project-status'
 import { createDocumentsClient } from '@/adapters/api'
 import { deleteSessionDocument } from '@/adapters/api/session-documents-client'
-import { xhrUpload, XhrUploadError } from '@/lib/http/xhr-upload'
+import { xhrUpload, XhrNetworkError, XhrUploadError } from '@/lib/http/xhr-upload'
 import { useDocumentsStore } from '../store'
 import { useAuth } from '@/adapters/auth'
 import { useAppConfig } from '@/shared/context'
@@ -72,21 +72,39 @@ async function deleteShelfDocument(shelf: 'project' | 'archiv' | 'session', docu
 /** A user-initiated cancel, not a failure — it must not colour a row red. */
 const isAbort = (error: unknown): boolean => error instanceof Error && error.name === 'AbortError'
 
-/** The clearest sentence available about why an upload did not happen. */
-const failureMessage = (error: unknown, fallback: string, projectClosed?: string): string => {
+/** The sentences an upload failure is said in, in the reader's language. */
+interface UploadFailureCopy {
+  projectClosed: string
+  failed: string
+  network: string
+  stalled: string
+  timeout: string
+}
+
+/**
+ * The clearest sentence available about why an upload did not happen.
+ *
+ * The transport's own messages are English and for logs (`XhrNetworkError`,
+ * `XhrUploadError`); a stalled or dropped link is the failure a reader on site
+ * actually meets, so it is said in the dictionary and never passed through.
+ * Only a refusal's own words (the server's `error`) are shown as sent.
+ */
+const failureMessage = (error: unknown, copy: UploadFailureCopy): string => {
+  if (error instanceof XhrNetworkError) return copy[error.reason]
   if (error instanceof XhrUploadError) {
     try {
       const body: unknown = JSON.parse(error.responseText)
       // A closed project (ADR-0090) is named in the reader's language: the
       // project closed while this tab was open.
-      if (projectClosed && isProjectClosedBody(body)) return projectClosed
+      if (isProjectClosedBody(body)) return copy.projectClosed
       const message = (body as { error?: unknown })?.error
       if (typeof message === 'string' && message) return message
     } catch {
-      // Not JSON — fall through to the transport's own message.
+      // Not JSON — fall through to the generic sentence.
     }
+    return copy.failed
   }
-  return error instanceof Error ? error.message : fallback
+  return error instanceof Error && error.message ? error.message : copy.failed
 }
 
 /**
@@ -212,6 +230,16 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
   // be punctuated like the one on the file card beside it, and the user may be
   // reading the app in German on an English-locale browser.
   const { locale } = useLocale()
+  const failureCopy = useMemo<UploadFailureCopy>(
+    () => ({
+      projectClosed: t('errors.projectClosed'),
+      failed: t('errors.uploadFailed'),
+      network: t('errors.uploadNetwork'),
+      stalled: t('errors.uploadStalled'),
+      timeout: t('errors.uploadTimeout'),
+    }),
+    [t]
+  )
   const { fileUpload: fileUploadConfig } = useAppConfig()
   const clientRef = useRef(createDocumentsClient({ authToken: idToken }))
   const previousSessionIdRef = useRef<string | undefined>(undefined)
@@ -574,7 +602,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
               updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message, retryable: false })
               throw new Error(message)
             }
-            const message = failureMessage(err, 'Upload failed', t('errors.projectClosed'))
+            const message = failureMessage(err, failureCopy)
             updateTrackedFile(tracked.id, { status: 'failed', errorMessage: message })
             throw err instanceof Error ? err : new Error(message)
           } finally {
@@ -614,7 +642,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
         const firstFailure = results.find((result) => result.status === 'rejected')
         if (firstFailure && firstFailure.status === 'rejected') {
           const failedCount = results.filter((result) => result.status === 'rejected').length
-          const message = failureMessage(firstFailure.reason, 'Upload failed', t('errors.projectClosed'))
+          const message = failureMessage(firstFailure.reason, failureCopy)
           setError(
             failedCount > 1
               ? t('errors.someUploadsFailed', { failed: failedCount, total: entries.length, reason: message })
@@ -630,7 +658,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
           }
           return
         }
-        const message = failureMessage(err, 'Upload failed')
+        const message = failureMessage(err, failureCopy)
         setError(message)
         onError?.(err instanceof Error ? err : new Error(message))
 
@@ -701,6 +729,7 @@ export const useFileUpload = (options: UseFileUploadOptions = {}): UseFileUpload
       setError,
       onError,
       removeRecentlyDeletedIds,
+      failureCopy,
       t,
     ]
   )

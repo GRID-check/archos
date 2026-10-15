@@ -43,7 +43,7 @@ export const files = {
       processing: 'Reading. There is no time estimate, so you can keep working.',
       elapsed: '{time} so far',
       // The browser reports no connection while bytes should be moving.
-      offline: 'No connection. Please keep this page open.',
+      offline: 'No connection, waiting. Please keep this page open.',
       settled: '{total} transferred',
     },
     row: {
@@ -960,6 +960,13 @@ export const files = {
   },
   errors: {
     projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it from the notice at the top or in the Overview.',
+    // The transport's messages are English and for logs; the person on site reads
+    // these. A failure with no answer (network, stall, time) can be retried, and
+    // the row offers it.
+    uploadFailed: 'The upload failed.',
+    uploadNetwork: 'No connection while uploading. Please try again.',
+    uploadStalled: 'The connection stopped sending, so the upload was stopped.',
+    uploadTimeout: 'The upload took too long.',
     // Held back by the office's name screening (ADR-0086) on a path with no
     // upload dialog, such as a chat attachment.
     screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',
