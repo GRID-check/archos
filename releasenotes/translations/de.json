@@ -1920,6 +1920,10 @@
     "de": "Piloti kennt jetzt Ihre Ablage: Es sagt, was im Ordner Brandschutz liegt, nennt den Ordner, wenn es auf eine Datei verweist, und durchsucht einen Ordner samt Unterordnern. Umbenennen oder Verschieben eines Ordners übernimmt es sofort, ohne dass etwas neu hochgeladen werden muss."
   },
   {
+    "en": "Piloti now knows who it is talking to: your first and last name and your office. In a shared conversation it knows who asked each question.",
+    "de": "Piloti weiß jetzt, mit wem es spricht: Ihren Vor- und Nachnamen sowie Ihr Büro. In einem geteilten Gespräch weiß es, wer welche Frage gestellt hat."
+  },
+  {
     "en": "Piloti now learns from answers you mark as not helpful. A report is first scrubbed of personal details by rule, then an AI model turns it into a short, general lesson that guides later answers in every office, and a lesson that could identify anyone is held back for review.",
     "de": "Piloti lernt jetzt aus Antworten, die Sie als nicht hilfreich markieren. Eine Meldung wird zuerst nach festen Regeln von persönlichen Angaben bereinigt, dann macht ein KI-Modell daraus eine kurze, allgemeine Lektion, die spätere Antworten in allen Büros leitet, und eine Lektion, mit der sich jemand identifizieren ließe, wird zur Prüfung zurückgehalten."
   },

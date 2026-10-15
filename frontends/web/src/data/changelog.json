@@ -95,6 +95,10 @@
               "de": "Das Audit-Log der Organisation zeigt jetzt, was Piloti getan hat und für wen: die Anmerkungen, die es gesetzt, geändert oder gelöscht hat, seine Vorschläge und wer darüber entschieden hat, und jedes Mal, wenn es geweckt wurde, wie das ausging und, wenn es aufgegeben hat, warum. Auch wer eine Änderung von Piloti rückgängig gemacht oder eine von Piloti vorgeschlagene Anmerkung übernommen oder verworfen hat, steht darin."
             },
             {
+              "en": "Piloti now knows who it is talking to: your first and last name and your office. In a shared conversation it knows who asked each question.",
+              "de": "Piloti weiß jetzt, mit wem es spricht: Ihren Vor- und Nachnamen sowie Ihr Büro. In einem geteilten Gespräch weiß es, wer welche Frage gestellt hat."
+            },
+            {
               "en": "While Piloti works on your question, you can steer it from the chat or from its card on a document („nicht die Tür, die Treppe“), and it takes your note into its next step instead of starting over. A mark or reply it had already chosen waits for your note, and a note that arrives after the answer is asked as your next question.",
               "de": "Während Piloti an Ihrer Frage arbeitet, können Sie es im Chat oder über seine Karte in einem Dokument („nicht die Tür, die Treppe“) lenken. Ihre Anmerkung berücksichtigt es im nächsten Schritt, statt von vorne anzufangen. Eine Markierung oder Antwort, die Piloti bereits ausgewählt hat, wartet auf Ihre Anmerkung. Kommt diese erst nach der Antwort, wird sie als Ihre nächste Frage behandelt."
             },
