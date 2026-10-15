@@ -19,10 +19,10 @@
  * reject, with an {@link XhrNetworkError} the caller can offer a retry for. A
  * response with a status, a refusal included, is never sent again here: that
  * is the server's answer, and the caller's to read (a 429 waits out its
- * `Retry-After` there). A resend whose first copy did reach the server makes
- * no second document: the shelf files a document by its name and folder, so
- * the same file again is at worst a new Fassung of it, and `unchanged` once the
- * first has been read.
+ * `Retry-After` there). Nor is a request whose every byte had already left
+ * when it failed (`delivered`): the server may be filing it, and a second copy
+ * would become a new Fassung of the same file. Once the body is sent the client
+ * waits for the server's answer without a limit, as it always did.
  */
 
 import { applyJitter } from '@/shared/utils/backoff'
@@ -50,10 +50,18 @@ const NETWORK_MESSAGES: Record<XhrNetworkFailure, string> = {
   timeout: 'Upload failed: timed out',
 }
 
-/** No answer at all: the network failed, the transfer stalled, or the total timeout passed. Worth a retry. */
+/**
+ * No answer at all: the network failed, the transfer stalled, or the total
+ * timeout passed. Worth a retry by the person; `delivered` says every byte had
+ * already left, so the server may hold the file and this module never sends it
+ * again on its own.
+ */
 export class XhrNetworkError extends Error {
   readonly retryable = true
-  constructor(readonly reason: XhrNetworkFailure) {
+  constructor(
+    readonly reason: XhrNetworkFailure,
+    readonly delivered = false
+  ) {
     super(NETWORK_MESSAGES[reason])
     this.name = 'XhrNetworkError'
   }
@@ -82,8 +90,9 @@ export interface XhrUploadOptions {
   stallTimeoutMs?: number
   /**
    * Once every byte is sent, how long the server may take to answer: it writes
-   * the object, checks the quota and dispatches the ingest first. Default
-   * {@link DEFAULT_RESPONSE_TIMEOUT_MS}; 0 disables.
+   * the object, checks the quota and dispatches the ingest first. Default 0,
+   * no limit: the server may already be filing the document, and failing here
+   * invites a second copy of it.
    */
   responseTimeoutMs?: number
   /** Resends after a network failure or a stall. Default {@link DEFAULT_NETWORK_RETRIES}. */
@@ -94,7 +103,6 @@ export interface XhrUploadOptions {
 
 /** A link that moved nothing for this long is gone; a slow one still reports progress every second or so. */
 export const DEFAULT_STALL_TIMEOUT_MS = 30_000
-export const DEFAULT_RESPONSE_TIMEOUT_MS = 120_000
 export const DEFAULT_NETWORK_RETRIES = 3
 /**
  * How long a resend waits for the browser to come back online before it is
@@ -125,7 +133,7 @@ export async function xhrUpload(options: XhrUploadOptions): Promise<string> {
       // request is open by the time the caller's next line runs.
       return await sendOnce(options)
     } catch (error) {
-      const resendable = error instanceof XhrNetworkError && error.reason !== 'timeout'
+      const resendable = error instanceof XhrNetworkError && error.reason !== 'timeout' && !error.delivered
       if (!resendable || attempt >= retries) throw error
       await waitToResend(delayOf(attempt), options.signal)
     }
@@ -165,7 +173,7 @@ function sendOnce(options: XhrUploadOptions): Promise<string> {
     signal,
     timeoutMs = 0,
     stallTimeoutMs = DEFAULT_STALL_TIMEOUT_MS,
-    responseTimeoutMs = DEFAULT_RESPONSE_TIMEOUT_MS,
+    responseTimeoutMs = 0,
   } = options
 
   return new Promise<string>((resolve, reject) => {
@@ -212,8 +220,13 @@ function sendOnce(options: XhrUploadOptions): Promise<string> {
       finish()
     }
 
+    /** Every byte has left; a failure from here on may follow a file the server already holds. */
+    let delivered = false
     /** Every byte is on its way: what is left is the server's work, on its own clock. */
-    const bodySent = () => watchFor(responseTimeoutMs)
+    const bodySent = () => {
+      delivered = true
+      watchFor(responseTimeoutMs)
+    }
 
     xhr.upload.addEventListener('progress', (event) => {
       if (!event.lengthComputable) return watchFor(stallTimeoutMs)
@@ -242,15 +255,15 @@ function sendOnce(options: XhrUploadOptions): Promise<string> {
     })
 
     xhr.addEventListener('error', () => {
-      settle(() => reject(new XhrNetworkError('network')))
+      settle(() => reject(new XhrNetworkError('network', delivered)))
     })
 
     xhr.addEventListener('timeout', () => {
-      settle(() => reject(new XhrNetworkError('timeout')))
+      settle(() => reject(new XhrNetworkError('timeout', delivered)))
     })
 
     xhr.addEventListener('abort', () => {
-      settle(() => reject(stalled ? new XhrNetworkError('stalled') : abortError()))
+      settle(() => reject(stalled ? new XhrNetworkError('stalled', delivered) : abortError()))
     })
 
     xhr.send(body)

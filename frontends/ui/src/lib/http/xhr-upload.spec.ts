@@ -137,15 +137,35 @@ describe('xhrUpload over a link that drops or stops', () => {
     await expect(pending).resolves.toBe('{}')
   })
 
-  test('once every byte is sent, waits for the server on its own, longer clock', async () => {
-    const pending = upload({ networkRetries: 0, responseTimeoutMs: 120_000 })
+  test('once every byte is sent, waits for the server without a limit', async () => {
+    const pending = upload({ networkRetries: 0 })
+    xhr.last().emitProgress(4_096, 4_096)
+
+    await vi.advanceTimersByTimeAsync(10 * 60_000)
+    expect(xhr.last().aborted).toBe(false)
+    xhr.last().respond(201, '{}')
+    await expect(pending).resolves.toBe('{}')
+  })
+
+  test('never sends a delivered file again: the server may already be filing it', async () => {
+    const pending = upload()
+    const outcome = pending.catch((error: unknown) => error)
+    xhr.last().emitProgress(4_096, 4_096)
+    xhr.last().failNetwork()
+
+    await vi.advanceTimersByTimeAsync(60_000)
+    expect(xhr.requests).toHaveLength(1)
+    expect(await outcome).toMatchObject({ reason: 'network', delivered: true, retryable: true })
+  })
+
+  test('a bounded answer wait fails delivered, and is not sent again', async () => {
+    const pending = upload({ responseTimeoutMs: 120_000 })
     const outcome = pending.catch((error: unknown) => error)
     xhr.last().emitProgress(4_096, 4_096)
 
-    await vi.advanceTimersByTimeAsync(DEFAULT_STALL_TIMEOUT_MS * 3)
-    expect(xhr.last().aborted).toBe(false)
-    await vi.advanceTimersByTimeAsync(120_000)
-    expect(await outcome).toMatchObject({ reason: 'stalled' })
+    await vi.advanceTimersByTimeAsync(120_000 + 60_000)
+    expect(xhr.requests).toHaveLength(1)
+    expect(await outcome).toMatchObject({ reason: 'stalled', delivered: true })
   })
 
   test('sends again after a network failure, with backoff, and resolves when one gets through', async () => {
