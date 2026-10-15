@@ -8,6 +8,7 @@ import { X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { OVERLAY_MOTION, OVERLAY_EXIT, OVERLAY_REDUCED } from '@/components/ui/overlay-motion'
+import { focusPanelUnderFinger } from '@/components/ui/overlay-focus'
 
 /**
  * Side sheet — a Dialog anchored to an edge instead of the centre.
@@ -101,12 +102,18 @@ interface SheetContentProps extends React.ComponentPropsWithoutRef<typeof SheetP
 }
 
 const SheetContent = React.forwardRef<React.ElementRef<typeof SheetPrimitive.Content>, SheetContentProps>(
-  ({ className, children, side = 'right', closeLabel = 'Close', style, ...props }, ref) => (
+  ({ className, children, side = 'right', closeLabel = 'Close', style, onOpenAutoFocus, ...props }, ref) => (
     <SheetPortal>
       <SheetOverlay />
       <SheetPrimitive.Content
         ref={ref}
         style={style}
+        // Under a finger the sheet itself takes focus on open, not its first
+        // control (`overlay-focus.ts`); a caller's own handler goes first.
+        onOpenAutoFocus={(event) => {
+          onOpenAutoFocus?.(event)
+          focusPanelUnderFinger(event)
+        }}
         className={cn(
           'fixed z-50 flex flex-col gap-4 overflow-y-auto bg-background p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out '
             + 'data-[state=open]:ease-entrance data-[state=open]:duration-deliberate '

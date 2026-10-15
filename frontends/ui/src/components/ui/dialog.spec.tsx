@@ -131,6 +131,48 @@ describe('DialogContent on a phone', () => {
     expect(grabber()).toBeNull()
   })
 
+  it('keeps the close, the grabber and a leading header at the top while a long sheet scrolls', () => {
+    const { content } = renderDialog()
+    const dialog = content()!
+    const chrome = dialog.querySelector<HTMLElement>('[data-slot="dialog-chrome"]')!
+
+    expect(chrome.className).toContain('phone:sticky')
+    expect(chrome.className).toContain('phone:-top-6')
+    expect(chrome).toContainElement(screen.getByRole('button', { name: 'Schließen' }))
+    expect(chrome).toContainElement(grabber())
+    // Last, so the close stays last in the tab order and a keyboard lands in the first field.
+    expect(dialog.lastElementChild).toBe(chrome)
+    // Beside the first child in the first row: a row of its own would cost a gap above the title.
+    expect(dialog.className).toContain('phone:[&>:first-child]:row-start-1')
+    expect(dialog.className).toContain('phone:[:where(&>[data-slot=dialog-header]:first-child)]:sticky')
+  })
+
+  it('pins the full screen top edge against its own, inset padding', () => {
+    const { content } = renderDialog({ fullScreenOnMobile: true })
+    const chrome = content()!.querySelector<HTMLElement>('[data-slot="dialog-chrome"]')!
+
+    expect(chrome.className).toContain('phone:-top-[max(1.5rem,env(safe-area-inset-top))]')
+  })
+
+  it.each(['p-0', 'p-4', 'flex flex-col'])(
+    'leaves the top edge to a caller that pads or lays out the content itself (%s)',
+    (className) => {
+      const { content } = renderDialog({ className })
+      const dialog = content()!
+      const chrome = dialog.querySelector<HTMLElement>('[data-slot="dialog-chrome"]')!
+
+      expect(chrome.className).not.toContain('phone:sticky')
+      expect(chrome.className).toContain('absolute')
+      expect(dialog.className).not.toContain('dialog-header]:first-child)]:sticky')
+    }
+  )
+
+  it('sits the pinned buttons on the home indicator, not a padding above it', () => {
+    const { content } = renderDialog()
+
+    expect(content()!.className).toContain('phone:[:where(&_[data-slot=dialog-footer])]:pb-[max(1rem,env(safe-area-inset-bottom))]')
+  })
+
   it('stacks the footer in DOM order, so the primary action is last: nearest the thumb', () => {
     renderDialog()
     const footer = document.querySelector('[data-slot="dialog-footer"]')!

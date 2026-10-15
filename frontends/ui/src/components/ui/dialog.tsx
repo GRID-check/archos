@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 import { useSheetPull } from '@/components/ui/sheet-pull'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
 import { OVERLAY_MOTION } from '@/components/ui/overlay-motion'
+import { focusPanelUnderFinger } from '@/components/ui/overlay-focus'
 
 const Dialog = DialogPrimitive.Root
 
@@ -137,45 +138,117 @@ const FULLSCREEN_CHROME: ReadonlyArray<readonly [string, string]> = [
  * The dialog's padding stays what it is (callers lay full-bleed rows against
  * `p-6`, and a padding that changed under them on a phone broke them). The
  * pinned footer instead reaches DOWN through the bottom padding: a negative
- * margin of exactly that padding, and the same amount back as its own padding,
- * so its paper runs to the screen edge, the content scrolls behind it rather
+ * margin of exactly that padding, and its own padding below the buttons, so
+ * its paper runs to the screen edge, the content scrolls behind it rather
  * than showing through a gap below it, and its buttons stand clear of the home
  * indicator. Its sticky inset is the same negative amount, because a sticky
  * box sticks to the scroll container's CONTENT edge (the padding is
  * subtracted), and at `bottom-0` it rode up over the last line of the body by
- * exactly the padding. The footer rules are `:where()`-wrapped: zero specificity, so a
- * footer that positions or pads itself still wins with its own classes.
+ * exactly the padding.
+ *
+ * Below its buttons it keeps the home indicator's inset and no more (1rem
+ * where there is none): the buttons sit on the indicator, where the thumb
+ * already is, rather than a padding's height above it. A hairline on its top
+ * edge says there is more behind it, and leaves in the last 24px of the scroll
+ * (`scroll-edge-bottom`). The footer rules are `:where()`-wrapped: zero
+ * specificity, so a footer that positions or pads itself still wins with its
+ * own classes.
  */
 const PINNED_FOOTER =
   'phone:pb-[max(1.5rem,env(safe-area-inset-bottom))] ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:sticky phone:[:where(&_[data-slot=dialog-footer])]:-bottom-[max(1.5rem,env(safe-area-inset-bottom))] ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:z-[1] phone:[:where(&_[data-slot=dialog-footer])]:bg-popover ' +
-  'phone:[:where(&_[data-slot=dialog-footer])]:pt-3 ' +
+  'phone:[:where(&_[data-slot=dialog-footer])]:pt-3 phone:[:where(&_[data-slot=dialog-footer])]:scroll-edge-bottom ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:-mb-[max(1.5rem,env(safe-area-inset-bottom))] ' +
-  'phone:[:where(&_[data-slot=dialog-footer])]:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
+  'phone:[:where(&_[data-slot=dialog-footer])]:pb-[max(1rem,env(safe-area-inset-bottom))]'
 
-/** A finger drives the pointer: no hover, and a focused field raises a keyboard. */
-function isCoarsePointer(): boolean {
-  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+/**
+ * THE TOP EDGE STAYS. A long sheet scrolls inside itself, and its close button
+ * and grabber scrolled away with the first lines, so the way out of a long
+ * form was at the top of a page the reader had scrolled past. On a phone the
+ * two ride in a sticky chrome strip, and a leading `DialogHeader` becomes a
+ * sticky paper band under them: the title, the pull and the X stay where the
+ * thumb left them while the body passes underneath, with a hairline once it
+ * does (`scroll-edge-top`).
+ *
+ * How it stays out of the layout. The strip is the LAST child (so the close
+ * button keeps its place at the end of the tab order, and a keyboard still
+ * lands in the first field), placed explicitly into the first grid cell, with
+ * the first child placed there beside it: a zero-height row of its own would
+ * have cost a grid gap above the title. A sticky box is held inside its
+ * containing block, which for a grid item is the whole grid, so it holds for
+ * the full scroll. The strip and the band reach up and out through the
+ * padding by exactly the padding (`-mt-6 -mx-6` against `p-6`), and stick at
+ * minus the padding, because sticky offsets count from the content edge.
+ *
+ * Only where those numbers are known: the presentation's own padding, on the
+ * default grid. A caller that pads or lays out the dialog itself (`p-0`,
+ * `flex`) gets the strip positioned absolutely, as before, and owns its own
+ * top edge.
+ */
+const STICKY_TOP_SHEET = {
+  chrome: 'phone:sticky phone:-top-6 phone:-mt-6 phone:-mx-6 phone:z-[2]',
+  content:
+    'phone:[&>:first-child]:row-start-1 phone:[&>:first-child]:col-start-1 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:sticky phone:[:where(&>[data-slot=dialog-header]:first-child)]:-top-6 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:z-[1] phone:[:where(&>[data-slot=dialog-header]:first-child)]:bg-popover ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mx-6 phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mt-6 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mb-3 phone:[:where(&>[data-slot=dialog-header]:first-child)]:pt-6 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:pb-3 phone:[:where(&>[data-slot=dialog-header]:first-child)]:pl-6 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:pr-6 phone:[:where(&>[data-slot=dialog-header]:first-child)]:scroll-edge-top ' +
+    // Only the title steps out of the close button's way; the lines below it keep the width.
+    'phone:[:where(&>[data-slot=dialog-header]:first-child_[data-slot=dialog-title])]:pr-10 ' +
+    // The pinned footer's paper runs edge to edge like the band's, so the two
+    // hairlines span the same width.
+    'phone:[:where(&_[data-slot=dialog-footer])]:-mx-6 phone:[:where(&_[data-slot=dialog-footer])]:px-6',
+} as const
+
+/** The same, against the full screen's padding: the status bar on top, the island's side on a phone on its side. */
+const STICKY_TOP_FULLSCREEN = {
+  chrome:
+    'phone:sticky phone:-top-[max(1.5rem,env(safe-area-inset-top))] phone:-mt-[max(1.5rem,env(safe-area-inset-top))] ' +
+    'phone:-ml-[max(1rem,env(safe-area-inset-left))] phone:-mr-[max(1rem,env(safe-area-inset-right))] phone:z-[2]',
+  content:
+    'phone:[&>:first-child]:row-start-1 phone:[&>:first-child]:col-start-1 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:sticky phone:[:where(&>[data-slot=dialog-header]:first-child)]:-top-[max(1.5rem,env(safe-area-inset-top))] ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:z-[1] phone:[:where(&>[data-slot=dialog-header]:first-child)]:bg-popover ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mt-[max(1.5rem,env(safe-area-inset-top))] phone:[:where(&>[data-slot=dialog-header]:first-child)]:pt-[max(1.5rem,env(safe-area-inset-top))] ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-ml-[max(1rem,env(safe-area-inset-left))] phone:[:where(&>[data-slot=dialog-header]:first-child)]:pl-[max(1rem,env(safe-area-inset-left))] ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mr-[max(1rem,env(safe-area-inset-right))] phone:[:where(&>[data-slot=dialog-header]:first-child)]:pr-[max(1rem,env(safe-area-inset-right))] ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child_[data-slot=dialog-title])]:pr-14 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:-mb-3 phone:[:where(&>[data-slot=dialog-header]:first-child)]:pb-3 ' +
+    'phone:[:where(&>[data-slot=dialog-header]:first-child)]:scroll-edge-top ' +
+    'phone:[:where(&_[data-slot=dialog-footer])]:-ml-[max(1rem,env(safe-area-inset-left))] phone:[:where(&_[data-slot=dialog-footer])]:pl-[max(1rem,env(safe-area-inset-left))] ' +
+    'phone:[:where(&_[data-slot=dialog-footer])]:-mr-[max(1rem,env(safe-area-inset-right))] phone:[:where(&_[data-slot=dialog-footer])]:pr-[max(1rem,env(safe-area-inset-right))]',
+} as const
+
+interface PhonePresentation {
+  presentation: DialogMobilePresentation
+  /** The phone classes on the content. */
+  classes: string
+  /** The phone classes on the chrome strip; empty when it stays absolute. */
+  chrome: string
 }
 
 /** Resolve the presentation against the caller's own class list. */
-function phonePresentation(
-  requested: DialogMobilePresentation,
-  className: string | undefined
-): { presentation: DialogMobilePresentation; classes: string } {
+function phonePresentation(requested: DialogMobilePresentation, className: string | undefined): PhonePresentation {
   const reach = phoneReach(className)
   const presentation =
-    requested === 'sheet' && GEOMETRY_PROBES.some((probe) => callerSets(probe, phoneReach(className)))
-      ? 'none'
-      : requested
-  if (presentation === 'none') return { presentation, classes: '' }
+    requested === 'sheet' && GEOMETRY_PROBES.some((probe) => callerSets(probe, reach)) ? 'none' : requested
+  if (presentation === 'none') return { presentation, classes: '', chrome: '' }
   const pinned = callerSets('pb-0', reach) ? '' : PINNED_FOOTER
+  // The sticky top needs the presentation's own padding and the default grid.
+  const ownTop =
+    !callerSets('grid', reach) &&
+    !callerSets('pt-0', reach) &&
+    (presentation === 'sheet' || (!callerSets('pl-0', reach) && !callerSets('pr-0', reach)))
+  const top = presentation === 'sheet' ? STICKY_TOP_SHEET : STICKY_TOP_FULLSCREEN
   const classes =
     presentation === 'sheet'
       ? [SHEET_GEOMETRY, unlessCallerSets(SHEET_CHROME, reach), pinned, PHONE_SHEET_MOTION]
       : [FULLSCREEN_GEOMETRY, unlessCallerSets(FULLSCREEN_CHROME, reach), pinned, PHONE_SHEET_MOTION]
-  return { presentation, classes: classes.join(' ') }
+  if (ownTop) classes.push(top.content)
+  return { presentation, classes: classes.join(' '), chrome: ownTop ? top.chrome : '' }
 }
 
 const DialogContent = React.forwardRef<
@@ -206,7 +279,11 @@ const DialogContent = React.forwardRef<
     const closeRef = React.useRef<HTMLButtonElement>(null)
     const dismiss = React.useCallback(() => closeRef.current?.click(), [])
     const pull = useSheetPull(dismiss)
-    const { presentation, classes: phoneClasses } = phonePresentation(
+    const {
+      presentation,
+      classes: phoneClasses,
+      chrome,
+    } = phonePresentation(
       mobilePresentation ?? (fullScreenOnMobile ? 'fullscreen' : 'sheet'),
       className
     )
@@ -227,14 +304,10 @@ const DialogContent = React.forwardRef<
           // every other line off on the right (the mail import's history did).
           onOpenAutoFocus={(event) => {
             onOpenAutoFocus?.(event)
-            if (event.defaultPrevented || !isCoarsePointer()) return
             // Under a finger, the dialog itself takes focus on open, not its
-            // first field: focusing a field raises the keyboard, which covers
-            // the bottom sheet it belongs to (its question, its footer) before
-            // the reader has read either. They tap the field when they are
-            // ready. A mouse or keyboard user still lands in the first field.
-            event.preventDefault()
-            ;(event.currentTarget as HTMLElement | null)?.focus()
+            // first field (`overlay-focus.ts`). A mouse or keyboard user still
+            // lands in the first field.
+            focusPanelUnderFinger(event)
           }}
           className={cn(
             'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-xl border p-6 shadow-lg sm:max-w-lg ' +
@@ -244,36 +317,52 @@ const DialogContent = React.forwardRef<
           )}
           {...props}
         >
-          {grabber && (
-            <div
-              data-slot="dialog-grabber"
-              aria-hidden
-              // The band left of the close button: where a thumb reaches for
-              // the top edge. `touch-none` so the browser does not claim the
-              // pull as a scroll of the sheet's own content.
-              className="phone:flex absolute inset-x-14 top-0 z-[1] hidden h-6 cursor-grab touch-none select-none justify-center pt-2 active:cursor-grabbing"
-              {...pull}
-            >
-              <span className="bg-muted-foreground/25 h-1 w-9 rounded-full" />
-            </div>
-          )}
           {children}
-          {showCloseButton && (
-            <DialogPrimitive.Close
-              ref={closeRef}
-              data-slot="dialog-close"
+          {(grabber || showCloseButton) && (
+            <div
+              data-slot="dialog-chrome"
+              // A zero-height strip along the top edge that holds the grabber
+              // and the close button. Absolute (out of the grid) everywhere,
+              // and sticky on a phone where the padding is known: see
+              // `STICKY_TOP_SHEET` for how it stays out of the layout.
               className={cn(
-                'text-muted-foreground duration-quick hover:bg-accent hover:text-foreground pointer-coarse:size-11 pointer-coarse:top-2.5 pointer-coarse:right-2.5 absolute right-4 top-4 z-[2] inline-flex size-8 items-center justify-center rounded-md outline-none transition-colors ease-out disabled:pointer-events-none disabled:opacity-50',
-                // Below the status bar and clear of the Dynamic Island's side,
-                // where the full screen puts the top edge under them.
-                presentation === 'fullscreen' &&
-                  'phone:top-[calc(env(safe-area-inset-top)+0.625rem)] phone:right-[calc(env(safe-area-inset-right)+0.625rem)]',
-                FOCUS_RING
+                'absolute inset-x-0 top-0 z-[2] h-0',
+                chrome && 'phone:row-start-1 phone:col-start-1 phone:self-start',
+                chrome
               )}
             >
-              <XIcon className="size-4" />
-              <span className="sr-only">{closeLabel}</span>
-            </DialogPrimitive.Close>
+              {grabber && (
+                <div
+                  data-slot="dialog-grabber"
+                  aria-hidden
+                  // The band left of the close button: where a thumb reaches for
+                  // the top edge. `touch-none` so the browser does not claim the
+                  // pull as a scroll of the sheet's own content.
+                  className="phone:flex absolute inset-x-14 top-0 hidden h-6 cursor-grab touch-none select-none justify-center pt-2 active:cursor-grabbing"
+                  {...pull}
+                >
+                  <span className="bg-muted-foreground/25 h-1 w-9 rounded-full" />
+                </div>
+              )}
+              {showCloseButton && (
+                <DialogPrimitive.Close
+                  ref={closeRef}
+                  data-slot="dialog-close"
+                  className={cn(
+                    'text-muted-foreground duration-quick hover:bg-accent hover:text-foreground pointer-coarse:size-11 pointer-coarse:top-2.5 pointer-coarse:right-2.5 absolute right-4 top-4 inline-flex size-8 items-center justify-center rounded-md outline-none transition-colors ease-out disabled:pointer-events-none disabled:opacity-50',
+                    // Below the status bar and clear of the Dynamic Island's
+                    // side, centred on the title's first line (the full
+                    // screen's top padding less half the button).
+                    presentation === 'fullscreen' &&
+                      'phone:top-[calc(env(safe-area-inset-top)+0.625rem)] phone:pointer-coarse:top-[max(0.625rem,calc(env(safe-area-inset-top)-0.875rem))] phone:right-[calc(env(safe-area-inset-right)+0.625rem)] phone:pointer-coarse:right-[calc(env(safe-area-inset-right)+0.625rem)]',
+                    FOCUS_RING
+                  )}
+                >
+                  <XIcon className="size-4" />
+                  <span className="sr-only">{closeLabel}</span>
+                </DialogPrimitive.Close>
+              )}
+            </div>
           )}
         </DialogPrimitive.Content>
       </DialogPortal>
@@ -286,7 +375,11 @@ function DialogHeader({ className, ...props }: React.HTMLAttributes<HTMLDivEleme
   return (
     <div
       data-slot="dialog-header"
-      className={cn('flex flex-col gap-1.5 text-center sm:text-left', className)}
+      // Left-aligned on every screen. Centred text under a left-aligned close
+      // and a stacked footer read as three different alignments on a phone's
+      // sheet, and a centred title over a left-aligned form is a heading for
+      // something else.
+      className={cn('flex flex-col gap-1.5 text-left', className)}
       {...props}
     />
   )

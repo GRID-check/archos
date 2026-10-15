@@ -352,15 +352,11 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           </Alert>
         )}
 
-        {/* On a phone the footer stays on screen while the fields scroll: the
-            form is longer than the viewport once Piloti sets it up, and the
-            action that ends it was below the fold. Cancel and the action share
-            one row (the action takes the width) so the bar costs one button's
-            height, and the bottom padding clears the home indicator. The dialog
-            pads its scroll area by 1.5rem, and a sticky bar stops at the
-            padding's edge, so it reaches down into it (`-bottom-6`, `-mb-6`) or
-            the fields scroll visibly under a gap below the bar. */}
-        <DialogFooter className="pt-1 max-sm:sticky max-sm:-bottom-6 max-sm:z-10 max-sm:-mx-4 max-sm:-mb-6 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:border-t max-sm:bg-popover max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:[&>:last-child]:flex-1">
+        {/* On a phone `DialogContent` pins the footer to the bottom edge while
+            the fields scroll: the form is longer than the viewport once Piloti
+            sets it up. Cancel and the action share one row (the action takes
+            the width) so the bar costs one button's height. */}
+        <DialogFooter className="pt-1 phone:pt-3 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:[&>:last-child]:flex-1">
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
               {t('form.cancel')}

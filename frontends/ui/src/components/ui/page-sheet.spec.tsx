@@ -43,6 +43,13 @@ describe('PageSheet', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false)
   })
 
+  it('tells a bar at its foot to clear the home indicator: no tab bar runs under a sheet', () => {
+    renderSheet()
+
+    // The shell publishes 0 over the tab bar; inside the sheet the whole inset holds.
+    expect(screen.getByRole('dialog').className).toContain('[--shell-inset-bottom:env(safe-area-inset-bottom)]')
+  })
+
   it('names both close controls for a screen reader', () => {
     renderSheet()
 

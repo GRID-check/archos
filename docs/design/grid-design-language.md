@@ -74,7 +74,7 @@ because `:root` and `.dark` have equal specificity there. Decorative overlays
 that paint the card's colour over content (the streaming caret's veil) are
 hidden under `contrast-more:` and `forced-colors:`.
 
-**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue.
+**Ink ramp (light):** #1f2023 (foreground/action) → #55565a secondary → #6f706c muted → #8a8a86 placeholder → #b3b3af ghost. Borders are **alpha ink hairlines** (`rgba(28,30,33,…)` equivalents at .08 base / .12 input / .16 strong / .22–.32 selected), so they composite on any surface. Focus ring is ink-based (`--ring`), never blue, and it is for the keyboard: the global `:focus-visible` outline lives in the base cascade layer so a control's own `FOCUS_RING` (with `outline-none`) wins, and an overlay's panel never draws one when it takes the focus itself on open.
 
 **Provenance signal system** — each signal has a base color, a `-tint` surface (for chips/rows on cards), and a `-text` variant (AA-readable on the tint), both modes:
 
@@ -341,12 +341,16 @@ caps itself in `dvh` under the status bar and scrolls inside. Its
 home indicator, and below `sm` its buttons stack full width in DOM order, so the
 primary action (last, as it is rightmost on a desktop) is the one nearest the
 thumb. A grabber says it pulls down, and it does: past 96px or on a flick, the
-same two numbers the page sheet commits on (`sheet-pull.ts`). It arrives on
+same two numbers the page sheet commits on (`sheet-pull.ts`). On a long sheet
+the grabber, the close and a leading `DialogHeader` stay at the top while the
+body scrolls under them, and a hairline marks each pinned edge only while
+content passes beneath it. It arrives on
 `--motion-deliberate` / `--ease-entrance` and leaves one step shorter; no
 spring, because its travel is its own height. From `sm` up on anything else it
-is the centred card, unchanged. Under a finger the dialog itself takes focus on
+is the centred card, unchanged. Under a finger the dialog (and a side `Sheet`) itself takes focus on
 open, not its first field: a focused field raises the keyboard over the sheet
-before the reader has read it. `fullScreenOnMobile` (or
+before the reader has read it (`overlay-focus.ts`). A pinned footer is the
+primitive's; a caller never adds its own `sticky`. `fullScreenOnMobile` (or
 `mobilePresentation="fullscreen"`) takes the whole screen instead, below the
 status bar, for an editor with several sections. A dialog that lays itself out
 (sets its own `top`, `bottom`, `inset`, `translate-y` or height) keeps its own

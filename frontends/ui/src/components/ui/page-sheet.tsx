@@ -69,8 +69,16 @@ import { pullDismisses } from '@/components/ui/sheet-pull'
  * indicator (the history sheet's) or a list that should scroll clear of it.
  */
 export const PAGE_SHEET_OVERLAY_CLASS = 'bg-overlay fixed inset-0 z-50 backdrop-blur-sm'
+/**
+ * `--shell-inset-bottom` is what a bar at the foot of the content still has
+ * to clear (`AppShellChrome` publishes it: zero over the phone's tab bar). No
+ * tab bar runs under a page sheet, whose bottom edge is the screen's, so the
+ * panel states the whole home-indicator inset for what it holds: a selection
+ * bar in the Archiv clears the indicator rather than trusting a zero that was
+ * meant for the page behind.
+ */
 export const PAGE_SHEET_PANEL_CLASS =
-  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto'
+  'bg-background fixed inset-x-0 bottom-0 top-[max(0.75rem,env(safe-area-inset-top))] z-50 flex flex-col overflow-hidden rounded-t-2xl border border-b-0 pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)] shadow-xl outline-none md:inset-x-5 md:top-5 md:mx-auto [--shell-inset-bottom:env(safe-area-inset-bottom)]'
 
 /**
  * How wide the panel may grow from `md` up. One width: a page sheet is a whole
