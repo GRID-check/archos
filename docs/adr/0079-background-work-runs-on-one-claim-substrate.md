@@ -80,13 +80,17 @@ Chosen option 3.
   between offices; priority decides inside one.
 * **Measured.** OTel meters (`grid.queue.*`) through the existing collector:
   depth by status, oldest-queued age, claim latency, job duration, dead rows.
-  **The gap:** the Python queues (`ingest_job_queue`, `research_job_queue`) emit
-  them; `bff_job_queue` does not. The `bff-jobs` runner is a plain Node process
-  that bridges logs to the collector (`observability/otel-logs.js`) but ships no
-  OTLP metrics exporter, and adding one is a new dependency and lockfile change
-  this decision did not take on. Until it does, the BFF queue is observed through
-  the depth KEDA already counts, the `[bff-jobs] … now dead` ERROR lines (each
-  one opens an issue), and a `SELECT` on the table.
+  **The gap, as built:** none of the three queues is measured yet. The Python
+  queues (`ingest_job_queue`, `research_job_queue`) record the instruments
+  through the OpenTelemetry API, but nothing installs a `MeterProvider`
+  (`claim_queue.py`, `observability/otlp_logging_method.py`: the collector
+  carries logs only), so every instrument is a no-op. `bff_job_queue` records
+  none: the `bff-jobs` runner is a plain Node process that bridges logs to the
+  collector (`observability/otel-logs.js`) but ships no OTLP metrics exporter,
+  and adding one is a new dependency and lockfile change this decision did not
+  take on. Until a sink is chosen, the queues are observed through the depth
+  KEDA already counts, the `[bff-jobs] … now dead` ERROR lines (each one opens
+  an issue), and a `SELECT` on the tables.
 * **A failed attempt costs an attempt, behind a backoff; a dead row is a trace.**
   Only a drain, a cap or a yield gives a claim back free; a claim that has held
   its slot for ten minutes yields between slices, so an hours-long job (an
@@ -137,7 +141,10 @@ Phase 1, in parallel:
    `priority`; release claims on drain; maximum job runtime and a progress
    heartbeat; dead rows instead of `DELETE`; one per-organisation cap name;
    queue meters. `/v1/ingest` accepts `priority: "interactive" | "bulk"`
-   (default `interactive`).
+   (default `interactive`). Not done: the cap name. Ingestion reads
+   `GRID_INGEST_MAX_PER_ORG` and still honours the deprecated
+   `AIQ_INGEST_MAX_PER_ORG` (`ingest_scheduler.per_org_cap_from_env`), and the
+   meters record into no provider (see Measured).
 2. **Provider limiter.** `provider_limiter` with priority classes and AIMD,
    wrapped around the single LLM and embedding choke points; embeddings gated
    with 429 backoff; limiter meters.
