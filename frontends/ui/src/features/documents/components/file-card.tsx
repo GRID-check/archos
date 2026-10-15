@@ -401,7 +401,7 @@ export const FileCard = memo(function FileCard({
             )}
           </GridTileMedia>
 
-          <div className="px-3.5 pb-3 pt-[11px]">
+          <div className="px-3.5 pb-3 pt-[11px] phone:px-2.5">
             <div className="flex items-center gap-2">
               {source && sourceLabel && (
                 <span
@@ -504,16 +504,19 @@ export const FileCard = memo(function FileCard({
       {!hideFooter && (
         <GridTileFooter
           onClick={onSelect}
-          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80"
+          className="@container/foot group/foot cursor-pointer justify-between gap-1.5 px-3.5 pb-2.5 pt-[9px] text-xs text-muted-foreground/80 phone:px-2.5"
           data-testid="file-card-footer"
         >
           <span className="flex min-w-0 flex-1 items-center gap-1.5">
             <FilingSuggestionSlot documentId={file.id} className="min-w-[4.5rem]" />
             {footerLead}
           </span>
-          <span className="flex shrink-0 items-center gap-1.5">
+          {/* On a 156px card the size and the age are about 125px, so the
+              phone's card keeps 10px of padding (the title's too) and a tighter
+              gap: the age used to run into the edge the title keeps clear. */}
+          <span className="flex shrink-0 items-center gap-1.5 phone:gap-1">
             <span className="tabular-nums">{formatBytes(file.fileSize, locale)}</span>
-            <span className="flex items-center gap-1.5 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
+            <span className="flex items-center gap-1.5 phone:gap-1 group-has-[[data-slot=filing-chip]]/foot:@max-[14rem]/foot:hidden">
               <span aria-hidden className="text-muted-foreground/40">
                 ·
               </span>
