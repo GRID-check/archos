@@ -48,7 +48,9 @@ describe('page arithmetic', () => {
     expect(nextZoom(1, -1)).toBe(0.75)
     expect(nextZoom(MIN_ZOOM, -1)).toBe(MIN_ZOOM)
     expect(nextZoom(MAX_ZOOM, 1)).toBe(MAX_ZOOM)
-    expect(MAX_ZOOM).toBe(8)
+    // Deep enough for an A1 sheet's 2.5 mm lettering on a phone: ~0.43 px/mm at the fit.
+    expect(MAX_ZOOM).toBe(16)
+    expect(2.5 * 0.43 * MAX_ZOOM).toBeGreaterThanOrEqual(16)
   })
 
   it('steps from between two rungs to the nearer one in that direction', () => {
@@ -57,7 +59,7 @@ describe('page arithmetic', () => {
   })
 
   it('clamps a free zoom and calls the fit by name', () => {
-    expect(clampZoom(20)).toBe(MAX_ZOOM)
+    expect(clampZoom(40)).toBe(MAX_ZOOM)
     expect(clampZoom(0.1)).toBe(MIN_ZOOM)
     expect(clampZoom(Number.NaN)).toBe(1)
     expect(isFitZoom(1.004)).toBe(true)

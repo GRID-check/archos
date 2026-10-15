@@ -550,6 +550,17 @@ describe('DocumentFassungen — one numbered timeline', () => {
     expect(screen.getByTestId('fassung-header-label')).toHaveTextContent('Fassung 4')
   })
 
+  it('compares with the previous Fassung in one tap from its row, not only from its ⋯', async () => {
+    compareOpened.mockClear()
+    await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
+    const rows = await screen.findAllByTestId('fassung-timeline-row')
+    // Only the Fassung directly before this one carries it.
+    expect(screen.getAllByTestId('fassung-compare-previous')).toHaveLength(1)
+    await userEvent.click(within(rows[1]).getByTestId('fassung-compare-previous'))
+    expect(compareOpened).toHaveBeenCalledTimes(1)
+    expect(compareOpened.mock.calls[0]?.[1]).toMatchObject({ filename: 'EG_Index_C_2026-08-14.pdf' })
+  })
+
   it('tags rows with their index, says „aktuell" only on the one Piloti answers from, and never „Ersetzt"', async () => {
     await renderOpen({ file: fileFixture({ filename: 'EG_Index_C_2026-08-14.pdf', fassung: linked }), canManage: true })
 

@@ -38,6 +38,12 @@ export function pageRaster(size: PageSize, scale: number, pixelRatio: number): R
   })
 }
 
+/** The bitmap for a region the caller already planned inside the budget (`detailPlan`). */
+const regionRaster = (region: { width: number; height: number }, pixelRatio: number): Raster => {
+  const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+  return rasterFor({ width: region.width, height: region.height, dpr: pixelRatio, maxPixels: maxCanvasPixels(coarse) })
+}
+
 const sizeCanvas = (canvas: HTMLCanvasElement, raster: Raster): void => {
   canvas.width = raster.width
   canvas.height = raster.height
@@ -62,14 +68,20 @@ async function openPdf(file: CompareFile, isRendition: boolean): Promise<PageSou
       const view = (await doc.getPage(page)).getViewport({ scale: 1 })
       return { width: view.width, height: view.height }
     },
-    render: (page, canvas, { scale, pixelRatio }): RenderHandle => {
+    render: (page, canvas, { scale, pixelRatio, region }): RenderHandle => {
       let cancel = (): void => {}
       const promise = doc.getPage(page).then(async (pdfPage) => {
         const unscaled = pdfPage.getViewport({ scale: 1 })
-        const raster = pageRaster({ width: unscaled.width, height: unscaled.height }, scale, pixelRatio)
-        const viewport = pdfPage.getViewport({ scale: scale * raster.ratio })
-        canvas.width = Math.floor(viewport.width)
-        canvas.height = Math.floor(viewport.height)
+        const raster = region
+          ? regionRaster(region, pixelRatio)
+          : pageRaster({ width: unscaled.width, height: unscaled.height }, scale, pixelRatio)
+        const viewport = pdfPage.getViewport({
+          scale: scale * raster.ratio,
+          offsetX: region ? -region.x * raster.ratio : 0,
+          offsetY: region ? -region.y * raster.ratio : 0,
+        })
+        canvas.width = region ? raster.width : Math.floor(viewport.width)
+        canvas.height = region ? raster.height : Math.floor(viewport.height)
         const render = pdfPage.render({ canvas, viewport })
         cancel = () => render.cancel()
         // A cancelled render rejects; that is the teardown path, not a failure.
@@ -105,15 +117,19 @@ async function openImage(file: CompareFile): Promise<PageSource> {
   return {
     pageCount: 1,
     pageSize: async () => size,
-    render: (_page, canvas, { scale, pixelRatio }): RenderHandle => {
-      sizeCanvas(canvas, pageRaster(size, scale, pixelRatio))
+    render: (_page, canvas, { scale, pixelRatio, region }): RenderHandle => {
+      sizeCanvas(canvas, region ? regionRaster(region, pixelRatio) : pageRaster(size, scale, pixelRatio))
       const context = canvas.getContext('2d')
       if (context) {
         // Paper first: a transparent PNG would otherwise take the whole ink in
         // the overlay's recolouring.
         context.fillStyle = '#fff'
         context.fillRect(0, 0, canvas.width, canvas.height)
-        context.drawImage(image, 0, 0, canvas.width, canvas.height)
+        if (region) {
+          context.drawImage(image, region.x / scale, region.y / scale, region.width / scale, region.height / scale, 0, 0, canvas.width, canvas.height)
+        } else {
+          context.drawImage(image, 0, 0, canvas.width, canvas.height)
+        }
       }
       return { promise: Promise.resolve(), cancel: () => {} }
     },

@@ -44,11 +44,16 @@ export interface RenderHandle {
 export interface PageSource {
   pageCount: number
   pageSize: (page: number) => Promise<PageSize>
-  /** Paint `page` into `canvas` at `scale` CSS pixels per natural unit. */
+  /**
+   * Paint `page` into `canvas` at `scale` CSS pixels per natural unit. With a
+   * `region` (CSS pixels of the page at that scale), paint only that part, at
+   * `pixelRatio`: the sharp detail over a page whose whole bitmap had to be
+   * held under the canvas budget.
+   */
   render: (
     page: number,
     canvas: HTMLCanvasElement,
-    options: { scale: number; pixelRatio: number },
+    options: { scale: number; pixelRatio: number; region?: { x: number; y: number; width: number; height: number } },
   ) => RenderHandle
   /** Release the document and its worker. */
   destroy: () => void
