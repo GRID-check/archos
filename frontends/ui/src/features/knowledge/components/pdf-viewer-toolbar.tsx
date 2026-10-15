@@ -9,7 +9,11 @@
  * reader who learned them in the chat peek finds them where they expect in the
  * citation dialog. What a narrow stage cannot hold drops out by CONTAINER
  * width (the peek is narrow on a wide screen), never by viewport: the page
- * arrows go first, because the page field and the keys still turn pages.
+ * arrows go first, because the page field and the keys still turn pages. On a
+ * touch screen the fit-page toggle goes next, and on the narrowest stages the
+ * zoom steps, because two fingers and a double tap zoom there and the level
+ * button still fits again. The pill is never wider than its stage: a control
+ * pushed past the edge of a phone is a control nobody can reach.
  */
 
 import { useEffect, useRef, useState, type FC, type ReactNode } from 'react'
@@ -37,7 +41,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
-import { isFitted, MAX_ZOOM, MIN_ZOOM, type FitMode } from '../lib/pdf-zoom'
+import { isFitted, MIN_ZOOM, type FitMode } from '../lib/pdf-zoom'
 
 export interface PdfControlsProps {
   /** Null while the document is still loading. */
@@ -47,6 +51,8 @@ export interface PdfControlsProps {
   /** Present when there is a cited passage or region to go back to. */
   onRevealPassage?: () => void
   zoom: number
+  /** This document's ceiling (`maxZoomFor`). */
+  maxZoom: number
   fit: FitMode
   onZoomStep: (direction: 1 | -1) => void
   onResetZoom: () => void
@@ -66,6 +72,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   onPage,
   onRevealPassage,
   zoom,
+  maxZoom,
   fit,
   onZoomStep,
   onResetZoom,
@@ -144,6 +151,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
 
       <ToolbarDivider />
       <ToolbarIconButton
+        className="pointer-coarse:@max-xs:hidden"
         aria-label={t('viewer.zoomOut')}
         title={t('viewer.zoomOut')}
         aria-keyshortcuts="-"
@@ -167,16 +175,17 @@ export const PdfControls: FC<PdfControlsProps> = ({
         {percent}%
       </ToolbarTextButton>
       <ToolbarIconButton
+        className="pointer-coarse:@max-xs:hidden"
         aria-label={t('viewer.zoomIn')}
         title={t('viewer.zoomIn')}
         aria-keyshortcuts="+"
-        disabled={!ready || zoom >= MAX_ZOOM - 1e-6}
+        disabled={!ready || zoom >= maxZoom - 1e-6}
         onClick={() => onZoomStep(1)}
       >
         <Plus aria-hidden />
       </ToolbarIconButton>
       <ToolbarIconButton
-        className="@max-xs:hidden"
+        className="@max-xs:hidden pointer-coarse:@max-md:hidden"
         aria-pressed={fit === 'page'}
         aria-label={t('viewer.fitPage')}
         title={t('viewer.fitPage')}
