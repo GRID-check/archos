@@ -95,13 +95,18 @@ const open = async (
   )
 }
 
+/** The screen the spec pretends to be: a desktop wide enough for the list beside the sheet, unless a test says phone. */
+const screen_ = { wide: true, phone: false }
+
 let restoreObservers: () => void
 beforeEach(() => {
   visual.current = idleVisual()
   visual.ids = []
   restoreObservers = installLayoutObservers({ frameWidth: 1000 })
+  screen_.wide = true
+  screen_.phone = false
   window.matchMedia = ((query: string) => ({
-    matches: false,
+    matches: query === '(min-width: 1024px)' ? screen_.wide : query.includes('40rem') ? screen_.phone : false,
     media: query,
     addEventListener: () => {},
     removeEventListener: () => {},
@@ -574,5 +579,36 @@ describe('FassungCompare focus', () => {
       fireEvent.click(retry)
     })
     await screen.findByTestId('stage-side', undefined, { timeout: 10_000 })
+  })
+})
+
+describe('FassungCompare on a phone', () => {
+  beforeEach(() => {
+    screen_.wide = false
+    screen_.phone = true
+  })
+
+  it('opens in Wischen, where one sheet gets the whole height', async () => {
+    render(<FassungCompare older={OLDER} newer={NEWER} onClose={vi.fn()} loadSource={setup(1, 1).loader} />)
+    expect(await screen.findByTestId('stage-swipe', undefined, { timeout: 10_000 })).toBeInTheDocument()
+    expect(screen.getByTestId('mode-swipe')).toHaveAttribute('data-state', 'on')
+  })
+
+  it('keeps the change list off the stage, one tap away in a sheet with its count', async () => {
+    await open(setup(2, 2), { initialMode: 'swipe', overlays: [region(), region({ page: 2, label: 'Treppe' })] })
+    expect(screen.queryByTestId('compare-changes')).not.toBeInTheDocument()
+    const opener = screen.getByTestId('compare-changes-open')
+    expect(opener).toHaveTextContent('2')
+    fireEvent.click(opener)
+    const list = await screen.findByTestId('compare-changes')
+    // Picking a change closes the sheet and turns to the change's page.
+    fireEvent.click(within(list).getByRole('button', { name: /Treppe/ }))
+    expect(screen.getByTestId('compare-page-of')).toHaveTextContent('Page 2 of 2')
+    await waitFor(() => expect(screen.queryByTestId('compare-changes')).not.toBeInTheDocument())
+  })
+
+  it('still opens side by side when the caller asks for it', async () => {
+    await open(setup(1, 1), { initialMode: 'side' })
+    expect(screen.getByTestId('stage-side')).toBeInTheDocument()
   })
 })

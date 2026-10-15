@@ -52,6 +52,9 @@ export function SwatchLabel({ ink, children, title }: { ink: Rgb; children: Reac
   )
 }
 
+/** The most of a name's end a sheet tag keeps: an index and its extension (`_Index_C.pdf`). */
+const TAG_TAIL = 12
+
 /**
  * A label pinned to a corner of the sheet („Älter", „Neuer") with the file's
  * name, for the swipe view, where nothing else on screen says which side is
@@ -62,13 +65,17 @@ export function SheetTag({ side, label, name, tail, style }: { side: 'left' | 'r
     <span
       data-testid={`sheet-tag-${side}`}
       className={cn(
-        'pointer-events-none absolute top-2 z-[5] flex max-w-[45%] min-w-0 items-center gap-1.5 rounded-sm bg-[var(--compare-paper-ink)] px-1.5 py-0.5 text-xs text-[var(--compare-paper)] shadow-sm',
+        // `overflow-hidden` as the last word: the name's kept tail does not
+        // shrink, and on a 361px sheet „Neuer" plus a long tail ran past the
+        // sheet's edge and was cut at „pdf". The tail is held short enough
+        // (`TAG_TAIL`) that the index survives inside the tag.
+        'pointer-events-none absolute top-2 z-[5] flex max-w-[calc(50%-0.75rem)] min-w-0 items-center gap-1.5 overflow-hidden rounded-sm bg-[var(--compare-paper-ink)] px-1.5 py-0.5 text-xs text-[var(--compare-paper)] shadow-sm',
         side === 'left' ? 'left-2' : 'right-2',
       )}
       style={style}
     >
       <span className="shrink-0 font-semibold">{label}</span>
-      <MiddleTruncate text={name} tail={tail} className="opacity-80" />
+      <MiddleTruncate text={name} tail={Math.min(tail ?? TAG_TAIL, TAG_TAIL)} className="min-w-0 opacity-80" />
     </span>
   )
 }
