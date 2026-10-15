@@ -101,10 +101,28 @@
   }
 }
 
+/* A finger drives the pointer: 44px buttons. Sixteen of them do not fit a
+   393px column in rows (they wrapped into four), so the toolbar becomes one row
+   that scrolls sideways, as the formatting bar of a phone editor does. */
 @media (pointer: coarse) {
+  .w-md-editor.grid-md-editor .w-md-editor-toolbar {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .w-md-editor.grid-md-editor .w-md-editor-toolbar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .w-md-editor.grid-md-editor .w-md-editor-toolbar ul {
+    flex-wrap: nowrap;
+    flex-shrink: 0;
+  }
+
   .w-md-editor.grid-md-editor .w-md-editor-toolbar li > button {
-    height: 36px;
-    min-width: 36px;
+    height: 44px;
+    min-width: 44px;
   }
 }
 
@@ -140,6 +158,16 @@
 .w-md-editor.grid-md-editor .w-md-editor-text-pre > code {
   font-size: 13px !important;
   line-height: 22px !important;
+}
+
+/* 16px where a finger types. iOS Safari zooms the page when it focuses a field
+   under 16px and does not zoom back out; 13px source text did exactly that. */
+@media (pointer: coarse) {
+  .w-md-editor.grid-md-editor .w-md-editor-text,
+  .w-md-editor.grid-md-editor .w-md-editor-text-pre > code {
+    font-size: 16px !important;
+    line-height: 24px !important;
+  }
 }
 
 .w-md-editor.grid-md-editor .w-md-editor-text-input {

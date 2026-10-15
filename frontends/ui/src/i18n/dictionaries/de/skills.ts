@@ -112,6 +112,11 @@ export const skills: typeof en.skills = {
   },
 
   editor: {
+    /** Schließen mit ungespeicherten Eingaben: Escape, Tippen daneben, Abbrechen und das Kreuz fragen alle dasselbe. */
+    discardTitle: 'Änderungen verwerfen?',
+    discardBody: 'Ihre Eingaben zu diesem Skill gehen verloren.',
+    discardConfirm: 'Verwerfen',
+    discardKeep: 'Weiter bearbeiten',
     steps: {
       label: 'Schritte',
       progress: 'Schritt {current} von {total}',

@@ -114,6 +114,11 @@ export const skills = {
   },
 
   editor: {
+    /** Schließen mit ungespeicherten Eingaben: Escape, Tippen daneben, Abbrechen und das Kreuz fragen alle dasselbe. */
+    discardTitle: 'Discard your changes?',
+    discardBody: 'What you entered for this skill will be lost.',
+    discardConfirm: 'Discard',
+    discardKeep: 'Keep editing',
     /** The three questions the builder asks, in order. */
     steps: {
       label: 'Steps',
