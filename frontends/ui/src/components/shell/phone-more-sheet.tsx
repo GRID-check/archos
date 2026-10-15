@@ -22,6 +22,7 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { FOCUS_RING_INSET } from '@/components/ui/focus-ring'
 import { PRESSABLE } from '@/components/ui/press'
 import { SectionLabel } from '@/components/ui/section-label'
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import {
   Sheet,
   SheetContent,
@@ -225,7 +226,7 @@ function DestinationRow({
   )
 }
 
-/** A short choice as a row of 44px buttons: the value is visible, one tap changes it. */
+/** A short choice as a segmented row: the value is visible, one tap changes it. */
 function Segmented({
   ariaLabel,
   value,
@@ -238,22 +239,21 @@ function Segmented({
   onChange: (value: string) => void
 }): JSX.Element {
   return (
-    <div role="group" aria-label={ariaLabel} className="bg-muted flex shrink-0 gap-0.5 rounded-lg p-0.5">
+    <ToggleGroup
+      type="single"
+      segmented
+      size="sm"
+      value={value}
+      // Radix reports '' when the selected item is tapped again; a choice stays chosen.
+      onValueChange={(next) => next && onChange(next)}
+      aria-label={ariaLabel}
+      className="shrink-0"
+    >
       {options.map((option) => (
-        <button
-          key={option.value}
-          type="button"
-          aria-pressed={option.value === value}
-          onClick={() => onChange(option.value)}
-          className={cn(
-            'min-h-11 min-w-11 rounded-md px-2.5 text-xs font-medium outline-none',
-            FOCUS_RING_INSET,
-            option.value === value ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground'
-          )}
-        >
+        <ToggleGroupItem key={option.value} value={option.value}>
           {option.label}
-        </button>
+        </ToggleGroupItem>
       ))}
-    </div>
+    </ToggleGroup>
   )
 }

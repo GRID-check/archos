@@ -14,6 +14,7 @@
  */
 
 import type { JSX } from 'react'
+import * as React from 'react'
 import { notFound } from 'next/navigation'
 import { ProjectSectionFrame } from '@/components/shell/project-section-frame'
 import { ProjectFileWorkspace } from '@/features/documents/components/project-file-workspace'
@@ -39,6 +40,8 @@ const row = (id: string, filename: string, summary: string, extra: Partial<Docum
   ...extra,
 })
 
+const DEMO_PROJECT = 'demo'
+
 const unread = typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('unread') === '1'
 
 const FILES: DocumentWireRow[] = [
@@ -51,16 +54,28 @@ const FILES: DocumentWireRow[] = [
   }),
 ]
 
-if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
-  const w = window as unknown as { __filesPageShim?: boolean }
-  if (!w.__filesPageShim) {
-    w.__filesPageShim = true
-    const real = window.fetch.bind(window)
+/**
+ * Answers the demo project's document requests from the fixtures, for as long
+ * as the preview is mounted. A layout effect runs before the workspace's own
+ * effects fetch, and its cleanup puts the real `fetch` back, so leaving the
+ * preview without a reload leaves nothing patched.
+ */
+function useFixtureFetch(): void {
+  React.useLayoutEffect(() => {
+    const real = window.fetch
     const json = (body: unknown, status = 200): Response =>
       new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } })
     window.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
-      const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url
-      const path = new URL(url, window.location.origin).pathname
+      const url = new URL(
+        typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url,
+        window.location.origin
+      )
+      const path = url.pathname
+      const demo =
+        url.searchParams.get('projectId') === DEMO_PROJECT ||
+        path.startsWith(`/api/projects/${DEMO_PROJECT}/`) ||
+        FILES.some((f) => path.startsWith(`/api/documents/${f.id}/`))
+      if (!demo) return real(input, init)
       if (/\/thumbnail$/.test(path)) return new Response(null, { status: 404 })
       if (path === '/api/documents/summary') {
         const failed = FILES.filter((f) => f.status === 'failed')
@@ -85,18 +100,26 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
       if (/\/folders$/.test(path)) return json({ folders: [], rootAccess: 'write' })
       return real(input, init)
     }
-  }
+    return () => {
+      window.fetch = real
+    }
+  }, [])
 }
 
 export default function FilesPageDevPage(): JSX.Element {
   if (process.env.NODE_ENV !== 'development') notFound()
+  return <FilesPreview />
+}
+
+function FilesPreview(): JSX.Element {
+  useFixtureFetch()
   return (
     <div className="bg-background flex h-dvh flex-col">
       <div className="flex h-14 shrink-0 items-center border-b px-4 text-lg font-semibold">Kaiserstraße 43</div>
       <main className="min-h-0 flex-1">
-        <ProjectSectionFrame projectId="demo" projectName="Kaiserstraße 43">
+        <ProjectSectionFrame projectId={DEMO_PROJECT} projectName="Kaiserstraße 43">
           <ProjectFileWorkspace
-            projectId="demo"
+            projectId={DEMO_PROJECT}
             projectName="Kaiserstraße 43"
             collectionName="demo"
             canCollaborate

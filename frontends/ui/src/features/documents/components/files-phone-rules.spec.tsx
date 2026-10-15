@@ -3,9 +3,10 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { render, screen } from '@testing-library/react'
 
-import { everythingRead } from './folder-brief'
+import { briefHasNothingToSay, everythingRead } from './folder-brief'
 import { AssignmentFaces } from './assignment-faces'
 import { emptyTally } from '../lib/folder-knowledge'
+import { DOCUMENT_ROLES } from '@/lib/project-profile/document-roles'
 
 const source = (file: string): string => readFileSync(join(__dirname, file), 'utf8')
 
@@ -26,9 +27,17 @@ describe('Dateien on a phone', () => {
     expect(everythingRead({ ...read, total: 3, unindexed: 1 })).toBe(true)
   })
 
-  it('the brief renders nothing on a phone when everything is read (gate is in the component)', () => {
+  it('the brief stays while something still needs a person: unplaced or missing documents', () => {
+    const read = { ...emptyTally(), total: 2, readable: 2 }
+    expect(briefHasNothingToSay(read, null)).toBe(true)
+    expect(briefHasNothingToSay(read, [])).toBe(true)
+    expect(briefHasNothingToSay({ ...read, unplaced: 1 }, null)).toBe(false)
+    expect(briefHasNothingToSay(read, [{ role: DOCUMENT_ROLES[0], label: 'Energieausweis', bauwerkName: null }])).toBe(false)
+  })
+
+  it('the brief renders nothing on a phone only when it has nothing to say (gate is in the component)', () => {
     const src = source('folder-brief.tsx')
-    expect(src).toMatch(/if \(phone && everythingRead\(tally\)\) return null/)
+    expect(src).toMatch(/if \(phone && briefHasNothingToSay\(tally, folderName === null \? missing : null\)\) return null/)
   })
 
   it('the list ends 6rem above the floor so the last row scrolls clear of the floating Hochladen', () => {
