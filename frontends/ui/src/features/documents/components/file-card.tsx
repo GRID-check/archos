@@ -390,13 +390,16 @@ export const FileCard = memo(function FileCard({
               <DocumentStatusBadge
                 status={file.status}
                 queueAhead={file.queueAhead}
+                // At the foot of the thumbnail, not the head: the sketch drawn when
+                // there is no picture puts its title bar at the top, and a badge
+                // there read as part of the placeholder rather than as a status.
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
                 // underneath instead of hiding it.
                 // `bg-background/80` is a light ground, and the destructive
                 // variant's ink is white: „Fehlgeschlagen" was white on paper,
                 // invisible. Its ink becomes the error red on this ground.
-                className="absolute left-2 top-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
+                className="absolute bottom-2 left-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
               />
             )}
           </GridTileMedia>

@@ -24,6 +24,7 @@ import { useIsPresent } from 'motion/react'
 import { AnimatePresence, motion, motionInstant, motionQuick, motionQuickExit } from '@/components/motion'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
+import { DECISION_BUTTON, DECISION_ROW } from '@/features/grid-cards/components/card-chrome'
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { useReducedMotion } from '@/hooks/use-reduced-motion'
 import { useLocale, useTranslations } from '@/i18n'
@@ -293,33 +294,40 @@ export const AgentPrompt: FC<AgentPromptProps> = ({
                   </div>
                 )}
 
-                {/* The plan decision: cancel outright, a quick shallow answer
-                    instead, or the deep run. */}
+                {/* The plan decision: the deep run first, then a quick shallow
+                    answer instead, then cancel outright. The card chrome's
+                    decision row: stacked and full width on a phone, where the
+                    primary used to wrap alone onto a second line, and in the
+                    reading order of the other decisions (the main action
+                    first). */}
                 {showApprovalButtons && (
-                  <div className="flex flex-wrap justify-end gap-2">
+                  <div className={DECISION_ROW}>
                     <Button
-                      variant="ghost"
+                      variant="default"
                       size="sm"
-                      onClick={handleCancel}
-                      aria-label={t('agentPrompt.cancelResearchAria')}
+                      onClick={handleApprove}
+                      aria-label={t('agentPrompt.approvePlan')}
+                      className={DECISION_BUTTON}
                     >
-                      {t('agentPrompt.cancelResearch')}
+                      {t('agentPrompt.startResearch')}
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={handleShallow}
                       aria-label={t('agentPrompt.answerShallowAria')}
+                      className={DECISION_BUTTON}
                     >
                       {t('agentPrompt.answerShallow')}
                     </Button>
                     <Button
-                      variant="default"
+                      variant="ghost"
                       size="sm"
-                      onClick={handleApprove}
-                      aria-label={t('agentPrompt.approvePlan')}
+                      onClick={handleCancel}
+                      aria-label={t('agentPrompt.cancelResearchAria')}
+                      className={DECISION_BUTTON}
                     >
-                      {t('agentPrompt.startResearch')}
+                      {t('agentPrompt.cancelResearch')}
                     </Button>
                   </div>
                 )}

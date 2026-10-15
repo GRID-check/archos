@@ -299,6 +299,8 @@ export const skills: typeof en.skills = {
       one: '1 Skill verwendet',
       other: '{count} Skills verwendet',
       title: 'Für diese Antwort verwendete Skills',
+      descriptionMore: 'Mehr anzeigen',
+      descriptionLess: 'Weniger anzeigen',
       explainer:
         'Der Assistent sieht zu Beginn einer Antwort Name und Beschreibung jedes Skills und lädt die vollständigen Anweisungen nur für die Skills, die er aktiviert. Diese wurden aktiviert.',
     },
