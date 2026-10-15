@@ -204,8 +204,8 @@ function DeviceRow({
         <DeviceIcon label={device.label} />
       </ItemMedia>
       <ItemContent>
-        <ItemTitle className="flex items-center gap-2">
-          <span className="truncate">{device.label}</span>
+        <ItemTitle className="flex flex-wrap items-center gap-x-2 gap-y-1">
+          <span className="min-w-0 break-words">{device.label}</span>
           {isThis && <Badge variant="secondary">{t('devices.thisDevice')}</Badge>}
         </ItemTitle>
         <ItemDescription>
