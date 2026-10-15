@@ -3,16 +3,19 @@
  * The claim for `bff_job_queue` (ADR-0079, migration 0104): the BFF's durable
  * background work, in the order ADR-0076 proved for ingestion.
  *
- * THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes the next job of
- * the LANE (an organization) with the fewest live claims anywhere; among equals,
- * the lane served longest ago (`bff_job_lane_turns`); then the lane whose best
- * job has the better priority (0 interactive before 1 bulk) and is the oldest.
- * Inside the chosen lane the job is the best by priority, then oldest. So one
- * office's ten-thousand-document reindex takes every worker while it is alone,
- * and the next office's request takes the next worker that frees up, whatever
- * the backlog ahead of it. The optional per-lane cap is hard: two claims racing
- * past it both commit, then each checks again under a per-lane advisory lock and
- * the later check gives its job back.
+ * THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes a job of the
+ * LANE (an organization) with the fewest live claims anywhere; among equals, the
+ * lane served longest ago (`bff_job_lane_turns`, never served first); then the
+ * lane whose oldest runnable job is oldest; then the lane name, so a tie is the
+ * same everywhere. Priority never picks the lane: uploads are interactive
+ * whatever their size, so it would let one office's bulk upload pass its
+ * neighbours. Inside the chosen lane the job is the best by priority (0
+ * interactive before 1 bulk), then oldest. So one office's ten-thousand-document
+ * reindex takes every worker while it is alone, and the next office's request
+ * takes the next worker that frees up, whatever the backlog ahead of it. The
+ * optional per-lane cap is hard: two claims racing past it both commit, then each
+ * checks again under a per-lane advisory lock and the later check gives its job
+ * back.
  *
  * The Python queues (`aiq_agent.common.claim_queue`) run the same algorithm over
  * their own tables, in their own database. Two implementations of one algorithm,
@@ -179,9 +182,9 @@ async function claimStatement(tx, worker, options) {
       GROUP BY lane
     ),
     lanes AS (
-      SELECT w.lane, COALESCE(r.n, 0) AS n, t.last_claimed_at, w.best, w.oldest
+      SELECT w.lane, COALESCE(r.n, 0) AS n, t.last_claimed_at, w.oldest
       FROM (
-        SELECT q.lane, MIN(q.priority) AS best, MIN(q.created_at) AS oldest
+        SELECT q.lane, MIN(q.created_at) AS oldest
         FROM bff_job_queue q
         WHERE ${runnable(tx, options)}
         GROUP BY q.lane
@@ -189,7 +192,7 @@ async function claimStatement(tx, worker, options) {
       LEFT JOIN running r ON r.lane = w.lane
       LEFT JOIN bff_job_lane_turns t ON t.lane = w.lane
       WHERE (${cap}::int = 0 OR COALESCE(r.n, 0) < ${cap}::int)
-      ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.best, w.oldest
+      ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane
       LIMIT ${LANES_PER_CLAIM}
     ),
     candidate AS (
@@ -201,7 +204,7 @@ async function claimStatement(tx, worker, options) {
         FOR UPDATE SKIP LOCKED
         LIMIT 1
       ) pick
-      ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.best, lanes.oldest
+      ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane
       LIMIT 1
     ),
     claimed AS (

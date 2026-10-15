@@ -295,6 +295,28 @@ def test_priority_does_not_let_one_office_pass_another(db):
     assert second.priority == claim_queue.PRIORITY_BULK
 
 
+# The next two scenarios are the lane order every claim shares: the same two run in
+# tests/aiq_agent/common/test_claim_queue.py and in the BFF's
+# frontends/ui/src/lib/jobs-queue/queue.integration.spec.ts. Priority never picks the lane.
+
+
+def test_an_older_bulk_job_goes_before_a_newer_interactive_one_of_another_office(db):
+    _enqueue("a-bulk", "org-a", "2026-09-30 10:00:00", priority="bulk")
+    _enqueue("b-live", "org-b", "2026-09-30 10:00:01")
+
+    assert ingest_queue.claim_next("w1", **CLAIM).job_id == "a-bulk"
+
+
+def test_tied_offices_are_served_by_lane_name_past_the_lanes_one_claim_ranks(db):
+    lanes = [f"org-{c}" for c in "abcdef"]  # more than the four lanes ranked per claim
+    for n, lane in enumerate(reversed(lanes)):
+        _enqueue(f"j{n}", lane, "2026-09-30 10:00:00")
+
+    claimed = [ingest_queue.claim_next(f"w{i}", **CLAIM).lane for i in range(len(lanes))]
+
+    assert claimed == lanes
+
+
 def test_a_claim_reports_the_priority_the_job_was_queued_with(db):
     _enqueue("a0", "org-a", "2026-09-30 10:00:00")
 

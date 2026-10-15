@@ -8,14 +8,18 @@ the first queue on it (ADR-0076); ``aiq_api.jobs.queue``, the research queue,
 is the second. Each queue keeps its own table, payload and verdict; this module
 owns the algorithm.
 
-THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes the next job of
-the LANE (an organisation, or a platform lane) with the fewest jobs running
-anywhere; among equals, the lane served longest ago (the turns table); then the
-job's priority (``interactive`` before ``bulk``); then the oldest. So one
+THE CLAIM IS FAIR, ACROSS THE WHOLE FLEET. A free worker takes a job of the
+LANE (an organisation, or a platform lane) with the fewest jobs running
+anywhere; among equals, the lane served longest ago (the turns table, never
+served first); then the lane whose oldest runnable job is oldest; then the lane
+name, so a tie is the same on every database. Inside that lane it takes the
+best job by priority (``interactive`` before ``bulk``), then the oldest. So one
 organisation's thousand-document reindex takes every worker while it is alone,
 and the next organisation's upload takes the next worker that frees up,
-whatever the backlog ahead of it. PRIORITY decides inside a lane: an office's
-single upload goes before its own reindex, and never before another office.
+whatever the backlog ahead of it. PRIORITY decides inside a lane only: an
+office's single upload goes before its own reindex, and never before another
+office. The BFF's queue (``frontends/ui/workers/job-queue.js``) claims in the
+same order.
 
 The optional per-lane cap is hard: two claims racing past it both commit, then
 each checks again under a per-lane advisory lock, and a claim that finds the
@@ -347,19 +351,19 @@ lanes AS (
     LEFT JOIN running r ON r.lane = w.lane
     LEFT JOIN {turns} t ON t.lane = w.lane
     WHERE (:cap = 0 OR COALESCE(r.n, 0) < :cap)
-    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest
+    ORDER BY COALESCE(r.n, 0), t.last_claimed_at NULLS FIRST, w.oldest, w.lane
     LIMIT {_PG_LANES_PER_CLAIM}
 ),
 candidate AS (
     SELECT pick.job_id FROM lanes
     CROSS JOIN LATERAL (
-        SELECT q.job_id, q.priority, q.created_at FROM {t} q
+        SELECT q.job_id FROM {t} q
         WHERE q.lane = lanes.lane AND {runnable}
-        ORDER BY q.priority, q.created_at
+        ORDER BY q.priority, q.created_at, q.job_id
         FOR UPDATE SKIP LOCKED
         LIMIT 1
     ) pick
-    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, pick.priority, pick.created_at
+    ORDER BY lanes.n, lanes.last_claimed_at NULLS FIRST, lanes.oldest, lanes.lane
     LIMIT 1
 ),
 claimed AS (
@@ -482,8 +486,9 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             # Only module constants are interpolated; values are bound.
             # nosemgrep: python.sqlalchemy.security.audit.avoid-sqlalchemy-text.avoid-sqlalchemy-text
             text(
-                "SELECT job_id, lane, payload, attempts, priority, created_at FROM ("
-                "  SELECT job_id, lane, payload, attempts, priority, created_at, "
+                "SELECT job_id, lane, payload, attempts, priority, oldest FROM ("
+                "  SELECT job_id, lane, payload, attempts, priority, "
+                "         MIN(created_at) OVER (PARTITION BY lane) AS oldest, "
                 "         ROW_NUMBER() OVER (PARTITION BY lane ORDER BY priority, created_at, job_id) AS rn "
                 f"  FROM {t} "
                 "  WHERE status = :queued OR (status = :claimed AND attempts < :max_attempts AND heartbeat_at < :t)"
@@ -491,14 +496,9 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
             ),
             {**params, "t": threshold},
         ).all()
-        cap = params["cap"]
-        eligible = [r for r in rows if not cap or running.get(r[1], 0) < cap]
-        if not eligible:
+        best = _fairest_lane_head(rows, running, turns, params["cap"])
+        if best is None:
             return None
-        best = min(
-            eligible,
-            key=lambda r: (running.get(r[1], 0), turns.get(r[1]) is not None, turns.get(r[1]) or "", r[4], r[5], r[0]),
-        )
         stamp = now.strftime("%Y-%m-%d %H:%M:%S.%f")
         conn.execute(
             # Only module constants are interpolated; values are bound.
@@ -787,6 +787,22 @@ SELECT job_id, lane, payload, attempts, priority FROM claimed
 
 def _is_postgres(url: str) -> bool:
     return url.startswith("postgres")
+
+
+def _fairest_lane_head(rows, running: dict, turns: dict, cap: int):
+    """The head job of the lane the Postgres claim would pick, or None when every lane is at its cap.
+
+    ``rows`` is one ``(job_id, lane, payload, attempts, priority, oldest)`` per lane: that lane's
+    best job by priority, then age, and the lane's oldest runnable job. The lane order is the
+    Postgres one: fewest running, served longest ago (never served first), oldest job, name.
+    """
+    eligible = [r for r in rows if not cap or running.get(r[1], 0) < cap]
+    if not eligible:
+        return None
+    return min(
+        eligible,
+        key=lambda r: (running.get(r[1], 0), turns.get(r[1]) is not None, turns.get(r[1]) or "", r[5], r[1]),
+    )
 
 
 def _sqlite_threshold(seconds: int) -> str:

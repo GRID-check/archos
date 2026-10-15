@@ -58,7 +58,8 @@ Chosen option 3.
 
 * **One substrate per language, one algorithm.** `aiq_agent.common.claim_queue`
   holds the claim ADR-0076 proved (fewest-running lane, then lane served longest
-  ago, then priority, then oldest), heartbeat, reclaim, release-on-drain without
+  ago, then the lane with the oldest job, then lane name; inside the lane,
+  priority, then oldest), heartbeat, reclaim, release-on-drain without
   an attempt, and dead rows. `ingest_job_queue` and `research_job_queue` both
   run on it; their payloads and verdicts stay apart (ADR-0076). The BFF's
   TypeScript work gets `bff_job_queue` in the app database with the same

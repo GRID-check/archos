@@ -25,9 +25,10 @@ access belongs in the BFF, not here.
 **Job workers are claimed in the database, not assigned.** Both queues are
 tables on one claim, `aiq_agent.common.claim_queue` (ADR-0079): fewest running in
 the lane (the organization) fleet-wide first, then the lane served longest ago,
-then `interactive` before `bulk`, then oldest; a heartbeat, a reclaim of stale
-claims, `release_claims` on a drain (no attempt spent), and `dead` rows kept as a
-trace instead of a `DELETE`. A change to the order, the heartbeat or the dead
+then the lane with the oldest job, then the lane name; inside the lane
+`interactive` before `bulk`, then oldest. Priority never picks the lane. It also
+holds the heartbeat, the reclaim of stale claims, `release_claims` on a drain (no
+attempt spent), and `dead` rows kept as a trace instead of a `DELETE`. A change to the order, the heartbeat or the dead
 rows is made there, once. `jobs/queue.py` and `jobs/worker.py` are research's
 table, encrypted payload and poison verdict on it; the reaper and the checkpoint
 retention sweep assume it. Ingestion claims from its own table,
