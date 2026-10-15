@@ -312,6 +312,8 @@ export const research: typeof en.research = {
     yesterday: 'Gestern',
     editTitle: 'Chat-Titel bearbeiten',
     untitledSession: 'Chat ohne Titel',
+    /** Zeilenmenü am Touch-Gerät (kein Hover): Name der Schaltfläche. */
+    rowActions: 'Aktionen für „{title}“',
     renameDisabled: 'Chat umbenennen (deaktiviert)',
     rename: 'Chat umbenennen',
     cannotRenameBusy: 'Umbenennen nicht möglich, während Vorgänge laufen',

@@ -48,6 +48,7 @@ import {
   FlaskConical,
   Loader2,
   MessageSquare,
+  MoreHorizontal,
   Pencil,
   Plus,
   Search,
@@ -57,6 +58,12 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { CountPill } from '@/components/ui/count-pill'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Input } from '@/components/ui/input'
 import { Item, ItemContent, ItemList, ItemMedia } from '@/components/ui/item'
@@ -444,7 +451,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
 
           <Button
             variant="outline"
-            className="h-9 w-full justify-start gap-2"
+            className="h-9 w-full justify-start gap-2 pointer-coarse:h-11"
             onClick={handleNewSession}
             disabled={isNavigationBlocked}
             aria-label={
@@ -687,7 +694,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="relative z-10 size-7"
+                              className="relative z-10 size-7 pointer-coarse:size-11"
                               onClick={() => handleStopRun(run)}
                               aria-label={t('sessionsPanel.stopResearch')}
                               title={t('sessionsPanel.stopResearchTitle')}
@@ -775,7 +782,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
       </div>
 
       {/* ---- Footer: what "saved" means, and the bulk destroyer at the far end ---- */}
-      <div className="bg-background shrink-0 border-t px-4 py-3 md:px-8">
+      <div className="bg-background shrink-0 border-t px-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 md:px-8">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-2">
           <p className="text-muted-foreground text-xs">{t('sessionsPanel.syncedNote')}</p>
           {/* Delete-all lives HERE, not above the list. It used to sit in the
@@ -786,7 +793,7 @@ export const SessionsPanel: FC<SessionsPanelProps> = memo(function SessionsPanel
             <Button
               variant="ghost"
               size="sm"
-              className="text-destructive hover:text-destructive -ml-2 h-8 w-fit justify-start px-2"
+              className="text-destructive hover:text-destructive -ml-2 h-8 w-fit justify-start px-2 pointer-coarse:h-11"
               onClick={handleDeleteAllClick}
               disabled={anySessionBusy}
               aria-label={
@@ -909,14 +916,30 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
     }
   }, [isEditing, isBusy, onSelect, session.id])
 
+  const startRename = useCallback(() => {
+    setEditValue(session.title)
+    setIsEditing(true)
+  }, [session.title])
+
   const handleEditClick = useCallback(
     (e: React.MouseEvent) => {
       e.stopPropagation()
-      setEditValue(session.title)
-      setIsEditing(true)
+      startRename()
     },
-    [session.title]
+    [startRename]
   )
+
+  // The row menu (touch) closes by handing focus back to its trigger, which is
+  // gone by then: the editor took the trigger's place. Take focus for the
+  // editor here, after the menu has let go of the page, instead of racing it.
+  const renameFromMenuRef = useRef(false)
+  const handleMenuCloseAutoFocus = useCallback((e: Event) => {
+    if (!renameFromMenuRef.current) return
+    renameFromMenuRef.current = false
+    e.preventDefault()
+    inputRef.current?.focus()
+    inputRef.current?.select()
+  }, [])
 
   const handleDeleteClick = useCallback(
     (e: React.MouseEvent) => {
@@ -1018,7 +1041,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
               onChange={handleInputChange}
               onKeyDown={handleKeyDown}
               onBlur={handleInputBlur}
-              className="h-8 min-w-0 flex-1 px-2.5"
+              className="h-8 min-w-0 flex-1 px-2.5 pointer-coarse:h-11"
               aria-label={t('sessionsPanel.editTitle')}
             />
           </div>
@@ -1047,12 +1070,17 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
               // Stretched over the whole row via the ::after overlay, the
               // inbox's pattern — so the row stays ONE control without nesting
               // the icon disc inside it.
-              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-sm text-left outline-none after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
+              className="flex min-w-0 flex-1 flex-col gap-0.5 rounded-sm text-left outline-none pointer-coarse:mr-9 after:absolute after:inset-0 after:content-[''] focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50"
             >
               {/* Two-line content block: title + persistent time on line 1, the
                   calm Deep Research badge on line 2. */}
               <span className="flex min-w-0 items-center gap-2">
-                <span className="min-w-0 flex-1 truncate text-sm" title={displayTitle}>
+                {/* Two lines on a phone: a chat is found by its name, and "Rettungswege
+                    Bürogeb…" names nothing. One truncated line on a pointer device. */}
+                <span
+                  className="min-w-0 flex-1 text-sm max-sm:line-clamp-2 max-sm:break-words sm:truncate"
+                  title={displayTitle}
+                >
                   {displayTitle}
                 </span>
                 {sessionIso && (
@@ -1079,6 +1107,52 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
           </>
         )}
 
+        {/* Touch has no hover, so rename and delete get a second way in: one
+            visible 44px menu at the row's trailing edge, present only on a
+            coarse pointer (the hover overlay below is the pointer's way). The
+            row's title keeps its full width minus that one door. */}
+        {!isEditing && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute inset-y-0 right-0 z-10 my-auto hidden size-11 pointer-coarse:inline-flex"
+                aria-label={t('sessionsPanel.rowActions', { title: displayTitle })}
+                data-testid="session-row-menu"
+              >
+                <MoreHorizontal className="size-4" aria-hidden="true" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" onCloseAutoFocus={handleMenuCloseAutoFocus}>
+              {!session.contentLocked && (
+                <DropdownMenuItem
+                  disabled={isBusy || isSessionActive}
+                  onSelect={() => {
+                    renameFromMenuRef.current = true
+                    startRename()
+                  }}
+                >
+                  <Pencil className="size-4" aria-hidden="true" />
+                  {isBusy || isSessionActive
+                    ? t('sessionsPanel.cannotRenameBusy')
+                    : t('sessionsPanel.rename')}
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={isBusy || isSessionActive}
+                onSelect={() => onDelete?.(session.id)}
+              >
+                <Trash2 className="size-4" aria-hidden="true" />
+                {isBusy || isSessionActive
+                  ? t('sessionsPanel.cannotDeleteBusy')
+                  : t('sessionsPanel.deleteSession')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+
         {/* The actions OVERLAY the row on hover/focus instead of holding a
             permanent column that taxes every title's width. Overlaying is
             reflow-free (the row never resizes) and the resting row spends its
@@ -1089,7 +1163,7 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
         {showActions && (
           <div
             className={cn(
-              'absolute inset-y-0 right-2 z-10 flex items-center gap-1 pl-6 animate-in fade-in-0 duration-snap ease-out motion-reduce:animate-none',
+              'absolute inset-y-0 right-2 z-10 flex items-center gap-1 pl-6 pointer-coarse:hidden animate-in fade-in-0 duration-snap ease-out motion-reduce:animate-none',
               isSelected
                 ? '[background:linear-gradient(to_right,transparent,var(--accent)_1.5rem)]'
                 : '[background:linear-gradient(to_right,transparent,var(--muted)_1.5rem)]'

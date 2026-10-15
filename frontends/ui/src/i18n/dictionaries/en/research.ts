@@ -306,6 +306,8 @@ export const research = {
     yesterday: 'Yesterday',
     editTitle: 'Edit chat title',
     untitledSession: 'Untitled chat',
+    /** Row menu on touch (no hover): the button's name. */
+    rowActions: 'Actions for "{title}"',
     renameDisabled: 'Rename chat (disabled)',
     rename: 'Rename chat',
     cannotRenameBusy: 'Cannot rename while operations are in progress',
