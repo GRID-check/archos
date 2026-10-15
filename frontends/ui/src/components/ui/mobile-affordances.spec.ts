@@ -380,21 +380,22 @@ describe('every floating surface fits the screen it opens on', () => {
 
 describe('a focus ring is for the keyboard', () => {
   /**
-   * The app's own `:focus-visible` outline was UNLAYERED, and an unlayered rule
-   * beats every `@layer` rule whatever its specificity. So `outline-none` lost
-   * to it everywhere: a control that draws its own ring wore the outline on top
-   * of it, a cmdk field that asked for none got a box inside its row, and a
-   * sheet that focuses itself on open (the project switcher, a dialog under a
-   * finger) drew a thick ink frame along its top edge on a phone. In the base
-   * layer, a utility wins, and a control with no focus style still gets the
-   * outline.
+   * Controls draw their own ring at `/60` (`FOCUS_RING`), a soft halo under 3:1
+   * on paper. The global outline is what carries the keyboard indicator, so it
+   * must stay UNLAYERED: an unlayered rule beats `outline-none` on every
+   * control. In `@layer base` it once lost to `outline-none` everywhere and the
+   * indicator fell from about 7.9:1 to 2.3:1 (WCAG 2.4.11 asks 3:1).
+   *
+   * Two exceptions follow it, unlayered too: an overlay panel that holds the
+   * focus itself on open (a frame along the top of a phone sheet answers no
+   * question) and a cmdk field inside its own bordered row.
    */
   const css = blankComments(readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')) as string
 
-  /** `[start, end)` of every `@layer base { … }` block. */
-  const baseLayers = (): Array<[number, number]> => {
+  /** `[start, end)` of every `@layer … { … }` block. */
+  const layers = (): Array<[number, number]> => {
     const out: Array<[number, number]> = []
-    for (const match of css.matchAll(/@layer\s+base\s*\{/g)) {
+    for (const match of css.matchAll(/@layer\s+[\w-]+\s*\{/g)) {
       let depth = 0
       for (let i = match.index + match[0].length - 1; i < css.length; i += 1) {
         if (css[i] === '{') depth += 1
@@ -407,17 +408,17 @@ describe('a focus ring is for the keyboard', () => {
     return out
   }
 
-  it('keeps every global :focus-visible rule inside the base layer', () => {
-    const layers = baseLayers()
-    const unlayered = [...css.matchAll(/:focus-visible[^{;]*\{/g)]
-      .filter((match) => !layers.some(([start, end]) => match.index > start && match.index < end))
-      .map((match) => match[0])
-    expect(css).toMatch(/:focus-visible\s*\{\s*outline:\s*2px solid var\(--ring\)/)
-    expect(unlayered).toEqual([])
+  it('keeps the global :focus-visible outline unlayered, so outline-none cannot drop it', () => {
+    const outline = /(^|\n):focus-visible\s*\{\s*outline:\s*2px solid var\(--ring\)/.exec(css)
+    expect(outline).not.toBeNull()
+    const at = outline?.index ?? -1
+    expect(layers().some(([start, end]) => at > start && at < end)).toBe(false)
   })
 
-  it('draws no frame around an overlay panel that holds the focus itself', () => {
-    expect(css).toMatch(/:is\(\[role='dialog'\], \[role='alertdialog'\]\):focus-visible\s*\{\s*outline:\s*none/)
+  it('draws no frame around an overlay panel that holds the focus itself, nor inside a cmdk field', () => {
+    expect(css).toMatch(
+      /:is\(\[role='dialog'\], \[role='alertdialog'\]\):focus-visible,\s*\[cmdk-input\]:focus-visible\s*\{\s*outline:\s*none/
+    )
   })
 })
 

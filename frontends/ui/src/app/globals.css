@@ -169,28 +169,28 @@ body {
    `border-radius: inherit` here — that overrides a control's own rounding with
    its parent's (usually 0), squaring off rounded inputs/selects on focus.
 
-   IN THE BASE LAYER, so a utility wins. Unlayered, this beat every `@layer`
-   rule whatever its specificity: `outline-none` on a control that draws its
-   own ring (`FOCUS_RING`) still got this outline on top of the ring, a cmdk
-   field that asked for no outline got a box inside its row, and a sheet that
-   focuses itself on open (the project switcher, a dialog under a finger)
-   drew a thick ink frame along its top edge. A control with no focus style of
-   its own still gets this one; `mobile-affordances.spec.ts` holds it here.
+   UNLAYERED ON PURPOSE, so it beats `outline-none` on every control. Most
+   controls draw their own ring at `/60` (`FOCUS_RING`), which is a soft halo
+   (about 2.3:1 on paper): this outline is what gives the keyboard its 3:1+
+   indicator (WCAG 2.4.11). Moving it into `@layer base` once let every
+   `outline-none` drop it and the focus indicator fell under 3:1 app-wide.
 
-   An overlay's own panel never shows it. Radix focuses the dialog itself when
-   it opens under a finger or holds nothing focusable, and that focus is a
-   place for the keyboard to start, not a control anyone moved to: a frame
-   around the whole sheet answers no question. Tab from there lands on a
-   control, which shows its ring. */
-@layer base {
-  :focus-visible {
-    outline: 2px solid var(--ring);
-    outline-offset: 2px;
-  }
+   Two narrow exceptions follow it, unlayered too:
+   - An overlay's own panel. Radix focuses the dialog itself when it opens under
+     a finger or holds nothing focusable; that is a place for the keyboard to
+     start, not a control anyone moved to, and a frame around the whole sheet
+     drew a thick ink edge along its top on a phone. Tab from there lands on a
+     control, which shows the outline.
+   - A cmdk search field, which sits inside its own bordered row: the outline
+     drew a second box inside it. */
+:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
 
-  :is([role='dialog'], [role='alertdialog']):focus-visible {
-    outline: none;
-  }
+:is([role='dialog'], [role='alertdialog']):focus-visible,
+[cmdk-input]:focus-visible {
+  outline: none;
 }
 
 /* Bottom edge of a scrollable list, made legibly intentional.
