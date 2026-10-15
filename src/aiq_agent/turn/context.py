@@ -75,6 +75,11 @@ class TurnContext:
     #: (in an earlier turn, or this turn's memory or subject), as the BFF
     #: recorded it; or that could not be established.
     recorded_restricted: bool = False
+    #: The person whose turn it is and their office, as the BFF resolved them
+    #: from the signed envelope (``ContextBlocks.requester`` / ``office_name``).
+    #: None on the legacy header transport, which never carried them.
+    requester: dict[str, str | None] | None = None
+    office_name: str | None = None
 
     @property
     def confined(self) -> bool:
@@ -120,6 +125,33 @@ def user_info_from_principal() -> dict[str, Any] | None:
     if principal is None:
         return None
     return {"name": principal.name, "email": principal.email}
+
+
+def with_requester(
+    user_info: dict[str, Any] | None,
+    requester: dict[str, str | None] | None,
+    office_name: str | None,
+) -> dict[str, Any] | None:
+    """``user_info`` completed with the names the BFF resolved for this turn.
+
+    The access token rarely carries a name (WorkOS's default claims have none),
+    so the BFF's answer fills it: ``first_name`` and ``last_name`` on their own,
+    the joined ``name`` where the token had none, and the office. The BFF read
+    them for the signed envelope's user, the same person as the principal, so
+    its values win over the token's wherever it has one.
+    """
+    if not requester and not office_name:
+        return user_info
+    merged: dict[str, Any] = dict(user_info or {})
+    if requester:
+        first, last = requester.get("first_name"), requester.get("last_name")
+        merged["first_name"] = first
+        merged["last_name"] = last
+        merged["name"] = " ".join(part for part in (first, last) if part) or merged.get("name")
+        merged["email"] = requester.get("email") or merged.get("email")
+    if office_name:
+        merged["office"] = office_name
+    return merged
 
 
 def signed_restricted_collections(request: GridRequestContext) -> list[str]:
@@ -295,6 +327,8 @@ async def _load_turn_context(
         platform_lessons=lessons.digest,
         org_instructions=blocks.org_instructions,
         reference_projects=blocks.reference_projects,
+        requester=blocks.requester,
+        office_name=blocks.office_name,
         # The restriction is settled after the whole setup gather
         # (`settle_restriction`): the digest and the subject can each confine.
         deep_research_allowed=turn_flags.deep_research_allowed,

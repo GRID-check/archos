@@ -17,6 +17,8 @@ vi.mock('@/lib/projects/proposal-decisions', async (original) => ({
 vi.mock('@/lib/documents/review-decisions', () => ({ buildReviewDecisionsBlock: vi.fn() }))
 vi.mock('@/lib/conversations/cross-project-use', () => ({ drewOnOtherProjects: vi.fn(async () => false) }))
 vi.mock('@/lib/cross-project/reference-brief', () => ({ loadReferenceBrief: vi.fn(async () => null) }))
+vi.mock('@/lib/turn-context/requester', () => ({ loadRequester: vi.fn() }))
+vi.mock('@/lib/organizations/service', () => ({ getOrganizationDisplayName: vi.fn() }))
 vi.mock('@/lib/db/tenant-context', async (original) => ({
   ...(await original<typeof import('@/lib/db/tenant-context')>()),
   withTenant: vi.fn(async (_scope: unknown, run: () => Promise<unknown>) => run()),
@@ -36,6 +38,8 @@ import { buildProposalDecisionsBlock } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
 import { drewOnOtherProjects } from '@/lib/conversations/cross-project-use'
 import { loadReferenceBrief } from '@/lib/cross-project/reference-brief'
+import { loadRequester } from '@/lib/turn-context/requester'
+import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import {
   buildGridRequestContextEnvelopeHeaders, GRID_REQUEST_CONTEXT_MAX_AGE_MS,
@@ -50,6 +54,7 @@ const SESSION = {
   organizationMembershipId: 'om_1', role: 'member', permissions: [],
   accessToken: '', featureFlags: null,
 }
+const REQUESTER = { firstName: 'Anna', lastName: 'Weber', email: 'requester@grid.test' }
 const LARGE_PROFILE = 'PROJECT_CONTEXT v1\n' + 'ä'.repeat(4000)
 
 function signedHeaders(overrides: GridRequestContextInput = {}) {
@@ -83,6 +88,8 @@ beforeEach(() => {
   vi.mocked(buildProjectMemoryDigest).mockResolvedValue('Digest')
   vi.mocked(buildProposalDecisionsBlock).mockResolvedValue('Proposal decisions')
   vi.mocked(buildReviewDecisionsBlock).mockResolvedValue('Review decisions')
+  vi.mocked(loadRequester).mockResolvedValue(REQUESTER)
+  vi.mocked(getOrganizationDisplayName).mockResolvedValue('Atelier Nord')
 })
 
 describe('POST /api/internal/turn-context', () => {
@@ -106,6 +113,24 @@ describe('POST /api/internal/turn-context', () => {
     expect((await response.json()).data.referenceProjects).toBeNull()
   })
 
+  it('names the signed requester and their office, and answers without either when they fail to load', async () => {
+    const { data } = await (await call()).json()
+    expect(data.requester).toEqual(REQUESTER)
+    expect(data.officeName).toBe('Atelier Nord')
+    expect(loadRequester).toHaveBeenCalledWith('org_1', 'user_1')
+    expect(getOrganizationDisplayName).toHaveBeenCalledWith('org_1')
+
+    const warn = vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+    vi.mocked(loadRequester).mockRejectedValueOnce(new Error('cache down'))
+    vi.mocked(getOrganizationDisplayName).mockRejectedValueOnce(new Error('cache down'))
+    const response = await call()
+    expect(response.status).toBe(200)
+    const fallback = (await response.json()).data
+    expect(fallback.requester).toBeNull()
+    expect(fallback.officeName).toBeNull()
+    warn.mockRestore()
+  })
+
   it('returns the complete >6200-byte profile through a body, with current memory and instructions', async () => {
     const response = await call({ query: '  fire safety  ' })
     expect(response.status).toBe(200)
@@ -116,6 +141,8 @@ describe('POST /api/internal/turn-context', () => {
       orgInstructions: 'Standing instructions',
       drewOnOtherProjects: false,
       referenceProjects: null,
+      requester: REQUESTER,
+      officeName: 'Atelier Nord',
     })
     expect(Buffer.byteLength(data.projectContext)).toBeGreaterThan(6200)
     expect(resolvePinnedRequesterSession).toHaveBeenCalledWith({
