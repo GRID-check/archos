@@ -70,10 +70,12 @@ export const ViewerToolButton = forwardRef<HTMLButtonElement, ViewerToolButtonPr
         variant={active ? 'default' : 'ghost'}
         data-slot="viewer-tool-button"
         className={cn(
-          // `min-w-0 flex-1`: the tools share the bar's width equally and a
-          // long German caption ("Einpassen") shrinks its own padding rather
-          // than pushing a neighbour off the screen.
-          'pointer-coarse:h-14 pointer-coarse:min-w-0 h-14 min-w-0 flex-1 flex-col gap-0.5 rounded-xl px-0.5 py-1.5 text-[11px] leading-none',
+          // `min-w-0 flex-1`: the tools share the bar's width equally. Six of
+          // them on a 393px phone leave about 55px each, and the longest German
+          // captions ("Einpassen", "Geschoße", "Grundriss") are 50 to 53px at
+          // 11px: they fit with no side padding and ellipsize with any. Never
+          // under 11px; a narrower phone shortens the caption, not the type.
+          'pointer-coarse:h-14 pointer-coarse:min-w-0 h-14 min-w-0 flex-1 flex-col gap-0.5 rounded-xl px-0 py-1.5 text-[11px] leading-none',
           className
         )}
         {...rest}

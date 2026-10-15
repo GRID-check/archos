@@ -713,6 +713,7 @@ export function FileWorkspace({
    * positioned ancestor, so the button rides above the phone's in-flow tab bar
    * with no height to guess.
    */
+  const inSheet = shelf.source === 'office'
   const uploadFab =
     phone && !selection.active ? uploader({ allowFolders: true, pickFilesRef, pickFolderRef }) : undefined
 
@@ -833,7 +834,16 @@ export function FileWorkspace({
         {/* On a phone the Hochladen button floats over the foot of the list, so
             the list ends a button's height above the screen's edge: the last
             card is never under it. */}
-        <div className={cn('scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto', uploadFab && 'pb-20')}>
+        <div
+          className={cn(
+            'scroll-fade-bottom min-h-0 min-w-0 flex-1 overflow-y-auto',
+            // The Archiv is a sheet over the shell: it reaches the screen's
+            // edge, so its list ends above the home indicator. A project's
+            // Dateien sits above the in-flow tab bar, which owns that inset.
+            inSheet && !uploadFab && 'pb-[env(safe-area-inset-bottom)]',
+            uploadFab && (inSheet ? 'pb-[calc(5rem+env(safe-area-inset-bottom))]' : 'pb-20')
+          )}
+        >
           {listingError ? (
             <PaneLoadError message={t('workspace.documentsLoadError')} onRetry={retryListing} />
           ) : (
@@ -927,7 +937,10 @@ export function FileWorkspace({
         // sizes it and lets only the button take touches, so the list under the
         // rest of the strip still scrolls.
         <div
-          className="pointer-events-none absolute bottom-4 right-4 z-20 [&_button]:pointer-events-auto [&_button]:h-12 [&_button]:rounded-full [&_button]:px-5 [&_button]:shadow-lg"
+          className={cn(
+            'pointer-events-none absolute right-4 z-20 [&_button]:pointer-events-auto [&_button]:h-12 [&_button]:rounded-full [&_button]:px-5 [&_button]:shadow-lg',
+            inSheet ? 'bottom-[max(1rem,env(safe-area-inset-bottom))]' : 'bottom-4'
+          )}
           data-testid="files-upload-fab"
         >
           {uploadFab}
