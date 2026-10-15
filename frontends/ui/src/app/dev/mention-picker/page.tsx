@@ -120,7 +120,7 @@ function PickerBlock({
           so the picker is reviewed in the geometry it actually ships in. */}
       <div className="bg-card relative flex flex-col rounded-xl px-4 py-2.5 shadow-sm">
         <textarea
-          className="max-h-52 min-h-[40px] resize-none border-0 bg-transparent px-1.5 py-1 text-[14.5px] leading-[1.5] outline-none"
+          className="pointer-coarse:text-base max-h-52 min-h-[40px] resize-none border-0 bg-transparent px-1.5 py-1 text-[14.5px] leading-[1.5] outline-none"
           rows={2}
           value={text}
           aria-label="Mock composer"

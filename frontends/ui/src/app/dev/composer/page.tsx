@@ -38,6 +38,21 @@ const config: AppConfig = {
   fileUpload: getFileUploadConfigFromEnv(),
 }
 
+/**
+ * The same deployment with photos on: the `image-upload` flag AND a vision
+ * model. The block that uses it comes FIRST, so a capture that clicks the
+ * paperclip (`--click '[data-testid=composer-attach]'`) opens the attach menu
+ * with the camera and the library live; the blocks below keep the default
+ * config, where the menu says why photos are off.
+ */
+const photoConfig: AppConfig = {
+  authRequired: false,
+  fileUpload: getFileUploadConfigFromEnv(process.env, {
+    imageUploadEnabled: true,
+    vlmAvailable: true,
+  }),
+}
+
 const CONVERSATION_ID = 'dev-composer-conv'
 /** What `useAuth` reports when auth is disabled — so this IS the reader here. */
 const VIEWER_ID = 'default-user'
@@ -94,6 +109,19 @@ export default function ComposerPreviewPage() {
           <h1 className="font-mono text-xs text-muted-foreground" data-testid="composer-preview">
             /dev/composer — chat composer (empty-thread state, desktop + mobile)
           </h1>
+
+          <AppConfigProvider config={photoConfig}>
+            <div>
+              <div className="text-muted-foreground mb-2 font-mono text-xs">
+                ↓ photos accepted (image-upload flag + vision model)
+              </div>
+              <InputArea
+                isAuthenticated
+                connectionMode="sse"
+                projectName="Wohnhausanlage Seestadt Aspern, Bauteil C"
+              />
+            </div>
+          </AppConfigProvider>
 
           <div>
             <div className="mb-2 font-mono text-xs text-muted-foreground">↓ desktop</div>

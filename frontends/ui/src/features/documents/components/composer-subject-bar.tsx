@@ -139,7 +139,12 @@ export function ComposerSubjectBar({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: 4 }}
           transition={motionEntrance}
-          className="mb-2 flex items-start gap-2.5 rounded-lg border px-2.5 py-2"
+          // A grid, so „Datei anzeigen" can move without a second DOM node.
+          // Beside the text it took the width the sentence needed: on a phone
+          // the hint wrapped to nine lines in a 165px column. Below `sm` it
+          // sits under the text, where it costs one line; from `sm` it is back
+          // between the text and the clear button.
+          className="mb-2 grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-x-2.5 rounded-lg border px-2.5 py-2 sm:grid-cols-[auto_minmax(0,1fr)_auto_auto]"
           style={sourceTint('project')}
         >
           <span
@@ -147,12 +152,12 @@ export function ComposerSubjectBar({
             // that atom has not landed on this branch yet, and this well
             // already carries its spec — size-7, rounded-lg, bordered card
             // ground with the shelf tint as ink.
-            className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border bg-card"
+            className="bg-card col-start-1 row-start-1 mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg border"
             aria-hidden
           >
             <FileText className="size-3.5" style={{ color: sourceBase('project') }} />
           </span>
-          <span className="flex min-w-0 flex-1 flex-col gap-0.5">
+          <span className="col-start-2 row-start-1 flex min-w-0 flex-col gap-0.5">
             <span className="truncate text-xs leading-snug">
               <span className="text-muted-foreground">{t('assignment.askingAboutPrefix')}</span>{' '}
               {href ? (
@@ -178,7 +183,7 @@ export function ComposerSubjectBar({
               // 24px, sitting directly beside the clear button below — the two
               // controls of this bar grow rather than overhang so a tap on one
               // cannot be taken by the other.
-              className="text-muted-foreground hover:text-foreground shrink-0 rounded-md px-1.5 py-1 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3"
+              className="text-muted-foreground hover:text-foreground pointer-coarse:min-h-11 pointer-coarse:sm:px-3 col-start-2 row-start-2 -ml-1.5 mt-0.5 justify-self-start rounded-md px-1.5 py-1 text-xs font-medium underline-offset-2 hover:underline sm:col-start-3 sm:row-start-1 sm:ml-0 sm:mt-0 sm:font-normal sm:hover:no-underline"
             >
               {t('assignment.showFile')}
             </button>
@@ -189,7 +194,7 @@ export function ComposerSubjectBar({
             aria-label={t('assignment.subjectClear')}
             // "Stop asking about this file" — 22px, and the one control that
             // undoes the bar it lives in.
-            className="focus-visible:ring-ring/60 text-muted-foreground hover:text-foreground shrink-0 rounded-md p-1 transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:p-0"
+            className="focus-visible:ring-ring/60 text-muted-foreground hover:text-foreground duration-quick pointer-coarse:inline-flex pointer-coarse:size-11 pointer-coarse:items-center pointer-coarse:justify-center pointer-coarse:p-0 col-start-3 row-start-1 shrink-0 rounded-md p-1 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 sm:col-start-4"
           >
             <X className="size-3.5" aria-hidden />
           </button>

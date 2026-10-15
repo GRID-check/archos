@@ -431,7 +431,7 @@ describe('InputArea', () => {
     await user.tab()
     expect(input).toHaveFocus()
 
-    // Order per the click-dummy composer: scope, the effort dial, dictation, then attach + send (the files
+    // Order: scope, the effort dial, attach, dictation beside send, then send (the files
     // counter appears only once files are attached, so it is absent here). The
     // Datengrundlage trigger is withheld with the picker — see the
     // commented-out block in InputArea. Nothing offers to choose deep research:
@@ -444,13 +444,14 @@ describe('InputArea', () => {
     await user.tab()
     expect(screen.getByRole('button', { name: /effort: medium/i })).toHaveFocus()
 
-    // Dictation. jsdom has no MediaRecorder, so the button is disabled and its
-    // wrapper takes focus instead, which is how a keyboard user reads why.
-    await user.tab()
-    expect(screen.getByTestId('dictation-unavailable')).toHaveFocus()
-
     await user.tab()
     expect(screen.getByRole('button', { name: /attach files/i })).toHaveFocus()
+
+    // Dictation, beside Send. jsdom has no MediaRecorder, so the microphone is
+    // unavailable: `aria-disabled` rather than disabled, so it still takes
+    // focus (and a press), which is how a keyboard or touch user learns why.
+    await user.tab()
+    expect(screen.getByTestId('dictation-unavailable')).toHaveFocus()
 
     await user.tab()
     expect(screen.getByRole('button', { name: /send message/i })).toHaveFocus()
@@ -1693,6 +1694,28 @@ describe('InputArea', () => {
       await user.keyboard('{Tab}')
 
       expect(composer()).toHaveValue('@Anna Weber ')
+    })
+
+    // iOS drops the keyboard the moment the field blurs, and a caret put back
+    // by an effect after the insertion cannot raise it again: the reader picked
+    // a name and lost the keyboard they were typing on. Focus moves on the
+    // press, so the picker cancels the press; the tap's click still inserts.
+    test('a press on a candidate keeps the focus in the field, and the tap still inserts', async () => {
+      const user = userEvent.setup()
+      render(<InputArea isAuthenticated={true} canCollaborate connectionMode="sse" />)
+
+      await user.click(composer())
+      await user.keyboard('@anna')
+      const [row] = await screen.findAllByTestId('mention-option')
+
+      // `false`: the default action, moving the focus, was cancelled.
+      expect(fireEvent.pointerDown(row!)).toBe(false)
+      expect(fireEvent.mouseDown(row!)).toBe(false)
+      expect(composer()).toHaveFocus()
+
+      fireEvent.click(row!)
+      expect(composer()).toHaveValue('@Anna Weber ')
+      expect(composer()).toHaveFocus()
     })
 
     test('the arrow keys choose which candidate is inserted', async () => {
