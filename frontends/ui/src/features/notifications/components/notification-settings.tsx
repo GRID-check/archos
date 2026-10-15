@@ -165,20 +165,20 @@ function CategoryField({
   category: PushCategory
   push: UsePushNotificationsResult
 }): JSX.Element {
-  const t = useTranslations('notifications.categories')
+  const t = useTranslations('notifications')
   const id = `push-category-${category}`
   return (
     <Field orientation="horizontal">
       <div className="flex min-w-0 flex-col gap-1">
-        <FieldLabel htmlFor={id}>{t(`${category}.label`)}</FieldLabel>
-        <FieldDescription>{t(`${category}.hint`)}</FieldDescription>
+        <FieldLabel htmlFor={id}>{t(`categories.${category}.label`)}</FieldLabel>
+        <FieldDescription>{t(`categories.${category}.hint`)}</FieldDescription>
       </div>
       <Switch
         id={id}
         checked={push.preferences.categories[category]}
         disabled={push.busy}
         onCheckedChange={(next) => void push.updatePreferences({ categories: { [category]: next } })}
-        aria-label={t(`${category}.label`)}
+        aria-label={t(`categories.${category}.label`)}
       />
     </Field>
   )
@@ -197,7 +197,7 @@ function DeviceRow({
   busy: boolean
   onRemove: () => void
 }): JSX.Element {
-  const t = useTranslations('notifications.devices')
+  const t = useTranslations('notifications')
   return (
     <Item as="li" className="hover:bg-transparent">
       <ItemMedia>
@@ -206,12 +206,12 @@ function DeviceRow({
       <ItemContent>
         <ItemTitle className="flex items-center gap-2">
           <span className="truncate">{device.label}</span>
-          {isThis && <Badge variant="secondary">{t('thisDevice')}</Badge>}
+          {isThis && <Badge variant="secondary">{t('devices.thisDevice')}</Badge>}
         </ItemTitle>
         <ItemDescription>
           {device.lastSuccessAt
-            ? t('lastDelivered', { time: formatRelativeTime(device.lastSuccessAt, locale) })
-            : t('neverDelivered')}
+            ? t('devices.lastDelivered', { time: formatRelativeTime(device.lastSuccessAt, locale) })
+            : t('devices.neverDelivered')}
         </ItemDescription>
       </ItemContent>
       <ItemActions>
@@ -220,7 +220,7 @@ function DeviceRow({
           size="icon"
           disabled={busy}
           onClick={onRemove}
-          aria-label={t('removeLabel', { device: device.label })}
+          aria-label={t('devices.removeLabel', { device: device.label })}
         >
           <X aria-hidden />
         </Button>
