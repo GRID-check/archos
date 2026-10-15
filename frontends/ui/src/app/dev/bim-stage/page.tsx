@@ -70,6 +70,14 @@ if (typeof window !== 'undefined' && process.env.NODE_ENV === 'development') {
         }
         return new Response(null, { status: 404 })
       }
+      // `?load=slow`: the download that never finishes, so the loading veil and
+      // Abbrechen can be captured under an open sheet. The 404 below is the
+      // fast failure and settles into the error notice within a frame or two.
+      if (url.endsWith('/dev/bim-stage/none.ifc') && /[?&]load=slow\b/.test(window.location.search)) {
+        return new Response(new ReadableStream({ start() {} }), {
+          headers: { 'content-length': String(120_000_000) },
+        })
+      }
       if (url.includes('/source')) return Response.json({ url: '/dev/bim-stage/none.ifc' })
       if (url.includes('/bim/models')) return Response.json({ models: [MODEL] })
       if (url.includes('/profile')) return Response.json({ facts: {} })

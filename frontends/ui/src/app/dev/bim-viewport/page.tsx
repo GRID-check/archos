@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { I18nProvider } from '@/i18n'
+import { cn } from '@/lib/utils'
 import { ModelInspector } from '@/features/bim/components/model-inspector'
 import { PhoneMoreRows, PhoneTools } from '@/features/bim/components/stage-phone-chrome'
 import type { BimElementDetail } from '@/features/bim/hooks/use-bim-model'
@@ -83,19 +84,34 @@ const PHONE_WALL: BimElementDetail = {
 function Stage({
   title,
   description,
+  desktopOnly = false,
   children,
 }: {
   title: string
   description: string
+  /** A desktop arrangement: drawn at desktop width and scrolled sideways on a phone, never squeezed into it. */
+  desktopOnly?: boolean
   children: React.ReactNode
 }): JSX.Element {
   return (
     <section className="space-y-2">
       <div>
         <h2 className="text-sm font-semibold">{title}</h2>
-        <p className="text-muted-foreground text-xs">{description}</p>
+        <p className="text-muted-foreground text-xs">
+          {description}
+          {desktopOnly ? ' Desktop only: drawn at desktop width, scroll sideways on a phone.' : ''}
+        </p>
       </div>
-      <div className="bg-muted/30 relative h-[34rem] overflow-hidden rounded-2xl border">{children}</div>
+      <div className={desktopOnly ? 'overflow-x-auto' : undefined}>
+        <div
+          className={cn(
+            'bg-muted/30 relative h-[34rem] overflow-hidden rounded-2xl border',
+            desktopOnly && 'min-w-[48rem]'
+          )}
+        >
+          {children}
+        </div>
+      </div>
     </section>
   )
 }
@@ -114,7 +130,7 @@ export default function BimViewportDevPage(): JSX.Element {
   }
 
   return (
-    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-8" data-testid="bim-viewport-preview">
+    <main className="mx-auto flex max-w-4xl flex-col gap-6 p-4 sm:p-8" data-testid="bim-viewport-preview">
       <div>
         <h1 className="text-lg font-semibold">Model — viewer chrome</h1>
         <p className="text-muted-foreground mt-1 text-sm">
@@ -128,6 +144,7 @@ export default function BimViewportDevPage(): JSX.Element {
 
       <Stage
         title="The stage (desktop arrangement)"
+        desktopOnly
         description="Rail on the left, dock at the bottom, nothing in the middle. Interactive."
       >
         {railOpen && (
@@ -241,6 +258,7 @@ export default function BimViewportDevPage(): JSX.Element {
 
       <Stage
         title="Something is selected"
+        desktopOnly
         description="The only time metadata is on screen at all — and it leads with the noun, not the schema."
       >
         <div className="absolute top-4 right-4 z-20 flex max-h-[calc(100%-2rem)]">
@@ -279,6 +297,7 @@ export default function BimViewportDevPage(): JSX.Element {
       */}
       <Stage
         title="Isolieren is a toggle"
+        desktopOnly
         description="Pressed: everything else is off. The same press puts the building back. Interactive."
       >
         {/*

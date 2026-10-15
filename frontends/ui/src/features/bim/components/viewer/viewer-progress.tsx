@@ -62,6 +62,10 @@ export function ViewerProgress({
         // bar printed across the selection's header.
         'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3',
         'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
+        // A phone's bottom sheet (up to 60dvh) and the tool bar under it take the
+        // lower part of the stage: settle in the strip above them instead of
+        // under the sheet, where Abbrechen could not be pressed.
+        'group-data-[sheet=open]/stage:pt-20 group-data-[sheet=open]/stage:pb-[calc(min(60dvh,34rem)+6rem)]',
         className
       )}
     >

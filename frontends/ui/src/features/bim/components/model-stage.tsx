@@ -1256,7 +1256,13 @@ export function ModelStage({
           {model ? t('stage.dialogLabel', { name: documentDisplayName(model) }) : t('title')}
         </DialogTitle>
 
-        <div className="bg-muted relative min-h-0 flex-1">
+        <div
+          className="group/stage bg-muted relative min-h-0 flex-1"
+          // A phone's bottom sheet covers the middle of the stage; the loading
+          // veil reads this to settle in the free strip above it, so its
+          // Abbrechen stays on screen and pressable.
+          data-sheet={layout === 'phone' && compactSheet ? 'open' : undefined}
+        >
           {/*
             The one thing the viewport says out loud.
 
