@@ -176,9 +176,6 @@ describe('no height is measured against the large viewport', () => {
     ['features/onboarding/components/organization-setup.tsx', 'onboarding: the top offset, pt-[min(14vh,8rem)]'],
     ['features/grid-cards/components/DocumentDraftPreviewDialog.tsx', 'cards: the draft preview, max-h-[85vh]'],
     ['features/product-feedback/components/feedback-dialog.tsx', 'feedback: the screenshot, max-h-[40vh]'],
-    ['features/documents/components/review/piloti-answer-card.tsx', 'review: the answer body, max-h-[min(24rem,55vh)]'],
-    ['features/documents/components/review/thread-card.tsx', 'review: the thread body, max-h-[min(22rem,50vh)]'],
-    ['features/documents/components/file-preview-host.tsx', 'file viewing: the preview card, h-[85vh] and its measuring twin h-[80vh]'],
   ])
 
   // Previews (`app/dev`) are desk tooling, never on a phone.

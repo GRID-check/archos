@@ -59,6 +59,10 @@ import { FileExtChip } from './file-ext-chip'
 import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dialog'
 import { PdfDocumentView } from '@/features/knowledge/components/pdf-document-view'
 import { useSeenOnce } from '@/hooks/use-seen-once'
+import { useMediaQuery } from '@/hooks/use-media-query'
+import { PHONE_ON_ITS_SIDE_QUERY, PHONE_QUERY } from '@/hooks/use-is-mobile'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import {
   DeleteDocumentDialog,
   DocumentActionsMenu,
@@ -283,6 +287,23 @@ export function FilePreviewPane({
     presentation === 'expanded' ||
     ((storeMode === 'peek' || storeMode === 'expanded') && storeFileId === file.id)
   const peeking = presentation === 'peek'
+  /**
+   * THE READER, ON A PHONE. Opened from Dateien, from the chat's file pill or
+   * from a citation, a document on a phone is one presentation: the document
+   * edge to edge between a one-line header and the actions at the thumb, and
+   * everything the rail knows one tap away in a sheet. The stacked layout it
+   * replaces gave a drawing a 50dvh well with the metadata scrolling under it,
+   * which on a 393px phone is a third of the screen for the thing the reader
+   * opened. A phone on its side counts: 393px of height cannot spare a second
+   * band for the actions, so they move up into the header.
+   */
+  const onPhone = useMediaQuery(PHONE_QUERY)
+  const sideways = useMediaQuery(PHONE_ON_ITS_SIDE_QUERY)
+  const reader = onPhone && !peeking
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  useEffect(() => {
+    setDetailsOpen(false)
+  }, [file.id])
   /**
    * Which face of the peek is up: the document, or everything the Files dialog
    * knows about it. Back to the document whenever a different file arrives —
@@ -756,7 +777,66 @@ export function FilePreviewPane({
           Everything that DESCRIBES what Piloti made of the document, and
           everything that acts on it, moved to the rail — see the identity block
           there. */}
-      {!peeking && (
+      {reader && (
+        <ReaderHeader
+          name={actions.name}
+          title={actions.isRenamed ? `${actions.name}\n${file.filename}` : actions.name}
+          facts={fileFacts}
+          contentType={file.contentType}
+          status={
+            <>
+              {!isCitable(file) && (
+                <DocumentStatusBadge status={file.status} queueAhead={file.queueAhead} className="shrink-0" />
+              )}
+              <DocumentVersionStateBadge
+                versionState={file.versionState}
+                versionCount={file.versionCount}
+                lifecycle={file.lifecycle ?? undefined}
+                authoredBy={file.authoredBy}
+                className="shrink-0"
+                testId="file-preview-lifecycle-badge"
+              />
+            </>
+          }
+          closeLabel={t('preview.closePreview')}
+          onClose={onClose}
+          actions={
+            sideways ? (
+              <ReaderActions
+                layout="header"
+                detailsLabel={t('preview.peekViews.details')}
+                detailsOpen={detailsOpen}
+                onDetails={() => setDetailsOpen(true)}
+                discuss={
+                  projectId && !inChat ? (
+                    <DiscussDocumentButton
+                      projectId={projectId}
+                      documentId={file.id}
+                      filename={file.filename}
+                      file={file}
+                      hint={discussHint}
+                      withIcon
+                      className="h-9 gap-1.5 pointer-coarse:h-11"
+                    />
+                  ) : null
+                }
+                menu={
+                  <DocumentActionsMenu
+                    document={file}
+                    scope={scope}
+                    actions={['download', 'rename', 'delete']}
+                    canManage={canManage}
+                    surface="toolbar"
+                    onRenamed={onRenamed}
+                    onDeleted={handleDeleted}
+                  />
+                }
+              />
+            ) : null
+          }
+        />
+      )}
+      {!peeking && !reader && (
         <div className="@md:gap-x-3 @md:px-5 flex shrink-0 items-start gap-x-2 border-b px-3.5 pb-3.5 pt-[max(0.875rem,env(safe-area-inset-top))] sm:pt-3.5">
           <FileExtChip filename={file.filename} fallback={<Icon className="size-4" />} />
           {/* The name the document was GIVEN, if it was given one. `title`
@@ -1013,7 +1093,7 @@ export function FilePreviewPane({
       <div
         className={cn(
           'flex min-h-0 flex-1 flex-col overscroll-contain',
-          peeking ? 'overflow-hidden' : '@2xl:flex-row @2xl:overflow-hidden overflow-y-auto'
+          peeking || reader ? 'overflow-hidden' : '@2xl:flex-row @2xl:overflow-hidden overflow-y-auto'
         )}
       >
         {/* Left: live preview, or a decorative page mock while loading / when
@@ -1038,8 +1118,18 @@ export function FilePreviewPane({
               // is no ground of its own: the document looks the same here as in
               // every other place a PDF opens.
               !peeking && !pdfInWell && 'from-muted/25 to-muted/60 bg-gradient-to-b',
-              wellHostsViewer
-                ? 'h-full min-h-0 flex-1 overflow-hidden'
+              wellHostsViewer || (reader && (isModel || pdfInWell))
+                ? cn(
+                    'h-full min-h-0 flex-1 overflow-hidden',
+                    // On its side the reader has no bar below the stage, so the
+                    // stage itself stops above the home indicator.
+                    reader && sideways && 'pb-[env(safe-area-inset-bottom)]',
+                  )
+                : reader
+                ? // The reader's well for what is not a viewer of its own (an
+                  // image, a text page, the page mock): the whole height, one
+                  // scroll, the document centred while it is shorter than that.
+                  'min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))] [&>*]:my-auto'
                 : peeking
                 ? // THE GROUND IS THE DOCUMENT'S, and the document sits centred on
                   // it. A drawing fitted to the width of a 320px pane is a quarter
@@ -1116,6 +1206,7 @@ export function FilePreviewPane({
                     highlight={shownPage === null ? (shownFinding?.highlight ?? null) : null}
                     onLoadError={handlePdfFailed}
                     ground={peeking ? 'host' : 'stage'}
+                    bleed={reader}
                     pageOverlay={(page) => (
                       <ReviewPageLayer page={page} review={review} focused={false} onOpenMark={openReview} />
                     )}
@@ -1286,10 +1377,21 @@ export function FilePreviewPane({
             The utility is scroll-driven, so the fade RETRACTS at the bottom of
             travel: its presence is the signal, not decoration. */}
         <PeekPanel peeking={peeking} value="details">
+          <ReaderDetails
+            sheet={reader}
+            open={detailsOpen}
+            onOpenChange={setDetailsOpen}
+            title={t('preview.peekViews.details')}
+            description={t('preview.dialogLabel', { name: actions.name })}
+          >
           <div
             data-testid="file-preview-rail"
             className={
-              peeking
+              reader
+                ? // In the reader's sheet: the rail's content, on the sheet's
+                  // own paper, scrolling with it and clear of the home indicator.
+                  'flex flex-col px-4 pt-1 pb-[max(1.25rem,env(safe-area-inset-bottom))]'
+                : peeking
                 ? // The details view of the peek: the whole column, scrolling
                   // on its own, on the same sunken ground the stage uses.
                   'scroll-fade-bottom bg-surface-sunken border-base mx-3 mb-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain rounded-lg border p-4'
@@ -1368,7 +1470,7 @@ export function FilePreviewPane({
                 this document is in the knowledge base, because that changes what
                 the answer will be able to cite — it no longer changes whether the
                 conversation can happen. */}
-              {projectId && !inChat && (
+              {projectId && !inChat && !reader && (
                 <DiscussDocumentButton
                   projectId={projectId}
                   documentId={file.id}
@@ -1636,9 +1738,45 @@ export function FilePreviewPane({
 
             <div className="flex-1" />
           </div>
+          </ReaderDetails>
         </PeekPanel>
       </div>
       </PeekTabs>
+
+      {reader && !sideways && (
+        <ReaderActions
+          layout="bar"
+          detailsLabel={t('preview.peekViews.details')}
+          detailsOpen={detailsOpen}
+          onDetails={() => setDetailsOpen(true)}
+          discuss={
+            projectId && !inChat ? (
+              <DiscussDocumentButton
+                projectId={projectId}
+                documentId={file.id}
+                filename={file.filename}
+                file={file}
+                hint={discussHint}
+                withIcon
+                size="default"
+                className="h-11 min-w-0 flex-1 gap-1.5"
+              />
+            ) : null
+          }
+          menu={
+            <DocumentActionsMenu
+              document={file}
+              scope={scope}
+              actions={['download', 'rename', 'delete']}
+              canManage={canManage}
+              surface="toolbar"
+              side="top"
+              onRenamed={onRenamed}
+              onDeleted={handleDeleted}
+            />
+          }
+        />
+      )}
 
       {/* No footer page band. It stated the page count a second time, three
           rows below the "Pages" row that already stated it, in a band that cost
@@ -1998,5 +2136,160 @@ function AskColleagueButton({
         </Button>
       }
     />
+  )
+}
+
+/**
+ * The reader's header on a phone: the document's name across the whole width,
+ * cut in the MIDDLE so a revision suffix (`…_1OG_C.pdf`) survives, the facts
+ * and the state chips under it, and the close where every full-screen surface
+ * on a phone keeps it. Nothing else competes with the name for the row; on a
+ * phone on its side the actions join it, because there is no height for a bar.
+ */
+function ReaderHeader({
+  name,
+  title,
+  facts,
+  contentType,
+  status,
+  actions,
+  closeLabel,
+  onClose,
+}: {
+  name: string
+  title: string
+  facts: string | null
+  contentType: string | null | undefined
+  status: ReactNode
+  actions: ReactNode
+  closeLabel: string
+  onClose?: () => void
+}): JSX.Element {
+  return (
+    <div
+      data-testid="file-reader-header"
+      className="bg-card flex shrink-0 items-center gap-2 border-b pt-[max(0.375rem,env(safe-area-inset-top))] pr-[max(0.25rem,env(safe-area-inset-right))] pb-1.5 pl-[max(1rem,env(safe-area-inset-left))]"
+    >
+      <div className="min-w-0 flex-1 py-1">
+        <h3 className="text-foreground flex text-[15px] font-semibold leading-tight tracking-[-0.01em]" title={title}>
+          <MiddleTruncate text={name} />
+        </h3>
+        <div className="mt-1 flex min-w-0 items-center gap-1.5 overflow-hidden">
+          {facts && (
+            <span
+              className="text-muted-foreground min-w-0 shrink truncate text-xs tabular-nums"
+              title={contentType ?? undefined}
+              data-testid="file-preview-facts"
+            >
+              {facts}
+            </span>
+          )}
+          {status}
+        </div>
+      </div>
+      {actions}
+      {onClose && (
+        <Button
+          variant="ghost"
+          size="icon"
+          className="size-11 shrink-0 rounded-full"
+          onClick={onClose}
+          aria-label={closeLabel}
+          data-testid="file-reader-close"
+        >
+          <X className="size-5" aria-hidden />
+        </Button>
+      )}
+    </div>
+  )
+}
+
+/**
+ * What acts on the document from the reader: its details, the conversation
+ * about it, and the file's own menu (download, rename, delete). One set of controls in two
+ * places: a bar at the thumb in portrait, a cluster in the header on its side.
+ * The details are a sheet over the document rather than a scroll under it, so
+ * the drawing keeps the screen while the reader checks its Fassung.
+ */
+function ReaderActions({
+  layout,
+  detailsLabel,
+  detailsOpen,
+  onDetails,
+  discuss,
+  menu,
+}: {
+  layout: 'bar' | 'header'
+  detailsLabel: string
+  detailsOpen: boolean
+  onDetails: () => void
+  discuss: ReactNode
+  menu: ReactNode
+}): JSX.Element {
+  const bar = layout === 'bar'
+  return (
+    <div
+      data-testid={bar ? 'file-reader-bar' : 'file-reader-actions'}
+      className={cn(
+        'flex items-center',
+        bar
+          ? 'bg-card shrink-0 gap-2 border-t pt-2 pr-[max(0.75rem,env(safe-area-inset-right))] pb-[max(0.5rem,env(safe-area-inset-bottom))] pl-[max(0.75rem,env(safe-area-inset-left))]'
+          : 'shrink-0 gap-1',
+      )}
+    >
+      <Button
+        type="button"
+        variant="outline"
+        size={bar ? 'default' : 'sm'}
+        className={cn('gap-1.5', bar ? 'h-11' : 'h-9 pointer-coarse:h-11', bar && !discuss && 'flex-1')}
+        aria-expanded={detailsOpen}
+        aria-haspopup="dialog"
+        onClick={onDetails}
+        data-testid="file-reader-details"
+      >
+        <ListTree className="size-4" aria-hidden />
+        {detailsLabel}
+      </Button>
+      {discuss}
+      <span className="[&_[data-testid=document-actions-trigger]]:size-11 contents">{menu}</span>
+    </div>
+  )
+}
+
+/**
+ * The rail, where it lives: beside or under the document on a wide screen,
+ * and in a sheet from the bottom edge in the phone reader, so it is one tap
+ * away without ever taking the document's height.
+ */
+function ReaderDetails({
+  sheet,
+  open,
+  onOpenChange,
+  title,
+  description,
+  children,
+}: {
+  sheet: boolean
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  title: string
+  description: string
+  children: ReactNode
+}): JSX.Element {
+  if (!sheet) return <>{children}</>
+  return (
+    <Sheet open={open} onOpenChange={onOpenChange}>
+      <SheetContent
+        side="bottom"
+        data-testid="file-reader-details-sheet"
+        className="bg-card max-h-[85dvh] gap-0 overflow-y-auto overscroll-contain rounded-t-2xl p-0"
+      >
+        <SheetHeader className="bg-card sticky top-0 z-[1] px-4 pt-4 pb-2">
+          <SheetTitle className="text-base">{title}</SheetTitle>
+          <SheetDescription className="sr-only">{description}</SheetDescription>
+        </SheetHeader>
+        {children}
+      </SheetContent>
+    </Sheet>
   )
 }
