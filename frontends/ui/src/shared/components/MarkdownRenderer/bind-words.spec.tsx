@@ -13,6 +13,7 @@ describe('bindWords', () => {
     ['gemäß Abs. 2, Tabelle 1b, S. 12', `gemäß Abs.${N}2, Tabelle${N}1b, S.${N}12`],
     ['Feuerwiderstand REI 90 oder R 60', `Feuerwiderstand REI${N}90 oder R${N}60`],
     ['im 2. Obergeschoß', `im 2.${N}Obergeschoß`],
+    ['Brandschutzkonzept, Stand 3, Index C', `Brandschutzkonzept, Stand${N}3, Index C`],
   ])('binds %s', (text, expected) => {
     expect(bindWords(text)).toBe(expected)
   })

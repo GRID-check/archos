@@ -27,7 +27,7 @@ const UNIT = String.raw`(?:m²|m³|m|cm|mm|km|kN|kg|kW|dB|Pa|%|°C|min|Min\.|Std
 /** What follows a unit for it to be a unit and not the front of a word. */
 const AFTER = String.raw`(?=[\s.,;:)!? ]|$)`
 /** Abbreviations and short labels that stand before a number, and so keep it with them. */
-const LABEL = String.raw`(?:Abs\.|Art\.|Z\.|Nr\.|lit\.|Tab\.|Tabelle|Kap\.|Anh\.|Anhang|Punkt|Seite|S\.|GK|REI|RE|EI|R|F|OIB-RL)`
+const LABEL = String.raw`(?:Abs\.|Art\.|Z\.|Nr\.|lit\.|Tab\.|Tabelle|Kap\.|Anh\.|Anhang|Punkt|Pkt\.|Seite|S\.|Stand|Index|GK|REI|RE|EI|R|F|OIB-RL)`
 /** A number's ordinal before the storey, and the storeys. */
 const ORDINAL = String.raw`(?:OG|Obergeschoß|Obergeschoss|Stock|Geschoß|Geschoss|UG|Untergeschoß|Absatz)`
 
