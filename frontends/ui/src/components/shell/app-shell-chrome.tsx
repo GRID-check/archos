@@ -22,6 +22,10 @@
  * or avatar-menu entries. Crossing the boundary swaps the chrome once, on
  * purpose; within a scope nothing moves.
  *
+ * ON A PHONE the chrome has a second half: the bottom tab bar
+ * (`PhoneTabBar`), mounted after `<main>` so it sits in flow under the page
+ * rather than over it, and the project switcher sheet its header opens.
+ *
  * OVERLAY ROUTES KEEP THE CHROME OF THE PAGE THEY COVER. The Archiv and the
  * Postfach are intercepted routes: a soft navigation to `/app/archiv` changes
  * the URL while the segment below keeps rendering the page the reader was on.
@@ -43,6 +47,10 @@ import { cn } from '@/lib/utils'
 import { AppSidebar } from './app-sidebar'
 import { OrgHeader } from './org-header'
 import { projectIdFromPathname } from './org-sections'
+import { PhoneTabBar } from './phone-tab-bar'
+import { phoneTabBarHiddenOnRoute } from './phone-tabs'
+import { ProjectSwitcherSheet } from './project-switcher-sheet'
+import { useKeyboardUp } from './use-keyboard-up'
 import type { ProjectSwitcherProject } from './project-switcher'
 import type { SidebarUser } from './sidebar-user-menu'
 import type { TourEligibility } from '@/features/onboarding/lib/product-tour'
@@ -96,6 +104,15 @@ export function AppShellChrome({
   // is the one component that lives for the whole authenticated app.
   useVisualViewport()
 
+  // The phone tab bar stands down while the keyboard is up and on the intake
+  // wizard (see `PhoneTabBar`). Decided here, not in the bar, because the
+  // frame publishes the result to the page below: `--shell-inset-bottom` is
+  // the home-indicator inset a surface at the bottom of `<main>` still has to
+  // clear. Zero while the bar stands (the bar clears it) and while the
+  // keyboard is up (it covers the indicator); the real inset otherwise.
+  const keyboardUp = useKeyboardUp()
+  const tabBarShown = !keyboardUp && !phoneTabBarHiddenOnRoute(solidPathRef.current)
+
   return (
     <ProductTour
       canAccessArchiv={chrome.canAccessArchiv}
@@ -105,12 +122,15 @@ export function AppShellChrome({
     >
     <FeedbackProvider userEmail={chrome.user?.email ?? null}>
     <div
+      data-tab-bar={tabBarShown ? 'shown' : 'hidden'}
+      data-keyboard={keyboardUp ? 'up' : undefined}
       className={cn(
         // The space above the keyboard while one is up on iOS (the variable
         // is set only then, by useVisualViewport), the dynamic viewport
         // otherwise. Safe-area insets stay per surface (app/layout.tsx).
         'bg-background text-foreground flex h-[var(--visual-viewport-height,100dvh)] overflow-hidden',
         inProject ? 'flex-col md:flex-row' : 'flex-col',
+        '[--shell-inset-bottom:env(safe-area-inset-bottom)] data-[keyboard=up]:[--shell-inset-bottom:0px] max-md:data-[tab-bar=shown]:[--shell-inset-bottom:0px]',
       )}
     >
       {inProject ? (
@@ -141,6 +161,14 @@ export function AppShellChrome({
         />
       )}
       {children}
+      {tabBarShown && (
+        <PhoneTabBar
+          projectId={projectId}
+          canAccessArchiv={chrome.canAccessArchiv}
+          canAccessInbox={chrome.canAccessInbox}
+        />
+      )}
+      {inProject && <ProjectSwitcherSheet projects={chrome.projects} activeProjectId={projectId} />}
       {overlay}
     </div>
     </FeedbackProvider>
