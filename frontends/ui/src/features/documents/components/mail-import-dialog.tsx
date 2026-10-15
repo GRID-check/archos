@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/dialog'
 import { EmptyState } from '@/components/ui/empty-state'
 import { Item, ItemActions, ItemContent, ItemDescription, ItemList, ItemMedia, ItemTitle } from '@/components/ui/item'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { Progress } from '@/components/ui/progress'
 import { SectionLabel } from '@/components/ui/section-label'
 import { Spinner } from '@/components/ui/spinner'
@@ -79,6 +80,7 @@ export function MailImportDialogView({
   const sendingRef = useRef<HTMLDivElement>(null)
   const maxSize = state.list?.maxSizeBytes ?? null
   const isSending = state.sending !== null
+  const sentFraction = state.sending ? state.sending.sentBytes / Math.max(1, state.sending.totalBytes) : 0
 
   // The button that started the send is gone once it runs; keep focus in the dialog.
   useEffect(() => {
@@ -109,7 +111,7 @@ export function MailImportDialogView({
         <DialogHeader>
           <div className="flex items-start gap-3.5">
             <StatCardIcon icon={Mail} tone="info" />
-            <div className="min-w-0 space-y-1.5">
+            <div className="min-w-0 space-y-1.5 pr-8">
               <DialogTitle>{t('mailImport.title')}</DialogTitle>
               <DialogDescription>{t('mailImport.description')}</DialogDescription>
             </div>
@@ -131,9 +133,16 @@ export function MailImportDialogView({
 
         {state.sending ? (
           <div ref={sendingRef} tabIndex={-1} className="space-y-2 outline-none" data-testid="mail-import-sending">
-            <p className="text-sm font-medium">{state.sending.filename}</p>
+            <div className="flex items-baseline justify-between gap-3">
+              <p className="min-w-0 text-sm font-medium">
+                <MiddleTruncate text={state.sending.filename} />
+              </p>
+              <span className="shrink-0 text-sm text-muted-foreground tabular-nums" aria-hidden>
+                {formatPercent(sentFraction, locale)}
+              </span>
+            </div>
             <Progress
-              value={(state.sending.sentBytes / Math.max(1, state.sending.totalBytes)) * 100}
+              value={sentFraction * 100}
               aria-label={t('mailImport.sendingLabel', { name: state.sending.filename })}
             />
             {/* Announced once per phase, not once per part. */}
@@ -162,6 +171,12 @@ export function MailImportDialogView({
                 {t('mailImport.maxSize', { size: formatBytes(maxSize, locale) })}
               </span>
             )}
+            {/* A multi-gigabyte archive on a phone is a long send over a link
+                that will drop; say so where the choice is made, and say that
+                the send resumes. Not shown to a mouse. */}
+            <p className="hidden basis-full text-sm text-muted-foreground pointer-coarse:block" data-testid="mail-import-desktop-hint">
+              {t('mailImport.desktopHint')}
+            </p>
           </div>
         )}
 
@@ -274,16 +289,20 @@ function ImportRow({
   const resumable = row.status === 'uploading' && row.ownedByViewer && !sendingThis
   const total = row.totalItems
   return (
-    <Item as="li" data-testid="mail-import-row" data-status={row.status}>
-      <ItemMedia>
+    // `flex-wrap`: a phone has no room for the name AND two buttons on one
+    // line, and the name is the one that lost it (the running row rendered
+    // only a spinner and its buttons). The actions drop under the text,
+    // indented to its left edge, and share the line again from `sm`.
+    <Item as="li" className="flex-wrap items-start sm:flex-nowrap sm:items-center" data-testid="mail-import-row" data-status={row.status}>
+      <ItemMedia className="mt-0.5 sm:mt-0">
         <StatusIcon status={row.status} />
       </ItemMedia>
       <ItemContent>
-        <ItemTitle className="flex flex-wrap items-center gap-2">
-          <span className="truncate">{row.filename}</span>
+        <ItemTitle className="flex flex-wrap items-center gap-x-2 gap-y-1 whitespace-normal">
+          <span className="min-w-0 max-w-full break-all">{row.filename}</span>
           <Badge variant={STATUS_BADGE[row.status]}>{t(`mailImport.status.${row.status}`)}</Badge>
         </ItemTitle>
-        <ItemDescription>
+        <ItemDescription className="whitespace-normal">
           {formatBytes(row.sizeBytes, locale)}
           {' · '}
           {row.status === 'importing' && total !== null
@@ -294,11 +313,15 @@ function ImportRow({
           {!row.ownedByViewer && row.startedBy.email && ` · ${t('mailImport.startedBy', { email: row.startedBy.email })}`}
         </ItemDescription>
         {row.status === 'importing' && total ? (
-          <Progress
-            className="mt-2"
-            value={(row.processedItems / total) * 100}
-            aria-label={t('mailImport.importingLabel', { name: row.filename })}
-          />
+          <div className="mt-2 flex items-center gap-3">
+            <Progress
+              value={(row.processedItems / total) * 100}
+              aria-label={t('mailImport.importingLabel', { name: row.filename })}
+            />
+            <span className="shrink-0 text-xs text-muted-foreground tabular-nums" aria-hidden>
+              {formatPercent(row.processedItems / total, locale)}
+            </span>
+          </div>
         ) : null}
         {row.errorCode && (
           <p className="mt-1 text-xs break-words text-destructive">
@@ -309,7 +332,7 @@ function ImportRow({
         {resumable && <p className="mt-1 text-xs text-muted-foreground">{t('mailImport.resumeHint', { name: row.filename })}</p>}
         <SkippedSamples row={row} t={t} />
       </ItemContent>
-      <ItemActions>
+      <ItemActions className="max-sm:ml-11 max-sm:basis-full max-sm:flex-wrap sm:ml-auto">
         {row.folderId && (
           <Button asChild size="sm" variant="ghost" className="gap-1.5">
             <Link
@@ -345,6 +368,13 @@ function ImportRow({
         )}
       </ItemActions>
     </Item>
+  )
+}
+
+/** 0.39 as „39 %" — whole numbers; a progress label has no use for a decimal. */
+function formatPercent(fraction: number, locale: string): string {
+  return new Intl.NumberFormat(locale, { style: 'percent', maximumFractionDigits: 0 }).format(
+    Math.min(1, Math.max(0, fraction))
   )
 }
 

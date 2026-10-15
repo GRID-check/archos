@@ -332,6 +332,9 @@ export const organization = {
     saved: 'Instructions saved',
     clear: 'Clear',
     cleared: 'Instructions cleared',
+    clearConfirmTitle: 'Clear the instructions?',
+    clearConfirmBody:
+      'Piloti will then follow no standing instructions for your organization. You cannot restore the text.',
     saveError: 'Could not save the instructions. Please try again.',
     loadError: 'Could not load the instructions right now. Please refresh to try again.',
   },
@@ -407,12 +410,12 @@ export const organization = {
     saveErrorZdrUnavailable:
       'The zero-data-retention list could not be loaded, so the models could not be checked. Nothing was saved; try again shortly.',
     zdrTitle: 'Zero data retention',
-    zdrHint:
-      'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
-    zdrNotApplicable:
     /** Phone-only toggle on the long zero-data-retention paragraph. */
     zdrHintMore: 'Show more',
     zdrHintLess: 'Show less',
+    zdrHint:
+      'On by default. Every request Piloti sends to an AI model through OpenRouter for your organization goes only to endpoints that store neither prompts nor responses: chat and research answers, clarifying questions, reading documents on upload (drawing captions, OCR, embeddings, summaries, classification), search reranking, conversation titles and summaries, consistency checks and skill reviews. If the setting cannot be read, requests are restricted anyway, and only models with such an endpoint can be chosen. EU-hosted endpoints are preferred where a model has one. Not covered: web search queries go to the web search provider (Tavily), which is not a model provider.',
+    zdrNotApplicable:
       'Your organization’s own {provider} key is active, so requests go directly to that provider, not through OpenRouter. Retention for those requests is governed by your contract with {provider}; Piloti cannot enforce it. Your saved setting is kept and applies again once you switch back to the platform key or an OpenRouter key.',
     zdrEnabled: 'Zero data retention is on',
     zdrDisabled: 'Zero data retention is off',
@@ -665,7 +668,7 @@ export const organization = {
     },
     limits:
       'The check sees words and numbers, not meaning. A fee agreement that contains none of your terms gets through. Piloti checks scanned pages and images without a text layer by name only.',
-    termPlaceholder: 'Type a term, press Enter',
+    termPlaceholder: 'Type a term',
     removeTerm: 'Remove “{term}”',
     emptyList: 'No terms',
     useSuggestion: 'Use suggestion',
