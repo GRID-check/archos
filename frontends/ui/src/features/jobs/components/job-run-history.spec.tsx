@@ -27,7 +27,7 @@ const run = (overrides: Partial<JobRun> = {}): JobRun => ({
   trigger: 'schedule',
   status: 'submitted',
   detail: null,
-  skillSnapshot: {},
+  skillSnapshot: {} as JobRun['skillSnapshot'],
   triggeredBy: null,
   createdAt: new Date().toISOString(),
   ...overrides,

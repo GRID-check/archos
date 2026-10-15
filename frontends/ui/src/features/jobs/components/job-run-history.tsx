@@ -213,7 +213,7 @@ export function JobRunHistory({ projectId, jobId }: JobRunHistoryProps): JSX.Ele
         const linkLabel = isActive ? t('history.viewProgress') : t('history.openChat')
 
         return (
-          <Item as="li" key={run.id} className="flex-wrap justify-between py-2.5">
+          <Item as="li" key={run.id} className="flex-wrap justify-between py-2.5 max-sm:gap-y-0">
             {/* Two lines on a phone: what happened (badges, when, and the reason
                 a run was skipped), then where to go. The row used to let the
                 badges and the link share one non-wrapping line, and the link
