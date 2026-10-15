@@ -9,7 +9,7 @@
  */
 
 import { useState } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, render, screen } from '@testing-library/react'
 
 import {
@@ -138,6 +138,53 @@ describe('DialogContent on a phone', () => {
     expect(footer.className).toMatch(/(?:^|\s)flex-col(?:\s|$)/)
     expect(footer.className).not.toContain('flex-col-reverse')
     expect(footer.lastElementChild).toHaveTextContent('Umbenennen')
+  })
+})
+
+describe('focus on open', () => {
+  const pointer = (coarse: boolean) =>
+    vi.spyOn(window, 'matchMedia').mockImplementation(
+      (query: string) =>
+        ({
+          matches: coarse && query === '(pointer: coarse)',
+          media: query,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => false,
+        }) as MediaQueryList
+    )
+
+  function renderWithField() {
+    render(
+      <Dialog open onOpenChange={() => {}}>
+        <DialogContent closeLabel="Schließen">
+          <DialogTitle>Ordner umbenennen</DialogTitle>
+          <DialogDescription>Der neue Name gilt für alle.</DialogDescription>
+          <input aria-label="Name" />
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('lands on the dialog, not its field, under a finger: no keyboard over the sheet', () => {
+    pointer(true)
+    renderWithField()
+
+    expect(screen.getByRole('dialog')).toHaveFocus()
+  })
+
+  it('lands in the first field with a mouse or a keyboard, as before', () => {
+    pointer(false)
+    renderWithField()
+
+    expect(screen.getByRole('textbox', { name: 'Name' })).toHaveFocus()
   })
 })
 

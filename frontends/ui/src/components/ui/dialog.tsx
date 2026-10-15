@@ -140,16 +140,24 @@ const FULLSCREEN_CHROME: ReadonlyArray<readonly [string, string]> = [
  * margin of exactly that padding, and the same amount back as its own padding,
  * so its paper runs to the screen edge, the content scrolls behind it rather
  * than showing through a gap below it, and its buttons stand clear of the home
- * indicator. The footer rules are `:where()`-wrapped: zero specificity, so a
+ * indicator. Its sticky inset is the same negative amount, because a sticky
+ * box sticks to the scroll container's CONTENT edge (the padding is
+ * subtracted), and at `bottom-0` it rode up over the last line of the body by
+ * exactly the padding. The footer rules are `:where()`-wrapped: zero specificity, so a
  * footer that positions or pads itself still wins with its own classes.
  */
 const PINNED_FOOTER =
   'phone:pb-[max(1.5rem,env(safe-area-inset-bottom))] ' +
-  'phone:[:where(&_[data-slot=dialog-footer])]:sticky phone:[:where(&_[data-slot=dialog-footer])]:bottom-0 ' +
+  'phone:[:where(&_[data-slot=dialog-footer])]:sticky phone:[:where(&_[data-slot=dialog-footer])]:-bottom-[max(1.5rem,env(safe-area-inset-bottom))] ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:z-[1] phone:[:where(&_[data-slot=dialog-footer])]:bg-popover ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:pt-3 ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:-mb-[max(1.5rem,env(safe-area-inset-bottom))] ' +
   'phone:[:where(&_[data-slot=dialog-footer])]:pb-[max(1.5rem,env(safe-area-inset-bottom))]'
+
+/** A finger drives the pointer: no hover, and a focused field raises a keyboard. */
+function isCoarsePointer(): boolean {
+  return typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+}
 
 /** Resolve the presentation against the caller's own class list. */
 function phonePresentation(
@@ -190,6 +198,7 @@ const DialogContent = React.forwardRef<
       mobilePresentation,
       fullScreenOnMobile = false,
       closeLabel = 'Close',
+      onOpenAutoFocus,
       ...props
     },
     ref
@@ -216,6 +225,17 @@ const DialogContent = React.forwardRef<
           // implicit `auto` column cannot shrink below its widest `truncate` line,
           // so one long file name pushed the whole dialog past its own edge and cut
           // every other line off on the right (the mail import's history did).
+          onOpenAutoFocus={(event) => {
+            onOpenAutoFocus?.(event)
+            if (event.defaultPrevented || !isCoarsePointer()) return
+            // Under a finger, the dialog itself takes focus on open, not its
+            // first field: focusing a field raises the keyboard, which covers
+            // the bottom sheet it belongs to (its question, its footer) before
+            // the reader has read either. They tap the field when they are
+            // ready. A mouse or keyboard user still lands in the first field.
+            event.preventDefault()
+            ;(event.currentTarget as HTMLElement | null)?.focus()
+          }}
           className={cn(
             'bg-popover text-popover-foreground data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed left-[50%] top-[50%] z-50 grid max-h-[calc(100dvh-2rem)] w-full max-w-[calc(100%-2rem)] translate-x-[-50%] translate-y-[-50%] grid-cols-1 gap-4 overflow-y-auto overscroll-contain rounded-xl border p-6 shadow-lg sm:max-w-lg ' +
               OVERLAY_MOTION,
