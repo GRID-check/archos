@@ -29,7 +29,7 @@ const FILES = [
 ]
 
 /** Opening tags of the hand-written controls. A `<Button>` atom is not one: it sizes itself. */
-const CONTROL_TAG = /<(?:button|a)\b[^>]*?(?:\n[^>]*?)*?>/g
+const CONTROL_TAG = /<(?:button|a)\b[^>]*>/g
 
 /**
  * Controls that are exempt, and why. Each is sized by something other than a
