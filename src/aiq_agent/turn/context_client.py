@@ -37,12 +37,6 @@ class ContextBlocks:
     #: like this one), so the agent can look there unasked. None from an older
     #: BFF, or when the office has none.
     reference_projects: str | None = None
-    #: The person whose turn it is (the signed envelope's user), as WorkOS knows
-    #: them: ``first_name``, ``last_name`` and ``email``, each None when unknown.
-    #: None from an older BFF, or when WorkOS could not be read.
-    requester: dict[str, str | None] | None = None
-    #: The office's display name. None from an older BFF, or when unknown.
-    office_name: str | None = None
 
 
 #: The catalog is a dozen short lines; anything longer is cut at a line.
@@ -95,30 +89,6 @@ def _nullable_text(data: dict[str, object], field: str) -> str | None:
     return value
 
 
-#: A name is one line of a few words. Anything longer, or spread over lines, is
-#: cut: the value reaches the system prompt verbatim.
-IDENTITY_FIELD_MAX_CHARS = 120
-
-
-def _identity_text(value: object) -> str | None:
-    """``value`` as one bounded line, or None when it is not a non-empty string."""
-    if not isinstance(value, str):
-        return None
-    line = " ".join(value.split())[:IDENTITY_FIELD_MAX_CHARS].strip()
-    return line or None
-
-
-def _requester(value: object) -> dict[str, str | None] | None:
-    if not isinstance(value, dict):
-        return None
-    requester = {
-        "first_name": _identity_text(value.get("firstName")),
-        "last_name": _identity_text(value.get("lastName")),
-        "email": _identity_text(value.get("email")),
-    }
-    return requester if any(requester.values()) else None
-
-
 def _parse_blocks(body: object) -> ContextBlocks:
     if not isinstance(body, dict) or not isinstance(body.get("data"), dict):
         raise TurnContextError("the turn-context API returned an invalid data envelope")
@@ -134,8 +104,6 @@ def _parse_blocks(body: object) -> ContextBlocks:
             data.get("referenceProjects") if isinstance(data.get("referenceProjects"), str) else None,
             REFERENCE_PROJECTS_MAX_CHARS,
         ),
-        requester=_requester(data.get("requester")),
-        office_name=_identity_text(data.get("officeName")),
     )
 
 

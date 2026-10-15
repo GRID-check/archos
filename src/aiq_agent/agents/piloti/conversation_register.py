@@ -73,7 +73,6 @@ from aiq_agent.turn.context import settle_restriction
 from aiq_agent.turn.context import thread_id_for_turn
 from aiq_agent.turn.context import turn_identity
 from aiq_agent.turn.context import user_info_from_principal
-from aiq_agent.turn.context import with_requester
 from aiq_agent.turn.dispatch import build_run_commissioner
 from aiq_agent.turn.inventory import Inventory
 from aiq_agent.turn.inventory import load_inventory
@@ -251,25 +250,18 @@ async def _build_agent(config: ChatDeepResearcherConfig, builder: Builder) -> Co
     )
 
 
-def _turn_user_info(inputs: TurnInputs, context: TurnContext | None = None) -> dict[str, Any] | None:
+def _turn_user_info(inputs: TurnInputs) -> dict[str, Any] | None:
     """The caller for the prompt: the signed-in principal, else the person who woke this turn.
 
     A woken turn runs for an internal caller, which has no principal; the wake
     job stamps the person's name on the message, and the „Geweckt durch“ block
     names them instead of „Eine Person“. Only a woken turn takes the name from
     the message: a typed turn trusts the principal alone.
-
-    Either way, the names the BFF resolved for the signed requester complete it
-    (``with_requester``): the token alone usually carries neither name nor email.
     """
     principal = user_info_from_principal()
     if principal or inputs.trigger is None or not inputs.author_name:
-        base = principal
-    else:
-        base = {"name": inputs.author_name, "email": None}
-    if context is None:
-        return base
-    return with_requester(base, context.requester, context.office_name)
+        return principal
+    return {"name": inputs.author_name, "email": None}
 
 
 def _turn_state(
@@ -277,7 +269,7 @@ def _turn_state(
 ) -> ConversationState:
     return ConversationState(
         messages=[HumanMessage(content=inputs.query_text)],
-        user_info=_turn_user_info(inputs, context),
+        user_info=_turn_user_info(inputs),
         data_sources=inputs.data_sources,
         available_documents=inventory.available_documents,
         in_flight_documents=inventory.in_flight_documents,

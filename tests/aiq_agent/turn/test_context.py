@@ -258,13 +258,14 @@ class TestTurnIdentity:
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: None)
         assert user_info_from_principal() is None
 
-    def test_user_info_carries_name_and_email(self, monkeypatch):
+    def test_user_info_carries_name_email_and_office(self, monkeypatch):
         class Principal:
             name = "Anna"
             email = "anna@example.com"
+            organization_name = "Atelier Nord"
 
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: Principal())
-        assert user_info_from_principal() == {"name": "Anna", "email": "anna@example.com"}
+        assert user_info_from_principal() == {"name": "Anna", "email": "anna@example.com", "office": "Atelier Nord"}
 
 
 class TestBffTurnContext:
