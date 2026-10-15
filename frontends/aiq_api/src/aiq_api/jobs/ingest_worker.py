@@ -37,6 +37,7 @@ import time
 from aiq_agent.knowledge.leader_lock import require_direct_dsns
 
 from . import ingest_dispatch
+from . import lease_policy
 
 logger = logging.getLogger(__name__)
 
@@ -45,18 +46,8 @@ _LIVENESS_EVERY_SECONDS = 15
 
 
 def _drain_seconds() -> int:
-    try:
-        return max(0, int(os.environ.get("GRID_INGEST_WORKER_DRAIN_SECONDS", "600")))
-    except ValueError:
-        return 600
-
-
-def _touch(path: str) -> None:
-    try:
-        with open(path, "w") as handle:
-            handle.write("ok")
-    except OSError:
-        logger.warning("Could not write the liveness file %s", path, exc_info=True)
+    """Not a number is the default; a negative budget is none."""
+    return max(0, lease_policy.int_env("GRID_INGEST_WORKER_DRAIN_SECONDS", lease_policy.DRAIN_SECONDS))
 
 
 async def run(stop: asyncio.Event) -> None:
@@ -87,7 +78,7 @@ async def run(stop: asyncio.Event) -> None:
         clock.ready()
         boot_timing.flush()
         while not stop.is_set():
-            _touch(liveness)
+            lease_policy.touch_liveness(liveness)
             try:
                 await asyncio.wait_for(stop.wait(), timeout=_LIVENESS_EVERY_SECONDS)
             except TimeoutError:

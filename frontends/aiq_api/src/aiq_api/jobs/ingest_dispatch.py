@@ -49,6 +49,7 @@ from aiq_agent.knowledge.schema import FileStatus
 from aiq_agent.knowledge.schema import IngestionJobStatus
 from aiq_agent.knowledge.schema import JobState
 
+from . import lease_policy
 from . import payload_crypto
 
 logger = logging.getLogger(__name__)
@@ -73,11 +74,8 @@ def _flag(name: str, default: bool) -> bool:
 
 
 def _int_env(name: str, default: int) -> int:
-    try:
-        value = int(os.environ.get(name, ""))
-    except ValueError:
-        return default
-    return value if value >= 0 else default
+    """A non-negative int: unset, not a number or negative is the default."""
+    return lease_policy.int_env(name, default, floor=0)
 
 
 # @environment_variable GRID_INGEST_QUEUE
@@ -116,7 +114,7 @@ def _stale_seconds() -> int:
 # Claims of one ingestion job before it is given up as interrupted: a file that
 # kills its worker every time must not take a worker down forever.
 def _max_attempts() -> int:
-    return max(1, _int_env("GRID_INGEST_CLAIM_MAX_ATTEMPTS", 3))
+    return max(1, _int_env("GRID_INGEST_CLAIM_MAX_ATTEMPTS", lease_policy.MAX_ATTEMPTS))
 
 
 # @environment_variable GRID_INGEST_MAX_JOB_SECONDS
@@ -153,7 +151,8 @@ def _progress_timeout_seconds() -> int:
 # How long a dead ingestion queue row (a job that failed every claim, or whose
 # payload could not be read) is kept as a trace before it is deleted.
 def _dead_retention_seconds() -> int:
-    return max(1, _int_env("GRID_INGEST_DEAD_RETENTION_DAYS", 14)) * 86400
+    days = max(1, _int_env("GRID_INGEST_DEAD_RETENTION_DAYS", lease_policy.DEAD_RETENTION_DAYS))
+    return days * lease_policy.SECONDS_PER_DAY
 
 
 # ----------------------------------------------------------------- payload
@@ -346,7 +345,7 @@ class QueueSource:
     them back (``release_held``) instead of leaving them to go stale.
     """
 
-    def __init__(self, ingestor: BaseIngestor, *, heartbeat_seconds: int = 30) -> None:
+    def __init__(self, ingestor: BaseIngestor, *, heartbeat_seconds: int = lease_policy.HEARTBEAT_SECONDS) -> None:
         self._ingestor = ingestor
         self._worker = ingest_status_store.OWNER
         self._heartbeat_seconds = heartbeat_seconds
