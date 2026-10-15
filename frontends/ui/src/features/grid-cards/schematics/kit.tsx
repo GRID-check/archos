@@ -42,6 +42,7 @@ import { PdfViewerDialog } from '@/features/knowledge/components/pdf-viewer-dial
 import { resolveCorpusFileName } from '@/features/knowledge/lib/resolve-corpus-file'
 import { useCorpusFiles } from '@/features/knowledge/lib/use-corpus-files'
 import { cn } from '@/lib/utils'
+import { declutterLabels } from './declutter'
 import type { DimensionCheckData, DimStatus, NormReferenceData, Provenance } from './types'
 
 /* ── status vocabulary ────────────────────────────────────────────────────── */
@@ -208,8 +209,13 @@ const CanvasScale = createContext<number | null>(null)
 
 /** The smallest a schematic label is shown, in CSS pixels. */
 export const MIN_LABEL_PX = 10
-/** The most a label is enlarged to reach {@link MIN_LABEL_PX}. */
-export const MAX_LABEL_GROWTH = 1.6
+/**
+ * The most a label is enlarged to reach {@link MIN_LABEL_PX}. 2 because the
+ * smallest authored labels are 8 units and a phone draws at about 0.65: 1.6
+ * left them at 8,3 px, and the room a bigger label takes is made by
+ * `declutterLabels`, not by the template.
+ */
+export const MAX_LABEL_GROWTH = 2
 
 /** The font size, in viewBox units, a label of `size` is drawn at on a canvas at `scale`. */
 export const legibleLabelSize = (size: number, scale: number | null): number => {
@@ -397,6 +403,46 @@ export const DimensionArrow: FC<DimensionArrowProps> = ({
  */
 const MAX_CANVAS_SCALE = 1.4
 
+/**
+ * Apply {@link declutterLabels} to the `<text>` of one rendered drawing.
+ *
+ * Boxes are measured on screen (`getBoundingClientRect`), which folds in the
+ * viewBox scale and any `rotate()`, and the nudge goes back as `dx`/`dy` in
+ * viewBox units. A rotated label is an obstacle but is never moved: its `dy`
+ * would run along the rotated axis.
+ */
+const declutterSvgLabels = (svg: SVGSVGElement, viewW: number): void => {
+  const frame = svg.getBoundingClientRect()
+  const scale = viewW > 0 ? frame.width / viewW : 0
+  const texts = Array.from(svg.querySelectorAll('text'))
+  texts.forEach((text) => {
+    text.removeAttribute('dx')
+    text.removeAttribute('dy')
+  })
+  if (!(scale > 0)) return
+  const live = texts
+    .map((text) => ({ text, rect: text.getBoundingClientRect() }))
+    .filter(({ rect }) => rect.width > 0 && rect.height > 0)
+  // A text box is the line box, about 1,2 em tall; the ink is about 0,8 em.
+  // Two lines set at the font size's pitch touch as boxes and not as words, so
+  // the boxes are trimmed to the ink before they are compared.
+  const nudges = declutterLabels(
+    live.map(({ text, rect }) => ({
+      left: rect.left,
+      right: rect.right,
+      top: rect.top + rect.height * 0.15,
+      bottom: rect.bottom - rect.height * 0.15,
+      movable: !text.hasAttribute('transform'),
+    })),
+    { left: frame.left + 2, right: frame.right - 2 }
+  )
+  live.forEach(({ text }, index) => {
+    const { dx, dy } = nudges[index]
+    if (dx !== 0) text.setAttribute('dx', String(dx / scale))
+    if (dy !== 0) text.setAttribute('dy', String(dy / scale))
+  })
+}
+
 interface SchematicCanvasProps {
   viewW: number
   viewH: number
@@ -431,6 +477,19 @@ export const SchematicCanvas: FC<SchematicCanvasProps> = ({ viewW, viewH, label,
     observer.observe(svg)
     return () => observer.disconnect()
   }, [viewW])
+  // After every render (the scale state, or new props, may have moved a label):
+  // read where the words landed, as the reader sees them, and nudge any that
+  // overprint another or run off the drawing's edge. The nudge is a `dx`/`dy`
+  // attribute, which no label sets itself, so it is reset first and never
+  // accumulates.
+  useLayoutEffect(() => {
+    const svg = ref.current
+    if (!svg) return
+    const place = () => declutterSvgLabels(svg, viewW)
+    place()
+    // A webfont arriving widens the words after the first measurement.
+    void document.fonts?.ready.then(place)
+  })
   return (
     <svg
       ref={ref}
@@ -599,34 +658,48 @@ export const DimChecksList: FC<DimChecksListProps> = ({ checks, className }) => 
         const band = check.provenance === 'computed' ? fmtTolerance(check.tolerance, unit) : null
         return (
           <li key={`${check.label}-${index}`} className="card-body flex flex-col gap-0.5">
-            <div className="flex items-center gap-2">
+            {/* The label WRAPS and is never clipped: it names the dimension, and
+                the row that decides a verdict is the row whose name a clip hid
+                („Lichteinfall 45° — Gegenüe…“). It takes a 12rem basis and the
+                free width, so on a wide card the figures sit beside it, and
+                where the card is narrow they drop to a line of their own under
+                the label, right-aligned like a column of numbers. Wrapped by
+                the box, not by a breakpoint, because the same legend sits in
+                the answer column, a side panel and a phone. */}
+            <div className="flex items-start gap-2">
               <Icon
-                className="size-3.5 shrink-0"
+                className="mt-[3px] size-3.5 shrink-0"
                 style={{ color: statusColor(check.status) }}
                 aria-label={statusLabel(check.status, t)}
               />
-              <span className="min-w-0 flex-1 truncate text-muted-foreground">{check.label}</span>
-              {check.value == null ? (
-                <span className="italic text-muted-foreground">{missingLabel(t)}</span>
-              ) : (
-                <span className="font-mono text-foreground">
-                  {fmtDim(check.value, unit, t)}
-                  {band && <span className="card-meta ml-1 text-muted-foreground">{band}</span>}
+              <div className="flex min-w-0 flex-1 flex-wrap items-baseline gap-x-2 gap-y-0.5">
+                <span className="min-w-0 flex-1 basis-[12rem] text-muted-foreground [overflow-wrap:anywhere]">
+                  {check.label}
                 </span>
-              )}
-              {check.provenance && (
-                <span
-                  className="card-meta shrink-0 rounded bg-muted px-1 py-px text-muted-foreground"
-                  title={provenanceTitle(check.provenance, t)}
-                >
-                  {provenanceLabel(check.provenance, t)}
+                <span className="ml-auto flex flex-wrap items-baseline justify-end gap-x-2">
+                  {check.value == null ? (
+                    <span className="italic text-muted-foreground">{missingLabel(t)}</span>
+                  ) : (
+                    <span className="font-mono text-foreground">
+                      {fmtDim(check.value, unit, t)}
+                      {band && <span className="card-meta ml-1 text-muted-foreground">{band}</span>}
+                    </span>
+                  )}
+                  {check.provenance && (
+                    <span
+                      className="card-meta shrink-0 rounded bg-muted px-1 py-px text-muted-foreground"
+                      title={provenanceTitle(check.provenance, t)}
+                    >
+                      {provenanceLabel(check.provenance, t)}
+                    </span>
+                  )}
+                  {check.required != null && (
+                    <span className="font-mono text-muted-foreground">
+                      {fmtComparator(check.comparator)} {fmtDim(check.required, unit, t)}
+                    </span>
+                  )}
                 </span>
-              )}
-              {check.required != null && (
-                <span className="font-mono text-muted-foreground">
-                  {fmtComparator(check.comparator)} {fmtDim(check.required, unit, t)}
-                </span>
-              )}
+              </div>
             </div>
             {check.status === 'needs_input' && check.missing && (
               <p className="card-caption pl-5.5 leading-snug text-muted-foreground">{check.missing}</p>
