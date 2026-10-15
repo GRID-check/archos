@@ -105,7 +105,7 @@ function ProjectsHomePreview(): JSX.Element {
   return (
     <main
       data-testid="projects-home-preview"
-      className="min-h-dvh bg-background px-6 py-10 text-foreground md:px-10"
+      className="min-h-dvh bg-background px-4 py-6 text-foreground md:px-10 md:py-10"
     >
       <div className="mx-auto w-full max-w-[1080px]">
         <ProjectsGrid

@@ -110,4 +110,37 @@ describe('FindingsMatrix', () => {
     render(<FindingsMatrix findings={findings} />)
     expect(screen.getByText(en.chat.findings.grounding.offen)).toBeInTheDocument()
   })
+
+  test('a row with a comment is opened by a real control, reachable by keyboard', async () => {
+    const user = userEvent.setup()
+    render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
+    const toggle = screen.getByRole('button', { name: /Feuerwiderstand tragender Bauteile/ })
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+    toggle.focus()
+    await user.keyboard('{Enter}')
+    expect(toggle).toHaveAttribute('aria-expanded', 'true')
+    expect(screen.getByTestId('finding-detail')).toBeInTheDocument()
+    await user.keyboard('{Enter}')
+    expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  })
+
+  test('names every column on the cell, which is what the stacked phone card reads as its label', () => {
+    render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
+    const [row] = screen.getAllByTestId('finding-row')
+    const labels = Array.from(row!.querySelectorAll('td[data-label]')).map((cell) => cell.getAttribute('data-label'))
+    expect(labels).toEqual([en.chat.findings.columns.value, en.chat.findings.columns.reference])
+  })
+
+  test('stacks below 30rem of its own container, in one DOM with the table', () => {
+    // jsdom has no container queries: what is held here is that the table and the
+    // card are the SAME elements (one set of rows, one click, one test), and that
+    // the stacked form is keyed to the matrix's own width rather than the viewport.
+    render(<FindingsMatrix findings={findings} anchorPrefix="src-" />)
+    expect(screen.getByTestId('findings-matrix').className).toMatch(/@container\/matrix/)
+    expect(screen.getByRole('table').className).toMatch(/@max-\[30rem\]\/matrix:block/)
+    for (const row of screen.getAllByTestId('finding-row')) {
+      expect(row.className).toMatch(/@max-\[30rem\]\/matrix:flex-col/)
+    }
+  })
 })

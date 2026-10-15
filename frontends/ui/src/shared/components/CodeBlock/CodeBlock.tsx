@@ -57,7 +57,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
 
   return (
     <div className={`border-base my-3 overflow-hidden rounded-xl border bg-muted ${className}`}>
-      <div className="border-base flex items-center justify-between border-b px-3 py-1.5">
+      <div className="border-base flex items-center justify-between border-b px-3 py-1.5 pointer-coarse:py-0">
         <span className="text-subtle text-xs font-medium uppercase tracking-wide">
           {language || 'text'}
         </span>
@@ -65,7 +65,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
           type="button"
           onClick={handleCopy}
           aria-label={copied ? t('codeBlock.copied') : t('codeBlock.copyCode')}
-          className="text-subtle hover:text-primary inline-flex min-h-7 items-center gap-1 rounded-full px-2 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
+          className="text-subtle hover:text-primary inline-flex min-h-7 items-center gap-1 rounded-full px-2 text-xs pointer-coarse:min-h-11 pointer-coarse:px-3 transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/60"
         >
           {/* Icon swap on copy feedback: the scale springs, the fade is a tween */}
           <AnimatePresence mode="popLayout" initial={false}>
@@ -103,7 +103,7 @@ export const CodeBlock: FC<CodeBlockProps> = ({
         <button
           type="button"
           onClick={() => setExpanded((prev) => !prev)}
-          className="border-base text-subtle hover:text-primary flex min-h-8 w-full items-center justify-center gap-1 border-t px-3 py-1.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60"
+          className="border-base text-subtle hover:text-primary flex min-h-8 pointer-coarse:min-h-11 w-full items-center justify-center gap-1 border-t px-3 py-1.5 text-xs transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/60"
           aria-expanded={expanded}
         >
           {expanded ? (

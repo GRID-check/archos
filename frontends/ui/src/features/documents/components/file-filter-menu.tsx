@@ -77,6 +77,12 @@ export interface FileFilterMenuProps {
    * a filter over nothing is a control that does nothing.
    */
   tagOptions?: readonly TagOption[]
+  /**
+   * The trigger as one icon, for a header row that has no width for a word: the
+   * name stays in the accessible label and the count rides on the glyph, so a
+   * narrowed listing still says so at a glance.
+   */
+  compact?: boolean
   /** Fixture escape hatch: renders the popover open for the visual registry. */
   defaultOpen?: boolean
 }
@@ -100,6 +106,7 @@ export function FileFilterMenu({
   onSortChange,
   sortDisabled = false,
   tagOptions = [],
+  compact = false,
   defaultOpen,
 }: FileFilterMenuProps): JSX.Element {
   const t = useTranslations('files')
@@ -127,17 +134,22 @@ export function FileFilterMenu({
         <Button
           type="button"
           variant="outline"
-          size="sm"
-          className="gap-2"
+          size={compact ? 'icon' : 'sm'}
+          className={compact ? 'relative shrink-0' : 'gap-2'}
           data-testid="file-filter-menu-trigger"
           // The count is IN the accessible name, not only in the pill: a badge a
           // screen reader does not read is a state change nobody announced.
           aria-label={count > 0 ? t('filters.labelActive', { count }) : t('filters.label')}
         >
           <SlidersHorizontal className="size-4" aria-hidden />
-          {t('filters.label')}
+          {!compact && t('filters.label')}
           {count > 0 && (
-            <CountPill tone="attention" aria-hidden data-testid="file-filter-count">
+            <CountPill
+              tone="attention"
+              aria-hidden
+              className={compact ? 'absolute -right-1.5 -top-1.5' : undefined}
+              data-testid="file-filter-count"
+            >
               {count}
             </CountPill>
           )}
@@ -148,7 +160,8 @@ export function FileFilterMenu({
           hides the reset. It scrolls inside itself rather than growing. */}
       <PopoverContent
         align="end"
-        className="max-h-[min(70vh,34rem)] w-72 space-y-4 overflow-y-auto p-4"
+        collisionPadding={16}
+        className="max-h-[min(70dvh,34rem)] w-72 max-w-[calc(100vw-2rem)] space-y-4 overflow-y-auto p-4"
         data-testid="file-filter-menu"
       >
         {!sortDisabled && (
@@ -174,7 +187,7 @@ export function FileFilterMenu({
                 aria-label={t('filters.sortLabel')}
               >
                 {SORT_KEYS.map((key) => (
-                  <ToggleGroupItem key={key} value={key} className="px-2 text-xs">
+                  <ToggleGroupItem key={key} value={key} className="px-2 text-xs whitespace-nowrap">
                     {t(`list.columns.${key}`)}
                   </ToggleGroupItem>
                 ))}
@@ -375,9 +388,9 @@ function CheckRow({
   label: string
 }): JSX.Element {
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-2 pointer-coarse:min-h-11">
       <Checkbox id={id} checked={checked} onCheckedChange={onChange} />
-      <label htmlFor={id} className="cursor-pointer text-sm leading-none">
+      <label htmlFor={id} className="flex-1 cursor-pointer text-sm leading-none pointer-coarse:py-3">
         {label}
       </label>
     </div>

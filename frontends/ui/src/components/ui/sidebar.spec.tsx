@@ -11,7 +11,8 @@ import { render, screen, fireEvent } from '@/test-utils'
 import { describe, test, expect, beforeEach, vi } from 'vitest'
 import { Sidebar, SidebarProvider, SidebarRail, useSidebar } from './sidebar'
 
-vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => false }))
+const mobile = vi.hoisted(() => ({ value: false }))
+vi.mock('@/hooks/use-is-mobile', () => ({ useIsMobile: () => mobile.value }))
 
 const WIDTH_KEY = 'grid.sidebar.width'
 const COLLAPSED_KEY = 'grid.sidebar.collapsed'
@@ -327,5 +328,39 @@ describe('useSidebar width', () => {
     drag(236, 316)
 
     expect(seen.at(-1)).toBe(316)
+  })
+})
+
+describe('Sidebar - the phone drawer', () => {
+  function OpenOnMount(): null {
+    const { setOpenMobile } = useSidebar()
+    useEffect(() => setOpenMobile(true), [setOpenMobile])
+    return null
+  }
+
+  beforeEach(() => {
+    mobile.value = true
+    return () => {
+      mobile.value = false
+    }
+  })
+
+  test('has a visible, finger-sized way out that closes it', () => {
+    render(
+      <SidebarProvider>
+        <OpenOnMount />
+        <Sidebar>
+          <nav>Frag Piloti</nav>
+        </Sidebar>
+      </SidebarProvider>
+    )
+
+    const close = document.querySelector<HTMLElement>('[data-slot="sidebar-close"]')!
+    expect(close).toBeVisible()
+    expect(close).toHaveClass('size-11')
+    expect(close).toHaveAccessibleName(/navigation/i)
+
+    fireEvent.click(close)
+    expect(document.querySelector('[data-mobile="true"]')).toBeNull()
   })
 })

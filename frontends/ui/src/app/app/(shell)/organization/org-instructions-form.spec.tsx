@@ -14,7 +14,7 @@
  *     that wipes the organization's instructions.
  */
 
-import { render, screen, waitFor } from '@/test-utils'
+import { render, screen, waitFor, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, test, vi } from 'vitest'
 
@@ -90,11 +90,26 @@ describe('the instruction editor', () => {
     expect(body()).toEqual({ instructions: 'Lead with the verdict.' })
   })
 
+  test('Clear asks first, and writes nothing until it is confirmed', async () => {
+    const user = userEvent.setup()
+    render(<OrgInstructionsForm initialInstructions="Assume Vienna." />)
+
+    await user.click(clearButton())
+    expect(fetchMock).not.toHaveBeenCalled()
+
+    // Backing out leaves the instruction as it was.
+    await user.click(await screen.findByRole('button', { name: /^cancel$/i }))
+    expect(fetchMock).not.toHaveBeenCalled()
+    expect(box()).toHaveValue('Assume Vienna.')
+  })
+
   test('Clear is its own act, and sends the empty block deliberately', async () => {
     const user = userEvent.setup()
     render(<OrgInstructionsForm initialInstructions="Assume Vienna." />)
 
     await user.click(clearButton())
+    const dialog = await screen.findByRole('dialog')
+    await user.click(within(dialog).getByRole('button', { name: /^clear$/i }))
 
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(body()).toEqual({ instructions: '' })

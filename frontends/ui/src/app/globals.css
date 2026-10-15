@@ -21,6 +21,54 @@
    `.dark` class on the root element; light is the default (no class). */
 @custom-variant dark (&:is(.dark *));
 
+/* A PHONE ON ITS SIDE IS STILL A PHONE.
+   ─────────────────────────────────────
+   Tailwind's `md` asks one thing, "is the viewport at least 768px wide?", and
+   an iPhone in landscape answers yes: 852 x 393. It then got the desktop shell
+   (the fixed rail, the split panes) in 393px of height, and every
+   `md:opacity-0 md:group-hover:opacity-100` reveal hid its control from a
+   finger that cannot hover. The question `md` is used for is "is there room
+   for the desktop chrome?", and a 393px-tall touch screen has none.
+
+   So `md` (and its complement `max-md`) is redefined here to also require
+   that the screen is not a phone on its side: a coarse pointer, at most 500px
+   tall, narrower than `lg`. Each half of that is load-bearing:
+   - `pointer: coarse` keeps a short DESKTOP window on the desktop layout;
+   - `height <= 31.25rem` (500px) is above every phone's short side (iPhone Pro
+     Max 430, the tallest Android ~480) and below every tablet's (iPad mini 744);
+   - `width < 64rem` keeps a tablet in landscape whose layout viewport shrinks
+     for the keyboard (Android `resizes-content`) from flipping to the phone
+     shell on focus. No phone is 1024px long.
+   `@custom-variant` on an existing name replaces the built-in's body and keeps
+   its sort position (tailwindcss `Variants.set`), so every `md:` in the app
+   follows without a code change, and `lg:`/`xl:` (which no phone reaches) stay
+   Tailwind's own.
+
+   `phone` is the third question: "is this a phone-sized screen?" (below `sm`,
+   or a phone on its side). The Dialog is a bottom sheet under it.
+
+   The same three queries are exported from `src/hooks/use-is-mobile.ts` for the
+   decisions CSS cannot make, and `breakpoints.spec.ts` holds the two copies to
+   one string. Change them together. Which axis answers which question:
+   docs/design/grid-design-language.md, "Breakpoints". */
+@custom-variant md {
+  @media (width >= 48rem) {
+    @media not all and (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+      @slot;
+    }
+  }
+}
+@custom-variant max-md {
+  @media (width < 48rem), (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+    @slot;
+  }
+}
+@custom-variant phone {
+  @media (width < 40rem), (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+    @slot;
+  }
+}
+
 /* Tailwind v4's preflight defaults border color to currentColor (near-black text
    color) instead of v3's gray. Restore the theme hairline as the app-wide default
    so `border`/`divide-*` without an explicit color never render black. */
@@ -119,10 +167,30 @@ body {
    offset so it never blends into the control's own edge. The outline follows
    the element's own border-radius automatically; do NOT force
    `border-radius: inherit` here — that overrides a control's own rounding with
-   its parent's (usually 0), squaring off rounded inputs/selects on focus. */
+   its parent's (usually 0), squaring off rounded inputs/selects on focus.
+
+   UNLAYERED ON PURPOSE, so it beats `outline-none` on every control. Most
+   controls draw their own ring at `/60` (`FOCUS_RING`), which is a soft halo
+   (about 2.3:1 on paper): this outline is what gives the keyboard its 3:1+
+   indicator (WCAG 2.4.11). Moving it into `@layer base` once let every
+   `outline-none` drop it and the focus indicator fell under 3:1 app-wide.
+
+   Two narrow exceptions follow it, unlayered too:
+   - An overlay's own panel. Radix focuses the dialog itself when it opens under
+     a finger or holds nothing focusable; that is a place for the keyboard to
+     start, not a control anyone moved to, and a frame around the whole sheet
+     drew a thick ink edge along its top on a phone. Tab from there lands on a
+     control, which shows the outline.
+   - A cmdk search field, which sits inside its own bordered row: the outline
+     drew a second box inside it. */
 :focus-visible {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
+}
+
+:is([role='dialog'], [role='alertdialog']):focus-visible,
+[cmdk-input]:focus-visible {
+  outline: none;
 }
 
 /* Bottom edge of a scrollable list, made legibly intentional.
@@ -189,6 +257,56 @@ body {
        take longer the longer the list is, so a long roster would spend the whole
        bottom third half-faded. */
     animation-range: calc(100% - 40px) 100%;
+  }
+}
+
+/* The edge where a sticky bar meets content scrolling under it.
+   ─────────────────────────────────────────────────────────────
+   A pinned footer or a sticky header on paper the same colour as the body has
+   no edge of its own, so text slid under it and vanished mid-line, which reads
+   as a clipped body rather than as "this bar stays, the rest scrolls". A
+   hairline says it, but only while it is true: under the header once anything
+   has scrolled beneath it (the first 24px of travel), and above the footer
+   until the last 24px, where nothing is left behind it. A dialog that does not
+   scroll has an inactive timeline and draws neither.
+
+   Scroll-driven like `scroll-fade-bottom`, and `@supports`-guarded for the
+   same reason: a UA without scroll timelines keeps the `animation` shorthand
+   on the document timeline and pins it at its end state. Without the guard
+   the header would always wear its line; with it, those browsers get none,
+   which is what a short dialog wants anyway. `nearest`: the bar sits inside
+   the scroller whose content passes under it. */
+@keyframes scroll-edge-reveal-top {
+  from {
+    box-shadow: 0 1px 0 0 transparent;
+  }
+  to {
+    box-shadow: 0 1px 0 0 var(--border);
+  }
+}
+
+@keyframes scroll-edge-reveal-bottom {
+  from {
+    box-shadow: 0 -1px 0 0 var(--border);
+  }
+  to {
+    box-shadow: 0 -1px 0 0 transparent;
+  }
+}
+
+@utility scroll-edge-top {
+  @supports (animation-timeline: scroll(nearest block)) {
+    animation: scroll-edge-reveal-top linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: 0 24px;
+  }
+}
+
+@utility scroll-edge-bottom {
+  @supports (animation-timeline: scroll(nearest block)) {
+    animation: scroll-edge-reveal-bottom linear both;
+    animation-timeline: scroll(nearest block);
+    animation-range: calc(100% - 24px) 100%;
   }
 }
 

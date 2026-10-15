@@ -823,7 +823,7 @@ export function ThreadCard({
         </div>
       )}
 
-      <div className="max-h-[min(22rem,50vh)] space-y-3 overflow-y-auto px-3 py-3">
+      <div className="max-h-[min(22rem,50svh)] space-y-3 overflow-y-auto px-3 py-3">
         <Message
           authorKind={annotation.authorKind}
           name={annotation.createdByName}

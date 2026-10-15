@@ -107,7 +107,8 @@ describe('PdfViewerDialog', () => {
       />,
     )
     const dialog = screen.getByRole('dialog')
-    expect(dialog.className).toContain('sm:max-w-[95vw]')
+    // 95% of the width, and clear of the Dynamic Island on a phone on its side.
+    expect(dialog.className).toContain('sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))]')
     // The narrow 512px clamp must not be the effective width.
     expect(dialog.className).not.toContain('sm:max-w-lg')
   })

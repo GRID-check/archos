@@ -18,8 +18,11 @@ export const research: typeof en.research = {
     scrollToLatest: 'Zum neuesten Beitrag springen',
     // Eine leise Zeile über der Eingabe, statt einer Fehlerkarte im Verlauf:
     // die Seite verbindet sich von selbst neu, die Lesenden müssen nichts tun.
+    // Gilt ohne Netz, bei gesperrtem Telefon und bei nicht erreichbarem
+    // Server: eine laufende Antwort geht dabei nicht verloren, sie wird
+    // fortgesetzt, sobald die Verbindung wieder steht.
     connection: {
-      lost: 'Verbindung unterbrochen · Piloti verbindet sich neu …',
+      lost: 'Verbindung unterbrochen · Piloti macht weiter, sobald sie wieder steht',
       restored: 'Wieder verbunden',
     },
     status: {
@@ -309,6 +312,8 @@ export const research: typeof en.research = {
     yesterday: 'Gestern',
     editTitle: 'Chat-Titel bearbeiten',
     untitledSession: 'Chat ohne Titel',
+    /** Zeilenmenü am Touch-Gerät (kein Hover): Name der Schaltfläche. */
+    rowActions: 'Aktionen für „{title}“',
     renameDisabled: 'Chat umbenennen (deaktiviert)',
     rename: 'Chat umbenennen',
     cannotRenameBusy: 'Umbenennen nicht möglich, während Vorgänge laufen',

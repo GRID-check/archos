@@ -600,7 +600,7 @@ Preview: `/dev/fassungen` (nine states at the rail's real 248px, `?locale=en`), 
 **Looking at two Fassungen together** (`fassung-compare/`, „Fassungen
 vergleichen“). A full-screen dialog with three views: *Nebeneinander* (two
 sheets that scroll and zoom as one; stacked on a phone, each fitted to half the
-height), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
+height, which is why a phone opens in *Wischen* instead), *Überlagert* (older inked cyan, newer orange, multiplied, so unchanged
 lines go dark and changes keep a colour; the colour key, with the computed
 swatch for „unverändert“, and the fader sit in a bar under the sheet, only in
 this view) and *Wischen* (a draggable divider in a fixed near-black ink with a
@@ -611,8 +611,11 @@ out. Keys: ← → and Page Up / Down turn the page, Home and End go to the ends
 2 3 switch the view, Esc closes; the dialog opens with focus on the view
 switch, reads the keys through its description and gives focus back to the
 control that opened it. Zoom says „Einpassen“ when the whole sheet fits and a
-percentage of that fit otherwise (up to 800 %); Ctrl or Cmd + wheel and a
-two-finger pinch zoom at the pointer, dragging pans. File names are cut in the
+percentage of that fit otherwise (up to 1600 %, so an A1 sheet's 2.5 mm
+lettering reads on a phone); Ctrl or Cmd + wheel and a two-finger pinch zoom at
+the pointer, dragging pans. Past the canvas budget (`pdf-raster.ts`) a page is
+drawn soft and the part on screen sharp once the frame rests; a zoom repaints
+off-screen, so the sheet never blanks mid-pinch. File names are cut in the
 middle (`MiddleTruncate`, `lib/text/middle-truncate.ts`) from where the two
 names first differ, so the index survives. Both pages are drawn at one scale
 in a shared box; when the page counts differ the dialog says so. „Seite N mit
@@ -622,6 +625,9 @@ keeps page 1's boxes. The boxes are numbered outlines in the mark ink (dashed
 in the overlay) on the newer sheet, and the list beside it (under it below
 1024 px) groups them by page, with Piloti's sentence under its box's label when
 the counts pair, and the caveat that dimensions are checked in the document.
+Below 1024 px the list is a bottom sheet behind an „Änderungen“ button with the
+count; choosing a change closes it and shows the box. On a phone, upright or on
+its side, the dialog fills the screen and clears the safe areas.
 Boxes and rows are one selection: hovering or focusing either lights both (a
 tooltip names the box), clicking a row turns to its page and scrolls its box
 into view. A refusal names the remedy and offers a retry where one can help

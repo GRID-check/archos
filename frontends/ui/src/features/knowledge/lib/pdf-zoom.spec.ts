@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { clampPage, clampZoom, fitWidth, stepZoom, viewerKeyAction } from './pdf-zoom'
+import {
+  ABSOLUTE_MAX_ZOOM,
+  MAX_ZOOM,
+  anchoredTransform,
+  clampPage,
+  clampZoom,
+  doubleTapZoom,
+  fitWidth,
+  maxZoomFor,
+  rubberBandZoom,
+  stepZoom,
+  twoFingerTapZoom,
+  viewerKeyAction,
+} from './pdf-zoom'
 
 const key = (key: string, modifiers: { ctrlKey?: boolean; metaKey?: boolean; altKey?: boolean } = {}) => ({
   key,
@@ -14,7 +27,7 @@ describe('stepZoom', () => {
   it('walks the ladder one rung at a time and stops at its ends', () => {
     expect(stepZoom(1, 1)).toBe(1.25)
     expect(stepZoom(1, -1)).toBe(0.75)
-    expect(stepZoom(4, 1)).toBe(4)
+    expect(stepZoom(8, 1)).toBe(8)
     expect(stepZoom(0.5, -1)).toBe(0.5)
   })
 
@@ -26,7 +39,97 @@ describe('stepZoom', () => {
   it('treats garbage as the fit', () => {
     expect(clampZoom(Number.NaN)).toBe(1)
     expect(clampZoom(-2)).toBe(1)
-    expect(clampZoom(40)).toBe(4)
+    expect(clampZoom(40)).toBe(MAX_ZOOM)
+  })
+
+  it('walks past 8 for a document whose ceiling is deeper, and stops at that ceiling', () => {
+    expect(stepZoom(8, 1, 17.2)).toBe(12)
+    expect(stepZoom(12, 1, 17.2)).toBe(16)
+    expect(stepZoom(16, 1, 17.2)).toBe(17.2)
+    expect(stepZoom(17.2, 1, 17.2)).toBe(17.2)
+    expect(stepZoom(17.2, -1, 17.2)).toBe(16)
+    expect(clampZoom(40, 17.2)).toBe(17.2)
+  })
+})
+
+/** An A1 sheet across (841 mm) in PDF points, and its fit on a 393px phone (frame 381 less the 24px gutter). */
+const A1_WIDTH = 2384
+const A4_WIDTH = 595
+const PHONE_FIT = 357
+
+describe('maxZoomFor', () => {
+  it('lets an A1 plan on a phone go deep enough to read 2.5 mm lettering', () => {
+    const ceiling = maxZoomFor({ pageWidth: A1_WIDTH, fitWidth: PHONE_FIT })
+    // The finding: fit x 4 left 2.5 mm text at about 4 px. Twice print size is ~19 px.
+    expect(ceiling).toBeGreaterThan(12)
+    const pxPerMm = (PHONE_FIT * ceiling) / 841
+    expect(2.5 * pxPerMm).toBeGreaterThanOrEqual(18)
+  })
+
+  it('keeps 8x as the floor for a Bescheid, which is legible long before', () => {
+    expect(maxZoomFor({ pageWidth: A4_WIDTH, fitWidth: PHONE_FIT })).toBe(MAX_ZOOM)
+    expect(maxZoomFor({ pageWidth: A4_WIDTH, fitWidth: 1000 })).toBe(MAX_ZOOM)
+  })
+
+  it('never passes the absolute ceiling, and falls back before the first page is known', () => {
+    expect(maxZoomFor({ pageWidth: 14_400, fitWidth: 200 })).toBe(ABSOLUTE_MAX_ZOOM)
+    expect(maxZoomFor({ pageWidth: null, fitWidth: PHONE_FIT })).toBe(MAX_ZOOM)
+    expect(maxZoomFor({ pageWidth: A1_WIDTH, fitWidth: 0 })).toBe(MAX_ZOOM)
+  })
+})
+
+describe('doubleTapZoom', () => {
+  it('dives in steps towards the ceiling and surfaces to the fit from it', () => {
+    expect(doubleTapZoom(1, 17)).toBe(2.5)
+    expect(doubleTapZoom(2.5, 17)).toBe(6.25)
+    expect(doubleTapZoom(6.25, 17)).toBe(15.625)
+    expect(doubleTapZoom(15.625, 17)).toBe(17)
+    expect(doubleTapZoom(17, 17)).toBe(1)
+  })
+
+  it('goes to the fit from below it', () => {
+    expect(doubleTapZoom(0.5, 8)).toBe(1)
+  })
+
+  it('two fingers tap one step back out, never past the fit', () => {
+    expect(twoFingerTapZoom(6.25, 17)).toBe(2.5)
+    expect(twoFingerTapZoom(1.5, 17)).toBe(1)
+    expect(twoFingerTapZoom(1, 17)).toBe(1)
+  })
+})
+
+describe('rubberBandZoom', () => {
+  it('is the zoom itself inside the ends', () => {
+    expect(rubberBandZoom(3, 8)).toBe(3)
+  })
+
+  it('gives a little past the ceiling and past the floor, never the whole way', () => {
+    const past = rubberBandZoom(16, 8)
+    expect(past).toBeGreaterThan(8)
+    expect(past).toBeLessThan(11)
+    const under = rubberBandZoom(0.25, 8)
+    expect(under).toBeLessThan(0.5)
+    expect(under).toBeGreaterThan(0.35)
+  })
+})
+
+describe('anchoredTransform', () => {
+  it('keeps the held point under the fingers as they spread and move', () => {
+    const point = { x: 200, y: 300 }
+    const origin = { x: 10, y: 50 }
+    const at = { x: 260, y: 420 }
+    const transform = anchoredTransform({ scale: 2.5, point, origin, at })
+    // With transform-origin 0 0 the point lands at origin + translate + scale * point.
+    expect(origin.x + transform.x + transform.scale * point.x).toBeCloseTo(at.x)
+    expect(origin.y + transform.y + transform.scale * point.y).toBeCloseTo(at.y)
+  })
+
+  it('is the identity for a pinch that has not moved', () => {
+    expect(anchoredTransform({ scale: 1, point: { x: 5, y: 7 }, origin: { x: 0, y: 0 }, at: { x: 5, y: 7 } })).toEqual({
+      x: 0,
+      y: 0,
+      scale: 1,
+    })
   })
 })
 

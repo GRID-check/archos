@@ -42,9 +42,21 @@
  */
 
 import type { JSX } from 'react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { AlertTriangle, Info, MoreHorizontal, Search, ShieldCheck, UserMinus, UserPlus, X } from 'lucide-react'
+import {
+  AlertTriangle,
+  Check,
+  Info,
+  Link2,
+  MoreHorizontal,
+  Search,
+  Share,
+  ShieldCheck,
+  UserMinus,
+  UserPlus,
+  X,
+} from 'lucide-react'
 
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
@@ -87,6 +99,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { cn } from '@/lib/utils'
 import type { SharingFailure, UseSharingResult } from '../hooks/use-sharing'
 import { useShareCandidates } from '../hooks/use-sharing'
+import { canShareNatively, conversationLink, passOnLink, type ShareLinkOutcome } from '../lib/share-link'
 import { AccessOverview } from './AccessOverview'
 
 /**
@@ -140,6 +153,68 @@ export interface ShareDialogProps {
   resourceType?: ShareableResourceType
   /** The reader, so their own row is marked and Leave targets them. */
   currentUserId?: string | null
+  /**
+   * The address to pass on. Omit it and a conversation derives its own from the
+   * chat page it is open on; a resource with no address gets no link section.
+   */
+  shareUrl?: string | null
+}
+
+/**
+ * Passing the link on: the phone's share sheet where there is one (Mail,
+ * WhatsApp, Messages), a copy button everywhere else.
+ *
+ * What it can never do is let someone in. The sentence under the button says so,
+ * because a person who sends the link to a colleague outside the thread and sees
+ * "Link kopiert" has every reason to believe the colleague can now read it.
+ */
+function ShareLink({ url }: { url: string }): JSX.Element {
+  const t = useTranslations('collaboration')
+  const [outcome, setOutcome] = useState<ShareLinkOutcome | null>(null)
+  const timer = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Decided after mount: the server render has no `navigator`, and a label that
+  // flips between "Link kopieren" and "Link teilen" must not be a hydration diff.
+  const [native, setNative] = useState(false)
+  useEffect(() => {
+    setNative(canShareNatively())
+    return () => {
+      if (timer.current) clearTimeout(timer.current)
+    }
+  }, [])
+
+  const pass = async (): Promise<void> => {
+    const result = await passOnLink(url, t('sharing.link.shareTitle'))
+    if (timer.current) clearTimeout(timer.current)
+    setOutcome(result === 'cancelled' || result === 'shared' ? null : result)
+    if (result === 'copied') timer.current = setTimeout(() => setOutcome(null), 2400)
+  }
+
+  const Icon = outcome === 'copied' ? Check : native ? Share : Link2
+  return (
+    <section className="space-y-2" data-testid="share-link">
+      <SectionLabel as="h3">{t('sharing.link.heading')}</SectionLabel>
+      <Button
+        variant="outline"
+        className="w-full justify-center gap-2 sm:w-auto"
+        onClick={() => void pass()}
+        data-testid="share-link-button"
+      >
+        <Icon className="size-4" aria-hidden />
+        {outcome === 'copied'
+          ? t('sharing.link.copied')
+          : native
+            ? t('sharing.link.share')
+            : t('sharing.link.copy')}
+      </Button>
+      <p role="status" className="text-xs leading-relaxed text-muted-foreground">
+        {outcome === 'failed' ? (
+          <span className="text-destructive">{t('sharing.link.failed')}</span>
+        ) : (
+          t('sharing.link.hint')
+        )}
+      </p>
+    </section>
+  )
 }
 
 export function ShareDialog({
@@ -149,6 +224,7 @@ export function ShareDialog({
   sharing,
   resourceType = 'conversation',
   currentUserId = null,
+  shareUrl,
 }: ShareDialogProps): JSX.Element | null {
   const t = useTranslations('collaboration')
   const tCommon = useTranslations('common')
@@ -244,6 +320,15 @@ export function ShareDialog({
   }, [candidates, query, rosterUserIds])
 
   if (!resourceId) return null
+
+  // Read once the dialog is open, in the browser: it is built from the page the
+  // reader is looking at, which the server render cannot know.
+  const link =
+    shareUrl !== undefined
+      ? shareUrl
+      : open && typeof window !== 'undefined'
+        ? conversationLink(resourceType, resourceId, window.location)
+        : null
 
   const handleVisibilityChange = (next: ResourceVisibility): void => {
     if (!state || next === state.visibility) return
@@ -458,7 +543,7 @@ export function ShareDialog({
           // nothing below, on the sentence the reader most needs. With a 24px
           // runway the content can always scroll clear of the mask, and when
           // nothing overflows the mask simply lands on empty padding.
-          <div className="scroll-fade-bottom max-h-[min(72vh,42rem)] space-y-5 overflow-y-auto pr-1 pb-6">
+          <div className="scroll-fade-bottom max-h-[min(72dvh,42rem)] space-y-5 overflow-y-auto pr-1 pb-6 max-sm:max-h-none max-sm:overflow-visible max-sm:pr-0">
             {/* A refused mutation must never look like it worked. */}
             {failure && (
               <Alert
@@ -524,6 +609,8 @@ export function ShareDialog({
               showVisibility={!canManage}
               renderActions={canManage ? renderActions : undefined}
             />
+
+            {link && <ShareLink url={link} />}
 
             {canManage && (
               <>

@@ -68,6 +68,10 @@ export const TOUR_ANCHORS = {
   sectionFiles: 'section-files',
   sectionArchiv: 'section-archiv',
   sectionSettings: 'section-settings',
+  /** The phone tab bar's "Mehr", which opens the drawer the rail becomes. */
+  more: 'tab-more',
+  /** The search button in the phone header, the touch door to the palette. */
+  search: 'search',
 } as const
 
 export type TourAnchor = (typeof TOUR_ANCHORS)[keyof typeof TOUR_ANCHORS]
@@ -80,11 +84,19 @@ export function sectionAnchor(sectionKey: string): string {
 /**
  * How a card sits against its anchor. `below` for the header's controls, which
  * all live in the page's top band; `beside` for the project rail, whose items
- * stack down the left edge and leave the room to their right.
+ * stack down the left edge and leave the room to their right; `above` for the
+ * phone's tab bar, which sits on the bottom edge with the room above it.
+ *
+ * The ELEMENT can override the stop's placement (`data-tour-placement`): one
+ * stop, "this is Dateien", points at a rail entry on a desktop and at a tab on
+ * a phone, and only the element knows which edge of the screen it is on.
  */
-export type TourPlacement = 'below' | 'beside'
+export type TourPlacement = 'below' | 'beside' | 'above'
 
-export type TourSide = 'bottom-left' | 'bottom-right' | 'right'
+export type TourSide = 'bottom-left' | 'bottom-right' | 'right' | 'top'
+
+/** The attribute an anchor element sets to override its stop's placement. */
+export const TOUR_PLACEMENT_ATTRIBUTE = 'data-tour-placement'
 
 /** What the reader can reach and do — decides which stops exist and their copy. */
 export interface TourFlags {
@@ -101,6 +113,12 @@ export interface TourReader extends TourFlags {
    * joiner, or someone replaying the tour from the account menu.
    */
   handover: boolean
+  /**
+   * The phone shell is standing (below `md`): a tab bar at the bottom, the
+   * rail a closed drawer, search behind a button rather than ⌘K. Decides the
+   * stops that have a {@link TourStop.phone} variant.
+   */
+  phone?: boolean
 }
 
 export interface TourStop {
@@ -115,12 +133,25 @@ export interface TourStop {
   arrivalId?: string
   /** Copy for a reader who cannot manage the organization. */
   memberId?: string
+  /**
+   * What the stop is on a phone, where its place is somewhere else: the
+   * Büroablage is behind "Mehr", not on a rail; the keyboard stop becomes the
+   * search button. Replaces the stop's copy and anchor for a phone reader.
+   */
+  phone?: { id: string; anchor?: TourAnchor; placement?: TourPlacement }
 }
 
 /** A stop placed against the page as it is rendered right now. */
 export interface PlacedTourStop extends TourStop {
   /** Undefined means centred: no anchor, or an anchor that is not visible. */
   side?: TourSide
+  /**
+   * How far to slide the card sideways to keep it on screen, in px. Only for a
+   * card centred above its anchor (`top`): NextStep centres it on the anchor
+   * and never clamps, so above the second tab of a phone a 361px card would
+   * start 60px off the left edge.
+   */
+  shiftX?: number
 }
 
 /**
@@ -133,7 +164,8 @@ const WELCOME_STOPS: readonly TourStop[] = [
   { id: 'archiv', anchor: TOUR_ANCHORS.archiv, placement: 'below', gate: 'canAccessArchiv' },
   { id: 'inbox', anchor: TOUR_ANCHORS.inbox, placement: 'below', gate: 'canAccessInbox' },
   { id: 'account', anchor: TOUR_ANCHORS.account, placement: 'below', memberId: 'accountMember' },
-  { id: 'shortcuts' },
+  // A phone has no ⌘K; it has the search button, and the stop says so.
+  { id: 'shortcuts', phone: { id: 'searchPhone', anchor: TOUR_ANCHORS.search, placement: 'below' } },
 ]
 
 /**
@@ -147,7 +179,14 @@ const PROJECT_STOPS: readonly TourStop[] = [
   { id: 'projectWelcome', arrivalId: 'projectWelcomeJoined' },
   { id: 'projectChat', anchor: TOUR_ANCHORS.sectionChat, placement: 'beside' },
   { id: 'projectFiles', anchor: TOUR_ANCHORS.sectionFiles, placement: 'beside' },
-  { id: 'projectArchiv', anchor: TOUR_ANCHORS.sectionArchiv, placement: 'beside', gate: 'canAccessArchiv' },
+  {
+    id: 'projectArchiv',
+    anchor: TOUR_ANCHORS.sectionArchiv,
+    placement: 'beside',
+    gate: 'canAccessArchiv',
+    // On a phone the Büroablage is inside the drawer; point at the door to it.
+    phone: { id: 'projectArchivPhone', anchor: TOUR_ANCHORS.more },
+  },
   // Centred on purpose: the comparison is the longest card in either tour, and
   // pinned beside an Archiv link near the bottom of the rail it ran off a
   // 680px-tall window.
@@ -165,8 +204,8 @@ export const TOURS: Record<TourId, readonly TourStop[]> = {
  * What arrival waits for before starting a tour. The welcome tour's first
  * anchor is in the projects page, which streams in behind a loading state; the
  * project tour's anchors are in the rail, which is shell chrome and already
- * standing when the page arrives — and on a phone is a closed drawer that will
- * never render them — so it waits for nothing.
+ * standing when the page arrives (on a phone, the tab bar), so it waits for
+ * nothing.
  */
 export const ARRIVAL_ANCHOR: Record<TourId, TourAnchor | null> = {
   welcome: TOUR_ANCHORS.createProject,
@@ -233,6 +272,8 @@ export interface AnchorBox {
   right: number
   top: number
   bottom: number
+  /** The element's own placement ({@link TOUR_PLACEMENT_ATTRIBUTE}), if it sets one. */
+  placement?: TourPlacement
 }
 
 export interface Viewport {
@@ -259,8 +300,28 @@ export interface Viewport {
  * fits.
  */
 export function cardSide(box: AnchorBox, viewport: Viewport, placement: TourPlacement): TourSide {
-  if (placement === 'beside') return 'right'
+  const resolved = box.placement ?? placement
+  if (resolved === 'above') return 'top'
+  if (resolved === 'beside') return 'right'
   return box.left + box.right > viewport.width ? 'bottom-right' : 'bottom-left'
+}
+
+/** The card's width: `min(22rem, 100vw - 2rem)` (`tour-card.tsx`). */
+const CARD_MAX_WIDTH_PX = 352
+const CARD_GUTTER_PX = 16
+
+/**
+ * How far a card centred on its anchor must slide to stay on screen, in px.
+ * Zero when it already fits. Pure arithmetic on the anchor's centre, so it does
+ * not wait for the card to render to be measured.
+ */
+export function cardShift(box: AnchorBox, viewport: Viewport): number {
+  const width = Math.min(CARD_MAX_WIDTH_PX, viewport.width - 2 * CARD_GUTTER_PX)
+  const left = (box.left + box.right) / 2 - width / 2
+  const min = CARD_GUTTER_PX
+  const max = viewport.width - CARD_GUTTER_PX - width
+  const clamped = Math.min(Math.max(left, min), Math.max(min, max))
+  return clamped - left
 }
 
 /**
@@ -287,13 +348,21 @@ export function placeStops(
   locate: (selector: string) => AnchorBox | null,
   viewport: Viewport,
 ): PlacedTourStop[] {
-  return stops.flatMap((stop): PlacedTourStop[] => {
-    if (stop.gate && !reader[stop.gate]) return []
+  return stops.flatMap((given): PlacedTourStop[] => {
+    if (given.gate && !reader[given.gate]) return []
+    // A phone variant is its own copy: the desktop stop's arrival and member
+    // wordings describe a place the phone reader is not looking at.
+    const stop: TourStop =
+      reader.phone && given.phone
+        ? { ...given, ...given.phone, arrivalId: undefined, memberId: undefined, phone: undefined }
+        : given
     const id = copyFor(stop, reader)
     if (!stop.anchor) return [{ id }]
     const box = locate(tourAnchorSelector(stop.anchor))
     if (!box) return [{ id }]
-    return [{ id, anchor: stop.anchor, side: cardSide(box, viewport, stop.placement ?? 'below') }]
+    const side = cardSide(box, viewport, stop.placement ?? 'below')
+    const shiftX = side === 'top' ? cardShift(box, viewport) : 0
+    return [{ id, anchor: stop.anchor, side, ...(shiftX !== 0 ? { shiftX } : {}) }]
   })
 }
 

@@ -413,7 +413,12 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
     <Item
       asChild
       className={cn(
-        'relative items-start py-3.5',
+        'relative items-start py-3',
+        // The unread accent: a 3px bar down the row's edge, which survives glare
+        // and a thumb over the title where a 6px dot did not. The list clips
+        // (`overflow-hidden`), so it takes the card's corner.
+        unread &&
+          'before:absolute before:inset-y-0 before:left-0 before:w-[3px] before:bg-foreground before:content-[""]',
         inert && 'bg-muted hover:bg-muted',
       )}
     >
@@ -450,17 +455,6 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
               unread ? 'font-semibold' : 'font-normal',
             )}
           >
-            {/* Unread marker — reserved always so marking read does not shove
-                the title. Opacity only; the row is also heavier, so this is
-                decoration. */}
-            <span
-              aria-hidden
-              className={cn(
-                'mt-[7px] size-1.5 shrink-0 rounded-full bg-foreground',
-                'transition-opacity duration-snap ease-out motion-reduce:transition-none',
-                unread ? 'opacity-100' : 'opacity-0',
-              )}
-            />
             {item.href && !inert ? (
               // Stretched link: the whole row is the target without nesting the
               // archive button inside the anchor (that button is lifted above the
@@ -506,8 +500,12 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
           {item.excerpt && (
             <p
               className={cn(
-                'mt-1.5 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
-                body ? 'line-clamp-2' : 'line-clamp-3',
+                'mt-1 border-l border-border pl-2.5 text-sm leading-relaxed text-muted-foreground',
+                // Dense on a phone: three rows to a screen is a list nobody can
+                // triage. A row that asks something of the reader keeps its
+                // words; an FYI gets one line, and the item has the rest.
+                // As the ONLY body it is the news and keeps three lines.
+                body ? (item.actionable && !resolved && !inert ? 'line-clamp-2' : 'line-clamp-1') : 'line-clamp-3',
               )}
               data-testid="inbox-item-excerpt"
             >
@@ -746,7 +744,7 @@ export const InboxItemRow = forwardRef<HTMLLIElement, InboxItemRowProps>(functio
             </div>
           )}
 
-          <div className="mt-1.5 flex flex-wrap items-center gap-2">
+          <div className="mt-1 flex flex-wrap items-center gap-2">
             {/* `updatedAt`, which is what the list is ORDERED by. A grouped row
                 that just absorbed a new message sorts to the top, and showing its
                 `createdAt` put "5 days ago" at the head of the list. The title

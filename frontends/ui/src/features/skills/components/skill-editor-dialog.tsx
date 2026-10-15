@@ -31,7 +31,7 @@
  */
 
 import type { JSX } from 'react'
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useStore } from '@tanstack/react-form'
 import { X } from 'lucide-react'
 import { toast } from 'sonner'
@@ -370,6 +370,7 @@ export function SkillEditorDialog({
 
   const [formError, setFormError] = useState<string | null>(null)
   const [confirmOpen, setConfirmOpen] = useState(false)
+  const [discardOpen, setDiscardOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
 
   const catalogByType = useMemo(
@@ -486,6 +487,35 @@ export function SkillEditorDialog({
    * verdict looking current about text that has moved on, which is the one lie
    * this surface must not tell.
    */
+  /**
+   * Whether anything has been typed or chosen since the dialog opened.
+   *
+   * Two halves, because the fields live in the form and the arrangement
+   * (agents, cards, category, the two switches) lives beside it. The form knows
+   * its own fields against their defaults, so typing a letter and deleting it
+   * again is clean; the arrangement is compared as one serialised snapshot taken
+   * on the first render.
+   */
+  const fieldsChanged = useStore(form.store, (state) => !state.isDefaultValue)
+  const arrangement = JSON.stringify([preferredCards, agents, hidden, enabled, categoryId, extraMetadata])
+  const openedWith = useRef(arrangement)
+  const dirty = fieldsChanged || arrangement !== openedWith.current
+
+  /**
+   * The ONE way out. Escape, a tap beside the dialog, the close X and Abbrechen
+   * all come through here: an instruction written on site is minutes of work,
+   * and a stray tap must not be able to throw it away. A clean form closes at
+   * once; the question is about the unsaved edit, not about the dialog.
+   */
+  const requestClose = (): void => {
+    if (form.state.isSubmitting) return
+    if (dirty) {
+      setDiscardOpen(true)
+      return
+    }
+    onOpenChange(false)
+  }
+
   const liveName = useStore(form.store, (state) => (state.values as EditorValues).name)
   const liveDescription = useStore(
     form.store,
@@ -587,7 +617,13 @@ export function SkillEditorDialog({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={(next) => !form.state.isSubmitting && onOpenChange(next)}>
+      <Dialog
+        open={open}
+        onOpenChange={(next) => {
+          if (next) onOpenChange(true)
+          else requestClose()
+        }}
+      >
         {/* A reading column, not a page.
 
             This used to be a `sm:max-w-5xl` two-column form: the document on
@@ -603,7 +639,15 @@ export function SkillEditorDialog({
             sequence of questions where knowing how many are left is what
             decides whether somebody finishes. Everything that is not the
             document is behind one „Erweitert" on the last step. */}
-        <DialogContent className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl">
+        <DialogContent
+          // Full screen on a phone: nobody writes a skill's instruction in a
+          // floating card that is mostly margin. `p-0` hands the padding to this
+          // dialog (the header and the body carry their own), so the safe area
+          // is stated here too: the title clears the Dynamic Island and the
+          // footer clears the home indicator when the page runs standalone.
+          fullScreenOnMobile
+          className="flex max-h-[calc(100dvh-2rem)] flex-col gap-0 overflow-hidden p-0 phone:pt-[env(safe-area-inset-top)] phone:pb-[env(safe-area-inset-bottom)] sm:max-w-2xl"
+        >
           <DialogHeader className="border-border shrink-0 border-b px-6 py-5 pr-14">
             <DialogTitle>
               {isEdit
@@ -993,7 +1037,7 @@ export function SkillEditorDialog({
                 <Button
                   type="button"
                   variant="ghost"
-                  onClick={() => (stepIndex === 0 ? onOpenChange(false) : goTo(stepIndex - 1))}
+                  onClick={() => (stepIndex === 0 ? requestClose() : goTo(stepIndex - 1))}
                   data-testid="skill-back"
                 >
                   {stepIndex === 0 ? t('editor.cancel') : t('editor.steps.back')}
@@ -1068,6 +1112,23 @@ export function SkillEditorDialog({
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* Closing with unsaved work. Stacked over the editor on purpose: the
+          editor stays mounted and keeps every field while the question is open,
+          so "Weiter bearbeiten" costs nothing. */}
+      <ConfirmDialog
+        open={discardOpen}
+        onOpenChange={setDiscardOpen}
+        tone="warning"
+        title={t('editor.discardTitle')}
+        description={t('editor.discardBody')}
+        confirmLabel={t('editor.discardConfirm')}
+        cancelLabel={t('editor.discardKeep')}
+        onConfirm={() => {
+          setDiscardOpen(false)
+          onOpenChange(false)
+        }}
+      />
 
       {/* Edit-mode delete: removes the skill from the toolbox; schedules keep
           their saved snapshot, so they keep running unchanged. */}

@@ -129,7 +129,9 @@ export const EgressDiagramCard: FC<EgressDiagramCardProps> = ({
           roughness: 0.7,
         })}
 
-        {/* per-run annotation: label above the run, length below */}
+        {/* per-run annotation: label above the run, length below. The horizontal
+            pair clears the 12-unit corridor with room for a label enlarged to the
+            phone's 10px floor (see SvgLabel), so the length does not sit on the path. */}
         {runs.map((r, i) => {
           const mx = (X(r.from[0]) + X(r.to[0])) / 2
           const my = (Y(r.from[1]) + Y(r.to[1])) / 2
@@ -140,7 +142,7 @@ export const EgressDiagramCard: FC<EgressDiagramCardProps> = ({
             <g key={`run-${i}`}>
               <SvgLabel
                 x={horizontal ? lx : lx + 2}
-                y={horizontal ? ly - 16 : ly - 6}
+                y={horizontal ? ly - 27 : ly - 6}
                 anchor={horizontal ? 'middle' : 'start'}
                 size={8.5}
               >
@@ -148,7 +150,7 @@ export const EgressDiagramCard: FC<EgressDiagramCardProps> = ({
               </SvgLabel>
               <SvgLabel
                 x={horizontal ? lx : lx + 2}
-                y={horizontal ? ly - 6 : ly + 6}
+                y={horizontal ? ly - 14 : ly + 6}
                 anchor={horizontal ? 'middle' : 'start'}
                 mono
                 size={9}

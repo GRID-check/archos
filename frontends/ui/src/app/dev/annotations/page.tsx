@@ -1003,7 +1003,7 @@ export default function AnnotationsPreview(): JSX.Element {
   // The geometry `file-preview-host` gives the pane (see `/dev/file-preview?variant=review`).
   return (
     <main className="bg-muted/40 flex min-h-dvh items-center justify-center">
-      <div className="bg-popover text-popover-foreground h-[85vh] w-[min(1100px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg">
+      <div className="bg-popover text-popover-foreground h-[85dvh] w-[min(1100px,calc(100%-2rem))] overflow-hidden rounded-2xl border shadow-lg phone:fixed phone:inset-0 phone:h-dvh phone:w-full phone:rounded-none phone:border-0">
         <FilePreviewPane
           file={FILE}
           projectId="proj-demo"

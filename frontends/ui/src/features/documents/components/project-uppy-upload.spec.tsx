@@ -81,6 +81,24 @@ describe('ProjectUppyUpload', () => {
     expect(clicked).toHaveBeenCalled()
   })
 
+  it('does not offer a folder to a finger, because iOS Safari cannot pick one', async () => {
+    const user = userEvent.setup()
+    const real = window.matchMedia
+    window.matchMedia = ((query: string) => ({
+      matches: query === '(pointer: coarse)',
+      addEventListener: () => {},
+      removeEventListener: () => {},
+    })) as unknown as typeof window.matchMedia
+    try {
+      render(<ProjectUppyUpload onUpload={vi.fn()} isUploading={false} allowFolders />)
+      await user.click(screen.getByTestId('project-upload-trigger'))
+      expect(await screen.findByTestId('project-upload-files-item')).toBeInTheDocument()
+      expect(screen.queryByTestId('project-upload-folder-item')).toBeNull()
+    } finally {
+      window.matchMedia = real
+    }
+  })
+
   it('does not offer a choice while an upload is running', async () => {
     render(<ProjectUppyUpload onUpload={vi.fn()} isUploading allowFolders />)
 

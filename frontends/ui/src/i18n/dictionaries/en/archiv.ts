@@ -47,6 +47,7 @@ export const archiv = {
     download: 'Download',
     open: 'Open',
     ask: 'Ask about this',
+    select: 'Select',
     copyOriginPath: 'Copy origin path',
     moved: '“{name}” moved to {folder}',
     moveError: 'The document could not be moved. Please try again.',

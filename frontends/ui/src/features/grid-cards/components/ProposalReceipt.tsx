@@ -23,8 +23,10 @@ import type { ComponentProps, ReactNode } from 'react'
 import { Button } from '@/components/ui/button'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime } from '@/lib/format'
+import { cn } from '@/lib/utils'
 import type { ApplyProposalRequest, ProposedChangeKind, ProposedChangeStatus } from '@/lib/proposals/types'
 import type { ProposalOfKind, ServerProposal } from '../hooks/use-server-proposal'
+import { DECISION_BUTTON, DECISION_ROW } from './card-chrome'
 import { ProposalShell } from './ProposalShell'
 import { StackedLabel } from '@/components/ui/stacked-label'
 
@@ -130,18 +132,36 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
         </p>
       )}
 
-      {/* `flex-wrap`: at 390px „Übernehmen?" and the buttons do not fit on one
-          line, and a non-wrapping row put the question UNDER the primary
-          button. Wrapped, the question takes its own line and the buttons stay
-          right-aligned beneath it.
+      {/* THE DECISION ROW. „Übernehmen“ comes FIRST, in the DOM and on screen:
+          the reader meets the decision before the alternatives, and a screen
+          reader announces it first. On a phone the three stack, each full
+          width and one height (44px under a coarse pointer, set by the button
+          itself), so the primary is a target the thumb cannot miss and sits in
+          the same place on every proposal card instead of wherever a wrapped
+          row happened to drop it. From `sm` they are one row, right-aligned
+          beside the question.
 
           BUSY, NOT DISABLED, while a press is in flight: `disabled` on the
           button the reader just pressed dropped their focus to <body>.
           `aria-disabled` keeps it, the handler ignores a second press, and
           `StackedLabel` keeps the button as wide as its longer label. */}
       {proposal?.canDecide && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <p className="text-muted-foreground mr-auto text-sm">{t('cards.proposalReceipt.prompt')}</p>
+        <div className={DECISION_ROW}>
+          <p className="text-muted-foreground text-sm sm:mr-auto">{t('cards.proposalReceipt.prompt')}</p>
+          <Button
+            type="button"
+            size="sm"
+            onClick={() => void decide('apply')}
+            aria-disabled={pressed || undefined}
+            aria-busy={(busy?.action === 'apply' && !busy.withBody) || undefined}
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
+          >
+            <StackedLabel
+              busy={busy?.action === 'apply' && !busy.withBody}
+              idle={t('cards.proposalReceipt.accept')}
+              working={t('cards.proposalReceipt.applying')}
+            />
+          </Button>
           {alternative && (
             <Button
               type="button"
@@ -150,7 +170,7 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
               onClick={() => void decide('apply', alternative.body)}
               aria-disabled={pressed || undefined}
               aria-busy={(busy?.action === 'apply' && busy.withBody) || undefined}
-              className="aria-disabled:cursor-default"
+              className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
             >
               <StackedLabel
                 busy={busy?.action === 'apply' && busy.withBody}
@@ -161,26 +181,12 @@ export function ProposalReceipt<K extends ProposedChangeKind>({
           )}
           <Button
             type="button"
-            size="sm"
-            onClick={() => void decide('apply')}
-            aria-disabled={pressed || undefined}
-            aria-busy={(busy?.action === 'apply' && !busy.withBody) || undefined}
-            className="aria-disabled:cursor-default"
-          >
-            <StackedLabel
-              busy={busy?.action === 'apply' && !busy.withBody}
-              idle={t('cards.proposalReceipt.accept')}
-              working={t('cards.proposalReceipt.applying')}
-            />
-          </Button>
-          <Button
-            type="button"
             variant="outline"
             size="sm"
             onClick={() => void decide('dismiss')}
             aria-disabled={pressed || undefined}
             aria-busy={busy?.action === 'dismiss' || undefined}
-            className="aria-disabled:cursor-default aria-disabled:opacity-50"
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default aria-disabled:opacity-50')}
           >
             {t('cards.proposalReceipt.reject')}
           </Button>

@@ -84,6 +84,7 @@ import { useCardDecision } from '../hooks/use-card-decision'
 import { DraftFileError, fileConversationDraft } from '../lib/document-draft-filing'
 import { fetchConversationDraft } from '../lib/document-draft-preview'
 import { CARD_SHELL } from './card-chrome'
+import { ClampedText } from './ClampedText'
 import { DocumentDraftPreviewDialog } from './DocumentDraftPreviewDialog'
 import { StackedLabel } from '@/components/ui/stacked-label'
 
@@ -370,15 +371,11 @@ export const DocumentDraftCard: FC<DocumentDraftCardProps> = ({
       <SectionLabel icon={FileText}>{t('cards.documentDraft.eyebrow')}</SectionLabel>
 
       <div className="flex min-w-0 flex-col">
-        {/* `title` on both lines: the working directory's paths are the model's
-            own words and are regularly longer than the thread column, so the
-            clip has to leave the whole string reachable. */}
-        <p className="card-title truncate text-foreground" title={title}>
-          {title}
-        </p>
-        <p className="card-caption truncate font-mono text-muted-foreground" title={path}>
-          {path}
-        </p>
+        {/* Both lines wrap to two and open on a tap: the working directory's
+            paths are the model's own words and are regularly longer than the
+            thread column, and a `title` attribute is never shown on a phone. */}
+        <ClampedText className="card-title text-foreground">{title}</ClampedText>
+        <ClampedText className="card-caption font-mono text-muted-foreground">{path}</ClampedText>
         {/* Provenance, in the Files feature's own component and words. Passed a
             literal here rather than a column: every card of this type is a
             document the agent wrote — that is what emits it. */}

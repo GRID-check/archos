@@ -224,6 +224,9 @@ export function flattenComputedStyles(root: SVGElement): void {
   for (const style of Array.from(root.querySelectorAll('style'))) style.remove()
 }
 
+/** The designed width of the two chart grammars, in SVG units; see `renderMermaidNow`. */
+const CHART_WIDTH = 360
+
 /**
  * Mermaid, dynamically imported so a reader who never meets a diagram never
  * downloads one.
@@ -269,6 +272,17 @@ const renderMermaidNow: DiagramRenderer = async ({ source, id, theme }) => {
     flowchart: { htmlLabels: false },
     class: { htmlLabels: false },
     fontFamily: 'Helvetica, Arial, sans-serif',
+    // The two chart grammars are drawn at a FIXED size, not a fitted one
+    // (`useMaxWidth` is not honoured by either, and the SVG allow-list drops
+    // the `style` it would be stated in anyway): quadrantChart at 500 px and
+    // xychart-beta at 700 px. In an answer column of 320 px that is a sideways
+    // pan with the title, the right-hand points and the 2.OG and 3.OG bars off
+    // screen — a chart whose values are cut off is a wrong answer. So they are
+    // DESIGNED at a size the column holds (`diagram-size.ts` then shows them at
+    // 0.89 of it, labels staying above 10 px); a wider column simply shows a
+    // compact chart.
+    quadrantChart: { chartWidth: CHART_WIDTH, chartHeight: CHART_WIDTH },
+    xyChart: { width: CHART_WIDTH, height: Math.round(CHART_WIDTH * 0.8) },
     // Mermaid's own failure handling APPENDS a "Syntax error in text" graphic
     // to the document and leaves it there. The model writes broken mermaid
     // regularly, so without this every bad diagram deposits a bomb icon at the

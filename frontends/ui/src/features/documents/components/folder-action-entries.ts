@@ -35,6 +35,11 @@ export interface FolderActionEntriesInput {
   /** Say what belongs in it (migration 0145). Absent for a reader who may not write the shelf. */
   onDescribe?: () => void
   onMove?: (parentId: string | null, parentName: string) => void
+  /**
+   * Choose the destination in a sheet of its own (`FolderPickerSheet`) instead
+   * of a submenu, which opens beside its item and has no beside on a phone.
+   */
+  onPickMoveTarget?: () => void
   /** Who may read and write the folder (ADR-0088). Absent for a reader who may not manage the project. */
   onAccess?: () => void
   onDelete: () => void
@@ -57,6 +62,7 @@ export function folderActionEntries({
   onRename,
   onDescribe,
   onMove,
+  onPickMoveTarget,
   onAccess,
   onDelete,
   readOnly = false,
@@ -119,7 +125,17 @@ export function folderActionEntries({
     })
   }
 
-  if (onMove && folders && folders.length > 0) {
+  if (onMove && onPickMoveTarget && folders && folders.length > 0) {
+    entries.push({
+      type: 'item',
+      id: 'move',
+      label: labels.move,
+      icon: FolderInput,
+      disabled: isMoving,
+      onSelect: onPickMoveTarget,
+      testId: `folder-action-move-${folder.id}`,
+    })
+  } else if (onMove && folders && folders.length > 0) {
     const destinations = sortedFolderDestinations(folders).filter(
       ({ folder: dest }) => dest.id !== folder.id,
     )

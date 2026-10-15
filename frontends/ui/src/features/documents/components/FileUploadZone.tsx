@@ -18,6 +18,7 @@ import { useIsCurrentSessionBusy } from '@/features/chat'
 import { useFileDragDrop } from '../hooks/use-file-drag-drop'
 import type { TrackedFileStatus } from '../types'
 import { QuarantineFindings } from './quarantine-findings'
+import { photoIntake, prepareSitePhotos } from '../lib/site-photo'
 import { ACCEPTED_FILE_TYPES, MAX_FILE_SIZE } from '../'
 import type { Transition } from 'motion/react'
 import {
@@ -139,13 +140,26 @@ export const FileUploadZone: FC<FileUploadZoneProps> = ({
 
   const uploadDisabled = isUploading || isBusy
 
+  const tCapture = useTranslations('capture')
   const handleValueChange = useCallback(
-    (files: File[]) => {
-      if (files.length === 0) return
-      // Pass files to parent - validation happens in uploadFiles hook
-      onUpload?.(files)
+    (selected: File[]) => {
+      if (selected.length === 0) return
+      // A photo gets a name of its own before validation sees it: the name is
+      // the document's identity, and iOS calls a library or camera photo
+      // `image.jpg` (`site-photo.ts`). Validation happens in uploadFiles.
+      void prepareSitePhotos(selected, {
+        source: 'picker',
+        prefix: tCapture('photos.fileNamePrefix'),
+        taken: collectionFiles.map((file) => file.fileName),
+        imagesAccepted: photoIntake({ acceptedTypes }).available,
+      }).then(({ files, unconvertibleHeic }) => {
+        // An unconvertible HEIC goes on under its own name, for the hook's
+        // validation to report alongside every other refused file.
+        const rest = selected.filter((file) => unconvertibleHeic.includes(file.name))
+        if (files.length + rest.length > 0) onUpload?.([...files, ...rest])
+      })
     },
-    [onUpload]
+    [onUpload, tCapture, collectionFiles, acceptedTypes]
   )
 
   const handleInputChange = useCallback(

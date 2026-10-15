@@ -92,7 +92,7 @@ export function SteckbriefPeriod({
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <Field>
         <FieldLabel htmlFor="steckbrief-started">{t('steckbrief.startedOn')}</FieldLabel>
         {steckbrief.canEdit ? (
@@ -337,7 +337,7 @@ function PersonForm({
   }
 
   return (
-    <form className="grid gap-3 py-1 sm:grid-cols-2" onSubmit={submit} aria-label={fixedName ?? t('steckbrief.add')}>
+    <form className="grid grid-cols-1 gap-3 py-1 sm:grid-cols-2" onSubmit={submit} aria-label={fixedName ?? t('steckbrief.add')}>
       {fixedName ? (
         <p className="text-sm font-medium sm:col-span-2">{fixedName}</p>
       ) : (

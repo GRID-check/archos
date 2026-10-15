@@ -33,8 +33,17 @@ const member = (over: Partial<OrganizationMemberWithRole> = {}): OrganizationMem
   ...over,
 })
 
-/** The row a member's email identifies, so assertions stay per-person. */
-const rowFor = (email: string): HTMLElement => screen.getByText(email).closest('tr') as HTMLElement
+/**
+ * The table row a member's email identifies, so assertions stay per-person.
+ * Every member is in the DOM twice (a table from `sm` up, a card list below
+ * it, CSS picks one), so the row is found inside the table.
+ */
+const rowFor = (email: string): HTMLElement =>
+  within(screen.getByRole('table')).getByText(email).closest('tr') as HTMLElement
+
+/** The phone card for the same member. */
+const cardFor = (email: string): HTMLElement =>
+  within(screen.getByTestId('people-cards')).getByText(email).closest('li') as HTMLElement
 
 describe('PeopleDirectory', () => {
   test('renders the human role name from the catalog, keeping the slug beside it', () => {
@@ -85,7 +94,28 @@ describe('PeopleDirectory', () => {
     // status we have not met yet into a blank or a lie.
     render(<PeopleDirectory members={[member({ status: 'quarantined' })]} showManagement={false} />)
 
-    expect(screen.getByText('quarantined')).toBeInTheDocument()
+    expect(within(rowFor('anna.weber@buero.at')).getByText('quarantined')).toBeInTheDocument()
+  })
+
+  test('below sm the same member is a card carrying name, email, role and status', () => {
+    // The four-column table measured 508px inside a 393px viewport, with the
+    // role and status columns off-screen. The card list shows all four.
+    render(
+      <PeopleDirectory
+        members={[member({ roleSlug: 'org-billing-admin', status: 'pending' })]}
+        showManagement={false}
+      />
+    )
+
+    const card = cardFor('anna.weber@buero.at')
+    expect(within(card).getByText('Anna Weber')).toBeInTheDocument()
+    expect(within(card).getByText('Billing Admin')).toBeInTheDocument()
+    expect(within(card).getByText('org-billing-admin')).toBeInTheDocument()
+    expect(within(card).getByText('pending')).toBeInTheDocument()
+    // CSS, not script, picks the layout: the card list is hidden from `sm` up
+    // and the table below it.
+    expect(screen.getByTestId('people-cards')).toHaveClass('sm:hidden')
+    expect(screen.getByRole('table')).toHaveClass('max-sm:hidden')
   })
 
   test('a failed roster load shows the error state instead of an empty table', () => {

@@ -5,6 +5,8 @@ import {
   TOURS,
   TOUR_SEEN_KEYS,
   TOUR_START_URL,
+  TOUR_ANCHORS,
+  cardShift,
   cardSide,
   isSetupPage,
   placeStops,
@@ -84,6 +86,43 @@ describe('project tour', () => {
     expect(placed.every((stop) => stop.side === undefined)).toBe(true)
   })
 
+  it('on a phone, points at the tab bar: above each tab, and the Büroablage at "Mehr"', () => {
+    // The tab bar marks its items `data-tour-placement="above"`; Chat, Dateien
+    // and the Übersicht are tabs, the Büroablage sits in the drawer behind Mehr.
+    const tabs: Record<string, AnchorBox> = {
+      [tourAnchorSelector(TOUR_ANCHORS.sectionChat)]: { left: 4, right: 81, top: 760, bottom: 812, placement: 'above' },
+      [tourAnchorSelector(TOUR_ANCHORS.sectionFiles)]: { left: 81, right: 158, top: 760, bottom: 812, placement: 'above' },
+      [tourAnchorSelector(TOUR_ANCHORS.sectionSettings)]: { left: 158, right: 235, top: 760, bottom: 812, placement: 'above' },
+      [tourAnchorSelector(TOUR_ANCHORS.more)]: { left: 312, right: 389, top: 760, bottom: 812, placement: 'above' },
+    }
+    const placed = placeStops(TOURS.project, { ...ALL_ON, phone: true }, (selector) => tabs[selector] ?? null, PHONE)
+    expect(ids(placed)).toEqual([
+      'projectWelcome',
+      'projectChat',
+      'projectFiles',
+      'projectArchivPhone',
+      'filesOrArchiv',
+      'projectSources',
+      'projectSettings',
+    ])
+    const archiv = placed.find((stop) => stop.id === 'projectArchivPhone')
+    expect(archiv).toMatchObject({ anchor: TOUR_ANCHORS.more, side: 'top' })
+    // Every card above a tab stays inside the 16px gutters of a 390px screen.
+    for (const stop of placed.filter((each) => each.side === 'top')) {
+      const box = tabs[tourAnchorSelector(stop.anchor!)]!
+      const width = Math.min(352, PHONE.width - 32)
+      const left = (box.left + box.right) / 2 - width / 2 + (stop.shiftX ?? 0)
+      expect(left).toBeGreaterThanOrEqual(16)
+      expect(left + width).toBeLessThanOrEqual(PHONE.width - 16)
+    }
+  })
+
+  it('keeps the desktop stop on a desktop — the phone variant is only for a phone', () => {
+    const placed = placeStops(TOURS.project, ALL_ON, everywhere, DESKTOP)
+    expect(ids(placed)).toContain('projectArchiv')
+    expect(ids(placed)).not.toContain('projectArchivPhone')
+  })
+
   it('waits for nothing on arrival — the rail is shell chrome, already standing', () => {
     expect(ARRIVAL_ANCHOR.project).toBeNull()
     expect(ARRIVAL_ANCHOR.welcome).not.toBeNull()
@@ -99,9 +138,39 @@ describe('cardSide', () => {
     expect(cardSide({ left: 16, right: 158, top: 120, bottom: 156 }, PHONE, 'below')).toBe('bottom-left')
   })
 
+  it('the element overrides the stop: a tab says "above" even for a stop written for the rail', () => {
+    expect(cardSide({ left: 81, right: 158, top: 760, bottom: 812, placement: 'above' }, PHONE, 'beside')).toBe('top')
+  })
+
   it('beside a rail item, centres on it wherever it is — the library never flips `right`', () => {
     expect(cardSide({ left: 12, right: 224, top: 150, bottom: 186 }, DESKTOP, 'beside')).toBe('right')
     expect(cardSide({ left: 12, right: 224, top: 680, bottom: 716 }, DESKTOP, 'beside')).toBe('right')
+  })
+})
+
+describe('cardShift', () => {
+  it('leaves a card that fits where NextStep centred it', () => {
+    expect(cardShift({ left: 158, right: 235, top: 760, bottom: 812 }, PHONE)).toBe(0)
+  })
+
+  it('slides a card over the second tab back inside the left gutter, and one over the last tab inside the right', () => {
+    // Centre 119.5, card 352 wide: NextStep would start it at -56.5.
+    expect(cardShift({ left: 81, right: 158, top: 760, bottom: 812 }, PHONE)).toBe(72.5)
+    expect(cardShift({ left: 312, right: 389, top: 760, bottom: 812 }, PHONE)).toBe(-152.5)
+  })
+})
+
+describe('the welcome tour on a phone', () => {
+  it('trades the keyboard stop for the search button, and finds the doorways in the tab bar', () => {
+    const anchors: Record<string, AnchorBox> = {
+      [tourAnchorSelector(TOUR_ANCHORS.archiv)]: { left: 131, right: 262, top: 760, bottom: 812, placement: 'above' },
+      [tourAnchorSelector(TOUR_ANCHORS.search)]: { left: 293, right: 337, top: 6, bottom: 50 },
+    }
+    const placed = placeStops(TOURS.welcome, { ...ALL_ON, phone: true }, (selector) => anchors[selector] ?? null, PHONE)
+    expect(ids(placed)).toContain('searchPhone')
+    expect(ids(placed)).not.toContain('shortcuts')
+    expect(placed.find((stop) => stop.id === 'archiv')).toMatchObject({ side: 'top' })
+    expect(placed.find((stop) => stop.id === 'searchPhone')).toMatchObject({ side: 'bottom-right' })
   })
 })
 

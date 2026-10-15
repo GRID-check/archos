@@ -8,8 +8,12 @@
  * pages, the way back to a passage when there is one, zoom, search — so a
  * reader who learned them in the chat peek finds them where they expect in the
  * citation dialog. What a narrow stage cannot hold drops out by CONTAINER
- * width (the peek is narrow on a wide screen), never by viewport: the page
- * arrows go first, because the page field and the keys still turn pages.
+ * width (the peek is narrow on a wide screen), never by viewport. The page
+ * arrows never drop: a multi-page document is unreadable without them. On a
+ * touch screen the zoom steps go first (two fingers zoom there, and the level
+ * button still fits again), and the fit-page toggle stays. The pill is never
+ * wider than its stage: a control pushed past the edge of a phone is a control
+ * nobody can reach.
  */
 
 import { useEffect, useRef, useState, type FC, type ReactNode } from 'react'
@@ -37,7 +41,7 @@ import {
 import { Spinner } from '@/components/ui/spinner'
 import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
-import { isFitted, MAX_ZOOM, MIN_ZOOM, type FitMode } from '../lib/pdf-zoom'
+import { isFitted, MIN_ZOOM, type FitMode } from '../lib/pdf-zoom'
 
 export interface PdfControlsProps {
   /** Null while the document is still loading. */
@@ -47,14 +51,18 @@ export interface PdfControlsProps {
   /** Present when there is a cited passage or region to go back to. */
   onRevealPassage?: () => void
   zoom: number
+  /** This document's ceiling (`maxZoomFor`). */
+  maxZoom: number
   fit: FitMode
   onZoomStep: (direction: 1 | -1) => void
   onResetZoom: () => void
   onToggleFit: () => void
   searchOpen: boolean
   onToggleSearch: () => void
-  /** Whether the page rail is open; undefined when the stage has no room for one. */
+  /** Whether the page rail is open. */
   railOpen: boolean
+  /** Whether the document has a rail at all: one page has none, and its toggle would switch nothing. */
+  hasRail?: boolean
   onToggleRail: () => void
   /** The caller's own controls, first in the pill (a review surface's tools). */
   lead?: ReactNode
@@ -66,6 +74,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   onPage,
   onRevealPassage,
   zoom,
+  maxZoom,
   fit,
   onZoomStep,
   onResetZoom,
@@ -74,6 +83,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
   onToggleSearch,
   railOpen,
   onToggleRail,
+  hasRail = true,
   lead,
 }) => {
   const t = useTranslations('knowledge')
@@ -94,7 +104,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
       {/* The rail is a wide-stage affordance: below the width the rail needs,
           the toggle would switch nothing on. */}
       <ToolbarIconButton
-        className="@max-3xl:hidden"
+        className={cn('@max-3xl:hidden phone:hidden', !hasRail && 'hidden')}
         aria-pressed={railOpen}
         aria-label={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
         title={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
@@ -103,10 +113,12 @@ export const PdfControls: FC<PdfControlsProps> = ({
       >
         <PanelLeft aria-hidden />
       </ToolbarIconButton>
-      <ToolbarDivider className="@max-3xl:hidden" />
+      <ToolbarDivider className={cn('@max-3xl:hidden phone:hidden', !hasRail && 'hidden')} />
 
+      {/* Page turning is the one thing every multi-page document needs, so it
+          never drops out of the pill; a phone sheds the zoom steps instead
+          (pinch does that). */}
       <ToolbarIconButton
-        className="@max-sm:hidden"
         aria-label={t('viewer.previousPage')}
         title={t('viewer.previousPage')}
         disabled={!ready || currentPage <= 1}
@@ -120,7 +132,6 @@ export const PdfControls: FC<PdfControlsProps> = ({
         <ToolbarText>{t('viewer.loading')}</ToolbarText>
       )}
       <ToolbarIconButton
-        className="@max-sm:hidden"
         aria-label={t('viewer.nextPage')}
         title={t('viewer.nextPage')}
         disabled={!ready || currentPage >= (pageCount ?? 1)}
@@ -144,6 +155,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
 
       <ToolbarDivider />
       <ToolbarIconButton
+        className="pointer-coarse:@max-md:hidden"
         aria-label={t('viewer.zoomOut')}
         title={t('viewer.zoomOut')}
         aria-keyshortcuts="-"
@@ -167,10 +179,11 @@ export const PdfControls: FC<PdfControlsProps> = ({
         {percent}%
       </ToolbarTextButton>
       <ToolbarIconButton
+        className="pointer-coarse:@max-md:hidden"
         aria-label={t('viewer.zoomIn')}
         title={t('viewer.zoomIn')}
         aria-keyshortcuts="+"
-        disabled={!ready || zoom >= MAX_ZOOM - 1e-6}
+        disabled={!ready || zoom >= maxZoom - 1e-6}
         onClick={() => onZoomStep(1)}
       >
         <Plus aria-hidden />

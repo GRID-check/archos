@@ -90,7 +90,7 @@ export default function TaskCreatedCardPreview(): JSX.Element {
 
         <Panel
           title="Titel und Auftrag, die über die Karte hinausgehen"
-          note="Der Titel ist der Name, den der Auftrag in der Liste trägt; darunter steht der Satz der Person. Der Titel kürzt auf einer Zeile, der Satz bricht um — und die Meta-Zeile darunter bleibt in Form."
+          note="Der Titel ist der Name, den der Auftrag in der Liste trägt; darunter steht der Satz der Person. Der Titel kürzt auf zwei Zeilen und öffnet auf Tipp („Mehr anzeigen“), der Satz bricht um — und die Meta-Zeile darunter bleibt in Form."
         >
           <TaskCreatedCard
             taskId="00000000-0000-4000-8000-0000000000f4"

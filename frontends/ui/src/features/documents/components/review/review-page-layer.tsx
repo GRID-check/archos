@@ -19,6 +19,9 @@ import { usePilotiByline } from './piloti-attribution'
 /** A region smaller than this share of the page, in both directions, was a click: it becomes a point. */
 const MIN_REGION = 0.012
 
+/** How far a press may travel, in CSS pixels, and still set a point where it began. */
+const POINT_SLOP = 8
+
 const at = (x: number, y: number): CSSProperties => ({ left: `${x * 100}%`, top: `${y * 100}%` })
 const box = (x: number, y: number, w: number, h: number): CSSProperties => ({
   left: `${x * 100}%`,
@@ -225,6 +228,14 @@ export function ReviewPageLayer({
   const layerRef = useRef<HTMLDivElement | null>(null)
   const [size, setSize] = useState({ width: 0, height: 0 })
   const [drag, setDrag] = useState<{ x0: number; y0: number; x1: number; y1: number } | null>(null)
+  // The fingers on the capture surface, and where the press began: a second
+  // finger turns a mark into a pinch, and a point is set on RELEASE, so a
+  // press that turns out to be a pan sets nothing.
+  const pressRef = useRef<{ pointers: Set<number>; start: { x: number; y: number; clientX: number; clientY: number } | null; cancelled: boolean }>({
+    pointers: new Set(),
+    start: null,
+    cancelled: false,
+  })
   const { annotations, tool, draft, selectedId, hoveredId, room, filter, piloti } = review
   const { sendCursor, sendDraft } = room
   const highlights = useHighlights(room.peers).filter((highlight) => highlight.page === page)
@@ -266,20 +277,42 @@ export function ReviewPageLayer({
     Boolean(state.cursor && state.cursor.page === page)
   )
 
+  /**
+   * On a touch screen a mark tool is an explicit MODE, and it gives the page
+   * back after one mark: one finger marks, two fingers still pinch and pan
+   * (the viewer's gestures read touch events, which this surface does not
+   * stop), and once the draft is placed the tool returns to navigating, so the
+   * next one-finger drag scrolls the sheet instead of drawing a second box.
+   */
+  const backToNavigate = (pointerType: string) => {
+    if (pointerType === 'touch' || pointerType === 'pen') review.setTool('select')
+  }
+  const cancelPress = () => {
+    const press = pressRef.current
+    press.cancelled = true
+    setDrag(null)
+    sendDraft(null)
+  }
   const onPointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
     if (tool === 'select' || event.button !== 0) return
-    const point = pointIn(event.currentTarget, event)
-    if (!point) return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    review.select(null)
-    if (tool === 'point') {
-      review.setDraft({ page, shape: 'point', x: point.x, y: point.y, w: null, h: null })
+    const press = pressRef.current
+    press.pointers.add(event.pointerId)
+    // A second finger: this is a pinch, not a mark.
+    if (press.pointers.size > 1) {
+      cancelPress()
       return
     }
+    const point = pointIn(event.currentTarget, event)
+    if (!point) return
+    press.cancelled = false
+    press.start = { ...point, clientX: event.clientX, clientY: event.clientY }
+    event.currentTarget.setPointerCapture(event.pointerId)
+    review.select(null)
+    if (tool === 'point') return
     setDrag({ x0: point.x, y0: point.y, x1: point.x, y1: point.y })
   }
   const onPointerMove = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag) return
+    if (!drag || pressRef.current.cancelled) return
     const point = pointIn(event.currentTarget, event)
     if (!point) return
     setDrag({ ...drag, x1: point.x, y1: point.y })
@@ -291,7 +324,24 @@ export function ReviewPageLayer({
       h: Math.abs(point.y - drag.y0),
     })
   }
-  const onPointerUp = () => {
+  const onPointerEnd = (event: ReactPointerEvent<HTMLDivElement>) => {
+    const press = pressRef.current
+    press.pointers.delete(event.pointerId)
+    const start = press.start
+    const cancelled = press.cancelled || event.type === 'pointercancel'
+    if (press.pointers.size > 0) return
+    press.start = null
+    if (cancelled || !start) {
+      press.cancelled = false
+      return
+    }
+    if (tool === 'point') {
+      // A press that travelled was a pan that landed on the page, not a point.
+      if (Math.hypot(event.clientX - start.clientX, event.clientY - start.clientY) > POINT_SLOP) return
+      review.setDraft({ page, shape: 'point', x: start.x, y: start.y, w: null, h: null })
+      backToNavigate(event.pointerType)
+      return
+    }
     if (!drag) return
     const x = Math.min(drag.x0, drag.x1)
     const y = Math.min(drag.y0, drag.y1)
@@ -306,6 +356,7 @@ export function ReviewPageLayer({
     // The Piloti tool: the box is a question, not a mark. A click asks about a small box around it.
     if (tool === 'ask') piloti.compose(askRegionOf(next))
     else review.setDraft(next)
+    backToNavigate(event.pointerType)
   }
 
   const selected = marks.find((annotation) => annotation.id === selectedId) ?? null
@@ -333,10 +384,13 @@ export function ReviewPageLayer({
         <div
           data-testid="review-capture"
           aria-hidden
+          // A double tap here is a mark, not a zoom.
+          data-zoom-tap="off"
           className="pointer-events-auto absolute inset-0 z-10 cursor-crosshair touch-none"
           onPointerDown={onPointerDown}
           onPointerMove={onPointerMove}
-          onPointerUp={onPointerUp}
+          onPointerUp={onPointerEnd}
+          onPointerCancel={onPointerEnd}
         />
       )}
 
@@ -375,6 +429,9 @@ export function ReviewPageLayer({
             >
               <CommentPin
                 data-testid="review-pin"
+                // 24px on the drawing, 44px under the finger: the pin must not
+                // hide the linework it marks, and must still be hit.
+                className="touch-target"
                 number={annotation.number}
                 color={ink}
                 proposed={proposed}

@@ -91,7 +91,7 @@ const state = (
 
 function Eyebrow({ children }: { children: string }): JSX.Element {
   return (
-    <h2 className="text-[10.5px] font-medium uppercase tracking-wider text-muted-foreground">
+    <h2 className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
       {children}
     </h2>
   )
@@ -102,7 +102,7 @@ function Panel({ title, children }: { title: string; children: React.ReactNode }
   return (
     <div className="space-y-3">
       <Eyebrow>{title}</Eyebrow>
-      <div className="rounded-lg border bg-card p-5 shadow-xs">{children}</div>
+      <div className="rounded-lg border bg-card p-4 shadow-xs sm:p-5">{children}</div>
     </div>
   )
 }
@@ -119,7 +119,7 @@ export default function AccessOverviewDevPage(): JSX.Element {
     <I18nProvider initialLocale="de" fixedLocale>
       <main
         data-testid="access-overview-preview"
-        className="mx-auto flex max-w-3xl flex-col gap-10 p-8 text-foreground"
+        className="mx-auto flex max-w-3xl flex-col gap-10 p-4 text-foreground sm:p-8"
       >
         <div>
           <h1 className="text-xl font-semibold tracking-tight">Wer Zugriff hat</h1>
@@ -165,14 +165,16 @@ export default function AccessOverviewDevPage(): JSX.Element {
             title in the chat toolbar's left pill. */}
         <section className="space-y-3">
           <Eyebrow>Im Chat-Header</Eyebrow>
-          <div className="flex w-fit items-center gap-1.5 rounded-lg border border-base bg-card/70 p-1.5 shadow-xs">
-            <span className="text-sm text-muted-foreground">Wohnbau Nord</span>
+          <div className="flex w-fit max-w-full items-center gap-1.5 rounded-lg border border-base bg-card/70 p-1.5 shadow-xs">
+            {/* The title is the one part that gives way: it truncates, and the
+                strip and the chip, which are the point of the row, never wrap. */}
+            <span className="min-w-0 max-w-[30%] shrink truncate text-sm text-muted-foreground">Wohnbau Nord</span>
             <span className="text-muted-foreground/60" aria-hidden>
               /
             </span>
-            <span className="text-sm font-medium">Atrium – Rauchabschnitte GK 4</span>
+            <span className="min-w-0 truncate text-sm font-medium">Atrium – Rauchabschnitte GK 4</span>
             <ParticipantStrip entries={SHARED_ENTRIES} currentUserId={ME} onOpen={() => {}} />
-            <AccessChip visibility="private" sharedWith={3} className="ml-1" />
+            <AccessChip visibility="private" sharedWith={3} className="ml-1 shrink-0" />
           </div>
         </section>
 

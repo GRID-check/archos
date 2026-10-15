@@ -70,10 +70,10 @@ function installMeter(level: number) {
   vi.stubGlobal('AudioContext', FakeAudioContext)
 }
 
-function renderButton() {
+function renderButton(extra: { onExplain?: (reason: string) => void } = {}) {
   const onTranscript = vi.fn()
   const onError = vi.fn()
-  render(<DictationButton locale="de" onTranscript={onTranscript} onError={onError} />)
+  render(<DictationButton locale="de" onTranscript={onTranscript} onError={onError} {...extra} />)
   return { onTranscript, onError }
 }
 
@@ -190,8 +190,8 @@ describe('DictationButton', () => {
 
     await waitFor(() => expect(onError).toHaveBeenCalledWith('Microphone access was not allowed.'))
     const unavailable = await screen.findByTestId('dictation-unavailable')
-    expect(unavailable.querySelector('button')?.disabled).toBe(true)
-    expect(unavailable.querySelector('button')?.getAttribute('aria-label')).toMatch(/Microphone access is blocked/)
+    expect(unavailable.getAttribute('aria-disabled')).toBe('true')
+    expect(unavailable.getAttribute('aria-label')).toMatch(/Microphone access is blocked/)
   })
 
   test('a browser with no usable audio format gets a disabled button with the reason', async () => {
@@ -199,9 +199,24 @@ describe('DictationButton', () => {
     renderButton()
 
     const unavailable = await screen.findByTestId('dictation-unavailable')
-    expect(unavailable.querySelector('button')?.disabled).toBe(true)
-    expect(unavailable.querySelector('button')?.getAttribute('aria-label')).toMatch(
-      /records no audio format Piloti can transcribe/,
+    expect(unavailable.getAttribute('aria-disabled')).toBe('true')
+    expect(unavailable.getAttribute('aria-label')).toMatch(
+      /records no audio format Piloti can transcribe/
     )
+  })
+
+  // A touch screen has no hover: the tooltip never shows there, and a disabled
+  // button answers a finger with nothing. Pressing it has to say why.
+  test('pressing an unavailable microphone hands the reason to the composer, and records nothing', async () => {
+    FakeRecorder.supported = []
+    const onExplain = vi.fn()
+    renderButton({ onExplain })
+
+    fireEvent.click(await screen.findByTestId('dictation-unavailable'))
+
+    expect(onExplain).toHaveBeenCalledWith(
+      expect.stringMatching(/records no audio format Piloti can transcribe/)
+    )
+    expect(getUserMedia).not.toHaveBeenCalled()
   })
 })

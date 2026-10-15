@@ -5,7 +5,7 @@
  * an outer subtle-surface card whose upper part is a raised "header card"
  * (rounded bottom, subtle divider shadow) carrying the project name, status
  * chip and summary line; below it a footer strip with the activity timestamp
- * and a per-card settings shortcut.
+ * and a shortcut to the project's Übersicht.
  *
  * THE card for "a project, listed" — the resume rail on projects-home and any
  * future project grid render this one, not a lookalike. Its SHAPE comes from
@@ -15,7 +15,7 @@
  * before adding a third.
  *
  * The whole card opens the project via a stretched, resume-aware link; the
- * settings gear is a separate, independently focusable link layered above it
+ * Übersicht shortcut is a separate, independently focusable link layered above it
  * (no nested anchors).
  */
 
@@ -25,8 +25,8 @@ import type { Project } from '@/lib/db/schema'
 import {
   ProjectActivity,
   ProjectOpenLink,
+  ProjectOverviewLink,
   ProjectSummaryLine,
-  ProjectSettingsLink,
 } from './project-atoms'
 import { ProjectStatusMark } from './project-status'
 
@@ -58,7 +58,7 @@ export function ProjectCard({ project, docCount = 0, activityAt }: ProjectCardPr
           {/* `text-sm font-semibold` is the ramp's card/subsection title — and
               it is what makes the rail outrank the list typographically rather
               than only by shape, since the row's name is `font-medium`. */}
-          <h3 className="min-w-0 truncate text-sm font-semibold">
+          <h3 className="min-w-0 text-sm font-semibold">
             <ProjectOpenLink project={project} />
           </h3>
           {/* Quiet while active, like the row: the rail holds active projects, so
@@ -69,10 +69,10 @@ export function ProjectCard({ project, docCount = 0, activityAt }: ProjectCardPr
         <ProjectSummaryLine project={project} className="mt-0.5" />
       </RaisedCardBody>
 
-      {/* Footer tab on the tray: activity · time · settings gear. */}
+      {/* Footer tab on the tray: activity · time · Übersicht. */}
       <RaisedCardFooter>
-        <ProjectActivity project={project} activityAt={activityAt} className="ml-auto" />
-        <ProjectSettingsLink project={project} className="-mr-1" />
+        <ProjectActivity project={project} activityAt={activityAt} compact />
+        <ProjectOverviewLink project={project} showLabel className="-mr-2 ml-auto" />
       </RaisedCardFooter>
     </RaisedCard>
   )

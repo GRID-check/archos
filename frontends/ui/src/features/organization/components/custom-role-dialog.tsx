@@ -284,6 +284,8 @@ const CustomRoleForm: FC<{
           </FieldGroup>
         </form>
 
+        {/* Pinned to the bottom of the sheet on a phone by `DialogContent`:
+            with ten permission rows, Save and Cancel stay in reach. */}
         <DialogFooter>
           <Button type="button" variant="outline" onClick={requestClose} disabled={saving}>
             {tc('actions.cancel')}

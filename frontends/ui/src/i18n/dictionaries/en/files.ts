@@ -42,6 +42,8 @@ export const files = {
       // backend in bursts, so any bar drawn from it stalls and then jumps.
       processing: 'Reading. There is no time estimate, so you can keep working.',
       elapsed: '{time} so far',
+      // The browser reports no connection while bytes should be moving.
+      offline: 'No connection, waiting. Please keep this page open.',
       settled: '{total} transferred',
     },
     row: {
@@ -63,6 +65,7 @@ export const files = {
       cancelAll: 'Cancel all',
       cancel: 'Cancel upload of {name}',
       retryAll: 'Retry failed',
+      retryFile: 'Try again',
       dismiss: 'Dismiss {name}',
       dismissAll: 'Dismiss',
     },
@@ -416,7 +419,7 @@ export const files = {
     noDocumentsTitle: 'No documents yet',
     noDocumentsDescription:
       'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
-    searchPlaceholder: 'Search files...',
+    searchPlaceholder: 'Search…',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
     noMatchDescription:
@@ -607,6 +610,7 @@ export const files = {
     retry: 'Try again',
   },
   workspace: {
+    more: 'More',
     renameFolderError: 'The folder could not be renamed. Please try again.',
     deleteFolderError: 'The folder could not be deleted. Please try again.',
     deleteFolderConfirm: 'Delete the folder “{name}”?',
@@ -639,6 +643,26 @@ export const files = {
     },
   },
   // Explorer detail view — column headings for the sortable listing.
+  selection: {
+    start: 'Select',
+    done: 'Done',
+    all: 'All',
+    move: 'Move',
+    column: 'Selected',
+    count: '{count} selected',
+    moved: '{count, plural, one {# file moved to “{folder}”.} other {# files moved to “{folder}”.}}',
+    moveFailed: '{count, plural, one {# file could not be moved.} other {# files could not be moved.}} Please try again.',
+  },
+  picker: {
+    titleOne: 'Move “{name}” to …',
+    titleMany: '{count, plural, one {Move # file to …} other {Move # files to …}}',
+    description: 'Choose the folder the files are moved to.',
+    search: 'Search folders',
+    list: 'Folders',
+    empty: 'No folder matches “{query}”.',
+    here: 'Here',
+    close: 'Close',
+  },
   list: {
     columns: {
       relevance: 'Relevance',
@@ -672,6 +696,7 @@ export const files = {
     download: 'Download',
     open: 'Open',
     ask: 'Ask about this',
+    select: 'Select',
     copyOriginPath: 'Copy origin path',
     rename: 'Rename…',
     delete: 'Delete…',
@@ -852,6 +877,8 @@ export const files = {
       'An archive holds the correspondence of everyone who wrote to this mailbox. Import what the project needs, not a whole mailbox.',
     choose: 'Choose archive…',
     maxSize: 'Up to {size}.',
+    // Touch only: an archive this size is best sent from a desk, on a steady line.
+    desktopHint: 'Large archives are best sent from a desk. If the connection drops, pick the same file again and it carries on from there.',
     notAnArchive: '“{name}” is not an Outlook archive (.pst or .ost).',
     tooLarge: '“{name}” is larger than {size}.',
     sending: 'Sending {sent} of {total}…',
@@ -933,6 +960,13 @@ export const files = {
   },
   errors: {
     projectClosed: 'This project is closed and read-only. Whoever manages it can reopen it from the notice at the top or in the Overview.',
+    // The transport's messages are English and for logs; the person on site reads
+    // these. A failure with no answer (network, stall, time) can be retried, and
+    // the row offers it.
+    uploadFailed: 'The upload failed.',
+    uploadNetwork: 'No connection while uploading. Please try again.',
+    uploadStalled: 'The connection stopped sending, so the upload was stopped.',
+    uploadTimeout: 'The upload took too long.',
     // Held back by the office's name screening (ADR-0086) on a path with no
     // upload dialog, such as a chat attachment.
     screenedOut: '{count} file(s) not uploaded because your office marks them as sensitive: {files}',

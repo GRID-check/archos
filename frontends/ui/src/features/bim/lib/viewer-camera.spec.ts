@@ -8,7 +8,7 @@
  */
 
 import { describe, expect, it } from 'vitest'
-import { BIM_CAMERA_VIEWS, boundsCentre, pointerDragged, clampCut, defaultCameraState, defaultCutForStorey, downloadWithProgress, encodeCameraState, impliesOrthographic, keyboardCameraStep, parseCameraState, rendererPreset, rendererSectionPlane, wheelZoomDelta, type BimViewerCameraState } from './viewer-camera'
+import { BIM_CAMERA_VIEWS, boundsCentre, DOUBLE_TAP_DISTANCE_PX, DOUBLE_TAP_MS, dragSlopFor, isDoubleTap, pointerDragged, clampCut, defaultCameraState, defaultCutForStorey, downloadWithProgress, encodeCameraState, impliesOrthographic, keyboardCameraStep, parseCameraState, rendererPreset, rendererSectionPlane, wheelZoomDelta, type BimViewerCameraState } from './viewer-camera'
 
 const roundTrip = (state: BimViewerCameraState): BimViewerCameraState => {
   const params = new URLSearchParams()
@@ -382,6 +382,54 @@ describe('pointerDragged', () => {
   })
 })
 
+describe('dragSlopFor', () => {
+  it('lets a fingertip roll further than a mouse before it is a drag', () => {
+    // The bug: a flat two-pixel slop for every pointer. A finger moves more
+    // than that landing and lifting, so a tap on a wall became an orbit and
+    // never selected anything.
+    expect(dragSlopFor('mouse')).toBe(2)
+    expect(dragSlopFor('touch')).toBeGreaterThanOrEqual(8)
+    expect(dragSlopFor('pen')).toBeGreaterThan(dragSlopFor('mouse'))
+    expect(dragSlopFor('pen')).toBeLessThan(dragSlopFor('touch'))
+  })
+
+  it('treats a tap that rolled 6 px as a tap on touch and a drag with a mouse', () => {
+    const origin = { x: 200, y: 400 }
+    const rolled = { x: 204, y: 402 }
+    expect(pointerDragged(origin, rolled, dragSlopFor('touch'))).toBe(false)
+    expect(pointerDragged(origin, rolled, dragSlopFor('mouse'))).toBe(true)
+  })
+
+  it('still calls a deliberate swipe a drag on touch', () => {
+    expect(pointerDragged({ x: 0, y: 0 }, { x: 30, y: 0 }, dragSlopFor('touch'))).toBe(true)
+  })
+
+  it('falls back to the mouse allowance for an unknown pointer type', () => {
+    expect(dragSlopFor('')).toBe(2)
+  })
+})
+
+describe('isDoubleTap', () => {
+  const first = { at: 1000, x: 100, y: 200 }
+
+  it('is the second tap of a close pair', () => {
+    expect(isDoubleTap(first, { at: 1000 + DOUBLE_TAP_MS, x: 104, y: 203 })).toBe(true)
+  })
+
+  it('is not, with no tap before it', () => {
+    expect(isDoubleTap(null, first)).toBe(false)
+  })
+
+  it('is not, when the second tap comes too late', () => {
+    expect(isDoubleTap(first, { at: 1000 + DOUBLE_TAP_MS + 1, x: 100, y: 200 })).toBe(false)
+  })
+
+  it('is not, when the taps land on different things', () => {
+    // Two taps on two walls a second apart in a hurry must not fly the camera.
+    expect(isDoubleTap(first, { at: 1100, x: 100 + DOUBLE_TAP_DISTANCE_PX + 1, y: 200 })).toBe(false)
+  })
+})
+
 describe('boundsCentre', () => {
   it('is the middle of the box, including through the origin', () => {
     expect(boundsCentre({ min: { x: 0, y: 0, z: 0 }, max: { x: 4, y: 2, z: 10 } })).toEqual({
@@ -500,6 +548,42 @@ describe('downloadWithProgress', () => {
 
     expect(Array.from(bytes)).toEqual([9, 9])
     expect(seen).toEqual([null])
+  })
+})
+
+describe('downloadWithProgress reports bytes beside the percentage', () => {
+  const streamed = (chunks: number[][], headers: Record<string, string> = {}) => ({
+    headers: { get: (name: string) => headers[name] ?? null },
+    body: {
+      getReader: () => {
+        let index = 0
+        return {
+          read: async () =>
+            index < chunks.length
+              ? { done: false, value: new Uint8Array(chunks[index++]) }
+              : { done: true, value: undefined },
+        }
+      },
+    },
+    arrayBuffer: async () => new ArrayBuffer(0),
+  })
+
+  it('says how much has arrived of how much was declared', async () => {
+    const seen: Array<{ loaded: number; total: number }> = []
+    await downloadWithProgress(
+      streamed([[1, 2], [3, 4], [5, 6, 7, 8]], { 'Content-Length': '8' }),
+      (_percent, bytes) => seen.push(bytes)
+    )
+    // The size is what lets someone on a weak connection choose to wait or stop;
+    // "31 %" does not say whether that is 3 MB or 150.
+    expect(seen.at(-1)).toEqual({ loaded: 8, total: 8 })
+    expect(seen.every((bytes) => bytes.total === 8)).toBe(true)
+  })
+
+  it('reports an unknown total as 0, never a guess', async () => {
+    const seen: Array<{ loaded: number; total: number }> = []
+    await downloadWithProgress(streamed([[1, 2, 3]]), (_percent, bytes) => seen.push(bytes))
+    expect(seen.at(-1)).toEqual({ loaded: 3, total: 0 })
   })
 })
 

@@ -78,7 +78,7 @@ export function UploadedFileRow({
             <Link
               href={href}
               title={t(shelf === 'archiv' ? 'summary.files.openInArchiv' : 'summary.files.openInFiles')}
-              className="text-foreground focus-visible:ring-ring/50 min-w-0 line-clamp-2 rounded-sm text-sm font-medium break-words underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none"
+              className="text-foreground focus-visible:ring-ring/50 min-w-0 line-clamp-2 rounded-sm text-sm font-medium break-words underline-offset-2 hover:underline focus-visible:ring-2 focus-visible:outline-none pointer-coarse:-my-3 pointer-coarse:py-3"
             >
               {name}
             </Link>

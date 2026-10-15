@@ -33,7 +33,7 @@ import { refreshedFileFields } from '../lib/file-item'
 import { STATUS_FIELDS } from '../lib/document-status-reads'
 import type { FileItem } from './project-file-workspace'
 import {
-  FILE_PEEK_WIDTH_DEFAULT,
+  defaultPeekWidth,
   FILE_PEEK_WIDTH_MAX,
   FILE_PEEK_WIDTH_MIN,
   useFilePreviewStore,
@@ -152,6 +152,11 @@ export function FilePreviewHost({
     openerRef.current = active instanceof HTMLElement && active !== document.body ? active : null
     panelRef.current?.focus()
     const onKey = (event: KeyboardEvent) => {
+      // A layer opened FROM the pane (the reader's details sheet, a confirm,
+      // the review) lives in a portal outside it and answers its own keys:
+      // Escape there closes that layer, not the document under it.
+      const layer = event.target instanceof Element ? event.target.closest('[role="dialog"], [role="alertdialog"]') : null
+      if (layer && layer !== panelRef.current) return
       if (event.key === 'Escape') {
         if (mode === 'expanded') peek()
         else close()
@@ -328,7 +333,7 @@ export function FilePreviewHost({
         className={cn(
           'flex flex-col overflow-hidden outline-none',
           parked &&
-            'invisible pointer-events-none fixed top-0 left-[-120vw] z-[-1] h-[80vh]',
+            'invisible pointer-events-none fixed top-0 left-[-120vw] z-[-1] h-[80dvh]',
           peeking && 'group h-full min-h-0 min-w-0 bg-card',
           // The seam is ONE hairline. This pane carried a `border-l` and the
           // resize handle beside it is itself a 1px line in the same colour —
@@ -348,7 +353,13 @@ export function FilePreviewHost({
           !parked && !peeking && 'group z-40',
           !parked &&
             !peeking &&
-            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85vh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-lg',
+            'bg-popover text-popover-foreground fixed left-1/2 top-1/2 z-50 h-[85dvh] w-[min(960px,calc(100%-2rem))] -translate-x-1/2 -translate-y-1/2 rounded-2xl border shadow-lg',
+          // On a phone, portrait or on its side, the document is the screen:
+          // one presentation however it was opened (Dateien, the chat's file
+          // pill, a citation), not a card with the page dimmed around it.
+          !parked &&
+            !peeking &&
+            'phone:inset-0 phone:h-dvh phone:w-full phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0 phone:shadow-none',
           // The enlarged view arrives on the page it covers: fade plus a small
           // scale, `duration-base`/`ease-entrance` — the vocabulary's content
           // entrance. `zoom-in-95` is 5% of a 960px dialog, a settle rather
@@ -619,8 +630,9 @@ function FilePreviewSplit({
           disableDoubleClick
           onDoubleClick={() => {
             filePanelRef.current?.expand()
-            filePanelRef.current?.resize(FILE_PEEK_WIDTH_DEFAULT)
-            setPeekWidth(FILE_PEEK_WIDTH_DEFAULT)
+            const width = defaultPeekWidth()
+            filePanelRef.current?.resize(width)
+            setPeekWidth(width)
           }}
         />
       ) : null}

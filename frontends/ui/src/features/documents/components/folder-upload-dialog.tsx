@@ -1001,7 +1001,7 @@ function PlanDetails({
 
   return (
     <details className="rounded-lg border" data-testid="folder-upload-details">
-      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-foreground">
+      <summary className="cursor-pointer select-none px-3 py-2 text-sm font-medium text-foreground pointer-coarse:py-3">
         {t('folderUpload.showAll', { count: rows.length })}
       </summary>
       <ul className="space-y-0.5 px-3 pb-3">

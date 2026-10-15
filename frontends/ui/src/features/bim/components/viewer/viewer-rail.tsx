@@ -94,6 +94,13 @@ export interface ViewerRailItemProps {
   /** Leading glyph. Absent is fine — a level list reads better without one. */
   icon?: ReactNode
   selected?: boolean
+  /**
+   * Whether the row is a toggle in a group, which is what `aria-pressed`
+   * claims. A row that DOES something once — undo, save a picture — is a plain
+   * button, and announcing it as "not pressed" tells a screen reader it has a
+   * state it does not have.
+   */
+  toggle?: boolean
   disabled?: boolean
   onClick?: () => void
   /** Overrides the accessible name when `label` alone would be ambiguous. */
@@ -118,6 +125,7 @@ export function ViewerRailItem({
   meta,
   icon,
   selected = false,
+  toggle = true,
   disabled = false,
   onClick,
   ariaLabel,
@@ -128,7 +136,7 @@ export function ViewerRailItem({
       type="button"
       onClick={onClick}
       disabled={disabled}
-      aria-pressed={selected}
+      aria-pressed={toggle ? selected : undefined}
       aria-label={ariaLabel}
       title={label}
       data-testid={rest['data-testid']}
@@ -154,7 +162,15 @@ export function ViewerRailItem({
       )}
     >
       {icon && <span className="shrink-0 [&_svg]:size-3.5">{icon}</span>}
-      <span className="min-w-0 flex-1 truncate">{label}</span>
+      {/*
+        Two lines under a finger instead of one clipped one. `title` is the
+        only other place the full name lives, and it needs a hover — so a
+        storey called "02 Obergeschoss (Wohnen, Süd)" ended in an ellipsis that
+        a phone could not expand.
+      */}
+      <span className="min-w-0 flex-1 truncate pointer-coarse:line-clamp-2 pointer-coarse:break-words pointer-coarse:whitespace-normal">
+        {label}
+      </span>
       {meta && <span className="shrink-0 text-xs tabular-nums text-muted-foreground">{meta}</span>}
     </button>
   )

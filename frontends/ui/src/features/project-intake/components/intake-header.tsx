@@ -20,19 +20,31 @@ import { usePressed } from '../hooks/use-pressed'
 export function IntakeStatusLine({ view }: { view: IntakeView }): JSX.Element {
   const t = useTranslations('projectIntake')
   const { counts } = view
-  const parts = [
-    t('counts.documents', { count: counts.documentsRead }),
-    t('counts.values', { count: counts.suggested }),
+  const read = [t('counts.documents', { count: counts.documentsRead }), t('counts.values', { count: counts.suggested })]
+  const toDecide = [
     t('counts.contradictions', { count: counts.contradictions }),
     t('counts.questions', { count: counts.decisiveOpen }),
   ]
+  const hasOpen = counts.contradictions > 0 || counts.decisiveOpen > 0
   const total = counts.documentsRead + counts.unreadDocuments
   return (
     <div className="space-y-1" data-testid="intake-status-line">
       <p className="text-sm font-medium" aria-live="polite">
         {t(`status.${view.status}`)}
       </p>
-      {view.status !== 'waiting' && <p className="text-muted-foreground text-sm tabular-nums">{parts.join(' · ')}</p>}
+      {view.status !== 'waiting' && (
+        // One line in the order the counts were always read in. On a phone the
+        // second half goes FIRST and takes the ink: what waits for a decision
+        // is the task, and „23 Dokumente gelesen" is the context. The
+        // separator belongs to the one-line form only.
+        <p className="text-muted-foreground text-sm tabular-nums max-sm:flex max-sm:flex-col">
+          <span>{read.join(' · ')}</span>
+          <span className="max-sm:hidden"> · </span>
+          <span className={hasOpen ? 'max-sm:text-foreground max-sm:order-first max-sm:font-medium' : 'max-sm:order-last'}>
+            {toDecide.join(' · ')}
+          </span>
+        </p>
+      )}
       {view.status === 'reading' && total > 0 && (
         <Progress
           className="mt-2 max-w-xs"

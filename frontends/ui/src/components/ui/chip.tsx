@@ -45,7 +45,10 @@ const chipVariants = cva(
         destructive: 'border-transparent bg-danger-subtle text-error',
       },
       size: {
-        sm: 'h-5 px-2 text-[11px] [&>svg]:size-3',
+        // 11px is legible under a cursor at arm's length, not on a phone in a
+        // hand outdoors: a coarse pointer reads it at 12px, which the 20px
+        // pill still holds on one line.
+        sm: 'h-5 px-2 text-[11px] pointer-coarse:text-xs [&>svg]:size-3',
         md: 'h-6 px-2.5 text-xs [&>svg]:size-3.5',
       },
       // A chip that can be tapped needs a finger-sized catchment, but a 44px-tall
