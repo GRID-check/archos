@@ -7,12 +7,13 @@ const LONG = '2026-06-14_Lageplan_Baufeld_Nord_Rev_C_Freigabe.pdf'
 describe('FileName', () => {
   it('keeps the end of a long name on screen: revision and extension', () => {
     const { container } = render(<FileName text={LONG} />)
-    const drawn = container.querySelector('[aria-hidden="true"]')!
-    expect(drawn).not.toBeNull()
     // The tail is a box of its own that never shrinks; the head ellipsizes.
-    expect(drawn.textContent).toBe(LONG)
-    expect(drawn.querySelector('.shrink-0')?.textContent).toMatch(/\.pdf$/)
-    expect(drawn.querySelector('.text-ellipsis')?.textContent).toMatch(/^2026-06-14/)
+    const [head, tail] = Array.from(container.querySelectorAll('[aria-hidden="true"]'))
+    expect(`${head.textContent}${tail.textContent}`).toBe(LONG)
+    expect(tail).toHaveClass('shrink-0')
+    expect(tail.textContent).toMatch(/\.pdf$/)
+    expect(head).toHaveClass('text-ellipsis')
+    expect(head.textContent).toMatch(/^2026-06-14/)
   })
 
   it('reads the whole name once to assistive technology, not as two fragments', () => {
@@ -30,10 +31,9 @@ describe('FileName', () => {
 
   it('keeps the last segment and the extension, not a fixed sixteen characters', () => {
     const { container } = render(<FileName text="Baustellenfoto_Rohbau.jpg" />)
-    const drawn = container.querySelector('[aria-hidden="true"]')!
     // „_Rohbau.jpg": the head keeps room to say WHICH Baustellenfoto it is.
-    expect(drawn.querySelector('.shrink-0')?.textContent).toBe('_Rohbau.jpg')
-    expect(drawn.querySelector('.text-ellipsis')?.textContent).toBe('Baustellenfoto')
+    expect(container.querySelector('.shrink-0')?.textContent).toBe('_Rohbau.jpg')
+    expect(container.querySelector('.text-ellipsis')?.textContent).toBe('Baustellenfoto')
   })
 
   it('keeps a whole drawing number: a hyphen is not a segment', () => {

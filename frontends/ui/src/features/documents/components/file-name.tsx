@@ -2,7 +2,7 @@
 
 import type { JSX } from 'react'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
-import { DEFAULT_TAIL_LENGTH, splitForMiddleTruncation } from '@/lib/text/middle-truncate'
+import { DEFAULT_TAIL_LENGTH } from '@/lib/text/middle-truncate'
 import { cn } from '@/lib/utils'
 
 /**
@@ -28,22 +28,16 @@ function tailOf(text: string): number {
  * read the rest, so a long name loses its middle (`MiddleTruncate`) and never
  * its tail.
  *
- * A name that is cut is drawn as two boxes, which a screen reader can read as
- * two words ("Lageplan_Baufe" "ld_Rev_C.pdf"). The drawn pair is hidden from
- * assistive technology and the whole name is read once, in text only it sees.
- * A name that fits is one box and needs neither.
+ * A name that is cut is drawn as two boxes, which a screen reader could read
+ * as two words ("Lageplan_Baufe" "ld_Rev_C.pdf"); `MiddleTruncate` hides the
+ * drawn pair from assistive technology and gives it the whole name once.
  *
  * The wrapper owns the width (`min-w-0`), so it truncates inside a flex row.
  */
 export function FileName({ text, className }: { text: string; className?: string }): JSX.Element {
-  const tail = tailOf(text)
-  const cut = splitForMiddleTruncation(text, tail).head !== ''
   return (
-    <>
-      <span aria-hidden={cut || undefined} className={cn('flex min-w-0 max-w-full', className)}>
-        <MiddleTruncate text={text} tail={tail} />
-      </span>
-      {cut && <span className="sr-only">{text}</span>}
-    </>
+    <span className={cn('flex min-w-0 max-w-full', className)}>
+      <MiddleTruncate text={text} tail={tailOf(text)} />
+    </span>
   )
 }

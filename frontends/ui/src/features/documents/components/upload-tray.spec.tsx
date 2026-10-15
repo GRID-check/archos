@@ -171,10 +171,12 @@ describe('UploadTray', () => {
       renderTray([tracked({ fileName: name, uploadStartedAt: 1, bytesUploaded: 10 })])
 
       const label = within(screen.getByTestId('upload-row-name'))
-      expect(label.getByTitle(name)).toBeDefined()
       // The end is a span of its own that never shrinks; the head is the part CSS ellipsizes.
-      expect(label.getByText('Rev_C_Freigabe.pdf', { exact: false })).toBeDefined()
-      expect(label.getByText(/^2026-06-14_Lageplan/)).toBeDefined()
+      // Both are drawn for the eye; the whole name is read once.
+      const [head, tail] = Array.from(label.getByTitle(name).querySelectorAll('[aria-hidden="true"]'))
+      expect(tail.textContent).toMatch(/Rev_C_Freigabe\.pdf$/)
+      expect(head.textContent).toMatch(/^2026-06-14_Lageplan/)
+      expect(label.getByText(name)).toHaveClass('sr-only')
     })
 
     it('puts a labelled retry under a failed file, where a finger can find it', async () => {

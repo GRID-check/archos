@@ -27,10 +27,11 @@ describe('a file name keeps its end', () => {
   })
 
   it('FileName cuts in the middle and is read once', () => {
-    const source = read('file-name.tsx')
-    expect(source).toContain('<MiddleTruncate')
-    expect(source).toContain('aria-hidden')
-    expect(source).toContain('sr-only')
+    // The read-once lives in the atom, so every name it draws is read once.
+    expect(read('file-name.tsx')).toContain('<MiddleTruncate')
+    const atom = read('../../../components/ui/middle-truncate.tsx')
+    expect(atom).toContain('aria-hidden')
+    expect(atom).toContain('sr-only')
   })
 
   it('does not cut a document name with a bare `truncate` and a title', () => {
