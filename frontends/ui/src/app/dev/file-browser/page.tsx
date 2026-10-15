@@ -58,13 +58,16 @@ import { notFound, useSearchParams } from 'next/navigation'
 import { FileBrowserPane, type FolderNavigation } from '@/features/documents/components/file-browser-pane'
 import { DocumentActionsTrigger, DocumentObjectMenu } from '@/features/documents/components/document-actions'
 import { FileSearchBar, FileSearchField } from '@/features/documents/components/file-search-bar'
+import { FileFilterMenu } from '@/features/documents/components/file-filter-menu'
+import { FilesHeaderControls } from '@/features/documents/components/files-header-controls'
+import { usePhoneLayout } from '@/features/documents/hooks/use-phone-layout'
+import { NO_FILE_FILTERS, type FileFilters } from '@/features/documents/lib/file-filters'
+import { DEFAULT_FILE_SORT, type FileSort } from '@/features/documents/lib/file-sort'
 import { FolderPickerSheet } from '@/features/documents/components/folder-picker-sheet'
 import { SelectionBar } from '@/features/documents/components/selection-bar'
 import { sortedFolderDestinations } from '@/features/documents/lib/folder-path-label'
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
 import { projectSearchScope } from '@/features/documents/lib/file-shelf'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { LayoutGrid, List } from 'lucide-react'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
 import { FassungenFixture } from './fassungen-fixture'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
@@ -716,6 +719,9 @@ function FileBrowserFixtures(): JSX.Element {
   const flatSearch = useFileSearch(projectSearchScope('proj-demo'))
   // A non-empty query so the search bar's clear (X) target renders in the shot.
   const [barSearch, setBarSearch] = useState('Brandschutz')
+  const phone = usePhoneLayout()
+  const [filters, setFilters] = useState<FileFilters>(NO_FILE_FILTERS)
+  const [sort, setSort] = useState<FileSort>(DEFAULT_FILE_SORT)
 
   const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
   // The brief as the workspace mounts it: folded to one line, opened on a click.
@@ -736,33 +742,26 @@ function FileBrowserFixtures(): JSX.Element {
           view toggle and search field in the header band, the field's own
           results rendered by the pane below it. */}
       <div className="flex h-[720px] flex-col overflow-hidden rounded-xl border">
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b px-4 py-3">
-          <ToggleGroup
-            type="single"
-            value={view}
-            onValueChange={(value) => {
-              if (value === 'cards' || value === 'list') setView(value)
-            }}
-            segmented
-            size="icon-sm"
-            aria-label="Ansicht"
-          >
-            <ToggleGroupItem value="cards" aria-label="Kacheln" title="Kacheln">
-              <LayoutGrid />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="Liste" title="Liste">
-              <List />
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <FileSearchField
-            className="w-64"
-            value={search.query}
-            onChange={search.setQuery}
-            onSubmit={search.run}
-            onClear={search.clear}
-            placeholder="Dateien durchsuchen"
-            searchLabel="Suche"
-            resetLabel="Suche zurücksetzen"
+        {/* The REAL header controls (`FilesHeaderControls`), so this preview
+            draws the row the product draws: one row on a phone, the desk's
+            toggle, filter and search otherwise. */}
+        <div className="border-b px-4 py-3">
+          <FilesHeaderControls
+            phone={phone}
+            view={view}
+            onViewChange={setView}
+            binHref="/app/projects/dev/files/bin"
+            renderFilter={(compact) => (
+              <FileFilterMenu
+                canCollaborate={false}
+                filters={filters}
+                onFiltersChange={setFilters}
+                sort={sort}
+                onSortChange={setSort}
+                compact={compact}
+              />
+            )}
+            search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
           />
         </div>
         <div className="flex-1 overflow-y-auto">
