@@ -2,9 +2,9 @@
 features:
   - >
     On a phone, the paperclip in the chat now offers "Foto aufnehmen", which
-    opens the camera directly, "Aus Mediathek" and "Datei auswählen", and says
-    that what you add stays in this chat. The upload menu under Dateien offers
-    the same two photo entries and files the photo in the folder you are in.
+    opens the camera directly, and "Aus Mediathek", and says that what you add
+    stays in this chat; the upload menu under Dateien offers the same two entries.
+  - >
     Each photo is named after the moment it was taken, so a second photo no
     longer replaces the first. Where photos are not switched on, the menu says
     why.
