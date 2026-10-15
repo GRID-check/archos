@@ -80,43 +80,17 @@ export function SectionNav({
   'data-testid': testId,
 }: SectionNavProps): JSX.Element {
   const pathname = usePathname()
-  const stripRef = useRef<HTMLDivElement>(null)
-
-  // The current section in view. A strip that opens on its sixth entry used
-  // to show the first three and leave the reader to guess where they were.
-  // `scrollLeft`, not `scrollIntoView`: the latter also scrolls every scrolling
-  // ancestor, and on a phone that is the page.
-  useEffect(() => {
-    const strip = stripRef.current
-    const scroller = strip?.firstElementChild
-    const current = strip?.querySelector<HTMLElement>('[aria-current="page"]')
-    if (!(scroller instanceof HTMLElement) || !current) return
-    const target = current.offsetLeft - (scroller.clientWidth - current.offsetWidth) / 2
-    scroller.scrollLeft = Math.max(0, target)
-  }, [pathname])
 
   return (
     <nav aria-label={label} data-testid={testId}>
-      {/* Mobile / tablet: a scrolling strip. Wide content scrolls in its own
-          container so the page body never scrolls horizontally, and the edge
-          that hides sections fades (`HorizontalScroll`), so the cut reads as
-          "more this way" instead of as the end of the list. */}
-      <div ref={stripRef} className={cn(orientation === 'rail' && 'lg:hidden')}>
-        <HorizontalScroll aria-label={label} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-          <ul className="flex gap-1 pb-2">
-            {items.map((item) => (
-              <li key={item.key} className="shrink-0">
-                <SectionNavLink
-                  item={item}
-                  active={isSectionActive(pathname, item.href, rootHref)}
-                  pillId={pillId}
-                  variant="strip"
-                />
-              </li>
-            ))}
-          </ul>
-        </HorizontalScroll>
-      </div>
+      {/* Mobile / tablet: a scrolling strip. */}
+      <SectionStrip
+        label={label}
+        items={items}
+        pillId={pillId}
+        isActive={(href) => isSectionActive(pathname, href, rootHref)}
+        className={cn(orientation === 'rail' && 'lg:hidden')}
+      />
 
       {/* Desktop: a sticky rail beside the content. */}
       {orientation === 'rail' && (
@@ -134,6 +108,63 @@ export function SectionNav({
         </ul>
       )}
     </nav>
+  )
+}
+
+/**
+ * The strip: sections in a row that scrolls inside its own container, so the
+ * page body never scrolls horizontally. The edge that hides sections fades
+ * (`HorizontalScroll`), so the cut reads as "more this way" instead of as the
+ * end of the list; entries are 44px tall under a finger; and the current one is
+ * brought into view. Lifted out of `SectionNav` so a tier with a rail of its own
+ * (the platform's grouped one) gets the same strip.
+ */
+export function SectionStrip({
+  label,
+  items,
+  pillId,
+  isActive,
+  className,
+}: {
+  label: string
+  items: readonly SectionNavItem[]
+  pillId: string
+  isActive: (href: string) => boolean
+  className?: string
+}): JSX.Element {
+  const pathname = usePathname()
+  const stripRef = useRef<HTMLDivElement>(null)
+
+  // The current section in view. A strip that opens on its sixth entry used
+  // to show the first three and leave the reader to guess where they were.
+  // `scrollLeft`, not `scrollIntoView`: the latter also scrolls every scrolling
+  // ancestor, and on a phone that is the page.
+  useEffect(() => {
+    const strip = stripRef.current
+    const scroller = strip?.firstElementChild
+    const current = strip?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!(scroller instanceof HTMLElement) || !current) return
+    const target = current.offsetLeft - (scroller.clientWidth - current.offsetWidth) / 2
+    scroller.scrollLeft = Math.max(0, target)
+  }, [pathname])
+
+  return (
+    <div ref={stripRef} className={className}>
+      <HorizontalScroll aria-label={label} className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="flex gap-1 pb-2">
+          {items.map((item) => (
+            <li key={item.key} className="shrink-0">
+              <SectionNavLink
+                item={item}
+                active={isActive(item.href)}
+                pillId={pillId}
+                variant="strip"
+              />
+            </li>
+          ))}
+        </ul>
+      </HorizontalScroll>
+    </div>
   )
 }
 
