@@ -161,6 +161,10 @@ const BOUNDARY_MIGRATIONS = [
   // proposal has no project to join, and is the organization's alone, as a
   // Büroablage folder is (0102). No table is added or removed.
   '0146_proposal_shelves.sql',
+  // Adds push_subscriptions — the devices a person turned inbox notifications
+  // on for (ADR-0112). Keyed directly by its organization; the endpoint is
+  // unique across tenants, so a device belongs to its last registrant.
+  '0147_push_subscriptions.sql',
 ]
 
 const MIGRATION_SOURCES = BOUNDARY_MIGRATIONS.map((file) =>

@@ -647,6 +647,13 @@ services:
       - NEXT_PUBLIC_POSTHOG_SESSION_REPLAY=${NEXT_PUBLIC_POSTHOG_SESSION_REPLAY:-true}
       - NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE=${NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE:-1}
       - NEXT_PUBLIC_POSTHOG_PROXY=${NEXT_PUBLIC_POSTHOG_PROXY:-true}
+      # Web Push for the inbox (ADR-0112). All three or none; unset means the
+      # feature is off. Generate the pair with `npx web-push generate-vapid-keys
+      # --json` in frontends/ui. The bff-jobs service shares this list and is
+      # the one that sends.
+      - GRID_WEB_PUSH_VAPID_PUBLIC_KEY=${GRID_WEB_PUSH_VAPID_PUBLIC_KEY:-}
+      - GRID_WEB_PUSH_VAPID_PRIVATE_KEY=${GRID_WEB_PUSH_VAPID_PRIVATE_KEY:-}
+      - GRID_WEB_PUSH_SUBJECT=${GRID_WEB_PUSH_SUBJECT:-}
       # BYOK LLM credentials (ADR-0022): secret backend for tenant API keys.
       # Default: WorkOS Vault when WORKOS_API_KEY is set, else local AES-GCM
       # under GRID_BYOK_LOCAL_KEK (32 bytes, base64).

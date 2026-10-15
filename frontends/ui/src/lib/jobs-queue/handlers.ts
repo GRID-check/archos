@@ -38,11 +38,13 @@ import { runPilotiWake } from '@/lib/annotations/wake-job'
 import { runPilotiWakeStop } from '@/lib/annotations/wake-stop-job'
 import { runIntakeReadSlice } from '@/lib/project-intake/service'
 import { runFilingReviewSlice } from '@/lib/filing/job'
+import { runInboxPush } from '@/lib/push/inbox-push-job'
 import { isLastAttempt } from './attempts'
 import {
   bimExtractPayloadSchema,
   fileResearchReportPayloadSchema,
   filingReviewPayloadSchema,
+  inboxPushPayloadSchema,
   mailImportPayloadSchema,
   officeRenditionPayloadSchema,
   pilotiWakePayloadSchema,
@@ -162,4 +164,7 @@ export const JOB_HANDLERS: Record<BffJobKind, JobHandler> = {
   piloti_wake_stop: systemHandler(pilotiWakeStopPayloadSchema, runPilotiWakeStop),
   project_intake_read: handler(projectIntakeReadPayloadSchema, runIntakeReadSlice),
   filing_review: handler(filingReviewPayloadSchema, runFilingReviewSlice),
+  inbox_push: systemHandler(inboxPushPayloadSchema, async (organizationId, payload, attempt) => {
+    await runInboxPush(organizationId, payload, attempt)
+  }),
 }

@@ -100,6 +100,29 @@ export async function upsertInboxItems(values: NewInboxItem[]): Promise<InboxIte
 }
 
 /**
+ * One item of a recipient's, by id, or null when it is not theirs or not there.
+ * For the push job, which re-reads the row at the moment it sends.
+ */
+export async function findInboxItemForRecipient(
+  organizationId: string,
+  recipientUserId: string,
+  itemId: string,
+): Promise<InboxItem | null> {
+  const [row] = await getDb()
+    .select()
+    .from(inboxItems)
+    .where(
+      and(
+        eq(inboxItems.id, itemId),
+        eq(inboxItems.organizationId, organizationId),
+        eq(inboxItems.recipientUserId, recipientUserId),
+      ),
+    )
+    .limit(1)
+  return row ?? null
+}
+
+/**
  * Which of these recipients already hold an item under this group key.
  *
  * For an emitter whose event can be seen twice (a settle hook that fires again

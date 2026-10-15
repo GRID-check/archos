@@ -154,6 +154,7 @@ export function buildSecrets(w: AppWiring): AppSecrets {
     GRID_ADMIN_TOKEN: cfg.internal.adminToken,
     GRID_CORPUS_EXPORT_TOKEN: cfg.internal.corpusExportToken,
     GRID_JOB_PAYLOAD_KEK: cfg.internal.jobPayloadKek,
+    GRID_WEB_PUSH_VAPID_PRIVATE_KEY: cfg.webPush.privateKey,
     WORKOS_API_KEY: cfg.auth.workosApiKey,
     WORKOS_COOKIE_PASSWORD: cfg.auth.workosCookiePassword,
     GRID_BYOK_LOCAL_KEK: cfg.auth.byokLocalKek,
@@ -534,6 +535,12 @@ export function frontendEnv(w: AppWiring): EnvVar[] {
     // and samples at this rate (frontends/ui/src/lib/analytics/posthog-config.ts).
     { name: "NEXT_PUBLIC_POSTHOG_SESSION_REPLAY", value: cfg.posthog.sessionReplay ? "true" : "false" },
     { name: "NEXT_PUBLIC_POSTHOG_REPLAY_SAMPLE_RATE", value: cfg.posthog.replaySampleRate },
+    // Web Push for the inbox (ADR-0112). Empty = off. The bff-jobs pool inherits
+    // these (`bffJobsEnv`) and is the one that sends; the frontend serves the
+    // public key to the browser.
+    { name: "GRID_WEB_PUSH_VAPID_PUBLIC_KEY", value: cfg.webPush.publicKey },
+    sref("GRID_WEB_PUSH_VAPID_PRIVATE_KEY"),
+    { name: "GRID_WEB_PUSH_SUBJECT", value: cfg.webPush.subject },
     // BYOK.
     { name: "GRID_BYOK_SECRET_BACKEND", value: cfg.auth.byokSecretBackend },
     sref("GRID_BYOK_LOCAL_KEK"),

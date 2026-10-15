@@ -49,6 +49,7 @@ describe('AuthKit v4 proxy', () => {
       '/apple-icon.png',
       '/manifest.webmanifest',
       '/robots.txt',
+      '/sw.js',
       '/icons/icon-192.png',
       // by id, as the app reaches art: a literal /art/ path fails the riso check
       new URL(artImage('vignetten/bauplatz/empty').src, 'http://localhost').pathname,
@@ -56,6 +57,16 @@ describe('AuthKit v4 proxy', () => {
 
     for (const path of publicFiles) expect(matcher.test(path), path).toBe(false)
     expect(matcher.test('/app/projects')).toBe(true)
+  })
+
+  // Unescaped and unanchored, `sw.js` let any path starting `sw`, one character,
+  // `js` past the session; the same held for every file name in the list.
+  test('lets only the exact public file names past, not paths that start like them', async () => {
+    const { config } = await import('./proxy')
+    const matcher = new RegExp(`^${config.matcher[0]}$`)
+    for (const path of ['/sw.jsx', '/swxjs', '/sw.js/x', '/robots.txt.bak', '/favicon.ico/x', '/faviconxico', '/manifest.webmanifest/x']) {
+      expect(matcher.test(path), path).toBe(true)
+    }
   })
 
   // The SDK posts from signed-out pages and mid-expiry; AuthKit would answer a

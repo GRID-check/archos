@@ -26,6 +26,7 @@ import { useAuth } from '@/adapters/auth/use-auth'
 import { useLayoutStore } from '@/features/layout/store'
 import type { ThemeMode } from '@/features/layout/types'
 import { useTranslations, useLocale, locales, type Locale } from '@/i18n'
+import { NotificationSettings } from '@/features/notifications/components/notification-settings'
 import { AccountWidgets } from './account-widgets'
 import { ShortcutSettings } from './shortcut-settings'
 import { UsageAnalyticsSettings } from './usage-analytics-settings'
@@ -134,6 +135,10 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
           </Field>
         </CardContent>
       </Card>
+
+      {/* System notifications for the inbox (ADR-0112); draws nothing where the
+          deployment has no keys. */}
+      <NotificationSettings />
 
       {/* Reasoning trace (Herleitung) — technical steps are a per-user opt-in */}
       <Card>

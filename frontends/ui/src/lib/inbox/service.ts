@@ -25,6 +25,7 @@ import type {
   NewInboxItem,
   ShareableResourceType,
 } from '@/lib/db/schema'
+import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { resolvePeople } from '@/lib/sharing/directory'
 import { unreadableRunIds, type RunRef } from '@/lib/tasks/subject-access'
 import { findInboxTarget, type InboxTargetAccess, type RunMessageRef } from './targets'
@@ -92,7 +93,8 @@ export function upsertWaves<T extends { recipientUserId: string; groupKey: strin
 }
 
 /**
- * Create (or fold) notifications and nudge each recipient's badge.
+ * Create (or fold) notifications, queue their system notifications and nudge
+ * each recipient's badge.
  *
  * A recipient equal to the actor is dropped: nobody needs to be told about their
  * own action, and self-notification is the most common cause of an inbox that
@@ -123,6 +125,10 @@ export async function emitInboxItems(emissions: InboxEmission[]): Promise<number
   // the row's count still says two.
   const inserted = []
   for (const wave of upsertWaves(rows)) inserted.push(...(await upsertInboxItems(wave)))
+
+  // A system notification for whoever turned them on. Best effort and queued:
+  // the request that wrote the item never waits on a push service.
+  await enqueueInboxPushes(inserted)
 
   // Badge nudge per recipient. Publishing is fail-open by construction, and the
   // badge is re-read from Postgres anyway, so a miss costs latency only.
@@ -589,6 +595,32 @@ export async function listInbox(
   const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
 
   return { items: rows.map((row) => toItemView(row, targets, actorNames, withheld)), pending }
+}
+
+/**
+ * One stored item, as this person would be shown it right now, or null when
+ * they could not see it.
+ *
+ * For a channel outside the app (Web Push, ADR-0112), which must say no more
+ * than the inbox would. It runs the read path's own steps for one row: the type
+ * is in a lane the session may read, the target is still reachable, a run is
+ * still readable. A null answer means send nothing; the row is not redacted
+ * into a vaguer notification, because a notification cannot be taken back.
+ * `session` is the recipient's, resolved today (`resolvePinnedRequesterSession`),
+ * in the row's own organization.
+ */
+export async function viewInboxItemAs(session: AuthorizedSession, row: InboxItem): Promise<InboxItemView | null> {
+  const lanes = await lanesFor(session)
+  const inLaneOfRow = lanes.some((lane) => lane.organizationId === row.organizationId && lane.types.includes(row.type))
+  if (!inLaneOfRow) return null
+  const [targets, withheld, people] = await Promise.all([
+    resolveTargets(session, [row]),
+    rowsWithUnreadableRuns(session, [row]),
+    resolvePeople(session.organizationId, row.actorUserId ? [row.actorUserId] : []),
+  ])
+  const actorNames = new Map([...people].map(([userId, person]) => [userId, person.name]))
+  const view = toItemView(row, targets, actorNames, withheld)
+  return view.href ? view : null
 }
 
 /**

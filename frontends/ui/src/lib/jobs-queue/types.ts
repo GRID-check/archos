@@ -37,6 +37,9 @@ import { BFF_JOB_PRIORITY, type BffJobPriority } from '@/lib/db/schema'
  * acts as them, and does nothing when they may not write the profile.
  * `filing_review` is one step AS the uploader: it judges where the batch's
  * documents belong and files the proposals in their name (`lib/filing`).
+ * `inbox_push` is one step that tells a person's devices about one inbox item
+ * (Web Push, ADR-0112). It runs as the system and resolves the recipient itself,
+ * today: it needs their current membership and role to judge what they may see.
  * The other three are one bounded step each and run as the system, because the
  * person's permission was checked when the work was requested and what they do
  * afterwards takes no session: parsing a model, converting a file, rendering
@@ -56,6 +59,7 @@ export const BFF_JOB_KINDS = [
   'piloti_wake_stop',
   'project_intake_read',
   'filing_review',
+  'inbox_push',
 ] as const
 export type BffJobKind = (typeof BFF_JOB_KINDS)[number]
 
@@ -364,6 +368,20 @@ export const filingReviewPayloadSchema = z.object({
   requester: requesterSchema,
 })
 export type FilingReviewPayload = z.infer<typeof filingReviewPayloadSchema>
+
+/**
+ * `inbox_push`: tell the recipient's devices about one inbox item (ADR-0112).
+ * Ids and a stamp only: the item, the person's choices and their right to see it
+ * are read again when it runs, so a queued push carries no tenant content and a
+ * revoked right ends it. `stamp` is the row's `updated_at` when it was queued: a
+ * newer occurrence has its own job, and this one then stands down.
+ */
+export const inboxPushPayloadSchema = z.object({
+  itemId: z.string().uuid(),
+  recipientUserId: z.string().min(1),
+  stamp: z.string().min(1),
+})
+export type InboxPushJobPayload = z.infer<typeof inboxPushPayloadSchema>
 
 /** What a one-step job is told about the attempt it is running. */
 export interface JobAttempt {

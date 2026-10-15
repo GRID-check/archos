@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('@/lib/sharing/access', () => ({ resolveResourceAccess: vi.fn() }))
 vi.mock('@/lib/sharing/directory', () => ({ resolvePeople: vi.fn() }))
 vi.mock('@/lib/sharing/registry', () => ({ describeResource: vi.fn() }))
+vi.mock('@/lib/push/enqueue', () => ({ enqueueInboxPushes: vi.fn().mockResolvedValue(0) }))
 vi.mock('@/lib/events/bus', () => ({ publishToUser: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('@/lib/authz/projects', () => ({ requireProjectAccess: vi.fn() }))
 vi.mock('@/lib/tasks/subject-access', () => ({ unreadableRunIds: vi.fn() }))
@@ -45,6 +46,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import type { InboxItem, InboxItemType } from '@/lib/db/schema'
 import { getDb } from '@/lib/db'
 import { publishToUser } from '@/lib/events/bus'
+import { enqueueInboxPushes } from '@/lib/push/enqueue'
 import { requireProjectAccess } from '@/lib/authz/projects'
 import { getPlatformOrganizationId, hasPlatformPermission } from '@/lib/authz/platform'
 import { resolveResourceAccess } from '@/lib/sharing/access'
@@ -62,6 +64,7 @@ import {
   markAllRead,
   markRead,
   markResourceItemsReadFor,
+  viewInboxItemAs,
 } from './service'
 
 /**
@@ -981,5 +984,78 @@ describe('resolveInboxItemsAnchoredOn', () => {
       await resolveInboxItemsAnchoredOn({ organizationId: 'org_1', types: ['piloti.asks_you'], anchorId: 'ann_1' }),
     ).toBe(0)
     expect(publishToUser).not.toHaveBeenCalled()
+  })
+})
+
+describe('emitInboxItems — system notifications (ADR-0112)', () => {
+  const emission = {
+    organizationId: 'org_1',
+    recipientUserId: 'user_1',
+    type: 'mention.requested' as const,
+    resourceType: 'conversation' as const,
+    resourceId: 'conv_1',
+    anchorId: 'm1',
+    actorUserId: 'user_2',
+    groupKey: 'mention.requested:conversation:conv_1:m1',
+  }
+
+  it('hands the stored rows to the push queue, after they are stored', async () => {
+    const stored = row({ id: 'stored', type: 'mention.requested' })
+    vi.mocked(repository.upsertInboxItems).mockResolvedValue([stored])
+    vi.mocked(enqueueInboxPushes).mockClear()
+    await emitInboxItems([emission])
+    expect(enqueueInboxPushes).toHaveBeenCalledWith([stored])
+  })
+
+  it('does not queue a push for a notification about one’s own action', async () => {
+    vi.mocked(enqueueInboxPushes).mockClear()
+    await emitInboxItems([{ ...emission, actorUserId: 'user_1' }])
+    expect(enqueueInboxPushes).not.toHaveBeenCalled()
+  })
+})
+
+describe('viewInboxItemAs — the row as its recipient would be shown it', () => {
+  it('words a reachable item with its address', async () => {
+    const view = await viewInboxItemAs(session, row({ type: 'mention.requested', groupKey: 'g', anchorId: 'm1' }))
+    expect(view?.href).toBe('/app/projects/proj_1/chat?session=conv_1#message-m1')
+    expect(view?.actorName).toBe('Anna Berger')
+  })
+
+  it('answers null when the target is no longer reachable', async () => {
+    vi.mocked(resolveResourceAccess).mockRejectedValue(new NotFoundError())
+    expect(await viewInboxItemAs(session, row())).toBeNull()
+  })
+
+  it('answers null for an inert item', async () => {
+    expect(await viewInboxItemAs(session, row({ inertAt: at }))).toBeNull()
+  })
+
+  it('answers null for a type the recipient’s organization may not see', async () => {
+    collaborationGranted = false
+    expect(await viewInboxItemAs(session, row({ type: 'mention.requested' }))).toBeNull()
+  })
+
+  it('answers null for a run the recipient may not read', async () => {
+    vi.mocked(unreadableRunIds).mockResolvedValue(new Set(['run_1']))
+    const project = row({
+      type: 'job.completed',
+      resourceType: 'project',
+      resourceId: 'proj_1',
+      payload: { runId: 'run_1', subject: 'Auftrag' },
+    })
+    expect(await viewInboxItemAs(session, project)).toBeNull()
+  })
+
+  it('answers null for a platform item unless the recipient holds the platform permission', async () => {
+    const feedback = row({
+      organizationId: 'org_platform',
+      type: 'feedback.submitted',
+      resourceType: 'product_feedback',
+      resourceId: 'f1',
+    })
+    const platformSession = makeSession({ organizationId: 'org_platform' })
+    expect(await viewInboxItemAs(platformSession, feedback)).toBeNull()
+    vi.mocked(hasPlatformPermission).mockResolvedValue(true)
+    expect((await viewInboxItemAs(platformSession, feedback))?.href).toBe('/app/platform/feedback?report=f1')
   })
 })

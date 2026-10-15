@@ -174,6 +174,7 @@ Consequences, where a reader looks for them.
 | [0109](0109-every-change-piloti-applies-knows-its-turn.md) | Every change Piloti applies knows its turn | Accepted |
 | [0110](0110-live-channels-are-one-module-over-dragonfly.md) | Live channels are one module of our own over Dragonfly | Proposed |
 | [0111](0111-piloti-sets-a-project-up-from-its-documents.md) | Piloti sets a project up from its documents, as an agent of its own writing suggestions onto the profile | Proposed |
+| [0112](0112-web-push-for-the-inbox.md) | Web Push for the inbox: VAPID and `web-push`, a worker that caches nothing, minimal encrypted payloads, queued from the inbox write path | Proposed |
 
 > Note: 0027, 0039, 0044 and 0047 were each independently used twice, every
 > time because two people read the next number off this index instead of off

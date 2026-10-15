@@ -1030,6 +1030,13 @@
       "when": 1792454400032,
       "tag": "0146_proposal_shelves",
       "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1792454400033,
+      "tag": "0147_push_subscriptions",
+      "breakpoints": true
     }
   ]
 }
