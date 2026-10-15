@@ -115,6 +115,16 @@ export interface IfcCompliancePanelProps {
 /** Rows before a rule's list folds — the counts always speak for the rest. */
 const VISIBLE_ROWS = 6
 
+/**
+ * An underlined link inside a sentence is 16 px tall — the line box — which is
+ * not a thing a thumb can hit, and "im Modell zeigen" is the one action on this
+ * panel that matters. Under a coarse pointer the link becomes a 44 px control
+ * that still sits on the line (`inline-flex`), so the sentence reads the same
+ * and the finger gets its target. WCAG exempts inline links; the product does
+ * not, because on site this one is pressed with a glove.
+ */
+const TOUCH_LINK = 'pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center'
+
 function verdictHref(
   projectId: string,
   modelFilename: string,
@@ -285,7 +295,7 @@ export function IfcCompliancePanel({
               facts: missingFacts.map((key) => t(`compliance.factName.${key}`)).join(', '),
             })}{' '}
             {askHref && (
-              <Link href={askHref} className="underline underline-offset-2">
+              <Link href={askHref} className={`underline underline-offset-2 ${TOUCH_LINK}`}>
                 {t('compliance.setFacts')}
               </Link>
             )}
@@ -763,18 +773,31 @@ function VerdictList({
         {show(
           verdicts.map((verdict) => verdict.globalId),
           t('compliance.showInModel'),
-          'font-normal underline underline-offset-2'
+          `font-normal underline underline-offset-2 ${TOUCH_LINK}`
         )}
       </p>
       <ul className="space-y-0.5">
         {shown.map((verdict) => (
-          <li key={verdict.globalId} className="text-xs text-muted-foreground">
+          <li
+            key={verdict.globalId}
+            // Under a finger the name is a 44 px control with the storey and the
+            // reading flowing beside it, wrapping below when they are long.
+            className="text-xs text-muted-foreground pointer-coarse:flex pointer-coarse:flex-wrap pointer-coarse:items-center pointer-coarse:pb-2"
+          >
             {show(
               [verdict.globalId],
               verdict.name ?? verdict.globalId,
-              'underline underline-offset-2'
+              `underline underline-offset-2 ${TOUCH_LINK}`
             )}
-            {verdict.storeyName ? ` · ${verdict.storeyName}` : ''} — {verdict.reading}
+            {/* On a finger the name is a row of its own and what follows reads as
+                its caption beneath, so the separators that joined them in one
+                line of text go with the line. */}
+            <span className="pointer-coarse:basis-full">
+              <span className="pointer-coarse:hidden">{verdict.storeyName ? ' · ' : ' — '}</span>
+              {verdict.storeyName}
+              {verdict.storeyName ? ' — ' : ''}
+              {verdict.reading}
+            </span>
           </li>
         ))}
       </ul>
