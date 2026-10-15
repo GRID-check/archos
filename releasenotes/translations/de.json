@@ -1,5 +1,9 @@
 [
   {
+    "en": "\"Mehr\" in the bottom bar now opens a sheet with only what the bar does not already show, such as Automatisierung, the Büroablage and your account.",
+    "de": "„Mehr“ in der unteren Leiste öffnet jetzt ein Sheet mit ausschließlich den Inhalten, die die Leiste nicht bereits anzeigt, etwa Automatisierung, die Büroablage und Ihr Konto."
+  },
+  {
     "en": "A CSV or text file exported from Excel on Windows now shows its €, „ “ and – characters correctly in the preview.",
     "de": "Eine unter Windows aus Excel exportierte CSV- oder Textdatei zeigt in der Vorschau jetzt die Zeichen €, „ “ und den Strich „–“ richtig an."
   },
@@ -1536,6 +1540,10 @@
     "de": "In Dateien können Sie auf dem Smartphone mehrere Dateien auswählen und in einem Schritt verschieben; beim Verschieben einer Datei öffnet sich eine durchsuchbare Ordnerliste."
   },
   {
+    "en": "In Dateien on a phone, the path row stays in view instead of scrolling half under the search, and an unassigned file shows a small marker instead of a cut-off word.",
+    "de": "In Dateien bleibt auf dem Smartphone die Pfadzeile sichtbar, statt halb unter der Suche zu verschwinden, und eine nicht zugewiesene Datei wird mit einer kleinen Markierung statt mit einem abgeschnittenen Wort angezeigt."
+  },
+  {
     "en": "In Safari, opening a citation now marks the quoted passage in the document, as it does in Chrome and Firefox.",
     "de": "Beim Öffnen eines Zitats in Safari wird die zitierte Passage jetzt im Dokument markiert – wie in Chrome und Firefox."
   },
@@ -1690,6 +1698,10 @@
   {
     "en": "On a phone the project list opens as a launcher with recent projects to swipe through, search also finds a project by its address, municipality or client, and the project wizard starts with its first question.",
     "de": "Auf dem Smartphone öffnet sich die Projektliste als Startansicht mit zuletzt verwendeten Projekten zum Durchwischen; die Suche findet Projekte auch über Adresse, Gemeinde oder Auftraggeber, und der Projektassistent beginnt mit seiner ersten Frage."
+  },
+  {
+    "en": "On a phone the top of every project page is calmer: a compact title without the description, so in Dateien the first documents start in the top third of the screen.",
+    "de": "Auf dem Smartphone ist der obere Bereich jeder Projektseite ruhiger: mit einem kompakten Titel ohne Beschreibung, sodass in Dateien die ersten Dokumente im oberen Drittel des Bildschirms angezeigt werden."
   },
   {
     "en": "On a phone, Piloti now has a bar at the bottom of the screen with Frag Piloti, Dateien, Übersicht and Postfach inside a project, and Projekte, Büroablage and Postfach above one. Tapping the project name at the top switches project from a sheet with the most recent projects first, and the magnifier opens search.",

@@ -212,6 +212,18 @@
               "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
             },
             {
+              "en": "On a phone the top of every project page is calmer: a compact title without the description, so in Dateien the first documents start in the top third of the screen.",
+              "de": "Auf dem Smartphone ist der obere Bereich jeder Projektseite ruhiger: mit einem kompakten Titel ohne Beschreibung, sodass in Dateien die ersten Dokumente im oberen Drittel des Bildschirms angezeigt werden."
+            },
+            {
+              "en": "In Dateien on a phone, the path row stays in view instead of scrolling half under the search, and an unassigned file shows a small marker instead of a cut-off word.",
+              "de": "In Dateien bleibt auf dem Smartphone die Pfadzeile sichtbar, statt halb unter der Suche zu verschwinden, und eine nicht zugewiesene Datei wird mit einer kleinen Markierung statt mit einem abgeschnittenen Wort angezeigt."
+            },
+            {
+              "en": "\"Mehr\" in the bottom bar now opens a sheet with only what the bar does not already show, such as Automatisierung, the Büroablage and your account.",
+              "de": "„Mehr“ in der unteren Leiste öffnet jetzt ein Sheet mit ausschließlich den Inhalten, die die Leiste nicht bereits anzeigt, etwa Automatisierung, die Büroablage und Ihr Konto."
+            },
+            {
               "en": "On a phone a drawing now opens full screen, however you reach it, and zooms deep enough to read the 2.5 mm lettering of an A1 plan, with pinch, double tap and sharp lines at every zoom.",
               "de": "Auf dem Smartphone öffnet sich eine Zeichnung jetzt unabhängig davon, wie Sie sie aufrufen, im Vollbild und lässt sich so weit vergrößern, dass die 2,5-mm-Beschriftung eines A1-Plans lesbar ist – mit Pinch-Geste, Doppeltippen und scharfen Linien bei jeder Zoomstufe."
             },
