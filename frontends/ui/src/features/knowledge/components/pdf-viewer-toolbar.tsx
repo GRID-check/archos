@@ -104,7 +104,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
       {/* The rail is a wide-stage affordance: below the width the rail needs,
           the toggle would switch nothing on. */}
       <ToolbarIconButton
-        className={cn('@max-3xl:hidden', !hasRail && 'hidden')}
+        className={cn('@max-3xl:hidden phone:hidden', !hasRail && 'hidden')}
         aria-pressed={railOpen}
         aria-label={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
         title={t(railOpen ? 'viewer.hidePages' : 'viewer.showPages')}
@@ -113,7 +113,7 @@ export const PdfControls: FC<PdfControlsProps> = ({
       >
         <PanelLeft aria-hidden />
       </ToolbarIconButton>
-      <ToolbarDivider className={cn('@max-3xl:hidden', !hasRail && 'hidden')} />
+      <ToolbarDivider className={cn('@max-3xl:hidden phone:hidden', !hasRail && 'hidden')} />
 
       <ToolbarIconButton
         className="@max-sm:hidden"

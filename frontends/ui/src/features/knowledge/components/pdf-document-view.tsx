@@ -1340,7 +1340,10 @@ export const PdfDocumentView: FC<PdfDocumentViewProps> = ({
             currentPage={currentPage}
             defaultAspect={defaultAspect}
             onSelect={goToPage}
-            className="@max-3xl:hidden"
+            // Not on a phone, not even on its side: 150px of an 852px-wide,
+            // 393px-high screen is a column of thumbnails standing where the
+            // drawing should be, and the page field turns the pages.
+            className="@max-3xl:hidden phone:hidden"
           />
         )}
         <div className="relative flex min-h-0 min-w-0 flex-1 flex-col">

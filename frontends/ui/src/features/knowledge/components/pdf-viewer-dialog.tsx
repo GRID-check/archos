@@ -160,7 +160,10 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
             </span>
             {headerActions}
           </DialogTitle>
-          <DialogDescription className="flex items-center gap-3 text-xs">
+          {/* On a phone on its side every line above the document is a line
+              of the document lost, and this one (the source note and the
+              browser's own viewer) is the one the reader needs least there. */}
+          <DialogDescription className="flex items-center gap-3 text-xs phone:landscape:hidden">
             {t('viewer.description')}
             <a
               href={src}
