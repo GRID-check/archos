@@ -58,6 +58,9 @@ export type ServerEvent =
   | 'bim_query_executed'
   | 'budget_blocked'
   | 'budget_threshold_crossed'
+  | 'push_device_registered'
+  | 'push_device_removed'
+  | 'push_notification_sent'
 
 let client: PostHog | null = null
 let resolved = false

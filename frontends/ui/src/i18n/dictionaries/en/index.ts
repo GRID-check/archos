@@ -38,6 +38,7 @@ import { feedbackExport } from './feedback-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
+import { notifications } from './notifications'
 
 export const en = {
   common,
@@ -72,4 +73,5 @@ export const en = {
   uploadBatches,
   references,
   projectIntake,
+  notifications,
 } as const

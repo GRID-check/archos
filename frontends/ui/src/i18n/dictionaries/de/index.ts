@@ -38,6 +38,7 @@ import { feedbackExport } from './feedback-export'
 import { uploadBatches } from './upload-batches'
 import { references } from './references'
 import { projectIntake } from './project-intake'
+import { notifications } from './notifications'
 import type { Dictionary } from '../index'
 
 export const de: Dictionary = {
@@ -73,4 +74,5 @@ export const de: Dictionary = {
   uploadBatches,
   references,
   projectIntake,
+  notifications,
 }
