@@ -1254,7 +1254,10 @@ export function FilePreviewPane({
                     setPreviewFailed(true)
                   }}
                   className={cn(
-                    'bg-background @2xl:max-h-none h-fit max-h-full w-auto max-w-full rounded-lg border object-contain',
+                    'bg-background h-fit max-h-full w-auto max-w-full rounded-lg border object-contain',
+                    // The reader's well is the screen: the image fits it whole,
+                    // on a phone on its side too (852px wide is past `@2xl`).
+                    !reader && '@2xl:max-h-none',
                     peeking ? 'shadow-md' : 'shadow-lg'
                   )}
                 />
