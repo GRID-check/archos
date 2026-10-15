@@ -21,6 +21,54 @@
    `.dark` class on the root element; light is the default (no class). */
 @custom-variant dark (&:is(.dark *));
 
+/* A PHONE ON ITS SIDE IS STILL A PHONE.
+   ─────────────────────────────────────
+   Tailwind's `md` asks one thing, "is the viewport at least 768px wide?", and
+   an iPhone in landscape answers yes: 852 x 393. It then got the desktop shell
+   (the fixed rail, the split panes) in 393px of height, and every
+   `md:opacity-0 md:group-hover:opacity-100` reveal hid its control from a
+   finger that cannot hover. The question `md` is used for is "is there room
+   for the desktop chrome?", and a 393px-tall touch screen has none.
+
+   So `md` (and its complement `max-md`) is redefined here to also require
+   that the screen is not a phone on its side: a coarse pointer, at most 500px
+   tall, narrower than `lg`. Each half of that is load-bearing:
+   - `pointer: coarse` keeps a short DESKTOP window on the desktop layout;
+   - `height <= 31.25rem` (500px) is above every phone's short side (iPhone Pro
+     Max 430, the tallest Android ~480) and below every tablet's (iPad mini 744);
+   - `width < 64rem` keeps a tablet in landscape whose layout viewport shrinks
+     for the keyboard (Android `resizes-content`) from flipping to the phone
+     shell on focus. No phone is 1024px long.
+   `@custom-variant` on an existing name replaces the built-in's body and keeps
+   its sort position (tailwindcss `Variants.set`), so every `md:` in the app
+   follows without a code change, and `lg:`/`xl:` (which no phone reaches) stay
+   Tailwind's own.
+
+   `phone` is the third question: "is this a phone-sized screen?" (below `sm`,
+   or a phone on its side). The Dialog is a bottom sheet under it.
+
+   The same three queries are exported from `src/hooks/use-is-mobile.ts` for the
+   decisions CSS cannot make, and `breakpoints.spec.ts` holds the two copies to
+   one string. Change them together. Which axis answers which question:
+   docs/design/grid-design-language.md, "Breakpoints". */
+@custom-variant md {
+  @media (width >= 48rem) {
+    @media not all and (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+      @slot;
+    }
+  }
+}
+@custom-variant max-md {
+  @media (width < 48rem), (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+    @slot;
+  }
+}
+@custom-variant phone {
+  @media (width < 40rem), (pointer: coarse) and (height <= 31.25rem) and (width < 64rem) {
+    @slot;
+  }
+}
+
 /* Tailwind v4's preflight defaults border color to currentColor (near-black text
    color) instead of v3's gray. Restore the theme hairline as the app-wide default
    so `border`/`divide-*` without an explicit color never render black. */

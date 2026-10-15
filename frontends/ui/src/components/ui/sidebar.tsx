@@ -267,7 +267,12 @@ function Sidebar({
           data-slot="sidebar"
           data-mobile="true"
           className={cn(
-            'w-72 bg-sidebar p-0 text-sidebar-foreground [&>button]:hidden sm:max-w-72',
+            // `p-0` takes over the sheet's padding, and with it the sheet's
+            // safe areas: the drawer's header and footer pad the top and the
+            // bottom themselves (`app-sidebar.tsx`), and the left edge is this
+            // one, where a phone on its side puts the Dynamic Island. The panel
+            // widens by the inset so the rail inside keeps its 18rem.
+            'w-[calc(18rem+env(safe-area-inset-left))] bg-sidebar p-0 pl-[env(safe-area-inset-left)] text-sidebar-foreground [&>button]:hidden sm:max-w-[calc(18rem+env(safe-area-inset-left))]',
             className,
           )}
           side={side}
@@ -724,7 +729,7 @@ function SidebarGroupAction({
       data-sidebar="group-action"
       className={cn(
         'absolute top-3.5 right-3 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
-        'after:absolute after:-inset-2 md:after:hidden',
+        'after:absolute after:-inset-2 pointer-fine:after:hidden',
         'group-data-[collapsible=icon]:hidden',
         className,
       )}
@@ -852,13 +857,15 @@ function SidebarMenuAction({
       data-sidebar="menu-action"
       className={cn(
         'absolute top-1.5 right-1 flex aspect-square w-5 items-center justify-center rounded-md p-0 text-sidebar-foreground outline-none ring-sidebar-ring transition-transform peer-hover/menu-button:text-sidebar-accent-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground focus-visible:ring-2 [&>svg]:size-4 [&>svg]:shrink-0',
-        'after:absolute after:-inset-2 md:after:hidden',
+        'after:absolute after:-inset-2 pointer-fine:after:hidden',
         'peer-data-[size=sm]/menu-button:top-1',
         'peer-data-[size=default]/menu-button:top-1.5',
         'peer-data-[size=lg]/menu-button:top-2.5',
         'group-data-[collapsible=icon]:hidden',
         showOnHover &&
-          'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground data-[state=open]:opacity-100 md:opacity-0',
+          // Hidden at rest only where a hover can reveal it: a touch tablet is
+          // past `md` and has none.
+          'group-focus-within/menu-item:opacity-100 group-hover/menu-item:opacity-100 peer-data-[active=true]/menu-button:text-sidebar-accent-foreground data-[state=open]:opacity-100 md:opacity-0 pointer-coarse:opacity-100',
         className,
       )}
       {...props}
