@@ -31,6 +31,7 @@ All schemas are in `frontends/ui/src/lib/db/schema/` and barrel-exported from `i
 | `citation-events.ts` | `citation_events` |
 | `resource-shares.ts` | `resource_shares` |
 | `inbox.ts` | `inbox_items` |
+| `push-subscriptions.ts` | `push_subscriptions` |
 | `mention-requests.ts` | `mention_requests` |
 | `conversation-reads.ts` | `conversation_reads` |
 | `conversation-restricted-folders.ts` | `conversation_restricted_folders` |
@@ -809,6 +810,28 @@ left alone.
 > **Applying and reversing `0102`:** nothing to resolve before applying — every existing row is a project folder, `organization_id` is backfilled from its project, and the widened index rejects exactly what the old one did. The down migration **refuses while any Archiv folder exists** (the old schema has no place for one, and the backend still carries its path); delete them through the application first, which re-files their documents into the parent and mirrors the path rewrite. `scripts/rls-test-db.sh` applies `0102` to a seeded database, asserts the backfill and every new constraint, then proves the guard and the down path.
 
 ---
+
+## push_subscriptions (migration 0147, ADR-0112)
+
+A browser a person turned inbox notifications on for. One row per browser
+installation; `endpoint` is the push service's address for it and is **unique
+across tenants**, so a device notifies exactly one person in one organization:
+the one who registered it last. Registering first removes another person's or
+organization's row for the endpoint (`claimEndpoint`, a platform-scope DELETE).
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | `uuid` | primary key |
+| `organization_id`, `user_id` | `text` | who the device notifies; the organization is the RLS predicate |
+| `endpoint` | `text` | https URL, at most 2048; unique |
+| `p256dh`, `auth` | `text` | the subscription's encryption key and secret; with the endpoint, all a sender needs |
+| `device_label` | `text` | "Safari auf iPhone", from the user agent |
+| `created_at`, `last_success_at` | `timestamptz` | the last time the push service accepted a message |
+| `failure_count` | `integer` | consecutive failures; the device is dropped at five. A 404 or 410 drops it at once |
+
+Index `idx_push_subscriptions_person (organization_id, user_id)`. Secured by
+`organization_id = grid_current_org()`. A person keeps at most ten devices; the
+oldest go first.
 
 ## upload_batches (migration 0110, ADR-0086)
 

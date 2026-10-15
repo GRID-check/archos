@@ -1,0 +1,14 @@
+---
+features:
+  - >
+    Piloti can now notify you on your phone or computer as soon as something
+    lands in your Postfach, even when Piloti is closed. Turn it on per device
+    under Profil, Benachrichtigungen; on iPhone and iPad, add Piloti to the Home
+    Screen first.
+operators:
+  - >
+    Web Push is off until you set GRID_WEB_PUSH_VAPID_PUBLIC_KEY,
+    GRID_WEB_PUSH_VAPID_PRIVATE_KEY and GRID_WEB_PUSH_SUBJECT for the
+    environment (Pulumi keys webPushVapidPublicKey, webPushVapidPrivateKey and
+    webPushSubject); generate the pair once with npx web-push
+    generate-vapid-keys --json.

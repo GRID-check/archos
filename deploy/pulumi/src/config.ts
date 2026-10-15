@@ -1040,6 +1040,19 @@ export interface GridConfig {
     jobPayloadKek: pulumi.Output<string>;
   };
 
+  /**
+   * Web Push for the inbox (ADR-0112). All three empty = the feature is off.
+   * Generate the pair with `npx web-push generate-vapid-keys --json` and set
+   * `pulumi config set grid-oib:webPushVapidPublicKey`, `--secret
+   * grid-oib:webPushVapidPrivateKey` and `grid-oib:webPushSubject`
+   * (`mailto:` or `https:`). The public key is public by design.
+   */
+  webPush: {
+    publicKey: string;
+    privateKey: pulumi.Output<string>;
+    subject: string;
+  };
+
   skills: {
     /**
      * Floor on how often a job may be scheduled to fire, in minutes. Reaches
@@ -2677,6 +2690,12 @@ export function loadConfig(): GridConfig {
       adminToken: cfg.requireSecret("gridAdminToken"),
       corpusExportToken: cfg.getSecret("gridCorpusExportToken") ?? pulumi.output(""),
       jobPayloadKek: jobPayloadKek ?? pulumi.output(""),
+    },
+
+    webPush: {
+      publicKey: cfg.get("webPushVapidPublicKey") ?? "",
+      privateKey: cfg.getSecret("webPushVapidPrivateKey") ?? pulumi.output(""),
+      subject: cfg.get("webPushSubject") ?? "",
     },
 
     skills: {

@@ -156,6 +156,19 @@ describe("the bff-jobs pool", () => {
     expect(names).toEqual(expect.arrayContaining(["GRID_APP_DATABASE_URL", "GRID_INTERNAL_API_TOKEN"]));
   });
 
+  it("carries the Web Push key pair and contact: this pool is the one that sends (ADR-0112)", async () => {
+    const names = env.map((e) => e.name);
+    expect(names).toEqual(
+      expect.arrayContaining([
+        "GRID_WEB_PUSH_VAPID_PUBLIC_KEY",
+        "GRID_WEB_PUSH_VAPID_PRIVATE_KEY",
+        "GRID_WEB_PUSH_SUBJECT",
+      ]),
+    );
+    const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey?.valueFrom?.secretKeyRef?.key).toBe("GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
+  });
+
   it("names no variable twice, and logs under its own service name", async () => {
     const names = env.map((e) => e.name as string);
 
