@@ -70,6 +70,9 @@ export function QuestionControl({
             value={typeof value === 'string' ? value : ''}
             placeholder={question.placeholder}
             aria-invalid={error ? true : undefined}
+            // Return is „Weiter“ here (the form's submit goes to the next
+            // module), and the key says so.
+            enterKeyHint="next"
             onChange={(e) => onSetAnswer(answerKey, e.target.value)}
             className="max-w-md"
           />
@@ -369,10 +372,13 @@ export function Segmented({
             className={cn(
               'border-border relative isolate inline-flex items-center justify-center transition-colors duration-quick ease-out motion-reduce:transition-none',
               i > 0 && 'border-l',
-              // Comfortable tap targets on touch screens; denser on desktop pointers.
+              // The pointer decides, not the width: a finger gets 44px on a phone
+              // and on a tablet past `md` alike, a cursor gets the dense size on
+              // a narrow desktop window too. (`sm` was 36px on a phone, and a
+              // segment beside a number field is exactly where a thumb lands.)
               size === 'sm'
-                ? 'min-h-9 px-3 text-xs font-medium md:min-h-8 md:px-2.5 md:text-[11px]'
-                : 'min-h-11 px-4 text-sm md:min-h-9 md:px-3.5',
+                ? 'min-h-8 px-2.5 text-[11px] font-medium pointer-coarse:min-h-11 pointer-coarse:px-3.5 pointer-coarse:text-xs'
+                : 'min-h-9 px-3.5 text-sm pointer-coarse:min-h-11 pointer-coarse:px-4',
               !active && 'bg-card text-foreground hover:bg-muted',
               active && tone === 'default' && 'text-primary-foreground',
               active && tone === 'warning' && 'text-white',
@@ -423,7 +429,7 @@ export function ChipMultiSelect({
               onChange(active ? value.filter((v) => v !== opt.value) : [...value, opt.value])
             }
             className={cn(
-              'inline-flex min-h-11 items-center justify-center rounded-full border px-4 py-1.5 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none md:min-h-9 md:px-3.5',
+              'inline-flex min-h-9 items-center justify-center rounded-full border px-3.5 py-1.5 text-sm transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:min-h-11 pointer-coarse:px-4',
               active
                 ? 'border-primary bg-primary text-primary-foreground'
                 : 'border-border bg-card text-foreground hover:border-primary/50 hover:bg-primary/5'
