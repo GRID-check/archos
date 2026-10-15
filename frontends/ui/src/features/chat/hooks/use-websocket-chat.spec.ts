@@ -744,3 +744,124 @@ describe('steering the running turn', () => {
     vi.useRealTimers()
   })
 })
+
+describe('a phone away: locked, offline, or a network that gave up', () => {
+  const TURN = answered[0]!.turn_id
+  const ANSWER_ID = answered[0]!.type === 'RUN_STARTED' ? answered[0]!.message_id : ''
+  /** Up to the card: the answer's first two sentences are on screen, the turn still runs. */
+  const halfway = answered.filter((event) => event.seq <= 15)
+  const answerRow = () => messages().find((message) => message.id === ANSWER_ID)
+  const lastError = () => messages().filter((message) => message.messageType === 'error').at(-1)
+  const notFound = () =>
+    eventOf({ v: 2, type: 'CUSTOM', name: 'rejected', conversation_id: CONVERSATION, turn_id: TURN, seq: 0, ts: 1, value: { of: 'attach', code: 'turn_not_found' } })
+  const serverRow = (id: string, role: 'user' | 'assistant', content: string) => ({
+    id,
+    conversationId: CONVERSATION,
+    role,
+    content,
+    metadata: { messageType: role === 'user' ? 'user' : 'agent_response' },
+    createdAt: '2026-09-25T09:01:00.000Z',
+  })
+  const setVisibility = (state: DocumentVisibilityState) =>
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => state })
+
+  afterEach(() => {
+    setVisibility('visible')
+    client.listMessages.mockResolvedValue([])
+  })
+
+  it('keeps a running turn and its words when the socket gives up on the network, and attaches it again', async () => {
+    openTurn(answered)
+    deliver(halfway)
+    const shown = answerRow()?.content
+    expect(shown).toBeTruthy()
+
+    status('failed')
+    await vi.waitFor(() => expect(lastError()).toMatchObject({ errorData: { errorCode: 'connection.failed' } }))
+
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+    expect(answerRow()?.content).toBe(shown)
+    expect(client.listMessages).not.toHaveBeenCalled()
+    expect(socket().options.openTurns()).toEqual([{ turnId: TURN, lastSeq: 15 }])
+
+    // The socket that opens again attaches it; the rest of the answer folds on.
+    status('open')
+    deliver(answered.filter((event) => event.seq > 15))
+    expect(useChatStore.getState().turns[TURN]?.phase).not.toBe('running')
+    expect(messages().some((message) => message.errorData?.errorCode === 'agent.response_interrupted')).toBe(false)
+  })
+
+  it('keeps the words on screen while the server is asked, and puts the stored answer in their row', async () => {
+    client.listMessages.mockResolvedValue([
+      serverRow(TURN, 'user', 'Wie lang darf der Fluchtweg sein?'),
+      serverRow(ANSWER_ID, 'assistant', 'Die ganze Antwort, wie der Server sie gespeichert hat.'),
+    ])
+    openTurn(answered)
+    deliver(halfway)
+    const at = messages().findIndex((message) => message.id === ANSWER_ID)
+
+    deliver([notFound()])
+    // Not dropped before the server has answered.
+    expect(answerRow()?.content).toBeTruthy()
+
+    await vi.waitFor(() => expect(answerRow()?.content).toBe('Die ganze Antwort, wie der Server sie gespeichert hat.'))
+    expect(messages().findIndex((message) => message.id === ANSWER_ID)).toBe(at)
+    expect(useChatStore.getState().turns[TURN]).toBeUndefined()
+    expect(lastError()).toBeUndefined()
+  })
+
+  it('says the answer is lost only when the server confirms it has none, and keeps what was read, dimmed', async () => {
+    client.listMessages.mockResolvedValue([])
+    openTurn(answered)
+    deliver(halfway)
+    const shown = answerRow()?.content
+
+    deliver([notFound()])
+
+    await vi.waitFor(() => expect(lastError()).toMatchObject({ errorData: { errorCode: 'agent.response_interrupted' } }))
+    expect(answerRow()).toMatchObject({ content: shown, failed: true })
+    expect(answerRow()?.isStreaming).toBeUndefined()
+  })
+
+  it('counts no missed acknowledgement while the page is hidden', () => {
+    vi.useFakeTimers()
+    const { result } = open(conversationOf(CONVERSATION))
+    act(() => void result.current.sendMessage('Frage'))
+
+    setVisibility('hidden')
+    act(() => void vi.advanceTimersByTime(4 * ACK_TIMEOUT_MS))
+
+    expect(socket().reconnect).not.toHaveBeenCalled()
+    expect(useChatStore.getState().isLoading).toBe(true)
+    expect(lastError()).toBeUndefined()
+  })
+
+  it('counts no missed acknowledgement for a deadline that slept through a freeze', () => {
+    vi.useFakeTimers()
+    const { result } = open(conversationOf(CONVERSATION))
+    act(() => void result.current.sendMessage('Frage'))
+
+    vi.setSystemTime(Date.now() + 10 * 60_000)
+    act(() => void vi.advanceTimersByTime(ACK_TIMEOUT_MS))
+
+    expect(socket().reconnect).not.toHaveBeenCalled()
+    // Back for real: the deadline runs again from now, and counts.
+    act(() => void vi.advanceTimersByTime(ACK_TIMEOUT_MS))
+    expect(socket().reconnect).toHaveBeenCalledOnce()
+  })
+
+  it('says once, in the status dock, that the connection is down while offline, until a socket opens', () => {
+    openTurn(answered)
+    deliver(halfway)
+
+    status('offline')
+    status('offline')
+
+    const lostCards = () => messages().filter((message) => message.errorData?.errorCode === 'connection.lost')
+    expect(lostCards()).toHaveLength(1)
+    expect(useChatStore.getState().turns[TURN]?.phase).toBe('running')
+
+    status('open')
+    expect(lostCards()).toHaveLength(0)
+  })
+})

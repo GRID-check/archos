@@ -916,7 +916,8 @@ export const chat = {
     // Compact inline notice on an interrupted turn: a silent reconnect can drop
     // an in-flight answer (protocol-robustness item 4). German copy is the
     // product-facing string; this English fallback is for harnesses/tests.
-    interruptedNotice: 'Connection briefly lost — the answer was dropped. Please resend.',
+    // Only once the server has confirmed it has no answer and the turn no longer runs.
+    interruptedNotice: 'This answer was not finished, and the server has none. Please send the question again.',
     // Transient "checking" state (FIX 3): shown while the reconnect recovery
     // fetch is in flight, so a turn that only LOOKS interrupted does not flash
     // the "lost" copy before we have confirmed the answer is really gone.
@@ -1288,9 +1289,10 @@ export const chat = {
       title: 'Response Failed',
       message: 'The assistant encountered an error generating a response.',
     },
+    // Only once the server has confirmed it has no answer.
     responseInterrupted: {
       title: 'Response Interrupted',
-      message: 'Your previous request was not completed. Please resend your message.',
+      message: 'Piloti did not finish this answer, and the server has none. Please send the question again.',
     },
     noResponse: {
       title: 'No response',

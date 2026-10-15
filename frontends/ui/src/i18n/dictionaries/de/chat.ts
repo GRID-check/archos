@@ -1082,10 +1082,11 @@ export const chat: typeof en.chat = {
       skillSelection: 'Skill-Auswahl',
     },
     interrupted: 'Unterbrochen',
-    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort: eine stille
-    // Wiederverbindung kann eine laufende Antwort verwerfen (Protokoll-
-    // Robustheit, Punkt 4). Statt nur des stummen „Unterbrochen“-Chips.
-    interruptedNotice: 'Verbindung kurz unterbrochen — Antwort ging verloren. Bitte erneut senden.',
+    // Kompakter Inline-Hinweis auf einer unterbrochenen Antwort, statt nur des
+    // stummen „Unterbrochen“-Chips. Erst, wenn der Server bestätigt hat, dass er
+    // keine Antwort hat und der Zug nicht mehr läuft: vorher ist sie nicht
+    // verloren, nur unterwegs. Die Verbindung ist dann nicht die Ursache.
+    interruptedNotice: 'Diese Antwort wurde nicht fertig, und auf dem Server liegt keine. Bitte die Frage erneut senden.',
     // Vorübergehender „Wird geprüft“-Zustand (FIX 3): angezeigt, solange der
     // Wiederherstellungs-Abruf nach einer Wiederverbindung läuft, damit ein
     // Zug, der nur unterbrochen AUSSIEHT, nicht sofort den „verloren“-Hinweis
@@ -1304,10 +1305,11 @@ export const chat: typeof en.chat = {
       title: 'Antwort fehlgeschlagen',
       message: 'Beim Erstellen einer Antwort ist beim Assistenten ein Fehler aufgetreten.',
     },
+    // Erst, wenn der Server bestätigt hat, dass er keine Antwort hat.
     responseInterrupted: {
       title: 'Antwort unterbrochen',
       message:
-        'Ihre vorherige Anfrage wurde nicht abgeschlossen. Bitte senden Sie Ihre Nachricht erneut.',
+        'Piloti hat diese Antwort nicht abgeschlossen, und auf dem Server liegt keine. Bitte senden Sie die Frage erneut.',
     },
     noResponse: {
       title: 'Keine Rückmeldung',

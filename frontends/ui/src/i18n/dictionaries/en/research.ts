@@ -18,8 +18,10 @@ export const research = {
     scrollToLatest: 'Scroll to latest',
     // A quiet line above the composer instead of an error card in the thread:
     // the page reconnects on its own, and the reader has nothing to do.
+    // Offline, a locked phone, or a server out of reach: a running answer is
+    // not lost, it carries on once the connection is back.
     connection: {
-      lost: 'Connection lost · Piloti is reconnecting …',
+      lost: 'Connection lost · Piloti carries on as soon as it is back',
       restored: 'Reconnected',
     },
     status: {
