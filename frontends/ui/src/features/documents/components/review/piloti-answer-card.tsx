@@ -164,7 +164,7 @@ export function PilotiAnswerCard({
         </div>
       ) : (
         <>
-          <div className="max-h-[min(24rem,55vh)] space-y-2.5 overflow-y-auto px-3 py-3">
+          <div className="max-h-[min(24rem,55svh)] space-y-2.5 overflow-y-auto px-3 py-3">
             <p className="text-muted-foreground border-l-foreground/20 border-l-2 pl-2 text-xs leading-5 break-words">
               {ask.question}
             </p>

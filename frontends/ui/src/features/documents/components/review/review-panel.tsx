@@ -142,11 +142,19 @@ export function ReviewPanel({
   review,
   onOpen,
   onWalkProposals,
+  presentation = 'rail',
 }: {
   review: DocumentReview
   onOpen: (annotation: AnnotationView) => void
   /** Start going through Piloti's proposals one by one. */
   onWalkProposals?: () => void
+  /**
+   * `rail`: the column beside the sheet, from `lg`. `sheet`: the same list in
+   * a sheet from the bottom edge, which is how a phone (and a phone on its
+   * side, at 852px still under `lg`) walks the marks; without it the only way
+   * to an item there was to find its pin on the drawing.
+   */
+  presentation?: 'rail' | 'sheet'
 }): JSX.Element {
   const t = useTranslations('files')
   const { counts, listed, filter, setFilter, load, mine, setMine } = review
@@ -158,7 +166,10 @@ export function ReviewPanel({
     <aside
       data-testid="review-panel"
       aria-label={t('annotations.section')}
-      className="bg-background flex h-full w-[22rem] shrink-0 flex-col border-l max-lg:hidden"
+      className={cn(
+        'bg-background flex flex-col',
+        presentation === 'rail' ? 'h-full w-[22rem] shrink-0 border-l max-lg:hidden' : 'min-h-0 flex-1',
+      )}
     >
       <div className="flex items-center gap-2 px-4 pt-4 pb-3">
         <div role="tablist" aria-label={t('review.filter')} className="bg-muted inline-flex rounded-lg p-0.5">
@@ -173,7 +184,7 @@ export function ReviewPanel({
                 data-testid={`review-filter-${option}`}
                 onClick={() => setFilter(option)}
                 className={cn(
-                  'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors duration-quick ease-out',
+                  'inline-flex h-7 items-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors duration-quick ease-out pointer-coarse:h-10',
                   filter === option ? 'bg-card text-foreground shadow-xs' : 'text-muted-foreground hover:text-foreground'
                 )}
               >
@@ -189,7 +200,7 @@ export function ReviewPanel({
           data-testid="review-filter-mine"
           onClick={() => setMine(!mine)}
           className={cn(
-            'ml-auto inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium transition-colors duration-quick ease-out',
+            'ml-auto inline-flex h-7 items-center rounded-full border px-2.5 text-xs font-medium transition-colors duration-quick ease-out pointer-coarse:h-11 pointer-coarse:px-3.5',
             mine ? 'bg-foreground text-background border-transparent' : 'text-muted-foreground hover:text-foreground'
           )}
         >
