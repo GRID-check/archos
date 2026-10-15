@@ -854,8 +854,8 @@ export function BaseKnowledge(): JSX.Element {
                         </TableHead>
                       ) : null}
                       {sortableHead('document', t('knowledgeAdmin.colDocument'))}
-                      {sortableHead('class', t('knowledgeAdmin.colType'))}
-                      {sortableHead('state', t('knowledgeAdmin.colState'))}
+                      {sortableHead('class', t('knowledgeAdmin.colType'), 'max-sm:hidden')}
+                      {sortableHead('state', t('knowledgeAdmin.colState'), 'max-sm:hidden')}
                       {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right max-sm:hidden')}
                     </TableRow>
                   </TableHeader>
@@ -907,12 +907,19 @@ export function BaseKnowledge(): JSX.Element {
                                   {file.fileName}
                                 </span>
                               ) : null}
+                              {/* The Dokumentart and Status columns are hidden on a
+                                  phone; their chips ride under the title instead, so
+                                  the title has the card's width. */}
+                              <span className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
+                                <DocClassChip docClass={file.docClass} />
+                                <KnowledgeStateBadge state={file.state} />
+                              </span>
                             </button>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <DocClassChip docClass={file.docClass} />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <KnowledgeStateBadge state={file.state} hint="tooltip" />
                           </TableCell>
                           <TableCell className="text-muted-foreground text-right text-sm tabular-nums max-sm:hidden">
