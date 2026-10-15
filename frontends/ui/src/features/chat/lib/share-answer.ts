@@ -51,7 +51,7 @@ export function answerShareUrl(
 export async function shareAnswer(
   payload: AnswerSharePayload,
   copy: (text: string) => Promise<void>,
-  nav: Pick<Navigator, 'share'> | undefined = typeof navigator === 'undefined' ? undefined : navigator,
+  nav: Partial<Pick<Navigator, 'share'>> | undefined = typeof navigator === 'undefined' ? undefined : navigator,
 ): Promise<AnswerShareOutcome> {
   if (nav && canShareNatively(nav)) {
     try {

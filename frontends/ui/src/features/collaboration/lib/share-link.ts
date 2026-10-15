@@ -33,8 +33,8 @@ export function conversationLink(
 
 /** Whether this browser can hand a link to the operating system's share sheet. */
 export function canShareNatively(
-  nav: Pick<Navigator, 'share'> | undefined = typeof navigator === 'undefined' ? undefined : navigator,
-): boolean {
+  nav: Partial<Pick<Navigator, 'share'>> | undefined = typeof navigator === 'undefined' ? undefined : navigator,
+): nav is Pick<Navigator, 'share'> {
   return typeof nav?.share === 'function'
 }
 

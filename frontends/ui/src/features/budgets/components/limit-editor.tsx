@@ -152,7 +152,7 @@ export const LimitEditor: FC<{
       <DialogContent
         className="sm:max-w-sm"
         closeLabel={tCommon('actions.close')}
-        aria-describedby={subjectLabel ? undefined : null}
+        {...(subjectLabel ? {} : { 'aria-describedby': undefined })}
       >
         <DialogHeader>
           <DialogTitle>{t('budgets.setLimit')}</DialogTitle>
