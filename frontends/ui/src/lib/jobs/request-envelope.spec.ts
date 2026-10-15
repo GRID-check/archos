@@ -61,6 +61,14 @@ describe('signJobRequestContext', () => {
     expect(envelope.conversationId).toBe('conv-1')
   })
 
+  it('signs who the caller is, by name, for the agent to address them', () => {
+    const named = { ...session, name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' }
+    const headers = signJobRequestContext(named, scope, {}, NOW)
+    const payload = JSON.parse(Buffer.from(headers[GRID_HEADER_NAMES.REQUEST_CONTEXT], 'base64url').toString('utf8'))
+
+    expect(payload.requester).toEqual({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
+  })
+
   it('signs no project for a caller who reads it only because it is closed', () => {
     const envelope = signed({ ...scope, projectReadOnly: true })
     expect(envelope.projectId).toBeNull()

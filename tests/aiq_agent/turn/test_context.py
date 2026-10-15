@@ -22,7 +22,7 @@ from aiq_agent.turn.context import load_turn_context
 from aiq_agent.turn.context import settle_restriction
 from aiq_agent.turn.context import thread_id_for_turn
 from aiq_agent.turn.context import turn_identity
-from aiq_agent.turn.context import user_info_from_principal
+from aiq_agent.turn.context import user_info_for
 from aiq_agent.turn.context_client import ContextBlocks
 from aiq_agent.turn.context_client import TurnContextError
 
@@ -254,9 +254,10 @@ class TestTurnIdentity:
         first, second = thread_id_for_turn(None), thread_id_for_turn("")
         assert first and second and first != second
 
-    def test_user_info_is_none_when_anonymous(self, monkeypatch):
+    def test_user_info_is_none_when_nobody_is_named(self, monkeypatch):
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: None)
-        assert user_info_from_principal() is None
+        assert user_info_for(None) is None
+        assert user_info_for(GridRequestContext()) is None
 
     def test_user_info_carries_name_email_and_office(self, monkeypatch):
         class Principal:
@@ -265,7 +266,7 @@ class TestTurnIdentity:
             organization_name = "Atelier Nord"
 
         monkeypatch.setattr(context_mod, "get_current_principal", lambda: Principal())
-        assert user_info_from_principal() == {"name": "Anna", "email": "anna@example.com", "office": "Atelier Nord"}
+        assert user_info_for(None) == {"name": "Anna", "email": "anna@example.com", "office": "Atelier Nord"}
 
 
 class TestBffTurnContext:

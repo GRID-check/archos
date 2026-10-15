@@ -951,6 +951,25 @@ def _inject_worker_headers(context_state: Any, headers: dict[str, str]) -> None:
     context_state.metadata.set(request_attrs)
 
 
+def _run_user_info(user_info: dict | None, envelope_headers: dict[str, str] | None) -> dict | None:
+    """Who the run is for, by name: the submitted ``user_info``, else the run's signed envelope.
+
+    A run submitted from a chat carries the chat turn's ``user_info``. A
+    scheduled fire carries none, nobody being signed in, but its envelope does:
+    the BFF signs the requester into it at submit and at every renewal
+    (``requester``, ADR-0108). Read through the same verification and the same
+    rule as a chat turn (``turn.context.user_info_for``); an envelope that does
+    not verify names nobody.
+    """
+    if user_info is not None or not envelope_headers:
+        return user_info
+    from aiq_agent.project_context import GridRequestContext
+    from aiq_agent.turn.context import user_info_for
+
+    request = GridRequestContext.from_headers(envelope_headers, secret=os.environ.get("GRID_INTERNAL_API_TOKEN"))
+    return user_info_for(request)
+
+
 def _workflow_reflection_llm_ref(config: Any) -> str | None:
     """The chat workflow's ``memory_reflection_llm`` ref, as a plain str, or None.
 
@@ -1406,6 +1425,7 @@ async def run_agent_job(
             )
             if _envelope_headers:
                 _inject_worker_headers(context_state, _envelope_headers)
+            user_info = _run_user_info(user_info, _envelope_headers)
 
             # WHAT the project already knows. The chat path fetches a live digest
             # per turn and falls back to the connection-time one only on failure

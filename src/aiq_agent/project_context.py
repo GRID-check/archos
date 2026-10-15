@@ -321,6 +321,26 @@ def _normalize_raw_id(value: str | None) -> str | None:
     return value or None
 
 
+#: A name, an address or an office is one line of a few words; it reaches the
+#: system prompt verbatim, so anything longer, or spread over lines, is cut.
+REQUESTER_FIELD_MAX_CHARS = 120
+
+
+def _one_line(value: Any) -> str | None:
+    if not isinstance(value, str):
+        return None
+    line = " ".join(value.split())[:REQUESTER_FIELD_MAX_CHARS].strip()
+    return line or None
+
+
+def _as_requester(value: Any) -> dict[str, str | None] | None:
+    """The envelope's ``requester``, each field one bounded line; None when it names nobody."""
+    if not isinstance(value, dict):
+        return None
+    requester = {field: _one_line(value.get(field)) for field in ("name", "email", "organizationName")}
+    return requester if any(requester.values()) else None
+
+
 def _as_str_list(value: Any) -> list[str] | None:
     if isinstance(value, list) and all(isinstance(item, str) for item in value):
         return value
@@ -454,6 +474,12 @@ class GridRequestContext:
     #: Growing prompt blocks are fetched per turn from the BFF when this
     #: signed, envelope-only marker is present. Legacy producers omit it.
     context_transport: Literal["bff"] | None = None
+    #: Who ``user_id`` is, by name (envelope-only): ``name``, ``email`` and
+    #: ``organizationName``, each a bounded single line or None. The BFF signs it
+    #: from the session the envelope is minted for, live or pinned, so it reaches
+    #: the turns no access token does (a scheduled run, a woken thread). None
+    #: when the envelope names nobody. Read by ``turn.context.user_info_for``.
+    requester: dict[str, str | None] | None = None
 
     @classmethod
     def from_context(cls) -> "GridRequestContext":
@@ -575,6 +601,7 @@ class GridRequestContext:
             envelope_header=header_value,
             envelope_signature=sig,
             context_transport="bff" if payload.get("contextTransport") == "bff" else None,
+            requester=_as_requester(payload.get("requester")),
         )
 
     @classmethod

@@ -319,7 +319,9 @@ nobody. The current gap in both environments, and what it costs users, is in
   unknown name renders as an empty string, which the agent reads as no name.
   WorkOS has no public API for the template, so `provision:workos-env` cannot
   check it: it lists it as a manual step. A turn with no signed-in person (a
-  scheduled task, a woken thread reply) has no token and so no name from here.
+  scheduled task, a woken thread reply) has no token; it is named from the
+  signed request-context envelope's `requester` instead, which the BFF resolves
+  from WorkOS for the pinned session (`lib/auth/person.ts`).
 - **Sign-up: decided posture is INVITE-ONLY EVERYTHING** (platform owner
   decision, 2026-07-08). Two switches, one per layer:
   1. **WorkOS-native**: AuthKit → Authentication → *Allow sign-ups* **OFF**.

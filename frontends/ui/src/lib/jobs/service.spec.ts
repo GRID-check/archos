@@ -50,9 +50,13 @@ vi.mock('@/lib/collection-scope', () => ({
   computeCollectionScope: vi.fn(),
 }))
 
-vi.mock('@/lib/request-context', () => ({
+vi.mock('@/lib/request-context', async (importActual) => ({
+  ...(await importActual<typeof import('@/lib/request-context')>()),
   buildGridRequestContextWireHeaders: vi.fn(() => ({})),
   encodeGridBudgetHeader: vi.fn(() => 'budget-header'),
+}))
+vi.mock('@/lib/auth/person', () => ({
+  resolvePerson: vi.fn(async () => ({ name: null, email: null, organizationName: null })),
 }))
 
 vi.mock('@/lib/workos/feature-flags', () => ({

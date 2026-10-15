@@ -120,22 +120,38 @@ def _claim(value: str | None) -> str | None:
     return line or None
 
 
-def user_info_from_principal() -> dict[str, Any] | None:
-    """The authenticated caller as the prompts' ``user_info``, or None when anonymous.
+def user_info_for(request: GridRequestContext | None) -> dict[str, Any] | None:
+    """Who is asking, as the prompts' ``user_info``: name, email and office, or None for nobody.
 
-    Name, email and office come from the access token. WorkOS puts them there
-    through the environment's JWT template (``name``, ``email``,
-    ``organization_name``; docs/deployment/workos-provisioning.md): the default
-    claims carry none of them.
+    Two carriers, one per kind of caller, and each field from the first that
+    has it:
+
+    1. The verified access token, while someone is signed in. WorkOS puts the
+       name, email and office there through the environment's JWT template
+       (``name``, ``email``, ``organization_name``;
+       docs/deployment/workos-provisioning.md). It also covers a caller with no
+       BFF in front of it, such as a WorkOS Connect client.
+    2. The signed request-context envelope's ``requester``, which every turn the
+       BFF starts carries, including the ones nobody is signed in for: a
+       scheduled run, a woken thread. The BFF fills it from the session it
+       mints the envelope for, live or pinned (``requesterOf``,
+       ``resolvePerson``), and re-reads it at every mint and renewal.
     """
     principal = get_current_principal()
-    if principal is None:
+    requester = (request.requester if request is not None else None) or {}
+    token = (
+        (_claim(principal.name), _claim(principal.email), _claim(principal.organization_name))
+        if principal is not None
+        else (None, None, None)
+    )
+    name, email, office = (
+        token[0] or requester.get("name"),
+        token[1] or requester.get("email"),
+        token[2] or requester.get("organizationName"),
+    )
+    if principal is None and not (name or email or office):
         return None
-    return {
-        "name": _claim(principal.name),
-        "email": _claim(principal.email),
-        "office": _claim(principal.organization_name),
-    }
+    return {"name": name, "email": email, "office": office}
 
 
 def signed_restricted_collections(request: GridRequestContext) -> list[str]:

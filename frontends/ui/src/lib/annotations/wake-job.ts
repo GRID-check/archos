@@ -43,7 +43,6 @@ import type { Document } from '@/lib/db/schema'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import type { JobAttempt, JobSliceResult, PilotiWakePayload } from '@/lib/jobs-queue/types'
 import { publishToDocumentRoom } from '@/lib/realtime/document-channel'
-import { loadOrganizationDirectory } from '@/lib/sharing/directory'
 import { chatSocketUrl, runHeadlessTurn, type HeadlessUserMessage } from '@/lib/turns/headless-turn'
 import { resolveTurnContext, TurnBudgetExhaustedError } from '@/lib/turns/turn-context'
 import { turnContextHeaders } from '@/lib/turns/turn-headers.js'
@@ -304,8 +303,8 @@ export async function runPilotiWake(
   const text = questionOf(payload, mark)?.trim()
   if (!text) return end('suppressed', 'the reply is gone')
 
-  const directory = await loadOrganizationDirectory(organizationId).catch(() => new Map<string, { name: string }>())
-  const authorName = directory.get(session.userId)?.name ?? null
+  // The pinned session knows the person by name (`resolvePerson`), as a live one does.
+  const authorName = session.name
   let conversationId: string
   try {
     conversationId = await ensureDocumentThread(session, doc)

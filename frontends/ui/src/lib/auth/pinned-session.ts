@@ -16,6 +16,10 @@
  * refuses rather than files. No access token: nothing on the filing path
  * forwards one, and a session that carried a fabricated one would be a
  * credential this module has no business minting.
+ *
+ * The person by name too (`resolvePerson`): a live session has the name from
+ * AuthKit, and a pinned one that left it null sent every unattended turn to the
+ * agent as nobody in particular.
  */
 
 import 'server-only'
@@ -23,6 +27,7 @@ import type { AuthorizedSession } from '@/lib/auth/types'
 import { resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { permissionsForOrgRole } from '@/lib/authz/permissions'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
+import { resolvePerson } from './person'
 
 export interface PinnedRequester {
   userId: string
@@ -56,12 +61,16 @@ export async function resolvePinnedRequesterSession(
   // nothing here today; the caller refuses rather than guesses a role.
   if (!membership || !membership.role) return null
 
-  const featureFlags = await enabledFlagsForOrganization(requester.organizationId)
+  const [featureFlags, person] = await Promise.all([
+    enabledFlagsForOrganization(requester.organizationId),
+    resolvePerson(requester.organizationId, requester.userId),
+  ])
 
   return {
     userId: requester.userId,
-    email: requester.email ?? '',
-    name: null,
+    email: requester.email ?? person.email ?? '',
+    name: person.name,
+    organizationName: person.organizationName,
     accessToken: '',
     organizationId: requester.organizationId,
     organizationMembershipId: membership.organizationMembershipId,

@@ -106,6 +106,7 @@ export async function getGridSession(): Promise<GridSession | null> {
     permissions: auth.permissions ?? [],
     featureFlags: auth.featureFlags ?? null,
     profilePictureUrl: auth.user.profilePictureUrl ?? null,
+    organizationName: typeof claims.organization_name === 'string' ? claims.organization_name : null,
   }
 
   // Publish the tenant to the database layer (ADR-0041). This is the one place

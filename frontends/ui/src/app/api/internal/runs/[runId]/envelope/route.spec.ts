@@ -74,6 +74,7 @@ const runContext: RunContext = {
   projectMemory: null,
   memoryReflectionEnabled: true,
   orgInstructions: 'Antworte knapp.',
+  requester: { name: 'Anna Weber', email: 'r@grid.test', organizationName: 'Atelier Nord' },
 }
 
 const session: AuthorizedSession = {
@@ -148,6 +149,9 @@ describe('POST /api/internal/runs/[runId]/envelope', () => {
       bundesland: 'wien',
       memoryReflectionEnabled: true,
       orgInstructions: 'Antworte knapp.',
+      // Who the run acts as, by name, read afresh at every renewal: nobody is
+      // signed in, so no token can say it.
+      requester: { name: 'Anna Weber', email: 'r@grid.test', organizationName: 'Atelier Nord' },
     })
     // Inside the window for its whole six hours, and not one millisecond more.
     const end = envelope.issuedAt + GRID_REQUEST_CONTEXT_MAX_AGE_MS
