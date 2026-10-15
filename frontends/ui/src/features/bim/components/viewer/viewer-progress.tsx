@@ -57,7 +57,10 @@ export function ViewerProgress({
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-3',
+        // `z-10`, BELOW the dock, the sheets and the rail (all `z-20`). At `z-30` the veil
+        // drew over a sheet opened during the download: "Modell wird geladen…" and its
+        // bar printed across the selection's header.
+        'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3',
         'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
         className
       )}

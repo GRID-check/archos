@@ -63,4 +63,12 @@ describe('ViewerProgress', () => {
     render(<ViewerProgress label="baut auf" percent={null} />)
     expect(screen.queryByRole('button')).not.toBeInTheDocument()
   })
+
+  it('sits below the dock and the sheets, so it can never print over one', () => {
+    // At z-30 the veil drew "Modell wird geladen…" across a sheet opened while
+    // the file was still arriving. Dock, sheets and rail are z-20.
+    const { container } = render(<ViewerProgress label="lädt" percent={10} />)
+    expect(container.firstElementChild?.className).toMatch(/\bz-10\b/)
+    expect(container.firstElementChild?.className).not.toMatch(/\bz-30\b/)
+  })
 })

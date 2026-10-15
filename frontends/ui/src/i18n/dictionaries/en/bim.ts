@@ -470,6 +470,8 @@ export const bim = {
     keyboardHint:
       'Arrow keys orbit, Shift with an arrow pans, plus and minus zoom, F fits the model. While measuring, Enter places a point and Escape cancels. Every element is also listed as text under Details.',
     xray: 'See through',
+    // The same answer without the name in front, for the row that already carries "See through".
+    xrayHint: 'Select an element or open a highlighted answer first',
     xrayNeedsTarget: 'See through — select an element or open a highlighted answer first',
     view: {
       iso: 'Free',

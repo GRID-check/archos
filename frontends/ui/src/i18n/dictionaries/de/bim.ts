@@ -407,6 +407,8 @@ export const bim: typeof en.bim = {
     keyboardHint:
       'Pfeiltasten drehen, Umschalt mit Pfeiltaste verschiebt, Plus und Minus zoomen, F passt das Modell ein. Beim Messen setzt Eingabe einen Punkt, Esc bricht ab. Alle Bauteile stehen zusätzlich als Liste unter „Details“.',
     xray: 'Durchsichtig',
+    // Dieselbe Auskunft ohne den Namen davor, für die Zeile, die „Durchsichtig“ schon trägt.
+    xrayHint: 'Zuerst ein Bauteil auswählen oder eine markierte Antwort öffnen',
     xrayNeedsTarget: 'Durchsichtig — zuerst ein Bauteil auswählen oder eine markierte Antwort öffnen',
     view: {
       iso: 'Frei',

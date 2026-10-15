@@ -32,7 +32,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { I18nProvider } from '@/i18n'
 import { ModelInspector } from '@/features/bim/components/model-inspector'
+import { PhoneMoreRows, PhoneTools } from '@/features/bim/components/stage-phone-chrome'
 import type { BimElementDetail } from '@/features/bim/hooks/use-bim-model'
+import type { BimCameraView } from '@/features/bim/lib/viewer-camera'
 import {
   ViewerDock,
   ViewerDockSeparator,
@@ -44,7 +46,9 @@ import {
   ViewerRail,
   ViewerRailItem,
   ViewerRailSection,
+  ViewerSheet,
   ViewerSlider,
+  type ViewerSheetSnap,
 } from '@/features/bim/components/viewer'
 
 /** The model's vertical extent, as the loaded fixture reports it. */
@@ -66,6 +70,14 @@ const SELECTED_WALL: BimElementDetail = {
   classifications: [],
   properties: {},
   quantities: { Qto_WallBaseQuantities: { NetSideArea: 18.44, Width: 0.38 } },
+}
+
+/** The wall as the phone sheet shows it: a 22-character id that used to be clipped. */
+const PHONE_WALL: BimElementDetail = {
+  ...SELECTED_WALL,
+  globalId: '1kTvXnbbzCWw8lcMd1dR4o',
+  name: 'Außenwand Nord — Stahlbeton mit WDVS',
+  typeName: 'AW 38 Stahlbeton mit Wärmedämmverbundsystem',
 }
 
 function Stage({
@@ -115,7 +127,7 @@ export default function BimViewportDevPage(): JSX.Element {
       </div>
 
       <Stage
-        title="The stage"
+        title="The stage (desktop arrangement)"
         description="Rail on the left, dock at the bottom, nothing in the middle. Interactive."
       >
         {railOpen && (
@@ -303,6 +315,202 @@ export default function BimViewportDevPage(): JSX.Element {
       <Stage title="Building geometry" description="No number, because there is no honest one.">
         <ViewerProgress label="Gebäude wird aufgebaut…" percent={null} />
       </Stage>
+
+      <section className="space-y-2">
+        <div>
+          <h2 className="text-sm font-semibold">Phone — portrait</h2>
+          <p className="text-muted-foreground text-xs">
+            The same stage on a 393 px phone: six labelled tools that fit, and the selection as a
+            sheet with a peek size, so the building stays above it. Tap the sheet header to open it;
+            Mehr and Geschoße each put their own sheet in the same seat. Interactive.
+          </p>
+        </div>
+        <I18nProvider initialLocale="de" fixedLocale>
+          <PhonePortraitDemo />
+        </I18nProvider>
+      </section>
+
+      <section className="space-y-2">
+        <div>
+          <h2 className="text-sm font-semibold">Phone — landscape</h2>
+          <p className="text-muted-foreground text-xs">
+            852 × 393, drawn at 46 %. The tools become a column on the left edge, the selection a
+            narrow panel on the right, and the building keeps the middle.
+          </p>
+        </div>
+        <div className="h-[181px] w-[393px] max-w-full overflow-hidden rounded-2xl border">
+          <div className="h-[393px] w-[852px] origin-top-left scale-[0.461]">
+            <I18nProvider initialLocale="de" fixedLocale>
+              <PhoneLandscapeDemo />
+            </I18nProvider>
+          </div>
+        </div>
+      </section>
     </main>
+  )
+}
+
+/** Fixed stand-ins for the stage's own state: the preview pins the chrome, not the logic. */
+function usePhoneToolState() {
+  const [sheet, setSheet] = useState<'levels' | 'more' | null>(null)
+  const [cameraView, setCameraView] = useState<BimCameraView>('iso')
+  const [section, setSection] = useState(false)
+  const [measuring, setMeasuring] = useState(false)
+  return { sheet, setSheet, cameraView, setCameraView, section, setSection, measuring, setMeasuring }
+}
+
+function PhoneMoreDemo(): JSX.Element {
+  return (
+    <PhoneMoreRows
+      ready
+      canUndo
+      onUndo={() => {}}
+      onCapture={() => {}}
+      captureFailed={false}
+      xray={false}
+      xrayHint="Zuerst ein Bauteil auswählen"
+      xrayDisabled={false}
+      onToggleXray={() => {}}
+      edited
+      onShowEverything={() => {}}
+      advancedDisabled={false}
+      onOpenAdvanced={() => {}}
+    />
+  )
+}
+
+function PhoneLevelsDemo(): JSX.Element {
+  return (
+    <>
+      <ViewerRailSection label="Geschoße">
+        <ViewerRailItem label="Alle Geschoße" selected />
+        <ViewerRailItem label="Dachgeschoss" meta="+6,25 m" ariaLabel="Dachgeschoss" />
+        <ViewerRailItem label="Erdgeschoss" meta="±0,00 m" ariaLabel="Erdgeschoss" />
+        <ViewerRailItem label="Keller" meta="−2,80 m" ariaLabel="Keller" />
+      </ViewerRailSection>
+    </>
+  )
+}
+
+function PhonePortraitDemo(): JSX.Element {
+  const state = usePhoneToolState()
+  const [snap, setSnap] = useState<ViewerSheetSnap>('peek')
+  const [selected, setSelected] = useState(true)
+  const [cut, setCut] = useState<number | null>(null)
+
+  const sheet =
+    state.sheet === 'more' ? (
+      <ViewerSheet title="Weitere Werkzeuge" closeLabel="Schließen" onClose={() => state.setSheet(null)} bodyClassName="p-0">
+        <PhoneMoreDemo />
+      </ViewerSheet>
+    ) : state.sheet === 'levels' ? (
+      <ViewerSheet title="Geschoße" closeLabel="Schließen" onClose={() => state.setSheet(null)} bodyClassName="p-0">
+        <PhoneLevelsDemo />
+      </ViewerSheet>
+    ) : selected ? (
+      <ModelInspector
+        element={PHONE_WALL}
+        isLoading={false}
+        error={null}
+        projectId="p-preview"
+        modelFilename="Haus-A_v3.ifc"
+        onClose={() => setSelected(false)}
+        onHide={() => {}}
+        onIsolate={() => {}}
+        sheet={{
+          placement: 'bottom',
+          collapse: {
+            snap,
+            onSnapChange: setSnap,
+            expandLabel: 'Details einblenden',
+            collapseLabel: 'Details ausblenden',
+          },
+        }}
+      />
+    ) : null
+
+  return (
+    <div
+      data-testid="bim-phone-portrait"
+      className="bg-muted/30 relative mx-auto h-[44rem] w-full max-w-[393px] overflow-hidden rounded-3xl border"
+    >
+      <ViewerDock
+        layout="bar"
+        sheet={sheet}
+        above={
+          cut !== null ? (
+            <ViewerSlider
+              label="Schnitthöhe"
+              min={CUT_RANGE.minMetres}
+              max={CUT_RANGE.maxMetres}
+              value={cut}
+              display={`${cut.toFixed(2)} m`}
+              onChange={setCut}
+            />
+          ) : null
+        }
+      >
+        <PhoneTools
+          placement="bar"
+          ready
+          onFit={() => {}}
+          cameraView={state.cameraView}
+          orthographic={false}
+          onViewChange={state.setCameraView}
+          onOrthographicChange={() => {}}
+          sectionOn={cut !== null}
+          onToggleSection={() => setCut((current) => (current === null ? 1 : null))}
+          measuring={state.measuring}
+          onToggleMeasure={() => state.setMeasuring((on) => !on)}
+          hasLevels
+          sheet={state.sheet}
+          onToggleSheet={(next) => state.setSheet((current) => (current === next ? null : next))}
+          edited
+        />
+      </ViewerDock>
+    </div>
+  )
+}
+
+function PhoneLandscapeDemo(): JSX.Element {
+  const state = usePhoneToolState()
+  return (
+    <div className="bg-muted/30 relative size-full overflow-hidden pt-0">
+      <ViewerDock layout="side">
+        <PhoneTools
+          placement="side"
+          ready
+          onFit={() => {}}
+          cameraView={state.cameraView}
+          orthographic={false}
+          onViewChange={state.setCameraView}
+          onOrthographicChange={() => {}}
+          sectionOn={false}
+          onToggleSection={() => {}}
+          measuring={false}
+          onToggleMeasure={() => {}}
+          hasLevels
+          sheet={state.sheet}
+          onToggleSheet={() => {}}
+          edited={false}
+        />
+      </ViewerDock>
+      <div className="absolute top-3 right-3 bottom-3 z-20 flex">
+        <ModelInspector
+          element={PHONE_WALL}
+          isLoading={false}
+          error={null}
+          projectId="p-preview"
+          modelFilename="Haus-A_v3.ifc"
+          onClose={() => {}}
+          onHide={() => {}}
+          onIsolate={() => {}}
+          sheet={{
+            placement: 'side',
+            collapse: { snap: 'full', onSnapChange: () => {}, expandLabel: '', collapseLabel: '' },
+          }}
+        />
+      </div>
+    </div>
   )
 }
