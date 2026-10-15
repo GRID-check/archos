@@ -33,7 +33,7 @@ import { refreshedFileFields } from '../lib/file-item'
 import { STATUS_FIELDS } from '../lib/document-status-reads'
 import type { FileItem } from './project-file-workspace'
 import {
-  FILE_PEEK_WIDTH_DEFAULT,
+  defaultPeekWidth,
   FILE_PEEK_WIDTH_MAX,
   FILE_PEEK_WIDTH_MIN,
   useFilePreviewStore,
@@ -630,8 +630,9 @@ function FilePreviewSplit({
           disableDoubleClick
           onDoubleClick={() => {
             filePanelRef.current?.expand()
-            filePanelRef.current?.resize(FILE_PEEK_WIDTH_DEFAULT)
-            setPeekWidth(FILE_PEEK_WIDTH_DEFAULT)
+            const width = defaultPeekWidth()
+            filePanelRef.current?.resize(width)
+            setPeekWidth(width)
           }}
         />
       ) : null}

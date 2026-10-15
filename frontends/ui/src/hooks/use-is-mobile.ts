@@ -14,8 +14,9 @@ import { useSyncExternalStore } from 'react'
  * width and 393px of height, and is still a phone) is written once, there.
  */
 
-/** A phone held sideways: a finger, at most 500px tall, narrower than `lg`. */
-export const PHONE_ON_ITS_SIDE_QUERY = '(pointer: coarse) and (height <= 31.25rem) and (width < 64rem)'
+import { PHONE_ON_ITS_SIDE_QUERY } from './phone-on-its-side'
+
+export { PHONE_ON_ITS_SIDE_QUERY }
 
 /** The phone shell: below `md`, or a phone on its side. `md:` is its complement. */
 export const MOBILE_LAYOUT_QUERY = `(width < 48rem), ${PHONE_ON_ITS_SIDE_QUERY}`
