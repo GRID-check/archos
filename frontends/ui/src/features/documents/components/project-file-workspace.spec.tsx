@@ -82,9 +82,18 @@ vi.mock('sonner', () => ({
 }))
 
 // Force the mobile presentation so the preview renders as a full-screen dialog.
-vi.mock('@/hooks/use-is-mobile', () => ({
+// The rest of the module (the breakpoint queries) stays real.
+vi.mock('@/hooks/use-is-mobile', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/hooks/use-is-mobile')>()),
   useIsMobile: () => true,
 }))
+
+/**
+ * Whether the page is drawn for a phone (`usePhoneLayout`, `useMoveInSheet`).
+ * Off for every test but the phone ones: the desk's header is the default.
+ */
+const media = vi.hoisted(() => ({ phone: false }))
+vi.mock('@/hooks/use-media-query', () => ({ useMediaQuery: () => media.phone }))
 
 vi.mock('@/features/bim/components/ifc-file-preview', () => ({
   IfcFilePreview: () => <div data-testid="ifc-file-preview" />,
@@ -2506,5 +2515,166 @@ describe('ProjectFileWorkspace — Fassungen', () => {
     expect(useFilePreviewStore.getState().file?.fassung?.supersedes).toEqual([
       { id: 'doc-old', filename: 'Tragwerk_Altstand.pdf' },
     ])
+  })
+})
+
+/**
+ * THE PHONE (iPhone, one hand, on site).
+ *
+ * Four rows of controls stood between the title and the first document, and
+ * Hochladen sat at the top of the screen, out of the thumb's reach. These pin
+ * the arrangement that replaced them, and the selection that makes moving five
+ * photos one gesture.
+ */
+describe('ProjectFileWorkspace — on a phone', () => {
+  const photo = (id: string, filename: string): DocumentWireRow => ({
+    id,
+    filename,
+    displayName: null,
+    fileSize: 4_000_000,
+    contentType: 'image/jpeg',
+    status: 'ready',
+    folderId: null,
+    createdAt: '2026-06-14T09:00:00.000Z',
+    errorMessage: null,
+    summary: null,
+    pageCount: null,
+    chunkCount: null,
+    contentTypes: null,
+    tags: null,
+    assignees: [],
+    authoredBy: 'user' as const,
+  })
+  const photos = [photo('p1', 'IMG_0001.jpg'), photo('p2', 'IMG_0002.jpg'), photo('p3', 'IMG_0003.jpg')]
+  const folders = [{ id: 'f-site', name: 'Baustelle', parentId: null, path: '/Baustelle' }]
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    searchParams = new URLSearchParams()
+    resetPreviewStore()
+    media.phone = true
+    // The view is remembered per browser; one test turns it.
+    window.localStorage.clear()
+    server.use(http.get('/api/projects/:projectId/folders', () => HttpResponse.json({ folders })))
+  })
+  afterEach(() => {
+    media.phone = false
+    window.localStorage.clear()
+  })
+
+  const phoneWorkspace = (props: Partial<Parameters<typeof ProjectFileWorkspace>[0]> = {}) => (
+    <ProjectFileWorkspace
+      projectId="proj-1"
+      projectName="Test"
+      collectionName="test-coll"
+      initialFiles={photos}
+      initialFolders={folders}
+      {...props}
+    />
+  )
+
+  it('draws one row of controls: search and filter, the rest behind ⋯', () => {
+    renderWorkspace(phoneWorkspace())
+    const controls = screen.getByTestId('files-controls')
+    expect(within(controls).getByRole('textbox', { name: /search/i })).toBeInTheDocument()
+    expect(within(controls).getByTestId('file-filter-menu-trigger')).toBeInTheDocument()
+    expect(within(controls).getByTestId('files-more')).toBeInTheDocument()
+    // The view choice moved into the ⋯, and the upload out of the header.
+    expect(screen.queryByRole('radiogroup', { name: 'View' })).toBeNull()
+    expect(within(controls).queryByTestId('project-upload-input')).toBeNull()
+  })
+
+  it('puts the one upload control at the foot of the screen, under the thumb', () => {
+    renderWorkspace(phoneWorkspace())
+    const fab = screen.getByTestId('files-upload-fab')
+    expect(within(fab).getByTestId('project-upload-input')).toBeInTheDocument()
+    // One input for the header's job, not a copy of it.
+    expect(screen.getAllByTestId('project-upload-input')).toHaveLength(1)
+  })
+
+  it('offers the upload nowhere to a reader who may only read', () => {
+    renderWorkspace(phoneWorkspace({ initialRootAccess: 'read' }))
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+  })
+
+  it('keeps the desk’s row where there is room', () => {
+    media.phone = false
+    renderWorkspace(phoneWorkspace())
+    expect(screen.getByRole('radiogroup', { name: 'View' })).toBeInTheDocument()
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+    expect(screen.queryByTestId('files-more')).toBeNull()
+  })
+
+  it('moves the Outlook import behind ⋯ instead of a second header button', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace({ mailImportEnabled: true, initialRootAccess: 'write' }))
+    expect(screen.queryByTestId('mail-import-trigger')).toBeNull()
+    await user.click(screen.getByTestId('files-more'))
+    expect(await screen.findByTestId('mail-import-trigger')).toBeInTheDocument()
+  })
+
+  it('turns the view with the ⋯ menu', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(screen.getByTestId('files-more'))
+    await user.click(await screen.findByTestId('files-view-list'))
+    expect(await screen.findByTestId('file-list-view')).toBeInTheDocument()
+  })
+
+  it('files several photos into a folder in one gesture, with one message', async () => {
+    const user = userEvent.setup()
+    const patched: Array<{ id: string; folderId: unknown }> = []
+    server.use(
+      http.patch('/api/documents/:id/folder', async ({ request, params }) => {
+        patched.push({ id: String(params.id), folderId: ((await request.json()) as { folderId: unknown }).folderId })
+        return HttpResponse.json({ ok: true })
+      })
+    )
+    renderWorkspace(phoneWorkspace())
+
+    // In through „Auswählen" on the row, then pick two more.
+    await user.click(await screen.findByTestId('selection-start'))
+    expect(screen.getByTestId('selection-bar')).toBeInTheDocument()
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('0 selected')
+    const cards = screen.getAllByTestId('file-card')
+    await user.click(cards[0]!)
+    await user.click(cards[1]!)
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('2 selected')
+    // Picking opens no preview.
+    expect(useFilePreviewStore.getState().file).toBeNull()
+    // The upload steps aside for the bar.
+    expect(screen.queryByTestId('files-upload-fab')).toBeNull()
+
+    await user.click(screen.getByTestId('selection-move'))
+    await user.click(await screen.findByTestId('folder-picker-f-site'))
+
+    await waitFor(() => expect(patched).toHaveLength(2))
+    expect(patched.every((call) => call.folderId === 'f-site')).toBe(true)
+    expect(toastSuccess).toHaveBeenCalledTimes(1)
+    // The mode ends with the move.
+    await waitFor(() => expect(screen.queryByTestId('selection-bar')).toBeNull())
+  })
+
+  it('selects every document of the level with „Alle"', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(await screen.findByTestId('selection-start'))
+    await user.click(screen.getByTestId('selection-all'))
+    expect(screen.getByTestId('selection-count')).toHaveTextContent('3 selected')
+  })
+
+  it('ends the selection with „Fertig" and opens files again', async () => {
+    const user = userEvent.setup()
+    renderWorkspace(phoneWorkspace())
+    await user.click(await screen.findByTestId('selection-start'))
+    await user.click(screen.getByTestId('selection-done'))
+    expect(screen.queryByTestId('selection-bar')).toBeNull()
+    await user.click(screen.getAllByTestId('file-card')[0]!)
+    await waitFor(() => expect(useFilePreviewStore.getState().file?.id).toBeDefined())
+  })
+
+  it('offers no selection where the reader may only read', () => {
+    renderWorkspace(phoneWorkspace({ initialRootAccess: 'read' }))
+    expect(screen.queryByTestId('selection-start')).toBeNull()
   })
 })

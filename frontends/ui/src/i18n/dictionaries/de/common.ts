@@ -58,6 +58,7 @@ export const common: typeof en.common = {
     taskOpen: 'offen',
     scrollTable: 'Tabelle, seitlich scrollbar',
     scrollDiagram: 'Diagramm, seitlich scrollbar',
+    outlineOpen: 'Abschnitte öffnen',
     valueBar: '{value}, Grenzwert {limit}, {verdict}',
     limitKept: 'erfüllt',
     limitMissed: 'nicht erfüllt',

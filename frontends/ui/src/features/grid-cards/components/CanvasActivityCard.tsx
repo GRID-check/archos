@@ -118,6 +118,7 @@ import {
   type MarkState,
 } from '../lib/canvas-activity'
 import { matchChanges, standsAsChanged } from '../lib/canvas-changes'
+import { ClampedText } from './ClampedText'
 import { ProposalShell } from './ProposalShell'
 import { StackedLabel } from '@/components/ui/stacked-label'
 
@@ -761,9 +762,7 @@ function SetRow({
             showState && <MarkStateLabel state={state} who={decision ? null : who} />
           )}
         </p>
-        <p className="card-body text-foreground line-clamp-2" title={item.body}>
-          {item.body}
-        </p>
+        <ClampedText className="card-body text-foreground">{item.body}</ClampedText>
         <ThreadGlance mark={current} />
         {error && (
           <p className="card-caption text-destructive" role="alert">
@@ -835,7 +834,7 @@ function ThreadGlance({ mark }: { mark: LiveMark | 'gone' | undefined }): JSX.El
       : (last.authorName ?? t('cards.canvasActivity.thread.someone'))
     : null
   return (
-    <p className="card-caption text-muted-foreground line-clamp-1" data-testid="canvas-activity-thread">
+    <p className="card-caption text-muted-foreground" data-testid="canvas-activity-thread">
       {t('cards.canvasActivity.thread.count', { count: mark.replyCount })}
       {last && name && ` · ${t('cards.canvasActivity.thread.last', { name, excerpt: firstWords(last.body) })}`}
     </p>
@@ -1014,9 +1013,7 @@ function ChangedRow({
             </span>
           )}
         </p>
-        <p className="card-body text-foreground line-clamp-2" title={item.note}>
-          „{item.note}“
-        </p>
+        <ClampedText className="card-body text-foreground">{`„${item.note}“`}</ClampedText>
         <ThreadGlance mark={current} />
         {error && (
           <p className="card-caption text-destructive" role="alert">
@@ -1078,9 +1075,9 @@ function DeletedRow({
           <ForPerson change={change} />
           {undone && <UndoneLabel who={change?.undoneByName ?? null} />}
         </p>
-        <p className={cn('card-body line-clamp-2', undone ? 'text-foreground' : 'text-muted-foreground line-through')} title={item.body}>
+        <ClampedText className={cn('card-body', undone ? 'text-foreground' : 'text-muted-foreground line-through')}>
           {item.body}
-        </p>
+        </ClampedText>
         <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
         {change?.canUndo && !undone && (
           <div className="pt-1">
@@ -1120,12 +1117,9 @@ function RepliedRow({
           <ForPerson change={change} />
           {undone && <UndoneLabel who={change?.undoneByName ?? null} />}
         </p>
-        <p
-          className={cn('card-body line-clamp-2', undone ? 'text-muted-foreground line-through' : 'text-foreground')}
-          title={item.excerpt}
-        >
-          „{item.excerpt}“
-        </p>
+        <ClampedText className={cn('card-body', undone ? 'text-muted-foreground line-through' : 'text-foreground')}>
+          {`„${item.excerpt}“`}
+        </ClampedText>
         <ThreadGlance mark={live.lookup(item.annotation_id)} />
         <UndoMessages notice={serverUndo.notice} error={serverUndo.error} />
         <div className="flex flex-wrap items-center gap-2 pt-1">

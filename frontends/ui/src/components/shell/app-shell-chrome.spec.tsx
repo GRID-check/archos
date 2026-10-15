@@ -19,6 +19,18 @@ vi.mock('./org-header', () => ({
 vi.mock('@/features/onboarding/components/product-tour', () => ({
   ProductTour: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
+vi.mock('./phone-tab-bar', () => ({
+  PhoneTabBar: ({ projectId }: { projectId: string | null }) => (
+    <nav data-testid="tab-bar" data-project-id={projectId ?? 'org'} />
+  ),
+}))
+vi.mock('./project-switcher-sheet', () => ({
+  ProjectSwitcherSheet: () => <div data-testid="switcher-sheet" />,
+}))
+let keyboardUp = false
+vi.mock('./use-keyboard-up', () => ({
+  useKeyboardUp: () => keyboardUp,
+}))
 
 const baseProps = {
   projects: [],
@@ -36,6 +48,7 @@ const baseProps = {
 
 afterEach(() => {
   pathname = '/app/projects/p1/chat'
+  keyboardUp = false
 })
 
 describe('AppShellChrome — which chrome stands', () => {
@@ -100,5 +113,63 @@ describe('AppShellChrome — height', () => {
     const { container } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
     const frame = container.querySelector('.overflow-hidden')
     expect(frame?.className).toContain('h-[var(--visual-viewport-height,100dvh)]')
+  })
+})
+
+describe('AppShellChrome — the phone tab bar', () => {
+  test('stands after the page in both scopes, carrying the scope it is in', () => {
+    const { container, unmount } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    const bar = screen.getByTestId('tab-bar')
+    expect(bar).toHaveAttribute('data-project-id', 'p1')
+    // In flow, after the page: the scroll container ends where the bar begins,
+    // so nothing scrolls under it and no page reserves its height.
+    const frame = container.querySelector('[data-tab-bar]')!
+    expect(Array.from(frame.children).indexOf(bar)).toBeGreaterThan(0)
+    expect(screen.getByTestId('switcher-sheet')).toBeInTheDocument()
+    unmount()
+
+    pathname = '/app/projects'
+    render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    expect(screen.getByTestId('tab-bar')).toHaveAttribute('data-project-id', 'org')
+    // No project, nothing to switch between.
+    expect(screen.queryByTestId('switcher-sheet')).toBeNull()
+  })
+
+  test('stands down while the keyboard is up, and zeroes the inset a composer pads for', () => {
+    keyboardUp = true
+    const { container } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    expect(screen.queryByTestId('tab-bar')).toBeNull()
+    const frame = container.querySelector('[data-tab-bar]')!
+    expect(frame).toHaveAttribute('data-tab-bar', 'hidden')
+    expect(frame).toHaveAttribute('data-keyboard', 'up')
+    expect(frame.className).toContain('data-[keyboard=up]:[--shell-inset-bottom:0px]')
+  })
+
+  test('the chat route on a phone always has a way to the navigation: the bar returns when the keyboard goes', () => {
+    // The chat toolbar has no menu button of its own on a phone; the bar's
+    // "Mehr" is the door to the drawer there. Composing may take the bar away
+    // for as long as the keyboard covers it, and not one frame longer.
+    pathname = '/app/projects/p1/chat'
+    keyboardUp = true
+    const { rerender } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    expect(screen.queryByTestId('tab-bar')).toBeNull()
+
+    keyboardUp = false
+    rerender(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    expect(screen.getByTestId('tab-bar')).toHaveAttribute('data-project-id', 'p1')
+  })
+
+  test('stands down on the intake wizard, which has its own footer', () => {
+    pathname = '/app/projects/p1/intake'
+    render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    expect(screen.queryByTestId('tab-bar')).toBeNull()
+  })
+
+  test('while it stands, the page below is told the bar clears the home indicator', () => {
+    const { container } = render(<AppShellChrome {...baseProps}>page</AppShellChrome>)
+    const frame = container.querySelector('[data-tab-bar]')!
+    expect(frame).toHaveAttribute('data-tab-bar', 'shown')
+    expect(frame.className).toContain('[--shell-inset-bottom:env(safe-area-inset-bottom)]')
+    expect(frame.className).toContain('max-md:data-[tab-bar=shown]:[--shell-inset-bottom:0px]')
   })
 })

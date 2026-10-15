@@ -169,6 +169,27 @@ describe('the palette is the product’s, not mermaid’s', () => {
     expect(document.documentElement.classList.contains('dark')).toBe(false)
   })
 
+  it('gives the xychart its whole theme, because a partial one replaces the derived colours', () => {
+    // Mermaid re-applies the overrides after deriving its own, so an `xyChart`
+    // with only a palette turned the dark card's chart white with black ink.
+    stubCanvas()
+    stubTokens()
+    for (const [theme, tokens] of [
+      ['light', LIGHT],
+      ['dark', DARK],
+    ] as const) {
+      const chart = diagramThemeVariables(theme)?.xyChart
+      expect(chart).toMatchObject({
+        backgroundColor: tokens['--card'],
+        titleColor: tokens['--foreground'],
+        xAxisLabelColor: tokens['--foreground'],
+        yAxisLineColor: tokens['--foreground'],
+      })
+      // And a first series that is not mermaid's cream.
+      expect(typeof chart === 'object' && chart.plotColorPalette).not.toMatch(/FFF4DD/i)
+    }
+  })
+
   it('sets the diagram’s type on the body ramp rather than mermaid’s 16px', () => {
     stubCanvas()
     stubTokens()

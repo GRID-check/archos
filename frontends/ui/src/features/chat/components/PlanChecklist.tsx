@@ -198,7 +198,11 @@ export const PlanChecklist: FC<{
                   type="button"
                   onClick={() => remove(index)}
                   aria-label={t('agentPrompt.plan.removePoint', { point: section })}
-                  className="rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2"
+                  // A 14px glyph is the drawn control; under a finger the button
+                  // is the 44px square the list row gives it room for. The rows
+                  // sit a line apart, so it GROWS (the Touch rule) rather than
+                  // overhanging into the row below.
+                  className="rounded-xs text-muted-foreground hover:text-foreground focus-visible:ring-ring/60 inline-flex shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 pointer-coarse:size-11"
                 >
                   <X className="size-3.5" aria-hidden />
                 </button>
@@ -222,7 +226,7 @@ export const PlanChecklist: FC<{
               }}
               placeholder={t('agentPrompt.plan.addPlaceholder')}
               aria-label={t('agentPrompt.plan.addPoint')}
-              className="h-8 flex-1 px-2"
+              className="h-8 flex-1 px-2 pointer-coarse:h-11"
             />
             <Button
               type="button"
@@ -293,7 +297,7 @@ export const PlanChecklist: FC<{
                 type="button"
                 size="sm"
                 variant="outline"
-                className="h-7 gap-1 px-2 text-xs"
+                className="h-7 gap-1 px-2 text-xs pointer-coarse:h-11 pointer-coarse:px-3"
                 onClick={() => setPicking(true)}
                 data-testid="plan-unterlagen-pick"
               >
@@ -329,7 +333,7 @@ export const PlanChecklist: FC<{
             ))}
           </div>
           {!disabled && (
-            <span className="text-muted-foreground text-[11px]">
+            <span className="text-muted-foreground text-xs">
               {t('agentPrompt.plan.rahmenNote')}
             </span>
           )}
@@ -351,17 +355,26 @@ const NamedRow: FC<{
 }> = ({ label, names, labelOf, disabled, variant, removeLabel, onRemove, testId }) => {
   if (names.length === 0) return null
   return (
-    <div className="flex flex-wrap items-center gap-1.5" data-testid={testId}>
-      <span className="text-muted-foreground text-[11px]">{label}</span>
+    <div className="flex flex-wrap items-center gap-1.5 pointer-coarse:gap-2" data-testid={testId}>
+      <span className="text-muted-foreground text-xs">{label}</span>
       {names.map((name) => (
-        <Chip key={name} size="sm" variant={variant} title={name}>
+        // Under a finger the chip is as tall as the remove button inside it
+        // (44px), and the button is the chip's own right-hand end: chips wrap a
+        // few pixels apart, so the control grows rather than overhanging.
+        <Chip
+          key={name}
+          size="sm"
+          variant={variant}
+          title={name}
+          className={cn(!disabled && 'pointer-coarse:h-11 pointer-coarse:pr-0 pointer-coarse:pl-3')}
+        >
           {labelOf(name)}
           {!disabled && (
             <button
               type="button"
               onClick={() => onRemove(name)}
               aria-label={removeLabel(labelOf(name))}
-              className="rounded-xs ml-0.5 opacity-70 hover:opacity-100 focus-visible:outline-none"
+              className="rounded-xs ml-0.5 inline-flex items-center justify-center opacity-70 hover:opacity-100 focus-visible:outline-none pointer-coarse:ml-0 pointer-coarse:size-11"
             >
               <X className="size-3" aria-hidden />
             </button>
@@ -390,7 +403,7 @@ function ChoiceRow<T extends string>({
   return (
     <div className="flex flex-col gap-1.5">
       <span className="text-muted-foreground text-xs font-medium">{label}</span>
-      <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label={label}>
+      <div className="flex flex-wrap gap-1.5 pointer-coarse:gap-2" role="radiogroup" aria-label={label}>
         {options.map((option) => {
           const selected = option === value
           return (
@@ -402,7 +415,9 @@ function ChoiceRow<T extends string>({
               disabled={disabled}
               onClick={() => onPick(option)}
               className={cn(
-                'focus-visible:ring-ring/60 rounded-md focus-visible:outline-none focus-visible:ring-2',
+                // The chip inside is the drawn control (24px); the button is its
+                // 44px box under a finger, the chips a row apart in a wrapping row.
+                'focus-visible:ring-ring/60 inline-flex items-center rounded-md focus-visible:outline-none focus-visible:ring-2 pointer-coarse:min-h-11',
                 disabled && 'cursor-default'
               )}
             >

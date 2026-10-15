@@ -351,13 +351,27 @@ export const chat = {
     untitledSource: 'Untitled source',
     downloadDocx: 'Download as Word document',
     downloadFailed: 'The Word document could not be created.',
+    // The system share sheet on a phone: the button's name and the shared message's title.
+    share: 'Share answer',
+    shareTitle: 'Answer from Piloti',
+  },
+  // The section list of a long answer (a report): on a phone, the way to a
+  // section without scrolling back to the top.
+  outline: {
+    label: 'Sections',
+    count: '{count, plural, one {# section} other {# sections}}',
+    close: 'Close',
+    title: 'Sections',
+    description: 'Jump to a section of this answer.',
   },
   // Thread-header breadcrumb (project / session title) with inline rename.
   // The citation peek: what a Fundstelle IS, before you open it.
   citationPeek: {
     wholeDocument: 'Whole document',
     openAtPage: 'Open at this passage',
-    notOpenable: 'Cannot be opened in Piloti',
+    notOpenable: 'No file for this source is available in Piloti.',
+    sheetTitle: 'Source {number}',
+    sheetDescription: 'The cited passage and the way into the document.',
     noInlineViewer:
       'This file format cannot be shown inside Piloti. Download the document and open it in your own application.',
     download: 'Download document',
@@ -444,6 +458,11 @@ export const chat = {
       tipp: 'Tip',
       more: 'More on this',
       less: 'Less',
+    },
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Show more',
+      less: 'Show less',
     },
     calculation: {
       eyebrow: 'Derivation',
@@ -911,7 +930,8 @@ export const chat = {
     // Compact inline notice on an interrupted turn: a silent reconnect can drop
     // an in-flight answer (protocol-robustness item 4). German copy is the
     // product-facing string; this English fallback is for harnesses/tests.
-    interruptedNotice: 'Connection briefly lost — the answer was dropped. Please resend.',
+    // Only once the server has confirmed it has no answer and the turn no longer runs.
+    interruptedNotice: 'This answer was not finished, and the server has none. Please send the question again.',
     // Transient "checking" state (FIX 3): shown while the reconnect recovery
     // fetch is in flight, so a turn that only LOOKS interrupted does not flash
     // the "lost" copy before we have confirmed the answer is really gone.
@@ -1283,9 +1303,10 @@ export const chat = {
       title: 'Response Failed',
       message: 'The assistant encountered an error generating a response.',
     },
+    // Only once the server has confirmed it has no answer.
     responseInterrupted: {
       title: 'Response Interrupted',
-      message: 'Your previous request was not completed. Please resend your message.',
+      message: 'Piloti did not finish this answer, and the server has none. Please send the question again.',
     },
     noResponse: {
       title: 'No response',

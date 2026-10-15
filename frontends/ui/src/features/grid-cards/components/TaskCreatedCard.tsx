@@ -46,6 +46,7 @@ import { SectionLabel } from '@/components/ui/section-label'
 import { useLocale, useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { CARD_SHELL } from './card-chrome'
+import { ClampedText } from './ClampedText'
 
 /** The four delegatable kinds, as the dictionary names them. */
 const KIND_LABEL = {
@@ -90,13 +91,11 @@ export const TaskCreatedCard: FC<TaskCreatedCardProps> = ({
       <SectionLabel icon={ClipboardCheck}>{t('cards.taskCreated.eyebrow')}</SectionLabel>
 
       <div className="flex min-w-0 flex-col">
-        <p className="card-title truncate text-foreground" title={title}>
-          {title}
-        </p>
+        <ClampedText className="card-title text-foreground">{title}</ClampedText>
         {/* The requester's own sentence, under the title the engine gave it.
             Two lines rather than one because the title is what the task LIST
             will call it and the goal is what the person actually said. */}
-        <p className="card-caption text-muted-foreground" title={goal}>
+        <p className="card-caption text-muted-foreground">
           {goal}
         </p>
       </div>

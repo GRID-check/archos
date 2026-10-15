@@ -6,13 +6,15 @@ import type { PageSize } from '../types'
  * everywhere else, so nothing claims to be 1:1 that is not.
  *
  * The buttons walk this ladder; Ctrl + wheel and a pinch move freely between
- * its ends. 8x, because a plotted A1 sheet fitted to a laptop pane needs it
- * before a dimension string is readable.
+ * its ends. 16x, because a plotted A1 sheet fitted to a 393px phone is about
+ * 0.43 CSS px per millimetre: 8x, enough on a laptop, leaves its 2.5 mm
+ * lettering at 8.6 px there, and 16x at 17. Past the canvas budget the page
+ * is drawn soft and the part on screen sharp (`page-canvas.tsx`).
  */
-export const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8] as const
+export const ZOOM_STEPS = [0.5, 0.75, 1, 1.5, 2, 3, 4, 6, 8, 12, 16] as const
 export const FIT_ZOOM = 1
 export const MIN_ZOOM = ZOOM_STEPS[0]
-export const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 8
+export const MAX_ZOOM = ZOOM_STEPS[ZOOM_STEPS.length - 1] ?? 16
 
 /** `zoom` held to the ladder's ends; garbage is the fit. */
 export function clampZoom(zoom: number): number {

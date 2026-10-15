@@ -369,7 +369,7 @@ describe('an inline citation marker', () => {
       const peek = await screen.findByRole('dialog')
 
       expect(
-        await within(peek).findByText('Cannot be opened in Piloti', {}, { timeout: 5000 })
+        await within(peek).findByText('No file for this source is available in Piloti.', {}, { timeout: 5000 })
       ).toBeInTheDocument()
       expect(peek.querySelector('[data-citation-open]')).toBeNull()
     })

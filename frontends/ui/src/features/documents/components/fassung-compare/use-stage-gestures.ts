@@ -101,6 +101,9 @@ export function useStageGestures(
           ratio: next / drawn,
         }
       }
+      // Set here, not only after the re-render: a pinch fires faster than
+      // React renders, and the next step's anchor ratio must build on this one.
+      zoomRef.current = next
       onZoomRef.current(next)
     }
 

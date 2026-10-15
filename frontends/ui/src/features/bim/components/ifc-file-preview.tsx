@@ -229,6 +229,10 @@ export function IfcFilePreview({
     <div className={cn('flex min-h-0 flex-col gap-2', className)}>
       <IfcModelViewer
         sourceUrl={source.data}
+        // A fresh URL, not the same one again: an interrupted download is the
+        // commonest failure on a phone, and a presigned URL that expired during
+        // it fails identically however often it is asked.
+        onRetry={source.reload}
         // One shared empty array: `?? []` inline mints a new one every render,
         // which changes the canvas's props identity for a value that did not
         // change. The stage has said so in a comment since it was written;

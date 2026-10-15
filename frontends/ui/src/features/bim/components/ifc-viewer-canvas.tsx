@@ -95,6 +95,8 @@ import {
 import {
   boundsCentre,
   downloadWithProgress,
+  dragSlopFor,
+  isDoubleTap,
   keyboardCameraStep,
   pointerDragged,
   rendererPreset,
@@ -214,6 +216,8 @@ export interface IfcViewerStatus {
   percent: number | null
   meshCount: number
   message?: string
+  /** While downloading: bytes in, and the declared total (0 when none). */
+  bytes?: { loaded: number; total: number }
 }
 
 /**
@@ -319,14 +323,6 @@ type SceneLike = Pick<
  */
 const HOVER_BUDGET_MS = 24
 
-/**
- * How far a pointer may travel between press and release and still be a click.
- *
- * Manhattan distance in CSS pixels, measured from the ORIGIN of the press.
- * Two pixels is the usual allowance for a hand that is not perfectly still on
- * a button.
- */
-const DRAG_SLOP_PX = 2
 
 /** Pixels of orbit per arrow-key press. One press should be visible, not violent. */
 const KEY_ORBIT_PX = 24
@@ -680,8 +676,8 @@ export function IfcViewerCanvas({
         // Same bytes and the same total time, but the progress the user sees is
         // now the download's real position instead of an indeterminate spinner
         // that sits still for a minute on a 149 MB file and reads as a hang.
-        const downloaded = await downloadWithProgress(response, (percent) => {
-          if (!cancelled) report({ phase: 'downloading', percent, meshCount: 0 })
+        const downloaded = await downloadWithProgress(response, (percent, bytes) => {
+          if (!cancelled) report({ phase: 'downloading', percent, meshCount: 0, bytes })
         })
         if (cancelled) return
         // A `.ifczip` that reached the browser as a container renders as
@@ -920,7 +916,13 @@ export function IfcViewerCanvas({
     originY: number
     button: number
     moved: boolean
+    /** `mouse`, `touch` or `pen` — decides how far a press may wander. */
+    pointerType: string
   } | null>(null)
+  /** The last tap that selected, for recognising a double-tap on touch. */
+  const lastTapRef = useRef<{ at: number; x: number; y: number } | null>(null)
+  /** When a touch double-tap last framed something, so `dblclick` can stand down. */
+  const touchFramedAtRef = useRef(0)
   /**
    * Every pointer currently down, by id — the whole of touch support.
    *
@@ -986,6 +988,7 @@ export function IfcViewerCanvas({
           originY: survivor.y,
           button: 0,
           moved: true,
+          pointerType: 'touch',
         }
       }
     }
@@ -1012,6 +1015,7 @@ export function IfcViewerCanvas({
       originY: event.clientY,
       button: event.button,
       moved: false,
+      pointerType: event.pointerType || 'mouse',
     }
   }
 
@@ -1485,17 +1489,31 @@ export function IfcViewerCanvas({
     const dy = event.clientY - drag.y
     // From where the press LANDED, not from the previous event — see
     // `pointerDragged` for why the two are not equivalent.
+    const wasMoved = drag.moved
     if (
       pointerDragged(
         { x: drag.originX, y: drag.originY },
         { x: event.clientX, y: event.clientY },
-        DRAG_SLOP_PX
+        dragSlopFor(drag.pointerType)
       )
     ) {
       drag.moved = true
     }
+    /*
+      A finger's wobble must not turn the building.
+
+      The slop is wide for touch (see `dragSlopFor`), and a wide slop that only
+      decides "was this a click" is half a fix: the camera would still orbit by
+      the wobble, and a tap on a wall would nudge the very view it selected in.
+      So inside the slop a touch holds the camera still, and on the event that
+      crosses it the gesture is picked up from where the finger now is — the
+      few pixels it took to cross are spent on deciding, not on moving.
+      A mouse keeps its immediate response; its slop is two pixels.
+    */
+    if (drag.pointerType !== 'mouse' && !drag.moved) return
     drag.x = event.clientX
     drag.y = event.clientY
+    if (drag.pointerType !== 'mouse' && !wasMoved) return
     // Right or middle button pans, and so does shift-drag; anything else
     // orbits. Right-drag was missing, which is the pan every architect reaches
     // for first — and without a `contextmenu` handler it opened the browser
@@ -1562,6 +1580,19 @@ export function IfcViewerCanvas({
       return
     }
 
+    // The second tap of a pair frames what is under the finger — the touch
+    // route to what `dblclick` does with a mouse.
+    if (drag.pointerType !== 'mouse') {
+      const tap = { at: performance.now(), x: event.clientX, y: event.clientY }
+      const doubled = isDoubleTap(lastTapRef.current, tap)
+      lastTapRef.current = doubled ? null : tap
+      if (doubled) {
+        touchFramedAtRef.current = tap.at
+        await frameAt(event.clientX, event.clientY)
+        return
+      }
+    }
+
     try {
       onSelectRef.current?.(await pickAt(event.clientX, event.clientY))
     } catch {
@@ -1570,12 +1601,13 @@ export function IfcViewerCanvas({
   }
 
   /**
-   * Double-click frames what is under the cursor.
+   * Frame what is under a point; the whole model when there is nothing there.
    *
    * The one navigation gesture every 3D tool shares, and the fastest way out
    * of "I zoomed into the middle of a slab and cannot find my way back".
+   * Reached by `dblclick` with a mouse and by a recognised double-tap on touch.
    */
-  const handleDoubleClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
+  const frameAt = async (clientX: number, clientY: number) => {
     const renderer = rendererRef.current
     if (!renderer || !ready) return
     // Two measurement points in quick succession are also a double-click. Not
@@ -1583,7 +1615,7 @@ export function IfcViewerCanvas({
     // on, at exactly the moment the reader is reading the number.
     if (measuringRef.current) return
     try {
-      const element = await pickAt(event.clientX, event.clientY)
+      const element = await pickAt(clientX, clientY)
       if (!element) {
         fitModel()
         return
@@ -1603,6 +1635,14 @@ export function IfcViewerCanvas({
       // A pick that failed is a double-click that did nothing, which is a
       // better outcome than a camera that moved somewhere unexplained.
     }
+  }
+
+  const handleDoubleClick = async (event: React.MouseEvent<HTMLCanvasElement>) => {
+    // A touch double-tap already framed, and iOS may ALSO synthesise a
+    // `dblclick` for the same pair. Framing twice flies the camera to the same
+    // box twice, which reads as a stutter at the end of the move.
+    if (performance.now() - touchFramedAtRef.current < 600) return
+    await frameAt(event.clientX, event.clientY)
   }
 
   /**

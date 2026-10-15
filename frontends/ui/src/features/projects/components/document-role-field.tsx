@@ -19,7 +19,7 @@
  */
 
 import { useCallback, useMemo, useRef, useState } from 'react'
-import { CheckCircle2, FileText, Loader2, Paperclip, Upload, X } from 'lucide-react'
+import { Camera, CheckCircle2, FileText, Loader2, Paperclip, Upload, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { v4 as uuidv4 } from 'uuid'
 import { Button } from '@/components/ui/button'
@@ -76,10 +76,12 @@ export function DocumentRoleField({
 }: DocumentRoleFieldProps) {
   const definition = documentRoleDefinition(role)
   const tFiles = useTranslations('files')
+  const tProjects = useTranslations('projects')
   const { bindings, documents, refresh } = useDocumentRoles(projectId)
   const [busy, setBusy] = useState(false)
   const [dragging, setDragging] = useState(false)
   const inputRef = useRef<HTMLInputElement>(null)
+  const cameraRef = useRef<HTMLInputElement>(null)
 
   const mine = useMemo(
     () =>
@@ -327,7 +329,7 @@ export function DocumentRoleField({
       <div className="flex flex-wrap items-center gap-2">
         {selectable.length > 0 && (
           <Select disabled={busy} value="" onValueChange={(value) => run(bind(value))}>
-            <SelectTrigger className="h-9 max-w-xs">
+            <SelectTrigger className="h-9 max-w-xs pointer-coarse:h-11">
               <SelectValue
                 placeholder={full ? 'Anderes Dokument wählen …' : 'Vorhandenes Dokument wählen …'}
               />
@@ -369,8 +371,41 @@ export function DocumentRoleField({
           )}
           Datei hochladen
         </Button>
+
+        {/* On site the document is often the wall in front of you: a photo, taken
+            now. A file input with `capture` opens the camera directly on a phone
+            instead of the photo library; a desktop has no use for it, so it is
+            there on a touch pointer only. The photo is a document like any other
+            upload and goes the same way (name screen, batch, binding). */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          className="sr-only"
+          tabIndex={-1}
+          aria-hidden
+          onChange={(event) => {
+            if (event.target.files) upload(event.target.files)
+            event.target.value = ''
+          }}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          disabled={busy}
+          className="pointer-fine:hidden"
+          onClick={() => cameraRef.current?.click()}
+        >
+          <Camera className="size-4" aria-hidden />
+          {tProjects('intake.documentRole.takePhoto')}
+        </Button>
       </div>
 
+      {/* Drag and drop is a pointer gesture; on a touch screen the line would
+          promise something the reader cannot do, and it took the place of the
+          two buttons above. */}
       <div
         onDragOver={(event) => {
           event.preventDefault()
@@ -393,7 +428,7 @@ export function DocumentRoleField({
           upload(files)
         }}
         className={cn(
-          'rounded-lg border border-dashed px-3 py-2 text-center text-xs transition-colors duration-quick ease-out motion-reduce:transition-none',
+          'rounded-lg border border-dashed px-3 py-2 text-center text-xs transition-colors duration-quick ease-out motion-reduce:transition-none pointer-coarse:hidden',
           dragging ? 'border-primary bg-primary/5 text-foreground' : 'text-muted-foreground'
         )}
       >

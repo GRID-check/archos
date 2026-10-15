@@ -38,7 +38,7 @@ describe('ChatThinking mid-turn drop notice', () => {
     render(<ChatThinking steps={[createStep()]} isThinking={false} isInterrupted />)
 
     expect(
-      screen.getByText('Connection briefly lost — the answer was dropped. Please resend.')
+      screen.getByText('This answer was not finished, and the server has none. Please send the question again.')
     ).toBeInTheDocument()
   })
 
@@ -46,7 +46,7 @@ describe('ChatThinking mid-turn drop notice', () => {
     render(<ChatThinking steps={[createStep()]} isThinking={false} />)
 
     expect(
-      screen.queryByText('Connection briefly lost — the answer was dropped. Please resend.')
+      screen.queryByText('This answer was not finished, and the server has none. Please send the question again.')
     ).not.toBeInTheDocument()
   })
 })

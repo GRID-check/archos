@@ -20,6 +20,7 @@
  */
 
 import type { JSX } from 'react'
+import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 export interface ViewerProgressProps {
@@ -27,18 +28,44 @@ export interface ViewerProgressProps {
   label: string
   /** 0..100 for a determinate bar; null while there is nothing honest to show. */
   percent: number | null
+  /**
+   * What the number is OF — "37 von 120 MB". On a weak connection the size is
+   * what lets someone decide to wait or to stop, which a bare percentage does
+   * not give them.
+   */
+  detail?: string
+  /**
+   * A way out of the wait. The veil is `pointer-events-none` so the first
+   * triangles can be orbited while they arrive, which also meant the only way
+   * to abandon a 150 MB download on a bad connection was to close the whole
+   * dialog. This is the one part of the veil that takes the pointer.
+   */
+  cancel?: { label: string; onClick: () => void }
   className?: string
 }
 
-export function ViewerProgress({ label, percent, className }: ViewerProgressProps): JSX.Element {
+export function ViewerProgress({
+  label,
+  percent,
+  detail,
+  cancel,
+  className,
+}: ViewerProgressProps): JSX.Element {
   const determinate = percent !== null && Number.isFinite(percent)
   const clamped = determinate ? Math.min(100, Math.max(0, percent)) : 0
 
   return (
     <div
       className={cn(
-        'pointer-events-none absolute inset-0 z-30 flex flex-col items-center justify-center gap-3',
+        // `z-10`, BELOW the dock, the sheets and the rail (all `z-20`). At `z-30` the veil
+        // drew over a sheet opened during the download: "Modell wird geladen…" and its
+        // bar printed across the selection's header.
+        'pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3',
         'animate-in fade-in-0 duration-base ease-out motion-reduce:animate-none',
+        // A phone's bottom sheet (up to 60dvh) and the tool bar under it take the
+        // lower part of the stage: settle in the strip above them instead of
+        // under the sheet, where Abbrechen could not be pressed.
+        'group-data-[sheet=open]/stage:pt-20 group-data-[sheet=open]/stage:pb-[calc(min(60dvh,34rem)+6rem)]',
         className
       )}
     >
@@ -72,7 +99,20 @@ export function ViewerProgress({ label, percent, className }: ViewerProgressProp
       */}
       <p className="h-4 text-xs tabular-nums text-muted-foreground">
         {determinate ? `${Math.round(clamped)}%` : null}
+        {determinate && detail ? ' · ' : null}
+        {detail}
       </p>
+      {cancel && (
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="pointer-events-auto"
+          onClick={cancel.onClick}
+        >
+          {cancel.label}
+        </Button>
+      )}
     </div>
   )
 }

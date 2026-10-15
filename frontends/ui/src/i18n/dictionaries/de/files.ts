@@ -41,6 +41,9 @@ export const files: typeof en.files = {
       eta: 'noch {time}',
       queued: '{count} in Warteschlange',
       processing: 'Wird gelesen. Die Dauer lässt sich nicht vorhersagen, Sie können weiterarbeiten.',
+      // Der Browser meldet keine Verbindung, während Bytes unterwegs sein sollten.
+      // Der Transport wartet dann auf das Netz und sendet erneut (`xhr-upload`).
+      offline: 'Keine Verbindung, wartet. Bitte die Seite geöffnet lassen.',
       elapsed: 'seit {time}',
       settled: '{total} übertragen',
     },
@@ -63,6 +66,7 @@ export const files: typeof en.files = {
       cancelAll: 'Alle abbrechen',
       cancel: 'Upload von {name} abbrechen',
       retryAll: 'Fehlgeschlagene wiederholen',
+      retryFile: 'Erneut versuchen',
       dismiss: '{name} ausblenden',
       dismissAll: 'Ausblenden',
     },
@@ -399,7 +403,7 @@ export const files: typeof en.files = {
     noDocumentsTitle: 'Noch keine Dokumente',
     noDocumentsDescription:
       'Laden Sie die Unterlagen Ihres Projekts hoch: Zeichnungen, Bescheide, Gutachten, Berichte. Piloti liest sie und zitiert daraus, statt aus allgemeinen Hinweisen zu antworten.',
-    searchPlaceholder: 'Dateien durchsuchen …',
+    searchPlaceholder: 'Suchen …',
     searchLabel: 'Dateien durchsuchen',
     noMatch: 'Keine Dateien entsprechen „{query}“',
     noMatchDescription:
@@ -585,6 +589,7 @@ export const files: typeof en.files = {
     retry: 'Erneut versuchen',
   },
   workspace: {
+    more: 'Mehr',
     renameFolderError: 'Der Ordner konnte nicht umbenannt werden. Bitte versuchen Sie es erneut.',
     deleteFolderError: 'Der Ordner konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.',
     deleteFolderConfirm: 'Ordner „{name}“ löschen?',
@@ -618,6 +623,26 @@ export const files: typeof en.files = {
     },
   },
   // Detailansicht des Explorers – Spaltenüberschriften der sortierbaren Liste.
+  selection: {
+    start: 'Auswählen',
+    done: 'Fertig',
+    all: 'Alle',
+    move: 'Verschieben',
+    column: 'Auswahl',
+    count: '{count} ausgewählt',
+    moved: '{count, plural, one {# Datei nach „{folder}“ verschoben.} other {# Dateien nach „{folder}“ verschoben.}}',
+    moveFailed: '{count, plural, one {# Datei konnte} other {# Dateien konnten}} nicht verschoben werden. Bitte versuchen Sie es erneut.',
+  },
+  picker: {
+    titleOne: '„{name}“ verschieben nach …',
+    titleMany: '{count, plural, one {# Datei verschieben nach …} other {# Dateien verschieben nach …}}',
+    description: 'Wählen Sie den Ordner, in den die Dateien verschoben werden.',
+    search: 'Ordner suchen',
+    list: 'Ordner',
+    empty: 'Kein Ordner passt zu „{query}“.',
+    here: 'Hier',
+    close: 'Schließen',
+  },
   list: {
     columns: {
       relevance: 'Relevanz',
@@ -653,6 +678,7 @@ export const files: typeof en.files = {
     download: 'Herunterladen',
     open: 'Öffnen',
     ask: 'Danach fragen',
+    select: 'Auswählen',
     copyOriginPath: 'Herkunftspfad kopieren',
     rename: 'Umbenennen…',
     delete: 'Löschen…',
@@ -815,6 +841,8 @@ export const files: typeof en.files = {
       'Ein Outlook-Archiv enthält die Korrespondenz aller, die diesem Postfach geschrieben haben. Importieren Sie, was das Projekt braucht, nicht ein ganzes Postfach.',
     choose: 'Outlook-Archiv auswählen…',
     maxSize: 'Bis {size}.',
+    // Nur für Touch: ein Archiv dieser Größe sendet man vom Schreibtisch, mit stabiler Leitung.
+    desktopHint: 'Große Archive lassen sich am Schreibtisch am besten senden. Bricht die Verbindung ab, wählen Sie dieselbe Datei erneut und es geht dort weiter.',
     notAnArchive: '„{name}“ ist kein Outlook-Archiv (.pst oder .ost).',
     tooLarge: '„{name}“ ist größer als {size}.',
     sending: '{sent} von {total} gesendet…',
@@ -897,6 +925,13 @@ export const files: typeof en.files = {
   },
   errors: {
     projectClosed: 'Dieses Projekt ist abgeschlossen und schreibgeschützt. Wer es verwaltet, kann es oben im Hinweis oder in der Übersicht wieder öffnen.',
+    // Die Meldungen des Transports sind englisch und für Logs; der Mensch auf der
+    // Baustelle liest diese. Fehlschlag ohne Antwort (Netz, Stillstand, Zeit) ist
+    // wiederholbar, die Zeile bietet es an.
+    uploadFailed: 'Das Hochladen ist fehlgeschlagen.',
+    uploadNetwork: 'Keine Verbindung beim Hochladen. Bitte erneut versuchen.',
+    uploadStalled: 'Die Verbindung hat nichts mehr übertragen, das Hochladen wurde abgebrochen.',
+    uploadTimeout: 'Das Hochladen hat zu lange gedauert.',
     // Vom Namensfilter des Büros zurückgehalten (ADR-0086), auf einem Weg ohne
     // Upload-Dialog, etwa im Chat.
     screenedOut: '{count} Datei(en) nicht hochgeladen, weil Ihr Büro sie als sensibel einstuft: {files}',

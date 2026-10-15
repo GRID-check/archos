@@ -141,7 +141,7 @@ export default function PlatformStorageDevPage(): JSX.Element {
 
   return (
     <main
-      className="mx-auto flex max-w-5xl flex-col gap-6 p-8"
+      className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8"
       data-testid="platform-storage-preview"
     >
       <PageHeader

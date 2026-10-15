@@ -300,7 +300,7 @@ export const PlatformRetrievalSettings: FC = () => {
                       <SelectTrigger
                         id={inputId}
                         size="sm"
-                        className="w-28 tabular-nums"
+                        className="w-28 tabular-nums [&>span]:min-w-0 [&>span]:truncate"
                         aria-describedby={hintId}
                       >
                         <SelectValue />

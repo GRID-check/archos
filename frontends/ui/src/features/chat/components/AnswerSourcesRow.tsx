@@ -278,7 +278,7 @@ export const AnswerSourcesRow: FC<AnswerSourcesRowProps> = ({
           onClick={() => setExpanded((open) => !open)}
           aria-expanded={expanded}
           data-testid="answer-sources-more"
-          className="rounded-xs text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2"
+          className="rounded-xs text-muted-foreground duration-quick hover:text-foreground focus-visible:ring-ring/60 cursor-pointer text-xs leading-relaxed underline decoration-dotted underline-offset-2 transition-colors ease-out focus-visible:outline-none focus-visible:ring-2 pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:items-center pointer-coarse:px-2"
         >
           {expanded ? t('answerSources.less') : t('answerSources.more', { count: hidden })}
         </button>

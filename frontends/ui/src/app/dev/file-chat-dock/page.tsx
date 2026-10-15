@@ -3,6 +3,12 @@
 /**
  * The asked file as a floating frame beside chat — Figma-quiet, same
  * hairline + shadow-xs language as the thread toolbar.
+ *
+ * Below `md`, and on a phone on its side, there is no dock: the peek never
+ * renders on a phone (`file-preview-host.tsx`), and a 320px frame squeezed
+ * beside a 33px chat was a state no reader ever sees. What a phone shows when
+ * the reader taps the file pill is the full-screen reader, so that is what
+ * this preview shows there.
  */
 
 import type { JSX } from 'react'
@@ -47,8 +53,8 @@ export default function FileChatDockPreviewPage(): JSX.Element {
             </div>
           </div>
         </section>
-        <div className="w-[22.5rem] shrink-0" aria-hidden />
-        <aside className="border-base bg-card/95 absolute top-14 right-3 bottom-3 flex w-80 flex-col overflow-hidden rounded-2xl border shadow-xs backdrop-blur">
+        <div className="w-[22.5rem] shrink-0 max-md:hidden" aria-hidden />
+        <aside className="border-base bg-card/95 absolute top-14 right-3 bottom-3 flex w-80 max-md:hidden flex-col overflow-hidden rounded-2xl border shadow-xs backdrop-blur">
           <div className="flex h-9 shrink-0 items-center gap-1 px-2.5">
             <p className="min-w-0 flex-1 truncate text-[12px] font-medium tracking-[-0.01em]">
               Brandschutzplan_EG.pdf
@@ -62,6 +68,9 @@ export default function FileChatDockPreviewPage(): JSX.Element {
           </div>
           <FilePreviewPane file={FILE} projectId="proj-1" projectName="Seestadt Baufeld" presentation="peek" />
         </aside>
+        <div className="fixed inset-0 z-20 md:hidden" data-testid="file-chat-dock-phone">
+          <FilePreviewPane file={FILE} projectId="proj-1" projectName="Seestadt Baufeld" presentation="modal" onClose={() => {}} />
+        </div>
       </div>
     </I18nProvider>
   )

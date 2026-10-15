@@ -12,8 +12,14 @@
  * Like the per-user hub (`features/collaboration/lib/event-hub.ts`) this is an
  * accelerator, never a source of truth: nothing a channel carries is state a
  * tab has to converge on, so a reconnect does not replay.
+ *
+ * A page that is hidden or offline (`adapters/api/page-lifecycle.ts`) tries
+ * nothing: a phone that locked kills the stream, and a retry it cannot see
+ * through only climbs the ladder. When the page is back the stream reopens at
+ * once, from the first rung, instead of waiting out the rung it was on.
  */
 
+import { browserPageLifecycle, isActive, type PageLifecycle } from '@/adapters/api/page-lifecycle'
 import { createRetryLadder, type RetryLadder } from '@/shared/utils/backoff'
 import {
   realtimeFrameSchema,
@@ -59,6 +65,8 @@ export interface ConnectionOptions {
   /** How long a change of the channel set waits for more before reconnecting. */
   debounceMs?: number
   ladder?: RetryLadder
+  /** Whether the page is visible and online, and when it is again. The browser's by default. */
+  lifecycle?: PageLifecycle
 }
 
 const defaultPost = (path: string, body: string) => {
@@ -76,6 +84,7 @@ export function createRealtimeConnection({
   post = defaultPost,
   debounceMs = 250,
   ladder = createRetryLadder({ baseMs: 1_000, maxMs: 30_000 }),
+  lifecycle = browserPageLifecycle(),
 }: ConnectionOptions = {}): RealtimeConnection {
   const joined = new Map<string, Set<ChannelHandlers>>()
   /** Channels the server closed; not asked for again until joined anew. */
@@ -145,7 +154,8 @@ export function createRealtimeConnection({
       // off with jitter instead of letting a fleet reconnect in step.
       closeSource()
       announceStatus()
-      if (wanted().length > 0) ladder.schedule(open)
+      // Away, nothing is tried: the page's return reopens it (`resume`).
+      if (wanted().length > 0 && isActive(lifecycle)) ladder.schedule(() => (isActive(lifecycle) ? open() : undefined))
     }
     next.onmessage = (message) => {
       let raw: unknown
@@ -189,6 +199,16 @@ export function createRealtimeConnection({
     }, debounceMs)
   }
 
+  // Back from a lock, the camera or the network: reopen now, from the first
+  // rung. A stream that is live is left alone.
+  const stopListening = lifecycle.subscribe({
+    resume: () => {
+      if (wanted().length === 0 || (source && live) || debounce) return
+      ladder.reset()
+      open()
+    },
+  })
+
   return {
     join(ch, handlers) {
       let set = joined.get(ch)
@@ -217,6 +237,7 @@ export function createRealtimeConnection({
     },
     status,
     dispose() {
+      stopListening()
       if (debounce) clearTimeout(debounce)
       debounce = null
       ladder.cancel()

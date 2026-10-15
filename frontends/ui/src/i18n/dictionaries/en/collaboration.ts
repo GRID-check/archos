@@ -28,6 +28,16 @@ export const collaboration = {
     /** Button in the chat toolbar. */
     action: 'Share',
     close: 'Close',
+    /** The link to the chat: it only opens for people who already have access. */
+    link: {
+      heading: 'Link',
+      share: 'Share link',
+      copy: 'Copy link',
+      copied: 'Link copied',
+      failed: 'The link could not be copied.',
+      hint: 'The link opens the chat only for people who have access. Anyone who does not yet is invited above.',
+      shareTitle: 'Chat in Piloti',
+    },
     visibilityHeading: 'Who can see this',
     /** Screen-reader text while the sharing state is being fetched. */
     loading: 'Loading sharing settings…',
@@ -337,6 +347,9 @@ export const collaboration = {
     },
     markAllRead: 'Mark all as read',
     archive: 'Archive',
+    undo: 'Undo',
+    /** The short form for a phone, where the long one breaks the row. */
+    markAllReadShort: 'All read',
     archived: 'Archived',
     /** Item states. */
     resolved: 'Answered',

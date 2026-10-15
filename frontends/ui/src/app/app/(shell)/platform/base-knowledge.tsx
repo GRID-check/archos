@@ -703,7 +703,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="w-52"
+                      className="w-52 [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.bulkReclassify')}
                     >
                       <SelectValue placeholder={t('knowledgeAdmin.bulkReclassify')} />
@@ -751,7 +751,7 @@ export function BaseKnowledge(): JSX.Element {
                   >
                     <SelectTrigger
                       size="sm"
-                      className="min-w-40 flex-1 sm:w-48 sm:flex-none"
+                      className="min-w-40 flex-1 sm:w-48 sm:flex-none [&>span]:min-w-0 [&>span]:truncate"
                       aria-label={t('knowledgeAdmin.typeFilterLabel')}
                     >
                       <SelectValue />
@@ -854,9 +854,9 @@ export function BaseKnowledge(): JSX.Element {
                         </TableHead>
                       ) : null}
                       {sortableHead('document', t('knowledgeAdmin.colDocument'))}
-                      {sortableHead('class', t('knowledgeAdmin.colType'))}
-                      {sortableHead('state', t('knowledgeAdmin.colState'))}
-                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right')}
+                      {sortableHead('class', t('knowledgeAdmin.colType'), 'max-sm:hidden')}
+                      {sortableHead('state', t('knowledgeAdmin.colState'), 'max-sm:hidden')}
+                      {sortableHead('chunks', t('knowledgeAdmin.colChunks'), 'text-right max-sm:hidden')}
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -884,7 +884,12 @@ export function BaseKnowledge(): JSX.Element {
                               />
                             </TableCell>
                           ) : null}
-                          <TableCell className="max-w-[22rem]">
+                          {/* `max-w-0` + `w-full` is what makes `truncate` bite in an
+                              auto-layout table: a plain `max-w` on a cell is ignored, so
+                              the title used to stretch the column past the card edge and
+                              push Dokumentart and Status out of sight. From `sm` the cap
+                              is the 22rem it always was. */}
+                          <TableCell className="w-full max-w-0 sm:w-auto sm:max-w-[22rem]">
                             <button
                               type="button"
                               className="pointer-coarse:min-h-11 focus-visible:ring-ring/60 block w-full rounded-sm text-left focus-visible:outline-none focus-visible:ring-2"
@@ -902,15 +907,22 @@ export function BaseKnowledge(): JSX.Element {
                                   {file.fileName}
                                 </span>
                               ) : null}
+                              {/* The Dokumentart and Status columns are hidden on a
+                                  phone; their chips ride under the title instead, so
+                                  the title has the card's width. */}
+                              <span className="mt-1.5 flex flex-wrap items-center gap-1.5 sm:hidden">
+                                <DocClassChip docClass={file.docClass} />
+                                <KnowledgeStateBadge state={file.state} />
+                              </span>
                             </button>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <DocClassChip docClass={file.docClass} />
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="max-sm:hidden">
                             <KnowledgeStateBadge state={file.state} hint="tooltip" />
                           </TableCell>
-                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums">
+                          <TableCell className="text-muted-foreground text-right text-sm tabular-nums max-sm:hidden">
                             {file.chunkCount > 0 ? file.chunkCount.toLocaleString(locale) : '–'}
                           </TableCell>
                         </TableRow>

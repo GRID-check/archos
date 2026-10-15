@@ -290,7 +290,7 @@ export default function PlatformOverviewDevPage(): JSX.Element {
   return (
     <main
       data-testid="platform-overview-preview"
-      className="mx-auto flex max-w-5xl flex-col gap-6 p-8"
+      className="mx-auto flex max-w-5xl flex-col gap-6 p-4 sm:p-8"
     >
       <div>
         <h1 className="text-lg font-semibold">Platform — Overview</h1>

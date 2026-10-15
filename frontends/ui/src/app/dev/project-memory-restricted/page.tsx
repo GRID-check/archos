@@ -93,12 +93,12 @@ export default function RestrictedMemoryDevPage(): JSX.Element {
     notFound()
   }
   return (
-    <main className="mx-auto grid max-w-6xl gap-8 p-4 sm:p-8 lg:grid-cols-2" data-testid="restricted-memory-preview">
-      <section className="space-y-3">
+    <main className="mx-auto grid max-w-6xl grid-cols-1 gap-8 p-4 sm:p-8 lg:grid-cols-2" data-testid="restricted-memory-preview">
+      <section className="min-w-0 space-y-3">
         <h1 className="text-lg font-semibold">Freigegeben für „Verträge“</h1>
         <ProjectMemoryPanel projectId={CLEARED} />
       </section>
-      <section className="space-y-3">
+      <section className="min-w-0 space-y-3">
         <h1 className="text-lg font-semibold">Nicht freigegeben</h1>
         <ProjectMemoryPanel projectId={UNCLEARED} />
       </section>

@@ -4,7 +4,7 @@ import type { JSX } from 'react'
 import { Fragment, memo, useCallback, useDeferredValue, useMemo, useState, type ReactNode } from 'react'
 import type { FileItem, FolderItem } from '../file-types'
 import type { CardExtras } from '../lib/file-shelf'
-import { Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
+import { CheckSquare, Search, SearchX, FilterX, FolderOpen, Sparkles } from 'lucide-react'
 import { RisoPrint } from '@/components/brand/riso-print'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -14,9 +14,11 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useLocale, useTranslations } from '@/i18n'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import type { FileSearch } from '../hooks/use-file-search'
+import { useCoarsePointer } from '../hooks/use-coarse-pointer'
 import { useLevelDirection } from '../hooks/use-level-direction'
 import { motion, motionEntrance } from '@/components/motion'
 import { ActionMenu } from '@/components/ui/action-menu'
+import { useMoveInSheet } from './document-actions'
 import { FileCard, type FileCardProps } from './file-card'
 import { FilingViewBar } from './filing-bar'
 import { FileGrid, FileCardSkeleton } from './file-grid'
@@ -36,6 +38,7 @@ import {
   FolderCardSkeleton,
   FolderRow,
   FolderRowSkeleton,
+  FOLDER_ROWS_ON_PHONE,
 } from './folder-navigation'
 import { AssignmentFaces } from './assignment-faces'
 
@@ -205,6 +208,21 @@ interface FileBrowserPaneProps {
    * says so rather than suggesting a tag or a description.
    */
   searchMatchesNamesOnly?: boolean
+  /**
+   * Picking several documents (`useDocumentSelection`, owned by the caller,
+   * who also owns what the picks are for). While `active`, a press on a card
+   * or row toggles it, the ⋯ and the drag step aside, and ranked semantic hits
+   * stay as they are: a result set is read, not filed.
+   */
+  selection?: FileBrowserSelection
+}
+
+export interface FileBrowserSelection {
+  active: boolean
+  selectedIds: ReadonlySet<string>
+  onToggle: (documentId: string) => void
+  /** „Auswählen" in the path row. Absent where nothing can be done to a selection. */
+  onStart?: () => void
 }
 
 interface FileTileProps {
@@ -218,6 +236,10 @@ interface FileTileProps {
   renderActions?: (file: FileItem) => ReactNode
   wrapFile?: (file: FileItem, node: ReactNode) => ReactNode
   draggable: boolean
+  /** Selection mode: the card is a toggle, `checked` says whether it is picked. */
+  selecting: boolean
+  checked: boolean
+  onToggle: (documentId: string) => void
 }
 
 /**
@@ -239,8 +261,14 @@ const FileTile = memo(function FileTile({
   renderActions,
   wrapFile,
   draggable,
+  selecting,
+  checked,
+  onToggle,
 }: FileTileProps): ReactNode {
-  const onSelect = useCallback(() => onSelectFile(file.id), [onSelectFile, file.id])
+  const onSelect = useCallback(
+    () => (selecting ? onToggle(file.id) : onSelectFile(file.id)),
+    [selecting, onToggle, onSelectFile, file.id]
+  )
   const card = (
     <FileCard
       file={file}
@@ -252,6 +280,7 @@ const FileTile = memo(function FileTile({
       {...cardExtras?.(file)}
       actions={renderActions?.(file)}
       draggable={draggable}
+      selection={selecting ? { checked } : undefined}
     />
   )
   return wrapFile ? wrapFile(file, card) : card
@@ -295,6 +324,7 @@ export function FileBrowserPane({
   folderStats,
   shelfEmpty,
   searchMatchesNamesOnly = false,
+  selection,
 }: FileBrowserPaneProps) {
   const t = useTranslations('files')
   const { locale } = useLocale()
@@ -340,6 +370,7 @@ export function FileBrowserPane({
   const [createFolderIn, setCreateFolderIn] = useState<string | null | undefined>(undefined)
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null)
 
+  const touch = useCoarsePointer()
   const listingEntries = useMemo(
     () =>
       listingActionEntries({
@@ -361,7 +392,9 @@ export function FileBrowserPane({
             ? () => setCreateFolderIn(currentFolderId)
             : undefined,
         onUploadFiles: writableHere ? onPickFiles : undefined,
-        onUploadFolder: writableHere ? onPickFolder : undefined,
+        // iOS Safari cannot pick a folder: the entry would open a plain file
+        // picker, so a finger is not offered it.
+        onUploadFolder: writableHere && !touch ? onPickFolder : undefined,
         onViewChange,
         onSortChange,
       }),
@@ -376,10 +409,15 @@ export function FileBrowserPane({
       writableHere,
       onPickFiles,
       onPickFolder,
+      touch,
       onViewChange,
       onSortChange,
     ],
   )
+
+  const picking = selection?.active === true
+  const toggleSelected = selection?.onToggle ?? noToggle
+  const moveInSheet = useMoveInSheet()
 
   const fileCard = (file: FileItem, extra: { match?: FileCardProps['match'] } = {}) => (
     <FileTile
@@ -393,6 +431,9 @@ export function FileBrowserPane({
       renderActions={renderActions}
       wrapFile={wrapFile}
       draggable={Boolean(onDropDocumentInFolder)}
+      selecting={picking && !extra.match}
+      checked={selection?.selectedIds.has(file.id) === true}
+      onToggle={toggleSelected}
     />
   )
 
@@ -438,6 +479,7 @@ export function FileBrowserPane({
         }
         onDelete={() => void folderNav.onDeleteFolder(folder.id)}
         readOnly={folder.access === 'read'}
+        moveInSheet={moveInSheet}
       >
         {tile}
       </FolderObjectMenu>
@@ -639,7 +681,21 @@ export function FileBrowserPane({
           onDropFolder={onDropFolderInFolder}
           canAcceptFolder={canAcceptFolder}
           readOnly={!writableHere}
-        />
+        >
+          {selection?.onStart && !picking && orderedFiles.length > 0 && writableHere && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="gap-1.5"
+              onClick={selection.onStart}
+              data-testid="selection-start"
+            >
+              <CheckSquare className="size-4" aria-hidden />
+              <span className="phone:sr-only">{t('selection.start')}</span>
+            </Button>
+          )}
+        </FolderBreadcrumbRow>
       )}
 
       {/* What Piloti knows about the level's whole subtree. Hidden while a
@@ -786,6 +842,7 @@ export function FileBrowserPane({
               wrapRow={wrapFileRow}
               sort={sort}
               onSortChange={onSortChange}
+              selection={selection}
             />
             {pagingFooter}
           </div>
@@ -834,6 +891,7 @@ export function FileBrowserPane({
               wrapRow={wrapFileRow}
               sort={sort}
               onSortChange={onSortChange}
+              selection={selection}
             />
           ) : (
             <div className="p-4">
@@ -887,6 +945,7 @@ export function FileBrowserPane({
                 sort={sort}
                 onSortChange={onSortChange}
                 draggable={Boolean(onDropDocumentInFolder)}
+                selection={selection}
               />
             )}
             {pagingFooter}
@@ -900,11 +959,7 @@ export function FileBrowserPane({
             {/* Section label — "Recently uploaded" at the corpus root, matching
                 the click-dummy. Hidden inside a folder (the breadcrumb already
                 names it) and while searching (the query is the context). */}
-            {currentFolderId === null && files.length > 0 && (
-              <SectionLabel as="p" className="mb-3 font-semibold tracking-[0.05em]">
-                {t('browser.recentlyUploaded')}
-              </SectionLabel>
-            )}
+
             {/*
               ONE ENTRANCE FOR THE LEVEL, NOT ONE PER TILE.
 
@@ -929,15 +984,25 @@ export function FileBrowserPane({
               animation, is what a Finder-style drill actually looks like, and
               renders at full opacity when nothing has navigated.
             */}
-            <FileGrid>
+            <FileGrid className={FOLDER_ROWS_ON_PHONE}>
               {folderNav &&
                 childFolders.map((folder) => (
                   <Fragment key={folder.id}>{folderTile(folder, false)}</Fragment>
                 ))}
+              {/* The label heads the FILES: it sat above the folder tiles and
+                  promised recent uploads over a block of folders. A grid child
+                  spanning the row, so it falls between the two. */}
+              {currentFolderId === null && orderedFiles.length > 0 && (
+                <SectionLabel as="p" className="col-span-full mt-1 font-semibold tracking-[0.05em] first:mt-0">
+                  {t('browser.recentlyUploaded')}
+                </SectionLabel>
+              )}
               {orderedFiles.map((file) => (
                 <Fragment key={file.id}>{fileCard(file)}</Fragment>
               ))}
-              {writableHere && uploadCard}
+              {/* A drop zone is a mouse affordance: there is no dragging a file
+                  onto a phone, and the Hochladen button is under the thumb. */}
+              {writableHere && !picking && uploadCard && <div className="contents pointer-coarse:hidden">{uploadCard}</div>}
             </FileGrid>
             {pagingFooter}
         </motion.div>
@@ -1048,7 +1113,7 @@ export function FileBrowserSkeleton({
       ) : (
         <div className={`${CONTENT_MAX} p-4`}>
           <Skeleton className="mb-3 h-3 w-36" />
-          <FileGrid>
+          <FileGrid className={FOLDER_ROWS_ON_PHONE}>
             {Array.from({ length: folderCount }).map((_, index) => (
               <FolderCardSkeleton key={`folder-${index}`} />
             ))}
@@ -1070,3 +1135,5 @@ export function FileBrowserSkeleton({
  * content centres inside the toolbars, which keep spanning the full width.
  */
 const CONTENT_MAX = 'mx-auto w-full max-w-[1200px]'
+
+const noToggle = (): void => undefined

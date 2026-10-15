@@ -287,7 +287,10 @@ const useConversationId = (): string | null =>
 // dipped to 0.99, and both drew a third focus ring. Busy is `aria-busy`, never
 // `disabled` — see `DocumentPreviewChip`.
 const chipButtonClasses = cn(
-  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-11',
+  // Under a finger the chip may take two lines: the edition and the Fundstelle are
+  // what tells two chips of one Richtlinie apart, and they sit at the END of a
+  // title that a single truncated line cut off.
+  'inline-flex h-6 max-w-full shrink-0 cursor-pointer items-center gap-1 truncate whitespace-nowrap pointer-coarse:h-auto pointer-coarse:min-h-11 pointer-coarse:whitespace-normal pointer-coarse:py-1.5 pointer-coarse:text-left',
   'rounded-md border px-2.5 text-xs font-medium outline-none',
   '[&>svg]:size-3 [&>svg]:shrink-0 hover:brightness-95 dark:hover:brightness-125 aria-busy:cursor-progress',
   PRESSABLE,
@@ -335,7 +338,7 @@ const cardButtonClasses = cn(
 )
 
 const faceClasses = (variant: CitationVariant): string =>
-  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56')
+  variant === 'card' ? cardButtonClasses : cn(chipButtonClasses, 'max-w-56 pointer-coarse:max-w-full')
 
 /**
  * The card face while nothing can be opened yet (the preview index is still
@@ -435,7 +438,7 @@ const CitationFace: FC<CitationFaceProps> = ({
         <CitationIndex index={index} />
         <LeadingIcon signal={signal} busy={busy} className="size-3 shrink-0" />
         {authority && <AuthorityTag>{authority}</AuthorityTag>}
-        <span className="truncate">{label}</span>
+        <span className="truncate pointer-coarse:line-clamp-2 pointer-coarse:whitespace-normal pointer-coarse:break-words">{label}</span>
       </>
     )
   }

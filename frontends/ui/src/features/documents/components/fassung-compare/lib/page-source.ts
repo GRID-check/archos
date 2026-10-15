@@ -12,6 +12,7 @@
 import type { PDFDocumentProxy } from 'pdfjs-dist'
 import { documentFileUrl } from '@/lib/documents/urls'
 import { documentParameters, loadPdfjs } from '@/features/knowledge/lib/pdfjs-runtime'
+import { maxCanvasPixels, rasterFor, type Raster } from '@/features/knowledge/lib/pdf-raster'
 import {
   NotComparableError,
   type CompareFile,
@@ -21,12 +22,31 @@ import {
 } from '../types'
 import { compareKindOf } from './compare-kind'
 
-/** Past 2x the memory buys nothing visible, and two pages are held at once. */
-export const MAX_PIXEL_RATIO = 2
+/**
+ * The bitmap a page gets at `scale`: device resolution, held to the canvas
+ * budget (`pdf-raster.ts`). Two pages are on screen at once in every view, and
+ * iOS draws NOTHING for a canvas past its limit: an A1 sheet at 6x on a DPR 3
+ * phone was blank, not soft.
+ */
+export function pageRaster(size: PageSize, scale: number, pixelRatio: number): Raster {
+  const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+  return rasterFor({
+    width: size.width * scale,
+    height: size.height * scale,
+    dpr: pixelRatio,
+    maxPixels: maxCanvasPixels(coarse),
+  })
+}
 
-const sizeCanvas = (canvas: HTMLCanvasElement, size: PageSize, scale: number, ratio: number): void => {
-  canvas.width = Math.max(1, Math.floor(size.width * scale * ratio))
-  canvas.height = Math.max(1, Math.floor(size.height * scale * ratio))
+/** The bitmap for a region the caller already planned inside the budget (`detailPlan`). */
+const regionRaster = (region: { width: number; height: number }, pixelRatio: number): Raster => {
+  const coarse = typeof window !== 'undefined' && typeof window.matchMedia === 'function' && window.matchMedia('(pointer: coarse)').matches
+  return rasterFor({ width: region.width, height: region.height, dpr: pixelRatio, maxPixels: maxCanvasPixels(coarse) })
+}
+
+const sizeCanvas = (canvas: HTMLCanvasElement, raster: Raster): void => {
+  canvas.width = raster.width
+  canvas.height = raster.height
 }
 
 async function openPdf(file: CompareFile, isRendition: boolean): Promise<PageSource> {
@@ -48,12 +68,20 @@ async function openPdf(file: CompareFile, isRendition: boolean): Promise<PageSou
       const view = (await doc.getPage(page)).getViewport({ scale: 1 })
       return { width: view.width, height: view.height }
     },
-    render: (page, canvas, { scale, pixelRatio }): RenderHandle => {
+    render: (page, canvas, { scale, pixelRatio, region }): RenderHandle => {
       let cancel = (): void => {}
       const promise = doc.getPage(page).then(async (pdfPage) => {
-        const viewport = pdfPage.getViewport({ scale: scale * Math.min(pixelRatio, MAX_PIXEL_RATIO) })
-        canvas.width = Math.floor(viewport.width)
-        canvas.height = Math.floor(viewport.height)
+        const unscaled = pdfPage.getViewport({ scale: 1 })
+        const raster = region
+          ? regionRaster(region, pixelRatio)
+          : pageRaster({ width: unscaled.width, height: unscaled.height }, scale, pixelRatio)
+        const viewport = pdfPage.getViewport({
+          scale: scale * raster.ratio,
+          offsetX: region ? -region.x * raster.ratio : 0,
+          offsetY: region ? -region.y * raster.ratio : 0,
+        })
+        canvas.width = region ? raster.width : Math.floor(viewport.width)
+        canvas.height = region ? raster.height : Math.floor(viewport.height)
         const render = pdfPage.render({ canvas, viewport })
         cancel = () => render.cancel()
         // A cancelled render rejects; that is the teardown path, not a failure.
@@ -89,15 +117,19 @@ async function openImage(file: CompareFile): Promise<PageSource> {
   return {
     pageCount: 1,
     pageSize: async () => size,
-    render: (_page, canvas, { scale, pixelRatio }): RenderHandle => {
-      sizeCanvas(canvas, size, scale, Math.min(pixelRatio, MAX_PIXEL_RATIO))
+    render: (_page, canvas, { scale, pixelRatio, region }): RenderHandle => {
+      sizeCanvas(canvas, region ? regionRaster(region, pixelRatio) : pageRaster(size, scale, pixelRatio))
       const context = canvas.getContext('2d')
       if (context) {
         // Paper first: a transparent PNG would otherwise take the whole ink in
         // the overlay's recolouring.
         context.fillStyle = '#fff'
         context.fillRect(0, 0, canvas.width, canvas.height)
-        context.drawImage(image, 0, 0, canvas.width, canvas.height)
+        if (region) {
+          context.drawImage(image, region.x / scale, region.y / scale, region.width / scale, region.height / scale, 0, 0, canvas.width, canvas.height)
+        } else {
+          context.drawImage(image, 0, 0, canvas.width, canvas.height)
+        }
       }
       return { promise: Promise.resolve(), cancel: () => {} }
     },

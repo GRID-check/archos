@@ -61,4 +61,31 @@ describe('CreateProjectDialog', () => {
 
     await waitFor(() => expect(screen.queryByTestId('create-project-form')).toBeNull())
   })
+
+  test('on a touch pointer the dialog takes the focus itself, so no keyboard opens over the form', async () => {
+    vi.stubGlobal('matchMedia', (query: string) => ({
+      matches: query === '(pointer: coarse)',
+      media: query,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+    }))
+    try {
+      render(<CreateProjectDialog />)
+      await userEvent.click(screen.getByRole('button', { name: /New project/i }))
+
+      const dialog = await screen.findByRole('dialog')
+      await waitFor(() => expect(dialog).toHaveFocus())
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
+  test('a mouse keeps the focus on the first field', async () => {
+    render(<CreateProjectDialog />)
+    await userEvent.click(screen.getByRole('button', { name: /New project/i }))
+
+    // The form is stubbed here: Radix focuses its first focusable, the Cancel button.
+    const cancel = await screen.findByRole('button', { name: 'Cancel' })
+    await waitFor(() => expect(cancel).toHaveFocus())
+  })
 })

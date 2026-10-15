@@ -12,7 +12,7 @@
  */
 
 import { notFound } from 'next/navigation'
-import { DictationControl, type DictationState } from '@/features/dictation'
+import { DictationControl, DictationStrip, type DictationState } from '@/features/dictation'
 import { InputArea } from '@/features/layout/components'
 import { useLocale } from '@/i18n'
 import { getFileUploadConfigFromEnv } from '@/shared/config/file-upload'
@@ -64,6 +64,27 @@ export default function DictationPreviewPage() {
               </li>
             ))}
           </ul>
+
+          {/* The strip a touch screen shows above the control row. It renders
+              only on a coarse pointer (`pointer-coarse:flex`), so on a desktop
+              capture these two rows are empty on purpose. */}
+          <div className="flex flex-col gap-3">
+            <div className="text-muted-foreground font-mono text-xs">
+              ↓ touch: the recording strip
+            </div>
+            <DictationStrip
+              state={STATES[1]!.state}
+              locale={locale}
+              onToggle={() => {}}
+              className="bg-card mt-0 border"
+            />
+            <DictationStrip
+              state={{ phase: 'transcribing' }}
+              locale={locale}
+              onToggle={() => {}}
+              className="mt-0"
+            />
+          </div>
 
           <div>
             <div className="mb-2 font-mono text-xs text-muted-foreground">↓ in the real composer</div>

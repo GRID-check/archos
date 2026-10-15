@@ -379,7 +379,7 @@ const RoundFlowNode: FC<NodeProps<Node<RoundData>>> = ({ data }) => (
         {data.actions.map((action) => (
           <li
             key={action}
-            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-snug text-muted-foreground"
+            className="rounded-md bg-muted px-1.5 py-0.5 text-[11px] leading-snug text-muted-foreground pointer-coarse:text-xs"
           >
             {action}
           </li>

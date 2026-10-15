@@ -132,7 +132,12 @@ const TakeawayRow: FC<{ item: KeyTakeawayData; index: number }> = ({ item, index
       <CollapsibleTrigger
         className={cn(
           ROW,
-          'group rounded-md transition-colors duration-quick ease-out hover:bg-muted/50',
+          // An openable row grows to the 44px floor under a finger (design
+          // language, Touch): 12px above and below a 21px line is 45px, and the
+          // padding, not a min-height, keeps the text centred in it. A mouse
+          // keeps the 8px rhythm. `items-start` in ROW holds the ordinal and the
+          // chevron on the first line when a takeaway wraps.
+          'group pointer-coarse:py-3 rounded-md transition-colors duration-quick ease-out hover:bg-muted/50',
           'focus-visible:ring-ring/60 focus-visible:outline-none focus-visible:ring-2',
         )}
       >

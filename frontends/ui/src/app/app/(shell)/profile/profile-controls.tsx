@@ -163,7 +163,14 @@ export const ProfileControls: FC<ProfileControlsProps> = ({
       </Card>
 
       {/* Keyboard shortcuts (an organization is the outer gate; toggle is per-user) */}
-      {shortcutsAvailable && <ShortcutSettings />}
+      {/* Shown only where a keyboard can be: on a phone the card toggles
+          shortcuts nothing there can press. `any-pointer-fine` keeps it on an
+          iPad with a trackpad or keyboard, which a plain coarse check would not. */}
+      {shortcutsAvailable && (
+        <div className="hidden any-pointer-fine:block">
+          <ShortcutSettings />
+        </div>
+      )}
 
       {/* Usage analytics: a per-browser opt-out of the PostHog storage and traffic */}
       <UsageAnalyticsSettings available={analyticsAvailable} />

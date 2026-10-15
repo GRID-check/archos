@@ -27,17 +27,16 @@ describe('ProjectListRow', () => {
     expect(row?.className).not.toMatch(/\brounded|\bborder\b|\bshadow/)
   })
 
-  test('opens the project in Chat and keeps settings as its own link', () => {
+  test('opens the project in Chat and keeps the overview as its own 44px link', () => {
     renderRow()
 
     expect(screen.getByRole('link', { name: 'Open Wohnbau Seestadt' })).toHaveAttribute(
       'href',
       '/app/projects/p1/chat',
     )
-    expect(screen.getByRole('link', { name: 'Open settings for Wohnbau Seestadt' })).toHaveAttribute(
-      'href',
-      '/app/projects/p1/settings',
-    )
+    const overview = screen.getByRole('link', { name: 'Open overview of Wohnbau Seestadt' })
+    expect(overview).toHaveAttribute('href', '/app/projects/p1/settings')
+    expect(overview).toHaveClass('pointer-coarse:size-11')
   })
 
   test('indexes the row with the project initials', () => {

@@ -489,6 +489,11 @@ export function DocumentFassungen({
       </RowAction>
     ) : null
 
+  // The Fassung before this one, compared in ONE tap from its row: the on-site
+  // question is „what changed since the last one", and the ⋯ menu made it
+  // three taps and a guess at where the comparison lives.
+  const previousKey = rows.find((candidate) => candidate.kind === 'linked')?.key ?? null
+
   const renderLinkedRow = (row: LinkedRow, index: number): JSX.Element => {
     const { entry } = row
     const menu: ActionMenuEntry[] = [compareEntry({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })]
@@ -515,7 +520,21 @@ export function DocumentFassungen({
         changeHint={row.key === firstChangeKey ? t('preview.fassung.changeHint') : null}
         last={index === rows.length - 1}
         dataset={{ kind: 'linked', id: entry.id, number: String(row.number) }}
-        action={openAction(entry.id)}
+        action={
+          row.key === previousKey ? (
+            <>
+              <RowAction
+                onClick={() => openFassungCompare({ id: entry.id, filename: entry.filename }, { id: file.id, filename: file.filename })}
+                data-testid="fassung-compare-previous"
+              >
+                {t('preview.fassung.compare')}
+              </RowAction>
+              {openAction(entry.id)}
+            </>
+          ) : (
+            openAction(entry.id)
+          )
+        }
         menu={menu}
         menuLabel={t('preview.fassung.rail.rowMenu', { number: row.number })}
       >

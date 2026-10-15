@@ -70,6 +70,28 @@ export const nav: typeof en.nav = {
     viewAllProjects: 'Alle Projekte ansehen',
     newProject: 'Neues Projekt',
   },
+  /** Die untere Tab-Leiste am Telefon (`components/shell/phone-tab-bar.tsx`). */
+  tabBar: {
+    label: 'Hauptnavigation',
+    /** Öffnet die Schublade mit allen weiteren Zielen. */
+    more: 'Mehr',
+  },
+  search: {
+    /** Der Weg zur Befehlspalette per Finger, in beiden Kopfzeilen. */
+    open: 'Suchen und springen',
+  },
+  /** Der Projektwechsel als Blatt von unten am Telefon. */
+  projectSheet: {
+    description: 'Zuletzt geöffnete Projekte zuerst, danach alle laufenden.',
+    close: 'Schließen',
+    searchLabel: 'Projekt suchen',
+    searchPlaceholder: 'Projekt suchen',
+    clearSearch: 'Suche leeren',
+    recent: 'Zuletzt geöffnet',
+    others: 'Weitere Projekte',
+    matches: 'Passende Projekte',
+    noMatch: 'Kein laufendes Projekt heißt so.',
+  },
   userMenu: {
     label: 'Benutzermenü für {name}',
     defaultUser: 'Standardbenutzer',

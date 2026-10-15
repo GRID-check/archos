@@ -203,6 +203,35 @@ describe('CreateProjectForm', () => {
     expect(action).not.toHaveBeenCalled()
   })
 
+  describe('on a phone', () => {
+    const pointer = (kind: 'coarse' | 'fine'): void => {
+      vi.stubGlobal('matchMedia', (query: string) => ({
+        matches: query === `(pointer: ${kind})`,
+        media: query,
+        addEventListener: vi.fn(),
+        removeEventListener: vi.fn(),
+      }))
+    }
+    afterEach(() => vi.unstubAllGlobals())
+
+    test('the name field is not focused on open: that would put the keyboard over the form', () => {
+      pointer('coarse')
+      render(<CreateProjectForm />)
+      expect(screen.getByLabelText('Project name')).not.toHaveFocus()
+    })
+
+    test('a mouse still starts in the name field', () => {
+      pointer('fine')
+      render(<CreateProjectForm />)
+      expect(screen.getByLabelText('Project name')).toHaveFocus()
+    })
+
+    test('the drag-a-folder hint, which a touch screen cannot act on, is hidden there', () => {
+      render(<CreateProjectForm />)
+      expect(screen.getByTestId('create-project-drop-hint')).toHaveClass('pointer-coarse:hidden')
+    })
+  })
+
   describe('Piloti sets it up', () => {
     test('a chosen address is sent as the location, with „Worum geht es?"', async () => {
       search.mockResolvedValue({ enabled: true, results: [hauptstrasse, moedling] } satisfies GeocodeResponse)

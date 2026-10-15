@@ -20,6 +20,27 @@
  * the scrolling row inside it are `pointer-events-none`, and only the pills
  * themselves take the pointer, so a drag that starts beside a button still
  * orbits the building.
+ *
+ * ## Three layouts, one stack
+ *
+ * `floating` is the desktop bar above. On a phone it was ~480 px of glyphs in a
+ * 369 px row that scrolled sideways behind a hidden scrollbar, so the controls
+ * that mattered most sat off-screen with nothing to say they existed. A phone
+ * gets one of two arrangements instead, and in both the children are
+ * `ViewerToolButton`s — a handful of labelled tools that FIT — and nothing is
+ * left to scroll:
+ *
+ * - `bar` — portrait. One full-width pill along the bottom, tools sharing it
+ *   equally. `lead` and `trail` do not exist here: the caller decides what is
+ *   important enough to be a tool and puts the rest in a sheet.
+ * - `side` — landscape. The same tools as a column on the left edge, because a
+ *   393 px tall screen cannot spare a 70 px bar, and the width is free.
+ *
+ * `sheet` is the bottom sheet's seat. It lives in the SAME column as the bar and
+ * the `above` rows, so the stack grows upward as things appear and nothing can
+ * overlap by arithmetic — the legend, the cut slider and the sheet used to be
+ * positioned by hand against each other, and "bottom-52" is a number that is
+ * right until the next row is added.
  */
 
 import type { JSX } from 'react'
@@ -50,10 +71,64 @@ export interface ViewerDockProps {
    * is a column rather than a slot for one thing.
    */
   above?: ReactNode
+  /** A bottom sheet, stacked between the `above` rows and the bar. */
+  sheet?: ReactNode
+  /** See the header: the desktop pill, or one of the two phone arrangements. */
+  layout?: 'floating' | 'bar' | 'side'
   className?: string
 }
 
-export function ViewerDock({ lead, children, trail, above, className }: ViewerDockProps): JSX.Element {
+export function ViewerDock({
+  lead,
+  children,
+  trail,
+  above,
+  sheet,
+  layout = 'floating',
+  className,
+}: ViewerDockProps): JSX.Element {
+  if (layout !== 'floating') {
+    const side = layout === 'side'
+    return (
+      <>
+        <div
+          className={cn(
+            'pointer-events-none absolute inset-x-0 bottom-0 z-20 flex flex-col items-center gap-1.5 p-3',
+            // The column of tools lives on the left; the stack keeps clear of it.
+            side && 'pl-24',
+            className
+          )}
+        >
+          {above}
+          {sheet}
+          {!side && (
+            <ViewerSurface
+              data-slot="viewer-dock-bar"
+              className="pointer-events-auto flex w-full max-w-lg items-stretch gap-0.5 p-1"
+            >
+              {children}
+            </ViewerSurface>
+          )}
+        </div>
+        {side && (
+          <div
+            className={cn(
+              'pointer-events-none absolute inset-y-0 left-3 z-20 flex items-center',
+              className
+            )}
+          >
+            <ViewerSurface
+              data-slot="viewer-dock-column"
+              className="pointer-events-auto flex w-[4.5rem] flex-col items-stretch gap-0.5 p-1"
+            >
+              {children}
+            </ViewerSurface>
+          </div>
+        )}
+      </>
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -62,6 +137,7 @@ export function ViewerDock({ lead, children, trail, above, className }: ViewerDo
       )}
     >
       {above}
+      {sheet}
       {/*
         `w-full` rather than a shrink-to-fit row: at 390 px the pills are wider
         than the viewport, and a centred row that cannot scroll simply loses

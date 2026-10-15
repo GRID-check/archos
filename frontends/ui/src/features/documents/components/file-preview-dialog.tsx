@@ -108,12 +108,18 @@ export function FilePreviewDialog({
         <DialogContent
           // Definite height, not `max-h-full` — the pane needs a bounded panel
           // so its scroll chain (body + both columns) has something to bite
-          // against. Mobile: a full-screen sheet. Desktop: centred, capped.
+          // against. A phone, upright or on its side: the whole screen, in
+          // `dvh` so Safari's toolbars never cover its foot. Desktop: centred,
+          // capped.
           //
           // `sm:max-w-[960px]` MUST carry the `sm:` prefix: DialogContent's base
           // class ends in `sm:max-w-lg`, so a plain `max-w-*` loses to it at the
           // exact breakpoint where it matters (see pdf-viewer-dialog.tsx).
-          className="flex h-[100dvh] max-h-[100dvh] w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85vh] sm:max-h-[85vh] sm:max-w-[960px] sm:rounded-2xl"
+          className="flex h-dvh max-h-dvh w-full max-w-full flex-col gap-0 overflow-hidden rounded-none border p-0 sm:h-[85dvh] sm:max-h-[85dvh] sm:max-w-[960px] sm:rounded-2xl phone:inset-0 phone:h-dvh phone:max-h-dvh phone:max-w-none phone:translate-x-0 phone:translate-y-0 phone:rounded-none phone:border-0"
+          // The pane lays the phone out itself (the full-screen reader, safe
+          // areas included), on its side as well as upright: a sheet grafted
+          // onto it would be a second header and a second close.
+          mobilePresentation="none"
           // The pane draws its own close control in the header, beside the
           // actions it belongs with. A second floating X would be two controls
           // for one job.

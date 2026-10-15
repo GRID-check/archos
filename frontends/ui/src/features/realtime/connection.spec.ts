@@ -7,6 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { createRetryLadder } from '@/shared/utils/backoff'
 import { createRealtimeConnection, type ChannelHandlers } from './connection'
+import type { PageLifecycle, PageLifecycleListener } from '@/adapters/api/page-lifecycle'
 
 class FakeSource {
   static all: FakeSource[] = []
@@ -151,6 +152,61 @@ describe('the realtime connection', () => {
       '/api/realtime/send',
       JSON.stringify({ ch: 'doc:a', msg: { peerId: 'peer_abcdef12', presence: 'here' } })
     )
+    connection.dispose()
+  })
+})
+
+describe('a page away', () => {
+  const awayPage = () => {
+    let listener: PageLifecycleListener | null = null
+    const page: PageLifecycle & { visible: boolean; back: () => void } = {
+      visible: true,
+      online: true,
+      subscribe: (next) => {
+        listener = next
+        return () => {
+          listener = null
+        }
+      },
+      back: () => {
+        page.visible = true
+        listener?.resume('visible')
+      },
+    }
+    return page
+  }
+
+  it('tries nothing while the page is hidden, and reopens the moment it is back, without waiting out a rung', () => {
+    const page = awayPage()
+    const connection = createRealtimeConnection({
+      createSource: (url) => new FakeSource(url),
+      post: vi.fn(),
+      ladder: createRetryLadder({ delaysMs: [30_000] }),
+      lifecycle: page,
+    })
+    connection.join('doc:a', recorder().handlers)
+    vi.advanceTimersByTime(250)
+    open()[0].open()
+
+    page.visible = false
+    open()[0].onerror?.(new Event('error'))
+    vi.advanceTimersByTime(10 * 60_000)
+    expect(FakeSource.all).toHaveLength(1)
+
+    page.back()
+    expect(open()).toHaveLength(1)
+    expect(FakeSource.all).toHaveLength(2)
+    connection.dispose()
+  })
+
+  it('leaves a live stream alone when the page comes back', () => {
+    const page = awayPage()
+    const connection = createRealtimeConnection({ createSource: (url) => new FakeSource(url), post: vi.fn(), lifecycle: page })
+    connection.join('doc:a', recorder().handlers)
+    vi.advanceTimersByTime(250)
+    open()[0].open()
+    page.back()
+    expect(FakeSource.all).toHaveLength(1)
     connection.dispose()
   })
 })

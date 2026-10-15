@@ -58,10 +58,18 @@ import { notFound, useSearchParams } from 'next/navigation'
 import { FileBrowserPane, type FolderNavigation } from '@/features/documents/components/file-browser-pane'
 import { DocumentActionsTrigger, DocumentObjectMenu } from '@/features/documents/components/document-actions'
 import { FileSearchBar, FileSearchField } from '@/features/documents/components/file-search-bar'
+import { FileFilterMenu } from '@/features/documents/components/file-filter-menu'
+import { FilesHeaderControls } from '@/features/documents/components/files-header-controls'
+import { usePhoneLayout } from '@/features/documents/hooks/use-phone-layout'
+import { NO_FILE_FILTERS, type FileFilters } from '@/features/documents/lib/file-filters'
+import { DEFAULT_FILE_SORT, type FileSort } from '@/features/documents/lib/file-sort'
+import { FolderPickerSheet } from '@/features/documents/components/folder-picker-sheet'
+import { SelectionBar } from '@/features/documents/components/selection-bar'
+import { UploadFab } from '@/features/documents/components/upload-fab'
+import { ProjectUppyUpload } from '@/features/documents/components/project-uppy-upload'
+import { sortedFolderDestinations } from '@/features/documents/lib/folder-path-label'
 import { useFileSearch } from '@/features/documents/hooks/use-file-search'
 import { projectSearchScope } from '@/features/documents/lib/file-shelf'
-import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
-import { LayoutGrid, List } from 'lucide-react'
 import type { FileItem, FolderItem } from '@/features/documents/components/project-file-workspace'
 import { FassungenFixture } from './fassungen-fixture'
 import { FolderBrief } from '@/features/documents/components/folder-brief'
@@ -255,7 +263,102 @@ export default function FileBrowserDevPage(): JSX.Element {
   if (variant === 'folder-drop') return <FolderDropTargetFixture />
   if (variant === 'file-context') return <FileContextMenuFixture />
   if (variant === 'fassungen') return <FassungenFixture />
+  if (variant === 'phone-fab') return <PhoneUploadFabFixture />
+  if (variant === 'select') return <SelectionFixture view="cards" />
+  if (variant === 'select-list') return <SelectionFixture view="list" />
+  if (variant === 'move-sheet') return <SelectionFixture view="cards" sheetOpen />
   return <FileBrowserFixtures />
+}
+
+/**
+ * Picking several files, the way the workspace composes it: the pane in
+ * selection mode, the bar at the foot of the column, and (`move-sheet`) the
+ * folder sheet „Verschieben" opens. Two photos are already picked so the shot
+ * shows both marks and the count.
+ */
+function SelectionFixture({ view, sheetOpen = false }: { view: 'cards' | 'list'; sheetOpen?: boolean }): JSX.Element {
+  const folderNav = useFixtureFolderNav()
+  const search = useFileSearch(projectSearchScope('proj-demo'))
+  const [picked, setPicked] = useState<ReadonlySet<string>>(new Set(['p3', 'p4']))
+  const [sheet, setSheet] = useState(sheetOpen)
+  const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
+  return (
+    <main className="mx-auto flex max-w-5xl flex-col gap-4 p-4">
+      <h1 className="text-lg font-semibold">Files browser — selection</h1>
+      <div className="flex h-[640px] flex-col overflow-hidden rounded-xl border" data-testid="file-browser-selection">
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <FileBrowserPane
+            files={levelFiles}
+            searchFiles={FILES}
+            selectedFileId={null}
+            onSelectFile={() => {}}
+            isLoading={false}
+            search={search}
+            view={view}
+            folderNav={folderNav}
+            selection={{
+              active: true,
+              selectedIds: picked,
+              onToggle: (id) =>
+                setPicked((current) => {
+                  const next = new Set(current)
+                  if (!next.delete(id)) next.add(id)
+                  return next
+                }),
+            }}
+          />
+        </div>
+        <SelectionBar
+          count={picked.size}
+          total={levelFiles.length}
+          canMove
+          onSelectAll={() => setPicked(new Set(levelFiles.map((file) => file.id)))}
+          onMove={() => setSheet(true)}
+          onDone={() => setPicked(new Set())}
+        />
+      </div>
+      <FolderPickerSheet
+        open={sheet}
+        onOpenChange={setSheet}
+        title={`${picked.size} Dateien verschieben nach …`}
+        destinations={sortedFolderDestinations(FOLDERS)}
+        currentFolderId={folderNav.currentFolderId}
+        onPick={() => setSheet(false)}
+      />
+    </main>
+  )
+}
+
+/**
+ * The phone's floating Hochladen: the pane in a column that ends a button's
+ * height above the foot, with the workspace's own `UploadFab` over it. Scroll
+ * the list to its end to see that the last card is clear of the button.
+ */
+function PhoneUploadFabFixture(): JSX.Element {
+  const folderNav = useFixtureFolderNav()
+  const search = useFileSearch(projectSearchScope('proj-demo'))
+  const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
+  return (
+    <main className="flex h-dvh flex-col" data-testid="file-browser-phone-fab">
+      <div className="relative min-h-0 flex-1">
+        <div className="h-full overflow-y-auto pb-20">
+          <FileBrowserPane
+            files={levelFiles}
+            searchFiles={FILES}
+            selectedFileId={null}
+            onSelectFile={() => {}}
+            isLoading={false}
+            search={search}
+            view="cards"
+            folderNav={folderNav}
+          />
+        </div>
+        <UploadFab inSheet={false}>
+          <ProjectUppyUpload onUpload={() => {}} isUploading={false} allowFolders />
+        </UploadFab>
+      </div>
+    </main>
+  )
 }
 
 /** Local folder-navigation state over the fixture's static folders. */
@@ -651,6 +754,9 @@ function FileBrowserFixtures(): JSX.Element {
   const flatSearch = useFileSearch(projectSearchScope('proj-demo'))
   // A non-empty query so the search bar's clear (X) target renders in the shot.
   const [barSearch, setBarSearch] = useState('Brandschutz')
+  const phone = usePhoneLayout()
+  const [filters, setFilters] = useState<FileFilters>(NO_FILE_FILTERS)
+  const [sort, setSort] = useState<FileSort>(DEFAULT_FILE_SORT)
 
   const levelFiles = FILES.filter((f) => (f.folderId ?? null) === folderNav.currentFolderId)
   // The brief as the workspace mounts it: folded to one line, opened on a click.
@@ -671,33 +777,26 @@ function FileBrowserFixtures(): JSX.Element {
           view toggle and search field in the header band, the field's own
           results rendered by the pane below it. */}
       <div className="flex h-[720px] flex-col overflow-hidden rounded-xl border">
-        <div className="flex flex-wrap items-center justify-end gap-2 border-b px-4 py-3">
-          <ToggleGroup
-            type="single"
-            value={view}
-            onValueChange={(value) => {
-              if (value === 'cards' || value === 'list') setView(value)
-            }}
-            segmented
-            size="icon-sm"
-            aria-label="Ansicht"
-          >
-            <ToggleGroupItem value="cards" aria-label="Kacheln" title="Kacheln">
-              <LayoutGrid />
-            </ToggleGroupItem>
-            <ToggleGroupItem value="list" aria-label="Liste" title="Liste">
-              <List />
-            </ToggleGroupItem>
-          </ToggleGroup>
-          <FileSearchField
-            className="w-64"
-            value={search.query}
-            onChange={search.setQuery}
-            onSubmit={search.run}
-            onClear={search.clear}
-            placeholder="Dateien durchsuchen"
-            searchLabel="Suche"
-            resetLabel="Suche zurücksetzen"
+        {/* The REAL header controls (`FilesHeaderControls`), so this preview
+            draws the row the product draws: one row on a phone, the desk's
+            toggle, filter and search otherwise. */}
+        <div className="border-b px-4 py-3">
+          <FilesHeaderControls
+            phone={phone}
+            view={view}
+            onViewChange={setView}
+            binHref="/app/projects/dev/files/bin"
+            renderFilter={(compact) => (
+              <FileFilterMenu
+                canCollaborate={false}
+                filters={filters}
+                onFiltersChange={setFilters}
+                sort={sort}
+                onSortChange={setSort}
+                compact={compact}
+              />
+            )}
+            search={{ value: search.query, onChange: search.setQuery, onSubmit: search.run, onClear: search.clear }}
           />
         </div>
         <div className="flex-1 overflow-y-auto">

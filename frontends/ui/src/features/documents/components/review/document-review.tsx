@@ -2,13 +2,16 @@
 
 import { useCallback, useEffect, useRef, useState, type JSX } from 'react'
 import Link from 'next/link'
-import { MessageSquarePlus, MousePointer2, RotateCcw, Sparkles, SquareDashed, X } from 'lucide-react'
+import { MessageSquarePlus, MessagesSquare, MousePointer2, RotateCcw, Sparkles, SquareDashed, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet'
+import { useMediaQuery } from '@/hooks/use-media-query'
 import { Button } from '@/components/ui/button'
 import { PersonAvatar } from '@/components/ui/avatar-stack'
 import { identityInk } from '@/components/ui/avatar-identity'
 import { Kbd } from '@/components/ui/kbd'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { PilotiGlyph } from '@/components/ui/piloti-glyph'
 import { ShimmerText } from '@/components/ui/shimmer-text'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -155,7 +158,8 @@ function PilotiReview({ review }: { review: ReviewState }): JSX.Element {
         onClick={() => piloti.ask({ text: t('review.reviewSeed'), region: null, effort: 'medium' })}
       >
         <Sparkles className="size-3.5" aria-hidden />
-        {t('review.reviewWithPiloti')}
+        {/* On a phone the glyph carries it; the words stay for a screen reader. */}
+        <span className="max-sm:sr-only">{t('review.reviewWithPiloti')}</span>
       </Button>
     )
   }
@@ -255,6 +259,10 @@ export function DocumentReviewMode({
   const [following, setFollowing] = useState<string | null>(null)
   const { annotations, select, setTool, tool, selectedId, draft, setDraft, room, piloti } = review
   const openAsk = piloti.asks.find((ask) => ask.id === piloti.openId) ?? null
+  // From `lg` the list is a column beside the sheet; below it, a sheet from the
+  // bottom edge behind a header button (a phone on its side is 852px, under `lg`).
+  const listBeside = useMediaQuery('(min-width: 1024px)')
+  const [listOpen, setListOpen] = useState(false)
 
   const bring = useCallback(
     (annotation: AnnotationView) => {
@@ -313,6 +321,8 @@ export function DocumentReviewMode({
     if (!open) return
     const onKey = (event: KeyboardEvent) => {
       if (event.defaultPrevented || event.metaKey || event.ctrlKey || event.altKey) return
+      // The list's sheet is a layer of its own: its keys are its own.
+      if (listOpen) return
       if (event.key === 'Escape') {
         if (typing(event.target) && !draft && !openAsk) return
         event.preventDefault()
@@ -343,7 +353,7 @@ export function DocumentReviewMode({
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [open, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
+  }, [open, listOpen, draft, openAsk, piloti, following, tool, selectedId, annotations, review, select, setDraft, setTool, close, bring])
 
   /** The tools as a cluster of their own, the one in hand filled in ink: what the pointer will do is never a guess. */
   const offered = TOOLS.filter(({ tool: option }) => toolOffered(option, review))
@@ -352,7 +362,11 @@ export function DocumentReviewMode({
       role="toolbar"
       aria-label={t('review.toolsLabel')}
       data-testid="review-tools"
-      className="bg-popover/95 border-border/70 pointer-events-auto absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-xl border p-1 shadow-md backdrop-blur-md"
+      // On a touch screen the tools sit centred ABOVE the viewer's own pill,
+      // at the thumb: left-aligned at the foot they lay over its page and zoom
+      // controls on a phone. Navigate (the pointer) is the first of them, so
+      // the mode the reader is in is always the filled one.
+      className="bg-popover/95 border-border/70 pointer-events-auto absolute bottom-4 left-4 z-30 flex items-center gap-0.5 rounded-xl border p-1 shadow-md backdrop-blur-md pointer-coarse:bottom-[4.75rem] pointer-coarse:left-1/2 pointer-coarse:-translate-x-1/2"
     >
       {offered.map(({ tool: option, key, icon: Icon }) => (
         <Tooltip key={option}>
@@ -365,7 +379,7 @@ export function DocumentReviewMode({
               aria-label={t(`review.tools.${option}`)}
               onClick={() => setTool(option)}
               className={cn(
-                'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 [&_svg]:size-4',
+                'flex size-8 items-center justify-center rounded-lg transition-colors duration-quick ease-out outline-none focus-visible:ring-2 focus-visible:ring-ring/60 pointer-coarse:size-11 [&_svg]:size-4',
                 tool === option ? 'bg-foreground text-background' : 'text-muted-foreground hover:bg-accent hover:text-foreground'
               )}
             >
@@ -398,20 +412,24 @@ export function DocumentReviewMode({
         className="bg-background inset-0 top-0 left-0 flex h-dvh max-h-dvh w-screen max-w-none translate-x-0 translate-y-0 flex-col gap-0 overflow-hidden rounded-none border-0 p-0 sm:max-w-none"
         data-testid="document-review"
       >
-        <header className="flex h-13 shrink-0 items-center gap-3 border-b px-3">
+        <header className="flex min-h-13 shrink-0 items-center gap-3 border-b px-3 pt-[env(safe-area-inset-top)] pr-[max(0.75rem,env(safe-area-inset-right))] pl-[max(0.75rem,env(safe-area-inset-left))] max-sm:gap-2">
           <Button
             type="button"
             variant="ghost"
             size="icon"
-            className="size-8"
+            className="size-8 shrink-0 pointer-coarse:size-11"
             aria-label={t('review.close')}
             title={`${t('review.close')} (Esc)`}
             onClick={close}
           >
             <X className="size-4" aria-hidden />
           </Button>
-          <div className="min-w-0">
-            <DialogTitle className="text-foreground truncate text-sm font-semibold">{documentName}</DialogTitle>
+          <div className="min-w-0 flex-1">
+            {/* Cut in the middle: a phone's header leaves the name ~140px, and
+                the index at its end is what says which Fassung is under review. */}
+            <DialogTitle className="text-foreground flex text-sm font-semibold">
+              <MiddleTruncate text={documentName} tail={12} />
+            </DialogTitle>
             <DialogDescription className="text-muted-foreground truncate text-xs">
               {[
                 fassungLabel,
@@ -423,7 +441,7 @@ export function DocumentReviewMode({
                 .join(' · ')}
             </DialogDescription>
           </div>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex shrink-0 items-center gap-3 max-sm:gap-2">
             {room.status === 'offline' && (
               <span
                 className="text-muted-foreground text-[11px] font-medium"
@@ -435,7 +453,23 @@ export function DocumentReviewMode({
               </span>
             )}
             <Presence review={review} following={following} onFollow={setFollowing} />
-            {annotations.length > 0 && (
+            {!listBeside && (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 pointer-coarse:h-11"
+                aria-haspopup="dialog"
+                aria-expanded={listOpen}
+                aria-label={t('annotations.section')}
+                data-testid="review-list-open"
+                onClick={() => setListOpen(true)}
+              >
+                <MessagesSquare className="size-3.5" aria-hidden />
+                <span className="font-mono tabular-nums">{review.counts.open + review.counts.proposed}</span>
+              </Button>
+            )}
+            {annotations.length > 0 && listBeside && (
               <ReviewExportMenu
                 documentId={review.documentId}
                 hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
@@ -511,6 +545,45 @@ export function DocumentReviewMode({
           </div>
           <ReviewPanel review={review} onOpen={bring} onWalkProposals={walkProposals} />
         </div>
+        {!listBeside && (
+          <Sheet open={listOpen} onOpenChange={setListOpen}>
+            <SheetContent
+              side="bottom"
+              closeLabel={t('review.close')}
+              data-testid="review-list-sheet"
+              className="flex h-[70dvh] flex-col gap-0 rounded-t-2xl p-0 pb-[env(safe-area-inset-bottom)] sm:mx-auto sm:max-w-xl"
+            >
+              <SheetHeader className="flex-row items-center gap-2 px-4 pt-4 pr-14 pb-0">
+                <SheetTitle className="text-base">{t('annotations.section')}</SheetTitle>
+                <SheetDescription className="sr-only">{documentName}</SheetDescription>
+                {annotations.length > 0 && (
+                  <div className="ml-auto">
+                    <ReviewExportMenu
+                      documentId={review.documentId}
+                      hasFassungen={annotations.some((annotation) => !annotation.onCurrentFassung)}
+                      hasProposals={annotations.some(
+                        (annotation) => annotation.authorKind === 'piloti' && !annotation.acceptedBy,
+                      )}
+                    />
+                  </div>
+                )}
+              </SheetHeader>
+              <ReviewPanel
+                review={review}
+                presentation="sheet"
+                // Choosing a mark shows it: the sheet steps aside for the page.
+                onOpen={(annotation) => {
+                  setListOpen(false)
+                  bring(annotation)
+                }}
+                onWalkProposals={() => {
+                  setListOpen(false)
+                  walkProposals()
+                }}
+              />
+            </SheetContent>
+          </Sheet>
+        )}
       </DialogContent>
     </Dialog>
   )

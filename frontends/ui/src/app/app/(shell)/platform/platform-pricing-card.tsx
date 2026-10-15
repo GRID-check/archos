@@ -489,9 +489,12 @@ export const PlatformPricingCard: FC<{ onSaved?: () => void }> = ({ onSaved }) =
                 <TableBody>
                   {pricing.history.map((version) => (
                     <TableRow key={version.id}>
-                      <TableCell className="whitespace-nowrap">
-                        <span className="flex items-center gap-2 tabular-nums">
-                          {formatDate(version.createdAt, locale)}
+                      <TableCell>
+                        {/* The date never breaks, but the "current" badge may drop
+                            under it: beside it, the badge widened this column until
+                            the credit column was clipped at the card edge. */}
+                        <span className="flex flex-wrap items-center gap-x-2 gap-y-1 tabular-nums">
+                          <span className="whitespace-nowrap">{formatDate(version.createdAt, locale)}</span>
                           {version.status === 'active' ? (
                             <Badge variant="secondary">{t('pricing.historyCurrent')}</Badge>
                           ) : null}

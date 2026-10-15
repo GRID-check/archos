@@ -17,11 +17,13 @@
  */
 
 import type { JSX } from 'react'
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { motion, springGlide } from '@/components/motion'
+import { HorizontalScroll } from '@/components/ui/horizontal-scroll'
 
 export interface SectionNavItem {
   key: string
@@ -81,20 +83,14 @@ export function SectionNav({
 
   return (
     <nav aria-label={label} data-testid={testId}>
-      {/* Mobile / tablet: a scrolling strip. Wide content scrolls in its own
-          container so the page body never scrolls horizontally. */}
-      <ul className={cn('flex gap-1 overflow-x-auto pb-2', orientation === 'rail' && 'lg:hidden')}>
-        {items.map((item) => (
-          <li key={item.key} className="shrink-0">
-            <SectionNavLink
-              item={item}
-              active={isSectionActive(pathname, item.href, rootHref)}
-              pillId={pillId}
-              variant="strip"
-            />
-          </li>
-        ))}
-      </ul>
+      {/* Mobile / tablet: a scrolling strip. */}
+      <SectionStrip
+        label={label}
+        items={items}
+        pillId={pillId}
+        isActive={(href) => isSectionActive(pathname, href, rootHref)}
+        className={cn(orientation === 'rail' && 'lg:hidden')}
+      />
 
       {/* Desktop: a sticky rail beside the content. */}
       {orientation === 'rail' && (
@@ -112,6 +108,63 @@ export function SectionNav({
         </ul>
       )}
     </nav>
+  )
+}
+
+/**
+ * The strip: sections in a row that scrolls inside its own container, so the
+ * page body never scrolls horizontally. The edge that hides sections fades
+ * (`HorizontalScroll`), so the cut reads as "more this way" instead of as the
+ * end of the list; entries are 44px tall under a finger; and the current one is
+ * brought into view. Lifted out of `SectionNav` so a tier with a rail of its own
+ * (the platform's grouped one) gets the same strip.
+ */
+export function SectionStrip({
+  label,
+  items,
+  pillId,
+  isActive,
+  className,
+}: {
+  label: string
+  items: readonly SectionNavItem[]
+  pillId: string
+  isActive: (href: string) => boolean
+  className?: string
+}): JSX.Element {
+  const pathname = usePathname()
+  const stripRef = useRef<HTMLDivElement>(null)
+
+  // The current section in view. A strip that opens on its sixth entry used
+  // to show the first three and leave the reader to guess where they were.
+  // `scrollLeft`, not `scrollIntoView`: the latter also scrolls every scrolling
+  // ancestor, and on a phone that is the page.
+  useEffect(() => {
+    const strip = stripRef.current
+    const scroller = strip?.firstElementChild
+    const current = strip?.querySelector<HTMLElement>('[aria-current="page"]')
+    if (!(scroller instanceof HTMLElement) || !current) return
+    const target = current.offsetLeft - (scroller.clientWidth - current.offsetWidth) / 2
+    scroller.scrollLeft = Math.max(0, target)
+  }, [pathname])
+
+  return (
+    <div ref={stripRef} className={className}>
+      <HorizontalScroll aria-label={label} cue className="[scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+        <ul className="flex gap-1 pb-2">
+          {items.map((item) => (
+            <li key={item.key} className="shrink-0">
+              <SectionNavLink
+                item={item}
+                active={isActive(item.href)}
+                pillId={pillId}
+                variant="strip"
+              />
+            </li>
+          ))}
+        </ul>
+      </HorizontalScroll>
+    </div>
   )
 }
 
@@ -136,7 +189,11 @@ function SectionNavLink({
         // `relative isolate` + pill `-z-10` is the app-sidebar rail pattern:
         // the active surface glides on `springGlide` below the ink.
         'duration-quick focus-visible:ring-ring/60 relative isolate items-center rounded-md text-sm transition-colors ease-out focus-visible:outline-none focus-visible:ring-2',
-        variant === 'strip' ? 'inline-flex gap-1.5 px-3 py-1.5' : 'flex gap-2 px-3 py-2',
+        // The strip's entries sit 4px apart, so under a finger each grows to
+        // 44px rather than borrowing a catchment from its neighbour.
+        variant === 'strip'
+          ? 'inline-flex gap-1.5 px-3 py-1.5 pointer-coarse:min-h-11 pointer-coarse:px-3.5'
+          : 'flex gap-2 px-3 py-2 pointer-coarse:min-h-11',
         active
           ? 'text-secondary-foreground font-medium'
           : cn(
