@@ -175,13 +175,15 @@ GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT
 $MIGRATE -v ON_ERROR_STOP=1 -q -c "DELETE FROM bff_job_queue" >/dev/null
 
 # The job-queue suites claim from ONE table, whichever lane a job is in, so run
-# in parallel they claim each other's seeded jobs. One file at a time.
-echo "==> running the job-queue suites one file at a time as grid_app_rw"
+# in parallel they claim each other's seeded jobs. One file at a time. The
+# scheduler's due-scan is the same shape over task_definitions, every tenant's.
+echo "==> running the job-queue and scheduler-claim suites one file at a time as grid_app_rw"
 GRID_TEST_DATABASE_URL="postgres://grid_app_rw:$RUNTIME_PASSWORD@127.0.0.1:$PORT/grid_app" \
   npx vitest run --no-file-parallelism \
     src/lib/jobs-queue/queue.integration.spec.ts \
     src/lib/jobs-queue/repository.integration.spec.ts \
-    workers/jobs/runner.integration.spec.mjs
+    workers/jobs/runner.integration.spec.mjs \
+    scheduler/db.integration.spec.mjs
 
 # ---------------------------------------------------------------------------
 # Migration 0086: the backfill, asserted per row shape, and its DOWN migration.
