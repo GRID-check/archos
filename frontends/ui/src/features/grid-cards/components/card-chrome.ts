@@ -20,3 +20,18 @@
  * exactly once.
  */
 export const CARD_SHELL = 'border-transparent bg-muted/40 shadow-none'
+
+/**
+ * The decision row of a proposal card: the question, then „Übernehmen“ first,
+ * then the alternatives, then „Verwerfen“. On a phone the buttons stack, full
+ * width, and share one height; from `sm` they are one right-aligned row beside
+ * the question. DOM order is reading order is visual order.
+ */
+export const DECISION_ROW = 'flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-end'
+
+/**
+ * One button of that row. `max-sm:h-11` states the 44px floor outright rather
+ * than leaving it to the button's `pointer-coarse:h-11`: the buttons of one row
+ * must be one height, and a phone is where the decision is made with a thumb.
+ */
+export const DECISION_BUTTON = 'max-sm:h-11 max-sm:w-full'

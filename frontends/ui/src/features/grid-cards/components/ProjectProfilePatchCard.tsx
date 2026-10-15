@@ -3,11 +3,13 @@
 import { useMemo, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { useTranslations } from '@/i18n'
+import { cn } from '@/lib/utils'
 import { selectCardConversationId, useCardDecision } from '../hooks/use-card-decision'
 import { useChatStore } from '@/features/chat/store'
 import { invalidateProjectFacts } from '@/features/chat/hooks/use-project-facts'
 import { ProfilePatchReceipt } from './ProposalReceipts'
 import { ProfilePatchTable } from './ProfilePatchTable'
+import { DECISION_BUTTON, DECISION_ROW } from './card-chrome'
 import { ProposalShell } from './ProposalShell'
 import { StackedLabel } from '@/components/ui/stacked-label'
 import { useCurrentProfile } from '../hooks/use-current-profile'
@@ -164,11 +166,11 @@ function BrowserAppliedProfileCard({
           next reader of this proposal would be offered the same write again. The
           question is put where the answer has a home, which is the thread. */}
       {canDecide && (
-        // The note wraps onto its own line before it squeezes the buttons: on a
-        // phone it sat beside them four words to a line.
-        <div className="flex flex-wrap items-center gap-2">
+        // The note takes its own line above the buttons (DECISION_ROW stacks on
+        // a phone), so it never sits beside them four words to a line.
+        <div className={DECISION_ROW}>
           {!projectId && (
-            <p className="min-w-[16rem] flex-1 text-xs text-muted-foreground">{t('profilePatchCard.noProject')}</p>
+            <p className="text-xs text-muted-foreground sm:mr-auto sm:min-w-[16rem] sm:flex-1">{t('profilePatchCard.noProject')}</p>
           )}
           {/* Without a project there is nothing to apply to: that one IS
               disabled, and says why beside it. In flight it is only busy —
@@ -182,7 +184,7 @@ function BrowserAppliedProfileCard({
             disabled={!projectId}
             aria-disabled={isSubmitting || undefined}
             aria-busy={isSubmitting || undefined}
-            className="aria-disabled:cursor-default"
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default')}
           >
             <StackedLabel
               busy={isSubmitting}
@@ -196,7 +198,7 @@ function BrowserAppliedProfileCard({
             size="sm"
             onClick={handleReject}
             aria-disabled={isSubmitting || undefined}
-            className="aria-disabled:cursor-default aria-disabled:opacity-50"
+            className={cn(DECISION_BUTTON, 'aria-disabled:cursor-default aria-disabled:opacity-50')}
           >
             {t('profilePatchCard.reject')}
           </Button>
