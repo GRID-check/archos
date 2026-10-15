@@ -90,6 +90,15 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
   // A drop is held for the setup page only while the dialog may still create the
   // project; closing it any other way discards the files.
   const created = useRef(false)
+  // Focusing the name opens the soft keyboard the moment the dialog appears, on
+  // top of the fields and the action. Only a fine pointer is taken to be at a
+  // keyboard already; where the media query cannot be asked (an old engine, a
+  // test renderer) the desktop behaviour stays.
+  const [focusNameOnOpen] = useState(() =>
+    typeof window === 'undefined' || typeof window.matchMedia !== 'function'
+      ? true
+      : window.matchMedia('(pointer: fine)').matches,
+  )
 
   // On the name field, not the form: a form-level validator re-runs when the
   // Stand changes, and the blur of choosing a card would flag an untouched,
@@ -188,7 +197,7 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
             <field.TextField
               label={t('form.nameLabel')}
               placeholder={t('form.namePlaceholder')}
-              autoFocus
+              autoFocus={focusNameOnOpen}
               autoComplete="off"
               disabled={isSubmitting}
             />
@@ -330,7 +339,9 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           />
         )}
         {!dropped && piloti && (
-          <p className="text-muted-foreground text-xs" data-testid="create-project-drop-hint">
+          // Dragging a folder onto the window is a desktop gesture; on a touch
+          // device the line describes something the reader cannot do.
+          <p className="text-muted-foreground text-xs pointer-coarse:hidden" data-testid="create-project-drop-hint">
             {t('form.drop.hint')}
           </p>
         )}
@@ -341,7 +352,12 @@ export function CreateProjectForm({ onCancel, addressClients }: CreateProjectFor
           </Alert>
         )}
 
-        <DialogFooter className="pt-1">
+        {/* On a phone the footer stays on screen while the fields scroll: the
+            form is longer than the viewport once Piloti sets it up, and the
+            action that ends it was below the fold. Cancel and the action share
+            one row (the action takes the width) so the bar costs one button's
+            height, and the bottom padding clears the home indicator. */}
+        <DialogFooter className="pt-1 max-sm:sticky max-sm:bottom-0 max-sm:z-10 max-sm:-mx-4 max-sm:flex-row max-sm:items-center max-sm:gap-3 max-sm:border-t max-sm:bg-popover max-sm:px-4 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:pt-3 max-sm:[&>:last-child]:flex-1">
           {onCancel && (
             <Button type="button" variant="ghost" onClick={onCancel} disabled={isSubmitting}>
               {t('form.cancel')}
@@ -482,7 +498,7 @@ function PeriodFields({
     problem === 'beforeStart' ? t('form.closed.endedOnBeforeStart') : problem ? t(`lifecycle.closeDialog.endedOn.${problem}`) : null
 
   return (
-    <div className="grid gap-5 sm:grid-cols-2 sm:gap-4">
+    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-4">
       <Field>
         <FieldLabel htmlFor="create-project-started-on">
           {t('form.closed.startedOn')}
