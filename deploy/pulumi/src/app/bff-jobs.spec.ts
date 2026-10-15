@@ -166,7 +166,7 @@ describe("the bff-jobs pool", () => {
       ]),
     );
     const privateKey = env.find((e) => e.name === "GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
-    expect(privateKey?.valueFrom?.secretKeyRef?.key).toBe("GRID_WEB_PUSH_VAPID_PRIVATE_KEY");
+    expect(privateKey).toMatchObject({ valueFrom: { secretKeyRef: { key: "GRID_WEB_PUSH_VAPID_PRIVATE_KEY" } } });
   });
 
   it("names no variable twice, and logs under its own service name", async () => {
