@@ -11,17 +11,9 @@
 /** @typedef {import('./types').QueueEntry} QueueEntry */
 /** @typedef {import('postgres').Sql} Sql */
 
-const postgres = require('postgres')
 // Every statement below spans tenants (the queue covers all organizations),
 // so each runs under the platform step-up — see workers/platform-scope.js.
 const { withPlatformScope } = require('../workers/platform-scope')
-
-/** @returns {Sql} */
-function createSql() {
-  const url = process.env.GRID_APP_DATABASE_URL
-  if (!url) throw new Error('GRID_APP_DATABASE_URL is not defined')
-  return postgres(url, { prepare: false })
-}
 
 const MAX_ATTEMPTS = 10
 const STALE_CLAIM_MINUTES = 15
@@ -205,7 +197,6 @@ async function reapStranded(sql) {
 
 module.exports = {
   claimNext,
-  createSql,
   hasActiveHold,
   markFailed,
   markFailedPermanent,
