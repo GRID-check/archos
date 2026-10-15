@@ -77,7 +77,7 @@ export function OrganizationSetup({
         </div>
       </header>
 
-      <div className="flex flex-1 justify-center px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[min(14vh,8rem)]">
+      <div className="flex flex-1 justify-center px-4 pb-[max(4rem,env(safe-area-inset-bottom))] pt-[min(14svh,8rem)]">
         <FadeIn className="w-full max-w-sm" key={createdName ? 'done' : 'form'}>
           {createdName ? (
             <SetupDone name={createdName} />

@@ -64,7 +64,7 @@ export const DocumentDraftPreviewDialog: FC<DocumentDraftPreviewDialogProps> = (
     <Dialog open={open} onOpenChange={(isOpen) => !isOpen && onClose()}>
       <DialogContent
         data-testid="document-draft-preview"
-        className="flex max-h-[85vh] flex-col overflow-hidden sm:max-w-3xl"
+        className="flex max-h-[85dvh] flex-col overflow-hidden sm:max-w-3xl"
       >
         {/* Fixed chrome: the title and the facts never scroll away, and never
             shrink under the words below. `leading-snug`, because the dialog

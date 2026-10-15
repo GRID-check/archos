@@ -164,19 +164,12 @@ describe('no height is measured against the large viewport', () => {
    * screen. `dvh` follows the toolbars; `svh` is the stable small viewport, for
    * a cap that must not move while the reader scrolls. `h-screen` is `100vh`.
    *
-   * The primitives and the shell are converted. The files below belong to other
-   * areas and are listed with their owner; each leaves the list when it is fixed.
+   * Absolute: no file is excused. The last seven (the cheatsheet, the lesson
+   * dialog, the source picker, the share body, the onboarding offset, the draft
+   * preview, the feedback screenshot) moved to `dvh`, and the onboarding offset
+   * to `svh`, a position that must not jump while the toolbars move.
    */
   const VH = /(?<![\w-])\d+(?:\.\d+)?vh\b|\b(?:min-h|max-h|h)-screen\b/g
-  const VH_PENDING = new Map<string, string>([
-    ['components/shell/shortcuts-cheatsheet.tsx', 'shell: the cheatsheet body, max-h-[min(70vh,38rem)]'],
-    ['app/app/(shell)/platform/lessons/platform-lessons.tsx', 'platform admin: the lesson dialog, max-h-[80vh]'],
-    ['features/layout/components/source-basis/SourceBasisPicker.tsx', 'composer: the source picker, max-h-[min(70vh,460px)]'],
-    ['features/collaboration/components/ShareDialog.tsx', 'sharing: the scroll body, max-h-[min(72vh,42rem)]'],
-    ['features/onboarding/components/organization-setup.tsx', 'onboarding: the top offset, pt-[min(14vh,8rem)]'],
-    ['features/grid-cards/components/DocumentDraftPreviewDialog.tsx', 'cards: the draft preview, max-h-[85vh]'],
-    ['features/product-feedback/components/feedback-dialog.tsx', 'feedback: the screenshot, max-h-[40vh]'],
-  ])
 
   // Previews (`app/dev`) are desk tooling, never on a phone.
   const PRODUCT_FILES = SOURCE_FILES.filter(
@@ -192,14 +185,8 @@ describe('no height is measured against the large viewport', () => {
     return found
   }
 
-  it('sizes nothing in vh outside the listed files', () => {
-    const offenders = [...vhOffenders()].filter(([file]) => !VH_PENDING.has(file))
-    expect(offenders).toEqual([])
-  })
-
-  it('keeps the pending list honest: every listed file still has a vh', () => {
-    const found = vhOffenders()
-    expect([...VH_PENDING.keys()].filter((file) => !found.has(file))).toEqual([])
+  it('sizes nothing in vh', () => {
+    expect([...vhOffenders()]).toEqual([])
   })
 
   it('holds the stylesheet to the same rule', () => {
@@ -388,5 +375,67 @@ describe('every floating surface fits the screen it opens on', () => {
     expect(readCode(join(SRC, 'components', 'ui', file))).toContain(
       `max-w-(--radix-${primitive}-content-available-width)`
     )
+  })
+})
+
+describe('a focus ring is for the keyboard', () => {
+  /**
+   * The app's own `:focus-visible` outline was UNLAYERED, and an unlayered rule
+   * beats every `@layer` rule whatever its specificity. So `outline-none` lost
+   * to it everywhere: a control that draws its own ring wore the outline on top
+   * of it, a cmdk field that asked for none got a box inside its row, and a
+   * sheet that focuses itself on open (the project switcher, a dialog under a
+   * finger) drew a thick ink frame along its top edge on a phone. In the base
+   * layer, a utility wins, and a control with no focus style still gets the
+   * outline.
+   */
+  const css = blankComments(readFileSync(join(SRC, 'app', 'globals.css'), 'utf8')) as string
+
+  /** `[start, end)` of every `@layer base { … }` block. */
+  const baseLayers = (): Array<[number, number]> => {
+    const out: Array<[number, number]> = []
+    for (const match of css.matchAll(/@layer\s+base\s*\{/g)) {
+      let depth = 0
+      for (let i = match.index + match[0].length - 1; i < css.length; i += 1) {
+        if (css[i] === '{') depth += 1
+        else if (css[i] === '}' && --depth === 0) {
+          out.push([match.index, i])
+          break
+        }
+      }
+    }
+    return out
+  }
+
+  it('keeps every global :focus-visible rule inside the base layer', () => {
+    const layers = baseLayers()
+    const unlayered = [...css.matchAll(/:focus-visible[^{;]*\{/g)]
+      .filter((match) => !layers.some(([start, end]) => match.index > start && match.index < end))
+      .map((match) => match[0])
+    expect(css).toMatch(/:focus-visible\s*\{\s*outline:\s*2px solid var\(--ring\)/)
+    expect(unlayered).toEqual([])
+  })
+
+  it('draws no frame around an overlay panel that holds the focus itself', () => {
+    expect(css).toMatch(/:is\(\[role='dialog'\], \[role='alertdialog'\]\):focus-visible\s*\{\s*outline:\s*none/)
+  })
+})
+
+describe('a dialog footer is pinned by the primitive, not by hand', () => {
+  /**
+   * `DialogContent` pins its `DialogFooter` on a phone, with the negative inset
+   * that a sticky box inside a padded scroller needs. Two dialogs had rolled
+   * their own before it did, and a hand-rolled `sticky bottom-0` rode up over
+   * the last line of the body by exactly the padding. A caller that pins its own
+   * footer opts out of every later fix to the primitive's.
+   */
+  it('no DialogFooter carries its own sticky', () => {
+    const offenders = SOURCE_FILES.filter((f) => !/\.(?:spec|test)\.tsx?$/.test(f))
+      .flatMap((file) =>
+        [...readCode(file).matchAll(/<DialogFooter\b[^>]*className=(?:"[^"]*"|\{[^}]*\})/g)]
+          .filter((match) => /(?<![\w-])sticky\b/.test(match[0]))
+          .map(() => relative(file))
+      )
+    expect(offenders).toEqual([])
   })
 })

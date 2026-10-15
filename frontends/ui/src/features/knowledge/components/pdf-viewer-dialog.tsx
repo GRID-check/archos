@@ -143,7 +143,7 @@ export function PdfViewerDialog({ open, onOpenChange, fileName, page, title, src
       <DialogContent
         mobilePresentation="fullscreen"
         data-testid="pdf-viewer-dialog"
-        className="flex h-[90dvh] w-[95vw] max-w-[95vw] sm:max-w-[95vw] flex-col gap-3 p-4 sm:p-5 phone:h-dvh phone:max-h-dvh phone:w-screen phone:gap-0 phone:p-0"
+        className="flex h-[90dvh] w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] flex-col gap-3 p-4 sm:p-5 phone:h-dvh phone:max-h-dvh phone:w-screen phone:gap-0 phone:p-0"
       >
         <DialogHeader className="shrink-0 pr-8 text-left phone:gap-1 phone:pt-[max(0.75rem,env(safe-area-inset-top))] phone:pr-[calc(env(safe-area-inset-right)+3.75rem)] phone:pb-2 phone:pl-[max(1rem,env(safe-area-inset-left))]">
           {/* `flex-wrap`: the chip and the title hold the first line, the

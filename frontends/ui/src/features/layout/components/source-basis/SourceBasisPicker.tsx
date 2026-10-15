@@ -132,7 +132,7 @@ export const SourceBasisPicker: FC = () => {
   const isEmpty = basis.external.length === 0 && basis.always.length === 0
 
   return (
-    <div className="flex max-h-[min(70vh,460px)] flex-col gap-3">
+    <div className="flex max-h-[min(70dvh,460px)] flex-col gap-3">
       {/* The honest sentence, at the top — not a footnote under the fold. */}
       <Field className="gap-1">
         <div className="flex items-center gap-2">

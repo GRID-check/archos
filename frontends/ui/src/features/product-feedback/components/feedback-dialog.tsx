@@ -259,7 +259,7 @@ export function FeedbackDialog({
                 disabled={sending}
                 aria-invalid={showLengthHint && tooShort}
                 aria-describedby={`${messageId}-hint`}
-                className="max-h-[40vh] min-h-32"
+                className="max-h-[40dvh] min-h-32"
                 data-testid="feedback-message"
               />
               {showLengthHint && tooShort ? (

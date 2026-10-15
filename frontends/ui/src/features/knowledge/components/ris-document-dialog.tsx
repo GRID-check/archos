@@ -136,7 +136,7 @@ export function RisDocumentDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="flex h-[90dvh] w-[95vw] max-w-[95vw] flex-col gap-3 p-4 sm:max-w-[95vw] sm:p-5">
+      <DialogContent className="flex h-[90dvh] w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] flex-col gap-3 p-4 sm:max-w-[calc(100vw-2*max(2.5vw,env(safe-area-inset-left),env(safe-area-inset-right)))] sm:p-5">
         <DialogHeader className="shrink-0 pr-8 text-left">
           <DialogTitle className="flex flex-wrap items-center gap-2 text-base">
             {headerChip}

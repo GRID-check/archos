@@ -543,7 +543,7 @@ export function ShareDialog({
           // nothing below, on the sentence the reader most needs. With a 24px
           // runway the content can always scroll clear of the mask, and when
           // nothing overflows the mask simply lands on empty padding.
-          <div className="scroll-fade-bottom max-h-[min(72vh,42rem)] space-y-5 overflow-y-auto pr-1 pb-6 max-sm:max-h-none max-sm:overflow-visible max-sm:pr-0">
+          <div className="scroll-fade-bottom max-h-[min(72dvh,42rem)] space-y-5 overflow-y-auto pr-1 pb-6 max-sm:max-h-none max-sm:overflow-visible max-sm:pr-0">
             {/* A refused mutation must never look like it worked. */}
             {failure && (
               <Alert
