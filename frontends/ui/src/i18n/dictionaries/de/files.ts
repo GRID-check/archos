@@ -41,6 +41,8 @@ export const files: typeof en.files = {
       eta: 'noch {time}',
       queued: '{count} in Warteschlange',
       processing: 'Wird gelesen. Die Dauer lässt sich nicht vorhersagen, Sie können weiterarbeiten.',
+      // Der Browser meldet keine Verbindung, während Bytes unterwegs sein sollten.
+      offline: 'Keine Verbindung. Bitte die Seite geöffnet lassen.',
       elapsed: 'seit {time}',
       settled: '{total} übertragen',
     },
@@ -63,6 +65,7 @@ export const files: typeof en.files = {
       cancelAll: 'Alle abbrechen',
       cancel: 'Upload von {name} abbrechen',
       retryAll: 'Fehlgeschlagene wiederholen',
+      retryFile: 'Erneut versuchen',
       dismiss: '{name} ausblenden',
       dismissAll: 'Ausblenden',
     },
@@ -585,6 +588,7 @@ export const files: typeof en.files = {
     retry: 'Erneut versuchen',
   },
   workspace: {
+    more: 'Mehr',
     renameFolderError: 'Der Ordner konnte nicht umbenannt werden. Bitte versuchen Sie es erneut.',
     deleteFolderError: 'Der Ordner konnte nicht gelöscht werden. Bitte versuchen Sie es erneut.',
     deleteFolderConfirm: 'Ordner „{name}“ löschen?',
@@ -618,6 +622,26 @@ export const files: typeof en.files = {
     },
   },
   // Detailansicht des Explorers – Spaltenüberschriften der sortierbaren Liste.
+  selection: {
+    start: 'Auswählen',
+    done: 'Fertig',
+    all: 'Alle',
+    move: 'Verschieben',
+    column: 'Auswahl',
+    count: '{count, plural, =0 {Nichts ausgewählt} one {# ausgewählt} other {# ausgewählt}}',
+    moved: '{count, plural, one {# Datei nach „{folder}“ verschoben.} other {# Dateien nach „{folder}“ verschoben.}}',
+    moveFailed: '{count, plural, one {# Datei konnte} other {# Dateien konnten}} nicht verschoben werden. Bitte versuchen Sie es erneut.',
+  },
+  picker: {
+    titleOne: '„{name}“ verschieben nach …',
+    titleMany: '{count, plural, one {# Datei verschieben nach …} other {# Dateien verschieben nach …}}',
+    description: 'Wählen Sie den Ordner, in den die Dateien verschoben werden.',
+    search: 'Ordner suchen',
+    list: 'Ordner',
+    empty: 'Kein Ordner passt zu „{query}“.',
+    here: 'Hier',
+    close: 'Schließen',
+  },
   list: {
     columns: {
       relevance: 'Relevanz',
@@ -653,6 +677,7 @@ export const files: typeof en.files = {
     download: 'Herunterladen',
     open: 'Öffnen',
     ask: 'Danach fragen',
+    select: 'Auswählen',
     copyOriginPath: 'Herkunftspfad kopieren',
     rename: 'Umbenennen…',
     delete: 'Löschen…',
@@ -815,6 +840,8 @@ export const files: typeof en.files = {
       'Ein Outlook-Archiv enthält die Korrespondenz aller, die diesem Postfach geschrieben haben. Importieren Sie, was das Projekt braucht, nicht ein ganzes Postfach.',
     choose: 'Outlook-Archiv auswählen…',
     maxSize: 'Bis {size}.',
+    // Nur für Touch: ein Archiv dieser Größe sendet man vom Schreibtisch, mit stabiler Leitung.
+    desktopHint: 'Große Archive lassen sich am Schreibtisch am besten senden. Bricht die Verbindung ab, wählen Sie dieselbe Datei erneut und es geht dort weiter.',
     notAnArchive: '„{name}“ ist kein Outlook-Archiv (.pst oder .ost).',
     tooLarge: '„{name}“ ist größer als {size}.',
     sending: '{sent} von {total} gesendet…',

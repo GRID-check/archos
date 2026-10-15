@@ -1,8 +1,9 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import { ShimmerText } from '@/components/ui/shimmer-text'
-import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, X } from 'lucide-react'
+import { MiddleTruncate } from '@/components/ui/middle-truncate'
+import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, WifiOff, X } from 'lucide-react'
 import { mayRetryUpload, type TrackedFile } from '../types'
 import {
   isDeterminate,
@@ -83,6 +84,31 @@ const VISIBLE_PHASES = new Set<UploadPhase>([
  */
 const SUCCESS_LINGER_MS = 6_000
 
+/** Characters of a file name kept whole at its end: `_Rev_C_Freigabe.pdf`. */
+const ROW_NAME_TAIL = 20
+
+/**
+ * Whether the browser believes it has a connection. `navigator.onLine` is only
+ * a belief (a captive portal reads as online), but its one confident answer is
+ * the useful one: `false` means the radio is off or out of range, and a tray
+ * that says „Wird hochgeladen" over a dead link is the lie this exists to end.
+ * The server snapshot is online, so the first paint never flashes the notice.
+ */
+function subscribeOnline(onChange: () => void): () => void {
+  window.addEventListener('online', onChange)
+  window.addEventListener('offline', onChange)
+  return () => {
+    window.removeEventListener('online', onChange)
+    window.removeEventListener('offline', onChange)
+  }
+}
+const readOnline = (): boolean => navigator.onLine
+const serverOnline = (): boolean => true
+
+function useOnline(): boolean {
+  return useSyncExternalStore(subscribeOnline, readOnline, serverOnline)
+}
+
 export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }: UploadTrayProps) {
   // Height and opacity are not covered by MotionConfig's reduced motion.
   const foldTransition = useMotionToken(motionBase)
@@ -100,6 +126,9 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
   )
 
   const isTransferring = summary.stage === 'transferring'
+  const isOnline = useOnline()
+  // Offline only matters while bytes are meant to be moving.
+  const isWaitingForNetwork = isTransferring && !isOnline
   const { bytesPerSecond, etaSeconds } = useTransferRate(summary.uploadedBytes, summary.remainingBytes, isTransferring)
 
   // When the batch stopped moving bytes and handed over to the backend — the
@@ -174,7 +203,9 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
     (isTransferring && onCancelAll !== undefined) ||
     (summary.isSettled && retryAll !== null) ||
     (summary.isSettled && dismissAll !== undefined)
-  const detail = trayDetail(summary, { bytesPerSecond, etaSeconds, processingElapsed, locale, t })
+  const detail = isWaitingForNetwork
+    ? t('uploads.detail.offline')
+    : trayDetail(summary, { bytesPerSecond, etaSeconds, processingElapsed, locale, t })
 
   // The tray arrives and leaves as a fold, not a snap: it sits above the
   // listing, and a panel that appears or retires in one frame throws every row
@@ -210,7 +241,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           size. The summary now holds a readable floor and the actions drop to a
           second line when they no longer fit beside it. */}
       <div className="flex flex-wrap items-center gap-3 px-4 py-2.5">
-        <TrayGlyph summary={summary} />
+        <TrayGlyph summary={summary} offline={isWaitingForNetwork} />
 
         <button
           type="button"
@@ -231,7 +262,10 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
           <p aria-live="polite" className="truncate text-sm font-medium leading-tight text-foreground">
             {headline}
           </p>
-          <p aria-hidden className="truncate text-xs leading-tight text-muted-foreground tabular-nums">
+          {/* Two lines, not one: on a phone the sentence that says why nothing
+              is moving („Wird gelesen…", „Keine Verbindung…") is the part that
+              was being cut off. */}
+          <p aria-hidden className="line-clamp-2 text-xs leading-snug text-muted-foreground tabular-nums">
             {detail}
           </p>
         </button>
@@ -339,7 +373,7 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
  * bytes move; a rotating arc while the backend reads, which is a shape that
  * cannot be mistaken for a position.
  */
-function TrayGlyph({ summary }: { summary: TransferSummary }) {
+function TrayGlyph({ summary, offline }: { summary: TransferSummary; offline: boolean }) {
   const radius = 8
   const circumference = 2 * Math.PI * radius
 
@@ -358,6 +392,9 @@ function TrayGlyph({ summary }: { summary: TransferSummary }) {
         data-tone={hasFailure ? 'destructive' : hasHeld ? 'warning' : 'success'}
         className={cn(
           'flex size-5 shrink-0 items-center justify-center rounded-full',
+          // The mark lands rather than appears: a short rise from the ring's
+          // size, so "done" is something that happened. Still under reduced motion.
+          'animate-in zoom-in-75 fade-in-0 duration-base ease-entrance motion-reduce:animate-none',
           hasFailure
             ? 'bg-destructive/10 text-destructive'
             : hasHeld
@@ -372,6 +409,19 @@ function TrayGlyph({ summary }: { summary: TransferSummary }) {
         ) : (
           <Check className="size-3.5" />
         )}
+      </span>
+    )
+  }
+
+  if (offline) {
+    return (
+      <span
+        aria-hidden
+        data-testid="upload-tray-glyph"
+        data-tone="offline"
+        className="flex size-5 shrink-0 items-center justify-center rounded-full bg-warning-subtle text-warning"
+      >
+        <WifiOff className="size-3.5" />
       </span>
     )
   }
@@ -484,6 +534,8 @@ function UploadRow({
   const isHeldBack = phase === 'held'
   const unchanged = file.unchanged === true && phase === 'ready'
   const canDismiss = (phase === 'canceled' || isFailed || isHeldBack) && onDismiss !== undefined
+  const canRetry = isFailed && mayRetryUpload(file)
+  const showsSizeInline = phase === 'uploading' || phase === 'queued'
   // A line of the tray's filing bar would move this file.
   const lit = useFilingHighlighted(file.serverFileId)
 
@@ -526,8 +578,11 @@ function UploadRow({
             the width; from `sm` up they share the line in fixed columns. */}
         <div className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2.5">
         <div className="flex min-w-0 items-center gap-2 sm:flex-1">
-          <p className="min-w-0 truncate text-xs text-foreground" title={file.fileName}>
-            {file.fileName}
+          {/* The name loses its middle, never its end: the revision and the
+              extension are what tell two Fassungen of one drawing apart, and
+              a phone shows about 25 characters of it. */}
+          <p className="min-w-0 text-xs text-foreground" data-testid="upload-row-name">
+            <MiddleTruncate text={file.fileName} tail={ROW_NAME_TAIL} />
           </p>
           {/* Where Piloti would file it, while the person is still at the
               upload: the chip, as on the card, on the row's one line. */}
@@ -547,7 +602,7 @@ function UploadRow({
             // The server's „unchanged" answer is a sentence, not a status word,
             // so it may take more than the column.
             unchanged ? 'sm:min-w-24' : 'sm:w-24',
-            'shrink-0 whitespace-nowrap text-[11px] font-medium tabular-nums sm:text-right sm:text-xs',
+            'shrink-0 whitespace-nowrap text-xs font-medium tabular-nums sm:text-right',
             phase === 'ready' && !unchanged && 'text-success',
             isFailed && 'text-destructive',
             isHeldBack && 'text-warning',
@@ -558,12 +613,26 @@ function UploadRow({
           <ShimmerText active={phase === 'processing'}>
             {unchanged ? t('uploads.row.unchanged') : phaseLabel(phase, percent, t)}
           </ShimmerText>
+          {/* The size column is off on a phone, so a file that is still moving
+              carries its size here: „42 % · 4,8 MB" says how much is left. */}
+          {showsSizeInline && (
+            <span className="font-normal text-muted-foreground sm:hidden"> · {formatBytes(file.fileSize, locale)}</span>
+          )}
         </span>
         </div>
 
-        <span className="flex w-[52px] shrink-0 items-center justify-end gap-1 pointer-coarse:w-[92px]">
-          {isFailed && mayRetryUpload(file) && (
-            <RowAction label={tc('actions.retry')} onClick={() => onRetry(file.id)} icon={RotateCcw} />
+        {/* On a finger the row has ONE action. A failed row's retry is the
+            labelled button under its reason (below), not a second icon beside
+            the dismiss: two 44px icons in a 393px row left the name no room,
+            and a bare arrow says less than „Erneut versuchen". */}
+        <span className="flex w-[52px] shrink-0 items-center justify-end gap-1 pointer-coarse:w-11">
+          {canRetry && (
+            <RowAction
+              label={tc('actions.retry')}
+              onClick={() => onRetry(file.id)}
+              icon={RotateCcw}
+              className="pointer-coarse:hidden"
+            />
           )}
           {canCancel && (
             <RowAction
@@ -592,7 +661,7 @@ function UploadRow({
       )}
 
       <AnimatePresence initial={false}>
-        {(isFailed && file.errorMessage) || isHeldBack ? (
+        {(isFailed && (file.errorMessage || canRetry)) || isHeldBack ? (
           // eslint-disable-next-line grid/motion-vocabulary -- the reason folds open under its own row when the file settles; instant under reduced motion
           <motion.div
             key="reason"
@@ -616,6 +685,21 @@ function UploadRow({
               ) : isFailed && file.errorMessage ? (
                 <p className="text-xs leading-snug text-destructive">{file.errorMessage}</p>
               ) : null}
+
+              {/* Only where there is no hover and no room for a bare icon. */}
+              {canRetry && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-2 hidden gap-1.5 pointer-coarse:inline-flex"
+                  onClick={() => onRetry(file.id)}
+                  data-testid="upload-row-retry"
+                >
+                  <RotateCcw className="size-3.5" aria-hidden />
+                  {t('uploads.actions.retryFile')}
+                </Button>
+              )}
 
               {/* Why it was held, as the Files preview and the upload summary
                   say it. No page buttons: the tray cannot show the document.
@@ -652,10 +736,12 @@ function RowAction({
   label,
   onClick,
   icon: Icon,
+  className,
 }: {
   label: string
   onClick: () => void
   icon: typeof X
+  className?: string
 }) {
   return (
     <button
@@ -663,7 +749,10 @@ function RowAction({
       onClick={onClick}
       aria-label={label}
       title={label}
-      className="flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11"
+      className={cn(
+        'flex size-6 shrink-0 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 pointer-coarse:size-11',
+        className
+      )}
     >
       <Icon className="size-3.5" aria-hidden />
     </button>
