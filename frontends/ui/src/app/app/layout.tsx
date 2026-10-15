@@ -5,7 +5,8 @@
  * must exist on every /app page. Today that is the keyboard-shortcuts
  * feature (command palette, global hotkeys, cheatsheet), mounted for every
  * session with an organization. The per-user preference is enforced inside the
- * client component itself.
+ * client component itself. The same goes for the notification worker's
+ * lifecycle (Web Push, ADR-0112).
  *
  * Session reading is tolerant (no redirects): each page below still does its
  * own auth guard, and pages like onboarding must render without an org.
@@ -19,6 +20,8 @@ import { isProjectKnowledgePageEnabled, isSkillsEnabled } from '@/lib/authz/feat
 import { getNavFlags } from '@/lib/authz/nav'
 import { KeyboardShortcuts } from '@/components/shell'
 import { isAuthRequired } from '@/lib/auth/auth-required'
+import { PushLifecycle } from '@/features/notifications/components/push-lifecycle'
+import { getPushConfig } from '@/lib/push/service'
 
 
 interface AppLayoutProps {
@@ -28,6 +31,7 @@ interface AppLayoutProps {
 export default async function AppLayout({ children }: AppLayoutProps): Promise<JSX.Element> {
   return runWithTenantSlot(async () => {
     let shortcuts: ReactNode = null
+    let notifications: ReactNode = null
     try {
       const session = await getGridSession()
       // Users without an org (onboarding) have nowhere for the palette to
@@ -36,6 +40,9 @@ export default async function AppLayout({ children }: AppLayoutProps): Promise<J
         // Same section flags the project rail receives, so ⌘K's current-project
         // commands stay in lock-step with the rail (shared PROJECT_SECTIONS).
         const navFlags = await getNavFlags(session)
+        // The notification worker, after sign-in and only where the deployment
+        // has the keys for it (ADR-0112). Never for a visitor without a session.
+        notifications = <PushLifecycle enabled={getPushConfig().enabled} />
         shortcuts = (
           <KeyboardShortcuts
             authRequired={isAuthRequired()}
@@ -59,6 +66,7 @@ export default async function AppLayout({ children }: AppLayoutProps): Promise<J
       <>
         {children}
         {shortcuts}
+        {notifications}
       </>
     )
   })

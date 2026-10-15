@@ -13,7 +13,7 @@ export const notifications = {
   },
   device: {
     label: 'Notify me on this device',
-    hint: 'Your browser asks for permission once. You can turn it off here at any time.',
+    hint: 'Your browser asks for permission once. Turn it off here at any time; signing out turns it off on this device too.',
     turnOn: 'Turn on',
     turnOff: 'Turn off',
     working: 'One moment…',

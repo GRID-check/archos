@@ -14,7 +14,7 @@ export const notifications: typeof en.notifications = {
   },
   device: {
     label: 'Auf diesem Gerät benachrichtigen',
-    hint: 'Ihr Browser fragt einmal nach der Erlaubnis. Hier können Sie es jederzeit wieder ausschalten.',
+    hint: 'Ihr Browser fragt einmal nach der Erlaubnis. Hier schalten Sie es jederzeit wieder aus; beim Abmelden wird es auf diesem Gerät ebenfalls ausgeschaltet.',
     turnOn: 'Einschalten',
     turnOff: 'Ausschalten',
     working: 'Einen Moment …',

@@ -49,6 +49,7 @@ describe('AuthKit v4 proxy', () => {
       '/apple-icon.png',
       '/manifest.webmanifest',
       '/robots.txt',
+      '/sw.js',
       '/icons/icon-192.png',
       // by id, as the app reaches art: a literal /art/ path fails the riso check
       new URL(artImage('vignetten/bauplatz/empty').src, 'http://localhost').pathname,

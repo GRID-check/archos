@@ -149,6 +149,21 @@ export const nextConfig: NextConfig = {
           { key: 'X-Robots-Tag', value: 'noindex, nofollow' },
         ],
       },
+      // The service worker for system notifications (ADR-0112). A browser
+      // checks `/sw.js` for a new version on its own schedule and through its
+      // own HTTP cache, so any max-age here would keep a fixed worker away from
+      // devices for as long as it says: it is never cached. Scope is the whole
+      // origin (the file sits at the root already; the header makes it explicit).
+      // It has no fetch handler and caches nothing, so nothing tenant-scoped can
+      // ever be served from it. After the global rule, which it must override.
+      {
+        source: '/sw.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-cache, no-store, must-revalidate' },
+          { key: 'Content-Type', value: 'text/javascript; charset=utf-8' },
+          { key: 'Service-Worker-Allowed', value: '/' },
+        ],
+      },
       // The base-corpus source-PDF stream is displayed inside a same-origin
       // iframe by the in-app PDF viewer (clicked citations). The global rule
       // above stamps X-Frame-Options: DENY on every route, which the browser

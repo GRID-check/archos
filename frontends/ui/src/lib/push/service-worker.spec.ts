@@ -24,7 +24,7 @@ const sw = createRequire(import.meta.url)(SW_PATH) as {
   MESSAGE_CLOSE: string
   MESSAGE_NAVIGATE: string
   notificationOptions: (m: ReturnType<typeof parse>) => Record<string, unknown>
-  notificationsToClose: (n: Array<{ tag: string }>, r: unknown) => Array<{ tag: string }>
+  notificationsToClose: <T extends { tag: string }>(n: T[], r: unknown) => T[]
   parseMessage: (text: string | null) => { title: string; body: string; url: string; tag: string; itemId: string }
   pickWindow: (windows: unknown[], origin: string) => unknown
   safeTarget: (url: unknown, origin: string) => string
@@ -83,9 +83,14 @@ describe('where a tap lands', () => {
 })
 
 describe('closing notifications the page says are no longer news', () => {
-  const shown = [{ tag: 'a' }, { tag: 'b' }, { tag: 'c' }]
-  it('closes the named tags, all of them, or none', () => {
-    expect(sw.notificationsToClose(shown, { tags: ['b'] })).toEqual([{ tag: 'b' }])
+  const shown = [
+    { tag: 'a', data: { itemId: 'i-a' } },
+    { tag: 'b', data: { itemId: 'i-b' } },
+    { tag: 'c' },
+  ]
+  it('closes the named tags or items, all of them, or none', () => {
+    expect(sw.notificationsToClose(shown, { tags: ['b'] })).toEqual([shown[1]])
+    expect(sw.notificationsToClose(shown, { itemIds: ['i-a', 'i-unknown'] })).toEqual([shown[0]])
     expect(sw.notificationsToClose(shown, { all: true })).toEqual(shown)
     expect(sw.notificationsToClose(shown, {})).toEqual([])
     expect(sw.notificationsToClose(shown, null)).toEqual([])

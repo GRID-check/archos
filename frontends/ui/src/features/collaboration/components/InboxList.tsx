@@ -41,6 +41,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { AnimatePresence } from '@/components/motion'
 import { cn } from '@/lib/utils'
+import { NotificationPrompt } from '@/features/notifications/components/notification-prompt'
 import { InboxItemRow } from './InboxItemRow'
 
 type InboxFilter = 'needsMe' | 'all'
@@ -152,6 +153,10 @@ export function InboxList({
           <span className="max-sm:hidden">{t('inbox.markAllRead')}</span>
         </Button>
       </div>
+
+      {/* Offered once, never forced (ADR-0112): shown only where this browser can
+          show notifications and has not been asked. */}
+      <NotificationPrompt />
 
       {/* A refused action — most often a row a second tab already archived. It
           belongs beside the list, not instead of it: replacing the rows with

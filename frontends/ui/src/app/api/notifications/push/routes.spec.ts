@@ -58,6 +58,8 @@ vi.mock('@/lib/push/repository', () => {
     }),
     upsertSubscription: vi.fn(async (values: Record<string, unknown>) => {
       const existing = STORE.rows.find((r) => r.endpoint === values.endpoint)
+      // The unique index: another person's row for the endpoint refuses the write.
+      if (existing && !mine(String(values.organizationId), String(values.userId))(existing)) throw new Error('endpoint is held by another person')
       if (existing) return Object.assign(existing, values)
       const row = { id: `00000000-0000-4000-8000-${String(++STORE.next).padStart(12, '0')}`, createdAt: new Date(), lastSuccessAt: null, ...values }
       STORE.rows.push(row)

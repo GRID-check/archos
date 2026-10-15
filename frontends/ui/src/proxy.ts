@@ -66,8 +66,10 @@ export const config = {
      * Match all request paths except for the ones starting with:
      * - _next/static (static files)
      * - _next/image (image optimization files)
-     * - favicon.ico, icon.svg, apple-icon.png, manifest.webmanifest, robots.txt
-     *   and icons/ (app/ file conventions and public/icons): a signed-out
+     * - favicon.ico, icon.svg, apple-icon.png, manifest.webmanifest, robots.txt, sw.js
+     *   and icons/ (app/ file conventions and public/icons). `sw.js` is the
+     *   notification worker: a browser re-fetches it with or without a session,
+     *   and an AuthKit redirect to WorkOS would read as a failed update: a signed-out
      *   browser, a crawler or the sign-in page's own tab must get them rather
      *   than a redirect to WorkOS
      * - art/ (public/art, the riso prints): the not-found page shows one, and
@@ -89,6 +91,6 @@ export const config = {
      * unset/misconfigured — turning a config gap into a container that never
      * goes healthy).
      */
-    '/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|robots.txt|icons/|art/|public|api/healthz|ingest/).*)',
+    '/((?!_next/static|_next/image|favicon.ico|icon.svg|apple-icon.png|manifest.webmanifest|robots.txt|sw.js|icons/|art/|public|api/healthz|ingest/).*)',
   ],
 }

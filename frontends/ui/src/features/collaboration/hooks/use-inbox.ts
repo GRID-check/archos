@@ -14,6 +14,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InboxListResponse, InboxItemView, InboxSummaryResponse } from '@/lib/inbox/types'
+import { closeNotifications, setAppBadge, type CloseNotificationsRequest } from '@/lib/push/browser'
 import { useLiveEvents } from './use-live-events'
 
 export interface UseInboxBadgeResult {
@@ -57,6 +58,12 @@ export function useInboxBadge(enabled: boolean): UseInboxBadgeResult {
   useEffect(() => {
     void refresh()
   }, [refresh])
+
+  // The number on the app icon, where the platform has one (an installed app on
+  // a phone or desktop). Cleared at zero.
+  useEffect(() => {
+    if (enabled) setAppBadge(pending)
+  }, [enabled, pending])
 
   return { pending, connected, refresh: () => void refresh() }
 }
@@ -135,13 +142,15 @@ export function useInboxList(enabled: boolean, pendingOnly: boolean): UseInboxLi
   }, [refresh])
 
   const mutate = useCallback(
-    async (input: RequestInfo, init: RequestInit) => {
+    async (input: RequestInfo, init: RequestInit, closes?: CloseNotificationsRequest) => {
       setMutating(true)
       setMutationError(false)
       try {
         const response = await fetch(input, init)
         if (response.ok) {
-          // The mutation landed; the refresh below re-reads the truth.
+          // The mutation landed; the refresh below re-reads the truth. What the
+          // person has dealt with here is no longer news on this device.
+          if (closes) void closeNotifications(closes).catch(() => undefined)
           await refresh()
           return
         }
@@ -165,7 +174,7 @@ export function useInboxList(enabled: boolean, pendingOnly: boolean): UseInboxLi
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ itemIds }),
-      })
+      }, { itemIds })
     },
     [mutate],
   )
@@ -175,12 +184,12 @@ export function useInboxList(enabled: boolean, pendingOnly: boolean): UseInboxLi
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ all: true }),
-    })
+    }, { all: true })
   }, [mutate])
 
   const archive = useCallback(
     async (itemId: string) => {
-      await mutate(`/api/inbox/${encodeURIComponent(itemId)}/archive`, { method: 'POST' })
+      await mutate(`/api/inbox/${encodeURIComponent(itemId)}/archive`, { method: 'POST' }, { itemIds: [itemId] })
     },
     [mutate],
   )

@@ -109,12 +109,17 @@ function pickWindow(windows, origin) {
   return visible.length > 0 ? visible[0] : ours[0] || null
 }
 
-/** Which of these notifications a close request names: its tags, or all of them. */
+/**
+ * Which of these notifications a close request names: all of them, the items it
+ * lists (a notification remembers its inbox item in `data.itemId`), or the tags.
+ */
 function notificationsToClose(notifications, request) {
   if (request && request.all === true) return notifications
+  var itemIds = request && Array.isArray(request.itemIds) ? request.itemIds : []
   var tags = request && Array.isArray(request.tags) ? request.tags : []
   return notifications.filter(function (notification) {
-    return tags.indexOf(notification.tag) !== -1
+    var itemId = notification.data && notification.data.itemId
+    return tags.indexOf(notification.tag) !== -1 || (isString(itemId) && itemIds.indexOf(itemId) !== -1)
   })
 }
 
