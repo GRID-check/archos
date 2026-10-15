@@ -1124,7 +1124,13 @@ const SessionItem = forwardRef<HTMLLIElement, SessionItemProps>(function Session
                 <MoreHorizontal className="size-4" aria-hidden="true" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" onCloseAutoFocus={handleMenuCloseAutoFocus}>
+            {/* To the left of the door, over the row it belongs to: dropped below it, the
+                menu covered the next row's timestamp. */}
+            <DropdownMenuContent
+              side="left"
+              align="center"
+              onCloseAutoFocus={handleMenuCloseAutoFocus}
+            >
               {!session.contentLocked && (
                 <DropdownMenuItem
                   disabled={isBusy || isSessionActive}

@@ -219,6 +219,9 @@ function NoModel({
  * Netto-Grundfläche computed over part of a building with none of the
  * warning the model page refuses to show the same number without.
  */
+/** A text link in a dense table is 18px tall; under a finger it grows to the 44px floor. */
+const TOUCH_LINK = 'pointer-coarse:inline-flex pointer-coarse:min-h-11 pointer-coarse:min-w-11 pointer-coarse:items-center'
+
 const pickSchedule = (payload: Record<string, unknown>) =>
   payload.schedule
     ? {
@@ -374,7 +377,7 @@ export function IfcScheduleCard({
                               storey: entry.storeyName,
                               element: room.globalId,
                             })}
-                            className="underline-offset-2 hover:underline"
+                            className={`underline-offset-2 hover:underline ${TOUCH_LINK}`}
                           >
                             {room.name}
                           </Link>
@@ -788,7 +791,7 @@ function DiffGroup({
                       element: entry.globalId,
                       highlights: [{ status, globalIds: [entry.globalId] }],
                     })}
-                    className="underline-offset-2 hover:underline"
+                    className={`underline-offset-2 hover:underline ${TOUCH_LINK}`}
                   >
                     {caption}
                   </Link>

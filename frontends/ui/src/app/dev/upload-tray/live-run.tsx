@@ -121,7 +121,7 @@ export function LiveRun({ clean = false }: { clean?: boolean }) {
     <div className="flex h-[560px] flex-col bg-background" data-testid="live-run">
       <div className="flex items-center justify-between border-b bg-card px-4 py-2">
         <span className="text-sm font-medium">03_Einreichung</span>
-        <button type="button" className="text-xs underline" onClick={replay} data-testid="live-replay">
+        <button type="button" className="text-xs underline pointer-coarse:min-h-11 pointer-coarse:min-w-11" onClick={replay} data-testid="live-replay">
           Replay
         </button>
       </div>

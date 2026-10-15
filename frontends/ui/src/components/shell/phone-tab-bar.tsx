@@ -103,7 +103,7 @@ export function PhoneTabBar({
     >
       {/* On its side the bar is one row of icon-and-label pairs, so it takes
           the width it needs for whole labels rather than a portrait column. */}
-      <ul className="mx-auto flex max-w-lg items-stretch px-1 [@media(max-height:31rem)]:max-w-3xl">
+      <ul className="mx-auto flex max-w-lg items-stretch px-1 landscape:max-w-3xl">
         {tabs.map((tab) => (
           <li key={tab.key} className="min-w-0 flex-1">
             <PhoneTabItem

@@ -419,7 +419,7 @@ export const files = {
     noDocumentsTitle: 'No documents yet',
     noDocumentsDescription:
       'Upload your project’s documents: drawings, official notices, expert reports. Piloti reads them and cites them instead of answering from generic guidance.',
-    searchPlaceholder: 'Search files...',
+    searchPlaceholder: 'Search…',
     searchLabel: 'Search files',
     noMatch: 'No files match “{query}”',
     noMatchDescription:
