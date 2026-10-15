@@ -5,8 +5,9 @@ export const projects = {
     description:
       'Every building project in one workspace: documents, members, tasks, research and chat, with Office filing and building law at hand.',
     loading: 'Loading projects…',
-    searchPlaceholder: 'Search projects…',
-    searchAria: 'Search projects by name',
+    searchPlaceholder: 'Name, place or client…',
+    searchAria: 'Search projects by name, address or client',
+    searchReset: 'Reset search',
     resume: {
       // Shown when the rail is filled by the viewer's own activity…
       heading: 'Pick up where you left off',
@@ -24,7 +25,7 @@ export const projects = {
     },
     noMatch: {
       title: 'No matching projects',
-      description: 'No project name matches your search.',
+      description: 'Neither a name, an address nor a client matches your search.',
       clear: 'Clear search',
     },
     empty: {
@@ -310,7 +311,8 @@ export const projects = {
     documents: 'documents',
     docLabel: '{count} {unit}',
     open: 'Open {name}',
-    settingsAria: 'Open settings for {name}',
+    overview: 'Overview',
+    overviewAria: 'Open overview of {name}',
   },
   archivCard: {
     title: 'Office filing',
@@ -470,7 +472,7 @@ export const projects = {
     },
     tryAgain: 'Try again',
     conflictReload: 'Refresh',
-    draftSaved: 'Draft saved',
+    draftSaved: 'Draft saved on this device',
     salvage: {
       partial:
         'Parts of the existing project brief could not be loaded and will be replaced when you save.',
@@ -483,6 +485,10 @@ export const projects = {
       'About 2 minutes. Piloti uses this brief to work on your building and to show which OIB guidelines apply.',
     moduleNav: 'Modules',
     moduleNavAria: 'Wizard modules',
+    documentRole: {
+      takePhoto: 'Take photo',
+    },
+    modulePickerAria: 'Module {module}, {title}. Show all modules',
     schnellstart: 'Quick start',
     schnellstartOn:
       'Core questions only. Everything else is recorded as “open” and listed in the summary as an open point.',

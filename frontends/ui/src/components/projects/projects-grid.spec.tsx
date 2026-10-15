@@ -55,16 +55,16 @@ describe('ProjectsGrid', () => {
 
     const search = screen.getByRole('textbox', { name: /search projects/i })
     await userEvent.type(search, 'seestadt')
-    expect(screen.getByText('Wohnbau Seestadt')).toBeInTheDocument()
-    expect(screen.queryByText('Betriebsbau Linz')).not.toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Wohnbau Seestadt' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open Betriebsbau Linz' })).not.toBeInTheDocument()
 
     await userEvent.clear(search)
     await userEvent.type(search, 'zzz-no-such-project')
     expect(screen.getByText('No matching projects')).toBeInTheDocument()
 
     await userEvent.click(screen.getByRole('button', { name: /clear search/i }))
-    expect(screen.getByText('Wohnbau Seestadt')).toBeInTheDocument()
-    expect(screen.getByText('Betriebsbau Linz')).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Wohnbau Seestadt' })).toBeInTheDocument()
+    expect(screen.getByRole('link', { name: 'Open Betriebsbau Linz' })).toBeInTheDocument()
   })
 
   test('shows the first-project empty state (no search field) when there are no projects', () => {
@@ -149,6 +149,80 @@ describe('ProjectsGrid', () => {
     expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument()
   })
 
+  test('finds a project by what an architect remembers: street, Gemeinde, client', async () => {
+    const seestadt = createProject({
+      id: 'p1',
+      name: 'Wohnbau D12',
+      profileDisplay: {
+        title: 'Wohnbau D12',
+        summary: 'Wohnbau · GK 5 · Wien',
+        keyFacts: [{ label: 'Bauherr', value: 'Gemeinnützige Siedlungsgenossenschaft' }],
+        missingInfo: [],
+      },
+      profile: {
+        facts: {
+          A1: {
+            value: 'Janis-Joplin-Promenade 12, 1220 Wien',
+            confidence: 'confirmed',
+            source: 'user_confirmed',
+            updatedAt: '2026-01-01T00:00:00Z',
+          },
+        },
+        goals: {},
+        unknowns: [],
+        assumptions: {},
+      },
+    })
+    render(
+      <ProjectsGrid
+        projects={[seestadt, createProject({ id: 'p2', name: 'Turnsaal Linz' })]}
+        docCounts={{}}
+      />,
+    )
+    const search = screen.getByRole('textbox', { name: /search projects/i })
+
+    await userEvent.type(search, 'joplin')
+    expect(screen.getByRole('link', { name: 'Open Wohnbau D12' })).toBeInTheDocument()
+    expect(screen.queryByRole('link', { name: 'Open Turnsaal Linz' })).not.toBeInTheDocument()
+
+    await userEvent.clear(search)
+    await userEvent.type(search, 'siedlungsgenossenschaft')
+    expect(screen.getByRole('link', { name: 'Open Wohnbau D12' })).toBeInTheDocument()
+  })
+
+  test('the search can be reset from the field itself, with a control a thumb can hit', async () => {
+    render(<ProjectsGrid projects={[createProject({ name: 'Seestadt' })]} docCounts={{}} />)
+    const search = screen.getByRole('textbox', { name: /search projects/i })
+    await userEvent.type(search, 'zzz')
+
+    const reset = screen.getByRole('button', { name: 'Reset search' })
+    expect(reset).toHaveClass('pointer-coarse:size-11')
+    await userEvent.click(reset)
+    expect(search).toHaveValue('')
+  })
+
+  test('keeps the title and the New project action on one line, with the search on its own below on a phone', () => {
+    render(<ProjectsGrid projects={[createProject()]} docCounts={{}} />)
+
+    const header = screen.getByRole('heading', { level: 1, name: 'Projects' }).parentElement
+    // The action cannot be clipped by a full-width search beside it: they are
+    // placed in different grid rows below `sm`.
+    expect(header).toHaveClass('grid')
+    const search = screen.getByRole('textbox', { name: /search projects/i }).closest('.col-span-2')
+    expect(search).toHaveClass('row-start-2', 'sm:col-start-2', 'sm:row-start-1')
+  })
+
+  test('the resume rail is one swipeable row on a phone (upright or on its side) and a grid on a tall screen from sm', () => {
+    render(
+      <ProjectsGrid
+        projects={[createProject({ id: 'p1', name: 'A' }), createProject({ id: 'p2', name: 'B' })]}
+        docCounts={{}}
+      />,
+    )
+    const rail = screen.getByTestId('projects-resume-rail')
+    expect(rail).toHaveClass('snap-x', 'overflow-x-auto', 'sm:[@media(min-height:32rem)]:grid')
+  })
+
   describe('the status filter (ADR-0098, ADR-0090)', () => {
     const closed = (id: string, name: string): Project =>
       createProject({ id, name, status: 'closed', closedAt: new Date('2026-09-01T00:00:00Z'), closedBy: 'u' })
@@ -166,17 +240,17 @@ describe('ProjectsGrid', () => {
         />,
       )
 
-      expect(screen.getByText('Seestadt')).toBeInTheDocument()
-      expect(screen.queryByText('Volksschule Grinzing')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Seestadt' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Open Volksschule Grinzing' })).not.toBeInTheDocument()
 
       await userEvent.click(screen.getByTestId('project-status-filter-closed'))
-      expect(screen.getByText('Volksschule Grinzing')).toBeInTheDocument()
-      expect(screen.queryByText('Seestadt')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Volksschule Grinzing' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Open Seestadt' })).not.toBeInTheDocument()
       expect(screen.getAllByText('Closed').length).toBeGreaterThan(0)
 
       await userEvent.click(screen.getByTestId('project-status-filter-all'))
-      expect(screen.getByText('Seestadt')).toBeInTheDocument()
-      expect(screen.getByText('Volksschule Grinzing')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Seestadt' })).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Volksschule Grinzing' })).toBeInTheDocument()
     })
 
     test('offers Ruhend only when a project is paused, and keeps paused and closed projects off the rail', async () => {
@@ -197,13 +271,13 @@ describe('ProjectsGrid', () => {
       // The viewer worked in the paused and the closed project last, and still
       // the rail is the active one alone: it is for work in progress.
       const rail = screen.getByRole('region', { name: 'Your projects' })
-      expect(within(rail).getByText('Seestadt')).toBeInTheDocument()
-      expect(within(rail).queryByText('Hotel Semmering')).not.toBeInTheDocument()
+      expect(within(rail).getByRole('link', { name: 'Open Seestadt' })).toBeInTheDocument()
+      expect(within(rail).queryByRole('link', { name: 'Open Hotel Semmering' })).not.toBeInTheDocument()
       expect(within(screen.getByRole('region', { name: 'More projects' })).getByText('Paused')).toBeInTheDocument()
 
       await userEvent.click(screen.getByTestId('project-status-filter-paused'))
-      expect(screen.getByText('Hotel Semmering')).toBeInTheDocument()
-      expect(screen.queryByText('Seestadt')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Hotel Semmering' })).toBeInTheDocument()
+      expect(screen.queryByRole('link', { name: 'Open Seestadt' })).not.toBeInTheDocument()
       expect(screen.queryByRole('region', { name: 'Your projects' })).not.toBeInTheDocument()
     })
 
@@ -217,7 +291,7 @@ describe('ProjectsGrid', () => {
 
     test('opens on all of them when nothing is active', () => {
       render(<ProjectsGrid projects={[closed('p1', 'Lände 3')]} docCounts={{}} />)
-      expect(screen.getByText('Lände 3')).toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'Open Lände 3' })).toBeInTheDocument()
     })
   })
 })

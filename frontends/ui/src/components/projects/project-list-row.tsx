@@ -6,8 +6,8 @@
  *
  * A different ARRANGEMENT of the project card, not a different component: every
  * part here comes from `project-atoms.tsx`, the same atoms `ProjectCard` is
- * assembled from, so the name, the brief, the timestamp rule and the settings
- * gear behave identically in both. Only the layout differs — card material
+ * assembled from, so the name, the brief, the timestamp rule and the Übersicht
+ * shortcut behave identically in both. Only the layout differs — card material
  * spread into a row, with the meta moved into right-aligned tabular columns.
  * See `docs/design/project-surfaces.md`.
  *
@@ -38,7 +38,7 @@ import {
   ProjectDocCount,
   ProjectInitialsTile,
   ProjectOpenLink,
-  ProjectSettingsLink,
+  ProjectOverviewLink,
   ProjectSummaryLine,
 } from './project-atoms'
 
@@ -63,7 +63,7 @@ export function ProjectListRow({ project, docCount = 0, activityAt }: ProjectLis
 
       <div className="min-w-0 flex-1">
         <span className="flex min-w-0 items-center gap-2 text-sm font-medium">
-          <span className="truncate">
+          <span className="min-w-0">
             <ProjectOpenLink project={project} className="after:rounded-none" />
           </span>
           <ProjectStatusMark project={project} />
@@ -84,10 +84,10 @@ export function ProjectListRow({ project, docCount = 0, activityAt }: ProjectLis
         project={project}
         activityAt={activityAt}
         showLabel={false}
-        className="w-[72px] shrink-0 text-right sm:w-[104px]"
+        className="w-[88px] shrink-0 text-right sm:w-[104px]"
       />
 
-      <ProjectSettingsLink project={project} className="shrink-0" />
+      <ProjectOverviewLink project={project} className="-mr-1.5 shrink-0" />
     </Item>
   )
 }
