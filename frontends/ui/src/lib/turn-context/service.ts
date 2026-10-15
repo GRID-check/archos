@@ -10,13 +10,11 @@ import { findConversationTenancy } from '@/lib/conversations/repository'
 import { requireResourceAccess } from '@/lib/sharing/access'
 import { loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { resolveOrgInstructions } from '@/lib/org-instructions/service'
-import { getOrganizationDisplayName } from '@/lib/organizations/service'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { buildProposalDecisionsBlock, composeMemoryContext } from '@/lib/projects/proposal-decisions'
 import { buildReviewDecisionsBlock } from '@/lib/documents/review-decisions'
 import { buildFolderDescriptionsBlock } from '@/lib/filing/folder-descriptions-block'
 import type { VerifiedGridRequestContext } from '@/lib/request-context'
-import { loadRequester } from './requester'
 import type { TurnContextRequest, TurnContextResponse } from './wire'
 
 async function advisory<T>(what: string, load: () => Promise<T>): Promise<T | null> {
@@ -34,7 +32,7 @@ export async function loadTurnContext(
   context: VerifiedGridRequestContext,
   input: TurnContextRequest,
 ): Promise<TurnContextResponse> {
-  const { organizationId, userId, projectId, conversationId } = context
+  const { organizationId, projectId, conversationId } = context
   if (projectId) await requireProjectAccess(session, projectId, CHAT_PERMISSIONS)
   if (conversationId) {
     // An RLS-hidden foreign row is not a genuinely new conversation.
@@ -49,10 +47,7 @@ export async function loadTurnContext(
     }
   }
 
-  const [
-    projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders,
-    requester, officeName,
-  ] = await Promise.all([
+  const [projectContext, orgInstructions, digest, decisions, reviewDecisions, drewOnOthers, referenceProjects, folders] = await Promise.all([
     projectId ? loadProjectPromptView(projectId, organizationId) : Promise.resolve(null),
     resolveOrgInstructions(organizationId),
     buildProjectMemoryDigest(projectId ?? undefined, organizationId, { query: input.query || undefined }),
@@ -70,10 +65,6 @@ export async function loadTurnContext(
     advisory('load reference projects', () => loadReferenceBrief(organizationId, projectId ?? null)),
     // What a person wrote each folder holds, beside the tree the inventory shows.
     advisory('load folder descriptions', () => buildFolderDescriptionsBlock(organizationId, projectId ?? null)),
-    // Who is asking, and in which office: the agent addresses the person by name.
-    // Both fail soft on their own; the advisory guards a cache outage.
-    advisory('load requester', () => loadRequester(organizationId, userId)),
-    advisory('load office name', () => getOrganizationDisplayName(organizationId)),
   ])
   return {
     projectContext,
@@ -81,7 +72,5 @@ export async function loadTurnContext(
     orgInstructions,
     drewOnOtherProjects: drewOnOthers,
     referenceProjects,
-    requester,
-    officeName,
   }
 }

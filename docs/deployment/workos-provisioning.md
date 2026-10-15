@@ -302,8 +302,26 @@ nobody. The current gap in both environments, and what it costs users, is in
   `WORKOS_DESIRED_REDIRECT_URIS` for redirect URIs); extras are report-only
   unless `--apply --prune`.
 - Auth methods: password + Google + GitHub + Microsoft + Apple; email
-  verification required; MFA off. No JWT template (default claims carry
-  role/permissions per active org — exactly what the app reads).
+  verification required; MFA off.
+- **JWT template** (AuthKit → Sessions → JWT template; set 2026-10-15 in
+  Staging and Production). It adds three claims and keeps every default one
+  (`org_id`, `role`, `roles`, `permissions`, `feature_flags`, checked with a
+  preview against a real membership before saving):
+
+  ```json
+  {"name": "{{ user.first_name }} {{ user.last_name }}", "email": {{ user.email }}, "organization_name": {{ organization.name }}}
+  ```
+
+  The agent reads them off the verified token as the person's name, email and
+  office in the system prompt (`aiq_api.auth.jwt_validator`,
+  `aiq_agent.turn.context.user_info_from_principal`); without the template
+  the prompt has no name. A null `organization.name` drops its key, and an
+  unknown name renders as an empty string, which the agent reads as no name.
+  WorkOS has no public API for the template, so `provision:workos-env` cannot
+  check it: it lists it as a manual step. A turn with no signed-in person (a
+  scheduled task, a woken thread reply) has no token; it is named from the
+  signed request-context envelope's `requester` instead, which the BFF resolves
+  from WorkOS for the pinned session (`lib/auth/person.ts`).
 - **Sign-up: decided posture is INVITE-ONLY EVERYTHING** (platform owner
   decision, 2026-07-08). Two switches, one per layer:
   1. **WorkOS-native**: AuthKit → Authentication → *Allow sign-ups* **OFF**.

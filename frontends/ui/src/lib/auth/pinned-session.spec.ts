@@ -6,9 +6,11 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/lib/authz/project-membership', () => ({ resolveSubjectMembership: vi.fn() }))
 vi.mock('@/lib/workos/feature-flags', () => ({ enabledFlagsForOrganization: vi.fn() }))
+vi.mock('./person', () => ({ resolvePerson: vi.fn() }))
 
 import { resolveSubjectMembership } from '@/lib/authz/project-membership'
 import { enabledFlagsForOrganization } from '@/lib/workos/feature-flags'
+import { resolvePerson } from './person'
 import { resolvePinnedRequesterSession } from './pinned-session'
 
 const requester = { userId: 'user_owner', email: 'owner@grid.test', organizationId: 'org_1' }
@@ -17,6 +19,7 @@ beforeEach(() => {
   vi.clearAllMocks()
   vi.mocked(resolveSubjectMembership).mockResolvedValue({ organizationMembershipId: 'om_1', role: 'member' })
   vi.mocked(enabledFlagsForOrganization).mockResolvedValue([])
+  vi.mocked(resolvePerson).mockResolvedValue({ name: null, email: null, organizationName: null })
 })
 
 afterEach(() => {
@@ -40,6 +43,19 @@ describe('resolvePinnedRequesterSession', () => {
     })
     // Permissions come from the catalog for the role, never from the caller.
     expect(Array.isArray(session?.permissions)).toBe(true)
+  })
+
+  it('knows the person by name, as a live session does, so an unattended turn is not addressed as nobody', async () => {
+    vi.mocked(resolvePerson).mockResolvedValueOnce({
+      name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord',
+    })
+
+    const session = await resolvePinnedRequesterSession({ ...requester, email: null })
+
+    expect(resolvePerson).toHaveBeenCalledWith('org_1', 'user_owner')
+    // The stored email stands where the row has one; WorkOS fills it where it does not.
+    expect(session).toMatchObject({ name: 'Anna Weber', email: 'anna@grid.test', organizationName: 'Atelier Nord' })
+    expect((await resolvePinnedRequesterSession(requester))?.email).toBe('owner@grid.test')
   })
 
   it('is nobody when the requester left the organization', async () => {

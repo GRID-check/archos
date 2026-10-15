@@ -99,7 +99,9 @@ The `server.js` gateway handles WebSocket upgrade requests:
 Alongside every individual `x-grid-*` header above, `server.js` now also sends
 `X-Grid-Request-Context` (base64url JSON consolidating all of them into one
 object, plus `bundesland` — a structured jurisdiction field with no
-individual-header equivalent) and `X-Grid-Request-Context-Sig` (hex
+individual-header equivalent — and `requester`, `{ name, email,
+organizationName }`: who `userId` is, which the agent's prompt names, signed
+from the session the envelope is minted for, live or pinned) and `X-Grid-Request-Context-Sig` (hex
 HMAC-SHA256 of the envelope's raw JSON, keyed on `GRID_INTERNAL_API_TOKEN`).
 Legacy HTTP/job callers keep the **dual-write transition**: individual headers
 and the envelope are still sent together. Authenticated WebSocket handshakes

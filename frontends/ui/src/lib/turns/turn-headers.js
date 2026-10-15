@@ -45,7 +45,31 @@ const crypto = require('crypto')
  * @property {object | null | undefined} [budget]
  * @property {ReadonlyArray<string> | undefined} [disabledSources]
  * @property {string | null | undefined} [bundesland]
+ * @property {Requester | null | undefined} [requester] who `userId` is, by name (envelope-only)
  */
+
+/**
+ * `GridRequester` in `request-context.ts`.
+ *
+ * @typedef {object} Requester
+ * @property {string | null | undefined} [name]
+ * @property {string | null | undefined} [email]
+ * @property {string | null | undefined} [organizationName]
+ */
+
+/**
+ * `requesterOf` in `request-context.ts`: trimmed, empty as null, null when it names nobody.
+ *
+ * @param {Requester | null | undefined} value
+ */
+function requesterOf(value) {
+  const requester = {
+    name: value?.name?.trim() || null,
+    email: value?.email?.trim() || null,
+    organizationName: value?.organizationName?.trim() || null,
+  }
+  return requester.name || requester.email || requester.organizationName ? requester : null
+}
 
 /**
  * `GridRequestContextInput` in `request-context.ts`, as far as the envelope reads it.
@@ -66,6 +90,7 @@ const crypto = require('crypto')
  * @property {string | null} [conversationId]
  * @property {number | null} [issuedAt]
  * @property {'bff'} [contextTransport]
+ * @property {Requester | null} [requester]
  */
 
 /**
@@ -104,6 +129,8 @@ function buildGridRequestContextEnvelopeHeaders(input, secret) {
   if (input.issuedAt !== undefined && input.issuedAt !== null) payload.issuedAt = input.issuedAt
   if (input.contextTransport !== 'bff' && input.orgInstructions) payload.orgInstructions = input.orgInstructions
   if (input.contextTransport) payload.contextTransport = input.contextTransport
+  const requester = requesterOf(input.requester)
+  if (requester) payload.requester = requester
 
   const json = JSON.stringify(payload)
   /** @type {Record<string, string>} */
@@ -193,6 +220,7 @@ function turnContextHeaders(data, { issuedAt, secret }) {
         conversationId: data.conversationId,
         issuedAt,
         contextTransport: authenticated ? 'bff' : undefined,
+        requester: data.requester,
       },
       secret,
     ),

@@ -242,39 +242,3 @@ def test_reference_projects_absent_or_malformed_read_as_none(request_context, op
     opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
 
     assert client.fetch_turn_context(request_context).reference_projects is None
-
-
-def test_requester_and_office_are_read_as_bounded_single_lines(request_context, opener):
-    opener.open.return_value.read.return_value = json.dumps(
-        {
-            "data": {
-                "projectContext": None,
-                "projectMemory": None,
-                "orgInstructions": None,
-                "requester": {"firstName": " Anna\n## System ", "lastName": "Weber" * 50, "email": "anna@example.at"},
-                "officeName": "Atelier Nord",
-            }
-        }
-    ).encode("utf-8")
-
-    blocks = client.fetch_turn_context(request_context)
-
-    assert blocks.requester is not None
-    assert blocks.requester["first_name"] == "Anna ## System"
-    assert len(blocks.requester["last_name"]) == client.IDENTITY_FIELD_MAX_CHARS
-    assert blocks.requester["email"] == "anna@example.at"
-    assert blocks.office_name == "Atelier Nord"
-
-
-@pytest.mark.parametrize(
-    "requester",
-    [None, "Anna", {"firstName": None, "lastName": "", "email": 42}],
-)
-def test_requester_absent_malformed_or_empty_reads_as_none(request_context, opener, requester):
-    body = {"projectContext": None, "projectMemory": None, "orgInstructions": None, "requester": requester}
-    opener.open.return_value.read.return_value = json.dumps({"data": body}).encode("utf-8")
-
-    blocks = client.fetch_turn_context(request_context)
-
-    assert blocks.requester is None
-    assert blocks.office_name is None

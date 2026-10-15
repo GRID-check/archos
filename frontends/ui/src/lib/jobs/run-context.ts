@@ -12,6 +12,7 @@
  */
 
 import 'server-only'
+import { resolvePerson } from '@/lib/auth/person'
 import { getBudgetStatus } from '@/lib/budgets/service'
 import { computeCollectionScope } from '@/lib/collection-scope'
 import { getEffectiveModelOverrides } from '@/lib/model-config/service'
@@ -19,7 +20,7 @@ import { resolveOrgInstructions } from '@/lib/org-instructions/service'
 import { loadProjectBundesland, loadProjectPromptView } from '@/lib/project-profile/prompt-view'
 import { buildProjectMemoryDigest } from '@/lib/projects/memory-service'
 import { findProjectInOrg } from '@/lib/projects/repository'
-import type { GridBudgetSnapshot, GridRequestContextInput } from '@/lib/request-context'
+import { requesterOf, type GridBudgetSnapshot, type GridRequestContextInput } from '@/lib/request-context'
 import { isMemoryReflectionEnabled } from '@/lib/workos/feature-flags'
 
 /** Who a run is for, and where. */
@@ -47,6 +48,7 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     projectMemory,
     memoryReflectionEnabled,
     orgInstructions,
+    requester,
   ] = await Promise.all([
     resolveBudgetSnapshot(organizationId, userId, projectId),
     getEffectiveModelOverrides(organizationId).catch(() => null),
@@ -60,6 +62,9 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     // turn does — a task that answered in a voice the office had asked against
     // would be the whole point of the block, missed.
     resolveOrgInstructions(organizationId),
+    // Who the run acts as, by name, resolved at every submit and renewal: the
+    // requester is not signed in, so no token can say it.
+    resolvePerson(organizationId, userId),
   ])
   return {
     budget,
@@ -70,6 +75,7 @@ export async function resolveRunContext({ organizationId, projectId, userId }: R
     projectMemory,
     memoryReflectionEnabled,
     orgInstructions,
+    requester: requesterOf(requester),
   }
 }
 
@@ -100,6 +106,7 @@ export function runRequestContextInput(
     memoryReflectionEnabled: context.memoryReflectionEnabled,
     conversationId,
     issuedAt,
+    requester: context.requester,
   }
 }
 

@@ -48,6 +48,14 @@ export interface GridSession {
 
   /** WorkOS profile picture URL, or null when none is set. */
   profilePictureUrl?: string | null
+
+  /**
+   * The active organization's name: the access token's `organization_name`
+   * claim (WorkOS JWT template) on a live session, WorkOS through
+   * `resolvePerson` on a pinned one. Null when unknown. What the agent's prompt
+   * calls the office (`requesterOf` in `lib/request-context.ts`).
+   */
+  organizationName?: string | null
 }
 
 /**
