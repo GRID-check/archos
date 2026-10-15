@@ -106,7 +106,7 @@ export function TaskList({
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl p-4 md:p-6" data-testid="task-list">
+    <div className="mx-auto w-full max-w-3xl p-4 pt-3 md:p-6" data-testid="task-list">
       {/* Counts on the chips, not only in the list: the number is the point of
           `unreviewed`, and a filter a reader has to click to discover is empty
           costs them a click to learn nothing. A zero count still renders — an
@@ -124,7 +124,15 @@ export function TaskList({
         data-testid="task-filters"
       >
         {TASK_FILTERS.map((option) => (
-          <ToggleGroupItem key={option} value={option} data-testid={`task-filter-${option}`}>
+          <ToggleGroupItem
+            key={option}
+            value={option}
+            data-testid={`task-filter-${option}`}
+            // The cluster scrolls sideways on a phone; a segment that may
+            // shrink instead runs into its neighbour ("Ungeprüft" over
+            // "Fehlgeschlagen"), so each one keeps its own width.
+            className="shrink-0"
+          >
             {t(`filters.${option}`)}
             <CountPill
               tone={option === 'unreviewed' && counts.unreviewed > 0 ? 'attention' : 'muted'}

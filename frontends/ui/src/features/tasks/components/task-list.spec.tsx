@@ -13,6 +13,7 @@ import { render, screen, within } from '@/test-utils'
 import userEvent from '@testing-library/user-event'
 import { describe, expect, test, vi } from 'vitest'
 import { TaskList } from './task-list'
+import { cardTimeLabel } from './task-card'
 import type { TaskFilter, TaskWireRow } from '../lib/task-view'
 
 const task = (overrides: Partial<TaskWireRow> = {}): TaskWireRow => ({
@@ -256,5 +257,41 @@ describe('the three states that are not a list', () => {
     list({ tasks: [], loading: true })
     expect(screen.getByTestId('task-list-loading')).toBeInTheDocument()
     expect(screen.queryByText('Nothing delegated yet')).not.toBeInTheDocument()
+  })
+})
+
+describe('on a phone', () => {
+  test('an unreviewed card says so in words, not only in a dot with a title', () => {
+    list({ tasks: [task({ status: 'succeeded', review: null })] })
+    // Both are mounted; the pointer media query decides which one is painted.
+    expect(screen.getByTestId('task-card-unreviewed')).toBeInTheDocument()
+    const chip = screen.getByTestId('task-card-to-review')
+    expect(chip).toHaveTextContent('To review')
+    expect(chip.className).toMatch(/pointer-coarse:inline-flex/)
+    expect(chip.className).toMatch(/\bhidden\b/)
+  })
+
+  test('a judged card carries neither', () => {
+    list({ tasks: [task({ status: 'succeeded', review: 'accepted' })] })
+    expect(screen.queryByTestId('task-card-to-review')).not.toBeInTheDocument()
+  })
+
+  test('every filter segment keeps its own width, so the scrolling row never overlaps', () => {
+    list()
+    for (const option of ['all', 'active', 'unreviewed', 'failed']) {
+      expect(screen.getByTestId(`task-filter-${option}`).className).toMatch(/\bshrink-0\b/)
+    }
+  })
+})
+
+describe('when a card says it was made', () => {
+  const now = Date.parse('2026-10-15T12:00:00Z')
+
+  test('relative within a day', () => {
+    expect(cardTimeLabel('2026-10-15T09:00:00Z', 'de', now)).toMatch(/Stunden/)
+  })
+
+  test('the exact date after a day, because a phone has no hover title', () => {
+    expect(cardTimeLabel('2026-10-12T09:00:00Z', 'de', now)).toMatch(/12\.10\.2026/)
   })
 })
