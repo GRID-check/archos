@@ -1892,6 +1892,10 @@
     "de": "Piloti kann sich jetzt Ihre Zeichnungen ansehen. Hängt eine Frage davon ab, was ein Grundriss oder Schnitt zeigt, öffnet Piloti die Seite als Bild, statt sich auf die Textbeschreibung zu verlassen, die beim Hochladen entstanden ist."
   },
   {
+    "en": "Piloti can now notify you on your phone or computer as soon as something lands in your Postfach, even when Piloti is closed. Turn it on per device under Profil, Benachrichtigungen; on iPhone and iPad, add Piloti to the Home Screen first.",
+    "de": "Piloti kann Sie jetzt auf Ihrem Smartphone oder Computer benachrichtigen, sobald etwas in Ihrem Postfach landet – auch wenn Piloti geschlossen ist. Aktivieren Sie die Benachrichtigungen pro Gerät unter Profil, Benachrichtigungen; fügen Sie Piloti auf iPhone und iPad zuerst zum Home-Bildschirm hinzu."
+  },
+  {
     "en": "Piloti can now search every file in a project for a word, name or number and list each place it appears, and it goes through all of a project's files, not only the first 50 or so names. Word, Excel and PowerPoint files open as a PDF preview, and pictures inside Word and PowerPoint files can be cited. A scanned PDF is now read word for word, up to 500 pages.",
     "de": "Piloti findet jetzt jede Stelle, an der ein Wort, ein Name oder eine Zahl in den Dateien eines Projekts vorkommt, und listet jede Fundstelle mit Seitenzahl auf. Piloti geht außerdem alle Dateien eines Projekts durch, nicht nur die ersten rund 50 Namen. Word-, Excel- und PowerPoint-Dateien öffnen sich als PDF-Vorschau, Bilder in Word- und PowerPoint-Dateien lassen sich zitieren, und ein gescanntes PDF wird Wort für Wort bis zu 500 Seiten gelesen."
   },

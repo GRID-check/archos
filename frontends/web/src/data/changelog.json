@@ -153,6 +153,10 @@
             {
               "en": "Dictating on a phone shows a full-width bar while it records, with the time against the 45-second limit; tap anywhere on it to insert the text. A microphone that cannot be used says why when you tap it.",
               "de": "Beim Diktieren am Smartphone wird während der Aufnahme eine Leiste über die gesamte Breite mit einer Zeitanzeige bis zum 45-Sekunden-Limit eingeblendet. Tippen Sie an beliebiger Stelle darauf, um den Text einzufügen. Wenn ein Mikrofon nicht verwendet werden kann, erfahren Sie beim Antippen den Grund."
+            },
+            {
+              "en": "Piloti can now notify you on your phone or computer as soon as something lands in your Postfach, even when Piloti is closed. Turn it on per device under Profil, Benachrichtigungen; on iPhone and iPad, add Piloti to the Home Screen first.",
+              "de": "Piloti kann Sie jetzt auf Ihrem Smartphone oder Computer benachrichtigen, sobald etwas in Ihrem Postfach landet – auch wenn Piloti geschlossen ist. Aktivieren Sie die Benachrichtigungen pro Gerät unter Profil, Benachrichtigungen; fügen Sie Piloti auf iPhone und iPad zuerst zum Home-Bildschirm hinzu."
             }
           ]
         },
