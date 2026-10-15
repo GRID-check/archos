@@ -9,9 +9,10 @@
 import * as React from 'react'
 import { Slot } from '@radix-ui/react-slot'
 import { cva, type VariantProps } from 'class-variance-authority'
-import { PanelLeft } from 'lucide-react'
+import { PanelLeft, X } from 'lucide-react'
 
 import { useIsMobile } from '@/hooks/use-is-mobile'
+import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { FOCUS_RING } from '@/components/ui/focus-ring'
@@ -19,6 +20,7 @@ import { Input } from '@/components/ui/input'
 import { Separator } from '@/components/ui/separator'
 import {
   Sheet,
+  SheetClose,
   SheetContent,
   SheetDescription,
   SheetHeader,
@@ -239,13 +241,17 @@ function Sidebar({
   collapsible = 'offcanvas',
   className,
   children,
+  closeLabel,
   ...props
 }: React.ComponentProps<'div'> & {
   side?: 'left' | 'right'
   variant?: 'sidebar' | 'floating' | 'inset'
   collapsible?: 'offcanvas' | 'icon' | 'none'
+  /** The phone drawer's close button. Defaults to the shell's own „Navigation schließen". */
+  closeLabel?: string
 }): React.JSX.Element {
   const { isMobile, state, openMobile, setOpenMobile } = useSidebar()
+  const tNav = useTranslations('nav')
 
   if (collapsible === 'none') {
     return (
@@ -282,6 +288,26 @@ function Sidebar({
             <SheetDescription>Displays the mobile sidebar.</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
+          {/* The drawer's visible way out (every overlay has one on a phone;
+              the scrim and the swipe are shortcuts nobody is told about). Its
+              own, not the sheet's: that one is a 32px glyph pinned to the
+              sheet's padding, which this drawer replaces. 44px, beside the
+              brand line at the top (`app-sidebar.tsx` pads the header to
+              `max(18px, the status bar)`; the brand's line is 28px, so the
+              button's centre is the line's centre). Not a direct child, so the
+              `[&>button]:hidden` above leaves it alone. */}
+          <div className="absolute right-2 top-[calc(max(18px,env(safe-area-inset-top))-8px)] z-10">
+            <SheetClose
+              data-slot="sidebar-close"
+              className={cn(
+                'text-muted-foreground hover:bg-sidebar-accent hover:text-foreground duration-quick inline-flex size-11 items-center justify-center rounded-lg outline-none transition-colors ease-out motion-reduce:transition-none',
+                FOCUS_RING
+              )}
+            >
+              <X className="size-5" aria-hidden />
+              <span className="sr-only">{closeLabel ?? tNav('closeNavigation')}</span>
+            </SheetClose>
+          </div>
         </SheetContent>
       </Sheet>
     )

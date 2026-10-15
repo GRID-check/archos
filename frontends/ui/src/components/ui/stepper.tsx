@@ -25,6 +25,10 @@
  * Labels hide below `sm` — seven characters across four columns on a phone is
  * a row of abbreviations nobody can read — and the current step's label is
  * stated underneath instead, where there is a full line for it.
+ *
+ * Under a finger every circle is 44px (`pointer-coarse:size-11`): a visited
+ * step is a button, and going back is the promise above. The connectors give
+ * up the width, so up to six steps still fit a phone's column.
  */
 
 import type { JSX } from 'react'
@@ -115,7 +119,7 @@ export function Stepper({
                       : `${index + 1}. ${step.label}`
                   }
                   className={cn(
-                    'focus-visible:ring-ring/60 flex size-7 shrink-0 items-center justify-center rounded-full border text-xs font-semibold tabular-nums',
+                    'focus-visible:ring-ring/60 flex size-7 shrink-0 items-center pointer-coarse:size-11 pointer-coarse:text-sm justify-center rounded-full border text-xs font-semibold tabular-nums',
                     'transition-colors duration-quick ease-out focus-visible:outline-none focus-visible:ring-2 motion-reduce:transition-none',
                     done && 'border-primary bg-primary text-primary-foreground',
                     active && 'border-primary text-primary ring-primary/20 bg-card ring-4',
