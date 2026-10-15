@@ -688,6 +688,10 @@
     "de": "Eine Antwort kann wieder mehr als eine Karte zeigen. Bei Fragen, die echte Recherche erforderten, fiel bisher die zweite Karte weg, so gut sie auch zur Antwort passte."
   },
   {
+    "en": "An answer can be passed on through the phone's own share sheet, and a past chat can be renamed or deleted from its row by touch.",
+    "de": "Eine Antwort kann über das Teilen-Menü des Telefons weitergegeben werden; einen früheren Chat können Sie durch Antippen seiner Zeile umbenennen oder löschen."
+  },
+  {
     "en": "An answer containing a drawing or code block no longer shows up as raw text.",
     "de": "Eine Antwort mit Zeichnung oder Codeblock erscheint nicht mehr als roher Text."
   },
@@ -722,6 +726,10 @@
   {
     "en": "An answer with sound references and one quote that could not be confirmed word for word is now rated medium instead of low, and the quote stays marked.",
     "de": "Eine Antwort mit belegten Fundstellen und einem einzelnen, nicht wörtlich bestätigten Zitat wird jetzt mit „mittel“ statt „niedrig“ eingeschätzt, und das Zitat bleibt markiert."
+  },
+  {
+    "en": "An answer you leave running while the phone is locked or offline now carries on where it was when you come back, instead of being reported as lost. Uploads over a patchy connection retry on their own when the transfer stalls or drops.",
+    "de": "Wenn Sie eine Antwort weiterlaufen lassen, während Ihr Telefon gesperrt oder offline ist, wird sie jetzt beim Zurückkehren an der Stelle fortgesetzt, an der sie war, statt als verloren zu gelten. Uploads werden bei instabiler Verbindung automatisch erneut versucht, wenn die Übertragung stockt oder abbricht."
   },
   {
     "en": "An answer's details now show what it cost in credits, and with your own AI key, how much of that key it used. Hovering over the line shows how much went to reading, writing and thinking.",
@@ -1032,6 +1040,10 @@
     "de": "Häufige Wörter, die in fast jedem Dokument vorkommen, verbrauchen keine Suchergebnisse mehr. Antworten können dadurch mehr der Dokumente zitieren, die sich bei der Frage unterscheiden."
   },
   {
+    "en": "Comparing two Fassungen on a phone opens with the swipe view and keeps the list of changes in a sheet, and marks and their list work by touch without getting in the way of moving around the drawing.",
+    "de": "Beim Vergleich zweier Fassungen am Smartphone öffnet sich die Swipe-Ansicht, während die Änderungsliste in einem Sheet bleibt. Markierungen und ihre Liste lassen sich per Touch bedienen, ohne die Navigation in der Zeichnung zu beeinträchtigen."
+  },
+  {
     "en": "Comparing two versions now shows what changed, line by line: added lines carry a plus and a solid rule, removed lines a minus and a dashed rule. Long unchanged stretches collapse into a gap that shows how many lines it hides.",
     "de": "Wenn Sie zwei Fassungen vergleichen, zeigt Piloti jetzt Zeile für Zeile, was sich geändert hat: Neue Zeilen tragen ein Plus und eine durchgezogene Linie, entfernte ein Minus und eine gestrichelte Linie. Lange unveränderte Stellen klappen zu einer Lücke zusammen, die anzeigt, wie viele Zeilen sie verbirgt."
   },
@@ -1164,6 +1176,10 @@
     "de": "Diagramme, die Sie anfordern, erscheinen jetzt zuverlässig in der Antwort. Bisher konnte ein angefordertes Diagramm fehlen, obwohl die Antwort es angekündigt hatte."
   },
   {
+    "en": "Dictating on a phone shows a full-width bar while it records, with the time against the 45-second limit; tap anywhere on it to insert the text. A microphone that cannot be used says why when you tap it.",
+    "de": "Beim Diktieren am Smartphone wird während der Aufnahme eine Leiste über die gesamte Breite mit einer Zeitanzeige bis zum 45-Sekunden-Limit eingeblendet. Tippen Sie an beliebiger Stelle darauf, um den Text einzufügen. Wenn ein Mikrofon nicht verwendet werden kann, erfahren Sie beim Antippen den Grund."
+  },
+  {
     "en": "Document cards and lists lead with the title and the review state instead of version counters, and a version history only appears once a second version exists.",
     "de": "Dokumentkarten und -listen zeigen zuerst Titel und Prüfstatus statt der Versionszähler; ein Versionsverlauf wird erst angezeigt, sobald eine zweite Version vorhanden ist."
   },
@@ -1252,6 +1268,10 @@
     "de": "Jede neue Fassung zählt jetzt zu Ihrem Speicherplatz, weil frühere Fassungen erhalten bleiben. Bisher konnten wiederholte Fassungen das Speicherlimit überschreiten, ohne dass es jemand bemerkte."
   },
   {
+    "en": "Each photo is named after the moment it was taken, so a second photo no longer replaces the first. Where photos are not switched on, the menu says why.",
+    "de": "Jedes Foto wird nach dem Zeitpunkt der Aufnahme benannt, sodass ein weiteres Foto das erste nicht mehr ersetzt. Wenn Fotos nicht aktiviert sind, zeigt das Menü den Grund an."
+  },
+  {
     "en": "Each project now has a Steckbrief in its settings: the address, the period from start to completion, and everyone who worked on it, including former staff and external planners without a Piloti account.",
     "de": "Jedes Projekt hat jetzt in seinen Einstellungen einen Steckbrief: die Adresse, den Zeitraum vom Beginn bis zur Fertigstellung und alle, die daran mitgearbeitet haben, auch ehemalige Mitarbeitende und externe Planerinnen und Planer ohne Piloti-Konto."
   },
@@ -1322,6 +1342,10 @@
   {
     "en": "Facts Piloti suggests from a closed project's documents are checked against the quoted words, so a value the quote contradicts is no longer suggested.",
     "de": "Fakten, die Piloti aus den Dokumenten eines abgeschlossenen Projekts vorschlägt, werden mit den zitierten Wörtern abgeglichen, sodass ein Wert, der dem Zitat widerspricht, nicht mehr vorgeschlagen wird."
+  },
+  {
+    "en": "File names keep their ending on a phone, so revision letters and drawing numbers stay readable, and folders are listed as compact rows.",
+    "de": "Dateinamen behalten auf dem Smartphone ihre Endung, sodass Revisionsbuchstaben und Plannummern lesbar bleiben; Ordner werden als kompakte Zeilen aufgelistet."
   },
   {
     "en": "File names that Piloti writes in an answer now open their file more reliably, because each name appears exactly as the file has it.",
@@ -1508,6 +1532,10 @@
     "de": "Bilder in PDFs werden jetzt so gründlich gelesen wie ganze Zeichnungsseiten, sodass jede eingebettete gescannte Zeichnung für sich erfasst wird, mit ihrem eigenen Maßstab."
   },
   {
+    "en": "In Dateien on a phone you can select several files and move them in one step, and moving a file opens a searchable list of folders.",
+    "de": "In Dateien können Sie auf dem Smartphone mehrere Dateien auswählen und in einem Schritt verschieben; beim Verschieben einer Datei öffnet sich eine durchsuchbare Ordnerliste."
+  },
+  {
     "en": "In Safari, opening a citation now marks the quoted passage in the document, as it does in Chrome and Firefox.",
     "de": "Beim Öffnen eines Zitats in Safari wird die zitierte Passage jetzt im Dokument markiert – wie in Chrome und Firefox."
   },
@@ -1652,8 +1680,20 @@
     "de": "Ältere und nicht veröffentlichte Fassungen einer Datei zählen jetzt zum Speicher Ihres Büros. Sie wurden bisher aufbewahrt, aber nicht mitgezählt, sodass die angezeigte Speichermenge kleiner war als das, was tatsächlich belegt war."
   },
   {
+    "en": "On a phone a drawing now opens full screen, however you reach it, and zooms deep enough to read the 2.5 mm lettering of an A1 plan, with pinch, double tap and sharp lines at every zoom.",
+    "de": "Auf dem Smartphone öffnet sich eine Zeichnung jetzt unabhängig davon, wie Sie sie aufrufen, im Vollbild und lässt sich so weit vergrößern, dass die 2,5-mm-Beschriftung eines A1-Plans lesbar ist – mit Pinch-Geste, Doppeltippen und scharfen Linien bei jeder Zoomstufe."
+  },
+  {
     "en": "On a phone the opened citation no longer jumps past the highlighted passage, and the document name is no longer pushed aside by the copy buttons.",
     "de": "Am Telefon springt das geöffnete Zitat nicht mehr über die markierte Stelle hinaus, und die Kopier-Schaltflächen verdrängen den Dokumentnamen nicht mehr."
+  },
+  {
+    "en": "On a phone the project list opens as a launcher with recent projects to swipe through, search also finds a project by its address, municipality or client, and the project wizard starts with its first question.",
+    "de": "Auf dem Smartphone öffnet sich die Projektliste als Startansicht mit zuletzt verwendeten Projekten zum Durchwischen; die Suche findet Projekte auch über Adresse, Gemeinde oder Auftraggeber, und der Projektassistent beginnt mit seiner ersten Frage."
+  },
+  {
+    "en": "On a phone, Piloti now has a bar at the bottom of the screen with Frag Piloti, Dateien, Übersicht and Postfach inside a project, and Projekte, Büroablage and Postfach above one. Tapping the project name at the top switches project from a sheet with the most recent projects first, and the magnifier opens search.",
+    "de": "Auf dem Smartphone hat Piloti jetzt eine Leiste am unteren Bildschirmrand: Innerhalb eines Projekts finden Sie darin Frag Piloti, Dateien, Übersicht und Postfach, außerhalb eines Projekts Projekte, Büroablage und Postfach. Tippen Sie oben auf den Projektnamen, um das Projekt über ein Auswahlfenster zu wechseln, in dem die zuletzt verwendeten Projekte zuerst angezeigt werden. Über die Lupe öffnen Sie die Suche."
   },
   {
     "en": "On a phone, the Herleitung under an answer used to swallow every swipe: a finger anywhere on it moved nothing, so you could not scroll past it to the answer itself. It now scrolls like the rest of the page.",
@@ -1666,6 +1706,14 @@
   {
     "en": "On a phone, the last filter in the Tasks list ran off the edge of the card and could not be reached. Filter rows and view switchers now stay inside their card and scroll sideways when the labels do not fit.",
     "de": "Auf dem Smartphone ragte der letzte Filter in der Tasks-Liste über den Kartenrand hinaus und war nicht erreichbar. Filterzeilen und Ansichtsumschalter bleiben jetzt innerhalb ihrer Karte und lassen sich horizontal scrollen, wenn die Beschriftungen nicht hineinpassen."
+  },
+  {
+    "en": "On a phone, the paperclip in the chat now offers \"Foto aufnehmen\", which opens the camera directly, and \"Aus Mediathek\", and says that what you add stays in this chat; the upload menu under Dateien offers the same two entries.",
+    "de": "Auf dem Smartphone bietet die Büroklammer im Chat jetzt „Foto aufnehmen“, wodurch sich direkt die Kamera öffnet, und „Aus Mediathek“. Außerdem weist sie darauf hin, dass Hinzugefügtes in diesem Chat bleibt. Das Upload-Menü unter Dateien bietet dieselben zwei Einträge."
+  },
+  {
+    "en": "On a phone, the schedule wizard's last step, the run history, the task filters, the Büroablage header and several project and administration pages no longer run off the edge of the screen.",
+    "de": "Auf dem Smartphone ragen der letzte Schritt des Terminplanungsassistenten, der Ausführungsverlauf, die Aufgabenfilter, die Kopfzeile der Büroablage sowie mehrere Projekt- und Verwaltungsseiten nicht mehr über den Bildschirmrand hinaus."
   },
   {
     "en": "On a phone, the search box or button beside a project section's heading now sits below it, so the explanation gets the full width. It used to break to one word per line.",
@@ -1780,6 +1828,10 @@
     "de": "Fotos zeigen, wann und mit welcher Kamera sie aufgenommen wurden, und verlinken auf den Ort der Aufnahme. Piloti nutzt das Datum, um ein Foto zu beschreiben, gibt den Standort aber nie an die KI weiter."
   },
   {
+    "en": "Picking a name from the @ list on a phone no longer closes the keyboard. The composer shows the project's name on a phone and keeps its buttons on one row.",
+    "de": "Wenn Sie auf dem Smartphone einen Namen aus der @-Liste auswählen, bleibt die Tastatur geöffnet. Das Eingabefeld zeigt den Projektnamen an und hält die Schaltflächen in einer Zeile."
+  },
+  {
     "en": "Pictures in Word and PowerPoint files are now read too, so a photo or drawing on a slide can be found and cited in an answer. Files uploaded earlier are read this way once you choose \"Erneut lesen\" in their menu.",
     "de": "Bilder in Word- und PowerPoint-Dateien werden jetzt ebenfalls gelesen, sodass sich ein Foto oder eine Zeichnung auf einer Folie finden und in einer Antwort zitieren lässt. Dateien, die früher hochgeladen wurden, werden so gelesen, sobald Sie in ihrem Menü „Erneut lesen“ wählen."
   },
@@ -1874,6 +1926,10 @@
   {
     "en": "Piloti is built for a phone now, not merely resized for one. The numbers and sources in an answer, the mentions in a shared thread, the steps of a card and the outline of a report are all sized for a fingertip, so checking where a requirement came from no longer takes three attempts on site.",
     "de": "Piloti ist jetzt für Smartphones konzipiert und nicht bloß dafür angepasst. Zahlen und Quellen in einer Antwort, Erwähnungen in einem geteilten Thread, Schritte einer Karte und die Gliederung eines Berichts sind auf die Bedienung mit dem Finger ausgelegt. So brauchen Sie vor Ort nicht mehr drei Anläufe, um herauszufinden, woher eine Anforderung stammt."
+  },
+  {
+    "en": "Piloti is laid out for the phone throughout, upright and on its side: questions and confirmations open as sheets from the bottom with the main action within reach of the thumb, every sheet has a visible close button, and buttons and rows are large enough to tap with a finger.",
+    "de": "Piloti ist durchgehend für Smartphones optimiert – im Hoch- und Querformat: Fragen und Bestätigungen öffnen sich als Sheets von unten, mit der Hauptaktion in Daumenreichweite; jedes Sheet hat eine sichtbare Schließen-Schaltfläche, und Buttons sowie Zeilen sind groß genug, um sie mit dem Finger anzutippen."
   },
   {
     "en": "Piloti knows which documents are still missing and answers accordingly. Without a Bebauungsplan it says so instead of answering as if it had read one.",
@@ -2240,6 +2296,10 @@
     "de": "Tabellen ohne Beschriftung in einem hochgeladenen PDF werden nun als Tabellen statt als unstrukturierter Seitentext erkannt. Auch Diagramme in PDFs werden nun gefunden: Bisher werden sie zwar gelesen, aber bei der Suche ausgelassen."
   },
   {
+    "en": "Tapping a source number in an answer opens the passage in a sheet with a button to open it at that place, long answers offer a list of their sections, and charts and tables fit the width of the phone.",
+    "de": "Wenn Sie in einer Antwort auf eine Quellennummer tippen, öffnet sich die Passage in einem Sheet mit einer Schaltfläche, über die Sie sie an der entsprechenden Stelle öffnen können. Lange Antworten bieten eine Liste ihrer Abschnitte, und Diagramme und Tabellen passen sich an die Breite des Smartphones an."
+  },
+  {
     "en": "Task statuses stay live while the panel is open and use plain planning language, so finished work no longer looks like it is still running.",
     "de": "Der Status einer Aufgabe bleibt bei geöffnetem Panel live und verwendet eine klare Planungssprache, sodass fertige Arbeit nicht mehr so aussieht, als laufe sie noch."
   },
@@ -2378,6 +2438,10 @@
   {
     "en": "The banner names where a report will be filed while the research is starting, when you can still stop it, and links to the finished file with „Im Projekt öffnen“. If nothing could be filed, it promises nothing.",
     "de": "Das Banner nennt den Ablageort eines Berichts schon beim Start der Recherche, solange Sie sie noch abbrechen können, und verlinkt die fertige Datei mit „Im Projekt öffnen“. Konnte nichts abgelegt werden, verspricht es nichts."
+  },
+  {
+    "en": "The building model on a phone has labelled tools that fit on one bar, shows a selected element in a sheet that can be pulled up, and shows how much of the model has loaded, with a way to cancel and retry.",
+    "de": "Das Gebäudemodell am Smartphone bietet beschriftete Werkzeuge, die auf eine Leiste passen, zeigt ausgewählte Elemente in einem nach oben ziehbaren Bereich an und zeigt den Ladefortschritt des Modells mit der Möglichkeit zum Abbrechen und erneuten Versuch an."
   },
   {
     "en": "The built-in Project Editor and Project Admin roles receive the new filing permission. Grant it to a custom project role yourself, or leave it out if Piloti should only answer.",

@@ -111,6 +111,18 @@
               "de": "Wenn Sie Piloti im Thread einer Anmerkung erwähnen oder Piloti eine offene Anmerkung übergeben, informiert Sie Ihre Inbox, sobald die Aufgabe erledigt ist oder Piloti eine Rückfrage hat. Wenn Sie eine Anmerkung von Piloti zurücknehmen, wird die Arbeit gestoppt."
             },
             {
+              "en": "On a phone, Piloti now has a bar at the bottom of the screen with Frag Piloti, Dateien, Übersicht and Postfach inside a project, and Projekte, Büroablage and Postfach above one. Tapping the project name at the top switches project from a sheet with the most recent projects first, and the magnifier opens search.",
+              "de": "Auf dem Smartphone hat Piloti jetzt eine Leiste am unteren Bildschirmrand: Innerhalb eines Projekts finden Sie darin Frag Piloti, Dateien, Übersicht und Postfach, außerhalb eines Projekts Projekte, Büroablage und Postfach. Tippen Sie oben auf den Projektnamen, um das Projekt über ein Auswahlfenster zu wechseln, in dem die zuletzt verwendeten Projekte zuerst angezeigt werden. Über die Lupe öffnen Sie die Suche."
+            },
+            {
+              "en": "In Dateien on a phone you can select several files and move them in one step, and moving a file opens a searchable list of folders.",
+              "de": "In Dateien können Sie auf dem Smartphone mehrere Dateien auswählen und in einem Schritt verschieben; beim Verschieben einer Datei öffnet sich eine durchsuchbare Ordnerliste."
+            },
+            {
+              "en": "An answer can be passed on through the phone's own share sheet, and a past chat can be renamed or deleted from its row by touch.",
+              "de": "Eine Antwort kann über das Teilen-Menü des Telefons weitergegeben werden; einen früheren Chat können Sie durch Antippen seiner Zeile umbenennen oder löschen."
+            },
+            {
               "en": "When Piloti suggests a note for the office's memory or a change to a project's facts, the suggestion is now decided once for everyone, and the card shows who decided and when, live for every reader. An office note can be kept for the project only, with „Nur im Projekt merken“.",
               "de": "Wenn Piloti eine Notiz für das Gedächtnis des Büros oder eine Änderung an den Fakten eines Projekts vorschlägt, wird der Vorschlag jetzt einmal für alle entschieden, und die Karte zeigt live für alle, wer wann entschieden hat. Eine Büronotiz lässt sich mit „Nur im Projekt merken“ nur für das Projekt behalten."
             },
@@ -129,6 +141,18 @@
             {
               "en": "Reviewers can now allow or delete a held file right from its preview, at the page where the content check found it. Every page with a finding is listed, not just the first ten.",
               "de": "Sie können eine zurückgehaltene Datei jetzt direkt in der Vorschau auf der Seite freigeben oder löschen, auf der die Inhaltsprüfung sie gefunden hat. Alle Seiten mit einem Fund werden aufgelistet, nicht nur die ersten zehn."
+            },
+            {
+              "en": "On a phone, the paperclip in the chat now offers \"Foto aufnehmen\", which opens the camera directly, and \"Aus Mediathek\", and says that what you add stays in this chat; the upload menu under Dateien offers the same two entries.",
+              "de": "Auf dem Smartphone bietet die Büroklammer im Chat jetzt „Foto aufnehmen“, wodurch sich direkt die Kamera öffnet, und „Aus Mediathek“. Außerdem weist sie darauf hin, dass Hinzugefügtes in diesem Chat bleibt. Das Upload-Menü unter Dateien bietet dieselben zwei Einträge."
+            },
+            {
+              "en": "Each photo is named after the moment it was taken, so a second photo no longer replaces the first. Where photos are not switched on, the menu says why.",
+              "de": "Jedes Foto wird nach dem Zeitpunkt der Aufnahme benannt, sodass ein weiteres Foto das erste nicht mehr ersetzt. Wenn Fotos nicht aktiviert sind, zeigt das Menü den Grund an."
+            },
+            {
+              "en": "Dictating on a phone shows a full-width bar while it records, with the time against the 45-second limit; tap anywhere on it to insert the text. A microphone that cannot be used says why when you tap it.",
+              "de": "Beim Diktieren am Smartphone wird während der Aufnahme eine Leiste über die gesamte Breite mit einer Zeitanzeige bis zum 45-Sekunden-Limit eingeblendet. Tippen Sie an beliebiger Stelle darauf, um den Text einzufügen. Wenn ein Mikrofon nicht verwendet werden kann, erfahren Sie beim Antippen den Grund."
             }
           ]
         },
@@ -188,6 +212,34 @@
               "de": "Ein passwortgeschütztes PDF fordert zur Eingabe des Passworts auf, statt einen Fehler auszugeben. Lässt sich ein PDF nicht öffnen, können Sie es erneut versuchen oder im Browser öffnen."
             },
             {
+              "en": "On a phone a drawing now opens full screen, however you reach it, and zooms deep enough to read the 2.5 mm lettering of an A1 plan, with pinch, double tap and sharp lines at every zoom.",
+              "de": "Auf dem Smartphone öffnet sich eine Zeichnung jetzt unabhängig davon, wie Sie sie aufrufen, im Vollbild und lässt sich so weit vergrößern, dass die 2,5-mm-Beschriftung eines A1-Plans lesbar ist – mit Pinch-Geste, Doppeltippen und scharfen Linien bei jeder Zoomstufe."
+            },
+            {
+              "en": "Comparing two Fassungen on a phone opens with the swipe view and keeps the list of changes in a sheet, and marks and their list work by touch without getting in the way of moving around the drawing.",
+              "de": "Beim Vergleich zweier Fassungen am Smartphone öffnet sich die Swipe-Ansicht, während die Änderungsliste in einem Sheet bleibt. Markierungen und ihre Liste lassen sich per Touch bedienen, ohne die Navigation in der Zeichnung zu beeinträchtigen."
+            },
+            {
+              "en": "Piloti is laid out for the phone throughout, upright and on its side: questions and confirmations open as sheets from the bottom with the main action within reach of the thumb, every sheet has a visible close button, and buttons and rows are large enough to tap with a finger.",
+              "de": "Piloti ist durchgehend für Smartphones optimiert – im Hoch- und Querformat: Fragen und Bestätigungen öffnen sich als Sheets von unten, mit der Hauptaktion in Daumenreichweite; jedes Sheet hat eine sichtbare Schließen-Schaltfläche, und Buttons sowie Zeilen sind groß genug, um sie mit dem Finger anzutippen."
+            },
+            {
+              "en": "On a phone the project list opens as a launcher with recent projects to swipe through, search also finds a project by its address, municipality or client, and the project wizard starts with its first question.",
+              "de": "Auf dem Smartphone öffnet sich die Projektliste als Startansicht mit zuletzt verwendeten Projekten zum Durchwischen; die Suche findet Projekte auch über Adresse, Gemeinde oder Auftraggeber, und der Projektassistent beginnt mit seiner ersten Frage."
+            },
+            {
+              "en": "File names keep their ending on a phone, so revision letters and drawing numbers stay readable, and folders are listed as compact rows.",
+              "de": "Dateinamen behalten auf dem Smartphone ihre Endung, sodass Revisionsbuchstaben und Plannummern lesbar bleiben; Ordner werden als kompakte Zeilen aufgelistet."
+            },
+            {
+              "en": "Tapping a source number in an answer opens the passage in a sheet with a button to open it at that place, long answers offer a list of their sections, and charts and tables fit the width of the phone.",
+              "de": "Wenn Sie in einer Antwort auf eine Quellennummer tippen, öffnet sich die Passage in einem Sheet mit einer Schaltfläche, über die Sie sie an der entsprechenden Stelle öffnen können. Lange Antworten bieten eine Liste ihrer Abschnitte, und Diagramme und Tabellen passen sich an die Breite des Smartphones an."
+            },
+            {
+              "en": "The building model on a phone has labelled tools that fit on one bar, shows a selected element in a sheet that can be pulled up, and shows how much of the model has loaded, with a way to cancel and retry.",
+              "de": "Das Gebäudemodell am Smartphone bietet beschriftete Werkzeuge, die auf eine Leiste passen, zeigt ausgewählte Elemente in einem nach oben ziehbaren Bereich an und zeigt den Ladefortschritt des Modells mit der Möglichkeit zum Abbrechen und erneuten Versuch an."
+            },
+            {
               "en": "Inbox notices about Piloti now say what it did, on which annotation in which document, and what you can do next. When Piloti could not work on an annotation, the notice says why, such as a used-up usage budget, instead of only that it did not finish.",
               "de": "Meldungen im Postfach über Piloti sagen jetzt, was es getan hat, an welcher Anmerkung in welchem Dokument und was Sie als Nächstes tun können. Konnte Piloti eine Anmerkung nicht bearbeiten, nennt die Meldung den Grund, etwa ein aufgebrauchtes Nutzungsbudget, statt nur, dass es nicht fertig wurde."
             },
@@ -203,6 +255,10 @@
             {
               "en": "When you upload a new revision of a file, the document now says that Piloti still answers from the previous revision until the new one has been read, and keeps saying so if reading it fails. Before, it claimed the new revision answered as soon as it was uploaded.",
               "de": "Wenn Sie eine neue Revision einer Datei hochladen, weist das Dokument jetzt darauf hin, dass Piloti weiterhin auf Grundlage der vorherigen Revision antwortet, bis die neue eingelesen wurde, und zeigt diesen Hinweis auch an, wenn das Einlesen fehlschlägt. Zuvor hieß es, Piloti antworte direkt nach dem Upload bereits auf Grundlage der neuen Revision."
+            },
+            {
+              "en": "An answer you leave running while the phone is locked or offline now carries on where it was when you come back, instead of being reported as lost. Uploads over a patchy connection retry on their own when the transfer stalls or drops.",
+              "de": "Wenn Sie eine Antwort weiterlaufen lassen, während Ihr Telefon gesperrt oder offline ist, wird sie jetzt beim Zurückkehren an der Stelle fortgesetzt, an der sie war, statt als verloren zu gelten. Uploads werden bei instabiler Verbindung automatisch erneut versucht, wenn die Übertragung stockt oder abbricht."
             },
             {
               "en": "In the side panel of an open document, labels and values line up again, document types read as types instead of raw codes such as „floor_plan“, and the stages of a Fassung are no longer cut off in German.",
@@ -253,6 +309,10 @@
               "de": "Das Upload-Panel und der Chat zeigen eine Datei, die bei der Inhaltsprüfung zurückgehalten wurde, nun als „zur Überprüfung zurückgehalten“ statt als „fehlgeschlagen“ und zeigen an, was gefunden wurde; ein erneuter Versuch wird nicht mehr angeboten. Eine gespeicherte, aber nicht gelesene Datei wird als abgelegt statt als zitierfähig angezeigt."
             },
             {
+              "en": "On a phone, the schedule wizard's last step, the run history, the task filters, the Büroablage header and several project and administration pages no longer run off the edge of the screen.",
+              "de": "Auf dem Smartphone ragen der letzte Schritt des Terminplanungsassistenten, der Ausführungsverlauf, die Aufgabenfilter, die Kopfzeile der Büroablage sowie mehrere Projekt- und Verwaltungsseiten nicht mehr über den Bildschirmrand hinaus."
+            },
+            {
               "en": "When Piloti could not start on an annotation you delegated, for example because the budget was used up, you now hear about it in the inbox, and the annotation no longer keeps showing „Piloti arbeitet daran“.",
               "de": "Konnte Piloti mit einer Anmerkung, die Sie delegiert haben, nicht beginnen, etwa weil das Budget aufgebraucht war, erfahren Sie das jetzt im Postfach, und die Anmerkung zeigt nicht mehr dauerhaft „Piloti arbeitet daran“."
             },
@@ -271,6 +331,10 @@
             {
               "en": "A file opened beside the chat now appears when your system is set to reduce motion. Before, the file panel stayed closed for those readers.",
               "de": "Eine neben dem Chat geöffnete Datei wird jetzt auch angezeigt, wenn Sie in Ihrem System „Bewegung reduzieren“ aktiviert haben. Bisher blieb der Dateibereich für Nutzer mit dieser Einstellung geschlossen."
+            },
+            {
+              "en": "Picking a name from the @ list on a phone no longer closes the keyboard. The composer shows the project's name on a phone and keeps its buttons on one row.",
+              "de": "Wenn Sie auf dem Smartphone einen Namen aus der @-Liste auswählen, bleibt die Tastatur geöffnet. Das Eingabefeld zeigt den Projektnamen an und hält die Schaltflächen in einer Zeile."
             },
             {
               "en": "After a short disruption on our side, documents that are being read now carry on by themselves, and answers no longer stall while Piloti looks something up in your files.",
