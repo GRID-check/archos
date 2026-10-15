@@ -1,5 +1,12 @@
-import { describe, expect, it } from 'vitest'
-import { classifyPushSupport, deviceOfSubscription, readCapabilities, urlBase64ToBytes, type PushCapabilities } from './browser'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import {
+  classifyPushSupport,
+  deviceOfSubscription,
+  forgetThisDevice,
+  readCapabilities,
+  urlBase64ToBytes,
+  type PushCapabilities,
+} from './browser'
 import type { PushDeviceView } from './types'
 
 const caps = (overrides: Partial<PushCapabilities> = {}): PushCapabilities => ({
@@ -71,5 +78,71 @@ describe('keys and devices', () => {
     expect(deviceOfSubscription(devices, { endpoint: 'https://b' } as PushSubscription)?.id).toBe('https://b')
     expect(deviceOfSubscription(devices, { endpoint: 'https://c' } as PushSubscription)).toBeNull()
     expect(deviceOfSubscription(devices, null)).toBeNull()
+  })
+})
+
+describe('forgetting this browser, as sign-out does', () => {
+  const ENDPOINT = 'https://fcm.googleapis.com/fcm/send/this'
+  const device = (id: string, endpoint: string) => ({ id, endpoint }) as PushDeviceView
+
+  function browserWith(order: string[]) {
+    const notification = { close: vi.fn(() => order.push('close')) }
+    const subscription = {
+      endpoint: ENDPOINT,
+      unsubscribe: vi.fn(async () => {
+        order.push('unsubscribe')
+        return true
+      }),
+    }
+    const registration = {
+      getNotifications: vi.fn(async () => [notification]),
+      pushManager: { getSubscription: vi.fn(async () => subscription) },
+    }
+    const clearAppBadge = vi.fn(async () => {
+      order.push('badge')
+    })
+    Object.defineProperty(navigator, 'serviceWorker', {
+      configurable: true,
+      value: { getRegistration: vi.fn(async () => registration) },
+    })
+    Object.defineProperty(navigator, 'clearAppBadge', { configurable: true, value: clearAppBadge })
+    return { notification, subscription, clearAppBadge }
+  }
+
+  afterEach(() => {
+    Reflect.deleteProperty(navigator, 'serviceWorker')
+    Reflect.deleteProperty(navigator, 'clearAppBadge')
+  })
+
+  // A slow server used to outlast sign-out's budget with the browser still
+  // subscribed, so the next person on the computer got the last one's inbox.
+  it('unsubscribes, closes what is shown and clears the badge even when the server never answers', async () => {
+    const order: string[] = []
+    const { notification, subscription, clearAppBadge } = browserWith(order)
+    const client = {
+      listDevices: vi.fn(() => new Promise<never>(() => undefined)),
+      removeDevice: vi.fn(),
+    }
+    await forgetThisDevice(client, { serverWithinMs: 5 })
+    expect(subscription.unsubscribe).toHaveBeenCalledTimes(1)
+    expect(notification.close).toHaveBeenCalledTimes(1)
+    expect(clearAppBadge).toHaveBeenCalledTimes(1)
+    expect(client.removeDevice).not.toHaveBeenCalled()
+  })
+
+  it('unsubscribes locally before it asks the server, then removes this browser’s row', async () => {
+    const order: string[] = []
+    browserWith(order)
+    const client = {
+      listDevices: vi.fn(async () => {
+        order.push('list')
+        return [device('other', 'https://fcm.googleapis.com/fcm/send/other'), device('mine', ENDPOINT)]
+      }),
+      removeDevice: vi.fn(async (id: string) => {
+        order.push(`remove:${id}`)
+      }),
+    }
+    await forgetThisDevice(client)
+    expect(order.slice(order.indexOf('unsubscribe'))).toEqual(['unsubscribe', 'list', 'remove:mine'])
   })
 })

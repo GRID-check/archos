@@ -76,8 +76,11 @@ the `web-push` library.
   activity.
 * **One device, one person.** The subscription endpoint is unique across
   tenants. Registering claims it, removing another person's row, and signing out
-  removes the device, so a shared computer does not show the previous person's
-  inbox. Endpoints must be on a known push service's host, so the sender cannot
+  forgets the device, so a shared computer does not show the previous person's
+  inbox. Sign-out does the browser's part first and waits for it (close the
+  shown notifications, clear the badge, unsubscribe); removing the server's row
+  follows, bounded, so a slow network cannot leave the browser subscribed.
+  Endpoints must be on a known push service's host, so the sender cannot
   be pointed at an internal address. The host must be plain DNS labels and read
   the same by WHATWG `URL` (the check) and Node's `url.parse` (what `web-push`
   requests); the sender re-checks before each send, and the table's CHECK holds

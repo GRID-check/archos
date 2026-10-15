@@ -100,11 +100,15 @@ export async function registerWorker(): Promise<ServiceWorkerRegistration | null
   }
 }
 
+function workerRegistration(): Promise<ServiceWorkerRegistration | undefined> {
+  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return Promise.resolve(undefined)
+  return navigator.serviceWorker.getRegistration('/').catch(() => undefined)
+}
+
 /** This browser's subscription, if it has one. Never prompts. */
 export async function currentSubscription(): Promise<PushSubscription | null> {
-  if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return null
   try {
-    const registration = await navigator.serviceWorker.getRegistration('/')
+    const registration = await workerRegistration()
     return (await registration?.pushManager.getSubscription()) ?? null
   } catch {
     return null
@@ -159,22 +163,54 @@ export function deviceOfSubscription(
 }
 
 /**
- * Stop notifying this browser: remove its device on the server and its
- * subscription in the browser. Best effort and quiet; used on sign-out, where a
- * shared computer must not keep showing the previous person's inbox, and in the
- * settings when a person turns it off.
+ * Stop notifying this browser. Used on sign-out, where a shared computer must
+ * not keep showing the previous person's inbox, and in the settings when a
+ * person turns it off.
+ *
+ * The browser's own steps come first and are awaited: close what is on screen,
+ * clear the icon's count, and unsubscribe, after which the push service refuses
+ * the endpoint whatever the server still holds. Only then the server's row is
+ * removed, best effort and quiet; `serverWithinMs` bounds that wait for a
+ * caller (sign-out) that must not hang on the network. Done the other way
+ * round, a slow list request outlasted sign-out's budget and the browser stayed
+ * subscribed for the person who had just left.
  */
-export async function forgetThisDevice(client: Pick<PushClient, 'listDevices' | 'removeDevice'>): Promise<void> {
-  const subscription = await currentSubscription()
+export async function forgetThisDevice(
+  client: Pick<PushClient, 'listDevices' | 'removeDevice'>,
+  options: { serverWithinMs?: number } = {}
+): Promise<void> {
+  const registration = await workerRegistration()
+  setAppBadge(0)
+  if (!registration) return
+  await closeShown(registration)
+  const subscription = await registration.pushManager.getSubscription().catch(() => null)
   if (!subscription) return
+  const { endpoint } = subscription
+  await subscription.unsubscribe().catch(() => false)
+  const server = removeServerDevice(client, endpoint)
+  if (options.serverWithinMs === undefined) return server
+  await Promise.race([server, new Promise<void>((resolve) => setTimeout(resolve, options.serverWithinMs))])
+}
+
+async function closeShown(registration: ServiceWorkerRegistration): Promise<void> {
   try {
-    const device = deviceOfSubscription(await client.listDevices(), subscription)
+    for (const notification of await registration.getNotifications()) notification.close()
+  } catch {
+    // A browser without the Notifications API on the registration shows none.
+  }
+}
+
+async function removeServerDevice(
+  client: Pick<PushClient, 'listDevices' | 'removeDevice'>,
+  endpoint: string
+): Promise<void> {
+  try {
+    const device = (await client.listDevices()).find((entry) => entry.endpoint === endpoint)
     if (device) await client.removeDevice(device.id)
   } catch {
-    // The server could not be reached; the push service forgets the endpoint
-    // once the browser unsubscribes, and the next send there answers 410.
+    // The server could not be reached; the browser is already unsubscribed, so
+    // the next send to the endpoint answers 410 and the row goes then.
   }
-  await subscription.unsubscribe().catch(() => false)
 }
 
 /** Ask the worker to close notifications: those of these inbox items, or all of them. */

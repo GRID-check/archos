@@ -61,9 +61,10 @@ export const useAuth = (): AuthContext => {
     if (!authRequired) return
     resetPosthog()
     // A shared computer must not keep showing this person's inbox to the next
-    // one (Web Push, ADR-0112): the device is removed while the session still
-    // lets the request through. Quiet and bounded; signing out never waits on it.
-    await Promise.race([forgetThisDevice(pushClient), new Promise((resolve) => setTimeout(resolve, 1500))])
+    // one (Web Push, ADR-0112). The browser unsubscribes and closes what is on
+    // screen first; the server's row is removed while the session still lets
+    // the request through, bounded so signing out never waits on the network.
+    await forgetThisDevice(pushClient, { serverWithinMs: 1500 })
     await authKitSignOut({ returnTo: '/' })
   }, [authRequired, authKitSignOut])
 
