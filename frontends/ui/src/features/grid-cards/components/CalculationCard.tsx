@@ -109,7 +109,9 @@ const Operand: FC<{
           </>
         )}
       </span>
-      <span className="max-w-[11rem] truncate text-[10.5px] leading-tight text-muted-foreground" title={label}>
+      {/* Wraps instead of clipping: the label names what the figure above is,
+          and a `title` attribute is not shown on a phone. */}
+      <span className="card-meta max-w-[11rem] text-center font-normal [overflow-wrap:anywhere] text-muted-foreground">
         {fromStep ? t('cards.calculation.fromStep', { step: String(operand.step) }) : label}
       </span>
     </span>

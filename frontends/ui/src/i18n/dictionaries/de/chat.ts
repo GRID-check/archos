@@ -455,6 +455,11 @@ export const chat: typeof en.chat = {
       // hinzuschreiben ist genau der Fehler, den diese Karte ausschließt.
       undecidable: 'Mit den vorliegenden Angaben nicht berechenbar.',
       undefinedResult: 'Durch null geteilt — das Ergebnis ist nicht definiert.',
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Mehr anzeigen',
+      less: 'Weniger anzeigen',
+    },
       sourcesMore: 'Woher die Zahlen kommen',
       sourcesLess: 'Weniger',
       // Steht in der Aufklappung, wo die Eingangswerte ohnehin geprüft werden:

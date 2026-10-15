@@ -68,15 +68,15 @@ export const DocumentDraftPreviewDialog: FC<DocumentDraftPreviewDialogProps> = (
       >
         {/* Fixed chrome: the title and the facts never scroll away, and never
             shrink under the words below. `leading-snug`, because the dialog
-            title's `leading-none` clipped the first line's ascenders; the
-            `title` keeps the whole string reachable past the truncation. */}
+            title's `leading-none` clipped the first line's ascenders. Both lines
+            wrap rather than truncate: a `title` attribute is never shown on a
+            phone, so a clipped name would be unreadable there. */}
         <div className="min-w-0 shrink-0">
-          <DialogTitle className="truncate pr-8 leading-snug" title={title}>
+          <DialogTitle className="pr-8 leading-snug break-words">
             {title}
           </DialogTitle>
           <p
-            className="card-caption truncate font-mono text-muted-foreground"
-            title={path}
+            className="card-caption font-mono break-words text-muted-foreground"
             data-testid="document-draft-preview-meta"
           >
             {path}

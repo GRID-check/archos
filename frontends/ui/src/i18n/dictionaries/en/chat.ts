@@ -459,6 +459,11 @@ export const chat = {
       // the exact failure this card exists to make impossible.
       undecidable: 'Cannot be derived from the figures given.',
       undefinedResult: 'Divided by zero — the result is not defined.',
+    // Ein auf wenige Zeilen gekürzter Text, der sich per Tipp öffnen lässt (ClampedText).
+    clamp: {
+      more: 'Show more',
+      less: 'Show less',
+    },
       sourcesMore: 'Where the figures come from',
       sourcesLess: 'Less',
       // Said inside the disclosure, where the reader is already checking the
