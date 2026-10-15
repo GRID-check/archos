@@ -2136,6 +2136,10 @@
     "de": "Geplante Recherche-Berichte werden in Büros, für die diese Funktion aktiviert ist, wieder im Projekt abgelegt; sie waren zurückgehalten worden."
   },
   {
+    "en": "Scheduled tasks and Piloti's replies in comment threads now know whose they are: Piloti has your name and your office there too, not only in a chat you are typing in.",
+    "de": "Geplante Aufgaben und Pilotis Antworten in Kommentar-Threads sind jetzt eindeutig zuordenbar: Ihr Name und Ihr Büro sind dort sichtbar, nicht mehr nur in einem Chat, in dem Sie gerade schreiben."
+  },
+  {
     "en": "Scheduled tasks are no longer skipped when research capacity is full: a run that has to wait shows as waiting in Aufgaben and starts as soon as capacity is free. An office's scheduled runs go after its own questions and never ahead of another office's work.",
     "de": "Geplante Aufgaben werden nicht mehr übersprungen, wenn die Recherchekapazität ausgelastet ist: Ein Lauf, der warten muss, wird in Aufgaben als wartend angezeigt und startet, sobald wieder Kapazität frei ist. Die geplanten Läufe eines Büros kommen nach dessen eigenen Fragen und nie vor der Arbeit eines anderen Büros."
   },
