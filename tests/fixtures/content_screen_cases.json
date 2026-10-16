@@ -1047,11 +1047,11 @@
       "detectors": [
         "iban"
       ],
-      "text": "IBAN AT61 1904 3002 34­57 3201",
+      "text": "IBAN AT61 1904 3002 34\u00AD57 3201",
       "matches": [
         {
           "kind": "iban",
-          "text": "AT61 1904 3002 34­57 3201"
+          "text": "AT61 1904 3002 34\u00AD57 3201"
         }
       ],
       "masked": "IBAN [IBAN entfernt]",
@@ -1069,11 +1069,11 @@
       "detectors": [
         "credit_card"
       ],
-      "text": "Karte 4111 11​11 1111 1111",
+      "text": "Karte 4111 11\u200B11 1111 1111",
       "matches": [
         {
           "kind": "credit_card",
-          "text": "4111 11​11 1111 1111"
+          "text": "4111 11\u200B11 1111 1111"
         }
       ],
       "masked": "Karte [Kartennummer entfernt]",
@@ -1091,11 +1091,11 @@
       "detectors": [
         "credit_card"
       ],
-      "text": "Karte 4111​1111​1111​1111",
+      "text": "Karte 4111\u200B1111\u200B1111\u200B1111",
       "matches": [
         {
           "kind": "credit_card",
-          "text": "4111​1111​1111​1111"
+          "text": "4111\u200B1111\u200B1111\u200B1111"
         }
       ],
       "masked": "Karte [Kartennummer entfernt]",
@@ -1113,17 +1113,17 @@
         "Gehaltsabrechnung"
       ],
       "detectors": [],
-      "text": "Die Gehalts​abrechnung und die Gehalts­abrechnung",
+      "text": "Die Gehalts\u200Babrechnung und die Gehalts\u00ADabrechnung",
       "matches": [
         {
           "kind": "term",
           "term": "Gehaltsabrechnung",
-          "text": "Gehalts​abrechnung"
+          "text": "Gehalts\u200Babrechnung"
         },
         {
           "kind": "term",
           "term": "Gehaltsabrechnung",
-          "text": "Gehalts­abrechnung"
+          "text": "Gehalts\u00ADabrechnung"
         }
       ],
       "masked": "Die [Begriff entfernt] und die [Begriff entfernt]",
@@ -1212,9 +1212,9 @@
         "Honorar"
       ],
       "detectors": [],
-      "text": "Ehren­honorar",
+      "text": "Ehren\u00ADhonorar",
       "matches": [],
-      "masked": "Ehren­honorar",
+      "masked": "Ehren\u00ADhonorar",
       "findings": []
     },
     {
@@ -1400,7 +1400,7 @@
         "at_svnr",
         "credit_card"
       ],
-      "text": "AT61 1904 3002 3457 3201​1237010180",
+      "text": "AT61 1904 3002 3457 3201\u200B1237010180",
       "matches": [
         {
           "kind": "iban",
@@ -1411,7 +1411,7 @@
           "text": "1237010180"
         }
       ],
-      "masked": "[IBAN entfernt]​[SV-Nummer entfernt]",
+      "masked": "[IBAN entfernt]\u200B[SV-Nummer entfernt]",
       "findings": [
         {
           "kind": "iban",
@@ -1431,7 +1431,7 @@
       "detectors": [
         "credit_card"
       ],
-      "text": "4111 1111 1111 1111­4111 1111 1111 1111",
+      "text": "4111 1111 1111 1111\u00AD4111 1111 1111 1111",
       "matches": [
         {
           "kind": "credit_card",
@@ -1442,7 +1442,7 @@
           "text": "4111 1111 1111 1111"
         }
       ],
-      "masked": "[Kartennummer entfernt]­[Kartennummer entfernt]",
+      "masked": "[Kartennummer entfernt]\u00AD[Kartennummer entfernt]",
       "findings": [
         {
           "kind": "credit_card",
@@ -1459,7 +1459,7 @@
         "at_svnr",
         "credit_card"
       ],
-      "text": "AT61 1904 3002 3457 3201­4111 1111 1111 1111",
+      "text": "AT61 1904 3002 3457 3201\u00AD4111 1111 1111 1111",
       "matches": [
         {
           "kind": "iban",
@@ -1470,7 +1470,7 @@
           "text": "4111 1111 1111 1111"
         }
       ],
-      "masked": "[IBAN entfernt]­[Kartennummer entfernt]",
+      "masked": "[IBAN entfernt]\u00AD[Kartennummer entfernt]",
       "findings": [
         {
           "kind": "iban",
@@ -1490,22 +1490,22 @@
         "Gehaltsabrechnung"
       ],
       "detectors": [],
-      "text": "Gehalts­-\nabrechnung, Gehalts-​\nabrechnung, Gehalts-\n⁠abrechnung",
+      "text": "Gehalts\u00AD-\nabrechnung, Gehalts-\u200B\nabrechnung, Gehalts-\n\u2060abrechnung",
       "matches": [
         {
           "kind": "term",
           "term": "Gehaltsabrechnung",
-          "text": "Gehalts­-\nabrechnung"
+          "text": "Gehalts\u00AD-\nabrechnung"
         },
         {
           "kind": "term",
           "term": "Gehaltsabrechnung",
-          "text": "Gehalts-​\nabrechnung"
+          "text": "Gehalts-\u200B\nabrechnung"
         },
         {
           "kind": "term",
           "term": "Gehaltsabrechnung",
-          "text": "Gehalts-\n⁠abrechnung"
+          "text": "Gehalts-\n\u2060abrechnung"
         }
       ],
       "masked": "[Begriff entfernt], [Begriff entfernt], [Begriff entfernt]",
