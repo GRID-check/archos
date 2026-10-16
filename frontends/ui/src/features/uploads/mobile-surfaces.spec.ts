@@ -41,9 +41,10 @@ describe('upload tray rows', () => {
     expect(source).toContain('<MiddleTruncate text={file.fileName}')
   })
 
-  it('draws no text under 12px outside the extension chip', () => {
+  it('draws no text under 12px; the extension chip is the shared tile, not a copy', () => {
     const small = [...source.matchAll(/text-\[(\d+(?:\.\d+)?)px\]/g)].filter((m) => Number(m[1]) < 12)
-    expect(small.map((m) => m[0])).toEqual(['text-[8.5px]'])
+    expect(small.map((m) => m[0])).toEqual([])
+    expect(source).toContain('<FileExtChip filename={file.fileName} size="xs"')
   })
 })
 

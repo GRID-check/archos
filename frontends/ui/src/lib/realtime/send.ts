@@ -55,7 +55,7 @@ export async function sendToChannel(
   }
   events.push(...upstream.handle(post, peer, params))
 
-  const [topic] = channel.topics(params)
+  const [topic] = channel.topics(params, session.organizationId)
   for (const event of events) await publish(topic, event)
   channel.observe?.(events, params, session.organizationId)
   return null

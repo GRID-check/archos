@@ -26,6 +26,7 @@ import { createDocumentByNameClient } from '@/lib/documents/by-name-client'
 import { documentDisplayName } from '@/lib/documents/display-name'
 import { shelfSummaryUrl, type LevelPageRequest } from '@/lib/documents/level-client'
 import type { DocumentVersionState } from '@/lib/documents/lifecycle-types'
+import type { LiveShelf } from '@/lib/documents/shelf-live-events'
 import { offeredForRetry } from '@/lib/documents/retry-policy'
 import { inferDocumentKind } from '../document-kind'
 import type { FileItem, FolderItem } from '../file-types'
@@ -44,6 +45,7 @@ import { useLevelListing } from '../hooks/use-level-listing'
 import { useLinkedDocuments } from '../hooks/use-linked-documents'
 import { useModelStage } from '../hooks/use-model-stage'
 import { useSettleTrackedUploads } from '../hooks/use-settle-tracked-uploads'
+import { useShelfLive, type ShelfChange } from '../hooks/use-shelf-live'
 import { useShelfSummary } from '../hooks/use-shelf-summary'
 import { useShelfUpload } from '../hooks/use-shelf-upload'
 import { useViewPreference } from '../hooks/use-view-preference'
@@ -345,6 +347,7 @@ export function FileWorkspace({
     reloadFilesRef.current = reloadAll
   }, [reloadAll])
 
+
   const upload = shelf.useUpload({
     collectionName,
     folderId: selectedFolderId ?? undefined,
@@ -353,7 +356,27 @@ export function FileWorkspace({
   const { isUploading, error } = upload
 
   const moves = useDocumentMoves(files, setFiles, folders)
-  const { moved: moveRow, dropInFolder: dropRowInFolder, moveMany } = moves
+  const { moved: moveRow, dropInFolder: dropRowInFolder, moveMany, isMoving } = moves
+
+  // Changes made anywhere else (a colleague, Piloti, the chat beside this,
+  // another tab) arrive as a hint on the shelf's channel; what is on screen
+  // is read again, quietly and coalesced (`reloadQuietly`, the upload's own
+  // settle signal), and the folder tree when it moved too. Not while this
+  // tab's own moves are on the wire: their echoes would put rows back that
+  // are about to leave.
+  const liveShelf = useMemo<LiveShelf>(
+    () => (shelf.projectId ? { kind: 'project', projectId: shelf.projectId } : { kind: 'archiv' }),
+    [shelf.projectId]
+  )
+  const { load: loadFolders } = tree
+  const onShelfChanged = useCallback(
+    (change: ShelfChange) => {
+      reloadQuietly()
+      if (change.folders) void loadFolders()
+    },
+    [reloadQuietly, loadFolders]
+  )
+  useShelfLive(liveShelf, onShelfChanged, { holdWhile: isMoving })
   // A move changes two folders' counts: the summary is read again after it.
   const moved = useCallback(
     (fileId: string, folderId: string | null) => {

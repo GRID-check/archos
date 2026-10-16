@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
-import { ShimmerText } from '@/components/ui/shimmer-text'
 import { MiddleTruncate } from '@/components/ui/middle-truncate'
 import { AlertCircle, Check, ChevronDown, RotateCcw, ShieldAlert, WifiOff, X } from 'lucide-react'
 import { mayRetryUpload, type TrackedFile } from '../types'
@@ -14,7 +13,8 @@ import {
   type UploadPhase,
 } from '../lib/upload-progress'
 import { useElapsedSeconds, useTransferRate } from '../hooks/use-transfer-rate'
-import { extChipTint, fileExtensionLabel } from '../document-kind'
+import { FileExtChip } from './file-ext-chip'
+import { IngestionStatusWord, ingestionMarkOfPhase } from './ingestion-atoms'
 import { IngestFailureNotice } from './ingest-failure-notice'
 import { QuarantineFindings } from './quarantine-findings'
 import { RequestReviewButton } from './request-review-button'
@@ -272,7 +272,10 @@ export function UploadTray({ files, onRetry, onCancel, onCancelAll, onDismiss }:
 
         {/* On a phone the actions take a line of their own under the
             headline, and the expander stays beside the headline it folds:
-            wrapped in DOM order, it used to land alone on a third line. */}
+            wrapped in DOM order, it used to land alone on a third line. Even
+            one action goes down: „Alle abbrechen" beside the headline's
+            160px floor and the expander does not fit 390px, and the
+            expander is what wrapped. */}
         {hasHeaderActions && (
           <div className="order-3 flex basis-full items-center justify-end gap-2 sm:order-2 sm:basis-auto">
           {isTransferring && onCancelAll && (
@@ -396,7 +399,7 @@ function TrayGlyph({ summary, offline }: { summary: TransferSummary; offline: bo
           // size, so "done" is something that happened. Still under reduced motion.
           'animate-in zoom-in-75 fade-in-0 duration-base ease-entrance motion-reduce:animate-none',
           hasFailure
-            ? 'bg-destructive/10 text-destructive'
+            ? 'bg-danger-subtle text-error'
             : hasHeld
               ? 'bg-warning-subtle text-warning'
               : 'bg-success-subtle text-success'
@@ -526,7 +529,7 @@ function UploadRow({
 
   const phase = uploadPhase(file)
   const percent = uploadPercent(file)
-  const ext = fileExtensionLabel(file.fileName)
+  const mark = ingestionMarkOfPhase(phase)
   const canCancel = (phase === 'uploading' || phase === 'queued') && onCancel !== undefined
   const isFailed = phase === 'failed'
   // Held back by the content check (ADR-0086). Never retried: the server
@@ -562,17 +565,9 @@ function UploadRow({
           losing a button does not shove its neighbours sideways, and a German
           status word („Zurückgehalten“, „Fehlgeschlagen“) is never cut. */}
       <div className="flex h-12 items-center gap-2.5 px-4 sm:h-10">
-        {/* Same extension chip the file cards and the preview header use, so a
-            document looks like itself from the second it is dropped. */}
-        <span
-          aria-hidden
-          // 8.5px is load-bearing and stays — a four-letter extension has to fit
-          // inside a 24px square; see file-list-view.
-          className="flex size-6 shrink-0 items-center justify-center rounded-sm text-[8.5px] font-bold uppercase leading-none"
-          style={extChipTint(ext)}
-        >
-          {ext || '—'}
-        </span>
+        {/* The extension tile the Files list draws, so a document looks like
+            itself from the second it is dropped. */}
+        <FileExtChip filename={file.fileName} size="xs" fallback="—" />
 
         {/* On a phone the status word sits under the name, so the name keeps
             the width; from `sm` up they share the line in fixed columns. */}
@@ -597,26 +592,28 @@ function UploadRow({
           {formatBytes(file.fileSize, locale)}
         </span>
 
+        {/* Glyph, word and ink from one table (`ingestion-atoms`): waiting,
+            sending, reading, filed and cancelled all write in muted ink, and
+            the glyph is what tells them apart at a glance. No shimmer on a
+            reading row: the header's sweep is the batch's one loop, and a
+            shimmer per row made a batch of twelve twelve loops. */}
         <span
           className={cn(
             // The server's „unchanged" answer is a sentence, not a status word,
-            // so it may take more than the column.
-            unchanged ? 'sm:min-w-24' : 'sm:w-24',
-            'shrink-0 whitespace-nowrap text-xs font-medium tabular-nums sm:text-right',
-            phase === 'ready' && !unchanged && 'text-success',
-            isFailed && 'text-destructive',
-            isHeldBack && 'text-warning',
-            (unchanged || (phase !== 'ready' && !isFailed && !isHeldBack)) && 'text-muted-foreground'
+            // so it may take more than the column. The column holds the
+            // longest status word („Zurückgehalten") beside its glyph.
+            unchanged ? 'sm:min-w-28' : 'sm:w-28',
+            'flex shrink-0 items-center text-xs font-medium tabular-nums sm:justify-end'
           )}
           data-testid={unchanged ? 'upload-row-unchanged' : undefined}
         >
-          <ShimmerText active={phase === 'processing'}>
+          <IngestionStatusWord mark={mark} quiet={unchanged}>
             {unchanged ? t('uploads.row.unchanged') : phaseLabel(phase, percent, t)}
-          </ShimmerText>
+          </IngestionStatusWord>
           {/* The size column is off on a phone, so a file that is still moving
               carries its size here: „42 % · 4,8 MB" says how much is left. */}
           {showsSizeInline && (
-            <span className="font-normal text-muted-foreground sm:hidden"> · {formatBytes(file.fileSize, locale)}</span>
+            <span className="whitespace-pre font-normal text-muted-foreground sm:hidden"> · {formatBytes(file.fileSize, locale)}</span>
           )}
         </span>
         </div>
@@ -679,11 +676,11 @@ function UploadRow({
               {isFailed && file.errorMessage && failedWhileReading(file) ? (
                 <IngestFailureNotice
                   errorMessage={file.errorMessage}
-                  sentenceClassName="leading-snug text-destructive"
+                  sentenceClassName="leading-snug text-error"
                   testId="upload-row-failure"
                 />
               ) : isFailed && file.errorMessage ? (
-                <p className="text-xs leading-snug text-destructive">{file.errorMessage}</p>
+                <p className="text-xs leading-snug text-error">{file.errorMessage}</p>
               ) : null}
 
               {/* Only where there is no hover and no room for a bare icon. */}

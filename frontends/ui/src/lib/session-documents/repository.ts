@@ -45,6 +45,8 @@ export async function listSessionDocuments(
       .select({
         id: documents.id,
         filename: documents.filename,
+        projectId: documents.projectId,
+        scope: documents.scope,
         // Added by 0048 on develop and required by `DocumentListRow`; a session
         // attachment is renameable like any other document.
         displayName: documents.displayName,

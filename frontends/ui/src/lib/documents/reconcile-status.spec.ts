@@ -17,8 +17,13 @@ vi.mock('@/lib/upload-batches/settle', () => ({ onDocumentsSettled: vi.fn().mock
 const captureServer = vi.hoisted(() => vi.fn(() => true))
 vi.mock('@/lib/analytics/posthog-server', () => ({ captureServer }))
 
+// The live channel's own subject is `shelf-live.spec.ts`; here it is which
+// shelves a reconciliation announces.
+vi.mock('./shelf-live', () => ({ publishShelfChanged: vi.fn() }))
+
 import { getDb } from '@/lib/db'
 import { onDocumentsSettled } from '@/lib/upload-batches/settle'
+import { publishShelfChanged } from './shelf-live'
 import { asDb } from '@/test-utils/db-fixtures'
 import {
   reconcileDocumentStatuses,
@@ -1543,5 +1548,58 @@ describe('reconcileDocumentStatuses — settling uploads', () => {
     await reconcileDocumentStatuses([makeRow()], 'org-1')
 
     expect(onDocumentsSettled).not.toHaveBeenCalled()
+  })
+})
+
+describe('reconcileDocumentStatuses announcing what settled', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', mockFetch)
+    mockFetch.mockReset()
+    clearCollectionFilesCache()
+    mockFetch.mockResolvedValue(
+      batchResponse({ 'job-1': { status: 'completed', file_details: [{ file_name: 'plan.pdf', status: 'success' }] } })
+    )
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.clearAllMocks()
+  })
+
+  type ShelfRow = ReconcilableDocument & { projectId: string | null; scope: string }
+
+  it('tells the Archiv when a listing row on it settles: the listing carries its shelf', async () => {
+    makeDbMock()
+    const row: ShelfRow = { ...makeRow(), projectId: null, scope: 'archiv' }
+
+    await reconcileDocumentStatuses([row], 'org-1')
+
+    expect(publishShelfChanged).toHaveBeenCalledTimes(1)
+    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'archiv' })
+  })
+
+  it('tells each shelf once, however many of its rows settled', async () => {
+    makeDbMock()
+    const rows: ShelfRow[] = [
+      { ...makeRow(), projectId: 'p1', scope: 'project' },
+      { ...makeRow({ id: 'doc-2' }), projectId: 'p1', scope: 'project' },
+    ]
+
+    await reconcileDocumentStatuses(rows, 'org-1')
+
+    expect(publishShelfChanged).toHaveBeenCalledTimes(1)
+    expect(publishShelfChanged).toHaveBeenCalledWith('org-1', { kind: 'project', projectId: 'p1' })
+  })
+
+  it('says nothing for a row another read moved first: that read announced it', async () => {
+    makeDbMock({ moved: false })
+    await reconcileDocumentStatuses([{ ...makeRow(), projectId: 'p1', scope: 'project' } as ShelfRow], 'org-1')
+    expect(publishShelfChanged).not.toHaveBeenCalled()
+  })
+
+  it('says nothing for a chat attachment, which is on no shelf', async () => {
+    makeDbMock()
+    await reconcileDocumentStatuses([{ ...makeRow(), projectId: null, scope: 'session' } as ShelfRow], 'org-1')
+    expect(publishShelfChanged).not.toHaveBeenCalled()
   })
 })

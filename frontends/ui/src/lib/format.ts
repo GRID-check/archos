@@ -161,8 +161,9 @@ export const formatBytes = (bytes: number | null | undefined, locale?: string): 
  * to the raw ISO string for unparseable input. Truncates toward zero at unit
  * boundaries so a value never rounds up into a misleading "in 60 minutes".
  * Shared by the research-runs list and the sessions-panel Deep Research section.
+ * `now` is the moment it is relative to: a caller that decided by its own `now`
+ * whether to say a relative time at all must format against the same one.
  */
-/** `now` is the instant it is relative to; a caller that was handed one passes it on. */
 export const formatRelativeTime = (isoDate: string, locale?: string, now: number = Date.now()): string => {
   const date = new Date(isoDate)
   if (Number.isNaN(date.getTime())) return isoDate

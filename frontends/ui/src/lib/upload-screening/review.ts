@@ -30,6 +30,8 @@ import { internalRead, isHeldAtRest } from '@/lib/documents/document-reader'
 import { getAccessibleDocument } from '@/lib/documents/access'
 import { dispatchDocument, type DispatchDocumentResult } from '@/lib/documents/service'
 import { resolveDocumentFolderPath } from '@/lib/documents/folder-path'
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { inboxGroupKey } from '@/lib/inbox/registry'
 import { emitInboxItems } from '@/lib/inbox/service'
 import { quarantineReviewersOf } from '@/lib/upload-batches/settle'
@@ -83,6 +85,8 @@ export async function releaseQuarantinedDocument(
     releasedAt,
   })
   if (!took) throw new ConflictError('The document changed while it was being released; open it again')
+  // Released: on its shelf for everyone who may read it, from now on.
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   const { jobId, status } = await dispatchDocument({
     organizationId: session.organizationId,

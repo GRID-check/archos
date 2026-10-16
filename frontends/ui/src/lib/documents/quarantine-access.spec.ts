@@ -368,6 +368,8 @@ describe('a verdict that lands during the listing', () => {
   const pendingRow = (id: string, createdBy: string): DocumentListRow => ({
     id,
     filename: `${id}.pdf`,
+    projectId: 'proj-1',
+    scope: 'project',
     displayName: null,
     fileSize: 64,
     contentType: 'application/pdf',
