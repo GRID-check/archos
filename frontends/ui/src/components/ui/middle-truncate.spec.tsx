@@ -3,16 +3,21 @@ import { render, screen } from '@testing-library/react'
 import { MiddleTruncate } from './middle-truncate'
 
 describe('MiddleTruncate', () => {
-  it('lets the head shrink and always keeps the tail whole', () => {
+  it('lets the head give way first, and the tail only after it, behind a leading ellipsis', () => {
     const name = 'EG-100_Grundriss_Erdgeschoss_Index_C_2026-07-02.pdf'
     render(<MiddleTruncate text={name} tail={22} />)
 
     const line = screen.getByTitle(name)
     const [, head, tail] = Array.from(line.children)
-    // Shrinks, but keeps room for a letter and the ellipsis, so a cut is always visible.
-    expect(head).toHaveClass('text-ellipsis', 'overflow-hidden', 'whitespace-pre', 'min-w-[2ch]')
+    expect(head).toHaveClass('text-ellipsis', 'overflow-hidden', 'whitespace-pre', 'min-w-0', 'shrink-[100000]')
     expect(tail).toHaveTextContent('Index_C_2026-07-02.pdf')
-    expect(tail).toHaveClass('shrink-0')
+    // Never `shrink-0`: a column narrower than the tail sliced it at the
+    // cell's edge with no ellipsis. It ellipsizes at its start instead.
+    expect(tail).not.toHaveClass('shrink-0')
+    expect(tail).toHaveClass('text-ellipsis', 'overflow-hidden', 'min-w-0')
+    expect(tail).toHaveAttribute('dir', 'rtl')
+    expect(tail.firstElementChild?.tagName).toBe('BDI')
+    expect(tail.firstElementChild).toHaveAttribute('dir', 'ltr')
   })
 
   it('keeps the space at the cut: both halves preserve their white space', () => {
@@ -52,5 +57,13 @@ describe('MiddleTruncate', () => {
 
     expect(screen.getByTitle('EG.pdf').children).toHaveLength(1)
     expect(screen.getByTitle('EG.pdf')).toHaveTextContent('EG.pdf')
+  })
+
+  it('cuts a short name that still does not fit at its start, never at a hard edge', () => {
+    render(<MiddleTruncate text="Energieausweis.pdf" />)
+
+    const [only] = Array.from(screen.getByTitle('Energieausweis.pdf').children)
+    expect(only).toHaveClass('text-ellipsis', 'overflow-hidden', 'min-w-0')
+    expect(only).toHaveAttribute('dir', 'rtl')
   })
 })

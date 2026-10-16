@@ -121,14 +121,25 @@ colour come from the same state, as the design language asks of every signal.
   other status, not the solid plate, which made an old failure the loudest
   thing in the list. The card's frost no longer repaints its ink.
 - **In the list the word gives way, the glyph never does.** The status column
-  is 156px from `sm` (104px on a phone), and a word that does not fit ends in
-  an ellipsis with the full word in its `title`; the badge's centring used to
-  clip it at both edges.
+  is 156px once the list is 28rem wide (104px narrower), and a word that does
+  not fit ends in an ellipsis with the full word in its `title`; the badge's
+  centring used to clip it at both edges.
+- **The columns step out by the list's width, not the screen's**
+  (`@container/filelist`). Freigabe and Größe join at 48rem, Hinzugefügt at
+  56rem, Seiten at 64rem, each where the name keeps about 220px beside them.
+  With viewport breakpoints, the list beside the chat on a desktop kept every
+  column in half a screen, the name column collapsed to nothing and the status
+  badges sat on top of the cut names.
 - **The extension tile is one component.** The tray row and the list row draw
   `FileExtChip` at `size="xs"`; each used to hand-roll the 24px tile.
-- **A cut name always shows the cut.** `MiddleTruncate` keeps one letter and
-  the ellipsis of the head (`min-w-[2ch]`); squeezed to a letter's width, the
-  list read „EDachgeschoss.pdf" for „Einreichplan_10_Dachgeschoss.pdf".
+- **A cut name always shows the cut, and never a hard edge.** `MiddleTruncate`
+  lets the head give way first, all the way; only then does the tail, at its
+  START, behind a leading „…" (`…schoss.pdf`), so the extension and the index
+  survive. The tail used to be `shrink-0`: in a column narrower than it, the
+  name was sliced at the cell's edge mid-letter („W.Gesamtmc"), and before
+  that the head squeezed to a letter read „EDachgeschoss.pdf" for
+  „Einreichplan_10_Dachgeschoss.pdf". `/dev/ingestion-states` („Files list,
+  narrow") shows the list at 560px and 340px.
 
 ## What changed in the transport
 

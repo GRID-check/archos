@@ -224,6 +224,22 @@ export default function IngestionStatesDevPage(): JSX.Element {
       </Stage>
 
       <Stage
+        title="3b · Files list, narrow"
+        note="The same rows where the list is narrow: beside the chat (560px) and on a phone (340px). The columns step out by the list's own width, and a name that does not fit loses its middle, then its start behind a leading „…“, never a hard edge."
+      >
+        <div className="flex flex-wrap items-start gap-4">
+          {[560, 340].map((width) => (
+            <div key={width} className="space-y-1" style={{ width }} data-testid={`narrow-list-${width}`}>
+              <p className="font-mono text-[11px] text-muted-foreground">{width}px</p>
+              <div className="overflow-hidden rounded-lg border bg-card">
+                <FileListView files={DOCUMENTS} selectedFileId={null} onSelectFile={noop} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </Stage>
+
+      <Stage
         title="4 · Upload tray, in flight"
         note="Waiting for a slot, sending (the only percentage), reading, citable, unchanged, filed. One loop: the header's."
       >

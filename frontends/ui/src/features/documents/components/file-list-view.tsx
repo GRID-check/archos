@@ -186,7 +186,10 @@ export function FileListView({
   )
 
   return (
-    <div className="px-4 pb-4 pt-1">
+    // `@container/filelist`: the columns step out by the LIST's width, not the
+    // screen's. Beside the chat a desktop screen holds a half-width list, and
+    // viewport breakpoints kept every column there and left the name a sliver.
+    <div className="@container/filelist px-4 pb-4 pt-1">
       {/* `table-fixed` IS THE TRUNCATION. Every filename cell below already
           carries `truncate`, and under the browser's default `table-layout: auto`
           that class did nothing at all: auto layout sizes a column to its
@@ -195,7 +198,7 @@ export function FileListView({
           308px wrapper — the `overflow-x-auto` on the Table primitive caught it,
           so nothing looked broken, and the reader simply had to drag the list
           sideways to find out what any of their documents were called.
-          Dropping columns at `sm`/`md`/`lg` (below) never touched this: it
+          Dropping columns as the list narrows (below) never touched this: it
           removes the columns that were not the problem.
 
           Fixed layout makes the declared widths mean what they say and hands the
@@ -231,7 +234,7 @@ export function FileListView({
                 // ranked list the rows already ARRIVE in relevance order and each
                 // one carries the matched passage under its name — the percentage
                 // refines that, it does not carry it.
-                className="hidden w-[92px] sm:table-cell"
+                className="hidden w-[92px] @3xl/filelist:table-cell"
               />
             )}
             <SortHeader
@@ -248,11 +251,14 @@ export function FileListView({
               // its own padding. The cell is the containing box, so the width has
               // to be one the badge can be made to fit inside — see the `truncate`
               // on the badge below, which is the other half of this.
-              // From `sm` it is 156px: the badge carries its state's glyph,
-              // and „Wird hochgeladen" or „Zurückgehalten" beside it needs
-              // ~98px of word. On a phone the column stays 104px, the word
-              // ellipsizes and the glyph still says which state it is.
-              className="w-[104px] sm:w-[156px]"
+              // 156px once the LIST is 28rem wide: the badge carries its
+              // state's glyph, and „Wird hochgeladen" or „Zurückgehalten"
+              // beside it needs ~98px of word. Narrower (a phone) it stays
+              // 104px: the word ellipsizes and the glyph still says which
+              // state it is. The other columns step in only where the name
+              // keeps ~220px beside them: Freigabe and Größe at 48rem,
+              // Hinzugefügt at 56rem, Seiten at 64rem.
+              className="w-[104px] @md/filelist:w-[156px]"
             />
             {/* Below `sm` the row keeps only what identifies and what acts:
                 name and status. Pages, size and date are reference columns.
@@ -260,13 +266,13 @@ export function FileListView({
                 and bulk work happens where the table has room. */}
             <TableHead
               scope="col"
-              className="hidden h-auto w-[120px] px-2 py-1.5 text-[10.5px] font-medium tracking-wider sm:table-cell"
+              className="hidden h-auto w-[120px] px-2 py-1.5 text-[10.5px] font-medium tracking-wider @3xl/filelist:table-cell"
             >
               {t('list.columns.approval')}
             </TableHead>
             <TableHead
               scope="col"
-              className="hidden h-auto w-[76px] px-2 py-1.5 text-right text-[10.5px] font-medium tracking-wider lg:table-cell"
+              className="hidden h-auto w-[76px] px-2 py-1.5 text-right text-[10.5px] font-medium tracking-wider @5xl/filelist:table-cell"
             >
               {t('list.columns.pages')}
             </TableHead>
@@ -276,7 +282,7 @@ export function FileListView({
               sort={sort}
               onSort={setSort}
               align="right"
-              className="hidden w-[104px] sm:table-cell"
+              className="hidden w-[104px] @3xl/filelist:table-cell"
             />
             <SortHeader
               label={t('list.columns.added')}
@@ -284,7 +290,7 @@ export function FileListView({
               sort={sort}
               onSort={setSort}
               align="right"
-              className="hidden w-[120px] md:table-cell"
+              className="hidden w-[120px] @4xl/filelist:table-cell"
             />
             {renderActions && <TableHead scope="col" className="h-auto w-10 p-0" />}
           </TableRow>
@@ -453,7 +459,7 @@ const FileListRowItem = memo(function FileListRowItem({
       {semantic && (
         <TableCell
           className={cn(
-            'hidden whitespace-nowrap text-right text-xs tabular-nums sm:table-cell',
+            'hidden whitespace-nowrap text-right text-xs tabular-nums @3xl/filelist:table-cell',
             CELL,
           )}
         >
@@ -483,7 +489,7 @@ const FileListRowItem = memo(function FileListRowItem({
           />
         )}
       </TableCell>
-      <TableCell className={cn('hidden sm:table-cell', CELL)}>
+      <TableCell className={cn('hidden @3xl/filelist:table-cell', CELL)}>
         {/* The editorial state, in the same words the card badge uses:
             the column that makes bulk approval state visible where
             bulk work happens. Silent by the same rule as the card — a
@@ -512,7 +518,7 @@ const FileListRowItem = memo(function FileListRowItem({
       </TableCell>
       <TableCell
         className={cn(
-          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums lg:table-cell',
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums @5xl/filelist:table-cell',
           CELL
         )}
       >
@@ -520,7 +526,7 @@ const FileListRowItem = memo(function FileListRowItem({
       </TableCell>
       <TableCell
         className={cn(
-          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums sm:table-cell',
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums @3xl/filelist:table-cell',
           CELL
         )}
       >
@@ -528,7 +534,7 @@ const FileListRowItem = memo(function FileListRowItem({
       </TableCell>
       <TableCell
         className={cn(
-          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums md:table-cell',
+          'hidden whitespace-nowrap text-right text-xs text-muted-foreground tabular-nums @4xl/filelist:table-cell',
           CELL
         )}
       >
@@ -627,7 +633,7 @@ function SortHeader({
  */
 export function FileListSkeleton({ rows = 6 }: { rows?: number }) {
   return (
-    <div className="space-y-1 px-4 pb-4 pt-6" data-testid="file-list-skeleton">
+    <div className="@container/filelist space-y-1 px-4 pb-4 pt-6" data-testid="file-list-skeleton">
       {/*
         THE COLUMN HEADINGS ARE PART OF THE SHAPE.
         This drew rows and no header, so the detail view's first frame was six
@@ -646,9 +652,9 @@ export function FileListSkeleton({ rows = 6 }: { rows?: number }) {
             <Skeleton className="h-3 w-2/3" />
           </div>
           <Skeleton className="h-4 w-16 shrink-0 rounded-full" />
-          <Skeleton className="hidden h-4 w-20 shrink-0 rounded-full sm:block" />
-          <Skeleton className="hidden h-3 w-12 shrink-0 sm:block" />
-          <Skeleton className="hidden h-3 w-16 shrink-0 md:block" />
+          <Skeleton className="hidden h-4 w-20 shrink-0 rounded-full @3xl/filelist:block" />
+          <Skeleton className="hidden h-3 w-12 shrink-0 @3xl/filelist:block" />
+          <Skeleton className="hidden h-3 w-16 shrink-0 @4xl/filelist:block" />
         </div>
       ))}
     </div>
@@ -661,11 +667,11 @@ function FileListSkeletonHeader(): JSX.Element {
   return (
     <div className="text-muted-foreground flex items-center gap-2.5 border-b px-2 pb-1.5 text-[10.5px] font-medium tracking-wider">
       <span className="min-w-0 flex-1">{t('list.columns.name')}</span>
-      <span className="w-[104px] shrink-0">{t('list.columns.status')}</span>
-      <span className="hidden w-[120px] shrink-0 sm:block">{t('list.columns.approval')}</span>
-      <span className="hidden w-[76px] shrink-0 text-right lg:block">{t('list.columns.pages')}</span>
-      <span className="hidden w-[104px] shrink-0 text-right sm:block">{t('list.columns.size')}</span>
-      <span className="hidden w-[104px] shrink-0 text-right sm:block">{t('list.columns.added')}</span>
+      <span className="w-[104px] shrink-0 @md/filelist:w-[156px]">{t('list.columns.status')}</span>
+      <span className="hidden w-[120px] shrink-0 @3xl/filelist:block">{t('list.columns.approval')}</span>
+      <span className="hidden w-[76px] shrink-0 text-right @5xl/filelist:block">{t('list.columns.pages')}</span>
+      <span className="hidden w-[104px] shrink-0 text-right @3xl/filelist:block">{t('list.columns.size')}</span>
+      <span className="hidden w-[104px] shrink-0 text-right @4xl/filelist:block">{t('list.columns.added')}</span>
     </div>
   )
 }

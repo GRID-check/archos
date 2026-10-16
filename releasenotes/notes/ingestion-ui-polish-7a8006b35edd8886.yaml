@@ -9,3 +9,6 @@ improvements:
     filed unread is told apart at a glance in the upload panel, on the cards
     and in the list. A document that could not be read is marked in a calmer
     red, and shortened file names always show where they were cut.
+fixes:
+  - >
+    In a narrow Dateien list, such as beside the chat, file names no longer collapse under their status and long names are no longer cut off mid-letter: the list shows fewer columns and keeps the end of each name readable.
