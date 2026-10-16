@@ -79,7 +79,17 @@ export function useFolderTree({
   /** What the reader may do at the root (ADR-0088); each folder carries its own `access`. */
   const [rootAccess, setRootAccess] = useState<FolderAccessLevel>(initialRootAccess)
 
+  /*
+   * Reads cross: a create re-reads, a rename right after it re-reads, and a
+   * live hint (`useShelfLive`) re-reads too. Only the newest read may commit,
+   * or an older answer landing last takes the folder just made off the screen.
+   * And a re-read that fails keeps the tree it had: emptying it made every
+   * folder vanish over one dropped request, and the next hint reads again.
+   */
+  const generation = useRef(0)
+  const answered = useRef(initialFolders !== undefined)
   const load = useCallback(() => {
+    const stamp = ++generation.current
     setIsLoading(true)
     setError(false)
     return fetch(foldersUrl)
@@ -88,14 +98,18 @@ export function useFolderTree({
         return response.json()
       })
       .then((data: { folders?: FolderItem[]; rootAccess?: FolderAccessLevel }) => {
+        if (stamp !== generation.current) return
         setFolders(data.folders ?? [])
         setRootAccess(data.rootAccess === 'read' ? 'read' : 'write')
+        answered.current = true
       })
       .catch(() => {
+        if (stamp !== generation.current || answered.current) return
         setFolders([])
         setError(true)
       })
       .finally(() => {
+        if (stamp !== generation.current) return
         setIsLoading(false)
         setHasAnswer(true)
       })
