@@ -374,6 +374,10 @@ export const files: typeof en.files = {
     deleted: 'Die Datei wurde gelöscht, während Piloti sie las.',
     quarantined:
       'Diese Datei enthält etwas, das Ihr Büro als sensibel eingestuft hat. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+    // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
+    // die Zeile darüber nicht belegt.
+    quarantinedUnreadable:
+      'Die Inhaltsprüfung hat diese Datei zurückgehalten, der Grund ist aber nicht mehr lesbar. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     unknown: 'Piloti konnte dieses Dokument nicht lesen, daher findet die Suche es nicht.',
     details: 'Details',
   },
@@ -385,6 +389,25 @@ export const files: typeof en.files = {
     reasonSvnr: 'Sozialversicherungsnummer {sample}',
     reasonCard: 'Kreditkartennummer {sample}',
     reasonPages: '{count, plural, one {Seite {pages}} other {Seiten {pages}}}',
+    // Tabellenblätter und Textdateien haben keine Seiten: der Treffer hat dann
+    // keinen Ort, den man aufschlagen könnte.
+    reasonNoPages: 'ohne Seitenangabe',
+    // Eine Regel, die dieser Stand der Anwendung nicht kennt (der Job kann
+    // eine neue Art von Treffer zuerst melden).
+    reasonOther: 'Eine weitere Regel Ihres Büros',
+    // Wie die Inhaltsprüfung zu dem Treffer kam: wer die Regel festgelegt hat,
+    // und was eine Zahl bestehen musste. So lässt sich eine echte Kontonummer
+    // von einer Auftragsnummer unterscheiden, die nur so aussieht.
+    basisTerm: 'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel festgelegt hat.',
+    basisIban:
+      'Aufbau, Länge und Prüfsumme stimmen mit einer IBAN überein. Ihr Büro hat Kontonummern als sensibel festgelegt.',
+    basisSvnr:
+      'Aufbau, Prüfziffer und Geburtsdatum stimmen mit einer österreichischen Sozialversicherungsnummer überein. Ihr Büro hat sie als sensibel festgelegt.',
+    basisCard:
+      'Aufbau und Prüfsumme stimmen mit einer Kartennummer überein. Ihr Büro hat Kartennummern als sensibel festgelegt.',
+    basisOther: 'Eine Regel Ihres Büros hat angeschlagen.',
+    omitted:
+      '{count, plural, one {Ein weiterer Grund wird nicht aufgeführt.} other {# weitere Gründe werden nicht aufgeführt.}}',
     nameInFile: 'Dateiname enthält „{term}“',
     nameInFolder: 'Ordner „{segment}“ enthält „{term}“',
     partial: 'Einige Seiten hatten keine Textebene und wurden nicht geprüft.',

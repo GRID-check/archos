@@ -142,7 +142,8 @@ export function UploadSummaryMeta({
   const { locale } = useLocale()
   const place = summary.scope === 'project' ? (projectName ?? t('summary.place.project')) : t(`summary.place.${summary.scope}`)
   const href = placeHref(summary)
-  const state = !summary.sealedAt ? 'sending' : isSettling(summary) ? 'reading' : 'done'
+  const held = summary.documents.some((document) => document.outcome === 'quarantined')
+  const state = !summary.sealedAt ? 'sending' : isSettling(summary) ? 'reading' : held ? 'doneHeld' : 'done'
 
   return (
     <div className="space-y-1" data-testid="upload-summary-meta">

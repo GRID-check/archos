@@ -79,7 +79,7 @@ describe('QuarantineQueue', () => {
     expect(within(second).getByText(describeQuarantineReason(IBAN, tFiles))).toBeInTheDocument()
     // A partly checked scan says so; a verdict that could not be read says that.
     expect(within(second).getByText(en.files.screening.partial)).toBeInTheDocument()
-    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText('Reason could not be read')).toBeInTheDocument()
+    expect(within(screen.getByTestId('quarantine-row-doc-3')).getByText(en.organization.quarantine.noReason)).toBeInTheDocument()
   })
 
   it('says the findings through the same component as the preview, pages as text, and when the list is cut', async () => {

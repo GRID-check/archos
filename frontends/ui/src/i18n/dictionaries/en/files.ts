@@ -391,6 +391,9 @@ export const files = {
     deleted: 'The file was deleted while Piloti was reading it.',
     quarantined:
       'This file contains something your office marks as sensitive. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
+    // The reason is not stored or cannot be read: claim nothing the line above does not show.
+    quarantinedUnreadable:
+      'The content check held this file back, but the reason can no longer be read. Piloti showed it to no model. An office or project admin reviews it and decides whether it stays or is deleted.',
     unknown: "Piloti couldn't read this document, so search can't find it.",
     details: 'Details',
   },
@@ -402,6 +405,23 @@ export const files = {
     reasonSvnr: 'Social security number {sample}',
     reasonCard: 'Card number {sample}',
     reasonPages: '{count, plural, one {page {pages}} other {pages {pages}}}',
+    // Spreadsheets and text files have no pages, so a finding has no place to open.
+    reasonNoPages: 'no page given',
+    // A rule this build does not know (the job may report a new kind of finding first).
+    reasonOther: 'Another rule of your office',
+    // How the content check came to the finding: who set the rule, and what a
+    // number had to pass. It lets a reader tell a real account number from an
+    // order number that only looks like one.
+    basisTerm: 'This term is on the list your office marked as sensitive.',
+    basisIban:
+      'The layout, length and checksum match an IBAN. Your office marked account numbers as sensitive.',
+    basisSvnr:
+      'The layout, check digit and birth date match an Austrian social security number. Your office marked it as sensitive.',
+    basisCard:
+      'The layout and checksum match a card number. Your office marked card numbers as sensitive.',
+    basisOther: 'A rule of your office matched.',
+    omitted:
+      '{count, plural, one {One more reason is not listed.} other {# more reasons are not listed.}}',
     nameInFile: 'File name contains “{term}”',
     nameInFolder: 'Folder “{segment}” contains “{term}”',
     partial: 'Some pages had no text layer and were not checked.',

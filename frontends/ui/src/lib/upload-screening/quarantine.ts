@@ -32,7 +32,12 @@ export function isQuarantinedReplaceBody(body: unknown): boolean {
 }
 
 const reasonSchema = z.object({
-  kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']),
+  /**
+   * A kind this build does not know (a detector added to the job first) becomes
+   * `other` rather than failing the parse: one new reason must not blank the
+   * ones that can be read.
+   */
+  kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']).or(z.unknown().transform((): 'other' => 'other')),
   term: z.string().optional(),
   count: z.number().int().nonnegative().optional(),
   pages: z.array(z.number().int()).optional(),
@@ -48,6 +53,8 @@ const reasonSchema = z.object({
 const verdictSchema = z.object({
   reasons: z.array(reasonSchema),
   checked: z.enum(['full', 'partial']).optional(),
+  /** How many reasons the job found and did not list (more than ten, or too long to store whole). */
+  omitted: z.number().int().positive().optional(),
 })
 
 export type QuarantineReason = z.infer<typeof reasonSchema>
@@ -85,8 +92,31 @@ export function quarantineReasonHead(reason: QuarantineReason, t: Translator): s
         ? t('screening.reasonIban', { sample: reason.sample ?? '' })
         : reason.kind === 'at_svnr'
           ? t('screening.reasonSvnr', { sample: reason.sample ?? '' })
-          : t('screening.reasonCard', { sample: reason.sample ?? '' })
+          : reason.kind === 'credit_card'
+            ? t('screening.reasonCard', { sample: reason.sample ?? '' })
+            : t('screening.reasonOther')
   return head.trim()
+}
+
+/**
+ * How the content check came to hold the file for one reason: who set the rule,
+ * and for a number what "found" means. A term is the office's own word; a
+ * number is held only when its checksum holds, so a reader can tell a real
+ * account number from an order number that merely looks like one.
+ */
+export function explainQuarantineReason(reason: QuarantineReason, t: Translator): string {
+  switch (reason.kind) {
+    case 'term':
+      return t('screening.basisTerm')
+    case 'iban':
+      return t('screening.basisIban')
+    case 'at_svnr':
+      return t('screening.basisSvnr')
+    case 'credit_card':
+      return t('screening.basisCard')
+    default:
+      return t('screening.basisOther')
+  }
 }
 
 /** Said after the last listed page of a reason whose list is cut (`pages_truncated`). */
@@ -99,7 +129,7 @@ export const MORE_PAGES_MARK = '…'
 export function describeQuarantineReason(reason: QuarantineReason, t: Translator): string {
   const head = quarantineReasonHead(reason, t)
   const pages = reason.pages ?? []
-  if (pages.length === 0) return head
+  if (pages.length === 0) return `${head} · ${t('screening.reasonNoPages')}`
   const listed = reason.pages_truncated ? [...pages, MORE_PAGES_MARK] : pages
   return `${head} · ${t('screening.reasonPages', { count: pages.length, pages: listed.join(', ') })}`
 }

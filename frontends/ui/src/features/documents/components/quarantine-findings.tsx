@@ -20,6 +20,7 @@ import { useTranslations } from '@/i18n'
 import { cn } from '@/lib/utils'
 import {
   describeQuarantineReason,
+  explainQuarantineReason,
   findingsOf,
   MORE_PAGES_MARK,
   parseQuarantine,
@@ -42,6 +43,12 @@ export interface QuarantineFindingsProps {
   shownFinding?: QuarantineFinding | null
   /** Leave out the sentence that explains holding back, where the surface says it already. */
   withoutSentence?: boolean
+  /**
+   * Say under each reason how the check came to hold the file (who set the
+   * rule, what a number had to pass). Where the surface has room; elsewhere the
+   * chip carries it as its tooltip.
+   */
+  explain?: boolean
   className?: string
   testId?: string
 }
@@ -55,6 +62,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   onShowFinding,
   shownFinding,
   withoutSentence = false,
+  explain = false,
   className,
   testId = 'quarantine-findings',
 }) => {
@@ -70,7 +78,11 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
             const findings = onShowFinding ? findingsOf(reason) : []
             return (
               <li key={`${index}-${reason.kind}-${reason.term ?? ''}`} className="flex flex-wrap items-center gap-1">
-                <Chip variant="warning" size="sm" title={describeQuarantineReason(reason, t)}>
+                <Chip
+                  variant="warning"
+                  size="sm"
+                  title={`${describeQuarantineReason(reason, t)}\n${explainQuarantineReason(reason, t)}`}
+                >
                   <ShieldAlert aria-hidden />
                   <ChipLabel>{findings.length > 0 ? quarantineReasonHead(reason, t) : describeQuarantineReason(reason, t)}</ChipLabel>
                 </Chip>
@@ -102,16 +114,28 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
                     <span className="sr-only">{t('screening.morePages')}</span>
                   </span>
                 )}
+                {explain && (
+                  <p className="text-muted-foreground w-full text-xs leading-snug" data-testid={`${testId}-basis`}>
+                    {explainQuarantineReason(reason, t)}
+                  </p>
+                )}
               </li>
             )
           })}
         </ul>
       )}
+      {verdict?.omitted ? (
+        <p className="text-muted-foreground text-xs leading-snug" data-testid={`${testId}-omitted`}>
+          {t('screening.omitted', { count: verdict.omitted })}
+        </p>
+      ) : null}
       {verdict?.checked === 'partial' && (
         <p className="text-muted-foreground text-xs leading-snug">{t('screening.partial')}</p>
       )}
       {!withoutSentence && (
-        <p className="text-muted-foreground text-xs leading-snug">{t('ingestFailure.quarantined')}</p>
+        <p className="text-muted-foreground text-xs leading-snug">
+          {t(reasons.length > 0 ? 'ingestFailure.quarantined' : 'ingestFailure.quarantinedUnreadable')}
+        </p>
       )}
     </div>
   )

@@ -27,6 +27,7 @@ export const uploadBatches: typeof en.uploadBatches = {
       sending: 'Der Upload läuft noch.',
       reading: 'Piloti liest noch. Diese Übersicht aktualisiert sich von selbst.',
       done: 'Alles ist gelesen.',
+      doneHeld: 'Fertig. Zurückgehaltene Dateien hat Piloti nicht gelesen.',
     },
     counts: {
       label: 'Auf einen Blick',

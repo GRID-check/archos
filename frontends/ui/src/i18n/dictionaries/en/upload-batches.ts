@@ -24,6 +24,7 @@ export const uploadBatches = {
       sending: 'The upload is still running.',
       reading: 'Piloti is still reading. This summary updates itself.',
       done: 'Everything has been read.',
+      doneHeld: 'Done. Piloti has not read the files held back.',
     },
     counts: {
       label: 'At a glance',
