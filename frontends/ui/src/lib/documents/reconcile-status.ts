@@ -692,18 +692,18 @@ const extractMetadata = (files: CollectionFiles | null, ref: CollectionFileRef):
  * not carry its shelf (`projectId`, `scope`) announces nothing; the listing
  * and the per-document status read both carry it.
  */
-async function announceSettledShelves(
+function announceSettledShelves(
   organizationId: string,
   rows: readonly ReconcilableDocument[],
   settledIds: ReadonlySet<string>
-): Promise<void> {
+): void {
   const shelves = new Map<string, NonNullable<ReturnType<typeof documentShelf>>>()
   for (const row of rows) {
     if (!settledIds.has(row.id) || !('projectId' in row)) continue
     const shelf = documentShelf(row as { projectId: string | null; scope?: string })
     if (shelf) shelves.set(shelf.kind === 'project' ? shelf.projectId : 'archiv', shelf)
   }
-  await Promise.all([...shelves.values()].map((shelf) => publishShelfChanged(organizationId, shelf)))
+  for (const shelf of shelves.values()) publishShelfChanged(organizationId, shelf)
 }
 
 /**
@@ -833,7 +833,7 @@ export async function reconcileDocumentStatuses<T extends ReconcilableDocument>(
     // The badge flipped for everyone reading the shelf, and a colleague's
     // upload held until its screening passed is on their shelf from now on
     // (ADR-0086): tell the workspaces open on it.
-    await announceSettledShelves(organizationId, rows, new Set(settled.map(([id]) => id)))
+    announceSettledShelves(organizationId, rows, new Set(settled.map(([id]) => id)))
   }
 
   // --- Metadata enrichment (all rows) ---

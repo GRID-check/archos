@@ -337,7 +337,7 @@ async function undoCleanOut(session: AuthorizedSession, projectId: string, done:
     await attempt(`remove ${holder.id}`, async () => {
       // Not removed: something still lies in it (a move back failed, or a file someone else filed there).
       if (!(await deleteEmptyCreatedFolder(session.organizationId, projectId, holder.id))) throw new Error('not empty')
-      await publishShelfChanged(session.organizationId, projectShelf(projectId), { folders: true })
+      publishShelfChanged(session.organizationId, projectShelf(projectId), { folders: true })
     })
   }
   return failed

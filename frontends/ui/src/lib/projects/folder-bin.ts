@@ -349,7 +349,7 @@ export async function moveFolderToBin(
     })
   )
   // Gone from the shelf for everyone looking at it, as of this commit.
-  await publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
+  publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
 
   // Out of retrieval at once. Every purge confirmed, or the bin entry is
   // undone and the request refused: never in the bin and still searchable.
@@ -438,7 +438,7 @@ async function unbinEntry(
         return { restoredTo, folders: folderIds.length, documents }
       })
     )
-    await publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
+    publishShelfChanged(organizationId, projectShelf(project.id), { folders: true })
     return restored
   } catch (error) {
     if (!isUniqueViolation(error)) throw error

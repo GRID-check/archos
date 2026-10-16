@@ -1793,7 +1793,7 @@ export async function markDocumentIngestFailed(
   // The one door every hard failure goes through (a dispatch refused, an IFC
   // extraction that failed, a row stuck in processing): the badge turns red
   // for everyone reading the shelf, not only for a tab that happens to poll it.
-  if (row) await publishShelfChanged(organizationId, documentShelf(row))
+  if (row) publishShelfChanged(organizationId, documentShelf(row))
 }
 
 /** Several folders' paths in one project, keyed by folder id; folders not in the project are absent. */

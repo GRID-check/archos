@@ -805,7 +805,7 @@ async function unfile(
   try {
     await deleteProjectDocument(documentId, organizationId, projectId)
     // Its admission was announced; so is its withdrawal.
-    await publishShelfChanged(organizationId, projectShelf(projectId))
+    publishShelfChanged(organizationId, projectShelf(projectId))
   } catch (error) {
     console.error(
       '[documents] failed to delete the row of a generated document after its audit write failed; ' +

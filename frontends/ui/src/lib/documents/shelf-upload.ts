@@ -323,7 +323,7 @@ async function admitRow(
     })
     // A new row announces itself when it is admitted (`lib/storage`); a
     // replacement keeps its row, so the shelf is told here.
-    await publishShelfChanged(session.organizationId, input.shelf)
+    publishShelfChanged(session.organizationId, input.shelf)
     return
   }
   // A `LiveFilenameTakenError` out of here is the lost first-upload race: the

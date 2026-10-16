@@ -8,7 +8,8 @@ import { act, renderHook } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ChannelFrame, ChannelLink } from '@/features/realtime/use-channel'
 import { shelfChannelKey } from '@/lib/documents/shelf-live-events'
-import { SHELF_LIVE_COALESCE_MS, useShelfLive } from './use-shelf-live'
+import { LIVE_HINT_COALESCE_MS, LIVE_HINT_JITTER_MS } from '@/features/realtime/use-live-hints'
+import { useShelfLive } from './use-shelf-live'
 
 function scriptedLink() {
   let handlers: { onFrame: (frame: ChannelFrame) => void; onOpen: () => void; onDrop: () => void } | null = null
@@ -26,11 +27,12 @@ function scriptedLink() {
     open: () => act(() => handlers?.onOpen()),
     drop: () => act(() => handlers?.onDrop()),
     hint: (event: unknown) => act(() => handlers?.onFrame({ kind: 'event', event })),
+    welcome: () => act(() => handlers?.onFrame({ kind: 'welcome', self: { userId: 'user_me', name: 'Miriam Hofer', kind: 'person' } })),
   }
 }
 
 const SHELF = { kind: 'project', projectId: 'proj-1' } as const
-const settle = () => act(() => vi.advanceTimersByTime(SHELF_LIVE_COALESCE_MS))
+const settle = () => act(() => vi.advanceTimersByTime(LIVE_HINT_COALESCE_MS + LIVE_HINT_JITTER_MS))
 
 beforeEach(() => {
   vi.useFakeTimers()
@@ -104,6 +106,21 @@ describe('useShelfLive', () => {
     settle()
     expect(onChange).not.toHaveBeenCalled()
     scripted.open()
+    settle()
+    expect(onChange).toHaveBeenCalledTimes(1)
+    expect(onChange).toHaveBeenLastCalledWith({ folders: true })
+  })
+
+  it('reads everything again on a welcome that comes without a drop (the connection reopened for another channel)', () => {
+    const scripted = scriptedLink()
+    const onChange = vi.fn()
+    renderHook(() => useShelfLive(SHELF, onChange, { link: scripted.link }))
+    scripted.open()
+    scripted.welcome()
+    settle()
+    onChange.mockClear()
+
+    scripted.welcome()
     settle()
     expect(onChange).toHaveBeenCalledTimes(1)
     expect(onChange).toHaveBeenLastCalledWith({ folders: true })

@@ -885,7 +885,9 @@ never drains the shelf for the default view.
   restored or given new access, an upload released from screening, and an
   ingestion that finished, failed or was quarantined. The hint carries no data;
   the workspace re-reads the level, the summary and, when `folders` is set, the
-  folder tree, quietly. Hints within 400 ms are one re-read. When the channel
+  folder tree, quietly, through the coalesced `reloadQuietly`, and not while the
+  tab's own moves are on the wire. A burst of hints is one re-read, 400 ms plus up
+  to 600 ms of jitter later (`useLiveHints`, shared by every hint channel). When the channel
   comes up (first, after a dropped connection, after a phone wakes) everything
   is read once more, so a hint missed while offline is not lost.
   `lib/documents/shelf-live.spec.ts` fails a module that writes `documents` or

@@ -31,7 +31,7 @@ const ANNOUNCED_ELSEWHERE: Record<string, string> = {
   'lib/archiv/repository.ts': 'the Archiv delete; `lib/archiv/service.ts` announces it',
   'lib/projects/folder-bin-repository.ts': 'binning and restoring; `lib/projects/folder-bin.ts` announces them after their transaction',
   'lib/projects/cleanup-repository.ts': 'the empty holder folder; `lib/projects/cleanup-service.ts` announces it',
-  'lib/documents/version-repository.ts': 'a version’s state, which travels as `document.version.changed`; the document stays where it is',
+  'lib/documents/version-repository.ts': 'a version’s state, its bytes and archiving; `lib/documents/lifecycle.ts` and `lib/documents/version-content.ts` announce them',
   'lib/documents/placement-repository.ts': 'which collection a document is indexed in; nothing a listing shows',
   'lib/projects/folder-derived-repository.ts': 'a derived report’s source marker; nothing a listing shows',
   'lib/session-documents/repository.ts': 'chat attachments, which are on no shelf',
@@ -50,7 +50,15 @@ describe('every write to a shelf', () => {
   it('keeps the list of exceptions honest: each one still writes, and each announcer still announces', () => {
     const writing = new Set(writers.map(({ path }) => path))
     expect(Object.keys(ANNOUNCED_ELSEWHERE).filter((path) => !writing.has(path))).toEqual([])
-    const announcers = ['lib/storage/service.ts', 'lib/documents/shelf-upload.ts', 'lib/archiv/service.ts', 'lib/projects/folder-bin.ts', 'lib/projects/cleanup-service.ts']
+    const announcers = [
+      'lib/storage/service.ts',
+      'lib/documents/shelf-upload.ts',
+      'lib/archiv/service.ts',
+      'lib/projects/folder-bin.ts',
+      'lib/projects/cleanup-service.ts',
+      'lib/documents/lifecycle.ts',
+      'lib/documents/version-content.ts',
+    ]
     const codeOf = new Map(modules.map(({ path, code }) => [path, code]))
     expect(announcers.filter((path) => !codeOf.get(path)?.includes('publishShelfChanged('))).toEqual([])
   })

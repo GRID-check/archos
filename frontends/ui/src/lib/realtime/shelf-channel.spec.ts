@@ -75,10 +75,10 @@ describe('publishShelfChanged', () => {
     const heard: unknown[] = []
     const release = subscribe(shelfChannel.topics(shelf, 'org_1')[0], (payload) => heard.push(payload))
 
-    await publishShelfChanged('org_1', shelf, { folders: true })
-    await publishShelfChanged('org_1', shelf)
+    publishShelfChanged('org_1', shelf, { folders: true })
+    publishShelfChanged('org_1', shelf)
     // Another tenant's change to a shelf with the same name is not heard.
-    await publishShelfChanged('org_2', shelf)
+    publishShelfChanged('org_2', shelf)
     release()
 
     expect(heard).toEqual([
@@ -92,7 +92,7 @@ describe('publishShelfChanged', () => {
   it('says nothing for a row on no shelf (a chat attachment)', async () => {
     const heard: unknown[] = []
     const release = subscribe(shelfTopic('org_1', { kind: 'archiv' }), (payload) => heard.push(payload))
-    await publishShelfChanged('org_1', null)
+    publishShelfChanged('org_1', null)
     release()
     expect(heard).toEqual([])
   })

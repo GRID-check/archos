@@ -244,9 +244,10 @@ export async function setFolderAccess(
   )
   if (updated.length === 0) throw new NotFoundError('Folder not found')
 
+  // Who sees the folder and what is in it changed, as of the commit above:
+  // every reader re-reads it, without waiting for the placement below.
+  publishShelfChanged(organizationId, projectShelf(input.projectId), { folders: true })
   const placement = await placeProjectDocuments(organizationId, input.projectId)
-  // Who sees the folder and what is in it changed: every reader re-reads it.
-  await publishShelfChanged(organizationId, projectShelf(input.projectId), { folders: true })
   const stored: FolderAccessSetting =
     access.mode === 'custom' && people
       ? { mode: 'custom', everyoneReads: access.everyoneReads, people: people.map(({ userId, level }) => ({ userId, level })) }

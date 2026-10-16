@@ -2239,7 +2239,7 @@ export async function renameDocument(
   }
 
   await setDocumentDisplayName(documentId, session.organizationId, displayName)
-  await publishShelfChanged(session.organizationId, documentShelf(doc))
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   // Mirror the name onto the backend's metadata row so citation chips follow
   // the rename immediately, with no re-ingest (the retrieval layer prefers a
@@ -2339,7 +2339,7 @@ export async function eraseProjectDocument(doc: Document, organizationId: string
   ])
 
   await deleteProjectDocument(doc.id, organizationId, projectId)
-  await publishShelfChanged(organizationId, projectShelf(projectId))
+  publishShelfChanged(organizationId, projectShelf(projectId))
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,

@@ -86,7 +86,7 @@ export async function releaseQuarantinedDocument(
   })
   if (!took) throw new ConflictError('The document changed while it was being released; open it again')
   // Released: on its shelf for everyone who may read it, from now on.
-  await publishShelfChanged(session.organizationId, documentShelf(doc))
+  publishShelfChanged(session.organizationId, documentShelf(doc))
 
   const { jobId, status } = await dispatchDocument({
     organizationId: session.organizationId,

@@ -184,7 +184,7 @@ export async function admitDocumentWithinQuota(values: NewDocument): Promise<voi
   if (result.ok) {
     // Every new row on a shelf comes through here: an upload, a mail import,
     // a document Piloti filed. Committed by now, so a re-read sees it.
-    await publishShelfChanged(values.organizationId, documentShelf({ scope: values.scope, projectId: values.projectId ?? null }))
+    publishShelfChanged(values.organizationId, documentShelf({ scope: values.scope, projectId: values.projectId ?? null }))
     return
   }
 

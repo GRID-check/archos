@@ -257,7 +257,7 @@ export async function deleteArchivDocument(
   await eraseDocumentObjectsOrKeepRow(doc, session.organizationId)
 
   await deleteArchivDocumentRow(documentId, session.organizationId)
-  await publishShelfChanged(session.organizationId, ARCHIV_SHELF)
+  publishShelfChanged(session.organizationId, ARCHIV_SHELF)
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,
