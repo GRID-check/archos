@@ -221,7 +221,8 @@ const LINE_BREAKS = '\n\v\f\r\x85\u2028\u2029'
 const HORIZONTAL_SPACE = [...SCREENING_WHITESPACE].filter((char) => !LINE_BREAKS.includes(char)).join('')
 
 /** Where a reading may differ from the text: an invisible character, or a hyphen that may break a line. */
-const DROP_SITE = /[-\u2010\u2011\u00ad\u200b\u200c\u200d\u2060\ufeff]/g
+// The ASCII hyphen first, where a class reads it as itself rather than a range.
+const DROP_SITE = new RegExp(`[${BREAK_HYPHENS}${SCREENING_IGNORABLE}]`, 'g')
 
 /**
  * The text as a person reads it, and for each of its UTF-16 units where it
