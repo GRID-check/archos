@@ -9,7 +9,8 @@ describe('MiddleTruncate', () => {
 
     const line = screen.getByTitle(name)
     const [, head, tail] = Array.from(line.children)
-    expect(head).toHaveClass('text-ellipsis', 'overflow-hidden', 'whitespace-pre', 'min-w-0')
+    // Shrinks, but keeps room for a letter and the ellipsis, so a cut is always visible.
+    expect(head).toHaveClass('text-ellipsis', 'overflow-hidden', 'whitespace-pre', 'min-w-[2ch]')
     expect(tail).toHaveTextContent('Index_C_2026-07-02.pdf')
     expect(tail).toHaveClass('shrink-0')
   })

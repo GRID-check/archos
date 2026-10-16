@@ -3,7 +3,7 @@
 **Date:** 2026-08-11
 **Status:** Implemented
 **Surfaces:** project Files workspace, org Büroablage (the same workspace, see the last section), chat-session uploads
-**Preview:** `/dev/upload-tray`
+**Preview:** `/dev/upload-tray` (one batch, drop to settled); `/dev/ingestion-states` (every state side by side: badge, card, list row, tray row)
 
 ## The complaint
 
@@ -98,6 +98,37 @@ of nine look stalled at zero.
 The batch bar tracks **bytes, not file count**. A typical batch is one 150 MB IFC
 model and a dozen 200 KB PDFs; a count-based bar leaps to 92% and then appears to
 hang for a minute — the same lie in a different costume.
+
+### Every state has a glyph
+
+**Preview:** `/dev/ingestion-states`
+
+The badge on a card and in the list, and the status word on a tray row, used
+to be a coloured word. Several states share a colour, so they were told apart
+only by reading: „Wartet · 3 Dateien davor" and „Wird gelesen" were the same
+blue pill, and „Wartet", „Abgebrochen" and „Abgelegt" the same grey word in the
+tray. Each state now carries its glyph from one table
+(`features/documents/components/ingestion-atoms.tsx`): a clock for waiting,
+an arrow for sending, a page being read, a check for citable, the content
+check's shield for held, an alert for failed, an open ring for filed unread, a
+question mark for unknown, and a struck circle for cancelled. Icon, word and
+colour come from the same state, as the design language asks of every signal.
+
+- **No glyph moves.** A shelf that just took a batch has a dozen documents
+  being read; a dozen spinners is texture, not a signal. The tray's header is
+  the batch's one loop: the reading rows no longer shimmer as well.
+- **A failed read is the tinted red** (`Badge` `danger`), the material of every
+  other status, not the solid plate, which made an old failure the loudest
+  thing in the list. The card's frost no longer repaints its ink.
+- **In the list the word gives way, the glyph never does.** The status column
+  is 156px from `sm` (104px on a phone), and a word that does not fit ends in
+  an ellipsis with the full word in its `title`; the badge's centring used to
+  clip it at both edges.
+- **The extension tile is one component.** The tray row and the list row draw
+  `FileExtChip` at `size="xs"`; each used to hand-roll the 24px tile.
+- **A cut name always shows the cut.** `MiddleTruncate` keeps one letter and
+  the ellipsis of the head (`min-w-[2ch]`); squeezed to a letter's width, the
+  list read „EDachgeschoss.pdf" for „Einreichplan_10_Dachgeschoss.pdf".
 
 ## What changed in the transport
 
@@ -672,6 +703,7 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | Explorer detail view | `src/features/documents/components/file-list-view.tsx` |
 | The shared document card (grid anatomy, thumbnail loading) | `src/features/documents/components/file-card.tsx` |
 | Status semantics + the settling predicate both the poll and the card read | `src/features/documents/components/document-status.tsx` |
+| A state's glyph and ink, for the badge and the tray row | `src/features/documents/components/ingestion-atoms.tsx` |
 | Orchestration (validation, fan-out, cancel, polling hand-off) | `src/features/documents/hooks/use-file-upload.ts` |
 
 The logic is in plain modules with their own fast specs rather than inside the

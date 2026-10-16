@@ -25,6 +25,7 @@ import {
 import { useTranslations } from '@/i18n'
 import type { Translator } from '@/i18n'
 import { cn } from '@/lib/utils'
+import { IngestionGlyph } from './ingestion-atoms'
 
 /** Pick a lucide icon that reflects the file's type. */
 export function fileTypeIcon(contentType: string | null | undefined, filename?: string): LucideIcon {
@@ -171,14 +172,17 @@ interface DocumentStatusBadgeProps {
 
 export function DocumentStatusBadge({ status, className, title, queueAhead }: DocumentStatusBadgeProps) {
   const t = useTranslations('files')
-  // One state for the word and the colour, so they cannot disagree.
+  // One state for the word, the colour and the glyph, so they cannot disagree.
   const state = surfaceStateOf(status)
   const variant = surfaceStateVariant(state)
   const waiting = queueAhead != null && queueAhead > 0 && documentStatusFacts(status)?.phase === 'in-flight'
   const label = waiting ? t('status.queuedAhead', { count: queueAhead }) : labelOfState(state, status, t)
   return (
     <Badge
-      variant={variant}
+      // A failed read is a fact in a row, so it takes the tinted error, the
+      // material of every other status; the solid red plate shouted over the
+      // documents beside it. `data-variant` keeps naming the status family.
+      variant={variant === 'destructive' ? 'danger' : variant}
       // Lets a caller that repaints the ground (the card's frosted overlay)
       // repaint the ink for the one variant whose ink is white.
       data-variant={variant}
@@ -191,7 +195,14 @@ export function DocumentStatusBadge({ status, className, title, queueAhead }: Do
       // status's CONSEQUENCE, which is more than the word.
       title={title ?? label}
     >
-      {label}
+      {/* Icon + word + colour: the glyph is what tells „Wartet" from „Wird
+          gelesen" (one blue) and „Abgelegt" from „Unbekannt" (one grey). */}
+      <IngestionGlyph mark={waiting ? 'queued' : state} />
+      {/* The word gives way, the glyph never does. A caller that caps the
+          badge (the Files list's status column) gets an ellipsis at the end
+          of the word; the badge's own centring clipped „Wartet · 3 Dateien
+          davor" at both edges. */}
+      <span className="min-w-0 truncate">{label}</span>
     </Badge>
   )
 }

@@ -41,7 +41,11 @@ export function MiddleTruncate({ text, tail = DEFAULT_TAIL_LENGTH, className }: 
       {/* `whitespace-pre` on both halves: they are flex items, and a flex
           item's leading or trailing space collapses, so a cut that fell next
           to a space ("Plan EG" → "Plan" + " EG") ran the words together. */}
-      <span aria-hidden className="min-w-0 overflow-hidden text-ellipsis whitespace-pre">
+      {/* `min-w-[2ch]`, not `min-w-0`: the head may shrink, but never below
+          one letter and the ellipsis. Squeezed to a letter's width it had no
+          room left for the „…", so the Files list read „EDachgeschoss.pdf"
+          for „Einreichplan_10_Dachgeschoss.pdf", a cut nobody could see. */}
+      <span aria-hidden className="min-w-[2ch] overflow-hidden text-ellipsis whitespace-pre">
         {split.head}
       </span>
       <span aria-hidden className="shrink-0 whitespace-pre">

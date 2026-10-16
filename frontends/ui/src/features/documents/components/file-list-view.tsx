@@ -10,7 +10,7 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { DocumentVersionStateBadge } from './document-version-badge'
 import { FassungCount, OlderFassungBadge, isOlderFassungEntry } from './fassung-badge'
 import { documentBadgeState } from '../lib/document-lifecycle'
-import { extChipTint, fileExtensionLabel } from '../document-kind'
+import { FileExtChip } from './file-ext-chip'
 import { DEFAULT_FILE_SORT, RELEVANCE_SORT, nextSort, sortFiles, type FileSort, type FileSortKey } from '../lib/file-sort'
 import { useLocale, useTranslations } from '@/i18n'
 import { formatAbsoluteTime, formatBytes, formatRelativeTime } from '@/lib/format'
@@ -248,7 +248,11 @@ export function FileListView({
               // its own padding. The cell is the containing box, so the width has
               // to be one the badge can be made to fit inside — see the `truncate`
               // on the badge below, which is the other half of this.
-              className="w-[104px]"
+              // From `sm` it is 156px: the badge carries its state's glyph,
+              // and „Wird hochgeladen" or „Zurückgehalten" beside it needs
+              // ~98px of word. On a phone the column stays 104px, the word
+              // ellipsizes and the glyph still says which state it is.
+              className="w-[104px] sm:w-[156px]"
             />
             {/* Below `sm` the row keeps only what identifies and what acts:
                 name and status. Pages, size and date are reference columns.
@@ -354,7 +358,6 @@ const FileListRowItem = memo(function FileListRowItem({
 }: FileListRowItemProps): ReactNode {
   const t = useTranslations('files')
   const { locale } = useLocale()
-  const ext = fileExtensionLabel(file.filename)
   // The badge rule's subject, with the listing's nulls narrowed to
   // what the rule reads: `null` lifecycle is "the working set", i.e.
   // absent, and an unknown state is no badge.
@@ -399,16 +402,9 @@ const FileListRowItem = memo(function FileListRowItem({
       )}
       <TableCell className={CELL}>
         <div className="flex min-h-8 min-w-0 items-center gap-2.5">
-          <span
-            aria-hidden
-            // 8.5px is load-bearing and stays: this glyph holds a four-letter
-            // extension ("DOCX") inside a 24px square, and the ramp's next
-            // step overflows it.
-            className="flex size-6 shrink-0 items-center justify-center rounded-sm text-[8.5px] font-bold uppercase leading-none"
-            style={extChipTint(ext)}
-          >
-            {ext || '—'}
-          </span>
+          {/* The same tile the upload tray's row draws, so a document looks
+              like itself from the second it is dropped. */}
+          <FileExtChip filename={file.filename} size="xs" fallback="—" />
           <span className="min-w-0 flex-1">
             {/* „· 3 Fassungen" after the name, on the same line: the
                 history belongs to the document, not to the „Freigabe"
@@ -471,18 +467,19 @@ const FileListRowItem = memo(function FileListRowItem({
         </TableCell>
       )}
       <TableCell className={CELL}>
-        {/* `max-w-full truncate` is what keeps a long localized status
-            inside its column. The badge is `w-fit whitespace-nowrap`,
-            so without a ceiling it renders at whatever width its label
-            needs and simply overlaps the cell beside it — invisible in
-            English ("Citable"), plainly wrong in German ("Wird
-            hochgeladen"). `title` carries the full label for the states
-            that do get clipped, which are the transient ones. */}
+        {/* `max-w-full` is what keeps a long localized status inside its
+            column. The badge is `w-fit whitespace-nowrap`, so without a
+            ceiling it renders at whatever width its label needs and simply
+            overlaps the cell beside it — invisible in English ("Citable"),
+            plainly wrong in German ("Wird hochgeladen"). Under the ceiling
+            the badge's word ellipsizes and its glyph stays whole; `title`
+            carries the full label for the states that do get cut, which
+            are the transient ones. */}
         {file.status && (
           <DocumentStatusBadge
             status={file.status}
             queueAhead={file.queueAhead}
-            className="max-w-full truncate"
+            className="max-w-full px-2"
           />
         )}
       </TableCell>
