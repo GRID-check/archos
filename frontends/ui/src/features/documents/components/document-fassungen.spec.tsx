@@ -595,9 +595,9 @@ describe('DocumentFassungen — one numbered timeline', () => {
 
     const row = (await screen.findAllByTestId('fassung-timeline-row'))[1]
     const name = within(row).getByTitle(long)
-    // The tail is kept whole; only the head ellipsizes.
+    // The tail is kept whole while there is room; the head ellipsizes first.
     expect(name.lastElementChild).toHaveTextContent('Index-C_2026-06-30.pdf')
-    expect(name.lastElementChild?.className).toContain('shrink-0')
+    expect(name.lastElementChild).toHaveAttribute('data-part', 'tail')
   })
 
   it('says each date once, on the act line, with the person', async () => {

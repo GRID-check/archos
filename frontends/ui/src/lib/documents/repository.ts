@@ -15,7 +15,8 @@ import { and, asc, count, desc, eq, inArray, isNull, lt, ne, notInArray, or, sql
 import { getDb } from '@/lib/db'
 import type { DbExecutor, DbTransaction } from '@/lib/db/executor'
 import { withOptionalTenant, withPlatformAccess, withTenant } from '@/lib/db/tenant-context'
-import { ARCHIV_SHELF, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
+import { ARCHIV_SHELF, documentShelf, projectShelf, shelfDocumentWhere, shelfFolderWhere, type DocumentShelf } from './shelf'
+import { publishShelfChanged } from './shelf-live'
 import { documentAliasKey, documentNameKey, documentNameVariants } from './name-match'
 import { FILENAME_LOOKUP_MAX_NAMES } from './filename-lookup'
 import {
@@ -43,7 +44,7 @@ import {
   type DocumentLifecycle,
   type ResourceVisibility,
 } from '@/lib/db/schema'
-import type { DocumentScreeningOutcome } from '@/lib/db/schema/documents'
+import type { DocumentScope, DocumentScreeningOutcome } from '@/lib/db/schema/documents'
 import { auditedQuarantineReasons, parseQuarantine } from '@/lib/upload-screening/quarantine'
 import { documentVisibleTo, heldAtRest, internalRead, SCREENED_ONLY, type DocumentReader } from './visibility'
 import { verdictPasses } from './document-reader'
@@ -60,6 +61,13 @@ export const DOCUMENT_LIST_LIMIT = 500
 export interface DocumentListRow {
   id: string
   filename: string
+  /**
+   * The shelf the row is on (`documentShelf`). Read by the status
+   * reconciliation, which announces a settled row on its shelf's live channel;
+   * a listing row that did not carry it settled for nobody. Not on the wire.
+   */
+  projectId: string | null
+  scope: DocumentScope
   /** The rename, when there is one; NULL means "show `filename`" (0048). */
   displayName: string | null
   fileSize: number | null
@@ -219,6 +227,8 @@ export function outsideHiddenFolders(hiddenFolderIds: readonly string[] | undefi
 export const documentListColumns = {
   id: documents.id,
   filename: documents.filename,
+  projectId: documents.projectId,
+  scope: documents.scope,
   displayName: documents.displayName,
   fileSize: documents.fileSize,
   contentType: documents.contentType,
@@ -1782,12 +1792,17 @@ export async function markDocumentIngestFailed(
   errorMessage: string,
 ): Promise<void> {
   const db = getDb()
-  await withTenant({ organizationId }, () =>
+  const [row] = await withTenant({ organizationId }, () =>
     db
       .update(documents)
       .set({ status: 'failed', errorMessage, ingestFailureCategory: null, ingestRetryable: null, updatedAt: new Date() })
-      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined)),
+      .where(and(eq(documents.id, documentId), eq(documents.organizationId, organizationId), notQuarantined))
+      .returning({ projectId: documents.projectId, scope: documents.scope }),
   )
+  // The one door every hard failure goes through (a dispatch refused, an IFC
+  // extraction that failed, a row stuck in processing): the badge turns red
+  // for everyone reading the shelf, not only for a tab that happens to poll it.
+  if (row) publishShelfChanged(organizationId, documentShelf(row))
 }
 
 /** Several folders' paths in one project, keyed by folder id; folders not in the project are absent. */

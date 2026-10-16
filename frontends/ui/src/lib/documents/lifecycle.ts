@@ -41,6 +41,8 @@
  * a name in a row's `effects` — never an `if` inside `publish`.
  */
 
+import { documentShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import 'server-only'
 import { ConflictError, ForbiddenError, NotFoundError, UnprocessableError } from '@/lib/api/errors'
 import type { AuthorizedSession } from '@/lib/auth/types'
@@ -1008,6 +1010,9 @@ export async function transitionDocumentVersion(
   if (!swapped) {
     throw new ConflictError('The version changed while you were deciding', { op })
   }
+  // The row's Freigabe state, its size and date (a promotion swaps the item's
+  // bytes) changed for everyone reading the shelf.
+  publishShelfChanged(session.organizationId, documentShelf(document))
 
   await runEffects({
     session,

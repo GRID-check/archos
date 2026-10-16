@@ -66,7 +66,7 @@ describe('the proposal channel', () => {
 describe('publishProposalDecided', () => {
   it('reaches a listener of the channel’s topic with an event the channel accepts', async () => {
     const heard: unknown[] = []
-    const release = subscribe(proposalChannel.topics({ proposalId: ID })[0], (payload) => heard.push(payload))
+    const release = subscribe(proposalChannel.topics({ proposalId: ID }, 'org_1')[0], (payload) => heard.push(payload))
 
     await publishProposalDecided(ID, 'partially_applied')
     release()

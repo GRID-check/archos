@@ -21,10 +21,13 @@ export interface ChannelDefinition<TParams = unknown, TUp extends UpstreamBase =
   /** The params of the part after `<kind>:`, or null when it names nothing this kind knows. */
   parse(id: string): TParams | null
   /**
-   * The hub topics the channel listens to. The FIRST is the channel's own:
-   * upstream messages are published there; any further topic is listened to only.
+   * The hub topics the channel listens to, in the session's organization. The
+   * FIRST is the channel's own: upstream messages are published there; any
+   * further topic is listened to only. A channel whose key names a resource
+   * with no id of its own (the tenant's Archiv) scopes its topic by the
+   * organization; one keyed by a unique id may ignore it.
    */
-  topics(params: TParams): readonly [string, ...string[]]
+  topics(params: TParams, organizationId: string): readonly [string, ...string[]]
   /** Throws (404/403) when the session may not be in the channel. Called uncached on open and every re-check. */
   authorize(session: AuthorizedSession, params: TParams): Promise<void>
   /** Throws when the session may not send. Defaults to `authorize`; the send path caches either for `reauthorizeMs`. */

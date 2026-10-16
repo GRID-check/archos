@@ -139,7 +139,7 @@ const ABSOLUTE_AFTER_MS = 24 * 60 * 60 * 1000
 /** Relative within a day, the exact date after it. */
 export function cardTimeLabel(iso: string, locale: string, now: number = Date.now()): string {
   const at = new Date(iso).getTime()
-  if (Number.isNaN(at) || now - at <= ABSOLUTE_AFTER_MS) return formatRelativeTime(iso, locale)
+  if (Number.isNaN(at) || now - at <= ABSOLUTE_AFTER_MS) return formatRelativeTime(iso, locale, now)
   return formatAbsoluteTime(iso, locale)
 }
 

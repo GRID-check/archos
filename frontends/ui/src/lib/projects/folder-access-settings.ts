@@ -54,6 +54,8 @@ import { projectFolderGrants, projectFolders } from '@/lib/db/schema'
 import { findProjectInOrg } from '@/lib/projects/repository'
 import { placeProjectDocuments, type PlacementResult } from './collection-placement'
 import { assertRestrictionKeepsIfcOpen } from './ifc-folder-guard'
+import { projectShelf } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 
 /** Most people one folder's own list may name. A list longer than this is a group's job. */
 export const FOLDER_ACCESS_MAX_PEOPLE = 50
@@ -242,7 +244,13 @@ export async function setFolderAccess(
   )
   if (updated.length === 0) throw new NotFoundError('Folder not found')
 
+  // Who sees the folder and what is in it changed, as of the commit above:
+  // every reader re-reads it, without waiting for the placement below.
+  publishShelfChanged(organizationId, projectShelf(input.projectId), { folders: true })
   const placement = await placeProjectDocuments(organizationId, input.projectId)
+  // And once more after it: placement re-filed documents between collections,
+  // and their badges moved with them.
+  if (placement.moved > 0) publishShelfChanged(organizationId, projectShelf(input.projectId))
   const stored: FolderAccessSetting =
     access.mode === 'custom' && people
       ? { mode: 'custom', everyoneReads: access.everyoneReads, people: people.map(({ userId, level }) => ({ userId, level })) }

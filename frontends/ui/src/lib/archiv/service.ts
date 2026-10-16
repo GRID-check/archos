@@ -25,6 +25,7 @@ import { ForbiddenError, NotFoundError } from '@/lib/api/errors'
 import { fetchSemanticHits, joinHitsToFiles, type SearchedDocument } from '@/lib/documents/service'
 import { collectionFileRef, purgeIngestedChunks } from '@/lib/documents/collection-file-ref'
 import { ARCHIV_SHELF } from '@/lib/documents/shelf'
+import { publishShelfChanged } from '@/lib/documents/shelf-live'
 import { toListedDocuments, toListedLevelPage, toListedPage, type ListedDocument } from '@/lib/documents/shelf-listing'
 import { uploadToShelf, type ShelfUploadInput, type UploadDocumentResult } from '@/lib/documents/shelf-upload'
 import type { DocumentListCursor } from '@/lib/documents/list-cursor'
@@ -256,6 +257,7 @@ export async function deleteArchivDocument(
   await eraseDocumentObjectsOrKeepRow(doc, session.organizationId)
 
   await deleteArchivDocumentRow(documentId, session.organizationId)
+  publishShelfChanged(session.organizationId, ARCHIV_SHELF)
 
   // Once more, now that the row is gone: an ingest of this document that
   // asked `GET /api/internal/document-exists` before the row went saw it,

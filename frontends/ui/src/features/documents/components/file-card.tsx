@@ -395,11 +395,13 @@ export const FileCard = memo(function FileCard({
                 // there read as part of the placeholder rather than as a status.
                 // The 80% alpha is load-bearing: this badge floats over a document
                 // thumbnail, and with `backdrop-blur-sm` it frosts the image
-                // underneath instead of hiding it.
-                // `bg-background/80` is a light ground, and the destructive
-                // variant's ink is white: „Fehlgeschlagen" was white on paper,
-                // invisible. Its ink becomes the error red on this ground.
-                className="absolute bottom-2 left-2 border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm data-[variant=destructive]:text-error"
+                // underneath instead of hiding it. Every status's ink is its
+                // signal colour on a light ground, a failed read included
+                // (the badge's tinted `danger`), so the frost needs no repaint.
+                // Capped at the well's width less its insets: on a phone's
+                // two-column grid „Wartet · 3 Dateien davor" ran into the
+                // card's edge; now its word ends in an ellipsis instead.
+                className="absolute bottom-2 left-2 max-w-[calc(100%-1rem)] border-transparent bg-background/80 px-1.5 py-0 text-xs font-medium leading-4 shadow-2xs backdrop-blur-sm"
               />
             )}
           </GridTileMedia>

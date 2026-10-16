@@ -31,6 +31,8 @@ import { canRetryRow } from './retry-policy'
  */
 export type ListedDocument = Omit<
   DocumentListRow,
+  | 'projectId'
+  | 'scope'
   | 'metadata'
   | 'createdBy'
   | 'screeningOutcome'
@@ -94,6 +96,8 @@ export async function toListedDocuments(
     ({
       metadata,
       createdBy: _createdBy,
+      projectId: _projectId,
+      scope: _scope,
       screeningOutcome: _screening,
       screenedHash: _screened,
       ingestFailureCategory,

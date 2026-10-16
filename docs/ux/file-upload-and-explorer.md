@@ -3,7 +3,7 @@
 **Date:** 2026-08-11
 **Status:** Implemented
 **Surfaces:** project Files workspace, org Büroablage (the same workspace, see the last section), chat-session uploads
-**Preview:** `/dev/upload-tray`
+**Preview:** `/dev/upload-tray` (one batch, drop to settled); `/dev/ingestion-states` (every state side by side: badge, card, list row, tray row)
 
 ## The complaint
 
@@ -98,6 +98,48 @@ of nine look stalled at zero.
 The batch bar tracks **bytes, not file count**. A typical batch is one 150 MB IFC
 model and a dozen 200 KB PDFs; a count-based bar leaps to 92% and then appears to
 hang for a minute — the same lie in a different costume.
+
+### Every state has a glyph
+
+**Preview:** `/dev/ingestion-states`
+
+The badge on a card and in the list, and the status word on a tray row, used
+to be a coloured word. Several states share a colour, so they were told apart
+only by reading: „Wartet · 3 Dateien davor" and „Wird gelesen" were the same
+blue pill, and „Wartet", „Abgebrochen" and „Abgelegt" the same grey word in the
+tray. Each state now carries its glyph from one table
+(`features/documents/components/ingestion-atoms.tsx`): a clock for waiting,
+an arrow for sending, a page being read, a check for citable, the content
+check's shield for held, an alert for failed, an open ring for filed unread, a
+question mark for unknown, and a struck circle for cancelled. Icon, word and
+colour come from the same state, as the design language asks of every signal.
+
+- **No glyph moves.** A shelf that just took a batch has a dozen documents
+  being read; a dozen spinners is texture, not a signal. The tray's header is
+  the batch's one loop: the reading rows no longer shimmer as well.
+- **A failed read is the tinted red** (`Badge` `danger`), the material of every
+  other status, not the solid plate, which made an old failure the loudest
+  thing in the list. The card's frost no longer repaints its ink.
+- **In the list the word gives way, the glyph never does.** The status column
+  is 156px once the list is 28rem wide (104px narrower), and a word that does
+  not fit ends in an ellipsis with the full word in its `title`; the badge's
+  centring used to clip it at both edges.
+- **The columns step out by the list's width, not the screen's**
+  (`@container/filelist`). Freigabe and Größe join at 48rem, Hinzugefügt at
+  56rem, Seiten at 64rem, each where the name keeps about 220px beside them.
+  With viewport breakpoints, the list beside the chat on a desktop kept every
+  column in half a screen, the name column collapsed to nothing and the status
+  badges sat on top of the cut names.
+- **The extension tile is one component.** The tray row and the list row draw
+  `FileExtChip` at `size="xs"`; each used to hand-roll the 24px tile.
+- **A cut name always shows the cut, and never a hard edge.** `MiddleTruncate`
+  lets the head give way first, all the way; only then does the tail, at its
+  START, behind a leading „…" (`…schoss.pdf`), so the extension and the index
+  survive. The tail used to be `shrink-0`: in a column narrower than it, the
+  name was sliced at the cell's edge mid-letter („W.Gesamtmc"), and before
+  that the head squeezed to a letter read „EDachgeschoss.pdf" for
+  „Einreichplan_10_Dachgeschoss.pdf". `/dev/ingestion-states` („Files list,
+  narrow") shows the list at 560px and 340px.
 
 ## What changed in the transport
 
@@ -672,6 +714,7 @@ has Fassungen, not that it is a drawing (CONTEXT.md, „Fassung“), and
 | Explorer detail view | `src/features/documents/components/file-list-view.tsx` |
 | The shared document card (grid anatomy, thumbnail loading) | `src/features/documents/components/file-card.tsx` |
 | Status semantics + the settling predicate both the poll and the card read | `src/features/documents/components/document-status.tsx` |
+| A state's glyph and ink, for the badge and the tray row | `src/features/documents/components/ingestion-atoms.tsx` |
 | Orchestration (validation, fan-out, cancel, polling hand-off) | `src/features/documents/hooks/use-file-upload.ts` |
 
 The logic is in plain modules with their own fast specs rather than inside the
@@ -877,6 +920,26 @@ never drains the shelf for the default view.
   (as many rows as are on screen, up to 500, swapped in whole) and the summary.
   A move or delete patches the loaded rows at once and re-reads the summary, so
   the tiles' counts follow.
+- **Changes made elsewhere arrive live.** The workspace joins its shelf's live
+  channel (`shelf:project-<id>` or `shelf:archiv`, ADR-0110) through
+  `useShelfLive`. The server says `shelf.changed` after every write to the
+  shelf: a new or replaced document (a person's, a mail import, one Piloti
+  filed), a rename, a delete, a move, a folder made, renamed, moved, binned,
+  restored or given new access, an upload released from screening, and an
+  ingestion that finished, failed or was quarantined. The hint carries no data;
+  the workspace re-reads the level, the summary and, when `folders` is set, the
+  folder tree, quietly, through the coalesced `reloadQuietly`, and not while the
+  tab's own moves are on the wire. A burst of hints is one re-read, 400 ms plus up
+  to 600 ms of jitter later (`useLiveHints`, shared by every hint channel). When the channel
+  comes up (first, after a dropped connection, after a phone wakes) everything
+  is read once more, so a hint missed while offline is not lost.
+  `lib/documents/shelf-live.spec.ts` fails a module that writes `documents` or
+  `project_folders` without announcing it, unless it is listed with the module
+  that does.
+- **Folder reads cross safely.** Only the newest read of the folder tree
+  commits, and a re-read that fails keeps the tree on screen; before, an older
+  answer landing last took a just-made folder off the screen, and one failed
+  request emptied the whole tree.
 
 Still open: a virtualised grid and list, and the kind/tag filters and the
 brief's content facts on the server once the backend's tags are mirrored into
