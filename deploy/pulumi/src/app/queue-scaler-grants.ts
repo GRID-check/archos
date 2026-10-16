@@ -1,7 +1,7 @@
 import * as k8s from "@pulumi/kubernetes";
 import { onNodeGroup } from "../platform/scheduling";
 import * as pulumi from "@pulumi/pulumi";
-import { GridConfig, appPullPolicy, backendImage } from "../config";
+import { GridConfig, appPullPolicy, backendImage, frontendImage } from "../config";
 import { commonLabels } from "../platform/namespaces";
 import { hardenedContainerSecurityContext, hardenedJobSecurityContext } from "../platform/security";
 import {
@@ -25,8 +25,8 @@ import { QUEUE_TABLE as INGEST_TABLE } from "./ingest-worker";
  * held by an operator in another namespace could write every table in both. The
  * login it reads through now (`KEDA_SCALER_ROLE`, declared with the other roles
  * in `data/postgres.ts`) has SELECT on the queue tables and nothing else. That
- * needs two things the Cluster cannot say, and this Job does them once per
- * deploy, after the migrations Job:
+ * needs two things the Cluster cannot say, and this Job does them after the
+ * migrations Job:
  *
  *   1. THE TABLES EXIST FIRST. The Python queues create their tables the first
  *      time any process touches them, so on a fresh stack a scaler that is
@@ -49,14 +49,23 @@ import { QUEUE_TABLE as INGEST_TABLE } from "./ingest-worker";
  *      whatever it is ever granted next, and the tenant policy
  *      (`grid_tenant_isolation`) is left as the migrations wrote it.
  *
- * Idempotent, so it re-runs whenever its spec changes (every per-SHA image pin)
- * and the Python init container doubles as the upgrade of a queue table.
+ * Idempotent, so it re-runs whenever its spec changes, and the Python init
+ * container doubles as the upgrade of a queue table. Its spec names both images
+ * whose schema it grants on: the backend's (the Python queues) in the init
+ * container, and the frontend's (the migrations Job, owner of `bff_job_queue`)
+ * in `MIGRATIONS_IMAGE_ANNOTATION`. A deploy keeps an unchanged image's ref
+ * (`scripts/resolve-image-refs.sh`), so without the annotation a migration that
+ * recreated `bff_job_queue` or its policies would ship in a deploy that never
+ * re-ran this Job, and the scaler would lose its grant without a word.
  *
  * Every ScaledObject, and the TriggerAuthentication that points an existing one at
  * this login, is created after this Job (`index.ts`), so a scaler never counts a
  * table it cannot read. If a table is missing the Job fails loudly
  * (`ON_ERROR_STOP`); the role CloudNativePG reconciles asynchronously is waited for.
  */
+
+/** Pod-template annotation carrying the image the migrations Job runs, so a new migration re-runs the grants. */
+export const MIGRATIONS_IMAGE_ANNOTATION = "grid.bigls.net/migrations-image";
 
 /** The queue tables of the aiq_jobs database the scaler reads: the ingest tier's and the research tier's. */
 export function jobsDatabaseTables(): string[] {
@@ -172,7 +181,10 @@ export function installQueueScalerGrants(
         backoffLimit: JOB_DEFAULTS.backoffLimit,
         ttlSecondsAfterFinished: JOB_DEFAULTS.ttlSecondsAfterFinished,
         template: {
-          metadata: { labels },
+          metadata: {
+            labels,
+            ...(bff ? { annotations: { [MIGRATIONS_IMAGE_ANNOTATION]: frontendImage(cfg) } } : {}),
+          },
           spec: {
             enableServiceLinks: false, // see chroma.ts — legacy env collisions
             imagePullSecrets: w.imagePullSecrets,

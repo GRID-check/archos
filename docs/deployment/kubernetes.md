@@ -228,8 +228,8 @@ Every pod template in the program is pinned:
   `cluster-autoscaler.kubernetes.io/safe-to-evict: "false"` on every stack: it
   is one replica, so an autoscaler scale-down that evicts it is an outage. A
   drain for a node upgrade still moves it.
-- `batch`: `ingest-worker` (8Gi requested, 12Gi limit in prod, §6.3b),
-  Gotenberg and the legacy corpus import.
+- `batch`: `ingest-worker` (8Gi requested, 12Gi limit in prod, §6.3b) and
+  Gotenberg.
 - `Node`: everything else, the chat, api and agent-worker tiers, the frontend,
   web, Langfuse, the collector, the workers and every Job.
 
@@ -1440,16 +1440,15 @@ ingestion in the web process. See [`oib-sync.md`](../technical-reference/oib-syn
 `volumeClaimTemplates`, an immutable field, so the first `pulumi up` plans a
 **replace** of `aiq-agent` (delete-before-replace: a short outage of the chat
 tier). The old `data-aiq-agent-*` claims are retained by Kubernetes and nothing
-the new pods mount them. The `legacy-corpus-import` Job carries the corpus off
-`data-aiq-agent-0` instead: once the new StatefulSet and the frontend are up, it
-mounts the claim read-only and stores every operator PDF (minus the exclusions)
-and admin upload through the same path an admin upload takes
-(`aiq_agent.legacy_corpus_import`); the next `housekeeping-base-corpus` run
-queues their ingestion. It runs where the stack names the claim
-(`grid-oib:legacyCorpusClaim`, set in `Pulumi.prod.yaml` and `Pulumi.dev.yaml`;
-a fresh stack has none) and stores nothing on a rerun. Delete the old claims
-once the knowledge view lists the corpus; then remove the key, the Job and the
-importer.
+the new pods mount them. A one-shot `legacy-corpus-import` Job carried the
+corpus off `data-aiq-agent-0` into the corpus store
+(`aiq_agent.legacy_corpus_import`, the same path an admin upload takes) on prod
+and dev, and re-ran on every deploy afterwards, storing nothing. It and its
+`grid-oib:legacyCorpusClaim` key are gone from the Pulumi program; the Compose
+service remains for installations that have not upgraded. The retained
+`data-aiq-agent-*` claims are the last copy of that corpus: delete them by hand
+once the knowledge view lists it. Until then the import can be re-run as a
+one-off Job with the claim mounted at `/legacy`.
 
 ### 6.4b Chat scale-out: affinity off, KEDA on running turns (ADR-0080)
 
@@ -1906,8 +1905,9 @@ every CustomResource against the real upstream CRD schemas) and the
 **CrossGuard policy pack** (§7c). The plan is previewed with the same image
 pins the apply deploys, resolved by
 `deploy/pulumi/scripts/resolve-image-refs.sh`: all three at the commit's
-`sha-<40-hex>` tag, and a resolved image older than the stack output
-`deployedImages` fails the job ([cd.md](cd.md#image-pinning)). The
+`sha-<40-hex>` tag, a resolved image older than the stack output
+`deployedImages` fails the job, and a service whose tag names the digest it
+already runs keeps its ref and does not roll ([cd.md](cd.md#image-pinning)). The
 apply then runs on the same runner (`pulumi up --yes`) — the policy pack does
 not re-run on the apply (accepted residual, see
 `docs/deployment/pulumi-cloud-feature-audit.md`). Because the

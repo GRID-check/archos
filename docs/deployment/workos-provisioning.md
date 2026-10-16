@@ -782,8 +782,8 @@ its list hold a folder role on it. Migration `0128` carries over what needs no
 WorkOS (the reserved `*` entry becomes `project_folders.everyone_reads`, or the
 folder goes back to inheriting when everyone wrote it). The role entries become
 folder roles of the people who hold those roles, which only WorkOS knows, so a
-script does that. **The deploy runs all of it**, after one dashboard step per
-environment:
+script does that. On Staging and Production the deploy ran all of it, after one
+dashboard step per environment; Compose still does:
 
 1. **Dashboard, once**: create the `folder` resource type, parent `project` (§0).
    Staging and Production have it (Production since 2026-10-10). Neither the SDK nor the public API
@@ -798,20 +798,22 @@ environment:
      carry-over has run, a folder whose list named roles is readable only by
      organization admins and, when everyone reads it, by every project member:
      narrower than before, never wider.
-   - `grid-app-folder-grants` carries the role grants over
-     (`migrate:folder-grants --apply`). It waits on the frontend rollout, the
-     migrations and the catalog Job. Compose runs both scripts in
-     `grid-workos-authz`, once the frontend is healthy.
+   - The carry-over (`migrate:folder-grants --apply`) moves the role grants
+     over. On Kubernetes this was the Job `grid-app-folder-grants`, after the
+     frontend rollout, the migrations and the catalog Job; it ran on every
+     deploy to Staging and Production, a no-op after the first, and is retired.
+     Compose runs both scripts in `grid-workos-authz`, once the frontend is
+     healthy.
 
 For every folder with its own list, every active member of the organization who
 holds a role the list names gets the folder role for the best level those roles
-granted. The Job's log prints, per folder, the roles, how many people that is,
+granted. The script prints, per folder, the roles, how many people that is,
 and any role no active member holds. It reads `project_folder_grants` across
 every organization, so it runs with the schema owner's connection; the runtime
 role is subject to row-level security and sees nothing. It converts only folders
 not yet registered in WorkOS and never removes a folder role, and saving a list
 in the new dialog deletes that folder's old grant rows, so a list someone
-changed is never carried over again and every later deploy's run is a no-op.
+changed is never carried over again and every later run is a no-op.
 
 By hand, for an environment no stack deploys against, from `frontends/ui`:
 
@@ -839,8 +841,9 @@ way round too: someone who loses the role later keeps the folder role until
 someone takes them off the list.
 
 `project_folder_grants` stays until the carry-over has run in every
-environment; the migration that drops it also deletes the
-`grid-app-folder-grants` Job and the second half of `grid-workos-authz`.
+environment; the migration that drops it also deletes the script and the second
+half of `grid-workos-authz`. Nothing in the app writes the table, so on the
+Kubernetes stacks, where it has run, it only shrinks as lists are saved.
 
 ## How the app consumes this
 

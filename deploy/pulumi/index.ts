@@ -33,8 +33,7 @@ import { installChroma } from "./src/data/chroma";
 import { AppWiring, PULL_SECRET_NAME, buildRegistryPullSecret, buildScalerSecret, buildSecrets } from "./src/app/config";
 import { runMigrations } from "./src/app/migrations-job";
 import { reconcileAuditSchemas } from "./src/app/audit-schemas-job";
-import { carryOverFolderGrants, reconcileAuthzCatalog } from "./src/app/workos-authz-jobs";
-import { importLegacyCorpus } from "./src/app/legacy-corpus-import-job";
+import { reconcileAuthzCatalog } from "./src/app/workos-authz-jobs";
 import { installBackend } from "./src/app/backend";
 import { installBackendScaling } from "./src/app/backend-scaling";
 import { installApi } from "./src/app/api";
@@ -217,8 +216,8 @@ const migrations = runMigrations(wiring, cfg, secrets, [
 // The same goes for the authorization catalog: every permission and role the
 // code checks is created in WorkOS by the deploy that ships it, rather than by
 // a runbook step someone has to remember per environment.
-const authzCatalog = cfg.auth.requireAuth ? reconcileAuthzCatalog(wiring, cfg, secrets, [ns]) : undefined;
 if (cfg.auth.requireAuth) {
+  reconcileAuthzCatalog(wiring, cfg, secrets, [ns]);
   reconcileAuditSchemas(wiring, cfg, secrets, [ns]);
 }
 
@@ -245,14 +244,6 @@ const api = installApi(wiring, cfg, secrets, [
 // reverse edge would be a cycle. The old chat pods serve the socket meanwhile.
 const frontend = installFrontend(wiring, cfg, secrets, [migrations, api.service]);
 
-// Folder lists move from role grants to WorkOS folder roles (ADR-0097). The
-// carry-over runs once the frontend that reads folder roles has rolled out,
-// never before: a list narrowed in the old dialog after an early run would come
-// back wider. Its folder roles come from the catalog Job.
-if (authzCatalog) {
-  carryOverFolderGrants(wiring, cfg, secrets, [migrations, frontend.deployment, authzCatalog]);
-}
-
 const backend = installBackend(wiring, cfg, secrets, [
   postgres.initJob,
   postgres.pooler,
@@ -261,15 +252,6 @@ const backend = installBackend(wiring, cfg, secrets, [
   ...(chroma ? [chroma.service] : []),
   frontend.deployment,
 ]);
-
-// The pre-A2 base corpus, carried off the old backend data volume once
-// (ADR-0082 A2). Only where that volume exists: see `storage.legacyCorpusClaim`.
-if (cfg.storage.legacyCorpusClaim) {
-  importLegacyCorpus(wiring, cfg, secrets, cfg.storage.legacyCorpusClaim, [
-    backend.statefulSet,
-    frontend.deployment,
-  ]);
-}
 
 const workers = installWorkers(wiring, cfg, secrets, [migrations]);
 // Landing site + blog (Astro, frontends/web) — static-first, no app secrets,

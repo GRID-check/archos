@@ -19,10 +19,11 @@
  *       bun run migrate:folder-grants             # show the plan, change nothing
  *     … bun run migrate:folder-grants -- --apply  # register the folders and assign the roles
  *
- * Every deploy runs it with `--apply`, in this order: the `folder:*`
- * permissions and folder roles (`provision:authz`, Job
- * `grid-app-authz-catalog`), the frontend that reads folder roles, then this
- * (Job `grid-app-folder-grants`, compose service `grid-workos-authz`). The
+ * Compose runs it with `--apply` on every start (service `grid-workos-authz`),
+ * in this order: the `folder:*` permissions and folder roles
+ * (`provision:authz`), the frontend that reads folder roles, then this. On
+ * Staging and Production the deploy Job `grid-app-folder-grants` ran it the
+ * same way until every later run was a no-op, and is retired. The
  * `folder` resource type itself is a dashboard step. Until it has run, a folder with
  * its own list is readable only by organization admins and, when everyone
  * reads it, by every project member: the narrow direction, not a leak. Run

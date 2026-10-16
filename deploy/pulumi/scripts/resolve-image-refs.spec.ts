@@ -88,19 +88,38 @@ beforeAll(() => {
       "exit 1",
     ].join("\n"),
   );
-  // curl, for find-published-tag.sh itself: the token endpoint answers a
+  // Digests: $STUB_DIGESTS holds "service tag digest" lines. Same contract as
+  // image-digest.sh — exit 1 for an unknown tag, exit 2 when the registry "fails".
+  stub(
+    "image-digest",
+    [
+      '[ -z "${STUB_DIGEST_DOWN:-}" ] || exit 2',
+      'd="$(printf \'%s\\n\' "${STUB_DIGESTS:-}" | awk -v s="$2" -v t="$3" \'$1 == s && $2 == t { print $3 }\')"',
+      '[ -n "$d" ] || exit 1',
+      'echo "$d"',
+    ].join("\n"),
+  );
+  // curl, for the registry scripts themselves: the token endpoint answers a
   // token, a manifest HEAD answers the code listed in $STUB_CURL_CODES
-  // ("<image path>:<tag> <code>" lines), 404 when unlisted.
+  // ("<image path>:<tag> <code>" lines), 404 when unlisted. Asked for headers
+  // (`-D -`), it first prints the digest $STUB_CURL_DIGESTS lists for the key.
   stub(
     "curl",
     [
-      'url=""; for a in "$@"; do case "$a" in https://*) url="$a" ;; esac; done',
+      'url=""; headers=""; for a in "$@"; do case "$a" in https://*) url="$a" ;; -D) headers=1 ;; esac; done',
       'case "$url" in',
       '  *"/token?"*) echo \'{"token":"t"}\' ;;',
       '  *"/manifests/"*)',
       '    key="${url#https://ghcr.io/v2/}"; key="${key/\\/manifests\\//:}"',
       '    code="$(printf \'%s\\n\' "${STUB_CURL_CODES:-}" | awk -v k="$key" \'$1 == k { print $2 }\')"',
-      '    printf \'%s\' "${code:-404}" ;;',
+      '    if [ -n "$headers" ]; then',
+      '      digest="$(printf \'%s\\n\' "${STUB_CURL_DIGESTS:-}" | awk -v k="$key" \'$1 == k { print $2 }\')"',
+      '      printf \'HTTP/2 %s\\r\\n\' "${code:-404}"',
+      '      [ -z "$digest" ] || printf \'Docker-Content-Digest: %s\\r\\n\' "$digest"',
+      '      printf \'\\r\\n%s\\n\' "${code:-404}"',
+      '    else',
+      '      printf \'%s\' "${code:-404}"',
+      '    fi ;;',
       "esac",
     ].join("\n"),
   );
@@ -124,6 +143,7 @@ function run(script: string, env: Record<string, string>, args: string[] = []): 
       GITHUB_ACTOR: "ci",
       GH_TOKEN: "token",
       FIND_PUBLISHED_TAG: join(BIN, "find-published-tag"),
+      IMAGE_DIGEST: join(BIN, "image-digest"),
       RUN_ID: "",
       EXPLICIT_TAG: "",
       ...env,
@@ -277,6 +297,107 @@ describe("resolve-image-refs.sh", () => {
     expect(out.stderr).toContain("could not read the stack outputs");
   });
 
+  describe("an image the commit did not rebuild", () => {
+    // 10-13: sha-b637 and sha-06e8 both named backend sha256:3109e293…, one
+    // `inputs-` build re-tagged, and the deploy of 06e8 still rolled the chat
+    // tier, three workers and every Job on the backend image.
+    const D = (n: number) => `sha256:${String(n).repeat(64)}`;
+    const digests = (lines: Array<[string, string, string]>) =>
+      lines.map(([service, commitName, digest]) => `${service} sha-${C[commitName]} ${digest}`).join("\n");
+    const deployedAtC3 = () =>
+      deployed({
+        backend: ref("backend", "c3"),
+        frontend: ref("frontend", "c3"),
+        web: ref("web", "c3"),
+      });
+
+    it("keeps the deployed ref for a service whose new tag names the same digest", () => {
+      const out = resolve({
+        RUN_ID: "123",
+        STUB_OUTPUTS: deployedAtC3(),
+        STUB_DIGESTS: digests([
+          ["backend", "c3", D(1)],
+          ["backend", "c5", D(1)],
+          ["frontend", "c3", D(2)],
+          ["frontend", "c5", D(3)],
+          ["web", "c3", D(4)],
+          ["web", "c5", D(5)],
+        ]),
+      });
+      expect(out.status, out.stderr).toBe(0);
+      expect(pinned(out)).toEqual({
+        BACKEND_IMAGE_REF: ref("backend", "c3"),
+        FRONTEND_IMAGE_REF: ref("frontend", "c5"),
+        WEB_IMAGE_REF: ref("web", "c5"),
+      });
+      expect(out.stderr).toContain(`backend: sha-${C.c5} is the deployed image (${D(1)}); keeping ${ref("backend", "c3")}`);
+    });
+
+    it("keeps it on a rollback to the same bytes, and moves on a rollback to others", () => {
+      const out = resolve({
+        EXPLICIT_TAG: `sha-${C.c2}`,
+        STUB_OUTPUTS: deployedAtC3(),
+        STUB_DIGESTS: digests([
+          ["backend", "c3", D(1)],
+          ["backend", "c2", D(1)],
+          ["frontend", "c3", D(2)],
+          ["frontend", "c2", D(6)],
+        ]),
+      });
+      expect(out.status, out.stderr).toBe(0);
+      expect(pinned(out).BACKEND_IMAGE_REF).toBe(ref("backend", "c3"));
+      expect(pinned(out).FRONTEND_IMAGE_REF).toBe(ref("frontend", "c2"));
+    });
+
+    it("pins the new tag, with a warning, when a digest cannot be read", () => {
+      const out = resolve({ RUN_ID: "123", STUB_OUTPUTS: deployedAtC3(), STUB_DIGEST_DOWN: "1" });
+      expect(out.status, out.stderr).toBe(0);
+      expect(pinned(out).BACKEND_IMAGE_REF).toBe(ref("backend", "c5"));
+      expect(out.stderr).toContain("::warning::backend: could not compare digests");
+    });
+
+    it("never keeps a moving tag, whatever it currently names", () => {
+      const out = resolve({
+        RUN_ID: "123",
+        STUB_OUTPUTS: deployed({ backend: "ghcr.io/grid-check/grid-oib-backend:latest" }),
+        STUB_DIGESTS: `backend latest ${D(1)}\n${digests([["backend", "c5", D(1)]])}`,
+      });
+      expect(out.status, out.stderr).toBe(0);
+      expect(pinned(out).BACKEND_IMAGE_REF).toBe(ref("backend", "c5"));
+    });
+
+    it("never keeps a ref from another repository, whatever its tag", () => {
+      const foreign = `nvcr.io/nvidia/aiq-agent:sha-${C.c3}`;
+      const out = resolve({
+        RUN_ID: "123",
+        STUB_OUTPUTS: deployed({ backend: foreign }),
+        STUB_DIGESTS: digests([
+          ["backend", "c3", D(1)],
+          ["backend", "c5", D(1)],
+        ]),
+      });
+      expect(out.status, out.stderr).toBe(0);
+      expect(pinned(out).BACKEND_IMAGE_REF).toBe(ref("backend", "c5"));
+    });
+
+    it("still refuses a downgrade before it compares anything", () => {
+      const out = resolve({
+        STUB_PUBLISHED: publishedAt("c3"),
+        STUB_OUTPUTS: deployed({
+          backend: ref("backend", "c5"),
+          frontend: ref("frontend", "c3"),
+          web: ref("web", "c3"),
+        }),
+        STUB_DIGESTS: digests([
+          ["backend", "c5", D(1)],
+          ["backend", "c3", D(1)],
+        ]),
+      });
+      expect(out.status).toBe(1);
+      expect(out.stderr).toContain("::error::backend: refusing to downgrade");
+    });
+  });
+
   it("keeps the deployed ref when no image is found in the walk", () => {
     const keep = ref("backend", "c1");
     const out = resolve({
@@ -308,6 +429,30 @@ describe("find-published-tag.sh", () => {
     const out = find("grid-check/grid-oib-backend:sha-a 503", "sha-a", "sha-b");
     expect(out.status).toBe(2);
     expect(out.stderr).toContain("HTTP 503");
+  });
+});
+
+describe("image-digest.sh", () => {
+  const KEY = "grid-check/grid-oib-backend:sha-a";
+  const DIGEST = `sha256:${"a".repeat(64)}`;
+  const digest = (codes: string, digests = "") =>
+    run("image-digest.sh", { STUB_CURL_CODES: codes, STUB_CURL_DIGESTS: digests }, ["GRID-check", "backend", "sha-a"]);
+
+  it("prints the digest GHCR answers for the tag", () => {
+    const out = digest(`${KEY} 200`, `${KEY} ${DIGEST}`);
+    expect(out.status, out.stderr).toBe(0);
+    expect(out.stdout.trim()).toBe(DIGEST);
+  });
+
+  it("exits 1 when the tag is not published", () => {
+    expect(digest("").status).toBe(1);
+  });
+
+  it("exits 2 on a registry error, or a 200 without a digest", () => {
+    expect(digest(`${KEY} 503`).status).toBe(2);
+    const bare = digest(`${KEY} 200`);
+    expect(bare.status).toBe(2);
+    expect(bare.stderr).toContain("without a digest");
   });
 });
 

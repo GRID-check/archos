@@ -1,0 +1,10 @@
+---
+operators:
+  - >
+    A staging deploy now restarts only the services whose image changed, so a
+    merge that touched only the website or the app no longer restarts the
+    agent, the workers and their background jobs.
+  - >
+    The one-time import of the old base corpus no longer runs on every deploy.
+    The old backend data volumes (data-aiq-agent-0) on staging and production
+    can be deleted by hand once the knowledge view lists the base corpus.
