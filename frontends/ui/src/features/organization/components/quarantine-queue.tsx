@@ -238,7 +238,7 @@ const QuarantineRow: FC<{
             opens the document at the first one, where the pages are buttons.
             Also says when the content was only partly checked. */}
         {item.verdict && (
-          <QuarantineFindings verdict={item.verdict} withoutSentence explain testId={`quarantine-findings-${item.id}`} />
+          <QuarantineFindings verdict={item.verdict} withoutSentence testId={`quarantine-findings-${item.id}`} />
         )}
         {!hasReasons && (
           // A sentence, not a label: it wraps instead of truncating on a phone.

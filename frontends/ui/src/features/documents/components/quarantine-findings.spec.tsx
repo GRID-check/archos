@@ -12,17 +12,16 @@ const verdict: QuarantineVerdict = {
 }
 
 describe('QuarantineFindings', () => {
-  it('says under each reason how the check came to it, where the surface has room', () => {
-    render(<QuarantineFindings verdict={verdict} explain />)
+  it('says as text how the check came to each kind of reason, once per kind', () => {
+    const twoTerms: QuarantineVerdict = {
+      reasons: [{ kind: 'term', term: 'Honorar', count: 1, pages: [2] }, ...verdict.reasons],
+    }
+    render(<QuarantineFindings verdict={twoTerms} />)
+    // Not a tooltip: a chip is no focus target and a touch has no hover.
     expect(screen.getAllByTestId('quarantine-findings-basis').map((line) => line.textContent)).toEqual([
       en.files.screening.basisTerm,
       en.files.screening.basisIban,
     ])
-  })
-
-  it('leaves it to the chip tooltip elsewhere', () => {
-    render(<QuarantineFindings verdict={verdict} />)
-    expect(screen.queryByTestId('quarantine-findings-basis')).toBeNull()
   })
 
   it('says a reason without a page has none, instead of leaving the reader to look for it', () => {
@@ -39,6 +38,11 @@ describe('QuarantineFindings', () => {
     render(<QuarantineFindings errorMessage="quarantined:{broken" />)
     expect(screen.getByText(en.files.ingestFailure.quarantinedUnreadable)).toBeInTheDocument()
     expect(screen.queryByText(en.files.ingestFailure.quarantined)).toBeNull()
+  })
+
+  it('does not call a verdict unreadable when it only left its reasons out', () => {
+    render(<QuarantineFindings verdict={{ reasons: [], omitted: 2 }} />)
+    expect(screen.getByText(en.files.ingestFailure.quarantined)).toBeInTheDocument()
   })
 
   it('gives the explaining sentence when reasons are listed', () => {

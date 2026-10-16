@@ -593,7 +593,7 @@ def mask_card(digits: str) -> str:
 
 @dataclass(frozen=True)
 class Span:
-    """One match: where it is in the ORIGINAL text, which rule found it, and a masked sample."""
+    """One match: where it is, which rule found it, and a masked sample. ``find_spans`` gives original offsets."""
 
     kind: str
     start: int
@@ -642,7 +642,7 @@ def _word_end(text: str, end: int) -> int:
 
 
 def _starts_a_word(folded: _Folded, text: str, index: int) -> bool:
-    """Whether folded ``index`` begins a cluster that no letter or digit precedes in the original text."""
+    """Whether folded ``index`` begins a cluster that no letter or digit precedes in the text the rules read."""
     if index == 0:
         return True
     previous = folded.starts[index - 1]

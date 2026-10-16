@@ -2,7 +2,8 @@
  * Why a document is in quarantine, read back from its stored error (ADR-0086).
  *
  * The content gate in the ingest job ends a matching file with
- * `quarantined:{"reasons":[…],"checked":"full"|"partial"}`
+ * `quarantined:{"reasons":[…],"checked":"full"|"partial"}`, plus `"omitted":N`
+ * when the job left N reasons out
  * (`sources/knowledge_layer/src/llamaindex/screening.py`, `quarantine_error`),
  * and status reconciliation stores that string on the row. Detector samples are
  * already masked by the job; nothing here ever sees a full IBAN.
@@ -37,7 +38,7 @@ const reasonSchema = z.object({
    * `other` rather than failing the parse: one new reason must not blank the
    * ones that can be read.
    */
-  kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']).or(z.unknown().transform((): 'other' => 'other')),
+  kind: z.enum(['term', 'iban', 'at_svnr', 'credit_card']).or(z.string().transform((): 'other' => 'other')),
   term: z.string().optional(),
   count: z.number().int().nonnegative().optional(),
   pages: z.array(z.number().int()).optional(),

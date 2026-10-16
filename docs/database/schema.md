@@ -1042,7 +1042,7 @@ exists. The audit trail holds the event under its own retention.
 | `project_id` | `uuid` | | CHECK `(scope = 'project') = (project_id IS NOT NULL)` |
 | `folder_id` | `uuid` | | The folder the document was filed in when quarantined; NULL at a shelf's root. No FK. The event's `filedIn`: under a folder not every project member may read, the name is withheld (`nameWithheld`, ADR-0087) |
 | `filename` | `text` | NOT NULL, CHECK 1–500 characters | The name at the time |
-| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`), never a masked sample or text |
+| `reasons` | `text` | NOT NULL, default `''` | Kinds and terms (`term:Lohnzettel,iban`) of the reasons the verdict lists, never a masked sample or text |
 | `checked` | `text` | NOT NULL, default `''` | `full` or `partial` |
 | `uploaded_by` | `text` | NOT NULL | The document's `created_by` |
 | `audited_at` | `timestamptz` | | NULL while owed |

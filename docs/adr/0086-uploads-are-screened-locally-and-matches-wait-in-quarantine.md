@@ -591,6 +591,39 @@ Two changes to where and how a reviewer decides.
   or the budget, carries `pages_truncated: true`, and the UI ends its pages with
   „…".
 
+## Amendment (2026-10-16): the text is read first, a card is found by its layout, a reason says why
+
+Measured against 105 adversarial inputs, the content screen missed what text
+extraction leaves in: a soft hyphen or zero-width character inside a number or
+term, a hyphen where a line was broken, a label glued to the number
+(`SV-Nr1237010180`), and a card beside a position or an expiry date. And a held
+file did not say whose rule held it.
+
+- **A reading before any rule.** `content_screen._read` (TypeScript `read`)
+  leaves out `IGNORABLE` characters and joins a hyphen that has a letter or
+  digit before it and, after ONE line break, a letter or digit. Every term and
+  detector runs on that reading; spans are given back in the original text. A
+  dash with a space before it and a hyphen before a blank line are left alone.
+  The reading's character sets are held by fixture cases, not by the fixture's
+  `unicode` tables.
+- **A number is cut off by a digit, not a letter.** IBAN and SV-Nr may have a
+  label against them; the fixed length and the checksum carry the precision.
+- **A card is found by its layout** (13-19 unbroken, 4-4-4-4 with a last group
+  of 1-4, 4-6-5, 4-6-4) among digit groups joined by spaces, `-` or `.`. A tab
+  ends a run (a table cell), and groups of four beside a card make it part of a
+  longer number, so a table gets no sliding window; measured on synthetic rows,
+  false alarms did not rise. The digits of a recognised IBAN are never also a
+  card or SV-Nr.
+- **A reason says why.** The verdict carries `omitted`, the number of reasons it
+  does not list, so a short list is never shown as the whole. The UI says under
+  each kind of reason how the check came to it (`explainQuarantineReason`), says
+  when a finding has no page, reads an unknown reason kind as `other` instead of
+  failing the parse, and says a reason is not stored rather than claiming
+  something about the content. The audit trail (`reasons`) records the listed
+  reasons only.
+- **Not changed:** the name gate (`name-screen.ts`) does not read; a soft hyphen
+  in a file name is part of it.
+
 ## More Information
 
 * Evidence and the two NVIDIA evaluations: `plans/2026-10-01-upload-governance-worklog.md`.

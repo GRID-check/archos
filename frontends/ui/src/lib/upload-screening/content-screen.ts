@@ -28,7 +28,7 @@
  *    across ONE line break joined. A span is given back in the original text.
  *  - A term matches at a word start and may run on (`Honorar` finds
  *    `Honorarvereinbarung`), never inside a word (`Ehrenhonorar`, judged on the
- *    original text); its span runs to the end of that word. A multi-word term
+ *    reading); its span runs to the end of that word. A multi-word term
  *    matches across any whitespace.
  *  - A detector counts only a checksum-valid number (IBAN mod 97 at its
  *    country's registered length, the Austrian social-security check digit,
@@ -73,7 +73,7 @@ export interface ContentScreenRules {
   patterns: readonly (readonly string[])[]
 }
 
-/** One match, in the ORIGINAL text. */
+/** One match. `findSpans` gives it in the ORIGINAL text. */
 export interface ContentSpan {
   kind: ContentScreenKind
   start: number
@@ -331,7 +331,7 @@ function termPattern(term: string): string[] {
   return splitWords(foldContent(term))
 }
 
-/** Whether folded `index` begins a cluster that no letter or digit precedes in the original text. */
+/** Whether folded `index` begins a cluster that no letter or digit precedes in the text the rules read. */
 function startsAWord(folded: Folded, text: string, index: number): boolean {
   if (index === 0) return true
   const previous = folded.starts[index - 1]

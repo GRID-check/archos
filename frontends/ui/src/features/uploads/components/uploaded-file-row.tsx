@@ -139,7 +139,6 @@ export function UploadedFileRow({
           <div className="flex flex-col gap-1.5" data-testid={`upload-file-quarantine-${document.id}`}>
             <QuarantineFindings
               verdict={document.quarantine ?? null}
-              explain
               testId={`upload-file-findings-${document.id}`}
             />
             <RequestReleaseButton documentId={document.id} name={name} />

@@ -1721,7 +1721,6 @@ export function FilePreviewPane({
                           : undefined
                       }
                       shownFinding={shownFinding}
-                      explain
                       testId="preview-held-findings"
                     />
                     {/* The decision, where the reviewer is looking at the

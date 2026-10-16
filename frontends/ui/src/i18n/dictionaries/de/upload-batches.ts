@@ -27,7 +27,7 @@ export const uploadBatches: typeof en.uploadBatches = {
       sending: 'Der Upload läuft noch.',
       reading: 'Piloti liest noch. Diese Übersicht aktualisiert sich von selbst.',
       done: 'Alles ist gelesen.',
-      doneHeld: 'Fertig. Zurückgehaltene Dateien hat Piloti nicht gelesen.',
+      doneHeld: 'Alles bis auf die zurückgehaltenen Dateien ist gelesen. Piloti zeigt sie keinem Modell.',
     },
     counts: {
       label: 'Auf einen Blick',
@@ -56,7 +56,6 @@ export const uploadBatches: typeof en.uploadBatches = {
       },
       empty: 'Keine Datei dieses Uploads ist bei Piloti angekommen.',
       pages: '{count, plural, one {# Seite} other {# Seiten}}',
-      reasonsLabel: 'Warum sie zurückgehalten wird',
       openInFiles: 'In Dateien öffnen',
       openInArchiv: 'In der Büroablage öffnen',
       changedHint: 'Neue Fassung eines Dokuments, das schon hier lag. Die bisherige bleibt unter „Fassungen und Freigabe“ lesbar.',

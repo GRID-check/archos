@@ -43,12 +43,6 @@ export interface QuarantineFindingsProps {
   shownFinding?: QuarantineFinding | null
   /** Leave out the sentence that explains holding back, where the surface says it already. */
   withoutSentence?: boolean
-  /**
-   * Say under each reason how the check came to hold the file (who set the
-   * rule, what a number had to pass). Where the surface has room; elsewhere the
-   * chip carries it as its tooltip.
-   */
-  explain?: boolean
   className?: string
   testId?: string
 }
@@ -62,13 +56,16 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
   onShowFinding,
   shownFinding,
   withoutSentence = false,
-  explain = false,
   className,
   testId = 'quarantine-findings',
 }) => {
   const t = useTranslations('files')
   const verdict = givenVerdict !== undefined ? givenVerdict : parseQuarantine(errorMessage)
   const reasons = verdict?.reasons ?? []
+  // How the check came to each reason is said as text under the first reason of
+  // its kind, never only in a tooltip (a chip is no focus target, and a touch
+  // has no hover): five terms share one sentence rather than repeating it.
+  const explainedAt = new Set(reasons.map((reason) => reasons.findIndex((other) => other.kind === reason.kind)))
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)} data-testid={testId}>
@@ -78,11 +75,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
             const findings = onShowFinding ? findingsOf(reason) : []
             return (
               <li key={`${index}-${reason.kind}-${reason.term ?? ''}`} className="flex flex-wrap items-center gap-1">
-                <Chip
-                  variant="warning"
-                  size="sm"
-                  title={`${describeQuarantineReason(reason, t)}\n${explainQuarantineReason(reason, t)}`}
-                >
+                <Chip variant="warning" size="sm">
                   <ShieldAlert aria-hidden />
                   <ChipLabel>{findings.length > 0 ? quarantineReasonHead(reason, t) : describeQuarantineReason(reason, t)}</ChipLabel>
                 </Chip>
@@ -114,7 +107,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
                     <span className="sr-only">{t('screening.morePages')}</span>
                   </span>
                 )}
-                {explain && (
+                {explainedAt.has(index) && (
                   <p className="text-muted-foreground w-full text-xs leading-snug" data-testid={`${testId}-basis`}>
                     {explainQuarantineReason(reason, t)}
                   </p>
@@ -134,7 +127,7 @@ export const QuarantineFindings: FC<QuarantineFindingsProps> = ({
       )}
       {!withoutSentence && (
         <p className="text-muted-foreground text-xs leading-snug">
-          {t(reasons.length > 0 ? 'ingestFailure.quarantined' : 'ingestFailure.quarantinedUnreadable')}
+          {t(reasons.length > 0 || verdict?.omitted ? 'ingestFailure.quarantined' : 'ingestFailure.quarantinedUnreadable')}
         </p>
       )}
     </div>

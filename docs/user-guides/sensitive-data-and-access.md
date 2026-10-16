@@ -126,7 +126,10 @@ office file shown as one, opens at the first page the check found something on,
 with the office's term marked. Under **Von der Inhaltsprüfung zurückgehalten**
 the preview lists every finding, for a PDF one button per page, so you can step
 through them; „…" after the pages means the check found it on more pages than
-it lists. **Zulassen** and **Löschen** sit under the findings, so you can
+it lists, and when it found more reasons than it lists, the preview says how
+many. Under each kind of reason it says how the check came to it: a term from
+your office's list, or a number laid out like an IBAN, card or social security
+number whose check digits are valid. **Zulassen** and **Löschen** sit under the findings, so you can
 decide while looking at the document. They ask the same questions as the
 Quarantäne list. Zulassen needs permission to change files in the file's
 folder; without it the preview shows the findings only. The uploader sees

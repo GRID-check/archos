@@ -377,7 +377,7 @@ export const files: typeof en.files = {
     // Der Grund ist nicht gespeichert oder nicht lesbar: nichts behaupten, was
     // die Zeile darüber nicht belegt.
     quarantinedUnreadable:
-      'Die Inhaltsprüfung hat diese Datei zurückgehalten, der Grund ist aber nicht mehr lesbar. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
+      'Die Inhaltsprüfung hat diese Datei zurückgehalten. Der Grund ist nicht gespeichert oder nicht lesbar. Piloti hat sie keinem Modell gezeigt. Die Büro- oder Projektadministration prüft sie und entscheidet, ob sie bleibt oder gelöscht wird.',
     unknown: 'Piloti konnte dieses Dokument nicht lesen, daher findet die Suche es nicht.',
     details: 'Details',
   },
@@ -394,18 +394,18 @@ export const files: typeof en.files = {
     reasonNoPages: 'ohne Seitenangabe',
     // Eine Regel, die dieser Stand der Anwendung nicht kennt (der Job kann
     // eine neue Art von Treffer zuerst melden).
-    reasonOther: 'Eine weitere Regel Ihres Büros',
+    reasonOther: 'Eine Regel, die hier nicht näher beschrieben ist',
     // Wie die Inhaltsprüfung zu dem Treffer kam: wer die Regel festgelegt hat,
     // und was eine Zahl bestehen musste. So lässt sich eine echte Kontonummer
     // von einer Auftragsnummer unterscheiden, die nur so aussieht.
-    basisTerm: 'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel festgelegt hat.',
+    basisTerm: 'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel eingestuft hat.',
     basisIban:
-      'Aufbau, Länge und Prüfsumme stimmen mit einer IBAN überein. Ihr Büro hat Kontonummern als sensibel festgelegt.',
+      'Die Zahl hat den Aufbau einer IBAN und ist rechnerisch gültig, also keine zufällige Ziffernfolge. Ihr Büro hat Kontonummern als sensibel eingestuft.',
     basisSvnr:
-      'Aufbau, Prüfziffer und Geburtsdatum stimmen mit einer österreichischen Sozialversicherungsnummer überein. Ihr Büro hat sie als sensibel festgelegt.',
+      'Die Zahl hat den Aufbau einer österreichischen Sozialversicherungsnummer und ist rechnerisch gültig. Ihr Büro hat sie als sensibel eingestuft.',
     basisCard:
-      'Aufbau und Prüfsumme stimmen mit einer Kartennummer überein. Ihr Büro hat Kartennummern als sensibel festgelegt.',
-    basisOther: 'Eine Regel Ihres Büros hat angeschlagen.',
+      'Die Zahl hat den Aufbau einer Kartennummer und ist rechnerisch gültig. Ihr Büro hat Kartennummern als sensibel eingestuft.',
+    basisOther: 'Die Inhaltsprüfung hat eine Regel angewandt, die hier nicht näher beschrieben ist.',
     omitted:
       '{count, plural, one {Ein weiterer Grund wird nicht aufgeführt.} other {# weitere Gründe werden nicht aufgeführt.}}',
     nameInFile: 'Dateiname enthält „{term}“',

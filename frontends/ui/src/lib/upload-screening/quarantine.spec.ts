@@ -33,6 +33,7 @@ describe('parseQuarantine', () => {
     expect(parseQuarantine('interrupted: worker restarted')).toBeNull()
     expect(parseQuarantine('quarantined:{not json')).toBeNull()
     expect(parseQuarantine('quarantined:{"reasons":"none"}')).toBeNull()
+    expect(parseQuarantine('quarantined:{"reasons":[{"count":1}]}')).toBeNull() // a reason with no kind is damage, not a new rule
     expect(parseQuarantine(null)).toBeNull()
   })
 
@@ -61,7 +62,7 @@ describe('a verdict this build only half knows', () => {
     )
     expect(verdict?.reasons.map((reason) => reason.kind)).toEqual(['other', 'term'])
     const [unknown] = verdict?.reasons ?? []
-    expect(describeQuarantineReason(unknown, t)).toBe('Eine weitere Regel Ihres Büros · Seite 4')
+    expect(describeQuarantineReason(unknown, t)).toBe('Eine Regel, die hier nicht näher beschrieben ist · Seite 4')
   })
 
   it('reads how many reasons the job left out', () => {
@@ -73,18 +74,20 @@ describe('a verdict this build only half knows', () => {
 describe('explaining a reason', () => {
   it('says whose rule a term is', () => {
     expect(explainQuarantineReason({ kind: 'term', term: 'Lohnzettel' }, t)).toBe(
-      'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel festgelegt hat.'
+      'Dieser Begriff steht auf der Liste, die Ihr Büro als sensibel eingestuft hat.'
     )
   })
 
   it('says what a number had to pass, so a look-alike is not mistaken for one', () => {
     for (const kind of ['iban', 'at_svnr', 'credit_card'] as const) {
-      expect(explainQuarantineReason({ kind }, t)).toMatch(/Prüfsumme|Prüfziffer/)
+      expect(explainQuarantineReason({ kind }, t)).toMatch(/rechnerisch gültig/)
     }
   })
 
   it('claims nothing for a rule it does not know', () => {
-    expect(explainQuarantineReason({ kind: 'other' }, t)).toBe('Eine Regel Ihres Büros hat angeschlagen.')
+    expect(explainQuarantineReason({ kind: 'other' }, t)).toBe(
+      'Die Inhaltsprüfung hat eine Regel angewandt, die hier nicht näher beschrieben ist.'
+    )
   })
 })
 
