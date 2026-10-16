@@ -23,6 +23,9 @@
  *    with final sigma as sigma, applied per character and its combining marks,
  *    so a span in the folded text maps back to the characters it came from and
  *    a decomposed `ü` folds like the composed one.
+ *  - Every rule runs on the text as a person reads it (`read`): invisible
+ *    characters (`SCREENING_IGNORABLE`) left out, and a hyphen that breaks a word
+ *    across ONE line break joined. A span is given back in the original text.
  *  - A term matches at a word start and may run on (`Honorar` finds
  *    `Honorarvereinbarung`), never inside a word (`Ehrenhonorar`, judged on the
  *    original text); its span runs to the end of that word. A multi-word term
@@ -30,7 +33,9 @@
  *  - A detector counts only a checksum-valid number (IBAN mod 97 at its
  *    country's registered length, the Austrian social-security check digit,
  *    Luhn); the shapes around the checksum are wide (any case, any whitespace
- *    run, `-` or `.` between groups, a card's trailing security code).
+ *    run, `-` or `.` between groups, a label against the number). A card is found
+ *    by layout inside a run of digit groups (`cardsIn`), never across a tab.
+ *    The digits of an IBAN are not also a card or a social-security number.
  *  - Placeholders are protected: a match overlapping one does not count, so
  *    masking a masked text changes nothing. Masking repeats until a pass finds
  *    nothing, because removing one number can expose another its digits were
@@ -205,6 +210,71 @@ function splitWords(text: string): string[] {
   return text.split(SPACE_RUN).filter(Boolean)
 }
 
+// --------------------------------------------------------------- reading
+
+/**
+ * Characters that print as nothing and sit inside words in extracted text: the
+ * soft hyphen, the zero-width space, non-joiner and joiner, the word joiner and
+ * the byte-order mark. A reading leaves them out.
+ */
+export const SCREENING_IGNORABLE = '\u00ad\u200b\u200c\u200d\u2060\ufeff'
+/** Hyphens a line may be broken at; with a letter or digit on both sides of the break they are not part of the text. */
+const BREAK_HYPHENS = '-\u2010\u2011'
+const LINE_BREAKS = '\n\v\f\r\x85\u2028\u2029'
+/** Whitespace that keeps a line. */
+const HORIZONTAL_SPACE = [...SCREENING_WHITESPACE].filter((char) => !LINE_BREAKS.includes(char)).join('')
+
+/** The text as a person reads it, and for each of its UTF-16 units where it stands in the original. */
+interface Reading {
+  text: string
+  starts: number[]
+  ends: number[]
+}
+
+/** `index` moved past one line break (`\r\n` is one); unchanged when none stands there. */
+function lineBreakAt(text: string, index: number): number {
+  if (text.startsWith('\r\n', index)) return index + 2
+  return index < text.length && LINE_BREAKS.includes(text[index]) ? index + 1 : index
+}
+
+/**
+ * Where a hyphen at `index` that breaks a word across lines ends, counting the
+ * break; `index` when it is none. `Gehalts-` + line break + `abrechnung` and
+ * `05-` + line break + `32` are one word and one number. One line break only: a
+ * blank line is a paragraph, and a hyphen with a space before it is a dash.
+ */
+function hyphenationEnd(text: string, index: number): number {
+  if (!BREAK_HYPHENS.includes(text[index]) || !wordCharBefore(text, index)) return index
+  let cursor = index + 1
+  while (cursor < text.length && HORIZONTAL_SPACE.includes(text[cursor])) cursor += 1
+  let broken = lineBreakAt(text, cursor)
+  if (broken === cursor) return index
+  while (broken < text.length && HORIZONTAL_SPACE.includes(text[broken])) broken += 1
+  return broken < text.length && wordCharAt(text, broken) ? broken : index
+}
+
+/** `text` without invisible characters and hyphenation breaks; every rule runs on this. */
+function read(text: string): Reading {
+  const chars: string[] = []
+  const starts: number[] = []
+  const ends: number[] = []
+  let index = 0
+  while (index < text.length) {
+    const skipped = hyphenationEnd(text, index)
+    if (SCREENING_IGNORABLE.includes(text[index])) {
+      index += 1
+    } else if (skipped > index) {
+      index = skipped
+    } else {
+      chars.push(text[index])
+      starts.push(index)
+      ends.push(index + 1)
+      index += 1
+    }
+  }
+  return { text: chars.join(''), starts, ends }
+}
+
 // ------------------------------------------------------------------ fold
 
 /** `[start, end)` of each character with the combining marks that follow it. */
@@ -375,15 +445,26 @@ export const IBAN_LENGTHS: ReadonlyMap<string, number> = new Map(
   })
 )
 
-/** Where an IBAN may start: two ASCII letters at a word start. The parse is `ibanAt`. */
-const IBAN_START = /(?<![\p{L}\p{N}])[A-Za-z]{2}/gu
-/** Where a social-security number may start: a digit at a word start. */
-const SVNR_START = /(?<![\p{L}\p{N}])\p{Nd}/gu
+/**
+ * Where an IBAN may start: an ASCII letter followed by one, not right after a
+ * digit. A label may stand against it (`IBAN:AT61`, `SWIFTAT61`): the country
+ * fixes the length and the check digits decide, so the boundary adds no
+ * precision. The parse is `ibanAt`.
+ */
+const IBAN_START = /(?<!\p{Nd})[A-Za-z](?=[A-Za-z])/gu
+/** Where a social-security number may start: a digit not right after another. */
+const SVNR_START = /(?<!\p{Nd})\p{Nd}/gu
 const SVNR_WEIGHTS = [3, 7, 9, 0, 5, 8, 4, 2, 1, 6]
 const SVNR_MARKS = '-./'
-/** A maximal run of digits joined by horizontal whitespace, `-` or `.`: a card candidate. */
-const CARD_RUN = /\p{Nd}(?:(?:[\t \xa0\u1680\u2000-\u200a\u202f\u205f\u3000]+|[-.])?\p{Nd})*/gu
+/**
+ * A maximal run of digit groups joined by spaces (never a tab: that is a table
+ * cell), one `-` or `.`: where a card may be printed.
+ */
+const CARD_RUN = /\p{Nd}(?:(?:[ \xa0\u1680\u2000-\u200a\u202f\u205f\u3000]+|[-.])?\p{Nd})*/gu
 const DIGIT_GROUP = /\p{Nd}+/gu
+/** Layouts a card is printed in besides 4-4-4-4 and one unbroken number. */
+const CARD_SPLITS = ['4,6,5', '4,6,4']
+const CARD_MAX_GROUPS = 5
 const IBAN_CHARS = /^[0-9A-Za-z]+$/
 
 export function validIban(compact: string): boolean {
@@ -423,7 +504,7 @@ function ibanAt(text: string, start: number): { compact: string; end: number } |
     compact += char.value
     index += char.width
   }
-  if (wordCharAt(text, index) || !validIban(compact)) return null
+  if (digitAt(text, index) || !validIban(compact)) return null
   return { compact, end: index }
 }
 
@@ -460,7 +541,7 @@ function svnrAt(text: string, start: number): { digits: string; end: number } | 
   const yearAt = split ? skipSeparator(text, month.end, SVNR_MARKS) : month.end
   if (split && yearAt === month.end) return null
   const year = digitsAt(text, yearAt, 2)
-  if (!year || wordCharAt(text, year.end)) return null
+  if (!year || digitAt(text, year.end)) return null
   const digits = serial.digits + day.digits + month.digits + year.digits
   return validAtSvnr(digits) ? { digits, end: year.end } : null
 }
@@ -481,18 +562,54 @@ function validCard(digits: string): boolean {
   )
 }
 
-/** The card a run of digits is, or starts with when a security code ends it: digits and printed length. */
-function cardIn(run: string): { digits: string; printed: number } | null {
+/** Whether groups of these sizes are how a card number is printed: unbroken, 4-4-4-4 (the last group 1-4), 4-6-5 or 4-6-4. */
+function cardLayout(sizes: readonly number[]): boolean {
+  if (sizes.length === 1) return sizes[0] >= 13 && sizes[0] <= 19
+  if (CARD_SPLITS.includes(sizes.join(','))) return true
+  const last = sizes[sizes.length - 1]
+  return (
+    sizes.length >= 4 &&
+    sizes.slice(0, -1).every((size) => size === 4) &&
+    last >= 1 &&
+    last <= 4 &&
+    sizes.reduce((sum, size) => sum + size, 0) <= 19
+  )
+}
+
+/** Whether the groups `first` to `last` are not cut out of a longer number printed in fours. */
+function standsAlone(groups: readonly string[], first: number, last: number): boolean {
+  const before = first === 0 || groups[first - 1].length !== 4
+  const after = last === groups.length || groups[last].length !== 4 || last === groups.length - 1
+  return before && after
+}
+
+/**
+ * Each card printed in a run of digit groups: its digits and where it starts
+ * and ends in the run. A card is some consecutive groups that have a card's
+ * layout and pass its checksum; the leftmost start wins and takes the longest
+ * such stretch. What stands before it (a position) or after it (an expiry, a
+ * security code) is not part of it. A group of four digits beside it is, though:
+ * it makes the card a piece of a longer number printed in fours, which is judged
+ * as a whole, so a table of years gets no sliding window. The last group may be
+ * four digits long: it is the security code.
+ */
+function* cardsIn(run: string): Generator<{ digits: string; start: number; end: number }> {
   const matches = [...run.matchAll(DIGIT_GROUP)]
   const groups = matches.map((match) => asciiDigits(match[0]))
-  const digits = groups.join('')
-  if (validCard(digits)) return { digits, printed: run.length }
-  const code = groups[groups.length - 1].length
-  if (groups.length >= 2 && code >= 3 && code <= 4 && validCard(digits.slice(0, -code))) {
-    const card = matches[matches.length - 2]
-    return { digits: digits.slice(0, -code), printed: card.index + card[0].length }
+  let first = 0
+  while (first < groups.length) {
+    for (let last = Math.min(groups.length, first + CARD_MAX_GROUPS); last > first; last -= 1) {
+      const digits = groups.slice(first, last).join('')
+      const sizes = groups.slice(first, last).map((group) => group.length)
+      if (cardLayout(sizes) && standsAlone(groups, first, last) && validCard(digits)) {
+        const end = matches[last - 1]
+        yield { digits, start: matches[first].index, end: end.index + end[0].length }
+        first = last - 1
+        break
+      }
+    }
+    first += 1
   }
-  return null
 }
 
 /** Every IBAN, in one pass: each start is parsed on its own, and the scan resumes after a match. */
@@ -525,15 +642,13 @@ function* svnrSpans(text: string): Generator<ContentSpan> {
 
 function* cardSpans(text: string): Generator<ContentSpan> {
   for (const match of text.matchAll(CARD_RUN)) {
-    const start = match.index
-    if (wordCharBefore(text, start) || wordCharAt(text, start + match[0].length)) continue
-    const found = cardIn(match[0])
-    if (!found) continue
-    yield {
-      kind: 'credit_card',
-      start,
-      end: start + found.printed,
-      sample: `${MASK} ${found.digits.slice(-4)}`,
+    for (const card of cardsIn(match[0])) {
+      yield {
+        kind: 'credit_card',
+        start: match.index + card.start,
+        end: match.index + card.end,
+        sample: `${MASK} ${card.digits.slice(-4)}`,
+      }
     }
   }
 }
@@ -574,21 +689,34 @@ const PLACEHOLDER_RE = new RegExp(
   'g'
 )
 
+/** `spans` without the card and social-security matches that lie inside an IBAN's own digits. */
+function outsideIbans(spans: readonly ContentSpan[]): ContentSpan[] {
+  const ibans = spans.filter((span) => span.kind === 'iban')
+  return spans.filter(
+    (span) =>
+      (span.kind !== 'at_svnr' && span.kind !== 'credit_card') ||
+      !ibans.some((iban) => iban.start <= span.start && span.end <= iban.end)
+  )
+}
+
 /**
  * Every match of every rule: terms in the rules' order, then the detectors,
- * each by position. Overlapping matches are all kept; a match overlapping a
- * placeholder is dropped.
+ * each by position. The rules read the text as a person does (`read`), and each
+ * span is given back in the ORIGINAL text. Overlapping matches are all kept,
+ * except that digits inside a recognised IBAN are not also a card or a
+ * social-security number; a match overlapping a placeholder is dropped.
  */
 export function findSpans(text: string, rules: ContentScreenRules): ContentSpan[] {
   if (!text) return []
   const protectedRegions = [...text.matchAll(PLACEHOLDER_RE)].map(
     (match) => [match.index, match.index + match[0].length] as const
   )
-  const spans = [...termSpans(text, rules)]
-  for (const name of rules.detectors) spans.push(...DETECTOR_SPANS[name](text))
-  return spans.filter(
-    (span) => !protectedRegions.some(([start, end]) => span.start < end && start < span.end)
-  )
+  const reading = read(text)
+  const spans = [...termSpans(reading.text, rules)]
+  for (const name of rules.detectors) spans.push(...DETECTOR_SPANS[name](reading.text))
+  return outsideIbans(spans)
+    .map((span) => ({ ...span, start: reading.starts[span.start], end: reading.ends[span.end - 1] }))
+    .filter((span) => !protectedRegions.some(([start, end]) => span.start < end && start < span.end))
 }
 
 // --------------------------------------------------------------- masking

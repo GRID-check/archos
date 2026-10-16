@@ -219,15 +219,24 @@ def quarantine_error(verdict: ScreeningVerdict) -> str:
     Until the whole string fits ``MAX_ERROR_CHARS``, the reason listing the most
     pages gives up its last one and says so (``pages_truncated``), so every
     reason keeps at least its first page to open the document at. Only when each
-    lists one page are reasons dropped from the end. The JSON is always whole.
+    lists one page are reasons dropped from the end. The JSON is always whole,
+    and says how many reasons it left out (``omitted``), so a reader is never
+    shown a short list as the complete one.
     """
     reasons = list(verdict.reasons[:MAX_REASONS])
     while True:
-        payload = {"reasons": [reason.as_json() for reason in reasons], "checked": verdict.checked}
-        error = QUARANTINED_PREFIX + json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        error = QUARANTINED_PREFIX + json.dumps(_payload(verdict, reasons), ensure_ascii=False, separators=(",", ":"))
         if len(error) <= MAX_ERROR_CHARS or not reasons:
             return error
         reasons = _with_one_page_fewer(reasons) or reasons[:-1]
+
+
+def _payload(verdict: ScreeningVerdict, listed: list[Reason]) -> dict[str, object]:
+    payload: dict[str, object] = {"reasons": [reason.as_json() for reason in listed], "checked": verdict.checked}
+    omitted = len(verdict.reasons) - len(listed)
+    if omitted > 0:
+        payload["omitted"] = omitted
+    return payload
 
 
 def _with_one_page_fewer(reasons: list[Reason]) -> list[Reason] | None:

@@ -689,15 +689,26 @@
       ]
     },
     {
-      "name": "a card followed by five more digits is a longer number, not a card",
+      "name": "a card followed by another number is still the card",
       "terms": [],
       "detectors": [
         "credit_card"
       ],
       "text": "Ref 4111 1111 1111 1111 12345",
-      "matches": [],
-      "masked": "Ref 4111 1111 1111 1111 12345",
-      "findings": []
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        }
+      ],
+      "masked": "Ref [Kartennummer entfernt] 12345",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
     },
     {
       "name": "social-security numbers with a hyphen, a slash, or a spaced date",
@@ -1027,6 +1038,357 @@
           "kind": "credit_card",
           "count": 1,
           "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "a soft hyphen inside an IBAN is not part of it",
+      "terms": [],
+      "detectors": [
+        "iban"
+      ],
+      "text": "IBAN AT61 1904 3002 34­57 3201",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "AT61 1904 3002 34­57 3201"
+        }
+      ],
+      "masked": "IBAN [IBAN entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 1,
+          "sample": "AT61 •••• •••• •••• 3201"
+        }
+      ]
+    },
+    {
+      "name": "a zero-width space inside a card number's group is not part of it",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "Karte 4111 11​11 1111 1111",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111 11​11 1111 1111"
+        }
+      ],
+      "masked": "Karte [Kartennummer entfernt]",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "zero-width spaces between the groups of a card are not part of it",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "Karte 4111​1111​1111​1111",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111​1111​1111​1111"
+        }
+      ],
+      "masked": "Karte [Kartennummer entfernt]",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "a zero-width space or soft hyphen inside a term is not part of it",
+      "terms": [
+        "Gehaltsabrechnung"
+      ],
+      "detectors": [],
+      "text": "Die Gehalts​abrechnung und die Gehalts­abrechnung",
+      "matches": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts​abrechnung"
+        },
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts­abrechnung"
+        }
+      ],
+      "masked": "Die [Begriff entfernt] und die [Begriff entfernt]",
+      "findings": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "name": "a term broken across lines by a hyphen is one word",
+      "terms": [
+        "Gehaltsabrechnung",
+        "Honorar"
+      ],
+      "detectors": [],
+      "text": "Die Gehalts-\nabrechnung und das Hono-\r\n  rar",
+      "matches": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "text": "Gehalts-\nabrechnung"
+        },
+        {
+          "kind": "term",
+          "term": "Honorar",
+          "text": "Hono-\r\n  rar"
+        }
+      ],
+      "masked": "Die [Begriff entfernt] und das [Begriff entfernt]",
+      "findings": [
+        {
+          "kind": "term",
+          "term": "Gehaltsabrechnung",
+          "count": 1
+        },
+        {
+          "kind": "term",
+          "term": "Honorar",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "name": "a number broken across lines by a hyphen is one number",
+      "terms": [],
+      "detectors": [
+        "iban"
+      ],
+      "text": "AT61 1904 3002 3457-\n3201",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "AT61 1904 3002 3457-\n3201"
+        }
+      ],
+      "masked": "[IBAN entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 1,
+          "sample": "AT61 •••• •••• •••• 3201"
+        }
+      ]
+    },
+    {
+      "name": "a dash, or a hyphen before a blank line, breaks nothing",
+      "terms": [
+        "Gehaltsabrechnung"
+      ],
+      "detectors": [
+        "iban",
+        "at_svnr",
+        "credit_card"
+      ],
+      "text": "Gehalts -\nabrechnung, Gehalts-\n\nabrechnung",
+      "matches": [],
+      "masked": "Gehalts -\nabrechnung, Gehalts-\n\nabrechnung",
+      "findings": []
+    },
+    {
+      "name": "a soft hyphen does not start a word",
+      "terms": [
+        "Honorar"
+      ],
+      "detectors": [],
+      "text": "Ehren­honorar",
+      "matches": [],
+      "masked": "Ehren­honorar",
+      "findings": []
+    },
+    {
+      "name": "a label may stand against a social-security number",
+      "terms": [],
+      "detectors": [
+        "at_svnr"
+      ],
+      "text": "SV-Nr1237010180 und 1237010180KV",
+      "matches": [
+        {
+          "kind": "at_svnr",
+          "text": "1237010180"
+        },
+        {
+          "kind": "at_svnr",
+          "text": "1237010180"
+        }
+      ],
+      "masked": "SV-Nr[SV-Nummer entfernt] und [SV-Nummer entfernt]KV",
+      "findings": [
+        {
+          "kind": "at_svnr",
+          "count": 2,
+          "sample": "•••• ••••80"
+        }
+      ]
+    },
+    {
+      "name": "a label may stand against an IBAN",
+      "terms": [],
+      "detectors": [
+        "iban"
+      ],
+      "text": "IBAN:AT611904300234573201BIC und SWIFTAT61 1904 3002 3457 3201",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "AT611904300234573201"
+        },
+        {
+          "kind": "iban",
+          "text": "AT61 1904 3002 3457 3201"
+        }
+      ],
+      "masked": "IBAN:[IBAN entfernt]BIC und SWIFT[IBAN entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 2,
+          "sample": "AT61 •••• •••• •••• 3201"
+        }
+      ]
+    },
+    {
+      "name": "an IBAN followed by a digit is a longer number",
+      "terms": [],
+      "detectors": [
+        "iban"
+      ],
+      "text": "AT6119043002345732017",
+      "matches": [],
+      "masked": "AT6119043002345732017",
+      "findings": []
+    },
+    {
+      "name": "a card after a position or before an expiry date is found",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "Position 3 4111 1111 1111 1111 12/27",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        }
+      ],
+      "masked": "Position 3 [Kartennummer entfernt] 12/27",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "a card after a lone number is found",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "Karte 1 4111 1111 1111 1111",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "4111 1111 1111 1111"
+        }
+      ],
+      "masked": "Karte 1 [Kartennummer entfernt]",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 1111"
+        }
+      ]
+    },
+    {
+      "name": "table cells are not one card number",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "4111\t1111\t1111\t1111",
+      "matches": [],
+      "masked": "4111\t1111\t1111\t1111",
+      "findings": []
+    },
+    {
+      "name": "a table of four-digit numbers gets no sliding window",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "5050 2798 6487 2514 6623 2488",
+      "matches": [],
+      "masked": "5050 2798 6487 2514 6623 2488",
+      "findings": []
+    },
+    {
+      "name": "an IBAN's own digits are not also a card",
+      "terms": [],
+      "detectors": [
+        "iban",
+        "at_svnr",
+        "credit_card"
+      ],
+      "text": "DE60 5393 3633 8750 0474 39",
+      "matches": [
+        {
+          "kind": "iban",
+          "text": "DE60 5393 3633 8750 0474 39"
+        }
+      ],
+      "masked": "[IBAN entfernt]",
+      "findings": [
+        {
+          "kind": "iban",
+          "count": 1,
+          "sample": "DE60 •••• •••• •••• •••• 7439"
+        }
+      ]
+    },
+    {
+      "name": "an American Express with its four-digit code",
+      "terms": [],
+      "detectors": [
+        "credit_card"
+      ],
+      "text": "3782 822463 10005 1234",
+      "matches": [
+        {
+          "kind": "credit_card",
+          "text": "3782 822463 10005"
+        }
+      ],
+      "masked": "[Kartennummer entfernt] 1234",
+      "findings": [
+        {
+          "kind": "credit_card",
+          "count": 1,
+          "sample": "•••• 0005"
         }
       ]
     }

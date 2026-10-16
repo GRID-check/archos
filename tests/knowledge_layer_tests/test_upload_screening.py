@@ -169,13 +169,24 @@ class TestIban:
         [
             "AT61 1904 3002 3457 3202",  # wrong check
             "AT62 1904 3002 3457 3201",  # wrong check digits
-            "XAT611904300234573201",  # inside a longer token
             "AT6119043002345732011",  # one character too many for AT
             "XX61 1904 3002 3457 3201",  # no registered country
         ],
     )
     def test_an_invalid_or_embedded_candidate_does_not(self, text):
         assert _kinds(text, _rules(detectors=["iban"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "XAT611904300234573201",  # a label stands against it: the country and the check digits decide
+            "IBAN:AT611904300234573201BIC",  # and a letter may follow
+            "AT61 1904 3002 34\u00ad57 3201",  # a soft hyphen inside it is not part of it
+            "AT61 1904 3002 3457-\n3201",  # a hyphen at a line break is not part of it
+        ],
+    )
+    def test_a_printed_iban_with_extraction_noise_matches(self, text):
+        assert _kinds(text, _rules(detectors=["iban"])) == ["iban"]
 
     def test_the_sample_is_masked(self):
         [reason] = screen_pages([(3, f"IBAN {_IBAN_AT}")], _rules(detectors=["iban"])).reasons
@@ -248,11 +259,31 @@ class TestCreditCard:
             "1111 1111 1111 1117",  # no major network starts with 1
             "94111111111111111",  # inside a longer digit run
             "4111 1111 1111 1111 1111 1111",  # inside a longer separated run
-            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run
             "411111111111",  # too short
         ],
     )
     def test_an_invalid_or_embedded_card_does_not(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == []
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "Auftrag 12 4111 1111 1111 1111",  # a number before it in the same run is not part of it
+            "Karte 1 4111 1111 1111 1111 12/27",  # nor is a position, or an expiry date after it
+            "4111 11\u200b11 1111 1111",  # an invisible character inside a group
+        ],
+    )
+    def test_a_card_next_to_other_numbers_matches(self, text):
+        assert _kinds(text, _rules(detectors=["credit_card"])) == ["credit_card"]
+
+    @pytest.mark.parametrize(
+        "text",
+        [
+            "4111\t1111\t1111\t1111",  # table cells are not one number
+            "5050 2798 6487 2514 6623 2488",  # a table of four-digit numbers gets no sliding window
+        ],
+    )
+    def test_table_cells_are_not_a_card(self, text):
         assert _kinds(text, _rules(detectors=["credit_card"])) == []
 
     def test_an_iban_is_not_read_as_a_card(self):
@@ -281,6 +312,7 @@ class TestQuarantineError:
 
         payload = _payload(quarantine_error(verdict))
 
+        assert "omitted" not in payload  # nothing was left out
         assert payload == {
             "reasons": [
                 {"kind": "term", "term": "Gehaltsabrechnung", "count": 1, "pages": [2]},
@@ -310,6 +342,7 @@ class TestQuarantineError:
         text = " ".join(f"Begriff{n:02d}" for n in range(15))
         payload = _payload(quarantine_error(screen_pages([(1, text)], rules)))
         assert len(payload["reasons"]) == screening.MAX_REASONS
+        assert payload["omitted"] == 5  # a short list is never shown as the whole one
 
     def test_ten_reasons_of_in_bounds_terms_fit_whole(self):
         terms = [f"{n:02d}" + "ä" * 78 for n in range(10)]
@@ -330,6 +363,7 @@ class TestQuarantineError:
         assert len(error) <= screening.MAX_ERROR_CHARS
         payload = _payload(error)
         assert 0 < len(payload["reasons"]) < 10
+        assert payload["omitted"] == 10 - len(payload["reasons"])
         assert payload["checked"] == "full"
 
     def test_pages_are_cut_from_the_widest_reason_first_and_every_reason_stays(self):
