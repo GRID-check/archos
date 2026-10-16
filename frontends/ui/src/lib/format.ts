@@ -162,11 +162,12 @@ export const formatBytes = (bytes: number | null | undefined, locale?: string): 
  * boundaries so a value never rounds up into a misleading "in 60 minutes".
  * Shared by the research-runs list and the sessions-panel Deep Research section.
  */
-export const formatRelativeTime = (isoDate: string, locale?: string): string => {
+/** `now` is the instant it is relative to; a caller that was handed one passes it on. */
+export const formatRelativeTime = (isoDate: string, locale?: string, now: number = Date.now()): string => {
   const date = new Date(isoDate)
   if (Number.isNaN(date.getTime())) return isoDate
 
-  const diffMs = date.getTime() - Date.now()
+  const diffMs = date.getTime() - now
   const diffSeconds = Math.round(diffMs / 1000)
   const absSeconds = Math.abs(diffSeconds)
 
